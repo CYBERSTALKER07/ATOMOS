@@ -1,0 +1,23 @@
+# CodeRabbit Configuration for The Lab Industries
+language: "en-US"
+tone_and_style_guidelines: |
+  Review this code as a strict, senior Go/Spanner Principal Engineer.
+  Be direct, crisp, and operational. Zero flattery.
+  Focus on high-performance backend architecture, strict multitenancy, and zero-allocation Go routines.
+
+chat:
+  enabled: true
+
+reviews:
+  profile: "chill" # Reduces nitpicks on formatting, focuses on architecture
+  request_changes_workflow: true
+  high_level_summary: true
+  poem: false # Disable unnecessary output
+
+  # THIS IS THE CRITICAL COMPONENT
+  instructions: |
+    Before reviewing, you MUST verify the code against our architectural doctrines:
+    1. Check routing logic against `docs/ARCHITECTURE.md` (Must use Rule of 25).
+    2. Check geospatial logic against `docs/H3_CORE_LOGIC.md` (No raw Haversine, must use H3 approx/snapping).
+    3. Ensure Spanner queries isolate data by `SupplierId`.
+    4. Ensure Kafka events use the Outbox Pattern and correct constants from `kafka/events.go`.

@@ -1,0 +1,17 @@
+{
+  "name": "@lab/types",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./order": "./order.ts",
+    "./entities": "./entities.ts",
+    "./fleet": "./fleet.ts",
+    "./treasury": "./treasury.ts",
+    "./notifications": "./notifications.ts",
+    "./analytics": "./analytics.ts",
+    "./ws": "./ws-events.ts"
+  }
+}

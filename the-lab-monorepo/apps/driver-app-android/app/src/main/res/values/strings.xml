@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">The Lab Driver</string>
+    <string name="notification_channel_telemetry">Telemetry</string>
+    <string name="notification_telemetry_title">The Lab Logistics: Active Transit</string>
+    <string name="notification_telemetry_text">Tracking your location for active deliveries</string>
+    <string name="scanner_prompt">Point camera at delivery QR code</string>
+    <string name="manifest_empty">No deliveries assigned today</string>
+    <string name="action_scan">Scan QR</string>
+    <string name="action_start_transit">Start Transit</string>
+    <string name="action_end_transit">End Transit</string>
+</resources>

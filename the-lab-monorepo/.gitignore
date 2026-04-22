@@ -1,0 +1,55 @@
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === IDE ===
+.idea/
+*.iml
+.vscode/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+
+# === Node ===
+node_modules/
+.next/
+.expo/
+dist/
+*.tsbuildinfo
+
+# === Go ===
+apps/backend-go/backend-go
+apps/backend-go/main
+apps/backend-go/seed
+apps/backend-go/setup
+apps/ai-worker/lab-ai-worker
+
+# === Android ===
+**/build/
+*.apk
+*.aab
+local.properties
+
+# === iOS / Xcode ===
+**/DerivedData/
+**/ModuleCache.noindex/
+**/Build/
+**/build/
+*.xcresult
+*.ipa
+*.dSYM.zip
+
+# === Secrets ===
+.env
+.env.*
+!.env.example
+
+# === Playwright ===
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# === Misc ===
+*.log
+tmp/
+apps/admin-portal/src-tauri/target/

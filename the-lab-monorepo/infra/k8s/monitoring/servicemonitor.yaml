@@ -1,0 +1,44 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: void-backend
+  namespace: void
+  labels:
+    # The release label must match the Prometheus Operator's serviceMonitorSelector.
+    release: prometheus
+    app: backend
+spec:
+  selector:
+    matchLabels:
+      app: backend
+  namespaceSelector:
+    matchNames:
+      - void
+  endpoints:
+    - port: http          # matches Service port name in backend/service.yaml
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      honorLabels: true
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: void-ai-worker
+  namespace: void
+  labels:
+    release: prometheus
+    app: ai-worker
+spec:
+  selector:
+    matchLabels:
+      app: ai-worker
+  namespaceSelector:
+    matchNames:
+      - void
+  endpoints:
+    - port: http          # ai-worker exposes /metrics on port 8081
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 15s
+      honorLabels: true

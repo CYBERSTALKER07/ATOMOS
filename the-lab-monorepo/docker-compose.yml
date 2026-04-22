@@ -1,0 +1,146 @@
+services:
+  # ----------------------------------------
+  # KAFKA (KRaft mode - no zookeeper)
+  # ----------------------------------------
+  kafka:
+    image: confluentinc/cp-kafka:7.7.0
+    pull_policy: if_not_present
+    container_name: lab-kafka
+    ports:
+      - '9092:9092'
+      - '9093:9093'
+    healthcheck:
+      test: kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      # KRaft cluster configuration
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_LISTENERS=PLAINTEXT://kafka:29092,CONTROLLER://kafka:9093,PLAINTEXT_HOST://0.0.0.0:9092
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      # Create log directory explicitly required for confluentinc KRaft images
+      - CLUSTER_ID=lab-industries-kraft-cluster
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    # Formatting storage script necessary to establish KRaft log metadata on boot
+    command: >
+      bash -c "
+        if [ ! -f /var/lib/kafka/data/meta.properties ]; then
+          kafka-storage format --ignore-formatted -t $CLUSTER_ID -c /etc/kafka/kafka.properties
+        fi
+        /etc/confluent/docker/run
+      "
+
+  # ----------------------------------------
+  # KAFKA UI (Management Portal)
+  # ----------------------------------------
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    pull_policy: if_not_present
+    container_name: lab-kafka-ui
+    ports:
+      - '8081:8080'
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=lab-local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+    depends_on:
+      - kafka
+
+  # ----------------------------------------
+  # REDIS (Memorystore emulator)
+  # ----------------------------------------
+  redis:
+    image: public.ecr.aws/docker/library/redis:alpine
+    pull_policy: if_not_present
+    container_name: lab-redis
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: redis-cli ping || exit 1
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis_data:/data
+
+  # ----------------------------------------
+  # GOOGLE CLOUD SPANNER EMULATOR
+  # ----------------------------------------
+  spanner:
+    image: gcr.io/cloud-spanner-emulator/emulator:latest
+    pull_policy: if_not_present
+    container_name: lab-spanner
+    ports:
+      - '9010:9010' # gRPC API
+      - '9020:9020' # REST API
+    healthcheck:
+      test: curl -f http://localhost:9020/ || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------
+  # FIREBASE AUTH EMULATOR
+  # ----------------------------------------
+  firebase-auth:
+    image: node:22-alpine
+    pull_policy: if_not_present
+    container_name: lab-firebase-auth
+    ports:
+      - '9099:9099' # Auth Emulator
+      - '4000:4000' # Emulator UI
+    volumes:
+      - firebase_data:/data
+      - ./firebase.json:/app/firebase.json:ro
+    working_dir: /app
+    environment:
+      - GCLOUD_PROJECT=demo-thelab
+      - FIREBASE_AUTH_EMULATOR_HOST=0.0.0.0:9099
+    command: >
+      sh -c "
+        npm install -g firebase-tools@latest &&
+        firebase emulators:start
+          --only auth
+          --project demo-thelab
+          --import /data
+          --export-on-exit /data
+      "
+    healthcheck:
+      test: wget -q --spider http://localhost:9099/ || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ----------------------------------------
+  # GLOBAL PAY MOCK (WireMock — "Domino" Simulator)
+  # ----------------------------------------
+  globalpay-mock:
+    image: wiremock/wiremock:latest
+    pull_policy: if_not_present
+    container_name: lab-globalpay-mock
+    ports:
+      - '8082:8080'
+    volumes:
+      - ./mocks/globalpay:/home/wiremock
+    command: ["--verbose", "--global-response-templating"]
+    healthcheck:
+      test: wget -q --spider http://localhost:8080/__admin || exit 1
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  kafka_data:
+  redis_data:
+  firebase_data:

@@ -1,0 +1,1481 @@
+@import "tailwindcss";
+@import "@heroui/styles";
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Material Design 3 — Complete Design Token System                           */
+/* Light: Green primary · Blue secondary · Indigo accent                      */
+/* Dark: "Synthwave" indigo primary · Teal secondary                          */
+/* oklch() color space — native browser support                               */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+@theme inline {
+  /* ── M3 sys.color — Primary (Green) ─────────────── */
+  --color-md-primary: oklch(62% 0.194 149.214);
+  --color-md-on-primary: oklch(98% 0.018 155.826);
+  --color-md-primary-container: oklch(90% 0.06 149.214);
+  --color-md-on-primary-container: oklch(25% 0.08 149.214);
+  --color-md-primary-fixed: oklch(90% 0.06 149.214);
+  --color-md-primary-fixed-dim: oklch(62% 0.194 149.214);
+  --color-md-on-primary-fixed: oklch(25% 0.08 149.214);
+  --color-md-on-primary-fixed-variant: oklch(40% 0.12 149.214);
+
+  /* ── M3 sys.color — Secondary (Blue) ───────────── */
+  --color-md-secondary: oklch(60% 0.126 221.723);
+  --color-md-on-secondary: oklch(98% 0.019 200.873);
+  --color-md-secondary-container: oklch(90% 0.04 221.723);
+  --color-md-on-secondary-container: oklch(25% 0.06 221.723);
+
+  /* ── M3 sys.color — Tertiary (Indigo accent) ───── */
+  --color-md-tertiary: oklch(54% 0.245 262.881);
+  --color-md-on-tertiary: oklch(97% 0.014 254.604);
+  --color-md-tertiary-container: oklch(90% 0.06 262.881);
+  --color-md-on-tertiary-container: oklch(25% 0.1 262.881);
+
+  /* ── M3 sys.color — Error (Pink-Red) ───────────── */
+  --color-md-error: oklch(65% 0.241 354.308);
+  --color-md-on-error: oklch(97% 0.014 343.198);
+  --color-md-error-container: oklch(93% 0.06 354.308);
+  --color-md-on-error-container: oklch(30% 0.1 354.308);
+
+  /* ── M3 sys.color — Surface ────────────────────── */
+  --color-md-surface: oklch(98% 0 0);
+  --color-md-on-surface: oklch(21% 0.006 285.885);
+  --color-md-on-surface-variant: oklch(45% 0.004 286);
+  --color-md-surface-container-lowest: oklch(100% 0 0);
+  --color-md-surface-container-low: oklch(96% 0.001 286.375);
+  --color-md-surface-container: oklch(95% 0.002 286);
+  --color-md-surface-container-high: oklch(93% 0.003 286);
+  --color-md-surface-container-highest: oklch(92% 0.004 286.32);
+  --color-md-surface-dim: oklch(88% 0.003 286);
+  --color-md-surface-bright: oklch(98% 0 0);
+  --color-md-surface-tint: oklch(62% 0.194 149.214);
+
+  /* ── M3 sys.color — Outline ────────────────────── */
+  --color-md-outline: oklch(55% 0.004 286);
+  --color-md-outline-variant: oklch(80% 0.003 286);
+
+  /* ── M3 sys.color — Inverse ────────────────────── */
+  --color-md-inverse-surface: oklch(14% 0.005 285.823);
+  --color-md-inverse-on-surface: oklch(95% 0 0);
+  --color-md-inverse-primary: oklch(80% 0.15 149.214);
+
+  /* ── M3 sys.color — Scrim & Shadow ─────────────── */
+  --color-md-scrim: oklch(0% 0 0);
+  --color-md-shadow: oklch(0% 0 0);
+
+  /* ── M3 sys.color — Semantic (custom) ──────────── */
+  --color-md-success: oklch(76% 0.233 130.85);
+  --color-md-on-success: oklch(98% 0.031 120.757);
+  --color-md-success-container: oklch(93% 0.06 130.85);
+  --color-md-on-success-container: oklch(27% 0.072 132.109);
+  --color-md-warning: oklch(79% 0.184 86.047);
+  --color-md-on-warning: oklch(98% 0.026 102.212);
+  --color-md-warning-container: oklch(93% 0.05 86.047);
+  --color-md-on-warning-container: oklch(27% 0.077 45.635);
+  --color-md-info: oklch(71% 0.143 215.221);
+  --color-md-on-info: oklch(98% 0.019 200.873);
+  --color-md-info-container: oklch(93% 0.04 215.221);
+  --color-md-on-info-container: oklch(25% 0.06 215.221);
+
+  /* ── M3 ref.typeface ───────────────────────────── */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* ── Spacing scale ───────────────────────────────── */
+  --md-spacing-xs: 4px;
+  --md-spacing-sm: 8px;
+  --md-spacing-md: 12px;
+  --md-spacing-lg: 16px;
+  --md-spacing-xl: 24px;
+  --md-spacing-2xl: 32px;
+  --md-spacing-3xl: 48px;
+
+  /* ── Motion / Easing tokens ────────────────────── */
+  --md-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --md-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --md-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --md-easing-standard-decelerate: cubic-bezier(0, 0, 0, 1);
+  --md-easing-standard-accelerate: cubic-bezier(0.3, 0, 1, 1);
+  --md-duration-short1: 50ms;
+  --md-duration-short2: 100ms;
+  --md-duration-short3: 150ms;
+  --md-duration-short4: 200ms;
+  --md-duration-medium1: 250ms;
+  --md-duration-medium2: 300ms;
+  --md-duration-medium3: 350ms;
+  --md-duration-medium4: 400ms;
+  --md-duration-long1: 450ms;
+  --md-duration-long2: 500ms;
+  --md-duration-long3: 550ms;
+  --md-duration-long4: 600ms;
+
+  /* ── Legacy aliases ────────────────────────────── */
+  --color-background: var(--color-md-surface);
+  --color-foreground: var(--color-md-on-surface);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Base                                                                       */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+body {
+  background: var(--color-md-surface);
+  color: var(--color-md-on-surface);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 sys.typescale — Typescale Classes                                       */
+/* Per material-web-mcp: .md-typescale-<scale>-<size>                         */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-typescale-display-large   { font-size: 57px; line-height: 64px; font-weight: 400; letter-spacing: -0.25px; }
+.md-typescale-display-medium  { font-size: 45px; line-height: 52px; font-weight: 400; letter-spacing: 0; }
+.md-typescale-display-small   { font-size: 36px; line-height: 44px; font-weight: 400; letter-spacing: 0; }
+.md-typescale-headline-large  { font-size: 32px; line-height: 40px; font-weight: 400; letter-spacing: 0; }
+.md-typescale-headline-medium { font-size: 28px; line-height: 36px; font-weight: 400; letter-spacing: 0; }
+.md-typescale-headline-small  { font-size: 24px; line-height: 32px; font-weight: 400; letter-spacing: 0; }
+.md-typescale-title-large     { font-size: 22px; line-height: 28px; font-weight: 400; letter-spacing: 0; }
+.md-typescale-title-medium    { font-size: 16px; line-height: 24px; font-weight: 500; letter-spacing: 0.15px; }
+.md-typescale-title-small     { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
+.md-typescale-body-large      { font-size: 16px; line-height: 24px; font-weight: 400; letter-spacing: 0.5px; }
+.md-typescale-body-medium     { font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: 0.25px; }
+.md-typescale-body-small      { font-size: 12px; line-height: 16px; font-weight: 400; letter-spacing: 0.4px; }
+.md-typescale-label-large     { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: 0.1px; }
+.md-typescale-label-medium    { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.5px; }
+.md-typescale-label-small     { font-size: 11px; line-height: 16px; font-weight: 500; letter-spacing: 0.5px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 sys.elevation — Shadow system (levels 0-5)                              */
+/* Per material-web-mcp: --md-elevation-level: 0-5                            */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-elevation-0 { box-shadow: none; }
+.md-elevation-1 { box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15); }
+.md-elevation-2 { box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 2px 6px 2px rgba(0,0,0,0.15); }
+.md-elevation-3 { box-shadow: 0 4px 8px 3px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.3); }
+.md-elevation-4 { box-shadow: 0 6px 10px 4px rgba(0,0,0,0.15), 0 2px 3px rgba(0,0,0,0.3); }
+.md-elevation-5 { box-shadow: 0 8px 12px 6px rgba(0,0,0,0.15), 0 4px 4px rgba(0,0,0,0.3); }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 sys.shape — Corner scale                                                */
+/* Per material-web-mcp: --md-sys-shape-corner-*                              */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-shape-none { border-radius: 0; }
+.md-shape-xs   { border-radius: 4px; }
+.md-shape-sm   { border-radius: 8px; }
+.md-shape-md   { border-radius: 1rem; }
+.md-shape-lg   { border-radius: 2rem; }
+.md-shape-xl   { border-radius: 2rem; }
+.md-shape-full { border-radius: 9999px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 State Layers — Hover/Focus/Press/Drag opacity overlays                  */
+/* Spec: Hover 8%, Focus 12%, Pressed 12%, Dragged 16%                        */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-state-layer {
+  position: relative;
+  overflow: hidden;
+}
+
+.md-state-layer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1);
+  background: currentColor;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.md-state-layer:hover::before { opacity: 0.08; }
+.md-state-layer:focus-visible::before { opacity: 0.12; }
+.md-state-layer:active::before { opacity: 0.12; }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Focus Ring — Keyboard focus indicator                                   */
+/* Per material-web-mcp: visible on :focus-visible only                       */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-focus-ring {
+  outline: none;
+}
+
+.md-focus-ring:focus-visible {
+  outline: 3px solid var(--color-md-primary);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Buttons — Filled / Tonal / Outlined / Text                              */
+/* Per material-web-mcp: 5 button types, 40px height, label-large type        */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 24px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  transition: box-shadow 200ms cubic-bezier(0.2, 0, 0, 1),
+              background 200ms cubic-bezier(0.2, 0, 0, 1);
+  position: relative;
+  overflow: hidden;
+  border-radius: 9999px;
+  white-space: nowrap;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.md-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1);
+  background: currentColor;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.md-btn:hover::before { opacity: 0.08; }
+.md-btn:focus-visible::before { opacity: 0.12; }
+.md-btn:active::before { opacity: 0.12; }
+.md-btn:disabled { opacity: 0.38; pointer-events: none; }
+
+.md-btn:focus-visible {
+  outline: 3px solid var(--color-md-primary);
+  outline-offset: 2px;
+}
+
+/* Filled */
+.md-btn-filled {
+  background: var(--color-md-primary);
+  color: var(--color-md-on-primary);
+}
+.md-btn-filled:hover { box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15); }
+
+/* Tonal */
+.md-btn-tonal {
+  background: var(--color-md-secondary-container);
+  color: var(--color-md-on-secondary-container);
+}
+.md-btn-tonal:hover { box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15); }
+
+/* Outlined */
+.md-btn-outlined {
+  background: transparent;
+  color: var(--color-md-primary);
+  border: 1px solid var(--color-md-outline);
+}
+
+/* Text */
+.md-btn-text {
+  background: transparent;
+  color: var(--color-md-primary);
+  padding: 0 12px;
+}
+
+/* Icon in button */
+.md-btn > svg { width: 18px; height: 18px; fill: currentColor; }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Chips — Filter / Assist / Input / Suggestion                            */
+/* Per material-web-mcp: 32px height, label-large type, pill-shaped           */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 2rem;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  transition: background 200ms cubic-bezier(0.2, 0, 0, 1);
+  border: 1px solid var(--color-md-outline);
+  background: transparent;
+  color: var(--color-md-on-surface-variant);
+  white-space: nowrap;
+}
+
+.md-chip:hover {
+  background: color-mix(in srgb, var(--color-md-on-surface-variant) 8%, transparent);
+}
+
+.md-chip[data-selected="true"],
+.md-chip.md-chip-selected {
+  background: var(--color-md-secondary-container);
+  color: var(--color-md-on-secondary-container);
+  border-color: transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Inputs — Outlined text field pattern                                    */
+/* Per material-web-mcp: outlined + filled variants                           */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-input {
+  height: 48px;
+  padding: 0 12px;
+  border-radius: 4px 4px 0 0;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  background: var(--color-md-surface-container-highest);
+  color: var(--color-md-on-surface);
+  border: none;
+  border-bottom: 1px solid var(--color-md-on-surface-variant);
+  outline: none;
+  width: 100%;
+  transition: border-color 200ms;
+}
+
+.md-input:focus {
+  border-bottom: 2px solid var(--color-md-primary);
+}
+
+.md-input-outlined {
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 1rem;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  background: transparent;
+  color: var(--color-md-on-surface);
+  border: 1px solid var(--color-md-outline);
+  outline: none;
+  width: 100%;
+  transition: border-color 200ms;
+}
+
+.md-input-outlined:focus {
+  border: 2px solid var(--color-md-primary);
+  padding: 0 11px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Badge — Small notification indicators                                   */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  background: var(--color-md-error);
+  color: var(--color-md-on-error);
+}
+
+.md-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-md-error);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Divider                                                                 */
+/* Per material-web-mcp: 1px, outline-variant, full/inset                     */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-divider {
+  height: 1px;
+  background: var(--color-md-outline-variant);
+  border: none;
+}
+
+.md-divider-inset {
+  margin-left: 16px;
+  margin-right: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Navigation Drawer — Active indicator + item layout                      */
+/* Per material-web-mcp: 56px height items, 28px pill indicator               */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Sidebar adapts naturally to light / dark via inherited theme tokens */
+
+.md-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px 0 16px;
+  height: 48px;
+  border-radius: 24px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  color: var(--color-md-on-surface-variant);
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  transition: background 200ms cubic-bezier(0.2, 0, 0, 1);
+  cursor: pointer;
+}
+
+.md-nav-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1);
+  background: currentColor;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.md-nav-item:hover::before { opacity: 0.08; }
+.md-nav-item:focus-visible { outline: 3px solid var(--color-md-primary); outline-offset: -3px; }
+.md-nav-item:focus-visible::before { opacity: 0.12; }
+
+.md-nav-item[data-active="true"],
+.md-nav-item.md-nav-active {
+  background: var(--color-md-secondary-container);
+  color: var(--color-md-on-secondary-container);
+  font-weight: 700;
+}
+
+.md-nav-item > svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.md-nav-section-label {
+  padding: 0 16px;
+  margin-top: 16px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-md-on-surface-variant);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Cards — Filled / Outlined / Elevated patterns                           */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-card {
+  border-radius: 2rem;
+  padding: 24px;
+  position: relative;
+}
+
+.md-card-filled {
+  background: var(--color-md-surface-container-highest);
+  color: var(--color-md-on-surface);
+}
+
+.md-card-elevated {
+  background: var(--color-md-surface-container-low);
+  color: var(--color-md-on-surface);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 1px 3px 1px rgba(0,0,0,0.15);
+}
+
+.md-card-outlined {
+  background: var(--color-md-surface);
+  color: var(--color-md-on-surface);
+  border: 1px solid var(--color-md-outline-variant);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Data Table — Header / Row / Cell patterns                               */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-table {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+}
+
+.md-table thead {
+  border-bottom: 1px solid var(--color-md-outline-variant);
+}
+
+.md-table th {
+  padding: 12px 16px;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: var(--color-md-on-surface-variant);
+}
+
+.md-table td {
+  padding: 16px 16px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--color-md-on-surface);
+}
+
+.md-table tbody tr {
+  border-bottom: 1px solid var(--color-md-outline-variant);
+  transition: background 150ms;
+}
+
+.md-table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-md-on-surface) 4%, transparent);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Tabs — Primary/Secondary tab bar                                        */
+/* Per material-web-mcp: primary + secondary tab types                        */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--color-md-outline-variant);
+  gap: 0;
+}
+
+.md-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  padding: 0 16px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  color: var(--color-md-on-surface-variant);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: color 200ms;
+}
+
+.md-tab::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 3px;
+  background: var(--color-md-primary);
+  border-radius: 3px 3px 0 0;
+  transition: all 200ms cubic-bezier(0.2, 0, 0, 1);
+  transform: translateX(-50%);
+}
+
+.md-tab:hover {
+  color: var(--color-md-on-surface);
+}
+
+.md-tab[data-active="true"],
+.md-tab.md-tab-active {
+  color: var(--color-md-primary);
+}
+
+.md-tab[data-active="true"]::after,
+.md-tab.md-tab-active::after {
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Snackbar — Toast notifications                                          */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-snackbar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 344px;
+  max-width: 560px;
+  padding: 14px 16px;
+  border-radius: 4px;
+  background: var(--color-md-inverse-surface);
+  color: var(--color-md-inverse-on-surface);
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.25px;
+  z-index: 100;
+  box-shadow: 0 4px 8px 3px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Skeleton / Shimmer — Loading placeholders                               */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes md-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.md-skeleton {
+  background: linear-gradient(90deg,
+    var(--color-md-surface-container) 0%,
+    var(--color-md-surface-container-high) 40%,
+    var(--color-md-surface-container) 80%
+  );
+  background-size: 800px 100%;
+  animation: md-shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+.md-skeleton-text  { height: 14px; margin-bottom: 8px; }
+.md-skeleton-title { height: 20px; width: 40%; margin-bottom: 12px; }
+.md-skeleton-card  { height: 120px; border-radius: 12px; }
+.md-skeleton-row   { height: 48px; margin-bottom: 2px; }
+
+/* M3 Motion — Easing & Duration tokens                                       */
+/* Per material-web-mcp: emphasized, standard, decelerated, accelerated       */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes md-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes md-scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes md-slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+.md-animate-in {
+  animation: md-fade-in 0.3s cubic-bezier(0.2, 0, 0, 1) forwards;
+  opacity: 0;
+}
+
+.md-animate-scale {
+  animation: md-scale-in 0.3s cubic-bezier(0.2, 0, 0, 1) forwards;
+  opacity: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Scrollbar — Minimal, follows surface tones                                 */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-md-outline-variant); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-md-outline); }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Legacy compat                                                              */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes reveal {
+  0%   { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-reveal {
+  animation: reveal 0.4s cubic-bezier(0, 0, 0.2, 1) forwards;
+  opacity: 0;
+}
+.scale-fade-in {
+  animation: md-fade-in 0.3s cubic-bezier(0.2, 0, 0, 1) forwards;
+  opacity: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Dark Mode — M3 Dark Scheme Tokens                                          */
+/* Activated by: (1) OS preference via media query, OR (2) manual .dark class */
+/* ThemeProvider manages .dark class on <html> and disables media-query path  */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Class-based dark mode — "Synthwave" (controlled by ThemeProvider) */
+:root.dark {
+  --color-md-primary: oklch(54% 0.245 262.881);
+  --color-md-on-primary: oklch(97% 0.014 254.604);
+  --color-md-primary-container: oklch(25% 0.1 262.881);
+  --color-md-on-primary-container: oklch(85% 0.12 262.881);
+  --color-md-primary-fixed: oklch(85% 0.12 262.881);
+  --color-md-primary-fixed-dim: oklch(54% 0.245 262.881);
+  --color-md-on-primary-fixed: oklch(20% 0.06 262.881);
+  --color-md-on-primary-fixed-variant: oklch(35% 0.15 262.881);
+
+  --color-md-secondary: oklch(60% 0.118 184.704);
+  --color-md-on-secondary: oklch(98% 0.014 180.72);
+  --color-md-secondary-container: oklch(25% 0.06 184.704);
+  --color-md-on-secondary-container: oklch(85% 0.06 184.704);
+
+  --color-md-tertiary: oklch(44% 0.017 285.786);
+  --color-md-on-tertiary: oklch(98% 0 0);
+  --color-md-tertiary-container: oklch(25% 0.01 285.786);
+  --color-md-on-tertiary-container: oklch(75% 0.015 285.786);
+
+  --color-md-error: oklch(71% 0.194 13.428);
+  --color-md-on-error: oklch(27% 0.105 12.094);
+  --color-md-error-container: oklch(30% 0.08 13.428);
+  --color-md-on-error-container: oklch(90% 0.06 13.428);
+
+  --color-md-surface: oklch(14% 0 0);
+  --color-md-on-surface: oklch(97% 0 0);
+  --color-md-on-surface-variant: oklch(65% 0 0);
+  --color-md-surface-container-lowest: oklch(10% 0 0);
+  --color-md-surface-container-low: oklch(14% 0 0);
+  --color-md-surface-container: oklch(20% 0 0);
+  --color-md-surface-container-high: oklch(23% 0 0);
+  --color-md-surface-container-highest: oklch(26% 0 0);
+  --color-md-surface-dim: oklch(10% 0 0);
+  --color-md-surface-bright: oklch(26% 0 0);
+  --color-md-surface-tint: oklch(54% 0.245 262.881);
+
+  --color-md-outline: oklch(40% 0 0);
+  --color-md-outline-variant: oklch(30% 0 0);
+
+  --color-md-inverse-surface: oklch(97% 0 0);
+  --color-md-inverse-on-surface: oklch(14% 0 0);
+  --color-md-inverse-primary: oklch(40% 0.2 262.881);
+
+  --color-md-scrim: oklch(0% 0 0);
+  --color-md-shadow: oklch(0% 0 0);
+
+  --color-md-success: oklch(84% 0.238 128.85);
+  --color-md-on-success: oklch(27% 0.072 132.109);
+  --color-md-success-container: oklch(30% 0.08 128.85);
+  --color-md-on-success-container: oklch(90% 0.08 128.85);
+  --color-md-warning: oklch(82% 0.189 84.429);
+  --color-md-on-warning: oklch(27% 0.077 45.635);
+  --color-md-warning-container: oklch(30% 0.06 84.429);
+  --color-md-on-warning-container: oklch(90% 0.06 84.429);
+  --color-md-info: oklch(78% 0.154 211.53);
+  --color-md-on-info: oklch(30% 0.056 229.695);
+  --color-md-info-container: oklch(28% 0.06 211.53);
+  --color-md-on-info-container: oklch(90% 0.06 211.53);
+}
+
+/* depth: 0 — suppress all elevation shadows in both themes */
+.md-elevation-1,
+.md-elevation-2,
+.md-elevation-3,
+.md-elevation-4,
+.md-elevation-5 {
+  box-shadow: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Icon Button — 40px×40px, state layer, pill shape                        */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--color-md-on-surface-variant);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: background var(--md-duration-short4) var(--md-easing-standard);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.md-icon-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--md-duration-short4) var(--md-easing-standard);
+  background: currentColor;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.md-icon-btn:hover::before { opacity: 0.08; }
+.md-icon-btn:focus-visible::before { opacity: 0.12; }
+.md-icon-btn:active::before { opacity: 0.12; }
+.md-icon-btn:disabled { opacity: 0.38; pointer-events: none; }
+
+.md-icon-btn:focus-visible {
+  outline: 3px solid var(--color-md-primary);
+  outline-offset: 2px;
+}
+
+.md-icon-btn > svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+
+.md-icon-btn-filled {
+  background: var(--color-md-primary);
+  color: var(--color-md-on-primary);
+}
+
+.md-icon-btn-tonal {
+  background: var(--color-md-secondary-container);
+  color: var(--color-md-on-secondary-container);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 FAB — 56px standard, 40px small, corner-large (16px)                    */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 56px;
+  min-width: 56px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 16px;
+  background: var(--color-md-primary-container);
+  color: var(--color-md-on-primary-container);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 8px 3px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.3);
+  transition: box-shadow var(--md-duration-short4) var(--md-easing-standard);
+}
+
+.md-fab::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--md-duration-short4) var(--md-easing-standard);
+  background: currentColor;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.md-fab:hover { box-shadow: 0 6px 10px 4px rgba(0,0,0,0.15), 0 2px 3px rgba(0,0,0,0.3); }
+.md-fab:hover::before { opacity: 0.08; }
+.md-fab:focus-visible::before { opacity: 0.12; }
+.md-fab:active::before { opacity: 0.12; }
+
+.md-fab > svg { width: 24px; height: 24px; fill: currentColor; }
+
+.md-fab-small {
+  height: 40px;
+  min-width: 40px;
+  padding: 0 8px;
+  border-radius: 12px;
+}
+
+.md-fab-extended {
+  padding: 0 16px 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Select — Outlined dropdown                                              */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-select {
+  appearance: none;
+  height: 48px;
+  padding: 0 36px 0 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  background: transparent;
+  color: var(--color-md-on-surface);
+  border: 1px solid var(--color-md-outline);
+  outline: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%2379747E' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  transition: border-color var(--md-duration-short4) var(--md-easing-standard);
+}
+
+.md-select:focus {
+  border: 2px solid var(--color-md-primary);
+  padding: 0 35px 0 11px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Dialog — Modal with scrim overlay, corner-extra-large (28px)            */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-dialog-scrim {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--color-md-scrim) 32%, transparent);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: md-fade-in-fast var(--md-duration-medium2) var(--md-easing-emphasized-decelerate) forwards;
+}
+
+.md-dialog {
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  border-radius: 28px;
+  padding: 24px;
+  background: var(--color-md-surface-container-high);
+  color: var(--color-md-on-surface);
+  box-shadow: 0 8px 12px 6px rgba(0,0,0,0.15), 0 4px 4px rgba(0,0,0,0.3);
+  animation: md-scale-in var(--md-duration-medium2) var(--md-easing-emphasized-decelerate) forwards;
+}
+
+.md-dialog-title {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 400;
+  margin-bottom: 16px;
+}
+
+.md-dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+@keyframes md-fade-in-fast {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Switch — Toggle switch                                                  */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-switch {
+  position: relative;
+  display: inline-flex;
+  width: 52px;
+  height: 32px;
+  border-radius: 9999px;
+  background: var(--color-md-surface-container-highest);
+  border: 2px solid var(--color-md-outline);
+  cursor: pointer;
+  transition: background var(--md-duration-short4) var(--md-easing-standard),
+              border-color var(--md-duration-short4) var(--md-easing-standard);
+  padding: 0;
+}
+
+.md-switch::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: var(--color-md-outline);
+  transform: translateY(-50%);
+  transition: left var(--md-duration-short4) var(--md-easing-standard),
+              width var(--md-duration-short4) var(--md-easing-standard),
+              height var(--md-duration-short4) var(--md-easing-standard),
+              background var(--md-duration-short4) var(--md-easing-standard);
+}
+
+.md-switch[data-checked="true"],
+.md-switch.md-switch-on {
+  background: var(--color-md-primary);
+  border-color: var(--color-md-primary);
+}
+
+.md-switch[data-checked="true"]::after,
+.md-switch.md-switch-on::after {
+  left: 26px;
+  width: 24px;
+  height: 24px;
+  background: var(--color-md-on-primary);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Progress — Linear & Circular                                            */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-progress-linear {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-md-surface-container-highest);
+  overflow: hidden;
+  position: relative;
+}
+
+.md-progress-linear-bar {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--color-md-primary);
+  transition: width var(--md-duration-medium2) var(--md-easing-standard);
+}
+
+.md-progress-linear-indeterminate .md-progress-linear-bar {
+  width: 50%;
+  animation: md-progress-indeterminate 2s var(--md-easing-standard) infinite;
+}
+
+@keyframes md-progress-indeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+
+.md-progress-circular {
+  width: 48px;
+  height: 48px;
+  animation: md-rotate 1.4s linear infinite;
+}
+
+.md-progress-circular circle {
+  fill: none;
+  stroke: var(--color-md-primary);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 60;
+}
+
+@keyframes md-rotate {
+  100% { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Search Bar — Full-width rounded search input                            */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 28px;
+  background: var(--color-md-surface-container-high);
+  color: var(--color-md-on-surface);
+  border: none;
+  width: 100%;
+  transition: background var(--md-duration-short4) var(--md-easing-standard),
+              box-shadow var(--md-duration-short4) var(--md-easing-standard);
+}
+
+.md-search-bar:focus-within {
+  background: var(--color-md-surface-container-highest);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 2px 6px 2px rgba(0,0,0,0.15);
+}
+
+.md-search-bar > svg {
+  width: 24px;
+  height: 24px;
+  fill: var(--color-md-on-surface-variant);
+  flex-shrink: 0;
+}
+
+.md-search-bar > input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--color-md-on-surface);
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: 0.5px;
+  outline: none;
+}
+
+.md-search-bar > input::placeholder {
+  color: var(--color-md-on-surface-variant);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Menu — Dropdown surface, elevation-2, corner-xs                         */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-menu {
+  position: absolute;
+  min-width: 112px;
+  max-width: 280px;
+  border-radius: 1rem;
+  background: var(--color-md-surface-container);
+  color: var(--color-md-on-surface);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3), 0 2px 6px 2px rgba(0,0,0,0.15);
+  z-index: 100;
+  overflow: hidden;
+  animation: md-scale-in var(--md-duration-short4) var(--md-easing-emphasized-decelerate) forwards;
+  padding: 4px 0;
+}
+
+.md-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 12px;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.25px;
+  color: var(--color-md-on-surface);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: background var(--md-duration-short3) var(--md-easing-standard);
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+
+.md-menu-item:hover {
+  background: color-mix(in srgb, var(--color-md-on-surface) 8%, transparent);
+}
+
+.md-menu-item > svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Tooltip — Inverse surface, corner-xs                                    */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-tooltip {
+  position: absolute;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--color-md-inverse-surface);
+  color: var(--color-md-inverse-on-surface);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 150;
+  animation: md-fade-in-fast var(--md-duration-short3) var(--md-easing-standard) forwards;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Accessibility — Reduced motion                                             */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .md-skeleton {
+    animation: none;
+    background: var(--color-md-surface-container-high);
+  }
+}
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Enhanced Elevation — Shadow tokens as CSS custom properties              */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+@theme inline {
+  --shadow-md-elevation-1: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 1px 3px 1px rgba(0, 0, 0, 0.15);
+  --shadow-md-elevation-2: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --shadow-md-elevation-3: 0px 1px 3px 0px rgba(0, 0, 0, 0.3), 0px 4px 8px 3px rgba(0, 0, 0, 0.15);
+  --shadow-md-elevation-4: 0px 2px 3px 0px rgba(0, 0, 0, 0.3), 0px 6px 10px 4px rgba(0, 0, 0, 0.15);
+  --shadow-md-elevation-5: 0px 4px 4px 0px rgba(0, 0, 0, 0.3), 0px 8px 12px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Page Transitions & Utility Animations                                    */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+@layer utilities {
+  .fade-in-up {
+    animation: fade-in-up var(--md-duration-medium4) var(--md-easing-emphasized-decelerate) forwards;
+  }
+  .fade-in {
+    animation: md-fade-in-fast var(--md-duration-medium2) var(--md-easing-standard) forwards;
+  }
+  .stagger-1 { animation-delay: 50ms; }
+  .stagger-2 { animation-delay: 100ms; }
+  .stagger-3 { animation-delay: 150ms; }
+  .stagger-4 { animation-delay: 200ms; }
+  .stagger-5 { animation-delay: 250ms; }
+  .stagger-6 { animation-delay: 300ms; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Skeleton Shimmer — Enhanced loading placeholders                        */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes skeleton-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-md-surface-container-high);
+  border-radius: 8px;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-md-on-surface) 6%, transparent) 40%,
+    color-mix(in srgb, var(--color-md-on-surface) 10%, transparent) 60%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Card — Elevated interactive variant (with hover lift)                    */
+/* Override earlier static definition with interactive transition              */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-card-elevated {
+  background: var(--color-md-surface-container-low);
+  color: var(--color-md-on-surface);
+  border: 1px solid var(--color-md-outline-variant);
+  box-shadow: var(--shadow-md-elevation-1);
+  transition: box-shadow var(--md-duration-medium1) var(--md-easing-standard),
+              transform var(--md-duration-medium1) var(--md-easing-standard),
+              border-color var(--md-duration-medium1) var(--md-easing-standard);
+}
+
+.md-card-elevated:hover {
+  box-shadow: var(--shadow-md-elevation-3);
+  transform: translateY(-2px);
+}
+
+/* ── Dark Mode Card Overrides ── */
+:root.dark .md-card-elevated {
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  background: var(--color-md-surface-container);
+}
+
+:root.dark .md-card-elevated:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.7);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Dark Mode body override                                                     */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+:root.dark body {
+  background-color: var(--color-md-surface);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Page Loading Skeleton — Full-page loading indicator                      */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.page-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px;
+  animation: md-fade-in-fast var(--md-duration-medium2) var(--md-easing-standard) forwards;
+}
+
+.page-skeleton .skeleton-header {
+  height: 32px;
+  width: 200px;
+  border-radius: 8px;
+}
+
+.page-skeleton .skeleton-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.page-skeleton .skeleton-kpi {
+  height: 120px;
+  border-radius: 12px;
+}
+
+.page-skeleton .skeleton-table {
+  height: 400px;
+  border-radius: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Empty State — Centered container for no-data views                      */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 64px 24px;
+  text-align: center;
+  color: var(--color-md-on-surface-variant);
+}
+
+.md-empty-state svg {
+  width: 48px;
+  height: 48px;
+  fill: var(--color-md-outline);
+  margin-bottom: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Status Indicators                                                        */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.status-dot-live    { background: var(--color-md-success); }
+.status-dot-warning { background: var(--color-md-warning); }
+.status-dot-error   { background: var(--color-md-error); }
+.status-dot-idle    { background: var(--color-md-outline); }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Responsive Data Table — Better mobile handling                           */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .md-table th:nth-child(n+4),
+  .md-table td:nth-child(n+4) {
+    display: none;
+  }
+  .md-table th,
+  .md-table td {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 KPI Card — Standardized metric display                                   */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-kpi-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  min-height: 120px;
+}
+
+.md-kpi-label {
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: var(--color-md-on-surface-variant);
+}
+
+.md-kpi-value {
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--color-md-on-surface);
+  font-variant-numeric: tabular-nums;
+}
+
+.md-kpi-sub {
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: var(--color-md-outline);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* M3 Page Header — Consistent page title pattern                              */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.md-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.md-page-header h1 {
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 400;
+  color: var(--color-md-on-surface);
+}
+
+.md-page-header p {
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0.25px;
+  color: var(--color-md-on-surface-variant);
+  margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+  .md-page-header {
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+}

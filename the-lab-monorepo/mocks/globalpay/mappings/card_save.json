@@ -1,0 +1,16 @@
+{
+  "priority": 5,
+  "request": {
+    "method": "POST",
+    "urlPathPattern": ".*/cards/v1/card$"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "cardToken": "MOCK_CARD_{{randomValue type='UUID'}}",
+      "requiresOtp": true,
+      "isSuccessful": true
+    }
+  }
+}

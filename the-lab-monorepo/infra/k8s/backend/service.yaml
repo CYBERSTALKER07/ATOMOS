@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-go
+  namespace: void-system
+  labels:
+    app: backend-go
+spec:
+  type: ClusterIP
+  selector:
+    app: backend-go
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+---
+# External load-balancer terminates at a GKE Gateway (L7) or a Cloud Armor-backed
+# NEG. A separate Gateway/Ingress resource is provisioned per environment by the
+# ops team. This Service is kept ClusterIP so no unintended external surface is
+# created by default.

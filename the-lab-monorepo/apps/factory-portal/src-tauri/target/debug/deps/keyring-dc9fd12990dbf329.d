@@ -1,0 +1,11 @@
+/Users/shakhzod/Desktop/V.O.I.D/the-lab-monorepo/apps/factory-portal/src-tauri/target/debug/deps/keyring-dc9fd12990dbf329.d: /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/lib.rs /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/mock.rs /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/macos.rs /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/credential.rs /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/error.rs
+
+/Users/shakhzod/Desktop/V.O.I.D/the-lab-monorepo/apps/factory-portal/src-tauri/target/debug/deps/libkeyring-dc9fd12990dbf329.rlib: /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/lib.rs /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/mock.rs /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/macos.rs /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/credential.rs /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/error.rs
+
+/Users/shakhzod/Desktop/V.O.I.D/the-lab-monorepo/apps/factory-portal/src-tauri/target/debug/deps/libkeyring-dc9fd12990dbf329.rmeta: /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/lib.rs /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/mock.rs /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/macos.rs /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/credential.rs /Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/error.rs
+
+/Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/lib.rs:
+/Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/mock.rs:
+/Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/macos.rs:
+/Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/credential.rs:
+/Users/shakhzod/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/keyring-3.6.3/src/error.rs:

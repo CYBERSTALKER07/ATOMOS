@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-worker
+  namespace: void-system
+  labels:
+    app: ai-worker
+spec:
+  # KEDA manages replica count via ScaledObject; set 0 here so KEDA owns it.
+  # During initial deploy KEDA will immediately scale to minReplicaCount.
+  replicas: 0
+  selector:
+    matchLabels:
+      app: ai-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: ai-worker
+      annotations:
+        secret.reloader.stakater.com/reload: "void-backend-secrets"
+    spec:
+      terminationGracePeriodSeconds: 60
+      # Longer drain: consumer must finish the current batch + commit offsets.
+      containers:
+        - name: ai-worker
+          image: AI_WORKER_IMAGE_PLACEHOLDER
+          envFrom:
+            - configMapRef:
+                name: ai-worker-config
+          env:
+            - name: KAFKA_BROKER_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: void-backend-secrets
+                  key: KAFKA_BROKER_ADDRESS
+            - name: SPANNER_DATABASE_URI
+              valueFrom:
+                secretKeyRef:
+                  name: void-backend-secrets
+                  key: SPANNER_DATABASE_URI
+            - name: GOOGLE_CLOUD_PROJECT
+              valueFrom:
+                secretKeyRef:
+                  name: void-backend-secrets
+                  key: GOOGLE_CLOUD_PROJECT
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          livenessProbe:
+            # ai-worker exposes /healthz on port 9090 (internal metrics + liveness).
+            httpGet:
+              path: /healthz
+              port: 9090
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            failureThreshold: 3
+      serviceAccountName: void-backend-sa
