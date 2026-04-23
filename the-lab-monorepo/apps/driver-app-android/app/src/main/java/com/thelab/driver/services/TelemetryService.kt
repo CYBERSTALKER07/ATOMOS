@@ -59,6 +59,10 @@ class TelemetryService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var locationCallback: LocationCallback? = null
 
+    // V.O.I.D. Adaptive Transmission Protocol
+    private var lastSentLocation: android.location.Location? = null
+    private var lastSentTimeMs: Long = 0
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val arrivedIds = mutableSetOf<String>()
 
@@ -143,18 +147,44 @@ class TelemetryService : Service() {
                 val location = result.lastLocation ?: return
                 val driverId = TokenHolder.userId ?: return
 
-                val payload = TelemetryPayload(
-                    driverId = driverId,
-                    latitude = location.latitude,
-                    longitude = location.longitude,
-                    timestamp = System.currentTimeMillis(),
-                    speed = location.speed,
-                    bearing = location.bearing
-                )
+                // V.O.I.D. Adaptive Transmission Protocol (Client-Side Filter)
+                val timeSinceLastMs = System.currentTimeMillis() - lastSentTimeMs
+                var shouldTransmit = false
 
-                val sent = telemetrySocket.send(payload)
-                if (!sent) {
-                    Log.w(TAG, "Telemetry send failed — socket may be disconnected")
+                if (timeSinceLastMs > 15000) {
+                    // Heartbeat: Always send if it's been more than 15 seconds
+                    shouldTransmit = true
+                } else if (lastSentLocation != null) {
+                    // Dead Reckoning: Check deviation
+                    val distanceDeviation = location.distanceTo(lastSentLocation!!)
+                    val bearingDeviation = Math.abs(location.bearing - lastSentLocation!!.bearing)
+
+                    // Thresholds: Deviated by > 20 meters OR turned > 15 degrees
+                    if (distanceDeviation > 20f || bearingDeviation > 15f) {
+                        shouldTransmit = true
+                    }
+                } else {
+                    // Send first point immediately
+                    shouldTransmit = true
+                }
+
+                if (shouldTransmit) {
+                    val payload = TelemetryPayload(
+                        driverId = driverId,
+                        latitude = location.latitude,
+                        longitude = location.longitude,
+                        timestamp = System.currentTimeMillis(),
+                        speed = location.speed,
+                        bearing = location.bearing
+                    )
+
+                    val sent = telemetrySocket.send(payload)
+                    if (!sent) {
+                        Log.w(TAG, "Telemetry send failed — socket may be disconnected")
+                    } else {
+                        lastSentLocation = location
+                        lastSentTimeMs = System.currentTimeMillis()
+                    }
                 }
 
                 // Auto-ARRIVED: check proximity to IN_TRANSIT order destinations

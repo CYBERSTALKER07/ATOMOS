@@ -16,7 +16,14 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     var orders: [Order] = []
     var missions: [Mission] = []          // legacy compat
     var location: CLLocationCoordinate2D?
+    var course: CLLocationDirection?
+    var speed: CLLocationSpeed?
     var activeMission: Mission?
+    
+    // Telemetry Sync Trigger
+    var latestTransmitLocation: CLLocation?
+    private var lastSentTime: Date?
+
     var activeOrder: Order?
     var completedIds: Set<String> = []
     var completedMissions: [Mission] = []
@@ -339,11 +346,50 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
         guard let loc = locations.last else { return }
         Task { @MainActor in
             self.location = loc.coordinate
+            if loc.course >= 0 {
+                self.course = loc.course
+            }
+            if loc.speed >= 0 {
+                self.speed = loc.speed
+            }
             Self.lastKnownLocation = loc.coordinate
             self.gpsError = nil
 
-            // Auto-ARRIVED: one-shot transition when driver enters 100m geofence
+            // Auto-ARRIVED execution
             self.checkAutoArrive(driverLocation: loc.coordinate)
+            
+            // Adaptive Pipeline filter
+            self.processAdaptiveTelemetrySync(loc)
+        }
+    }
+
+    @MainActor
+    private func processAdaptiveTelemetrySync(_ current: CLLocation) {
+        let now = Date()
+        var shouldTransmit = false
+        
+        if let lastT = lastSentTime, let lastL = latestTransmitLocation {
+            let timeDelta = now.timeIntervalSince(lastT)
+            if timeDelta > 15 {
+                shouldTransmit = true
+            } else {
+                let distDelta = current.distance(from: lastL)
+                let courseCurrent = current.course >= 0 ? current.course : 0
+                let courseLast = lastL.course >= 0 ? lastL.course : 0
+                let courseDelta = abs(courseCurrent - courseLast)
+                
+                if distDelta > 20 || courseDelta > 15 {
+                    shouldTransmit = true
+                }
+            }
+        } else {
+            shouldTransmit = true
+        }
+        
+        if shouldTransmit {
+            latestTransmitLocation = current
+            lastSentTime = now
+            // TelemetryViewModel or ContentView observers will pick this up
         }
     }
 

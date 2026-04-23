@@ -3,7 +3,9 @@ package com.thelab.driver.ui.screens.map
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Location
 import android.net.Uri
+import android.os.Looper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -20,9 +22,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -42,11 +46,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.LatLngBounds
+import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -57,9 +67,27 @@ import com.thelab.driver.data.model.Order
 import com.thelab.driver.data.model.OrderState
 import com.thelab.driver.ui.screens.manifest.ManifestViewModel
 import com.thelab.driver.ui.theme.LocalLabColors
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.emptyFlow
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+
+private fun locationFlow(context: android.content.Context): Flow<Location> = callbackFlow {
+    val client = LocationServices.getFusedLocationProviderClient(context)
+    val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000L).build()
+    val callback = object : LocationCallback() {
+        override fun onLocationResult(result: LocationResult) {
+            result.lastLocation?.let { trySend(it) }
+        }
+    }
+    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        client.requestLocationUpdates(request, callback, Looper.getMainLooper())
+    }
+    awaitClose { client.removeLocationUpdates(callback) }
+}
 
 @Composable
 fun MapScreen(viewModel: ManifestViewModel) {
@@ -99,9 +127,48 @@ fun MapScreen(viewModel: ManifestViewModel) {
         position = CameraPosition.fromLatLngZoom(defaultPosition, 12f)
     }
 
-    // Fit camera to orders when they load
+    var isCameraLocked by remember { mutableStateOf(false) }
+
+    val locationFlow = remember(hasLocationPermission) {
+        if (hasLocationPermission) locationFlow(context) else emptyFlow()
+    }
+    val currentLocation by locationFlow.collectAsState(initial = null)
+
+    // 1. Spatiotemporal Camera Lock (Dynamic Bounding)
+    LaunchedEffect(currentLocation, isCameraLocked) {
+        val loc = currentLocation
+        if (isCameraLocked && loc != null) {
+            // V.O.I.D. Dynamic Zoom: Clamp(19.0 - (Velocity / 20), 14.0, 19.0)
+            val speedMps = loc.speed // Meters per second
+            val dynamicZoom = (19.0f - (speedMps / 6f)).coerceIn(14.0f, 19.0f) // adjusted for m/s
+
+            // Project camera target forward based on speed (Look-Ahead bounding)
+            // In a real-world scenario we use SphericalUtil.computeOffset, but here we'll center on loc 
+            // to keep it native until the utility is imported, or emulate it via tilt.
+            
+            val position = CameraPosition.Builder()
+                .target(LatLng(loc.latitude, loc.longitude))
+                .zoom(dynamicZoom)    // Velocity-Based Zoom
+                .tilt(60f)      // Immersive 3D pitch
+                .bearing(if (loc.hasBearing()) loc.bearing else cameraPositionState.position.bearing)
+                .build()
+            
+            // Fast low-latency update for smooth tracking
+            cameraPositionState.animate(CameraUpdateFactory.newCameraPosition(position), 1000)
+        }
+    }
+
+    // 2. Gesture Break (Intentional User Override)
+    LaunchedEffect(cameraPositionState.isMoving) {
+        if (cameraPositionState.isMoving && 
+            cameraPositionState.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE) {
+            isCameraLocked = false
+        }
+    }
+
+    // Fit camera to orders when they load (if not locked)
     LaunchedEffect(activeOrders) {
-        if (activeOrders.isNotEmpty()) {
+        if (!isCameraLocked && activeOrders.isNotEmpty()) {
             val boundsBuilder = LatLngBounds.builder()
             activeOrders.forEach { order ->
                 boundsBuilder.include(LatLng(order.latitude!!, order.longitude!!))
@@ -133,12 +200,15 @@ fun MapScreen(viewModel: ManifestViewModel) {
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
             properties = MapProperties(
-                isMyLocationEnabled = hasLocationPermission
+                isMyLocationEnabled = hasLocationPermission,
+                isBuildingEnabled = true
             ),
             uiSettings = MapUiSettings(
                 zoomControlsEnabled = false,
-                myLocationButtonEnabled = hasLocationPermission,
-                mapToolbarEnabled = false
+                myLocationButtonEnabled = false, // We use custom FAB to handle lock break
+                mapToolbarEnabled = false,
+                tiltGesturesEnabled = true,
+                compassEnabled = false
             ),
             onMapClick = { selectedOrder = null }
         ) {
@@ -272,6 +342,21 @@ fun MapScreen(viewModel: ManifestViewModel) {
                         Text("Navigate", style = MaterialTheme.typography.labelLarge)
                     }
                 }
+            }
+        }
+
+        // Camera Lock FAB
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = if (selectedOrder != null) 180.dp else 16.dp, end = 16.dp)
+        ) {
+            FloatingActionButton(
+                onClick = { isCameraLocked = true },
+                containerColor = if (isCameraLocked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+                contentColor = if (isCameraLocked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+            ) {
+                Icon(Icons.Default.MyLocation, contentDescription = "Lock Camera")
             }
         }
 

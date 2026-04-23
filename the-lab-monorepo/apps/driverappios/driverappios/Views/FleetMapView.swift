@@ -49,12 +49,8 @@ struct FleetMapView: View {
 
     @State private var telemetryVM = TelemetryViewModel()
     @State private var navPath = NavigationPath()
-    @State private var cameraPosition: MapCameraPosition = .region(
-        MKCoordinateRegion(
-            center: FleetViewModel.warehouseCenter,
-            span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-        )
-    )
+    @State private var cameraPosition: MapCameraPosition = .userLocation(followsHeading: true, fallback: .automatic)
+    @State private var isCameraLocked: Bool = false
 
     @State private var phase: MapPhase = .pickingOrder
     @State private var selectedMission: Mission?
@@ -182,6 +178,11 @@ struct FleetMapView: View {
             }
             .mapStyle(.standard(elevation: .realistic))
             .mapControls { MapCompass() }
+            .onMapCameraChange(frequency: .onEnd) { context in
+                if isCameraLocked && !context.followsUserLocation {
+                    isCameraLocked = false
+                }
+            }
             .ignoresSafeArea()
 
             // GPS Error
@@ -211,8 +212,11 @@ struct FleetMapView: View {
                 await telemetryVM.start()
             }
         }
-        .onChange(of: vm.location) { _, loc in
-            if let loc { telemetryVM.sendLocation(loc, accuracy: nil) }
+        .onChange(of: vm.latestTransmitLocation) { _, loc in
+            // V.O.I.D. Adaptive Transmission Protocol Filtered Execution
+            if let loc { 
+                telemetryVM.sendLocation(loc.coordinate, accuracy: loc.horizontalAccuracy) 
+            }
         }
         .sheet(isPresented: $vm.showOfflineVerifier) {
             OfflineVerifierView(modelContext: modelContext)
@@ -251,25 +255,53 @@ struct FleetMapView: View {
                 Spacer()
 
                 if phase != .pickingOrder, currentTarget != nil {
-                    Button {
-                        Haptics.light()
-                        cycleZoom()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: zoomFocus.icon)
-                                .font(.system(size: 10, weight: .bold))
-                            Text(zoomFocus.label)
-                                .font(.system(size: 10, weight: .bold))
+                    HStack(spacing: 8) {
+                        Button {
+                            withAnimation(.easeInOut(duration: 1.0)) {
+                                isCameraLocked = true
+                                cameraPosition = .camera(
+                                    MapCamera(
+                                        centerCoordinate: vm.location ?? FleetViewModel.warehouseCenter,
+                                        distance: max((vm.speed ?? 0.0) * 20.0, 400.0), // V.O.I.D. Dynamic Vault-Pitch Look-Ahead
+                                        heading: vm.course ?? 0,
+                                        pitch: 60
+                                    )
+                                )
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                    cameraPosition = .userLocation(followsHeading: true, fallback: .automatic)
+                                }
+                            }
+                        } label: {
+                            Image(systemName: isCameraLocked ? "location.north.line.fill" : "location.fill")
+                                .font(.system(size: 13, weight: .bold))
+                                .padding(12)
+                                .background(isCameraLocked ? LabTheme.primary : .ultraThinMaterial)
+                                .foregroundStyle(isCameraLocked ? LabTheme.onPrimary : LabTheme.fg)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(LabTheme.separator, lineWidth: 0.5))
+                                .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
                         }
-                        .foregroundStyle(LabTheme.fg)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 8)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .overlay(Capsule().stroke(LabTheme.separator, lineWidth: 0.5))
-                        .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
+
+                        Button {
+                            Haptics.light()
+                            cycleZoom()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: zoomFocus.icon)
+                                    .font(.system(size: 10, weight: .bold))
+                                Text(zoomFocus.label)
+                                    .font(.system(size: 10, weight: .bold))
+                            }
+                            .foregroundStyle(LabTheme.fg)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 8)
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .overlay(Capsule().stroke(LabTheme.separator, lineWidth: 0.5))
+                            .shadow(color: .black.opacity(0.08), radius: 8, y: 4)
+                        }
+                        .accessibilityLabel("Zoom focus: \(zoomFocus.label)")
+                        .transition(.fadeScale)
                     }
-                    .accessibilityLabel("Zoom focus: \(zoomFocus.label)")
-                    .transition(.fadeScale)
                 }
 
                 if vm.activeMission != nil {
