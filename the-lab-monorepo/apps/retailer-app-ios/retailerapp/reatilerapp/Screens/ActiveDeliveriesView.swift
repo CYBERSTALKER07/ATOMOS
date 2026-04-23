@@ -281,6 +281,7 @@ struct DeliveryCard: View {
         case .cancelled: AppTheme.destructive
         case .awaitingPayment: AppTheme.warning
         case .pendingCashCollection: AppTheme.warning
+        default: AppTheme.textSecondary
         }
     }
 
@@ -295,6 +296,7 @@ struct DeliveryCard: View {
         case .cancelled: "xmark.circle"
         case .awaitingPayment: "creditcard"
         case .pendingCashCollection: "banknote"
+        default: "circle"
         }
     }
 }

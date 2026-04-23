@@ -141,6 +141,7 @@ struct InboxView: View {
         case .pendingCashCollection: AppTheme.warning
         case .completed: AppTheme.success
         case .cancelled: AppTheme.destructive
+        default: AppTheme.textSecondary
         }
     }
 

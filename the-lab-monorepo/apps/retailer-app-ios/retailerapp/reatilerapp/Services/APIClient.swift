@@ -82,7 +82,7 @@ final class APIClient {
         }
 
         if http.statusCode == 401 && !isRetry && !isRefreshing {
-            if let newToken = await attemptTokenRefresh() {
+            if let _ = await attemptTokenRefresh() {
                 return try await self.request(method: method, path: path, body: body, isRetry: true)
             }
             throw APIError.serverError(statusCode: 401, message: "Unauthorized")

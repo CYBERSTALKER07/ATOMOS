@@ -596,6 +596,8 @@ struct ContentView: View {
                 await loadActiveOrders()
             case .orderStatusChanged:
                 await loadActiveOrders()
+            default:
+                break
             }
         }
     }

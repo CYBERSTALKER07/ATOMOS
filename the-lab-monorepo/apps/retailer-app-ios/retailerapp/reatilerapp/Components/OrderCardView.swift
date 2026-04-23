@@ -193,6 +193,7 @@ struct OrderCardView: View {
         case .pendingCashCollection: AppTheme.warning
         case .completed: AppTheme.success
         case .cancelled: AppTheme.destructive
+        default: AppTheme.textSecondary
         }
     }
 
@@ -207,6 +208,7 @@ struct OrderCardView: View {
         case .pendingCashCollection: "banknote"
         case .completed: "checkmark.circle.fill"
         case .cancelled: "xmark.circle"
+        default: "questionmark.circle"
         }
     }
 }

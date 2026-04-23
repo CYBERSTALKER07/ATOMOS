@@ -15,7 +15,7 @@ final class AuthManager {
     private let api = APIClient.shared
 
     private init() {
-        if let token = api.authToken {
+        if api.authToken != nil {
             isLoggedIn = true
             // Restore user from Keychain
             let userId = KeychainHelper.read(key: "user_id") ?? ""
