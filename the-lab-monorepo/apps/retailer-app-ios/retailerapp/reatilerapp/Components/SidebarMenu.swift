@@ -98,6 +98,7 @@ struct SidebarMenu: View {
             }
             .ignoresSafeArea()
         }
+        .allowsHitTesting(isOpen)
         .animation(AnimationConstants.fluid, value: isOpen)
         .onAppear {
             if isOpen {

@@ -96,10 +96,25 @@ struct CartView: View {
 
             // Quantity + Price column
             VStack(alignment: .trailing, spacing: AppTheme.spacingSM) {
-                Text("\(Int(item.totalPrice).formatted())")
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .contentTransition(.numericText())
+                HStack(spacing: 8) {
+                    Text("\(Int(item.totalPrice).formatted())")
+                        .font(.system(.subheadline, design: .rounded, weight: .bold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                        .contentTransition(.numericText())
+
+                    Button {
+                        Haptics.medium()
+                        withAnimation(AnimationConstants.fluid) {
+                            cart.remove(itemId: item.id)
+                        }
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(AppTheme.textTertiary)
+                            .background(Color.white.opacity(0.001)) // reliable tap target
+                    }
+                    .accessibilityLabel("Remove from cart")
+                }
 
                 QuantityStepper(
                     quantity: Binding(
@@ -119,38 +134,6 @@ struct CartView: View {
         .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
         .shadow(color: AppTheme.shadowColor, radius: 4, x: 0, y: 2)
         .padding(.horizontal, AppTheme.spacingLG)
-        .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
-                withAnimation(AnimationConstants.fluid) {
-                    cart.remove(itemId: item.id)
-                }
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-        }
-        // Manual swipe-to-delete via overlay
-        .overlay(alignment: .trailing) {
-            deleteButton(for: item)
-        }
-    }
-
-    private func deleteButton(for item: CartItem) -> some View {
-        Button {
-            Haptics.medium()
-            withAnimation(AnimationConstants.fluid) {
-                cart.remove(itemId: item.id)
-            }
-        } label: {
-            Image(systemName: "trash")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(AppTheme.destructive)
-                .frame(width: 28, height: 28)
-                .background(AppTheme.destructive.opacity(0.1))
-                .clipShape(.circle)
-        }
-        .accessibilityLabel("Remove from cart")
-        .padding(.trailing, AppTheme.spacingMD + AppTheme.spacingLG)
-        .offset(y: -28)
     }
 
     // MARK: - Bottom Bar

@@ -286,10 +286,10 @@ struct ProductDetailView: View {
                             Toggle("", isOn: Binding(
                                 get: { variantAutoOrder[variant.id] ?? false },
                                 set: { newVal in
+                                    variantAutoOrder[variant.id] = newVal
                                     if newVal && (variantHasHistory[variant.id] ?? false) {
                                         pendingVariantTarget = variant.id
                                     } else {
-                                        variantAutoOrder[variant.id] = newVal
                                         Task { await toggleVariantAutoOrder(skuId: variant.id, enabled: newVal, useHistory: false) }
                                     }
                                 }

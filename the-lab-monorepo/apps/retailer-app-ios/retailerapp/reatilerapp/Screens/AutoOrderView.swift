@@ -102,6 +102,7 @@ struct AutoOrderView: View {
     @State private var isLoading = true
     @State private var globalEnabled = false
     @State private var pendingTarget: EnableTarget?
+    @State private var localToggleStates: [String: Bool] = [:]
 
     private enum EnableTarget {
         case global
@@ -203,7 +204,21 @@ struct AutoOrderView: View {
             }
             .task { await loadAll() }
             .refreshable { await loadAll() }
-            .alert("Use Previous Analytics?", isPresented: Binding(get: { pendingTarget != nil }, set: { if !$0 { pendingTarget = nil } }), actions: {
+            .alert("Use Previous Analytics?", isPresented: Binding(
+                get: { pendingTarget != nil },
+                set: { val in
+                    if !val {
+                        if let target = pendingTarget {
+                            switch target {
+                            case .global: globalEnabled = false
+                            case .supplier(let id), .category(let id), .product(let id), .variant(let id):
+                                localToggleStates[id] = false
+                            }
+                        }
+                        pendingTarget = nil
+                    }
+                }
+            ), actions: {
                 Button("Use History") {
                     Task { await confirmEnable(useHistory: true) }
                 }
@@ -211,7 +226,13 @@ struct AutoOrderView: View {
                     Task { await confirmEnable(useHistory: false) }
                 }
                 Button("Cancel", role: .cancel) {
-                    if case .global = pendingTarget { globalEnabled = false }
+                    if let target = pendingTarget {
+                        switch target {
+                        case .global: globalEnabled = false
+                        case .supplier(let id), .category(let id), .product(let id), .variant(let id):
+                            localToggleStates[id] = false
+                        }
+                    }
                     pendingTarget = nil
                 }
             }, message: {
@@ -354,8 +375,9 @@ struct AutoOrderView: View {
                         Spacer()
 
                         Toggle("", isOn: Binding(
-                            get: { item.enabled },
+                            get: { localToggleStates[item.id] ?? item.enabled },
                             set: { newVal in
+                                localToggleStates[item.id] = newVal
                                 if newVal && item.hasHistory {
                                     switch item.level {
                                     case .supplier: pendingTarget = .supplier(item.id)
@@ -492,6 +514,7 @@ struct AutoOrderView: View {
         settings = await settingsReq
         forecasts = await forecastsReq
         globalEnabled = settings?.globalEnabled ?? false
+        localToggleStates.removeAll()
         isLoading = false
     }
 

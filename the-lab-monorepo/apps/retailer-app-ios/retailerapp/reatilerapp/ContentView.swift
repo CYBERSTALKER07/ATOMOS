@@ -440,12 +440,10 @@ struct ContentView: View {
             }
 
             // Sidebar Overlay
-            if showSidebar {
-                SidebarMenu(isOpen: $showSidebar) { destination in
-                    handleSidebarNavigation(destination)
-                }
-                .zIndex(100)
+            SidebarMenu(isOpen: $showSidebar) { destination in
+                handleSidebarNavigation(destination)
             }
+            .zIndex(100)
         }
     }
 
