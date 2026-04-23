@@ -426,7 +426,7 @@ struct ContentView: View {
             .tint(AppTheme.accent)
 
             // Floating Active Orders Bar
-            if showFloatingBar {
+            if showFloatingBar && !showSidebar {
                 VStack {
                     Spacer()
                     FloatingActiveOrdersBar(activeOrders: activeOrders) {
@@ -464,6 +464,7 @@ struct ContentView: View {
             .toolbar { standardToolbar }
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar(showSidebar ? .hidden : .visible, for: .tabBar)
         }
         .sensoryFeedback(.impact(weight: .light), trigger: showSidebar)
         .sensoryFeedback(.impact(weight: .light), trigger: showInsights)

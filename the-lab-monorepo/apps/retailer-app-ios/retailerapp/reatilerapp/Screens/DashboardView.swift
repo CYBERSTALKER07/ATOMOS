@@ -41,18 +41,6 @@ struct DashboardView: View {
     // MARK: - Service Grid (Yandex Go Style)
 
     private var serviceGrid: some View {
-        let leftColumn = [
-            ServiceTile(title: "Catalog", icon: "cart.fill", subtitle: nil, size: .regular),
-            ServiceTile(title: "Orders", icon: "shippingbox.fill", subtitle: "\(activeOrders.count) active", size: .regular),
-            ServiceTile(title: "Procurement", icon: "chart.bar.fill", subtitle: nil, size: .small),
-            ServiceTile(title: "Inbox", icon: "tray.fill", subtitle: nil, size: .small),
-        ]
-        let rightColumn = [
-            ServiceTile(title: "AI Insights", icon: "sparkles", subtitle: "\(predictions.count) predictions", size: .large),
-            ServiceTile(title: "History", icon: "clock.fill", subtitle: nil, size: .small),
-            ServiceTile(title: "Search", icon: "magnifyingglass", subtitle: nil, size: .small),
-        ]
-
         return VStack(spacing: AppTheme.spacingMD) {
             // Row 1: two big tiles
             HStack(spacing: AppTheme.spacingMD) {

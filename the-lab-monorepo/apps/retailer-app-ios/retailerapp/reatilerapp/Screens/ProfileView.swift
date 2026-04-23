@@ -189,16 +189,19 @@ struct ProfileView: View {
 
                     Spacer()
 
-                    Toggle("", isOn: $globalAutoOrder)
-                        .tint(AppTheme.accent)
-                        .labelsHidden()
-                        .onChange(of: globalAutoOrder) {
-                            if globalAutoOrder {
+                    Toggle("", isOn: Binding(
+                        get: { globalAutoOrder },
+                        set: { newVal in
+                            globalAutoOrder = newVal
+                            if newVal {
                                 showHistoryAlert = true
                             } else {
-                                Task { await toggleGlobalAutoOrder(enabled: false, useHistory: true) }
+                                Task { await toggleGlobalAutoOrder(enabled: false, useHistory: false) }
                             }
                         }
+                    ))
+                        .tint(AppTheme.accent)
+                        .labelsHidden()
                 }
                 .padding(.horizontal, AppTheme.spacingLG)
                 .padding(.vertical, AppTheme.spacingMD)
@@ -400,6 +403,10 @@ struct ProfileView: View {
             let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
             orderCount = orders.count
             totalSpent = orders.reduce(0) { $0 + $1.totalAmount }
+            
+            // Also fetch settings so toggles are perfectly in sync
+            let s: AutoOrderSettings = try await api.get(path: "/v1/retailer/settings/auto-order")
+            globalAutoOrder = s.globalEnabled
         } catch {}
     }
 

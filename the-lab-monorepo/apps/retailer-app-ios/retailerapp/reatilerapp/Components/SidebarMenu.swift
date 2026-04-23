@@ -29,7 +29,7 @@ struct SidebarMenu: View {
                     VStack(alignment: .leading, spacing: 0) {
                         // Header
                         sidebarHeader
-                            .padding(.top, geo.safeAreaInsets.top + AppTheme.spacingXL)
+                            .padding(.top, AppTheme.spacingXL)
                             .padding(.horizontal, AppTheme.spacingXL)
                             .padding(.bottom, AppTheme.spacingXL)
 
@@ -60,7 +60,7 @@ struct SidebarMenu: View {
 
                         menuRow(.logout)
                             .padding(.horizontal, AppTheme.spacingMD)
-                            .padding(.bottom, geo.safeAreaInsets.bottom + AppTheme.spacingLG)
+                            .padding(.bottom, AppTheme.spacingLG)
                             .padding(.top, AppTheme.spacingSM)
 
                         // Version
@@ -96,7 +96,6 @@ struct SidebarMenu: View {
                         }
                 )
             }
-            .ignoresSafeArea()
         }
         .allowsHitTesting(isOpen)
         .animation(AnimationConstants.fluid, value: isOpen)

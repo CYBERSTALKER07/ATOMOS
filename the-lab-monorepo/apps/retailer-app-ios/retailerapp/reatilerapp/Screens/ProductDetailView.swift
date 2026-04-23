@@ -30,7 +30,7 @@ struct ProductDetailView: View {
                     variantPicker.slideIn(delay: 0.1)
                     quantitySection.slideIn(delay: 0.15)
                     nutritionSection.slideIn(delay: 0.2)
-                    variantAutoOrderSection.slideIn(delay: 0.25)
+                    // variantAutoOrderSection.slideIn(delay: 0.25)
                 }
                 .padding(.horizontal, AppTheme.spacingLG)
                 .padding(.top, AppTheme.spacingLG)
@@ -229,6 +229,7 @@ struct ProductDetailView: View {
         }
     }
 
+    /*
     // MARK: - Variant Auto-Order
 
     private var variantAutoOrderSection: some View {
@@ -310,6 +311,7 @@ struct ProductDetailView: View {
             }
         }
     }
+    */
 
     private func toggleVariantAutoOrder(skuId: String, enabled: Bool, useHistory: Bool) async {
         do {

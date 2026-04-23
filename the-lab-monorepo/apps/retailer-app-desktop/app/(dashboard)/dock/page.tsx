@@ -199,9 +199,9 @@ export default function DockPage() {
             </div>
             <div>
               <p className="md-typescale-label-small uppercase tracking-widest" style={{ color: "var(--muted)" }}>Active Orders</p>
-              <p className="md-typescale-headline-small tabular-nums" style={{ color: "var(--foreground)" }}>
+              <div className="md-typescale-headline-small tabular-nums" style={{ color: "var(--foreground)" }}>
                 {loading ? <Skeleton className="h-6 w-12 rounded" /> : <CountUp end={totalActive} />}
-              </p>
+              </div>
             </div>
           </div>
         </BentoCard>
@@ -212,9 +212,9 @@ export default function DockPage() {
             </div>
             <div>
               <p className="md-typescale-label-small uppercase tracking-widest" style={{ color: "var(--muted)" }}>Suppliers Inbound</p>
-              <p className="md-typescale-headline-small tabular-nums" style={{ color: "var(--foreground)" }}>
+              <div className="md-typescale-headline-small tabular-nums" style={{ color: "var(--foreground)" }}>
                 {loading ? <Skeleton className="h-6 w-12 rounded" /> : <CountUp end={suppliersInbound} />}
-              </p>
+              </div>
             </div>
           </div>
         </BentoCard>
@@ -225,9 +225,9 @@ export default function DockPage() {
             </div>
             <div>
               <p className="md-typescale-label-small uppercase tracking-widest" style={{ color: "var(--muted)" }}>Arrived</p>
-              <p className="md-typescale-headline-small tabular-nums" style={{ color: "var(--success)" }}>
+              <div className="md-typescale-headline-small tabular-nums" style={{ color: "var(--success)" }}>
                 {loading ? <Skeleton className="h-6 w-12 rounded" /> : <CountUp end={arrivedCount} />}
-              </p>
+              </div>
             </div>
           </div>
         </BentoCard>
@@ -238,9 +238,9 @@ export default function DockPage() {
             </div>
             <div>
               <p className="md-typescale-label-small uppercase tracking-widest" style={{ color: "var(--muted)" }}>In Transit</p>
-              <p className="md-typescale-headline-small tabular-nums" style={{ color: "var(--warning)" }}>
+              <div className="md-typescale-headline-small tabular-nums" style={{ color: "var(--warning)" }}>
                 {loading ? <Skeleton className="h-6 w-12 rounded" /> : <CountUp end={inTransitCount} />}
-              </p>
+              </div>
             </div>
           </div>
         </BentoCard>

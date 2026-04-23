@@ -30,10 +30,6 @@ struct SupplierProductsView: View {
                 supplierHeader
                     .slideIn(delay: 0)
 
-                // Auto-order for this supplier
-                supplierAutoOrderCard
-                    .slideIn(delay: 0.05)
-
                 // Products list
                 if isLoading && products.isEmpty {
                     loadingProductsSection
@@ -56,9 +52,15 @@ struct SupplierProductsView: View {
         }
         .task {
             cart.supplierIsActive = supplier.isActive
-            await loadProducts()
+            async let fetchProducts: () = loadProducts()
+            async let fetchSettings: () = loadAutoOrderState()
+            await fetchProducts
+            await fetchSettings
         }
-        .refreshable { await loadProducts() }
+        .refreshable { 
+            await loadProducts() 
+            await loadAutoOrderState()
+        }
     }
 
     // MARK: - Supplier Header
@@ -159,6 +161,7 @@ struct SupplierProductsView: View {
         .shadow(color: AppTheme.shadowColor, radius: 4, y: 2)
     }
 
+    /* Wait for backend
     // MARK: - Supplier Auto-Order
 
     private var supplierAutoOrderCard: some View {
@@ -184,17 +187,22 @@ struct SupplierProductsView: View {
 
                 Spacer()
 
-                Toggle("", isOn: $supplierAutoOrder)
+                Toggle("", isOn: Binding(
+                    get: { supplierAutoOrder },
+                    set: { newVal in
+                        guard !isTogglingSupplierAutoOrder else { return }
+                        supplierAutoOrder = newVal
+                        Task { await toggleSupplierAutoOrder() }
+                    }
+                ))
                     .tint(AppTheme.accent)
                     .labelsHidden()
                     .disabled(isTogglingSupplierAutoOrder)
-                    .onChange(of: supplierAutoOrder) {
-                        Task { await toggleSupplierAutoOrder() }
-                    }
             }
             .padding(AppTheme.spacingLG)
         }
     }
+    */
 
     // MARK: - Products List
 
@@ -340,20 +348,6 @@ struct SupplierProductsView: View {
 
             Spacer()
 
-            // Auto-order toggle
-            Toggle("", isOn: Binding(
-                get: { autoOrderSettings[product.id] ?? false },
-                set: { newVal in
-                    guard !togglingProductIds.contains(product.id) else { return }
-                    autoOrderSettings[product.id] = newVal
-                    Task { await toggleProductAutoOrder(productId: product.id, enabled: newVal) }
-                }
-            ))
-            .tint(AppTheme.accent)
-            .labelsHidden()
-            .scaleEffect(0.75)
-            .disabled(togglingProductIds.contains(product.id))
-
             // Navigate to detail / Order
             Button {
                 Haptics.light()
@@ -383,6 +377,18 @@ struct SupplierProductsView: View {
             errorMessage = "Products are unavailable right now. Check your connection and try again."
         }
         isLoading = false
+    }
+
+    private func loadAutoOrderState() async {
+        do {
+            let s: AutoOrderSettings = try await api.get(path: "/v1/retailer/settings/auto-order")
+            if let sov = s.supplierOverrides.first(where: { $0.supplierID == supplier.id }) {
+                supplierAutoOrder = sov.enabled
+            }
+            for pov in s.productOverrides {
+                autoOrderSettings[pov.productID] = pov.enabled
+            }
+        } catch {}
     }
 
     private func toggleMySupplier() async {

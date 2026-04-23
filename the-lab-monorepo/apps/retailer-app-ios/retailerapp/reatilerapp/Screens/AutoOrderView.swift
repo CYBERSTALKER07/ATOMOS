@@ -100,7 +100,7 @@ struct AutoOrderView: View {
     @State private var settings: AutoOrderSettings?
     @State private var forecasts: [DemandForecast] = []
     @State private var isLoading = true
-    @State private var globalEnabled = false
+    @AppStorage("globalAutoOrder") private var globalAutoOrder = false
     @State private var pendingTarget: EnableTarget?
     @State private var localToggleStates: [String: Bool] = [:]
 
@@ -210,7 +210,7 @@ struct AutoOrderView: View {
                     if !val {
                         if let target = pendingTarget {
                             switch target {
-                            case .global: globalEnabled = false
+                            case .global: globalAutoOrder = false
                             case .supplier(let id), .category(let id), .product(let id), .variant(let id):
                                 localToggleStates[id] = false
                             }
@@ -228,7 +228,7 @@ struct AutoOrderView: View {
                 Button("Cancel", role: .cancel) {
                     if let target = pendingTarget {
                         switch target {
-                        case .global: globalEnabled = false
+                        case .global: globalAutoOrder = false
                         case .supplier(let id), .category(let id), .product(let id), .variant(let id):
                             localToggleStates[id] = false
                         }
@@ -289,11 +289,11 @@ struct AutoOrderView: View {
                 HStack(spacing: AppTheme.spacingMD) {
                     ZStack {
                         RoundedRectangle(cornerRadius: AppTheme.radiusSM)
-                            .fill(globalEnabled ? AppTheme.accent.opacity(0.15) : AppTheme.surfaceElevated)
+                            .fill(globalAutoOrder ? AppTheme.accent.opacity(0.15) : AppTheme.surfaceElevated)
                             .frame(width: 40, height: 40)
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(globalEnabled ? AppTheme.accent : AppTheme.textSecondary)
+                            .foregroundStyle(globalAutoOrder ? AppTheme.accent : AppTheme.textSecondary)
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
@@ -307,10 +307,10 @@ struct AutoOrderView: View {
 
                     Spacer()
 
-                    Toggle("", isOn: $globalEnabled)
+                    Toggle("", isOn: $globalAutoOrder)
                         .tint(AppTheme.accent)
                         .labelsHidden()
-                        .onChange(of: globalEnabled) { _, newVal in
+                        .onChange(of: globalAutoOrder) { _, newVal in
                             if newVal {
                                 if settings?.hasAnyHistory == true {
                                     pendingTarget = .global
@@ -324,7 +324,7 @@ struct AutoOrderView: View {
                 }
                 .padding(AppTheme.spacingLG)
 
-                if globalEnabled {
+                if globalAutoOrder {
                     HStack(spacing: AppTheme.spacingSM) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 12))
@@ -352,7 +352,7 @@ struct AutoOrderView: View {
                 }
             }
         }
-        .animation(AnimationConstants.express, value: globalEnabled)
+        .animation(AnimationConstants.express, value: globalAutoOrder)
     }
 
     // MARK: - Override Section
@@ -508,14 +508,20 @@ struct AutoOrderView: View {
     // MARK: - API
 
     private func loadAll() async {
-        isLoading = true
+        if settings == nil { isLoading = true }
         async let settingsReq: AutoOrderSettings? = loadSettings()
         async let forecastsReq: [DemandForecast] = loadForecasts()
-        settings = await settingsReq
-        forecasts = await forecastsReq
-        globalEnabled = settings?.globalEnabled ?? false
-        localToggleStates.removeAll()
-        isLoading = false
+        
+        let fetchedSettings = await settingsReq
+        let fetchedForecasts = await forecastsReq
+        
+        withAnimation(AnimationConstants.fluid) {
+            settings = fetchedSettings
+            forecasts = fetchedForecasts
+            globalAutoOrder = fetchedSettings?.globalEnabled ?? false
+            localToggleStates.removeAll()
+            isLoading = false
+        }
     }
 
     private func loadSettings() async -> AutoOrderSettings? {
@@ -544,7 +550,7 @@ struct AutoOrderView: View {
             )
             await loadAll()
         } catch {
-            globalEnabled = false
+            globalAutoOrder = false
         }
     }
 
@@ -556,7 +562,7 @@ struct AutoOrderView: View {
             )
             await loadAll()
         } catch {
-            globalEnabled = true
+            globalAutoOrder = true
         }
     }
 

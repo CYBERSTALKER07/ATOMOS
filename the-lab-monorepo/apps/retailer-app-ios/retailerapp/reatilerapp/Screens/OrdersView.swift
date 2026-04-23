@@ -99,39 +99,45 @@ struct OrdersView: View {
                         selectedTab = tab
                     }
                 } label: {
-                    VStack(spacing: 6) {
-                        HStack(spacing: 5) {
+                    VStack(spacing: AppTheme.spacingSM) {
+                        ZStack(alignment: .topTrailing) {
                             Image(systemName: tab.icon)
-                                .font(.system(size: 12, weight: .semibold))
-
-                            Text(tab.title)
-                                .font(.system(.caption, design: .rounded, weight: .bold))
-
+                                .font(.system(size: 22, weight: selectedTab == tab ? .semibold : .regular))
+                            
                             // Badge count
                             let count = badgeCount(for: tab)
                             if count > 0 {
                                 Text("\(count)")
-                                    .font(.system(size: 9, weight: .black, design: .rounded))
+                                    .font(.system(size: 10, weight: .bold, design: .rounded))
                                     .foregroundStyle(.white)
                                     .frame(width: 16, height: 16)
-                                    .background(selectedTab == tab ? AppTheme.accent : AppTheme.textTertiary)
+                                    .background(AppTheme.destructive)
                                     .clipShape(.circle)
+                                    .offset(x: 10, y: -6)
                             }
                         }
-                        .foregroundStyle(selectedTab == tab ? AppTheme.accent : AppTheme.textTertiary)
 
-                        Capsule()
+                        Text(tab.title)
+                            .font(.system(.subheadline, design: .rounded, weight: selectedTab == tab ? .bold : .medium))
+                    }
+                    .foregroundStyle(selectedTab == tab ? AppTheme.accent : AppTheme.textTertiary.opacity(0.7))
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, AppTheme.spacingMD)
+                    .padding(.bottom, AppTheme.spacingSM)
+                    .overlay(alignment: .bottom) {
+                        Rectangle()
                             .fill(selectedTab == tab ? AppTheme.accent : .clear)
                             .frame(height: 3)
-                            .frame(maxWidth: 50)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, AppTheme.spacingSM)
                 }
             }
         }
-        .padding(.horizontal, AppTheme.spacingLG)
         .background(AppTheme.cardBackground)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(AppTheme.separator.opacity(0.3))
+                .frame(height: 0.5)
+        }
     }
 
     private func badgeCount(for tab: OrderTab) -> Int {
