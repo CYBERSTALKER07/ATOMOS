@@ -3719,7 +3719,7 @@ func rollupManifestIfComplete(ctx context.Context, txn *spanner.ReadWriteTransac
 		return nil
 	}
 	cntStmt := spanner.Statement{
-		SQL:    `SELECT COUNT(1) FROM Orders WHERE ManifestId = @mid AND State != 'COMPLETED'`,
+		SQL:    `SELECT COUNT(1) FROM Orders WHERE ManifestId = @mid AND State NOT IN ('COMPLETED', 'CANCELLED', 'RETURNED', 'FAILED', 'REJECTED')`,
 		Params: map[string]interface{}{"mid": manifestID},
 	}
 	cntIter := txn.Query(ctx, cntStmt)
