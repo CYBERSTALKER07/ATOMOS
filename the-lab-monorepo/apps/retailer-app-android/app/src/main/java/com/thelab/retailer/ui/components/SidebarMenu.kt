@@ -9,7 +9,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import com.thelab.retailer.ui.theme.MotionTokens
 import androidx.compose.foundation.background
-import androidx.compose.foundation.cashable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -96,7 +96,7 @@ fun SidebarMenu(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.5f))
-                    .cashable(
+                    .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                     ) { onDismiss() },
@@ -190,7 +190,7 @@ fun SidebarMenu(
                         SidebarMenuItem(
                             icon = dest.icon,
                             label = dest.label,
-                            onCash = {
+                            onClick = {
                                 onNavigate(dest)
                                 onDismiss()
                             },
@@ -209,7 +209,7 @@ fun SidebarMenu(
                         icon = Icons.AutoMirrored.Outlined.ExitToApp,
                         label = "Log Out",
                         tint = StatusRed,
-                        onCash = { onDismiss() },
+                        onClick = { onDismiss() },
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -231,13 +231,13 @@ private fun SidebarMenuItem(
     icon: ImageVector,
     label: String,
     tint: Color = MaterialTheme.colorScheme.onSurface,
-    onCash: () -> Unit,
+    onClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(SquircleShape)
-            .bounceCash { onCash() }
+            .bounceCash { onClick() }
             .padding(horizontal = 12.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),

@@ -1,7 +1,7 @@
 package com.thelab.retailer.ui.screens.catalog
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.cashable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,7 +65,7 @@ fun CategorySuppliersScreen(
             TopAppBar(
                 title = { Text(categoryName, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)) },
                 navigationIcon = {
-                    IconButton(onCash = onBack) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -126,7 +126,7 @@ fun CategorySuppliersScreen(
                         )
                     }
                     items(uiState.suppliers, key = { it.id }) { supplier ->
-                        SupplierCategoryCard(supplier = supplier, onCash = { onSupplierCash(supplier) })
+                        SupplierCategoryCard(supplier = supplier, onClick = { onSupplierCash(supplier) })
                     }
                 }
             }
@@ -189,12 +189,12 @@ private fun SupplierCategorySkeletonCard() {
 @Composable
 private fun SupplierCategoryCard(
     supplier: Supplier,
-    onCash: () -> Unit,
+    onClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .cashable(onCash = onCash),
+            .clickable(onClick = onClick),
         shape = SoftSquircleShape,
         color = MaterialTheme.colorScheme.surface,
     ) {

@@ -1,7 +1,7 @@
 package com.thelab.retailer.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.cashable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,7 +69,7 @@ fun OrderDetailSheet(
         AlertDialog(
             onDismissRequest = { showCancelConfirm = false },
             confirmButton = {
-                TextButton(onCash = {
+                TextButton(onClick = {
                     showCancelConfirm = false
                     onCancel?.invoke()
                 }) {
@@ -81,7 +81,7 @@ fun OrderDetailSheet(
                 }
             },
             dismissButton = {
-                TextButton(onCash = { showCancelConfirm = false }) {
+                TextButton(onClick = { showCancelConfirm = false }) {
                     Text("Keep Order")
                 }
             },
@@ -144,7 +144,7 @@ fun OrderDetailSheetContent(
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .clip(SquircleShape)
-                            .cashable { onDismiss() }
+                            .clickable { onDismiss() }
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
@@ -295,7 +295,7 @@ fun OrderDetailSheetContent(
                             )
                             .clip(SoftSquircleShape)
                             .background(MaterialTheme.colorScheme.surface)
-                            .cashable { onShowQR() }
+                            .clickable { onShowQR() }
                             .padding(20.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -354,7 +354,7 @@ fun OrderDetailSheetContent(
                 when {
                     order.status.canCancel -> {
                         OutlinedButton(
-                            onCash = { onCancelCash() },
+                            onClick = { onCancelCash() },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.error,

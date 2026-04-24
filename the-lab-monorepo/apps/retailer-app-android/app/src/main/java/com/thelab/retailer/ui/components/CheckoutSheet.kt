@@ -25,7 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Eco
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.GlobalPaynt
+import androidx.compose.material.icons.rounded.Payment
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,16 +52,16 @@ import androidx.compose.ui.unit.sp
 
 enum class CheckoutPhase { REVIEW, PROCESSING, COMPLETE }
 
-data class CheckoutGlobalPayntOption(
+data class CheckoutPaymentOption(
     val gateway: String,
     val label: String,
 )
 
-val DefaultCheckoutGlobalPayntOptions = listOf(
+val DefaultCheckoutPaymentOptions = listOf(
     
     
-    CheckoutGlobalPayntOption(gateway = "GLOBAL_PAY", label = "GlobalPay"),
-    CheckoutGlobalPayntOption(gateway = "CASH", label = "Cash on Delivery"),
+    CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay"),
+    CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery"),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,11 +74,11 @@ fun CheckoutSheet(
     shipping: String,
     discount: String,
     total: String,
-    selectedGlobalPayntGateway: String,
-    global_payntLabel: String,
-    global_payntOptions: List<CheckoutGlobalPayntOption>,
+    selectedPaymentGateway: String,
+    paymentLabel: String,
+    paymentOptions: List<CheckoutPaymentOption>,
     onBuy: () -> Unit,
-    onSelectGlobalPaynt: (String) -> Unit,
+    onSelectPayment: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -130,11 +130,11 @@ fun CheckoutSheet(
                         shipping = shipping,
                         discount = discount,
                         total = total,
-                        selectedGlobalPayntGateway = selectedGlobalPayntGateway,
-                        global_payntLabel = global_payntLabel,
-                        global_payntOptions = global_payntOptions,
+                        selectedPaymentGateway = selectedPaymentGateway,
+                        paymentLabel = paymentLabel,
+                        paymentOptions = paymentOptions,
                         onBuy = onBuy,
-                        onSelectGlobalPaynt = onSelectGlobalPaynt,
+                        onSelectPayment = onSelectPayment,
                     )
                     CheckoutPhase.PROCESSING -> ProcessingContent()
                     CheckoutPhase.COMPLETE -> CompleteContent()
@@ -152,13 +152,13 @@ private fun ReviewContent(
     shipping: String,
     discount: String,
     total: String,
-    selectedGlobalPayntGateway: String,
-    global_payntLabel: String,
-    global_payntOptions: List<CheckoutGlobalPayntOption>,
+    selectedPaymentGateway: String,
+    paymentLabel: String,
+    paymentOptions: List<CheckoutPaymentOption>,
     onBuy: () -> Unit,
-    onSelectGlobalPaynt: (String) -> Unit,
+    onSelectPayment: (String) -> Unit,
 ) {
-    var global_payntMenuExpanded by remember { mutableStateOf(false) }
+    var paymentMenuExpanded by remember { mutableStateOf(false) }
 
     // Product card
     Surface(
@@ -229,7 +229,7 @@ private fun ReviewContent(
     Spacer(modifier = Modifier.height(20.dp))
 
     Text(
-        text = "GlobalPaynt Method",
+        text = "Payment Method",
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f),
     )
@@ -243,7 +243,7 @@ private fun ReviewContent(
     ) {
         // Buy button
         Surface(
-            onCash = onBuy,
+            onClick = onBuy,
             shape = RoundedCornerShape(topStart = 100.dp, bottomStart = 100.dp, topEnd = 0.dp, bottomEnd = 0.dp),
             color = MaterialTheme.colorScheme.primary,
         ) {
@@ -252,7 +252,7 @@ private fun ReviewContent(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
-                    Icons.Rounded.GlobalPaynt,
+                    Icons.Rounded.Payment,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
                     tint = MaterialTheme.colorScheme.onPrimary,
@@ -269,7 +269,7 @@ private fun ReviewContent(
         // Dropdown segment
         Box {
             Surface(
-                onCash = { global_payntMenuExpanded = true },
+                onClick = { paymentMenuExpanded = true },
                 shape = RoundedCornerShape(topStart = 0.dp, bottomStart = 0.dp, topEnd = 100.dp, bottomEnd = 100.dp),
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
             ) {
@@ -278,14 +278,14 @@ private fun ReviewContent(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = global_payntLabel,
+                        text = paymentLabel,
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Icon(
                         Icons.Rounded.KeyboardArrowDown,
-                        contentDescription = "GlobalPaynt options",
+                        contentDescription = "Payment options",
                         modifier = Modifier.size(20.dp),
                         tint = MaterialTheme.colorScheme.onPrimary,
                     )
@@ -293,18 +293,18 @@ private fun ReviewContent(
             }
 
             DropdownMenu(
-                expanded = global_payntMenuExpanded,
-                onDismissRequest = { global_payntMenuExpanded = false },
+                expanded = paymentMenuExpanded,
+                onDismissRequest = { paymentMenuExpanded = false },
             ) {
-                global_payntOptions.forEach { option ->
+                paymentOptions.forEach { option ->
                     DropdownMenuItem(
                         text = { Text(option.label) },
-                        onCash = {
-                            global_payntMenuExpanded = false
-                            onSelectGlobalPaynt(option.gateway)
+                        onClick = {
+                            paymentMenuExpanded = false
+                            onSelectPayment(option.gateway)
                         },
                         trailingIcon = {
-                            if (option.gateway == selectedGlobalPayntGateway) {
+                            if (option.gateway == selectedPaymentGateway) {
                                 Icon(
                                     imageVector = Icons.Rounded.Check,
                                     contentDescription = null,
@@ -337,7 +337,7 @@ private fun ProcessingContent() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                "Processing global_paynt...",
+                "Processing payment...",
                 style = MaterialTheme.typography.bodyLarge,
             )
         }
@@ -363,7 +363,7 @@ private fun CompleteContent() {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                "GlobalPaynt complete",
+                "Payment complete",
                 style = MaterialTheme.typography.bodyLarge,
             )
         }

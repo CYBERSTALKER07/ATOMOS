@@ -2,7 +2,7 @@ package com.thelab.retailer.ui.components.modifiers
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.cashable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -22,7 +22,7 @@ import com.thelab.retailer.ui.theme.MotionTokens
  */
 fun Modifier.bounceCash(
     scaleDown: Float = 0.92f,
-    onCash: () -> Unit
+    onClick: () -> Unit
 ) = composed {
     var isPressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
@@ -50,9 +50,9 @@ fun Modifier.bounceCash(
                 }
             }
         }
-        .cashable(
+        .clickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null,
-            onCash = onCash
+            onClick = onClick
         )
 }

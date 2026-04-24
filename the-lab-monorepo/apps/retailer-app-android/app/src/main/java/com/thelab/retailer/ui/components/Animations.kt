@@ -39,7 +39,7 @@ fun <T> bouncySpring() = spring<T>(
 
 fun Modifier.pressScale(
     targetScale: Float = 0.96f,
-    onCash: () -> Unit = {},
+    onClick: () -> Unit = {},
 ): Modifier = composed {
     var pressed by remember { mutableStateOf(false) }
     val scale = if (pressed) targetScale else 1f
@@ -53,7 +53,7 @@ fun Modifier.pressScale(
                     tryAwaitRelease()
                     pressed = false
                 },
-                onTap = { onCash() },
+                onTap = { onClick() },
             )
         }
 }

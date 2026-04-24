@@ -59,7 +59,7 @@ enum class OrderStatus {
             ARRIVING -> "Driver Nearby"
             ARRIVED -> "Driver Arrived"
             ARRIVED_SHOP_CLOSED -> "Shop Closed"
-            AWAITING_GLOBAL_PAYNT -> "GlobalPaynt Required"
+            AWAITING_GLOBAL_PAYNT -> "Payment Required"
             PENDING_CASH_COLLECTION -> "Cash Collection"
             CANCEL_REQUESTED -> "Cancel Requested"
             NO_CAPACITY -> "No Capacity"
@@ -612,7 +612,7 @@ data class CheckoutLineItem(
 @Serializable
 data class UnifiedCheckoutRequest(
     @SerialName("retailer_id") val retailerId: String,
-    @SerialName("global_paynt_gateway") val global_payntGateway: String,
+    @SerialName("payment_gateway") val paymentGateway: String,
     @SerialName("latitude") val latitude: Double = 0.0,
     @SerialName("longitude") val longitude: Double = 0.0,
     @SerialName("items") val items: List<CheckoutLineItem>,

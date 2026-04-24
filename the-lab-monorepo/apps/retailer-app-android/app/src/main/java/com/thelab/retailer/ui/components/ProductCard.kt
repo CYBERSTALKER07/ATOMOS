@@ -49,7 +49,7 @@ import java.util.Locale
 @Composable
 fun ProductCard(
     product: Product,
-    onCash: () -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isPressedState = remember { mutableStateOf(false) }
@@ -80,7 +80,7 @@ fun ProductCard(
                         tryAwaitRelease()
                         isPressedState.value = false
                     },
-                    onTap = { onCash() },
+                    onTap = { onClick() },
                 )
             },
         shape = SoftSquircleShape,

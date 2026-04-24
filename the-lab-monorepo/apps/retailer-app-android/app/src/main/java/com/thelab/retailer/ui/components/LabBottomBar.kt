@@ -58,7 +58,7 @@ fun LabBottomBar(
             val selected = tab == currentTab
             NavigationBarItem(
                 selected = selected,
-                onCash = { onTabSelected(tab) },
+                onClick = { onTabSelected(tab) },
                 icon = {
                     Icon(
                         imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,

@@ -99,7 +99,7 @@ fun SupplierCatalogScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onCash = onBack) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -178,7 +178,7 @@ fun SupplierCatalogScreen(
                         items(products, key = { it.id }) { product ->
                             ProductCard(
                                 product = product,
-                                onCash = { onProductCash(product.id) },
+                                onClick = { onProductCash(product.id) },
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }

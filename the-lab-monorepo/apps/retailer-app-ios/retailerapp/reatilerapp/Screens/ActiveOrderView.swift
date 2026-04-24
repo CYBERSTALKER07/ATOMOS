@@ -9,10 +9,10 @@ struct ActiveOrderView: View {
 
     var body: some View {
         ScrollView {
-            if isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, minHeight: 200)
-                    .tint(AppTheme.accent)
+            if isLoading && activeOrders.isEmpty {
+                SkeletonOrderList()
+            } else if loadError && activeOrders.isEmpty {
+                ErrorStateView { await loadActiveOrders() }
             } else if activeOrders.isEmpty {
                 emptyState
             } else {
@@ -31,12 +31,6 @@ struct ActiveOrderView: View {
         .background(AppTheme.background)
         .task { await loadActiveOrders() }
         .refreshable { await loadActiveOrders() }
-        .alert("Failed to Load", isPresented: $loadError) {
-            Button("Retry") { Task { await loadActiveOrders() } }
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Could not load active orders. Check your connection.")
-        }
     }
 
     // MARK: - Active Order Card
@@ -183,6 +177,7 @@ struct ActiveOrderView: View {
 
     private func loadActiveOrders() async {
         isLoading = true
+        loadError = false
         do { let r: [Order] = try await api.get(path: "/v1/orders?state=IN_TRANSIT"); activeOrders = r }
         catch { activeOrders = []; loadError = true }
         isLoading = false

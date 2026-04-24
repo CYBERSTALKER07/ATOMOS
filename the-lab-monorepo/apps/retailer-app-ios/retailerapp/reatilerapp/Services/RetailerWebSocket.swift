@@ -85,7 +85,7 @@ enum RetailerWSEvent {
 
 // MARK: - Retailer WebSocket
 
-@Observable
+    @Observable
 final class RetailerWebSocket {
     static let shared = RetailerWebSocket()
 
@@ -94,6 +94,11 @@ final class RetailerWebSocket {
     private var session: URLSession?
     private var retailerId: String?
     private var eventContinuation: AsyncStream<RetailerWSEvent>.Continuation?
+    
+    // Backoff tracking
+    private var reconnectAttempts = 0
+    private let maxReconnectDelay: TimeInterval = 60.0
+    private let initialReconnectDelay: TimeInterval = 2.0
 
     /// AsyncStream that views can iterate to receive real-time events.
     private(set) var events: AsyncStream<RetailerWSEvent>!
@@ -125,13 +130,20 @@ final class RetailerWebSocket {
         if let token = api.authToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+        
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 60
+        config.timeoutIntervalForResource = 300
+        
+        // Use a delegate-free session for basic web socket, or handle ping/pong if necessary.
+        let session = URLSession(configuration: config)
 
-        let session = URLSession(configuration: .default)
         self.session = session
         let wsTask = session.webSocketTask(with: request)
         self.task = wsTask
         wsTask.resume()
         isConnected = true
+        reconnectAttempts = 0
         receiveNext()
     }
 
@@ -181,7 +193,7 @@ final class RetailerWebSocket {
         let decoder = JSONDecoder()
 
         switch type {
-        case "GLOBAL_PAYNT_REQUIRED":
+        case "PAYMENT_REQUIRED":
             if let event = try? decoder.decode(PaymentRequiredEvent.self, from: data) {
                 eventContinuation?.yield(.paymentRequired(event))
             }
@@ -189,15 +201,15 @@ final class RetailerWebSocket {
             if let event = try? decoder.decode(OrderCompletedEvent.self, from: data) {
                 eventContinuation?.yield(.orderCompleted(event))
             }
-        case "GLOBAL_PAYNT_SETTLED":
+        case "PAYMENT_SETTLED":
             if let event = try? decoder.decode(OrderCompletedEvent.self, from: data) {
                 eventContinuation?.yield(.paymentSettled(event))
             }
-        case "GLOBAL_PAYNT_FAILED":
+        case "PAYMENT_FAILED":
             if let event = try? decoder.decode(PaymentFailureEvent.self, from: data) {
                 eventContinuation?.yield(.paymentFailed(event))
             }
-        case "GLOBAL_PAYNT_EXPIRED":
+        case "PAYMENT_EXPIRED":
             if let event = try? decoder.decode(PaymentFailureEvent.self, from: data) {
                 eventContinuation?.yield(.paymentExpired(event))
             }
@@ -237,7 +249,21 @@ final class RetailerWebSocket {
         session?.invalidateAndCancel()
         session = nil
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+        // Exponential backoff with jitter
+        reconnectAttempts += 1
+        let baseDelay = initialReconnectDelay * pow(2.0, Double(reconnectAttempts - 1))
+        let maxDelay = min(baseDelay, maxReconnectDelay)
+        
+        // Add random jitter (-10% to +10%)
+        let jitter = Double.random(in: -0.1...0.1) * maxDelay
+        let delayWithJitter = maxDelay + jitter
+        
+        let finalDelay = max(initialReconnectDelay, min(delayWithJitter, maxReconnectDelay))
+        
+        print("WebSocket disconnected. Scheduled reconnect in \(String(format: "%.2f", finalDelay)) seconds")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + finalDelay) { [weak self] in
+            // Connect will bypass guard if task == nil, which it is
             self?.connect(retailerId: retailerId)
         }
     }

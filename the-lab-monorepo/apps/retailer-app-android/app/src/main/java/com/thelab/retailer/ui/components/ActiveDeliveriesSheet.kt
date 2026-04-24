@@ -1,7 +1,7 @@
 package com.thelab.retailer.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.cashable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -135,7 +135,7 @@ fun ActiveDeliveriesSheetContent(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .clip(SquircleShape)
-                        .cashable { onDismiss() }
+                        .clickable { onDismiss() }
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 )
             }
@@ -284,7 +284,7 @@ private fun ActiveDeliveryCard(
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     modifier = Modifier
                         .clip(PillShape)
-                        .cashable { onDetailsCash() }
+                        .clickable { onDetailsCash() }
                         .background(
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                             PillShape,
@@ -297,7 +297,7 @@ private fun ActiveDeliveryCard(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .clip(PillShape)
-                            .cashable { onQRCash() }
+                            .clickable { onQRCash() }
                             .background(MaterialTheme.colorScheme.primary, PillShape)
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     ) {

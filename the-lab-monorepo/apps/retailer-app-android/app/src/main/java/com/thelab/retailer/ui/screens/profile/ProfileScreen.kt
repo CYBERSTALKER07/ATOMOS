@@ -65,16 +65,16 @@ fun ProfileScreen(
             title = { Text("Use Previous Analytics?") },
             text = { Text("Use existing order history for predictions, or start fresh? Starting fresh requires at least 2 orders per product.") },
             confirmButton = {
-                TextButton(onCash = { viewModel.confirmEnableGlobal(useHistory = true) }) {
+                TextButton(onClick = { viewModel.confirmEnableGlobal(useHistory = true) }) {
                     Text("Use History")
                 }
             },
             dismissButton = {
                 Row {
-                    TextButton(onCash = viewModel::dismissHistoryDialog) {
+                    TextButton(onClick = viewModel::dismissHistoryDialog) {
                         Text("Cancel")
                     }
-                    TextButton(onCash = { viewModel.confirmEnableGlobal(useHistory = false) }) {
+                    TextButton(onClick = { viewModel.confirmEnableGlobal(useHistory = false) }) {
                         Text("Start Fresh")
                     }
                 }
@@ -107,7 +107,7 @@ fun ProfileScreen(
 
         // ── Sign Out ──
         item {
-            TextButton(onCash = { /* logout */ }, modifier = Modifier.fillMaxWidth()) {
+            TextButton(onClick = { /* logout */ }, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Outlined.Logout, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Sign Out", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge)
@@ -242,18 +242,18 @@ private fun SettingsSection() {
         color = MaterialTheme.colorScheme.surface,
     ) {
         Column {
-            SettingsListItem(icon = Icons.Outlined.Settings, title = "General Settings", subtitle = "Language, preferences", onCash = { })
+            SettingsListItem(icon = Icons.Outlined.Settings, title = "General Settings", subtitle = "Language, preferences", onClick = { })
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Rounded.Person, title = "Account", subtitle = "Manage your business details", onCash = { })
+            SettingsListItem(icon = Icons.Rounded.Person, title = "Account", subtitle = "Manage your business details", onClick = { })
             HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f), modifier = Modifier.padding(horizontal = 16.dp))
-            SettingsListItem(icon = Icons.Outlined.Notifications, title = "Notifications", subtitle = "Push, email, SMS", onCash = { })
+            SettingsListItem(icon = Icons.Outlined.Notifications, title = "Notifications", subtitle = "Push, email, SMS", onClick = { })
         }
     }
 }
 
 @Composable
-private fun SettingsListItem(icon: ImageVector, title: String, subtitle: String, onCash: () -> Unit) {
-    Surface(onCash = onCash, color = Color.Transparent) {
+private fun SettingsListItem(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
+    Surface(onClick = onClick, color = Color.Transparent) {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(12.dp))

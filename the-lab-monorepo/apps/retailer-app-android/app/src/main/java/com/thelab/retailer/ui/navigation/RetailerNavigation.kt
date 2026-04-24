@@ -32,13 +32,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.thelab.retailer.data.model.Order
 import com.thelab.retailer.ui.components.ActiveDeliveriesSheet
-import com.thelab.retailer.ui.components.DeliveryGlobalPayntSheet
+import com.thelab.retailer.ui.components.DeliveryPaymentSheet
 import com.thelab.retailer.ui.components.FloatingActiveOrdersBar
 import com.thelab.retailer.ui.components.LabBottomBar
 import com.thelab.retailer.ui.components.LabTab
 import com.thelab.retailer.ui.components.LabTopBar
 import com.thelab.retailer.ui.components.OrderDetailSheet
-import com.thelab.retailer.ui.components.GlobalPayntPhase
+import com.thelab.retailer.ui.components.PaymentPhase
 import com.thelab.retailer.ui.components.QROverlay
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -85,9 +85,9 @@ fun RetailerNavigation(
     var globalDetailOrder by remember { mutableStateOf<Order?>(null) }
     var globalQROrder by remember { mutableStateOf<Order?>(null) }
 
-    // GlobalPaynt sheet state
-    var global_payntPhase by remember { mutableStateOf(GlobalPayntPhase.CHOOSE) }
-    var global_payntError by remember { mutableStateOf<String?>(null) }
+    // Payment sheet state
+    var paymentPhase by remember { mutableStateOf(PaymentPhase.CHOOSE) }
+    var paymentError by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     // Show floating bar on Home, Orders, Suppliers tabs
@@ -163,7 +163,7 @@ fun RetailerNavigation(
                             launchSingleTop = true
                         }
                     },
-                    onNotificationCash = {
+                    onNotificationClick = {
                         navController.navigate("NOTIFICATIONS") {
                             launchSingleTop = true
                         }
@@ -182,7 +182,7 @@ fun RetailerNavigation(
                         statusText = navState.floatingStatusText,
                         totalDisplay = navState.floatingTotalDisplay,
                         countdownIso = navState.floatingCountdownIso,
-                        onCash = { showActiveDeliveries = true },
+                        onClick = { showActiveDeliveries = true },
                     )
                     if (isCompact) {
                         LabBottomBar(
@@ -398,69 +398,69 @@ fun RetailerNavigation(
             )
         }
 
-        // ── Delivery GlobalPaynt Sheet (WebSocket-driven) ──
-        val global_payntEvent = navState.global_payntEvent
+        // ── Delivery Payment Sheet (WebSocket-driven) ──
+        val paymentEvent = navState.paymentEvent
         val context = LocalContext.current
 
         // Auto-transition to SUCCESS when ORDER_COMPLETED arrives via WebSocket
         LaunchedEffect(navState.orderCompleted) {
             if (navState.orderCompleted) {
-                global_payntPhase = GlobalPayntPhase.SUCCESS
+                paymentPhase = PaymentPhase.SUCCESS
             }
         }
 
-        if (global_payntEvent != null) {
-            DeliveryGlobalPayntSheet(
-                event = global_payntEvent,
-                phase = global_payntPhase,
-                errorMessage = global_payntError,
+        if (paymentEvent != null) {
+            DeliveryPaymentSheet(
+                event = paymentEvent,
+                phase = paymentPhase,
+                errorMessage = paymentError,
                 isCompact = isCompact,
                 onSelectCash = {
-                    global_payntPhase = GlobalPayntPhase.PROCESSING
+                    paymentPhase = PaymentPhase.PROCESSING
                     coroutineScope.launch {
-                        val result = navigationViewModel.cashCheckout(global_payntEvent.orderId)
+                        val result = navigationViewModel.cashCheckout(paymentEvent.orderId)
                         if (result.isSuccess) {
-                            global_payntPhase = GlobalPayntPhase.CASH_PENDING
+                            paymentPhase = PaymentPhase.CASH_PENDING
                         } else {
-                            global_payntError = result.exceptionOrNull()?.message ?: "Cash checkout failed"
-                            global_payntPhase = GlobalPayntPhase.FAILED
+                            paymentError = result.exceptionOrNull()?.message ?: "Cash checkout failed"
+                            paymentPhase = PaymentPhase.FAILED
                         }
                     }
                 },
                 onSelectCard = { gateway ->
-                    global_payntPhase = GlobalPayntPhase.PROCESSING
+                    paymentPhase = PaymentPhase.PROCESSING
                     coroutineScope.launch {
-                        val result = navigationViewModel.cardCheckout(global_payntEvent.orderId, gateway)
+                        val result = navigationViewModel.cardCheckout(paymentEvent.orderId, gateway)
                         if (result.isSuccess) {
                             val checkout = result.getOrNull()
-                            val url = checkout?.global_payntUrl
+                            val url = checkout?.paymentUrl
                             if (!url.isNullOrBlank()) {
                                 // Open deep-link in GlobalPay/Cash banking app
                                 try {
                                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                                 } catch (_: Exception) {
-                                    global_payntError = "Could not open $gateway app. Check it is installed."
-                                    global_payntPhase = GlobalPayntPhase.FAILED
+                                    paymentError = "Could not open $gateway app. Check it is installed."
+                                    paymentPhase = PaymentPhase.FAILED
                                 }
                             } else {
-                                global_payntError = "GlobalPaynt gateway is not configured for this supplier."
-                                global_payntPhase = GlobalPayntPhase.FAILED
+                                paymentError = "Payment gateway is not configured for this supplier."
+                                paymentPhase = PaymentPhase.FAILED
                             }
                             // Stay on PROCESSING — the webhook settlement will trigger ORDER_COMPLETED via WS
                         } else {
-                            global_payntError = result.exceptionOrNull()?.message ?: "Card checkout failed"
-                            global_payntPhase = GlobalPayntPhase.FAILED
+                            paymentError = result.exceptionOrNull()?.message ?: "Card checkout failed"
+                            paymentPhase = PaymentPhase.FAILED
                         }
                     }
                 },
                 onRetry = {
-                    global_payntPhase = GlobalPayntPhase.CHOOSE
-                    global_payntError = null
+                    paymentPhase = PaymentPhase.CHOOSE
+                    paymentError = null
                 },
                 onDismiss = {
-                    global_payntPhase = GlobalPayntPhase.CHOOSE
-                    global_payntError = null
-                    navigationViewModel.clearGlobalPayntEvent()
+                    paymentPhase = PaymentPhase.CHOOSE
+                    paymentError = null
+                    navigationViewModel.clearPaymentEvent()
                 },
             )
         }

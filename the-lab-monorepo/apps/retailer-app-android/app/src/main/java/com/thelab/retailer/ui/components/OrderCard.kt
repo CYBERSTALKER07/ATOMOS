@@ -1,7 +1,7 @@
 package com.thelab.retailer.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.cashable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,7 +47,7 @@ import com.thelab.retailer.ui.theme.StatusTealSoft
 @Composable
 fun OrderCard(
     order: Order,
-    onCash: () -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -55,7 +55,7 @@ fun OrderCard(
             .fillMaxWidth()
             .shadow(4.dp, SoftSquircleShape, spotColor = Color.Black.copy(alpha = 0.06f))
             .clip(SoftSquircleShape)
-            .cashable { onCash() },
+            .clickable { onClick() },
         color = MaterialTheme.colorScheme.surface,
         shape = SoftSquircleShape,
     ) {
@@ -138,24 +138,42 @@ fun OrderStatusBadge(status: OrderStatus, modifier: Modifier = Modifier) {
 
 fun OrderStatus.statusColor(): Color = when (this) {
     OrderStatus.PENDING -> StatusOrange
+    OrderStatus.PENDING_REVIEW -> StatusOrange
+    OrderStatus.SCHEDULED -> StatusBlue
+    OrderStatus.AUTO_ACCEPTED -> StatusBlue
     OrderStatus.LOADED -> StatusBlue
     OrderStatus.DISPATCHED -> StatusTeal
     OrderStatus.IN_TRANSIT -> StatusGreen
+    OrderStatus.ARRIVING -> StatusGreen
     OrderStatus.ARRIVED -> StatusGreen
+    OrderStatus.ARRIVED_SHOP_CLOSED -> StatusOrange
     OrderStatus.COMPLETED -> StatusGreen
     OrderStatus.CANCELLED -> StatusRed
+    OrderStatus.CANCEL_REQUESTED -> StatusRed
+    OrderStatus.NO_CAPACITY -> StatusRed
     OrderStatus.AWAITING_GLOBAL_PAYNT -> StatusOrange
     OrderStatus.PENDING_CASH_COLLECTION -> StatusOrange
+    OrderStatus.QUARANTINE -> StatusOrange
+    OrderStatus.DELIVERED_ON_CREDIT -> StatusGreen
 }
 
 private fun OrderStatus.badgeColors(): Pair<Color, Color> = when (this) {
     OrderStatus.PENDING -> StatusOrangeSoft to StatusOrange
+    OrderStatus.PENDING_REVIEW -> StatusOrangeSoft to StatusOrange
+    OrderStatus.SCHEDULED -> StatusBlueSoft to StatusBlue
+    OrderStatus.AUTO_ACCEPTED -> StatusBlueSoft to StatusBlue
     OrderStatus.LOADED -> StatusBlueSoft to StatusBlue
     OrderStatus.DISPATCHED -> StatusTealSoft to StatusTeal
     OrderStatus.IN_TRANSIT -> StatusGreenSoft to StatusGreen
+    OrderStatus.ARRIVING -> StatusGreenSoft to StatusGreen
     OrderStatus.ARRIVED -> StatusGreenSoft to StatusGreen
+    OrderStatus.ARRIVED_SHOP_CLOSED -> StatusOrangeSoft to StatusOrange
     OrderStatus.COMPLETED -> StatusGreenSoft to StatusGreen
     OrderStatus.CANCELLED -> StatusRedSoft to StatusRed
+    OrderStatus.CANCEL_REQUESTED -> StatusRedSoft to StatusRed
+    OrderStatus.NO_CAPACITY -> StatusRedSoft to StatusRed
     OrderStatus.AWAITING_GLOBAL_PAYNT -> StatusOrangeSoft to StatusOrange
     OrderStatus.PENDING_CASH_COLLECTION -> StatusOrangeSoft to StatusOrange
+    OrderStatus.QUARANTINE -> StatusOrangeSoft to StatusOrange
+    OrderStatus.DELIVERED_ON_CREDIT -> StatusGreenSoft to StatusGreen
 }

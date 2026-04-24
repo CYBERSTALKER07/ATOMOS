@@ -70,16 +70,16 @@ fun AutoOrderScreen(
             title = { Text("Use Previous Analytics?") },
             text = { Text("Use existing order history for $entityLabel, or start fresh? Starting fresh requires at least 2 orders.") },
             confirmButton = {
-                TextButton(onCash = { viewModel.confirmEnable(useHistory = true) }) {
+                TextButton(onClick = { viewModel.confirmEnable(useHistory = true) }) {
                     Text("Use History")
                 }
             },
             dismissButton = {
                 Row {
-                    TextButton(onCash = viewModel::dismissEnableDialog) {
+                    TextButton(onClick = viewModel::dismissEnableDialog) {
                         Text("Cancel")
                     }
-                    TextButton(onCash = { viewModel.confirmEnable(useHistory = false) }) {
+                    TextButton(onClick = { viewModel.confirmEnable(useHistory = false) }) {
                         Text("Start Fresh")
                     }
                 }

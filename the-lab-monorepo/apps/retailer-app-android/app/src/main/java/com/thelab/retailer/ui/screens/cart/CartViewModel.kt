@@ -30,7 +30,7 @@ data class CartUiState(
     val showCheckout: Boolean = false,
     val checkoutPhase: CheckoutPhase = CheckoutPhase.REVIEW,
     val checkoutError: String? = null,
-    val selectedGlobalPayntGateway: String = "GLOBAL_PAY",
+    val selectedPaymentGateway: String = "GLOBAL_PAY",
     val lastOrderId: String? = null,
     val removedItemMessage: String? = null,
     val supplierIsActive: Boolean = true,
@@ -47,10 +47,10 @@ data class CartUiState(
     val displayDiscount: String get() = if (discount == 0.0) "0" else "-%,.0f".format(discount)
     val displayTotal: String get() = "%,.0f".format(total)
     val firstProductName: String get() = items.firstOrNull()?.product?.name ?: "Order"
-    val selectedGlobalPayntLabel: String get() = checkoutGlobalPayntLabel(selectedGlobalPayntGateway)
+    val selectedPaymentLabel: String get() = checkoutPaymentLabel(selectedPaymentGateway)
 }
 
-private fun checkoutGlobalPayntLabel(gateway: String): String {
+private fun checkoutPaymentLabel(gateway: String): String {
     return when (gateway.trim().uppercase()) {
         
         "GLOBAL_PAY" -> "GlobalPay"
@@ -71,7 +71,7 @@ class CartViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CartUiState())
     val uiState: StateFlow<CartUiState> = _uiState.asStateFlow()
 
-    private var global_payntListenerJob: Job? = null
+    private var paymentListenerJob: Job? = null
 
     init { flushPendingOrders() }
 
@@ -140,11 +140,11 @@ class CartViewModel @Inject constructor(
         _uiState.update { it.copy(showCheckout = false, checkoutPhase = CheckoutPhase.REVIEW) }
     }
 
-    fun setSelectedGlobalPayntGateway(gateway: String) {
-        _uiState.update { it.copy(selectedGlobalPayntGateway = gateway.trim().uppercase()) }
+    fun setSelectedPaymentGateway(gateway: String) {
+        _uiState.update { it.copy(selectedPaymentGateway = gateway.trim().uppercase()) }
     }
 
-    fun processGlobalPaynt() {
+    fun processPayment() {
         viewModelScope.launch {
             _uiState.update { it.copy(checkoutPhase = CheckoutPhase.PROCESSING, checkoutError = null) }
             try {
@@ -159,7 +159,7 @@ class CartViewModel @Inject constructor(
                 }
                 val request = UnifiedCheckoutRequest(
                     retailerId = retailerId,
-                    global_payntGateway = state.selectedGlobalPayntGateway,
+                    paymentGateway = state.selectedPaymentGateway,
                     items = lineItems,
                 )
                 val response = api.unifiedCheckout(request)
@@ -227,6 +227,6 @@ class CartViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        global_payntListenerJob?.cancel()
+        paymentListenerJob?.cancel()
     }
 }

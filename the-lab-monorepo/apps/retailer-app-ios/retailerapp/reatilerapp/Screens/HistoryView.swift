@@ -18,10 +18,10 @@ struct HistoryView: View {
             statusFilters
 
             ScrollView {
-                if isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, minHeight: 200)
-                        .tint(AppTheme.accent)
+                if isLoading && orders.isEmpty {
+                    SkeletonOrderList()
+                } else if loadError && orders.isEmpty {
+                    ErrorStateView { await loadOrders() }
                 } else if filteredOrders.isEmpty {
                     emptyState
                 } else {
@@ -41,12 +41,6 @@ struct HistoryView: View {
         .background(AppTheme.background)
         .task { await loadOrders() }
         .refreshable { await loadOrders() }
-        .alert("Failed to Load", isPresented: $loadError) {
-            Button("Retry") { Task { await loadOrders() } }
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Could not load order history. Check your connection.")
-        }
     }
 
     // MARK: - Filters
@@ -105,6 +99,7 @@ struct HistoryView: View {
 
     private func loadOrders() async {
         isLoading = true
+        loadError = false
         do { let r: [Order] = try await api.get(path: "/v1/orders"); orders = r }
         catch { orders = []; loadError = true }
         isLoading = false

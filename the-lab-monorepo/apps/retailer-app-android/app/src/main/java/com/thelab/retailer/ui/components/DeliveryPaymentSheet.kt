@@ -6,7 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.cashable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +24,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CreditCard
 import androidx.compose.material.icons.rounded.LocalAtm
-import androidx.compose.material.icons.rounded.GlobalPaynts
+import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -56,7 +56,7 @@ import com.thelab.retailer.ui.theme.StatusOrangeSoft
 import com.thelab.retailer.ui.theme.StatusRed
 import com.thelab.retailer.ui.theme.StatusRedSoft
 
-enum class GlobalPayntPhase { CHOOSE, PROCESSING, CASH_PENDING, SUCCESS, FAILED }
+enum class PaymentPhase { CHOOSE, PROCESSING, CASH_PENDING, SUCCESS, FAILED }
 
 private data class CardGatewayOption(
     val gateway: String,
@@ -66,9 +66,9 @@ private data class CardGatewayOption(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DeliveryGlobalPayntSheet(
+fun DeliveryPaymentSheet(
     event: RetailerWSMessage,
-    phase: GlobalPayntPhase,
+    phase: PaymentPhase,
     errorMessage: String?,
     isCompact: Boolean = true,
     onSelectCash: () -> Unit,
@@ -80,7 +80,7 @@ fun DeliveryGlobalPayntSheet(
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
             onDismissRequest = {
-                if (phase == GlobalPayntPhase.CHOOSE || phase == GlobalPayntPhase.FAILED) onDismiss()
+                if (phase == PaymentPhase.CHOOSE || phase == PaymentPhase.FAILED) onDismiss()
             },
             sheetState = sheetState,
             shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
@@ -88,11 +88,11 @@ fun DeliveryGlobalPayntSheet(
             tonalElevation = 0.dp,
             dragHandle = { Spacer(Modifier.height(32.dp)) }
         ) {
-            DeliveryGlobalPayntSheetContent(event, phase, errorMessage, onSelectCash, onSelectCard, onRetry, onDismiss)
+            DeliveryPaymentSheetContent(event, phase, errorMessage, onSelectCash, onSelectCard, onRetry, onDismiss)
         }
     } else {
         Dialog(onDismissRequest = {
-            if (phase == GlobalPayntPhase.CHOOSE || phase == GlobalPayntPhase.FAILED) onDismiss()
+            if (phase == PaymentPhase.CHOOSE || phase == PaymentPhase.FAILED) onDismiss()
         }) {
             Surface(
                 shape = RoundedCornerShape(32.dp),
@@ -100,7 +100,7 @@ fun DeliveryGlobalPayntSheet(
                 tonalElevation = 0.dp
             ) {
                 Column(Modifier.padding(vertical = 32.dp)) {
-                    DeliveryGlobalPayntSheetContent(event, phase, errorMessage, onSelectCash, onSelectCard, onRetry, onDismiss)
+                    DeliveryPaymentSheetContent(event, phase, errorMessage, onSelectCash, onSelectCard, onRetry, onDismiss)
                 }
             }
         }
@@ -108,9 +108,9 @@ fun DeliveryGlobalPayntSheet(
 }
 
 @Composable
-fun DeliveryGlobalPayntSheetContent(
+fun DeliveryPaymentSheetContent(
     event: RetailerWSMessage,
-    phase: GlobalPayntPhase,
+    phase: PaymentPhase,
     errorMessage: String?,
     onSelectCash: () -> Unit,
     onSelectCard: (gateway: String) -> Unit,
@@ -120,14 +120,14 @@ fun DeliveryGlobalPayntSheetContent(
     AnimatedContent(
         targetState = phase,
         transitionSpec = { fadeIn() togetherWith fadeOut() },
-        label = "global_paynt_phase",
+        label = "payment_phase",
     ) { currentPhase ->
         when (currentPhase) {
-            GlobalPayntPhase.CHOOSE -> ChooseContent(event, onSelectCash, onSelectCard)
-            GlobalPayntPhase.PROCESSING -> ProcessingContent()
-            GlobalPayntPhase.CASH_PENDING -> CashPendingContent(event)
-            GlobalPayntPhase.SUCCESS -> SuccessContent(event, onDismiss)
-            GlobalPayntPhase.FAILED -> FailedContent(errorMessage, onRetry, onDismiss)
+            PaymentPhase.CHOOSE -> ChooseContent(event, onSelectCash, onSelectCard)
+            PaymentPhase.PROCESSING -> ProcessingContent()
+            PaymentPhase.CASH_PENDING -> CashPendingContent(event)
+            PaymentPhase.SUCCESS -> SuccessContent(event, onDismiss)
+            PaymentPhase.FAILED -> FailedContent(errorMessage, onRetry, onDismiss)
         }
     }
 }
@@ -155,7 +155,7 @@ private fun ChooseContent(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.Rounded.GlobalPaynts,
+                Icons.Rounded.Payments,
                 contentDescription = null,
                 modifier = Modifier.size(32.dp),
                 tint = StatusOrange,
@@ -164,7 +164,7 @@ private fun ChooseContent(
         Spacer(Modifier.height(20.dp))
 
         Text(
-            "GlobalPaynt Required",
+            "Payment Required",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
         )
         Spacer(Modifier.height(8.dp))
@@ -203,25 +203,25 @@ private fun ChooseContent(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            "Choose GlobalPaynt Method",
+            "Choose Payment Method",
             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
         )
         Spacer(Modifier.height(12.dp))
 
-        GlobalPayntOptionRow(
+        PaymentOptionRow(
             icon = Icons.Rounded.LocalAtm,
             label = "Cash on Delivery",
             description = "Pay the driver in cash",
-            onCash = onSelectCash,
+            onClick = onSelectCash,
         )
         cardGatewayOptions.forEach { option ->
             Spacer(Modifier.height(8.dp))
-            GlobalPayntOptionRow(
+            PaymentOptionRow(
                 icon = Icons.Rounded.CreditCard,
                 label = option.label,
                 description = option.description,
-                onCash = { onSelectCard(option.gateway) },
+                onClick = { onSelectCard(option.gateway) },
             )
         }
     }
@@ -251,11 +251,11 @@ private fun normalizeCardGateway(gateway: String): String? {
 }
 
 @Composable
-private fun GlobalPayntOptionRow(
+private fun PaymentOptionRow(
     icon: ImageVector,
     label: String,
     description: String,
-    onCash: () -> Unit,
+    onClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -266,7 +266,7 @@ private fun GlobalPayntOptionRow(
                 color = MaterialTheme.colorScheme.outlineVariant,
                 shape = RoundedCornerShape(12.dp),
             )
-            .cashable(onCash = onCash)
+            .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -319,7 +319,7 @@ private fun ProcessingContent() {
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
         )
         Text(
-            "Connecting to global_paynt service",
+            "Connecting to payment service",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
         )
@@ -416,7 +416,7 @@ private fun SuccessContent(event: RetailerWSMessage, onDismiss: () -> Unit) {
         }
         Spacer(Modifier.height(20.dp))
         Text(
-            "GlobalPaynt Complete",
+            "Payment Complete",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
         )
         Spacer(Modifier.height(8.dp))
@@ -427,7 +427,7 @@ private fun SuccessContent(event: RetailerWSMessage, onDismiss: () -> Unit) {
         )
         Spacer(Modifier.height(32.dp))
         Button(
-            onCash = onDismiss,
+            onClick = onDismiss,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -463,7 +463,7 @@ private fun FailedContent(errorMessage: String?, onRetry: () -> Unit, onDismiss:
         }
         Spacer(Modifier.height(20.dp))
         Text(
-            "GlobalPaynt Failed",
+            "Payment Failed",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
         )
         if (errorMessage != null) {
@@ -477,7 +477,7 @@ private fun FailedContent(errorMessage: String?, onRetry: () -> Unit, onDismiss:
         }
         Spacer(Modifier.height(32.dp))
         Button(
-            onCash = onRetry,
+            onClick = onRetry,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -490,7 +490,7 @@ private fun FailedContent(errorMessage: String?, onRetry: () -> Unit, onDismiss:
         }
         Spacer(Modifier.height(12.dp))
         OutlinedButton(
-            onCash = onDismiss,
+            onClick = onDismiss,
             modifier = Modifier.fillMaxWidth().height(48.dp),
         ) {
             Text("Cancel")

@@ -148,7 +148,7 @@ fun AnalyticsScreen(
                         items(ranges) { range ->
                             FilterChip(
                                 selected = selectedRange == range,
-                                onCash = { selectedRange = range },
+                                onClick = { selectedRange = range },
                                 label = {
                                     Text(range, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold))
                                 },
@@ -266,7 +266,7 @@ fun AnalyticsScreen(
                                 items(detailedRanges) { range ->
                                     FilterChip(
                                         selected = uiState.selectedRange == range,
-                                        onCash = { viewModel.setRange(range) },
+                                        onClick = { viewModel.setRange(range) },
                                         label = {
                                             Text(range, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold))
                                         },
@@ -403,13 +403,13 @@ private fun WeeklySpendCard(
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                 )
                 Spacer(modifier = Modifier.weight(1f))
-                IconButton(onCash = { }, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = { }, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Outlined.ChevronLeft, "Previous week", modifier = Modifier.size(20.dp))
                 }
-                IconButton(onCash = { }, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = { }, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Outlined.ChevronRight, "Next week", modifier = Modifier.size(20.dp))
                 }
-                IconButton(onCash = { }, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = { }, modifier = Modifier.size(32.dp)) {
                     Icon(Icons.Outlined.CalendarMonth, "Calendar", modifier = Modifier.size(20.dp))
                 }
             }

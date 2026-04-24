@@ -258,7 +258,7 @@ fun AuthScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         OutlinedButton(
-                            onCash = { showMapPicker = true },
+                            onClick = { showMapPicker = true },
                             modifier = Modifier.weight(1f).height(44.dp),
                             shape = SquircleShape,
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Black),
@@ -268,7 +268,7 @@ fun AuthScreen(
                             Text("Open Map", fontSize = 13.sp)
                         }
                         OutlinedButton(
-                            onCash = {
+                            onClick = {
                                 if (!locationPermission.status.isGranted) {
                                     locationPermission.launchPermissionRequest()
                                     return@OutlinedButton
@@ -371,7 +371,7 @@ fun AuthScreen(
                         ).forEach { (value, label) ->
                             val isSelected = selectedAccessType == value
                             OutlinedButton(
-                                onCash = { selectedAccessType = if (isSelected) "" else value },
+                                onClick = { selectedAccessType = if (isSelected) "" else value },
                                 modifier = Modifier.weight(1f).height(40.dp),
                                 shape = SquircleShape,
                                 colors = if (isSelected)
@@ -401,7 +401,7 @@ fun AuthScreen(
 
             // Main Action Button
             Button(
-                onCash = {
+                onClick = {
                     if (isLoginMode) {
                         viewModel.login(phone, password)
                     } else {
@@ -458,7 +458,7 @@ fun AuthScreen(
 
             // Toggle Mode
             TextButton(
-                onCash = { isLoginMode = !isLoginMode },
+                onClick = { isLoginMode = !isLoginMode },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(

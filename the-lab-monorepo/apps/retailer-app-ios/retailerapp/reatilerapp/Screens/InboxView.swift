@@ -3,6 +3,7 @@ import SwiftUI
 struct InboxView: View {
     @State private var orders: [Order] = []
     @State private var isLoading = false
+    @State private var loadError = false
 
     private let api = APIClient.shared
 
@@ -12,7 +13,11 @@ struct InboxView: View {
 
     var body: some View {
         ScrollView {
-            if incomingOrders.isEmpty {
+            if isLoading && orders.isEmpty {
+                SkeletonOrderList()
+            } else if loadError && orders.isEmpty {
+                ErrorStateView { await loadOrders() }
+            } else if incomingOrders.isEmpty {
                 emptyState
             } else {
                 LazyVStack(spacing: AppTheme.spacingLG) {
@@ -171,8 +176,9 @@ struct InboxView: View {
     private func loadOrders() async {
         let rid = AuthManager.shared.currentUser?.id ?? ""
         isLoading = true
+        loadError = false
         do { let r: [Order] = try await api.get(path: "/v1/orders?retailer_id=\(rid)"); orders = r }
-        catch { orders = [] }
+        catch { orders = []; loadError = true }
         isLoading = false
     }
 }
