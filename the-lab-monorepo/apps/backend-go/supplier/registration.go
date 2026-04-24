@@ -292,8 +292,8 @@ func HandleSupplierConfigure(spannerClient *spanner.Client) http.HandlerFunc {
 	}
 }
 
-// HandleBillingSetup sets the supplier's bank details and payment gateway.
-// POST /v1/supplier/billing/setup → { bank_name, account_number, card_number, payment_gateway }
+// HandleBillingSetup sets the supplier's bank details and global_paynt gateway.
+// POST /v1/supplier/billing/setup → { bank_name, account_number, card_number, global_paynt_gateway }
 // This is the post-registration billing step — decoupled from signup.
 func HandleBillingSetup(spannerClient *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -312,20 +312,20 @@ func HandleBillingSetup(spannerClient *spanner.Client) http.HandlerFunc {
 			BankName       string `json:"bank_name"`
 			AccountNumber  string `json:"account_number"`
 			CardNumber     string `json:"card_number"`
-			PaymentGateway string `json:"payment_gateway"`
+			GlobalPayntGateway string `json:"global_paynt_gateway"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, `{"error":"invalid JSON body"}`, http.StatusBadRequest)
 			return
 		}
-		if req.PaymentGateway == "" {
-			http.Error(w, `{"error":"payment_gateway is required"}`, http.StatusBadRequest)
+		if req.GlobalPayntGateway == "" {
+			http.Error(w, `{"error":"global_paynt_gateway is required"}`, http.StatusBadRequest)
 			return
 		}
 
-		validGateways := map[string]bool{"PAYME": true, "CLICK": true, "CARD": true, "BANK": true, "GLOBAL_PAY": true, "CASH": true}
-		if !validGateways[req.PaymentGateway] {
-			http.Error(w, `{"error":"invalid payment_gateway — must be PAYME, CLICK, CARD, BANK, GLOBAL_PAY, or CASH"}`, http.StatusBadRequest)
+		validGateways := map[string]bool{"GLOBAL_PAY": true, "CASH": true, "CARD": true, "BANK": true, "GLOBAL_PAY": true, "CASH": true}
+		if !validGateways[req.GlobalPayntGateway] {
+			http.Error(w, `{"error":"invalid global_paynt_gateway — must be GLOBAL_PAY, CASH, CARD, BANK, GLOBAL_PAY, or CASH"}`, http.StatusBadRequest)
 			return
 		}
 
@@ -334,8 +334,8 @@ func HandleBillingSetup(spannerClient *spanner.Client) http.HandlerFunc {
 
 		supplierID := claims.ResolveSupplierID()
 
-		cols := []string{"SupplierId", "PaymentGateway"}
-		vals := []interface{}{supplierID, req.PaymentGateway}
+		cols := []string{"SupplierId", "GlobalPayntGateway"}
+		vals := []interface{}{supplierID, req.GlobalPayntGateway}
 
 		if req.BankName != "" {
 			cols = append(cols, "BankName")
@@ -361,7 +361,7 @@ func HandleBillingSetup(spannerClient *spanner.Client) http.HandlerFunc {
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":          "BILLING_CONFIGURED",
 			"supplier_id":     supplierID,
-			"payment_gateway": req.PaymentGateway,
+			"global_paynt_gateway": req.GlobalPayntGateway,
 		})
 	}
 }
@@ -504,7 +504,7 @@ func fetchSupplierProfile(ctx context.Context, spannerClient *spanner.Client, su
 		             COALESCE(BankName, ''),
 		             COALESCE(AccountNumber, ''),
 		             COALESCE(CardNumber, ''),
-		             COALESCE(PaymentGateway, ''),
+		             COALESCE(GlobalPayntGateway, ''),
 		             IFNULL(ManualOffShift, false),
 		             COALESCE(TO_JSON_STRING(OperatingSchedule), '{}')
 		      FROM Suppliers WHERE SupplierId = @id`,
@@ -523,12 +523,12 @@ func fetchSupplierProfile(ctx context.Context, spannerClient *spanner.Client, su
 
 	var name, phone, category, taxId, warehouseLocation string
 	var email, contactPerson, companyRegNumber, billingAddress string
-	var bankName, accountNumber, cardNumber, paymentGateway string
+	var bankName, accountNumber, cardNumber, global_payntGateway string
 	var isConfigured, manualOffShift bool
 	var operatingCategories []string
 	var warehouseLat, warehouseLng float64
 	var operatingScheduleJSON string
-	if err := row.Columns(&name, &phone, &category, &taxId, &isConfigured, &operatingCategories, &warehouseLocation, &warehouseLat, &warehouseLng, &email, &contactPerson, &companyRegNumber, &billingAddress, &bankName, &accountNumber, &cardNumber, &paymentGateway, &manualOffShift, &operatingScheduleJSON); err != nil {
+	if err := row.Columns(&name, &phone, &category, &taxId, &isConfigured, &operatingCategories, &warehouseLocation, &warehouseLat, &warehouseLng, &email, &contactPerson, &companyRegNumber, &billingAddress, &bankName, &accountNumber, &cardNumber, &global_payntGateway, &manualOffShift, &operatingScheduleJSON); err != nil {
 		return nil, fmt.Errorf("parse supplier %s: %w", supplierID, err)
 	}
 
@@ -557,7 +557,7 @@ func fetchSupplierProfile(ctx context.Context, spannerClient *spanner.Client, su
 		"bank_name":            bankName,
 		"account_number":       accountNumber,
 		"card_number":          maskedCard,
-		"payment_gateway":      paymentGateway,
+		"global_paynt_gateway":      global_payntGateway,
 		"manual_off_shift":     manualOffShift,
 		"operating_schedule":   json.RawMessage(operatingScheduleJSON),
 		"is_active":            isActive,
@@ -588,7 +588,7 @@ func HandleUpdateSupplierProfile(spannerClient *spanner.Client, rc *cache.Cache)
 			BankName          *string  `json:"bank_name"`
 			AccountNumber     *string  `json:"account_number"`
 			CardNumber        *string  `json:"card_number"`
-			PaymentGateway    *string  `json:"payment_gateway"`
+			GlobalPayntGateway    *string  `json:"global_paynt_gateway"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 			http.Error(w, `{"error":"invalid JSON body"}`, http.StatusBadRequest)
@@ -652,9 +652,9 @@ func HandleUpdateSupplierProfile(spannerClient *spanner.Client, rc *cache.Cache)
 			cols = append(cols, "CardNumber")
 			vals = append(vals, *update.CardNumber)
 		}
-		if update.PaymentGateway != nil {
-			cols = append(cols, "PaymentGateway")
-			vals = append(vals, *update.PaymentGateway)
+		if update.GlobalPayntGateway != nil {
+			cols = append(cols, "GlobalPayntGateway")
+			vals = append(vals, *update.GlobalPayntGateway)
 		}
 
 		if len(cols) <= 1 {

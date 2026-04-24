@@ -181,7 +181,7 @@ final class RetailerWebSocket {
         let decoder = JSONDecoder()
 
         switch type {
-        case "PAYMENT_REQUIRED":
+        case "GLOBAL_PAYNT_REQUIRED":
             if let event = try? decoder.decode(PaymentRequiredEvent.self, from: data) {
                 eventContinuation?.yield(.paymentRequired(event))
             }
@@ -189,15 +189,15 @@ final class RetailerWebSocket {
             if let event = try? decoder.decode(OrderCompletedEvent.self, from: data) {
                 eventContinuation?.yield(.orderCompleted(event))
             }
-        case "PAYMENT_SETTLED":
+        case "GLOBAL_PAYNT_SETTLED":
             if let event = try? decoder.decode(OrderCompletedEvent.self, from: data) {
                 eventContinuation?.yield(.paymentSettled(event))
             }
-        case "PAYMENT_FAILED":
+        case "GLOBAL_PAYNT_FAILED":
             if let event = try? decoder.decode(PaymentFailureEvent.self, from: data) {
                 eventContinuation?.yield(.paymentFailed(event))
             }
-        case "PAYMENT_EXPIRED":
+        case "GLOBAL_PAYNT_EXPIRED":
             if let event = try? decoder.decode(PaymentFailureEvent.self, from: data) {
                 eventContinuation?.yield(.paymentExpired(event))
             }

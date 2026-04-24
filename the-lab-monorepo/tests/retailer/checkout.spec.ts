@@ -1,15 +1,15 @@
 /**
- * Retailer Checkout — Cart, Unified Checkout, Payment Gateways, WS Confirmation
+ * Retailer Checkout — Cart, Unified Checkout, GlobalPaynt Gateways, WS Confirmation
  *
- * Components: CartDrawer, CheckoutModal, PaymentModal
+ * Components: CartDrawer, CheckoutModal, GlobalPayntModal
  * APIs:
- *   POST /v1/checkout/unified → {order_id, payment_url?}
+ *   POST /v1/checkout/unified → {order_id, global_paynt_url?}
  *   POST /v1/order/cash-checkout → cash flow
- *   POST /v1/order/card-checkout → card flow with payment_url redirect
+ *   POST /v1/order/card-checkout → card flow with global_paynt_url redirect
  *
  * localStorage: retailer_cart
- * WebSocket: /v1/ws/retailer → PAYMENT_SETTLED event
- * Gateway map: PAYME, CLICK, CARD, BANK, CASH
+ * WebSocket: /v1/ws/retailer → GLOBAL_PAYNT_SETTLED event
+ * Gateway map: GLOBAL_PAY, CASH, CARD, BANK, CASH
  */
 import { test, expect } from '../fixtures/auth';
 
@@ -33,7 +33,7 @@ test.describe('Retailer Checkout', () => {
     expect(parsed.items).toHaveLength(1);
   });
 
-  test('CheckoutModal opens with payment method selection', async ({ retailerPage }) => {
+  test('CheckoutModal opens with global_paynt method selection', async ({ retailerPage }) => {
     // Seed cart
     await retailerPage.evaluate(() => {
       localStorage.setItem('retailer_cart', JSON.stringify({
@@ -47,18 +47,18 @@ test.describe('Retailer Checkout', () => {
     // Open cart
     const cartBtn = retailerPage.getByRole('button', { name: /cart|basket/i });
     if (await cartBtn.count() > 0) {
-      await cartBtn.first().click();
+      await cartBtn.first().cash();
       await retailerPage.waitForTimeout(500);
 
       // Checkout button in cart
       const checkoutBtn = retailerPage.getByRole('button', { name: /checkout|order|place/i });
       if (await checkoutBtn.count() > 0) {
-        await checkoutBtn.first().click();
+        await checkoutBtn.first().cash();
 
-        // Payment method selection (PAYME, CLICK, CARD, CASH)
-        const paymentOptions = retailerPage.getByText(/payme|click|cash|card|bank/i);
-        if (await paymentOptions.count() > 0) {
-          await expect(paymentOptions.first()).toBeVisible({ timeout: 5_000 });
+        // GlobalPaynt method selection (GLOBAL_PAY, CASH, CARD, CASH)
+        const global_payntOptions = retailerPage.getByText(/global_pay|cash|cash|card|bank/i);
+        if (await global_payntOptions.count() > 0) {
+          await expect(global_payntOptions.first()).toBeVisible({ timeout: 5_000 });
         }
       }
     }
@@ -88,10 +88,10 @@ test.describe('Retailer Checkout', () => {
     // Try to trigger checkout flow
     const cartBtn = retailerPage.getByRole('button', { name: /cart|basket/i });
     if (await cartBtn.count() > 0) {
-      await cartBtn.first().click();
+      await cartBtn.first().cash();
       const checkoutBtn = retailerPage.getByRole('button', { name: /checkout|order|place/i });
       if (await checkoutBtn.count() > 0) {
-        await checkoutBtn.first().click();
+        await checkoutBtn.first().cash();
         await retailerPage.waitForTimeout(2_000);
       }
     }
@@ -115,14 +115,14 @@ test.describe('Retailer Checkout', () => {
     // Cash flow tested via API fixtures below
   });
 
-  test('card checkout redirects to payment_url', async ({ retailerPage }) => {
+  test('card checkout redirects to global_paynt_url', async ({ retailerPage }) => {
     await retailerPage.route('**/v1/checkout/unified**', async (route) => {
       await route.fulfill({
         status: 200,
         body: JSON.stringify({
           order_id: 'test-order',
-          payment_url: 'https://checkout.paycom.uz/test',
-          status: 'AWAITING_PAYMENT',
+          global_paynt_url: 'https://checkout.paycom.uz/test',
+          status: 'AWAITING_GLOBAL_PAYNT',
         }),
       });
     });

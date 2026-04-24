@@ -107,7 +107,7 @@ CREATE TABLE Orders (
     State          STRING(30)  NOT NULL, -- PENDING | LOADED | IN_TRANSIT | ARRIVED | COMPLETED
     Amount         INT64,
     Currency       STRING(3)   NOT NULL DEFAULT ('UZS'),
-    PaymentGateway STRING(MAX),
+    GlobalPayntGateway STRING(MAX),
     ShopLocation   STRING(MAX),
     RouteId        STRING(MAX),
     OrderSource    STRING(MAX),
@@ -120,12 +120,12 @@ CREATE TABLE Orders (
     Version        INT64       NOT NULL DEFAULT (1),
     LockedUntil    TIMESTAMP,
     CreatedAt      TIMESTAMP OPTIONS (allow_commit_timestamp=true),
-    PaymentStatus   STRING(30)  NOT NULL DEFAULT ('PENDING'), -- PENDING | AUTHORIZED | PENDING_CASH_COLLECTION | AWAITING_GATEWAY_WEBHOOK | PAID | FAILED
+    GlobalPayntStatus   STRING(30)  NOT NULL DEFAULT ('PENDING'), -- PENDING | AUTHORIZED | PENDING_CASH_COLLECTION | AWAITING_GATEWAY_WEBHOOK | PAID | FAILED
     CONSTRAINT CHK_Order_State CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'DISPATCHED', 'IN_TRANSIT',
-                     'ARRIVING', 'ARRIVED', 'ARRIVED_SHOP_CLOSED', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION',
+                     'ARRIVING', 'ARRIVED', 'ARRIVED_SHOP_CLOSED', 'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION',
                      'COMPLETED', 'CANCELLED', 'CANCEL_REQUESTED', 'NO_CAPACITY', 'DELIVERED_ON_CREDIT',
                      'SCHEDULED', 'AUTO_ACCEPTED', 'QUARANTINE', 'STALE_AUDIT', 'REFUNDED')),
-    CONSTRAINT CHK_PaymentStatus CHECK (PaymentStatus IN ('PENDING', 'AUTHORIZED', 'PENDING_CASH_COLLECTION', 'AWAITING_GATEWAY_WEBHOOK', 'PAID', 'FAILED'))
+    CONSTRAINT CHK_GlobalPayntStatus CHECK (GlobalPayntStatus IN ('PENDING', 'AUTHORIZED', 'PENDING_CASH_COLLECTION', 'AWAITING_GATEWAY_WEBHOOK', 'PAID', 'FAILED'))
 ) PRIMARY KEY (OrderId);
 
 CREATE INDEX IDX_Orders_RetailerId ON Orders(RetailerId);
@@ -141,8 +141,8 @@ CREATE TABLE MasterInvoices (
     Currency            STRING(3)   NOT NULL DEFAULT ('UZS'),
     State               STRING(20)  NOT NULL,
     OrderId             STRING(36),
-    PaymeTransactionId  STRING(64),
-    PaymentMode         STRING(20),              -- ELECTRONIC | CASH
+    GlobalPayTransactionId  STRING(64),
+    GlobalPayntMode         STRING(20),              -- ELECTRONIC | CASH
     CollectorDriverId   STRING(36),              -- Driver who collected cash (null for electronic)
     CollectedAt         TIMESTAMP,               -- When cash was physically collected
     CollectionLat       FLOAT64,                 -- GPS lat at cash collection
@@ -154,7 +154,7 @@ CREATE TABLE MasterInvoices (
 
 CREATE INDEX Idx_MasterInvoice_Retailer ON MasterInvoices(RetailerId);
 CREATE INDEX Idx_MasterInvoice_OrderId ON MasterInvoices(OrderId);
-CREATE INDEX Idx_MasterInvoice_PaymeTxn ON MasterInvoices(PaymeTransactionId);
+CREATE INDEX Idx_MasterInvoice_GlobalPayTxn ON MasterInvoices(GlobalPayTransactionId);
 
 CREATE TABLE Products (
     ProductId    STRING(36)  NOT NULL,
@@ -250,7 +250,7 @@ CREATE TABLE LedgerAnomalies (
     SpannerAmount INT64 NOT NULL,
     GatewayAmount INT64 NOT NULL,
     Currency      STRING(3) NOT NULL DEFAULT ('UZS'),
-    GatewayProvider STRING(20) NOT NULL, -- 'PAYME' or 'CLICK'
+    GatewayProvider STRING(20) NOT NULL, -- 'GLOBAL_PAY' or 'CASH'
     Status STRING(20) NOT NULL,          -- 'DELTA' or 'ORPHANED'
     DetectedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
 ) PRIMARY KEY (OrderId);
@@ -263,7 +263,7 @@ CREATE INDEX Idx_Anomalies_ByStatus ON LedgerAnomalies(Status);
 -- Migration (run against existing deployments):
 --   ALTER TABLE Orders DROP CONSTRAINT CHK_Order_State;
 --   ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State
---     CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED', 'AWAITING_PAYMENT', 'COMPLETED', 'CANCELLED', 'SCHEDULED'));
+--     CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED', 'AWAITING_GLOBAL_PAYNT', 'COMPLETED', 'CANCELLED', 'SCHEDULED'));
 
 -- ── PHASE 7: QUARANTINE STATE (REVERSE LOGISTICS) ────────────────────────────
 -- QUARANTINE is the state for orders physically returned to the depot undelivered.
@@ -273,7 +273,7 @@ CREATE INDEX Idx_Anomalies_ByStatus ON LedgerAnomalies(Status);
 --   ALTER TABLE Orders DROP CONSTRAINT CHK_Order_State;
 --   ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State
 --     CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED',
---                      'AWAITING_PAYMENT', 'COMPLETED', 'CANCELLED', 'SCHEDULED', 'QUARANTINE'));
+--                      'AWAITING_GLOBAL_PAYNT', 'COMPLETED', 'CANCELLED', 'SCHEDULED', 'QUARANTINE'));
 
 -- ── PHASE 14: DISPATCHED STATE (PAYLOAD TERMINAL SEAL → DISPATCHED) ──────────
 -- DISPATCHED is set when the payload terminal seals an order (JIT token attached).
@@ -282,7 +282,7 @@ CREATE INDEX Idx_Anomalies_ByStatus ON LedgerAnomalies(Status);
 --   ALTER TABLE Orders DROP CONSTRAINT CHK_Order_State;
 --   ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State
 --     CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'DISPATCHED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED',
---                      'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION', 'COMPLETED', 'CANCELLED', 'SCHEDULED', 'QUARANTINE'));
+--                      'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION', 'COMPLETED', 'CANCELLED', 'SCHEDULED', 'QUARANTINE'));
 
 -- Composite index for fleet/manifest queries that filter by state + route
 CREATE INDEX Idx_Orders_ByStateAndRoute ON Orders(State, RouteId);
@@ -401,7 +401,7 @@ CREATE TABLE Suppliers (
     BankName             STRING(MAX),              -- Payout bank name
     AccountNumber        STRING(MAX),              -- Bank account / IBAN
     CardNumber           STRING(MAX),              -- Card number for payouts (masked in API)
-    PaymentGateway       STRING(20),               -- PAYME | CLICK | BANK_TRANSFER
+    GlobalPayntGateway       STRING(20),               -- GLOBAL_PAY | CASH | BANK_TRANSFER
     OperatingSchedule    JSON,                     -- {"mon":{"open":"09:00","close":"18:00"},...} — null = always open
     ManualOffShift           BOOL        NOT NULL DEFAULT (false),  -- Master override: true = force CLOSED regardless of schedule
     FleetColdChainCompliant  BOOL,                     -- TRUE if fleet is capable of cold-chain delivery
@@ -513,45 +513,45 @@ CREATE INDEX Idx_WarehouseStaff_ByPhone      ON WarehouseStaff(Phone);
 -- ALTER TABLE Orders ADD COLUMN Version INT64 NOT NULL DEFAULT (1);
 -- ALTER TABLE Orders ADD COLUMN LockedUntil TIMESTAMP;
 
--- ── SUPPLIER PAYMENT GATEWAY VAULT (MULTI-VENDOR) ─────────────────────────
--- One supplier can have multiple active gateways (Click + Payme simultaneously).
+-- ── SUPPLIER GLOBAL_PAYNT GATEWAY VAULT (MULTI-VENDOR) ─────────────────────────
+-- One supplier can have multiple active gateways (Cash + GlobalPay simultaneously).
 -- SecretKey is stored AES-256-GCM encrypted; plaintext NEVER leaves the backend.
-CREATE TABLE SupplierPaymentConfigs (
+CREATE TABLE SupplierGlobalPayntConfigs (
     ConfigId     STRING(36)  NOT NULL,
     SupplierId   STRING(36)  NOT NULL,
-    GatewayName  STRING(20)  NOT NULL,  -- CLICK | PAYME | GLOBAL_PAY
+    GatewayName  STRING(20)  NOT NULL,  -- CASH | GLOBAL_PAY | GLOBAL_PAY
     MerchantId   STRING(MAX) NOT NULL,
-    ServiceId    STRING(MAX),           -- Click service_id (NULL for Payme/Global Pay)
+    ServiceId    STRING(MAX),           -- Cash service_id (NULL for GlobalPay/Global Pay)
     SecretKey    BYTES(MAX)  NOT NULL,  -- AES-256-GCM encrypted at rest
     IsActive     BOOL        NOT NULL DEFAULT (true),
     CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
     UpdatedAt    TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
-    CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CLICK', 'PAYME', 'GLOBAL_PAY'))
+    CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'GLOBAL_PAY'))
 ) PRIMARY KEY (ConfigId);
 
-CREATE INDEX Idx_SupplierPaymentConfigs_BySupplierId ON SupplierPaymentConfigs(SupplierId);
-CREATE UNIQUE INDEX Idx_SupplierPaymentConfigs_Unique ON SupplierPaymentConfigs(SupplierId, GatewayName);
+CREATE INDEX Idx_SupplierGlobalPayntConfigs_BySupplierId ON SupplierGlobalPayntConfigs(SupplierId);
+CREATE UNIQUE INDEX Idx_SupplierGlobalPayntConfigs_Unique ON SupplierGlobalPayntConfigs(SupplierId, GatewayName);
 
--- ── PAYMENT SESSIONS (PHASE 13: DURABLE PAYMENT SESSION ENGINE) ────────────
--- Canonical record for every payment attempt lifecycle.
+-- ── GLOBAL_PAYNT SESSIONS (PHASE 13: DURABLE GLOBAL_PAYNT SESSION ENGINE) ────────────
+-- Canonical record for every global_paynt attempt lifecycle.
 -- One active session per order. Retry creates a new attempt, not a new session.
 -- Amount locks after ConfirmOffload (driver damage adjustments finalized).
 
-CREATE TABLE PaymentSessions (
+CREATE TABLE GlobalPayntSessions (
     SessionId         STRING(36)  NOT NULL,
     OrderId           STRING(36)  NOT NULL,
     RetailerId        STRING(36)  NOT NULL,
     SupplierId        STRING(36)  NOT NULL,
-    Gateway           STRING(20)  NOT NULL,     -- CLICK | PAYME | CASH | UZCARD | GLOBAL_PAY
+    Gateway           STRING(20)  NOT NULL,     -- CASH | GLOBAL_PAY | CASH | UZCARD | GLOBAL_PAY
     LockedAmount      INT64       NOT NULL,     -- Immutable after creation (except AmendOrder adjustments)
     Currency          STRING(3)   NOT NULL DEFAULT ('UZS'),
     Status            STRING(30)  NOT NULL DEFAULT ('CREATED'),
     -- CREATED | PENDING | AUTHORIZED | SETTLED | FAILED | EXPIRED | CANCELLED
     CurrentAttemptNo  INT64       NOT NULL DEFAULT (0),
     InvoiceId         STRING(36),               -- FK → MasterInvoices.InvoiceId (nullable for CASH)
-    RedirectUrl       STRING(MAX),              -- Deep-link URL for Click/Payme
+    RedirectUrl       STRING(MAX),              -- Deep-link URL for Cash/GlobalPay
     ProviderReference STRING(MAX),              -- Gateway-specific session token / provider reference
-    AuthorizationId   STRING(MAX),              -- Global Pay payment_id from auth hold (null for non-GP)
+    AuthorizationId   STRING(MAX),              -- Global Pay global_paynt_id from auth hold (null for non-GP)
     AuthorizedAmount  INT64,                    -- Original authorized max amount in tiyins (null for non-GP)
     CapturedAmount    INT64,                    -- Actual captured amount in tiyins (set at capture time)
     ExpiresAt         TIMESTAMP,                -- Session expiry (nullable = no expiry)
@@ -559,30 +559,30 @@ CREATE TABLE PaymentSessions (
     LastErrorMessage  STRING(MAX),              -- Human-readable failure reason
     CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
     UpdatedAt         TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
-    SettledAt         TIMESTAMP,                -- When payment was confirmed
+    SettledAt         TIMESTAMP,                -- When global_paynt was confirmed
     CONSTRAINT CHK_SessionStatus CHECK (Status IN ('CREATED', 'PENDING', 'AUTHORIZED', 'SETTLED', 'FAILED', 'EXPIRED', 'CANCELLED', 'PARTIALLY_PAID'))
 ) PRIMARY KEY (SessionId);
 
 -- Active session lookup by order (most common query path)
-CREATE INDEX Idx_PaymentSessions_ByOrderId ON PaymentSessions(OrderId);
+CREATE INDEX Idx_GlobalPayntSessions_ByOrderId ON GlobalPayntSessions(OrderId);
 -- Supplier ops: filter sessions by status for admin dashboards
-CREATE INDEX Idx_PaymentSessions_BySupplierId ON PaymentSessions(SupplierId);
+CREATE INDEX Idx_GlobalPayntSessions_BySupplierId ON GlobalPayntSessions(SupplierId);
 -- Retry queue: find all FAILED/EXPIRED sessions for ops follow-up
-CREATE INDEX Idx_PaymentSessions_ByStatus ON PaymentSessions(Status);
+CREATE INDEX Idx_GlobalPayntSessions_ByStatus ON GlobalPayntSessions(Status);
 -- Prevent duplicate active sessions for the same order
-CREATE UNIQUE INDEX Idx_PaymentSessions_ActiveOrder ON PaymentSessions(OrderId, Status)
+CREATE UNIQUE INDEX Idx_GlobalPayntSessions_ActiveOrder ON GlobalPayntSessions(OrderId, Status)
     WHERE Status IN ('CREATED', 'PENDING');
 
--- ── PAYMENT ATTEMPTS (AUDIT TRAIL) ───────────────────────────────────────────
+-- ── GLOBAL_PAYNT ATTEMPTS (AUDIT TRAIL) ───────────────────────────────────────────
 -- Every retry/webhook callback creates a row here. Immutable after creation.
 -- Provider transaction IDs live here, not on the session.
 
-CREATE TABLE PaymentAttempts (
+CREATE TABLE GlobalPayntAttempts (
     AttemptId            STRING(36)  NOT NULL,
     SessionId            STRING(36)  NOT NULL,
     AttemptNo            INT64       NOT NULL,
     Gateway              STRING(20)  NOT NULL,
-    ProviderTransactionId STRING(64),           -- Click trans_id or Payme transaction ID
+    ProviderTransactionId STRING(64),           -- Cash trans_id or GlobalPay transaction ID
     Status               STRING(30)  NOT NULL DEFAULT ('INITIATED'),
     -- INITIATED | REDIRECTED | PROCESSING | SUCCESS | FAILED | CANCELLED | TIMED_OUT
     FailureCode          STRING(50),
@@ -594,9 +594,9 @@ CREATE TABLE PaymentAttempts (
 ) PRIMARY KEY (AttemptId);
 
 -- Session lookup: get all attempts for a session
-CREATE INDEX Idx_PaymentAttempts_BySessionId ON PaymentAttempts(SessionId);
+CREATE INDEX Idx_GlobalPayntAttempts_BySessionId ON GlobalPayntAttempts(SessionId);
 -- Provider reconciliation: find attempt by provider transaction ID
-CREATE INDEX Idx_PaymentAttempts_ByProviderTxn ON PaymentAttempts(ProviderTransactionId);
+CREATE INDEX Idx_GlobalPayntAttempts_ByProviderTxn ON GlobalPayntAttempts(ProviderTransactionId);
 
 -- ── SYSTEM CONFIG (ADMIN) ─────────────────────────────────────────────────
 CREATE TABLE SystemConfig (
@@ -623,7 +623,7 @@ CREATE TABLE Notifications (
     NotificationId STRING(36)  NOT NULL,
     RecipientId    STRING(36)  NOT NULL,
     RecipientRole  STRING(20)  NOT NULL,
-    Type           STRING(50)  NOT NULL, -- ORDER_UPDATE | PAYMENT_REQUIRED | DELIVERY_ETA | SYSTEM
+    Type           STRING(50)  NOT NULL, -- ORDER_UPDATE | GLOBAL_PAYNT_REQUIRED | DELIVERY_ETA | SYSTEM
     Title          STRING(200) NOT NULL,
     Body           STRING(MAX),
     Payload        STRING(MAX), -- JSON metadata
@@ -640,7 +640,7 @@ CREATE TABLE AuditLog (
     ActorId      STRING(36)  NOT NULL,
     ActorRole    STRING(20)  NOT NULL,
     Action       STRING(50)  NOT NULL, -- CREATE | UPDATE | DELETE | STATE_CHANGE | LOGIN
-    ResourceType STRING(30)  NOT NULL, -- ORDER | PAYMENT | ROUTE | DRIVER | VEHICLE
+    ResourceType STRING(30)  NOT NULL, -- ORDER | GLOBAL_PAYNT | ROUTE | DRIVER | VEHICLE
     ResourceId   STRING(36)  NOT NULL,
     Metadata     STRING(MAX), -- JSON (diff, old/new values, context)
     CreatedAt    TIMESTAMP OPTIONS (allow_commit_timestamp=true)
@@ -679,12 +679,12 @@ CREATE TABLE ScheduledJobs (
 -- ── MISSING INDEXES ON EXISTING TABLES ────────────────────────────────────
 -- Retailer order listing: filter by state
 CREATE INDEX Idx_Orders_ByRetailerState ON Orders(RetailerId, State);
--- Payment session cleanup cron: find expired/stale sessions by status and time
-CREATE INDEX Idx_PaymentSessions_ByStatusExpiry ON PaymentSessions(Status, ExpiresAt);
--- Payment session listing by retailer (for pending-payments endpoint)
-CREATE INDEX Idx_PaymentSessions_ByRetailerId ON PaymentSessions(RetailerId);
+-- GlobalPaynt session cleanup cron: find expired/stale sessions by status and time
+CREATE INDEX Idx_GlobalPayntSessions_ByStatusExpiry ON GlobalPayntSessions(Status, ExpiresAt);
+-- GlobalPaynt session listing by retailer (for pending-global_paynts endpoint)
+CREATE INDEX Idx_GlobalPayntSessions_ByRetailerId ON GlobalPayntSessions(RetailerId);
 
--- ── RETAILER CARD TOKENS (saved payment cards for tokenized checkout) ─────
+-- ── RETAILER CARD TOKENS (saved global_paynt cards for tokenized checkout) ─────
 -- One retailer can have multiple saved cards across gateways.
 -- Cards are soft-deleted (IsActive=false), never hard-deleted.
 CREATE TABLE RetailerCardTokens (
@@ -704,8 +704,8 @@ CREATE INDEX Idx_RetailerCardTokens_ByRetailer ON RetailerCardTokens(RetailerId)
 CREATE UNIQUE INDEX Idx_RetailerCardTokens_Active ON RetailerCardTokens(RetailerId, Gateway, ProviderCardToken)
     WHERE IsActive = true;
 
--- ── GLOBAL PAY SPLIT PAYMENT: Supplier recipient ID ──────────────────────
-ALTER TABLE SupplierPaymentConfigs ADD COLUMN RecipientId STRING(MAX);
+-- ── GLOBAL PAY SPLIT GLOBAL_PAYNT: Supplier recipient ID ──────────────────────
+ALTER TABLE SupplierGlobalPayntConfigs ADD COLUMN RecipientId STRING(MAX);
 
 -- ── AMENDMENT SAFEGUARD: pending supplier approval for large reductions ───
 ALTER TABLE Orders ADD COLUMN AmendmentPendingApproval BOOL NOT NULL DEFAULT (false);
@@ -948,7 +948,7 @@ CREATE INDEX Idx_Factories_ByH3Index ON Factories(H3Index);
 
 -- ══════════════════════════════════════════════════════════════════════════════
 -- PHASE H: EDGE-CASE HARDENING — Schema Additions
--- STALE_AUDIT state, dispatch metadata columns, partial-payment support,
+-- STALE_AUDIT state, dispatch metadata columns, partial-global_paynt support,
 -- and stale-order audit indexes.
 -- ══════════════════════════════════════════════════════════════════════════════
 
@@ -959,7 +959,7 @@ CREATE INDEX Idx_Factories_ByH3Index ON Factories(H3Index);
 --   ALTER TABLE Orders DROP CONSTRAINT CHK_Order_State;
 --   ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State
 --     CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'DISPATCHED', 'IN_TRANSIT',
---                      'ARRIVING', 'ARRIVED', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION',
+--                      'ARRIVING', 'ARRIVED', 'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION',
 --                      'COMPLETED', 'CANCELLED', 'SCHEDULED', 'QUARANTINE', 'STALE_AUDIT'));
 
 -- ── H.2: Dispatch Metadata Columns ───────────────────────────────────────────
@@ -983,13 +983,13 @@ ALTER TABLE Orders ADD COLUMN RoutingMethod STRING(30);
 -- Covers the StaleOrderAuditor cron: find IN_TRANSIT/ARRIVING orders older than X hours.
 CREATE INDEX Idx_Orders_ByStateUpdatedAt ON Orders(State, CreatedAt);
 
--- ── H.6: Partial Payment Support ─────────────────────────────────────────────
--- PaidAmount tracks actual collected amount when payment is partial.
--- PARTIALLY_PAID status added to PaymentSessions CHECK.
-ALTER TABLE PaymentSessions ADD COLUMN PaidAmount INT64;
+-- ── H.6: Partial GlobalPaynt Support ─────────────────────────────────────────────
+-- PaidAmount tracks actual collected amount when global_paynt is partial.
+-- PARTIALLY_PAID status added to GlobalPayntSessions CHECK.
+ALTER TABLE GlobalPayntSessions ADD COLUMN PaidAmount INT64;
 -- Migration:
---   ALTER TABLE PaymentSessions DROP CONSTRAINT CHK_SessionStatus;
---   ALTER TABLE PaymentSessions ADD CONSTRAINT CHK_SessionStatus
+--   ALTER TABLE GlobalPayntSessions DROP CONSTRAINT CHK_SessionStatus;
+--   ALTER TABLE GlobalPayntSessions ADD CONSTRAINT CHK_SessionStatus
 --     CHECK (Status IN ('CREATED', 'PENDING', 'SETTLED', 'FAILED', 'EXPIRED', 'CANCELLED', 'PARTIALLY_PAID'));
 
 -- ══════════════════════════════════════════════════════════════════════════════
@@ -1012,7 +1012,7 @@ CREATE TABLE CountryConfigs (
     DefaultVUConversion      FLOAT64     NOT NULL DEFAULT (1.0),
     MapsProvider             STRING(20)  NOT NULL DEFAULT ('GOOGLE'), -- GOOGLE | YANDEX | BAIDU | HERE
     LLMProvider              STRING(20)  NOT NULL DEFAULT ('GEMINI'), -- GEMINI | OPENAI | ANTHROPIC
-    PaymentGateways          STRING(MAX),           -- JSON: ["PAYME","CLICK"]
+    GlobalPayntGateways          STRING(MAX),           -- JSON: ["GLOBAL_PAY","CASH"]
     SMSProvider              STRING(30),             -- ESKIZ | TWILIO | null
     NotificationFallbackOrder STRING(MAX) NOT NULL DEFAULT ('["FCM","TELEGRAM"]'), -- JSON array
     LegalRetentionDays       INT64       NOT NULL DEFAULT (365),
@@ -1038,7 +1038,7 @@ CREATE TABLE SupplierCountryOverrides (
     ShopClosedEscalationMinutes INT64,
     OfflineModeDurationMinutes  INT64,
     CashCustodyAlertHours       INT64,
-    PaymentGateways             STRING(MAX),  -- JSON override
+    GlobalPayntGateways             STRING(MAX),  -- JSON override
     NotificationFallbackOrder   STRING(MAX),  -- JSON override
     SMSProvider                 STRING(30),
     MapsProvider                STRING(20),
@@ -1063,7 +1063,7 @@ CREATE TABLE OrderEvents (
     -- Shop-Closed: SHOP_CLOSED_REPORTED, RETAILER_RESPONDED, ADMIN_ESCALATED,
     --              BYPASS_ISSUED, BYPASS_USED, RETURN_TO_DEPOT
     -- Edge Cases: CANCEL_REQUESTED, CANCEL_APPROVED, CANCEL_REJECTED,
-    --             PAYMENT_BYPASS_ISSUED, PAYMENT_BYPASS_USED,
+    --             GLOBAL_PAYNT_BYPASS_ISSUED, GLOBAL_PAYNT_BYPASS_USED,
     --             NO_CAPACITY_FLAGGED, CAPACITY_RESTORED
     -- Audit: STALE_AUDIT_TRIGGERED, QUARANTINE_ENTERED
     Metadata    STRING(MAX),           -- JSON: contextual data per event type
@@ -1131,7 +1131,7 @@ CREATE INDEX Idx_DeviceFingerprints_ByDeviceId ON DeviceFingerprints(DeviceId);
 --   ALTER TABLE Orders DROP CONSTRAINT CHK_Order_State;
 --   ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State
 --     CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'DISPATCHED', 'IN_TRANSIT',
---                      'ARRIVING', 'ARRIVED', 'ARRIVED_SHOP_CLOSED', 'AWAITING_PAYMENT',
+--                      'ARRIVING', 'ARRIVED', 'ARRIVED_SHOP_CLOSED', 'AWAITING_GLOBAL_PAYNT',
 --                      'PENDING_CASH_COLLECTION', 'COMPLETED', 'CANCELLED',
 --                      'CANCEL_REQUESTED', 'NO_CAPACITY', 'DELIVERED_ON_CREDIT',
 --                      'SCHEDULED', 'QUARANTINE', 'STALE_AUDIT'));
@@ -1147,11 +1147,11 @@ CREATE INDEX Idx_Suppliers_ByCountryCode ON Suppliers(CountryCode);
 -- If set and warehouse is active+on-shift, used directly.
 ALTER TABLE Retailers ADD COLUMN PreferredWarehouseId STRING(36);
 
--- ── I.9: ORDER PAYMENT BYPASS SUPPORT (Edge 5) ──────────────────────────────
--- Stores bypass token issued by supplier admin for AWAITING_PAYMENT stuck orders.
-ALTER TABLE Orders ADD COLUMN PaymentBypassToken STRING(6);
-ALTER TABLE Orders ADD COLUMN PaymentBypassIssuedBy STRING(36);
-ALTER TABLE Orders ADD COLUMN PaymentBypassAt TIMESTAMP;
+-- ── I.9: ORDER GLOBAL_PAYNT BYPASS SUPPORT (Edge 5) ──────────────────────────────
+-- Stores bypass token issued by supplier admin for AWAITING_GLOBAL_PAYNT stuck orders.
+ALTER TABLE Orders ADD COLUMN GlobalPayntBypassToken STRING(6);
+ALTER TABLE Orders ADD COLUMN GlobalPayntBypassIssuedBy STRING(36);
+ALTER TABLE Orders ADD COLUMN GlobalPayntBypassAt TIMESTAMP;
 
 -- ── I.10: ORDER CANCEL REQUEST METADATA (Edge 7) ────────────────────────────
 -- Tracks who requested cancellation and the reason.
@@ -1162,7 +1162,7 @@ ALTER TABLE Orders ADD COLUMN CancelReason STRING(MAX);
 -- ══════════════════════════════════════════════════════════════════════════════
 -- PHASE II: HUMAN-CENTRIC EDGE CASES (FRIDAY v3.1)
 -- Credit delivery, negotiation proposals, family member sub-profiles,
--- AI confirmation gate, split payment support, early route complete.
+-- AI confirmation gate, split global_paynt support, early route complete.
 -- ══════════════════════════════════════════════════════════════════════════════
 
 -- ── II.1: CREDIT DELIVERY SUPPORT (Edge 32) ─────────────────────────────────
@@ -1238,12 +1238,12 @@ CREATE TABLE CorrectionWeights (
 CREATE INDEX Idx_CorrectionWeights_ByRetailer ON CorrectionWeights(RetailerId);
 
 -- ── III.2: REFUND TRACKING ──────────────────────────────────────────────────
--- Explicit refund records for auditable payment reversals.
+-- Explicit refund records for auditable global_paynt reversals.
 CREATE TABLE Refunds (
     RefundId        STRING(36)   NOT NULL,
     OrderId         STRING(36)   NOT NULL,
-    SessionId       STRING(36),            -- original PaymentSession if electronic refund
-    Gateway         STRING(30),            -- CLICK, PAYME, GLOBAL_PAY, CASH
+    SessionId       STRING(36),            -- original GlobalPayntSession if electronic refund
+    Gateway         STRING(30),            -- CASH, GLOBAL_PAY, GLOBAL_PAY, CASH
     AmountUZS       INT64        NOT NULL,
     Reason          STRING(MAX)  NOT NULL,
     Status          STRING(20)   NOT NULL,
@@ -1263,7 +1263,7 @@ CREATE INDEX Idx_Refunds_Pending ON Refunds(Status) WHERE Status = 'PENDING';
 ALTER TABLE Orders DROP CONSTRAINT CHK_Order_State;
 ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State
     CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'DISPATCHED', 'IN_TRANSIT',
-                     'ARRIVING', 'ARRIVED', 'ARRIVED_SHOP_CLOSED', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION',
+                     'ARRIVING', 'ARRIVED', 'ARRIVED_SHOP_CLOSED', 'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION',
                      'COMPLETED', 'CANCELLED', 'CANCEL_REQUESTED', 'NO_CAPACITY', 'DELIVERED_ON_CREDIT',
                      'SCHEDULED', 'QUARANTINE', 'STALE_AUDIT', 'REFUNDED'));
 
@@ -1456,7 +1456,7 @@ CREATE INDEX IDX_Orders_H3Cell_State ON Orders(H3Cell, State);
 -- next manifest cycle. Spanner CHECK constraints are immutable — drop+recreate.
 ALTER TABLE Orders DROP CONSTRAINT CHK_Order_State;
 ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'DISPATCHED', 'IN_TRANSIT',
-    'ARRIVING', 'ARRIVED', 'ARRIVED_SHOP_CLOSED', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION',
+    'ARRIVING', 'ARRIVED', 'ARRIVED_SHOP_CLOSED', 'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION',
     'COMPLETED', 'CANCELLED', 'CANCEL_REQUESTED', 'NO_CAPACITY', 'DELIVERED_ON_CREDIT',
     'SCHEDULED', 'AUTO_ACCEPTED', 'QUARANTINE', 'STALE_AUDIT', 'REFUNDED', 'DELAYED'));
 
@@ -1790,7 +1790,7 @@ ALTER TABLE FactoryStaff ADD COLUMN PinHash STRING(MAX);
 ALTER TABLE Orders DROP CONSTRAINT CHK_Order_State;
 ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State CHECK (State IN (
     'PENDING', 'PENDING_REVIEW', 'LOADED', 'DISPATCHED', 'IN_TRANSIT',
-    'ARRIVING', 'ARRIVED', 'ARRIVED_SHOP_CLOSED', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION',
+    'ARRIVING', 'ARRIVED', 'ARRIVED_SHOP_CLOSED', 'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION',
     'COMPLETED', 'CANCELLED', 'CANCEL_REQUESTED', 'NO_CAPACITY', 'DELIVERED_ON_CREDIT',
     'SCHEDULED', 'AUTO_ACCEPTED', 'QUARANTINE', 'STALE_AUDIT', 'REFUNDED', 'DELAYED',
     'READY_FOR_DISPATCH', 'CANCELLED_BY_ORIGIN'));

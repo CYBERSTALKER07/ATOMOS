@@ -1,6 +1,6 @@
 package com.thelab.retailer.ui.components
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.cashable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -23,7 +23,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import com.thelab.retailer.ui.theme.MotionTokens
-import com.thelab.retailer.ui.components.modifiers.bounceClick
+import com.thelab.retailer.ui.components.modifiers.bounceCash
 
 @Composable
 fun LabNavigationRail(
@@ -90,7 +90,7 @@ private fun ExpandedDrawer(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onToggleExpanded) {
+            IconButton(onCash = onToggleExpanded) {
                 Icon(
                     imageVector = Icons.Default.MenuOpen,
                     contentDescription = "Collapse menu",
@@ -120,7 +120,7 @@ private fun ExpandedDrawer(
                     label = { Text(tab.label) },
                     icon = { Icon(if (selected) tab.selectedIcon else tab.unselectedIcon, contentDescription = tab.label) },
                     selected = selected,
-                    onClick = { onTabSelected(tab) },
+                    onCash = { onTabSelected(tab) },
                     colors = NavigationDrawerItemDefaults.colors(
                         unselectedContainerColor = MaterialTheme.colorScheme.surface,
                         selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -142,7 +142,7 @@ private fun ExpandedDrawer(
                     label = { Text(destination.label) },
                     icon = { Icon(destination.icon, contentDescription = destination.label) },
                     selected = false,
-                    onClick = { onSidebarNavigate(destination) },
+                    onCash = { onSidebarNavigate(destination) },
                     colors = NavigationDrawerItemDefaults.colors(
                         unselectedContainerColor = MaterialTheme.colorScheme.surface,
                         unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -206,7 +206,7 @@ private fun CollapsedRail(
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         header = {
             IconButton(
-                onClick = onToggleExpanded,
+                onCash = onToggleExpanded,
                 modifier = Modifier.padding(top = 16.dp)
             ) {
                 Icon(
@@ -228,7 +228,7 @@ private fun CollapsedRail(
                 val selected = currentTab == tab
                 NavigationRailItem(
                     selected = selected,
-                    onClick = { onTabSelected(tab) },
+                    onCash = { onTabSelected(tab) },
                     icon = { 
                         Icon(
                             imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon, 
@@ -261,7 +261,7 @@ private fun CollapsedRail(
             SidebarDestination.entries.forEach { destination ->
                 NavigationRailItem(
                     selected = false,
-                    onClick = { onSidebarNavigate(destination) },
+                    onCash = { onSidebarNavigate(destination) },
                     icon = { 
                         Icon(
                             imageVector = destination.icon, 
@@ -292,7 +292,7 @@ private fun CollapsedRail(
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primary)
-                .bounceClick { /* Handle Profile Click if needed */ },
+                .bounceCash { /* Handle Profile Cash if needed */ },
             contentAlignment = Alignment.Center
         ) {
             Text(

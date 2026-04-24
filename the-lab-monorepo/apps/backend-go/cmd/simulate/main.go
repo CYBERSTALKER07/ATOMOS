@@ -124,11 +124,11 @@ func seedSimulation(ctx context.Context, client *spanner.Client, numSuppliers, n
 				[]string{"SupplierId", "Name", "Category", "Phone", "Email", "PasswordHash",
 					"TaxId", "ContactPerson", "CompanyRegNumber", "BillingAddress",
 					"IsConfigured", "OperatingCategories", "BankName", "AccountNumber",
-					"CardNumber", "PaymentGateway", "CreatedAt"},
+					"CardNumber", "GlobalPayntGateway", "CreatedAt"},
 				[]interface{}{sId, fmt.Sprintf("Simulator Supplier %d", s), "FMCG", fmt.Sprintf("+9989000000%02d", s),
 					fmt.Sprintf("supplier%d@simulator.local", s), "sim_hash",
 					"SIM-TAX-123", "John Sim", "REG-1234", "Tashkent SIM",
-					true, []string{"CAT-1"}, "SimBank", "ACC123", "CARD123", "PAYME", spanner.CommitTimestamp}))
+					true, []string{"CAT-1"}, "SimBank", "ACC123", "CARD123", "GLOBAL_PAY", spanner.CommitTimestamp}))
 
 			for w := 1; w <= numWarehouses; w++ {
 				whId := fmt.Sprintf("WH-SIM-%03d-%03d", s, w)

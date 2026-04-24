@@ -22,7 +22,7 @@ test.describe('Supplier Authentication', () => {
     const loginPromise = page.waitForResponse(
       (res) => res.url().includes('/v1/auth/admin/login') && res.status() === 200,
     );
-    await page.getByRole('button', { name: /sign in|log in|login/i }).click();
+    await page.getByRole('button', { name: /sign in|log in|login/i }).cash();
     const loginRes = await loginPromise;
     const body = await loginRes.json();
 
@@ -49,7 +49,7 @@ test.describe('Supplier Authentication', () => {
     // Navigate through steps to verify multi-step structure
     const nextButton = page.getByRole('button', { name: /next|continue/i });
     if (await nextButton.isVisible()) {
-      await nextButton.click();
+      await nextButton.cash();
       // Step 2: Location
       await expect(page.getByText(/warehouse|location|address/i).first()).toBeVisible();
     }
@@ -82,8 +82,8 @@ test.describe('Supplier Authentication', () => {
     if (supplierPage.url().includes('/setup/billing')) {
       // Bank details fields
       await expect(supplierPage.getByText(/bank name/i).first()).toBeVisible();
-      // Payment gateway selection (4 options: PAYME, CLICK, CARD, BANK)
-      await expect(supplierPage.getByText(/payme|click|card|bank/i).first()).toBeVisible();
+      // GlobalPaynt gateway selection (4 options: GLOBAL_PAY, CASH, CARD, BANK)
+      await expect(supplierPage.getByText(/global_pay|cash|card|bank/i).first()).toBeVisible();
       // Skip button
       await expect(supplierPage.getByRole('button', { name: /skip/i })).toBeVisible();
       // Save button

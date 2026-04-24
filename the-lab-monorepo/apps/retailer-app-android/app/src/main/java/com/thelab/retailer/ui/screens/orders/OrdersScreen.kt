@@ -1,7 +1,7 @@
 package com.thelab.retailer.ui.screens.orders
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.cashable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -144,7 +144,7 @@ fun OrdersScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(onCash = {
                     correctionAmount.toLongOrNull()?.let { amt ->
                         viewModel.correctPrediction(forecast.id, amt)
                     }
@@ -153,11 +153,11 @@ fun OrdersScreen(
             },
             dismissButton = {
                 Row {
-                    TextButton(onClick = {
+                    TextButton(onCash = {
                         viewModel.rejectPrediction(forecast.id)
                         correctionForecast = null; correctionAmount = ""
                     }) { Text("Reject", color = StatusRed) }
-                    TextButton(onClick = { correctionForecast = null; correctionAmount = "" }) { Text("Cancel") }
+                    TextButton(onCash = { correctionForecast = null; correctionAmount = "" }) { Text("Cancel") }
                 }
             },
         )
@@ -188,7 +188,7 @@ fun OrdersScreen(
                     val selected = pagerState.currentPage == index
                     Tab(
                         selected = selected,
-                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        onCash = { scope.launch { pagerState.animateScrollToPage(index) } },
                         icon = {
                             Icon(
                                 imageVector = tab.icon,
@@ -214,13 +214,13 @@ fun OrdersScreen(
                     0 -> ActiveOrdersList(
                         orders = uiState.activeOrders,
                         isLoading = uiState.isLoading,
-                        onDetailsClick = { selectedOrder = it },
-                        onQRClick = { qrOrder = it },
+                        onDetailsCash = { selectedOrder = it },
+                        onQRCash = { qrOrder = it },
                     )
                     1 -> OrderedList(
                         orders = uiState.pendingOrders,
                         isLoading = uiState.isLoading,
-                        onDetailsClick = { selectedOrder = it },
+                        onDetailsCash = { selectedOrder = it },
                         onCancel = viewModel::cancelOrder,
                     )
                     2 -> AiPlannedList(
@@ -244,8 +244,8 @@ fun OrdersScreen(
 private fun ActiveOrdersList(
     orders: List<Order>,
     isLoading: Boolean = false,
-    onDetailsClick: (Order) -> Unit,
-    onQRClick: (Order) -> Unit,
+    onDetailsCash: (Order) -> Unit,
+    onQRCash: (Order) -> Unit,
 ) {
     if (isLoading && orders.isEmpty()) {
         ShimmerOrderList()
@@ -259,8 +259,8 @@ private fun ActiveOrdersList(
         itemsIndexed(orders, key = { _, o -> o.id }) { _, order ->
             ActiveOrderCard(
                 order = order,
-                onDetailsClick = { onDetailsClick(order) },
-                onQRClick = { onQRClick(order) },
+                onDetailsCash = { onDetailsCash(order) },
+                onQRCash = { onQRCash(order) },
             )
         }
         item { Spacer(modifier = Modifier.height(32.dp)) }
@@ -275,7 +275,7 @@ private fun ActiveOrdersList(
 private fun OrderedList(
     orders: List<Order>,
     isLoading: Boolean = false,
-    onDetailsClick: (Order) -> Unit,
+    onDetailsCash: (Order) -> Unit,
     onCancel: (String) -> Unit,
 ) {
     if (isLoading && orders.isEmpty()) {
@@ -290,7 +290,7 @@ private fun OrderedList(
         itemsIndexed(orders, key = { _, o -> o.id }) { _, order ->
             OrderedCard(
                 order = order,
-                onDetailsClick = { onDetailsClick(order) },
+                onDetailsCash = { onDetailsCash(order) },
                 onCancel = { onCancel(order.id) },
             )
         }
@@ -335,8 +335,8 @@ private fun AiPlannedList(
 @Composable
 private fun ActiveOrderCard(
     order: Order,
-    onDetailsClick: () -> Unit,
-    onQRClick: () -> Unit,
+    onDetailsCash: () -> Unit,
+    onQRCash: () -> Unit,
 ) {
     val progress = order.status.progressFraction
     val ringColor = order.status.statusColor()
@@ -434,7 +434,7 @@ private fun ActiveOrderCard(
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     modifier = Modifier
                         .clip(PillShape)
-                        .clickable { onDetailsClick() }
+                        .cashable { onDetailsCash() }
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), PillShape)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 )
@@ -443,7 +443,7 @@ private fun ActiveOrderCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .clip(PillShape)
-                        .clickable { onQRClick() }
+                        .cashable { onQRCash() }
                         .background(MaterialTheme.colorScheme.primary, PillShape)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 ) {
@@ -460,7 +460,7 @@ private fun ActiveOrderCard(
 @Composable
 private fun OrderedCard(
     order: Order,
-    onDetailsClick: () -> Unit,
+    onDetailsCash: () -> Unit,
     onCancel: () -> Unit,
 ) {
     val ringColor = order.status.statusColor()
@@ -541,7 +541,7 @@ private fun OrderedCard(
                     color = StatusRed,
                     modifier = Modifier
                         .clip(PillShape)
-                        .clickable { onCancel() }
+                        .cashable { onCancel() }
                         .background(StatusRed.copy(alpha = 0.1f), PillShape)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 )
@@ -551,7 +551,7 @@ private fun OrderedCard(
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     modifier = Modifier
                         .clip(PillShape)
-                        .clickable { onDetailsClick() }
+                        .cashable { onDetailsCash() }
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), PillShape)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 )
@@ -615,7 +615,7 @@ private fun AiPlannedCard(
                         color = Color.White,
                         modifier = Modifier
                             .clip(PillShape)
-                            .clickable { onPreorder() }
+                            .cashable { onPreorder() }
                             .background(MaterialTheme.colorScheme.primary, PillShape)
                             .padding(horizontal = 10.dp, vertical = 5.dp),
                     )
@@ -646,7 +646,7 @@ private fun AiPlannedCard(
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     modifier = Modifier
                         .clip(PillShape)
-                        .clickable { onCorrect() }
+                        .cashable { onCorrect() }
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), PillShape)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 )
@@ -656,7 +656,7 @@ private fun AiPlannedCard(
                     color = StatusRed,
                     modifier = Modifier
                         .clip(PillShape)
-                        .clickable { onReject() }
+                        .cashable { onReject() }
                         .background(StatusRed.copy(alpha = 0.1f), PillShape)
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 )

@@ -192,8 +192,8 @@ private struct NotificationRow: View {
         case "ORDER_STATUS_CHANGED": return "arrow.triangle.2.circlepath"
         case "PAYLOAD_READY_TO_SEAL": return "shippingbox"
         case "PAYLOAD_SEALED": return "checkmark.seal"
-        case "PAYMENT_SETTLED": return "creditcard"
-        case "PAYMENT_FAILED": return "exclamationmark.triangle"
+        case "GLOBAL_PAYNT_SETTLED": return "creditcard"
+        case "GLOBAL_PAYNT_FAILED": return "exclamationmark.triangle"
         default: return "bell"
         }
     }

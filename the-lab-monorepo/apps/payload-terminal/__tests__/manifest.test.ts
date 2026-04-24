@@ -10,7 +10,7 @@ describe('buildManifest', () => {
 
   it('returns empty array when orders have no items', () => {
     const orders: LiveOrder[] = [
-      { order_id: 'ORD-1', retailer_id: 'R1', amount: 100000, payment_gateway: 'PAYME', state: 'LOADED' },
+      { order_id: 'ORD-1', retailer_id: 'R1', amount: 100000, payment_gateway: 'GLOBAL_PAY', state: 'LOADED' },
     ];
     expect(buildManifest(orders)).toEqual([]);
   });
@@ -52,7 +52,7 @@ describe('buildManifest', () => {
       order_id: 'ORD-1',
       retailer_id: 'R1',
       amount: 100000,
-      payment_gateway: 'PAYME',
+      payment_gateway: 'GLOBAL_PAY',
       state: 'LOADED',
       items: [
         { line_item_id: 'LI-1', sku_id: 'SKU-A', sku_name: 'Product A', quantity: 5, unit_price: 10000, status: 'PENDING' },
@@ -72,7 +72,7 @@ describe('buildManifest', () => {
         items: [{ line_item_id: 'LI-1', sku_id: 'SKU-A', sku_name: 'A', quantity: 1, unit_price: 50000, status: 'PENDING' }],
       },
       {
-        order_id: 'ORD-2', retailer_id: 'R2', amount: 75000, payment_gateway: 'CLICK', state: 'LOADED',
+        order_id: 'ORD-2', retailer_id: 'R2', amount: 75000, payment_gateway: 'GLOBAL_PAY', state: 'LOADED',
         items: [
           { line_item_id: 'LI-2', sku_id: 'SKU-B', sku_name: 'B', quantity: 2, unit_price: 25000, status: 'PENDING' },
           { line_item_id: 'LI-3', sku_id: 'SKU-C', sku_name: 'C', quantity: 1, unit_price: 25000, status: 'PENDING' },

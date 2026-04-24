@@ -1,7 +1,7 @@
 package com.thelab.retailer.ui.screens.dashboard
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.cashable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -133,7 +133,7 @@ fun DashboardScreen(
                         timeRanges.forEachIndexed { index, label ->
                             SegmentedButton(
                                 selected = selectedRange == index,
-                                onClick = { selectedRange = index },
+                                onCash = { selectedRange = index },
                                 shape = SegmentedButtonDefaults.itemShape(index = index, count = timeRanges.size),
                                 icon = {
                                     SegmentedButtonDefaults.Icon(active = selectedRange == index) {
@@ -241,7 +241,7 @@ private fun QuickReorderRow(products: List<Product>) {
             val product = products[idx]
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.width(80.dp).clickable { /* add to cart */ },
+                modifier = Modifier.width(80.dp).cashable { /* add to cart */ },
             ) {
                 Box(
                     modifier = Modifier.size(64.dp)
@@ -294,7 +294,7 @@ private fun PredictionCard(forecast: DemandForecast, onPreorder: () -> Unit) {
                     modifier = Modifier.size(32.dp)
                         .clip(CircleShape)
                         .background(MaterialTheme.colorScheme.primary)
-                        .clickable { onPreorder() },
+                        .cashable { onPreorder() },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(Icons.Rounded.AddShoppingCart, contentDescription = "Pre-order", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimary)

@@ -1,4 +1,4 @@
-// Package vault provides AES-256-GCM encryption for supplier payment credentials.
+// Package vault provides AES-256-GCM encryption for supplier global_paynt credentials.
 // Plaintext secret keys NEVER leave this package or the backend process.
 package vault
 
@@ -132,15 +132,15 @@ func decryptWithKey(key, ciphertext []byte) ([]byte, error) {
 	return gcm.Open(nil, nonce, ct, nil)
 }
 
-// GatewayConfig represents a supplier's payment gateway credentials.
+// GatewayConfig represents a supplier's global_paynt gateway credentials.
 type GatewayConfig struct {
 	ConfigID    string    `json:"config_id"`
 	SupplierId  string    `json:"supplier_id"`
 	GatewayName string    `json:"gateway_name"`
 	MerchantId  string    `json:"merchant_id"`
-	ServiceId   string    `json:"service_id,omitempty"`   // Click only
+	ServiceId   string    `json:"service_id,omitempty"`   // Cash only
 	SecretKey   string    `json:"-"`                      // NEVER serialized to JSON
-	RecipientId string    `json:"recipient_id,omitempty"` // Global Pay split-payment recipient
+	RecipientId string    `json:"recipient_id,omitempty"` // Global Pay split-global_paynt recipient
 	IsActive    bool      `json:"is_active"`
 	CreatedAt   time.Time `json:"created_at"`
 }
@@ -156,7 +156,7 @@ type GatewayConfigSummary struct {
 	HasSecret   bool      `json:"has_secret"`
 }
 
-// Service handles vault CRUD for SupplierPaymentConfigs.
+// Service handles vault CRUD for SupplierGlobalPayntConfigs.
 type Service struct {
 	Spanner *spanner.Client
 }
@@ -165,7 +165,7 @@ type Service struct {
 func (s *Service) UpsertConfig(ctx context.Context, supplierId, gatewayName, merchantId, serviceId, secretKey string) (*GatewayConfigSummary, error) {
 	cap := GetProviderCapability(gatewayName)
 	if cap == nil {
-		return nil, fmt.Errorf("unsupported gateway: %s (supported: CLICK, PAYME, GLOBAL_PAY)", gatewayName)
+		return nil, fmt.Errorf("unsupported gateway: %s (supported: CASH, GLOBAL_PAY, GLOBAL_PAY)", gatewayName)
 	}
 	fieldValues := map[string]string{
 		"merchant_id": merchantId,
@@ -191,7 +191,7 @@ func (s *Service) UpsertConfig(ctx context.Context, supplierId, gatewayName, mer
 
 	_, err = s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		stmt := spanner.Statement{
-			SQL: `SELECT ConfigId FROM SupplierPaymentConfigs
+			SQL: `SELECT ConfigId FROM SupplierGlobalPayntConfigs
 			      WHERE SupplierId = @sid AND GatewayName = @gw LIMIT 1`,
 			Params: map[string]interface{}{"sid": supplierId, "gw": gatewayName},
 		}
@@ -211,7 +211,7 @@ func (s *Service) UpsertConfig(ctx context.Context, supplierId, gatewayName, mer
 				vals = append(vals, serviceId)
 			}
 			return txn.BufferWrite([]*spanner.Mutation{
-				spanner.Update("SupplierPaymentConfigs", cols, vals),
+				spanner.Update("SupplierGlobalPayntConfigs", cols, vals),
 			})
 		}
 
@@ -224,7 +224,7 @@ func (s *Service) UpsertConfig(ctx context.Context, supplierId, gatewayName, mer
 			vals = append(vals, serviceId)
 		}
 		return txn.BufferWrite([]*spanner.Mutation{
-			spanner.Insert("SupplierPaymentConfigs", cols, vals),
+			spanner.Insert("SupplierGlobalPayntConfigs", cols, vals),
 		})
 	})
 
@@ -242,7 +242,7 @@ func (s *Service) UpsertConfig(ctx context.Context, supplierId, gatewayName, mer
 	}, nil
 }
 
-// SetRecipientId stores the Global Pay split-payment recipient ID on an existing
+// SetRecipientId stores the Global Pay split-global_paynt recipient ID on an existing
 // supplier gateway config. This is a distinct lifecycle event from credential upsert.
 func (s *Service) SetRecipientId(ctx context.Context, supplierId, gatewayName, recipientId string) error {
 	if strings.TrimSpace(recipientId) == "" {
@@ -250,7 +250,7 @@ func (s *Service) SetRecipientId(ctx context.Context, supplierId, gatewayName, r
 	}
 	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		stmt := spanner.Statement{
-			SQL: `SELECT ConfigId FROM SupplierPaymentConfigs
+			SQL: `SELECT ConfigId FROM SupplierGlobalPayntConfigs
 			      WHERE SupplierId = @sid AND GatewayName = @gw AND IsActive = true LIMIT 1`,
 			Params: map[string]interface{}{"sid": supplierId, "gw": gatewayName},
 		}
@@ -265,7 +265,7 @@ func (s *Service) SetRecipientId(ctx context.Context, supplierId, gatewayName, r
 			return err
 		}
 		return txn.BufferWrite([]*spanner.Mutation{
-			spanner.Update("SupplierPaymentConfigs",
+			spanner.Update("SupplierGlobalPayntConfigs",
 				[]string{"ConfigId", "RecipientId", "UpdatedAt"},
 				[]interface{}{configId, recipientId, spanner.CommitTimestamp}),
 		})
@@ -280,7 +280,7 @@ func (s *Service) SetRecipientId(ctx context.Context, supplierId, gatewayName, r
 func (s *Service) ListConfigs(ctx context.Context, supplierId string) ([]GatewayConfigSummary, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT ConfigId, GatewayName, MerchantId, ServiceId, IsActive, CreatedAt
-		      FROM SupplierPaymentConfigs
+		      FROM SupplierGlobalPayntConfigs
 		      WHERE SupplierId = @sid ORDER BY GatewayName`,
 		Params: map[string]interface{}{"sid": supplierId},
 	}
@@ -315,7 +315,7 @@ func (s *Service) ListConfigs(ctx context.Context, supplierId string) ([]Gateway
 func (s *Service) ListActiveGatewayNames(ctx context.Context, supplierId string) ([]string, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT GatewayName
-		      FROM SupplierPaymentConfigs
+		      FROM SupplierGlobalPayntConfigs
 		      WHERE SupplierId = @sid AND IsActive = TRUE`,
 		Params: map[string]interface{}{"sid": supplierId},
 	}
@@ -350,7 +350,7 @@ func (s *Service) ListActiveGatewayNames(ctx context.Context, supplierId string)
 // DeactivateConfig sets IsActive=false for a config.
 func (s *Service) DeactivateConfig(ctx context.Context, supplierId, configId string) error {
 	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		row, readErr := txn.ReadRow(ctx, "SupplierPaymentConfigs", spanner.Key{configId},
+		row, readErr := txn.ReadRow(ctx, "SupplierGlobalPayntConfigs", spanner.Key{configId},
 			[]string{"SupplierId", "IsActive"})
 		if readErr != nil {
 			return fmt.Errorf("config not found: %w", readErr)
@@ -364,7 +364,7 @@ func (s *Service) DeactivateConfig(ctx context.Context, supplierId, configId str
 			return fmt.Errorf("config does not belong to supplier")
 		}
 		return txn.BufferWrite([]*spanner.Mutation{
-			spanner.Update("SupplierPaymentConfigs",
+			spanner.Update("SupplierGlobalPayntConfigs",
 				[]string{"ConfigId", "IsActive", "UpdatedAt"},
 				[]interface{}{configId, false, spanner.CommitTimestamp}),
 		})
@@ -377,7 +377,7 @@ func (s *Service) DeactivateConfig(ctx context.Context, supplierId, configId str
 func (s *Service) GetDecryptedConfig(ctx context.Context, supplierId, gatewayName string) (*GatewayConfig, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT ConfigId, MerchantId, ServiceId, SecretKey, IsActive, CreatedAt, RecipientId
-		      FROM SupplierPaymentConfigs
+		      FROM SupplierGlobalPayntConfigs
 		      WHERE SupplierId = @sid AND GatewayName = @gw AND IsActive = TRUE
 		      LIMIT 1`,
 		Params: map[string]interface{}{"sid": supplierId, "gw": gatewayName},
@@ -429,7 +429,7 @@ func logDecryptAccess(client *spanner.Client, supplierID, gatewayName, configID 
 	_, err := client.Apply(ctx, []*spanner.Mutation{
 		spanner.Insert("AuditLog",
 			[]string{"LogId", "ActorId", "ActorRole", "Action", "ResourceType", "ResourceId", "Metadata", "CreatedAt"},
-			[]interface{}{logID, "SYSTEM", "BACKEND", "DECRYPT", "PAYMENT_CONFIG", configID,
+			[]interface{}{logID, "SYSTEM", "BACKEND", "DECRYPT", "GLOBAL_PAYNT_CONFIG", configID,
 				`{"supplier_id":"` + supplierID + `","gateway":"` + gatewayName + `"}`,
 				spanner.CommitTimestamp,
 			},
@@ -441,7 +441,7 @@ func logDecryptAccess(client *spanner.Client, supplierID, gatewayName, configID 
 }
 
 // GetDecryptedConfigByOrder resolves supplier credentials from an order ID.
-// Path: OrderId -> Orders.SupplierId -> SupplierPaymentConfigs
+// Path: OrderId -> Orders.SupplierId -> SupplierGlobalPayntConfigs
 func (s *Service) GetDecryptedConfigByOrder(ctx context.Context, orderId, gatewayName string) (*GatewayConfig, error) {
 	row, err := s.Spanner.Single().ReadRow(ctx, "Orders", spanner.Key{orderId}, []string{"SupplierId"})
 	if err != nil {

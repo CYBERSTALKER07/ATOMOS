@@ -1,7 +1,7 @@
 package com.thelab.retailer.ui.screens.suppliers
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.cashable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,7 +50,7 @@ import com.thelab.retailer.ui.theme.StatusGreen
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun MySuppliersScreen(
-    onSupplierClick: (Supplier) -> Unit,
+    onSupplierCash: (Supplier) -> Unit,
     viewModel: MySuppliersViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -78,7 +78,7 @@ fun MySuppliersScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 itemsIndexed(uiState.suppliers, key = { _, s -> s.id }) { _, supplier ->
-                    SupplierCard(supplier, onClick = { onSupplierClick(supplier) })
+                    SupplierCard(supplier, onCash = { onSupplierCash(supplier) })
                 }
             }
         }
@@ -145,11 +145,11 @@ private fun SupplierSkeletonGrid() {
 }
 
 @Composable
-private fun SupplierCard(supplier: Supplier, onClick: () -> Unit) {
+private fun SupplierCard(supplier: Supplier, onCash: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth()
             .shadow(4.dp, SoftSquircleShape, ambientColor = Color.Black.copy(alpha = 0.06f), spotColor = Color.Black.copy(alpha = 0.06f))
-            .clickable { onClick() },
+            .cashable { onCash() },
         shape = SoftSquircleShape,
         color = MaterialTheme.colorScheme.surface,
     ) {

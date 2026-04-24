@@ -59,7 +59,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.thelab.retailer.data.model.CartItem
 import com.thelab.retailer.ui.components.CheckoutSheet
-import com.thelab.retailer.ui.components.DefaultCheckoutPaymentOptions
+import com.thelab.retailer.ui.components.DefaultCheckoutGlobalPayntOptions
 import com.thelab.retailer.ui.theme.StatusGreen
 import com.thelab.retailer.ui.theme.StatusRed
 
@@ -111,7 +111,7 @@ fun CartScreen(
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         )
                         Spacer(modifier = Modifier.weight(1f))
-                        TextButton(onClick = viewModel::clearCart) {
+                        TextButton(onCash = viewModel::clearCart) {
                             Text("Clear All", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = StatusRed)
                         }
                     }
@@ -146,11 +146,11 @@ fun CartScreen(
                 shipping = uiState.displayShipping,
                 discount = uiState.displayDiscount,
                 total = uiState.displayTotal,
-                selectedPaymentGateway = uiState.selectedPaymentGateway,
-                paymentLabel = uiState.selectedPaymentLabel,
-                paymentOptions = DefaultCheckoutPaymentOptions,
-                onBuy = viewModel::processPayment,
-                onSelectPayment = viewModel::setSelectedPaymentGateway,
+                selectedGlobalPayntGateway = uiState.selectedGlobalPayntGateway,
+                global_payntLabel = uiState.selectedGlobalPayntLabel,
+                global_payntOptions = DefaultCheckoutGlobalPayntOptions,
+                onBuy = viewModel::processGlobalPaynt,
+                onSelectGlobalPaynt = viewModel::setSelectedGlobalPayntGateway,
                 onDismiss = viewModel::dismissCheckout,
             )
         }
@@ -167,7 +167,7 @@ fun CartScreen(
                 },
                 confirmButton = {
                     Button(
-                        onClick = {
+                        onCash = {
                             showSupplierClosedDialog = false
                             viewModel.showCheckout()
                         }
@@ -176,7 +176,7 @@ fun CartScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showSupplierClosedDialog = false }) {
+                    TextButton(onCash = { showSupplierClosedDialog = false }) {
                         Text("Cancel")
                     }
                 },
@@ -248,7 +248,7 @@ private fun CartItemCard(
 @Composable
 private fun QuantityStepper(quantity: Int, onDecrement: () -> Unit, onIncrement: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onDecrement, modifier = Modifier.size(28.dp)) {
+        IconButton(onCash = onDecrement, modifier = Modifier.size(28.dp)) {
             Icon(
                 if (quantity <= 1) Icons.Outlined.Delete else Icons.Outlined.Remove,
                 contentDescription = null,
@@ -262,7 +262,7 @@ private fun QuantityStepper(quantity: Int, onDecrement: () -> Unit, onIncrement:
             modifier = Modifier.width(24.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
-        IconButton(onClick = onIncrement, modifier = Modifier.size(28.dp)) {
+        IconButton(onCash = onIncrement, modifier = Modifier.size(28.dp)) {
             Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
         }
     }
@@ -310,7 +310,7 @@ private fun CartBottomBar(subtotal: String, onCheckout: () -> Unit) {
                 }
                 Spacer(modifier = Modifier.weight(1f))
                 Surface(
-                    onClick = onCheckout,
+                    onCash = onCheckout,
                     shape = PillShape,
                     color = MaterialTheme.colorScheme.primary,
                 ) {
@@ -347,7 +347,7 @@ private fun EmptyCartView() {
             )
             Spacer(modifier = Modifier.height(20.dp))
             Surface(
-                onClick = { /* user taps Catalog tab instead */ },
+                onCash = { /* user taps Catalog tab instead */ },
                 shape = PillShape,
                 color = MaterialTheme.colorScheme.primary,
             ) {

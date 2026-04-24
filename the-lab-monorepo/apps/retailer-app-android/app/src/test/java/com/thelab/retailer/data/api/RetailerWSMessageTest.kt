@@ -12,19 +12,19 @@ class RetailerWSMessageTest {
     // ── Full deserialization ────────────────────────────────────────────────
 
     @Test
-    fun `deserialize full payment_ready message`() {
+    fun `deserialize full global_paynt_ready message`() {
         val raw = """
             {
-                "type": "PAYMENT_READY",
+                "type": "GLOBAL_PAYNT_READY",
                 "order_id": "ORD-001",
                 "invoice_id": "INV-001",
                 "session_id": "SESS-001",
                 "amount": 150000,
                 "original_amount": 160000,
                 "available_card_gateways": ["GLOBAL_PAY", "UZCARD"],
-                "message": "Payment ready",
+                "message": "GlobalPaynt ready",
                 "delivery_token": "tok_abc",
-                "payment_method": "CARD",
+                "global_paynt_method": "CARD",
                 "gateway": "GLOBAL_PAY",
                 "driver_latitude": 41.2995,
                 "driver_longitude": 69.2401,
@@ -35,16 +35,16 @@ class RetailerWSMessageTest {
             }
         """.trimIndent()
         val msg = json.decodeFromString<RetailerWSMessage>(raw)
-        assertEquals("PAYMENT_READY", msg.type)
+        assertEquals("GLOBAL_PAYNT_READY", msg.type)
         assertEquals("ORD-001", msg.orderId)
         assertEquals("INV-001", msg.invoiceId)
         assertEquals("SESS-001", msg.sessionId)
         assertEquals(150000L, msg.amount)
         assertEquals(160000L, msg.originalAmount)
-        assertEquals(listOf("PAYME", "CLICK"), msg.availableCardGateways)
-        assertEquals("Payment ready", msg.message)
+        assertEquals(listOf("GLOBAL_PAY", "CASH"), msg.availableCardGateways)
+        assertEquals("GlobalPaynt ready", msg.message)
         assertEquals("tok_abc", msg.deliveryToken)
-        assertEquals("PAYME", msg.gateway)
+        assertEquals("GLOBAL_PAY", msg.gateway)
         assertEquals(41.2995, msg.driverLatitude!!, 0.001)
         assertEquals(69.2401, msg.driverLongitude!!, 0.001)
         assertEquals("SUP-001", msg.supplierId)
@@ -71,8 +71,8 @@ class RetailerWSMessageTest {
     @Test
     fun `type field preserves exact value`() {
         val types = listOf(
-            "PAYMENT_READY", "ORDER_UPDATE", "DRIVER_APPROACHING",
-            "OFFLOAD_CONFIRMED", "PAYMENT_SUCCESS", "PAYMENT_FAILED"
+            "GLOBAL_PAYNT_READY", "ORDER_UPDATE", "DRIVER_APPROACHING",
+            "OFFLOAD_CONFIRMED", "GLOBAL_PAYNT_SUCCESS", "GLOBAL_PAYNT_FAILED"
         )
         for (typeName in types) {
             val raw = """{"type":"$typeName"}"""
@@ -85,7 +85,7 @@ class RetailerWSMessageTest {
 
     @Test
     fun `available_card_gateways parses multiple gateways`() {
-        val raw = """{"type":"PAYMENT_READY","available_card_gateways":["GLOBAL_PAY","CASH","UZCARD"]}"""
+        val raw = """{"type":"GLOBAL_PAYNT_READY","available_card_gateways":["GLOBAL_PAY","CASH","UZCARD"]}"""
         val msg = json.decodeFromString<RetailerWSMessage>(raw)
         assertEquals(3, msg.availableCardGateways.size)
         assertTrue(msg.availableCardGateways.contains("GLOBAL_PAY"))
@@ -104,7 +104,7 @@ class RetailerWSMessageTest {
 
     @Test
     fun `amended order has different original and current amounts`() {
-        val raw = """{"type":"PAYMENT_READY","amount":140000,"original_amount":150000}"""
+        val raw = """{"type":"GLOBAL_PAYNT_READY","amount":140000,"original_amount":150000}"""
         val msg = json.decodeFromString<RetailerWSMessage>(raw)
         assertEquals(140000L, msg.amount)
         assertEquals(150000L, msg.originalAmount)
@@ -113,7 +113,7 @@ class RetailerWSMessageTest {
 
     @Test
     fun `non-amended order has zero original amount by default`() {
-        val raw = """{"type":"PAYMENT_READY","amount":150000}"""
+        val raw = """{"type":"GLOBAL_PAYNT_READY","amount":150000}"""
         val msg = json.decodeFromString<RetailerWSMessage>(raw)
         assertEquals(150000L, msg.amount)
         assertEquals(0L, msg.originalAmount)

@@ -68,7 +68,7 @@ fun LabEmptyState(
             )
             if (!actionLabel.isNullOrBlank() && onAction != null) {
                 Spacer(modifier = Modifier.height(20.dp))
-                FilledTonalButton(onClick = onAction) {
+                FilledTonalButton(onCash = onAction) {
                     Text(actionLabel)
                 }
             }

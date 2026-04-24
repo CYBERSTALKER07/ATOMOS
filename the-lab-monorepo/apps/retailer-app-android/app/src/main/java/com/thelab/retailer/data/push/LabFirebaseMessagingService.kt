@@ -54,8 +54,8 @@ class LabFirebaseMessagingService : FirebaseMessagingService() {
         "DRIVER_APPROACHING" -> "Delivery Arriving"
         "DRIVER_ARRIVED" -> "Driver Has Arrived"
         "ORDER_STATUS_CHANGED" -> "Order Status Updated"
-        "PAYMENT_SETTLED" -> "Payment Received"
-        "PAYMENT_FAILED" -> "Payment Failed"
+        "GLOBAL_PAYNT_SETTLED" -> "GlobalPaynt Received"
+        "GLOBAL_PAYNT_FAILED" -> "GlobalPaynt Failed"
         else -> "Notification"
     }
 
@@ -66,8 +66,8 @@ class LabFirebaseMessagingService : FirebaseMessagingService() {
             "DRIVER_APPROACHING" -> "Driver from ${data["supplier_name"] ?: "a supplier"} is approaching"
             "DRIVER_ARRIVED" -> "Driver has arrived for order #$orderId"
             "ORDER_STATUS_CHANGED" -> "Order #$orderId is now ${data["new_state"] ?: "updated"}"
-            "PAYMENT_SETTLED" -> "Payment confirmed for order #$orderId"
-            "PAYMENT_FAILED" -> "Payment failed for order #$orderId"
+            "GLOBAL_PAYNT_SETTLED" -> "GlobalPaynt confirmed for order #$orderId"
+            "GLOBAL_PAYNT_FAILED" -> "GlobalPaynt failed for order #$orderId"
             else -> "You have a new notification"
         }
     }

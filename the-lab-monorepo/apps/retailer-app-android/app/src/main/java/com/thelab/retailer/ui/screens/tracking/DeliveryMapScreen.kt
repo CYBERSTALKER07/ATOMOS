@@ -139,7 +139,7 @@ fun DeliveryMapScreen(
         TopAppBar(
             title = { Text("Delivery Tracking") },
             navigationIcon = {
-                IconButton(onClick = onBack) {
+                IconButton(onCash = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
             },
@@ -161,7 +161,7 @@ fun DeliveryMapScreen(
                     val isSelected = supplier.supplierId in uiState.selectedSupplierIds
                     FilterChip(
                         selected = isSelected,
-                        onClick = { viewModel.toggleSupplier(supplier.supplierId) },
+                        onCash = { viewModel.toggleSupplier(supplier.supplierId) },
                         label = { Text(supplier.supplierName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -188,7 +188,7 @@ fun DeliveryMapScreen(
                         myLocationButtonEnabled = false,
                         mapToolbarEnabled = false,
                     ),
-                    onMapClick = { selectedOrder = null },
+                    onMapCash = { selectedOrder = null },
                 ) {
                     for (order in visibleOrders) {
                         val driverLat = order.driverLatitude ?: continue
@@ -204,7 +204,7 @@ fun DeliveryMapScreen(
                             title = order.supplierName,
                             snippet = "${order.state} — ${order.items.size} item${if (order.items.size != 1) "s" else ""}",
                             icon = BitmapDescriptorFactory.defaultMarker(markerColor),
-                            onClick = {
+                            onCash = {
                                 selectedOrder = order
                                 true
                             },
@@ -215,7 +215,7 @@ fun DeliveryMapScreen(
                 // My location FAB
                 if (hasLocationPermission) {
                     SmallFloatingActionButton(
-                        onClick = {
+                        onCash = {
                             scope.launch {
                                 // Camera animates to current location via built-in padding
                                 cameraPositionState.animate(

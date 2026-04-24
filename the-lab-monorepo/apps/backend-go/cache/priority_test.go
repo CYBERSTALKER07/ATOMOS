@@ -16,9 +16,9 @@ func TestClassifyRequest_P0Critical(t *testing.T) {
 		"/v1/orders/request-cancel",
 		"/v1/admin/orders/approve-cancel",
 		"/v1/order/cancel",
-		"/v1/webhooks/click",
-		"/v1/webhooks/payme",
-		"/v1/payment/chargeback",
+		"/v1/webhooks/cash",
+		"/v1/webhooks/global_pay",
+		"/v1/global_paynt/chargeback",
 	}
 	for _, path := range cases {
 		if got := ClassifyRequest(path); got != PriorityCritical {

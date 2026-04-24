@@ -32,7 +32,7 @@ class OrderModelTest {
             latitude = 41.2995,
             longitude = 69.2401,
             qrToken = "tok_abc",
-            paymentGateway = "PAYME",
+            paymentGateway = "GLOBAL_PAY",
             createdAt = "2026-04-12T10:00:00Z",
             updatedAt = "2026-04-12T10:00:00Z",
             items = emptyList(),

@@ -87,10 +87,10 @@ struct RetailerServiceTests {
             "ORDER_DELIVERED",
             "ORDER_ARRIVING",
             "DELIVERY_TOKEN",
-            "PAYMENT_REQUIRED",
-            "PAYMENT_SETTLED",
-            "PAYMENT_FAILED",
-            "PAYMENT_EXPIRED",
+            "GLOBAL_PAYNT_REQUIRED",
+            "GLOBAL_PAYNT_SETTLED",
+            "GLOBAL_PAYNT_FAILED",
+            "GLOBAL_PAYNT_EXPIRED",
             "ORDER_AMENDED",
             "ORDER_COMPLETED",
             "DRIVER_APPROACHING",
@@ -100,13 +100,13 @@ struct RetailerServiceTests {
         }
     }
 
-    // MARK: - Payment Gateway Values
+    // MARK: - GlobalPaynt Gateway Values
 
-    @Test func paymentGatewayOptions() {
+    @Test func global_payntGatewayOptions() {
         let gateways = ["GLOBAL_PAY", "CASH", "UZCARD"]
         #expect(gateways.count == 4)
         
-        #expect(gateways.contains("PAYME"))
+        #expect(gateways.contains("GLOBAL_PAY"))
         #expect(gateways.contains("CASH"))
     }
 

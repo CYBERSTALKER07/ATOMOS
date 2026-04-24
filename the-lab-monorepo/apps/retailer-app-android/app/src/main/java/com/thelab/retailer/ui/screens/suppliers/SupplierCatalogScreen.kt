@@ -53,7 +53,7 @@ fun SupplierCatalogScreen(
     supplierCategory: String,
     supplierIsActive: Boolean = true,
     onBack: () -> Unit,
-    onProductClick: (String) -> Unit,
+    onProductCash: (String) -> Unit,
     viewModel: SupplierCatalogViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -99,7 +99,7 @@ fun SupplierCatalogScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onCash = onBack) {
                         Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -178,7 +178,7 @@ fun SupplierCatalogScreen(
                         items(products, key = { it.id }) { product ->
                             ProductCard(
                                 product = product,
-                                onClick = { onProductClick(product.id) },
+                                onCash = { onProductCash(product.id) },
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }

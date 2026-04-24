@@ -3,7 +3,7 @@ package com.thelab.retailer.ui.components
 import android.os.Build
 import android.view.WindowManager
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.cashable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -72,7 +72,7 @@ fun QROverlay(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.White.copy(alpha = 0.75f))
-                    .clickable(
+                    .cashable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                     ) { onDismiss() },
@@ -83,10 +83,10 @@ fun QROverlay(
                         .padding(40.dp)
                         .clip(SoftSquircleShape)
                         .background(MaterialTheme.colorScheme.surface)
-                        .clickable(
+                        .cashable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                        ) { /* consume click */ }
+                        ) { /* consume cash */ }
                         .padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
@@ -121,7 +121,7 @@ fun QROverlay(
                         modifier = Modifier
                             .clip(PillShape)
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                            .clickable { onDismiss() }
+                            .cashable { onDismiss() }
                             .padding(horizontal = 32.dp, vertical = 12.dp),
                     )
                 }

@@ -1,8 +1,8 @@
 package com.thelab.retailer.ui.screens.catalog
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import com.thelab.retailer.ui.components.modifiers.bounceClick
+import androidx.compose.foundation.cashable
+import com.thelab.retailer.ui.components.modifiers.bounceCash
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,8 +54,8 @@ import com.thelab.retailer.ui.components.ProductCard
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun CatalogScreen(
-    onProductClick: (productId: String) -> Unit = {},
-    onCategoryClick: (categoryId: String, categoryName: String) -> Unit = { _, _ -> },
+    onProductCash: (productId: String) -> Unit = {},
+    onCategoryCash: (categoryId: String, categoryName: String) -> Unit = { _, _ -> },
     viewModel: CatalogViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -88,7 +88,7 @@ fun CatalogScreen(
                 modifier = Modifier.fillMaxSize().weight(1f),
             ) {
                 items(uiState.filteredProducts, key = { it.id }) { product ->
-                    ProductCard(product = product, modifier = Modifier.animateItemPlacement(), onClick = { onProductClick(product.id) })
+                    ProductCard(product = product, modifier = Modifier.animateItemPlacement(), onCash = { onProductCash(product.id) })
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) { Spacer(modifier = Modifier.height(32.dp)) }
             }
@@ -134,13 +134,13 @@ fun CatalogScreen(
                                 category = cats[i0],
                                 height = 150.dp,
                                 modifier = Modifier.animateItemPlacement().weight(1f),
-                                onClick = { onCategoryClick(cats[i0].id, cats[i0].name) },
+                                onCash = { onCategoryCash(cats[i0].id, cats[i0].name) },
                             )
                             BentoCategoryCard(
                                 category = cats[i1],
                                 height = 150.dp,
                                 modifier = Modifier.animateItemPlacement().weight(1f),
-                                onClick = { onCategoryClick(cats[i1].id, cats[i1].name) },
+                                onCash = { onCategoryCash(cats[i1].id, cats[i1].name) },
                             )
                         }
                     }
@@ -159,7 +159,7 @@ fun CatalogScreen(
                                 category = cats[j0],
                                 height = 130.dp,
                                 modifier = Modifier.animateItemPlacement().weight(1f),
-                                onClick = { onCategoryClick(cats[j0].id, cats[j0].name) },
+                                onCash = { onCategoryCash(cats[j0].id, cats[j0].name) },
                             )
                             Column(
                                 modifier = Modifier.weight(1f),
@@ -169,13 +169,13 @@ fun CatalogScreen(
                                     category = cats[j1],
                                     height = 56.dp,
                                     compact = true,
-                                    onClick = { onCategoryClick(cats[j1].id, cats[j1].name) },
+                                    onCash = { onCategoryCash(cats[j1].id, cats[j1].name) },
                                 )
                                 BentoCategoryCard(
                                     category = cats[j2],
                                     height = 56.dp,
                                     compact = true,
-                                    onClick = { onCategoryClick(cats[j2].id, cats[j2].name) },
+                                    onCash = { onCategoryCash(cats[j2].id, cats[j2].name) },
                                 )
                             }
                         }
@@ -191,9 +191,9 @@ fun CatalogScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                         ) {
-                            BentoCategoryCard(category = a, height = 80.dp, modifier = Modifier.weight(1f), compact = true, onClick = { onCategoryClick(a.id, a.name) })
-                            BentoCategoryCard(category = b, height = 80.dp, modifier = Modifier.weight(1f), compact = true, onClick = { onCategoryClick(b.id, b.name) })
-                            BentoCategoryCard(category = c, height = 80.dp, modifier = Modifier.weight(1f), compact = true, onClick = { onCategoryClick(c.id, c.name) })
+                            BentoCategoryCard(category = a, height = 80.dp, modifier = Modifier.weight(1f), compact = true, onCash = { onCategoryCash(a.id, a.name) })
+                            BentoCategoryCard(category = b, height = 80.dp, modifier = Modifier.weight(1f), compact = true, onCash = { onCategoryCash(b.id, b.name) })
+                            BentoCategoryCard(category = c, height = 80.dp, modifier = Modifier.weight(1f), compact = true, onCash = { onCategoryCash(c.id, c.name) })
                         }
                     }
                     idx += 3
@@ -212,7 +212,7 @@ fun CatalogScreen(
                                     category = cat,
                                     height = 100.dp,
                                     modifier = Modifier.animateItemPlacement().weight(1f),
-                                    onClick = { onCategoryClick(cat.id, cat.name) },
+                                    onCash = { onCategoryCash(cat.id, cat.name) },
                                 )
                             }
                         }
@@ -231,7 +231,7 @@ private fun BentoCategoryCard(
     height: Dp,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
-    onClick: () -> Unit = {},
+    onCash: () -> Unit = {},
 ) {
     Surface(
         modifier = modifier
@@ -243,7 +243,7 @@ private fun BentoCategoryCard(
                 spotColor = Color.Black.copy(alpha = 0.06f),
             )
             .clip(SoftSquircleShape)
-            .bounceClick { onClick() },
+            .bounceCash { onCash() },
         shape = SoftSquircleShape,
         color = MaterialTheme.colorScheme.surface,
     ) {

@@ -13,9 +13,9 @@ const (
 	EventOrderStatusChanged        = "ORDER_STATUS_CHANGED"
 	EventPayloadReadyToSeal        = "PAYLOAD_READY_TO_SEAL"
 	EventPayloadSealed             = "PAYLOAD_SEALED"
-	EventPaymentSettled            = "PAYMENT_SETTLED"
-	EventPaymentFailed             = "PAYMENT_FAILED"
-	EventPaymentIntentCreated      = "PAYMENT_INTENT_CREATED"
+	EventGlobalPayntSettled            = "PAYMENT_SETTLED"
+	EventGlobalPayntFailed             = "PAYMENT_FAILED"
+	EventGlobalPayntIntentCreated      = "PAYMENT_INTENT_CREATED"
 	EventOrderCompleted            = "ORDER_COMPLETED"
 	EventDriverAvailabilityChanged = "DRIVER_AVAILABILITY_CHANGED"
 	EventOrderReassigned           = "ORDER_REASSIGNED"
@@ -46,7 +46,7 @@ const (
 	EventPowerOutageReported    = "POWER_OUTAGE_REPORTED"
 	EventAiOrderConfirmed       = "AI_ORDER_CONFIRMED"
 	EventAiOrderRejected        = "AI_ORDER_REJECTED"
-	EventSplitPaymentCreated    = "SPLIT_PAYMENT_CREATED"
+	EventSplitGlobalPayntCreated    = "SPLIT_PAYMENT_CREATED"
 
 	// Phase IV: Warehouse Supply Chain & Pre-Order Policy
 	EventSupplyRequestSubmitted    = "SUPPLY_REQUEST_SUBMITTED"
@@ -102,12 +102,12 @@ const (
 	EventOrderCancelled              = "ORDER_CANCELLED"
 	EventOrderCancelledByOrigin      = "ORDER_CANCELLED_BY_ORIGIN"
 	EventPayloadOverflow             = "PAYLOAD_OVERFLOW"
-	EventFulfillmentPaymentCompleted = "FULFILLMENT_PAYMENT_COMPLETED"
+	EventFulfillmentGlobalPayntCompleted = "FULFILLMENT_PAYMENT_COMPLETED"
 	EventFulfillmentPaid             = "FULFILLMENT_PAID"
 	EventOffloadConfirmed            = "OFFLOAD_CONFIRMED"
 	EventCashCollectionRequired      = "CASH_COLLECTION_REQUIRED"
-	EventPaymentBypassIssued         = "PAYMENT_BYPASS_ISSUED"
-	EventPaymentBypassCompleted      = "PAYMENT_BYPASS_COMPLETED"
+	EventGlobalPayntBypassIssued         = "PAYMENT_BYPASS_ISSUED"
+	EventGlobalPayntBypassCompleted      = "PAYMENT_BYPASS_COMPLETED"
 	EventSmsQuickComplete            = "SMS_QUICK_COMPLETE"
 	EventReturnsClearedLegacy        = "RETURNS_CLEARED" // Scaffolding: legacy constant, no producer, no consumer
 
@@ -116,8 +116,8 @@ const (
 	EventOrderCreated             = "ORDER_CREATED"
 	EventUnifiedCheckoutCompleted = "UNIFIED_CHECKOUT_COMPLETED"
 
-	// Payment Events
-	EventPaymentRefunded = "PAYMENT_REFUNDED" // Scaffolding: no producer, no consumer — wire when refund flow is implemented
+	// GlobalPaynt Events
+	EventGlobalPayntRefunded = "PAYMENT_REFUNDED" // Scaffolding: no producer, no consumer — wire when refund flow is implemented
 
 	// Manifest Alerts
 	EventForceSealAlert = "FORCE_SEAL_ALERT"
@@ -191,9 +191,9 @@ type PayloadReadyToSealEvent struct {
 	Timestamp   time.Time `json:"timestamp"`
 }
 
-// PaymentSettledEvent is emitted after a successful payment settlement.
-// Recipients: Retailer (payment confirmed) + Driver (payment received for delivery).
-type PaymentSettledEvent struct {
+// GlobalPayntSettledEvent is emitted after a successful global_paynt settlement.
+// Recipients: Retailer (global_paynt confirmed) + Driver (global_paynt received for delivery).
+type GlobalPayntSettledEvent struct {
 	OrderID     string    `json:"order_id"`
 	InvoiceID   string    `json:"invoice_id"`
 	RetailerID  string    `json:"retailer_id"`
@@ -205,9 +205,9 @@ type PaymentSettledEvent struct {
 	Timestamp   time.Time `json:"timestamp"`
 }
 
-// PaymentFailedEvent is emitted after a payment settlement failure.
-// Recipient: Retailer (payment failed, retry needed).
-type PaymentFailedEvent struct {
+// GlobalPayntFailedEvent is emitted after a global_paynt settlement failure.
+// Recipient: Retailer (global_paynt failed, retry needed).
+type GlobalPayntFailedEvent struct {
 	OrderID     string    `json:"order_id"`
 	InvoiceID   string    `json:"invoice_id"`
 	RetailerID  string    `json:"retailer_id"`
@@ -293,23 +293,23 @@ type OrderCompletedEvent struct {
 	Timestamp   time.Time `json:"timestamp"`
 }
 
-// PaymentIntentEvent is emitted by the Treasurer when ledger entries are written
+// GlobalPayntIntentEvent is emitted by the Treasurer when ledger entries are written
 // with Status=PENDING_GATEWAY. The Gateway Worker consumes this event to execute
-// the actual charge against the payment provider (Payme, Click, etc.) with an
+// the actual charge against the global_paynt provider (GlobalPay, Cash, etc.) with an
 // idempotency key that prevents double-charging on replay.
-type PaymentIntentEvent struct {
+type GlobalPayntIntentEvent struct {
 	OrderID        string `json:"order_id"`
 	SupplierId     string `json:"supplier_id"`
 	Amount         int64  `json:"amount"`
 	Currency       string `json:"currency"`
-	PaymentGateway string `json:"payment_gateway"`
+	GlobalPayntGateway string `json:"global_paynt_gateway"`
 	IdempotencyKey string `json:"idempotency_key"`
 	LabCommission  int64  `json:"lab_commission"`
 	SupplierPayout int64  `json:"supplier_payout"`
 	LabTxnId       string `json:"lab_txn_id"`
 	SupplierTxnId  string `json:"supplier_txn_id"`
 
-	// Global Pay auth-capture fields (omitempty for backward compat with Payme/Click consumers)
+	// Global Pay auth-capture fields (omitempty for backward compat with GlobalPay/Cash consumers)
 	AuthorizationID  string `json:"authorization_id,omitempty"`
 	AuthorizedAmount int64  `json:"authorized_amount,omitempty"`
 	FinalAmount      int64  `json:"final_amount,omitempty"`
@@ -338,13 +338,13 @@ type PayloadSealedEvent struct {
 }
 
 // OffloadConfirmedEvent is emitted when a driver confirms offload at a retailer.
-// Recipients: Payment session, notification dispatcher.
+// Recipients: GlobalPaynt session, notification dispatcher.
 type OffloadConfirmedEvent struct {
 	OrderID        string    `json:"order_id"`
 	RetailerID     string    `json:"retailer_id"`
 	Amount         int64     `json:"amount"`
 	OriginalAmount int64     `json:"original_amount"`
-	PaymentMethod  string    `json:"payment_method"`
+	GlobalPayntMethod  string    `json:"global_paynt_method"`
 	Timestamp      time.Time `json:"timestamp"`
 }
 
@@ -473,8 +473,8 @@ type MissingItemsEvent struct {
 	Timestamp  time.Time `json:"timestamp"`
 }
 
-// SplitPaymentEvent is emitted when a driver creates a split payment.
-type SplitPaymentEvent struct {
+// SplitGlobalPayntEvent is emitted when a driver creates a split global_paynt.
+type SplitGlobalPayntEvent struct {
 	OrderID      string    `json:"order_id"`
 	DriverID     string    `json:"driver_id"`
 	FirstAmount  int64     `json:"first_amount"`

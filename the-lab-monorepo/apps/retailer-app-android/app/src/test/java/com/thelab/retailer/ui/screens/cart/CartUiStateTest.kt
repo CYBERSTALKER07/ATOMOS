@@ -134,38 +134,38 @@ class CartUiStateTest {
     }
 
     @Test
-    fun selectedPaymentLabel_click() {
-        val state = CartUiState(selectedPaymentGateway = "CLICK")
-        assertEquals("Click", state.selectedPaymentLabel)
+    fun selectedGlobalPayntLabel_cash() {
+        val state = CartUiState(selectedGlobalPayntGateway = "CASH")
+        assertEquals("Cash", state.selectedGlobalPayntLabel)
     }
 
     @Test
-    fun selectedPaymentLabel_payme() {
-        val state = CartUiState(selectedPaymentGateway = "PAYME")
-        assertEquals("Payme", state.selectedPaymentLabel)
+    fun selectedGlobalPayntLabel_global_pay() {
+        val state = CartUiState(selectedGlobalPayntGateway = "GLOBAL_PAY")
+        assertEquals("GlobalPay", state.selectedGlobalPayntLabel)
     }
 
     @Test
-    fun selectedPaymentLabel_globalPay() {
-        val state = CartUiState(selectedPaymentGateway = "GLOBAL_PAY")
-        assertEquals("Global Pay", state.selectedPaymentLabel)
+    fun selectedGlobalPayntLabel_globalPay() {
+        val state = CartUiState(selectedGlobalPayntGateway = "GLOBAL_PAY")
+        assertEquals("GlobalPay", state.selectedGlobalPayntLabel)
     }
 
     @Test
-    fun selectedPaymentLabel_cash() {
-        val state = CartUiState(selectedPaymentGateway = "CASH")
-        assertEquals("Cash on Delivery", state.selectedPaymentLabel)
+    fun selectedGlobalPayntLabel_cash() {
+        val state = CartUiState(selectedGlobalPayntGateway = "CASH")
+        assertEquals("Cash on Delivery", state.selectedGlobalPayntLabel)
     }
 
     @Test
-    fun selectedPaymentLabel_unknown_fallsBackToClick() {
-        val state = CartUiState(selectedPaymentGateway = "UNKNOWN_GATEWAY")
-        assertEquals("Click", state.selectedPaymentLabel)
+    fun selectedGlobalPayntLabel_unknown_fallsBackToCash() {
+        val state = CartUiState(selectedGlobalPayntGateway = "UNKNOWN_GATEWAY")
+        assertEquals("Cash", state.selectedGlobalPayntLabel)
     }
 
     @Test
-    fun selectedPaymentLabel_handlesWhitespaceAndCase() {
-        val state = CartUiState(selectedPaymentGateway = "  payme  ")
-        assertEquals("Payme", state.selectedPaymentLabel)
+    fun selectedGlobalPayntLabel_handlesWhitespaceAndCase() {
+        val state = CartUiState(selectedGlobalPayntGateway = "  global_pay  ")
+        assertEquals("GlobalPay", state.selectedGlobalPayntLabel)
     }
 }

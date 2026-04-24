@@ -34,8 +34,8 @@ import (
 	"backend-go/notifications"
 	"backend-go/order"
 	"backend-go/payloaderroutes"
-	"backend-go/payment"
-	"backend-go/paymentroutes"
+	"backend-go/global_paynt"
+	"backend-go/global_payntroutes"
 	"backend-go/proximity"
 	"backend-go/replenishment"
 	"backend-go/routing"
@@ -378,7 +378,7 @@ func main() {
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(
 			supplier.HandleDeliveryZones(spannerClient))))
 
-	// /v1/checkout/{b2b,unified} + /v1/payment/* moved to paymentroutes
+	// /v1/checkout/{b2b,unified} + /v1/global_paynt/* moved to global_payntroutes
 	// (registered below after chargebackSvc is constructed).
 
 	// /v1/ai/* — Empathy Engine preorder trigger + prediction feedback (3 routes).
@@ -460,7 +460,7 @@ func main() {
 	http.HandleFunc("/v1/supplier/fleet/vehicles", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleVehicles(spannerClient)))))
 	http.HandleFunc("/v1/supplier/fleet/vehicles/", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleVehicleDetail(spannerClient)))))
 
-	// POST /v1/supplier/fulfillment/pay — Trigger per-supplier staggered payment
+	// POST /v1/supplier/fulfillment/pay — Trigger per-supplier staggered global_paynt
 	// after driver arrival + order amendment.
 	// Charges ONLY this supplier's adjusted line-item total (never the full multi-supplier cart).
 	// Role: SUPPLIER or DRIVER (driver triggers at delivery, supplier can trigger from portal).
@@ -476,7 +476,7 @@ func main() {
 			http.Error(w, `{"error":"order_id required"}`, http.StatusBadRequest)
 			return
 		}
-		result, err := svc.TriggerSupplierFulfillmentPayment(r.Context(), req.OrderID)
+		result, err := svc.TriggerSupplierFulfillmentGlobalPaynt(r.Context(), req.OrderID)
 		if err != nil {
 			errMsg := err.Error()
 			switch {
@@ -547,9 +547,9 @@ func main() {
 
 	// ── v2.2 Edge Case Routes ───────────────────────────────────────────────
 
-	// /v1/admin/orders/payment-bypass moved to adminroutes.
+	// /v1/admin/orders/global_paynt-bypass moved to adminroutes.
 
-	// /v1/delivery/confirm-payment-bypass moved to deliveryroutes.
+	// /v1/delivery/confirm-global_paynt-bypass moved to deliveryroutes.
 
 	// Edge 7: POST /v1/orders/request-cancel — Retailer requests cancellation
 	http.HandleFunc("/v1/orders/request-cancel", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(order.HandleRequestCancel(svc))))
@@ -609,7 +609,7 @@ func main() {
 	http.HandleFunc("/v1/orders/edit-preorder", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(order.HandleEditPreorder(svc))))
 	http.HandleFunc("/v1/orders/confirm-preorder", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(order.HandleConfirmPreorder(svc))))
 
-	// /v1/delivery/split-payment moved to deliveryroutes.
+	// /v1/delivery/split-global_paynt moved to deliveryroutes.
 
 	// GET/POST /v1/retailer/cart/sync — Server-side cart persistence
 	http.HandleFunc("/v1/retailer/cart/sync", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(order.HandleCartSync(spannerClient))))
@@ -630,7 +630,7 @@ func main() {
 	http.HandleFunc("/v1/supplier/configure",
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleSupplierConfigure(spannerClient))))
 
-	// POST /v1/supplier/billing/setup — Post-registration billing setup (bank, payment gateway)
+	// POST /v1/supplier/billing/setup — Post-registration billing setup (bank, global_paynt gateway)
 	http.HandleFunc("/v1/supplier/billing/setup",
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleBillingSetup(spannerClient))))
 
@@ -651,16 +651,16 @@ func main() {
 	http.HandleFunc("/v1/supplier/shift",
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleSupplierShift(spannerClient))))
 
-	// GET/POST/DELETE /v1/supplier/payment-config — Supplier payment gateway vault CRUD
-	http.HandleFunc("/v1/supplier/payment-config",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(vault.HandlePaymentConfigs(spannerClient))))
+	// GET/POST/DELETE /v1/supplier/global_paynt-config — Supplier global_paynt gateway vault CRUD
+	http.HandleFunc("/v1/supplier/global_paynt-config",
+		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(vault.HandleGlobalPayntConfigs(spannerClient))))
 
 	// POST/GET/DELETE /v1/supplier/gateway-onboarding — Supplier gateway connect sessions
 	http.HandleFunc("/v1/supplier/gateway-onboarding",
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(vault.HandleGatewayOnboarding(spannerClient))))
 
-	// POST /v1/supplier/payment/recipient/register — Global Pay split-payment recipient onboarding
-	http.HandleFunc("/v1/supplier/payment/recipient/register",
+	// POST /v1/supplier/global_paynt/recipient/register — Global Pay split-global_paynt recipient onboarding
+	http.HandleFunc("/v1/supplier/global_paynt/recipient/register",
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(vault.HandleRegisterRecipient(spannerClient, directClient))))
 
 	// /v1/catalog/platform-categories moved to catalogroutes.
@@ -711,9 +711,9 @@ func main() {
 	// Ownership lives in backend-go/payloaderroutes.
 	payloaderroutes.RegisterRoutes(r, payloaderroutes.Deps{Spanner: spannerClient, Log: loggingMiddleware})
 
-	// /v1/delivery/* — 9 routes (arrive, confirm-payment-bypass, sms-complete,
+	// /v1/delivery/* — 9 routes (arrive, confirm-global_paynt-bypass, sms-complete,
 	// shop-closed, bypass-offload, negotiate, credit-delivery, missing-items,
-	// split-payment). Ownership lives in backend-go/deliveryroutes.
+	// split-global_paynt). Ownership lives in backend-go/deliveryroutes.
 	deliveryroutes.RegisterRoutes(r, deliveryroutes.Deps{
 		Order:             svc,
 		Cache:             app.Cache,
@@ -805,7 +805,7 @@ func main() {
 		json.NewEncoder(w).Encode(resp)
 	})))
 
-	// POST /v1/order/confirm-offload — Driver confirms offload, triggers payment flow
+	// POST /v1/order/confirm-offload — Driver confirms offload, triggers global_paynt flow
 	http.HandleFunc("/v1/order/confirm-offload", auth.RequireRole([]string{"DRIVER"}, loggingMiddleware(idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -824,29 +824,29 @@ func main() {
 			return
 		}
 
-		// Push PAYMENT_REQUIRED to the retailer's WebSocket for all payment methods
+		// Push GLOBAL_PAYNT_REQUIRED to the retailer's WebSocket for all global_paynt methods
 		retailerHub.PushToRetailer(resp.RetailerID, map[string]interface{}{
-			"type":                    ws.EventPaymentRequired,
+			"type":                    ws.EventGlobalPayntRequired,
 			"order_id":                resp.OrderID,
 			"invoice_id":              resp.InvoiceID,
 			"session_id":              resp.SessionID,
 			"amount":                  resp.Amount,
 			"original_amount":         resp.OriginalAmount,
-			"payment_method":          resp.PaymentMethod,
+			"global_paynt_method":          resp.GlobalPayntMethod,
 			"available_card_gateways": resp.AvailableCardGateways,
-			"message":                 fmt.Sprintf("Payment of %d required for order %s", resp.Amount, resp.OrderID),
+			"message":                 fmt.Sprintf("GlobalPaynt of %d required for order %s", resp.Amount, resp.OrderID),
 		})
 
 		// Push ORDER_STATE_CHANGED to supplier admin portal via WebSocket
 		if resp.SupplierID != "" {
-			go telemetry.FleetHub.BroadcastOrderStateChange(resp.SupplierID, resp.OrderID, "AWAITING_PAYMENT", "")
+			go telemetry.FleetHub.BroadcastOrderStateChange(resp.SupplierID, resp.OrderID, "AWAITING_GLOBAL_PAYNT", "")
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	}))))
 
-	// POST /v1/order/complete — Driver finalizes delivery after payment
+	// POST /v1/order/complete — Driver finalizes delivery after global_paynt
 	http.HandleFunc("/v1/order/complete", auth.RequireRole([]string{"DRIVER"}, loggingMiddleware(idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -883,7 +883,7 @@ func main() {
 		})
 	}))))
 
-	// POST /v1/order/cash-checkout — Retailer selects cash payment after offload
+	// POST /v1/order/cash-checkout — Retailer selects cash global_paynt after offload
 	http.HandleFunc("/v1/order/cash-checkout", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -923,7 +923,7 @@ func main() {
 		}
 		var req struct {
 			OrderID string `json:"order_id"`
-			Gateway string `json:"gateway"` // "PAYME", "CLICK", or "GLOBAL_PAY"
+			Gateway string `json:"gateway"` // "GLOBAL_PAY", "CASH", or "GLOBAL_PAY"
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" || req.Gateway == "" {
 			http.Error(w, "order_id and gateway required", http.StatusBadRequest)
@@ -971,9 +971,9 @@ func main() {
 			return
 		}
 
-		creds, credErr := payment.ResolveGlobalPayCredentials("", "", "")
+		creds, credErr := global_paynt.ResolveGlobalPayCredentials("", "", "")
 		if credErr != nil {
-			http.Error(w, "payment gateway credentials not configured", http.StatusServiceUnavailable)
+			http.Error(w, "global_paynt gateway credentials not configured", http.StatusServiceUnavailable)
 			return
 		}
 		result, err := cardsClient.InitiateCardSave(r.Context(), creds, phone)
@@ -1009,9 +1009,9 @@ func main() {
 			return
 		}
 
-		creds, credErr := payment.ResolveGlobalPayCredentials("", "", "")
+		creds, credErr := global_paynt.ResolveGlobalPayCredentials("", "", "")
 		if credErr != nil {
-			http.Error(w, "payment gateway credentials not configured", http.StatusServiceUnavailable)
+			http.Error(w, "global_paynt gateway credentials not configured", http.StatusServiceUnavailable)
 			return
 		}
 		result, err := cardsClient.ConfirmCardOTP(r.Context(), creds, req.CardToken, req.OTPCode)
@@ -1055,7 +1055,7 @@ func main() {
 			return
 		}
 		if cards == nil {
-			cards = []payment.RetailerCardToken{}
+			cards = []global_paynt.RetailerCardToken{}
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{"cards": cards})
@@ -1167,8 +1167,8 @@ func main() {
 		json.NewEncoder(w).Encode(resp)
 	}))))
 
-	// GET /v1/retailer/pending-payments — Returns all active payment sessions for the retailer
-	http.HandleFunc("/v1/retailer/pending-payments", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	// GET /v1/retailer/pending-global_paynts — Returns all active global_paynt sessions for the retailer
+	http.HandleFunc("/v1/retailer/pending-global_paynts", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -1182,22 +1182,22 @@ func main() {
 
 		sessions, err := sessionSvc.GetPendingSessionsByRetailer(r.Context(), claims.UserID)
 		if err != nil {
-			http.Error(w, "failed to retrieve pending payments", http.StatusInternalServerError)
+			http.Error(w, "failed to retrieve pending global_paynts", http.StatusInternalServerError)
 			return
 		}
 		if sessions == nil {
-			sessions = []payment.PaymentSession{}
+			sessions = []global_paynt.GlobalPayntSession{}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"pending_payments": sessions,
+			"pending_global_paynts": sessions,
 			"count":            len(sessions),
 		})
 	})))
 
 	// GET /v1/retailer/active-fulfillment — Incoming deliveries visible to the retailer
-	// Returns orders in IN_TRANSIT / ARRIVED / AWAITING_PAYMENT with supplier name and adjusted amount.
+	// Returns orders in IN_TRANSIT / ARRIVED / AWAITING_GLOBAL_PAYNT with supplier name and adjusted amount.
 	http.HandleFunc("/v1/retailer/active-fulfillment", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1420,7 +1420,7 @@ func main() {
 		orderID, err := svc.CreateOrder(ctx, order.CreateOrderRequest{
 			RetailerID:     req.RetailerID,
 			Amount:         totalAmount,
-			PaymentGateway: "PENDING",
+			GlobalPayntGateway: "PENDING",
 			Latitude:       lat,
 			Longitude:      lng,
 			OrderSource:    "PROCUREMENT",
@@ -1539,8 +1539,8 @@ func main() {
 	platformCfg := settings.NewPlatformConfig(spannerClient)
 
 	// ── Refund Endpoint (Phase 3.1) ──
-	refundSvc := payment.NewRefundService(spannerClient, svc.Producer, platformCfg.PlatformFeeBasisPoints())
-	chargebackSvc := payment.NewChargebackService(spannerClient)
+	refundSvc := global_paynt.NewRefundService(spannerClient, svc.Producer, platformCfg.PlatformFeeBasisPoints())
+	chargebackSvc := global_paynt.NewChargebackService(spannerClient)
 	http.HandleFunc("/v1/order/refund", auth.RequireRole([]string{"ADMIN", "SUPPLIER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -1548,7 +1548,7 @@ func main() {
 		}
 
 		claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
-		var req payment.RefundRequest
+		var req global_paynt.RefundRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
 			return
@@ -1590,9 +1590,9 @@ func main() {
 		json.NewEncoder(w).Encode(refunds)
 	})))
 
-	// /v1/checkout/* + /v1/payment/* — 5 routes (b2b, unified, chargeback,
-	// chargeback/reversal, payme/initiate). Ownership lives in backend-go/paymentroutes.
-	paymentroutes.RegisterRoutes(r, paymentroutes.Deps{
+	// /v1/checkout/* + /v1/global_paynt/* — 5 routes (b2b, unified, chargeback,
+	// chargeback/reversal, global_pay/initiate). Ownership lives in backend-go/global_payntroutes.
+	global_payntroutes.RegisterRoutes(r, global_payntroutes.Deps{
 		Spanner:       spannerClient,
 		Checkout:      svc,
 		Chargeback:    chargebackSvc,
@@ -2215,7 +2215,7 @@ func main() {
 	if adminErr == nil {
 		columnsToDropIn := []string{
 			"ALTER TABLE Orders ADD COLUMN Amount INT64",
-			"ALTER TABLE Orders ADD COLUMN PaymentGateway STRING(MAX)",
+			"ALTER TABLE Orders ADD COLUMN GlobalPayntGateway STRING(MAX)",
 			"ALTER TABLE Orders ADD COLUMN ShopLocation STRING(MAX)",
 			"ALTER TABLE Retailers ADD COLUMN Status STRING(20)",
 			"ALTER TABLE Orders ADD COLUMN RouteId STRING(MAX)",
@@ -2287,7 +2287,7 @@ func main() {
 	if err == nil {
 		arrivingDDL := []string{
 			"ALTER TABLE Orders DROP CONSTRAINT CHK_Order_State",
-			"ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State CHECK (State IN ('PENDING', 'LOADED', 'IN_TRANSIT', 'ARRIVED', 'AWAITING_PAYMENT', 'COMPLETED', 'CANCELLED', 'SCHEDULED'))",
+			"ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State CHECK (State IN ('PENDING', 'LOADED', 'IN_TRANSIT', 'ARRIVED', 'AWAITING_GLOBAL_PAYNT', 'COMPLETED', 'CANCELLED', 'SCHEDULED'))",
 			"ALTER TABLE Orders ADD COLUMN QRValidatedAt TIMESTAMP",
 			"ALTER TABLE MasterInvoices ADD COLUMN OrderId STRING(36)",
 			"CREATE INDEX Idx_MasterInvoice_OrderId ON MasterInvoices(OrderId)",
@@ -2579,21 +2579,21 @@ func main() {
 		adminClient.Close()
 	}
 
-	// ── MIGRATION: Payment Settlement — PaymeTransactionId on MasterInvoices ─────
+	// ── MIGRATION: GlobalPaynt Settlement — GlobalPayTransactionId on MasterInvoices ─────
 	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
 	if err == nil {
 		op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
 			Database: dbName,
 			Statements: []string{
-				`ALTER TABLE MasterInvoices ADD COLUMN PaymeTransactionId STRING(64)`,
-				`CREATE INDEX Idx_MasterInvoice_PaymeTxn ON MasterInvoices(PaymeTransactionId)`,
+				`ALTER TABLE MasterInvoices ADD COLUMN GlobalPayTransactionId STRING(64)`,
+				`CREATE INDEX Idx_MasterInvoice_GlobalPayTxn ON MasterInvoices(GlobalPayTransactionId)`,
 			},
 		})
 		if ddlErr == nil {
 			op.Wait(ctx)
-			fmt.Println("DATABASE MIGRATION SUCCESS: PaymeTransactionId column added to MasterInvoices.")
+			fmt.Println("DATABASE MIGRATION SUCCESS: GlobalPayTransactionId column added to MasterInvoices.")
 		} else {
-			fmt.Printf("DDL migration skipped (PaymeTransactionId may already exist): %v\n", ddlErr)
+			fmt.Printf("DDL migration skipped (GlobalPayTransactionId may already exist): %v\n", ddlErr)
 		}
 		adminClient.Close()
 	}
@@ -2656,7 +2656,7 @@ func main() {
 		adminClient.Close()
 	}
 
-	// ── MIGRATION: Supplier Extended Profile Columns (Email, Bank, Payment) ─────
+	// ── MIGRATION: Supplier Extended Profile Columns (Email, Bank, GlobalPaynt) ─────
 	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
 	if err == nil {
 		supplierProfileDDL := []string{
@@ -2667,7 +2667,7 @@ func main() {
 			"ALTER TABLE Suppliers ADD COLUMN BankName STRING(MAX)",
 			"ALTER TABLE Suppliers ADD COLUMN AccountNumber STRING(MAX)",
 			"ALTER TABLE Suppliers ADD COLUMN CardNumber STRING(MAX)",
-			"ALTER TABLE Suppliers ADD COLUMN PaymentGateway STRING(20)",
+			"ALTER TABLE Suppliers ADD COLUMN GlobalPayntGateway STRING(20)",
 		}
 		for _, stmt := range supplierProfileDDL {
 			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
@@ -2842,7 +2842,7 @@ func main() {
 	if err == nil {
 		backorderDDL := []string{
 			"ALTER TABLE Orders DROP CONSTRAINT CHK_Order_State",
-			"ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED', 'AWAITING_PAYMENT', 'COMPLETED', 'CANCELLED', 'SCHEDULED', 'BACKORDERED'))",
+			"ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED', 'AWAITING_GLOBAL_PAYNT', 'COMPLETED', 'CANCELLED', 'SCHEDULED', 'BACKORDERED'))",
 		}
 		for _, stmt := range backorderDDL {
 			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
@@ -2922,8 +2922,8 @@ func main() {
 	if err == nil {
 		cashLogisticsDDL := []string{
 			"ALTER TABLE Orders DROP CONSTRAINT CHK_Order_State",
-			"ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION', 'COMPLETED', 'CANCELLED', 'SCHEDULED', 'BACKORDERED', 'QUARANTINE'))",
-			"ALTER TABLE MasterInvoices ADD COLUMN PaymentMode STRING(20)",
+			"ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED', 'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION', 'COMPLETED', 'CANCELLED', 'SCHEDULED', 'BACKORDERED', 'QUARANTINE'))",
+			"ALTER TABLE MasterInvoices ADD COLUMN GlobalPayntMode STRING(20)",
 			"ALTER TABLE MasterInvoices ADD COLUMN CollectorDriverId STRING(36)",
 			"ALTER TABLE MasterInvoices ADD COLUMN CollectedAt TIMESTAMP",
 			"ALTER TABLE MasterInvoices ADD COLUMN CollectionLat FLOAT64",
@@ -2944,13 +2944,13 @@ func main() {
 		adminClient.Close()
 	}
 
-	// ── MIGRATION: Multi-vendor Payment — PaymentStatus column + SupplierPaymentConfigs table ──
+	// ── MIGRATION: Multi-vendor GlobalPaynt — GlobalPayntStatus column + SupplierGlobalPayntConfigs table ──
 	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
 	if err == nil {
-		multiVendorPaymentDDL := []string{
-			"ALTER TABLE Orders ADD COLUMN PaymentStatus STRING(30) NOT NULL DEFAULT ('PENDING')",
-			"ALTER TABLE Orders ADD CONSTRAINT CHK_PaymentStatus CHECK (PaymentStatus IN ('PENDING', 'PENDING_CASH_COLLECTION', 'AWAITING_GATEWAY_WEBHOOK', 'PAID', 'FAILED'))",
-			`CREATE TABLE SupplierPaymentConfigs (
+		multiVendorGlobalPayntDDL := []string{
+			"ALTER TABLE Orders ADD COLUMN GlobalPayntStatus STRING(30) NOT NULL DEFAULT ('PENDING')",
+			"ALTER TABLE Orders ADD CONSTRAINT CHK_GlobalPayntStatus CHECK (GlobalPayntStatus IN ('PENDING', 'PENDING_CASH_COLLECTION', 'AWAITING_GATEWAY_WEBHOOK', 'PAID', 'FAILED'))",
+			`CREATE TABLE SupplierGlobalPayntConfigs (
 				ConfigId     STRING(36)  NOT NULL,
 				SupplierId   STRING(36)  NOT NULL,
 				GatewayName  STRING(20)  NOT NULL,
@@ -2960,16 +2960,16 @@ func main() {
 				IsActive     BOOL        NOT NULL DEFAULT (true),
 				CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 				UpdatedAt    TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
-				CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CLICK', 'PAYME', 'GLOBAL_PAY'))
+				CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'GLOBAL_PAY'))
 			) PRIMARY KEY (ConfigId)`,
-			"CREATE INDEX Idx_SupplierPaymentConfigs_BySupplierId ON SupplierPaymentConfigs(SupplierId)",
-			"CREATE UNIQUE INDEX Idx_SupplierPaymentConfigs_Unique ON SupplierPaymentConfigs(SupplierId, GatewayName)",
-			// Phase 2 addendum: ServiceId for Click gateway
-			"ALTER TABLE SupplierPaymentConfigs ADD COLUMN ServiceId STRING(MAX)",
-			"ALTER TABLE SupplierPaymentConfigs DROP CONSTRAINT CHK_GatewayName",
-			"ALTER TABLE SupplierPaymentConfigs ADD CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CLICK', 'PAYME', 'GLOBAL_PAY'))",
+			"CREATE INDEX Idx_SupplierGlobalPayntConfigs_BySupplierId ON SupplierGlobalPayntConfigs(SupplierId)",
+			"CREATE UNIQUE INDEX Idx_SupplierGlobalPayntConfigs_Unique ON SupplierGlobalPayntConfigs(SupplierId, GatewayName)",
+			// Phase 2 addendum: ServiceId for Cash gateway
+			"ALTER TABLE SupplierGlobalPayntConfigs ADD COLUMN ServiceId STRING(MAX)",
+			"ALTER TABLE SupplierGlobalPayntConfigs DROP CONSTRAINT CHK_GatewayName",
+			"ALTER TABLE SupplierGlobalPayntConfigs ADD CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'GLOBAL_PAY'))",
 		}
-		for _, stmt := range multiVendorPaymentDDL {
+		for _, stmt := range multiVendorGlobalPayntDDL {
 			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
 				Database:   dbName,
 				Statements: []string{stmt},
@@ -2982,11 +2982,11 @@ func main() {
 		adminClient.Close()
 	}
 
-	// ── MIGRATION: Payment Sessions + Attempts tables (Phase 13) ──────────────
+	// ── MIGRATION: GlobalPaynt Sessions + Attempts tables (Phase 13) ──────────────
 	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
 	if err == nil {
-		paymentSessionDDL := []string{
-			`CREATE TABLE PaymentSessions (
+		global_payntSessionDDL := []string{
+			`CREATE TABLE GlobalPayntSessions (
 				SessionId         STRING(36)  NOT NULL,
 				OrderId           STRING(36)  NOT NULL,
 				RetailerId        STRING(36)  NOT NULL,
@@ -3007,11 +3007,11 @@ func main() {
 				SettledAt         TIMESTAMP,
 				CONSTRAINT CHK_SessionStatus CHECK (Status IN ('CREATED', 'PENDING', 'SETTLED', 'FAILED', 'EXPIRED', 'CANCELLED'))
 			) PRIMARY KEY (SessionId)`,
-			"CREATE INDEX Idx_PaymentSessions_ByOrderId ON PaymentSessions(OrderId)",
-			"CREATE INDEX Idx_PaymentSessions_BySupplierId ON PaymentSessions(SupplierId)",
-			"CREATE INDEX Idx_PaymentSessions_ByStatus ON PaymentSessions(Status)",
-			"ALTER TABLE PaymentSessions ADD COLUMN ProviderReference STRING(MAX)",
-			`CREATE TABLE PaymentAttempts (
+			"CREATE INDEX Idx_GlobalPayntSessions_ByOrderId ON GlobalPayntSessions(OrderId)",
+			"CREATE INDEX Idx_GlobalPayntSessions_BySupplierId ON GlobalPayntSessions(SupplierId)",
+			"CREATE INDEX Idx_GlobalPayntSessions_ByStatus ON GlobalPayntSessions(Status)",
+			"ALTER TABLE GlobalPayntSessions ADD COLUMN ProviderReference STRING(MAX)",
+			`CREATE TABLE GlobalPayntAttempts (
 				AttemptId             STRING(36)  NOT NULL,
 				SessionId             STRING(36)  NOT NULL,
 				AttemptNo             INT64       NOT NULL,
@@ -3025,10 +3025,10 @@ func main() {
 				FinishedAt            TIMESTAMP,
 				CONSTRAINT CHK_AttemptStatus CHECK (Status IN ('INITIATED', 'REDIRECTED', 'PROCESSING', 'SUCCESS', 'FAILED', 'CANCELLED', 'TIMED_OUT'))
 			) PRIMARY KEY (AttemptId)`,
-			"CREATE INDEX Idx_PaymentAttempts_BySessionId ON PaymentAttempts(SessionId)",
-			"CREATE INDEX Idx_PaymentAttempts_ByProviderTxn ON PaymentAttempts(ProviderTransactionId)",
+			"CREATE INDEX Idx_GlobalPayntAttempts_BySessionId ON GlobalPayntAttempts(SessionId)",
+			"CREATE INDEX Idx_GlobalPayntAttempts_ByProviderTxn ON GlobalPayntAttempts(ProviderTransactionId)",
 		}
-		for _, stmt := range paymentSessionDDL {
+		for _, stmt := range global_payntSessionDDL {
 			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
 				Database:   dbName,
 				Statements: []string{stmt},
@@ -3416,7 +3416,7 @@ func main() {
 			`ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State CHECK (State IN (
 				'PENDING', 'PENDING_REVIEW', 'PENDING_CONFIRMATION',
 				'LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED',
-				'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION',
+				'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION',
 				'COMPLETED', 'CANCELLED',
 				'SCHEDULED', 'BACKORDERED', 'QUARANTINE',
 				'LOCKED', 'AUTO_ACCEPTED',
@@ -3746,7 +3746,7 @@ func main() {
 	internalKafka.StartApproachConsumer(ctx, retailerHub, fcmClient, spannerClient, cfg.KafkaBrokerAddress)
 	fmt.Println("[BOOT] Retailer WebSocket Hub + Approach Consumer: ONLINE")
 
-	// Phase 3b: Boot the Driver WebSocket Hub (receives PAYMENT_SETTLED pushes)
+	// Phase 3b: Boot the Driver WebSocket Hub (receives GLOBAL_PAYNT_SETTLED pushes)
 	http.HandleFunc("/v1/ws/driver",
 		auth.RequireRole([]string{"DRIVER"}, driverHub.HandleConnection))
 	fmt.Println("[BOOT] Driver WebSocket Hub: ONLINE")
@@ -3772,10 +3772,10 @@ func main() {
 	internalKafka.StartGatewayWorker(ctx, internalKafka.GatewayWorkerDeps{
 		Spanner:       spannerClient,
 		BrokerAddress: cfg.KafkaBrokerAddress,
-		Vault:         &vault.PaymentVaultAdapter{Svc: vaultSvc},
+		Vault:         &vault.GlobalPayntVaultAdapter{Svc: vaultSvc},
 		GPDirect:      directClient,
 	})
-	reconcilerSvc := payment.NewReconcilerService(cfg, spannerClient)
+	reconcilerSvc := global_paynt.NewReconcilerService(cfg, spannerClient)
 	go reconcilerSvc.Start(ctx)
 	log.Println("[BOOT] Financial Reconciler Service: ONLINE")
 
@@ -3787,10 +3787,10 @@ func main() {
 	log.Println("[BOOT] Transactional Outbox Relay: ONLINE")
 
 	// Boot the Global Pay Session Sweeper (expired + stale session recovery)
-	gpReconciler := &payment.GlobalPayReconciler{
+	gpReconciler := &global_paynt.GlobalPayReconciler{
 		Spanner:       spannerClient,
 		SessionSvc:    sessionSvc,
-		VaultResolver: &vault.PaymentVaultAdapter{Svc: vaultSvc},
+		VaultResolver: &vault.GlobalPayntVaultAdapter{Svc: vaultSvc},
 		Producer:      svc.Producer,
 		DriverHub:     driverHub,
 		RetailerHub:   retailerHub,
@@ -3798,8 +3798,8 @@ func main() {
 	StartGlobalPaySweeper(gpReconciler)
 	log.Println("[BOOT] Global Pay Session Sweeper: ONLINE")
 
-	StartPaymentSessionExpirer(sessionSvc, retailerHub)
-	log.Println("[BOOT] Payment Session Expiry Cron: ONLINE")
+	StartGlobalPayntSessionExpirer(sessionSvc, retailerHub)
+	log.Println("[BOOT] GlobalPaynt Session Expiry Cron: ONLINE")
 
 	// Boot the Failsafe Transmitter
 	internalKafka.InitDLQ(cfg.KafkaBrokerAddress)
@@ -3946,13 +3946,13 @@ func main() {
 	// /v1/catalog/suppliers/search + /v1/ai/predictions{,/correct} were moved to
 	// backend-go/catalogroutes and backend-go/airoutes respectively.
 
-	// ── Payment Webhooks (NO JWT — authenticated via gateway signature/Basic Auth) ────
-	webhookSvc := &payment.WebhookService{
+	// ── GlobalPaynt Webhooks (NO JWT — authenticated via gateway signature/Basic Auth) ────
+	webhookSvc := &global_paynt.WebhookService{
 		Spanner:       spannerClient,
 		Producer:      svc.Producer,
 		DriverHub:     driverHub,
 		RetailerHub:   retailerHub,
-		VaultResolver: &vault.PaymentVaultAdapter{Svc: vaultSvc},
+		VaultResolver: &vault.GlobalPayntVaultAdapter{Svc: vaultSvc},
 		SessionSvc:    sessionSvc,
 	}
 	// /v1/webhooks/* — 3 gateway callbacks. Ownership lives in backend-go/webhookroutes.
@@ -3962,9 +3962,9 @@ func main() {
 		PriorityGuard: priorityGuard,
 	})
 
-	// /v1/admin/payment/reconcile moved to adminroutes.
+	// /v1/admin/global_paynt/reconcile moved to adminroutes.
 
-	// /v1/payment/payme/initiate (DEPRECATED) moved to paymentroutes.
+	// /v1/global_paynt/global_pay/initiate (DEPRECATED) moved to global_payntroutes.
 
 	// ══════════════════════════════════════════════════════════════════════════════
 	// FACTORY-TO-WAREHOUSE REPLENISHMENT ROUTES

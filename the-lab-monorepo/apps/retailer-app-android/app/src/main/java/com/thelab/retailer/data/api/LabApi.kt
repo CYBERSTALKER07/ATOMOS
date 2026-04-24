@@ -106,7 +106,7 @@ interface LabApi {
     @POST("/v1/checkout/unified")
     suspend fun unifiedCheckout(@Body body: UnifiedCheckoutRequest): UnifiedCheckoutResponse
 
-    // ── Post-Offload Payment ──
+    // ── Post-Offload GlobalPaynt ──
     @POST("/v1/order/cash-checkout")
     suspend fun cashCheckout(@Body body: Map<String, String>): Map<String, @JvmSuppressWildcards Any>
 

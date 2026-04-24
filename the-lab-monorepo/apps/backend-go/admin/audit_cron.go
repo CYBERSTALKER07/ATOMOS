@@ -7,7 +7,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/robfig/cron/v3"
-	// "github.com/lab-industries/backend/packages/gateways" // Your Payme/Click API clients
+	// "github.com/lab-industries/backend/packages/gateways" // Your GlobalPay/Cash API clients
 )
 
 // StartReconciliationCron boots the background audit worker
@@ -34,7 +34,7 @@ func runAuditCycle(ctx context.Context, client *spanner.Client) {
 	// 1. Pull all orders marked 'FUNDS_SECURED' in the last 24 hours
 	// (Simulated query for brevity)
 	stmt := spanner.Statement{
-		SQL: `SELECT OrderId, RetailerId, Amount, PaymentGateway 
+		SQL: `SELECT OrderId, RetailerId, Amount, GlobalPayntGateway 
 		      FROM Orders 
 		      WHERE State = 'COMPLETED' 
 		      AND CreatedAt >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)`,
@@ -57,10 +57,10 @@ func runAuditCycle(ctx context.Context, client *spanner.Client) {
 
 		// 2. Query the External Gateway for the exact captured amount
 		var actualAmount int64
-		// if gateway == "PAYME" {
-		// 	actualAmount = gateways.PaymeClient.CheckTransaction(orderId)
+		// if gateway == "GLOBAL_PAY" {
+		// 	actualAmount = gateways.GlobalPayClient.CheckTransaction(orderId)
 		// } else {
-		// 	actualAmount = gateways.ClickClient.CheckTransaction(orderId)
+		// 	actualAmount = gateways.CashClient.CheckTransaction(orderId)
 		// }
 
 		// *Simulation: Force a delta for testing if expectedAmount > 5,000,000*

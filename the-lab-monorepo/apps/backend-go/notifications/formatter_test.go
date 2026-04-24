@@ -68,22 +68,22 @@ func TestFormatPayloadSealed(t *testing.T) {
 	}
 }
 
-func TestFormatPaymentSettled(t *testing.T) {
-	n := FormatPaymentSettled("ORD-500", "CLICK", 150000)
-	if n.Title != "Payment Received" {
+func TestFormatGlobalPayntSettled(t *testing.T) {
+	n := FormatGlobalPayntSettled("ORD-500", "CASH", 150000)
+	if n.Title != "GlobalPaynt Received" {
 		t.Errorf("Title = %q", n.Title)
 	}
 	if !strings.Contains(n.Body, "150000") {
 		t.Error("Body should contain amount")
 	}
-	if !strings.Contains(n.Body, "CLICK") {
+	if !strings.Contains(n.Body, "CASH") {
 		t.Error("Body should contain gateway")
 	}
 }
 
-func TestFormatPaymentFailed(t *testing.T) {
-	n := FormatPaymentFailed("ORD-600", "PAYME", "insufficient funds")
-	if n.Title != "Payment Failed" {
+func TestFormatGlobalPayntFailed(t *testing.T) {
+	n := FormatGlobalPayntFailed("ORD-600", "GLOBAL_PAY", "insufficient funds")
+	if n.Title != "GlobalPaynt Failed" {
 		t.Errorf("Title = %q", n.Title)
 	}
 	if !strings.Contains(n.Body, "insufficient funds") {

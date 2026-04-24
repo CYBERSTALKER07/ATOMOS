@@ -22,7 +22,7 @@ import (
 	"backend-go/hotspot"
 	kafkaEvents "backend-go/kafka"
 	"backend-go/outbox"
-	"backend-go/payment"
+	"backend-go/global_paynt"
 	"backend-go/proximity"
 	"backend-go/telemetry"
 	"backend-go/workers"
@@ -36,7 +36,7 @@ import (
 // UnifiedCheckoutRequest is the single payload from the native app's checkout.
 type UnifiedCheckoutRequest struct {
 	RetailerID     string               `json:"retailer_id"`
-	PaymentGateway string               `json:"payment_gateway"` // "CLICK" | "PAYME" | "UZCARD"
+	GlobalPayntGateway string               `json:"global_paynt_gateway"` // "CASH" | "GLOBAL_PAY" | "UZCARD"
 	Latitude       float64              `json:"latitude"`
 	Longitude      float64              `json:"longitude"`
 	Items          []cart.OrderLineItem `json:"items"`
@@ -136,8 +136,8 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		http.Error(w, `{"error":"items must not be empty"}`, http.StatusUnprocessableEntity)
 		return
 	}
-	if req.PaymentGateway == "" {
-		http.Error(w, `{"error":"payment_gateway is required"}`, http.StatusUnprocessableEntity)
+	if req.GlobalPayntGateway == "" {
+		http.Error(w, `{"error":"global_paynt_gateway is required"}`, http.StatusUnprocessableEntity)
 		return
 	}
 	for _, item := range req.Items {
@@ -425,13 +425,13 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			mutations = append(mutations, spanner.Insert("Orders",
 				[]string{
 					"OrderId", "RetailerId", "SupplierId", "InvoiceId",
-					"Amount", "Currency", "PaymentGateway", "State", "ScheduleShard",
+					"Amount", "Currency", "GlobalPayntGateway", "State", "ScheduleShard",
 					"ShopLocation", "OrderSource", "DeliveryToken", "WarehouseId",
 					"VolumeVU", "CreatedAt",
 				},
 				[]interface{}{
 					plan.OrderID, req.RetailerID, plan.SupplierID, invoiceID,
-					planEffectiveTotal, "UZS", req.PaymentGateway, "PENDING", hotspot.ShardForKey(plan.OrderID),
+					planEffectiveTotal, "UZS", req.GlobalPayntGateway, "PENDING", hotspot.ShardForKey(plan.OrderID),
 					wkt, "UNIFIED_CHECKOUT",
 					spanner.NullString{Valid: false}, // JIT: token generated at dispatch, not checkout
 					plan.WarehouseID,
@@ -552,13 +552,13 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 				bMutations = append(bMutations, spanner.Insert("Orders",
 					[]string{
 						"OrderId", "RetailerId", "SupplierId", "InvoiceId",
-						"Amount", "Currency", "PaymentGateway", "State", "ScheduleShard",
+						"Amount", "Currency", "GlobalPayntGateway", "State", "ScheduleShard",
 						"ShopLocation", "OrderSource", "DeliveryToken", "WarehouseId",
 						"VolumeVU", "CreatedAt",
 					},
 					[]interface{}{
 						bp.OrderID, req.RetailerID, bp.SupplierID, invoiceID,
-						bp.Total, "UZS", req.PaymentGateway, "BACKORDERED", hotspot.ShardForKey(bp.OrderID),
+						bp.Total, "UZS", req.GlobalPayntGateway, "BACKORDERED", hotspot.ShardForKey(bp.OrderID),
 						wkt, "UNIFIED_CHECKOUT",
 						spanner.NullString{Valid: false},
 						bp.WarehouseID,
@@ -600,8 +600,8 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 
 	// ── Step 5c: Authorize GLOBAL_PAY orders (saved card → hold funds at checkout) ──
 	// Best-effort: if authorization fails, orders remain PENDING and fall back to
-	// delivery-time payment via TriggerSupplierFulfillmentPayment / CardCheckout.
-	if req.PaymentGateway == "GLOBAL_PAY" && s.DirectClient != nil && s.CardTokenSvc != nil {
+	// delivery-time global_paynt via TriggerSupplierFulfillmentGlobalPaynt / CardCheckout.
+	if req.GlobalPayntGateway == "GLOBAL_PAY" && s.DirectClient != nil && s.CardTokenSvc != nil {
 		savedCard, _ := s.CardTokenSvc.GetDefaultCard(ctx, req.RetailerID, "GLOBAL_PAY")
 		if savedCard != nil {
 			for _, plan := range processedPlans {
@@ -651,8 +651,8 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 }
 
 // authorizeAtCheckout places a Global Pay authorization hold on a single order
-// using the retailer's saved card token. On success it creates a PaymentSession
-// with status AUTHORIZED and updates Orders.PaymentStatus = AUTHORIZED.
+// using the retailer's saved card token. On success it creates a GlobalPayntSession
+// with status AUTHORIZED and updates Orders.GlobalPayntStatus = AUTHORIZED.
 // Failure is non-fatal — callers log and continue (delivery-time fallback).
 func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplierID, retailerID, invoiceID string, amount int64, cardToken string) error {
 	// Resolve per-supplier GP credentials.
@@ -666,14 +666,14 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 			recipientID = cfg.RecipientId
 		}
 	}
-	creds, credErr := payment.ResolveGlobalPayCredentials(merchantID, serviceID, secretKey)
+	creds, credErr := global_paynt.ResolveGlobalPayCredentials(merchantID, serviceID, secretKey)
 	if credErr != nil {
 		return fmt.Errorf("credential resolution: %w", credErr)
 	}
 
-	splitRecipients := payment.ComputeSplitRecipients(amount, recipientID, s.feeBasisPoints())
+	splitRecipients := global_paynt.ComputeSplitRecipients(amount, recipientID, s.feeBasisPoints())
 
-	authResult, authErr := s.DirectClient.AuthorizePayment(ctx, creds, payment.DirectPaymentInitRequest{
+	authResult, authErr := s.DirectClient.AuthorizeGlobalPaynt(ctx, creds, global_paynt.DirectGlobalPayntInitRequest{
 		CardToken:  cardToken,
 		Amount:     amount,
 		OrderID:    orderID,
@@ -685,9 +685,9 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 		return fmt.Errorf("authorize call: %w", authErr)
 	}
 
-	// Create a PaymentSession in AUTHORIZED state.
+	// Create a GlobalPayntSession in AUTHORIZED state.
 	if s.SessionSvc != nil {
-		session, sessErr := s.SessionSvc.CreateSession(ctx, payment.CreateSessionRequest{
+		session, sessErr := s.SessionSvc.CreateSession(ctx, global_paynt.CreateSessionRequest{
 			OrderID:    orderID,
 			RetailerID: retailerID,
 			SupplierID: supplierID,
@@ -701,9 +701,9 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 			// Transition session to AUTHORIZED with auth metadata.
 			_, updateErr := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 				return txn.BufferWrite([]*spanner.Mutation{
-					spanner.Update("PaymentSessions",
+					spanner.Update("GlobalPayntSessions",
 						[]string{"SessionId", "Status", "AuthorizationId", "AuthorizedAmount", "ProviderReference"},
-						[]interface{}{session.SessionID, payment.SessionAuthorized, authResult.PaymentID, amount, authResult.PaymentID},
+						[]interface{}{session.SessionID, global_paynt.SessionAuthorized, authResult.GlobalPayntID, amount, authResult.GlobalPayntID},
 					),
 				})
 			})
@@ -713,16 +713,16 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 		}
 	}
 
-	// Mark order PaymentStatus = AUTHORIZED.
+	// Mark order GlobalPayntStatus = AUTHORIZED.
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		_, err := txn.Update(ctx, spanner.Statement{
-			SQL:    `UPDATE Orders SET PaymentStatus = 'AUTHORIZED' WHERE OrderId = @oid AND PaymentStatus IN ('PENDING', '')`,
+			SQL:    `UPDATE Orders SET GlobalPayntStatus = 'AUTHORIZED' WHERE OrderId = @oid AND GlobalPayntStatus IN ('PENDING', '')`,
 			Params: map[string]interface{}{"oid": orderID},
 		})
 		return err
 	})
 	if err != nil {
-		log.Printf("[CHECKOUT-AUTH] Orders.PaymentStatus update failed for %s: %v", orderID, err)
+		log.Printf("[CHECKOUT-AUTH] Orders.GlobalPayntStatus update failed for %s: %v", orderID, err)
 	}
 
 	return nil

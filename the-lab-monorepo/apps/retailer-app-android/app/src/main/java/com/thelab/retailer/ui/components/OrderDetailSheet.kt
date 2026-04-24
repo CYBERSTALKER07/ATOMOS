@@ -1,7 +1,7 @@
 package com.thelab.retailer.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.cashable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,7 +69,7 @@ fun OrderDetailSheet(
         AlertDialog(
             onDismissRequest = { showCancelConfirm = false },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(onCash = {
                     showCancelConfirm = false
                     onCancel?.invoke()
                 }) {
@@ -81,7 +81,7 @@ fun OrderDetailSheet(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showCancelConfirm = false }) {
+                TextButton(onCash = { showCancelConfirm = false }) {
                     Text("Keep Order")
                 }
             },
@@ -98,7 +98,7 @@ fun OrderDetailSheet(
             shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
             dragHandle = null,
         ) {
-            OrderDetailSheetContent(order, onDismiss, onShowQR, onCancelClick = { showCancelConfirm = true })
+            OrderDetailSheetContent(order, onDismiss, onShowQR, onCancelCash = { showCancelConfirm = true })
         }
     } else {
         androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
@@ -107,7 +107,7 @@ fun OrderDetailSheet(
                 color = MaterialTheme.colorScheme.surface,
                 modifier = Modifier.fillMaxWidth().padding(16.dp)
             ) {
-                OrderDetailSheetContent(order, onDismiss, onShowQR, onCancelClick = { showCancelConfirm = true })
+                OrderDetailSheetContent(order, onDismiss, onShowQR, onCancelCash = { showCancelConfirm = true })
             }
         }
     }
@@ -118,7 +118,7 @@ fun OrderDetailSheetContent(
     order: Order,
     onDismiss: () -> Unit,
     onShowQR: () -> Unit,
-    onCancelClick: () -> Unit
+    onCancelCash: () -> Unit
 ) {
         LazyColumn(
             modifier = Modifier
@@ -144,7 +144,7 @@ fun OrderDetailSheetContent(
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .clip(SquircleShape)
-                            .clickable { onDismiss() }
+                            .cashable { onDismiss() }
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
@@ -295,7 +295,7 @@ fun OrderDetailSheetContent(
                             )
                             .clip(SoftSquircleShape)
                             .background(MaterialTheme.colorScheme.surface)
-                            .clickable { onShowQR() }
+                            .cashable { onShowQR() }
                             .padding(20.dp),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -354,7 +354,7 @@ fun OrderDetailSheetContent(
                 when {
                     order.status.canCancel -> {
                         OutlinedButton(
-                            onClick = { onCancelClick() },
+                            onCash = { onCancelCash() },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.error,

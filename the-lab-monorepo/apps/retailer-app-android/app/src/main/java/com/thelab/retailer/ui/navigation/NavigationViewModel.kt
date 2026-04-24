@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class CardCheckoutResult(
-    val paymentUrl: String? = null,
+    val global_payntUrl: String? = null,
     val sessionId: String? = null,
     val attemptId: String? = null,
     val attemptNo: Int = 0,
@@ -29,10 +29,10 @@ data class NavigationUiState(
     val userName: String = "",
     val companyName: String = "",
     val avatarInitial: String = "?",
-    val paymentEvent: RetailerWSMessage? = null,
+    val global_payntEvent: RetailerWSMessage? = null,
     val orderCompleted: Boolean = false,
-    val paymentFailed: Boolean = false,
-    val paymentFailureMessage: String = "",
+    val global_payntFailed: Boolean = false,
+    val global_payntFailureMessage: String = "",
 ) {
     val activeOrderCount: Int get() = activeOrders.size
     val floatingStatusText: String
@@ -82,8 +82,8 @@ class NavigationViewModel @Inject constructor(
         }
     }
 
-    fun clearPaymentEvent() {
-        _uiState.update { it.copy(paymentEvent = null, orderCompleted = false, paymentFailed = false, paymentFailureMessage = "") }
+    fun clearGlobalPayntEvent() {
+        _uiState.update { it.copy(global_payntEvent = null, orderCompleted = false, global_payntFailed = false, global_payntFailureMessage = "") }
         loadActiveOrders()
     }
 
@@ -100,7 +100,7 @@ class NavigationViewModel @Inject constructor(
         return try {
             val resp = api.cardCheckout(mapOf("order_id" to orderId, "gateway" to gateway))
             val result = CardCheckoutResult(
-                paymentUrl = resp["payment_url"] as? String,
+                global_payntUrl = resp["global_paynt_url"] as? String,
                 sessionId = resp["session_id"] as? String,
                 attemptId = resp["attempt_id"] as? String,
                 attemptNo = (resp["attempt_no"] as? Number)?.toInt() ?: 0,
@@ -115,17 +115,17 @@ class NavigationViewModel @Inject constructor(
         retailerWebSocket.connect()
         viewModelScope.launch {
             retailerWebSocket.events
-                .filter { it.type == "PAYMENT_REQUIRED" }
+                .filter { it.type == "GLOBAL_PAYNT_REQUIRED" }
                 .collect { msg ->
-                    _uiState.update { it.copy(paymentEvent = msg) }
+                    _uiState.update { it.copy(global_payntEvent = msg) }
                 }
         }
         viewModelScope.launch {
             retailerWebSocket.events
                 .filter { it.type == "ORDER_COMPLETED" }
                 .collect { msg ->
-                    // If this completion matches the active payment event, signal success
-                    val current = _uiState.value.paymentEvent
+                    // If this completion matches the active global_paynt event, signal success
+                    val current = _uiState.value.global_payntEvent
                     if (current != null && current.orderId == msg.orderId) {
                         _uiState.update { it.copy(orderCompleted = true) }
                     }
@@ -146,10 +146,10 @@ class NavigationViewModel @Inject constructor(
         }
         viewModelScope.launch {
             retailerWebSocket.events
-                .filter { it.type == "PAYMENT_SETTLED" }
+                .filter { it.type == "GLOBAL_PAYNT_SETTLED" }
                 .collect { msg ->
-                    // If this settlement matches the active payment event, signal success
-                    val current = _uiState.value.paymentEvent
+                    // If this settlement matches the active global_paynt event, signal success
+                    val current = _uiState.value.global_payntEvent
                     if (current != null && current.orderId == msg.orderId) {
                         _uiState.update { it.copy(orderCompleted = true) }
                     }
@@ -158,16 +158,16 @@ class NavigationViewModel @Inject constructor(
         }
         viewModelScope.launch {
             retailerWebSocket.events
-                .filter { it.type == "PAYMENT_FAILED" || it.type == "PAYMENT_EXPIRED" }
+                .filter { it.type == "GLOBAL_PAYNT_FAILED" || it.type == "GLOBAL_PAYNT_EXPIRED" }
                 .collect { msg ->
-                    // If this failure/expiry matches the active payment event, signal failure
-                    val current = _uiState.value.paymentEvent
+                    // If this failure/expiry matches the active global_paynt event, signal failure
+                    val current = _uiState.value.global_payntEvent
                     if (current != null && current.orderId == msg.orderId) {
                         _uiState.update {
                             it.copy(
-                                paymentFailed = true,
-                                paymentFailureMessage = msg.message.ifBlank {
-                                    if (msg.type == "PAYMENT_EXPIRED") "Payment session expired" else "Payment failed"
+                                global_payntFailed = true,
+                                global_payntFailureMessage = msg.message.ifBlank {
+                                    if (msg.type == "GLOBAL_PAYNT_EXPIRED") "GlobalPaynt session expired" else "GlobalPaynt failed"
                                 },
                             )
                         }

@@ -32,7 +32,7 @@ export default function ChargebacksPage() {
 
   const [orderId, setOrderId] = useState('');
   const [retailerId, setRetailerId] = useState('');
-  const [gateway, setGateway] = useState('CLICK');
+  const [gateway, setGateway] = useState('CASH');
   const [amount, setAmount] = useState('0');
   const [sessionId, setSessionId] = useState('');
 
@@ -64,7 +64,7 @@ export default function ChargebacksPage() {
       return;
     }
     try {
-      const res = await fetch(`${API}/v1/payment/chargeback`, {
+      const res = await fetch(`${API}/v1/global_paynt/chargeback`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -88,7 +88,7 @@ export default function ChargebacksPage() {
       return;
     }
     try {
-      const res = await fetch(`${API}/v1/payment/chargeback/reversal`, {
+      const res = await fetch(`${API}/v1/global_paynt/chargeback/reversal`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId }),
@@ -117,8 +117,8 @@ export default function ChargebacksPage() {
             <input className="md-input-outlined px-3 py-2" placeholder="Order ID" value={orderId} onChange={(e) => setOrderId(e.target.value)} />
             <input className="md-input-outlined px-3 py-2" placeholder="Retailer ID" value={retailerId} onChange={(e) => setRetailerId(e.target.value)} />
             <select className="md-input-outlined px-3 py-2" value={gateway} onChange={(e) => setGateway(e.target.value)}>
-              <option value="CLICK">CLICK</option>
-              <option value="PAYME">PAYME</option>
+              <option value="CASH">CASH</option>
+              <option value="GLOBAL_PAY">GLOBAL_PAY</option>
               <option value="GLOBAL_PAY">GLOBAL_PAY</option>
             </select>
             <input className="md-input-outlined px-3 py-2" placeholder="Amount UZS" type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} />
@@ -128,7 +128,7 @@ export default function ChargebacksPage() {
 
         <div className="md-card md-elevation-1 md-shape-md p-4" style={{ background: 'var(--color-md-surface)' }}>
           <h2 className="md-typescale-title-small mb-3">Record Reversal</h2>
-          <input className="md-input-outlined px-3 py-2 w-full" placeholder="Payment Session ID" value={sessionId} onChange={(e) => setSessionId(e.target.value)} />
+          <input className="md-input-outlined px-3 py-2 w-full" placeholder="GlobalPaynt Session ID" value={sessionId} onChange={(e) => setSessionId(e.target.value)} />
           <Button variant="outline" className="mt-3" onPress={createReversal}>Record Reversal</Button>
         </div>
       </div>

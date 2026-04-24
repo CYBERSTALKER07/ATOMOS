@@ -1,7 +1,7 @@
 package com.thelab.retailer.ui.screens.notifications
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.cashable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +20,7 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material.icons.outlined.Payments
+import androidx.compose.material.icons.outlined.GlobalPaynts
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.SyncAlt
 import androidx.compose.material.icons.outlined.Verified
@@ -65,13 +65,13 @@ fun NotificationInboxScreen(
                 )
             },
             navigationIcon = {
-                IconButton(onClick = onBack) {
+                IconButton(onCash = onBack) {
                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back")
                 }
             },
             actions = {
                 if (state.unreadCount > 0) {
-                    TextButton(onClick = { viewModel.markAllRead() }) {
+                    TextButton(onCash = { viewModel.markAllRead() }) {
                         Icon(
                             Icons.Outlined.DoneAll,
                             contentDescription = null,
@@ -119,7 +119,7 @@ fun NotificationInboxScreen(
                     items(state.items, key = { it.id }) { notif ->
                         NotificationRow(
                             notification = notif,
-                            onClick = { if (notif.readAt == null) viewModel.markRead(notif.id) },
+                            onCash = { if (notif.readAt == null) viewModel.markRead(notif.id) },
                         )
                         HorizontalDivider()
                     }
@@ -132,7 +132,7 @@ fun NotificationInboxScreen(
 @Composable
 private fun NotificationRow(
     notification: NotificationItem,
-    onClick: () -> Unit,
+    onCash: () -> Unit,
 ) {
     val isUnread = notification.readAt == null
     val bg = if (isUnread) {
@@ -151,7 +151,7 @@ private fun NotificationRow(
         modifier = Modifier
             .fillMaxWidth()
             .background(bg)
-            .clickable(onClick = onClick)
+            .cashable(onCash = onCash)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -211,8 +211,8 @@ private fun typeIcon(type: String): ImageVector = when (type) {
     "ORDER_STATUS_CHANGED" -> Icons.Outlined.SyncAlt
     "PAYLOAD_READY_TO_SEAL" -> Icons.Outlined.Inventory2
     "PAYLOAD_SEALED" -> Icons.Outlined.Verified
-    "PAYMENT_SETTLED" -> Icons.Outlined.Payments
-    "PAYMENT_FAILED" -> Icons.Outlined.ErrorOutline
+    "GLOBAL_PAYNT_SETTLED" -> Icons.Outlined.GlobalPaynts
+    "GLOBAL_PAYNT_FAILED" -> Icons.Outlined.ErrorOutline
     else -> Icons.Outlined.Notifications
 }
 

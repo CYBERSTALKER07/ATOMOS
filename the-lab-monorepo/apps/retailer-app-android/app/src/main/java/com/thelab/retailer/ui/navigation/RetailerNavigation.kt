@@ -32,13 +32,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.thelab.retailer.data.model.Order
 import com.thelab.retailer.ui.components.ActiveDeliveriesSheet
-import com.thelab.retailer.ui.components.DeliveryPaymentSheet
+import com.thelab.retailer.ui.components.DeliveryGlobalPayntSheet
 import com.thelab.retailer.ui.components.FloatingActiveOrdersBar
 import com.thelab.retailer.ui.components.LabBottomBar
 import com.thelab.retailer.ui.components.LabTab
 import com.thelab.retailer.ui.components.LabTopBar
 import com.thelab.retailer.ui.components.OrderDetailSheet
-import com.thelab.retailer.ui.components.PaymentPhase
+import com.thelab.retailer.ui.components.GlobalPayntPhase
 import com.thelab.retailer.ui.components.QROverlay
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
@@ -85,9 +85,9 @@ fun RetailerNavigation(
     var globalDetailOrder by remember { mutableStateOf<Order?>(null) }
     var globalQROrder by remember { mutableStateOf<Order?>(null) }
 
-    // Payment sheet state
-    var paymentPhase by remember { mutableStateOf(PaymentPhase.CHOOSE) }
-    var paymentError by remember { mutableStateOf<String?>(null) }
+    // GlobalPaynt sheet state
+    var global_payntPhase by remember { mutableStateOf(GlobalPayntPhase.CHOOSE) }
+    var global_payntError by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
     // Show floating bar on Home, Orders, Suppliers tabs
@@ -157,13 +157,13 @@ fun RetailerNavigation(
             Scaffold(
             topBar = {
                 LabTopBar(
-                    onAvatarClick = { sidebarOpen = true },
-                    onCartClick = {
+                    onAvatarCash = { sidebarOpen = true },
+                    onCartCash = {
                         navController.navigate("CART") {
                             launchSingleTop = true
                         }
                     },
-                    onNotificationClick = {
+                    onNotificationCash = {
                         navController.navigate("NOTIFICATIONS") {
                             launchSingleTop = true
                         }
@@ -182,7 +182,7 @@ fun RetailerNavigation(
                         statusText = navState.floatingStatusText,
                         totalDisplay = navState.floatingTotalDisplay,
                         countdownIso = navState.floatingCountdownIso,
-                        onClick = { showActiveDeliveries = true },
+                        onCash = { showActiveDeliveries = true },
                     )
                     if (isCompact) {
                         LabBottomBar(
@@ -232,10 +232,10 @@ fun RetailerNavigation(
                 composable(LabTab.CATALOG.name) {
                     Box(Modifier.fillMaxSize()) {
                         CatalogScreen(
-                            onProductClick = { productId ->
+                            onProductCash = { productId ->
                                 navController.navigate("PRODUCT_DETAIL/$productId")
                             },
-                            onCategoryClick = { categoryId, categoryName ->
+                            onCategoryCash = { categoryId, categoryName ->
                                 navController.navigate("CATEGORY_SUPPLIERS/${Uri.encode(categoryId)}/${Uri.encode(categoryName)}")
                             },
                         )
@@ -251,7 +251,7 @@ fun RetailerNavigation(
                 composable(LabTab.SUPPLIERS.name) {
                     Box(Modifier.fillMaxSize()) {
                         MySuppliersScreen(
-                            onSupplierClick = { supplier ->
+                            onSupplierCash = { supplier ->
                                 cartViewModel.setSupplierIsActive(supplier.isActive)
                                 navController.navigate(
                                     "SUPPLIER_CATEGORY_CATALOG/${Uri.encode(supplier.id)}/${Uri.encode(supplier.name)}/${Uri.encode(supplier.displayCategory.orEmpty())}/${supplier.isActive}"
@@ -286,7 +286,7 @@ fun RetailerNavigation(
                             categoryId = categoryId,
                             categoryName = categoryName,
                             onBack = { navController.popBackStack() },
-                            onSupplierClick = { supplier ->
+                            onSupplierCash = { supplier ->
                                 cartViewModel.setSupplierIsActive(supplier.isActive)
                                 navController.navigate(
                                     "SUPPLIER_CATEGORY_CATALOG/${Uri.encode(supplier.id)}/${Uri.encode(supplier.name)}/${Uri.encode(supplier.displayCategory.orEmpty())}/${supplier.isActive}"
@@ -307,7 +307,7 @@ fun RetailerNavigation(
                             supplierCategory = supplierCategory,
                             supplierIsActive = supplierIsActive,
                             onBack = { navController.popBackStack() },
-                            onProductClick = { productId ->
+                            onProductCash = { productId ->
                                 navController.navigate("PRODUCT_DETAIL/$productId")
                             },
                         )
@@ -398,69 +398,69 @@ fun RetailerNavigation(
             )
         }
 
-        // ── Delivery Payment Sheet (WebSocket-driven) ──
-        val paymentEvent = navState.paymentEvent
+        // ── Delivery GlobalPaynt Sheet (WebSocket-driven) ──
+        val global_payntEvent = navState.global_payntEvent
         val context = LocalContext.current
 
         // Auto-transition to SUCCESS when ORDER_COMPLETED arrives via WebSocket
         LaunchedEffect(navState.orderCompleted) {
             if (navState.orderCompleted) {
-                paymentPhase = PaymentPhase.SUCCESS
+                global_payntPhase = GlobalPayntPhase.SUCCESS
             }
         }
 
-        if (paymentEvent != null) {
-            DeliveryPaymentSheet(
-                event = paymentEvent,
-                phase = paymentPhase,
-                errorMessage = paymentError,
+        if (global_payntEvent != null) {
+            DeliveryGlobalPayntSheet(
+                event = global_payntEvent,
+                phase = global_payntPhase,
+                errorMessage = global_payntError,
                 isCompact = isCompact,
                 onSelectCash = {
-                    paymentPhase = PaymentPhase.PROCESSING
+                    global_payntPhase = GlobalPayntPhase.PROCESSING
                     coroutineScope.launch {
-                        val result = navigationViewModel.cashCheckout(paymentEvent.orderId)
+                        val result = navigationViewModel.cashCheckout(global_payntEvent.orderId)
                         if (result.isSuccess) {
-                            paymentPhase = PaymentPhase.CASH_PENDING
+                            global_payntPhase = GlobalPayntPhase.CASH_PENDING
                         } else {
-                            paymentError = result.exceptionOrNull()?.message ?: "Cash checkout failed"
-                            paymentPhase = PaymentPhase.FAILED
+                            global_payntError = result.exceptionOrNull()?.message ?: "Cash checkout failed"
+                            global_payntPhase = GlobalPayntPhase.FAILED
                         }
                     }
                 },
                 onSelectCard = { gateway ->
-                    paymentPhase = PaymentPhase.PROCESSING
+                    global_payntPhase = GlobalPayntPhase.PROCESSING
                     coroutineScope.launch {
-                        val result = navigationViewModel.cardCheckout(paymentEvent.orderId, gateway)
+                        val result = navigationViewModel.cardCheckout(global_payntEvent.orderId, gateway)
                         if (result.isSuccess) {
                             val checkout = result.getOrNull()
-                            val url = checkout?.paymentUrl
+                            val url = checkout?.global_payntUrl
                             if (!url.isNullOrBlank()) {
-                                // Open deep-link in Payme/Click banking app
+                                // Open deep-link in GlobalPay/Cash banking app
                                 try {
                                     context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                                 } catch (_: Exception) {
-                                    paymentError = "Could not open $gateway app. Check it is installed."
-                                    paymentPhase = PaymentPhase.FAILED
+                                    global_payntError = "Could not open $gateway app. Check it is installed."
+                                    global_payntPhase = GlobalPayntPhase.FAILED
                                 }
                             } else {
-                                paymentError = "Payment gateway is not configured for this supplier."
-                                paymentPhase = PaymentPhase.FAILED
+                                global_payntError = "GlobalPaynt gateway is not configured for this supplier."
+                                global_payntPhase = GlobalPayntPhase.FAILED
                             }
                             // Stay on PROCESSING — the webhook settlement will trigger ORDER_COMPLETED via WS
                         } else {
-                            paymentError = result.exceptionOrNull()?.message ?: "Card checkout failed"
-                            paymentPhase = PaymentPhase.FAILED
+                            global_payntError = result.exceptionOrNull()?.message ?: "Card checkout failed"
+                            global_payntPhase = GlobalPayntPhase.FAILED
                         }
                     }
                 },
                 onRetry = {
-                    paymentPhase = PaymentPhase.CHOOSE
-                    paymentError = null
+                    global_payntPhase = GlobalPayntPhase.CHOOSE
+                    global_payntError = null
                 },
                 onDismiss = {
-                    paymentPhase = PaymentPhase.CHOOSE
-                    paymentError = null
-                    navigationViewModel.clearPaymentEvent()
+                    global_payntPhase = GlobalPayntPhase.CHOOSE
+                    global_payntError = null
+                    navigationViewModel.clearGlobalPayntEvent()
                 },
             )
         }

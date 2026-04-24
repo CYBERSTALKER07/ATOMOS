@@ -32,7 +32,7 @@ data class RetailerWSMessage(
     @SerialName("available_card_gateways") val availableCardGateways: List<String> = emptyList(),
     @SerialName("message") val message: String = "",
     @SerialName("delivery_token") val deliveryToken: String = "",
-    @SerialName("payment_method") val paymentMethod: String = "",
+    @SerialName("global_paynt_method") val global_payntMethod: String = "",
     @SerialName("gateway") val gateway: String = "",
     @SerialName("driver_latitude") val driverLatitude: Double? = null,
     @SerialName("driver_longitude") val driverLongitude: Double? = null,

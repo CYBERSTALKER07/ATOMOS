@@ -144,13 +144,13 @@ func TestEncrypt_CiphertextFormat(t *testing.T) {
 func TestGatewayConfigSummary_NoSecret(t *testing.T) {
 	cfg := GatewayConfigSummary{
 		ConfigID:    "cfg-1",
-		GatewayName: "PAYME",
+		GatewayName: "GLOBAL_PAY",
 		MerchantId:  "MERCH-1",
 		IsActive:    true,
 		HasSecret:   true,
 	}
 
-	if cfg.GatewayName != "PAYME" || !cfg.HasSecret {
+	if cfg.GatewayName != "GLOBAL_PAY" || !cfg.HasSecret {
 		t.Errorf("unexpected: %+v", cfg)
 	}
 }

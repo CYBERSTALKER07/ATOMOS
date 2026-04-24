@@ -1,4 +1,4 @@
-package payment
+package global_paynt
 
 import (
 	"encoding/json"
@@ -33,7 +33,7 @@ func retryDo(client *http.Client, buildReq func() (*http.Request, error), maxRet
 		resp, err := client.Do(req)
 		if err != nil {
 			lastErr = err
-			log.Printf("[PAYMENT] attempt %d/%d failed: %v", attempt+1, maxRetries+1, err)
+			log.Printf("[GLOBAL_PAYNT] attempt %d/%d failed: %v", attempt+1, maxRetries+1, err)
 			continue
 		}
 
@@ -41,7 +41,7 @@ func retryDo(client *http.Client, buildReq func() (*http.Request, error), maxRet
 		if resp.StatusCode == 502 || resp.StatusCode == 503 || resp.StatusCode == 504 {
 			resp.Body.Close()
 			lastErr = fmt.Errorf("HTTP %d", resp.StatusCode)
-			log.Printf("[PAYMENT] attempt %d/%d: server returned %d, retrying", attempt+1, maxRetries+1, resp.StatusCode)
+			log.Printf("[GLOBAL_PAYNT] attempt %d/%d: server returned %d, retrying", attempt+1, maxRetries+1, resp.StatusCode)
 			continue
 		}
 
@@ -53,19 +53,19 @@ func retryDo(client *http.Client, buildReq func() (*http.Request, error), maxRet
 // isRetryable checks if an error is a transient network/server error.
 var _ = errors.Is // suppress unused import if needed
 
-// GatewayClient is the common interface for Uzbek payment gateways.
-// Both Payme and Click implement this contract.
+// GatewayClient is the common interface for Uzbek global_paynt gateways.
+// Both GlobalPay and Cash implement this contract.
 type GatewayClient interface {
 	Charge(orderID string, amount int64) error
 	Refund(orderID string, refundAmount int64) error
 }
 
 // SplittingGateway extends GatewayClient with auth-hold / partial-capture semantics.
-// Global Pay implements this; Payme and Click use the legacy full-capture path.
+// Global Pay implements this; GlobalPay and Cash use the legacy full-capture path.
 type SplittingGateway interface {
 	GatewayClient
 	// Authorize places a hold on the card for the given amount without capturing.
-	// Returns the provider's authorization/payment ID.
+	// Returns the provider's authorization/global_paynt ID.
 	Authorize(orderID string, amount int64) (authorizationID string, err error)
 	// Capture settles a previously authorized hold. captureAmount may be ≤ authorized amount.
 	Capture(authorizationID string, captureAmount int64) error
@@ -74,25 +74,25 @@ type SplittingGateway interface {
 }
 
 
-// PaymeClient handles full-capture charges and partial refunds via the Payme
+// GlobalPayClient handles full-capture charges and partial refunds via the GlobalPay
 // merchant API. All credentials are loaded from environment variables — never
 // hardcoded.
 //
 // Required env vars:
 //
-//	PAYME_MERCHANT_ID  — your Payme merchant ID
-//	PAYME_SECRET_KEY   — your Payme secret key (test or prod)
-//	PAYME_API_URL      — defaults to https://checkout.paycom.uz/api
+//	GLOBAL_PAY_MERCHANT_ID  — your GlobalPay merchant ID
+//	GLOBAL_PAY_SECRET_KEY   — your GlobalPay secret key (test or prod)
+//	GLOBAL_PAY_API_URL      — defaults to https://checkout.paycom.uz/api
 
 
 
 
-type paymeRequest struct {
+type global_payRequest struct {
 	Method string                 `json:"method"`
 	Params map[string]interface{} `json:"params"`
 }
 
-type paymeResponse struct {
+type global_payResponse struct {
 	Result map[string]interface{} `json:"result"`
 	Error  *struct {
 		Code    int    `json:"code"`
@@ -109,47 +109,47 @@ type paymeResponse struct {
 
 
 
-// ClickClient handles full-capture charges and partial refunds via Click Up's
+// CashClient handles full-capture charges and partial refunds via Cash Up's
 // merchant API.
 //
 // Required env vars:
 //
-//	CLICK_MERCHANT_ID   — your Click merchant ID
-//	CLICK_SERVICE_ID    — your Click service ID
-//	CLICK_SECRET_KEY    — your Click secret key
-//	CLICK_API_URL       — defaults to https://api.click.uz/v2/merchant
+//	CASH_MERCHANT_ID   — your Cash merchant ID
+//	CASH_SERVICE_ID    — your Cash service ID
+//	CASH_SECRET_KEY    — your Cash secret key
+//	CASH_API_URL       — defaults to https://api.cash.uz/v2/merchant
 
 
 
 
-type clickInvoiceRequest struct {
+type cashInvoiceRequest struct {
 	ServiceID   string `json:"service_id"`
 	OrderID     string `json:"merchant_trans_id"`
 	Amount      int64  `json:"amount"` // UZS, integer
 	PhoneNumber string `json:"phone_number,omitempty"`
 }
 
-// Charge issues a full invoice/capture via Click Up.
+// Charge issues a full invoice/capture via Cash Up.
 
 
-// Refund issues a partial refund for rejected line items via Click.
+// Refund issues a partial refund for rejected line items via Cash.
 
 
 // ─── FACTORY ─────────────────────────────────────────────────────────────────
 
 // NewGatewayClient returns the correct GatewayClient implementation based on
-// the PaymentGateway column value stored in Spanner.
-// Recognised values: "PAYME", "CLICK", "GLOBAL_PAY", "UZCARD" (no live charge API), "CASH" (no-op).
+// the GlobalPayntGateway column value stored in Spanner.
+// Recognised values: "GLOBAL_PAY", "CASH", "GLOBAL_PAY", "UZCARD" (no live charge API), "CASH" (no-op).
 func NewGatewayClient(gateway string) (GatewayClient, error) {
 	switch gateway {
 	case "GLOBAL_PAY":
-		log.Printf("[PAYMENT] GLOBAL_PAY gateway: hosted checkout supported, direct charge/refund not wired yet")
+		log.Printf("[GLOBAL_PAYNT] GLOBAL_PAY gateway: hosted checkout supported, direct charge/refund not wired yet")
 		return &noopGateway{gateway: "GLOBAL_PAY"}, nil
 	case "SIMULATED":
 		return NewSimulatedClient()
 	case "UZCARD":
 		// UZCARD has no public restocking API yet — log and passthrough
-		log.Printf("[PAYMENT] UZCARD gateway: no API integration, logging only")
+		log.Printf("[GLOBAL_PAYNT] UZCARD gateway: no API integration, logging only")
 		return &noopGateway{gateway: "UZCARD"}, nil
 	case "CASH":
 		// Cash is collected physically — no electronic charge needed
@@ -157,14 +157,14 @@ func NewGatewayClient(gateway string) (GatewayClient, error) {
 	case "STRIPE":
 		return NewStripeClient()
 	default:
-		return nil, fmt.Errorf("unknown payment gateway: %s", gateway)
+		return nil, fmt.Errorf("unknown global_paynt gateway: %s", gateway)
 	}
 }
 
 // ─── CHECKOUT URL GENERATORS ─────────────────────────────────────────────────
 
 // CheckoutURL builds a native deep-link URL for the given gateway so
-// mobile apps can open the payment experience directly in the provider surface.
+// mobile apps can open the global_paynt experience directly in the provider surface.
 // Returns ("", nil) for gateways without an interactive checkout URL.
 func CheckoutURL(gateway string, orderID string, amount int64) (string, error) {
 	switch gateway {
@@ -180,11 +180,11 @@ func CheckoutURL(gateway string, orderID string, amount int64) (string, error) {
 	}
 }
 
-// paymeCheckoutURL builds the Payme checkout redirect URL.
+// global_payCheckoutURL builds the GlobalPay checkout redirect URL.
 // Format: https://checkout.paycom.uz/<base64(m=MERCHANT_ID;ac.order_id=ORDER_ID;a=AMOUNT_TIYINS)>
 
 
-// clickCheckoutURL builds the Click checkout redirect URL.
+// cashCheckoutURL builds the Cash checkout redirect URL.
 
 
 // globalPayCheckoutURL expands a hosted-checkout URL template.
@@ -220,7 +220,7 @@ func renderGlobalPayCheckoutURL(template, merchantId, orderID string, amount int
 	return replacer.Replace(template)
 }
 
-// stripeCheckoutURL returns a Stripe Checkout Session URL for international payments.
+// stripeCheckoutURL returns a Stripe Checkout Session URL for international global_paynts.
 // Creates a one-time session via the Stripe API.
 func stripeCheckoutURL(orderID string, amount int64) (string, error) {
 	sk := os.Getenv("STRIPE_SECRET_KEY")
@@ -245,7 +245,7 @@ func stripeCheckoutURL(orderID string, amount int64) (string, error) {
 	}
 
 	data := url.Values{
-		"mode":                                   {"payment"},
+		"mode":                                   {"global_paynt"},
 		"success_url":                            {successURL},
 		"cancel_url":                             {cancelURL},
 		"metadata[order_id]":                     {orderID},
@@ -288,28 +288,28 @@ func stripeCheckoutURL(orderID string, amount int64) (string, error) {
 type noopGateway struct{ gateway string }
 
 func (n *noopGateway) Charge(orderID string, amount int64) error {
-	log.Printf("[PAYMENT][NOOP] %s charge skipped: order=%s amount=%d", n.gateway, orderID, amount)
+	log.Printf("[GLOBAL_PAYNT][NOOP] %s charge skipped: order=%s amount=%d", n.gateway, orderID, amount)
 	return nil
 }
 func (n *noopGateway) Refund(orderID string, amount int64) error {
-	log.Printf("[PAYMENT][NOOP] %s refund skipped: order=%s amount=%d", n.gateway, orderID, amount)
+	log.Printf("[GLOBAL_PAYNT][NOOP] %s refund skipped: order=%s amount=%d", n.gateway, orderID, amount)
 	return nil
 }
 
 // ─── SIMULATED GATEWAY ────────────────────────────────────────────────────────
 
-// SimulatedClient acts as a custom payment system that simulates real-world
+// SimulatedClient acts as a custom global_paynt system that simulates real-world
 // card transactions. It performs artificial delays, randomly succeeds or fails
 // (e.g., simulating insufficient funds, network timeouts), and logs events.
 type SimulatedClient struct{}
 
 func NewSimulatedClient() (*SimulatedClient, error) {
-	log.Println("[PAYMENT] Initializing SIMULATED gateway client")
+	log.Println("[GLOBAL_PAYNT] Initializing SIMULATED gateway client")
 	return &SimulatedClient{}, nil
 }
 
 func (s *SimulatedClient) Charge(orderID string, amount int64) error {
-	log.Printf("[PAYMENT][SIMULATED] Authorizing full capture: order=%s amount=%d", orderID, amount)
+	log.Printf("[GLOBAL_PAYNT][SIMULATED] Authorizing full capture: order=%s amount=%d", orderID, amount)
 
 	// Simulate network round-trip / processing delay (500ms - 1500ms)
 	time.Sleep(800 * time.Millisecond)
@@ -320,16 +320,16 @@ func (s *SimulatedClient) Charge(orderID string, amount int64) error {
 		return fmt.Errorf("simulated transaction declined: insufficient funds (Test Mode)")
 	}
 
-	log.Printf("[PAYMENT][SIMULATED] Transaction approved! Full capture successful: order=%s", orderID)
+	log.Printf("[GLOBAL_PAYNT][SIMULATED] Transaction approved! Full capture successful: order=%s", orderID)
 	return nil
 }
 
 func (s *SimulatedClient) Refund(orderID string, refundAmount int64) error {
-	log.Printf("[PAYMENT][SIMULATED] Initiating refund: order=%s refund=%d", orderID, refundAmount)
+	log.Printf("[GLOBAL_PAYNT][SIMULATED] Initiating refund: order=%s refund=%d", orderID, refundAmount)
 
 	time.Sleep(600 * time.Millisecond)
 
-	log.Printf("[PAYMENT][SIMULATED] Refund processed successfully: order=%s", orderID)
+	log.Printf("[GLOBAL_PAYNT][SIMULATED] Refund processed successfully: order=%s", orderID)
 	return nil
 }
 

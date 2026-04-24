@@ -115,18 +115,18 @@ func TestCrossRoleAuthDenial(t *testing.T) {
 	}
 }
 
-// ─── Click Webhook Settlement (Live) ────────────────────────────────────────
+// ─── Cash Webhook Settlement (Live) ────────────────────────────────────────
 
-func TestClickWebhookSettlement(t *testing.T) {
+func TestCashWebhookSettlement(t *testing.T) {
 	skipIfNoBackend(t)
 
 	// Create an order first so we have an invoice to settle
 	retailerToken := loginRetailer(t)
 	orderID := createB2BOrder(t, retailerToken)
 
-	// Send a Click webhook with action=0 (prepare)
+	// Send a Cash webhook with action=0 (prepare)
 	body := fmt.Sprintf(`{
-		"click_trans_id": "CT-E2E-%d",
+		"cash_trans_id": "CT-E2E-%d",
 		"service_id": "SVC-1",
 		"merchant_trans_id": "%s",
 		"amount": 250000,
@@ -136,22 +136,22 @@ func TestClickWebhookSettlement(t *testing.T) {
 		"error": 0
 	}`, time.Now().Unix(), orderID)
 
-	resp, err := http.Post(baseURL+"/v1/webhooks/click", "application/json", strings.NewReader(body))
+	resp, err := http.Post(baseURL+"/v1/webhooks/cash", "application/json", strings.NewReader(body))
 	if err != nil {
-		t.Fatalf("Click webhook request failed: %v", err)
+		t.Fatalf("Cash webhook request failed: %v", err)
 	}
 	// We expect an error response since the signature is wrong, but the endpoint should be reachable
 	if resp.StatusCode == 404 || resp.StatusCode == 405 {
-		t.Errorf("Click webhook endpoint not found or wrong method: %d", resp.StatusCode)
+		t.Errorf("Cash webhook endpoint not found or wrong method: %d", resp.StatusCode)
 	}
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
-	t.Logf("Click webhook response: %v", result)
+	t.Logf("Cash webhook response: %v", result)
 }
 
-// ─── Payme Webhook Settlement (Live) ────────────────────────────────────────
+// ─── GlobalPay Webhook Settlement (Live) ────────────────────────────────────────
 
-func TestPaymeWebhookSettlement(t *testing.T) {
+func TestGlobalPayWebhookSettlement(t *testing.T) {
 	skipIfNoBackend(t)
 
 	retailerToken := loginRetailer(t)
@@ -167,17 +167,17 @@ func TestPaymeWebhookSettlement(t *testing.T) {
 		"id": 1
 	}`, orderID)
 
-	resp, err := http.Post(baseURL+"/v1/webhooks/payme", "application/json", strings.NewReader(body))
+	resp, err := http.Post(baseURL+"/v1/webhooks/global_pay", "application/json", strings.NewReader(body))
 	if err != nil {
-		t.Fatalf("Payme webhook request failed: %v", err)
+		t.Fatalf("GlobalPay webhook request failed: %v", err)
 	}
 	// Without correct Basic Auth, we expect an auth error, but endpoint should be reachable
 	if resp.StatusCode == 404 || resp.StatusCode == 405 {
-		t.Errorf("Payme webhook endpoint not found or wrong method: %d", resp.StatusCode)
+		t.Errorf("GlobalPay webhook endpoint not found or wrong method: %d", resp.StatusCode)
 	}
 	var result map[string]interface{}
 	json.NewDecoder(resp.Body).Decode(&result)
-	t.Logf("Payme webhook response: %v", result)
+	t.Logf("GlobalPay webhook response: %v", result)
 }
 
 // ─── WebSocket Telemetry ────────────────────────────────────────────────────
@@ -254,16 +254,16 @@ func TestDriverWSConnection(t *testing.T) {
 	t.Log("Driver WebSocket connected successfully")
 }
 
-// ─── Cash Payment Lifecycle ─────────────────────────────────────────────────
+// ─── Cash GlobalPaynt Lifecycle ─────────────────────────────────────────────────
 
-func TestCashPaymentLifecycle(t *testing.T) {
+func TestCashGlobalPayntLifecycle(t *testing.T) {
 	skipIfNoBackend(t)
 
 	// 1. Retailer creates a cash order
 	retailerToken := loginRetailer(t)
 	payload := `{
 		"retailer_id": "RET-001",
-		"payment_gateway": "CASH",
+		"global_paynt_gateway": "CASH",
 		"latitude": 41.2995,
 		"longitude": 69.2401,
 		"items": [

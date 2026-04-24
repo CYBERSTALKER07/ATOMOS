@@ -1,7 +1,7 @@
 package com.thelab.retailer.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.cashable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.sp
 import com.thelab.retailer.data.model.Order
 import com.thelab.retailer.data.model.OrderStatus
 import androidx.compose.foundation.ExperimentalFoundationApi
-import com.thelab.retailer.ui.components.modifiers.bounceClick
+import com.thelab.retailer.ui.components.modifiers.bounceCash
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -135,7 +135,7 @@ fun ActiveDeliveriesSheetContent(
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .clip(SquircleShape)
-                        .clickable { onDismiss() }
+                        .cashable { onDismiss() }
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                 )
             }
@@ -153,8 +153,8 @@ fun ActiveDeliveriesSheetContent(
             ActiveDeliveryCard(
                 order = order,
                 isApproaching = order.id in approachingOrderIds,
-                onDetailsClick = { onShowDetail(order) },
-                onQRClick = { onShowQR(order) },
+                onDetailsCash = { onShowDetail(order) },
+                onQRCash = { onShowQR(order) },
                 modifier = Modifier.animateItemPlacement()
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -169,8 +169,8 @@ fun ActiveDeliveriesSheetContent(
 private fun ActiveDeliveryCard(
     order: Order,
     isApproaching: Boolean = false,
-    onDetailsClick: () -> Unit,
-    onQRClick: () -> Unit,
+    onDetailsCash: () -> Unit,
+    onQRCash: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition()
@@ -183,7 +183,7 @@ private fun ActiveDeliveryCard(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .bounceClick { onDetailsClick() }
+            .bounceCash { onDetailsCash() }
             .shadow(
                 4.dp, SoftSquircleShape,
                 ambientColor = Color.Black.copy(alpha = 0.06f),
@@ -284,7 +284,7 @@ private fun ActiveDeliveryCard(
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     modifier = Modifier
                         .clip(PillShape)
-                        .clickable { onDetailsClick() }
+                        .cashable { onDetailsCash() }
                         .background(
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
                             PillShape,
@@ -297,7 +297,7 @@ private fun ActiveDeliveryCard(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .clip(PillShape)
-                            .clickable { onQRClick() }
+                            .cashable { onQRCash() }
                             .background(MaterialTheme.colorScheme.primary, PillShape)
                             .padding(horizontal = 12.dp, vertical = 6.dp),
                     ) {

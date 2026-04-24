@@ -143,7 +143,7 @@ func main() {
 			State          STRING(30)  NOT NULL,
 			TotalAmount    NUMERIC,
 			Amount      INT64,
-			PaymentGateway STRING(MAX),
+			GlobalPayntGateway STRING(MAX),
 			ShopLocation   STRING(MAX),
 			RouteId        STRING(MAX),
 			OrderSource    STRING(MAX),
@@ -156,9 +156,9 @@ func main() {
 			Version        INT64       NOT NULL DEFAULT (1),
 			LockedUntil    TIMESTAMP,
 			CreatedAt      TIMESTAMP OPTIONS (allow_commit_timestamp=true),
-			PaymentStatus   STRING(30)  NOT NULL DEFAULT ('PENDING'),
-			CONSTRAINT CHK_Order_State CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION', 'COMPLETED', 'CANCELLED', 'SCHEDULED', 'BACKORDERED', 'QUARANTINE')),
-			CONSTRAINT CHK_PaymentStatus CHECK (PaymentStatus IN ('PENDING', 'PENDING_CASH_COLLECTION', 'AWAITING_GATEWAY_WEBHOOK', 'PAID', 'FAILED'))
+			GlobalPayntStatus   STRING(30)  NOT NULL DEFAULT ('PENDING'),
+			CONSTRAINT CHK_Order_State CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED', 'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION', 'COMPLETED', 'CANCELLED', 'SCHEDULED', 'BACKORDERED', 'QUARANTINE')),
+			CONSTRAINT CHK_GlobalPayntStatus CHECK (GlobalPayntStatus IN ('PENDING', 'PENDING_CASH_COLLECTION', 'AWAITING_GATEWAY_WEBHOOK', 'PAID', 'FAILED'))
 		) PRIMARY KEY (OrderId)`,
 
 		`CREATE INDEX IDX_Orders_RetailerId ON Orders(RetailerId)`,
@@ -173,8 +173,8 @@ func main() {
 			Total            INT64       NOT NULL,
 			State               STRING(20)  NOT NULL,
 			OrderId             STRING(36),
-			PaymeTransactionId  STRING(64),
-			PaymentMode         STRING(20),
+			GlobalPayTransactionId  STRING(64),
+			GlobalPayntMode         STRING(20),
 			CollectorDriverId   STRING(36),
 			CollectedAt         TIMESTAMP,
 			CollectionLat       FLOAT64,
@@ -185,7 +185,7 @@ func main() {
 		) PRIMARY KEY (InvoiceId)`,
 		`CREATE INDEX Idx_MasterInvoice_Retailer ON MasterInvoices(RetailerId)`,
 		`CREATE INDEX Idx_MasterInvoice_OrderId ON MasterInvoices(OrderId)`,
-		`CREATE INDEX Idx_MasterInvoice_PaymeTxn ON MasterInvoices(PaymeTransactionId)`,
+		`CREATE INDEX Idx_MasterInvoice_GlobalPayTxn ON MasterInvoices(GlobalPayTransactionId)`,
 
 		`CREATE TABLE Products (
 			ProductId   STRING(36)  NOT NULL,
@@ -292,7 +292,7 @@ func main() {
 			BankName            STRING(MAX),
 			AccountNumber       STRING(MAX),
 			CardNumber          STRING(MAX),
-			PaymentGateway      STRING(20),
+			GlobalPayntGateway      STRING(20),
 			CreatedAt           TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
 		) PRIMARY KEY (SupplierId)`,
 		`CREATE INDEX Idx_Suppliers_ByPhone ON Suppliers(Phone)`,
@@ -416,8 +416,8 @@ func main() {
 		`CREATE INDEX Idx_WarehouseStaff_BySupplierId ON WarehouseStaff(SupplierId)`,
 		`CREATE INDEX Idx_WarehouseStaff_ByPhone ON WarehouseStaff(Phone)`,
 
-		// ── SUPPLIER PAYMENT GATEWAY VAULT ──
-		`CREATE TABLE SupplierPaymentConfigs (
+		// ── SUPPLIER GLOBAL_PAYNT GATEWAY VAULT ──
+		`CREATE TABLE SupplierGlobalPayntConfigs (
 			ConfigId     STRING(36)  NOT NULL,
 			SupplierId   STRING(36)  NOT NULL,
 			GatewayName  STRING(20)  NOT NULL,
@@ -427,10 +427,10 @@ func main() {
 			IsActive     BOOL        NOT NULL DEFAULT (true),
 			CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 			UpdatedAt    TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
-			CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CLICK', 'PAYME', 'GLOBAL_PAY'))
+			CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'GLOBAL_PAY'))
 		) PRIMARY KEY (ConfigId)`,
-		`CREATE INDEX Idx_SupplierPaymentConfigs_BySupplierId ON SupplierPaymentConfigs(SupplierId)`,
-		`CREATE UNIQUE INDEX Idx_SupplierPaymentConfigs_Unique ON SupplierPaymentConfigs(SupplierId, GatewayName)`,
+		`CREATE INDEX Idx_SupplierGlobalPayntConfigs_BySupplierId ON SupplierGlobalPayntConfigs(SupplierId)`,
+		`CREATE UNIQUE INDEX Idx_SupplierGlobalPayntConfigs_Unique ON SupplierGlobalPayntConfigs(SupplierId, GatewayName)`,
 
 		// ── GATEWAY ONBOARDING SESSIONS (SUPPLIER CONNECT) ──
 		`CREATE TABLE GatewayOnboardingSessions (
@@ -450,8 +450,8 @@ func main() {
 		`CREATE INDEX Idx_GatewayOnboarding_BySupplierId ON GatewayOnboardingSessions(SupplierId)`,
 		`CREATE INDEX Idx_GatewayOnboarding_ByStatus ON GatewayOnboardingSessions(Status)`,
 
-		// ── PAYMENT SESSIONS (PHASE 13: DURABLE PAYMENT SESSION ENGINE) ──
-		`CREATE TABLE PaymentSessions (
+		// ── GLOBAL_PAYNT SESSIONS (PHASE 13: DURABLE GLOBAL_PAYNT SESSION ENGINE) ──
+		`CREATE TABLE GlobalPayntSessions (
 			SessionId         STRING(36)  NOT NULL,
 			OrderId           STRING(36)  NOT NULL,
 			RetailerId        STRING(36)  NOT NULL,
@@ -472,11 +472,11 @@ func main() {
 			SettledAt         TIMESTAMP,
 			CONSTRAINT CHK_SessionStatus CHECK (Status IN ('CREATED', 'PENDING', 'SETTLED', 'FAILED', 'EXPIRED', 'CANCELLED'))
 		) PRIMARY KEY (SessionId)`,
-		`CREATE INDEX Idx_PaymentSessions_ByOrderId ON PaymentSessions(OrderId)`,
-		`CREATE INDEX Idx_PaymentSessions_BySupplierId ON PaymentSessions(SupplierId)`,
-		`CREATE INDEX Idx_PaymentSessions_ByStatus ON PaymentSessions(Status)`,
+		`CREATE INDEX Idx_GlobalPayntSessions_ByOrderId ON GlobalPayntSessions(OrderId)`,
+		`CREATE INDEX Idx_GlobalPayntSessions_BySupplierId ON GlobalPayntSessions(SupplierId)`,
+		`CREATE INDEX Idx_GlobalPayntSessions_ByStatus ON GlobalPayntSessions(Status)`,
 
-		`CREATE TABLE PaymentAttempts (
+		`CREATE TABLE GlobalPayntAttempts (
 			AttemptId             STRING(36)  NOT NULL,
 			SessionId             STRING(36)  NOT NULL,
 			AttemptNo             INT64       NOT NULL,
@@ -490,8 +490,8 @@ func main() {
 			FinishedAt            TIMESTAMP,
 			CONSTRAINT CHK_AttemptStatus CHECK (Status IN ('INITIATED', 'REDIRECTED', 'PROCESSING', 'SUCCESS', 'FAILED', 'CANCELLED', 'TIMED_OUT'))
 		) PRIMARY KEY (AttemptId)`,
-		`CREATE INDEX Idx_PaymentAttempts_BySessionId ON PaymentAttempts(SessionId)`,
-		`CREATE INDEX Idx_PaymentAttempts_ByProviderTxn ON PaymentAttempts(ProviderTransactionId)`,
+		`CREATE INDEX Idx_GlobalPayntAttempts_BySessionId ON GlobalPayntAttempts(SessionId)`,
+		`CREATE INDEX Idx_GlobalPayntAttempts_ByProviderTxn ON GlobalPayntAttempts(ProviderTransactionId)`,
 
 		// ── Vector H Phase 2: ETA & Returning-to-Warehouse ────────────────────
 		// Per-stop ETA columns written by routing/eta.go on driver depart (traffic-aware)
@@ -574,10 +574,10 @@ func main() {
 
 		// Missing indexes on existing tables
 		`CREATE INDEX Idx_Orders_ByRetailerState ON Orders(RetailerId, State)`,
-		`CREATE INDEX Idx_PaymentSessions_ByStatusExpiry ON PaymentSessions(Status, ExpiresAt)`,
-		`CREATE INDEX Idx_PaymentSessions_ByRetailerId ON PaymentSessions(RetailerId)`,
+		`CREATE INDEX Idx_GlobalPayntSessions_ByStatusExpiry ON GlobalPayntSessions(Status, ExpiresAt)`,
+		`CREATE INDEX Idx_GlobalPayntSessions_ByRetailerId ON GlobalPayntSessions(RetailerId)`,
 
-		// ── Retailer Card Tokens (saved payment cards for tokenized checkout) ──
+		// ── Retailer Card Tokens (saved global_paynt cards for tokenized checkout) ──
 		`CREATE TABLE RetailerCardTokens (
 			TokenId           STRING(36)  NOT NULL,
 			RetailerId        STRING(36)  NOT NULL,
@@ -592,8 +592,8 @@ func main() {
 		) PRIMARY KEY (TokenId)`,
 		`CREATE INDEX Idx_RetailerCardTokens_ByRetailer ON RetailerCardTokens(RetailerId)`,
 
-		// Global Pay split payments: supplier recipient account for distribution
-		`ALTER TABLE SupplierPaymentConfigs ADD COLUMN RecipientId STRING(MAX)`,
+		// Global Pay split global_paynts: supplier recipient account for distribution
+		`ALTER TABLE SupplierGlobalPayntConfigs ADD COLUMN RecipientId STRING(MAX)`,
 
 		// Amendment safeguard: pending supplier approval for large price reductions
 		`ALTER TABLE Orders ADD COLUMN AmendmentPendingApproval BOOL NOT NULL DEFAULT (false)`,
@@ -1095,23 +1095,23 @@ func setupSeedData(ctx context.Context, client *spanner.Client) {
 		}
 		orders := []orderDef{
 			// Completed orders (historical)
-			{"ORD-0001", retTashkent, drvAmir, "COMPLETED", "PAYME", 431_460},
-			{"ORD-0002", retSamarkand, drvRust, "COMPLETED", "CLICK", 287_520},
-			{"ORD-0003", retBukhara, drvAmir, "COMPLETED", "PAYME", 599_280},
-			{"ORD-0004", retTashkent, drvRust, "COMPLETED", "CLICK", 143_760},
-			{"ORD-0005", retNamangan, drvAmir, "COMPLETED", "PAYME", 239_760},
+			{"ORD-0001", retTashkent, drvAmir, "COMPLETED", "GLOBAL_PAY", 431_460},
+			{"ORD-0002", retSamarkand, drvRust, "COMPLETED", "CASH", 287_520},
+			{"ORD-0003", retBukhara, drvAmir, "COMPLETED", "GLOBAL_PAY", 599_280},
+			{"ORD-0004", retTashkent, drvRust, "COMPLETED", "CASH", 143_760},
+			{"ORD-0005", retNamangan, drvAmir, "COMPLETED", "GLOBAL_PAY", 239_760},
 			// In-progress orders
-			{"ORD-0006", retTashkent, drvAmir, "IN_TRANSIT", "PAYME", 323_520},
-			{"ORD-0007", retSamarkand, drvRust, "LOADED", "CLICK", 179_940},
+			{"ORD-0006", retTashkent, drvAmir, "IN_TRANSIT", "GLOBAL_PAY", 323_520},
+			{"ORD-0007", retSamarkand, drvRust, "LOADED", "CASH", 179_940},
 			// Pending orders (visible in supplier order queue)
-			{"ORD-0008", retBukhara, "", "PENDING", "PAYME", 479_040},
-			{"ORD-0009", retTashkent, "", "PENDING", "CLICK", 269_560},
-			{"ORD-0010", retNamangan, "", "PENDING", "PAYME", 119_800},
-			{"ORD-0011", retSamarkand, "", "PENDING", "CLICK", 359_760},
-			{"ORD-0012", retTashkent, "", "PENDING", "PAYME", 539_520},
+			{"ORD-0008", retBukhara, "", "PENDING", "GLOBAL_PAY", 479_040},
+			{"ORD-0009", retTashkent, "", "PENDING", "CASH", 269_560},
+			{"ORD-0010", retNamangan, "", "PENDING", "GLOBAL_PAY", 119_800},
+			{"ORD-0011", retSamarkand, "", "PENDING", "CASH", 359_760},
+			{"ORD-0012", retTashkent, "", "PENDING", "GLOBAL_PAY", 539_520},
 		}
 		for _, o := range orders {
-			cols := []string{"OrderId", "RetailerId", "State", "Amount", "PaymentGateway", "CreatedAt"}
+			cols := []string{"OrderId", "RetailerId", "State", "Amount", "GlobalPayntGateway", "CreatedAt"}
 			vals := []interface{}{o.id, o.retailer, o.state, o.amount, o.gateway, spanner.CommitTimestamp}
 			if o.driver != "" {
 				cols = append(cols, "DriverId")
@@ -1186,10 +1186,10 @@ func setupSeedData(ctx context.Context, client *spanner.Client) {
 		mutations = append(mutations,
 			spanner.Insert("LedgerAnomalies",
 				[]string{"OrderId", "RetailerId", "SpannerUzs", "GatewayUzs", "GatewayProvider", "Status", "DetectedAt"},
-				[]interface{}{"ORD-0003", retBukhara, int64(599_280), int64(589_280), "PAYME", "DELTA", spanner.CommitTimestamp}),
+				[]interface{}{"ORD-0003", retBukhara, int64(599_280), int64(589_280), "GLOBAL_PAY", "DELTA", spanner.CommitTimestamp}),
 			spanner.Insert("LedgerAnomalies",
 				[]string{"OrderId", "RetailerId", "SpannerUzs", "GatewayUzs", "GatewayProvider", "Status", "DetectedAt"},
-				[]interface{}{"ORD-0005", retNamangan, int64(239_760), int64(0), "PAYME", "ORPHANED", spanner.CommitTimestamp}),
+				[]interface{}{"ORD-0005", retNamangan, int64(239_760), int64(0), "GLOBAL_PAY", "ORPHANED", spanner.CommitTimestamp}),
 		)
 
 		// ═══════════════════════════════════════════════════════════════════

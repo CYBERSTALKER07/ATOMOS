@@ -11,18 +11,18 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-// ─── Payment Config (read-only view of supplier's payment gateways) ──────────
+// ─── GlobalPaynt Config (read-only view of supplier's global_paynt gateways) ──────────
 
-type PaymentGatewayItem struct {
+type GlobalPayntGatewayItem struct {
 	GatewayID   string `json:"gateway_id"`
-	Provider    string `json:"provider"` // CLICK | PAYME | GLOBAL_PAY
+	Provider    string `json:"provider"` // CASH | GLOBAL_PAY | GLOBAL_PAY
 	IsActive    bool   `json:"is_active"`
 	Environment string `json:"environment"` // SANDBOX | PRODUCTION
 	MerchantID  string `json:"merchant_id,omitempty"`
 }
 
-// HandleOpsPaymentConfig — GET for /v1/warehouse/ops/payment-config
-func HandleOpsPaymentConfig(spannerClient *spanner.Client) http.HandlerFunc {
+// HandleOpsGlobalPayntConfig — GET for /v1/warehouse/ops/global_paynt-config
+func HandleOpsGlobalPayntConfig(spannerClient *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -37,7 +37,7 @@ func HandleOpsPaymentConfig(spannerClient *spanner.Client) http.HandlerFunc {
 
 		stmt := spanner.Statement{
 			SQL: `SELECT GatewayId, Provider, IsActive, Environment, COALESCE(MerchantId, '')
-			      FROM SupplierPaymentGateways
+			      FROM SupplierGlobalPayntGateways
 			      WHERE SupplierId = @sid
 			      ORDER BY Provider`,
 			Params: map[string]interface{}{"sid": ops.SupplierID},
@@ -46,27 +46,27 @@ func HandleOpsPaymentConfig(spannerClient *spanner.Client) http.HandlerFunc {
 		iter := spannerClient.Single().Query(r.Context(), stmt)
 		defer iter.Stop()
 
-		var gateways []PaymentGatewayItem
+		var gateways []GlobalPayntGatewayItem
 		for {
 			row, err := iter.Next()
 			if err == iterator.Done {
 				break
 			}
 			if err != nil {
-				log.Printf("[WH PAYMENT] list error: %v", err)
+				log.Printf("[WH GLOBAL_PAYNT] list error: %v", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
-			var g PaymentGatewayItem
+			var g GlobalPayntGatewayItem
 			if err := row.Columns(&g.GatewayID, &g.Provider, &g.IsActive,
 				&g.Environment, &g.MerchantID); err != nil {
-				log.Printf("[WH PAYMENT] parse: %v", err)
+				log.Printf("[WH GLOBAL_PAYNT] parse: %v", err)
 				continue
 			}
 			gateways = append(gateways, g)
 		}
 		if gateways == nil {
-			gateways = []PaymentGatewayItem{}
+			gateways = []GlobalPayntGatewayItem{}
 		}
 
 		w.Header().Set("Content-Type", "application/json")

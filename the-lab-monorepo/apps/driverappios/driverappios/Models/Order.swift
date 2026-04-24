@@ -335,7 +335,7 @@ extension Order {
             latitude: 41.3111,
             longitude: 69.2797,
             qrToken: "ORD-TASH-0056:abc123",
-            paymentGateway: "PAYME",
+            paymentGateway: "GLOBAL_PAY",
             createdAt: "2026-03-19T08:00:00Z",
             updatedAt: "2026-03-19T08:30:00Z",
             items: [
@@ -380,7 +380,7 @@ extension Order {
             latitude: 41.3275,
             longitude: 69.3341,
             qrToken: "ORD-TASH-0058:ghi789",
-            paymentGateway: "PAYME",
+            paymentGateway: "GLOBAL_PAY",
             createdAt: "2026-03-19T09:00:00Z",
             updatedAt: "2026-03-19T09:30:00Z",
             items: [

@@ -293,10 +293,10 @@ func TestParseWKTPoint_OneCoord(t *testing.T) {
 
 func TestNormalizeCardGateway_Valid(t *testing.T) {
 	cases := map[string]string{
-		"CLICK":      "CLICK",
-		"click":      "CLICK",
-		"PAYME":      "PAYME",
-		"payme":      "PAYME",
+		"CASH":      "CASH",
+		"cash":      "CASH",
+		"GLOBAL_PAY":      "GLOBAL_PAY",
+		"global_pay":      "GLOBAL_PAY",
 		"GLOBAL_PAY": "GLOBAL_PAY",
 		"global_pay": "GLOBAL_PAY",
 	}
@@ -321,8 +321,8 @@ func TestNormalizeCardGateway_Invalid(t *testing.T) {
 }
 
 func TestNormalizeCardGateway_Whitespace(t *testing.T) {
-	if got := normalizeCardGateway("  CLICK  "); got != "CLICK" {
-		t.Errorf("got %q, want CLICK (should trim)", got)
+	if got := normalizeCardGateway("  CASH  "); got != "CASH" {
+		t.Errorf("got %q, want CASH (should trim)", got)
 	}
 }
 

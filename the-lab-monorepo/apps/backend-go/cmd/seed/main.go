@@ -181,7 +181,7 @@ type demoSupplier struct {
 	bankName             string
 	accountNumber        string
 	cardNumber           string
-	paymentGateway       string
+	global_payntGateway       string
 	products             []demoProduct
 }
 
@@ -224,7 +224,7 @@ var demoSuppliers = []demoSupplier{
 		bankName:             "Kapitalbank",
 		accountNumber:        "20208000900100001010",
 		cardNumber:           "8600140012345678",
-		paymentGateway:       "PAYME",
+		global_payntGateway:       "GLOBAL_PAY",
 		primaryCategoryID:    primaryCategoryID,
 		operatingCategoryIDs: []string{"cat-soft-drinks", "cat-water", "cat-energy-sports"},
 		products: []demoProduct{
@@ -246,7 +246,7 @@ var demoSuppliers = []demoSupplier{
 		bankName:             "Uzpromstroybank",
 		accountNumber:        "20208000900200002020",
 		cardNumber:           "8600140023456789",
-		paymentGateway:       "CLICK",
+		global_payntGateway:       "CASH",
 		primaryCategoryID:    "cat-bread-bakery",
 		operatingCategoryIDs: []string{"cat-bread-bakery", "cat-breakfast-cereal", "cat-rice-pasta-grains"},
 		products: []demoProduct{
@@ -268,7 +268,7 @@ var demoSuppliers = []demoSupplier{
 		bankName:             "Asaka Bank",
 		accountNumber:        "20208000900300003030",
 		cardNumber:           "8600140034567890",
-		paymentGateway:       "PAYME",
+		global_payntGateway:       "GLOBAL_PAY",
 		primaryCategoryID:    "cat-fresh-fruit",
 		operatingCategoryIDs: []string{"cat-fresh-fruit", "cat-fresh-vegetables", "cat-herbs-salads"},
 		products: []demoProduct{
@@ -290,7 +290,7 @@ var demoSuppliers = []demoSupplier{
 		bankName:             "Ipoteka Bank",
 		accountNumber:        "20208000900400004040",
 		cardNumber:           "8600140045678901",
-		paymentGateway:       "CLICK",
+		global_payntGateway:       "CASH",
 		primaryCategoryID:    "cat-dairy-eggs",
 		operatingCategoryIDs: []string{"cat-dairy-eggs", "cat-cheese-deli", "cat-frozen-food"},
 		products: []demoProduct{
@@ -312,7 +312,7 @@ var demoSuppliers = []demoSupplier{
 		bankName:             "Kapitalbank",
 		accountNumber:        "20208000900500005050",
 		cardNumber:           "8600140056789012",
-		paymentGateway:       "PAYME",
+		global_payntGateway:       "GLOBAL_PAY",
 		primaryCategoryID:    "cat-household-cleaning",
 		operatingCategoryIDs: []string{"cat-household-cleaning", "cat-laundry", "cat-paper-hygiene"},
 		products: []demoProduct{
@@ -334,7 +334,7 @@ var demoSuppliers = []demoSupplier{
 		bankName:             "Hamkorbank",
 		accountNumber:        "20208000900600006060",
 		cardNumber:           "8600140067890123",
-		paymentGateway:       "CLICK",
+		global_payntGateway:       "CASH",
 		primaryCategoryID:    "cat-personal-care",
 		operatingCategoryIDs: []string{"cat-personal-care", "cat-oral-care", "cat-skin-care"},
 		products: []demoProduct{
@@ -356,7 +356,7 @@ var demoSuppliers = []demoSupplier{
 		bankName:             "Asaka Bank",
 		accountNumber:        "20208000900700007070",
 		cardNumber:           "8600140078901234",
-		paymentGateway:       "BANK_TRANSFER",
+		global_payntGateway:       "BANK_TRANSFER",
 		primaryCategoryID:    "cat-canned-jarred",
 		operatingCategoryIDs: []string{"cat-canned-jarred", "cat-condiments-sauces", "cat-oils-spices"},
 		products: []demoProduct{
@@ -378,7 +378,7 @@ var demoSuppliers = []demoSupplier{
 		bankName:             "Uzpromstroybank",
 		accountNumber:        "20208000900800008080",
 		cardNumber:           "8600140089012345",
-		paymentGateway:       "PAYME",
+		global_payntGateway:       "GLOBAL_PAY",
 		primaryCategoryID:    "cat-snacks-chips",
 		operatingCategoryIDs: []string{"cat-snacks-chips", "cat-nuts-dried-fruit", "cat-candy-chocolate"},
 		products: []demoProduct{
@@ -533,7 +533,7 @@ func applyMigrations(ctx context.Context, dbName string, opts []option.ClientOpt
 		"ALTER TABLE Suppliers ADD COLUMN BankName STRING(MAX)",
 		"ALTER TABLE Suppliers ADD COLUMN AccountNumber STRING(MAX)",
 		"ALTER TABLE Suppliers ADD COLUMN CardNumber STRING(MAX)",
-		"ALTER TABLE Suppliers ADD COLUMN PaymentGateway STRING(20)",
+		"ALTER TABLE Suppliers ADD COLUMN GlobalPayntGateway STRING(20)",
 		"CREATE TABLE PlatformCategories (CategoryId STRING(36) NOT NULL, DisplayName STRING(MAX) NOT NULL, IconUrl STRING(MAX), DisplayOrder INT64 NOT NULL) PRIMARY KEY (CategoryId)",
 		// Auto-Dispatch Engine: dimensional columns for bin-packing
 		"ALTER TABLE Drivers ADD COLUMN MaxPalletCapacity INT64",
@@ -566,7 +566,7 @@ func applyMigrations(ctx context.Context, dbName string, opts []option.ClientOpt
 
 func truncateTables(ctx context.Context, client *spanner.Client) {
 	tables := []string{
-		"SupplierPaymentConfigs",
+		"SupplierGlobalPayntConfigs",
 		"WarehouseStaff",
 		"SupplierInventory",
 		"SupplierProducts",
@@ -633,11 +633,11 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 				[]string{"SupplierId", "Name", "Category", "Phone", "Email", "PasswordHash",
 					"TaxId", "ContactPerson", "CompanyRegNumber", "BillingAddress",
 					"IsConfigured", "OperatingCategories",
-					"BankName", "AccountNumber", "CardNumber", "PaymentGateway", "CreatedAt"},
+					"BankName", "AccountNumber", "CardNumber", "GlobalPayntGateway", "CreatedAt"},
 				[]interface{}{supplier.id, supplier.name, primaryCategoryName, supplier.phone, supplier.email, passwordHash,
 					strings.ReplaceAll(supplier.id, "SUP-", "UZ-TAX-"), supplier.contactPerson, supplier.companyRegNumber, supplier.billingAddress,
 					true, supplier.operatingCategoryIDs,
-					supplier.bankName, supplier.accountNumber, supplier.cardNumber, supplier.paymentGateway, spanner.CommitTimestamp}))
+					supplier.bankName, supplier.accountNumber, supplier.cardNumber, supplier.global_payntGateway, spanner.CommitTimestamp}))
 
 			mutations = append(mutations, spanner.Insert("RetailerSuppliers",
 				[]string{"RetailerId", "SupplierId", "AddedAt"},
@@ -696,8 +696,8 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 				[]interface{}{pl.id, pl.supplierID, pl.name, pl.phone, payloaderPinHash, true, spanner.CommitTimestamp}))
 		}
 
-		// ── SUPPLIER PAYMENT CONFIGS (AES-256-GCM encrypted vault) ─────────
-		type paymentConfig struct {
+		// ── SUPPLIER GLOBAL_PAYNT CONFIGS (AES-256-GCM encrypted vault) ─────────
+		type global_payntConfig struct {
 			configID   string
 			supplierID string
 			gateway    string
@@ -705,19 +705,19 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 			serviceID  string
 			secretKey  string
 		}
-		paymentConfigs := []paymentConfig{
-			{"PCFG-001", supplierID, "PAYME", "payme_merchant_001", "", "payme_secret_key_SUP001_live"},
-			{"PCFG-002", supplierID, "CLICK", "click_merchant_001", "click_svc_001", "click_secret_key_SUP001_live"},
+		global_payntConfigs := []global_payntConfig{
+			{"PCFG-001", supplierID, "GLOBAL_PAY", "global_pay_merchant_001", "", "global_pay_secret_key_SUP001_live"},
+			{"PCFG-002", supplierID, "CASH", "cash_merchant_001", "cash_svc_001", "cash_secret_key_SUP001_live"},
 		}
-		for _, pc := range paymentConfigs {
+		for _, pc := range global_payntConfigs {
 			encrypted, err := vaultEncrypt([]byte(pc.secretKey))
 			if err != nil {
-				log.Printf("[SEED] VAULT ENCRYPT WARNING for %s: %v (skipping payment config)", pc.configID, err)
+				log.Printf("[SEED] VAULT ENCRYPT WARNING for %s: %v (skipping global_paynt config)", pc.configID, err)
 				continue
 			}
 			cols := []string{"ConfigId", "SupplierId", "GatewayName", "MerchantId", "SecretKey", "IsActive", "CreatedAt"}
 			vals := []interface{}{pc.configID, pc.supplierID, pc.gateway, pc.merchantID, encrypted, true, spanner.CommitTimestamp}
-			mutations = append(mutations, spanner.Insert("SupplierPaymentConfigs", cols, vals))
+			mutations = append(mutations, spanner.Insert("SupplierGlobalPayntConfigs", cols, vals))
 		}
 
 		// ═══════════════════════════════════════════════════════════════════
@@ -730,7 +730,7 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 			driverID      string
 			routeID       string
 			state         string
-			paymentStatus string
+			global_payntStatus string
 			amount     int64
 			orderSource   string
 			deliveryToken string // empty = NULL (pre-dispatch); set for dispatched orders
@@ -750,7 +750,7 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 			{"ORD-SEED-009", "RET-002", "SUP-006", "DRV-003", "TRUCK-TASH-03", "ARRIVING", "PENDING", 746_000, "RETAILER_APP", "b2c3d4e5f6a10009"},
 			{"ORD-SEED-010", "RET-002", "SUP-007", "DRV-001", "TRUCK-TASH-01", "COMPLETED", "PAID", 597_000, "RETAILER_APP", "b2c3d4e5f6a10010"},
 			{"ORD-SEED-011", "RET-002", "SUP-002", "", "", "SCHEDULED", "PENDING", 240_000, "ADMIN_PORTAL", ""},
-			{"ORD-SEED-012", "RET-002", "SUP-003", "DRV-002", "TRUCK-TASH-02", "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION", 285_000, "RETAILER_APP", "b2c3d4e5f6a10012"},
+			{"ORD-SEED-012", "RET-002", "SUP-003", "DRV-002", "TRUCK-TASH-02", "AWAITING_GLOBAL_PAYNT", "PENDING_CASH_COLLECTION", 285_000, "RETAILER_APP", "b2c3d4e5f6a10012"},
 
 			// ── RET-003 orders (Yunusabad Mini-Mart) ── various suppliers
 			{"ORD-SEED-013", "RET-003", "SUP-004", "DRV-001", "TRUCK-TASH-01", "LOADED", "PENDING", 452_000, "RETAILER_APP", "c3d4e5f6a1b20013"},
@@ -769,10 +769,10 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 			{"ORD-SEED-024", "RET-004", "SUP-008", "DRV-003", "TRUCK-TASH-03", "IN_TRANSIT", "PENDING", 573_000, "RETAILER_APP", "d4e5f6a1b2c30024"},
 		}
 		orderCols := []string{"OrderId", "RetailerId", "SupplierId", "DriverId", "State",
-			"Amount", "PaymentStatus", "RouteId", "OrderSource", "DeliveryToken", "CreatedAt"}
+			"Amount", "GlobalPayntStatus", "RouteId", "OrderSource", "DeliveryToken", "CreatedAt"}
 		for _, o := range seedOrders {
 			vals := []interface{}{o.id, o.retailerID, o.supplierID, nilStr(o.driverID), o.state,
-				o.amount, o.paymentStatus, nilStr(o.routeID), o.orderSource, nilStr(o.deliveryToken), spanner.CommitTimestamp}
+				o.amount, o.global_payntStatus, nilStr(o.routeID), o.orderSource, nilStr(o.deliveryToken), spanner.CommitTimestamp}
 			mutations = append(mutations, spanner.Insert("Orders", orderCols, vals))
 		}
 
@@ -817,7 +817,7 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 			{"LI-022", "ORD-SEED-010", "SUP7-OIL-01", 1, 260_000, "DELIVERED"},
 			// ORD-SEED-011: SUP-002 → RET-002 (SCHEDULED)
 			{"LI-023", "ORD-SEED-011", "SUP2-RICE-01", 1, 240_000, "PENDING"},
-			// ORD-SEED-012: SUP-003 → RET-002 (AWAITING_PAYMENT)
+			// ORD-SEED-012: SUP-003 → RET-002 (AWAITING_GLOBAL_PAYNT)
 			{"LI-024", "ORD-SEED-012", "SUP3-VEG-01", 2, 110_000, "DELIVERED"},
 			{"LI-025", "ORD-SEED-012", "SUP3-HERB-01", 1, 88_000, "DELIVERED"},
 			// ORD-SEED-013: SUP-004 → RET-003 (LOADED)
@@ -867,7 +867,7 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 			total    int64
 			state       string
 			orderID     string
-			paymentMode string
+			global_payntMode string
 		}
 		seedInvoices := []seedInvoice{
 			{"INV-001", "RET-001", 662_000, "PAID", "ORD-SEED-005", "ELECTRONIC"},
@@ -878,8 +878,8 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 		}
 		for _, inv := range seedInvoices {
 			mutations = append(mutations, spanner.Insert("MasterInvoices",
-				[]string{"InvoiceId", "RetailerId", "Total", "State", "OrderId", "PaymentMode", "CreatedAt"},
-				[]interface{}{inv.invoiceID, inv.retailerID, inv.total, inv.state, inv.orderID, inv.paymentMode, spanner.CommitTimestamp}))
+				[]string{"InvoiceId", "RetailerId", "Total", "State", "OrderId", "GlobalPayntMode", "CreatedAt"},
+				[]interface{}{inv.invoiceID, inv.retailerID, inv.total, inv.state, inv.orderID, inv.global_payntMode, spanner.CommitTimestamp}))
 		}
 
 		return txn.BufferWrite(mutations)
@@ -904,7 +904,7 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 	log.Println("  • 24 Orders     (12 states × multi-supplier × multi-retailer)")
 	log.Println("  • 46 Line Items (realistic SKU distribution)")
 	log.Println("  • 5  Invoices   (PAID + PENDING_COLLECTION)")
-	log.Println("  • 2  Payment Configs (PAYME + CLICK, AES-256-GCM encrypted)")
+	log.Println("  • 2  GlobalPaynt Configs (GLOBAL_PAY + CASH, AES-256-GCM encrypted)")
 }
 
 func seedRedisGeo(ctx context.Context, rdb *redis.Client) {

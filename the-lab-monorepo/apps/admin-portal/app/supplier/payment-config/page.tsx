@@ -41,31 +41,31 @@ type ProviderCapability = {
   manual_hint: string;
 };
 
-type GatewayName = 'CLICK' | 'PAYME' | 'GLOBAL_PAY';
+type GatewayName = 'CASH' | 'GLOBAL_PAY' | 'GLOBAL_PAY';
 
 const DEFAULT_CAPABILITIES: ProviderCapability[] = [
   {
-    gateway: 'CLICK',
-    display_name: 'Click',
+    gateway: 'CASH',
+    display_name: 'Cash',
     onboarding_mode: 'MANUAL_ONLY',
     required_fields: ['merchant_id', 'service_id', 'secret_key'],
     manual_fields: [
       { name: 'merchant_id', label: 'Merchant ID', placeholder: 'e.g. 12345' },
       { name: 'service_id', label: 'Service ID', placeholder: 'e.g. 23456' },
-      { name: 'secret_key', label: 'Secret Key', placeholder: 'Enter your Click secret key', input_type: 'password' },
+      { name: 'secret_key', label: 'Secret Key', placeholder: 'Enter your Cash secret key', input_type: 'password' },
     ],
-    manual_hint: 'Enter your Click merchant credentials from the Click merchant dashboard.',
+    manual_hint: 'Enter your Cash merchant credentials from the Cash merchant dashboard.',
   },
   {
-    gateway: 'PAYME',
-    display_name: 'Payme',
+    gateway: 'GLOBAL_PAY',
+    display_name: 'GlobalPay',
     onboarding_mode: 'MANUAL_ONLY',
     required_fields: ['merchant_id', 'secret_key'],
     manual_fields: [
       { name: 'merchant_id', label: 'Merchant ID', placeholder: 'e.g. 6241a1234567890abc...' },
-      { name: 'secret_key', label: 'Secret Key', placeholder: 'Enter your Payme secret key', input_type: 'password' },
+      { name: 'secret_key', label: 'Secret Key', placeholder: 'Enter your GlobalPay secret key', input_type: 'password' },
     ],
-    manual_hint: 'Enter your Payme merchant credentials from the Payme Business cabinet.',
+    manual_hint: 'Enter your GlobalPay merchant credentials from the GlobalPay Business cabinet.',
   },
   {
     gateway: 'GLOBAL_PAY',
@@ -95,7 +95,7 @@ function getFieldLabel(cap: ProviderCapability, fieldName: ManualFieldName): str
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-export default function PaymentConfigPage() {
+export default function GlobalPayntConfigPage() {
   const [configs, setConfigs] = useState<GatewayConfig[]>([]);
   const [capabilities, setCapabilities] = useState<ProviderCapability[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,7 +116,7 @@ export default function PaymentConfigPage() {
 
   const fetchConfigs = useCallback(async () => {
     try {
-      const res = await apiFetch('/v1/supplier/payment-config');
+      const res = await apiFetch('/v1/supplier/global_paynt-config');
       if (res.ok) {
         const data = await res.json();
         setConfigs(data.configs ?? []);
@@ -155,7 +155,7 @@ export default function PaymentConfigPage() {
     }
     setIsSaving(true);
     try {
-      const res = await apiFetch('/v1/supplier/payment-config', {
+      const res = await apiFetch('/v1/supplier/global_paynt-config', {
         method: 'POST',
         body: JSON.stringify({
           gateway_name: gateway,
@@ -182,7 +182,7 @@ export default function PaymentConfigPage() {
 
   const handleDeactivate = useCallback(async (configId: string, gatewayName: string) => {
     try {
-      const res = await apiFetch('/v1/supplier/payment-config', {
+      const res = await apiFetch('/v1/supplier/global_paynt-config', {
         method: 'DELETE',
         body: JSON.stringify({ config_id: configId }),
       });
@@ -226,10 +226,10 @@ export default function PaymentConfigPage() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="md-typescale-headline-medium" style={{ color: 'var(--foreground)' }}>
-          Payment Gateways
+          GlobalPaynt Gateways
         </h1>
         <p className="md-typescale-body-medium mt-1" style={{ color: 'var(--muted)' }}>
-          Configure Click, Payme, and Global Pay credentials for your payment processing.
+          Configure Cash, GlobalPay, and Global Pay credentials for your global_paynt processing.
         </p>
       </div>
 
@@ -466,12 +466,12 @@ export default function PaymentConfigPage() {
               className="md-card md-elevation-0 md-shape-lg py-16 flex flex-col items-center gap-3"
               style={{ background: 'var(--background)', border: '1px dashed var(--border)' }}
             >
-              <Icon name="payment" size={32} className="opacity-40" />
+              <Icon name="global_paynt" size={32} className="opacity-40" />
               <span className="md-typescale-headline-small" style={{ color: 'var(--muted)' }}>
-                No payment gateways available
+                No global_paynt gateways available
               </span>
               <p className="md-typescale-body-medium" style={{ color: 'var(--muted)' }}>
-                Payment gateway support will be configured by your system administrator.
+                GlobalPaynt gateway support will be configured by your system administrator.
               </p>
             </div>
           )}
@@ -486,7 +486,7 @@ export default function PaymentConfigPage() {
 
 function CreditCardIcon({ gateway, configured }: { gateway: GatewayName; configured: boolean }) {
   const color = configured ? 'var(--success)' : 'var(--muted)';
-  if (gateway === 'PAYME') {
+  if (gateway === 'GLOBAL_PAY') {
     return (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="5" width="20" height="14" rx="2" />

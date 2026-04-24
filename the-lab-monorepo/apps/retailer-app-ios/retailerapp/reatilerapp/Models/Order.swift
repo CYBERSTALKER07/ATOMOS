@@ -13,7 +13,7 @@ enum OrderStatus: String, Codable, CaseIterable {
     case arriving = "ARRIVING"
     case arrived = "ARRIVED"
     case arrivedShopClosed = "ARRIVED_SHOP_CLOSED"
-    case awaitingPayment = "AWAITING_PAYMENT"
+    case awaitingPayment = "AWAITING_GLOBAL_PAYNT"
     case pendingCashCollection = "PENDING_CASH_COLLECTION"
     case cancelRequested = "CANCEL_REQUESTED"
     case noCapacity = "NO_CAPACITY"

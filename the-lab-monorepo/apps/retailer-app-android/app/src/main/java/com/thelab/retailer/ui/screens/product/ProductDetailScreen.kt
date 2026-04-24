@@ -87,14 +87,14 @@ fun ProductDetailScreen(
             title = { Text("Use Previous Analytics?") },
             text = { Text("Use existing order history for $entityLabel, or start fresh? Starting fresh requires at least 2 orders.") },
             confirmButton = {
-                TextButton(onClick = { viewModel.confirmEnable(useHistory = true) }) {
+                TextButton(onCash = { viewModel.confirmEnable(useHistory = true) }) {
                     Text("Use History")
                 }
             },
             dismissButton = {
                 Row {
-                    TextButton(onClick = viewModel::dismissEnableDialog) { Text("Cancel") }
-                    TextButton(onClick = { viewModel.confirmEnable(useHistory = false) }) { Text("Start Fresh") }
+                    TextButton(onCash = viewModel::dismissEnableDialog) { Text("Cancel") }
+                    TextButton(onCash = { viewModel.confirmEnable(useHistory = false) }) { Text("Start Fresh") }
                 }
             },
         )
@@ -110,7 +110,7 @@ fun ProductDetailScreen(
                     shadowElevation = 8.dp,
                 ) {
                     Button(
-                        onClick = {
+                        onCash = {
                             val variant = product.defaultVariant ?: Variant(
                                 id = product.id,
                                 size = product.name,
@@ -154,7 +154,7 @@ fun ProductDetailScreen(
                 .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack) {
+            IconButton(onCash = onBack) {
                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
             }
             Text(
@@ -361,7 +361,7 @@ private fun VariantRow(
             if (onAddToCart != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
-                    onClick = onAddToCart,
+                    onCash = onAddToCart,
                     modifier = Modifier.fillMaxWidth().height(40.dp),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(

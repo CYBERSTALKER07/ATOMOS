@@ -11,7 +11,7 @@ import (
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// REVENUE ANALYTICS — Time-series revenue by payment gateway
+// REVENUE ANALYTICS — Time-series revenue by global_paynt gateway
 //
 // GET /v1/supplier/analytics/revenue?from=&to=&warehouse_id=
 // Auth: SUPPLIER | ADMIN + RequireWarehouseScope
@@ -20,8 +20,8 @@ import (
 type RevenueDayBucket struct {
 	Date  string `json:"date"`
 	Total int64  `json:"total"`
-	Payme int64  `json:"payme"`
-	Click int64  `json:"click"`
+	GlobalPay int64  `json:"global_pay"`
+	Cash int64  `json:"cash"`
 	Card  int64  `json:"card"`
 	Cash  int64  `json:"cash"`
 }
@@ -60,10 +60,10 @@ func HandleRevenue(client *spanner.Client) http.HandlerFunc {
 			SELECT
 				FORMAT_TIMESTAMP('%%Y-%%m-%%d', o.CreatedAt) as Day,
 				CAST(SUM(o.Amount) AS INT64) as Total,
-				CAST(SUM(CASE WHEN o.PaymentGateway = 'PAYME' THEN o.Amount ELSE 0 END) AS INT64) as Payme,
-				CAST(SUM(CASE WHEN o.PaymentGateway = 'CLICK' THEN o.Amount ELSE 0 END) AS INT64) as Click,
-				CAST(SUM(CASE WHEN o.PaymentGateway = 'CARD' THEN o.Amount ELSE 0 END) AS INT64) as Card,
-				CAST(SUM(CASE WHEN o.PaymentGateway IN ('CASH', 'CASH_ON_DELIVERY') THEN o.Amount ELSE 0 END) AS INT64) as Cash
+				CAST(SUM(CASE WHEN o.GlobalPayntGateway = 'GLOBAL_PAY' THEN o.Amount ELSE 0 END) AS INT64) as GlobalPay,
+				CAST(SUM(CASE WHEN o.GlobalPayntGateway = 'CASH' THEN o.Amount ELSE 0 END) AS INT64) as Cash,
+				CAST(SUM(CASE WHEN o.GlobalPayntGateway = 'CARD' THEN o.Amount ELSE 0 END) AS INT64) as Card,
+				CAST(SUM(CASE WHEN o.GlobalPayntGateway IN ('CASH', 'CASH_ON_DELIVERY') THEN o.Amount ELSE 0 END) AS INT64) as Cash
 			FROM Orders o
 			WHERE o.State IN ('COMPLETED', 'ARRIVED')
 			AND o.CreatedAt >= @_from AND o.CreatedAt <= @_to
@@ -85,14 +85,14 @@ func HandleRevenue(client *spanner.Client) http.HandlerFunc {
 			}
 			var b RevenueDayBucket
 			var day spanner.NullString
-			var total, payme, click, card, cash spanner.NullInt64
-			if err := row.Columns(&day, &total, &payme, &click, &card, &cash); err != nil {
+			var total, global_pay, cash, card, cash spanner.NullInt64
+			if err := row.Columns(&day, &total, &global_pay, &cash, &card, &cash); err != nil {
 				continue
 			}
 			b.Date = day.StringVal
 			b.Total = total.Int64
-			b.Payme = payme.Int64
-			b.Click = click.Int64
+			b.GlobalPay = global_pay.Int64
+			b.Cash = cash.Int64
 			b.Card = card.Int64
 			b.Cash = cash.Int64
 			resp.TimeSeries = append(resp.TimeSeries, b)
@@ -101,7 +101,7 @@ func HandleRevenue(client *spanner.Client) http.HandlerFunc {
 		// 2. Gateway breakdown totals
 		gbSql := fmt.Sprintf(`
 			SELECT
-				COALESCE(o.PaymentGateway, 'UNKNOWN') as Gateway,
+				COALESCE(o.GlobalPayntGateway, 'UNKNOWN') as Gateway,
 				CAST(SUM(o.Amount) AS INT64) as Total,
 				COUNT(*) as OrderCount
 			FROM Orders o

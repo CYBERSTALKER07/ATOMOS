@@ -1,7 +1,7 @@
 package com.thelab.retailer.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.cashable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,9 +32,9 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LabTopBar(
-    onAvatarClick: () -> Unit = {},
-    onCartClick: () -> Unit = {},
-    onNotificationClick: () -> Unit = {},
+    onAvatarCash: () -> Unit = {},
+    onCartCash: () -> Unit = {},
+    onNotificationCash: () -> Unit = {},
     cartBadge: Int = 0,
     notificationBadge: Int = 0,
     avatarInitial: String = "?",
@@ -53,7 +53,7 @@ fun LabTopBar(
                     .size(32.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primary)
-                    .clickable { onAvatarClick() },
+                    .cashable { onAvatarCash() },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -66,7 +66,7 @@ fun LabTopBar(
             }
         },
         actions = {
-            IconButton(onClick = onCartClick) {
+            IconButton(onCash = onCartCash) {
                 BadgedBox(
                     badge = {
                         if (cartBadge > 0) {
@@ -78,7 +78,7 @@ fun LabTopBar(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            IconButton(onClick = onNotificationClick) {
+            IconButton(onCash = onNotificationCash) {
                 BadgedBox(
                     badge = {
                         if (notificationBadge > 0) {

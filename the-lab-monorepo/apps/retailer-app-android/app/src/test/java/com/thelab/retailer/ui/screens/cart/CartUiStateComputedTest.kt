@@ -4,7 +4,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 /**
- * CartUiState — Computed properties: totals, shipping, discount, display values, payment labels.
+ * CartUiState — Computed properties: totals, shipping, discount, display values, global_paynt labels.
  *
  * CartItem requires Product reference which needs Hilt wiring.
  * For the empty cart we exercise the actual data class; for non-trivial subtotals
@@ -62,27 +62,27 @@ class CartUiStateComputedTest {
     }
 
     @Test
-    fun `selectedPaymentLabel default is Click`() {
+    fun `selectedGlobalPayntLabel default is Cash`() {
         val state = CartUiState()
-        assertEquals("Click", state.selectedPaymentLabel)
+        assertEquals("Cash", state.selectedGlobalPayntLabel)
     }
 
     @Test
-    fun `selectedPaymentLabel Payme`() {
-        val state = CartUiState(selectedPaymentGateway = "PAYME")
-        assertEquals("Payme", state.selectedPaymentLabel)
+    fun `selectedGlobalPayntLabel GlobalPay`() {
+        val state = CartUiState(selectedGlobalPayntGateway = "GLOBAL_PAY")
+        assertEquals("GlobalPay", state.selectedGlobalPayntLabel)
     }
 
     @Test
-    fun `selectedPaymentLabel Cash`() {
-        val state = CartUiState(selectedPaymentGateway = "CASH")
-        assertEquals("Cash on Delivery", state.selectedPaymentLabel)
+    fun `selectedGlobalPayntLabel Cash`() {
+        val state = CartUiState(selectedGlobalPayntGateway = "CASH")
+        assertEquals("Cash on Delivery", state.selectedGlobalPayntLabel)
     }
 
     @Test
-    fun `selectedPaymentLabel Global Pay`() {
-        val state = CartUiState(selectedPaymentGateway = "GLOBAL_PAY")
-        assertEquals("Global Pay", state.selectedPaymentLabel)
+    fun `selectedGlobalPayntLabel GlobalPay`() {
+        val state = CartUiState(selectedGlobalPayntGateway = "GLOBAL_PAY")
+        assertEquals("GlobalPay", state.selectedGlobalPayntLabel)
     }
 
     @Test

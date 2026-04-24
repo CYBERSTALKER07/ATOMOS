@@ -20,7 +20,7 @@ import (
 	"backend-go/hotspot"
 	kafkaEvents "backend-go/kafka"
 	"backend-go/outbox"
-	"backend-go/payment"
+	"backend-go/global_paynt"
 	"backend-go/proximity"
 	"backend-go/spannerx"
 	"backend-go/telemetry"
@@ -88,7 +88,7 @@ type Order struct {
 	SupplierName   string             `json:"supplier_name,omitempty"`
 	Amount         int64              `json:"amount"`
 	Currency       string             `json:"currency"`
-	PaymentGateway string             `json:"payment_gateway"`
+	GlobalPayntGateway string             `json:"global_paynt_gateway"`
 	State          string             `json:"state"`
 	RouteID        spanner.NullString `json:"route_id"`
 	OrderSource    spanner.NullString `json:"order_source"`
@@ -151,7 +151,7 @@ type CreateOrderRequest struct {
 	RetailerID     string  `json:"retailer_id"`
 	Amount         int64   `json:"amount"`
 	Currency       string  `json:"currency"`
-	PaymentGateway string  `json:"payment_gateway"`
+	GlobalPayntGateway string  `json:"global_paynt_gateway"`
 	Latitude       float64 `json:"latitude"`
 	Longitude      float64 `json:"longitude"`
 	// AI Empathy Engine fields (optional)
@@ -184,9 +184,9 @@ type OrderService struct {
 	Cache        *cache.Cache
 	Client       *spanner.Client
 	Vault        *vault.Service                 // Per-supplier credential vault (nil = ENV-only fallback)
-	SessionSvc   *payment.SessionService        // Payment session engine (nil = legacy mode)
-	CardTokenSvc *payment.CardTokenService      // Saved card token CRUD (nil = tokenization disabled)
-	DirectClient *payment.GlobalPayDirectClient // Global Pay Payments Service Public (nil = disabled)
+	SessionSvc   *global_paynt.SessionService        // GlobalPaynt session engine (nil = legacy mode)
+	CardTokenSvc *global_paynt.CardTokenService      // Saved card token CRUD (nil = tokenization disabled)
+	DirectClient *global_paynt.GlobalPayDirectClient // Global Pay GlobalPaynts Service Public (nil = disabled)
 	FeeBP        int64                          // Platform fee in basis points (0 = zero-fee era)
 }
 
@@ -480,8 +480,8 @@ func (s *OrderService) CreateOrder(ctx context.Context, req CreateOrderRequest) 
 		}
 
 		mut := spanner.Insert("Orders",
-			[]string{"OrderId", "RetailerId", "Amount", "Currency", "PaymentGateway", "State", "ShopLocation", "RouteId", "OrderSource", "AutoConfirmAt", "DeliverBefore", "RequestedDeliveryDate", "ScheduleShard", "DeliveryToken", "DeliveryFee", "FulfillmentWarehouseId", "Version", "CreatedAt"},
-			[]interface{}{orderID, req.RetailerID, req.Amount, "UZS", req.PaymentGateway, initialState, wkt, spanner.NullString{Valid: false}, orderSource, autoConfirm, deliverBefore, requestedDD, scheduleShard, spanner.NullString{Valid: false}, req.DeliveryFee, fulfillmentWH, int64(1), spanner.CommitTimestamp},
+			[]string{"OrderId", "RetailerId", "Amount", "Currency", "GlobalPayntGateway", "State", "ShopLocation", "RouteId", "OrderSource", "AutoConfirmAt", "DeliverBefore", "RequestedDeliveryDate", "ScheduleShard", "DeliveryToken", "DeliveryFee", "FulfillmentWarehouseId", "Version", "CreatedAt"},
+			[]interface{}{orderID, req.RetailerID, req.Amount, "UZS", req.GlobalPayntGateway, initialState, wkt, spanner.NullString{Valid: false}, orderSource, autoConfirm, deliverBefore, requestedDD, scheduleShard, spanner.NullString{Valid: false}, req.DeliveryFee, fulfillmentWH, int64(1), spanner.CommitTimestamp},
 		)
 		return txn.BufferWrite([]*spanner.Mutation{mut})
 	})
@@ -508,7 +508,7 @@ func (s *OrderService) ListOrdersPaginated(ctx context.Context, routeId string, 
 		offset = 0
 	}
 
-	sql := `SELECT o.OrderId, o.RetailerId, o.Amount, o.Currency, o.PaymentGateway, o.State, o.RouteId,
+	sql := `SELECT o.OrderId, o.RetailerId, o.Amount, o.Currency, o.GlobalPayntGateway, o.State, o.RouteId,
 	               o.OrderSource, o.AutoConfirmAt, o.DeliverBefore, o.DeliveryToken, o.CreatedAt,
 	               o.SupplierId, COALESCE(s.Name, '') AS SupplierName
 	        FROM Orders o
@@ -572,7 +572,7 @@ func (s *OrderService) ListOrdersPaginated(ctx context.Context, routeId string, 
 			SupplierName:   supplierName.StringVal,
 			Amount:         amount.Int64,
 			Currency:       currency.StringVal,
-			PaymentGateway: gateway.StringVal,
+			GlobalPayntGateway: gateway.StringVal,
 			State:          stateVal,
 			RouteID:        routeIdVal,
 			OrderSource:    orderSource,
@@ -677,7 +677,7 @@ func (s *OrderService) SaveDeviceToken(ctx context.Context, retailerID string, d
 }
 
 func (s *OrderService) GetActiveFleet(ctx context.Context, supplierID, routeId string) ([]ActiveMission, error) {
-	sql := "SELECT OrderId, State, ShopLocation, Amount, PaymentGateway, RouteId, SupplierId, EstimatedArrivalAt FROM Orders WHERE State IN ('PENDING', 'EN_ROUTE')"
+	sql := "SELECT OrderId, State, ShopLocation, Amount, GlobalPayntGateway, RouteId, SupplierId, EstimatedArrivalAt FROM Orders WHERE State IN ('PENDING', 'EN_ROUTE')"
 
 	params := map[string]interface{}{}
 	if supplierID != "" {
@@ -1116,7 +1116,7 @@ func (s *OrderService) CancelOrder(ctx context.Context, req CancelOrderRequest) 
 
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{req.OrderID},
-			[]string{"State", "Version", "LockedUntil", "RouteId", "RetailerId", "PaymentStatus", "PaymentGateway"})
+			[]string{"State", "Version", "LockedUntil", "RouteId", "RetailerId", "GlobalPayntStatus", "GlobalPayntGateway"})
 		if err != nil {
 			return fmt.Errorf("order %s not found: %w", req.OrderID, err)
 		}
@@ -1125,8 +1125,8 @@ func (s *OrderService) CancelOrder(ctx context.Context, req CancelOrderRequest) 
 		var version int64
 		var lockedUntil spanner.NullTime
 		var routeId spanner.NullString
-		var paymentStatusNull, gatewayNull spanner.NullString
-		if err := row.Columns(&state, &version, &lockedUntil, &routeId, &retailerId, &paymentStatusNull, &gatewayNull); err != nil {
+		var global_payntStatusNull, gatewayNull spanner.NullString
+		if err := row.Columns(&state, &version, &lockedUntil, &routeId, &retailerId, &global_payntStatusNull, &gatewayNull); err != nil {
 			return fmt.Errorf("failed to parse order row: %w", err)
 		}
 
@@ -1158,16 +1158,16 @@ func (s *OrderService) CancelOrder(ctx context.Context, req CancelOrderRequest) 
 		}
 
 		// Track authorization state for post-commit void.
-		if paymentStatusNull.Valid && paymentStatusNull.StringVal == "AUTHORIZED" {
+		if global_payntStatusNull.Valid && global_payntStatusNull.StringVal == "AUTHORIZED" {
 			wasAuthorized = true
 			orderGateway = gatewayNull.StringVal
 			cancelledOrderID = req.OrderID
 		}
 
-		// 6. Execute cancellation + bump version + clear PaymentStatus if authorized
+		// 6. Execute cancellation + bump version + clear GlobalPayntStatus if authorized
 		updateSQL := `UPDATE Orders SET State = 'CANCELLED', AutoConfirmAt = NULL, Version = @newVersion WHERE OrderId = @orderId AND Version = @version`
 		if wasAuthorized {
-			updateSQL = `UPDATE Orders SET State = 'CANCELLED', AutoConfirmAt = NULL, PaymentStatus = 'CANCELLED', Version = @newVersion WHERE OrderId = @orderId AND Version = @version`
+			updateSQL = `UPDATE Orders SET State = 'CANCELLED', AutoConfirmAt = NULL, GlobalPayntStatus = 'CANCELLED', Version = @newVersion WHERE OrderId = @orderId AND Version = @version`
 		}
 		updateStmt := spanner.Statement{
 			SQL:    updateSQL,
@@ -1199,7 +1199,7 @@ func (s *OrderService) CancelOrder(ctx context.Context, req CancelOrderRequest) 
 }
 
 // voidAuthorizationForOrder releases a Global Pay authorization hold by looking up
-// the AUTHORIZED PaymentSession for the order and calling VoidAuthorization.
+// the AUTHORIZED GlobalPayntSession for the order and calling VoidAuthorization.
 // Best-effort: failures are logged but do not propagate (hold expires naturally).
 func (s *OrderService) voidAuthorizationForOrder(ctx context.Context, orderID string) {
 	if s.SessionSvc == nil {
@@ -1220,7 +1220,7 @@ func (s *OrderService) voidAuthorizationForOrder(ctx context.Context, orderID st
 			secretKey = cfg.SecretKey
 		}
 	}
-	creds, credErr := payment.ResolveGlobalPayCredentials(merchantID, serviceID, secretKey)
+	creds, credErr := global_paynt.ResolveGlobalPayCredentials(merchantID, serviceID, secretKey)
 	if credErr != nil {
 		slog.Error("order.void_auth_credentials_failed", "order_id", orderID, "err", credErr)
 		return
@@ -1234,7 +1234,7 @@ func (s *OrderService) voidAuthorizationForOrder(ctx context.Context, orderID st
 	// Mark session as CANCELLED.
 	_, updateErr := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return txn.BufferWrite([]*spanner.Mutation{
-			spanner.Update("PaymentSessions",
+			spanner.Update("GlobalPayntSessions",
 				[]string{"SessionId", "Status"},
 				[]interface{}{session.SessionID, "CANCELLED"},
 			),
@@ -1725,9 +1725,9 @@ func (s *OrderService) AmendOrder(ctx context.Context, req AmendOrderRequest) (*
 			return &ErrVersionConflict{OrderID: req.OrderID, ExpectedVersion: orderVersion, ActualVersion: -1}
 		}
 
-		// 4b. Propagate new amount to active PaymentSession (if one exists)
+		// 4b. Propagate new amount to active GlobalPayntSession (if one exists)
 		sessStmt := spanner.Statement{
-			SQL: `SELECT SessionId FROM PaymentSessions
+			SQL: `SELECT SessionId FROM GlobalPayntSessions
 			      WHERE OrderId = @oid AND Status IN ('CREATED', 'PENDING')
 			      LIMIT 1`,
 			Params: map[string]interface{}{"oid": req.OrderID},
@@ -1739,7 +1739,7 @@ func (s *OrderService) AmendOrder(ctx context.Context, req AmendOrderRequest) (*
 			var sessionID string
 			if colErr := sessRow.Columns(&sessionID); colErr == nil {
 				txn.BufferWrite([]*spanner.Mutation{
-					spanner.Update("PaymentSessions",
+					spanner.Update("GlobalPayntSessions",
 						[]string{"SessionId", "LockedAmount", "UpdatedAt"},
 						[]interface{}{sessionID, newTotal, spanner.CommitTimestamp},
 					),
@@ -1858,46 +1858,46 @@ func (s *OrderService) HandleAmendOrder(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(resp)
 }
 
-// ─── PER-SUPPLIER FULFILLMENT PAYMENT (STAGGERED PARTIAL CHARGE) ─────────────
+// ─── PER-SUPPLIER FULFILLMENT GLOBAL_PAYNT (STAGGERED PARTIAL CHARGE) ─────────────
 //
 // Multi-supplier order flow:
 //   Checkout shattered one cart into N independent orders (one per supplier).
 //   Each order travels independently: dispatch → driver → arrive → amend → offload.
-//   Once a specific order reaches AWAITING_PAYMENT (after ConfirmOffload), THIS
+//   Once a specific order reaches AWAITING_GLOBAL_PAYNT (after ConfirmOffload), THIS
 //   method triggers the card charge for that ONE supplier's adjusted amount only.
 //
 // Sequence:  ARRIVED → AmendOrder (damages)
-//            → ValidateQR → ConfirmOffload (→ AWAITING_PAYMENT)
-//            → TriggerSupplierFulfillmentPayment (this method)
+//            → ValidateQR → ConfirmOffload (→ AWAITING_GLOBAL_PAYNT)
+//            → TriggerSupplierFulfillmentGlobalPaynt (this method)
 //
 // Three-phase execution (no Spanner RW tx around external API calls):
 //   Phase 1 — Snapshot read: validate state, recalculate line-item total, geofence
-//   Phase 2 — External payment: saved card direct charge OR hosted checkout fallback
+//   Phase 2 — External global_paynt: saved card direct charge OR hosted checkout fallback
 //   Phase 3 — Commit: OCC-guarded status update, settle session, cache invalidation, Kafka events
 
-// FulfillmentPaymentResult is returned to the caller after triggering a per-supplier payment.
-type FulfillmentPaymentResult struct {
+// FulfillmentGlobalPayntResult is returned to the caller after triggering a per-supplier global_paynt.
+type FulfillmentGlobalPayntResult struct {
 	OrderID     string `json:"order_id"`
 	SupplierID  string `json:"supplier_id"`
 	RetailerID  string `json:"retailer_id"`
 	Amount      int64  `json:"amount"` // Adjusted total (after driver edits)
-	PaymentID   string `json:"payment_id,omitempty"`
+	GlobalPayntID   string `json:"global_paynt_id,omitempty"`
 	CheckoutURL string `json:"checkout_url,omitempty"` // Non-empty for hosted checkout / 3DS redirect
 	SessionID   string `json:"session_id,omitempty"`
 	Status      string `json:"status"` // PAID | 3DS_REQUIRED | CHECKOUT_REDIRECT
 	Message     string `json:"message"`
 }
 
-// TriggerSupplierFulfillmentPayment triggers a secure card payment for ONE supplier's
+// TriggerSupplierFulfillmentGlobalPaynt triggers a secure card global_paynt for ONE supplier's
 // order after the driver has arrived and edited the order (damages/shortages).
 //
 // The amount charged is the live recalculated subtotal from OrderLineItems — which
 // already reflects AmendOrder quantity adjustments — NOT the original order amount.
-// Payment is split 95% supplier + 5% platform via ComputeSplitRecipients.
+// GlobalPaynt is split 95% supplier + 5% platform via ComputeSplitRecipients.
 //
-// Idempotent: if PaymentStatus is already PAID, returns the settled result without
+// Idempotent: if GlobalPayntStatus is already PAID, returns the settled result without
 // re-charging. Safe for driver/supplier retry after network failures.
-func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, orderID string) (*FulfillmentPaymentResult, error) {
+func (s *OrderService) TriggerSupplierFulfillmentGlobalPaynt(ctx context.Context, orderID string) (*FulfillmentGlobalPayntResult, error) {
 
 	// ────────────────────────────────────────────────────────────────────────
 	// Phase 1: Snapshot Read — validate order state, geofence, and recalculate
@@ -1905,16 +1905,16 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 
 	row, err := s.Client.Single().ReadRow(ctx, "Orders", spanner.Key{orderID},
 		[]string{"State", "RetailerId", "SupplierId", "DriverId", "Amount",
-			"PaymentStatus", "PaymentGateway", "Version"})
+			"GlobalPayntStatus", "GlobalPayntGateway", "Version"})
 	if err != nil {
 		return nil, fmt.Errorf("order %s not found: %w", orderID, err)
 	}
 
-	var state, retailerID, paymentStatus string
+	var state, retailerID, global_payntStatus string
 	var supplierIDNull, driverIDNull, gatewayNull spanner.NullString
 	var amount, version int64
 	if err := row.Columns(&state, &retailerID, &supplierIDNull, &driverIDNull,
-		&amount, &paymentStatus, &gatewayNull, &version); err != nil {
+		&amount, &global_payntStatus, &gatewayNull, &version); err != nil {
 		return nil, fmt.Errorf("failed to parse order %s: %w", orderID, err)
 	}
 
@@ -1923,22 +1923,22 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 	gateway := gatewayNull.StringVal
 
 	// Idempotent: already settled → return success without re-charging
-	if paymentStatus == "PAID" {
-		return &FulfillmentPaymentResult{
+	if global_payntStatus == "PAID" {
+		return &FulfillmentGlobalPayntResult{
 			OrderID:    orderID,
 			SupplierID: supplierID,
 			RetailerID: retailerID,
 			Amount:     amount,
 			Status:     "PAID",
-			Message:    "Payment already completed for this fulfillment",
+			Message:    "GlobalPaynt already completed for this fulfillment",
 		}, nil
 	}
 
 	// AUTHORIZED = funds already held at checkout via GP auth-capture path.
 	// Capture happens automatically at CompleteOrder → Treasurer → GatewayWorker.
 	// Skip manual charge; return status so the caller knows to proceed with delivery.
-	if paymentStatus == "AUTHORIZED" {
-		return &FulfillmentPaymentResult{
+	if global_payntStatus == "AUTHORIZED" {
+		return &FulfillmentGlobalPayntResult{
 			OrderID:    orderID,
 			SupplierID: supplierID,
 			RetailerID: retailerID,
@@ -1949,8 +1949,8 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 	}
 
 	// Guard: ConfirmOffload must have been called first
-	if state != "AWAITING_PAYMENT" {
-		return nil, fmt.Errorf("order %s must be AWAITING_PAYMENT (current: %s) — call ConfirmOffload first", orderID, state)
+	if state != "AWAITING_GLOBAL_PAYNT" {
+		return nil, fmt.Errorf("order %s must be AWAITING_GLOBAL_PAYNT (current: %s) — call ConfirmOffload first", orderID, state)
 	}
 
 	if supplierID == "" {
@@ -1990,7 +1990,7 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 		// geoErr != nil → key missing or Redis blip → proceed (graceful degradation)
 	}
 
-	// Resolve active payment session (created by ConfirmOffload)
+	// Resolve active global_paynt session (created by ConfirmOffload)
 	var sessionID string
 	if s.SessionSvc != nil {
 		activeSession, sessErr := s.SessionSvc.GetActiveSessionByOrder(ctx, orderID)
@@ -2004,7 +2004,7 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 	}
 
 	// ────────────────────────────────────────────────────────────────────────
-	// Phase 2: External Payment — charge saved card or fall back to checkout
+	// Phase 2: External GlobalPaynt — charge saved card or fall back to checkout
 	// ────────────────────────────────────────────────────────────────────────
 
 	// Resolve supplier credentials from vault (using order's actual gateway)
@@ -2024,15 +2024,15 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 		}
 	}
 
-	creds, credErr := payment.ResolveGlobalPayCredentials(merchantID, serviceID, secretKey)
+	creds, credErr := global_paynt.ResolveGlobalPayCredentials(merchantID, serviceID, secretKey)
 	if credErr != nil {
-		return nil, fmt.Errorf("payment credentials unavailable for order %s: %w", orderID, credErr)
+		return nil, fmt.Errorf("global_paynt credentials unavailable for order %s: %w", orderID, credErr)
 	}
 
 	// Supplier passthrough + platform fee split
-	splitRecipients := payment.ComputeSplitRecipients(adjustedAmount, recipientID, s.feeBasisPoints())
+	splitRecipients := global_paynt.ComputeSplitRecipients(adjustedAmount, recipientID, s.feeBasisPoints())
 
-	result := &FulfillmentPaymentResult{
+	result := &FulfillmentGlobalPayntResult{
 		OrderID:    orderID,
 		SupplierID: supplierID,
 		RetailerID: retailerID,
@@ -2041,7 +2041,7 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 	}
 
 	// Try saved card → direct charge (no redirect needed)
-	var directPaymentID string
+	var directGlobalPayntID string
 	var directPaid bool
 
 	if s.CardTokenSvc != nil && s.DirectClient != nil {
@@ -2054,7 +2054,7 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 				externalID = sessionID // Use session as idempotency key if available
 			}
 
-			initResult, initErr := s.DirectClient.InitPayment(ctx, creds, payment.DirectPaymentInitRequest{
+			initResult, initErr := s.DirectClient.InitGlobalPaynt(ctx, creds, global_paynt.DirectGlobalPayntInitRequest{
 				CardToken:  savedCard.ProviderCardToken,
 				Amount:     adjustedAmount,
 				OrderID:    orderID,
@@ -2066,24 +2066,24 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 				slog.Warn("order.fulfillment_pay_direct_init_failed", "order_id", orderID, "err", initErr)
 				// Fall through to hosted checkout below
 			} else {
-				directPaymentID = initResult.PaymentID
+				directGlobalPayntID = initResult.GlobalPayntID
 
 				if initResult.SecurityCheckURL != "" {
 					// 3DS verification required — return URL for retailer
-					result.PaymentID = directPaymentID
+					result.GlobalPayntID = directGlobalPayntID
 					result.CheckoutURL = initResult.SecurityCheckURL
 					result.Status = "3DS_REQUIRED"
 					result.Message = fmt.Sprintf("3D Secure verification required for %d", adjustedAmount)
 
-					// Bind the direct payment to the session for webhook reconciliation
+					// Bind the direct global_paynt to the session for webhook reconciliation
 					if s.SessionSvc != nil && sessionID != "" {
-						_ = s.SessionSvc.BindProviderCheckout(ctx, sessionID, "GLOBAL_PAY", "", initResult.SecurityCheckURL, directPaymentID, nil)
+						_ = s.SessionSvc.BindProviderCheckout(ctx, sessionID, "GLOBAL_PAY", "", initResult.SecurityCheckURL, directGlobalPayntID, nil)
 					}
 					return result, nil
 				}
 
 				// No 3DS — perform charge immediately
-				performResult, performErr := s.DirectClient.PerformPayment(ctx, creds, directPaymentID)
+				performResult, performErr := s.DirectClient.PerformGlobalPaynt(ctx, creds, directGlobalPayntID)
 				if performErr != nil {
 					slog.Warn("order.fulfillment_pay_direct_perform_failed", "order_id", orderID, "err", performErr)
 					// Fall through to hosted checkout
@@ -2098,10 +2098,10 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 	}
 
 	// Hosted checkout fallback (no saved card, or direct charge failed)
-	if !directPaid && directPaymentID == "" {
-		paymentAccount, accountErr := s.lookupRetailerPaymentAccount(ctx, retailerID)
+	if !directPaid && directGlobalPayntID == "" {
+		global_payntAccount, accountErr := s.lookupRetailerGlobalPayntAccount(ctx, retailerID)
 		if accountErr != nil {
-			return nil, fmt.Errorf("retailer payment account lookup failed for order %s: %w", orderID, accountErr)
+			return nil, fmt.Errorf("retailer global_paynt account lookup failed for order %s: %w", orderID, accountErr)
 		}
 
 		// Create attempt for the hosted session
@@ -2113,13 +2113,13 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 			}
 		}
 
-		checkoutResult, checkoutErr := payment.CreateGlobalPayHostedCheckout(ctx, creds, payment.GlobalPayCheckoutRequest{
+		checkoutResult, checkoutErr := global_paynt.CreateGlobalPayHostedCheckout(ctx, creds, global_paynt.GlobalPayCheckoutRequest{
 			OrderID:    orderID,
 			InvoiceID:  fmt.Sprintf("INV-%s", GenerateSecureToken()),
 			SessionID:  sessionID,
 			AttemptID:  attemptID,
 			Amount:     adjustedAmount,
-			Account:    paymentAccount,
+			Account:    global_payntAccount,
 			Recipients: splitRecipients,
 		})
 		if checkoutErr != nil {
@@ -2130,7 +2130,7 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 		}
 
 		result.CheckoutURL = checkoutResult.RedirectURL
-		result.PaymentID = checkoutResult.ProviderReference
+		result.GlobalPayntID = checkoutResult.ProviderReference
 		result.Status = "CHECKOUT_REDIRECT"
 		result.Message = fmt.Sprintf("Open checkout to pay %d for supplier %s", adjustedAmount, supplierID)
 
@@ -2141,12 +2141,12 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 		return result, nil
 	}
 
-	// If we got here with failed direct but had a PaymentID (3DS fallthrough shouldn't reach here)
+	// If we got here with failed direct but had a GlobalPayntID (3DS fallthrough shouldn't reach here)
 	if !directPaid {
 		// Direct init succeeded but perform failed — return hosted fallback
 		// (Should not normally reach here, but defensive)
 		result.Status = "CHECKOUT_REDIRECT"
-		result.Message = "Direct payment failed — please complete via hosted checkout"
+		result.Message = "Direct global_paynt failed — please complete via hosted checkout"
 		return result, nil
 	}
 
@@ -2156,9 +2156,9 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 
 	_, commitErr := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// Re-read version for OCC
-		verRow, verErr := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"Version", "PaymentStatus"})
+		verRow, verErr := txn.ReadRow(ctx, "Orders", spanner.Key{orderID}, []string{"Version", "GlobalPayntStatus"})
 		if verErr != nil {
-			return fmt.Errorf("order %s disappeared during payment: %w", orderID, verErr)
+			return fmt.Errorf("order %s disappeared during global_paynt: %w", orderID, verErr)
 		}
 		var currentVersion int64
 		var currentPayStatus string
@@ -2173,7 +2173,7 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 
 		newVersion := currentVersion + 1
 		rowCount, updateErr := txn.Update(ctx, spanner.Statement{
-			SQL: `UPDATE Orders SET PaymentStatus = 'PAID', Amount = @amount,
+			SQL: `UPDATE Orders SET GlobalPayntStatus = 'PAID', Amount = @amount,
 			      Version = @newVersion
 			      WHERE OrderId = @id AND Version = @version`,
 			Params: map[string]interface{}{
@@ -2184,7 +2184,7 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 			},
 		})
 		if updateErr != nil {
-			return fmt.Errorf("fulfillment payment commit failed: %w", updateErr)
+			return fmt.Errorf("fulfillment global_paynt commit failed: %w", updateErr)
 		}
 		if rowCount == 0 {
 			return &ErrVersionConflict{OrderID: orderID, ExpectedVersion: currentVersion, ActualVersion: -1}
@@ -2193,15 +2193,15 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 		return nil
 	})
 	if commitErr != nil {
-		// Payment was taken but Spanner update failed — log for manual reconciliation
-		slog.Error("order.fulfillment_pay_commit_failed", "payment_id", directPaymentID, "order_id", orderID, "err", commitErr)
-		return nil, fmt.Errorf("payment charged but status update failed — contact support (payment_id: %s): %w", directPaymentID, commitErr)
+		// GlobalPaynt was taken but Spanner update failed — log for manual reconciliation
+		slog.Error("order.fulfillment_pay_commit_failed", "global_paynt_id", directGlobalPayntID, "order_id", orderID, "err", commitErr)
+		return nil, fmt.Errorf("global_paynt charged but status update failed — contact support (global_paynt_id: %s): %w", directGlobalPayntID, commitErr)
 	}
 
-	// Settle the payment session
+	// Settle the global_paynt session
 	if s.SessionSvc != nil && sessionID != "" {
-		if settleErr := s.SessionSvc.SettleSession(ctx, sessionID, directPaymentID); settleErr != nil {
-			slog.Warn("order.fulfillment_pay_settle_failed", "session_id", sessionID, "payment_id", directPaymentID, "err", settleErr)
+		if settleErr := s.SessionSvc.SettleSession(ctx, sessionID, directGlobalPayntID); settleErr != nil {
+			slog.Warn("order.fulfillment_pay_settle_failed", "session_id", sessionID, "global_paynt_id", directGlobalPayntID, "err", settleErr)
 		}
 	}
 
@@ -2213,13 +2213,13 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 	}
 
 	// Kafka events (async — never block the HTTP response)
-	go s.PublishEvent(context.Background(), kafkaEvents.EventFulfillmentPaymentCompleted, map[string]interface{}{
+	go s.PublishEvent(context.Background(), kafkaEvents.EventFulfillmentGlobalPayntCompleted, map[string]interface{}{
 		"order_id":    orderID,
 		"supplier_id": supplierID,
 		"retailer_id": retailerID,
 		"driver_id":   driverID,
 		"amount":      adjustedAmount,
-		"payment_id":  directPaymentID,
+		"global_paynt_id":  directGlobalPayntID,
 		"gateway":     gateway,
 		"timestamp":   time.Now().UTC(),
 	})
@@ -2231,11 +2231,11 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 		"timestamp":   time.Now().UTC(),
 	})
 
-	result.PaymentID = directPaymentID
+	result.GlobalPayntID = directGlobalPayntID
 	result.Status = "PAID"
-	result.Message = fmt.Sprintf("Payment of %d completed for supplier %s via saved card", adjustedAmount, supplierID)
+	result.Message = fmt.Sprintf("GlobalPaynt of %d completed for supplier %s via saved card", adjustedAmount, supplierID)
 
-	slog.Info("order.fulfillment_pay_completed", "order_id", orderID, "amount", adjustedAmount, "retailer_id", retailerID, "supplier_id", supplierID, "payment_id", directPaymentID)
+	slog.Info("order.fulfillment_pay_completed", "order_id", orderID, "amount", adjustedAmount, "retailer_id", retailerID, "supplier_id", supplierID, "global_paynt_id", directGlobalPayntID)
 
 	return result, nil
 }
@@ -2247,7 +2247,7 @@ type ValidateQRResponse struct {
 	OrderID        string     `json:"order_id"`
 	RetailerID     string     `json:"retailer_id"`
 	Amount         int64      `json:"amount"`
-	PaymentGateway string     `json:"payment_gateway"`
+	GlobalPayntGateway string     `json:"global_paynt_gateway"`
 	State          string     `json:"state"`
 	Items          []LineItem `json:"items"`
 }
@@ -2274,7 +2274,7 @@ func (s *OrderService) ValidateQRToken(ctx context.Context, orderId string, scan
 
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderId},
-			[]string{"State", "DeliveryToken", "RetailerId", "Amount", "PaymentGateway", "QRValidatedAt"})
+			[]string{"State", "DeliveryToken", "RetailerId", "Amount", "GlobalPayntGateway", "QRValidatedAt"})
 		if err != nil {
 			return fmt.Errorf("order %s not found: %w", orderId, err)
 		}
@@ -2286,7 +2286,7 @@ func (s *OrderService) ValidateQRToken(ctx context.Context, orderId string, scan
 		if err := row.Columns(&state, &trueToken, &resp.RetailerID, &resp.Amount, &gateway, &qrValidatedAt); err != nil {
 			return err
 		}
-		resp.PaymentGateway = gateway.StringVal
+		resp.GlobalPayntGateway = gateway.StringVal
 
 		if state != "ARRIVED" {
 			return fmt.Errorf("order %s must be ARRIVED to validate QR (current state: %s)", orderId, state)
@@ -2357,12 +2357,12 @@ func (s *OrderService) ValidateQRToken(ctx context.Context, orderId string, scan
 type ConfirmOffloadResponse struct {
 	OrderID               string   `json:"order_id"`
 	State                 string   `json:"state"`
-	PaymentMethod         string   `json:"payment_method"`
+	GlobalPayntMethod         string   `json:"global_paynt_method"`
 	AvailableCardGateways []string `json:"available_card_gateways,omitempty"`
 	Amount                int64    `json:"amount"`
 	OriginalAmount        int64    `json:"original_amount"`
-	InvoiceID             string   `json:"invoice_id,omitempty"` // Payme invoice ID for retailer payment
-	SessionID             string   `json:"session_id,omitempty"` // Payment session ID
+	InvoiceID             string   `json:"invoice_id,omitempty"` // GlobalPay invoice ID for retailer global_paynt
+	SessionID             string   `json:"session_id,omitempty"` // GlobalPaynt session ID
 	RetailerID            string   `json:"retailer_id"`
 	SupplierID            string   `json:"supplier_id"`
 	Message               string   `json:"message"`
@@ -2370,8 +2370,8 @@ type ConfirmOffloadResponse struct {
 
 // OffloadConfirmedEvent — canonical definition lives in kafka/events.go.
 
-// ConfirmOffload transitions ARRIVED → AWAITING_PAYMENT after QR validation.
-// For Payme: creates an invoice record so the retailer can pay.
+// ConfirmOffload transitions ARRIVED → AWAITING_GLOBAL_PAYNT after QR validation.
+// For GlobalPay: creates an invoice record so the retailer can pay.
 // For Cash: driver collects cash.
 func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*ConfirmOffloadResponse, error) {
 	var resp ConfirmOffloadResponse
@@ -2379,7 +2379,7 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderId},
-			[]string{"State", "QRValidatedAt", "RetailerId", "Amount", "PaymentGateway", "SupplierId", "Version"})
+			[]string{"State", "QRValidatedAt", "RetailerId", "Amount", "GlobalPayntGateway", "SupplierId", "Version"})
 		if err != nil {
 			return fmt.Errorf("order %s not found: %w", orderId, err)
 		}
@@ -2403,7 +2403,7 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 			return fmt.Errorf("order %s has not been QR-validated — scan QR first", orderId)
 		}
 
-		resp.PaymentMethod = gateway.StringVal
+		resp.GlobalPayntMethod = gateway.StringVal
 		resp.OrderID = orderId
 
 		// Compute original (pre-amendment) total: accepted qty + rejected qty at original unit price
@@ -2425,10 +2425,10 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 			resp.OriginalAmount = resp.Amount
 		}
 
-		// Transition to AWAITING_PAYMENT and set PaymentStatus = PENDING
+		// Transition to AWAITING_GLOBAL_PAYNT and set GlobalPayntStatus = PENDING
 		newVersion := version + 1
 		rowCount, err := txn.Update(ctx, spanner.Statement{
-			SQL: `UPDATE Orders SET State = 'AWAITING_PAYMENT', PaymentStatus = 'PENDING', Version = @newVersion
+			SQL: `UPDATE Orders SET State = 'AWAITING_GLOBAL_PAYNT', GlobalPayntStatus = 'PENDING', Version = @newVersion
 			      WHERE OrderId = @id AND Version = @version`,
 			Params: map[string]interface{}{
 				"id":         orderId,
@@ -2443,8 +2443,8 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 			return &ErrVersionConflict{OrderID: orderId, ExpectedVersion: version, ActualVersion: -1}
 		}
 
-		// For Payme: create a MasterInvoice so the webhook can settle it
-		if strings.EqualFold(gateway.StringVal, "PAYME") {
+		// For GlobalPay: create a MasterInvoice so the webhook can settle it
+		if strings.EqualFold(gateway.StringVal, "GLOBAL_PAY") {
 			invoiceID := fmt.Sprintf("INV-%s", GenerateSecureToken())
 			resp.InvoiceID = invoiceID
 			txn.BufferWrite([]*spanner.Mutation{
@@ -2455,28 +2455,28 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 			})
 		}
 
-		resp.State = "AWAITING_PAYMENT"
+		resp.State = "AWAITING_GLOBAL_PAYNT"
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	resp.AvailableCardGateways = s.resolveAvailableCardGateways(ctx, supplierId, resp.PaymentMethod)
+	resp.AvailableCardGateways = s.resolveAvailableCardGateways(ctx, supplierId, resp.GlobalPayntMethod)
 	resp.SupplierID = supplierId
 
-	if strings.EqualFold(resp.PaymentMethod, "CASH") {
+	if strings.EqualFold(resp.GlobalPayntMethod, "CASH") {
 		resp.Message = fmt.Sprintf("Collect %d cash from retailer", resp.Amount)
 	} else {
-		resp.Message = "Payment request sent to retailer"
+		resp.Message = "GlobalPaynt request sent to retailer"
 	}
 
-	// Create a durable payment session for electronic payments
-	if s.SessionSvc != nil && !strings.EqualFold(resp.PaymentMethod, "CASH") {
-		session, sessionErr := s.SessionSvc.CreateSession(ctx, payment.CreateSessionRequest{
+	// Create a durable global_paynt session for electronic global_paynts
+	if s.SessionSvc != nil && !strings.EqualFold(resp.GlobalPayntMethod, "CASH") {
+		session, sessionErr := s.SessionSvc.CreateSession(ctx, global_paynt.CreateSessionRequest{
 			OrderID:    orderId,
 			RetailerID: resp.RetailerID,
 			SupplierID: supplierId,
-			Gateway:    strings.ToUpper(resp.PaymentMethod),
+			Gateway:    strings.ToUpper(resp.GlobalPayntMethod),
 			Amount:     resp.Amount,
 			InvoiceID:  resp.InvoiceID,
 		})
@@ -2493,7 +2493,7 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 		RetailerID:     resp.RetailerID,
 		Amount:         resp.Amount,
 		OriginalAmount: resp.OriginalAmount,
-		PaymentMethod:  resp.PaymentMethod,
+		GlobalPayntMethod:  resp.GlobalPayntMethod,
 		Timestamp:      time.Now().UTC(),
 	})
 	go s.PublishEvent(context.Background(), kafkaEvents.EventOrderStatusChanged, kafkaEvents.OrderStatusChangedEvent{
@@ -2501,7 +2501,7 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 		RetailerID: resp.RetailerID,
 		SupplierID: supplierId,
 		OldState:   "ARRIVED",
-		NewState:   "AWAITING_PAYMENT",
+		NewState:   "AWAITING_GLOBAL_PAYNT",
 		Timestamp:  time.Now().UTC(),
 	})
 
@@ -2525,7 +2525,7 @@ func (s *OrderService) resolveAvailableCardGateways(ctx context.Context, supplie
 
 func normalizeCardGateway(gateway string) string {
 	switch strings.ToUpper(strings.TrimSpace(gateway)) {
-	case "CLICK", "PAYME", "GLOBAL_PAY":
+	case "CASH", "GLOBAL_PAY", "GLOBAL_PAY":
 		return strings.ToUpper(strings.TrimSpace(gateway))
 	default:
 		return ""
@@ -2534,9 +2534,9 @@ func normalizeCardGateway(gateway string) string {
 
 // ─── COMPLETE ORDER ───────────────────────────────────────────────────────────
 
-// CompleteOrder finalizes the delivery after payment is settled (or cash collected).
-// Guard: State must be AWAITING_PAYMENT.
-// For Payme: verifies the MasterInvoice is SETTLED before allowing completion.
+// CompleteOrder finalizes the delivery after global_paynt is settled (or cash collected).
+// Guard: State must be AWAITING_GLOBAL_PAYNT.
+// For GlobalPay: verifies the MasterInvoice is SETTLED before allowing completion.
 // For Cash: trusts the driver's confirmation.
 // Returns the owning supplierID for WebSocket push notification.
 func (s *OrderService) CompleteOrder(ctx context.Context, orderId string) (string, error) {
@@ -2546,7 +2546,7 @@ func (s *OrderService) CompleteOrder(ctx context.Context, orderId string) (strin
 
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderId},
-			[]string{"State", "RetailerId", "PaymentGateway", "Version", "SupplierId", "WarehouseId", "ManifestId", "Amount", "Currency"})
+			[]string{"State", "RetailerId", "GlobalPayntGateway", "Version", "SupplierId", "WarehouseId", "ManifestId", "Amount", "Currency"})
 		if err != nil {
 			return fmt.Errorf("order %s not found: %w", orderId, err)
 		}
@@ -2572,16 +2572,16 @@ func (s *OrderService) CompleteOrder(ctx context.Context, orderId string) (strin
 		if state == "COMPLETED" {
 			return nil // Idempotent
 		}
-		if state != "AWAITING_PAYMENT" {
-			return fmt.Errorf("order %s must be AWAITING_PAYMENT to complete (current: %s)", orderId, state)
+		if state != "AWAITING_GLOBAL_PAYNT" {
+			return fmt.Errorf("order %s must be AWAITING_GLOBAL_PAYNT to complete (current: %s)", orderId, state)
 		}
 
-		// For electronic payments: verify payment is settled
+		// For electronic global_paynts: verify global_paynt is settled
 		gw := strings.ToUpper(gateway.StringVal)
-		if gw == "PAYME" || gw == "CLICK" {
+		if gw == "GLOBAL_PAY" || gw == "CASH" {
 			settled := false
 
-			// Primary check: payment session
+			// Primary check: global_paynt session
 			if s.SessionSvc != nil {
 				activeSession, sessErr := s.SessionSvc.GetActiveSessionByOrder(ctx, orderId)
 				if sessErr == nil && activeSession != nil && activeSession.Status == "SETTLED" {
@@ -2599,7 +2599,7 @@ func (s *OrderService) CompleteOrder(ctx context.Context, orderId string) (strin
 				invRow, invErr := invIter.Next()
 				invIter.Stop()
 				if invErr != nil {
-					return fmt.Errorf("payment invoice not found for order %s", orderId)
+					return fmt.Errorf("global_paynt invoice not found for order %s", orderId)
 				}
 				var invState string
 				if err := invRow.Columns(&invState); err != nil {
@@ -2611,14 +2611,14 @@ func (s *OrderService) CompleteOrder(ctx context.Context, orderId string) (strin
 			}
 
 			if !settled {
-				return fmt.Errorf("payment not yet settled for order %s (gateway: %s)", orderId, gw)
+				return fmt.Errorf("global_paynt not yet settled for order %s (gateway: %s)", orderId, gw)
 			}
 		}
 
 		// Transition to COMPLETED
 		newVersion := version + 1
 		rowCount, err := txn.Update(ctx, spanner.Statement{
-			SQL: `UPDATE Orders SET State = 'COMPLETED', PaymentStatus = 'PAID', Version = @newVersion, LockedUntil = NULL
+			SQL: `UPDATE Orders SET State = 'COMPLETED', GlobalPayntStatus = 'PAID', Version = @newVersion, LockedUntil = NULL
 			      WHERE OrderId = @id AND Version = @version`,
 			Params: map[string]interface{}{
 				"id":         orderId,
@@ -2669,7 +2669,7 @@ func (s *OrderService) CompleteOrder(ctx context.Context, orderId string) (strin
 			OrderID:    orderId,
 			RetailerID: retailerId,
 			SupplierID: supplierID,
-			OldState:   "AWAITING_PAYMENT",
+			OldState:   "AWAITING_GLOBAL_PAYNT",
 			NewState:   "COMPLETED",
 			Timestamp:  now,
 		})
@@ -2686,7 +2686,7 @@ type CardCheckoutResponse struct {
 	State      string `json:"state"`
 	Amount     int64  `json:"amount"`
 	Gateway    string `json:"gateway"`
-	PaymentURL string `json:"payment_url"`
+	GlobalPayntURL string `json:"global_paynt_url"`
 	InvoiceID  string `json:"invoice_id"`
 	SessionID  string `json:"session_id,omitempty"`
 	AttemptID  string `json:"attempt_id,omitempty"`
@@ -2695,12 +2695,12 @@ type CardCheckoutResponse struct {
 	Message    string `json:"message"`
 }
 
-// CardCheckout transitions AWAITING_PAYMENT → keeps AWAITING_PAYMENT (no state change — webhook settles).
+// CardCheckout transitions AWAITING_GLOBAL_PAYNT → keeps AWAITING_GLOBAL_PAYNT (no state change — webhook settles).
 // Creates a MasterInvoice for the gateway and returns a hosted checkout URL.
 func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callbackBaseURL string) (*CardCheckoutResponse, error) {
 	gateway = strings.ToUpper(gateway)
-	if gateway != "PAYME" && gateway != "CLICK" && gateway != "GLOBAL_PAY" {
-		return nil, fmt.Errorf("unsupported card gateway: %s (supported: PAYME, CLICK, GLOBAL_PAY)", gateway)
+	if gateway != "GLOBAL_PAY" && gateway != "CASH" && gateway != "GLOBAL_PAY" {
+		return nil, fmt.Errorf("unsupported card gateway: %s (supported: GLOBAL_PAY, CASH, GLOBAL_PAY)", gateway)
 	}
 
 	var resp CardCheckoutResponse
@@ -2709,7 +2709,7 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderId},
-			[]string{"State", "RetailerId", "SupplierId", "Amount", "PaymentGateway", "Version"})
+			[]string{"State", "RetailerId", "SupplierId", "Amount", "GlobalPayntGateway", "Version"})
 		if err != nil {
 			return fmt.Errorf("order %s not found: %w", orderId, err)
 		}
@@ -2725,15 +2725,15 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 			supplierId = supplierIdNull.StringVal
 		}
 
-		if state != "AWAITING_PAYMENT" {
-			return fmt.Errorf("order %s must be AWAITING_PAYMENT to initiate card payment (current: %s)", orderId, state)
+		if state != "AWAITING_GLOBAL_PAYNT" {
+			return fmt.Errorf("order %s must be AWAITING_GLOBAL_PAYNT to initiate card global_paynt (current: %s)", orderId, state)
 		}
 
 		resp.RetailerID = retailerId
 
 		newVersion := version + 1
 		_, err = txn.Update(ctx, spanner.Statement{
-			SQL: `UPDATE Orders SET PaymentGateway = @gw, PaymentStatus = 'AWAITING_GATEWAY_WEBHOOK', Version = @newVersion
+			SQL: `UPDATE Orders SET GlobalPayntGateway = @gw, GlobalPayntStatus = 'AWAITING_GATEWAY_WEBHOOK', Version = @newVersion
 			      WHERE OrderId = @id AND Version = @version`,
 			Params: map[string]interface{}{
 				"id":         orderId,
@@ -2766,13 +2766,13 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		resp.InvoiceID = invoiceID
 		txn.BufferWrite([]*spanner.Mutation{
 			spanner.Insert("MasterInvoices",
-				[]string{"InvoiceId", "RetailerId", "Total", "State", "OrderId", "PaymentMode", "CreatedAt"},
+				[]string{"InvoiceId", "RetailerId", "Total", "State", "OrderId", "GlobalPayntMode", "CreatedAt"},
 				[]interface{}{invoiceID, retailerId, resp.Amount, "PENDING", orderId, gateway, spanner.CommitTimestamp},
 			),
 		})
 
 		resp.OrderID = orderId
-		resp.State = "AWAITING_PAYMENT"
+		resp.State = "AWAITING_GLOBAL_PAYNT"
 		resp.Gateway = gateway
 		return nil
 	})
@@ -2783,7 +2783,7 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 	if s.SessionSvc != nil {
 		activeSession, sessErr := s.SessionSvc.GetActiveSessionByOrder(ctx, orderId)
 		if sessErr != nil {
-			activeSession, sessErr = s.SessionSvc.CreateSession(ctx, payment.CreateSessionRequest{
+			activeSession, sessErr = s.SessionSvc.CreateSession(ctx, global_paynt.CreateSessionRequest{
 				OrderID:    orderId,
 				RetailerID: retailerId,
 				SupplierID: supplierId,
@@ -2808,7 +2808,7 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		}
 	}
 
-	var paymentURL string
+	var global_payntURL string
 	var providerReference string
 	var expiresAt *time.Time
 	var urlErr error
@@ -2830,18 +2830,18 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 
 	if gateway == "GLOBAL_PAY" {
 		if resp.SessionID == "" {
-			return nil, fmt.Errorf("global pay checkout requires a payment session")
+			return nil, fmt.Errorf("global pay checkout requires a global_paynt session")
 		}
-		creds, credErr := payment.ResolveGlobalPayCredentials(merchantID, serviceID, secretKey)
+		creds, credErr := global_paynt.ResolveGlobalPayCredentials(merchantID, serviceID, secretKey)
 		if credErr != nil {
 			return nil, credErr
 		}
 
 		// Compute split recipients if configured
-		splitRecipients := payment.ComputeSplitRecipients(resp.Amount, recipientID, s.feeBasisPoints())
+		splitRecipients := global_paynt.ComputeSplitRecipients(resp.Amount, recipientID, s.feeBasisPoints())
 
 		// ── Dual-mode: check for saved card → direct charge, else hosted checkout ──
-		var savedCard *payment.RetailerCardToken
+		var savedCard *global_paynt.RetailerCardToken
 		if s.CardTokenSvc != nil && s.DirectClient != nil {
 			savedCard, _ = s.CardTokenSvc.GetDefaultCard(ctx, retailerId, "GLOBAL_PAY")
 		}
@@ -2849,7 +2849,7 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		if savedCard != nil {
 			// DIRECT GATEWAY PATH: charge the saved card immediately
 			slog.Info("order.card_checkout_saved_card", "retailer_id", retailerId, "token_id", savedCard.TokenID)
-			initResult, initErr := s.DirectClient.InitPayment(ctx, creds, payment.DirectPaymentInitRequest{
+			initResult, initErr := s.DirectClient.InitGlobalPaynt(ctx, creds, global_paynt.DirectGlobalPayntInitRequest{
 				CardToken:  savedCard.ProviderCardToken,
 				Amount:     resp.Amount,
 				OrderID:    orderId,
@@ -2861,71 +2861,71 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 				slog.Warn("order.card_checkout_direct_init_failed", "order_id", orderId, "err", initErr)
 				// Fall through to hosted checkout below
 			} else {
-				providerReference = initResult.PaymentID
+				providerReference = initResult.GlobalPayntID
 
 				if initResult.SecurityCheckURL != "" {
 					// 3DS required — return the URL for retailer to complete verification
-					paymentURL = initResult.SecurityCheckURL
+					global_payntURL = initResult.SecurityCheckURL
 					resp.Message = fmt.Sprintf("3D Secure verification required for %d", resp.Amount)
 				} else {
 					// No 3DS — perform the charge immediately
-					performResult, performErr := s.DirectClient.PerformPayment(ctx, creds, initResult.PaymentID)
+					performResult, performErr := s.DirectClient.PerformGlobalPaynt(ctx, creds, initResult.GlobalPayntID)
 					if performErr != nil {
 						urlErr = performErr
 					} else if performResult.Paid {
-						// Payment complete — settle immediately
+						// GlobalPaynt complete — settle immediately
 						if s.SessionSvc != nil && resp.SessionID != "" {
-							if settleErr := s.SessionSvc.SettleSession(ctx, resp.SessionID, initResult.PaymentID); settleErr != nil {
+							if settleErr := s.SessionSvc.SettleSession(ctx, resp.SessionID, initResult.GlobalPayntID); settleErr != nil {
 								slog.Error("order.card_checkout_settle_failed", "session_id", resp.SessionID, "err", settleErr)
 							}
 						}
-						resp.PaymentURL = ""
-						resp.Message = fmt.Sprintf("Payment of %d completed via saved card", resp.Amount)
+						resp.GlobalPayntURL = ""
+						resp.Message = fmt.Sprintf("GlobalPaynt of %d completed via saved card", resp.Amount)
 						resp.OrderID = orderId
-						resp.State = "AWAITING_PAYMENT" // Webhook or reconciler will transition to COMPLETED
+						resp.State = "AWAITING_GLOBAL_PAYNT" // Webhook or reconciler will transition to COMPLETED
 						resp.Gateway = gateway
 						return &resp, nil
 					} else {
-						urlErr = fmt.Errorf("direct payment perform returned unpaid status: %s", performResult.Status)
+						urlErr = fmt.Errorf("direct global_paynt perform returned unpaid status: %s", performResult.Status)
 					}
 				}
 
 				if urlErr == nil {
-					// Bind the direct payment reference to the session
+					// Bind the direct global_paynt reference to the session
 					if s.SessionSvc != nil && resp.SessionID != "" {
-						if bindErr := s.SessionSvc.BindProviderCheckout(ctx, resp.SessionID, gateway, resp.InvoiceID, paymentURL, providerReference, nil); bindErr != nil {
+						if bindErr := s.SessionSvc.BindProviderCheckout(ctx, resp.SessionID, gateway, resp.InvoiceID, global_payntURL, providerReference, nil); bindErr != nil {
 							slog.Error("order.card_checkout_bind_direct_failed", "session_id", resp.SessionID, "err", bindErr)
 						}
 					}
-					resp.PaymentURL = paymentURL
+					resp.GlobalPayntURL = global_payntURL
 					resp.OrderID = orderId
-					resp.State = "AWAITING_PAYMENT"
+					resp.State = "AWAITING_GLOBAL_PAYNT"
 					resp.Gateway = gateway
 					return &resp, nil
 				}
 
-				// Direct payment failed — fall through to hosted checkout
+				// Direct global_paynt failed — fall through to hosted checkout
 				slog.Warn("order.card_checkout_direct_failed", "order_id", orderId, "err", urlErr)
 				urlErr = nil
 			}
 		}
 
-		// HOSTED CHECKOUT FALLBACK (no saved card or direct payment failed)
-		paymentAccount, accountErr := s.lookupRetailerPaymentAccount(ctx, retailerId)
+		// HOSTED CHECKOUT FALLBACK (no saved card or direct global_paynt failed)
+		global_payntAccount, accountErr := s.lookupRetailerGlobalPayntAccount(ctx, retailerId)
 		if accountErr != nil {
 			return nil, fmt.Errorf("global pay account lookup failed: %w", accountErr)
 		}
-		checkoutReq := payment.GlobalPayCheckoutRequest{
+		checkoutReq := global_paynt.GlobalPayCheckoutRequest{
 			OrderID:         orderId,
 			InvoiceID:       resp.InvoiceID,
 			SessionID:       resp.SessionID,
 			AttemptID:       resp.AttemptID,
 			Amount:          resp.Amount,
-			Account:         paymentAccount,
+			Account:         global_payntAccount,
 			CallbackBaseURL: callbackBaseURL,
 			Recipients:      splitRecipients,
 		}
-		checkoutResult, checkoutErr := payment.CreateGlobalPayHostedCheckout(ctx, creds, checkoutReq)
+		checkoutResult, checkoutErr := global_paynt.CreateGlobalPayHostedCheckout(ctx, creds, checkoutReq)
 		if checkoutErr != nil {
 			urlErr = checkoutErr
 			if s.SessionSvc != nil {
@@ -2934,38 +2934,38 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 				}
 			}
 		} else {
-			paymentURL = checkoutResult.RedirectURL
+			global_payntURL = checkoutResult.RedirectURL
 			providerReference = checkoutResult.ProviderReference
 			expiresAt = checkoutResult.ExpiresAt
 		}
 	} else {
 		if merchantID != "" || serviceID != "" {
-			paymentURL, urlErr = payment.CheckoutURLWithCredentials(gateway, orderId, resp.Amount, merchantID, serviceID)
+			global_payntURL, urlErr = global_paynt.CheckoutURLWithCredentials(gateway, orderId, resp.Amount, merchantID, serviceID)
 		} else {
-			paymentURL, urlErr = payment.CheckoutURL(gateway, orderId, resp.Amount)
+			global_payntURL, urlErr = global_paynt.CheckoutURL(gateway, orderId, resp.Amount)
 		}
 	}
 	if urlErr != nil {
 		slog.Error("order.card_checkout_url_failed", "gateway", gateway, "order_id", orderId, "err", urlErr)
 		resp.Message = fmt.Sprintf("Invoice created but deep-link URL unavailable: %v", urlErr)
 	} else {
-		resp.PaymentURL = paymentURL
+		resp.GlobalPayntURL = global_payntURL
 		resp.Message = fmt.Sprintf("Open %s to pay %d", gateway, resp.Amount)
 		if s.SessionSvc != nil && resp.SessionID != "" {
-			if bindErr := s.SessionSvc.BindProviderCheckout(ctx, resp.SessionID, gateway, resp.InvoiceID, paymentURL, providerReference, expiresAt); bindErr != nil {
+			if bindErr := s.SessionSvc.BindProviderCheckout(ctx, resp.SessionID, gateway, resp.InvoiceID, global_payntURL, providerReference, expiresAt); bindErr != nil {
 				slog.Error("order.card_checkout_bind_failed", "session_id", resp.SessionID, "err", bindErr)
 			}
 		}
 	}
 
 	resp.OrderID = orderId
-	resp.State = "AWAITING_PAYMENT"
+	resp.State = "AWAITING_GLOBAL_PAYNT"
 	resp.Gateway = gateway
 
 	return &resp, nil
 }
 
-func (s *OrderService) lookupRetailerPaymentAccount(ctx context.Context, retailerID string) (string, error) {
+func (s *OrderService) lookupRetailerGlobalPayntAccount(ctx context.Context, retailerID string) (string, error) {
 	row, err := s.Client.Single().ReadRow(ctx, "Retailers", spanner.Key{retailerID}, []string{"Phone"})
 	if err != nil {
 		return "", err
@@ -2980,15 +2980,15 @@ func (s *OrderService) lookupRetailerPaymentAccount(ctx context.Context, retaile
 	return retailerID, nil
 }
 
-// LookupRetailerPhone is the exported version of lookupRetailerPaymentAccount
+// LookupRetailerPhone is the exported version of lookupRetailerGlobalPayntAccount
 // for use by card management endpoints in main.go.
 func (s *OrderService) LookupRetailerPhone(ctx context.Context, retailerID string) (string, error) {
-	return s.lookupRetailerPaymentAccount(ctx, retailerID)
+	return s.lookupRetailerGlobalPayntAccount(ctx, retailerID)
 }
 
 // ─── CASH CHECKOUT (Retailer selects cash after offload) ──────────────────────
 
-// CashCheckoutResponse is returned when the retailer selects cash as the payment method.
+// CashCheckoutResponse is returned when the retailer selects cash as the global_paynt method.
 type CashCheckoutResponse struct {
 	OrderID    string `json:"order_id"`
 	State      string `json:"state"`
@@ -2998,7 +2998,7 @@ type CashCheckoutResponse struct {
 	Message    string `json:"message"`
 }
 
-// CashCheckout transitions AWAITING_PAYMENT → PENDING_CASH_COLLECTION.
+// CashCheckout transitions AWAITING_GLOBAL_PAYNT → PENDING_CASH_COLLECTION.
 // Called by the retailer after offload to confirm they will pay cash.
 // Creates a cash-custody MasterInvoice record for reconciliation.
 func (s *OrderService) CashCheckout(ctx context.Context, orderId string) (*CashCheckoutResponse, error) {
@@ -3033,14 +3033,14 @@ func (s *OrderService) CashCheckout(ctx context.Context, orderId string) (*CashC
 			resp.Message = fmt.Sprintf("Cash collection of %d is already pending", resp.Amount)
 			return nil // Idempotent
 		}
-		if state != "AWAITING_PAYMENT" {
-			return fmt.Errorf("order %s must be AWAITING_PAYMENT to select cash (current: %s)", orderId, state)
+		if state != "AWAITING_GLOBAL_PAYNT" {
+			return fmt.Errorf("order %s must be AWAITING_GLOBAL_PAYNT to select cash (current: %s)", orderId, state)
 		}
 
 		// Transition to PENDING_CASH_COLLECTION
 		newVersion := version + 1
 		rowCount, err := txn.Update(ctx, spanner.Statement{
-			SQL: `UPDATE Orders SET State = 'PENDING_CASH_COLLECTION', PaymentGateway = 'CASH', PaymentStatus = 'PENDING_CASH', Version = @newVersion
+			SQL: `UPDATE Orders SET State = 'PENDING_CASH_COLLECTION', GlobalPayntGateway = 'CASH', GlobalPayntStatus = 'PENDING_CASH', Version = @newVersion
 			      WHERE OrderId = @id AND Version = @version`,
 			Params: map[string]interface{}{
 				"id":         orderId,
@@ -3059,7 +3059,7 @@ func (s *OrderService) CashCheckout(ctx context.Context, orderId string) (*CashC
 		invoiceID := fmt.Sprintf("INV-%s", GenerateSecureToken())
 		txn.BufferWrite([]*spanner.Mutation{
 			spanner.Insert("MasterInvoices",
-				[]string{"InvoiceId", "RetailerId", "Total", "State", "OrderId", "PaymentMode", "CustodyStatus", "CreatedAt"},
+				[]string{"InvoiceId", "RetailerId", "Total", "State", "OrderId", "GlobalPayntMode", "CustodyStatus", "CreatedAt"},
 				[]interface{}{invoiceID, retailerId, resp.Amount, "PENDING", orderId, "CASH", "PENDING", spanner.CommitTimestamp},
 			),
 		})
@@ -3085,7 +3085,7 @@ func (s *OrderService) CashCheckout(ctx context.Context, orderId string) (*CashC
 		OrderID:    orderId,
 		RetailerID: retailerId,
 		SupplierID: supplierID,
-		OldState:   "AWAITING_PAYMENT",
+		OldState:   "AWAITING_GLOBAL_PAYNT",
 		NewState:   "PENDING_CASH_COLLECTION",
 		Timestamp:  time.Now().UTC(),
 	})
@@ -3171,7 +3171,7 @@ func (s *OrderService) CollectCash(ctx context.Context, req CollectCashRequest) 
 		// Transition to COMPLETED
 		newVersion := version + 1
 		rowCount, err := txn.Update(ctx, spanner.Statement{
-			SQL: `UPDATE Orders SET State = 'COMPLETED', PaymentStatus = 'PAID', Version = @newVersion, LockedUntil = NULL
+			SQL: `UPDATE Orders SET State = 'COMPLETED', GlobalPayntStatus = 'PAID', Version = @newVersion, LockedUntil = NULL
 			      WHERE OrderId = @id AND Version = @version`,
 			Params: map[string]interface{}{
 				"id":         req.OrderID,
@@ -3188,7 +3188,7 @@ func (s *OrderService) CollectCash(ctx context.Context, req CollectCashRequest) 
 
 		// Update the cash-custody MasterInvoice with collection details
 		invStmt := spanner.Statement{
-			SQL:    `SELECT InvoiceId FROM MasterInvoices WHERE OrderId = @oid AND PaymentMode = 'CASH' LIMIT 1`,
+			SQL:    `SELECT InvoiceId FROM MasterInvoices WHERE OrderId = @oid AND GlobalPayntMode = 'CASH' LIMIT 1`,
 			Params: map[string]interface{}{"oid": req.OrderID},
 		}
 		invIter := txn.Query(ctx, invStmt)
@@ -3315,7 +3315,7 @@ func (s *OrderService) ReassignRoute(ctx context.Context, orderIds []string, new
 				continue
 			}
 			switch sn.state {
-			case "CANCELLED", "COMPLETED", "IN_TRANSIT", "ARRIVED", "AWAITING_PAYMENT":
+			case "CANCELLED", "COMPLETED", "IN_TRANSIT", "ARRIVED", "AWAITING_GLOBAL_PAYNT":
 				conflicts = append(conflicts, ReassignConflict{OrderID: id, Reason: fmt.Sprintf("STATE_%s_NOT_REASSIGNABLE", sn.state)})
 				continue
 			}
@@ -3566,8 +3566,8 @@ type ActiveFulfillmentItem struct {
 	ItemCount      int    `json:"item_count"`
 }
 
-// ActiveFulfillments returns all orders approaching or awaiting payment for a given retailer.
-// States: IN_TRANSIT, ARRIVED, AWAITING_PAYMENT — the "incoming deliveries" window.
+// ActiveFulfillments returns all orders approaching or awaiting global_paynt for a given retailer.
+// States: IN_TRANSIT, ARRIVED, AWAITING_GLOBAL_PAYNT — the "incoming deliveries" window.
 func (s *OrderService) ActiveFulfillments(ctx context.Context, retailerID string) ([]ActiveFulfillmentItem, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT o.OrderId, o.SupplierId, COALESCE(s.Name, '') AS SupplierName, o.State,
@@ -3580,7 +3580,7 @@ func (s *OrderService) ActiveFulfillments(ctx context.Context, retailerID string
 		      FROM Orders o
 		      LEFT JOIN Suppliers s ON o.SupplierId = s.SupplierId
 		      WHERE o.RetailerId = @retailerId
-		        AND o.State IN ('IN_TRANSIT', 'ARRIVED', 'AWAITING_PAYMENT')
+		        AND o.State IN ('IN_TRANSIT', 'ARRIVED', 'AWAITING_GLOBAL_PAYNT')
 		      ORDER BY o.UpdatedAt DESC`,
 		Params: map[string]interface{}{
 			"retailerId": retailerID,

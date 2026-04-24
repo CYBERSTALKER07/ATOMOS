@@ -1,7 +1,7 @@
 package com.thelab.retailer.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.cashable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,7 +47,7 @@ import com.thelab.retailer.ui.theme.StatusTealSoft
 @Composable
 fun OrderCard(
     order: Order,
-    onClick: () -> Unit,
+    onCash: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -55,7 +55,7 @@ fun OrderCard(
             .fillMaxWidth()
             .shadow(4.dp, SoftSquircleShape, spotColor = Color.Black.copy(alpha = 0.06f))
             .clip(SoftSquircleShape)
-            .clickable { onClick() },
+            .cashable { onCash() },
         color = MaterialTheme.colorScheme.surface,
         shape = SoftSquircleShape,
     ) {
@@ -144,7 +144,7 @@ fun OrderStatus.statusColor(): Color = when (this) {
     OrderStatus.ARRIVED -> StatusGreen
     OrderStatus.COMPLETED -> StatusGreen
     OrderStatus.CANCELLED -> StatusRed
-    OrderStatus.AWAITING_PAYMENT -> StatusOrange
+    OrderStatus.AWAITING_GLOBAL_PAYNT -> StatusOrange
     OrderStatus.PENDING_CASH_COLLECTION -> StatusOrange
 }
 
@@ -156,6 +156,6 @@ private fun OrderStatus.badgeColors(): Pair<Color, Color> = when (this) {
     OrderStatus.ARRIVED -> StatusGreenSoft to StatusGreen
     OrderStatus.COMPLETED -> StatusGreenSoft to StatusGreen
     OrderStatus.CANCELLED -> StatusRedSoft to StatusRed
-    OrderStatus.AWAITING_PAYMENT -> StatusOrangeSoft to StatusOrange
+    OrderStatus.AWAITING_GLOBAL_PAYNT -> StatusOrangeSoft to StatusOrange
     OrderStatus.PENDING_CASH_COLLECTION -> StatusOrangeSoft to StatusOrange
 }

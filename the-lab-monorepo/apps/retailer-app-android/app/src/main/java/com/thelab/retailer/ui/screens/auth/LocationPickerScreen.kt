@@ -139,7 +139,7 @@ fun LocationPickerScreen(
                 .padding(horizontal = 8.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onBack) {
+            IconButton(onCash = onBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
@@ -179,7 +179,7 @@ fun LocationPickerScreen(
             )
             Spacer(Modifier.height(12.dp))
             Button(
-                onClick = {
+                onCash = {
                     onConfirm(
                         PickedLocation(
                             latitude = selectedPosition.latitude,
@@ -212,7 +212,7 @@ fun LocationPickerScreen(
 
         // My-location FAB
         FloatingActionButton(
-            onClick = {
+            onCash = {
                 if (!locationPermission.status.isGranted) {
                     locationPermission.launchPermissionRequest()
                     return@FloatingActionButton

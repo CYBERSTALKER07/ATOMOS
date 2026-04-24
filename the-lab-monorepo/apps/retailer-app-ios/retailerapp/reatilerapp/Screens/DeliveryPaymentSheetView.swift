@@ -371,7 +371,7 @@ struct DeliveryPaymentSheetView: View {
         return gateways.compactMap { gateway in
             switch gateway {
             case "GLOBAL_PAY":
-                CardGatewayOption(gateway: gateway, label: "Global Pay", description: "Pay via Global Pay checkout")
+                CardGatewayOption(gateway: gateway, label: "GlobalPay", description: "Pay via GlobalPay checkout")
             default:
                 nil
             }

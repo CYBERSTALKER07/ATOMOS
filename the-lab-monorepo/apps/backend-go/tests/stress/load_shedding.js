@@ -117,7 +117,7 @@ export default function (data) {
         group('P0 Checkout', () => {
             const payload = JSON.stringify({
                 retailer_id: 'STRESS-TEST-RETAILER',
-                payment_gateway: 'CLICK',
+                global_paynt_gateway: 'CASH',
                 latitude: 41.311081,
                 longitude: 69.279737,
                 items: [{

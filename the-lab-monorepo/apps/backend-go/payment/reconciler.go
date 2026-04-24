@@ -1,4 +1,4 @@
-package payment
+package global_paynt
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 )
 
 // ReconciliationEvent is the canonical payload emitted to the
-// payment_reconciliation Kafka topic for every financial state change.
+// global_paynt_reconciliation Kafka topic for every financial state change.
 type ReconciliationEvent struct {
 	EventType  string    `json:"event_type"` // FULL_CAPTURE | PARTIAL_REFUND
 	OrderID    string    `json:"order_id"`
@@ -36,14 +36,14 @@ func NewReconcilerService(cfg *config.EnvConfig, spannerClient *spanner.Client) 
 	return &ReconcilerService{
 		kafkaReader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers:  []string{cfg.KafkaBrokerAddress},
-			GroupID:  "payment-reconciliation-group",
+			GroupID:  "global_paynt-reconciliation-group",
 			Topic:    "lab-logistics-events",
 			MinBytes: 10e3,
 			MaxBytes: 10e6,
 		}),
 		kafkaWriter: &kafka.Writer{
 			Addr:     kafka.TCP(cfg.KafkaBrokerAddress),
-			Topic:    "payment_reconciliation",
+			Topic:    "global_paynt_reconciliation",
 			Balancer: &kafka.LeastBytes{},
 		},
 		spannerClient: spannerClient,
@@ -51,7 +51,7 @@ func NewReconcilerService(cfg *config.EnvConfig, spannerClient *spanner.Client) 
 }
 
 // emitReconciliationEvent publishes a ReconciliationEvent to the canonical
-// payment_reconciliation topic. This is the Kafka handshake required by the
+// global_paynt_reconciliation topic. This is the Kafka handshake required by the
 // Financial Integrity rule — no transaction is complete without it.
 func (s *ReconcilerService) emitReconciliationEvent(ctx context.Context, evt ReconciliationEvent) error {
 	data, err := json.Marshal(evt)
@@ -71,7 +71,7 @@ func (s *ReconcilerService) emitReconciliationEvent(ctx context.Context, evt Rec
 
 // ExecuteFullCapture performs a one-shot full capture immediately at order
 // creation time. This eliminates the pre-auth escrow race condition where
-// Payme/Click would release funds after 24–72h if delivery was delayed.
+// GlobalPay/Cash would release funds after 24–72h if delivery was delayed.
 func (s *ReconcilerService) ExecuteFullCapture(ctx context.Context, orderID, retailerID, gateway string, amount int64) error {
 	gw, err := NewGatewayClient(gateway)
 	if err != nil {
@@ -127,7 +127,7 @@ func (s *ReconcilerService) ExecutePartialRefund(ctx context.Context, orderID, r
 func (s *ReconcilerService) Start(ctx context.Context) {
 	pool, err := workerpool.New(workerpool.Config{
 		Source: s.kafkaReader,
-		Name:   "payment-reconciler",
+		Name:   "global_paynt-reconciler",
 		Handler: func(ctx context.Context, msg kafka.Message) error {
 			eventType := messageEventType(msg)
 			if eventType != eventOrderCompleted {
@@ -138,25 +138,25 @@ func (s *ReconcilerService) Start(ctx context.Context) {
 				RetailerID string `json:"retailer_id"`
 			}
 			if err := json.Unmarshal(msg.Value, &event); err != nil {
-				return fmt.Errorf("payment reconciler: invalid payload: %w", err)
+				return fmt.Errorf("global_paynt reconciler: invalid payload: %w", err)
 			}
 			if err := s.markCompleted(ctx, event.OrderID); err != nil {
-				return fmt.Errorf("payment reconciler: markCompleted %s: %w", event.OrderID, err)
+				return fmt.Errorf("global_paynt reconciler: markCompleted %s: %w", event.OrderID, err)
 			}
 			return nil
 		},
 		OnFailure: func(ctx context.Context, msg kafka.Message, handlerErr error) {
-			slog.ErrorContext(ctx, "payment_reconciler.handler_error",
+			slog.ErrorContext(ctx, "global_paynt_reconciler.handler_error",
 				"partition", msg.Partition, "offset", msg.Offset, "err", handlerErr)
 		},
 	})
 	if err != nil {
-		slog.Error("payment_reconciler: pool init failed", "err", err)
+		slog.Error("global_paynt_reconciler: pool init failed", "err", err)
 		return
 	}
 	slog.Info("[PAYMENT] reconciler consumer started")
 	if err := pool.Run(ctx); err != nil && ctx.Err() == nil {
-		slog.Error("payment_reconciler: pool exited", "err", err)
+		slog.Error("global_paynt_reconciler: pool exited", "err", err)
 	}
 }
 
@@ -174,14 +174,14 @@ func messageEventType(msg kafka.Message) string {
 // Accepts orders in ARRIVED, AWAITING_PAYMENT, or PENDING_CASH_COLLECTION.
 // This is a reconciliation fallback — primary completion happens in order/service.go.
 //
-// For GLOBAL_PAY orders, the reconciler requires a settled payment session
-// before projecting PaymentStatus = PAID. If no settled session exists, the
+// For GLOBAL_PAY orders, the reconciler requires a settled global_paynt session
+// before projecting GlobalPayntStatus = PAID. If no settled session exists, the
 // order is not transitioned — the Global Pay sweeper or manual reconciliation
-// must resolve the payment first.
+// must resolve the global_paynt first.
 func (s *ReconcilerService) markCompleted(ctx context.Context, orderID string) error {
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		stmt := spanner.Statement{
-			SQL:    `SELECT State, RetailerId, Amount, PaymentGateway FROM Orders WHERE OrderId = @id LIMIT 1`,
+			SQL:    `SELECT State, RetailerId, Amount, GlobalPayntGateway FROM Orders WHERE OrderId = @id LIMIT 1`,
 			Params: map[string]interface{}{"id": orderID},
 		}
 		iter := txn.Query(ctx, stmt)
@@ -214,7 +214,7 @@ func (s *ReconcilerService) markCompleted(ctx context.Context, orderID string) e
 		// GLOBAL_PAY guard: do not blindly project PAID — require a settled session
 		if gateway == "GLOBAL_PAY" {
 			sessionStmt := spanner.Statement{
-				SQL: `SELECT Status FROM PaymentSessions
+				SQL: `SELECT Status FROM GlobalPayntSessions
 				      WHERE OrderId = @orderId AND Gateway = 'GLOBAL_PAY'
 				      ORDER BY CreatedAt DESC LIMIT 1`,
 				Params: map[string]interface{}{"orderId": orderID},
@@ -224,8 +224,8 @@ func (s *ReconcilerService) markCompleted(ctx context.Context, orderID string) e
 			sessionIter.Stop()
 
 			if sessionErr != nil {
-				log.Printf("[PAYMENT] GLOBAL_PAY order %s has no payment session — skipping COMPLETED projection", orderID)
-				return fmt.Errorf("GLOBAL_PAY order %s requires a settled payment session before completion", orderID)
+				log.Printf("[PAYMENT] GLOBAL_PAY order %s has no global_paynt session — skipping COMPLETED projection", orderID)
+				return fmt.Errorf("GLOBAL_PAY order %s requires a settled global_paynt session before completion", orderID)
 			}
 
 			var sessionStatus string
@@ -240,7 +240,7 @@ func (s *ReconcilerService) markCompleted(ctx context.Context, orderID string) e
 		}
 
 		updateStmt := spanner.Statement{
-			SQL:    `UPDATE Orders SET State = 'COMPLETED', PaymentStatus = 'PAID' WHERE OrderId = @id`,
+			SQL:    `UPDATE Orders SET State = 'COMPLETED', GlobalPayntStatus = 'PAID' WHERE OrderId = @id`,
 			Params: map[string]interface{}{"id": orderID},
 		}
 		_, err = txn.Update(ctx, updateStmt)

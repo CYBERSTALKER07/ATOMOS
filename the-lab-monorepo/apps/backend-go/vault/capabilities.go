@@ -31,28 +31,28 @@ type ProviderCapability struct {
 // providerRegistry is the single source of truth for gateway capabilities.
 // These providers start as MANUAL_ONLY until official merchant-connect docs arrive.
 var providerRegistry = map[string]ProviderCapability{
-	"CLICK": {
-		Gateway:        "CLICK",
-		DisplayName:    "Click",
+	"CASH": {
+		Gateway:        "CASH",
+		DisplayName:    "Cash",
 		OnboardingMode: ManualOnly,
 		RequiredFields: []string{"merchant_id", "service_id", "secret_key"},
 		ManualFields: []ManualField{
 			{Name: "merchant_id", Label: "Merchant ID", Placeholder: "e.g. 12345"},
 			{Name: "service_id", Label: "Service ID", Placeholder: "e.g. 23456"},
-			{Name: "secret_key", Label: "Secret Key", Placeholder: "Enter your Click secret key", InputType: "password"},
+			{Name: "secret_key", Label: "Secret Key", Placeholder: "Enter your Cash secret key", InputType: "password"},
 		},
-		ManualHint: "Enter your Click merchant credentials from the Click merchant dashboard.",
+		ManualHint: "Enter your Cash merchant credentials from the Cash merchant dashboard.",
 	},
-	"PAYME": {
-		Gateway:        "PAYME",
-		DisplayName:    "Payme",
+	"GLOBAL_PAY": {
+		Gateway:        "GLOBAL_PAY",
+		DisplayName:    "GlobalPay",
 		OnboardingMode: ManualOnly,
 		RequiredFields: []string{"merchant_id", "secret_key"},
 		ManualFields: []ManualField{
 			{Name: "merchant_id", Label: "Merchant ID", Placeholder: "e.g. 6241a1234567890abc..."},
-			{Name: "secret_key", Label: "Secret Key", Placeholder: "Enter your Payme secret key", InputType: "password"},
+			{Name: "secret_key", Label: "Secret Key", Placeholder: "Enter your GlobalPay secret key", InputType: "password"},
 		},
-		ManualHint: "Enter your Payme merchant credentials from the Payme Business cabinet.",
+		ManualHint: "Enter your GlobalPay merchant credentials from the GlobalPay Business cabinet.",
 	},
 	"GLOBAL_PAY": {
 		Gateway:        "GLOBAL_PAY",
@@ -77,7 +77,7 @@ func labelForField(cap ProviderCapability, fieldName string) string {
 	return fieldName
 }
 
-var providerOrder = []string{"CLICK", "PAYME", "GLOBAL_PAY"}
+var providerOrder = []string{"CASH", "GLOBAL_PAY", "GLOBAL_PAY"}
 
 // GetProviderCapabilities returns the capability metadata for all supported gateways.
 func GetProviderCapabilities() []ProviderCapability {

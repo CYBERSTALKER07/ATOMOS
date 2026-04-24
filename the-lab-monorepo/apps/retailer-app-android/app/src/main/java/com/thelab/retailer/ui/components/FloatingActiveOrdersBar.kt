@@ -6,7 +6,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import com.thelab.retailer.ui.theme.MotionTokens
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.cashable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -46,7 +46,7 @@ fun FloatingActiveOrdersBar(
     totalDisplay: String,
     countdownIso: String?,
     progress: Float = 0.5f,
-    onClick: () -> Unit,
+    onCash: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -73,7 +73,7 @@ fun FloatingActiveOrdersBar(
                 )
                 .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp, bottomStart = 16.dp, bottomEnd = 16.dp))
                 .background(colorScheme.surface)
-                .clickable { onClick() }
+                .cashable { onCash() }
                 .padding(start = 6.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
         ) {
             Row(
