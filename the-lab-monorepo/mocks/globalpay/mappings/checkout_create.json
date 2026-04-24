@@ -11,7 +11,7 @@
     "status": 200,
     "headers": { "Content-Type": "application/json" },
     "jsonBody": {
-      "userRedirectUrl": "http://localhost:8082/simulate/checkout/{{randomValue type='UUID'}}",
+      "userRedirectUrl": "http://localhost:8085/simulate/checkout/{{randomValue type='UUID'}}",
       "userServiceToken": "MOCK_UST_{{randomValue type='UUID'}}",
       "paymentId": "MOCK_PAY_{{randomValue type='UUID'}}",
       "isSuccessful": true

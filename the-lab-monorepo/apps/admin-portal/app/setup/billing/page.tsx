@@ -9,13 +9,15 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 const gwIcons: Record<string, string> = {
   PAYME: 'M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z',
   CLICK: 'M13 1.07V9h7c0-4.08-3.05-7.44-7-7.93zM4 15c0 4.42 3.58 8 8 8s8-3.58 8-8v-4H4v4zm7-13.93C7.05 1.56 4 4.92 4 9h7V1.07z',
+  GLOBAL_PAY: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.76l6.15 6.15c-.15 1.13-.27 2.37-.36 3.54zM2 12c0-5.52 4.48-10 10-10s10 4.48 10 10-4.48 10-10 10S2 17.52 2 12z',
+  CASH: 'M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z',
   CARD: 'M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z',
   BANK: 'M4 10v7h3v-7H4zm6 0v7h3v-7h-3zM2 22h19v-3H2v3zm14-12v7h3v-7h-3zm-4.5-9L2 6v2h19V6l-9.5-5z',
 };
 
 const PAYMENT_GATEWAYS = [
-  { id: 'PAYME', label: 'Payme', desc: 'Payme Business gateway' },
-  { id: 'CLICK', label: 'Click', desc: 'Click payment system' },
+  { id: 'GLOBAL_PAY', label: 'Global Pay', desc: 'Global Pay checkout process' },
+  { id: 'CASH', label: 'Cash on Delivery', desc: 'Accept physical cash payouts' },
   { id: 'CARD', label: 'Card Transfer', desc: 'Direct bank card transfer' },
   { id: 'BANK', label: 'Bank Wire', desc: 'Corporate bank wire transfer' },
 ];
@@ -70,7 +72,10 @@ export default function BillingSetupPage() {
 
       if (!res.ok) {
         const j = await res.json().catch(() => ({ error: 'Setup failed' }));
-        setError(j.error || `Error ${res.status}`);
+        const errorMessage = j.error === 'rate_limit_exceeded' 
+          ? 'Too many requests. Please try again later.' 
+          : (j.error || `Error ${res.status}`);
+        setError(errorMessage);
         setSubmitting(false);
         return;
       }

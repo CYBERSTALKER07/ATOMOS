@@ -8,7 +8,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-MOCK_URL="${GLOBAL_PAY_MOCK_URL:-http://localhost:8082}"
+MOCK_URL="${GLOBAL_PAY_MOCK_URL:-http://localhost:8085}"
 PASS=0
 FAIL=0
 

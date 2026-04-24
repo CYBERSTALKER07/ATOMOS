@@ -307,10 +307,10 @@ struct AutoOrderView: View {
 
                     Spacer()
 
-                    Toggle("", isOn: $globalAutoOrder)
-                        .tint(AppTheme.accent)
-                        .labelsHidden()
-                        .onChange(of: globalAutoOrder) { _, newVal in
+                    Toggle("", isOn: Binding(
+                        get: { globalAutoOrder },
+                        set: { newVal in
+                            globalAutoOrder = newVal
                             if newVal {
                                 if settings?.hasAnyHistory == true {
                                     pendingTarget = .global
@@ -321,6 +321,9 @@ struct AutoOrderView: View {
                                 Task { await disableGlobal() }
                             }
                         }
+                    ))
+                        .tint(AppTheme.accent)
+                        .labelsHidden()
                 }
                 .padding(AppTheme.spacingLG)
 

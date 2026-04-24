@@ -364,16 +364,12 @@ struct DeliveryPaymentSheetView: View {
     private var cardGatewayOptions: [CardGatewayOption] {
         let configuredGateways = event.availableCardGateways
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
-            .filter { ["CLICK", "PAYME", "GLOBAL_PAY"].contains($0) }
+            .filter { ["GLOBAL_PAY", "UZCARD", "CASH"].contains($0) }
 
-        let gateways = configuredGateways.isEmpty ? ["PAYME", "CLICK", "GLOBAL_PAY"] : Array(NSOrderedSet(array: configuredGateways)) as? [String] ?? configuredGateways
+        let gateways = configuredGateways.isEmpty ? ["GLOBAL_PAY", "UZCARD", "CASH"] : Array(NSOrderedSet(array: configuredGateways)) as? [String] ?? configuredGateways
 
         return gateways.compactMap { gateway in
             switch gateway {
-            case "CLICK":
-                CardGatewayOption(gateway: gateway, label: "Click", description: "Pay via Click app")
-            case "PAYME":
-                CardGatewayOption(gateway: gateway, label: "Payme", description: "Pay via Payme app")
             case "GLOBAL_PAY":
                 CardGatewayOption(gateway: gateway, label: "Global Pay", description: "Pay via Global Pay checkout")
             default:

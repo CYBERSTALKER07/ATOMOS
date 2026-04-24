@@ -135,6 +135,12 @@ nuke: require-env ## Truncate all Spanner tables via seed script
 	cd $(BACKEND_DIR) && go run cmd/seed/main.go
 	@echo "═══ Data nuked and re-seeded ═══"
 
+## ── reset-db: Reset database schema and inject simulation ─────────────────
+reset-db: require-env ## Truncate all tables and inject clear simulation
+	@echo "═══ RESET: Clearing database and injecting clean simulation ═══"
+	cd $(BACKEND_DIR) && go run cmd/simulate/*.go -clear -suppliers=5 -warehouses=2 -retailers=100
+	@echo "═══ Database simulation reset complete ═══"
+
 ## ── full-reset: env-down → env-up → spanner-init → seed ──────────────────
 full-reset: env-down env-up ## Full infrastructure reset + reseed
 	@sleep 5

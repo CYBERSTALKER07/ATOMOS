@@ -323,9 +323,9 @@ func HandleBillingSetup(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		validGateways := map[string]bool{"PAYME": true, "CLICK": true, "CARD": true, "BANK": true}
+		validGateways := map[string]bool{"PAYME": true, "CLICK": true, "CARD": true, "BANK": true, "GLOBAL_PAY": true, "CASH": true}
 		if !validGateways[req.PaymentGateway] {
-			http.Error(w, `{"error":"invalid payment_gateway — must be PAYME, CLICK, CARD, or BANK"}`, http.StatusBadRequest)
+			http.Error(w, `{"error":"invalid payment_gateway — must be PAYME, CLICK, CARD, BANK, GLOBAL_PAY, or CASH"}`, http.StatusBadRequest)
 			return
 		}
 

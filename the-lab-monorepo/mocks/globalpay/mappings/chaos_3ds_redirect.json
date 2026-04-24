@@ -13,7 +13,7 @@
     "jsonBody": {
       "paymentId": "MOCK_3DS_{{randomValue type='UUID'}}",
       "status": "REQUIRES_3DS",
-      "securityCheckUrl": "http://localhost:8082/simulate/3ds/{{randomValue type='UUID'}}",
+      "securityCheckUrl": "http://localhost:8085/simulate/3ds/{{randomValue type='UUID'}}",
       "isSuccessful": true
     }
   }

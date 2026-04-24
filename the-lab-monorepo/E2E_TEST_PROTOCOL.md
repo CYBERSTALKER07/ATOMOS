@@ -64,7 +64,7 @@ Negative `recipients[].amount` in any init request triggers a **400 INVALID_SPLI
 
 ### Verification Targets
 1. **Happy Path**: Retailer checkout with `payment_gateway: "GLOBAL_PAY"` → session created → mock returns SUCCESS → settlement completes.
-2. **95/5 Split**: Verify `recipients` array in the WireMock request log (`curl localhost:8082/__admin/requests`) contains correct supplier/platform tiyin amounts.
+2. **95/5 Split**: Verify `recipients` array in the WireMock request log (`curl localhost:8085/__admin/requests`) contains correct supplier/platform tiyin amounts.
 3. **Timeout Resilience**: Set `externalId` to `"CHAOS_TIMEOUT"` → verify backend returns 504 or retries via outbox relay.
 4. **3DS Detection**: Set `externalId` to `"CHAOS_3DS"` → verify `securityCheckUrl` is propagated to the client redirect.
 5. **Trace Propagation**: Inspect `X-Trace-Id` in WireMock request log → confirm it matches the originating request's trace.

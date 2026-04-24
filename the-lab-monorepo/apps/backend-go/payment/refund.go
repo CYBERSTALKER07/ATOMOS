@@ -6,6 +6,10 @@ import (
 	"log"
 	"time"
 
+	"backend-go/cache"
+
+	"backend-go/outbox"
+	"backend-go/telemetry"
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	goKafka "github.com/segmentio/kafka-go"
@@ -182,17 +186,30 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 			))
 		}
 
-		return txn.BufferWrite(mutations)
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+
+		// 5. Emit OUTBOX event atomically
+		payload := map[string]interface{}{
+			"order_id":    orderID,
+			"retailer_id": retailerID,
+			"supplier_id": supplierID,
+			"refund_id":   refundID,
+			"amount":      refundAmount,
+			"status":      refundStatus,
+			"timestamp":   now.Format(time.RFC3339),
+		}
+
+		return outbox.EmitJSON(txn, "Refund", refundID, "PAYMENT_REFUNDED", "lab-logistics-events", payload, telemetry.TraceIDFromContext(ctx))
 	})
 
 	if txErr != nil {
 		return nil, fmt.Errorf("refund transaction failed: %w", txErr)
 	}
 
-	// 5. Emit Kafka event for notification dispatcher
-	if rs.kafkaWriter != nil {
-		rs.emitRefundEvent(orderID, retailerID, supplierID, refundID, refundAmount, refundStatus)
-	}
+	// Cache invalidate
+	cache.Invalidate(ctx, cache.PrefixActiveOrders+retailerID, cache.SupplierProfile(supplierID))
 
 	log.Printf("[REFUND] Refund %s for order %s: %d UZS → %s", refundID, orderID, refundAmount, refundStatus)
 

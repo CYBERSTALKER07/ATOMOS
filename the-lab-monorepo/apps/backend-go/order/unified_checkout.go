@@ -15,13 +15,16 @@ import (
 	"net/http"
 	"time"
 
+	"backend-go/cache"
 	"backend-go/cart"
 	"backend-go/dispatch"
 	apierrors "backend-go/errors"
 	"backend-go/hotspot"
 	kafkaEvents "backend-go/kafka"
+	"backend-go/outbox"
 	"backend-go/payment"
 	"backend-go/proximity"
+	"backend-go/telemetry"
 	"backend-go/workers"
 
 	"cloud.google.com/go/spanner"
@@ -458,7 +461,24 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			return fmt.Errorf("checkout too large: %d mutations exceeds safety limit of %d — split into smaller orders", len(mutations), maxMutationRows)
 		}
 
-		return txn.BufferWrite(mutations)
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+		now := time.Now().UTC()
+		for _, plan := range processedPlans {
+			event := SupplierOrderCreatedEvent{InvoiceID: invoiceID, OrderID: plan.OrderID, SupplierID: plan.SupplierID, RetailerID: req.RetailerID, WarehouseID: plan.WarehouseID, WarehouseName: plan.WarehouseName, Total: processedTotals[plan.OrderID], Currency: "UZS", Items: plan.Items, Timestamp: now}
+			if err := outbox.EmitJSON(txn, "Order", plan.OrderID, string(kafkaEvents.EventOrderCreated), kafkaEvents.TopicMain, event, telemetry.TraceIDFromContext(ctx)); err != nil {
+				return err
+			}
+		}
+		return outbox.EmitJSON(txn, "Invoice", invoiceID, string(kafkaEvents.EventUnifiedCheckoutCompleted), kafkaEvents.TopicMain, struct {
+			InvoiceID  string    `json:"invoice_id"`
+			RetailerID string    `json:"retailer_id"`
+			Total      int64     `json:"total"`
+			Currency   string    `json:"currency"`
+			OrderCount int       `json:"order_count"`
+			Timestamp  time.Time `json:"timestamp"`
+		}{InvoiceID: invoiceID, RetailerID: req.RetailerID, Total: effectiveGrandTotal, Currency: "UZS", OrderCount: len(processedPlans), Timestamp: now}, telemetry.TraceIDFromContext(ctx))
 	})
 
 	if err != nil {
@@ -554,65 +574,26 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 					))
 				}
 			}
-			return txn.BufferWrite(bMutations)
+			if err := txn.BufferWrite(bMutations); err != nil {
+				return err
+			}
+			now := time.Now().UTC()
+			for _, bp := range backordersBySup {
+				event := StockBackorderedEvent{InvoiceID: invoiceID, BackOrderID: bp.OrderID, SupplierID: bp.SupplierID, RetailerID: req.RetailerID, WarehouseID: bp.WarehouseID, WarehouseName: bp.WarehouseName, Items: bp.Items, Total: bp.Total, Currency: "UZS", Timestamp: now}
+				if err := outbox.EmitJSON(txn, "Order", bp.OrderID, string(kafkaEvents.EventStockBackordered), kafkaEvents.TopicMain, event, telemetry.TraceIDFromContext(ctx)); err != nil {
+					return err
+				}
+			}
+			return nil
 		})
 		if backErr != nil {
 			// Primary order already committed — log and continue
 			log.Printf("[UNIFIED_CHECKOUT] BACKORDERED transaction failed (primary ok): %v", backErr)
-		} else {
-			// Emit STOCK_BACKORDERED events per supplier
-			now := time.Now().UTC()
-			for _, bp := range backordersBySup {
-				go s.PublishEvent(context.Background(), kafkaEvents.EventStockBackordered, StockBackorderedEvent{
-					InvoiceID:     invoiceID,
-					BackOrderID:   bp.OrderID,
-					SupplierID:    bp.SupplierID,
-					RetailerID:    req.RetailerID,
-					WarehouseID:   bp.WarehouseID,
-					WarehouseName: bp.WarehouseName,
-					Items:         bp.Items,
-					Total:         bp.Total,
-					Currency:      "UZS",
-					Timestamp:     now,
-				})
-			}
 		}
 	}
 
-	// ── Step 5b: Kafka fan-out for fulfilled orders — AFTER commit ─────────────
-	now := time.Now().UTC()
-	for _, plan := range processedPlans {
-		event := SupplierOrderCreatedEvent{
-			InvoiceID:     invoiceID,
-			OrderID:       plan.OrderID,
-			SupplierID:    plan.SupplierID,
-			RetailerID:    req.RetailerID,
-			WarehouseID:   plan.WarehouseID,
-			WarehouseName: plan.WarehouseName,
-			Total:         processedTotals[plan.OrderID],
-			Currency:      "UZS",
-			Items:         plan.Items,
-			Timestamp:     now,
-		}
-		go s.PublishEvent(context.Background(), kafkaEvents.EventOrderCreated, event)
-	}
-
-	// Also emit a unified event for the AI worker / admin dashboard
-	go s.PublishEvent(context.Background(), kafkaEvents.EventUnifiedCheckoutCompleted, struct {
-		InvoiceID  string    `json:"invoice_id"`
-		RetailerID string    `json:"retailer_id"`
-		Total      int64     `json:"total"`
-		Currency   string    `json:"currency"`
-		OrderCount int       `json:"order_count"`
-		Timestamp  time.Time `json:"timestamp"`
-	}{
-		InvoiceID:  invoiceID,
-		RetailerID: req.RetailerID,
-		Total:      effectiveGrandTotal,
-		Currency:   "UZS",
-		OrderCount: len(processedPlans),
-		Timestamp:  now,
-	})
+	// ── CACHE INVALIDATION After Commit ────────────────────────────────────────
+	s.Cache.Invalidate(ctx, cache.PrefixActiveOrders+req.RetailerID)
 
 	log.Printf("[UNIFIED_CHECKOUT] InvoiceID=%s RetailerId=%s Total=%d SupplierOrders=%d BackorderedItems=%d",
 		invoiceID, req.RetailerID, effectiveGrandTotal, len(processedPlans), totalBackorderedItems)

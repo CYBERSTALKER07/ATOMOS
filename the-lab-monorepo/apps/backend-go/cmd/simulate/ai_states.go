@@ -11,14 +11,15 @@ import (
 	"github.com/google/uuid"
 )
 
-func InjectAIAndOrders(ctx context.Context, client *spanner.Client, retailers []SimRetailer, supplierId string, rng *rand.Rand) {
+func InjectAIAndOrders(ctx context.Context, client *spanner.Client, retailers []SimRetailer, supplierIds []string, rng *rand.Rand) {
 	// We'll use 2 specific retailers from our generated list to demonstrate AI cases
-	if len(retailers) < 3 {
+	if len(retailers) < 3 || len(supplierIds) == 0 {
 		return
 	}
 
 	ret1 := retailers[0] // Case 1: History, Auto-Order OFF
 	ret2 := retailers[1] // Case 2: Active Preorders, Auto-Order ON
+	supplierId := supplierIds[0]
 
 	now := time.Now()
 

@@ -302,6 +302,10 @@ final class APIClient: @unchecked Sendable {
             if let problem = Self.parseProblemDetail(data: data, response: http) {
                 throw APIError.problemDetail(problem)
             }
+            if http.statusCode == 429, let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let errStr = dict["error"] as? String, errStr == "rate_limit_exceeded" {
+                let problem = ProblemDetail(type: "about:blank", title: "Too many requests", status: 429, detail: "Too many requests. Please try again later.", traceId: nil, instance: nil, code: "rate_limit_exceeded", messageKey: nil, retryable: true, action: nil)
+                throw APIError.problemDetail(problem)
+            }
             throw APIError.httpError(http.statusCode)
         }
         }

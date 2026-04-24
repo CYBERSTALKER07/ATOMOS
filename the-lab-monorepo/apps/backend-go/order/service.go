@@ -181,6 +181,7 @@ type ActiveMission struct {
 
 type OrderService struct {
 	Producer     *kafka.Writer
+	Cache        *cache.Cache
 	Client       *spanner.Client
 	Vault        *vault.Service                 // Per-supplier credential vault (nil = ENV-only fallback)
 	SessionSvc   *payment.SessionService        // Payment session engine (nil = legacy mode)

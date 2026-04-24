@@ -36,7 +36,10 @@ export default function AdminLoginPage() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({ error: 'Login failed' }));
-        setError(body.error || `HTTP ${res.status}`);
+        const errorMessage = body.error === 'rate_limit_exceeded' 
+          ? 'Too many requests. Please try again later.' 
+          : (body.error || `HTTP ${res.status}`);
+        setError(errorMessage);
         setSubmitting(false);
         return;
       }

@@ -1,8 +1,6 @@
 package payment
 
 import (
-	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -75,7 +73,6 @@ type SplittingGateway interface {
 	Void(authorizationID string) error
 }
 
-// ─── PAYME ────────────────────────────────────────────────────────────────────
 
 // PaymeClient handles full-capture charges and partial refunds via the Payme
 // merchant API. All credentials are loaded from environment variables — never
@@ -86,30 +83,9 @@ type SplittingGateway interface {
 //	PAYME_MERCHANT_ID  — your Payme merchant ID
 //	PAYME_SECRET_KEY   — your Payme secret key (test or prod)
 //	PAYME_API_URL      — defaults to https://checkout.paycom.uz/api
-type PaymeClient struct {
-	merchantID string
-	secretKey  string
-	apiURL     string
-	httpClient *http.Client
-}
 
-func NewPaymeClient() (*PaymeClient, error) {
-	mid := os.Getenv("PAYME_MERCHANT_ID")
-	key := os.Getenv("PAYME_SECRET_KEY")
-	if mid == "" || key == "" {
-		return nil, fmt.Errorf("PAYME_MERCHANT_ID and PAYME_SECRET_KEY must be set")
-	}
-	apiURL := os.Getenv("PAYME_API_URL")
-	if apiURL == "" {
-		apiURL = "https://checkout.paycom.uz/api"
-	}
-	return &PaymeClient{
-		merchantID: mid,
-		secretKey:  key,
-		apiURL:     apiURL,
-		httpClient: &http.Client{Timeout: 15 * time.Second},
-	}, nil
-}
+
+
 
 type paymeRequest struct {
 	Method string                 `json:"method"`
@@ -124,69 +100,14 @@ type paymeResponse struct {
 	} `json:"error"`
 }
 
-func (p *PaymeClient) do(method string, params map[string]interface{}) (*paymeResponse, error) {
-	payload, _ := json.Marshal(paymeRequest{Method: method, Params: params})
-	creds := base64.StdEncoding.EncodeToString([]byte(p.merchantID + ":" + p.secretKey))
 
-	buildReq := func() (*http.Request, error) {
-		req, err := http.NewRequest(http.MethodPost, p.apiURL, bytes.NewReader(payload))
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Basic "+creds)
-		return req, nil
-	}
-
-	resp, err := retryDo(p.httpClient, buildReq, 2)
-	if err != nil {
-		return nil, fmt.Errorf("payme HTTP error: %w", err)
-	}
-	defer resp.Body.Close()
-
-	raw, _ := io.ReadAll(resp.Body)
-	var pr paymeResponse
-	if err := json.Unmarshal(raw, &pr); err != nil {
-		return nil, fmt.Errorf("payme response parse error: %w", err)
-	}
-	if pr.Error != nil {
-		return nil, fmt.Errorf("payme error %d: %s", pr.Error.Code, pr.Error.Message)
-	}
-	return &pr, nil
-}
 
 // Charge executes a FULL CAPTURE for the given order.
-func (p *PaymeClient) Charge(orderID string, amount int64) error {
-	// Payme expects amount in tiyins (1 UZS = 100 tiyins)
-	amountTiyins := amount * 100
-	_, err := p.do("receipts.create_p2p", map[string]interface{}{
-		"amount":      amountTiyins,
-		"order":       map[string]string{"id": orderID},
-		"description": fmt.Sprintf("Lab Industries order %s full capture", orderID),
-	})
-	if err != nil {
-		return fmt.Errorf("payme charge failed for order %s: %w", orderID, err)
-	}
-	log.Printf("[PAYMENT] Payme full capture: order=%s amount=%d", orderID, amount)
-	return nil
-}
+
 
 // Refund issues a PARTIAL refund for rejected/damaged line items.
-func (p *PaymeClient) Refund(orderID string, refundAmount int64) error {
-	refundTiyins := refundAmount * 100
-	_, err := p.do("receipts.cancel", map[string]interface{}{
-		"amount": refundTiyins,
-		"order":  map[string]string{"id": orderID},
-		"reason": "PALLET_REJECTED_AT_DELIVERY",
-	})
-	if err != nil {
-		return fmt.Errorf("payme refund failed for order %s: %w", orderID, err)
-	}
-	log.Printf("[PAYMENT] Payme partial refund: order=%s refund=%d", orderID, refundAmount)
-	return nil
-}
 
-// ─── CLICK ────────────────────────────────────────────────────────────────────
+
 
 // ClickClient handles full-capture charges and partial refunds via Click Up's
 // merchant API.
@@ -197,33 +118,9 @@ func (p *PaymeClient) Refund(orderID string, refundAmount int64) error {
 //	CLICK_SERVICE_ID    — your Click service ID
 //	CLICK_SECRET_KEY    — your Click secret key
 //	CLICK_API_URL       — defaults to https://api.click.uz/v2/merchant
-type ClickClient struct {
-	merchantID string
-	serviceID  string
-	secretKey  string
-	apiURL     string
-	httpClient *http.Client
-}
 
-func NewClickClient() (*ClickClient, error) {
-	mid := os.Getenv("CLICK_MERCHANT_ID")
-	sid := os.Getenv("CLICK_SERVICE_ID")
-	key := os.Getenv("CLICK_SECRET_KEY")
-	if mid == "" || sid == "" || key == "" {
-		return nil, fmt.Errorf("CLICK_MERCHANT_ID, CLICK_SERVICE_ID and CLICK_SECRET_KEY must be set")
-	}
-	apiURL := os.Getenv("CLICK_API_URL")
-	if apiURL == "" {
-		apiURL = "https://api.click.uz/v2/merchant"
-	}
-	return &ClickClient{
-		merchantID: mid,
-		serviceID:  sid,
-		secretKey:  key,
-		apiURL:     apiURL,
-		httpClient: &http.Client{Timeout: 15 * time.Second},
-	}, nil
-}
+
+
 
 type clickInvoiceRequest struct {
 	ServiceID   string `json:"service_id"`
@@ -233,69 +130,10 @@ type clickInvoiceRequest struct {
 }
 
 // Charge issues a full invoice/capture via Click Up.
-func (c *ClickClient) Charge(orderID string, amount int64) error {
-	payload, _ := json.Marshal(clickInvoiceRequest{
-		ServiceID: c.serviceID,
-		OrderID:   orderID,
-		Amount:    amount,
-	})
 
-	buildReq := func() (*http.Request, error) {
-		req, err := http.NewRequest(http.MethodPost, c.apiURL+"/invoice/create", bytes.NewReader(payload))
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Auth", fmt.Sprintf("%s:%s", c.merchantID, c.secretKey))
-		return req, nil
-	}
-
-	resp, err := retryDo(c.httpClient, buildReq, 2)
-	if err != nil {
-		return fmt.Errorf("click charge HTTP error: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		raw, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("click charge failed (HTTP %d): %s", resp.StatusCode, string(raw))
-	}
-	log.Printf("[PAYMENT] Click full capture: order=%s amount=%d", orderID, amount)
-	return nil
-}
 
 // Refund issues a partial refund for rejected line items via Click.
-func (c *ClickClient) Refund(orderID string, refundAmount int64) error {
-	payload, _ := json.Marshal(map[string]interface{}{
-		"service_id":        c.serviceID,
-		"merchant_trans_id": orderID,
-		"amount":            refundAmount,
-		"reason":            "PALLET_REJECTED_AT_DELIVERY",
-	})
 
-	buildReq := func() (*http.Request, error) {
-		req, err := http.NewRequest(http.MethodPost, c.apiURL+"/payment/reverse", bytes.NewReader(payload))
-		if err != nil {
-			return nil, err
-		}
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Auth", fmt.Sprintf("%s:%s", c.merchantID, c.secretKey))
-		return req, nil
-	}
-
-	resp, err := retryDo(c.httpClient, buildReq, 2)
-	if err != nil {
-		return fmt.Errorf("click refund HTTP error: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode >= 400 {
-		raw, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("click refund failed (HTTP %d): %s", resp.StatusCode, string(raw))
-	}
-	log.Printf("[PAYMENT] Click partial refund: order=%s refund=%d", orderID, refundAmount)
-	return nil
-}
 
 // ─── FACTORY ─────────────────────────────────────────────────────────────────
 
@@ -304,10 +142,6 @@ func (c *ClickClient) Refund(orderID string, refundAmount int64) error {
 // Recognised values: "PAYME", "CLICK", "GLOBAL_PAY", "UZCARD" (no live charge API), "CASH" (no-op).
 func NewGatewayClient(gateway string) (GatewayClient, error) {
 	switch gateway {
-	case "PAYME":
-		return NewPaymeClient()
-	case "CLICK":
-		return NewClickClient()
 	case "GLOBAL_PAY":
 		log.Printf("[PAYMENT] GLOBAL_PAY gateway: hosted checkout supported, direct charge/refund not wired yet")
 		return &noopGateway{gateway: "GLOBAL_PAY"}, nil
@@ -334,10 +168,6 @@ func NewGatewayClient(gateway string) (GatewayClient, error) {
 // Returns ("", nil) for gateways without an interactive checkout URL.
 func CheckoutURL(gateway string, orderID string, amount int64) (string, error) {
 	switch gateway {
-	case "PAYME":
-		return paymeCheckoutURL(orderID, amount)
-	case "CLICK":
-		return clickCheckoutURL(orderID, amount)
 	case "GLOBAL_PAY":
 		return globalPayCheckoutURL(orderID, amount)
 	case "SIMULATED":
@@ -352,35 +182,10 @@ func CheckoutURL(gateway string, orderID string, amount int64) (string, error) {
 
 // paymeCheckoutURL builds the Payme checkout redirect URL.
 // Format: https://checkout.paycom.uz/<base64(m=MERCHANT_ID;ac.order_id=ORDER_ID;a=AMOUNT_TIYINS)>
-func paymeCheckoutURL(orderID string, amount int64) (string, error) {
-	mid := os.Getenv("PAYME_MERCHANT_ID")
-	if mid == "" {
-		return "", fmt.Errorf("PAYME_MERCHANT_ID not set")
-	}
-	amountTiyins := amount * 100
-	raw := fmt.Sprintf("m=%s;ac.order_id=%s;a=%d", mid, orderID, amountTiyins)
-	encoded := base64.StdEncoding.EncodeToString([]byte(raw))
-	checkoutBase := os.Getenv("PAYME_CHECKOUT_URL")
-	if checkoutBase == "" {
-		checkoutBase = "https://checkout.paycom.uz"
-	}
-	return fmt.Sprintf("%s/%s", checkoutBase, encoded), nil
-}
+
 
 // clickCheckoutURL builds the Click checkout redirect URL.
-func clickCheckoutURL(orderID string, amount int64) (string, error) {
-	mid := os.Getenv("CLICK_MERCHANT_ID")
-	sid := os.Getenv("CLICK_SERVICE_ID")
-	if mid == "" || sid == "" {
-		return "", fmt.Errorf("CLICK_MERCHANT_ID and CLICK_SERVICE_ID must be set")
-	}
-	checkoutBase := os.Getenv("CLICK_CHECKOUT_URL")
-	if checkoutBase == "" {
-		checkoutBase = "https://my.click.uz/services/pay"
-	}
-	return fmt.Sprintf("%s?service_id=%s&merchant_id=%s&amount=%d&transaction_param=%s",
-		checkoutBase, sid, mid, amount, orderID), nil
-}
+
 
 // globalPayCheckoutURL expands a hosted-checkout URL template.
 // The template is supplied by GLOBAL_PAY_CHECKOUT_URL and may include
@@ -534,10 +339,6 @@ func (s *SimulatedClient) Refund(orderID string, refundAmount int64) error {
 // instead of global ENV vars. This is the multi-vendor path.
 func CheckoutURLWithCredentials(gateway, orderID string, amount int64, merchantId, serviceId string) (string, error) {
 	switch gateway {
-	case "PAYME":
-		return paymeCheckoutURLWithCreds(orderID, amount, merchantId)
-	case "CLICK":
-		return clickCheckoutURLWithCreds(orderID, amount, merchantId, serviceId)
 	case "GLOBAL_PAY":
 		return globalPayCheckoutURLWithCreds(orderID, amount, merchantId)
 	case "SIMULATED":
@@ -547,28 +348,6 @@ func CheckoutURLWithCredentials(gateway, orderID string, amount int64, merchantI
 	}
 }
 
-func paymeCheckoutURLWithCreds(orderID string, amount int64, merchantId string) (string, error) {
-	if merchantId == "" {
-		return "", fmt.Errorf("payme merchant_id required")
-	}
-	amountTiyins := amount * 100
-	raw := fmt.Sprintf("m=%s;ac.order_id=%s;a=%d", merchantId, orderID, amountTiyins)
-	encoded := base64.StdEncoding.EncodeToString([]byte(raw))
-	checkoutBase := os.Getenv("PAYME_CHECKOUT_URL")
-	if checkoutBase == "" {
-		checkoutBase = "https://checkout.paycom.uz"
-	}
-	return fmt.Sprintf("%s/%s", checkoutBase, encoded), nil
-}
 
-func clickCheckoutURLWithCreds(orderID string, amount int64, merchantId, serviceId string) (string, error) {
-	if merchantId == "" || serviceId == "" {
-		return "", fmt.Errorf("click merchant_id and service_id required")
-	}
-	checkoutBase := os.Getenv("CLICK_CHECKOUT_URL")
-	if checkoutBase == "" {
-		checkoutBase = "https://my.click.uz/services/pay"
-	}
-	return fmt.Sprintf("%s?service_id=%s&merchant_id=%s&amount=%d&transaction_param=%s",
-		checkoutBase, serviceId, merchantId, amount, orderID), nil
-}
+
+

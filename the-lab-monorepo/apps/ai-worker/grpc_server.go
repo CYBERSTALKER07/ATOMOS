@@ -28,7 +28,7 @@ import (
 	contract "optimizercontract"
 )
 
-const grpcPort = ":8082"
+const grpcPort = ":8088"
 
 // solveServer implements optimizer.Handler.
 // It is a thin wrapper that converts the gRPC call into the existing

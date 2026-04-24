@@ -28,7 +28,7 @@ export type OrderState =
   | 'DELIVERED_ON_CREDIT';
 
 // ─── Payment Gateways ───────────────────────────────────────────────────────
-export type PaymentGateway = 'CLICK' | 'PAYME' | 'GLOBAL_PAY' | 'UZCARD' | 'CASH';
+export type PaymentGateway = 'GLOBAL_PAY' | 'UZCARD' | 'CASH' | 'SIMULATED' | 'STRIPE';
 
 // ─── Payment Status ─────────────────────────────────────────────────────────
 // Maps 1:1 to the Orders.PaymentStatus column in Spanner.

@@ -103,9 +103,9 @@ struct RetailerServiceTests {
     // MARK: - Payment Gateway Values
 
     @Test func paymentGatewayOptions() {
-        let gateways = ["CLICK", "PAYME", "CASH", "GLOBAL_PAY"]
+        let gateways = ["GLOBAL_PAY", "CASH", "UZCARD"]
         #expect(gateways.count == 4)
-        #expect(gateways.contains("CLICK"))
+        
         #expect(gateways.contains("PAYME"))
         #expect(gateways.contains("CASH"))
     }

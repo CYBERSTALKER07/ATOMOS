@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { X, Building2, Ticket, Smartphone, Loader2 } from "lucide-react";
+import { X, Building2, Ticket, CreditCard, Loader2 } from "lucide-react";
 import { useCart } from "../lib/cart";
 import { apiFetch } from "../lib/auth";
 import { useRouter } from "next/navigation";
@@ -23,7 +23,7 @@ interface CheckoutModalProps {
 
 export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalProps) {
   const { items, clearCart } = useCart();
-  const [method, setMethod] = useState<'click'|'payme'|'invoice'|'cash'>('invoice');
+  const [method, setMethod] = useState<'global_pay'|'invoice'|'cash'>('invoice');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [oosItems, setOosItems] = useState<string[]>([]);
@@ -41,10 +41,9 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
 
       // Map payment method to backend gateway name
       const gatewayMap: Record<string, string> = {
-        click: 'CLICK',
-        payme: 'PAYME',
         invoice: 'BANK_TRANSFER',
         cash: 'CASH',
+        global_pay: 'GLOBAL_PAY',
       };
 
       // Build line items matching backend UnifiedCheckoutRequest shape
@@ -78,7 +77,7 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
       const supplierOrders = cartData.supplier_orders || [];
 
       // 2. Initiate payment for each supplier order
-      if (['click', 'payme'].includes(method)) {
+      if (['global_pay'].includes(method)) {
         for (const so of supplierOrders) {
           const payRes = await apiFetch('/v1/order/card-checkout', {
             method: 'POST',
@@ -165,28 +164,34 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div 
-                onClick={() => setMethod('click')}
-                className={`border p-5 rounded-2xl cursor-pointer transition-all flex items-center gap-4 ${method === 'click' ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/3'}`}
+                onClick={() => setMethod('cash')}
+                className={`border p-5 rounded-2xl cursor-pointer transition-all flex items-center gap-4 ${method === 'cash' ? 'border-[var(--warning)] bg-[var(--warning)]/8' : 'border-[var(--border)] hover:border-[var(--warning)] hover:bg-[var(--warning)]/4'}`}
               >
-                <div className="w-12 h-12 bg-blue-500/10 text-blue-600 rounded-xl flex items-center justify-center">
-                  <Smartphone size={24} />
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-muted" style={{ background: 'var(--surface)' }}>
+                  <Ticket size={24} />
                 </div>
                 <div>
-                  <h4 className="md-typescale-title-medium font-bold text-foreground">Click</h4>
-                  <p className="md-typescale-body-small text-muted">Pay via Click EVOS</p>
+                  <h4 className="md-typescale-title-medium font-bold text-foreground">Cash on Delivery</h4>
+                  <p className="md-typescale-body-small text-muted flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full" style={{ background: 'var(--warning)' }} />
+                    Available for overrides
+                  </p>
                 </div>
               </div>
 
               <div 
-                onClick={() => setMethod('payme')}
-                className={`border p-5 rounded-2xl cursor-pointer transition-all flex items-center gap-4 ${method === 'payme' ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/3'}`}
+                onClick={() => setMethod('global_pay')}
+                className={`border p-5 rounded-2xl cursor-pointer transition-all flex items-center gap-4 ${method === 'global_pay' ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/3'}`}
               >
                 <div className="w-12 h-12 bg-cyan-500/10 text-cyan-600 rounded-xl flex items-center justify-center">
-                  <Smartphone size={24} />
+                  <CreditCard size={24} />
                 </div>
                 <div>
-                  <h4 className="md-typescale-title-medium font-bold text-foreground">Payme</h4>
-                  <p className="md-typescale-body-small text-muted">Pay via Subscribe API</p>
+                  <h4 className="md-typescale-title-medium font-bold text-foreground">Global Pay</h4>
+                  <p className="md-typescale-body-small text-muted flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full" style={{ background: 'var(--success)' }} />
+                    Credit & Debit Cards
+                  </p>
                 </div>
               </div>
 

@@ -334,8 +334,8 @@ function Step1({
             </svg>
           </button>
           {countryOpen && (
-            <div className="absolute z-50 mt-1 w-full max-h-60 overflow-auto md-shape-md" style={{ background: 'var(--surface-container)', border: '1px solid var(--border)' }}>
-              <div className="sticky top-0 p-2" style={{ background: 'var(--surface-container)' }}>
+            <div className="absolute z-50 mt-1 w-full max-h-60 overflow-auto md-shape-md" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <div className="sticky top-0 p-2" style={{ background: 'var(--surface)' }}>
                 <input
                   type="text"
                   value={countrySearch}
@@ -350,7 +350,7 @@ function Step1({
                   key={c.value}
                   type="button"
                   className="w-full text-left px-3 py-2 md-typescale-body-small hover:opacity-80 flex items-center justify-between"
-                  style={{ background: c.value === country ? 'var(--accent-soft)' : 'transparent', color: 'var(--foreground)' }}
+                  style={{ background: c.value === country ? 'var(--accent-soft)' : 'var(--surface)', color: 'var(--foreground)' }}
                   onClick={() => { onCountryChange(c.value); setCountryOpen(false); setCountrySearch(''); }}
                 >
                   <span>{c.label}</span>
@@ -371,9 +371,9 @@ function Step1({
         <InputField label="Email Address *" type="email" value={data.email} onChange={e => onChange('email', e.target.value)} placeholder="info@company.uz" required />
         <div>
           <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--foreground)' }}>Phone Number *</label>
-          <div className="flex gap-2">
-            <span className="md-input-outlined flex items-center px-3 shrink-0 md-typescale-body-small" style={{ color: 'var(--muted)', minWidth: 64 }}>{prefix}</span>
-            <input type="tel" value={data.phone} onChange={e => onChange('phone', e.target.value)} placeholder="901234567" required className="md-input-outlined w-full" />
+          <div className="md-input-outlined flex items-center !p-0 overflow-hidden w-full focus-within:!border-[var(--color-md-on-surface)]">
+            <span className="flex items-center justify-center px-3 h-full shrink-0 md-typescale-body-small border-r" style={{ color: 'var(--muted)', borderColor: 'var(--border)', minWidth: '64px' }}>{prefix}</span>
+            <input type="tel" value={data.phone} onChange={e => onChange('phone', e.target.value)} placeholder="901234567" required className="w-full h-full bg-transparent outline-none px-3 md-typescale-body-small" style={{ color: 'var(--foreground)' }} />
           </div>
         </div>
       </div>
@@ -606,7 +606,10 @@ export default function SupplierRegisterPage() {
 
       if (!res.ok) {
         const j = await res.json().catch(() => ({ error: 'Registration failed' }));
-        setError(j.error || `Error ${res.status}`);
+        const errorMessage = j.error === 'rate_limit_exceeded' 
+          ? 'Too many requests. Please try again later.' 
+          : (j.error || `Error ${res.status}`);
+        setError(errorMessage);
         setSubmitting(false);
         return;
       }

@@ -30,7 +30,7 @@ data class CartUiState(
     val showCheckout: Boolean = false,
     val checkoutPhase: CheckoutPhase = CheckoutPhase.REVIEW,
     val checkoutError: String? = null,
-    val selectedPaymentGateway: String = "CLICK",
+    val selectedPaymentGateway: String = "GLOBAL_PAY",
     val lastOrderId: String? = null,
     val removedItemMessage: String? = null,
     val supplierIsActive: Boolean = true,
@@ -52,7 +52,7 @@ data class CartUiState(
 
 private fun checkoutPaymentLabel(gateway: String): String {
     return when (gateway.trim().uppercase()) {
-        "CLICK" -> "Click"
+        
         "PAYME" -> "Payme"
         "GLOBAL_PAY" -> "Global Pay"
         "CASH" -> "Cash on Delivery"

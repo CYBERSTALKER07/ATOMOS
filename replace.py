@@ -1,16 +1,54 @@
-import re
-
-with open("/Users/shakhzod/Desktop/V.O.I.D/the-lab-monorepo/apps/retailer-app-ios/retailerapp/reatilerapp/Models/Order.swift", "r") as f:
+import sys
+with open("the-lab-monorepo/apps/backend-go/order/unified_checkout.go", "r") as f:
     text = f.read()
 
-with open("patch_order.swift", "r") as f:
-    patch = f.read()
+target = "return txn.BufferWrite(mutations)\n        })"
 
-# Replace from `// MARK: - Order Line Item` to `// MARK: - Tracking Order (for delivery map)`
-pattern = r'// MARK: - Order Line Item.*?// MARK: - Tracking Order \(for delivery map\)'
-replaced = re.sub(pattern, patch + "\n// MARK: - Tracking Order (for delivery map)", text, flags=re.DOTALL)
+replacement = """if err := txn.BufferWrite(mutations); err \!= nil {
+                        return err
+                }
 
-with open("/Users/shakhzod/Desktop/V.O.I.D/the-lab-monorepo/apps/retailer-app-ios/retailerapp/reatilerapp/Models/Order.swift", "w") as f:
-    f.write(replaced)
+                now := time.Now().UTC()
+                for _, plan := range processedPlans {
+                        event := SupplierOrderCreatedEvent{
+                                InvoiceID:     invoiceID,
+                                OrderID:       plan.OrderID,
+                                SupplierID:    plan.SupplierID,
+                                RetailerID:    req.RetailerID,
+                                WarehouseID:   plan.WarehouseID,
+                                WarehouseName: plan.WarehouseName,
+                                Total:         processedTotals[plan.OrderID],
+                                Currency:      "UZS",
+                                Items:         plan.Items,
+                                Timestamp:     now,
+                        }
+                        if err := outbox.EmitJSON(txn, "Order", plan.OrderID, kafkaEvents.TopicMain, event, telemetry.TraceIDFromContext(ctx)); err \!= nil {
+                                return fmt.Errorf("failed to emit SupplierOrderCreatedEvent: %w", err)
+                        }
+                }
 
-print("Replaced\!")
+                if err := outbox.EmitJSON(txn, "Invoice", invoiceID, kafkaEvents.TopicMain, struct {
+                        InvoiceID  string    `json:"invoice_id"`
+                        RetailerID string    `json:"retailer_id"`
+                        Total      int64     `json:"total"`
+                        Currency   string    `json:"currency"`
+                        OrderCount int       `json:"order_count"`
+                        Timestamp  time.Time `json:"timestamp"`
+                }{
+                        InvoiceID:  invoiceID,
+                        RetailerID: req.RetailerID,
+                        Total:      effectiveGrandTotal,
+                        Currency:   "UZS",
+                        OrderCount: len(processedPlans),
+                        Timestamp:  now,
+                }, telemetry.TraceIDFromContext(ctx)); err \!= nil {
+                        return fmt.Errorf("failed to emit UnifiedCheckoutCompleted ev: %w", err)
+                }
+
+                return nil
+        })"""
+
+result = text.replace(target, replacement, 1)
+
+with open("the-lab-monorepo/apps/backend-go/order/unified_checkout.go", "w") as f:
+    f.write(result)

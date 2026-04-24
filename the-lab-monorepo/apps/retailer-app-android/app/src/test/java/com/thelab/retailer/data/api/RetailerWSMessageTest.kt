@@ -21,11 +21,11 @@ class RetailerWSMessageTest {
                 "session_id": "SESS-001",
                 "amount": 150000,
                 "original_amount": 160000,
-                "available_card_gateways": ["PAYME", "CLICK"],
+                "available_card_gateways": ["GLOBAL_PAY", "UZCARD"],
                 "message": "Payment ready",
                 "delivery_token": "tok_abc",
                 "payment_method": "CARD",
-                "gateway": "PAYME",
+                "gateway": "GLOBAL_PAY",
                 "driver_latitude": 41.2995,
                 "driver_longitude": 69.2401,
                 "supplier_id": "SUP-001",
@@ -85,11 +85,11 @@ class RetailerWSMessageTest {
 
     @Test
     fun `available_card_gateways parses multiple gateways`() {
-        val raw = """{"type":"PAYMENT_READY","available_card_gateways":["PAYME","CLICK","UZCARD"]}"""
+        val raw = """{"type":"PAYMENT_READY","available_card_gateways":["GLOBAL_PAY","CASH","UZCARD"]}"""
         val msg = json.decodeFromString<RetailerWSMessage>(raw)
         assertEquals(3, msg.availableCardGateways.size)
-        assertTrue(msg.availableCardGateways.contains("PAYME"))
-        assertTrue(msg.availableCardGateways.contains("CLICK"))
+        assertTrue(msg.availableCardGateways.contains("GLOBAL_PAY"))
+        assertTrue(msg.availableCardGateways.contains("CASH"))
         assertTrue(msg.availableCardGateways.contains("UZCARD"))
     }
 

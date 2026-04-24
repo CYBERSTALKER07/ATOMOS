@@ -363,7 +363,7 @@ func main() {
 
 	healthPort := os.Getenv("HEALTH_PORT")
 	if healthPort == "" {
-		healthPort = "8081"
+		healthPort = "8087"
 	}
 
 	// ── Load configurable AI constants ──────────────────────────────

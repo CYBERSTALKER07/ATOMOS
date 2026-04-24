@@ -121,6 +121,7 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 
 	orderSvc := &order.OrderService{
 		Client:       spannerClient,
+		Cache:        redisCache,
 		Vault:        vaultSvc,
 		SessionSvc:   sessionSvc,
 		CardTokenSvc: cardTokenSvc,

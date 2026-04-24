@@ -80,7 +80,7 @@ describe("PaymentEvent parsing", () => {
       order_id: "ORD-456",
       amount: 300_000,
       payment_method: "CARD",
-      available_card_gateways: ["PAYME", "CLICK", "GLOBALPAY"],
+      available_card_gateways: ["GLOBAL_PAY", "CASH", "UZCARD"],
     };
 
     const evt: PaymentEvent = {
@@ -90,7 +90,7 @@ describe("PaymentEvent parsing", () => {
       available_card_gateways: msg.available_card_gateways as string[],
     };
 
-    expect(evt.available_card_gateways).toEqual(["PAYME", "CLICK", "GLOBALPAY"]);
+    expect(evt.available_card_gateways).toEqual(["GLOBAL_PAY", "CASH", "UZCARD"]);
     expect(evt.available_card_gateways).toHaveLength(3);
   });
 
@@ -208,9 +208,9 @@ describe("Gateway fallback", () => {
       order_id: "ORD-1",
       amount: 100_000,
       payment_method: "CARD",
-      available_card_gateways: ["PAYME"],
+      available_card_gateways: ["GLOBAL_PAY"],
     };
     const gateways = evt.available_card_gateways ?? [];
-    expect(gateways).toEqual(["PAYME"]);
+    expect(gateways).toEqual(["GLOBAL_PAY"]);
   });
 });

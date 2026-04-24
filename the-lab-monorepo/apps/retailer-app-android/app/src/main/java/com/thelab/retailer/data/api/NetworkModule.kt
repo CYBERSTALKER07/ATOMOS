@@ -139,6 +139,27 @@ private class TokenRefreshAuthenticator(
 private class ProblemDetailInterceptor(private val json: Json) : okhttp3.Interceptor {
     override fun intercept(chain: okhttp3.Interceptor.Chain): Response {
         val response = chain.proceed(chain.request())
+        if (response.code == 429) {
+            val bodyStr = response.peekBody(8192).string()
+            try {
+                val jsonElement = json.parseToJsonElement(bodyStr).jsonObject
+                if (jsonElement["error"]?.jsonPrimitive?.content == "rate_limit_exceeded") {
+                    throw ProblemDetailException(
+                        ProblemDetail(
+                            type = "about:blank",
+                            title = "Too many requests",
+                            status = 429,
+                            detail = "Too many requests. Please try again later.",
+                            instance = null,
+                            code = "rate_limit_exceeded",
+                            messageKey = null,
+                            retryable = true,
+                            action = null
+                        )
+                    )
+                }
+            } catch (_: Exception) {}
+        }
         val contentType = response.header("Content-Type") ?: return response
         if (!contentType.contains("application/problem+json")) return response
         val body = response.peekBody(8192).string()

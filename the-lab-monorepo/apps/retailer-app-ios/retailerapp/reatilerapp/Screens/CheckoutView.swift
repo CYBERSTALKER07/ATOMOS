@@ -23,12 +23,12 @@ struct CheckoutView: View {
     /// Map UI labels to backend gateway codes expected by /v1/checkout/unified
     private func gatewayCode(for method: String) -> String {
         switch method {
-        case "Click": return "CLICK"
-        case "Payme": return "PAYME"
+        
+        
         case "Global Pay": return "GLOBAL_PAY"
         case "UzCard": return "UZCARD"
         case "Cash on Delivery": return "CASH"
-        default: return "CLICK"
+        default: return "GLOBAL_PAY"
         }
     }
 
