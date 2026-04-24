@@ -254,16 +254,16 @@ func TestDriverWSConnection(t *testing.T) {
 	t.Log("Driver WebSocket connected successfully")
 }
 
-// ─── Cash GlobalPaynt Lifecycle ─────────────────────────────────────────────────
+// ─── Cash Payment Lifecycle ─────────────────────────────────────────────────
 
-func TestCashGlobalPayntLifecycle(t *testing.T) {
+func TestCashPaymentLifecycle(t *testing.T) {
 	skipIfNoBackend(t)
 
 	// 1. Retailer creates a cash order
 	retailerToken := loginRetailer(t)
 	payload := `{
 		"retailer_id": "RET-001",
-		"global_paynt_gateway": "CASH",
+		"payment_gateway": "CASH",
 		"latitude": 41.2995,
 		"longitude": 69.2401,
 		"items": [

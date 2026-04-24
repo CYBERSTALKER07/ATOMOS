@@ -34,7 +34,7 @@ func runAuditCycle(ctx context.Context, client *spanner.Client) {
 	// 1. Pull all orders marked 'FUNDS_SECURED' in the last 24 hours
 	// (Simulated query for brevity)
 	stmt := spanner.Statement{
-		SQL: `SELECT OrderId, RetailerId, Amount, GlobalPayntGateway 
+		SQL: `SELECT OrderId, RetailerId, Amount, PaymentGateway 
 		      FROM Orders 
 		      WHERE State = 'COMPLETED' 
 		      AND CreatedAt >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)`,

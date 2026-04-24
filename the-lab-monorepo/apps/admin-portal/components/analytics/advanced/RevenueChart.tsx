@@ -46,7 +46,7 @@ export default function RevenueChart({ data }: Props) {
                 borderRadius: '12px',
                 fontSize: 12,
               }}
-              formatter={(value: number) => value.toLocaleString()}
+              formatter={(value: any) => value.toLocaleString()}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Area type="monotone" dataKey="payme" name="Payme" stroke="oklch(0.6 0.2 240)" fill="oklch(0.6 0.2 240 / 0.12)" strokeWidth={2} stackId="1" />

@@ -68,7 +68,7 @@ func DriverGPSRateLimit() RateLimitConfig {
 }
 
 // RetailerRateLimit allows 10 requests/second per authenticated retailer.
-// Retailers interact via order browsing, checkout, and global_paynt confirmation.
+// Retailers interact via order browsing, checkout, and payment confirmation.
 func RetailerRateLimit() RateLimitConfig {
 	return RateLimitConfig{
 		Window:  1 * time.Second,
@@ -87,8 +87,8 @@ func AdminRateLimit() RateLimitConfig {
 	}
 }
 
-// WebhookRateLimit allows 100 requests/second per IP for global_paynt provider webhooks.
-// GlobalPaynt gateways (Cash, GlobalPay) may burst during settlement windows.
+// WebhookRateLimit allows 100 requests/second per IP for payment provider webhooks.
+// Payment gateways (Cash, GlobalPay) may burst during settlement windows.
 func WebhookRateLimit() RateLimitConfig {
 	return RateLimitConfig{
 		Window:  1 * time.Second,

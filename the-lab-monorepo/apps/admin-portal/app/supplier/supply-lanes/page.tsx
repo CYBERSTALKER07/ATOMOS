@@ -231,7 +231,7 @@ export default function SupplyLanesPage() {
                 key={m}
                 disabled={modeChanging}
                 className={`px-4 py-2 rounded-full md-typescale-label-large transition-opacity ${mode === m ? 'ring-2 ring-offset-2' : 'opacity-60 hover:opacity-100'}`}
-                style={{ background: c.bg, color: c.text, ringColor: c.text }}
+                style={{ background: c.bg, color: c.text, '--ringColor': c.text } as any}
                 onClick={() => changeMode(m)}
               >
                 {m.replace('_', ' ')}

@@ -225,7 +225,7 @@ export default function RetailerPricingOverridesPage() {
             <option key={p.sku_id} value={p.sku_id}>{p.name} ({p.sku_id.slice(0, 8)})</option>
           ))}
         </select>
-        <Button size="sm" variant="bordered" onPress={fetchOverrides}>
+        <Button size="sm" variant="outline" onPress={fetchOverrides}>
           Apply
         </Button>
       </div>
@@ -387,10 +387,10 @@ export default function RetailerPricingOverridesPage() {
             </div>
 
             <div className="flex gap-3 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
-              <Button className="button--primary flex-1" isLoading={submitting} onPress={handleCreate}>
+              <Button className="button--primary flex-1" isPending={submitting} onPress={handleCreate}>
                 Create Override
               </Button>
-              <Button variant="bordered" className="flex-1" onPress={() => setDrawerOpen(false)}>
+              <Button variant="outline" className="flex-1" onPress={() => setDrawerOpen(false)}>
                 Cancel
               </Button>
             </div>
@@ -450,7 +450,7 @@ export default function RetailerPricingOverridesPage() {
             <div className="pt-4" style={{ borderTop: '1px solid var(--border)' }}>
               <Button
                 className="w-full border-[var(--color-md-error)] text-[var(--color-md-error)]"
-                variant="bordered"
+                variant="outline"
                 onPress={() => handleDeactivate(selected.override_id)}
               >
                 Deactivate Override

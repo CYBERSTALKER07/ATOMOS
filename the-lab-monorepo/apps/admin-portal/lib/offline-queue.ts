@@ -128,7 +128,7 @@ export function useNetworkStatus() {
     typeof navigator !== 'undefined' ? navigator.onLine : true
   );
   const [pendingCount, setPendingCount] = useState(0);
-  const flushTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const flushTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const handleOnline = useCallback(async () => {
     setIsOnline(true);

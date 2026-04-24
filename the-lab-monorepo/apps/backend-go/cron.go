@@ -11,7 +11,7 @@ import (
 	kafkaEvents "backend-go/kafka"
 	"backend-go/notifications"
 	"backend-go/order"
-	"backend-go/global_paynt"
+	"backend-go/payment"
 	"backend-go/proximity"
 	"backend-go/settings"
 	"backend-go/ws"
@@ -101,7 +101,7 @@ func StartAwakener(orderSvc *order.OrderService, fcm *notifications.FCMClient, t
 				_, err = orderSvc.CreateOrder(ctx, order.CreateOrderRequest{
 					RetailerID:     retId,
 					Amount:         amount,
-					GlobalPayntGateway: "SYSTEM_AUTO",
+					PaymentGateway: "SYSTEM_AUTO",
 					State:          "PENDING_REVIEW",
 					Latitude:       41.3,
 					Longitude:      69.2,
@@ -212,7 +212,7 @@ func StartScheduledOrderPromoter(client *spanner.Client) {
 }
 
 // StartGlobalPaySweeper runs a background loop that reconciles stale and
-// expired Global Pay global_paynt sessions. Runs every 2 minutes.
+// expired Global Pay payment sessions. Runs every 2 minutes.
 //
 // Responsibilities:
 //   - Expire GLOBAL_PAY sessions whose ExpiresAt has passed and provider
@@ -222,7 +222,7 @@ func StartScheduledOrderPromoter(client *spanner.Client) {
 //   - If provider verification returns approved, run the canonical settlement path.
 //   - If provider verification returns failed/expired, mark the session
 //     accordingly and notify the retailer.
-func StartGlobalPaySweeper(reconciler *global_paynt.GlobalPayReconciler) {
+func StartGlobalPaySweeper(reconciler *payment.GlobalPayReconciler) {
 	fmt.Println("[GP_SWEEPER] Global Pay session sweeper initiated (every 2m)...")
 
 	ticker := time.NewTicker(2 * time.Minute)
@@ -264,13 +264,13 @@ func StartGlobalPaySweeper(reconciler *global_paynt.GlobalPayReconciler) {
 	}()
 }
 
-// StartGlobalPayntSessionExpirer runs a background loop that expires CREATED/PENDING
-// global_paynt sessions that have been idle for more than 30 minutes.
+// StartPaymentSessionExpirer runs a background loop that expires CREATED/PENDING
+// payment sessions that have been idle for more than 30 minutes.
 // This handles Cash and GlobalPay sessions — Global Pay has its own sweeper above.
-func StartGlobalPayntSessionExpirer(sessionSvc *global_paynt.SessionService, retailerPusher interface {
+func StartPaymentSessionExpirer(sessionSvc *payment.SessionService, retailerPusher interface {
 	PushToRetailer(string, interface{}) bool
 }) {
-	fmt.Println("[SESSION_EXPIRER] GlobalPaynt session expiry cron initiated (every 3m)...")
+	fmt.Println("[SESSION_EXPIRER] Payment session expiry cron initiated (every 3m)...")
 
 	ticker := time.NewTicker(3 * time.Minute)
 
@@ -281,7 +281,7 @@ func StartGlobalPayntSessionExpirer(sessionSvc *global_paynt.SessionService, ret
 
 			stmt := spanner.Statement{
 				SQL: `SELECT SessionId, OrderId, RetailerId, Gateway
-				      FROM GlobalPayntSessions
+				      FROM PaymentSessions
 				      WHERE Status IN ('CREATED', 'PENDING')
 				        AND Gateway != 'GLOBAL_PAY'
 				        AND CreatedAt < @cutoff
@@ -322,11 +322,11 @@ func StartGlobalPayntSessionExpirer(sessionSvc *global_paynt.SessionService, ret
 				// Push PAYMENT_EXPIRED to retailer via WebSocket
 				if retailerPusher != nil && s.retailerID != "" {
 					retailerPusher.PushToRetailer(s.retailerID, map[string]interface{}{
-						"type":       ws.EventGlobalPayntExpired,
+						"type":       ws.EventPaymentExpired,
 						"order_id":   s.orderID,
 						"session_id": s.sessionID,
 						"gateway":    s.gateway,
-						"message":    "GlobalPaynt session expired — please retry",
+						"message":    "Payment session expired — please retry",
 					})
 				}
 			}

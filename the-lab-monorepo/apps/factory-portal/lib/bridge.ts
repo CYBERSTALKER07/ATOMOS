@@ -23,7 +23,7 @@ export async function tauriInvoke<T>(
   args?: Record<string, unknown>
 ): Promise<T> {
   const { invoke } = await getTauriCore();
-  return invoke<T>(cmd, args);
+  return invoke(cmd, args) as Promise<T>;
 }
 
 export async function tauriListen<T>(
@@ -31,7 +31,7 @@ export async function tauriListen<T>(
   handler: (payload: T) => void
 ): Promise<() => void> {
   const { listen } = await getTauriEvent();
-  const unlisten = await listen<T>(event, (e) => handler(e.payload));
+  const unlisten = await listen(event, (e: any) => handler(e.payload));
   return unlisten;
 }
 

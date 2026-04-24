@@ -385,7 +385,7 @@ export default function WarehousesPage() {
                   Edit
                 </Button>
                 <Button
-                  variant="bordered"
+                  variant="outline"
                   className="flex-1"
                   onPress={() => openStaff(selectedWarehouse)}
                 >
@@ -393,7 +393,7 @@ export default function WarehousesPage() {
                   Staff
                 </Button>
                 <Button
-                  variant="bordered"
+                  variant="outline"
                   className="flex-1"
                   onPress={() => openCoverage(selectedWarehouse)}
                 >
@@ -401,7 +401,7 @@ export default function WarehousesPage() {
                   Coverage
                 </Button>
                 <Button
-                  variant="bordered"
+                  variant="outline"
                   className="border-[var(--color-md-error)] text-[var(--color-md-error)]"
                   onPress={() => {
                     if (confirm('Deactivate this warehouse?')) {
@@ -472,7 +472,7 @@ function WarehouseEditForm({
   const [isOnShift, setIsOnShift] = useState(warehouse.is_on_shift);
   const [maxCapacity, setMaxCapacity] = useState('');
   const [disabledReason, setDisabledReason] = useState('');
-  const [scheduleJson, setScheduleJson] = useState((warehouse as Record<string, unknown>).operating_schedule as string || '{}');
+  const [scheduleJson, setScheduleJson] = useState((warehouse as any).operating_schedule as string || '{}');
   const [saving, setSaving] = useState(false);
 
   // VU guardrail state
@@ -519,7 +519,7 @@ function WarehouseEditForm({
     if (!isActive && disabledReason) updates.disabled_reason = disabledReason;
 
     // Schedule — always send if changed from initial
-    const initialSchedule = (warehouse as Record<string, unknown>).operating_schedule as string || '{}';
+    const initialSchedule = (warehouse as any).operating_schedule as string || '{}';
     if (scheduleJson !== initialSchedule) {
       updates.operating_schedule = scheduleJson;
     }
@@ -649,10 +649,10 @@ function WarehouseEditForm({
       </div>
 
       <div className="flex gap-3 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
-        <Button className="button--primary flex-1" isLoading={saving} isDisabled={vuViolation} onPress={handleSubmit}>
+        <Button className="button--primary flex-1" isPending={saving} isDisabled={vuViolation} onPress={handleSubmit}>
           Save Changes
         </Button>
-        <Button variant="bordered" className="flex-1" onPress={onCancel}>
+        <Button variant="outline" className="flex-1" onPress={onCancel}>
           Cancel
         </Button>
       </div>

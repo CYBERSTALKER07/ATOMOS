@@ -4,7 +4,7 @@ import { isTauri } from '../bridge';
 describe('isTauri', () => {
   beforeEach(() => {
     // Clean up TAURI flag
-    delete (window as Record<string, unknown>).__TAURI_INTERNALS__;
+    delete (window as any).__TAURI_INTERNALS__;
   });
 
   it('returns false in jsdom (no Tauri runtime)', () => {
@@ -12,12 +12,12 @@ describe('isTauri', () => {
   });
 
   it('returns true when __TAURI_INTERNALS__ is present', () => {
-    (window as Record<string, unknown>).__TAURI_INTERNALS__ = {};
+    (window as any).__TAURI_INTERNALS__ = {};
     expect(isTauri()).toBe(true);
   });
 
   it('returns false when __TAURI_INTERNALS__ is falsy', () => {
-    (window as Record<string, unknown>).__TAURI_INTERNALS__ = undefined;
+    (window as any).__TAURI_INTERNALS__ = undefined;
     expect(isTauri()).toBe(false);
   });
 });

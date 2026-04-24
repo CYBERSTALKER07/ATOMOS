@@ -13,7 +13,7 @@ import (
 // B2BCheckoutRequest is the payload from the Retailer App's [ AUTHORIZE PROCUREMENT ] button.
 type B2BCheckoutRequest struct {
 	RetailerID     string               `json:"retailer_id"`
-	GlobalPayntGateway string               `json:"global_paynt_gateway"` // "CASH" | "GLOBAL_PAY" | "UZCARD"
+	PaymentGateway string               `json:"payment_gateway"` // "CASH" | "GLOBAL_PAY" | "UZCARD"
 	Latitude       float64              `json:"latitude"`
 	Longitude      float64              `json:"longitude"`
 	Items          []cart.OrderLineItem `json:"items"`
@@ -70,7 +70,7 @@ func (s *OrderService) HandleB2BCheckout(w http.ResponseWriter, r *http.Request)
 	orderID, err := s.CreateOrder(ctx, CreateOrderRequest{
 		RetailerID:     req.RetailerID,
 		Amount:         total,
-		GlobalPayntGateway: req.GlobalPayntGateway,
+		PaymentGateway: req.PaymentGateway,
 		Latitude:       req.Latitude,
 		Longitude:      req.Longitude,
 		OrderSource:    "B2B_CHECKOUT",
@@ -83,7 +83,7 @@ func (s *OrderService) HandleB2BCheckout(w http.ResponseWriter, r *http.Request)
 	}
 
 	log.Printf("[B2B_CHECKOUT] OrderID=%s RetailerId=%s Total=%d Gateway=%s",
-		orderID, req.RetailerID, total, req.GlobalPayntGateway)
+		orderID, req.RetailerID, total, req.PaymentGateway)
 
 	// ── Step 3: Respond ────────────────────────────────────────────────────
 	w.Header().Set("Content-Type", "application/json")

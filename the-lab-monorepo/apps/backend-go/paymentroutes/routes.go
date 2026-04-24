@@ -1,8 +1,8 @@
-// Package global_payntroutes owns the authenticated /v1/checkout/* and
-// /v1/global_paynt/* surface. Gateway-facing webhooks (/v1/webhooks/*) live in
+// Package paymentroutes owns the authenticated /v1/checkout/* and
+// /v1/payment/* surface. Gateway-facing webhooks (/v1/webhooks/*) live in
 // backend-go/webhookroutes — this package only hosts the surfaces a
 // principal calls directly with a JWT.
-package global_payntroutes
+package paymentroutes
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"backend-go/auth"
-	"backend-go/global_paynt"
+	"backend-go/payment"
 )
 
 // Middleware is the handler-wrap contract supplied by the caller.
@@ -27,11 +27,11 @@ type Checkout interface {
 	HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request)
 }
 
-// Deps bundles the collaborators required to register global_paynt routes.
+// Deps bundles the collaborators required to register payment routes.
 type Deps struct {
 	Spanner       *spanner.Client
 	Checkout      Checkout
-	Chargeback    *global_paynt.ChargebackService
+	Chargeback    *payment.ChargebackService
 	Log           Middleware
 	PriorityGuard Middleware
 	Idempotency   Middleware
@@ -41,9 +41,9 @@ type Deps struct {
 //
 //	POST /v1/checkout/b2b              — retailer procurement checkout
 //	POST /v1/checkout/unified          — cart fan-out across suppliers
-//	POST /v1/global_paynt/chargeback        — record provider-initiated chargeback
-//	POST /v1/global_paynt/chargeback/reversal — reverse a settled global_paynt session
-//	POST /v1/global_paynt/global_pay/initiate    — DEPRECATED direct GlobalPay initiation
+//	POST /v1/payment/chargeback        — record provider-initiated chargeback
+//	POST /v1/payment/chargeback/reversal — reverse a settled payment session
+//	POST /v1/payment/global_pay/initiate    — DEPRECATED direct GlobalPay initiation
 func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	guard := d.PriorityGuard
@@ -56,17 +56,17 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/checkout/unified",
 		guard(auth.RequireRole(retailer, log(idem(d.Checkout.HandleUnifiedCheckout)))))
 
-	r.HandleFunc("/v1/global_paynt/chargeback",
+	r.HandleFunc("/v1/payment/chargeback",
 		auth.RequireRole(adminSupplier, log(handleChargeback(d.Chargeback))))
-	r.HandleFunc("/v1/global_paynt/chargeback/reversal",
+	r.HandleFunc("/v1/payment/chargeback/reversal",
 		auth.RequireRole(adminSupplier, log(handleReversal(d.Chargeback))))
-	r.HandleFunc("/v1/global_paynt/global_pay/initiate",
+	r.HandleFunc("/v1/payment/global_pay/initiate",
 		auth.RequireRole(retailer, log(handleGlobalPayInitiate(d.Spanner))))
 }
 
-// handleChargeback — POST /v1/global_paynt/chargeback. Behaviour preserved
+// handleChargeback — POST /v1/payment/chargeback. Behaviour preserved
 // verbatim from the inline closure it replaced.
-func handleChargeback(cs *global_paynt.ChargebackService) http.HandlerFunc {
+func handleChargeback(cs *payment.ChargebackService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -95,8 +95,8 @@ func handleChargeback(cs *global_paynt.ChargebackService) http.HandlerFunc {
 	}
 }
 
-// handleReversal — POST /v1/global_paynt/chargeback/reversal.
-func handleReversal(cs *global_paynt.ChargebackService) http.HandlerFunc {
+// handleReversal — POST /v1/payment/chargeback/reversal.
+func handleReversal(cs *payment.ChargebackService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -122,7 +122,7 @@ func handleReversal(cs *global_paynt.ChargebackService) http.HandlerFunc {
 	}
 }
 
-// handleGlobalPayInitiate — DEPRECATED POST /v1/global_paynt/global_pay/initiate. Clients
+// handleGlobalPayInitiate — DEPRECATED POST /v1/payment/global_pay/initiate. Clients
 // should migrate to POST /v1/order/card-checkout. Retained for backward
 // compatibility with older iOS/Android builds.
 func handleGlobalPayInitiate(sc *spanner.Client) http.HandlerFunc {
@@ -131,7 +131,7 @@ func handleGlobalPayInitiate(sc *spanner.Client) http.HandlerFunc {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		log.Printf("[DEPRECATED] /v1/global_paynt/global_pay/initiate called — clients should migrate to /v1/order/card-checkout")
+		log.Printf("[DEPRECATED] /v1/payment/global_pay/initiate called — clients should migrate to /v1/order/card-checkout")
 
 		var req struct {
 			OrderID   string `json:"order_id"`
@@ -144,7 +144,7 @@ func handleGlobalPayInitiate(sc *spanner.Client) http.HandlerFunc {
 
 		row, err := sc.Single().ReadRow(r.Context(), "Orders", spanner.Key{req.OrderID}, []string{"Amount", "State"})
 		if err != nil {
-			log.Printf("[GLOBAL_PAYNT INITIATE] Order %s not found: %v", req.OrderID, err)
+			log.Printf("[PAYMENT INITIATE] Order %s not found: %v", req.OrderID, err)
 			http.Error(w, `{"error":"order not found"}`, http.StatusNotFound)
 			return
 		}
@@ -155,20 +155,20 @@ func handleGlobalPayInitiate(sc *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		gw, err := global_paynt.NewGatewayClient("GLOBAL_PAY")
+		gw, err := payment.NewGatewayClient("GLOBAL_PAY")
 		if err != nil {
-			log.Printf("[GLOBAL_PAYNT INITIATE] GlobalPay client init failed: %v", err)
-			http.Error(w, `{"error":"global_paynt gateway unavailable"}`, http.StatusServiceUnavailable)
+			log.Printf("[PAYMENT INITIATE] GlobalPay client init failed: %v", err)
+			http.Error(w, `{"error":"payment gateway unavailable"}`, http.StatusServiceUnavailable)
 			return
 		}
 
 		if err := gw.Charge(req.OrderID, amount.Int64); err != nil {
-			log.Printf("[GLOBAL_PAYNT INITIATE] GlobalPay charge failed for %s: %v", req.OrderID, err)
+			log.Printf("[PAYMENT INITIATE] GlobalPay charge failed for %s: %v", req.OrderID, err)
 			http.Error(w, fmt.Sprintf(`{"error":"charge failed: %s"}`, err.Error()), http.StatusBadGateway)
 			return
 		}
 
-		log.Printf("[GLOBAL_PAYNT INITIATE] GlobalPay charge initiated for order %s: %d", req.OrderID, amount.Int64)
+		log.Printf("[PAYMENT INITIATE] GlobalPay charge initiated for order %s: %d", req.OrderID, amount.Int64)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"status":   "INITIATED",

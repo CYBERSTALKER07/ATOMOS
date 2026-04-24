@@ -246,7 +246,7 @@ func TestKafka_OrderStatusChangedRoundTrip(t *testing.T) {
 	}
 }
 
-func TestKafka_GlobalPayntSettledRoundTrip(t *testing.T) {
+func TestKafka_PaymentSettledRoundTrip(t *testing.T) {
 	broker := kafkaBroker(t)
 	topic := testTopic(t, broker)
 
@@ -257,7 +257,7 @@ func TestKafka_GlobalPayntSettledRoundTrip(t *testing.T) {
 	}
 	defer writer.Close()
 
-	event := kafkaEvents.GlobalPayntSettledEvent{
+	event := kafkaEvents.PaymentSettledEvent{
 		OrderID:    "ORD-300",
 		InvoiceID:  "INV-300",
 		RetailerID: "RET-300",
@@ -271,7 +271,7 @@ func TestKafka_GlobalPayntSettledRoundTrip(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := writer.WriteMessages(ctx, goKafka.Message{
-		Key:   []byte(kafkaEvents.EventGlobalPayntSettled),
+		Key:   []byte(kafkaEvents.EventPaymentSettled),
 		Value: data,
 	}); err != nil {
 		t.Fatalf("Produce: %v", err)
@@ -293,7 +293,7 @@ func TestKafka_GlobalPayntSettledRoundTrip(t *testing.T) {
 		t.Fatalf("Consume: %v", err)
 	}
 
-	var consumed kafkaEvents.GlobalPayntSettledEvent
+	var consumed kafkaEvents.PaymentSettledEvent
 	if err := json.Unmarshal(msg.Value, &consumed); err != nil {
 		t.Fatalf("Unmarshal: %v", err)
 	}
@@ -305,7 +305,7 @@ func TestKafka_GlobalPayntSettledRoundTrip(t *testing.T) {
 	}
 }
 
-func TestKafka_GlobalPayntFailedRoundTrip(t *testing.T) {
+func TestKafka_PaymentFailedRoundTrip(t *testing.T) {
 	broker := kafkaBroker(t)
 	topic := testTopic(t, broker)
 
@@ -316,7 +316,7 @@ func TestKafka_GlobalPayntFailedRoundTrip(t *testing.T) {
 	}
 	defer writer.Close()
 
-	event := kafkaEvents.GlobalPayntFailedEvent{
+	event := kafkaEvents.PaymentFailedEvent{
 		OrderID:    "ORD-400",
 		InvoiceID:  "INV-400",
 		RetailerID: "RET-400",
@@ -329,7 +329,7 @@ func TestKafka_GlobalPayntFailedRoundTrip(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := writer.WriteMessages(ctx, goKafka.Message{
-		Key:   []byte(kafkaEvents.EventGlobalPayntFailed),
+		Key:   []byte(kafkaEvents.EventPaymentFailed),
 		Value: data,
 	}); err != nil {
 		t.Fatalf("Produce: %v", err)
@@ -351,7 +351,7 @@ func TestKafka_GlobalPayntFailedRoundTrip(t *testing.T) {
 		t.Fatalf("Consume: %v", err)
 	}
 
-	var consumed kafkaEvents.GlobalPayntFailedEvent
+	var consumed kafkaEvents.PaymentFailedEvent
 	if err := json.Unmarshal(msg.Value, &consumed); err != nil {
 		t.Fatalf("Unmarshal: %v", err)
 	}
@@ -454,18 +454,18 @@ func TestEventSerialization_AllTypes(t *testing.T) {
 			eventKey: kafkaEvents.EventPayloadReadyToSeal,
 		},
 		{
-			name: "GlobalPayntSettled",
-			event: kafkaEvents.GlobalPayntSettledEvent{
+			name: "PaymentSettled",
+			event: kafkaEvents.PaymentSettledEvent{
 				OrderID: "O1", InvoiceID: "I1", RetailerID: "R1", DriverID: "D1", Gateway: "CASH", Amount: 100, Timestamp: time.Now(),
 			},
-			eventKey: kafkaEvents.EventGlobalPayntSettled,
+			eventKey: kafkaEvents.EventPaymentSettled,
 		},
 		{
-			name: "GlobalPayntFailed",
-			event: kafkaEvents.GlobalPayntFailedEvent{
+			name: "PaymentFailed",
+			event: kafkaEvents.PaymentFailedEvent{
 				OrderID: "O1", InvoiceID: "I1", RetailerID: "R1", Gateway: "GLOBAL_PAY", Reason: "test", Timestamp: time.Now(),
 			},
-			eventKey: kafkaEvents.EventGlobalPayntFailed,
+			eventKey: kafkaEvents.EventPaymentFailed,
 		},
 	}
 
@@ -501,8 +501,8 @@ func TestEventConstants_AllDefined(t *testing.T) {
 		kafkaEvents.EventOrderStatusChanged,
 		kafkaEvents.EventPayloadReadyToSeal,
 		kafkaEvents.EventPayloadSealed,
-		kafkaEvents.EventGlobalPayntSettled,
-		kafkaEvents.EventGlobalPayntFailed,
+		kafkaEvents.EventPaymentSettled,
+		kafkaEvents.EventPaymentFailed,
 		kafkaEvents.EventOrderCompleted,
 	}
 

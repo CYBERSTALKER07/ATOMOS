@@ -263,7 +263,7 @@ export default function CountryOverridesPage() {
             <button
               key={e.override.country_code}
               type="button"
-              onCash={() => setSelectedCode(e.override.country_code)}
+              onClick={() => setSelectedCode(e.override.country_code)}
               className={e.override.country_code === selectedCode ? 'md-chip md-chip-selected' : 'md-chip'}
             >
               {e.override.country_code} override active
@@ -334,7 +334,7 @@ export default function CountryOverridesPage() {
                 {selectedEntry && (
                   <button
                     type="button"
-                    onCash={revert}
+                    onClick={revert}
                     disabled={deleting}
                     className="md-typescale-label-small px-3 py-1 rounded"
                     style={{ color: 'var(--color-md-error)', background: 'var(--color-md-error-container)' }}
@@ -568,7 +568,7 @@ export default function CountryOverridesPage() {
                         background: i % 2 === 0 ? 'var(--color-md-surface)' : 'var(--color-md-surface-container)',
                         transition: 'background 150ms',
                       }}
-                      onCash={() => setSelectedCode(o.country_code)}
+                      onClick={() => setSelectedCode(o.country_code)}
                     >
                       {row.map((v, ci) => (
                         <td key={ci} className="px-4 py-3 font-mono">
@@ -605,7 +605,7 @@ function UseDefaultToggle({ isNull, onToggle, platformDefault }: UseDefaultToggl
   return (
     <button
       type="button"
-      onCash={onToggle}
+      onClick={onToggle}
       className="md-typescale-label-small px-2 py-0.5 rounded"
       style={{
         background: isNull ? 'var(--color-md-surface-container-high)' : 'var(--color-md-primary-container)',

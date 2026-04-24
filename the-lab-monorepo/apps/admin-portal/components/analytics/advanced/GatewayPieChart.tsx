@@ -51,7 +51,7 @@ export default function GatewayPieChart({ data }: Props) {
                 borderRadius: '12px',
                 fontSize: 12,
               }}
-              formatter={(value: number) => value.toLocaleString()}
+              formatter={(value: any) => value.toLocaleString()}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
           </PieChart>

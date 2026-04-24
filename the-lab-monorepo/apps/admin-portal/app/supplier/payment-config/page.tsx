@@ -486,7 +486,7 @@ export default function GlobalPayntConfigPage() {
 
 function CreditCardIcon({ gateway, configured }: { gateway: GatewayName; configured: boolean }) {
   const color = configured ? 'var(--success)' : 'var(--muted)';
-  if (gateway === 'GLOBAL_PAY') {
+  if ((gateway as string) === 'GLOBAL_PAY') {
     return (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="5" width="20" height="14" rx="2" />
@@ -494,7 +494,7 @@ function CreditCardIcon({ gateway, configured }: { gateway: GatewayName; configu
       </svg>
     );
   }
-  if (gateway === 'GLOBAL_PAY') {
+  if ((gateway as string) === 'GLOBAL_PAY') {
     return (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="5" width="20" height="14" rx="2" />

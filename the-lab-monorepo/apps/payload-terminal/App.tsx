@@ -129,7 +129,6 @@ export default function App() {
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
-    })();
   }, []);
 
   // Fetch supplier's vehicles once authenticated
@@ -293,7 +292,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/v1/payloader/recommend-reassign`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: authHeaders as HeadersInit,
         body: JSON.stringify({ order_id: orderId }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -315,7 +314,7 @@ export default function App() {
       // RouteId == DriverId in this codebase; vehicle is bound to the driver.
       const res = await fetch(`${API_BASE}/v1/fleet/reassign`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: authHeaders as HeadersInit,
         body: JSON.stringify({
           order_ids: [reDispatchOrderId],
           new_route_id: newDriverId,
@@ -363,7 +362,7 @@ export default function App() {
     try {
       const res = await fetch(
         `${API_BASE}/v1/payloader/orders?vehicle_id=${encodeURIComponent(truckId)}&state=LOADED`,
-        { headers: authHeaders }
+        { headers: authHeaders as HeadersInit }
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: LiveOrder[] = await res.json();
@@ -601,7 +600,7 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/v1/payload/seal`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: authHeaders as HeadersInit,
         body: JSON.stringify({
           order_id: selectedOrderId,
           terminal_id: activeTruck || 'WH-UNKNOWN',
@@ -659,7 +658,7 @@ export default function App() {
   // ── Render: POST-SEAL DOUBLE-CHECK COUNTDOWN (Edge 33) ────────────────
   if (postSealOrderId && postSealCountdown > 0) {
     return (
-      <View style={{ flex: 1, backgroundColor: T.colors.warning ?? '#F59E0B', alignItems: 'center', justifyContent: 'center', padding: 48 }}>
+      <View style={{ flex: 1, backgroundColor: (T.colors as any)?.warning ?? '#F59E0B', alignItems: 'center', justifyContent: 'center', padding: 48 }}>
         <MaterialIcons name="verified-user" size={64} color="rgba(255,255,255,0.9)" style={{ marginBottom: 24 }} />
         <Text style={{ fontSize: 28, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', letterSpacing: isIOS ? -0.4 : 0.5, marginBottom: 8 }}>
           {isIOS ? 'Double-Check' : 'DOUBLE-CHECK'}
@@ -691,7 +690,7 @@ export default function App() {
                     try {
                       await fetch(`${API_BASE}/v1/delivery/missing-items`, {
                         method: 'POST',
-                        headers: authHeaders,
+                        headers: authHeaders as HeadersInit,
                         body: JSON.stringify({ order_id: postSealOrderId, items: [], source: 'PAYLOAD_TERMINAL' }),
                       });
                       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -1330,7 +1329,7 @@ export default function App() {
                   fontSize: 14,
                   color: T.colors.label,
                   backgroundColor: T.colors.fillTertiary,
-                  borderRadius: T.radius.input,
+                  borderRadius: (T.radius as any).input || 8,
                   paddingHorizontal: 16,
                   paddingVertical: 12,
                   borderWidth: 1,

@@ -23,7 +23,7 @@ type CountryConfig struct {
 	DefaultVUConversion         float64  `json:"default_vu_conversion"`
 	MapsProvider                string   `json:"maps_provider"`
 	LLMProvider                 string   `json:"llm_provider"`
-	GlobalPayntGateways             []string `json:"global_paynt_gateways"`
+	PaymentGateways             []string `json:"payment_gateways"`
 	SMSProvider                 string   `json:"sms_provider"`
 	NotificationFallbackOrder   []string `json:"notification_fallback_order"`
 	LegalRetentionDays          int64    `json:"legal_retention_days"`
@@ -45,7 +45,7 @@ type SupplierOverride struct {
 	ShopClosedEscalationMinutes *int64   `json:"shop_closed_escalation_minutes"`
 	OfflineModeDurationMinutes  *int64   `json:"offline_mode_duration_minutes"`
 	CashCustodyAlertHours       *int64   `json:"cash_custody_alert_hours"`
-	GlobalPayntGateways             []string `json:"global_paynt_gateways"`
+	PaymentGateways             []string `json:"payment_gateways"`
 	NotificationFallbackOrder   []string `json:"notification_fallback_order"`
 	SMSProvider                 *string  `json:"sms_provider"`
 	MapsProvider                *string  `json:"maps_provider"`
@@ -90,7 +90,7 @@ func defaultUZ() *CountryConfig {
 		DefaultVUConversion:         1.0,
 		MapsProvider:                "GOOGLE",
 		LLMProvider:                 "GEMINI",
-		GlobalPayntGateways:             []string{"GLOBAL_PAY", "CASH"},
+		PaymentGateways:             []string{"GLOBAL_PAY", "CASH"},
 		SMSProvider:                 "ESKIZ",
 		NotificationFallbackOrder:   []string{"FCM", "TELEGRAM"},
 		LegalRetentionDays:          365,
@@ -167,7 +167,7 @@ func (s *Service) readCountryConfig(ctx context.Context, countryCode string) *Co
 		[]string{
 			"CountryCode", "CountryName", "Timezone", "CurrencyCode",
 			"CurrencyDecimalPlaces", "DistanceUnit", "DefaultVUConversion",
-			"MapsProvider", "LLMProvider", "GlobalPayntGateways", "SMSProvider",
+			"MapsProvider", "LLMProvider", "PaymentGateways", "SMSProvider",
 			"NotificationFallbackOrder", "LegalRetentionDays", "GridSystem",
 			"BreachRadiusMeters", "ShopClosedGraceMinutes", "ShopClosedEscalationMinutes",
 			"OfflineModeDurationMinutes", "CashCustodyAlertHours",
@@ -178,12 +178,12 @@ func (s *Service) readCountryConfig(ctx context.Context, countryCode string) *Co
 	}
 
 	cfg := &CountryConfig{}
-	var global_payntGatewaysJSON, notifOrderJSON, smsProvider spanner.NullString
+	var paymentGatewaysJSON, notifOrderJSON, smsProvider spanner.NullString
 
 	if err := row.Columns(
 		&cfg.CountryCode, &cfg.CountryName, &cfg.Timezone, &cfg.CurrencyCode,
 		&cfg.CurrencyDecimalPlaces, &cfg.DistanceUnit, &cfg.DefaultVUConversion,
-		&cfg.MapsProvider, &cfg.LLMProvider, &global_payntGatewaysJSON, &smsProvider,
+		&cfg.MapsProvider, &cfg.LLMProvider, &paymentGatewaysJSON, &smsProvider,
 		&notifOrderJSON, &cfg.LegalRetentionDays, &cfg.GridSystem,
 		&cfg.BreachRadiusMeters, &cfg.ShopClosedGraceMinutes, &cfg.ShopClosedEscalationMinutes,
 		&cfg.OfflineModeDurationMinutes, &cfg.CashCustodyAlertHours,
@@ -192,8 +192,8 @@ func (s *Service) readCountryConfig(ctx context.Context, countryCode string) *Co
 		return nil
 	}
 
-	if global_payntGatewaysJSON.Valid {
-		_ = json.Unmarshal([]byte(global_payntGatewaysJSON.StringVal), &cfg.GlobalPayntGateways)
+	if paymentGatewaysJSON.Valid {
+		_ = json.Unmarshal([]byte(paymentGatewaysJSON.StringVal), &cfg.PaymentGateways)
 	}
 	if notifOrderJSON.Valid {
 		_ = json.Unmarshal([]byte(notifOrderJSON.StringVal), &cfg.NotificationFallbackOrder)
@@ -232,7 +232,7 @@ func (s *Service) readSupplierOverride(ctx context.Context, supplierID, countryC
 			"SupplierId", "CountryCode", "BreachRadiusMeters",
 			"ShopClosedGraceMinutes", "ShopClosedEscalationMinutes",
 			"OfflineModeDurationMinutes", "CashCustodyAlertHours",
-			"GlobalPayntGateways", "NotificationFallbackOrder",
+			"PaymentGateways", "NotificationFallbackOrder",
 			"SMSProvider", "MapsProvider", "LLMProvider",
 		})
 	if err != nil {
@@ -269,7 +269,7 @@ func (s *Service) readSupplierOverride(ctx context.Context, supplierID, countryC
 		o.CashCustodyAlertHours = &cashAlert.Int64
 	}
 	if payGW.Valid {
-		_ = json.Unmarshal([]byte(payGW.StringVal), &o.GlobalPayntGateways)
+		_ = json.Unmarshal([]byte(payGW.StringVal), &o.PaymentGateways)
 	}
 	if notifOrder.Valid {
 		_ = json.Unmarshal([]byte(notifOrder.StringVal), &o.NotificationFallbackOrder)
@@ -330,8 +330,8 @@ func (s *Service) UpsertSupplierOverride(ctx context.Context, o *SupplierOverrid
 	}
 
 	var payGWJSON, notifOrderJSON []byte
-	if len(o.GlobalPayntGateways) > 0 {
-		payGWJSON, _ = json.Marshal(o.GlobalPayntGateways)
+	if len(o.PaymentGateways) > 0 {
+		payGWJSON, _ = json.Marshal(o.PaymentGateways)
 	}
 	if len(o.NotificationFallbackOrder) > 0 {
 		notifOrderJSON, _ = json.Marshal(o.NotificationFallbackOrder)
@@ -342,7 +342,7 @@ func (s *Service) UpsertSupplierOverride(ctx context.Context, o *SupplierOverrid
 			"SupplierId", "CountryCode",
 			"BreachRadiusMeters", "ShopClosedGraceMinutes", "ShopClosedEscalationMinutes",
 			"OfflineModeDurationMinutes", "CashCustodyAlertHours",
-			"GlobalPayntGateways", "NotificationFallbackOrder",
+			"PaymentGateways", "NotificationFallbackOrder",
 			"SMSProvider", "MapsProvider", "LLMProvider",
 			"UpdatedAt",
 		}
@@ -452,8 +452,8 @@ func mergeOverride(base *CountryConfig, o *SupplierOverride) *CountryConfig {
 	if o.CashCustodyAlertHours != nil {
 		merged.CashCustodyAlertHours = *o.CashCustodyAlertHours
 	}
-	if len(o.GlobalPayntGateways) > 0 {
-		merged.GlobalPayntGateways = o.GlobalPayntGateways
+	if len(o.PaymentGateways) > 0 {
+		merged.PaymentGateways = o.PaymentGateways
 	}
 	if len(o.NotificationFallbackOrder) > 0 {
 		merged.NotificationFallbackOrder = o.NotificationFallbackOrder
@@ -480,7 +480,7 @@ func SeedDefaultConfigs(ctx context.Context, client *spanner.Client) {
 			Timezone: "Asia/Almaty", CurrencyCode: "KZT", CurrencyDecimalPlaces: 0,
 			DistanceUnit: "km", DefaultVUConversion: 1.0,
 			MapsProvider: "GOOGLE", LLMProvider: "GEMINI",
-			GlobalPayntGateways: []string{"KASPI"}, SMSProvider: "TWILIO",
+			PaymentGateways: []string{"KASPI"}, SMSProvider: "TWILIO",
 			NotificationFallbackOrder: []string{"FCM", "SMS"},
 			LegalRetentionDays:        365, GridSystem: "H3",
 			BreachRadiusMeters: 100.0, ShopClosedGraceMinutes: 5,
@@ -490,7 +490,7 @@ func SeedDefaultConfigs(ctx context.Context, client *spanner.Client) {
 	}
 
 	for _, cfg := range configs {
-		payGW, _ := json.Marshal(cfg.GlobalPayntGateways)
+		payGW, _ := json.Marshal(cfg.PaymentGateways)
 		notif, _ := json.Marshal(cfg.NotificationFallbackOrder)
 
 		_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -510,7 +510,7 @@ func SeedDefaultConfigs(ctx context.Context, client *spanner.Client) {
 				DefaultVUConversion         float64   `spanner:"DefaultVUConversion"`
 				MapsProvider                string    `spanner:"MapsProvider"`
 				LLMProvider                 string    `spanner:"LLMProvider"`
-				GlobalPayntGateways             string    `spanner:"GlobalPayntGateways"`
+				PaymentGateways             string    `spanner:"PaymentGateways"`
 				SMSProvider                 string    `spanner:"SMSProvider"`
 				NotificationFallbackOrder   string    `spanner:"NotificationFallbackOrder"`
 				LegalRetentionDays          int64     `spanner:"LegalRetentionDays"`
@@ -528,7 +528,7 @@ func SeedDefaultConfigs(ctx context.Context, client *spanner.Client) {
 				CurrencyDecimalPlaces: cfg.CurrencyDecimalPlaces,
 				DistanceUnit:          cfg.DistanceUnit, DefaultVUConversion: cfg.DefaultVUConversion,
 				MapsProvider: cfg.MapsProvider, LLMProvider: cfg.LLMProvider,
-				GlobalPayntGateways: string(payGW), SMSProvider: cfg.SMSProvider,
+				PaymentGateways: string(payGW), SMSProvider: cfg.SMSProvider,
 				NotificationFallbackOrder: string(notif),
 				LegalRetentionDays:        cfg.LegalRetentionDays, GridSystem: cfg.GridSystem,
 				BreachRadiusMeters:          cfg.BreachRadiusMeters,
@@ -601,8 +601,8 @@ func (s *Service) UpsertConfig(ctx context.Context, cfg *CountryConfig) error {
 	if cfg.LLMProvider == "" {
 		cfg.LLMProvider = base.LLMProvider
 	}
-	if len(cfg.GlobalPayntGateways) == 0 {
-		cfg.GlobalPayntGateways = base.GlobalPayntGateways
+	if len(cfg.PaymentGateways) == 0 {
+		cfg.PaymentGateways = base.PaymentGateways
 	}
 	if len(cfg.NotificationFallbackOrder) == 0 {
 		cfg.NotificationFallbackOrder = base.NotificationFallbackOrder
@@ -638,7 +638,7 @@ func (s *Service) UpsertConfig(ctx context.Context, cfg *CountryConfig) error {
 		cfg.CashCustodyAlertHours = base.CashCustodyAlertHours
 	}
 
-	global_payntGatewaysJSON, _ := json.Marshal(cfg.GlobalPayntGateways)
+	paymentGatewaysJSON, _ := json.Marshal(cfg.PaymentGateways)
 	notifOrderJSON, _ := json.Marshal(cfg.NotificationFallbackOrder)
 
 	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -655,14 +655,14 @@ func (s *Service) UpsertConfig(ctx context.Context, cfg *CountryConfig) error {
 			[]string{
 				"CountryCode", "CountryName", "Timezone", "CurrencyCode", "CurrencyDecimalPlaces",
 				"DistanceUnit", "DefaultVUConversion", "MapsProvider", "LLMProvider",
-				"GlobalPayntGateways", "SMSProvider", "NotificationFallbackOrder", "LegalRetentionDays",
+				"PaymentGateways", "SMSProvider", "NotificationFallbackOrder", "LegalRetentionDays",
 				"GridSystem", "BreachRadiusMeters", "ShopClosedGraceMinutes", "ShopClosedEscalationMinutes",
 				"OfflineModeDurationMinutes", "CashCustodyAlertHours", "IsActive", "CreatedAt", "UpdatedAt",
 			},
 			[]interface{}{
 				cfg.CountryCode, cfg.CountryName, cfg.Timezone, cfg.CurrencyCode, cfg.CurrencyDecimalPlaces,
 				cfg.DistanceUnit, cfg.DefaultVUConversion, cfg.MapsProvider, cfg.LLMProvider,
-				string(global_payntGatewaysJSON), cfg.SMSProvider, string(notifOrderJSON), cfg.LegalRetentionDays,
+				string(paymentGatewaysJSON), cfg.SMSProvider, string(notifOrderJSON), cfg.LegalRetentionDays,
 				cfg.GridSystem, cfg.BreachRadiusMeters, cfg.ShopClosedGraceMinutes, cfg.ShopClosedEscalationMinutes,
 				cfg.OfflineModeDurationMinutes, cfg.CashCustodyAlertHours, true, createdAt, spanner.CommitTimestamp,
 			},

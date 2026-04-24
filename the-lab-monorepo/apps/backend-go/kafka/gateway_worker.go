@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"backend-go/kafka/workerpool"
-	"backend-go/global_paynt"
+	"backend-go/payment"
 
 	"cloud.google.com/go/spanner"
 	kafkago "github.com/segmentio/kafka-go"
@@ -18,12 +18,12 @@ import (
 type GatewayWorkerDeps struct {
 	Spanner       *spanner.Client
 	BrokerAddress string
-	Vault         global_paynt.VaultResolver          // Per-supplier credential resolution
-	GPDirect      *global_paynt.GlobalPayDirectClient // Global Pay direct API client (may be nil)
+	Vault         payment.VaultResolver          // Per-supplier credential resolution
+	GPDirect      *payment.GlobalPayDirectClient // Global Pay direct API client (may be nil)
 }
 
-// StartGatewayWorker begins the partition-parallel async global_paynt-capture consumer.
-// Processes GlobalPayntIntentCreated events emitted by the Treasurer. On success it
+// StartGatewayWorker begins the partition-parallel async payment-capture consumer.
+// Processes PaymentIntentCreated events emitted by the Treasurer. On success it
 // updates LedgerEntries Status from PENDING_GATEWAY → SETTLED. On failure it
 // marks Status → FAILED and routes the event to the DLQ.
 //
@@ -45,12 +45,12 @@ func StartGatewayWorker(ctx context.Context, deps GatewayWorkerDeps) {
 		Logger: slog.Default(),
 		Handler: func(ctx context.Context, m kafkago.Message) error {
 			eventType := EventType(m.Headers, m.Key)
-			if eventType != EventGlobalPayntIntentCreated {
+			if eventType != EventPaymentIntentCreated {
 				return nil
 			}
-			var intent GlobalPayntIntentEvent
+			var intent PaymentIntentEvent
 			if err := json.Unmarshal(m.Value, &intent); err != nil {
-				return fmt.Errorf("gateway_worker: unmarshal %s: %w", EventGlobalPayntIntentCreated, err)
+				return fmt.Errorf("gateway_worker: unmarshal %s: %w", EventPaymentIntentCreated, err)
 			}
 			executeGatewayCapture(deps, intent)
 			return nil
@@ -59,7 +59,7 @@ func StartGatewayWorker(ctx context.Context, deps GatewayWorkerDeps) {
 			slog.ErrorContext(ctx, "gateway_worker.handler_error",
 				"partition", m.Partition, "offset", m.Offset, "err", handlerErr)
 			RouteToDLQ(LogisticsEvent{
-				EventName: EventGlobalPayntIntentCreated,
+				EventName: EventPaymentIntentCreated,
 				OrderId:   string(m.Key),
 				Timestamp: time.Now().UTC(),
 			}, handlerErr.Error())
@@ -77,14 +77,14 @@ func StartGatewayWorker(ctx context.Context, deps GatewayWorkerDeps) {
 	slog.Info("gateway worker ONLINE", "topic", TopicMain, "group", "lab-gateway-worker-group")
 }
 
-// executeGatewayCapture charges the global_paynt provider and updates ledger status.
+// executeGatewayCapture charges the payment provider and updates ledger status.
 // For GLOBAL_PAY with an existing authorization, it captures the held amount
 // (which may be less than originally authorized after driver edits).
 // For GlobalPay/Cash, it performs the legacy full-charge path.
-func executeGatewayCapture(deps GatewayWorkerDeps, intent GlobalPayntIntentEvent) {
+func executeGatewayCapture(deps GatewayWorkerDeps, intent PaymentIntentEvent) {
 	// Build a LogisticsEvent for DLQ routing in case of failure.
 	dlqEvent := LogisticsEvent{
-		EventName: EventGlobalPayntIntentCreated,
+		EventName: EventPaymentIntentCreated,
 		OrderId:   intent.OrderID,
 		Amount:    intent.Amount,
 		Timestamp: time.Now(),
@@ -102,7 +102,7 @@ func executeGatewayCapture(deps GatewayWorkerDeps, intent GlobalPayntIntentEvent
 	}
 
 	// ── Global Pay auth-capture path: capture an existing hold ──
-	if intent.AuthorizationID != "" && intent.GlobalPayntGateway == "GLOBAL_PAY" {
+	if intent.AuthorizationID != "" && intent.PaymentGateway == "GLOBAL_PAY" {
 		captureAmount := intent.FinalAmount
 		if captureAmount <= 0 {
 			captureAmount = intent.Amount
@@ -128,11 +128,11 @@ func executeGatewayCapture(deps GatewayWorkerDeps, intent GlobalPayntIntentEvent
 
 		// Capture: amount in tiyins (GP API expects tiyins)
 		captureTiyin := captureAmount * 100
-		captureResult, captureErr := deps.GPDirect.CaptureGlobalPaynt(ctx, creds, intent.AuthorizationID, captureTiyin)
+		captureResult, captureErr := deps.GPDirect.CapturePayment(ctx, creds, intent.AuthorizationID, captureTiyin)
 		if captureErr != nil {
 			slog.Error("gateway_worker.capture_failed", "order_id", intent.OrderID, "authorization_id", intent.AuthorizationID, "err", captureErr)
 			updateLedgerStatus(deps.Spanner, intent, "FAILED", fmt.Sprintf("capture_failed: %v", captureErr))
-			RouteToDLQ(dlqEvent, fmt.Sprintf("capture_failed_%s: %v", intent.GlobalPayntGateway, captureErr))
+			RouteToDLQ(dlqEvent, fmt.Sprintf("capture_failed_%s: %v", intent.PaymentGateway, captureErr))
 			return
 		}
 
@@ -142,40 +142,40 @@ func executeGatewayCapture(deps GatewayWorkerDeps, intent GlobalPayntIntentEvent
 	}
 
 	// ── Legacy full-charge path: GlobalPay / Cash / other gateways ──
-	gw, gwErr := global_paynt.NewGatewayClient(intent.GlobalPayntGateway)
+	gw, gwErr := payment.NewGatewayClient(intent.PaymentGateway)
 	if gwErr != nil {
-		slog.Error("gateway_worker.gateway_init_failed", "gateway", intent.GlobalPayntGateway, "order_id", intent.OrderID, "err", gwErr)
+		slog.Error("gateway_worker.gateway_init_failed", "gateway", intent.PaymentGateway, "order_id", intent.OrderID, "err", gwErr)
 		updateLedgerStatus(deps.Spanner, intent, "FAILED", fmt.Sprintf("gateway_init_failed: %v", gwErr))
 		RouteToDLQ(dlqEvent, fmt.Sprintf("gateway_init_failed: %v", gwErr))
 		return
 	}
 
 	if chargeErr := gw.Charge(intent.OrderID, intent.Amount); chargeErr != nil {
-		slog.Error("gateway_worker.charge_failed", "order_id", intent.OrderID, "gateway", intent.GlobalPayntGateway, "err", chargeErr)
+		slog.Error("gateway_worker.charge_failed", "order_id", intent.OrderID, "gateway", intent.PaymentGateway, "err", chargeErr)
 		updateLedgerStatus(deps.Spanner, intent, "FAILED", fmt.Sprintf("charge_failed: %v", chargeErr))
-		RouteToDLQ(dlqEvent, fmt.Sprintf("charge_failed_%s: %v", intent.GlobalPayntGateway, chargeErr))
+		RouteToDLQ(dlqEvent, fmt.Sprintf("charge_failed_%s: %v", intent.PaymentGateway, chargeErr))
 		return
 	}
 
-	slog.Info("gateway_worker.charge_succeeded", "order_id", intent.OrderID, "gateway", intent.GlobalPayntGateway, "amount", intent.Amount)
+	slog.Info("gateway_worker.charge_succeeded", "order_id", intent.OrderID, "gateway", intent.PaymentGateway, "amount", intent.Amount)
 	updateLedgerStatus(deps.Spanner, intent, "SETTLED", "")
 }
 
 // resolveGPCredentials resolves Global Pay credentials from vault for a given order.
-func resolveGPCredentials(ctx context.Context, vault global_paynt.VaultResolver, orderID string) (global_paynt.GlobalPayCredentials, error) {
+func resolveGPCredentials(ctx context.Context, vault payment.VaultResolver, orderID string) (payment.GlobalPayCredentials, error) {
 	if vault == nil {
-		return global_paynt.ResolveGlobalPayCredentials("", "", "")
+		return payment.ResolveGlobalPayCredentials("", "", "")
 	}
 	cfg, err := vault.GetDecryptedConfigByOrder(ctx, orderID, "GLOBAL_PAY")
 	if err != nil {
 		// Fall back to environment-level credentials.
-		return global_paynt.ResolveGlobalPayCredentials("", "", "")
+		return payment.ResolveGlobalPayCredentials("", "", "")
 	}
-	return global_paynt.ResolveGlobalPayCredentials(cfg.MerchantId, cfg.ServiceId, cfg.SecretKey)
+	return payment.ResolveGlobalPayCredentials(cfg.MerchantId, cfg.ServiceId, cfg.SecretKey)
 }
 
 // readLedgerStatus returns the current Status of a ledger entry by TransactionId.
-// Used as the idempotency guard before calling external global_paynt APIs.
+// Used as the idempotency guard before calling external payment APIs.
 func readLedgerStatus(client *spanner.Client, txnID string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -194,7 +194,7 @@ func readLedgerStatus(client *spanner.Client, txnID string) (string, error) {
 // updateLedgerStatus transitions LedgerEntries for a given order to the target status.
 // Uses a conditional read-then-write inside a ReadWriteTransaction: the write only
 // proceeds if the current status is PENDING_GATEWAY, preventing stale-replay overwrites.
-func updateLedgerStatus(client *spanner.Client, intent GlobalPayntIntentEvent, targetStatus, failureReason string) {
+func updateLedgerStatus(client *spanner.Client, intent PaymentIntentEvent, targetStatus, failureReason string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

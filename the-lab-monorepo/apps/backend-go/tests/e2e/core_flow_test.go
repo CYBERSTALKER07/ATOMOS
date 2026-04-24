@@ -21,7 +21,7 @@ const (
 	baseURL = "http://localhost:8080"
 )
 
-// TestCoreLogisticsFlow simulates the complete lifecycle of a B2B order from creation to global_paynt.
+// TestCoreLogisticsFlow simulates the complete lifecycle of a B2B order from creation to payment.
 // It requires the local spanner emulator, redis, and kafka to be running, and the db seeded.
 func TestCoreLogisticsFlow(t *testing.T) {
 	// ── 0. Setup & Config ──────────────────────────────────────────────────
@@ -52,7 +52,7 @@ func TestCoreLogisticsFlow(t *testing.T) {
 	driverToken := loginDriver(t)
 
 	// ── 2. Retailer: Create B2B Order ──────────────────────────────────────
-	// Using the B2B checkout endpoint with Cash global_paynt
+	// Using the B2B checkout endpoint with Cash payment
 	orderID := createB2BOrder(t, retailerToken)
 	t.Logf("Order Created: %s", orderID)
 
@@ -88,7 +88,7 @@ func TestCoreLogisticsFlow(t *testing.T) {
 	// Skip validation endpoints for now or call them if required
 	// Normally we would Validate QR, then Confirm Offload. For testing, we simulate offload.
 	// Since we don't have the QR token in hand (it's generated on seal), we'd need to fetch it
-	// But let's assume we can mock the webhook for global_paynt or complete the delivery
+	// But let's assume we can mock the webhook for payment or complete the delivery
 
 	t.Log("E2E Logistics Core Flow executed successfully.")
 }
@@ -129,7 +129,7 @@ func loginDriver(t *testing.T) string {
 func createB2BOrder(t *testing.T, token string) string {
 	payload := `{
 		"retailer_id": "RET-001",
-		"global_paynt_gateway": "GLOBAL_PAY",
+		"payment_gateway": "GLOBAL_PAY",
 		"latitude": 41.2995,
 		"longitude": 69.2401,
 		"items": [

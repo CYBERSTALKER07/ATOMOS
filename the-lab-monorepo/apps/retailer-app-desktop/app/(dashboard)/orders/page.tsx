@@ -19,13 +19,21 @@ const chipCfg: Record<string, { color: "warning" | "success" | "default" | "dang
   IN_TRANSIT: { color: "warning", label: "In Transit" },
   COMPLETED: { color: "success", label: "Completed" },
   PENDING: { color: "default", label: "Order Placed" },
+  PENDING_REVIEW: { color: "default", label: "Pending Review" },
   LOADED: { color: "default", label: "Approved" },
   DISPATCHED: { color: "warning", label: "Dispatched" },
+  ARRIVING: { color: "success", label: "Arriving" },
   ARRIVED: { color: "success", label: "Driver Arrived" },
+  ARRIVED_SHOP_CLOSED: { color: "warning", label: "Shop Closed" },
   AWAITING_PAYMENT: { color: "warning", label: "Awaiting Payment" },
+  PENDING_CASH_COLLECTION: { color: "warning", label: "Cash Collection" },
   CANCELLED: { color: "danger", label: "Cancelled" },
+  CANCEL_REQUESTED: { color: "danger", label: "Cancel Requested" },
+  NO_CAPACITY: { color: "danger", label: "No Capacity" },
   SCHEDULED: { color: "default", label: "Scheduled" },
   AUTO_ACCEPTED: { color: "default", label: "Auto-Accepted" },
+  QUARANTINE: { color: "danger", label: "Quarantined" },
+  DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
 };
 
 export default function OrdersPage() {

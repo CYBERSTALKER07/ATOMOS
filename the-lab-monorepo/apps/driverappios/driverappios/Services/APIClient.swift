@@ -308,7 +308,6 @@ final class APIClient: @unchecked Sendable {
             }
             throw APIError.httpError(http.statusCode)
         }
-        }
 
         do {
             return try decoder.decode(T.self, from: data)

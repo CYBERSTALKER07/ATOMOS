@@ -397,7 +397,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = driverappios/Info.plist;
+				INFOPLIST_FILE = driverappios/Custom-Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Camera is needed to scan delivery QR codes.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location is used in the background to report fleet position and verify delivery geofences.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to navigate to delivery targets and verify geofence proximity.";
@@ -433,7 +433,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = driverappios/Info.plist;
+				INFOPLIST_FILE = driverappios/Custom-Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Camera is needed to scan delivery QR codes.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Location is used in the background to report fleet position and verify delivery geofences.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to navigate to delivery targets and verify geofence proximity.";

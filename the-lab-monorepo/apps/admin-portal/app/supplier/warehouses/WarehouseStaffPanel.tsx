@@ -157,7 +157,7 @@ export default function WarehouseStaffPanel({
           </p>
           <Button
             size="sm"
-            variant="bordered"
+            variant="outline"
             className="mt-3"
             onPress={() => setCreatedResult(null)}
           >
@@ -238,13 +238,13 @@ export default function WarehouseStaffPanel({
           <div className="flex gap-2 pt-2">
             <Button
               className="button--primary flex-1"
-              isLoading={creating}
+              isPending={creating}
               isDisabled={!formName.trim() || !formPhone.trim() || formPin.length < 8}
               onPress={handleCreate}
             >
               Create Staff
             </Button>
-            <Button variant="bordered" onPress={() => setShowCreate(false)}>
+            <Button variant="outline" onPress={() => setShowCreate(false)}>
               Cancel
             </Button>
           </div>
@@ -259,7 +259,7 @@ export default function WarehouseStaffPanel({
       ) : error ? (
         <div className="text-center py-6">
           <p className="md-typescale-body-small" style={{ color: 'var(--danger)' }}>{error}</p>
-          <Button size="sm" variant="bordered" className="mt-2" onPress={fetchStaff}>Retry</Button>
+          <Button size="sm" variant="outline" className="mt-2" onPress={fetchStaff}>Retry</Button>
         </div>
       ) : staff.length === 0 ? (
         <div className="text-center py-10">

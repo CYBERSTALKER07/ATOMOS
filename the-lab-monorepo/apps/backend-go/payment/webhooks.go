@@ -1,4 +1,4 @@
-// Package global_paynt — Cash & GlobalPay Webhook Handlers (Phase 7: GlobalPaynt Settlement)
+// Package payment — Cash & GlobalPay Webhook Handlers (Phase 7: Payment Settlement)
 //
 // POST /v1/webhooks/cash   — Server-to-server callback from Cash Up
 // POST /v1/webhooks/global_pay   — Server-to-server JSON-RPC callback from GlobalPay
@@ -14,7 +14,7 @@
 //
 // Both handlers settle invoices inside a Spanner ReadWriteTransaction.
 // Kafka INVOICE_SETTLED event fires ONLY after commit.
-package global_paynt
+package payment
 
 import (
 	"bytes"
@@ -41,8 +41,8 @@ import (
 
 // Kafka event type constants — local mirrors of kafka.Event* to avoid import cycle.
 const (
-	eventGlobalPayntSettled = "PAYMENT_SETTLED"
-	eventGlobalPayntFailed  = "PAYMENT_FAILED"
+	eventPaymentSettled = "PAYMENT_SETTLED"
+	eventPaymentFailed  = "PAYMENT_FAILED"
 	eventOrderCompleted = "ORDER_COMPLETED"
 )
 
@@ -53,7 +53,7 @@ type WebhookService struct {
 	DriverHub     DriverPusher    // Push PAYMENT_SETTLED to driver after GlobalPay settlement
 	RetailerHub   RetailerPusher  // Push PAYMENT_FAILED/PAYMENT_SETTLED to retailer
 	VaultResolver VaultResolver   // Per-supplier credential vault (nil = ENV-only fallback)
-	SessionSvc    *SessionService // Durable global_paynt session engine (nil = legacy-only mode)
+	SessionSvc    *SessionService // Durable payment session engine (nil = legacy-only mode)
 }
 
 // VaultResolver fetches decrypted supplier credentials for webhook verification.
@@ -62,12 +62,12 @@ type VaultResolver interface {
 }
 
 // VaultConfig is a minimal credential struct for webhook signature verification
-// and split-global_paynt recipient resolution.
+// and split-payment recipient resolution.
 type VaultConfig struct {
 	SecretKey   string
 	MerchantId  string
 	ServiceId   string
-	RecipientId string // Global Pay split-global_paynt recipient (empty = no split)
+	RecipientId string // Global Pay split-payment recipient (empty = no split)
 }
 
 // DriverPusher abstracts the driver WebSocket hub for testability.
@@ -88,7 +88,7 @@ type InvoiceSettledEvent struct {
 type globalPayWebhookRequest struct {
 	SessionID         string `json:"session_id"`
 	ProviderReference string `json:"service_token"`
-	ProviderGlobalPayntID string `json:"global_paynt_id"`
+	ProviderPaymentID string `json:"payment_id"`
 	Status            string `json:"status"`
 }
 // GLOBAL PAY WEBHOOK
@@ -102,7 +102,7 @@ func (ws *WebhookService) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.
 		return
 	}
 	if ws.SessionSvc == nil {
-		http.Error(w, "global_paynt session service unavailable", http.StatusServiceUnavailable)
+		http.Error(w, "payment session service unavailable", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -114,15 +114,15 @@ func (ws *WebhookService) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.
 
 	session, err := ws.SessionSvc.GetSession(r.Context(), req.SessionID)
 	if err != nil {
-		http.Error(w, "global_paynt session not found", http.StatusNotFound)
+		http.Error(w, "payment session not found", http.StatusNotFound)
 		return
 	}
 	if session.Gateway != "GLOBAL_PAY" {
-		http.Error(w, "global_paynt session gateway mismatch", http.StatusConflict)
+		http.Error(w, "payment session gateway mismatch", http.StatusConflict)
 		return
 	}
 	if session.InvoiceID == "" {
-		http.Error(w, "global_paynt session missing invoice binding", http.StatusConflict)
+		http.Error(w, "payment session missing invoice binding", http.StatusConflict)
 		return
 	}
 
@@ -134,7 +134,7 @@ func (ws *WebhookService) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.
 		return
 	}
 
-	status, err := VerifyGlobalPayGlobalPaynt(r.Context(), creds, providerReference, req.ProviderGlobalPayntID)
+	status, err := VerifyGlobalPayPayment(r.Context(), creds, providerReference, req.ProviderPaymentID)
 	if err != nil {
 		slog.Error("global_pay_webhook.status_verification_failed", "session_id", session.SessionID, "err", err)
 		http.Error(w, "verification failed", http.StatusBadGateway)
@@ -155,9 +155,9 @@ func (ws *WebhookService) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.
 		}
 
 		ws.emitSettledEvent(session.InvoiceID, "GLOBAL_PAY", session.LockedAmount, retailerID)
-		ws.settleGlobalPayntSession(r.Context(), session.InvoiceID, "GLOBAL_PAY", status.ProviderGlobalPayntID)
+		ws.settlePaymentSession(r.Context(), session.InvoiceID, "GLOBAL_PAY", status.ProviderPaymentID)
 		if session.OrderID != "" {
-			ws.notifyDriverGlobalPayntSettled(session.OrderID, session.LockedAmount)
+			ws.notifyDriverPaymentSettled(session.OrderID, session.LockedAmount)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -165,7 +165,7 @@ func (ws *WebhookService) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.
 			"status":       "SETTLED",
 			"session_id":   session.SessionID,
 			"invoice_id":   session.InvoiceID,
-			"global_paynt_id":   status.ProviderGlobalPayntID,
+			"payment_id":   status.ProviderPaymentID,
 			"provider_ref": providerReference,
 		})
 		return
@@ -181,22 +181,22 @@ func (ws *WebhookService) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.
 			capturedRetailerID := session.RetailerID
 			capturedOrderID := session.OrderID
 			capturedSessionID := session.SessionID
-			capturedMsg := firstNonEmpty(status.FailureMessage, "GlobalPaynt declined")
+			capturedMsg := firstNonEmpty(status.FailureMessage, "Payment declined")
 			workers.EventPool.Submit(func() {
 				ws.RetailerHub.PushToRetailer(capturedRetailerID, map[string]interface{}{
-					"type":       wsEvents.EventGlobalPayntFailed,
+					"type":       wsEvents.EventPaymentFailed,
 					"order_id":   capturedOrderID,
 					"session_id": capturedSessionID,
 					"gateway":    "GLOBAL_PAY",
 					"reason":     capturedMsg,
-					"message":    "GlobalPaynt failed — please try again or choose another method",
+					"message":    "Payment failed — please try again or choose another method",
 				})
 			})
 		}
 		if ws.DriverHub != nil && session.OrderID != "" {
 			capturedOrderID := session.OrderID
-			capturedFailMsg := firstNonEmpty(status.FailureMessage, "GlobalPaynt failed")
-			workers.EventPool.Submit(func() { ws.notifyDriverGlobalPayntFailed(capturedOrderID, capturedFailMsg) })
+			capturedFailMsg := firstNonEmpty(status.FailureMessage, "Payment failed")
+			workers.EventPool.Submit(func() { ws.notifyDriverPaymentFailed(capturedOrderID, capturedFailMsg) })
 		}
 	}
 
@@ -225,7 +225,7 @@ func (ws *WebhookService) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.
 //   - Be aborted by Spanner's OCC and retried, at which point they see SETTLED.
 //
 // No external locks or Redis dedup are needed. The same protection applies to
-// settleGlobalPayntSession via SessionService.SettleSession which also uses RW txn.
+// settlePaymentSession via SessionService.SettleSession which also uses RW txn.
 func (ws *WebhookService) settleInvoice(ctx context.Context, invoiceID string, expectedAmount int64, gateway string) (string, error) {
 	var retailerID string
 
@@ -263,21 +263,21 @@ func (ws *WebhookService) settleInvoice(ctx context.Context, invoiceID string, e
 	return retailerID, err
 }
 
-// settleGlobalPayntSession resolves and settles the durable global_paynt session for an invoice.
+// settlePaymentSession resolves and settles the durable payment session for an invoice.
 // Called after MasterInvoice is settled. Non-fatal — failures are logged but do not block webhook success.
-func (ws *WebhookService) settleGlobalPayntSession(ctx context.Context, invoiceID, gateway, providerTxnID string) {
+func (ws *WebhookService) settlePaymentSession(ctx context.Context, invoiceID, gateway, providerTxnID string) {
 	if ws.SessionSvc == nil {
 		return
 	}
 	session, err := ws.SessionSvc.ResolveSessionByInvoice(ctx, invoiceID)
 	if err != nil {
-		slog.Warn("webhook.no_global_paynt_session", "invoice_id", invoiceID, "err", err)
+		slog.Warn("webhook.no_payment_session", "invoice_id", invoiceID, "err", err)
 		return
 	}
 	if err := ws.SessionSvc.SettleSession(ctx, session.SessionID, providerTxnID); err != nil {
-		slog.Error("webhook.settle_global_paynt_session_failed", "session_id", session.SessionID, "err", err)
+		slog.Error("webhook.settle_payment_session_failed", "session_id", session.SessionID, "err", err)
 	} else {
-		slog.Info("webhook.global_paynt_session_settled", "session_id", session.SessionID, "gateway", gateway)
+		slog.Info("webhook.payment_session_settled", "session_id", session.SessionID, "gateway", gateway)
 	}
 }
 
@@ -296,7 +296,7 @@ func parseGlobalPayWebhookRequest(r *http.Request) (*globalPayWebhookRequest, er
 	req := &globalPayWebhookRequest{
 		SessionID:         strings.TrimSpace(firstNonEmpty(r.URL.Query().Get("session_id"), r.URL.Query().Get("sessionId"))),
 		ProviderReference: strings.TrimSpace(firstNonEmpty(r.URL.Query().Get("service_token"), r.URL.Query().Get("serviceToken"), r.URL.Query().Get("provider_reference"))),
-		ProviderGlobalPayntID: strings.TrimSpace(firstNonEmpty(r.URL.Query().Get("global_paynt_id"), r.URL.Query().Get("global_payntId"))),
+		ProviderPaymentID: strings.TrimSpace(firstNonEmpty(r.URL.Query().Get("payment_id"), r.URL.Query().Get("paymentId"))),
 		Status:            strings.TrimSpace(firstNonEmpty(r.URL.Query().Get("status"), r.URL.Query().Get("state"))),
 	}
 
@@ -311,8 +311,8 @@ func parseGlobalPayWebhookRequest(r *http.Request) (*globalPayWebhookRequest, er
 			if err := json.Unmarshal(body, &raw); err == nil {
 				req.SessionID = firstNonEmpty(req.SessionID, globalPayLookupString(raw, "sessionId", "session_id"))
 				req.ProviderReference = firstNonEmpty(req.ProviderReference, globalPayLookupString(raw, "serviceToken", "service_token", "providerReference", "provider_reference", "token"))
-				req.ProviderGlobalPayntID = firstNonEmpty(req.ProviderGlobalPayntID, globalPayLookupString(raw, "global_payntId", "global_paynt_id", "id"))
-				req.Status = firstNonEmpty(req.Status, globalPayLookupString(raw, "status", "state", "global_payntStatus", "global_paynt_status"))
+				req.ProviderPaymentID = firstNonEmpty(req.ProviderPaymentID, globalPayLookupString(raw, "paymentId", "payment_id", "id"))
+				req.Status = firstNonEmpty(req.Status, globalPayLookupString(raw, "status", "state", "paymentStatus", "payment_status"))
 			}
 		}
 	}
@@ -365,8 +365,8 @@ func (ws *WebhookService) emitSettledEvent(invoiceID, gateway string, amount int
 	})
 }
 
-// emitGlobalPayntSettledEvent fires a PAYMENT_SETTLED Kafka event for the notification dispatcher.
-func (ws *WebhookService) emitGlobalPayntSettledEvent(orderID, invoiceID, retailerID, gateway string, amount int64) {
+// emitPaymentSettledEvent fires a PAYMENT_SETTLED Kafka event for the notification dispatcher.
+func (ws *WebhookService) emitPaymentSettledEvent(orderID, invoiceID, retailerID, gateway string, amount int64) {
 	driverID := ws.resolveDriverFromOrder(orderID)
 	event := map[string]interface{}{
 		"order_id":    orderID,
@@ -381,15 +381,15 @@ func (ws *WebhookService) emitGlobalPayntSettledEvent(orderID, invoiceID, retail
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := ws.Producer.WriteMessages(ctx, kafka.Message{
-		Key:   []byte(eventGlobalPayntSettled),
+		Key:   []byte(eventPaymentSettled),
 		Value: data,
 	}); err != nil {
-		slog.Error("kafka.emit_global_paynt_settled_failed", "order_id", orderID, "err", err)
+		slog.Error("kafka.emit_payment_settled_failed", "order_id", orderID, "err", err)
 	}
 }
 
-// emitGlobalPayntFailedEvent fires a PAYMENT_FAILED Kafka event for the notification dispatcher.
-func (ws *WebhookService) emitGlobalPayntFailedEvent(orderID, invoiceID, retailerID, gateway, reason string) {
+// emitPaymentFailedEvent fires a PAYMENT_FAILED Kafka event for the notification dispatcher.
+func (ws *WebhookService) emitPaymentFailedEvent(orderID, invoiceID, retailerID, gateway, reason string) {
 	event := map[string]interface{}{
 		"order_id":    orderID,
 		"invoice_id":  invoiceID,
@@ -402,10 +402,10 @@ func (ws *WebhookService) emitGlobalPayntFailedEvent(orderID, invoiceID, retaile
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := ws.Producer.WriteMessages(ctx, kafka.Message{
-		Key:   []byte(eventGlobalPayntFailed),
+		Key:   []byte(eventPaymentFailed),
 		Value: data,
 	}); err != nil {
-		slog.Error("kafka.emit_global_paynt_failed_failed", "order_id", orderID, "err", err)
+		slog.Error("kafka.emit_payment_failed_failed", "order_id", orderID, "err", err)
 	}
 }
 
@@ -422,16 +422,16 @@ func (ws *WebhookService) resolveDriverFromOrder(orderID string) string {
 	return driverID.StringVal
 }
 
-// notifyDriverGlobalPayntSettled looks up the order's driver and pushes PAYMENT_SETTLED via WebSocket.
-func (ws *WebhookService) notifyDriverGlobalPayntSettled(orderID string, amount int64) {
+// notifyDriverPaymentSettled looks up the order's driver and pushes PAYMENT_SETTLED via WebSocket.
+func (ws *WebhookService) notifyDriverPaymentSettled(orderID string, amount int64) {
 	row, err := ws.Spanner.Single().ReadRow(context.Background(), "Orders", spanner.Key{orderID}, []string{"DriverId"})
 	if err != nil {
-		slog.Error("global_paynt_push.read_driver_failed", "order_id", orderID, "err", err)
+		slog.Error("payment_push.read_driver_failed", "order_id", orderID, "err", err)
 		return
 	}
 	var driverID spanner.NullString
 	if err := row.Columns(&driverID); err != nil || !driverID.Valid {
-		slog.Warn("global_paynt_push.no_driver_assigned", "order_id", orderID)
+		slog.Warn("payment_push.no_driver_assigned", "order_id", orderID)
 		return
 	}
 
@@ -445,13 +445,13 @@ func (ws *WebhookService) notifyDriverGlobalPayntSettled(orderID string, amount 
 		Type:    "PAYMENT_SETTLED",
 		OrderID: orderID,
 		Amount:  amount,
-		Message: "GlobalPaynt received. Tap Complete to finalize delivery.",
+		Message: "Payment received. Tap Complete to finalize delivery.",
 	})
-	slog.Info("global_paynt_push.sent_global_paynt_settled", "driver_id", driverID.StringVal, "order_id", orderID)
+	slog.Info("payment_push.sent_payment_settled", "driver_id", driverID.StringVal, "order_id", orderID)
 }
 
-// notifyDriverGlobalPayntFailed pushes a PAYMENT_FAILED event to the driver assigned to an order.
-func (ws *WebhookService) notifyDriverGlobalPayntFailed(orderID, reason string) {
+// notifyDriverPaymentFailed pushes a PAYMENT_FAILED event to the driver assigned to an order.
+func (ws *WebhookService) notifyDriverPaymentFailed(orderID, reason string) {
 	if ws.DriverHub == nil {
 		return
 	}
@@ -464,15 +464,15 @@ func (ws *WebhookService) notifyDriverGlobalPayntFailed(orderID, reason string) 
 		return
 	}
 	ws.DriverHub.PushToDriver(driverID.StringVal, map[string]interface{}{
-		"type":     wsEvents.EventGlobalPayntFailed,
+		"type":     wsEvents.EventPaymentFailed,
 		"order_id": orderID,
 		"reason":   reason,
-		"message":  "GlobalPaynt failed for this order. Awaiting retry from retailer.",
+		"message":  "Payment failed for this order. Awaiting retry from retailer.",
 	})
 }
 
-// notifyRetailerGlobalPayntFailed pushes a PAYMENT_FAILED event to the retailer who owns an order.
-func (ws *WebhookService) notifyRetailerGlobalPayntFailed(orderID, gateway, reason string) {
+// notifyRetailerPaymentFailed pushes a PAYMENT_FAILED event to the retailer who owns an order.
+func (ws *WebhookService) notifyRetailerPaymentFailed(orderID, gateway, reason string) {
 	if ws.RetailerHub == nil {
 		return
 	}
@@ -485,11 +485,11 @@ func (ws *WebhookService) notifyRetailerGlobalPayntFailed(orderID, gateway, reas
 		return
 	}
 	ws.RetailerHub.PushToRetailer(retailerID.StringVal, map[string]interface{}{
-		"type":     wsEvents.EventGlobalPayntFailed,
+		"type":     wsEvents.EventPaymentFailed,
 		"order_id": orderID,
 		"gateway":  gateway,
 		"reason":   reason,
-		"message":  "GlobalPaynt failed — please try again or choose another method",
+		"message":  "Payment failed — please try again or choose another method",
 	})
 }
 

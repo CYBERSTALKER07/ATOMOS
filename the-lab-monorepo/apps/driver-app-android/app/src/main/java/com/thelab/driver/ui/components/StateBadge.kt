@@ -68,6 +68,7 @@ fun StateBadge(state: OrderState) {
         OrderState.NO_CAPACITY -> Destructive to "NO CAPACITY"
         OrderState.QUARANTINE -> Destructive to "QUARANTINE"
         OrderState.DELIVERED_ON_CREDIT -> Warning to "ON CREDIT"
+        else -> colorScheme.onSurfaceVariant to state.name.replace("_", " ")
     }
     StatusPill(label = text, color = color)
 }

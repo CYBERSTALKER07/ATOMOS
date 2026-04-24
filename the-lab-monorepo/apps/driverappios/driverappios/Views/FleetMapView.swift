@@ -178,10 +178,9 @@ struct FleetMapView: View {
             }
             .mapStyle(.standard(elevation: .realistic))
             .mapControls { MapCompass() }
-            .onMapCameraChange(frequency: .onEnd) { context in
-                if isCameraLocked && !context.followsUserLocation {
-                    isCameraLocked = false
-                }
+            .onMapCameraChange(frequency: .onEnd) {
+                // If the user drags we just unlock
+                isCameraLocked = false
             }
             .ignoresSafeArea()
 
@@ -275,8 +274,8 @@ struct FleetMapView: View {
                             Image(systemName: isCameraLocked ? "location.north.line.fill" : "location.fill")
                                 .font(.system(size: 13, weight: .bold))
                                 .padding(12)
-                                .background(isCameraLocked ? LabTheme.primary : .ultraThinMaterial)
-                                .foregroundStyle(isCameraLocked ? LabTheme.onPrimary : LabTheme.fg)
+                                .background(isCameraLocked ? AnyShapeStyle(LabTheme.fg) : AnyShapeStyle(.ultraThinMaterial))
+                                .foregroundStyle(isCameraLocked ? LabTheme.buttonFg : LabTheme.fg)
                                 .clipShape(Circle())
                                 .overlay(Circle().stroke(LabTheme.separator, lineWidth: 0.5))
                                 .shadow(color: .black.opacity(0.08), radius: 8, y: 4)

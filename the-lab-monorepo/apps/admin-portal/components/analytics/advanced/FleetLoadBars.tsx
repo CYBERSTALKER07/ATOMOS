@@ -49,7 +49,7 @@ export default function FleetLoadBars({ data }: Props) {
                 borderRadius: '12px',
                 fontSize: 12,
               }}
-              formatter={(value: number) => `${value.toFixed(1)}%`}
+              formatter={(value: any) => `${value.toFixed(1)}%`}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Bar dataKey="avg_load_pct" name="Avg Load" fill="oklch(0.6 0.118 264.376)" radius={[0, 4, 4, 0]} barSize={16} />
