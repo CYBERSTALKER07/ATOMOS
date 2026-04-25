@@ -11,7 +11,9 @@ import (
 
 	"backend-go/auth"
 	"backend-go/kafka"
+	"backend-go/outbox"
 	"backend-go/proximity"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -306,7 +308,22 @@ func (s *RetailerPricingService) createOverride(w http.ResponseWriter, r *http.R
 		}
 
 		mutations = append(mutations, spanner.Insert("RetailerPricingOverrides", cols, vals))
-		return txn.BufferWrite(mutations)
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+
+		event := kafka.RetailerPriceOverrideEvent{
+			OverrideId: overrideID,
+			SupplierId: supplierID,
+			RetailerId: req.RetailerId,
+			SkuId:      req.SkuId,
+			Price:      req.Price,
+			Action:     "CREATED",
+			SetBy:      claims.UserID,
+			SetByRole:  callerRole,
+			Timestamp:  time.Now().UTC(),
+		}
+		return outbox.EmitJSON(txn, "RetailerPriceOverride", overrideID, kafka.EventRetailerPriceOverride, kafka.TopicMain, event, telemetry.TraceIDFromContext(ctx))
 	})
 
 	if err != nil {
@@ -314,9 +331,6 @@ func (s *RetailerPricingService) createOverride(w http.ResponseWriter, r *http.R
 		http.Error(w, "Failed to create price override", http.StatusInternalServerError)
 		return
 	}
-
-	// Emit Kafka event (non-blocking)
-	go s.emitPriceOverrideEvent(overrideID, supplierID, req.RetailerId, req.SkuId, req.Price, "CREATED", claims.UserID, callerRole)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -361,17 +375,27 @@ func (s *RetailerPricingService) deactivateOverride(w http.ResponseWriter, r *ht
 			}
 		}
 
-		txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.Update("RetailerPricingOverrides",
 				[]string{"OverrideId", "IsActive", "UpdatedAt"},
 				[]interface{}{overrideID, false, spanner.CommitTimestamp},
 			),
-		})
+		}); err != nil {
+			return err
+		}
 
-		// Emit event after commit
-		go s.emitPriceOverrideEvent(overrideID, supplierID, retailerID, skuID, price, "DEACTIVATED", claims.UserID, "GLOBAL_ADMIN")
-
-		return nil
+		event := kafka.RetailerPriceOverrideEvent{
+			OverrideId: overrideID,
+			SupplierId: supplierID,
+			RetailerId: retailerID,
+			SkuId:      skuID,
+			Price:      price,
+			Action:     "DEACTIVATED",
+			SetBy:      claims.UserID,
+			SetByRole:  "GLOBAL_ADMIN",
+			Timestamp:  time.Now().UTC(),
+		}
+		return outbox.EmitJSON(txn, "RetailerPriceOverride", overrideID, kafka.EventRetailerPriceOverride, kafka.TopicMain, event, telemetry.TraceIDFromContext(ctx))
 	})
 
 	if err != nil {
@@ -476,31 +500,4 @@ func (s *RetailerPricingService) readClientForWarehouseScope(ctx context.Context
 	}
 
 	return proximity.ReadClientForRetailer(s.Client, s.ReadRouter, lat.Float64, lng.Float64)
-}
-
-// emitPriceOverrideEvent fires a Kafka event for audit and analytics.
-func (s *RetailerPricingService) emitPriceOverrideEvent(overrideID, supplierID, retailerID, skuID string, price int64, action, setBy, setByRole string) {
-	if s.Producer == nil {
-		return
-	}
-	event := kafka.RetailerPriceOverrideEvent{
-		OverrideId: overrideID,
-		SupplierId: supplierID,
-		RetailerId: retailerID,
-		SkuId:      skuID,
-		Price:      price,
-		Action:     action,
-		SetBy:      setBy,
-		SetByRole:  setByRole,
-		Timestamp:  time.Now(),
-	}
-	payload, err := json.Marshal(event)
-	if err != nil {
-		log.Printf("[RETAILER_PRICING] marshal event: %v", err)
-		return
-	}
-	_ = s.Producer.WriteMessages(context.Background(), kafkago.Message{
-		Key:   []byte(kafka.EventRetailerPriceOverride),
-		Value: payload,
-	})
 }

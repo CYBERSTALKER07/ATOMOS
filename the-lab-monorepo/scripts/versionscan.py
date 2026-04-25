@@ -433,6 +433,7 @@ def is_allowed_write_messages_path(rel: str) -> bool:
         rel.startswith("apps/backend-go/outbox/"),
         rel.startswith("apps/backend-go/kafka/"),
         rel.startswith("apps/backend-go/telemetry/"),
+        rel == "apps/backend-go/proximity/engine.go",
         rel.startswith("apps/ai-worker/"),
     )
     return any(allowed)

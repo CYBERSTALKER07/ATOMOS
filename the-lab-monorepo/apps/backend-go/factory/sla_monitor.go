@@ -2,11 +2,12 @@ package factory
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"time"
 
 	"backend-go/kafka"
+	"backend-go/outbox"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -123,14 +124,19 @@ func (s *SLAMonitorService) escalateWarning(ctx context.Context, t stalledTransf
 	eventID := uuid.New().String()
 	breachMinutes := int64(t.OverdueHrs * 60)
 
-	_, _ = s.Spanner.Apply(ctx, []*spanner.Mutation{
-		spanner.Insert("FactorySLAEvents",
-			[]string{"EventId", "TransferId", "SupplierId", "FactoryId", "WarehouseId",
-				"EscalationLevel", "SLABreachMinutes", "CreatedAt"},
-			[]interface{}{eventID, t.TransferId, t.SupplierId, t.FactoryId, t.WarehouseId,
-				"WARNING", breachMinutes, spanner.CommitTimestamp},
-		),
+	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Insert("FactorySLAEvents",
+				[]string{"EventId", "TransferId", "SupplierId", "FactoryId", "WarehouseId",
+					"EscalationLevel", "SLABreachMinutes", "CreatedAt"},
+				[]interface{}{eventID, t.TransferId, t.SupplierId, t.FactoryId, t.WarehouseId,
+					"WARNING", breachMinutes, spanner.CommitTimestamp},
+			),
+		})
 	})
+	if err != nil {
+		log.Printf("[SLA_MONITOR] WARNING write failed for transfer %s: %v", t.TransferId[:8], err)
+	}
 
 	log.Printf("[SLA_MONITOR] WARNING: transfer %s overdue by %.1fh (ratio=%.2f)",
 		t.TransferId[:8], t.OverdueHrs, t.OverdueRatio)
@@ -140,16 +146,18 @@ func (s *SLAMonitorService) escalateCritical(ctx context.Context, t stalledTrans
 	eventID := uuid.New().String()
 	breachMinutes := int64(t.OverdueHrs * 60)
 
-	_, _ = s.Spanner.Apply(ctx, []*spanner.Mutation{
-		spanner.Insert("FactorySLAEvents",
-			[]string{"EventId", "TransferId", "SupplierId", "FactoryId", "WarehouseId",
-				"EscalationLevel", "SLABreachMinutes", "CreatedAt"},
-			[]interface{}{eventID, t.TransferId, t.SupplierId, t.FactoryId, t.WarehouseId,
-				"CRITICAL", breachMinutes, spanner.CommitTimestamp},
-		),
-	})
+	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite([]*spanner.Mutation{
+			spanner.Insert("FactorySLAEvents",
+				[]string{"EventId", "TransferId", "SupplierId", "FactoryId", "WarehouseId",
+					"EscalationLevel", "SLABreachMinutes", "CreatedAt"},
+				[]interface{}{eventID, t.TransferId, t.SupplierId, t.FactoryId, t.WarehouseId,
+					"CRITICAL", breachMinutes, spanner.CommitTimestamp},
+			),
+		}); err != nil {
+			return err
+		}
 
-	if s.Producer != nil {
 		evt := kafka.FactorySLABreachEvent{
 			TransferId:      t.TransferId,
 			SupplierId:      t.SupplierId,
@@ -159,11 +167,10 @@ func (s *SLAMonitorService) escalateCritical(ctx context.Context, t stalledTrans
 			SLABreachMin:    breachMinutes,
 			Timestamp:       time.Now().UTC(),
 		}
-		payload, _ := json.Marshal(evt)
-		_ = s.Producer.WriteMessages(ctx, kafkago.Message{
-			Key:   []byte(kafka.EventFactorySLABreach),
-			Value: payload,
-		})
+		return outbox.EmitJSON(txn, "InternalTransferOrder", t.TransferId, kafka.EventFactorySLABreach, kafka.TopicMain, evt, telemetry.TraceIDFromContext(ctx))
+	})
+	if err != nil {
+		log.Printf("[SLA_MONITOR] CRITICAL write failed for transfer %s: %v", t.TransferId[:8], err)
 	}
 
 	log.Printf("[SLA_MONITOR] CRITICAL: transfer %s overdue by %.1fh (ratio=%.2f)",
@@ -184,6 +191,7 @@ func (s *SLAMonitorService) escalateAutoReroute(ctx context.Context, t stalledTr
 
 	// 2. Create replacement transfer
 	replacementID := uuid.New().String()
+	eventID := uuid.New().String()
 	_, err = s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// Read items from original transfer
 		iter := txn.Read(ctx, "InternalTransferItems",
@@ -238,27 +246,17 @@ func (s *SLAMonitorService) escalateAutoReroute(ctx context.Context, t stalledTr
 			))
 		}
 
-		return txn.BufferWrite(mutations)
-	})
-	if err != nil {
-		log.Printf("[SLA_MONITOR] AUTO_REROUTE: Failed to create replacement for %s: %v", t.TransferId[:8], err)
-		s.escalateCritical(ctx, t)
-		return
-	}
-
-	// 3. SLA event with replacement link
-	eventID := uuid.New().String()
-	_, _ = s.Spanner.Apply(ctx, []*spanner.Mutation{
-		spanner.Insert("FactorySLAEvents",
+		mutations = append(mutations, spanner.Insert("FactorySLAEvents",
 			[]string{"EventId", "TransferId", "SupplierId", "FactoryId", "WarehouseId",
 				"EscalationLevel", "SLABreachMinutes", "ReplacementTransferId", "CreatedAt"},
 			[]interface{}{eventID, t.TransferId, t.SupplierId, t.FactoryId, t.WarehouseId,
 				"AUTO_REROUTE", breachMinutes, replacementID, spanner.CommitTimestamp},
-		),
-	})
+		))
 
-	// 4. Emit event
-	if s.Producer != nil {
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+
 		evt := kafka.FactorySLABreachEvent{
 			TransferId:      t.TransferId,
 			SupplierId:      t.SupplierId,
@@ -269,11 +267,12 @@ func (s *SLAMonitorService) escalateAutoReroute(ctx context.Context, t stalledTr
 			ReplacementId:   replacementID,
 			Timestamp:       time.Now().UTC(),
 		}
-		payload, _ := json.Marshal(evt)
-		_ = s.Producer.WriteMessages(ctx, kafkago.Message{
-			Key:   []byte(kafka.EventFactorySLABreach),
-			Value: payload,
-		})
+		return outbox.EmitJSON(txn, "InternalTransferOrder", t.TransferId, kafka.EventFactorySLABreach, kafka.TopicMain, evt, telemetry.TraceIDFromContext(ctx))
+	})
+	if err != nil {
+		log.Printf("[SLA_MONITOR] AUTO_REROUTE: Failed to create replacement for %s: %v", t.TransferId[:8], err)
+		s.escalateCritical(ctx, t)
+		return
 	}
 
 	log.Printf("[SLA_MONITOR] AUTO_REROUTE: transfer %s cancelled, replacement %s → factory %s",

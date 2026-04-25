@@ -11,6 +11,8 @@ import (
 
 	"backend-go/auth"
 	"backend-go/kafka"
+	"backend-go/outbox"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -106,22 +108,21 @@ func (s *PullMatrixService) RunPullMatrix(ctx context.Context, source string) er
 		})
 	}
 
-	// Emit completion event
-	if s.Producer != nil {
-		evt := kafka.PullMatrixCompletedEvent{
-			RunId:              uuid.New().String(),
-			SupplierId:         "GLOBAL",
-			TransfersGenerated: totalTransfers,
-			SKUsProcessed:      totalSKUs,
-			DurationMs:         time.Since(startTime).Milliseconds(),
-			Source:             source,
-			Timestamp:          time.Now().UTC(),
-		}
-		payload, _ := json.Marshal(evt)
-		_ = s.Producer.WriteMessages(ctx, kafkago.Message{
-			Key:   []byte(kafka.EventPullMatrixCompleted),
-			Value: payload,
-		})
+	// Emit completion event via outbox to avoid direct producer writes.
+	runID := uuid.New().String()
+	evt := kafka.PullMatrixCompletedEvent{
+		RunId:              runID,
+		SupplierId:         "GLOBAL",
+		TransfersGenerated: totalTransfers,
+		SKUsProcessed:      totalSKUs,
+		DurationMs:         time.Since(startTime).Milliseconds(),
+		Source:             source,
+		Timestamp:          time.Now().UTC(),
+	}
+	if _, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return outbox.EmitJSON(txn, "PullMatrixRun", runID, kafka.EventPullMatrixCompleted, kafka.TopicMain, evt, telemetry.TraceIDFromContext(ctx))
+	}); err != nil {
+		log.Printf("[PULL_MATRIX] completion outbox emit failed (run=%s): %v", runID, err)
 	}
 
 	log.Printf("[PULL_MATRIX] Completed: %d transfers generated for %d SKUs (source=%s, duration=%dms)",

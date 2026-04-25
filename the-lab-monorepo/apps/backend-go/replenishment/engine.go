@@ -9,9 +9,13 @@ import (
 	"net/http"
 	"time"
 
+	internalKafka "backend-go/kafka"
+	"backend-go/outbox"
+	"backend-go/telemetry"
+
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
-	"github.com/segmentio/kafka-go"
+	kafkago "github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
 )
 
@@ -45,7 +49,7 @@ const (
 // InternalTransferOrders when warehouse inventory drops below safety thresholds.
 type ReplenishmentEngine struct {
 	Spanner  *spanner.Client
-	Producer *kafka.Writer
+	Producer *kafkago.Writer
 }
 
 // warehouseInfo holds warehouse + factory assignment data.
@@ -495,12 +499,11 @@ func (e *ReplenishmentEngine) autoCreateTransfer(ctx context.Context, wh warehou
 		),
 	}
 
-	if _, err := e.Spanner.Apply(ctx, mutations); err != nil {
-		return err
-	}
+	if _, err := e.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
 
-	// Emit Kafka event
-	if e.Producer != nil {
 		evt := map[string]interface{}{
 			"event":        "REPLENISHMENT_TRANSFER_CREATED",
 			"transfer_id":  transferID,
@@ -512,11 +515,9 @@ func (e *ReplenishmentEngine) autoCreateTransfer(ctx context.Context, wh warehou
 			"source":       "SYSTEM_THRESHOLD",
 			"timestamp":    time.Now().UTC().Format(time.RFC3339),
 		}
-		payload, _ := json.Marshal(evt)
-		_ = e.Producer.WriteMessages(ctx, kafka.Message{
-			Key:   []byte(transferID),
-			Value: payload,
-		})
+		return outbox.EmitJSON(txn, "InternalTransferOrder", transferID, "REPLENISHMENT_TRANSFER_CREATED", internalKafka.TopicMain, evt, telemetry.TraceIDFromContext(ctx))
+	}); err != nil {
+		return err
 	}
 
 	log.Printf("[REPLENISHMENT] Auto-created transfer %s: %s → %s (SKU %s, qty %d)",

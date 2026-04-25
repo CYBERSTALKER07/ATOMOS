@@ -12,7 +12,9 @@ import (
 
 	"backend-go/auth"
 	"backend-go/kafka"
+	"backend-go/outbox"
 	"backend-go/proximity"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -354,6 +356,7 @@ func (s *SupplyLanesService) updateTransitTime(w http.ResponseWriter, r *http.Re
 	var oldDampened, newDampened float64
 	var factoryID, warehouseID string
 	propagated := false
+	var event *kafka.SupplyLaneTransitUpdatedEvent
 
 	_, err := s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "SupplyLanes", spanner.Key{supplierID, laneID},
@@ -381,14 +384,33 @@ func (s *SupplyLanesService) updateTransitTime(w http.ResponseWriter, r *http.Re
 			propagated = delta > propagationThreshold
 		}
 
-		return txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.Update("SupplyLanes",
 				[]string{"SupplierId", "LaneId", "TransitTimeHours", "DampenedTransitHours",
 					"LastTransitUpdate", "UpdatedAt"},
 				[]interface{}{supplierID, laneID, req.TransitTimeHours, newDampened,
 					spanner.CommitTimestamp, spanner.CommitTimestamp},
 			),
-		})
+		}); err != nil {
+			return err
+		}
+
+		if propagated {
+			e := kafka.SupplyLaneTransitUpdatedEvent{
+				LaneId:           laneID,
+				SupplierId:       supplierID,
+				FactoryId:        factoryID,
+				WarehouseId:      warehouseID,
+				OldDampenedHours: oldDampened,
+				NewDampenedHours: newDampened,
+				RawTransitHours:  req.TransitTimeHours,
+				Timestamp:        time.Now().UTC(),
+			}
+			event = &e
+			return outbox.EmitJSON(txn, "SupplyLane", laneID, kafka.EventSupplyLaneTransitUpdated, kafka.TopicMain, e, telemetry.TraceIDFromContext(ctx))
+		}
+
+		return nil
 	})
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "lane not found") || strings.HasPrefix(err.Error(), "cooldown") {
@@ -399,25 +421,10 @@ func (s *SupplyLanesService) updateTransitTime(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Only emit event if dampened change exceeds threshold (prevents routing thrash)
-	if propagated && s.Producer != nil {
-		evt := kafka.SupplyLaneTransitUpdatedEvent{
-			LaneId:           laneID,
-			SupplierId:       supplierID,
-			FactoryId:        factoryID,
-			WarehouseId:      warehouseID,
-			OldDampenedHours: oldDampened,
-			NewDampenedHours: newDampened,
-			RawTransitHours:  req.TransitTimeHours,
-			Timestamp:        time.Now().UTC(),
-		}
-		payload, _ := json.Marshal(evt)
-		_ = s.Producer.WriteMessages(r.Context(), kafkago.Message{
-			Key:   []byte(kafka.EventSupplyLaneTransitUpdated),
-			Value: payload,
-		})
+	// Only log propagation when the dampened change exceeds threshold.
+	if propagated && event != nil {
 		log.Printf("[SUPPLY_LANES] Transit update propagated for lane %s: %.2f → %.2f (raw=%.2f)",
-			laneID[:8], oldDampened, newDampened, req.TransitTimeHours)
+			laneID[:8], event.OldDampenedHours, event.NewDampenedHours, event.RawTransitHours)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

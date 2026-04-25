@@ -10,10 +10,13 @@ import (
 	"time"
 
 	"backend-go/auth"
+	internalKafka "backend-go/kafka"
+	"backend-go/outbox"
+	"backend-go/telemetry"
 	"backend-go/ws"
 
 	"cloud.google.com/go/spanner"
-	"github.com/segmentio/kafka-go"
+	kafkago "github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
 )
 
@@ -41,10 +44,10 @@ type ResolveReturnRequest struct {
 
 type ReturnsService struct {
 	Client   *spanner.Client
-	Producer *kafka.Writer
+	Producer *kafkago.Writer
 }
 
-func NewReturnsService(client *spanner.Client, producer *kafka.Writer) *ReturnsService {
+func NewReturnsService(client *spanner.Client, producer *kafkago.Writer) *ReturnsService {
 	return &ReturnsService{Client: client, Producer: producer}
 }
 
@@ -211,12 +214,14 @@ func (s *ReturnsService) HandleResolveReturn(w http.ResponseWriter, r *http.Requ
 			newStatus = "RETURNED_TO_STOCK"
 		}
 
-		txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.Update("OrderLineItems",
 				[]string{"LineItemId", "Status"},
 				[]interface{}{req.LineItemID, newStatus},
 			),
-		})
+		}); err != nil {
+			return err
+		}
 
 		// If returning to stock, restore inventory
 		if req.Resolution == "RETURN_TO_STOCK" {
@@ -226,15 +231,28 @@ func (s *ReturnsService) HandleResolveReturn(w http.ResponseWriter, r *http.Requ
 			}
 			var currentQty int64
 			invRow.Columns(&currentQty)
-			txn.BufferWrite([]*spanner.Mutation{
+			if err := txn.BufferWrite([]*spanner.Mutation{
 				spanner.Update("SupplierInventory",
 					[]string{"ProductId", "QuantityAvailable", "UpdatedAt"},
 					[]interface{}{skuId, currentQty + qty, spanner.CommitTimestamp},
 				),
-			})
+			}); err != nil {
+				return err
+			}
 		}
 
-		return nil
+		event := map[string]interface{}{
+			"type":         ws.EventReturnResolved,
+			"line_item_id": req.LineItemID,
+			"order_id":     orderId,
+			"sku_id":       skuId,
+			"quantity":     qty,
+			"resolution":   req.Resolution,
+			"supplier_id":  supplierId,
+			"notes":        req.Notes,
+			"timestamp":    time.Now().UnixMilli(),
+		}
+		return outbox.EmitJSON(txn, "OrderLineItem", req.LineItemID, ws.EventReturnResolved, internalKafka.TopicMain, event, telemetry.TraceIDFromContext(ctx))
 	})
 
 	if err != nil {
@@ -242,29 +260,6 @@ func (s *ReturnsService) HandleResolveReturn(w http.ResponseWriter, r *http.Requ
 		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusBadRequest)
 		return
 	}
-
-	// Emit Kafka event for audit trail
-	event := map[string]interface{}{
-		"type":         ws.EventReturnResolved,
-		"line_item_id": req.LineItemID,
-		"order_id":     orderId,
-		"sku_id":       skuId,
-		"quantity":     qty,
-		"resolution":   req.Resolution,
-		"supplier_id":  supplierId,
-		"notes":        req.Notes,
-		"timestamp":    time.Now().UnixMilli(),
-	}
-	eventBytes, _ := json.Marshal(event)
-	go func() {
-		err := s.Producer.WriteMessages(context.Background(), kafka.Message{
-			Key:   []byte(orderId),
-			Value: eventBytes,
-		})
-		if err != nil {
-			log.Printf("[RETURNS] Kafka emit failed for %s: %v", req.LineItemID, err)
-		}
-	}()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{

@@ -1097,27 +1097,26 @@ func (s *OrderService) AssignRoute(ctx context.Context, orderIds []string, route
 	return err
 }
 
-// PublishEvent serialises an event payload and writes it to the lab-logistics-events Kafka topic.
-// It reuses the shared s.Producer writer already initialised in main.go.
+// PublishEvent emits a best-effort domain event through the transactional outbox.
 // Always call in a goroutine (go s.PublishEvent(...)) to avoid blocking the HTTP path.
 func (s *OrderService) PublishEvent(ctx context.Context, eventType string, payload interface{}) {
-	bytes, err := json.Marshal(payload)
-	if err != nil {
-		fmt.Printf("[KAFKA] Failed to marshal %s event: %v\n", eventType, err)
+	if s == nil || s.Client == nil {
+		slog.Warn("order publish event skipped: spanner unavailable", "event_type", eventType)
 		return
 	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
-	eventCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	eventCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
 
-	err = s.Producer.WriteMessages(eventCtx, kafka.Message{
-		Key:   []byte(eventType),
-		Value: bytes,
+	aggregateID := fmt.Sprintf("%s:%d", eventType, time.Now().UTC().UnixNano())
+	_, err := s.Client.ReadWriteTransaction(eventCtx, func(txCtx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return outbox.EmitJSON(txn, "OrderEvent", aggregateID, eventType, topicLogisticsEvents, payload, telemetry.TraceIDFromContext(txCtx))
 	})
 	if err != nil {
-		fmt.Printf("[KAFKA] Failed to broadcast %s: %v\n", eventType, err)
-	} else {
-		fmt.Printf("[KAFKA] ✓ Broadcasted %s event successfully.\n", eventType)
+		slog.ErrorContext(eventCtx, "order publish event failed", "event_type", eventType, "err", err)
 	}
 }
 

@@ -11,12 +11,14 @@ import (
 	"time"
 
 	"backend-go/auth"
+	internalKafka "backend-go/kafka"
+	"backend-go/outbox"
 	"backend-go/telemetry"
 	"backend-go/workers"
 	"backend-go/ws"
 
 	"cloud.google.com/go/spanner"
-	"github.com/segmentio/kafka-go"
+	kafkago "github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
 )
 
@@ -50,11 +52,11 @@ type RetailerPusher interface {
 
 type OrderVettingService struct {
 	Client      *spanner.Client
-	Producer    *kafka.Writer
+	Producer    *kafkago.Writer
 	RetailerHub RetailerPusher
 }
 
-func NewOrderVettingService(client *spanner.Client, producer *kafka.Writer, rh RetailerPusher) *OrderVettingService {
+func NewOrderVettingService(client *spanner.Client, producer *kafkago.Writer, rh RetailerPusher) *OrderVettingService {
 	return &OrderVettingService{Client: client, Producer: producer, RetailerHub: rh}
 }
 
@@ -307,12 +309,14 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 		}
 
 		// Update state
-		txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.Update("Orders",
 				[]string{"OrderId", "State"},
 				[]interface{}{req.OrderID, newState},
 			),
-		})
+		}); err != nil {
+			return err
+		}
 
 		// If rejected, release inventory locks
 		if req.Decision == "REJECTED" {
@@ -340,13 +344,27 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 				}
 				var currentQty int64
 				invRow.Columns(&currentQty)
-				txn.BufferWrite([]*spanner.Mutation{
+				if err := txn.BufferWrite([]*spanner.Mutation{
 					spanner.Update("SupplierInventory",
 						[]string{"ProductId", "QuantityAvailable", "UpdatedAt"},
 						[]interface{}{skuId, currentQty + qty, spanner.CommitTimestamp},
 					),
-				})
+				}); err != nil {
+					return err
+				}
 			}
+
+			event := map[string]interface{}{
+				"type":        ws.EventOrderRejectedBySupplier,
+				"order_id":    req.OrderID,
+				"retailer_id": retailerId,
+				"supplier_id": supplierId,
+				"amount":      amount,
+				"gateway":     gateway,
+				"reason":      req.Reason,
+				"timestamp":   time.Now().UnixMilli(),
+			}
+			return outbox.EmitJSON(txn, "Order", req.OrderID, ws.EventOrderRejectedBySupplier, internalKafka.TopicMain, event, telemetry.TraceIDFromContext(ctx))
 		}
 
 		return nil
@@ -385,30 +403,6 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 				})
 			})
 		}
-	}
-
-	// AFTER commit: emit Kafka event
-	if req.Decision == "REJECTED" {
-		event := map[string]interface{}{
-			"type":        ws.EventOrderRejectedBySupplier,
-			"order_id":    req.OrderID,
-			"retailer_id": retailerId,
-			"supplier_id": supplierId,
-			"amount":      amount,
-			"gateway":     gateway,
-			"reason":      req.Reason,
-			"timestamp":   time.Now().UnixMilli(),
-		}
-		eventBytes, _ := json.Marshal(event)
-		workers.EventPool.Submit(func() {
-			err := s.Producer.WriteMessages(context.Background(), kafka.Message{
-				Key:   []byte(req.OrderID),
-				Value: eventBytes,
-			})
-			if err != nil {
-				log.Printf("[VETTING] Kafka emit failed for %s: %v", req.OrderID, err)
-			}
-		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")

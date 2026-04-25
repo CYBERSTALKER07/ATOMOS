@@ -11,6 +11,8 @@ import (
 
 	"backend-go/auth"
 	internalKafka "backend-go/kafka"
+	"backend-go/outbox"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -232,14 +234,26 @@ func (s *SupplyRequestService) HandleCreateSupplyRequest(w http.ResponseWriter, 
 		[]interface{}{requestID, totalVolumeVU},
 	))
 
-	if _, err := s.Spanner.Apply(r.Context(), mutations); err != nil {
+	if _, err := s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+
+		event := internalKafka.SupplyRequestEvent{
+			RequestID:   requestID,
+			WarehouseID: warehouseID,
+			FactoryID:   req.FactoryID,
+			SupplierID:  supplierID,
+			State:       "SUBMITTED",
+			Priority:    priority,
+			Timestamp:   time.Now().UTC(),
+		}
+		return outbox.EmitJSON(txn, "SupplyRequest", requestID, internalKafka.EventSupplyRequestSubmitted, internalKafka.TopicMain, event, telemetry.TraceIDFromContext(ctx))
+	}); err != nil {
 		log.Printf("[SUPPLY REQUEST] spanner insert error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-
-	// Emit Kafka event
-	go s.emitSupplyRequestEvent(requestID, warehouseID, req.FactoryID, supplierID, "SUBMITTED", priority)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -519,14 +533,28 @@ func (s *SupplyRequestService) HandleSupplyRequestTransition(w http.ResponseWrit
 			vals = append(vals, req.TransferOrderID)
 		}
 
-		txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.Update("SupplyRequests", cols, vals),
-		})
+		}); err != nil {
+			return err
+		}
 
-		// Emit Kafka event asynchronously
-		go s.emitSupplyRequestEvent(requestID, warehouseID, factoryID, supplierID, newState, "")
+		eventType := supplyRequestEventTypeForState(newState)
+		if eventType == "" {
+			return nil
+		}
 
-		return nil
+		event := internalKafka.SupplyRequestEvent{
+			RequestID:   requestID,
+			WarehouseID: warehouseID,
+			FactoryID:   factoryID,
+			SupplierID:  supplierID,
+			State:       newState,
+			Priority:    "",
+			Timestamp:   time.Now().UTC(),
+		}
+		return outbox.EmitJSON(txn, "SupplyRequest", requestID, eventType, internalKafka.TopicMain, event, telemetry.TraceIDFromContext(ctx))
+
 	})
 
 	if err != nil {
@@ -549,41 +577,19 @@ func (s *SupplyRequestService) HandleSupplyRequestTransition(w http.ResponseWrit
 	})
 }
 
-func (s *SupplyRequestService) emitSupplyRequestEvent(requestID, warehouseID, factoryID, supplierID, state, priority string) {
-	eventType := ""
+func supplyRequestEventTypeForState(state string) string {
 	switch state {
 	case "SUBMITTED":
-		eventType = internalKafka.EventSupplyRequestSubmitted
+		return internalKafka.EventSupplyRequestSubmitted
 	case "ACKNOWLEDGED":
-		eventType = internalKafka.EventSupplyRequestAcknowledged
+		return internalKafka.EventSupplyRequestAcknowledged
 	case "READY":
-		eventType = internalKafka.EventSupplyRequestReady
+		return internalKafka.EventSupplyRequestReady
 	case "FULFILLED":
-		eventType = internalKafka.EventSupplyRequestFulfilled
+		return internalKafka.EventSupplyRequestFulfilled
 	case "CANCELLED":
-		eventType = internalKafka.EventSupplyRequestCancelled
+		return internalKafka.EventSupplyRequestCancelled
 	default:
-		return
-	}
-
-	payload := internalKafka.SupplyRequestEvent{
-		RequestID:   requestID,
-		WarehouseID: warehouseID,
-		FactoryID:   factoryID,
-		SupplierID:  supplierID,
-		State:       state,
-		Priority:    priority,
-		Timestamp:   time.Now().UTC(),
-	}
-	data, _ := json.Marshal(payload)
-
-	if s.Producer != nil {
-		err := s.Producer.WriteMessages(context.Background(), kafka.Message{
-			Key:   []byte(eventType),
-			Value: data,
-		})
-		if err != nil {
-			log.Printf("[SUPPLY REQUEST] kafka emit error for %s: %v", eventType, err)
-		}
+		return ""
 	}
 }

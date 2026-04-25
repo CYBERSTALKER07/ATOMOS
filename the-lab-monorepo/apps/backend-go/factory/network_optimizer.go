@@ -10,7 +10,9 @@ import (
 
 	"backend-go/auth"
 	"backend-go/kafka"
+	"backend-go/outbox"
 	"backend-go/proximity"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
@@ -207,19 +209,16 @@ func (s *NetworkOptimizerService) HandleSetNetworkMode(w http.ResponseWriter, r 
 	// Get old mode for event
 	oldMode, _ := s.GetNetworkMode(r.Context(), supplierID)
 
-	_, err := s.Spanner.Apply(r.Context(), []*spanner.Mutation{
-		spanner.InsertOrUpdate("NetworkOptimizationMode",
-			[]string{"SupplierId", "Mode", "UpdatedAt", "UpdatedBy"},
-			[]interface{}{supplierID, req.Mode, spanner.CommitTimestamp, claims.UserID},
-		),
-	})
-	if err != nil {
-		http.Error(w, `{"error":"update_failed"}`, http.StatusInternalServerError)
-		return
-	}
+	_, err := s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite([]*spanner.Mutation{
+			spanner.InsertOrUpdate("NetworkOptimizationMode",
+				[]string{"SupplierId", "Mode", "UpdatedAt", "UpdatedBy"},
+				[]interface{}{supplierID, req.Mode, spanner.CommitTimestamp, claims.UserID},
+			),
+		}); err != nil {
+			return err
+		}
 
-	// Emit event
-	if s.Producer != nil {
 		evt := kafka.NetworkModeChangedEvent{
 			SupplierId: supplierID,
 			OldMode:    oldMode,
@@ -228,11 +227,11 @@ func (s *NetworkOptimizerService) HandleSetNetworkMode(w http.ResponseWriter, r 
 			Reason:     req.Reason,
 			Timestamp:  time.Now().UTC(),
 		}
-		payload, _ := json.Marshal(evt)
-		_ = s.Producer.WriteMessages(r.Context(), kafkago.Message{
-			Key:   []byte(kafka.EventNetworkModeChanged),
-			Value: payload,
-		})
+		return outbox.EmitJSON(txn, "NetworkOptimizationMode", supplierID, kafka.EventNetworkModeChanged, kafka.TopicMain, evt, telemetry.TraceIDFromContext(ctx))
+	})
+	if err != nil {
+		http.Error(w, `{"error":"update_failed"}`, http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
