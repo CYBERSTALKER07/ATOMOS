@@ -5,6 +5,8 @@ metadata:
   namespace: void-system
   labels:
     app: backend-go
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'
 spec:
   type: ClusterIP
   selector:

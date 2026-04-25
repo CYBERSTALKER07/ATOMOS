@@ -124,7 +124,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	// 12. POST /v1/fleet/route/{id}/complete — route completion + QUARANTINE sweep.
 	http.HandleFunc("/v1/fleet/route/",
-		auth.RequireRole(driver, log(order.HandleCompleteRoute(d.Spanner, d.Producer))))
+		auth.RequireRole(driver, log(order.HandleCompleteRoute(d.Spanner))))
 }
 
 // handleDispatch assigns a batch of orders to a route via OrderService.

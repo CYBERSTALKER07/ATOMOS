@@ -6,6 +6,7 @@ metadata:
 data:
   LOG_LEVEL: "info"
   REGION: "asia-south1"
+  HEALTH_PORT: "8081"
   # Consumer group IDs match backend-go/kafka/events.go and ai-worker/main.go.
   AI_CONSUMER_GROUP: "ai-worker-group"
   FREEZE_CONSUMER_GROUP: "ai-worker-freeze-group"

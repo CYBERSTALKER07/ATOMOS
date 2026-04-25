@@ -10,13 +10,11 @@ package payment
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
 	"time"
 
-	"backend-go/workers"
 	"backend-go/ws"
 
 	"cloud.google.com/go/spanner"
@@ -115,15 +113,13 @@ func (r *GlobalPayReconciler) ReconcileSession(ctx context.Context, session *Pay
 func (r *GlobalPayReconciler) applySettlement(ctx context.Context, session *PaymentSession, status *GlobalPayPaymentStatus) (*GlobalPayReconcileResult, error) {
 	// Settle the master invoice
 	if session.InvoiceID != "" {
-		retailerID, settleErr := r.settleInvoice(ctx, session.InvoiceID, session.LockedAmount)
+		_, settleErr := r.settleInvoice(ctx, session.InvoiceID, session.LockedAmount)
 		if settleErr != nil {
 			if strings.Contains(settleErr.Error(), "already settled") {
 				log.Printf("[GP_RECONCILE] Invoice %s already settled — idempotent", session.InvoiceID)
 			} else {
 				return nil, fmt.Errorf("invoice settlement failed for session %s: %w", session.SessionID, settleErr)
 			}
-		} else {
-			r.emitSettledEvent(session.InvoiceID, session.LockedAmount, retailerID)
 		}
 	}
 
@@ -257,36 +253,19 @@ func (r *GlobalPayReconciler) settleInvoice(ctx context.Context, invoiceID strin
 			return fmt.Errorf("amount mismatch: invoice=%d expected=%d", total, expectedAmount)
 		}
 
-		return txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.Update("MasterInvoices",
 				[]string{"InvoiceId", "State"},
 				[]interface{}{invoiceID, "SETTLED"},
 			),
-		})
+		}); err != nil {
+			return err
+		}
+
+		return emitInvoiceSettledOutbox(ctx, txn, invoiceID, "GLOBAL_PAY", total, retailerID)
 	})
 
 	return retailerID, err
-}
-
-func (r *GlobalPayReconciler) emitSettledEvent(invoiceID string, amount int64, retailerID string) {
-	event := InvoiceSettledEvent{
-		InvoiceID:  invoiceID,
-		Gateway:    "GLOBAL_PAY",
-		Amount:     amount,
-		RetailerID: retailerID,
-		Timestamp:  time.Now().UTC(),
-	}
-
-	workers.EventPool.Submit(func() {
-		data, _ := json.Marshal(event)
-		err := r.Producer.WriteMessages(context.Background(), kafka.Message{
-			Key:   []byte(invoiceID),
-			Value: data,
-		})
-		if err != nil {
-			log.Printf("[GP_RECONCILE] Kafka INVOICE_SETTLED failed for %s: %v", invoiceID, err)
-		}
-	})
 }
 
 func (r *GlobalPayReconciler) notifyDriverPaymentSettled(orderID string, amount int64) {

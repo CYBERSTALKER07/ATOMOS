@@ -9,6 +9,8 @@ import (
 
 	"backend-go/auth"
 	"backend-go/kafka"
+	"backend-go/outbox"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -157,34 +159,27 @@ func (s *ForceReceiveService) HandleForceReceive(w http.ResponseWriter, r *http.
 				continue
 			}
 
-			txn.BufferWrite([]*spanner.Mutation{
+			if err := txn.BufferWrite([]*spanner.Mutation{
 				spanner.Update("SupplierInventory",
 					[]string{"SupplierId", "ProductId", "QuantityAvailable"},
 					[]interface{}{supplierID, item.ProductId, currentQty + item.Quantity},
 				),
-			})
+			}); err != nil {
+				return err
+			}
 		}
 
-		return nil
-	})
-	if err != nil {
-		log.Printf("[FORCE_RECEIVE] Transaction failed: %v", err)
-		http.Error(w, `{"error":"reconciliation_failed"}`, http.StatusInternalServerError)
-		return
-	}
+		if err := txn.BufferWrite([]*spanner.Mutation{
+			spanner.Insert("FactorySLAEvents",
+				[]string{"EventId", "TransferId", "SupplierId", "FactoryId", "WarehouseId",
+					"EscalationLevel", "SLABreachMinutes", "CreatedAt"},
+				[]interface{}{uuid.New().String(), transferID, supplierID, factoryID, whID,
+					"FORCE_RECEIVED", int64(0), spanner.CommitTimestamp},
+			),
+		}); err != nil {
+			return err
+		}
 
-	// Create balancing SLA event for audit trail
-	_, _ = s.Spanner.Apply(r.Context(), []*spanner.Mutation{
-		spanner.Insert("FactorySLAEvents",
-			[]string{"EventId", "TransferId", "SupplierId", "FactoryId", "WarehouseId",
-				"EscalationLevel", "SLABreachMinutes", "CreatedAt"},
-			[]interface{}{uuid.New().String(), transferID, supplierID, factoryID, whID,
-				"FORCE_RECEIVED", int64(0), spanner.CommitTimestamp},
-		),
-	})
-
-	// Emit Kafka audit event
-	if s.Producer != nil {
 		evt := kafka.InboundFreightUnannouncedEvent{
 			TransferId:  transferID,
 			WarehouseId: whID,
@@ -193,11 +188,17 @@ func (s *ForceReceiveService) HandleForceReceive(w http.ResponseWriter, r *http.
 			ReceivedBy:  claims.UserID,
 			Timestamp:   time.Now().UTC(),
 		}
-		payload, _ := json.Marshal(evt)
-		_ = s.Producer.WriteMessages(r.Context(), kafkago.Message{
-			Key:   []byte(kafka.EventInboundFreightUnannounced),
-			Value: payload,
-		})
+
+		if err := outbox.EmitJSON(txn, "InternalTransferOrder", transferID, kafka.EventInboundFreightUnannounced, kafka.TopicMain, evt, telemetry.TraceIDFromContext(ctx)); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		log.Printf("[FORCE_RECEIVE] Transaction failed: %v", err)
+		http.Error(w, `{"error":"reconciliation_failed"}`, http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")

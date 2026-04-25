@@ -11,6 +11,8 @@ import (
 	"backend-go/auth"
 	"backend-go/hotspot"
 	kafkaEvents "backend-go/kafka"
+	"backend-go/outbox"
+	"backend-go/telemetry"
 	"backend-go/ws"
 
 	"cloud.google.com/go/spanner"
@@ -102,11 +104,25 @@ func HandleProposeNegotiation(svc *OrderService, deps *NegotiationDeps) http.Han
 
 			// Insert proposal
 			itemsJSON, _ := json.Marshal(req.Items)
-			txn.BufferWrite([]*spanner.Mutation{
+			if err := txn.BufferWrite([]*spanner.Mutation{
 				spanner.Insert("NegotiationProposals",
 					[]string{"ProposalId", "OrderId", "DriverId", "Status", "ProposedItems", "CreatedAt"},
 					[]interface{}{proposalID, req.OrderID, claims.UserID, "PENDING", string(itemsJSON), spanner.CommitTimestamp}),
-			})
+			}); err != nil {
+				return fmt.Errorf("insert negotiation proposal: %w", err)
+			}
+
+			now := time.Now().UTC()
+			if err := outbox.EmitJSON(txn, "NegotiationProposal", proposalID, kafkaEvents.EventNegotiationProposed, topicLogisticsEvents, kafkaEvents.NegotiationProposedEvent{
+				ProposalID: proposalID,
+				OrderID:    req.OrderID,
+				DriverID:   claims.UserID,
+				SupplierID: supplierID,
+				RetailerID: retailerID,
+				Timestamp:  now,
+			}, telemetry.TraceIDFromContext(ctx)); err != nil {
+				return fmt.Errorf("outbox emit negotiation proposed: %w", err)
+			}
 
 			return nil
 		})
@@ -134,10 +150,6 @@ func HandleProposeNegotiation(svc *OrderService, deps *NegotiationDeps) http.Han
 				map[string]string{"type": ws.EventNegotiationProposed, "order_id": req.OrderID, "proposal_id": proposalID})
 		}
 
-		go svc.PublishEvent(context.Background(), kafkaEvents.EventNegotiationProposed, kafkaEvents.NegotiationProposedEvent{
-			ProposalID: proposalID, OrderID: req.OrderID, DriverID: claims.UserID,
-			SupplierID: supplierID, RetailerID: retailerID, Timestamp: time.Now().UTC(),
-		})
 		writeOrderEvent(ctx, svc.Client, req.OrderID, claims.UserID, "DRIVER", "NEGOTIATION_PROPOSED",
 			map[string]string{"proposal_id": proposalID}, 0, 0)
 
@@ -211,9 +223,21 @@ func HandleResolveNegotiation(svc *OrderService, deps *NegotiationDeps) http.Han
 				cols = append(cols, "Resolution")
 				vals = append(vals, req.Resolution)
 			}
-			txn.BufferWrite([]*spanner.Mutation{
+			if err := txn.BufferWrite([]*spanner.Mutation{
 				spanner.Update("NegotiationProposals", cols, vals),
-			})
+			}); err != nil {
+				return fmt.Errorf("update negotiation proposal: %w", err)
+			}
+
+			if err := outbox.EmitJSON(txn, "NegotiationProposal", req.ProposalID, kafkaEvents.EventNegotiationResolved, topicLogisticsEvents, kafkaEvents.NegotiationResolvedEvent{
+				ProposalID: req.ProposalID,
+				OrderID:    orderID,
+				SupplierID: claims.ResolveSupplierID(),
+				Action:     req.Action,
+				Timestamp:  now,
+			}, telemetry.TraceIDFromContext(ctx)); err != nil {
+				return fmt.Errorf("outbox emit negotiation resolved: %w", err)
+			}
 
 			return nil
 		})
@@ -259,10 +283,6 @@ func HandleResolveNegotiation(svc *OrderService, deps *NegotiationDeps) http.Han
 			})
 		}
 
-		go svc.PublishEvent(context.Background(), kafkaEvents.EventNegotiationResolved, kafkaEvents.NegotiationResolvedEvent{
-			ProposalID: req.ProposalID, OrderID: orderID,
-			SupplierID: claims.ResolveSupplierID(), Action: req.Action, Timestamp: time.Now().UTC(),
-		})
 		writeOrderEvent(ctx, svc.Client, orderID, claims.UserID, claims.Role, "NEGOTIATION_RESOLVED",
 			map[string]string{"proposal_id": req.ProposalID, "action": req.Action}, 0, 0)
 

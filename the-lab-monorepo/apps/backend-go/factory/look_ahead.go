@@ -2,19 +2,19 @@ package factory
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math"
 	"time"
 
 	"backend-go/kafka"
+	"backend-go/outbox"
 	"backend-go/proximity"
 	"backend-go/supplier"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
-	kafkago "github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
 )
 
@@ -299,7 +299,33 @@ func (s *PullMatrixService) createLookAheadTransfers(ctx context.Context, suppli
 			allContributingOrders = append(allContributingOrders, item.OrderIds...)
 		}
 
-		if _, err := s.Spanner.Apply(ctx, mutations); err != nil {
+		if _, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			if err := txn.BufferWrite(mutations); err != nil {
+				return err
+			}
+			evt := struct {
+				Event       string  `json:"event"`
+				TransferID  string  `json:"transfer_id"`
+				FactoryID   string  `json:"factory_id"`
+				WarehouseID string  `json:"warehouse_id"`
+				SupplierID  string  `json:"supplier_id"`
+				Source      string  `json:"source"`
+				VolumeVU    float64 `json:"volume_vu"`
+				ConvoyCount int     `json:"convoy_count"`
+				Timestamp   string  `json:"timestamp"`
+			}{
+				Event:       kafka.EventReplenishmentTransferCreated,
+				TransferID:  transferID,
+				FactoryID:   key.FactoryId,
+				WarehouseID: warehouseID,
+				SupplierID:  supplierID,
+				Source:      "SYSTEM_LOOKAHEAD",
+				VolumeVU:    totalVolumeVU,
+				ConvoyCount: convoyCount,
+				Timestamp:   proximity.TashkentNow().Format(time.RFC3339),
+			}
+			return outbox.EmitJSON(txn, "InternalTransferOrder", transferID, kafka.EventReplenishmentTransferCreated, kafka.TopicMain, evt, telemetry.TraceIDFromContext(ctx))
+		}); err != nil {
 			log.Printf("[LOOK_AHEAD] Transfer creation failed: %v", err)
 			continue
 		}
@@ -317,9 +343,6 @@ func (s *PullMatrixService) createLookAheadTransfers(ctx context.Context, suppli
 		if err := AtomicIncrementLoad(ctx, s.Spanner, key.FactoryId, 1); err != nil {
 			log.Printf("[LOOK_AHEAD] Factory load increment failed: %v", err)
 		}
-
-		// Emit Kafka event
-		s.emitTransferEvent(ctx, transferID, key.FactoryId, warehouseID, supplierID, totalVolumeVU, convoyCount)
 
 		transferCount++
 		log.Printf("[LOOK_AHEAD] Created transfer %s: factory=%s → warehouse=%s (%d items, %.1f VU, %d trucks)",
@@ -354,7 +377,9 @@ func (s *PullMatrixService) linkReplenishmentId(ctx context.Context, transferID 
 			}))
 		}
 
-		if _, err := s.Spanner.Apply(ctx, mutations); err != nil {
+		if _, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite(mutations)
+		}); err != nil {
 			log.Printf("[LOOK_AHEAD] ReplenishmentId link failed for batch %d-%d: %v", i, end, err)
 		}
 	}
@@ -391,36 +416,15 @@ func (s *PullMatrixService) createConvoyManifests(ctx context.Context, transferI
 	}
 
 	if len(mutations) > 0 {
-		if _, err := s.Spanner.Apply(ctx, mutations); err != nil {
+		if _, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite(mutations)
+		}); err != nil {
 			log.Printf("[LOOK_AHEAD] Convoy manifest creation failed: %v", err)
 		} else {
 			log.Printf("[LOOK_AHEAD] Created %d convoy manifests for transfer %s (%.1f VU total)",
 				convoyCount, transferID[:8], totalVU)
 		}
 	}
-}
-
-// emitTransferEvent publishes the look-ahead transfer to Kafka.
-func (s *PullMatrixService) emitTransferEvent(ctx context.Context, transferID, factoryID, warehouseID, supplierID string, volumeVU float64, convoyCount int) {
-	if s.Producer == nil {
-		return
-	}
-	evt := map[string]interface{}{
-		"event":        kafka.EventReplenishmentTransferCreated,
-		"transfer_id":  transferID,
-		"factory_id":   factoryID,
-		"warehouse_id": warehouseID,
-		"supplier_id":  supplierID,
-		"source":       "SYSTEM_LOOKAHEAD",
-		"volume_vu":    volumeVU,
-		"convoy_count": convoyCount,
-		"timestamp":    proximity.TashkentNow().Format(time.RFC3339),
-	}
-	payload, _ := json.Marshal(evt)
-	_ = s.Producer.WriteMessages(ctx, kafkago.Message{
-		Key:   []byte(transferID),
-		Value: payload,
-	})
 }
 
 // ── Data Fetchers ───────────────────────────────────────────────────────────

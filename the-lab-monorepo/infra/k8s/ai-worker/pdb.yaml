@@ -2,7 +2,7 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: ai-worker-pdb
-  namespace: void
+  namespace: void-system
   labels:
     app: ai-worker
     tier: optimizer

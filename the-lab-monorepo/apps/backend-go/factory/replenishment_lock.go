@@ -2,12 +2,13 @@ package factory
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"time"
 
 	"backend-go/kafka"
+	"backend-go/outbox"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	kafkago "github.com/segmentio/kafka-go"
@@ -84,12 +85,16 @@ func (s *ReplenishmentLockService) AcquireLock(ctx context.Context, supplierID, 
 					// We have higher priority — preempt
 					log.Printf("[REPLENISHMENT_LOCK] Preempting lock %s: %s (%.1f) > %s (%.1f)",
 						lockKey, warehouseID, velocity, heldBy, heldPriority)
-					return txn.BufferWrite([]*spanner.Mutation{
+					result.Acquired = true
+					if err := txn.BufferWrite([]*spanner.Mutation{
 						spanner.InsertOrUpdate("ReplenishmentLocks",
 							[]string{"LockKey", "AcquiredBy", "SupplierId", "Priority", "AcquiredAt", "ExpiresAt"},
 							[]interface{}{lockKey, warehouseID, supplierID, velocity, spanner.CommitTimestamp, now.Add(lockTTL)},
 						),
-					})
+					}); err != nil {
+						return err
+					}
+					return emitReplenishmentLockEvent(ctx, txn, lockKey, warehouseID, supplierID, velocity, "PREEMPTED", kafka.EventReplenishmentLockAcquired, now)
 				}
 				// Lower or equal priority — lock denied
 				result.Acquired = false
@@ -102,33 +107,18 @@ func (s *ReplenishmentLockService) AcquireLock(ctx context.Context, supplierID, 
 
 		// No valid lock exists — acquire
 		result.Acquired = true
-		return txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.InsertOrUpdate("ReplenishmentLocks",
 				[]string{"LockKey", "AcquiredBy", "SupplierId", "Priority", "AcquiredAt", "ExpiresAt"},
 				[]interface{}{lockKey, warehouseID, supplierID, velocity, spanner.CommitTimestamp, now.Add(lockTTL)},
 			),
-		})
+		}); err != nil {
+			return err
+		}
+		return emitReplenishmentLockEvent(ctx, txn, lockKey, warehouseID, supplierID, velocity, "ACQUIRED", kafka.EventReplenishmentLockAcquired, now)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("lock transaction failed: %w", err)
-	}
-
-	// Emit Kafka event
-	if s.Producer != nil && result.Acquired {
-		action := "ACQUIRED"
-		evt := kafka.ReplenishmentLockEvent{
-			LockKey:     lockKey,
-			WarehouseId: warehouseID,
-			SupplierId:  supplierID,
-			Priority:    velocity,
-			Action:      action,
-			Timestamp:   now,
-		}
-		payload, _ := json.Marshal(evt)
-		_ = s.Producer.WriteMessages(ctx, kafkago.Message{
-			Key:   []byte(kafka.EventReplenishmentLockAcquired),
-			Value: payload,
-		})
 	}
 
 	return &result, nil
@@ -150,31 +140,30 @@ func (s *ReplenishmentLockService) ReleaseLock(ctx context.Context, supplierID, 
 		if heldBy != warehouseID {
 			return nil // Not our lock
 		}
-		return txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.Delete("ReplenishmentLocks", spanner.Key{lockKey}),
-		})
+		}); err != nil {
+			return err
+		}
+		return emitReplenishmentLockEvent(ctx, txn, lockKey, warehouseID, supplierID, 0, "RELEASED", kafka.EventReplenishmentLockReleased, time.Now().UTC())
 	})
 	if err != nil {
 		return fmt.Errorf("release lock failed: %w", err)
 	}
 
-	// Emit release event
-	if s.Producer != nil {
-		evt := kafka.ReplenishmentLockEvent{
-			LockKey:     lockKey,
-			WarehouseId: warehouseID,
-			SupplierId:  supplierID,
-			Action:      "RELEASED",
-			Timestamp:   time.Now().UTC(),
-		}
-		payload, _ := json.Marshal(evt)
-		_ = s.Producer.WriteMessages(ctx, kafkago.Message{
-			Key:   []byte(kafka.EventReplenishmentLockReleased),
-			Value: payload,
-		})
-	}
-
 	return nil
+}
+
+func emitReplenishmentLockEvent(ctx context.Context, txn *spanner.ReadWriteTransaction, lockKey, warehouseID, supplierID string, priority float64, action, eventType string, timestamp time.Time) error {
+	evt := kafka.ReplenishmentLockEvent{
+		LockKey:     lockKey,
+		WarehouseId: warehouseID,
+		SupplierId:  supplierID,
+		Priority:    priority,
+		Action:      action,
+		Timestamp:   timestamp,
+	}
+	return outbox.EmitJSON(txn, "ReplenishmentLock", lockKey, eventType, kafka.TopicMain, evt, telemetry.TraceIDFromContext(ctx))
 }
 
 // CleanExpiredLocks removes all expired locks. Called periodically by the SLA monitor cron.
@@ -212,7 +201,9 @@ func (s *ReplenishmentLockService) CleanExpiredLocks(ctx context.Context) (int, 
 		mutations = append(mutations, spanner.Delete("ReplenishmentLocks", spanner.Key{k}))
 	}
 
-	_, err := s.Spanner.Apply(ctx, mutations)
+	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(mutations)
+	})
 	if err != nil {
 		return 0, err
 	}

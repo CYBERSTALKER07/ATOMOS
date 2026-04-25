@@ -536,8 +536,8 @@ func main() {
 		})
 	})
 
-	// GET /v1/metrics — Process-level metrics (no auth — for monitoring agents)
-	http.HandleFunc("/v1/metrics", loggingMiddleware(analytics.HandleMetrics))
+	// GET /metrics and /v1/metrics — Prometheus and legacy JSON process metrics.
+	analytics.RegisterMetricsRoutes(http.DefaultServeMux, loggingMiddleware)
 
 	// /v1/driver/{earnings,history,availability} moved to driverroutes.
 
@@ -1539,7 +1539,7 @@ func main() {
 	platformCfg := settings.NewPlatformConfig(spannerClient)
 
 	// ── Refund Endpoint (Phase 3.1) ──
-	refundSvc := payment.NewRefundService(spannerClient, svc.Producer, platformCfg.PlatformFeeBasisPoints())
+	refundSvc := payment.NewRefundService(spannerClient, platformCfg.PlatformFeeBasisPoints())
 	chargebackSvc := payment.NewChargebackService(spannerClient)
 	http.HandleFunc("/v1/order/refund", auth.RequireRole([]string{"ADMIN", "SUPPLIER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

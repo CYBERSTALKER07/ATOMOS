@@ -6,12 +6,13 @@ import (
 	"runtime"
 	"sync/atomic"
 	"time"
+
+	"backend-go/telemetry"
 )
 
-// ─── Lightweight Process Metrics (no Prometheus dependency) ─────────────────
+// ─── Lightweight Process Metrics ────────────────────────────────────────────
 // Exposes runtime, connection, and request counters at GET /v1/metrics.
-// When Prometheus client_golang is added later, these counters can be
-// registered as prometheus.Gauge/Counter trivially.
+// Prometheus metrics are exposed separately at GET /metrics.
 
 var (
 	// Request counters (atomically incremented by middleware)
@@ -33,6 +34,12 @@ func DecrementRequest() { ActiveRequests.Add(-1) }
 
 // IncrementError tracks 5xx responses.
 func IncrementError() { TotalErrors.Add(1) }
+
+// RegisterMetricsRoutes mounts legacy JSON metrics and Prometheus metrics.
+func RegisterMetricsRoutes(mux *http.ServeMux, log func(http.HandlerFunc) http.HandlerFunc) {
+	mux.Handle("/metrics", telemetry.Handler())
+	mux.HandleFunc("/v1/metrics", log(HandleMetrics))
+}
 
 // HandleMetrics returns process-level metrics as JSON.
 // Designed for load balancers, dashboards, and lightweight monitoring.

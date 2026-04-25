@@ -819,12 +819,34 @@ func (s *OrderService) SealPayload(ctx context.Context, req PayloadSealRequest) 
 			return fmt.Errorf("failed to seal payload and advance to DISPATCHED: %w", err)
 		}
 
+		now := time.Now().UTC()
+		traceID := telemetry.TraceIDFromContext(ctx)
+
+		if err := outbox.EmitJSON(txn, "Order", req.OrderID, kafkaEvents.EventPayloadSealed, topicLogisticsEvents, kafkaEvents.PayloadSealedEvent{
+			OrderID:       req.OrderID,
+			TerminalID:    req.TerminalID,
+			DeliveryToken: deliveryToken,
+			Timestamp:     now,
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit payload sealed: %w", err)
+		}
+
+		if err := outbox.EmitJSON(txn, "Order", req.OrderID, kafkaEvents.EventOrderStatusChanged, topicLogisticsEvents, kafkaEvents.OrderStatusChangedEvent{
+			OrderID:    req.OrderID,
+			RetailerID: retailerID,
+			SupplierID: supplierID,
+			OldState:   "LOADED",
+			NewState:   "DISPATCHED",
+			Timestamp:  now,
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit order status changed (sealed): %w", err)
+		}
+
 		return nil
 	})
 
-	// Fire PAYLOAD_SEALED event to Kafka in a goroutine — zero lag on the warehouse HTTP response
+	// Cache the delivery token in Redis with 4-hour TTL for fast validation.
 	if err == nil {
-		// Cache the delivery token in Redis with 4-hour TTL for fast validation
 		if cache.Client != nil {
 			ttlCtx, ttlCancel := context.WithTimeout(context.Background(), 2*time.Second)
 			if setErr := cache.Client.Set(ttlCtx, cache.PrefixDeliveryToken+req.OrderID, deliveryToken, cache.TTLDeliveryToken).Err(); setErr != nil {
@@ -832,21 +854,6 @@ func (s *OrderService) SealPayload(ctx context.Context, req PayloadSealRequest) 
 			}
 			ttlCancel()
 		}
-
-		go s.PublishEvent(context.Background(), kafkaEvents.EventPayloadSealed, kafkaEvents.PayloadSealedEvent{
-			OrderID:       req.OrderID,
-			TerminalID:    req.TerminalID,
-			DeliveryToken: deliveryToken,
-			Timestamp:     time.Now().UTC(),
-		})
-		go s.PublishEvent(context.Background(), kafkaEvents.EventOrderStatusChanged, kafkaEvents.OrderStatusChangedEvent{
-			OrderID:    req.OrderID,
-			RetailerID: retailerID,
-			SupplierID: supplierID,
-			OldState:   "LOADED",
-			NewState:   "DISPATCHED",
-			Timestamp:  time.Now().UTC(),
-		})
 	}
 
 	return retailerID, err
@@ -883,28 +890,36 @@ func (s *OrderService) MarkArrived(ctx context.Context, orderID string) (string,
 			[]string{"OrderId", "State", "Version"},
 			[]interface{}{orderID, "ARRIVED", version + 1},
 		)
-		return txn.BufferWrite([]*spanner.Mutation{mut})
-	})
+		if err := txn.BufferWrite([]*spanner.Mutation{mut}); err != nil {
+			return err
+		}
 
-	// Emit DRIVER_ARRIVED + ORDER_STATUS_CHANGED to Kafka for notification dispatcher
-	if err == nil {
 		now := time.Now().UTC()
-		go s.PublishEvent(context.Background(), kafkaEvents.EventDriverArrived, kafkaEvents.DriverArrivedEvent{
+		traceID := telemetry.TraceIDFromContext(ctx)
+
+		if err := outbox.EmitJSON(txn, "Order", orderID, kafkaEvents.EventDriverArrived, topicLogisticsEvents, kafkaEvents.DriverArrivedEvent{
 			OrderID:    orderID,
 			RetailerID: retailerID,
 			DriverID:   driverID,
 			SupplierID: supplierID,
 			Timestamp:  now,
-		})
-		go s.PublishEvent(context.Background(), kafkaEvents.EventOrderStatusChanged, kafkaEvents.OrderStatusChangedEvent{
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit driver arrived: %w", err)
+		}
+
+		if err := outbox.EmitJSON(txn, "Order", orderID, kafkaEvents.EventOrderStatusChanged, topicLogisticsEvents, kafkaEvents.OrderStatusChangedEvent{
 			OrderID:    orderID,
 			RetailerID: retailerID,
 			SupplierID: supplierID,
 			OldState:   "IN_TRANSIT",
 			NewState:   "ARRIVED",
 			Timestamp:  now,
-		})
-	}
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit order status changed (arrived): %w", err)
+		}
+
+		return nil
+	})
 
 	return supplierID, err
 }
@@ -941,10 +956,9 @@ func (s *OrderService) InvalidateDeliveryToken(ctx context.Context, orderID stri
 // OCC: each order's Version is bumped; if any concurrent mutation raced, rowCount=0 → ErrVersionConflict.
 // FREEZE LOCK: dispatch WRITES LockedUntil (30 min from now) to prevent mutations during physical delivery.
 func (s *OrderService) AssignRoute(ctx context.Context, orderIds []string, routeId string) error {
-	// Metadata captured inside the transaction for post-commit event emission
-	var eventSupplierID, eventDriverID string
-
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		var eventSupplierID, eventDriverID string
+
 		// Step 1: Read current state + OCC fields of ALL orders inside the serialised transaction
 		stmt := spanner.Statement{
 			SQL:    `SELECT OrderId, State, RouteId, Version, LockedUntil, SupplierId, DriverId FROM Orders WHERE OrderId IN UNNEST(@ids)`,
@@ -1047,31 +1061,38 @@ func (s *OrderService) AssignRoute(ctx context.Context, orderIds []string, route
 			}
 		}
 
-		return nil
-	})
-
-	// Fire Kafka events in goroutines — zero lag on HTTP response
-	if err == nil {
 		now := time.Now().UTC()
-		go s.PublishEvent(context.Background(), kafkaEvents.EventFleetDispatched, kafkaEvents.FleetDispatchedEvent{
+		traceID := telemetry.TraceIDFromContext(ctx)
+
+		if err := outbox.EmitJSON(txn, "Route", routeId, kafkaEvents.EventFleetDispatched, topicLogisticsEvents, kafkaEvents.FleetDispatchedEvent{
 			RouteID:   routeId,
 			OrderIDs:  orderIds,
 			Timestamp: now,
-		})
-		go s.PublishEvent(context.Background(), kafkaEvents.EventOrderDispatched, kafkaEvents.OrderDispatchedEvent{
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit fleet dispatched: %w", err)
+		}
+
+		if err := outbox.EmitJSON(txn, "Route", routeId, kafkaEvents.EventOrderDispatched, topicLogisticsEvents, kafkaEvents.OrderDispatchedEvent{
 			RouteID:    routeId,
 			OrderIDs:   orderIds,
 			DriverID:   eventDriverID,
 			SupplierID: eventSupplierID,
 			Timestamp:  now,
-		})
-		go s.PublishEvent(context.Background(), kafkaEvents.EventPayloadReadyToSeal, kafkaEvents.PayloadReadyToSealEvent{
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit order dispatched: %w", err)
+		}
+
+		if err := outbox.EmitJSON(txn, "Route", routeId, kafkaEvents.EventPayloadReadyToSeal, topicLogisticsEvents, kafkaEvents.PayloadReadyToSealEvent{
 			RouteID:    routeId,
 			OrderIDs:   orderIds,
 			SupplierID: eventSupplierID,
 			Timestamp:  now,
-		})
-	}
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit payload ready to seal: %w", err)
+		}
+
+		return nil
+	})
 
 	return err
 }
@@ -1192,15 +1213,18 @@ func (s *OrderService) CancelOrder(ctx context.Context, req CancelOrderRequest) 
 		if rowCount == 0 {
 			return &ErrVersionConflict{OrderID: req.OrderID, ExpectedVersion: version, ActualVersion: -1}
 		}
+
+		if err := outbox.EmitJSON(txn, "Order", req.OrderID, kafkaEvents.EventOrderCancelled, topicLogisticsEvents, map[string]interface{}{
+			"order_id":  req.OrderID,
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+		}, telemetry.TraceIDFromContext(ctx)); err != nil {
+			return fmt.Errorf("outbox emit order cancelled: %w", err)
+		}
+
 		return nil
 	})
 
 	if err == nil {
-		go s.PublishEvent(context.Background(), kafkaEvents.EventOrderCancelled, map[string]interface{}{
-			"order_id":  req.OrderID,
-			"timestamp": time.Now().Format(time.RFC3339),
-		})
-
 		// Void the GP authorization hold if the order was AUTHORIZED at checkout.
 		if wasAuthorized && orderGateway == "GLOBAL_PAY" && s.DirectClient != nil {
 			go s.voidAuthorizationForOrder(context.Background(), cancelledOrderID)
@@ -1339,6 +1363,17 @@ func (s *OrderService) CompleteDeliveryWithToken(ctx context.Context, orderId st
 			return fmt.Errorf("outbox emit ORDER_COMPLETED: %w", err)
 		}
 
+		if err := outbox.EmitJSON(txn, "Order", orderId, kafkaEvents.EventOrderStatusChanged, kafkaEvents.TopicMain, kafkaEvents.OrderStatusChangedEvent{
+			OrderID:    orderId,
+			RetailerID: retailerId,
+			SupplierID: supplierID,
+			OldState:   "ARRIVED",
+			NewState:   "COMPLETED",
+			Timestamp:  time.Now().UTC(),
+		}, telemetry.TraceIDFromContext(ctx)); err != nil {
+			return fmt.Errorf("outbox emit ORDER_STATUS_CHANGED (arrived->completed): %w", err)
+		}
+
 		// LEO Phase V — manifest-completion rollup
 		if manifestIDNull.Valid {
 			if err := rollupManifestIfComplete(ctx, txn, manifestIDNull.StringVal, time.Now().UTC()); err != nil {
@@ -1351,17 +1386,8 @@ func (s *OrderService) CompleteDeliveryWithToken(ctx context.Context, orderId st
 
 	// 4. Wake up the Intelligence Engine!
 	if err == nil {
-		now := time.Now().UTC()
 		// Decrement warehouse queue depth on successful completion
 		cache.DecrementQueueDepth(context.Background(), warehouseId)
-		go s.PublishEvent(context.Background(), kafkaEvents.EventOrderStatusChanged, kafkaEvents.OrderStatusChangedEvent{
-			OrderID:    orderId,
-			RetailerID: retailerId,
-			SupplierID: supplierID,
-			OldState:   "ARRIVED",
-			NewState:   "COMPLETED",
-			Timestamp:  now,
-		})
 	}
 
 	return supplierID, err
@@ -1670,12 +1696,14 @@ func (s *OrderService) AmendOrder(ctx context.Context, req AmendOrderRequest) (*
 			// Insert SupplierReturns row for rejected quantity
 			if item.RejectedQty > 0 {
 				returnID := fmt.Sprintf("RET-%s", GenerateSecureToken())
-				txn.BufferWrite([]*spanner.Mutation{
+				if err := txn.BufferWrite([]*spanner.Mutation{
 					spanner.Insert("SupplierReturns",
 						[]string{"ReturnId", "OrderId", "SkuId", "RejectedQty", "Reason", "DriverNotes", "CreatedAt"},
 						[]interface{}{returnID, req.OrderID, item.ProductId, item.RejectedQty, item.Reason, req.DriverNotes, spanner.CommitTimestamp},
 					),
-				})
+				}); err != nil {
+					return fmt.Errorf("insert supplier return %s: %w", returnID, err)
+				}
 			}
 		}
 
@@ -1750,12 +1778,14 @@ func (s *OrderService) AmendOrder(ctx context.Context, req AmendOrderRequest) (*
 		if sessErr == nil {
 			var sessionID string
 			if colErr := sessRow.Columns(&sessionID); colErr == nil {
-				txn.BufferWrite([]*spanner.Mutation{
+				if err := txn.BufferWrite([]*spanner.Mutation{
 					spanner.Update("PaymentSessions",
 						[]string{"SessionId", "LockedAmount", "UpdatedAt"},
 						[]interface{}{sessionID, newTotal, spanner.CommitTimestamp},
 					),
-				})
+				}); err != nil {
+					return fmt.Errorf("update payment session amount %s: %w", sessionID, err)
+				}
 			}
 		}
 
@@ -1770,13 +1800,34 @@ func (s *OrderService) AmendOrder(ctx context.Context, req AmendOrderRequest) (*
 		if invAmendErr == nil {
 			var invoiceID string
 			if colErr := invAmendRow.Columns(&invoiceID); colErr == nil {
-				txn.BufferWrite([]*spanner.Mutation{
+				if err := txn.BufferWrite([]*spanner.Mutation{
 					spanner.Update("MasterInvoices",
 						[]string{"InvoiceId", "Total"},
 						[]interface{}{invoiceID, newTotal},
 					),
-				})
+				}); err != nil {
+					return fmt.Errorf("update master invoice total %s: %w", invoiceID, err)
+				}
 			}
+		}
+
+		refunded := originalTotal - newTotal
+		if refunded < 0 {
+			refunded = 0
+		}
+
+		if err := outbox.EmitJSON(txn, "Order", req.OrderID, kafkaEvents.EventOrderModified, topicLogisticsEvents, kafkaEvents.OrderModifiedEvent{
+			OrderID:     req.OrderID,
+			AmendmentID: req.AmendmentID,
+			DriverID:    driverID,
+			SupplierID:  supplierID,
+			RetailerID:  retailerID,
+			NewAmount:   newTotal,
+			Refunded:    refunded,
+			Currency:    "UZS",
+			Timestamp:   time.Now().UTC(),
+		}, telemetry.TraceIDFromContext(ctx)); err != nil {
+			return fmt.Errorf("outbox emit ORDER_MODIFIED: %w", err)
 		}
 
 		return nil
@@ -1790,22 +1841,9 @@ func (s *OrderService) AmendOrder(ctx context.Context, req AmendOrderRequest) (*
 		refunded = 0
 	}
 
-	// 5. Emit ORDER_MODIFIED to Kafka (via main logistics topic for Treasurer consumption)
-	go s.PublishEvent(context.Background(), kafkaEvents.EventOrderModified, kafkaEvents.OrderModifiedEvent{
-		OrderID:     req.OrderID,
-		AmendmentID: req.AmendmentID,
-		DriverID:    driverID,
-		SupplierID:  supplierID,
-		RetailerID:  retailerID,
-		NewAmount:   newTotal,
-		Refunded:    refunded,
-		Currency:    "UZS",
-		Timestamp:   time.Now().UTC(),
-	})
-
 	msg := "Order amended"
 	if refunded > 0 {
-		msg = fmt.Sprintf("Order amended — refund applied")
+		msg = "Order amended - refund applied"
 	}
 
 	return &AmendOrderResponse{
@@ -2202,6 +2240,32 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 			return &ErrVersionConflict{OrderID: orderID, ExpectedVersion: currentVersion, ActualVersion: -1}
 		}
 
+		now := time.Now().UTC()
+		traceID := telemetry.TraceIDFromContext(ctx)
+
+		if err := outbox.EmitJSON(txn, "Order", orderID, kafkaEvents.EventFulfillmentPaymentCompleted, topicLogisticsEvents, map[string]interface{}{
+			"order_id":    orderID,
+			"supplier_id": supplierID,
+			"retailer_id": retailerID,
+			"driver_id":   driverID,
+			"amount":      adjustedAmount,
+			"payment_id":  directPaymentID,
+			"gateway":     gateway,
+			"timestamp":   now,
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit FULFILLMENT_PAYMENT_COMPLETED: %w", err)
+		}
+
+		if err := outbox.EmitJSON(txn, "Order", orderID, kafkaEvents.EventFulfillmentPaid, topicLogisticsEvents, map[string]interface{}{
+			"order_id":    orderID,
+			"supplier_id": supplierID,
+			"retailer_id": retailerID,
+			"amount":      adjustedAmount,
+			"timestamp":   now,
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit FULFILLMENT_PAID: %w", err)
+		}
+
 		return nil
 	})
 	if commitErr != nil {
@@ -2223,25 +2287,6 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 		defer cancel()
 		cache.Client.Del(delCtx, cache.PrefixActiveOrders+retailerID)
 	}
-
-	// Kafka events (async — never block the HTTP response)
-	go s.PublishEvent(context.Background(), kafkaEvents.EventFulfillmentPaymentCompleted, map[string]interface{}{
-		"order_id":    orderID,
-		"supplier_id": supplierID,
-		"retailer_id": retailerID,
-		"driver_id":   driverID,
-		"amount":      adjustedAmount,
-		"payment_id":  directPaymentID,
-		"gateway":     gateway,
-		"timestamp":   time.Now().UTC(),
-	})
-	go s.PublishEvent(context.Background(), kafkaEvents.EventFulfillmentPaid, map[string]interface{}{
-		"order_id":    orderID,
-		"supplier_id": supplierID,
-		"retailer_id": retailerID,
-		"amount":      adjustedAmount,
-		"timestamp":   time.Now().UTC(),
-	})
 
 	result.PaymentID = directPaymentID
 	result.Status = "PAID"
@@ -2459,12 +2504,39 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 		if strings.EqualFold(gateway.StringVal, "GLOBAL_PAY") {
 			invoiceID := fmt.Sprintf("INV-%s", GenerateSecureToken())
 			resp.InvoiceID = invoiceID
-			txn.BufferWrite([]*spanner.Mutation{
+			if err := txn.BufferWrite([]*spanner.Mutation{
 				spanner.Insert("MasterInvoices",
 					[]string{"InvoiceId", "RetailerId", "Total", "State", "OrderId", "CreatedAt"},
 					[]interface{}{invoiceID, resp.RetailerID, resp.Amount, "PENDING", orderId, spanner.CommitTimestamp},
 				),
-			})
+			}); err != nil {
+				return fmt.Errorf("create master invoice: %w", err)
+			}
+		}
+
+		now := time.Now().UTC()
+		traceID := telemetry.TraceIDFromContext(ctx)
+
+		if err := outbox.EmitJSON(txn, "Order", orderId, kafkaEvents.EventOffloadConfirmed, topicLogisticsEvents, kafkaEvents.OffloadConfirmedEvent{
+			OrderID:        orderId,
+			RetailerID:     resp.RetailerID,
+			Amount:         resp.Amount,
+			OriginalAmount: resp.OriginalAmount,
+			PaymentMethod:  resp.PaymentMethod,
+			Timestamp:      now,
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit OFFLOAD_CONFIRMED: %w", err)
+		}
+
+		if err := outbox.EmitJSON(txn, "Order", orderId, kafkaEvents.EventOrderStatusChanged, topicLogisticsEvents, kafkaEvents.OrderStatusChangedEvent{
+			OrderID:    orderId,
+			RetailerID: resp.RetailerID,
+			SupplierID: supplierId,
+			OldState:   "ARRIVED",
+			NewState:   "AWAITING_PAYMENT",
+			Timestamp:  now,
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit ORDER_STATUS_CHANGED (arrived->awaiting_payment): %w", err)
 		}
 
 		resp.State = "AWAITING_PAYMENT"
@@ -2498,24 +2570,6 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 			resp.SessionID = session.SessionID
 		}
 	}
-
-	// Fire OFFLOAD_CONFIRMED event
-	go s.PublishEvent(context.Background(), kafkaEvents.EventOffloadConfirmed, kafkaEvents.OffloadConfirmedEvent{
-		OrderID:        orderId,
-		RetailerID:     resp.RetailerID,
-		Amount:         resp.Amount,
-		OriginalAmount: resp.OriginalAmount,
-		PaymentMethod:  resp.PaymentMethod,
-		Timestamp:      time.Now().UTC(),
-	})
-	go s.PublishEvent(context.Background(), kafkaEvents.EventOrderStatusChanged, kafkaEvents.OrderStatusChangedEvent{
-		OrderID:    orderId,
-		RetailerID: resp.RetailerID,
-		SupplierID: supplierId,
-		OldState:   "ARRIVED",
-		NewState:   "AWAITING_PAYMENT",
-		Timestamp:  time.Now().UTC(),
-	})
 
 	return &resp, nil
 }
@@ -2664,6 +2718,18 @@ func (s *OrderService) CompleteOrder(ctx context.Context, orderId string) (strin
 		}, telemetry.TraceIDFromContext(ctx)); err != nil {
 			return fmt.Errorf("outbox emit ORDER_COMPLETED: %w", err)
 		}
+
+		if err := outbox.EmitJSON(txn, "Order", orderId, kafkaEvents.EventOrderStatusChanged, kafkaEvents.TopicMain, kafkaEvents.OrderStatusChangedEvent{
+			OrderID:    orderId,
+			RetailerID: retailerId,
+			SupplierID: supplierID,
+			OldState:   "AWAITING_PAYMENT",
+			NewState:   "COMPLETED",
+			Timestamp:  time.Now().UTC(),
+		}, telemetry.TraceIDFromContext(ctx)); err != nil {
+			return fmt.Errorf("outbox emit ORDER_STATUS_CHANGED (awaiting_payment->completed): %w", err)
+		}
+
 		if manifestIDNull.Valid {
 			if err := rollupManifestIfComplete(ctx, txn, manifestIDNull.StringVal, time.Now().UTC()); err != nil {
 				return fmt.Errorf("manifest rollup failed for order %s: %w", orderId, err)
@@ -2674,17 +2740,8 @@ func (s *OrderService) CompleteOrder(ctx context.Context, orderId string) (strin
 	})
 
 	if err == nil {
-		now := time.Now().UTC()
 		// Decrement warehouse queue depth on successful completion
 		cache.DecrementQueueDepth(context.Background(), warehouseId)
-		go s.PublishEvent(context.Background(), kafkaEvents.EventOrderStatusChanged, kafkaEvents.OrderStatusChangedEvent{
-			OrderID:    orderId,
-			RetailerID: retailerId,
-			SupplierID: supplierID,
-			OldState:   "AWAITING_PAYMENT",
-			NewState:   "COMPLETED",
-			Timestamp:  now,
-		})
 	}
 
 	return supplierID, err
@@ -3069,12 +3126,37 @@ func (s *OrderService) CashCheckout(ctx context.Context, orderId string) (*CashC
 
 		// Create a cash-custody MasterInvoice for reconciliation tracking
 		invoiceID := fmt.Sprintf("INV-%s", GenerateSecureToken())
-		txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.Insert("MasterInvoices",
 				[]string{"InvoiceId", "RetailerId", "Total", "State", "OrderId", "PaymentMode", "CustodyStatus", "CreatedAt"},
 				[]interface{}{invoiceID, retailerId, resp.Amount, "PENDING", orderId, "CASH", "PENDING", spanner.CommitTimestamp},
 			),
-		})
+		}); err != nil {
+			return fmt.Errorf("create cash custody invoice: %w", err)
+		}
+
+		now := time.Now().UTC()
+		traceID := telemetry.TraceIDFromContext(ctx)
+
+		if err := outbox.EmitJSON(txn, "Order", orderId, kafkaEvents.EventCashCollectionRequired, topicLogisticsEvents, map[string]interface{}{
+			"order_id":    orderId,
+			"retailer_id": retailerId,
+			"amount":      resp.Amount,
+			"timestamp":   now,
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit CASH_COLLECTION_REQUIRED: %w", err)
+		}
+
+		if err := outbox.EmitJSON(txn, "Order", orderId, kafkaEvents.EventOrderStatusChanged, topicLogisticsEvents, kafkaEvents.OrderStatusChangedEvent{
+			OrderID:    orderId,
+			RetailerID: retailerId,
+			SupplierID: supplierID,
+			OldState:   "AWAITING_PAYMENT",
+			NewState:   "PENDING_CASH_COLLECTION",
+			Timestamp:  now,
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit ORDER_STATUS_CHANGED (awaiting_payment->pending_cash_collection): %w", err)
+		}
 
 		resp.OrderID = orderId
 		resp.State = "PENDING_CASH_COLLECTION"
@@ -3085,22 +3167,6 @@ func (s *OrderService) CashCheckout(ctx context.Context, orderId string) (*CashC
 	}
 
 	resp.Message = fmt.Sprintf("Cash collection of %d is now pending — driver will collect", resp.Amount)
-
-	// Notify driver via WebSocket that cash collection is needed
-	go s.PublishEvent(context.Background(), kafkaEvents.EventCashCollectionRequired, map[string]interface{}{
-		"order_id":    orderId,
-		"retailer_id": retailerId,
-		"amount":      resp.Amount,
-		"timestamp":   time.Now().UTC(),
-	})
-	go s.PublishEvent(context.Background(), kafkaEvents.EventOrderStatusChanged, kafkaEvents.OrderStatusChangedEvent{
-		OrderID:    orderId,
-		RetailerID: retailerId,
-		SupplierID: supplierID,
-		OldState:   "AWAITING_PAYMENT",
-		NewState:   "PENDING_CASH_COLLECTION",
-		Timestamp:  time.Now().UTC(),
-	})
 
 	return &resp, nil
 }
@@ -3210,12 +3276,14 @@ func (s *OrderService) CollectCash(ctx context.Context, req CollectCashRequest) 
 			var invoiceId string
 			if colErr := invRow.Columns(&invoiceId); colErr == nil {
 				now := time.Now().UTC()
-				txn.BufferWrite([]*spanner.Mutation{
+				if err := txn.BufferWrite([]*spanner.Mutation{
 					spanner.Update("MasterInvoices",
 						[]string{"InvoiceId", "State", "CollectorDriverId", "CollectedAt", "CollectionLat", "CollectionLng", "GeofenceDistanceM", "CustodyStatus"},
 						[]interface{}{invoiceId, "SETTLED", req.DriverID, now, req.Latitude, req.Longitude, resp.DistanceM, "HELD_BY_DRIVER"},
 					),
-				})
+				}); err != nil {
+					return fmt.Errorf("update cash custody invoice: %w", err)
+				}
 			}
 		}
 
@@ -3239,6 +3307,18 @@ func (s *OrderService) CollectCash(ctx context.Context, req CollectCashRequest) 
 		}, telemetry.TraceIDFromContext(ctx)); err != nil {
 			return fmt.Errorf("outbox emit ORDER_COMPLETED: %w", err)
 		}
+
+		if err := outbox.EmitJSON(txn, "Order", req.OrderID, kafkaEvents.EventOrderStatusChanged, kafkaEvents.TopicMain, kafkaEvents.OrderStatusChangedEvent{
+			OrderID:    req.OrderID,
+			RetailerID: retailerId,
+			SupplierID: supplierID,
+			OldState:   "PENDING_CASH_COLLECTION",
+			NewState:   "COMPLETED",
+			Timestamp:  time.Now().UTC(),
+		}, telemetry.TraceIDFromContext(ctx)); err != nil {
+			return fmt.Errorf("outbox emit ORDER_STATUS_CHANGED (pending_cash_collection->completed): %w", err)
+		}
+
 		if manifestIDNull.Valid {
 			if err := rollupManifestIfComplete(ctx, txn, manifestIDNull.StringVal, time.Now().UTC()); err != nil {
 				return fmt.Errorf("manifest rollup failed for order %s: %w", req.OrderID, err)
@@ -3252,16 +3332,6 @@ func (s *OrderService) CollectCash(ctx context.Context, req CollectCashRequest) 
 	}
 
 	resp.Message = fmt.Sprintf("Cash of %d collected. Order complete.", resp.Amount)
-
-	// Fire status-change event for notification dispatcher (non-financial, fire-and-forget OK)
-	go s.PublishEvent(context.Background(), kafkaEvents.EventOrderStatusChanged, kafkaEvents.OrderStatusChangedEvent{
-		OrderID:    req.OrderID,
-		RetailerID: retailerId,
-		SupplierID: supplierID,
-		OldState:   "PENDING_CASH_COLLECTION",
-		NewState:   "COMPLETED",
-		Timestamp:  time.Now().UTC(),
-	})
 
 	return &resp, nil
 }

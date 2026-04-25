@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"backend-go/idempotency"
+
 	"cloud.google.com/go/spanner"
 )
 
@@ -56,6 +58,30 @@ func (s *WebhookService) HandleStripeWebhook(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	applyStripeIdempotencyKey(r, event)
+	idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
+		s.handleStripeWebhookParsed(w, r, event)
+	})(w, r)
+}
+
+type stripeEvent struct {
+	ID   string          `json:"id"`
+	Type string          `json:"type"`
+	Data stripeEventData `json:"data"`
+}
+
+type stripeEventData struct {
+	Object json.RawMessage `json:"object"`
+}
+
+func applyStripeIdempotencyKey(r *http.Request, event stripeEvent) {
+	if r.Header.Get("Idempotency-Key") != "" || event.ID == "" {
+		return
+	}
+	r.Header.Set("Idempotency-Key", "stripe:"+event.ID)
+}
+
+func (s *WebhookService) handleStripeWebhookParsed(w http.ResponseWriter, r *http.Request, event stripeEvent) {
 	switch event.Type {
 	case "payment_intent.succeeded":
 		s.handleStripePaymentSucceeded(r, w, event)
@@ -69,16 +95,6 @@ func (s *WebhookService) HandleStripeWebhook(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"received":true}`))
-}
-
-type stripeEvent struct {
-	ID   string          `json:"id"`
-	Type string          `json:"type"`
-	Data stripeEventData `json:"data"`
-}
-
-type stripeEventData struct {
-	Object json.RawMessage `json:"object"`
 }
 
 type stripePaymentIntent struct {

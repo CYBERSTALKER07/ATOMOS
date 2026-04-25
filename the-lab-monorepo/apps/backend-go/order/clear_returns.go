@@ -17,10 +17,17 @@ import (
 	"strings"
 	"time"
 
+	"backend-go/outbox"
+	"backend-go/telemetry"
+
 	"cloud.google.com/go/spanner"
-	"github.com/segmentio/kafka-go"
 
 	"backend-go/auth"
+)
+
+const (
+	eventReturnsCleared = "RETURNS_CLEARED"
+	topicReturnsCleared = "returns.cleared"
 )
 
 // ReturnsClearedEvent is emitted after a supplier confirms return receipt at depot.
@@ -63,6 +70,7 @@ func (s *OrderService) HandleClearReturns(w http.ResponseWriter, r *http.Request
 	supplierID := claims.ResolveSupplierID()
 
 	var rowsCleared int64
+	clearedAt := time.Now().UTC()
 
 	_, err := s.Client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// Verify the vehicle belongs to this supplier
@@ -104,7 +112,13 @@ func (s *OrderService) HandleClearReturns(w http.ResponseWriter, r *http.Request
 			return fmt.Errorf("clear returns update failed: %w", updateErr)
 		}
 		rowsCleared = n
-		return nil
+
+		return outbox.EmitJSON(txn, "Vehicle", vehicleID, eventReturnsCleared, topicReturnsCleared, ReturnsClearedEvent{
+			VehicleID:   vehicleID,
+			SupplierID:  supplierID,
+			RowsCleared: rowsCleared,
+			ClearedAt:   clearedAt,
+		}, telemetry.TraceIDFromContext(ctx))
 	})
 
 	if err != nil {
@@ -116,20 +130,6 @@ func (s *OrderService) HandleClearReturns(w http.ResponseWriter, r *http.Request
 		http.Error(w, `{"error":"clear returns failed"}`, http.StatusInternalServerError)
 		return
 	}
-
-	// Emit RETURNS_CLEARED Kafka event
-	clearedAt := time.Now().UTC()
-	evt, _ := json.Marshal(ReturnsClearedEvent{
-		VehicleID:   vehicleID,
-		SupplierID:  supplierID,
-		RowsCleared: rowsCleared,
-		ClearedAt:   clearedAt,
-	})
-	_ = s.Producer.WriteMessages(r.Context(), kafka.Message{
-		Key:   []byte(vehicleID),
-		Value: evt,
-		Topic: "returns.cleared",
-	})
 
 	log.Printf("[CLEAR_RETURNS] VehicleId=%s cleared %d rejected line items", vehicleID, rowsCleared)
 

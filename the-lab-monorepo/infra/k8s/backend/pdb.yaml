@@ -2,9 +2,9 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: backend-pdb
-  namespace: void
+  namespace: void-system
   labels:
-    app: backend
+    app: backend-go
     tier: api
 spec:
   # Always keep at least 50 % of replicas during voluntary disruptions
@@ -14,4 +14,4 @@ spec:
   minAvailable: "50%"
   selector:
     matchLabels:
-      app: backend
+      app: backend-go

@@ -13,7 +13,7 @@
 //     returns the original result without double-crediting.
 //
 // Both handlers settle invoices inside a Spanner ReadWriteTransaction.
-// Kafka INVOICE_SETTLED event fires ONLY after commit.
+// Kafka INVOICE_SETTLED events are written through the transactional outbox.
 package payment
 
 import (
@@ -31,6 +31,8 @@ import (
 
 	"backend-go/cache"
 	"backend-go/idempotency"
+	"backend-go/outbox"
+	"backend-go/telemetry"
 	"backend-go/workers"
 	wsEvents "backend-go/ws"
 
@@ -40,11 +42,11 @@ import (
 
 // ─── Webhook Service ─────────────────────────────────────────────────────────
 
-// Kafka event type constants — local mirrors of kafka.Event* to avoid import cycle.
+// Kafka event constants are local to avoid the payment -> kafka import cycle.
 const (
-	eventPaymentSettled = "PAYMENT_SETTLED"
-	eventPaymentFailed  = "PAYMENT_FAILED"
+	eventInvoiceSettled = "INVOICE_SETTLED"
 	eventOrderCompleted = "ORDER_COMPLETED"
+	topicMain           = "lab-logistics-events"
 )
 
 // WebhookService holds the Spanner + Kafka handles for webhook processing.
@@ -76,13 +78,24 @@ type DriverPusher interface {
 	PushToDriver(driverID string, payload interface{}) bool
 }
 
-// InvoiceSettledEvent is emitted to Kafka after a successful settlement.
+// InvoiceSettledEvent is emitted through the outbox after a successful settlement.
 type InvoiceSettledEvent struct {
 	InvoiceID  string    `json:"invoice_id"`
 	Gateway    string    `json:"gateway"`
 	Amount     int64     `json:"amount"`
 	RetailerID string    `json:"retailer_id"`
 	Timestamp  time.Time `json:"timestamp"`
+}
+
+func emitInvoiceSettledOutbox(ctx context.Context, txn *spanner.ReadWriteTransaction, invoiceID, gateway string, amount int64, retailerID string) error {
+	event := InvoiceSettledEvent{
+		InvoiceID:  invoiceID,
+		Gateway:    gateway,
+		Amount:     amount,
+		RetailerID: retailerID,
+		Timestamp:  time.Now().UTC(),
+	}
+	return outbox.EmitJSON(txn, "MasterInvoice", invoiceID, eventInvoiceSettled, topicMain, event, telemetry.TraceIDFromContext(ctx))
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -177,7 +190,7 @@ func (ws *WebhookService) handleGlobalPayWebhookParsed(w http.ResponseWriter, r 
 	}
 
 	if status.Paid {
-		retailerID, settleErr := ws.settleInvoice(r.Context(), session.InvoiceID, session.LockedAmount, "GLOBAL_PAY")
+		_, settleErr := ws.settleInvoice(r.Context(), session.InvoiceID, session.LockedAmount, "GLOBAL_PAY")
 		if settleErr != nil {
 			if strings.Contains(settleErr.Error(), "already settled") {
 				w.Header().Set("Content-Type", "application/json")
@@ -189,7 +202,6 @@ func (ws *WebhookService) handleGlobalPayWebhookParsed(w http.ResponseWriter, r 
 			return
 		}
 
-		ws.emitSettledEvent(session.InvoiceID, "GLOBAL_PAY", session.LockedAmount, retailerID)
 		ws.settlePaymentSession(r.Context(), session.InvoiceID, "GLOBAL_PAY", status.ProviderPaymentID)
 		if session.OrderID != "" {
 			ws.notifyDriverPaymentSettled(session.OrderID, session.LockedAmount)
@@ -287,12 +299,16 @@ func (ws *WebhookService) settleInvoice(ctx context.Context, invoiceID string, e
 			return fmt.Errorf("amount mismatch: invoice=%d webhook=%d", total, expectedAmount)
 		}
 
-		return txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.Update("MasterInvoices",
 				[]string{"InvoiceId", "State"},
 				[]interface{}{invoiceID, "SETTLED"},
 			),
-		})
+		}); err != nil {
+			return err
+		}
+
+		return emitInvoiceSettledOutbox(ctx, txn, invoiceID, gateway, total, retailerID)
 	})
 
 	return retailerID, err
@@ -388,87 +404,6 @@ func (ws *WebhookService) lookupInvoice(ctx context.Context, invoiceID string) (
 		return false, 0, colErr
 	}
 	return true, total, nil
-}
-
-// emitSettledEvent fires the INVOICE_SETTLED Kafka event asynchronously.
-func (ws *WebhookService) emitSettledEvent(invoiceID, gateway string, amount int64, retailerID string) {
-	event := InvoiceSettledEvent{
-		InvoiceID:  invoiceID,
-		Gateway:    gateway,
-		Amount:     amount,
-		RetailerID: retailerID,
-		Timestamp:  time.Now().UTC(),
-	}
-
-	workers.EventPool.Submit(func() {
-		data, _ := json.Marshal(event)
-		err := ws.Producer.WriteMessages(context.Background(), kafka.Message{
-			Key:   []byte(invoiceID),
-			Value: data,
-		})
-		if err != nil {
-			slog.Error("kafka.emit_invoice_settled_failed", "invoice_id", invoiceID, "err", err)
-		} else {
-			slog.Info("kafka.invoice_settled_emitted", "invoice_id", invoiceID, "gateway", gateway, "amount", amount)
-		}
-	})
-}
-
-// emitPaymentSettledEvent fires a PAYMENT_SETTLED Kafka event for the notification dispatcher.
-func (ws *WebhookService) emitPaymentSettledEvent(orderID, invoiceID, retailerID, gateway string, amount int64) {
-	driverID := ws.resolveDriverFromOrder(orderID)
-	event := map[string]interface{}{
-		"order_id":    orderID,
-		"invoice_id":  invoiceID,
-		"retailer_id": retailerID,
-		"driver_id":   driverID,
-		"gateway":     gateway,
-		"amount":      amount,
-		"timestamp":   time.Now().UTC(),
-	}
-	data, _ := json.Marshal(event)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := ws.Producer.WriteMessages(ctx, kafka.Message{
-		Key:   []byte(eventPaymentSettled),
-		Value: data,
-	}); err != nil {
-		slog.Error("kafka.emit_payment_settled_failed", "order_id", orderID, "err", err)
-	}
-}
-
-// emitPaymentFailedEvent fires a PAYMENT_FAILED Kafka event for the notification dispatcher.
-func (ws *WebhookService) emitPaymentFailedEvent(orderID, invoiceID, retailerID, gateway, reason string) {
-	event := map[string]interface{}{
-		"order_id":    orderID,
-		"invoice_id":  invoiceID,
-		"retailer_id": retailerID,
-		"gateway":     gateway,
-		"reason":      reason,
-		"timestamp":   time.Now().UTC(),
-	}
-	data, _ := json.Marshal(event)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := ws.Producer.WriteMessages(ctx, kafka.Message{
-		Key:   []byte(eventPaymentFailed),
-		Value: data,
-	}); err != nil {
-		slog.Error("kafka.emit_payment_failed_failed", "order_id", orderID, "err", err)
-	}
-}
-
-// resolveDriverFromOrder looks up the DriverId from an order for event emissions.
-func (ws *WebhookService) resolveDriverFromOrder(orderID string) string {
-	row, err := ws.Spanner.Single().ReadRow(context.Background(), "Orders", spanner.Key{orderID}, []string{"DriverId"})
-	if err != nil {
-		return ""
-	}
-	var driverID spanner.NullString
-	if colErr := row.Columns(&driverID); colErr != nil || !driverID.Valid {
-		return ""
-	}
-	return driverID.StringVal
 }
 
 // notifyDriverPaymentSettled looks up the order's driver and pushes PAYMENT_SETTLED via WebSocket.

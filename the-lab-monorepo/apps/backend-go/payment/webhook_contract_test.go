@@ -283,3 +283,31 @@ func TestApplyGlobalPayIdempotencyKey_PreservesExistingHeader(t *testing.T) {
 		t.Errorf("Idempotency-Key = %q, want existing-key", got)
 	}
 }
+
+func TestApplyStripeIdempotencyKey_FromEventID(t *testing.T) {
+	httpReq := httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", nil)
+	applyStripeIdempotencyKey(httpReq, stripeEvent{ID: "evt_123"})
+
+	if got := httpReq.Header.Get("Idempotency-Key"); got != "stripe:evt_123" {
+		t.Errorf("Idempotency-Key = %q, want stripe:evt_123", got)
+	}
+}
+
+func TestApplyStripeIdempotencyKey_PreservesExistingHeader(t *testing.T) {
+	httpReq := httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", nil)
+	httpReq.Header.Set("Idempotency-Key", "existing-key")
+	applyStripeIdempotencyKey(httpReq, stripeEvent{ID: "evt_new"})
+
+	if got := httpReq.Header.Get("Idempotency-Key"); got != "existing-key" {
+		t.Errorf("Idempotency-Key = %q, want existing-key", got)
+	}
+}
+
+func TestApplyStripeIdempotencyKey_EmptyEventID(t *testing.T) {
+	httpReq := httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", nil)
+	applyStripeIdempotencyKey(httpReq, stripeEvent{})
+
+	if got := httpReq.Header.Get("Idempotency-Key"); got != "" {
+		t.Errorf("Idempotency-Key = %q, want empty", got)
+	}
+}

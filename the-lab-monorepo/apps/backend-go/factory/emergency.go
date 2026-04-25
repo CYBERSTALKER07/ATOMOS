@@ -1,15 +1,19 @@
 package factory
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 
 	"backend-go/auth"
+	bkafka "backend-go/kafka"
+	"backend-go/outbox"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
-	"github.com/segmentio/kafka-go"
+	kafkago "github.com/segmentio/kafka-go"
 )
 
 // ── Emergency Transfer ────────────────────────────────────────────────────────
@@ -19,8 +23,10 @@ import (
 // EmergencyTransferService holds dependencies for emergency transfer creation.
 type EmergencyTransferService struct {
 	Spanner  *spanner.Client
-	Producer *kafka.Writer
+	Producer *kafkago.Writer
 }
+
+const emergencyTransferCreatedEventName = "EMERGENCY_TRANSFER_CREATED"
 
 // HandleEmergencyTransfer creates an urgent InternalTransferOrder from a warehouse.
 func (s *EmergencyTransferService) HandleEmergencyTransfer(w http.ResponseWriter, r *http.Request) {
@@ -107,28 +113,37 @@ func (s *EmergencyTransferService) HandleEmergencyTransfer(w http.ResponseWriter
 	)
 	mutations = append([]*spanner.Mutation{headerMutation}, mutations...)
 
-	if _, err := s.Spanner.Apply(r.Context(), mutations); err != nil {
+	_, err = s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+
+		evt := struct {
+			Event       string  `json:"event"`
+			TransferID  string  `json:"transfer_id"`
+			FactoryID   string  `json:"factory_id"`
+			WarehouseID string  `json:"warehouse_id"`
+			SupplierID  string  `json:"supplier_id"`
+			ItemsCount  int     `json:"items_count"`
+			Source      string  `json:"source"`
+			VolumeVU    float64 `json:"total_volume_vu"`
+		}{
+			Event:       emergencyTransferCreatedEventName,
+			TransferID:  transferID,
+			FactoryID:   factoryID,
+			WarehouseID: whID,
+			SupplierID:  supplierID,
+			ItemsCount:  len(req.Items),
+			Source:      "MANUAL_EMERGENCY",
+			VolumeVU:    totalVolumeVU,
+		}
+
+		return outbox.EmitJSON(txn, "InternalTransferOrder", transferID, bkafka.EventReplenishmentTransferCreated, bkafka.TopicMain, evt, telemetry.TraceIDFromContext(ctx))
+	})
+	if err != nil {
 		log.Printf("[EMERGENCY TRANSFER] create error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
-	}
-
-	// Emit Kafka event
-	if s.Producer != nil {
-		evt := map[string]interface{}{
-			"event":        "EMERGENCY_TRANSFER_CREATED",
-			"transfer_id":  transferID,
-			"factory_id":   factoryID,
-			"warehouse_id": whID,
-			"supplier_id":  supplierID,
-			"items_count":  len(req.Items),
-			"source":       "MANUAL_EMERGENCY",
-		}
-		payload, _ := json.Marshal(evt)
-		_ = s.Producer.WriteMessages(r.Context(), kafka.Message{
-			Key:   []byte(transferID),
-			Value: payload,
-		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -10,9 +10,9 @@ import (
 
 	"backend-go/outbox"
 	"backend-go/telemetry"
+
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
-	goKafka "github.com/segmentio/kafka-go"
 )
 
 // Refund status constants matching the Refunds table CHECK constraint.
@@ -42,20 +42,14 @@ type RefundResult struct {
 // RefundService handles the refund lifecycle: validation, gateway call,
 // ledger reversal, and Kafka event emission.
 type RefundService struct {
-	spanner     *spanner.Client
-	kafkaWriter KafkaWriter
-	feeBP       int64 // Platform fee in basis points (0 = zero-fee era)
-}
-
-// KafkaWriter is a minimal interface for emitting events.
-type KafkaWriter interface {
-	WriteMessages(ctx context.Context, msgs ...goKafka.Message) error
+	spanner *spanner.Client
+	feeBP   int64 // Platform fee in basis points (0 = zero-fee era)
 }
 
 // NewRefundService creates a refund service. feeBP is the platform commission
 // in basis points (e.g., 500 = 5%). Pass 0 for zero-fee era.
-func NewRefundService(sc *spanner.Client, kw KafkaWriter, feeBP int64) *RefundService {
-	return &RefundService{spanner: sc, kafkaWriter: kw, feeBP: feeBP}
+func NewRefundService(sc *spanner.Client, feeBP int64) *RefundService {
+	return &RefundService{spanner: sc, feeBP: feeBP}
 }
 
 // InitiateRefund validates the order state, calls the gateway, creates the
@@ -220,24 +214,6 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 		Gateway:          sessGateway,
 		ProviderRefundID: providerRefundID,
 	}, nil
-}
-
-// emitRefundEvent publishes a PAYMENT_REFUNDED event for the notification dispatcher.
-func (rs *RefundService) emitRefundEvent(orderID, retailerID, supplierID, refundID string, amount int64, status string) {
-	payload := fmt.Sprintf(`{"order_id":"%s","retailer_id":"%s","supplier_id":"%s","refund_id":"%s","amount":%d,"status":"%s","timestamp":"%s"}`,
-		orderID, retailerID, supplierID, refundID, amount, status, time.Now().Format(time.RFC3339))
-
-	msg := goKafka.Message{
-		Key:   []byte("PAYMENT_REFUNDED"),
-		Value: []byte(payload),
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := rs.kafkaWriter.WriteMessages(ctx, msg); err != nil {
-		log.Printf("[REFUND] Failed to emit PAYMENT_REFUNDED event for order %s: %v", orderID, err)
-	}
 }
 
 // GetRefundsByOrder returns all refunds for a given order.

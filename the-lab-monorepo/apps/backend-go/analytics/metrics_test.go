@@ -119,3 +119,28 @@ func TestHandleMetrics_UptimePositive(t *testing.T) {
 		t.Error("uptime cannot be negative")
 	}
 }
+
+func TestRegisterMetricsRoutes_MountsJSONAndPrometheus(t *testing.T) {
+	mux := http.NewServeMux()
+	RegisterMetricsRoutes(mux, func(next http.HandlerFunc) http.HandlerFunc { return next })
+
+	jsonRecorder := httptest.NewRecorder()
+	jsonReq := httptest.NewRequest(http.MethodGet, "/v1/metrics", nil)
+	mux.ServeHTTP(jsonRecorder, jsonReq)
+	if jsonRecorder.Code != http.StatusOK {
+		t.Errorf("/v1/metrics status = %d, want 200", jsonRecorder.Code)
+	}
+	if jsonRecorder.Header().Get("Content-Type") != "application/json" {
+		t.Errorf("/v1/metrics content-type = %q, want application/json", jsonRecorder.Header().Get("Content-Type"))
+	}
+
+	promRecorder := httptest.NewRecorder()
+	promReq := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	mux.ServeHTTP(promRecorder, promReq)
+	if promRecorder.Code != http.StatusOK {
+		t.Errorf("/metrics status = %d, want 200", promRecorder.Code)
+	}
+	if promRecorder.Header().Get("Content-Type") == "application/json" {
+		t.Error("/metrics returned JSON content type, want Prometheus text format")
+	}
+}

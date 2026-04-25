@@ -15,7 +15,9 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -261,10 +263,53 @@ func authRequestWithRetry(method, url string, body []byte, maxAttempts int) (*ht
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
+type consumerLagMetrics struct {
+	mu      sync.RWMutex
+	seconds map[string]float64
+}
+
+func newConsumerLagMetrics() *consumerLagMetrics {
+	return &consumerLagMetrics{seconds: make(map[string]float64)}
+}
+
+func (m *consumerLagMetrics) observe(consumer string, msg kafka.Message) {
+	if m == nil {
+		return
+	}
+	lagSeconds := 0.0
+	if !msg.Time.IsZero() {
+		lagSeconds = time.Since(msg.Time).Seconds()
+		if lagSeconds < 0 {
+			lagSeconds = 0
+		}
+	}
+	key := consumer + "\xff" + msg.Topic + "\xff" + strconv.Itoa(msg.Partition)
+	m.mu.Lock()
+	m.seconds[key] = lagSeconds
+	m.mu.Unlock()
+}
+
+func (m *consumerLagMetrics) writePrometheus(w io.Writer) {
+	if m == nil {
+		return
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	fmt.Fprintln(w, "# HELP void_kafka_consumer_lag_seconds Approximate age of the last consumed Kafka message by topic, partition, and consumer.")
+	fmt.Fprintln(w, "# TYPE void_kafka_consumer_lag_seconds gauge")
+	for key, value := range m.seconds {
+		parts := strings.Split(key, "\xff")
+		if len(parts) != 3 {
+			continue
+		}
+		fmt.Fprintf(w, "void_kafka_consumer_lag_seconds{consumer=%q,topic=%q,partition=%q} %.6f\n", parts[0], parts[1], parts[2], value)
+	}
+}
+
 // runConsumer fans messages from r to runtime.GOMAXPROCS parallel workers
 // sharded by partition index, preserving per-partition message ordering.
 // Blocks until ctx is cancelled. The caller owns reader.Close().
-func runConsumer(ctx context.Context, r *kafka.Reader, name string, handler func(m kafka.Message)) {
+func runConsumer(ctx context.Context, r *kafka.Reader, name string, metrics *consumerLagMetrics, handler func(m kafka.Message)) {
 	n := runtime.GOMAXPROCS(0)
 	chans := make([]chan kafka.Message, n)
 	var wg sync.WaitGroup
@@ -315,6 +360,7 @@ func runConsumer(ctx context.Context, r *kafka.Reader, name string, handler func
 			continue
 		}
 		streak = 0
+		metrics.observe(name, m)
 		idx := int(uint(m.Partition)) % n
 		select {
 		case <-ctx.Done():
@@ -423,9 +469,10 @@ func main() {
 
 	// ── Health HTTP Server ──────────────────────────────────────────────
 	var healthy int32 = 1
+	consumerMetrics := newConsumerLagMetrics()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		if healthy == 1 {
+		if atomic.LoadInt32(&healthy) == 1 {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`{"status":"ok"}`))
 		} else {
@@ -436,6 +483,17 @@ func main() {
 	mux.HandleFunc("/ready", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"ready"}`))
+	})
+	mux.HandleFunc("/metrics", func(w http.ResponseWriter, _ *http.Request) {
+		status := int32(0)
+		if atomic.LoadInt32(&healthy) == 1 {
+			status = 1
+		}
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+		fmt.Fprintf(w, "# HELP void_ai_worker_up AI worker process health state.\n")
+		fmt.Fprintf(w, "# TYPE void_ai_worker_up gauge\n")
+		fmt.Fprintf(w, "void_ai_worker_up %d\n", status)
+		consumerMetrics.writePrometheus(w)
 	})
 
 	// ── Correction Visibility Endpoint (Phase 2.3) ──────────────────
@@ -504,7 +562,7 @@ func main() {
 	go func() {
 		<-stop
 		logger.Info("SIGTERM received, shutting down...")
-		healthy = 0
+		atomic.StoreInt32(&healthy, 0)
 		cancel()
 	}()
 
@@ -532,7 +590,7 @@ func main() {
 	consumerWg.Add(1)
 	go func() {
 		defer consumerWg.Done()
-		runConsumer(ctx, freezeReader, "freeze-consumer", func(m kafka.Message) {
+		runConsumer(ctx, freezeReader, "freeze-consumer", consumerMetrics, func(m kafka.Message) {
 			var evt struct {
 				Type       string `json:"type"`
 				EntityType string `json:"entity_type"`
@@ -587,7 +645,7 @@ func main() {
 	consumerWg.Add(1)
 	go func() {
 		defer consumerWg.Done()
-		runConsumer(ctx, reader, "main-consumer", func(m kafka.Message) {
+		runConsumer(ctx, reader, "main-consumer", consumerMetrics, func(m kafka.Message) {
 			eventType := string(m.Key)
 			logger.Info("event received", "type", eventType)
 
