@@ -215,7 +215,7 @@ type DispatchQueueResult struct {
 // HandleDispatchQueue takes READY_FOR_DISPATCH orders and runs them through
 // the auto-dispatch algorithm, persisting the resulting manifests.
 // POST /v1/supplier/dispatch-queue
-func HandleDispatchQueue(client *spanner.Client, manifestSvc *ManifestService, optimizer *optimizerclient.Client, counters *plan.SourceCounters) http.HandlerFunc {
+func HandleDispatchQueue(client *spanner.Client, readRouter proximity.ReadRouter, manifestSvc *ManifestService, optimizer *optimizerclient.Client, counters *plan.SourceCounters) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -261,7 +261,7 @@ func HandleDispatchQueue(client *spanner.Client, manifestSvc *ManifestService, o
 
 		// Delegate to the existing auto-dispatch engine with the specific order IDs
 		var excludedTrucks []string
-		result, err := runAutoDispatch(ctx, client, supplierID, orderIDs, excludedTrucks, manifestSvc, optimizer, counters, false)
+		result, err := runAutoDispatch(ctx, client, readRouter, supplierID, orderIDs, excludedTrucks, manifestSvc, optimizer, counters, false)
 		if err != nil {
 			log.Printf("[DISPATCH-Q] auto-dispatch: %v", err)
 			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
@@ -341,7 +341,7 @@ type H3RoutePreview struct {
 
 // HandleH3RoutePreview returns H3-clustered order groups for dispatch planning.
 // GET /v1/supplier/dispatch-preview?warehouse_id=X
-func HandleH3RoutePreview(client *spanner.Client) http.HandlerFunc {
+func HandleH3RoutePreview(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -359,7 +359,7 @@ func HandleH3RoutePreview(client *spanner.Client) http.HandlerFunc {
 		defer cancel()
 
 		// Fetch dispatchable orders
-		orders, err := fetchDispatchableOrders(ctx, client, supplierID, nil)
+		orders, err := fetchDispatchableOrders(ctx, client, readRouter, supplierID, nil)
 		if err != nil {
 			log.Printf("[H3-PREVIEW] fetch orders: %v", err)
 			http.Error(w, "Failed to fetch orders", http.StatusInternalServerError)
@@ -422,7 +422,13 @@ func HandleH3RoutePreview(client *spanner.Client) http.HandlerFunc {
 		}
 
 		// Fleet capacity snapshot
-		fleet, _ := GetAvailableFleet(ctx, client, supplierID, warehouseID)
+		fleetReadClient := client
+		if warehouseID != "" {
+			if whLat, whLng, ok := fetchWarehouseOrigin(ctx, client, warehouseID); ok {
+				fleetReadClient = proximity.ReadClientForRetailer(client, readRouter, whLat, whLng)
+			}
+		}
+		fleet, _ := GetAvailableFleet(ctx, fleetReadClient, supplierID, warehouseID)
 		fleetCap := 0.0
 		for _, t := range fleet {
 			fleetCap += t.EffectiveCapacity()

@@ -38,7 +38,7 @@ func TestGPSBuffer_FlushDrainsEntries(t *testing.T) {
 		entries:  make(map[string]*GPSEntry),
 		previous: make(map[string]*GPSEntry),
 		interval: 1 * time.Hour,
-		hub:      &Hub{Clients: make(map[*websocket.Conn]*clientMeta)},
+		hub:      &Hub{Clients: make(map[*websocket.Conn]*clientMeta), subscribed: make(map[string]bool)},
 		done:     make(chan struct{}),
 	}
 
@@ -61,7 +61,7 @@ func TestGPSBuffer_EmptyFlushNoOp(t *testing.T) {
 		entries:  make(map[string]*GPSEntry),
 		previous: make(map[string]*GPSEntry),
 		interval: 1 * time.Hour,
-		hub:      &Hub{Clients: make(map[*websocket.Conn]*clientMeta)},
+		hub:      &Hub{Clients: make(map[*websocket.Conn]*clientMeta), subscribed: make(map[string]bool)},
 		done:     make(chan struct{}),
 	}
 
@@ -74,7 +74,7 @@ func TestGPSBuffer_SignificantChangeFilter(t *testing.T) {
 		entries:  make(map[string]*GPSEntry),
 		previous: make(map[string]*GPSEntry),
 		interval: 1 * time.Hour,
-		hub:      &Hub{Clients: make(map[*websocket.Conn]*clientMeta)},
+		hub:      &Hub{Clients: make(map[*websocket.Conn]*clientMeta), subscribed: make(map[string]bool)},
 		done:     make(chan struct{}),
 	}
 

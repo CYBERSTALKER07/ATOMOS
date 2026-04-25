@@ -69,7 +69,7 @@ func TestFormat(t *testing.T) {
 		{1250, Config{Code: "USD", DecimalPlaces: 2, Symbol: "$"}, "$12.50"},
 		{100, Config{Code: "EUR", DecimalPlaces: 2, Symbol: "€"}, "€1.00"},
 		{0, Config{Code: "UZS", DecimalPlaces: 0, Symbol: "сўм"}, "0 сўм"},
-		{1234500, Config{Code: "UZS", DecimalPlaces: 0, Symbol: ""}, "1 234 500"},
+		{1234500, Config{Code: "UZS", DecimalPlaces: 0, Symbol: ""}, "1 234 500 UZS"},
 	}
 	for _, tt := range tests {
 		got := Format(tt.amount, tt.cfg)
@@ -81,8 +81,8 @@ func TestFormat(t *testing.T) {
 
 func TestFormatCode(t *testing.T) {
 	got := FormatCode(50000, "UZS", 0)
-	if got != "50 000" {
-		t.Errorf("FormatCode(50000,, 0) = %q, want %q", got, "50 000")
+	if got != "50 000 UZS" {
+		t.Errorf("FormatCode(50000,, 0) = %q, want %q", got, "50 000 UZS")
 	}
 }
 

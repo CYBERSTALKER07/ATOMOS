@@ -10,6 +10,8 @@ import (
 
 	"backend-go/cache"
 
+	"cloud.google.com/go/spanner"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 )
@@ -57,6 +59,32 @@ func TestGenerateSecureToken_Unique(t *testing.T) {
 			t.Fatalf("duplicate token on iteration %d: %s", i, tok)
 		}
 		seen[tok] = struct{}{}
+	}
+}
+
+func TestReadClientForRetailerID_NilServiceReturnsNil(t *testing.T) {
+	var svc *OrderService
+	got := svc.readClientForRetailerID(context.Background(), "ret-1")
+	if got != nil {
+		t.Fatalf("expected nil client for nil service")
+	}
+}
+
+func TestReadClientForRetailerID_NilClientReturnsNil(t *testing.T) {
+	svc := &OrderService{Client: nil}
+	got := svc.readClientForRetailerID(context.Background(), "ret-1")
+	if got != nil {
+		t.Fatalf("expected nil client when service client is nil")
+	}
+}
+
+func TestReadClientForRetailerID_NoRouterUsesPrimary(t *testing.T) {
+	primary := &spanner.Client{}
+	svc := &OrderService{Client: primary, ReadRouter: nil}
+
+	got := svc.readClientForRetailerID(context.Background(), "ret-1")
+	if got != primary {
+		t.Fatalf("expected primary client when ReadRouter is nil")
 	}
 }
 
@@ -293,10 +321,8 @@ func TestParseWKTPoint_OneCoord(t *testing.T) {
 
 func TestNormalizeCardGateway_Valid(t *testing.T) {
 	cases := map[string]string{
-		"CASH":      "CASH",
-		"cash":      "CASH",
-		"GLOBAL_PAY":      "GLOBAL_PAY",
-		"global_pay":      "GLOBAL_PAY",
+		"CASH":       "CASH",
+		"cash":       "CASH",
 		"GLOBAL_PAY": "GLOBAL_PAY",
 		"global_pay": "GLOBAL_PAY",
 	}

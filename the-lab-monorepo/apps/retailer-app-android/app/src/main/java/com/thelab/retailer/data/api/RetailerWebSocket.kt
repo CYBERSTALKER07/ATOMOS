@@ -64,11 +64,10 @@ class RetailerWebSocket @Inject constructor(
     fun connect() {
         if (socket != null) return
         intentionalClose.set(false)
-        val retailerId = tokenManager.getUserId() ?: return
         val token = tokenManager.getToken() ?: return
 
         val wsBase = BuildConfig.WS_URL
-        val url = "$wsBase/v1/ws/retailer?retailer_id=$retailerId"
+        val url = "$wsBase/v1/ws/retailer"
 
         val okClient = OkHttpClient.Builder()
             .pingInterval(30, TimeUnit.SECONDS)

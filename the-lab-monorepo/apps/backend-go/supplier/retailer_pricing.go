@@ -11,6 +11,7 @@ import (
 
 	"backend-go/auth"
 	"backend-go/kafka"
+	"backend-go/proximity"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -45,12 +46,13 @@ type RetailerPriceOverrideResponse struct {
 // ── Service ───────────────────────────────────────────────────────────────────
 
 type RetailerPricingService struct {
-	Client   *spanner.Client
-	Producer *kafkago.Writer
+	Client     *spanner.Client
+	ReadRouter proximity.ReadRouter
+	Producer   *kafkago.Writer
 }
 
-func NewRetailerPricingService(client *spanner.Client, producer *kafkago.Writer) *RetailerPricingService {
-	return &RetailerPricingService{Client: client, Producer: producer}
+func NewRetailerPricingService(client *spanner.Client, readRouter proximity.ReadRouter, producer *kafkago.Writer) *RetailerPricingService {
+	return &RetailerPricingService{Client: client, ReadRouter: readRouter, Producer: producer}
 }
 
 // ── HTTP Handlers ─────────────────────────────────────────────────────────────
@@ -129,8 +131,9 @@ func (s *RetailerPricingService) listOverrides(w http.ResponseWriter, r *http.Re
 
 	sql += ` ORDER BY CreatedAt DESC LIMIT 500`
 
+	readClient := s.readClientForWarehouseScope(r.Context(), supplierID, auth.EffectiveWarehouseID(r.Context()))
 	stmt := spanner.Statement{SQL: sql, Params: params}
-	iter := s.Client.Single().Query(r.Context(), stmt)
+	iter := readClient.Single().Query(r.Context(), stmt)
 	defer iter.Stop()
 
 	var overrides []RetailerPriceOverrideResponse
@@ -395,6 +398,8 @@ func (s *RetailerPricingService) deactivateOverride(w http.ResponseWriter, r *ht
 // retailerInWarehouseScope checks if a retailer's location falls within the
 // warehouse's H3 coverage, or if the retailer has PrimaryWarehouseId matching.
 func (s *RetailerPricingService) retailerInWarehouseScope(ctx context.Context, supplierID, retailerID, warehouseID string) bool {
+	readClient := s.readClientForWarehouseScope(ctx, supplierID, warehouseID)
+
 	// Check SupplierRetailerClients materialised view first
 	stmt := spanner.Statement{
 		SQL: `SELECT 1 FROM SupplierRetailerClients
@@ -405,7 +410,7 @@ func (s *RetailerPricingService) retailerInWarehouseScope(ctx context.Context, s
 			"whId": warehouseID,
 		},
 	}
-	iter := s.Client.Single().Query(ctx, stmt)
+	iter := readClient.Single().Query(ctx, stmt)
 	defer iter.Stop()
 	_, err := iter.Next()
 	if err == nil {
@@ -413,7 +418,7 @@ func (s *RetailerPricingService) retailerInWarehouseScope(ctx context.Context, s
 	}
 
 	// Fallback: H3 check
-	retailerRow, err := s.Client.Single().ReadRow(ctx, "Retailers",
+	retailerRow, err := readClient.Single().ReadRow(ctx, "Retailers",
 		spanner.Key{retailerID}, []string{"H3Index"})
 	if err != nil {
 		return false
@@ -433,10 +438,44 @@ func (s *RetailerPricingService) retailerInWarehouseScope(ctx context.Context, s
 			"h3cell": h3.StringVal,
 		},
 	}
-	whIter := s.Client.Single().Query(ctx, whStmt)
+	whIter := readClient.Single().Query(ctx, whStmt)
 	defer whIter.Stop()
 	_, err = whIter.Next()
 	return err == nil
+}
+
+func (s *RetailerPricingService) readClientForWarehouseScope(ctx context.Context, supplierID, warehouseID string) *spanner.Client {
+	if s == nil || s.Client == nil {
+		return nil
+	}
+	if s.ReadRouter == nil || warehouseID == "" {
+		return s.Client
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT Lat, Lng
+		      FROM Warehouses
+		      WHERE WarehouseId = @warehouseId AND SupplierId = @supplierId
+		      LIMIT 1`,
+		Params: map[string]interface{}{
+			"warehouseId": warehouseID,
+			"supplierId":  supplierID,
+		},
+	}
+
+	iter := s.Client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		return s.Client
+	}
+
+	var lat, lng spanner.NullFloat64
+	if row.Columns(&lat, &lng) != nil || !lat.Valid || !lng.Valid {
+		return s.Client
+	}
+
+	return proximity.ReadClientForRetailer(s.Client, s.ReadRouter, lat.Float64, lng.Float64)
 }
 
 // emitPriceOverrideEvent fires a Kafka event for audit and analytics.

@@ -9,7 +9,7 @@ import (
 // ─── applyCorrection ────────────────────────────────────────────────────────
 
 func TestApplyCorrection_NoWeight_ReturnsRaw(t *testing.T) {
-	cs := &correctionStore{weights: make(map[string]map[string]float64)}
+	cs := &correctionStore{weights: make(map[string]map[string]correctionEntry)}
 	got := cs.applyCorrection("ret-1", "wh-1", "sku-1", 10)
 	if got != 10 {
 		t.Errorf("got %d, want 10", got)
@@ -17,8 +17,8 @@ func TestApplyCorrection_NoWeight_ReturnsRaw(t *testing.T) {
 }
 
 func TestApplyCorrection_WithWeight(t *testing.T) {
-	cs := &correctionStore{weights: map[string]map[string]float64{
-		"ret-1:wh-1": {"sku-1": 1.5},
+	cs := &correctionStore{weights: map[string]map[string]correctionEntry{
+		"ret-1:wh-1": {"sku-1": {Factor: 1.5}},
 	}}
 	got := cs.applyCorrection("ret-1", "wh-1", "sku-1", 10)
 	if got != 15 { // round(10 * 1.5) = 15
@@ -27,8 +27,8 @@ func TestApplyCorrection_WithWeight(t *testing.T) {
 }
 
 func TestApplyCorrection_WeightLessThanOne(t *testing.T) {
-	cs := &correctionStore{weights: map[string]map[string]float64{
-		"ret-1:wh-1": {"sku-1": 0.3},
+	cs := &correctionStore{weights: map[string]map[string]correctionEntry{
+		"ret-1:wh-1": {"sku-1": {Factor: 0.3}},
 	}}
 	got := cs.applyCorrection("ret-1", "wh-1", "sku-1", 2)
 	// round(2 * 0.3) = round(0.6) = 1, but min is 1
@@ -38,8 +38,8 @@ func TestApplyCorrection_WeightLessThanOne(t *testing.T) {
 }
 
 func TestApplyCorrection_MinClamp(t *testing.T) {
-	cs := &correctionStore{weights: map[string]map[string]float64{
-		"ret-1:wh-1": {"sku-1": 0.01},
+	cs := &correctionStore{weights: map[string]map[string]correctionEntry{
+		"ret-1:wh-1": {"sku-1": {Factor: 0.01}},
 	}}
 	got := cs.applyCorrection("ret-1", "wh-1", "sku-1", 1)
 	if got != 1 {
@@ -48,8 +48,8 @@ func TestApplyCorrection_MinClamp(t *testing.T) {
 }
 
 func TestApplyCorrection_UnknownRetailer(t *testing.T) {
-	cs := &correctionStore{weights: map[string]map[string]float64{
-		"ret-1:wh-1": {"sku-1": 2.0},
+	cs := &correctionStore{weights: map[string]map[string]correctionEntry{
+		"ret-1:wh-1": {"sku-1": {Factor: 2.0}},
 	}}
 	got := cs.applyCorrection("ret-unknown", "wh-1", "sku-1", 5)
 	if got != 5 {
@@ -58,8 +58,8 @@ func TestApplyCorrection_UnknownRetailer(t *testing.T) {
 }
 
 func TestApplyCorrection_UnknownSku(t *testing.T) {
-	cs := &correctionStore{weights: map[string]map[string]float64{
-		"ret-1:wh-1": {"sku-1": 2.0},
+	cs := &correctionStore{weights: map[string]map[string]correctionEntry{
+		"ret-1:wh-1": {"sku-1": {Factor: 2.0}},
 	}}
 	got := cs.applyCorrection("ret-1", "wh-1", "sku-unknown", 5)
 	if got != 5 {
@@ -68,8 +68,8 @@ func TestApplyCorrection_UnknownSku(t *testing.T) {
 }
 
 func TestApplyCorrection_EmptyWarehouse(t *testing.T) {
-	cs := &correctionStore{weights: map[string]map[string]float64{
-		"ret-1:": {"sku-1": 1.8},
+	cs := &correctionStore{weights: map[string]map[string]correctionEntry{
+		"ret-1:": {"sku-1": {Factor: 1.8}},
 	}}
 	got := cs.applyCorrection("ret-1", "", "sku-1", 10)
 	if got != 18 {
@@ -78,9 +78,9 @@ func TestApplyCorrection_EmptyWarehouse(t *testing.T) {
 }
 
 func TestApplyCorrection_DifferentWarehouses(t *testing.T) {
-	cs := &correctionStore{weights: map[string]map[string]float64{
-		"ret-1:wh-A": {"sku-1": 2.0},
-		"ret-1:wh-B": {"sku-1": 0.5},
+	cs := &correctionStore{weights: map[string]map[string]correctionEntry{
+		"ret-1:wh-A": {"sku-1": {Factor: 2.0}},
+		"ret-1:wh-B": {"sku-1": {Factor: 0.5}},
 	}}
 	gotA := cs.applyCorrection("ret-1", "wh-A", "sku-1", 10)
 	gotB := cs.applyCorrection("ret-1", "wh-B", "sku-1", 10)
@@ -95,40 +95,40 @@ func TestApplyCorrection_DifferentWarehouses(t *testing.T) {
 // ─── recordCorrection ───────────────────────────────────────────────────────
 
 func TestRecordCorrection_Rejected(t *testing.T) {
-	cs := &correctionStore{weights: make(map[string]map[string]float64)}
+	cs := &correctionStore{weights: make(map[string]map[string]correctionEntry)}
 	cs.recordCorrection("ret-1", "wh-1", "sku-1", "rejected", "", "")
-	w := cs.weights["ret-1:wh-1"]["sku-1"]
-	if w != 0.5 {
-		t.Errorf("rejected weight = %f, want 0.5", w)
+	entry := cs.weights["ret-1:wh-1"]["sku-1"]
+	if entry.Factor != 0.5 {
+		t.Errorf("rejected weight = %f, want 0.5", entry.Factor)
 	}
 }
 
 func TestRecordCorrection_Amount(t *testing.T) {
-	cs := &correctionStore{weights: make(map[string]map[string]float64)}
+	cs := &correctionStore{weights: make(map[string]map[string]correctionEntry)}
 	cs.recordCorrection("ret-1", "wh-1", "sku-1", "amount", "10", "20")
-	w := cs.weights["ret-1:wh-1"]["sku-1"]
+	entry := cs.weights["ret-1:wh-1"]["sku-1"]
 	// existing=1.0 (no prior), ratio=20/10=2.0, EMA = 1.0*0.7 + 2.0*0.3 = 1.3
 	expected := 1.3
-	if math.Abs(w-expected) > 0.001 {
-		t.Errorf("amount weight = %f, want %f", w, expected)
+	if math.Abs(entry.Factor-expected) > 0.001 {
+		t.Errorf("amount weight = %f, want %f", entry.Factor, expected)
 	}
 }
 
 func TestRecordCorrection_Amount_WithExisting(t *testing.T) {
-	cs := &correctionStore{weights: map[string]map[string]float64{
-		"ret-1:wh-1": {"sku-1": 1.3},
+	cs := &correctionStore{weights: map[string]map[string]correctionEntry{
+		"ret-1:wh-1": {"sku-1": {Factor: 1.3}},
 	}}
 	cs.recordCorrection("ret-1", "wh-1", "sku-1", "amount", "10", "15")
-	w := cs.weights["ret-1:wh-1"]["sku-1"]
+	entry := cs.weights["ret-1:wh-1"]["sku-1"]
 	// existing=1.3, ratio=15/10=1.5, EMA = 1.3*0.7 + 1.5*0.3 = 0.91 + 0.45 = 1.36
 	expected := 1.36
-	if math.Abs(w-expected) > 0.001 {
-		t.Errorf("weight = %f, want %f", w, expected)
+	if math.Abs(entry.Factor-expected) > 0.001 {
+		t.Errorf("weight = %f, want %f", entry.Factor, expected)
 	}
 }
 
 func TestRecordCorrection_Amount_ZeroOld_NoChange(t *testing.T) {
-	cs := &correctionStore{weights: make(map[string]map[string]float64)}
+	cs := &correctionStore{weights: make(map[string]map[string]correctionEntry)}
 	cs.recordCorrection("ret-1", "wh-1", "sku-1", "amount", "0", "20")
 	if _, ok := cs.weights["ret-1:wh-1"]; ok {
 		if _, ok := cs.weights["ret-1:wh-1"]["sku-1"]; ok {
@@ -138,7 +138,7 @@ func TestRecordCorrection_Amount_ZeroOld_NoChange(t *testing.T) {
 }
 
 func TestRecordCorrection_UnknownField_NoOp(t *testing.T) {
-	cs := &correctionStore{weights: make(map[string]map[string]float64)}
+	cs := &correctionStore{weights: make(map[string]map[string]correctionEntry)}
 	cs.recordCorrection("ret-1", "wh-1", "sku-1", "unknown_field", "1", "2")
 	if retailers, ok := cs.weights["ret-1:wh-1"]; ok {
 		if _, ok := retailers["sku-1"]; ok {

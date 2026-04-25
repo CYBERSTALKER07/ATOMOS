@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/proximity"
 	"backend-go/spannerx"
 
 	"cloud.google.com/go/spanner"
@@ -48,7 +49,7 @@ type DemandForecastResponse struct {
 
 // HandleDemandForecast returns AI-powered demand analysis per product for a warehouse.
 // GET /v1/warehouse/demand/forecast?days=7|30
-func HandleDemandForecast(spannerClient *spanner.Client) http.HandlerFunc {
+func HandleDemandForecast(spannerClient *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -76,13 +77,14 @@ func HandleDemandForecast(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		// Resolve supplier from warehouse
-		supplierID, warehouseName, err := resolveWarehouseSupplier(r.Context(), spannerClient, warehouseID)
+		supplierID, warehouseName, whLat, whLng, err := resolveWarehouseSupplier(r.Context(), spannerClient, warehouseID)
 		if err != nil {
 			http.Error(w, `{"error":"warehouse not found"}`, http.StatusNotFound)
 			return
 		}
 
-		products, err := computeDemandForecast(r.Context(), spannerClient, supplierID, warehouseID, forecastDays)
+		readClient := proximity.ReadClientForRetailer(spannerClient, readRouter, whLat, whLng)
+		products, err := computeDemandForecast(r.Context(), readClient, supplierID, warehouseID, forecastDays)
 		if err != nil {
 			log.Printf("[DEMAND FORECAST] computation error for warehouse %s: %v", warehouseID, err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -114,17 +116,18 @@ func HandleDemandForecast(spannerClient *spanner.Client) http.HandlerFunc {
 	}
 }
 
-func resolveWarehouseSupplier(ctx context.Context, client *spanner.Client, warehouseID string) (string, string, error) {
+func resolveWarehouseSupplier(ctx context.Context, client *spanner.Client, warehouseID string) (string, string, float64, float64, error) {
 	row, err := client.Single().ReadRow(ctx, "Warehouses",
-		spanner.Key{warehouseID}, []string{"SupplierId", "Name"})
+		spanner.Key{warehouseID}, []string{"SupplierId", "Name", "Lat", "Lng"})
 	if err != nil {
-		return "", "", err
+		return "", "", 0, 0, err
 	}
 	var supplierID, name string
-	if err := row.Columns(&supplierID, &name); err != nil {
-		return "", "", err
+	var lat, lng spanner.NullFloat64
+	if err := row.Columns(&supplierID, &name, &lat, &lng); err != nil {
+		return "", "", 0, 0, err
 	}
-	return supplierID, name, nil
+	return supplierID, name, lat.Float64, lng.Float64, nil
 }
 
 func computeDemandForecast(ctx context.Context, client *spanner.Client, supplierID, warehouseID string, forecastDays int) ([]DemandBreakdown, error) {

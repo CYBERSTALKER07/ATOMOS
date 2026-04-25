@@ -26,6 +26,8 @@ import (
 	"strings"
 	"time"
 
+	"backend-go/proximity"
+
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 )
@@ -332,10 +334,36 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no expl
 // Cold Start Heuristic (A-1)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+func (s *OrderService) readClientForRetailerID(ctx context.Context, retailerID string) *spanner.Client {
+	if s == nil || s.Client == nil {
+		return nil
+	}
+	if s.ReadRouter == nil {
+		return s.Client
+	}
+
+	row, err := s.Client.Single().ReadRow(ctx, "Retailers", spanner.Key{retailerID}, []string{"Latitude", "Longitude"})
+	if err != nil {
+		return s.Client
+	}
+
+	var lat, lng spanner.NullFloat64
+	if row.Columns(&lat, &lng) != nil || !lat.Valid || !lng.Valid {
+		return s.Client
+	}
+
+	return proximity.ReadClientForRetailer(s.Client, s.ReadRouter, lat.Float64, lng.Float64)
+}
+
 // coldStartPrediction generates a prediction for a retailer with zero order history
 // by querying neighborhood peers (same supplier, same H3 cell) for their top SKUs.
 // Falls back to supplier's globally top-selling SKUs if no neighborhood data exists.
 func (s *OrderService) coldStartPrediction(ctx context.Context, retailerID string) (*AIPredictionResult, error) {
+	readClient := s.readClientForRetailerID(ctx, retailerID)
+	if readClient == nil {
+		return nil, fmt.Errorf("cold start: spanner client unavailable")
+	}
+
 	// Try neighborhood heuristic: find top SKUs ordered by other retailers in the same H3 cell
 	stmt := spanner.Statement{
 		SQL: `SELECT oi.SkuId, SUM(oi.Quantity) AS TotalQty, AVG(oi.UnitPrice) AS AvgPrice
@@ -351,7 +379,7 @@ func (s *OrderService) coldStartPrediction(ctx context.Context, retailerID strin
 		Params: map[string]interface{}{"retailerID": retailerID},
 	}
 
-	iter := s.Client.Single().Query(ctx, stmt)
+	iter := readClient.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
 	var items []PredictionItem

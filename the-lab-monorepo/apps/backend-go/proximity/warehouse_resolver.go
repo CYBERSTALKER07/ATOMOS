@@ -36,6 +36,12 @@ type WarehouseMatch struct {
 // ResolveWarehouse finds the best warehouse under a supplier to fulfill an order
 // for a retailer at the given coordinates. Returns nil if no warehouse covers the area.
 func ResolveWarehouse(ctx context.Context, spannerClient *spanner.Client, supplierID string, retailerLat, retailerLng float64) (*WarehouseMatch, error) {
+	return ResolveWarehouseWithRouter(ctx, spannerClient, nil, supplierID, retailerLat, retailerLng)
+}
+
+// ResolveWarehouseWithRouter mirrors ResolveWarehouse but allows H3-aware
+// read-client routing when a read router is provided.
+func ResolveWarehouseWithRouter(ctx context.Context, spannerClient *spanner.Client, readRouter ReadRouter, supplierID string, retailerLat, retailerLng float64) (*WarehouseMatch, error) {
 	// Path 1: Grid cell lookup (O(1) via Redis)
 	match, err := resolveViaGridCell(ctx, supplierID, retailerLat, retailerLng)
 	if err != nil {
@@ -55,7 +61,8 @@ func ResolveWarehouse(ctx context.Context, spannerClient *spanner.Client, suppli
 	}
 
 	// Path 3: Spanner direct query (slowest but always available)
-	return resolveViaSpanner(ctx, spannerClient, supplierID, retailerLat, retailerLng)
+	readClient := readClientForRetailer(spannerClient, readRouter, retailerLat, retailerLng)
+	return resolveViaSpanner(ctx, readClient, supplierID, retailerLat, retailerLng)
 }
 
 // resolveViaGridCell uses the pre-computed cell→warehouse index.
@@ -202,10 +209,16 @@ func resolveViaSpanner(ctx context.Context, client *spanner.Client, supplierID s
 // ResolveWarehouseForCart resolves the warehouse for each supplier in a multi-supplier cart.
 // Returns a map of supplierID → WarehouseMatch.
 func ResolveWarehouseForCart(ctx context.Context, spannerClient *spanner.Client, supplierIDs []string, retailerLat, retailerLng float64) (map[string]*WarehouseMatch, error) {
+	return ResolveWarehouseForCartWithRouter(ctx, spannerClient, nil, supplierIDs, retailerLat, retailerLng)
+}
+
+// ResolveWarehouseForCartWithRouter mirrors ResolveWarehouseForCart with
+// optional H3-routed Spanner reads.
+func ResolveWarehouseForCartWithRouter(ctx context.Context, spannerClient *spanner.Client, readRouter ReadRouter, supplierIDs []string, retailerLat, retailerLng float64) (map[string]*WarehouseMatch, error) {
 	results := make(map[string]*WarehouseMatch, len(supplierIDs))
 
 	for _, sid := range supplierIDs {
-		match, err := ResolveWarehouse(ctx, spannerClient, sid, retailerLat, retailerLng)
+		match, err := ResolveWarehouseWithRouter(ctx, spannerClient, readRouter, sid, retailerLat, retailerLng)
 		if err != nil {
 			log.Printf("[RESOLVER] Failed to resolve warehouse for supplier %s: %v", sid, err)
 			continue

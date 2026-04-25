@@ -42,7 +42,6 @@ class DriverWebSocket @Inject constructor(
     val messages: SharedFlow<DriverWSMessage> = _messages.asSharedFlow()
 
     private var currentBaseUrl: String? = null
-    private var currentDriverId: String? = null
     private var currentToken: String? = null
     private var reconnectAttempts = 0
     private var shouldReconnect = true
@@ -52,17 +51,16 @@ class DriverWebSocket @Inject constructor(
         shouldReconnect = true
         reconnectAttempts = 0
         currentBaseUrl = baseUrl
-        currentDriverId = driverId
         currentToken = token
 
-        connectInternal(baseUrl, driverId, token)
+        connectInternal(baseUrl, token)
     }
 
-    private fun connectInternal(baseUrl: String, driverId: String, token: String) {
+    private fun connectInternal(baseUrl: String, token: String) {
         val wsUrl = baseUrl
             .replace("http://", "ws://")
             .replace("https://", "wss://")
-            .plus("/v1/ws/driver?driver_id=$driverId")
+            .plus("/v1/ws/driver")
 
         val request = Request.Builder()
             .url(wsUrl)
@@ -109,9 +107,8 @@ class DriverWebSocket @Inject constructor(
             try {
                 Thread.sleep(delay)
                 val url = currentBaseUrl ?: return@Thread
-                val id = currentDriverId ?: return@Thread
                 val tok = currentToken ?: return@Thread
-                if (shouldReconnect) connectInternal(url, id, tok)
+                if (shouldReconnect) connectInternal(url, tok)
             } catch (_: InterruptedException) {}
         }.start()
     }

@@ -35,6 +35,7 @@
  Role | Surface | Stack | UI System | Path |
 |---|---|---|---|---|
 | SUPPLIER | Admin Portal (web) | Next.js 15 + React 19 | Tailwind v4 + hand-rolled M3 CSS tokens | `apps/admin-portal` |
+| SUPPLIER | Admin Desktop (native) | Next.js 15 + Tauri 2 | Tailwind v4 + hand-rolled M3 CSS tokens (Tauri-wrapped) | `apps/admin-portal` |
 | DRIVER | Android | Kotlin/Compose | Jetpack Compose Material 3 | `apps/driver-app-android` |
 | DRIVER | iOS | SwiftUI | Native Apple HIG, SF Symbols, system colors | `apps/driverappios` |
 | RETAILER | Android | Kotlin/Compose | Jetpack Compose Material 3 | `apps/retailer-app-android` |
@@ -44,9 +45,11 @@
 | PAYLOAD | iPad | SwiftUI | Native Apple HIG, SF Symbols, system colors | `apps/payload-app-ios` |
 | PAYLOAD | Android tablet | Kotlin/Compose | Jetpack Compose Material 3 + M3 Adaptive | `apps/payload-app-android` |
 | FACTORY_ADMIN | Portal (web) | Next.js 15 | Tailwind v4 + M3 tokens | `apps/factory-portal` |
+| FACTORY_ADMIN | Desktop (native) | Next.js 15 + Tauri 2 | Tailwind v4 + M3 tokens (Tauri-wrapped) | `apps/factory-portal` |
 | FACTORY_ADMIN | Android | Kotlin/Compose | Jetpack Compose Material 3 | `apps/factory-app-android` |
 | FACTORY_ADMIN | iOS | SwiftUI | Native Apple HIG | `apps/factory-app-ios` |
 | WAREHOUSE_ADMIN | Portal (web) | Next.js 15 | Tailwind v4 + M3 tokens | `apps/warehouse-portal` |
+| WAREHOUSE_ADMIN | Desktop (native) | Next.js 15 + Tauri 2 | Tailwind v4 + M3 tokens (Tauri-wrapped) | `apps/warehouse-portal` |
 | WAREHOUSE_ADMIN | Android | Kotlin/Compose | Jetpack Compose Material 3 | `apps/warehouse-app-android` |
 | WAREHOUSE_ADMIN | iOS | SwiftUI | Native Apple HIG | `apps/warehouse-app-ios` |
 
@@ -66,12 +69,12 @@
 ### Role → App Matrix (Canonical)
 | Role | JWT Claim | Clients That Must Stay In Sync |
 |---|---|---|
-| SUPPLIER ("ADMIN" in JWT) | `role=ADMIN`, supplier-scope resolved via `claims.ResolveSupplierID()` | `admin-portal` (the Supplier Portal — primary product surface) |
+| SUPPLIER ("ADMIN" in JWT) | `role=ADMIN`, supplier-scope resolved via `claims.ResolveSupplierID()` | `admin-portal` (web + Tauri desktop shell; Supplier Portal primary product surface) |
 | DRIVER | `role=DRIVER`, home-node-scoped | `driver-app-android`, `driverappios` |
 | RETAILER | `role=RETAILER`, self-registered | `retailer-app-android`, `retailer-app-ios`, `retailer-app-desktop` |
 | PAYLOAD | `role=PAYLOAD`, terminal-scoped | `payload-terminal` (Expo), `payload-app-ios` (iPad), `payload-app-android` (Android tablet) |
-| FACTORY_ADMIN | `SupplierRole=FACTORY_ADMIN`, factory-scope resolved via `auth.ResolveHomeNode` | `factory-portal`, `factory-app-android`, `factory-app-ios` |
-| WAREHOUSE_ADMIN | `SupplierRole=WAREHOUSE_ADMIN`, warehouse-scoped | `warehouse-portal`, `warehouse-app-android`, `warehouse-app-ios` |
+| FACTORY_ADMIN | `SupplierRole=FACTORY_ADMIN`, factory-scope resolved via `auth.ResolveHomeNode` | `factory-portal` (web + Tauri desktop shell), `factory-app-android`, `factory-app-ios` |
+| WAREHOUSE_ADMIN | `SupplierRole=WAREHOUSE_ADMIN`, warehouse-scoped | `warehouse-portal` (web + Tauri desktop shell), `warehouse-app-android`, `warehouse-app-ios` |
 
 ### Sync Protocol (Mandatory Check Before "Done")
 When implementing a feature for a role, walk every client in that role's row:
@@ -108,6 +111,7 @@ This is a distributed monorepo. Respect the actual local structure.
 ### Canonical App Paths
 - **Backend (Go 1.22+)**: `the-lab-monorepo/apps/backend-go`
 - **Admin Portal (Next.js App Router)**: `the-lab-monorepo/apps/admin-portal`
+- **Admin Desktop (Tauri shell, same app)**: `the-lab-monorepo/apps/admin-portal`
 - **Driver App Android (Kotlin/Compose)**: `the-lab-monorepo/apps/driver-app-android`
 - **Driver App iOS (SwiftUI)**: `the-lab-monorepo/apps/driverappios`
 - **Retailer App Android (Kotlin/Compose)**: `the-lab-monorepo/apps/retailer-app-android`
@@ -120,9 +124,11 @@ This is a distributed monorepo. Respect the actual local structure.
 - **Factory App Android (Kotlin/Compose)**: `the-lab-monorepo/apps/factory-app-android`
 - **Factory App iOS (SwiftUI)**: `the-lab-monorepo/apps/factory-app-ios`
 - **Factory Portal (Next.js)**: `the-lab-monorepo/apps/factory-portal`
+- **Factory Desktop (Tauri shell, same app)**: `the-lab-monorepo/apps/factory-portal`
 - **Warehouse App Android (Kotlin/Compose)**: `the-lab-monorepo/apps/warehouse-app-android`
 - **Warehouse App iOS (SwiftUI)**: `the-lab-monorepo/apps/warehouse-app-ios`
 - **Warehouse Portal (Next.js)**: `the-lab-monorepo/apps/warehouse-portal`
+- **Warehouse Desktop (Tauri shell, same app)**: `the-lab-monorepo/apps/warehouse-portal`
 - **Shared Types**: `the-lab-monorepo/packages/types`
 - **Shared Config**: `the-lab-monorepo/packages/config`
 - **Validation**: `the-lab-monorepo/packages/validation`
@@ -333,6 +339,11 @@ All M3 theming is implemented via custom CSS variables and utility classes in `g
 | Surface | Stack | UI System |
 |---|---|---|
 | Admin Portal (web) | Next.js 15 + React 19 | Tailwind v4 + hand-rolled M3 CSS tokens in `globals.css` |
+| Admin Desktop (native) | Next.js 15 + Tauri 2 | Tailwind v4 + hand-rolled M3 CSS tokens in `globals.css` (desktop shell) |
+| Factory Portal (web) | Next.js 15 | Tailwind v4 + M3 tokens |
+| Factory Desktop (native) | Next.js 15 + Tauri 2 | Tailwind v4 + M3 tokens (desktop shell) |
+| Warehouse Portal (web) | Next.js 15 | Tailwind v4 + M3 tokens |
+| Warehouse Desktop (native) | Next.js 15 + Tauri 2 | Tailwind v4 + M3 tokens (desktop shell) |
 | Driver Android | Kotlin/Compose | Jetpack Compose Material 3 (`androidx.compose.material3`) |
 | Retailer Android | Kotlin/Compose | Jetpack Compose Material 3 (`androidx.compose.material3`) |
 | Driver iOS | SwiftUI | Native Apple HIG, SF Symbols, system colors |
@@ -386,10 +397,16 @@ For these changes, always verify:
 - **Infrastructure**: `cd the-lab-monorepo && docker-compose up -d`
 - **Backend**: `cd the-lab-monorepo/apps/backend-go && go mod tidy && go build ./...`
 - **Admin Portal**: `cd the-lab-monorepo/apps/admin-portal && npm run dev`
+- **Admin Desktop (Tauri)**: `cd the-lab-monorepo/apps/admin-portal && npm run tauri:dev`
 - **Driver Android**: build via Android Studio or Gradle in `the-lab-monorepo/apps/driver-app-android`
 - **Driver iOS**: build via Xcode in `the-lab-monorepo/apps/driverappios`
 - **Retailer Android**: build via Android Studio or Gradle in `the-lab-monorepo/apps/retailer-app-android`
 - **Retailer iOS**: build via Xcode in `the-lab-monorepo/apps/retailer-app-ios`
+- **Retailer Desktop (Tauri)**: `cd the-lab-monorepo/apps/retailer-app-desktop && npm run tauri:dev`
+- **Factory Portal (web)**: `cd the-lab-monorepo/apps/factory-portal && npm run dev`
+- **Factory Desktop (Tauri)**: `cd the-lab-monorepo/apps/factory-portal && npm run tauri:dev`
+- **Warehouse Portal (web)**: `cd the-lab-monorepo/apps/warehouse-portal && npm run dev`
+- **Warehouse Desktop (Tauri)**: `cd the-lab-monorepo/apps/warehouse-portal && npm run tauri:dev`
 - **Expo Payload Terminal**: `cd the-lab-monorepo/apps/payload-terminal && npm run start`
 - **Payload App iOS**: `cd the-lab-monorepo/apps/payload-app-ios && xcodegen generate && open payload-app-ios.xcodeproj` (requires `brew install xcodegen`)
 - **Payload App Android**: `cd the-lab-monorepo/apps/payload-app-android && ./gradlew :app:assembleDebug`

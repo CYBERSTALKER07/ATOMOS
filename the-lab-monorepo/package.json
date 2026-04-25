@@ -2,6 +2,8 @@
   "name": "the-lab-monorepo",
   "private": true,
   "scripts": {
+    "versionscan:scan": "python3 scripts/versionscan.py scan --repo-root . --output-dir .versionscan",
+    "versionscan:enforce": "python3 scripts/versionscan.py enforce --repo-root . --output-dir .versionscan --changed-only",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
@@ -10,7 +12,15 @@
     "test:e2e:factory": "playwright test --project=factory-portal",
     "test:e2e:warehouse": "playwright test --project=warehouse-portal",
     "test:e2e:api": "playwright test --project=api",
-    "test:e2e:cross": "playwright test --project=cross-role"
+    "test:e2e:cross": "playwright test --project=cross-role",
+    "desktop:admin:dev": "npm --prefix apps/admin-portal run tauri:dev",
+    "desktop:factory:dev": "npm --prefix apps/factory-portal run tauri:dev",
+    "desktop:warehouse:dev": "npm --prefix apps/warehouse-portal run tauri:dev",
+    "desktop:retailer:dev": "npm --prefix apps/retailer-app-desktop run tauri:dev",
+    "desktop:admin:build:debug": "npm --prefix apps/admin-portal run tauri:build:debug",
+    "desktop:factory:build:debug": "npm --prefix apps/factory-portal run tauri:build:debug",
+    "desktop:warehouse:build:debug": "npm --prefix apps/warehouse-portal run tauri:build:debug",
+    "desktop:retailer:build:debug": "npm --prefix apps/retailer-app-desktop run tauri:build:debug"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0"

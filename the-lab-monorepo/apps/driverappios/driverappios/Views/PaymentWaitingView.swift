@@ -104,12 +104,11 @@ struct PaymentWaitingView: View {
         let wsURL = baseURL
             .replacingOccurrences(of: "https://", with: "wss://")
             .replacingOccurrences(of: "http://", with: "ws://")
-        guard let url = URL(string: "\(wsURL)/v1/ws/driver?driver_id=\(driverId)") else { return }
+        guard let url = URL(string: "\(wsURL)/v1/ws/driver"),
+              let token = TokenStore.shared.token else { return }
 
         var request = URLRequest(url: url)
-        if let token = TokenStore.shared.token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         let task = URLSession.shared.webSocketTask(with: request)
         webSocketTask = task

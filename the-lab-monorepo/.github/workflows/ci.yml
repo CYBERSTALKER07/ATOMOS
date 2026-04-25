@@ -17,6 +17,36 @@ env:
   SPANNER_EMULATOR_HOST: localhost:9010
 
 jobs:
+  # ── VersionScan guardrails ───────────────────────────────────────────────
+  versionscan:
+    name: VersionScan — manifest + guardrails
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: VersionScan manifest
+        working-directory: the-lab-monorepo
+        run: python3 scripts/versionscan.py scan --repo-root . --output-dir .versionscan
+
+      - name: VersionScan enforce (PR changed files)
+        if: github.event_name == 'pull_request'
+        working-directory: the-lab-monorepo
+        run: python3 scripts/versionscan.py enforce --repo-root . --output-dir .versionscan --changed-only
+
+      - name: Upload VersionScan artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: versionscan-${{ github.run_id }}
+          path: the-lab-monorepo/.versionscan
+
   # ── Go backend ────────────────────────────────────────────────────────────
   backend:
     name: Backend — build · vet · test
@@ -122,7 +152,7 @@ jobs:
   docker-push:
     name: Docker — build and push to GAR
     runs-on: ubuntu-latest
-    needs: [backend, ai-worker, admin-portal]
+    needs: [versionscan, backend, ai-worker, admin-portal]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     strategy:

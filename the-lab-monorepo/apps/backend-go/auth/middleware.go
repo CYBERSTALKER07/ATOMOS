@@ -38,17 +38,18 @@ func Init(jwtSecret, internalKey string) {
 
 // LabClaims defines the payload inside our cryptographically sealed tokens
 type LabClaims struct {
-	UserID        string `json:"user_id"`
-	SupplierID    string `json:"supplier_id"`    // Organisation-level supplier UUID — use ResolveSupplierID() in handlers
-	Role          string `json:"role"`           // "ADMIN", "RETAILER", "SUPPLIER", "DRIVER", "PAYLOADER", "FACTORY", "WAREHOUSE"
-	WarehouseID   string `json:"warehouse_id"`   // Warehouse scope — empty = all warehouses (GLOBAL_ADMIN)
-	SupplierRole  string `json:"supplier_role"`  // "GLOBAL_ADMIN" or "NODE_ADMIN" — empty for non-supplier roles
-	FactoryID     string `json:"factory_id"`     // Factory scope — set for FACTORY role
-	FactoryRole   string `json:"factory_role"`   // "FACTORY_ADMIN" or "FACTORY_PAYLOADER"
-	WarehouseRole string `json:"warehouse_role"` // "WAREHOUSE_ADMIN" or "WAREHOUSE_STAFF" or "PAYLOADER"
-	CountryCode   string `json:"country_code"`   // ISO 3166-1 alpha-2 — supplier's operating country (Phase I)
-	IsConfigured  bool   `json:"is_configured"`  // True when billing/categories are set up — used for onboarding gate
-	GracePeriod   bool   `json:"-"`              // True when token is expired but within telemetry grace window (A-4)
+	UserID        string    `json:"user_id"`
+	SupplierID    string    `json:"supplier_id"`    // Organisation-level supplier UUID — use ResolveSupplierID() in handlers
+	Role          string    `json:"role"`           // "ADMIN", "RETAILER", "SUPPLIER", "DRIVER", "PAYLOADER", "FACTORY", "WAREHOUSE"
+	WarehouseID   string    `json:"warehouse_id"`   // Warehouse scope — empty = all warehouses (GLOBAL_ADMIN)
+	SupplierRole  string    `json:"supplier_role"`  // "GLOBAL_ADMIN" or "NODE_ADMIN" — empty for non-supplier roles
+	FactoryID     string    `json:"factory_id"`     // Factory scope — set for FACTORY role
+	FactoryRole   string    `json:"factory_role"`   // "FACTORY_ADMIN" or "FACTORY_PAYLOADER"
+	WarehouseRole string    `json:"warehouse_role"` // "WAREHOUSE_ADMIN" or "WAREHOUSE_STAFF" or "PAYLOADER"
+	CountryCode   string    `json:"country_code"`   // ISO 3166-1 alpha-2 — supplier's operating country (Phase I)
+	IsConfigured  bool      `json:"is_configured"`  // True when billing/categories are set up — used for onboarding gate
+	GracePeriod   bool      `json:"-"`              // True when token is expired but within telemetry grace window (A-4)
+	GraceDeadline time.Time `json:"-"`              // Hard deadline after which grace-mode websocket sessions must reconnect with a fresh token
 	jwt.RegisteredClaims
 }
 
@@ -269,6 +270,7 @@ func RequireRoleWithGrace(allowedRoles []string, graceWindow time.Duration, next
 						expiry := claims.ExpiresAt.Time
 						if time.Since(expiry) <= graceWindow {
 							claims.GracePeriod = true
+							claims.GraceDeadline = expiry.Add(graceWindow)
 							verified = true
 							log.Printf("[AUTH_GRACE] DRIVER %s operating in telemetry grace period (expired %s ago)",
 								claims.UserID, time.Since(expiry).Round(time.Second))

@@ -121,19 +121,18 @@ func (cs *correctionStore) getTriggerDateShift(retailerID, warehouseID string) f
 func (cs *correctionStore) recordCorrection(retailerID, warehouseID, skuID, field, oldVal, newVal string) {
 	cs.mu.Lock()
 	key := correctionKey(retailerID, warehouseID)
-	if _, ok := cs.weights[key]; !ok {
-		cs.weights[key] = make(map[string]correctionEntry)
-	}
-
-	entry := cs.weights[key][skuID]
+	retailerCorrections := cs.weights[key]
+	entry := retailerCorrections[skuID]
 	if entry.Factor == 0 {
 		entry.Factor = 1.0
 	}
-	entry.CorrectionCount++
+
+	changed := false
 
 	switch field {
 	case "rejected":
 		entry.Factor = 0.5
+		changed = true
 	case "amount":
 		var oldAmt, newAmt float64
 		fmt.Sscanf(oldVal, "%f", &oldAmt)
@@ -141,10 +140,22 @@ func (cs *correctionStore) recordCorrection(retailerID, warehouseID, skuID, fiel
 		if oldAmt > 0 && newAmt > 0 {
 			ratio := newAmt / oldAmt
 			entry.Factor = entry.Factor*0.7 + ratio*0.3
+			changed = true
 		}
 	}
 
-	cs.weights[key][skuID] = entry
+	if !changed {
+		cs.mu.Unlock()
+		return
+	}
+
+	if retailerCorrections == nil {
+		retailerCorrections = make(map[string]correctionEntry)
+		cs.weights[key] = retailerCorrections
+	}
+	entry.CorrectionCount++
+
+	retailerCorrections[skuID] = entry
 	cs.mu.Unlock()
 
 	// Write-through to Spanner (async, non-blocking)

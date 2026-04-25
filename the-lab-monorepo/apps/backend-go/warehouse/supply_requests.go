@@ -130,7 +130,7 @@ func (s *SupplyRequestService) HandleCreateSupplyRequest(w http.ResponseWriter, 
 	}
 
 	// Resolve supplier from warehouse
-	supplierID, _, err := resolveWarehouseSupplier(r.Context(), s.Spanner, warehouseID)
+	supplierID, _, _, _, err := resolveWarehouseSupplier(r.Context(), s.Spanner, warehouseID)
 	if err != nil {
 		http.Error(w, `{"error":"warehouse not found"}`, http.StatusNotFound)
 		return

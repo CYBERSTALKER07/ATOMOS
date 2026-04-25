@@ -306,7 +306,7 @@ func main() {
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplierPricingSvc.HandlePricingRuleAction)))
 
 	// ── Per-Retailer Pricing Overrides ──────────────────────────────────────
-	retailerPricingSvc := supplier.NewRetailerPricingService(spannerClient, svc.Producer)
+	retailerPricingSvc := supplier.NewRetailerPricingService(spannerClient, app.SpannerRouter, svc.Producer)
 	http.HandleFunc("/v1/supplier/pricing/retailer-overrides",
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(retailerPricingSvc.HandleRetailerPricingOverrides))))
 	http.HandleFunc("/v1/supplier/pricing/retailer-overrides/",
@@ -691,7 +691,7 @@ func main() {
 	// ── Geo-Spatial Sovereignty ──────────────────────────────────────────────
 	// GET /v1/supplier/serving-warehouse?retailer_lat=X&retailer_lng=Y — Exclusive warehouse resolver
 	http.HandleFunc("/v1/supplier/serving-warehouse",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(proximity.HandleGetServingWarehouse(spannerClient))))
+		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(proximity.HandleGetServingWarehouse(spannerClient, app.SpannerRouter))))
 	// GET /v1/supplier/geo-report — Coverage health: dead zones, overlaps, warehouse stats
 	http.HandleFunc("/v1/supplier/geo-report",
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(proximity.HandleGeoReport(spannerClient))))
@@ -709,7 +709,7 @@ func main() {
 
 	// /v1/payloader/* — 3 routes (trucks, orders, recommend-reassign).
 	// Ownership lives in backend-go/payloaderroutes.
-	payloaderroutes.RegisterRoutes(r, payloaderroutes.Deps{Spanner: spannerClient, Log: loggingMiddleware})
+	payloaderroutes.RegisterRoutes(r, payloaderroutes.Deps{Spanner: spannerClient, ReadRouter: app.SpannerRouter, Log: loggingMiddleware})
 
 	// /v1/delivery/* — 9 routes (arrive, confirm-payment-bypass, sms-complete,
 	// shop-closed, bypass-offload, negotiate, credit-delivery, missing-items,
@@ -3667,7 +3667,7 @@ func main() {
 
 	// GET /v1/orders/line-items/history — SKU purchase history for AI Worker
 	http.HandleFunc("/v1/orders/line-items/history",
-		auth.RequireRole([]string{"RETAILER", "ADMIN"}, loggingMiddleware(order.HandleLineItemHistory(spannerClient))))
+		auth.RequireRole([]string{"RETAILER", "ADMIN"}, loggingMiddleware(order.HandleLineItemHistory(spannerClient, app.SpannerRouter))))
 
 	// Initialize the Communication Spine: FCM (primary) + Telegram (fallback)
 	// FCM boots as graceful no-op if firebase credentials are absent (local dev).
@@ -3880,15 +3880,15 @@ func main() {
 
 	// POST /v1/supplier/manifests/auto-dispatch — Auto-Dispatch Engine: geo-cluster + bin-pack
 	http.HandleFunc("/v1/supplier/manifests/auto-dispatch",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleAutoDispatch(spannerClient, manifestSvc, app.OptimizerClient, app.DispatchOptimizer))))
+		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleAutoDispatch(spannerClient, app.SpannerRouter, manifestSvc, app.OptimizerClient, app.DispatchOptimizer))))
 
 	// POST /v1/supplier/manifests/dispatch-recommend — Dry-run dispatch: returns recommended truck groupings without mutations
 	http.HandleFunc("/v1/supplier/manifests/dispatch-recommend",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleDispatchRecommend(spannerClient))))
+		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleDispatchRecommend(spannerClient, app.SpannerRouter))))
 
 	// POST /v1/supplier/manifests/manual-dispatch — Create a single manifest for admin-chosen driver+orders
 	http.HandleFunc("/v1/supplier/manifests/manual-dispatch",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleManualDispatch(spannerClient, manifestSvc))))
+		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleManualDispatch(spannerClient, app.SpannerRouter, manifestSvc))))
 
 	// ── Fleet Bridge: Volumetrics + Dispatch Queue + H3 Route Preview ───────
 	// GET /v1/supplier/fleet-volumetrics — Fleet capacity vs. warehouse backlog
@@ -3896,7 +3896,7 @@ func main() {
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleFleetVolumetrics(spannerClient)))))
 	// POST /v1/supplier/dispatch-queue — Move READY_FOR_DISPATCH orders into manifests
 	http.HandleFunc("/v1/supplier/dispatch-queue",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleDispatchQueue(spannerClient, manifestSvc, app.OptimizerClient, app.DispatchOptimizer)))))
+		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleDispatchQueue(spannerClient, app.SpannerRouter, manifestSvc, app.OptimizerClient, app.DispatchOptimizer)))))
 
 	// ── Stealth Simulation Harness (/v1/internal/sim/) ────────────────────
 	// Gated by SIMULATION_ENABLED=true at boot. ADMIN-only.
@@ -3911,7 +3911,7 @@ func main() {
 
 	// GET /v1/supplier/dispatch-preview — H3-clustered order groups for planning
 	http.HandleFunc("/v1/supplier/dispatch-preview",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleH3RoutePreview(spannerClient)))))
+		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleH3RoutePreview(spannerClient, app.SpannerRouter)))))
 
 	// GET /v1/supplier/manifests/waiting-room — Orders created after dispatch snapshot
 	http.HandleFunc("/v1/supplier/manifests/waiting-room",
@@ -4111,6 +4111,7 @@ func main() {
 		SupplyReqSvc:    supplyReqSvc,
 		DispatchLockSvc: dispatchLockSvc,
 		OrderSvc:        svc,
+		ReadRouter:      app.SpannerRouter,
 		Optimizer:       app.OptimizerClient,
 		DispatchCounts:  app.DispatchOptimizer,
 		Log:             loggingMiddleware,

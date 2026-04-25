@@ -2,6 +2,7 @@ package payment
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -68,6 +69,11 @@ func newTestWebhookService() *WebhookService {
 	}
 }
 
+func globalPayBasicAuth(secret string) string {
+	payload := "Paycom:" + secret
+	return "Basic " + base64.StdEncoding.EncodeToString([]byte(payload))
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // GlobalPay Webhook Contract Tests
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -87,14 +93,35 @@ func TestGlobalPayWebhook_WrongMethod_405(t *testing.T) {
 func TestGlobalPayWebhook_NoSessionSvc_503(t *testing.T) {
 	svc := newTestWebhookService()
 	svc.SessionSvc = nil // Explicitly nil
+	t.Setenv("GLOBAL_PAY_USERNAME", "merchant")
+	t.Setenv("GLOBAL_PAY_PASSWORD", "gp-secret")
+	t.Setenv("GLOBAL_PAY_SERVICE_ID", "svc-1")
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/global-pay?session_id=SESS-1", strings.NewReader("{}"))
+	req.Header.Set("Authorization", globalPayBasicAuth("gp-secret"))
 	w := httptest.NewRecorder()
 
 	svc.HandleGlobalPayWebhook(w, req)
 
 	if w.Code != http.StatusServiceUnavailable {
 		t.Errorf("status = %d, want 503", w.Code)
+	}
+}
+
+func TestGlobalPayWebhook_InvalidSignature_401(t *testing.T) {
+	svc := newTestWebhookService()
+	t.Setenv("GLOBAL_PAY_USERNAME", "merchant")
+	t.Setenv("GLOBAL_PAY_PASSWORD", "gp-secret")
+	t.Setenv("GLOBAL_PAY_SERVICE_ID", "svc-1")
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/global-pay?session_id=SESS-1", strings.NewReader("{}"))
+	req.Header.Set("Authorization", globalPayBasicAuth("wrong-secret"))
+	w := httptest.NewRecorder()
+
+	svc.HandleGlobalPayWebhook(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want 401", w.Code)
 	}
 }
 
@@ -181,5 +208,78 @@ func TestParseGlobalPayWebhookRequest_CamelCaseAliases(t *testing.T) {
 	}
 	if got.ProviderPaymentID != "PAY-CC" {
 		t.Errorf("ProviderPaymentID = %q, want PAY-CC", got.ProviderPaymentID)
+	}
+}
+
+func TestApplyGlobalPayIdempotencyKey_FromBodyOnlyPayload(t *testing.T) {
+	body := `{"session_id":"SESS-POST","service_token":"TOKEN-POST","payment_id":"PAY-POST"}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/global-pay", strings.NewReader(body))
+	parsed, err := parseGlobalPayWebhookRequest(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	applyGlobalPayIdempotencyKey(req, parsed)
+
+	if got := req.Header.Get("Idempotency-Key"); got != "global-pay:PAY-POST" {
+		t.Errorf("Idempotency-Key = %q, want global-pay:PAY-POST", got)
+	}
+}
+
+func TestApplyGlobalPayIdempotencyKey_PriorityOrder(t *testing.T) {
+	tests := []struct {
+		name string
+		req  *globalPayWebhookRequest
+		want string
+	}{
+		{
+			name: "uses provider payment id first",
+			req: &globalPayWebhookRequest{
+				ProviderPaymentID: "PAY-1",
+				ProviderReference: "TOKEN-1",
+				SessionID:         "SESS-1",
+			},
+			want: "global-pay:PAY-1",
+		},
+		{
+			name: "falls back to provider reference",
+			req: &globalPayWebhookRequest{
+				ProviderReference: "TOKEN-2",
+				SessionID:         "SESS-2",
+			},
+			want: "global-pay:TOKEN-2",
+		},
+		{
+			name: "falls back to session id",
+			req: &globalPayWebhookRequest{
+				SessionID: "SESS-3",
+			},
+			want: "global-pay:SESS-3",
+		},
+		{
+			name: "does not set when no key fields",
+			req:  &globalPayWebhookRequest{},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			httpReq := httptest.NewRequest(http.MethodPost, "/v1/webhooks/global-pay", nil)
+			applyGlobalPayIdempotencyKey(httpReq, tt.req)
+			if got := httpReq.Header.Get("Idempotency-Key"); got != tt.want {
+				t.Errorf("Idempotency-Key = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestApplyGlobalPayIdempotencyKey_PreservesExistingHeader(t *testing.T) {
+	httpReq := httptest.NewRequest(http.MethodPost, "/v1/webhooks/global-pay", nil)
+	httpReq.Header.Set("Idempotency-Key", "existing-key")
+	applyGlobalPayIdempotencyKey(httpReq, &globalPayWebhookRequest{ProviderPaymentID: "PAY-NEW"})
+
+	if got := httpReq.Header.Get("Idempotency-Key"); got != "existing-key" {
+		t.Errorf("Idempotency-Key = %q, want existing-key", got)
 	}
 }

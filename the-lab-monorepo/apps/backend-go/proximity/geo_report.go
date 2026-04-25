@@ -85,7 +85,7 @@ func HandleGeoReport(spannerClient *spanner.Client) http.HandlerFunc {
 
 // HandleGetServingWarehouse — GET /v1/supplier/serving-warehouse?retailer_lat=X&retailer_lng=Y
 // Returns the exclusive warehouse assignment for a retailer at the given coordinates.
-func HandleGetServingWarehouse(spannerClient *spanner.Client) http.HandlerFunc {
+func HandleGetServingWarehouse(spannerClient *spanner.Client, readRouter ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -115,7 +115,7 @@ func HandleGetServingWarehouse(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		match, err := GetServingWarehouse(r.Context(), spannerClient, claims.ResolveSupplierID(), lat, lng)
+		match, err := GetServingWarehouseWithRouter(r.Context(), spannerClient, readRouter, claims.ResolveSupplierID(), lat, lng)
 		if err != nil {
 			log.Printf("[SERVING-WH] error for supplier=%s lat=%.6f lng=%.6f: %v", claims.UserID, lat, lng, err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)

@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"backend-go/cache"
+	"backend-go/idempotency"
 	"backend-go/workers"
 	wsEvents "backend-go/ws"
 
@@ -91,6 +92,7 @@ type globalPayWebhookRequest struct {
 	ProviderPaymentID string `json:"payment_id"`
 	Status            string `json:"status"`
 }
+
 // GLOBAL PAY WEBHOOK
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -101,6 +103,31 @@ func (ws *WebhookService) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	if r.Method == http.MethodPost {
+		creds, credErr := ResolveGlobalPayCredentials("", "", "")
+		if credErr != nil {
+			slog.Error("global_pay_webhook.signature_config_missing", "err", credErr)
+			http.Error(w, "webhook not configured", http.StatusServiceUnavailable)
+			return
+		}
+		authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
+		if !validateGlobalPayAuth(authHeader, creds.Password) {
+			providerRef := strings.TrimSpace(firstNonEmpty(
+				r.URL.Query().Get("service_token"),
+				r.URL.Query().Get("serviceToken"),
+				r.URL.Query().Get("provider_reference"),
+				r.URL.Query().Get("providerReference"),
+			))
+			if providerRef == "" {
+				providerRef = "unknown"
+			}
+			ws.trackWebhookSigFailure("global_pay", providerRef, r.RemoteAddr)
+			http.Error(w, "invalid webhook signature", http.StatusUnauthorized)
+			return
+		}
+	}
+
 	if ws.SessionSvc == nil {
 		http.Error(w, "payment session service unavailable", http.StatusServiceUnavailable)
 		return
@@ -111,6 +138,14 @@ func (ws *WebhookService) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.
 		http.Error(w, parseErr.Error(), http.StatusBadRequest)
 		return
 	}
+
+	applyGlobalPayIdempotencyKey(r, req)
+	idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
+		ws.handleGlobalPayWebhookParsed(w, r, req)
+	})(w, r)
+}
+
+func (ws *WebhookService) handleGlobalPayWebhookParsed(w http.ResponseWriter, r *http.Request, req *globalPayWebhookRequest) {
 
 	session, err := ws.SessionSvc.GetSession(r.Context(), req.SessionID)
 	if err != nil {
@@ -321,6 +356,20 @@ func parseGlobalPayWebhookRequest(r *http.Request) (*globalPayWebhookRequest, er
 		return nil, fmt.Errorf("session_id is required")
 	}
 	return req, nil
+}
+
+func applyGlobalPayIdempotencyKey(r *http.Request, req *globalPayWebhookRequest) {
+	if strings.TrimSpace(r.Header.Get("Idempotency-Key")) != "" {
+		return
+	}
+	if req == nil {
+		return
+	}
+	key := strings.TrimSpace(firstNonEmpty(req.ProviderPaymentID, req.ProviderReference, req.SessionID))
+	if key == "" {
+		return
+	}
+	r.Header.Set("Idempotency-Key", "global-pay:"+key)
 }
 
 // lookupInvoice checks if a MasterInvoice exists and returns its Total.
@@ -549,9 +598,7 @@ func secureCompare(a, b string) bool {
 
 // writeGlobalPayResult sends a successful JSON-RPC response.
 
-
 // writeGlobalPayError sends a JSON-RPC error response.
-
 
 // ─── Webhook DLQ on Repeated Signature Failure (Phase 3.6) ──────────────────
 

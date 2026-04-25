@@ -24,6 +24,10 @@ const (
 // TestCoreLogisticsFlow simulates the complete lifecycle of a B2B order from creation to payment.
 // It requires the local spanner emulator, redis, and kafka to be running, and the db seeded.
 func TestCoreLogisticsFlow(t *testing.T) {
+	if os.Getenv("RUN_E2E") != "1" {
+		t.Skip("set RUN_E2E=1 to run infrastructure-dependent e2e flow")
+	}
+
 	// ── 0. Setup & Config ──────────────────────────────────────────────────
 	redisAddr := os.Getenv("REDIS_ADDRESS")
 	if redisAddr == "" {

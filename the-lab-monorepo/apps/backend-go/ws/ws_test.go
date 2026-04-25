@@ -15,6 +15,9 @@ func TestCheckWSOrigin_EmptyOrigin_Allowed(t *testing.T) {
 }
 
 func TestCheckWSOrigin_LocalhostAllowed(t *testing.T) {
+	t.Setenv("ENVIRONMENT", "development")
+	t.Setenv("CORS_ALLOWED_ORIGINS", "")
+
 	origins := []string{
 		"http://localhost:3000",
 		"http://localhost:3001",
@@ -30,6 +33,17 @@ func TestCheckWSOrigin_LocalhostAllowed(t *testing.T) {
 				t.Errorf("origin %q should be allowed", origin)
 			}
 		})
+	}
+}
+
+func TestCheckWSOrigin_ProductionAllowlistAllowed(t *testing.T) {
+	t.Setenv("ENVIRONMENT", "production")
+	t.Setenv("CORS_ALLOWED_ORIGINS", "https://admin.thelab.uz,https://supplier.thelab.uz")
+
+	r, _ := http.NewRequest("GET", "/ws", nil)
+	r.Header.Set("Origin", "https://admin.thelab.uz")
+	if !CheckWSOrigin(r) {
+		t.Error("production allowlisted origin should be allowed")
 	}
 }
 

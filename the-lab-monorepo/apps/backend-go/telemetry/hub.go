@@ -3,8 +3,8 @@ package telemetry
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"sync"
 	"time"
@@ -45,12 +45,65 @@ type Hub struct {
 	ProximityEngine *proximity.Engine               // Phase 2: Redis GEO proximity detector (nil-safe)
 	Spanner         *spanner.Client                 // For resolving Driver→Supplier ownership
 	Buffer          *GPSBuffer                      // GPS buffer for batched flush (nil = direct broadcast)
+	writeMu         sync.Mutex
+	subscribed      map[string]bool // supplierID → relay subscription active
 	// driverSupplierCache maps driverID → supplierID to avoid repeated Spanner reads
 	driverSupplierCache sync.Map
 }
 
 var FleetHub = &Hub{
-	Clients: make(map[*websocket.Conn]*clientMeta),
+	Clients:    make(map[*websocket.Conn]*clientMeta),
+	subscribed: make(map[string]bool),
+}
+
+// Grace-mode telemetry connections are intentionally short-lived to force
+// token refresh + reconnect while still giving clients a small handoff window.
+var graceReconnectCloseAfter = 30 * time.Second
+
+func graceReconnectDelay(claims *auth.LabClaims) time.Duration {
+	closeAfter := graceReconnectCloseAfter
+	if claims != nil && !claims.GraceDeadline.IsZero() {
+		remaining := time.Until(claims.GraceDeadline)
+		if remaining < closeAfter {
+			closeAfter = remaining
+		}
+	}
+	if closeAfter <= 0 {
+		return 1 * time.Second
+	}
+	return closeAfter
+}
+
+func (h *Hub) startGraceReconnectEnforcer(ws *websocket.Conn, claims *auth.LabClaims, done <-chan struct{}) {
+	closeAfter := graceReconnectDelay(claims)
+
+	refreshMsg, _ := json.Marshal(map[string]interface{}{
+		"type":             wsEvents.EventTokenRefreshNeeded,
+		"message":          "Authentication token is in grace mode. Refresh token and reconnect telemetry.",
+		"required_action":  "REFRESH_TOKEN_AND_RECONNECT",
+		"close_in_seconds": int(math.Ceil(closeAfter.Seconds())),
+	})
+	h.writeMu.Lock()
+	_ = ws.WriteMessage(websocket.TextMessage, refreshMsg)
+	h.writeMu.Unlock()
+
+	go func() {
+		timer := time.NewTimer(closeAfter)
+		defer timer.Stop()
+		select {
+		case <-done:
+			return
+		case <-timer.C:
+			h.writeMu.Lock()
+			_ = ws.WriteControl(
+				websocket.CloseMessage,
+				websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "token refresh required"),
+				time.Now().Add(wsEvents.WriteWait),
+			)
+			h.writeMu.Unlock()
+			_ = ws.Close()
+		}
+	}()
 }
 
 // resolveDriverSupplier looks up which supplier owns a driver (cached in-memory)
@@ -73,112 +126,144 @@ func (h *Hub) resolveDriverSupplier(ctx context.Context, driverID string) string
 	return sid.StringVal
 }
 
+func normalizeTelemetryRole(role string) (string, bool) {
+	switch role {
+	case "ADMIN", "SUPPLIER":
+		return "ADMIN", true
+	case "DRIVER":
+		return "DRIVER", true
+	default:
+		return "", false
+	}
+}
+
+func (h *Hub) removeClient(conn *websocket.Conn, meta *clientMeta) {
+	shouldUnsubscribe := false
+	channel := ""
+
+	h.Lock()
+	delete(h.Clients, conn)
+	if meta != nil && meta.Role == "ADMIN" && meta.SupplierID != "" {
+		if h.subscribed[meta.SupplierID] && !h.hasSupplierAdminLocked(meta.SupplierID) {
+			delete(h.subscribed, meta.SupplierID)
+			shouldUnsubscribe = true
+			channel = "ws:supplier:" + meta.SupplierID
+		}
+	}
+	h.Unlock()
+
+	if shouldUnsubscribe {
+		cache.Unsubscribe(channel)
+	}
+}
+
+func (h *Hub) hasSupplierAdminLocked(supplierID string) bool {
+	for _, meta := range h.Clients {
+		if meta.Role == "ADMIN" && meta.SupplierID == supplierID {
+			return true
+		}
+	}
+	return false
+}
+
 // HandleConnection upgrades the HTTP request to a persistent WebSocket
 func (h *Hub) HandleConnection(w http.ResponseWriter, r *http.Request) {
-	// 1. Authenticate and Extract Role via Context Auth Guard
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
-	if !ok || (claims.Role != "DRIVER" && claims.Role != "ADMIN") {
+	if !ok || claims == nil {
 		http.Error(w, "Unauthorized telemetry access", http.StatusUnauthorized)
 		return
 	}
-	role := claims.Role
+
+	role, allowed := normalizeTelemetryRole(claims.Role)
+	if !allowed {
+		http.Error(w, "Unauthorized telemetry access", http.StatusUnauthorized)
+		return
+	}
+
+	meta := &clientMeta{Role: role}
+	if role == "ADMIN" {
+		meta.SupplierID = claims.ResolveSupplierID()
+		if meta.SupplierID == "" {
+			http.Error(w, "Unauthorized telemetry access", http.StatusUnauthorized)
+			return
+		}
+	} else {
+		if claims.UserID == "" {
+			http.Error(w, "Unauthorized telemetry access", http.StatusUnauthorized)
+			return
+		}
+		meta.DriverID = claims.UserID
+		meta.SupplierID = h.resolveDriverSupplier(r.Context(), claims.UserID)
+		if meta.SupplierID == "" {
+			http.Error(w, "Driver supplier scope unavailable", http.StatusUnauthorized)
+			return
+		}
+	}
 
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Printf("[TELEMETRY_FAULT] Protocol upgrade failed: %v\n", err)
+		log.Printf("[TELEMETRY_FAULT] Protocol upgrade failed: %v", err)
 		return
 	}
-	defer ws.Close()
 
-	// 2. Build metadata with supplier scoping
-	meta := &clientMeta{Role: role}
-	if role == "ADMIN" {
-		// For ADMIN/SUPPLIER: use ResolveSupplierID to get the actual org-level supplier ID
-		meta.SupplierID = claims.ResolveSupplierID()
-	} else if role == "DRIVER" {
-		meta.DriverID = claims.UserID
-		meta.SupplierID = h.resolveDriverSupplier(r.Context(), claims.UserID)
-	}
-
-	// 3. Register the connection
 	h.Lock()
 	h.Clients[ws] = meta
 	h.Unlock()
 
-	// 3a. Subscribe to Redis Pub/Sub relay for this supplier (cross-pod broadcast)
-	if meta.SupplierID != "" {
+	if meta.Role == "ADMIN" && meta.SupplierID != "" {
 		h.SubscribeSupplierRelay(meta.SupplierID)
 	}
 
-	// 3b. Start keepalive (Phase 5.3)
-	ws.SetReadDeadline(time.Now().Add(65 * time.Second))
-	ws.SetPongHandler(func(appData string) error {
-		ws.SetReadDeadline(time.Now().Add(65 * time.Second))
-		return nil
-	})
-	pingDone := make(chan struct{})
-	go func() {
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-pingDone:
-				return
-			case <-ticker.C:
-				ws.SetWriteDeadline(time.Now().Add(10 * time.Second))
-				if err := ws.WriteControl(websocket.PingMessage, nil, time.Now().Add(10*time.Second)); err != nil {
-					return
-				}
-			}
-		}
+	done := wsEvents.ConfigureKeepalive(ws)
+	defer func() {
+		close(done)
+		h.removeClient(ws, meta)
+		ws.Close()
+		log.Printf("[TELEMETRY] %s (supplier=%s) disconnected.", meta.Role, meta.SupplierID)
 	}()
 
-	fmt.Printf("[TELEMETRY] %s (supplier=%s) linked to the matrix.\n", role, meta.SupplierID)
+	log.Printf("[TELEMETRY] %s (supplier=%s) linked to the matrix.", meta.Role, meta.SupplierID)
 
-	// Send TOKEN_REFRESH_NEEDED if operating in grace period (A-4)
+	// Grace-mode DRIVER connections must refresh + reconnect quickly.
 	if claims.GracePeriod {
-		refreshMsg, _ := json.Marshal(map[string]string{
-			"type":    wsEvents.EventTokenRefreshNeeded,
-			"message": "Your authentication token has expired. Please refresh to maintain full access.",
-		})
-		ws.WriteMessage(websocket.TextMessage, refreshMsg)
+		h.startGraceReconnectEnforcer(ws, claims, done)
 	}
 
-	// 4. The Event Loop
 	for {
 		_, msg, err := ws.ReadMessage()
 		if err != nil {
-			// Connection dropped (e.g., driver went into a tunnel)
-			close(pingDone)
-			h.Lock()
-			delete(h.Clients, ws)
-			h.Unlock()
-			fmt.Printf("[TELEMETRY] %s connection severed.\n", role)
 			break
 		}
 
-		// 5. Ingest and Route
-		// Drivers are the only ones permitted to emit coordinates
-		if role == "DRIVER" {
+		if meta.Role == "DRIVER" {
 			var payload GPSPayload
-			if err := json.Unmarshal(msg, &payload); err == nil {
-				// Route GPS through buffer for batched flush (95% packet reduction)
-				if h.Buffer != nil {
-					h.Buffer.Ingest(GPSEntry{
-						DriverID:   payload.DriverID,
-						Latitude:   payload.Latitude,
-						Longitude:  payload.Longitude,
-						Timestamp:  payload.Timestamp,
-						SupplierID: meta.SupplierID,
-					})
-				} else {
-					// Fallback: direct broadcast (buffer not initialized)
-					h.BroadcastToSupplier(meta.SupplierID, msg)
-				}
-				// Phase 2: Feed the proximity engine (non-blocking goroutine)
-				if h.ProximityEngine != nil {
-					go h.ProximityEngine.ProcessPing(context.Background(), payload.DriverID, payload.Latitude, payload.Longitude)
-				}
+			if err := json.Unmarshal(msg, &payload); err != nil {
+				continue
+			}
+			if payload.DriverID == "" {
+				payload.DriverID = meta.DriverID
+			}
+			if payload.DriverID != meta.DriverID {
+				log.Printf("[TELEMETRY] Driver spoof attempt blocked: token_driver=%s payload_driver=%s", meta.DriverID, payload.DriverID)
+				continue
+			}
+			if payload.Timestamp == 0 {
+				payload.Timestamp = time.Now().Unix()
+			}
+
+			if h.Buffer != nil {
+				h.Buffer.Ingest(GPSEntry{
+					DriverID:   meta.DriverID,
+					Latitude:   payload.Latitude,
+					Longitude:  payload.Longitude,
+					Timestamp:  payload.Timestamp,
+					SupplierID: meta.SupplierID,
+				})
+			} else {
+				h.BroadcastToSupplier(meta.SupplierID, msg)
+			}
+			if h.ProximityEngine != nil {
+				go h.ProximityEngine.ProcessPing(context.Background(), meta.DriverID, payload.Latitude, payload.Longitude)
 			}
 		}
 	}
@@ -189,26 +274,52 @@ func (h *Hub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 // pods can relay to their local connections.
 func (h *Hub) BroadcastToSupplier(supplierID string, message []byte) {
 	h.broadcastToSupplierLocal(supplierID, message)
+	h.publishSupplierRelay(supplierID, message)
+}
 
-	// Cross-pod relay via Redis Pub/Sub (non-blocking, fail-open)
-	cache.Publish(context.Background(), "ws:supplier:"+supplierID, message)
+func (h *Hub) publishSupplierRelay(supplierID string, message []byte) {
+	if supplierID == "" {
+		return
+	}
+	rc := cache.GetClient()
+	if rc == nil {
+		return
+	}
+	channel := "ws:supplier:" + supplierID
+	if err := rc.Publish(context.Background(), channel, message).Err(); err != nil {
+		WSPubSubFailures.WithLabelValues("fleet").Inc()
+		log.Printf("[TELEMETRY] relay publish failed for supplier %s: %v", supplierID, err)
+	}
 }
 
 // broadcastToSupplierLocal sends to local connections only (called by both
 // the direct path and the Redis Pub/Sub relay handler).
 func (h *Hub) broadcastToSupplierLocal(supplierID string, message []byte) {
+	if supplierID == "" {
+		return
+	}
+
 	h.RLock()
-	var dead []*websocket.Conn
+	targets := make([]*websocket.Conn, 0, len(h.Clients))
 	for client, meta := range h.Clients {
 		if meta.Role == "ADMIN" && meta.SupplierID == supplierID {
-			err := client.WriteMessage(websocket.TextMessage, message)
-			if err != nil {
-				client.Close()
-				dead = append(dead, client)
-			}
+			targets = append(targets, client)
 		}
 	}
 	h.RUnlock()
+	if len(targets) == 0 {
+		return
+	}
+
+	h.writeMu.Lock()
+	dead := make([]*websocket.Conn, 0)
+	for _, client := range targets {
+		if err := client.WriteMessage(websocket.TextMessage, message); err != nil {
+			client.Close()
+			dead = append(dead, client)
+		}
+	}
+	h.writeMu.Unlock()
 
 	if len(dead) > 0 {
 		h.Lock()
@@ -222,6 +333,21 @@ func (h *Hub) broadcastToSupplierLocal(supplierID string, message []byte) {
 // SubscribeSupplierRelay registers a Redis Pub/Sub handler so that messages
 // published by OTHER pods for this supplier are relayed to local connections.
 func (h *Hub) SubscribeSupplierRelay(supplierID string) {
+	if supplierID == "" {
+		return
+	}
+
+	h.Lock()
+	if h.subscribed == nil {
+		h.subscribed = make(map[string]bool)
+	}
+	if h.subscribed[supplierID] {
+		h.Unlock()
+		return
+	}
+	h.subscribed[supplierID] = true
+	h.Unlock()
+
 	channel := "ws:supplier:" + supplierID
 	cache.Subscribe(channel, func(_ string, payload []byte) {
 		// Relay to local connections only (no re-publish to avoid loops)
@@ -232,17 +358,26 @@ func (h *Hub) SubscribeSupplierRelay(supplierID string) {
 // BroadcastToAdmins fans out GPS to all connected control towers (kept for backward compat / internal use)
 func (h *Hub) BroadcastToAdmins(message []byte) {
 	h.RLock()
-	var dead []*websocket.Conn
+	targets := make([]*websocket.Conn, 0, len(h.Clients))
 	for client, meta := range h.Clients {
 		if meta.Role == "ADMIN" {
-			err := client.WriteMessage(websocket.TextMessage, message)
-			if err != nil {
-				client.Close()
-				dead = append(dead, client)
-			}
+			targets = append(targets, client)
 		}
 	}
 	h.RUnlock()
+	if len(targets) == 0 {
+		return
+	}
+
+	h.writeMu.Lock()
+	dead := make([]*websocket.Conn, 0)
+	for _, client := range targets {
+		if err := client.WriteMessage(websocket.TextMessage, message); err != nil {
+			client.Close()
+			dead = append(dead, client)
+		}
+	}
+	h.writeMu.Unlock()
 
 	if len(dead) > 0 {
 		h.Lock()
@@ -373,13 +508,29 @@ func (h *Hub) BroadcastDriverDelta(topic, driverID string, changedFields map[str
 // Close gracefully closes all connections in the telemetry Hub.
 func (h *Hub) Close() {
 	h.Lock()
-	defer h.Unlock()
+	clients := make([]*websocket.Conn, 0, len(h.Clients))
 	for client := range h.Clients {
+		clients = append(clients, client)
+	}
+	suppliers := make([]string, 0, len(h.subscribed))
+	for supplierID := range h.subscribed {
+		suppliers = append(suppliers, supplierID)
+	}
+	h.Clients = make(map[*websocket.Conn]*clientMeta)
+	h.subscribed = make(map[string]bool)
+	h.Unlock()
+
+	h.writeMu.Lock()
+	for _, client := range clients {
 		client.WriteControl(websocket.CloseMessage,
 			websocket.FormatCloseMessage(websocket.CloseGoingAway, "server shutting down"),
 			time.Now().Add(10*time.Second))
 		client.Close()
-		delete(h.Clients, client)
+	}
+	h.writeMu.Unlock()
+
+	for _, supplierID := range suppliers {
+		cache.Unsubscribe("ws:supplier:" + supplierID)
 	}
 	log.Println("[TELEMETRY HUB] All connections closed.")
 }

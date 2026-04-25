@@ -124,7 +124,7 @@ final class RetailerWebSocket {
             .replacingOccurrences(of: "https://", with: "wss://")
             .replacingOccurrences(of: "http://", with: "ws://")
 
-        guard let url = URL(string: "\(base)/v1/ws/retailer?retailer_id=\(retailerId)") else { return }
+        guard let url = URL(string: "\(base)/v1/ws/retailer") else { return }
 
         var request = URLRequest(url: url)
         if let token = api.authToken {

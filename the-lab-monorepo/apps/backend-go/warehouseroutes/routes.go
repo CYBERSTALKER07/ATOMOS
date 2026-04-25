@@ -40,6 +40,7 @@ import (
 	"backend-go/dispatch/plan"
 	"backend-go/factory"
 	"backend-go/order"
+	"backend-go/proximity"
 	"backend-go/replenishment"
 	"backend-go/warehouse"
 )
@@ -63,6 +64,7 @@ type Deps struct {
 	SupplyReqSvc    *warehouse.SupplyRequestService
 	DispatchLockSvc *warehouse.DispatchLockService
 	OrderSvc        *order.OrderService
+	ReadRouter      proximity.ReadRouter
 	Optimizer       *optimizerclient.Client
 	DispatchCounts  *plan.SourceCounters
 	Log             Middleware
@@ -131,7 +133,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	// 6. Demand forecast.
 	r.HandleFunc("/v1/warehouse/demand/forecast",
-		auth.RequireRole(warehouseTriad, log(warehouse.HandleDemandForecast(d.Spanner))))
+		auth.RequireRole(warehouseTriad, log(warehouse.HandleDemandForecast(d.Spanner, d.ReadRouter))))
 
 	// 7. Supply-request list + create (exact).
 	r.HandleFunc("/v1/warehouse/supply-requests",
@@ -152,7 +154,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/warehouse/ops/staff", whOps(warehouse.HandleOpsStaff(d.Spanner)))
 	http.HandleFunc("/v1/warehouse/ops/staff/", whOps(warehouse.HandleOpsStaffDetail(d.Spanner)))
 
-	r.HandleFunc("/v1/warehouse/ops/orders", whOps(warehouse.HandleOpsOrders(d.Spanner)))
+	r.HandleFunc("/v1/warehouse/ops/orders", whOps(warehouse.HandleOpsOrders(d.Spanner, d.ReadRouter)))
 	// Phase V LEO: ops marks an order DELAYED (capacity overflow / hold).
 	// Registered as an exact chi route BEFORE the /v1/warehouse/ops/orders/
 	// prefix dispatcher so longest-match selects this for /{id}/delay.
@@ -161,7 +163,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		r.Post("/v1/warehouse/ops/orders/{id}/reject", whOps(d.OrderSvc.HandleOrderRejection()))
 		r.Post("/v1/warehouse/ops/orders/{id}/overflow", whOps(d.OrderSvc.HandlePayloadOverflow()))
 	}
-	http.HandleFunc("/v1/warehouse/ops/orders/", whOps(warehouse.HandleOpsOrderDetail(d.Spanner)))
+	http.HandleFunc("/v1/warehouse/ops/orders/", whOps(warehouse.HandleOpsOrderDetail(d.Spanner, d.ReadRouter)))
 
 	r.HandleFunc("/v1/warehouse/ops/dispatch/preview", whOps(warehouse.HandleOpsDispatchPreview(d.Spanner, d.Optimizer, d.DispatchCounts)))
 	r.HandleFunc("/v1/warehouse/ops/inventory", whOps(warehouse.HandleOpsInventory(d.Spanner)))

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/proximity"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -53,7 +54,7 @@ type RecommendReassignResponse struct {
 
 // HandleRecommendReassign handles POST /v1/payloader/recommend-reassign
 // Returns ranked truck recommendations for reassigning an order.
-func HandleRecommendReassign(client *spanner.Client) http.HandlerFunc {
+func HandleRecommendReassign(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -115,6 +116,8 @@ func HandleRecommendReassign(client *spanner.Client) http.HandlerFunc {
 			}
 		}
 
+		readClient := proximity.ReadClientForRetailer(client, readRouter, retailerLat, retailerLng)
+
 		// Fetch order volume (sum of line items × pallet footprint)
 		volStmt := spanner.Statement{
 			SQL: `SELECT COALESCE(SUM(li.Quantity * COALESCE(sp.VolumetricUnit, sp.PalletFootprint, 1.0)), 0)
@@ -123,7 +126,7 @@ func HandleRecommendReassign(client *spanner.Client) http.HandlerFunc {
 			      WHERE li.OrderId = @orderId`,
 			Params: map[string]interface{}{"orderId": req.OrderID},
 		}
-		volIter := client.Single().Query(ctx, volStmt)
+		volIter := readClient.Single().Query(ctx, volStmt)
 		defer volIter.Stop()
 		var orderVolumeVU float64
 		if volRow, err := volIter.Next(); err == nil {
@@ -137,7 +140,7 @@ func HandleRecommendReassign(client *spanner.Client) http.HandlerFunc {
 		supplierID := claims.ResolveSupplierID()
 		// For PAYLOADER role, resolve supplier from the order's current driver assignment
 		if claims.Role == "PAYLOADER" && currentDriverID.Valid {
-			driverRow, err := client.Single().ReadRow(ctx, "Drivers",
+			driverRow, err := readClient.Single().ReadRow(ctx, "Drivers",
 				spanner.Key{currentDriverID.StringVal}, []string{"SupplierId"})
 			if err == nil {
 				var sid spanner.NullString
@@ -166,7 +169,7 @@ func HandleRecommendReassign(client *spanner.Client) http.HandlerFunc {
 			Params: map[string]interface{}{"sid": supplierID},
 		}
 
-		truckIter := client.Single().Query(ctx, truckStmt)
+		truckIter := readClient.Single().Query(ctx, truckStmt)
 		defer truckIter.Stop()
 
 		var recs []TruckRecommendation
@@ -196,7 +199,7 @@ func HandleRecommendReassign(client *spanner.Client) http.HandlerFunc {
 				      WHERE o.DriverId = @driverId AND o.State IN ('LOADED', 'DISPATCHED', 'IN_TRANSIT')`,
 				Params: map[string]interface{}{"driverId": rec.DriverID},
 			}
-			loadIter := client.Single().Query(ctx, loadStmt)
+			loadIter := readClient.Single().Query(ctx, loadStmt)
 			if loadRow, err := loadIter.Next(); err == nil {
 				var usedVU spanner.NullFloat64
 				if loadRow.Columns(&usedVU) == nil {
@@ -212,7 +215,7 @@ func HandleRecommendReassign(client *spanner.Client) http.HandlerFunc {
 				SQL:    `SELECT COUNT(*) FROM Orders WHERE DriverId = @driverId AND State IN ('LOADED', 'DISPATCHED', 'IN_TRANSIT')`,
 				Params: map[string]interface{}{"driverId": rec.DriverID},
 			}
-			countIter := client.Single().Query(ctx, countStmt)
+			countIter := readClient.Single().Query(ctx, countStmt)
 			if countRow, err := countIter.Next(); err == nil {
 				var cnt int64
 				if countRow.Columns(&cnt) == nil {

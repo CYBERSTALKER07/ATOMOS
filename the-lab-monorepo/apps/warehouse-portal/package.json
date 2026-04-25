@@ -12,6 +12,7 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "TAURI_BUILD=1 tauri build",
     "tauri:build:mac": "TAURI_BUILD=1 tauri build --target universal-apple-darwin",
+    "tauri:build:win": "TAURI_BUILD=1 tauri build --target x86_64-pc-windows-msvc",
     "tauri:build:debug": "TAURI_BUILD=1 tauri build --debug"
   },
   "dependencies": {

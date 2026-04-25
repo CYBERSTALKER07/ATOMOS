@@ -2,21 +2,25 @@ package telemetry
 
 import (
 	"backend-go/auth"
+	wsEvents "backend-go/ws"
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 )
 
 // newTestHub returns a fresh Hub with no Spanner/ProximityEngine dependencies.
 func newTestHub() *Hub {
 	return &Hub{
-		Clients: make(map[*websocket.Conn]*clientMeta),
+		Clients:    make(map[*websocket.Conn]*clientMeta),
+		subscribed: make(map[string]bool),
 	}
 }
 
@@ -51,6 +55,25 @@ func waitClients(t *testing.T, hub *Hub, want int) {
 		select {
 		case <-deadline:
 			t.Fatalf("timed out waiting for %d clients, got %d", want, n)
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+}
+
+func waitNoClients(t *testing.T, hub *Hub) {
+	t.Helper()
+	deadline := time.After(2 * time.Second)
+	for {
+		hub.RLock()
+		n := len(hub.Clients)
+		hub.RUnlock()
+		if n == 0 {
+			return
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("timed out waiting for clients to drain, still have %d", n)
 		default:
 			time.Sleep(10 * time.Millisecond)
 		}
@@ -270,4 +293,82 @@ func TestTelemetryHub_MultipleAdminsSameSupplier(t *testing.T) {
 			t.Errorf("admin %d: order_id = %v, want ORD-DUAL", i, event["order_id"])
 		}
 	}
+}
+
+func TestGraceReconnectDelay_UsesGraceDeadlineBudget(t *testing.T) {
+	oldCloseAfter := graceReconnectCloseAfter
+	graceReconnectCloseAfter = 30 * time.Second
+	t.Cleanup(func() {
+		graceReconnectCloseAfter = oldCloseAfter
+	})
+
+	if got := graceReconnectDelay(nil); got != 30*time.Second {
+		t.Fatalf("graceReconnectDelay(nil) = %s, want %s", got, 30*time.Second)
+	}
+
+	claims := &auth.LabClaims{GraceDeadline: time.Now().Add(5 * time.Second)}
+	got := graceReconnectDelay(claims)
+	if got > 5*time.Second {
+		t.Fatalf("graceReconnectDelay(claims) = %s, want <= 5s", got)
+	}
+	if got <= 0 {
+		t.Fatalf("graceReconnectDelay(claims) = %s, want > 0", got)
+	}
+}
+
+func TestTelemetryHub_GraceDriver_RefreshNeededThenForcedClose(t *testing.T) {
+	oldCloseAfter := graceReconnectCloseAfter
+	graceReconnectCloseAfter = 120 * time.Millisecond
+	t.Cleanup(func() {
+		graceReconnectCloseAfter = oldCloseAfter
+	})
+
+	hub := newTestHub()
+	hub.driverSupplierCache.Store("DRV-GRACE", "SUP-GRACE")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims := &auth.LabClaims{
+			UserID:        "DRV-GRACE",
+			Role:          "DRIVER",
+			GracePeriod:   true,
+			GraceDeadline: time.Now().Add(1 * time.Hour),
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(-30 * time.Minute)),
+			},
+		}
+		ctx := context.WithValue(r.Context(), auth.ClaimsContextKey, claims)
+		hub.HandleConnection(w, r.WithContext(ctx))
+	}))
+	defer srv.Close()
+
+	conn := telemetryDial(t, srv)
+	defer conn.Close()
+	waitClients(t, hub, 1)
+
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, msg, err := conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("read TOKEN_REFRESH_NEEDED: %v", err)
+	}
+	var frame map[string]interface{}
+	if err := json.Unmarshal(msg, &frame); err != nil {
+		t.Fatalf("unmarshal refresh frame: %v", err)
+	}
+	if frame["type"] != wsEvents.EventTokenRefreshNeeded {
+		t.Fatalf("type = %v, want %s", frame["type"], wsEvents.EventTokenRefreshNeeded)
+	}
+	if frame["required_action"] != "REFRESH_TOKEN_AND_RECONNECT" {
+		t.Fatalf("required_action = %v, want REFRESH_TOKEN_AND_RECONNECT", frame["required_action"])
+	}
+
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, _, err = conn.ReadMessage()
+	if err == nil {
+		t.Fatal("expected forced close after grace reconnect window")
+	}
+	if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+		t.Fatalf("expected forced close, got read timeout: %v", err)
+	}
+
+	waitNoClients(t, hub)
 }

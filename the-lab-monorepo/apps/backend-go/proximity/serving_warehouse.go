@@ -42,12 +42,19 @@ type ServingWarehouse struct {
 // serve a retailer at the given coordinates. Returns nil if no warehouse covers
 // the retailer's location.
 func GetServingWarehouse(ctx context.Context, client *spanner.Client, supplierID string, retailerLat, retailerLng float64) (*ServingWarehouse, error) {
+	return GetServingWarehouseWithRouter(ctx, client, nil, supplierID, retailerLat, retailerLng)
+}
+
+// GetServingWarehouseWithRouter mirrors GetServingWarehouse with optional
+// H3-aware read routing for Spanner queries.
+func GetServingWarehouseWithRouter(ctx context.Context, client *spanner.Client, readRouter ReadRouter, supplierID string, retailerLat, retailerLng float64) (*ServingWarehouse, error) {
 	if client == nil {
 		return nil, fmt.Errorf("spanner client is nil")
 	}
+	readClient := readClientForRetailer(client, readRouter, retailerLat, retailerLng)
 
 	// Edge 17: Check PreferredWarehouseId FIRST — bypasses all geo resolution
-	preferred, err := resolvePreferredWarehouse(ctx, client, supplierID, retailerLat, retailerLng)
+	preferred, err := resolvePreferredWarehouse(ctx, readClient, supplierID, retailerLat, retailerLng)
 	if err != nil {
 		log.Printf("[SERVING-WH] Preferred warehouse check failed: %v — falling through to geo", err)
 	}
@@ -58,12 +65,12 @@ func GetServingWarehouse(ctx context.Context, client *spanner.Client, supplierID
 	retailerH3 := LookupCell(retailerLat, retailerLng)
 
 	// Path 1: H3 polygon membership — check if retailer's cell is inside any warehouse's coverage
-	match, err := resolveViaH3Polygon(ctx, client, supplierID, retailerH3, retailerLat, retailerLng)
+	match, err := resolveViaH3Polygon(ctx, readClient, supplierID, retailerH3, retailerLat, retailerLng)
 	if err != nil {
 		log.Printf("[SERVING-WH] H3 polygon lookup failed: %v — falling back to distance", err)
 	}
 	if match != nil {
-		return applyLoadBalancing(ctx, client, match, supplierID, retailerLat, retailerLng), nil
+		return applyLoadBalancing(ctx, readClient, match, supplierID, retailerLat, retailerLng), nil
 	}
 
 	// Path 2: Grid cell (Redis O(1) lookup) → existing ResolveWarehouse path
@@ -82,16 +89,16 @@ func GetServingWarehouse(ctx context.Context, client *spanner.Client, supplierID
 			MatchMethod:      "GRID_CELL",
 			CoverageRadiusKm: 0, // Not available from grid cell path
 		}
-		return applyLoadBalancing(ctx, client, sw, supplierID, retailerLat, retailerLng), nil
+		return applyLoadBalancing(ctx, readClient, sw, supplierID, retailerLat, retailerLng), nil
 	}
 
 	// Path 3: Haversine distance fallback via Spanner
-	havMatch, err := resolveViaHaversine(ctx, client, supplierID, retailerLat, retailerLng)
+	havMatch, err := resolveViaHaversine(ctx, readClient, supplierID, retailerLat, retailerLng)
 	if err != nil {
 		return nil, err
 	}
 	if havMatch != nil {
-		return applyLoadBalancing(ctx, client, havMatch, supplierID, retailerLat, retailerLng), nil
+		return applyLoadBalancing(ctx, readClient, havMatch, supplierID, retailerLat, retailerLng), nil
 	}
 	return nil, nil
 }

@@ -1,5 +1,4 @@
 package authroutes
-package authroutes
 
 import (
 	"net/http"

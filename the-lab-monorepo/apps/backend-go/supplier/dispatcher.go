@@ -533,7 +533,7 @@ type availableDriver struct {
 
 // ── Handler ─────────────────────────────────────────────────────────────────
 
-func HandleAutoDispatch(client *spanner.Client, manifestSvc *ManifestService, optimizer *optimizerclient.Client, counters *plan.SourceCounters) http.HandlerFunc {
+func HandleAutoDispatch(client *spanner.Client, readRouter proximity.ReadRouter, manifestSvc *ManifestService, optimizer *optimizerclient.Client, counters *plan.SourceCounters) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -556,7 +556,7 @@ func HandleAutoDispatch(client *spanner.Client, manifestSvc *ManifestService, op
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
 
-		result, err := runAutoDispatch(ctx, client, supplierID, req.OrderIDs, req.ExcludedTruckIds, manifestSvc, optimizer, counters, false)
+		result, err := runAutoDispatch(ctx, client, readRouter, supplierID, req.OrderIDs, req.ExcludedTruckIds, manifestSvc, optimizer, counters, false)
 		if err != nil {
 			log.Printf("[AUTO-DISPATCH] error for supplier %s: %v", supplierID, err)
 			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
@@ -571,7 +571,7 @@ func HandleAutoDispatch(client *spanner.Client, manifestSvc *ManifestService, op
 // HandleDispatchRecommend runs the dispatch algorithm in dry-run mode.
 // Returns recommended truck→order groupings without any Spanner mutations.
 // POST /v1/supplier/manifests/dispatch-recommend
-func HandleDispatchRecommend(client *spanner.Client) http.HandlerFunc {
+func HandleDispatchRecommend(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -594,7 +594,7 @@ func HandleDispatchRecommend(client *spanner.Client) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
 
-		result, err := runAutoDispatch(ctx, client, supplierID, req.OrderIDs, req.ExcludedTruckIds, nil, nil, nil, true)
+		result, err := runAutoDispatch(ctx, client, readRouter, supplierID, req.OrderIDs, req.ExcludedTruckIds, nil, nil, nil, true)
 		if err != nil {
 			log.Printf("[DISPATCH-RECOMMEND] error for supplier %s: %v", supplierID, err)
 			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
@@ -616,7 +616,7 @@ type ManualDispatchRequest struct {
 // and orders. Used by the Manual Dispatch mode where the admin has chosen
 // exactly which orders go to which truck.
 // POST /v1/supplier/manifests/manual-dispatch
-func HandleManualDispatch(client *spanner.Client, manifestSvc *ManifestService) http.HandlerFunc {
+func HandleManualDispatch(client *spanner.Client, readRouter proximity.ReadRouter, manifestSvc *ManifestService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -651,7 +651,7 @@ func HandleManualDispatch(client *spanner.Client, manifestSvc *ManifestService) 
 		}
 
 		// Fetch order data
-		orders, err := fetchDispatchableOrders(ctx, client, supplierID, req.OrderIDs)
+		orders, err := fetchDispatchableOrders(ctx, client, readRouter, supplierID, req.OrderIDs)
 		if err != nil {
 			http.Error(w, fmt.Sprintf(`{"error":"fetch orders: %s"}`, err.Error()), http.StatusInternalServerError)
 			return
@@ -799,11 +799,11 @@ func fetchDriverByID(ctx context.Context, client *spanner.Client, supplierID, dr
 
 // ── Core Algorithm ──────────────────────────────────────────────────────────
 
-func runAutoDispatch(ctx context.Context, client *spanner.Client, supplierID string, filterOrderIDs []string, excludedTruckIDs []string, manifestSvc *ManifestService, optimizer *optimizerclient.Client, counters *plan.SourceCounters, previewOnly bool) (*AutoDispatchResult, error) {
+func runAutoDispatch(ctx context.Context, client *spanner.Client, readRouter proximity.ReadRouter, supplierID string, filterOrderIDs []string, excludedTruckIDs []string, manifestSvc *ManifestService, optimizer *optimizerclient.Client, counters *plan.SourceCounters, previewOnly bool) (*AutoDispatchResult, error) {
 	snapshotTS := time.Now().UTC().Format(time.RFC3339)
 
 	// ── Data Ingestion ──────────────────────────────────────────────────────
-	orders, err := fetchDispatchableOrders(ctx, client, supplierID, filterOrderIDs)
+	orders, err := fetchDispatchableOrders(ctx, client, readRouter, supplierID, filterOrderIDs)
 	if err != nil {
 		return nil, fmt.Errorf("fetch orders: %w", err)
 	}
@@ -1424,7 +1424,7 @@ func runAutoDispatch(ctx context.Context, client *spanner.Client, supplierID str
 
 // ── Step 1: Fetch Dispatchable Orders ───────────────────────────────────────
 
-func fetchDispatchableOrders(ctx context.Context, client *spanner.Client, supplierID string, filterOrderIDs []string) ([]dispatchableOrder, error) {
+func fetchDispatchableOrders(ctx context.Context, client *spanner.Client, readRouter proximity.ReadRouter, supplierID string, filterOrderIDs []string) ([]dispatchableOrder, error) {
 	// Query: get PENDING/LOADED orders (no RouteId) for this supplier's retailers,
 	// joined with retailer location and order line items with pallet footprints.
 	sql := `SELECT o.OrderId, o.RetailerId, r.Name AS RetailerName, o.Amount,
@@ -1445,9 +1445,10 @@ func fetchDispatchableOrders(ctx context.Context, client *spanner.Client, suppli
 	params := map[string]interface{}{"sid": supplierID}
 
 	// Apply warehouse scope if present
-	if whID := auth.EffectiveWarehouseID(ctx); whID != "" {
+	warehouseID := auth.EffectiveWarehouseID(ctx)
+	if warehouseID != "" {
 		sql += " AND o.WarehouseId = @warehouseId"
-		params["warehouseId"] = whID
+		params["warehouseId"] = warehouseID
 	}
 
 	if len(filterOrderIDs) > 0 {
@@ -1458,11 +1459,18 @@ func fetchDispatchableOrders(ctx context.Context, client *spanner.Client, suppli
 	sql += ` GROUP BY o.OrderId, o.RetailerId, r.Name, o.Amount, r.ShopLocation, r.ReceivingWindowOpen, r.ReceivingWindowClose, o.IsRecovery
 	         ORDER BY COALESCE(o.DispatchPriority, 0) DESC, TotalVolumeVU DESC`
 
+	readClient := client
+	if warehouseID != "" {
+		if whLat, whLng, ok := fetchWarehouseOrigin(ctx, client, warehouseID); ok {
+			readClient = proximity.ReadClientForRetailer(client, readRouter, whLat, whLng)
+		}
+	}
+
 	stmt := spanner.Statement{SQL: sql, Params: params}
 	// Use explicit staleness snapshot to reduce Spanner read contention during
 	// high-volume batch dispatch. 10-second staleness is acceptable for dispatch
 	// since orders don't change state faster than the dispatch cycle.
-	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, stmt)
+	iter := readClient.Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var results []dispatchableOrder

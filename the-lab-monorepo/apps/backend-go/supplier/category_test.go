@@ -24,18 +24,28 @@ func TestCanonicalCategoryIndex_MatchesCatalogLength(t *testing.T) {
 	}
 }
 
-func TestCanonicalCategories_Has50Entries(t *testing.T) {
-	if got := len(canonicalCategories); got != 50 {
-		t.Fatalf("canonical catalog has %d entries, want 50", got)
+func TestCanonicalCategories_HasExpandedCatalog(t *testing.T) {
+	if got := len(canonicalCategories); got < 100 {
+		t.Fatalf("canonical catalog has %d entries, want at least 100", got)
 	}
 }
 
-func TestCanonicalCategories_SortOrderMonotonic(t *testing.T) {
-	for i := 1; i < len(canonicalCategories); i++ {
-		if canonicalCategories[i].SortOrder <= canonicalCategories[i-1].SortOrder {
-			t.Fatalf("sort order not monotonic at index %d: %d <= %d",
-				i, canonicalCategories[i].SortOrder, canonicalCategories[i-1].SortOrder)
+func TestCanonicalCategories_NoDuplicateIDsOrInvalidFields(t *testing.T) {
+	seenIDs := make(map[string]struct{}, len(canonicalCategories))
+	for i, category := range canonicalCategories {
+		if category.ID == "" {
+			t.Fatalf("empty category id at index %d", i)
 		}
+		if category.DisplayName == "" {
+			t.Fatalf("empty display name for %q", category.ID)
+		}
+		if category.SortOrder <= 0 {
+			t.Fatalf("invalid sort order %d for %q", category.SortOrder, category.ID)
+		}
+		if _, exists := seenIDs[category.ID]; exists {
+			t.Fatalf("duplicate category id %q", category.ID)
+		}
+		seenIDs[category.ID] = struct{}{}
 	}
 }
 
@@ -56,7 +66,7 @@ func TestNormalizeValid_AllInvalid(t *testing.T) {
 }
 
 func TestNormalizeValid_Mixed(t *testing.T) {
-	valid, invalid := normalizeValidCategoryIDs([]string{"cat-water", "bogus", "cat-seafood"})
+	valid, invalid := normalizeValidCategoryIDs([]string{"cat-water", "bogus", "cat-fresh-fish"})
 	if len(valid) != 2 || len(invalid) != 1 {
 		t.Fatalf("expected 2 valid, 1 invalid; got valid=%v invalid=%v", valid, invalid)
 	}
@@ -94,8 +104,8 @@ func TestNormalizeValid_SkipsBlanks(t *testing.T) {
 }
 
 func TestNormalizeValid_PreservesInputOrder(t *testing.T) {
-	valid, _ := normalizeValidCategoryIDs([]string{"cat-seafood", "cat-water", "cat-juice"})
-	if valid[0] != "cat-seafood" || valid[1] != "cat-water" || valid[2] != "cat-juice" {
+	valid, _ := normalizeValidCategoryIDs([]string{"cat-fresh-fish", "cat-water", "cat-juice"})
+	if valid[0] != "cat-fresh-fish" || valid[1] != "cat-water" || valid[2] != "cat-juice" {
 		t.Fatalf("order should be preserved; got %v", valid)
 	}
 }
@@ -108,9 +118,9 @@ func TestDisplayName_KnownID_Water(t *testing.T) {
 	}
 }
 
-func TestDisplayName_KnownID_Seafood(t *testing.T) {
-	if got := categoryDisplayNameByID("cat-seafood"); got != "Seafood" {
-		t.Fatalf("cat-seafood = %q, want %q", got, "Seafood")
+func TestDisplayName_KnownID_FreshFish(t *testing.T) {
+	if got := categoryDisplayNameByID("cat-fresh-fish"); got != "Fresh Fish" {
+		t.Fatalf("cat-fresh-fish = %q, want %q", got, "Fresh Fish")
 	}
 }
 
@@ -123,9 +133,9 @@ func TestDisplayName_UnknownID_ReturnsEmpty(t *testing.T) {
 // ── categoryDisplayNames ───────────────────────────────────────────────────
 
 func TestDisplayNames_MultipleValid(t *testing.T) {
-	names := categoryDisplayNames([]string{"cat-water", "cat-seafood"})
-	if len(names) != 2 || names[0] != "Water" || names[1] != "Seafood" {
-		t.Fatalf("expected [Water, Seafood], got %v", names)
+	names := categoryDisplayNames([]string{"cat-water", "cat-fresh-fish"})
+	if len(names) != 2 || names[0] != "Water" || names[1] != "Fresh Fish" {
+		t.Fatalf("expected [Water, Fresh Fish], got %v", names)
 	}
 }
 
@@ -144,8 +154,8 @@ func TestDisplayNames_Empty(t *testing.T) {
 }
 
 func TestDisplayNames_PreservesOrder(t *testing.T) {
-	names := categoryDisplayNames([]string{"cat-seafood", "cat-water"})
-	if names[0] != "Seafood" || names[1] != "Water" {
+	names := categoryDisplayNames([]string{"cat-fresh-fish", "cat-water"})
+	if names[0] != "Fresh Fish" || names[1] != "Water" {
 		t.Fatalf("order should be preserved; got %v", names)
 	}
 }

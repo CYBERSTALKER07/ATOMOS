@@ -1,6 +1,7 @@
 package warehouse
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/proximity"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -48,7 +50,7 @@ type LineItem struct {
 }
 
 // HandleOpsOrders — GET for /v1/warehouse/ops/orders
-func HandleOpsOrders(spannerClient *spanner.Client) http.HandlerFunc {
+func HandleOpsOrders(spannerClient *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -94,8 +96,9 @@ func HandleOpsOrders(spannerClient *spanner.Client) http.HandlerFunc {
 
 		sql += " ORDER BY o.CreatedAt DESC LIMIT 200"
 
+		readClient := warehouseReadClient(r.Context(), spannerClient, readRouter, ops.WarehouseID)
 		stmt := spanner.Statement{SQL: sql, Params: params}
-		iter := spannerClient.Single().Query(r.Context(), stmt)
+		iter := readClient.Single().Query(r.Context(), stmt)
 		defer iter.Stop()
 
 		var orders []OrderItem
@@ -131,7 +134,7 @@ func HandleOpsOrders(spannerClient *spanner.Client) http.HandlerFunc {
 }
 
 // HandleOpsOrderDetail — GET /v1/warehouse/ops/orders/{id}
-func HandleOpsOrderDetail(spannerClient *spanner.Client) http.HandlerFunc {
+func HandleOpsOrderDetail(spannerClient *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -166,7 +169,8 @@ func HandleOpsOrderDetail(spannerClient *spanner.Client) http.HandlerFunc {
 			      WHERE o.OrderId = @oid AND o.SupplierId = @sid AND o.WarehouseId = @whId`,
 			Params: map[string]interface{}{"oid": orderID, "sid": ops.SupplierID, "whId": ops.WarehouseID},
 		}
-		iter := spannerClient.Single().Query(r.Context(), stmt)
+		readClient := warehouseReadClient(r.Context(), spannerClient, readRouter, ops.WarehouseID)
+		iter := readClient.Single().Query(r.Context(), stmt)
 		defer iter.Stop()
 
 		row, err := iter.Next()
@@ -203,7 +207,7 @@ func HandleOpsOrderDetail(spannerClient *spanner.Client) http.HandlerFunc {
 			      WHERE li.OrderId = @oid`,
 			Params: map[string]interface{}{"oid": orderID},
 		}
-		liIter := spannerClient.Single().Query(r.Context(), liStmt)
+		liIter := readClient.Single().Query(r.Context(), liStmt)
 		defer liIter.Stop()
 		for {
 			liRow, err := liIter.Next()
@@ -226,4 +230,25 @@ func HandleOpsOrderDetail(spannerClient *spanner.Client) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(o)
 	}
+}
+
+func warehouseReadClient(ctx context.Context, primary *spanner.Client, readRouter proximity.ReadRouter, warehouseID string) *spanner.Client {
+	if primary == nil {
+		return nil
+	}
+	if readRouter == nil || warehouseID == "" {
+		return primary
+	}
+
+	row, err := primary.Single().ReadRow(ctx, "Warehouses", spanner.Key{warehouseID}, []string{"Lat", "Lng"})
+	if err != nil {
+		return primary
+	}
+
+	var lat, lng spanner.NullFloat64
+	if row.Columns(&lat, &lng) != nil || !lat.Valid || !lng.Valid {
+		return primary
+	}
+
+	return proximity.ReadClientForRetailer(primary, readRouter, lat.Float64, lng.Float64)
 }

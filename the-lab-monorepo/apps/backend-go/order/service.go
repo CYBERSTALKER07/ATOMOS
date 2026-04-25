@@ -183,6 +183,7 @@ type OrderService struct {
 	Producer     *kafka.Writer
 	Cache        *cache.Cache
 	Client       *spanner.Client
+	ReadRouter   proximity.ReadRouter           // Optional H3-aware read router for geo-scoped reads.
 	Vault        *vault.Service                 // Per-supplier credential vault (nil = ENV-only fallback)
 	SessionSvc   *payment.SessionService        // Payment session engine (nil = legacy mode)
 	CardTokenSvc *payment.CardTokenService      // Saved card token CRUD (nil = tokenization disabled)
@@ -327,7 +328,7 @@ func (s *OrderService) SavePredictionWithItems(ctx context.Context, retailerId s
 // HandleLineItemHistory returns past order line items for a retailer,
 // used by the AI Worker to compute SKU-level purchase frequency.
 // GET /v1/orders/line-items/history?retailer_id=X&since=ISO8601
-func HandleLineItemHistory(client *spanner.Client) http.HandlerFunc {
+func HandleLineItemHistory(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -368,8 +369,19 @@ func HandleLineItemHistory(client *spanner.Client) http.HandlerFunc {
 
 		sql += ` ORDER BY o.CreatedAt DESC LIMIT 500`
 
+		readClient := client
+		if readRouter != nil {
+			row, err := client.Single().ReadRow(r.Context(), "Retailers", spanner.Key{retailerID}, []string{"Latitude", "Longitude"})
+			if err == nil {
+				var lat, lng spanner.NullFloat64
+				if row.Columns(&lat, &lng) == nil && lat.Valid && lng.Valid {
+					readClient = proximity.ReadClientForRetailer(client, readRouter, lat.Float64, lng.Float64)
+				}
+			}
+		}
+
 		stmt := spanner.Statement{SQL: sql, Params: params}
-		iter := spannerx.StaleQuery(r.Context(), client, stmt)
+		iter := spannerx.StaleQuery(r.Context(), readClient, stmt)
 		defer iter.Stop()
 
 		type HistoryItem struct {
@@ -2699,8 +2711,8 @@ type CardCheckoutResponse struct {
 // Creates a MasterInvoice for the gateway and returns a hosted checkout URL.
 func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callbackBaseURL string) (*CardCheckoutResponse, error) {
 	gateway = strings.ToUpper(gateway)
-	if gateway != "GLOBAL_PAY" && gateway != "CASH" && gateway != "GLOBAL_PAY" {
-		return nil, fmt.Errorf("unsupported card gateway: %s (supported: GLOBAL_PAY, CASH, GLOBAL_PAY)", gateway)
+	if gateway != "GLOBAL_PAY" && gateway != "CASH" {
+		return nil, fmt.Errorf("unsupported card gateway: %s (supported: GLOBAL_PAY, CASH)", gateway)
 	}
 
 	var resp CardCheckoutResponse

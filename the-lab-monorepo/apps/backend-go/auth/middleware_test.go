@@ -400,3 +400,64 @@ func TestClaimsContextRoundTrip(t *testing.T) {
 		t.Errorf("context round-trip failed: %+v", extracted)
 	}
 }
+
+func TestRequireRoleWithGrace_AllowsExpiredDriverWithinWindow(t *testing.T) {
+	expiry := time.Now().Add(-15 * time.Minute)
+	claims := &LabClaims{
+		UserID: "driver-1",
+		Role:   "DRIVER",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expiry),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tok, _ := token.SignedString(JWTSecret)
+
+	handler := RequireRoleWithGrace([]string{"DRIVER"}, 2*time.Hour, func(w http.ResponseWriter, r *http.Request) {
+		got := r.Context().Value(ClaimsContextKey).(*LabClaims)
+		if !got.GracePeriod {
+			t.Fatal("expected GracePeriod=true")
+		}
+		if got.GraceDeadline.IsZero() {
+			t.Fatal("expected GraceDeadline to be populated")
+		}
+		if got.GraceDeadline.Before(expiry.Add(2*time.Hour-time.Minute)) || got.GraceDeadline.After(expiry.Add(2*time.Hour+time.Minute)) {
+			t.Fatalf("grace deadline = %s, want around %s", got.GraceDeadline, expiry.Add(2*time.Hour))
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	r := httptest.NewRequest("GET", "/ws/telemetry", nil)
+	r.Header.Set("Authorization", "Bearer "+tok)
+	w := httptest.NewRecorder()
+	handler(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestRequireRoleWithGrace_RejectsExpiredDriverBeyondWindow(t *testing.T) {
+	claims := &LabClaims{
+		UserID: "driver-2",
+		Role:   "DRIVER",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(-3 * time.Hour)),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tok, _ := token.SignedString(JWTSecret)
+
+	handler := RequireRoleWithGrace([]string{"DRIVER"}, 2*time.Hour, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("handler should not be called for tokens beyond grace window")
+	})
+
+	r := httptest.NewRequest("GET", "/ws/telemetry", nil)
+	r.Header.Set("Authorization", "Bearer "+tok)
+	w := httptest.NewRecorder()
+	handler(w, r)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}

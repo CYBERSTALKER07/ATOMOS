@@ -3,6 +3,7 @@ package ws
 import (
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -31,22 +32,49 @@ func CheckWSOrigin(r *http.Request) bool {
 		return true
 	}
 
-	allowed := map[string]bool{
-		"http://localhost:3000":  true,
-		"http://localhost:3001":  true,
-		"http://localhost:3002":  true,
-		"http://localhost:8081":  true,
-		"http://localhost:19006": true,
-	}
+	allowed := parseWSAllowlist()
 	if allowed[origin] {
 		return true
 	}
-	// Dynamic tunnel/Expo/LAN origins for mobile dev
-	if strings.HasSuffix(origin, ".ngrok-free.app") || strings.HasSuffix(origin, ".expo.dev") || strings.HasPrefix(origin, "http://192.168.") || strings.HasPrefix(origin, "http://10.0.") {
+	if isPatternAllowed(origin) {
 		return true
 	}
 	log.Printf("[WS] Rejected WebSocket upgrade from origin: %s", origin)
 	return false
+}
+
+func parseWSAllowlist() map[string]bool {
+	allowlist := make(map[string]bool)
+	raw := strings.TrimSpace(os.Getenv("CORS_ALLOWED_ORIGINS"))
+	if raw != "" {
+		for _, entry := range strings.Split(raw, ",") {
+			origin := strings.TrimSpace(entry)
+			if origin != "" {
+				allowlist[origin] = true
+			}
+		}
+	}
+
+	if len(allowlist) == 0 {
+		environment := strings.ToLower(strings.TrimSpace(os.Getenv("ENVIRONMENT")))
+		if environment != "production" {
+			allowlist["http://localhost:3000"] = true
+			allowlist["http://localhost:3001"] = true
+			allowlist["http://localhost:3002"] = true
+			allowlist["http://localhost:8081"] = true
+			allowlist["http://localhost:19006"] = true
+		}
+	}
+
+	return allowlist
+}
+
+func isPatternAllowed(origin string) bool {
+	// Dynamic tunnel/Expo/LAN origins for mobile development.
+	return strings.HasSuffix(origin, ".ngrok-free.app") ||
+		strings.HasSuffix(origin, ".expo.dev") ||
+		strings.HasPrefix(origin, "http://192.168.") ||
+		strings.HasPrefix(origin, "http://10.0.")
 }
 
 // FleetHub holds all connected WebSocket clients (Admin Portals + Drivers)

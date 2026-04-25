@@ -259,7 +259,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	// No-coverage returns nil — the order proceeds with empty WarehouseId.
 	warehouseBySupplier := make(map[string]*proximity.WarehouseMatch, len(supplierGroups))
 	for sid := range supplierGroups {
-		match, whErr := proximity.ResolveWarehouse(ctx, s.Client, sid, retailerLat, retailerLng)
+		match, whErr := proximity.ResolveWarehouseWithRouter(ctx, s.Client, s.ReadRouter, sid, retailerLat, retailerLng)
 		if whErr != nil {
 			log.Printf("[UNIFIED_CHECKOUT] Warehouse resolution failed for supplier %s: %v — proceeding without warehouse", sid, whErr)
 		}
