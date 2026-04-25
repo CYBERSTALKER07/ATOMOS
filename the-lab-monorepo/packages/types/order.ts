@@ -16,6 +16,7 @@ export type OrderState =
   | 'PENDING'
   | 'PENDING_REVIEW'
   | 'LOADED'
+  | 'DISPATCHED'
   | 'IN_TRANSIT'
   | 'ARRIVING'
   | 'ARRIVED'

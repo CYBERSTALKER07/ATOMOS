@@ -313,7 +313,9 @@ function DetailField({ label, value, mono, accent }: { label: string; value: str
 
 /** Small non-interactive map centered on factory coordinates */
 function MiniFactoryMap({ lat, lng }: { lat: number; lng: number }) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const MapGL = require('react-map-gl/maplibre').default;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Marker } = require('react-map-gl/maplibre');
 
   return (

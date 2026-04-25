@@ -38,7 +38,12 @@ final class TelemetryViewModel {
     // MARK: - Connect / Disconnect
 
     func start() async {
-        let url = URL(string: "\(APIClient.shared.apiBaseURL.replacingOccurrences(of: "http", with: "ws"))/ws/telemetry?role=DRIVER")!
+        guard let token = TokenStore.shared.token,
+              let encodedToken = token.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "\(APIClient.shared.apiBaseURL.replacingOccurrences(of: "http", with: "ws"))/ws/telemetry?token=\(encodedToken)") else {
+            isLive = false
+            return
+        }
         await service.connect(url: url)
         isLive = service.isConnected
 

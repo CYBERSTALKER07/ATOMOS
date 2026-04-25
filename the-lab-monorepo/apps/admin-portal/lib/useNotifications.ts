@@ -5,6 +5,30 @@ import { apiFetch, readTokenFromCookie } from './auth';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
+interface BackendNotification {
+  notification_id: string;
+  type: string;
+  title: string;
+  body: string;
+  payload?: string;
+  channel?: string;
+  read_at: string | null;
+  created_at: string;
+}
+
+function normalizeNotification(item: BackendNotification): Notification {
+  return {
+    id: item.notification_id,
+    type: item.type,
+    title: item.title,
+    body: item.body,
+    payload: item.payload || '',
+    channel: item.channel || 'PUSH',
+    read_at: item.read_at,
+    created_at: item.created_at,
+  };
+}
+
 export interface Notification {
   id: string;
   type: string;
@@ -43,8 +67,11 @@ export function useNotifications() {
       const res = await apiFetch('/v1/user/notifications?limit=50', { signal });
       if (!res.ok) return;
       const data = await res.json();
+      const items = Array.isArray(data.notifications)
+        ? data.notifications.map((item: BackendNotification) => normalizeNotification(item))
+        : [];
       setState({
-        items: data.notifications || [],
+        items,
         unreadCount: data.unread_count ?? 0,
         loading: false,
       });

@@ -81,8 +81,8 @@ fun AnalyticsScreen(
                 }
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(LabSpacing.md), modifier = Modifier.fillMaxWidth()) {
-                        KpiCard("Avg Delivery", "${data!!.avgDeliveryMinutes} min", Modifier.weight(1f))
-                        KpiCard("Completion", "${data!!.completionRate}%", Modifier.weight(1f))
+                        KpiCard("Avg Order", "${fmt.format(data!!.avgOrderValue)} UZS", Modifier.weight(1f))
+                        KpiCard("Utilization", "${data!!.fleetUtilizationPct}%", Modifier.weight(1f))
                     }
                 }
                 // Top products
@@ -94,7 +94,7 @@ fun AnalyticsScreen(
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                             Text(tp.productName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                            Text("${tp.unitsSold} units · ${fmt.format(tp.revenue)} UZS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${tp.totalSold} units · ${fmt.format(tp.revenue)} UZS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

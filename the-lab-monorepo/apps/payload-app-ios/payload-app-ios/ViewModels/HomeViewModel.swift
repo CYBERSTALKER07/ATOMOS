@@ -412,13 +412,27 @@ final class HomeViewModel {
     }
 
     func markNotificationRead(_ id: String) {
-        if let idx = notifications.firstIndex(where: { $0.notificationId == id }), notifications[idx].isUnread {
+        if notifications.contains(where: { $0.notificationId == id && $0.isUnread }) {
+            let readAt = nowIso()
+            notifications = notifications.map {
+                if $0.notificationId == id && $0.isUnread {
+                    return copyNotification($0, readAt: readAt)
+                }
+                return $0
+            }
             unreadCount = max(0, unreadCount - 1)
         }
         Task { _ = try? await api.markRead(ids: [id], all: nil) }
     }
 
     func markAllNotificationsRead() {
+        let readAt = nowIso()
+        notifications = notifications.map {
+            if $0.isUnread {
+                return copyNotification($0, readAt: readAt)
+            }
+            return $0
+        }
         unreadCount = 0
         Task { _ = try? await api.markRead(ids: nil, all: true) }
     }
@@ -439,10 +453,27 @@ final class HomeViewModel {
             payload: nil,
             channel: frame.channel ?? "",
             readAt: nil,
-            createdAt: ""
+            createdAt: nowIso()
         )
         notifications.insert(item, at: 0)
         unreadCount += 1
+    }
+
+    private func copyNotification(_ item: NotificationItem, readAt: String?) -> NotificationItem {
+        NotificationItem(
+            notificationId: item.notificationId,
+            type: item.type,
+            title: item.title,
+            body: item.body,
+            payload: item.payload,
+            channel: item.channel,
+            readAt: readAt,
+            createdAt: item.createdAt
+        )
+    }
+
+    private func nowIso() -> String {
+        ISO8601DateFormatter().string(from: Date())
     }
 
     private func flushQueue() async {

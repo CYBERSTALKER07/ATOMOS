@@ -90,6 +90,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	// 1. Analytics overview.
 	r.HandleFunc("/v1/factory/analytics/overview",
 		auth.RequireRole(factoryRole, log(withScope(analytics.HandleFactoryAnalytics(d.Spanner)))))
+	r.HandleFunc("/v1/factory/dashboard",
+		auth.RequireRole(factoryRole, log(withScope(factory.HandleFactoryDashboardCompat(d.Spanner)))))
 
 	// 2. Factory profile.
 	r.HandleFunc("/v1/factory/profile",
@@ -127,6 +129,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(factoryRole, log(withScope(factory.HandleFactoryManifestTransition(d.Spanner)))))
 
 	// 8–9. Factory-scoped fleet view.
+	r.HandleFunc("/v1/factory/fleet",
+		auth.RequireRole(factoryRole, log(withScope(factory.HandleFactoryFleetCompat(d.Spanner)))))
 	r.HandleFunc("/v1/factory/fleet/drivers",
 		auth.RequireRole(factoryRole, log(withScope(factory.HandleFactoryFleetDrivers(d.Spanner)))))
 	r.HandleFunc("/v1/factory/fleet/vehicles",

@@ -22,6 +22,31 @@ const API_BASE = (process.env.EXPO_PUBLIC_API_URL?.trim() || '') ||
 export default function App() {
   const T = useT();
 
+  type BackendNotifItem = {
+    notification_id: string;
+    type: string;
+    title: string;
+    body: string;
+    read_at: string | null;
+    created_at: string;
+  };
+
+  type LiveNotifFrame = {
+    type?: string;
+    title?: string;
+    body?: string;
+    channel?: string;
+  };
+
+  const normalizeNotification = (item: BackendNotifItem): NotifItem => ({
+    id: item.notification_id,
+    type: item.type,
+    title: item.title,
+    body: item.body,
+    read_at: item.read_at,
+    created_at: item.created_at,
+  });
+
   // Auth state
   const [token, setToken] = useState<string | null>(null);
   const [workerName, setWorkerName] = useState('');
@@ -208,7 +233,10 @@ export default function App() {
       });
       if (!res.ok) return;
       const data = await res.json();
-      setNotifications(data.notifications ?? []);
+      const items = Array.isArray(data.notifications)
+        ? data.notifications.map((item: BackendNotifItem) => normalizeNotification(item))
+        : [];
+      setNotifications(items);
       setUnreadCount(data.unread_count ?? 0);
     } catch {}
   }, [token]);
@@ -228,9 +256,16 @@ export default function App() {
       };
       ws.onmessage = (event) => {
         try {
-          const msg = JSON.parse(event.data);
-          if (msg.type === 'notification') {
-            const n: NotifItem = msg.payload;
+          const msg = JSON.parse(event.data) as LiveNotifFrame;
+          if ((msg.title && msg.title.length > 0) || (msg.body && msg.body.length > 0)) {
+            const n: NotifItem = {
+              id: `live-${Date.now()}`,
+              type: msg.type ?? '',
+              title: msg.title ?? '',
+              body: msg.body ?? '',
+              read_at: null,
+              created_at: new Date().toISOString(),
+            };
             setNotifications(prev => [n, ...prev]);
             setUnreadCount(prev => prev + 1);
           }
@@ -268,7 +303,7 @@ export default function App() {
       await fetch(`${API_BASE}/v1/user/notifications/read`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ all: true }),
+        body: JSON.stringify({ mark_all: true }),
       });
     } catch {}
   }, [token]);

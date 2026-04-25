@@ -198,15 +198,20 @@ func HandleAdminLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		// ── 2. Try SupplierUsers table (sub-accounts with explicit roles) ──
-		var suUserID, suSupplierId, suName, suPwHash, suRole, suWarehouseID, suFactoryID string
+		var suUserID, suSupplierId, suName, suPwHash, suRole, suWarehouseID, suFactoryID, suCountryCode string
+		var suIsConfigured bool
 		_ = spannerClient.Single().Query(ctx, spanner.Statement{
-			SQL: `SELECT UserId, SupplierId, Name, PasswordHash, SupplierRole,
-			             COALESCE(AssignedWarehouseId, ''),
-			             COALESCE(AssignedFactoryId, '')
-			      FROM SupplierUsers WHERE Email = @email AND IsActive = true LIMIT 1`,
+			SQL: `SELECT su.UserId, su.SupplierId, su.Name, su.PasswordHash, su.SupplierRole,
+			             COALESCE(su.AssignedWarehouseId, ''),
+			             COALESCE(su.AssignedFactoryId, ''),
+			             COALESCE(s.CountryCode, 'UZ'),
+			             COALESCE(s.IsConfigured, false)
+			      FROM SupplierUsers su
+			      LEFT JOIN Suppliers s ON su.SupplierId = s.SupplierId
+			      WHERE su.Email = @email AND su.IsActive = true LIMIT 1`,
 			Params: map[string]interface{}{"email": req.Email},
 		}).Do(func(row *spanner.Row) error {
-			return row.Columns(&suUserID, &suSupplierId, &suName, &suPwHash, &suRole, &suWarehouseID, &suFactoryID)
+			return row.Columns(&suUserID, &suSupplierId, &suName, &suPwHash, &suRole, &suWarehouseID, &suFactoryID, &suCountryCode, &suIsConfigured)
 		})
 
 		if suUserID != "" && suPwHash != "" {
@@ -223,11 +228,14 @@ func HandleAdminLogin(spannerClient *spanner.Client) http.HandlerFunc {
 			}
 			token, err := MintIdentityToken(&LabClaims{
 				UserID:       suUserID,
+				SupplierID:   suSupplierId,
 				Role:         "SUPPLIER",
 				SupplierRole: suRole,
 				WarehouseID:  suWarehouseID,
 				FactoryID:    suFactoryID,
 				FactoryRole:  factoryRole,
+				CountryCode:  suCountryCode,
+				IsConfigured: suIsConfigured,
 			})
 			if err != nil {
 				w.Header().Set("Content-Type", "application/json")
@@ -249,11 +257,15 @@ func HandleAdminLogin(spannerClient *spanner.Client) http.HandlerFunc {
 			}
 			resp := map[string]interface{}{
 				"token":         token,
+				"user_id":       suUserID,
+				"supplier_id":   suSupplierId,
 				"role":          "SUPPLIER",
 				"supplier_role": suRole,
 				"warehouse_id":  suWarehouseID,
 				"factory_id":    suFactoryID,
 				"display_name":  suName,
+				"is_configured": suIsConfigured,
+				"country_code":  suCountryCode,
 			}
 			if firebaseToken != "" {
 				resp["firebase_token"] = firebaseToken
@@ -264,12 +276,13 @@ func HandleAdminLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		// ── 3. Fall through to Suppliers table (root registrant = implicit GLOBAL_ADMIN) ──
-		var supplierId, supplierPwHash, supplierName string
+		var supplierId, supplierPwHash, supplierName, supplierCountryCode string
+		var supplierIsConfigured bool
 		_ = spannerClient.Single().Query(ctx, spanner.Statement{
-			SQL:    "SELECT SupplierId, COALESCE(PasswordHash, ''), Name FROM Suppliers WHERE Email = @email LIMIT 1",
+			SQL:    "SELECT SupplierId, COALESCE(PasswordHash, ''), Name, COALESCE(CountryCode, 'UZ'), COALESCE(IsConfigured, false) FROM Suppliers WHERE Email = @email LIMIT 1",
 			Params: map[string]interface{}{"email": req.Email},
 		}).Do(func(row *spanner.Row) error {
-			return row.Columns(&supplierId, &supplierPwHash, &supplierName)
+			return row.Columns(&supplierId, &supplierPwHash, &supplierName, &supplierCountryCode, &supplierIsConfigured)
 		})
 
 		if supplierId == "" || supplierPwHash == "" {
@@ -288,8 +301,11 @@ func HandleAdminLogin(spannerClient *spanner.Client) http.HandlerFunc {
 
 		token, err := MintIdentityToken(&LabClaims{
 			UserID:       supplierId,
+			SupplierID:   supplierId,
 			Role:         "SUPPLIER",
 			SupplierRole: "GLOBAL_ADMIN",
+			CountryCode:  supplierCountryCode,
+			IsConfigured: supplierIsConfigured,
 		})
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
@@ -310,9 +326,13 @@ func HandleAdminLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 		resp := map[string]interface{}{
 			"token":         token,
+			"user_id":       supplierId,
+			"supplier_id":   supplierId,
 			"role":          "SUPPLIER",
 			"supplier_role": "GLOBAL_ADMIN",
 			"display_name":  supplierName,
+			"is_configured": supplierIsConfigured,
+			"country_code":  supplierCountryCode,
 		}
 		if firebaseToken != "" {
 			resp["firebase_token"] = firebaseToken

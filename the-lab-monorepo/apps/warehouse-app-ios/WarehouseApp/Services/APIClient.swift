@@ -3,6 +3,10 @@ import Foundation
 final class APIClient: Sendable {
     static let shared = APIClient()
 
+    private struct TokenRefreshResponse: Decodable {
+        let token: String
+    }
+
     #if DEBUG
     // Simulator: localhost. Physical device: set LAB_DEV_HOST scheme env variable
     // to the Mac's LAN IP (e.g. 192.168.1.42) for backend reachability over Wi-Fi.
@@ -157,18 +161,20 @@ final class APIClient: Sendable {
     }
 
     private func attemptRefresh() async throws -> Bool {
-        guard let refresh = await MainActor.run(body: { TokenStore.shared.refreshToken }) else { return false }
+        let credentials = await MainActor.run { (TokenStore.shared.token, TokenStore.shared.refreshToken) }
+        guard let token = credentials.0, let refresh = credentials.1 else { return false }
         var request = URLRequest(url: baseURL.appendingPathComponent("v1/auth/warehouse/refresh"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try encoder.encode(["refresh_token": refresh])
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try encoder.encode([String: String]())
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             await MainActor.run { TokenStore.shared.clear() }
             return false
         }
-        let auth = try decoder.decode(AuthResponse.self, from: data)
-        await MainActor.run { TokenStore.shared.updateTokens(token: auth.token, refresh: auth.refreshToken) }
+        let auth = try decoder.decode(TokenRefreshResponse.self, from: data)
+        await MainActor.run { TokenStore.shared.updateTokens(token: auth.token, refresh: refresh) }
         return true
     }
 }

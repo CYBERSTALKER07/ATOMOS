@@ -32,11 +32,6 @@ struct ReturnsView: View {
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Text(item.status)
-                                .font(.caption.bold())
-                                .padding(.horizontal, LabTheme.spacingSM)
-                                .padding(.vertical, LabTheme.spacingXS)
-                                .background(.quaternary, in: Capsule())
                         }
                     }
                     .listStyle(.insetGrouped)

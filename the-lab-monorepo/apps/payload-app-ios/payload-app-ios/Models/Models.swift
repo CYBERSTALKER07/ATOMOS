@@ -242,10 +242,10 @@ struct NotificationsResponse: Decodable {
 
 struct MarkReadRequest: Encodable {
     let notificationIds: [String]?
-    let all: Bool?
+    let markAll: Bool?
     enum CodingKeys: String, CodingKey {
         case notificationIds = "notification_ids"
-        case all
+        case markAll = "mark_all"
     }
 }
 

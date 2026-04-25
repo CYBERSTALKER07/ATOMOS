@@ -233,7 +233,7 @@ data class NotificationsResponse(
 @Serializable
 data class MarkReadRequest(
     @SerialName("notification_ids") val notificationIds: List<String>? = null,
-    val all: Boolean? = null,
+    @SerialName("mark_all") val markAll: Boolean? = null,
 )
 
 // ─── WebSocket frames ────────────────────────────────────────────────────────

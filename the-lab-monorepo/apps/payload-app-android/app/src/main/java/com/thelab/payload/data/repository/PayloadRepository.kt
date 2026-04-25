@@ -101,7 +101,7 @@ class PayloadRepository @Inject constructor(
         api.markRead(MarkReadRequest(notificationIds = listOf(id)))
 
     suspend fun markAllRead(): StatusResponse =
-        api.markRead(MarkReadRequest(all = true))
+        api.markRead(MarkReadRequest(markAll = true))
 
     // ── Phase 6: FCM token lifecycle ─────────────────────────────────────────
 

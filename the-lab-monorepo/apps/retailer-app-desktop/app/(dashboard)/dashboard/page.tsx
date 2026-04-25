@@ -71,7 +71,7 @@ export default function DashboardPage() {
         {/* Row 2: orders wide + stacked small */}
         <ServiceTile href="/orders" icon={ShoppingCart} title="Orders" subtitle={`${activeOrders.length} active`} height="h-28" />
         <div className="flex flex-col gap-4">
-          <ServiceTile href="/settings" icon={Inbox} title="Inbox" height="h-[calc(50%-8px)]" compact />
+          <ServiceTile href="/notifications" icon={Inbox} title="Inbox" height="h-[calc(50%-8px)]" compact />
           <ServiceTile href="/orders" icon={Clock} title="History" height="h-[calc(50%-8px)]" compact />
         </div>
 

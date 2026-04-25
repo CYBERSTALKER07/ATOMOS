@@ -136,7 +136,7 @@ final class APIClient: @unchecked Sendable {
         try await get("v1/user/notifications?limit=\(limit)")
     }
     func markRead(ids: [String]?, all: Bool? = nil) async throws -> StatusResponse {
-        try await post("v1/user/notifications/read", body: MarkReadRequest(notificationIds: ids, all: all))
+        try await post("v1/user/notifications/read", body: MarkReadRequest(notificationIds: ids, markAll: all))
     }
 
     // MARK: - FCM

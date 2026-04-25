@@ -600,6 +600,10 @@ func dispatchToRecipient(deps NotificationDeps, recipientID, role, eventType str
 		if deps.PayloaderHub != nil {
 			wsDelivered = deps.PayloaderHub.PushToPayloader(recipientID, wsPayload)
 		}
+	case "PAYLOADER":
+		if deps.PayloaderHub != nil {
+			wsDelivered = deps.PayloaderHub.PushToPayloader(recipientID, wsPayload)
+		}
 	}
 
 	// 3. FCM fallback (retailer only, when WS missed)

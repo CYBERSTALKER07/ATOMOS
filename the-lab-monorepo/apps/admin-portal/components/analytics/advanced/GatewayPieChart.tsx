@@ -51,6 +51,7 @@ export default function GatewayPieChart({ data }: Props) {
                 borderRadius: '12px',
                 fontSize: 12,
               }}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               formatter={(value: any) => value.toLocaleString()}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />

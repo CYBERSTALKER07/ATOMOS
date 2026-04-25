@@ -27,9 +27,6 @@ struct CRMView: View {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(retailer.name)
                                     .font(.headline)
-                                Text(retailer.phone)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
                             }
                             Spacer()
                             VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {

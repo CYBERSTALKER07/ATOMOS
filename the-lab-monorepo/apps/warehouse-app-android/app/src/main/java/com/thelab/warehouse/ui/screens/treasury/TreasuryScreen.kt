@@ -38,7 +38,7 @@ fun TreasuryScreen(
         scope.launch {
             try {
                 val oResp = api.getTreasuryOverview()
-                val iResp = api.getTreasuryInvoices()
+                val iResp = api.getInvoices()
                 if (oResp.isSuccessful && oResp.body() != null) overview = oResp.body()!!
                 if (iResp.isSuccessful && iResp.body() != null) invoices = iResp.body()!!.invoices
                 if (overview == null) error = "Failed to load"
@@ -77,14 +77,14 @@ fun TreasuryScreen(
                         LazyColumn(contentPadding = PaddingValues(LabSpacing.lg), verticalArrangement = Arrangement.spacedBy(LabSpacing.md)) {
                             item {
                                 Row(horizontalArrangement = Arrangement.spacedBy(LabSpacing.md), modifier = Modifier.fillMaxWidth()) {
-                                    KpiCard("Balance", "${fmt.format(o.balance)} UZS", Modifier.weight(1f))
-                                    KpiCard("Receivable", "${fmt.format(o.totalReceivable)} UZS", Modifier.weight(1f))
+                                    KpiCard("Outstanding", "${fmt.format(o.totalOutstanding)} UZS", Modifier.weight(1f))
+                                    KpiCard("Invoiced", "${fmt.format(o.totalInvoiced)} UZS", Modifier.weight(1f))
                                 }
                             }
                             item {
                                 Row(horizontalArrangement = Arrangement.spacedBy(LabSpacing.md), modifier = Modifier.fillMaxWidth()) {
-                                    KpiCard("Collected", "${fmt.format(o.totalCollected)} UZS", Modifier.weight(1f))
-                                    KpiCard("Overdue", "${fmt.format(o.overdueAmount)} UZS", Modifier.weight(1f))
+                                    KpiCard("Paid", "${fmt.format(o.totalPaid)} UZS", Modifier.weight(1f))
+                                    Spacer(Modifier.weight(1f))
                                 }
                             }
                         }

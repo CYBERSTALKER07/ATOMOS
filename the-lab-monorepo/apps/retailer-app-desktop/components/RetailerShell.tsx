@@ -10,6 +10,7 @@ import {
   Store, X, MapPin, Container
 } from 'lucide-react';
 import { useWebSocket } from '../lib/ws';
+import { useRetailerNotifications } from '../lib/notifications';
 import { clearStoredToken } from '../lib/bridge';
 
 /* ────────── Navigation Config ────────── */
@@ -174,6 +175,7 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const router = useRouter();
   const { isConnected } = useWebSocket();
+  const { unreadCount } = useRetailerNotifications();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -284,9 +286,19 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
               <Search size={20} />
             </Button>
 
-            <Button variant="ghost" isIconOnly className="w-9 h-9 min-w-0 text-muted relative" aria-label="Notifications">
+            <Button
+              variant="ghost"
+              isIconOnly
+              className="w-9 h-9 min-w-0 text-muted relative"
+              aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+              onPress={() => router.push('/notifications')}
+            >
               <Bell size={20} />
-              <div className="absolute top-1 right-1 w-2 h-2 bg-danger rounded-full border border-background" />
+              {unreadCount > 0 && (
+                <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-[10px] leading-[18px] text-danger-foreground border border-background text-center font-bold">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </div>
+              )}
             </Button>
 
             {(() => {

@@ -49,6 +49,7 @@ export default function FleetLoadBars({ data }: Props) {
                 borderRadius: '12px',
                 fontSize: 12,
               }}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               formatter={(value: any) => `${value.toFixed(1)}%`}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />

@@ -31,7 +31,7 @@ fun ReturnsScreen(
         scope.launch {
             try {
                 val resp = api.getReturns()
-                if (resp.isSuccessful && resp.body() != null) items = resp.body()!!.returns
+                if (resp.isSuccessful && resp.body() != null) items = resp.body()!!.items
                 else error = "Failed (${resp.code()})"
             } catch (e: Exception) { error = e.message ?: "Network error" }
             finally { loading = false }
@@ -66,16 +66,16 @@ fun ReturnsScreen(
                 verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
-                items(items, key = { it.returnId }) { r ->
+                items(items, key = { it.lineItemId }) { r ->
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(LabSpacing.lg)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(r.productName, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                                AssistChip(onClick = {}, label = { Text(r.reason, style = MaterialTheme.typography.labelSmall) })
+                                AssistChip(onClick = {}, label = { Text(r.status, style = MaterialTheme.typography.labelSmall) })
                             }
                             Spacer(Modifier.height(LabSpacing.xs))
                             Text(
-                                "Qty: ${r.quantity} · Order: ${r.orderId.take(8)} · ${r.createdAt}",
+                                "Qty: ${r.quantity} · Order: ${r.orderId.take(8)} · ${r.updatedAt}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

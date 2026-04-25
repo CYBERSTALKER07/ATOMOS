@@ -18,6 +18,8 @@ import (
 //
 //	POST /v1/auth/login               — legacy web retailer login
 //	POST /v1/auth/refresh             — token refresh (24h grace)
+//	POST /v1/auth/factory/refresh     — factory native refresh alias
+//	POST /v1/auth/warehouse/refresh   — warehouse native refresh alias
 //	POST /v1/auth/driver/login        — driver PIN auth (rate-limited)
 //	POST /v1/auth/admin/login         — admin email+password (rate-limited)
 //	POST /v1/auth/admin/register      — admin self-registration (rate-limited)
@@ -37,8 +39,11 @@ func Register(r chi.Router, deps Deps) {
 
 	// Legacy web retailer login + generic refresh (no rate-limiter — matches
 	// the original main.go placement).
+	refresh := log(auth.HandleTokenRefresh())
 	r.HandleFunc("/v1/auth/login", log(handleLegacyRetailerLogin(deps.RetailerStatus)))
-	r.HandleFunc("/v1/auth/refresh", log(auth.HandleTokenRefresh()))
+	r.HandleFunc("/v1/auth/refresh", refresh)
+	r.HandleFunc("/v1/auth/factory/refresh", refresh)
+	r.HandleFunc("/v1/auth/warehouse/refresh", refresh)
 
 	// Rate-limited login/register pairs.
 	r.HandleFunc("/v1/auth/driver/login", rl(log(supplier.HandleDriverLogin(s))))

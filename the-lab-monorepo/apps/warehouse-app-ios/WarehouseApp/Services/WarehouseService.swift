@@ -70,7 +70,7 @@ enum WarehouseService {
 
     // MARK: - CRM
     static func retailers() async throws -> RetailerListResponse {
-        try await api.get("v1/warehouse/ops/crm/retailers")
+        try await api.get("v1/warehouse/ops/crm")
     }
 
     // MARK: - Returns
@@ -80,11 +80,11 @@ enum WarehouseService {
 
     // MARK: - Treasury
     static func treasuryOverview() async throws -> TreasuryOverview {
-        try await api.get("v1/warehouse/ops/treasury/overview")
+        try await api.get("v1/warehouse/ops/treasury", query: ["view": "overview"])
     }
 
     static func treasuryInvoices() async throws -> InvoiceListResponse {
-        try await api.get("v1/warehouse/ops/treasury/invoices")
+        try await api.get("v1/warehouse/ops/treasury", query: ["view": "invoices"])
     }
 
     // MARK: - Dispatch
@@ -103,6 +103,6 @@ enum WarehouseService {
 
     // MARK: - Payment Config
     static func paymentConfig() async throws -> PaymentConfigResponse {
-        try await api.get("v1/warehouse/ops/payment/config")
+        try await api.get("v1/warehouse/ops/payment-config")
     }
 }

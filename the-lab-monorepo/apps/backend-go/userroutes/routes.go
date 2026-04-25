@@ -34,7 +34,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	s := d.Spanner
 	log := d.Log
 	allRoles := []string{"RETAILER", "DRIVER", "SUPPLIER", "PAYLOADER"}
-	inboxRoles := []string{"RETAILER", "DRIVER", "SUPPLIER", "ADMIN"}
+	inboxRoles := []string{"RETAILER", "DRIVER", "SUPPLIER", "ADMIN", "PAYLOADER"}
 
 	r.HandleFunc("/v1/user/device-token",
 		auth.RequireRole(allRoles, log(handleDeviceToken(d.DeviceTokenSvc))))

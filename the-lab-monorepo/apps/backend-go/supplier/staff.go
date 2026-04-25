@@ -198,7 +198,13 @@ func HandlePayloaderLogin(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		token, err := auth.GenerateTestToken(workerID, "PAYLOADER")
+		token, err := auth.MintIdentityToken(&auth.LabClaims{
+			UserID:        workerID,
+			SupplierID:    supplierID,
+			Role:          "PAYLOADER",
+			WarehouseID:   warehouseID,
+			WarehouseRole: "PAYLOADER",
+		})
 		if err != nil {
 			log.Printf("[PAYLOADER AUTH] token generation error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)

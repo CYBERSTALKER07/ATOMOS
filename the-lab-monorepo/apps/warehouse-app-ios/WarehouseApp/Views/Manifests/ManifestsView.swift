@@ -27,16 +27,11 @@ struct ManifestsView: View {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(String(manifest.manifestId.prefix(8)))
                                     .font(.headline.monospaced())
-                                Text("\(manifest.orderCount) orders · \(manifest.driverName)")
+                                Text("\(manifest.stopCount) stops · \(manifest.driverName)")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Text(manifest.status)
-                                .font(.caption.bold())
-                                .padding(.horizontal, LabTheme.spacingSM)
-                                .padding(.vertical, LabTheme.spacingXS)
-                                .background(.quaternary, in: Capsule())
                         }
                     }
                     .listStyle(.insetGrouped)

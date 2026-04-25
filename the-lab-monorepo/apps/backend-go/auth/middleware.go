@@ -40,7 +40,7 @@ func Init(jwtSecret, internalKey string) {
 type LabClaims struct {
 	UserID        string `json:"user_id"`
 	SupplierID    string `json:"supplier_id"`    // Organisation-level supplier UUID — use ResolveSupplierID() in handlers
-	Role          string `json:"role"`           // "ADMIN", "RETAILER", "SUPPLIER", "DRIVER", "FACTORY", "WAREHOUSE"
+	Role          string `json:"role"`           // "ADMIN", "RETAILER", "SUPPLIER", "DRIVER", "PAYLOADER", "FACTORY", "WAREHOUSE"
 	WarehouseID   string `json:"warehouse_id"`   // Warehouse scope — empty = all warehouses (GLOBAL_ADMIN)
 	SupplierRole  string `json:"supplier_role"`  // "GLOBAL_ADMIN" or "NODE_ADMIN" — empty for non-supplier roles
 	FactoryID     string `json:"factory_id"`     // Factory scope — set for FACTORY role
@@ -102,13 +102,14 @@ func GenerateSupplierToken(userID, role, supplierRole, warehouseID string) (stri
 // MintIdentityToken creates a signed JWT from pre-populated LabClaims.
 // Sovereignty Protocol: 1-hour TTL. Eventual consistency accepted for revocation.
 func MintIdentityToken(claims *LabClaims) (string, error) {
-	if claims.SupplierRole == "" {
-		claims.SupplierRole = "GLOBAL_ADMIN"
+	signedClaims := *claims
+	if signedClaims.Role == "SUPPLIER" && signedClaims.SupplierRole == "" {
+		signedClaims.SupplierRole = "GLOBAL_ADMIN"
 	}
-	claims.RegisteredClaims = jwt.RegisteredClaims{
+	signedClaims.RegisteredClaims = jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &signedClaims)
 	return token.SignedString(JWTSecret)
 }
 

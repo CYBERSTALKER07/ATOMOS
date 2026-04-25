@@ -472,6 +472,7 @@ function WarehouseEditForm({
   const [isOnShift, setIsOnShift] = useState(warehouse.is_on_shift);
   const [maxCapacity, setMaxCapacity] = useState('');
   const [disabledReason, setDisabledReason] = useState('');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [scheduleJson, setScheduleJson] = useState((warehouse as any).operating_schedule as string || '{}');
   const [saving, setSaving] = useState(false);
 
@@ -519,6 +520,7 @@ function WarehouseEditForm({
     if (!isActive && disabledReason) updates.disabled_reason = disabledReason;
 
     // Schedule — always send if changed from initial
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const initialSchedule = (warehouse as any).operating_schedule as string || '{}';
     if (scheduleJson !== initialSchedule) {
       updates.operating_schedule = scheduleJson;

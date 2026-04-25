@@ -73,7 +73,7 @@ fun CRMScreen(
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(r.name, style = MaterialTheme.typography.titleSmall)
+                                Text(r.businessName, style = MaterialTheme.typography.titleSmall)
                                 Text(
                                     "${r.totalOrders} orders · ${fmt.format(r.totalRevenue)} UZS",
                                     style = MaterialTheme.typography.bodySmall,

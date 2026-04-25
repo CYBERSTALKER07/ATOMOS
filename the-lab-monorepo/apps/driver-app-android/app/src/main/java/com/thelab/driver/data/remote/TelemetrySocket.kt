@@ -63,7 +63,7 @@ class TelemetrySocket @Inject constructor(
         val wsUrl = baseUrl
             .replace("http://", "ws://")
             .replace("https://", "wss://")
-            .plus("/v1/ws/telemetry")
+            .plus("/ws/telemetry")
 
         val request = Request.Builder()
             .url(wsUrl)

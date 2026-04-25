@@ -72,6 +72,36 @@ func TestGenerateTestToken_Uniqueness(t *testing.T) {
 	}
 }
 
+func TestMintIdentityToken_PreservesScopedClaims(t *testing.T) {
+	tok, err := MintIdentityToken(&LabClaims{
+		UserID:        "worker-1",
+		SupplierID:    "supplier-1",
+		Role:          "PAYLOADER",
+		WarehouseID:   "warehouse-1",
+		WarehouseRole: "PAYLOADER",
+	})
+	if err != nil {
+		t.Fatalf("MintIdentityToken error: %v", err)
+	}
+
+	claims := &LabClaims{}
+	parsed, err := jwt.ParseWithClaims(tok, claims, func(token *jwt.Token) (interface{}, error) {
+		return JWTSecret, nil
+	})
+	if err != nil || !parsed.Valid {
+		t.Fatalf("token invalid: %v", err)
+	}
+	if claims.SupplierID != "supplier-1" {
+		t.Fatalf("supplier_id = %q, want %q", claims.SupplierID, "supplier-1")
+	}
+	if claims.WarehouseID != "warehouse-1" {
+		t.Fatalf("warehouse_id = %q, want %q", claims.WarehouseID, "warehouse-1")
+	}
+	if claims.WarehouseRole != "PAYLOADER" {
+		t.Fatalf("warehouse_role = %q, want %q", claims.WarehouseRole, "PAYLOADER")
+	}
+}
+
 // ─── extractTokenFromRequest ────────────────────────────────────────────────
 
 func TestExtractToken_Bearer(t *testing.T) {

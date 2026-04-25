@@ -10,7 +10,7 @@ import (
 )
 
 // HandleTokenRefresh accepts a POST with an existing JWT (valid or expired within 24h grace)
-// and re-issues a fresh 1-hour token with the same user_id and role.
+// and re-issues a fresh 1-hour token with the same scoped claims.
 func HandleTokenRefresh() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -46,8 +46,8 @@ func HandleTokenRefresh() http.HandlerFunc {
 			return
 		}
 
-		// Mint a fresh token
-		newToken, err := GenerateTestToken(claims.UserID, claims.Role)
+		// Mint a fresh token while preserving supplier, warehouse, and factory scope.
+		newToken, err := MintIdentityToken(claims)
 		if err != nil {
 			http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 			return

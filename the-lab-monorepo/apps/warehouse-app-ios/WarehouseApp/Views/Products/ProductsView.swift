@@ -27,7 +27,7 @@ struct ProductsView: View {
                             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                 Text(product.name)
                                     .font(.headline)
-                                Text(product.sku)
+                                Text(product.skuId) // changed from product.sku
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

@@ -38,11 +38,11 @@ struct StaffView: View {
                                 .font(.caption.bold())
                                 .padding(.horizontal, LabTheme.spacingSM)
                                 .padding(.vertical, LabTheme.spacingXS)
-                                .foregroundStyle(member.isActive ? .primary : .white)
-                                .background(member.isActive ? Color.clear : .red, in: Capsule())
+                                .foregroundStyle(member.isActive ? Color.primary : Color.white)
+                                .background(member.isActive ? AnyShapeStyle(Color.clear) : AnyShapeStyle(Color.red), in: Capsule())
                                 .overlay {
                                     if member.isActive {
-                                        Capsule().strokeBorder(.quaternary)
+                                        Capsule().strokeBorder(Color.gray.opacity(0.3))
                                     }
                                 }
                         }
@@ -68,7 +68,7 @@ struct StaffView: View {
                     load()
                 }
             }
-            .alert("Staff Created", isPresented: .init(
+            .alert("Staff Created", isPresented: Binding(
                 get: { createdPin != nil },
                 set: { if !$0 { createdPin = nil } }
             )) {
