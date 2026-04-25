@@ -229,15 +229,17 @@ func (s *SupplyLanesService) createSupplyLane(w http.ResponseWriter, r *http.Req
 	}
 
 	laneID := uuid.New().String()
-	_, err = s.Spanner.Apply(r.Context(), []*spanner.Mutation{
-		spanner.Insert("SupplyLanes",
-			[]string{"LaneId", "SupplierId", "FactoryId", "WarehouseId", "TransitTimeHours",
-				"DampenedTransitHours", "FreightCostMinor", "CarbonScoreKg", "IsActive", "Priority",
-				"DirectDistanceKm", "ExternalEnrichmentEnabled", "CreatedAt"},
-			[]interface{}{laneID, supplierID, req.FactoryId, req.WarehouseId, req.TransitTimeHours,
-				req.TransitTimeHours, req.FreightCostMinor, req.CarbonScoreKg, true, req.Priority,
-				directDistanceKm, false, spanner.CommitTimestamp},
-		),
+	_, err = s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Insert("SupplyLanes",
+				[]string{"LaneId", "SupplierId", "FactoryId", "WarehouseId", "TransitTimeHours",
+					"DampenedTransitHours", "FreightCostMinor", "CarbonScoreKg", "IsActive", "Priority",
+					"DirectDistanceKm", "ExternalEnrichmentEnabled", "CreatedAt"},
+				[]interface{}{laneID, supplierID, req.FactoryId, req.WarehouseId, req.TransitTimeHours,
+					req.TransitTimeHours, req.FreightCostMinor, req.CarbonScoreKg, true, req.Priority,
+					directDistanceKm, false, spanner.CommitTimestamp},
+			),
+		})
 	})
 	if err != nil {
 		log.Printf("[SUPPLY_LANES] Create error: %v", err)
@@ -324,11 +326,13 @@ func (s *SupplyLanesService) updateSupplyLane(w http.ResponseWriter, r *http.Req
 }
 
 func (s *SupplyLanesService) deactivateSupplyLane(w http.ResponseWriter, r *http.Request, supplierID, laneID string) {
-	_, err := s.Spanner.Apply(r.Context(), []*spanner.Mutation{
-		spanner.Update("SupplyLanes",
-			[]string{"SupplierId", "LaneId", "IsActive", "UpdatedAt"},
-			[]interface{}{supplierID, laneID, false, spanner.CommitTimestamp},
-		),
+	_, err := s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Update("SupplyLanes",
+				[]string{"SupplierId", "LaneId", "IsActive", "UpdatedAt"},
+				[]interface{}{supplierID, laneID, false, spanner.CommitTimestamp},
+			),
+		})
 	})
 	if err != nil {
 		http.Error(w, `{"error":"deactivate_failed"}`, http.StatusInternalServerError)

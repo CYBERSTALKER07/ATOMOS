@@ -87,7 +87,9 @@ func HandleAdminRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			"DisplayName":  req.DisplayName,
 			"CreatedAt":    spanner.CommitTimestamp,
 		})
-		if _, err := spannerClient.Apply(ctx, []*spanner.Mutation{m}); err != nil {
+		if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{m})
+		}); err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(map[string]string{"error": fmt.Sprintf("Insert failed: %v", err)})
@@ -109,8 +111,10 @@ func HandleAdminRegister(spannerClient *spanner.Client) http.HandlerFunc {
 		})
 		if fbErr == nil && fbUid != "" {
 			// Store Firebase UID in Spanner
-			_, _ = spannerClient.Apply(ctx, []*spanner.Mutation{
-				spanner.Update("Admins", []string{"AdminId", "FirebaseUid"}, []interface{}{adminId, fbUid}),
+			_, _ = spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite([]*spanner.Mutation{
+					spanner.Update("Admins", []string{"AdminId", "FirebaseUid"}, []interface{}{adminId, fbUid}),
+				})
 			})
 			firebaseToken, _ = MintCustomToken(ctx, fbUid, map[string]interface{}{"role": "ADMIN", "admin_id": adminId})
 		}
@@ -355,7 +359,9 @@ func SeedDefaultAdmin(ctx context.Context, spannerClient *spanner.Client) {
 			"DisplayName":  "Platform Admin",
 			"CreatedAt":    spanner.CommitTimestamp,
 		})
-		if _, err := spannerClient.Apply(ctx, []*spanner.Mutation{m}); err == nil {
+		if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{m})
+		}); err == nil {
 			fmt.Println("[ADMIN SEED] Default admin created: admin@thelab.uz / admin123")
 		}
 	}

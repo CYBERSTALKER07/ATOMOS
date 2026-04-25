@@ -151,7 +151,9 @@ func HandleSupplierRegister(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		m := spanner.Insert("Suppliers", cols, vals)
-		if _, err := spannerClient.Apply(ctx, []*spanner.Mutation{m}); err != nil {
+		if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{m})
+		}); err != nil {
 			log.Printf("[SUPPLIER REGISTER] spanner insert error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
@@ -169,7 +171,9 @@ func HandleSupplierRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			mirrorVals = append(mirrorVals, req.Email)
 		}
 		mirrorMut := spanner.Insert("SupplierUsers", mirrorCols, mirrorVals)
-		if _, err := spannerClient.Apply(ctx, []*spanner.Mutation{mirrorMut}); err != nil {
+		if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{mirrorMut})
+		}); err != nil {
 			// Non-fatal: root still exists in Suppliers table, login works via fallback.
 			log.Printf("[SUPPLIER REGISTER] T=0 mirror to SupplierUsers failed (non-fatal): %v", err)
 		}
@@ -196,9 +200,11 @@ func HandleSupplierRegister(spannerClient *spanner.Client) http.HandlerFunc {
 		})
 		if fbErr == nil && fbUid != "" {
 			// Store Firebase UID on both tables
-			_, _ = spannerClient.Apply(ctx, []*spanner.Mutation{
-				spanner.Update("Suppliers", []string{"SupplierId", "FirebaseUid"}, []interface{}{supplierId, fbUid}),
-				spanner.Update("SupplierUsers", []string{"UserId", "FirebaseUid"}, []interface{}{mirrorID, fbUid}),
+			_, _ = spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite([]*spanner.Mutation{
+					spanner.Update("Suppliers", []string{"SupplierId", "FirebaseUid"}, []interface{}{supplierId, fbUid}),
+					spanner.Update("SupplierUsers", []string{"UserId", "FirebaseUid"}, []interface{}{mirrorID, fbUid}),
+				})
 			})
 			firebaseToken, _ = auth.MintCustomToken(ctx, fbUid, map[string]interface{}{
 				"role":          "SUPPLIER",
@@ -277,7 +283,9 @@ func HandleSupplierConfigure(spannerClient *spanner.Client) http.HandlerFunc {
 			[]string{"SupplierId", "TaxId", "Category", "IsConfigured", "OperatingCategories"},
 			[]interface{}{supplierID, req.TaxId, primaryCategoryName(validCategories), true, validCategories},
 		)
-		if _, err := spannerClient.Apply(ctx, []*spanner.Mutation{m}); err != nil {
+		if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{m})
+		}); err != nil {
 			log.Printf("[SUPPLIER CONFIGURE] spanner update error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
@@ -351,7 +359,9 @@ func HandleBillingSetup(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		m := spanner.Update("Suppliers", cols, vals)
-		if _, err := spannerClient.Apply(ctx, []*spanner.Mutation{m}); err != nil {
+		if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{m})
+		}); err != nil {
 			log.Printf("[SUPPLIER BILLING] spanner update error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
@@ -662,8 +672,10 @@ func HandleUpdateSupplierProfile(spannerClient *spanner.Client, rc *cache.Cache)
 			return
 		}
 
-		_, err := spannerClient.Apply(r.Context(), []*spanner.Mutation{
-			spanner.Update("Suppliers", cols, vals),
+		_, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{
+				spanner.Update("Suppliers", cols, vals),
+			})
 		})
 		if err != nil {
 			log.Printf("[SUPPLIER PROFILE] update error for %s: %v", claims.UserID, err)

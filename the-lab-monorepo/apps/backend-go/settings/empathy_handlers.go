@@ -180,7 +180,9 @@ func (s *EmpathyService) HandlePatchGlobal(w http.ResponseWriter, r *http.Reques
 
 	m := spanner.InsertOrUpdate("RetailerGlobalSettings", cols, vals)
 
-	if _, err := s.Client.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+	if _, err := s.Client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
 		log.Printf("[EMPATHY ENGINE] Global settings update failed for %s: %v", retailerID, err)
 		http.Error(w, `{"error":"database write failed"}`, http.StatusInternalServerError)
 		return
@@ -229,7 +231,9 @@ func (s *EmpathyService) HandlePatchSupplier(w http.ResponseWriter, r *http.Requ
 
 	m := spanner.InsertOrUpdate("RetailerSupplierSettings", cols, vals)
 
-	if _, err := s.Client.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+	if _, err := s.Client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
 		log.Printf("[EMPATHY ENGINE] Supplier settings update failed for %s/%s: %v", retailerID, supplierID, err)
 		http.Error(w, `{"error":"database write failed"}`, http.StatusInternalServerError)
 		return
@@ -273,7 +277,9 @@ func (s *EmpathyService) HandlePatchCategory(w http.ResponseWriter, r *http.Requ
 
 	m := spanner.InsertOrUpdate("RetailerCategorySettings", cols, vals)
 
-	if _, err := s.Client.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+	if _, err := s.Client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
 		log.Printf("[EMPATHY ENGINE] Category settings update failed for %s/%s: %v", retailerID, categoryID, err)
 		http.Error(w, `{"error":"database write failed"}`, http.StatusInternalServerError)
 		return
@@ -317,7 +323,9 @@ func (s *EmpathyService) HandlePatchProduct(w http.ResponseWriter, r *http.Reque
 
 	m := spanner.InsertOrUpdate("RetailerProductSettings", cols, vals)
 
-	if _, err := s.Client.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+	if _, err := s.Client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
 		log.Printf("[EMPATHY ENGINE] Product settings update failed for %s/%s: %v", retailerID, productID, err)
 		http.Error(w, `{"error":"database write failed"}`, http.StatusInternalServerError)
 		return
@@ -361,7 +369,9 @@ func (s *EmpathyService) HandlePatchVariant(w http.ResponseWriter, r *http.Reque
 
 	m := spanner.InsertOrUpdate("RetailerVariantSettings", cols, vals)
 
-	if _, err := s.Client.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+	if _, err := s.Client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
 		log.Printf("[EMPATHY ENGINE] Variant settings update failed for %s/%s: %v", retailerID, skuID, err)
 		http.Error(w, `{"error":"database write failed"}`, http.StatusInternalServerError)
 		return

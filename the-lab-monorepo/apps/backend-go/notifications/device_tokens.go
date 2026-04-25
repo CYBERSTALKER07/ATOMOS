@@ -45,11 +45,13 @@ func (s *DeviceTokenService) RegisterToken(ctx context.Context, userID, role str
 
 	if existingTokenID != "" {
 		// Update existing token
-		_, err := s.Spanner.Apply(ctx, []*spanner.Mutation{
-			spanner.Update("DeviceTokens",
-				[]string{"TokenId", "Token", "CreatedAt"},
-				[]interface{}{existingTokenID, req.Token, spanner.CommitTimestamp},
-			),
+		_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{
+				spanner.Update("DeviceTokens",
+					[]string{"TokenId", "Token", "CreatedAt"},
+					[]interface{}{existingTokenID, req.Token, spanner.CommitTimestamp},
+				),
+			})
 		})
 		if err != nil {
 			return fmt.Errorf("failed to update device token: %w", err)
@@ -60,11 +62,13 @@ func (s *DeviceTokenService) RegisterToken(ctx context.Context, userID, role str
 
 	// Insert new token
 	tokenID := uuid.New().String()
-	_, err = s.Spanner.Apply(ctx, []*spanner.Mutation{
-		spanner.Insert("DeviceTokens",
-			[]string{"TokenId", "UserId", "Role", "Platform", "Token", "CreatedAt"},
-			[]interface{}{tokenID, userID, role, req.Platform, req.Token, spanner.CommitTimestamp},
-		),
+	_, err = s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Insert("DeviceTokens",
+				[]string{"TokenId", "UserId", "Role", "Platform", "Token", "CreatedAt"},
+				[]interface{}{tokenID, userID, role, req.Platform, req.Token, spanner.CommitTimestamp},
+			),
+		})
 	})
 	if err != nil {
 		return fmt.Errorf("failed to register device token: %w", err)

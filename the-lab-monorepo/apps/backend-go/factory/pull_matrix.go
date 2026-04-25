@@ -100,11 +100,13 @@ func (s *PullMatrixService) RunPullMatrix(ctx context.Context, source string) er
 		// Write audit row
 		runID := uuid.New().String()
 		durationMs := time.Since(startTime).Milliseconds()
-		_, _ = s.Spanner.Apply(ctx, []*spanner.Mutation{
-			spanner.Insert("PullMatrixRuns",
-				[]string{"RunId", "SupplierId", "RunAt", "TransfersGenerated", "SKUsProcessed", "DurationMs", "Source"},
-				[]interface{}{runID, supplierID, spanner.CommitTimestamp, transfers, processed, durationMs, source},
-			),
+		_, _ = s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{
+				spanner.Insert("PullMatrixRuns",
+					[]string{"RunId", "SupplierId", "RunAt", "TransfersGenerated", "SKUsProcessed", "DurationMs", "Source"},
+					[]interface{}{runID, supplierID, spanner.CommitTimestamp, transfers, processed, durationMs, source},
+				),
+			})
 		})
 	}
 
@@ -155,12 +157,14 @@ func (s *PullMatrixService) RunSingleSKU(ctx context.Context, supplierID, wareho
 
 		// Audit row
 		runID := uuid.New().String()
-		_, _ = s.Spanner.Apply(ctx, []*spanner.Mutation{
-			spanner.Insert("PullMatrixRuns",
-				[]string{"RunId", "SupplierId", "RunAt", "TransfersGenerated", "SKUsProcessed", "DurationMs", "Source", "Notes"},
-				[]interface{}{runID, supplierID, spanner.CommitTimestamp, transfers, processed, int64(0), "EVENT_TRIGGERED",
-					fmt.Sprintf("SKU=%s WH=%s", productID, warehouseID)},
-			),
+		_, _ = s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{
+				spanner.Insert("PullMatrixRuns",
+					[]string{"RunId", "SupplierId", "RunAt", "TransfersGenerated", "SKUsProcessed", "DurationMs", "Source", "Notes"},
+					[]interface{}{runID, supplierID, spanner.CommitTimestamp, transfers, processed, int64(0), "EVENT_TRIGGERED",
+						fmt.Sprintf("SKU=%s WH=%s", productID, warehouseID)},
+				),
+			})
 		})
 	}
 
@@ -274,7 +278,9 @@ func (s *PullMatrixService) processSupplierBreaches(ctx context.Context, supplie
 			))
 		}
 
-		if _, err := s.Spanner.Apply(ctx, mutations); err != nil {
+		if _, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite(mutations)
+		}); err != nil {
 			log.Printf("[PULL_MATRIX] Failed to create transfer %s: %v", transferID, err)
 			continue
 		}

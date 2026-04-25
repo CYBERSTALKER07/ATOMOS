@@ -330,11 +330,13 @@ func HandleMarkNotificationRead(client *spanner.Client) http.HandlerFunc {
 
 func InsertNotification(ctx context.Context, client *spanner.Client, recipientID, recipientRole, notifType, title, body, payload, channel string) error {
 	nid := "NOTIF-" + time.Now().Format("20060102150405") + "-" + notificationIDSuffix(recipientID)
-	_, err := client.Apply(ctx, []*spanner.Mutation{
-		spanner.Insert("Notifications",
-			[]string{"NotificationId", "RecipientId", "RecipientRole", "Type", "Title", "Body", "Payload", "Channel", "CreatedAt"},
-			[]interface{}{nid, recipientID, recipientRole, notifType, title, body, payload, channel, time.Now()},
-		),
+	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Insert("Notifications",
+				[]string{"NotificationId", "RecipientId", "RecipientRole", "Type", "Title", "Body", "Payload", "Channel", "CreatedAt"},
+				[]interface{}{nid, recipientID, recipientRole, notifType, title, body, payload, channel, time.Now()},
+			),
+		})
 	})
 	if err != nil {
 		log.Printf("[NOTIFICATIONS] Insert failed for %s: %v", recipientID, err)
@@ -354,8 +356,10 @@ func InsertNotificationWithCorrelation(ctx context.Context, client *spanner.Clie
 		cols = append(cols, "ExpiresAt")
 		vals = append(vals, *expiresAt)
 	}
-	_, err := client.Apply(ctx, []*spanner.Mutation{
-		spanner.Insert("Notifications", cols, vals),
+	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Insert("Notifications", cols, vals),
+		})
 	})
 	if err != nil {
 		log.Printf("[NOTIFICATIONS] Correlated insert failed for %s (corr: %s): %v", recipientID, correlationID, err)

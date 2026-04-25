@@ -384,7 +384,9 @@ func (s *TransferService) HandleApproveTransfer(w http.ResponseWriter, r *http.R
 		[]string{"TransferId", "State", "UpdatedAt"},
 		[]interface{}{transferID, "APPROVED", spanner.CommitTimestamp},
 	)
-	if _, err := s.Spanner.Apply(ctx, []*spanner.Mutation{m}); err != nil {
+	if _, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
 		log.Printf("[TRANSFERS] approve error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -421,7 +423,9 @@ func (s *TransferService) HandleApproveTransfer(w http.ResponseWriter, r *http.R
 			manifestIDs = append(manifestIDs, manifestID)
 		}
 		if len(mutations) > 0 {
-			if _, err := s.Spanner.Apply(ctx, mutations); err != nil {
+			if _, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite(mutations)
+			}); err != nil {
 				log.Printf("[TRANSFERS] convoy manifest creation failed for %s: %v", transferID, err)
 				// Non-fatal — transfer is already APPROVED, manifests can be retried
 			} else {
@@ -650,7 +654,9 @@ func (s *TransferService) HandleCreateTransfer(w http.ResponseWriter, r *http.Re
 		[]interface{}{transferID, req.FactoryId, req.WarehouseId, supplierID, "DRAFT", totalVolumeVU, req.Source, spanner.CommitTimestamp},
 	)
 
-	if _, err := s.Spanner.Apply(r.Context(), mutations); err != nil {
+	if _, err := s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(mutations)
+	}); err != nil {
 		log.Printf("[TRANSFERS] create error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return

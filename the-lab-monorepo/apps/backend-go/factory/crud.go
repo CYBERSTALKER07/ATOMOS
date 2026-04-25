@@ -307,7 +307,9 @@ func createFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 		assignedCount++
 	}
 
-	if _, err := spannerClient.Apply(r.Context(), mutations); err != nil {
+	if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(mutations)
+	}); err != nil {
 		log.Printf("[FACTORY] create error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -443,7 +445,9 @@ func updateFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 	}
 
 	m := spanner.Update("Factories", cols, vals)
-	if _, err := spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+	if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
 		log.Printf("[FACTORY] update error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -484,7 +488,9 @@ func deactivateFactory(w http.ResponseWriter, r *http.Request, spannerClient *sp
 		[]string{"FactoryId", "IsActive", "UpdatedAt"},
 		[]interface{}{factoryID, false, spanner.CommitTimestamp},
 	)
-	if _, err := spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+	if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
 		log.Printf("[FACTORY] deactivate error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -574,7 +580,9 @@ func HandleFactoryWarehouseAssignment(spannerClient *spanner.Client) http.Handle
 			return
 		}
 
-		if _, err := spannerClient.Apply(r.Context(), mutations); err != nil {
+		if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite(mutations)
+		}); err != nil {
 			log.Printf("[FACTORY] assign warehouses error: %v", err)
 			http.Error(w, `{"error":"failed to assign warehouses — verify all IDs belong to your organization"}`, http.StatusInternalServerError)
 			return

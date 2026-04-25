@@ -421,8 +421,10 @@ func createDriver(w http.ResponseWriter, r *http.Request, spannerClient *spanner
 		"supplier_id": supplierID,
 	})
 	if fbErr == nil && fbUid != "" {
-		_, _ = spannerClient.Apply(r.Context(), []*spanner.Mutation{
-			spanner.Update("Drivers", []string{"DriverId", "FirebaseUid"}, []interface{}{driverID, fbUid}),
+		_, _ = spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{
+				spanner.Update("Drivers", []string{"DriverId", "FirebaseUid"}, []interface{}{driverID, fbUid}),
+			})
 		})
 	}
 
@@ -573,8 +575,10 @@ func HandleAssignVehicle(spannerClient *spanner.Client) http.HandlerFunc {
 			vehicleVal = req.VehicleId
 		}
 
-		_, err := spannerClient.Apply(r.Context(), []*spanner.Mutation{
-			spanner.Update("Drivers", cols, []interface{}{driverID, supplierID, vehicleVal}),
+		_, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{
+				spanner.Update("Drivers", cols, []interface{}{driverID, supplierID, vehicleVal}),
+			})
 		})
 		if err != nil {
 			log.Printf("[FLEET] assign vehicle failed: %v", err)

@@ -399,8 +399,10 @@ func updateVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 		return
 	}
 
-	_, err := spannerClient.Apply(ctx, []*spanner.Mutation{
-		spanner.Update("Vehicles", cols, vals),
+	_, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Update("Vehicles", cols, vals),
+		})
 	})
 	if err != nil {
 		log.Printf("[VEHICLES] update failed: %v", err)
@@ -423,11 +425,13 @@ func deactivateVehicle(w http.ResponseWriter, r *http.Request, spannerClient *sp
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	_, err := spannerClient.Apply(ctx, []*spanner.Mutation{
-		spanner.Update("Vehicles",
-			[]string{"VehicleId", "SupplierId", "IsActive"},
-			[]interface{}{vehicleID, supplierID, false},
-		),
+	_, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Update("Vehicles",
+				[]string{"VehicleId", "SupplierId", "IsActive"},
+				[]interface{}{vehicleID, supplierID, false},
+			),
+		})
 	})
 	if err != nil {
 		log.Printf("[VEHICLES] deactivate failed: %v", err)

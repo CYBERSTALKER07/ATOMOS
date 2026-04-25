@@ -287,7 +287,9 @@ func inviteOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 	}
 
 	m := spanner.Insert("SupplierUsers", cols, vals)
-	if _, err := client.Apply(ctx, []*spanner.Mutation{m}); err != nil {
+	if _, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
 		log.Printf("[ORG] invite insert error: %v", err)
 		http.Error(w, `{"error":"invite_failed"}`, http.StatusInternalServerError)
 		return
@@ -302,10 +304,12 @@ func inviteOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 			"factory_id":    req.AssignedFactoryId,
 		})
 		if fbErr == nil && fbUid != "" {
-			_, _ = client.Apply(ctx, []*spanner.Mutation{
-				spanner.Update("SupplierUsers",
-					[]string{"UserId", "FirebaseUid"},
-					[]interface{}{userID, fbUid}),
+			_, _ = client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite([]*spanner.Mutation{
+					spanner.Update("SupplierUsers",
+						[]string{"UserId", "FirebaseUid"},
+						[]interface{}{userID, fbUid}),
+				})
 			})
 		}
 	}
@@ -475,7 +479,9 @@ func updateOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 	}
 
 	mut := spanner.Update("SupplierUsers", cols, vals)
-	if _, err := client.Apply(r.Context(), []*spanner.Mutation{mut}); err != nil {
+	if _, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{mut})
+	}); err != nil {
 		log.Printf("[ORG] update error for %s: %v", targetUserID, err)
 		http.Error(w, `{"error":"update_failed"}`, http.StatusInternalServerError)
 		return
@@ -548,7 +554,9 @@ func deactivateOrgMember(w http.ResponseWriter, r *http.Request, client *spanner
 	mut := spanner.Update("SupplierUsers",
 		[]string{"UserId", "IsActive"},
 		[]interface{}{targetUserID, false})
-	if _, err := client.Apply(r.Context(), []*spanner.Mutation{mut}); err != nil {
+	if _, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{mut})
+	}); err != nil {
 		log.Printf("[ORG] deactivate error for %s: %v", targetUserID, err)
 		http.Error(w, `{"error":"deactivate_failed"}`, http.StatusInternalServerError)
 		return
@@ -613,7 +621,9 @@ func ensureRootMirrored(ctx context.Context, client *spanner.Client, claims *aut
 		[]interface{}{supplierID, supplierID, name, email, phone, pwHash,
 			"GLOBAL_ADMIN", true, spanner.CommitTimestamp},
 	)
-	if _, err := client.Apply(ctx, []*spanner.Mutation{m}); err != nil {
+	if _, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
 		log.Printf("[ORG] auto-mirror root supplier %s failed: %v", supplierID, err)
 	} else {
 		log.Printf("[ORG] Auto-mirrored root supplier %s into SupplierUsers as GLOBAL_ADMIN", supplierID)

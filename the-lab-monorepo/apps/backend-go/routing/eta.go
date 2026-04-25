@@ -118,7 +118,9 @@ func ComputeLiveETAs(
 	))
 
 	// 6. Commit
-	if _, err := client.Apply(ctx, mutations); err != nil {
+	if _, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(mutations)
+	}); err != nil {
 		return fmt.Errorf("eta: Spanner commit failed: %w", err)
 	}
 
@@ -175,11 +177,13 @@ func ComputeReturnETA(
 	returnAt = now.Add(time.Duration(durSec) * time.Second)
 
 	// Write to Spanner
-	_, applyErr := client.Apply(ctx, []*spanner.Mutation{
-		spanner.Update("Drivers",
-			[]string{"DriverId", "EstimatedReturnAt", "ReturnDurationSec"},
-			[]interface{}{driverID, returnAt, durSec},
-		),
+	_, applyErr := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Update("Drivers",
+				[]string{"DriverId", "EstimatedReturnAt", "ReturnDurationSec"},
+				[]interface{}{driverID, returnAt, durSec},
+			),
+		})
 	})
 	if applyErr != nil {
 		return returnAt, durSec, fmt.Errorf("eta: Spanner write failed: %w", applyErr)

@@ -263,7 +263,9 @@ func applySequenceToSpanner(
 		))
 	}
 
-	if _, err := client.Apply(ctx, mutations); err != nil {
+	if _, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(mutations)
+	}); err != nil {
 		return fmt.Errorf("routing: Spanner batch commit failed: %w", err)
 	}
 
@@ -435,7 +437,9 @@ func haversineFallbackRoute(
 		))
 	}
 
-	if _, err := client.Apply(ctx, mutations); err != nil {
+	if _, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(mutations)
+	}); err != nil {
 		return fmt.Errorf("routing: Haversine fallback Spanner commit failed: %w", err)
 	}
 
@@ -564,7 +568,9 @@ func optimizePartitionedRoute(
 	}
 
 	// Step 4: Commit all mutations atomically
-	if _, err := client.Apply(ctx, globalMutations); err != nil {
+	if _, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(globalMutations)
+	}); err != nil {
 		return fmt.Errorf("routing: partitioned Spanner batch commit failed: %w", err)
 	}
 
