@@ -24,6 +24,16 @@ IGNORE_DIR_NAMES = {
     "DerivedData",
 }
 
+# Events produced by backend-go/kafka/emitter.go for external consumers
+# (mobile sync + empathy feedback) and intentionally not consumed by backend
+# in-process workers.
+EXTERNAL_CONSUMER_EVENTS = {
+    "EventOrderSync",
+    "EventAiPredictionCorrected",
+    "EventAiPlanDateShift",
+    "EventAiPlanSkuModified",
+}
+
 
 def run_cmd(cmd: list[str], cwd: Path, allow_fail: bool = False) -> tuple[int, str, str]:
     proc = subprocess.run(
@@ -200,6 +210,7 @@ def scan_event_graph(root: Path, files: list[Path]) -> dict[str, Any]:
             "events": [],
             "producerOrphans": [],
             "consumerOrphans": [],
+            "externalProducerOnlyEvents": [],
         }
 
     token_re = re.compile(r"\bEvent[A-Za-z0-9_]+\b")
@@ -234,11 +245,15 @@ def scan_event_graph(root: Path, files: list[Path]) -> dict[str, Any]:
     producer_orphans: list[str] = []
     consumer_orphans: list[str] = []
     dead_events: list[str] = []
+    external_producer_only: list[str] = []
     for token, meta in sorted(event_map.items()):
         producers = len(meta["producerRefs"])
         consumers = len(meta["consumerRefs"])
         if producers > 0 and consumers == 0:
-            producer_orphans.append(token)
+            if token in EXTERNAL_CONSUMER_EVENTS:
+                external_producer_only.append(token)
+            else:
+                producer_orphans.append(token)
         if consumers > 0 and producers == 0:
             consumer_orphans.append(token)
         if consumers == 0 and producers == 0:
@@ -263,6 +278,7 @@ def scan_event_graph(root: Path, files: list[Path]) -> dict[str, Any]:
         "events": events,
         "producerOrphans": producer_orphans,
         "consumerOrphans": consumer_orphans,
+        "externalProducerOnlyEvents": external_producer_only,
         "deadEvents": dead_events,
     }
 
@@ -590,6 +606,7 @@ def write_outputs(scan: dict[str, Any], output_dir: Path) -> None:
             "events": scan["eventGraph"]["eventCount"],
             "producerOrphans": len(scan["eventGraph"]["producerOrphans"]),
             "consumerOrphans": len(scan["eventGraph"]["consumerOrphans"]),
+            "externalProducerOnlyEvents": len(scan["eventGraph"].get("externalProducerOnlyEvents", [])),
             "deadEvents": len(scan["eventGraph"].get("deadEvents", [])),
             "guardrailFindings": scan["guardrails"]["findingCount"],
             "goOnlyCriticalKeys": len(scan["modelParity"]["goOnlyCriticalKeys"]),
@@ -664,6 +681,7 @@ def print_report(scan: dict[str, Any]) -> None:
         "events": scan["eventGraph"]["eventCount"],
         "producerOrphans": len(scan["eventGraph"]["producerOrphans"]),
         "consumerOrphans": len(scan["eventGraph"]["consumerOrphans"]),
+        "externalProducerOnlyEvents": len(scan["eventGraph"].get("externalProducerOnlyEvents", [])),
         "deadEvents": len(scan["eventGraph"].get("deadEvents", [])),
         "guardrailFindings": scan["guardrails"]["findingCount"],
         "goOnlyCriticalKeys": len(scan["modelParity"]["goOnlyCriticalKeys"]),

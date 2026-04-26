@@ -586,6 +586,8 @@ func HandleAssignVehicle(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
+		cache.Invalidate(r.Context(), cache.DriverProfile(driverID))
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
 			"status":     "VEHICLE_ASSIGNED",

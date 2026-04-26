@@ -144,7 +144,16 @@ func extractTokenFromRequest(r *http.Request) string {
 	}
 
 	if isWebSocketUpgrade(r) {
-		return strings.TrimSpace(r.URL.Query().Get("token"))
+		endpoint := wsEndpointClass(r.URL.Path)
+		queryToken := strings.TrimSpace(r.URL.Query().Get("token"))
+		if queryToken == "" {
+			return ""
+		}
+		if allowsWSQueryToken(r.URL.Path) {
+			recordWSQueryToken(endpoint, "accepted")
+			return queryToken
+		}
+		recordWSQueryToken(endpoint, "rejected")
 	}
 
 	return ""
@@ -272,6 +281,7 @@ func RequireRoleWithGrace(allowedRoles []string, graceWindow time.Duration, next
 							claims.GracePeriod = true
 							claims.GraceDeadline = expiry.Add(graceWindow)
 							verified = true
+							recordWSGraceActivation(wsEndpointClass(r.URL.Path), claims.Role)
 							log.Printf("[AUTH_GRACE] DRIVER %s operating in telemetry grace period (expired %s ago)",
 								claims.UserID, time.Since(expiry).Round(time.Second))
 						}

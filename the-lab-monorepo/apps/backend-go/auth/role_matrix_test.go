@@ -143,7 +143,7 @@ func TestRoleMatrix_WSQueryParamAuth(t *testing.T) {
 				w.WriteHeader(http.StatusOK)
 			})
 
-			req := httptest.NewRequest(http.MethodGet, "/ws?token="+tok, nil)
+			req := httptest.NewRequest(http.MethodGet, "/ws/telemetry?token="+tok, nil)
 			req.Header.Set("Connection", "Upgrade")
 			req.Header.Set("Upgrade", "websocket")
 			w := httptest.NewRecorder()

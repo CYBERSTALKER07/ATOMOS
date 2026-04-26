@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/cache"
 	kafkaEvents "backend-go/kafka"
 	"backend-go/outbox"
 	"backend-go/telemetry"
@@ -410,6 +411,8 @@ func updateVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 		return
 	}
 
+	invalidateVehicleDriverProfiles(ctx, spannerClient, supplierID, vehicleID)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "UPDATED", "vehicle_id": vehicleID})
 }
@@ -439,6 +442,45 @@ func deactivateVehicle(w http.ResponseWriter, r *http.Request, spannerClient *sp
 		return
 	}
 
+	invalidateVehicleDriverProfiles(ctx, spannerClient, supplierID, vehicleID)
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "DEACTIVATED", "vehicle_id": vehicleID})
+}
+
+func invalidateVehicleDriverProfiles(ctx context.Context, spannerClient *spanner.Client, supplierID, vehicleID string) {
+	stmt := spanner.Statement{
+		SQL: `SELECT DriverId
+		      FROM Drivers
+		      WHERE SupplierId = @supplierId AND VehicleId = @vehicleId`,
+		Params: map[string]interface{}{"supplierId": supplierID, "vehicleId": vehicleID},
+	}
+
+	iter := spannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	keys := make([]string, 0, 2)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Printf("[VEHICLES] cache invalidation lookup failed: %v", err)
+			return
+		}
+
+		var driverID string
+		if err := row.Columns(&driverID); err != nil {
+			log.Printf("[VEHICLES] cache invalidation parse failed: %v", err)
+			return
+		}
+		if driverID != "" {
+			keys = append(keys, cache.DriverProfile(driverID))
+		}
+	}
+
+	if len(keys) > 0 {
+		cache.Invalidate(ctx, keys...)
+	}
 }

@@ -128,12 +128,22 @@ func TestExtractToken_Cookies(t *testing.T) {
 }
 
 func TestExtractToken_WSQueryParam(t *testing.T) {
-	r := httptest.NewRequest("GET", "/ws?token=ws-token", nil)
+	r := httptest.NewRequest("GET", "/ws/telemetry?token=ws-token", nil)
 	r.Header.Set("Connection", "Upgrade")
 	r.Header.Set("Upgrade", "websocket")
 	got := extractTokenFromRequest(r)
 	if got != "ws-token" {
 		t.Errorf("got %q, want %q", got, "ws-token")
+	}
+}
+
+func TestExtractToken_WSQueryParamRejectedOnUnknownEndpoint(t *testing.T) {
+	r := httptest.NewRequest("GET", "/ws?token=ws-token", nil)
+	r.Header.Set("Connection", "Upgrade")
+	r.Header.Set("Upgrade", "websocket")
+	got := extractTokenFromRequest(r)
+	if got != "" {
+		t.Errorf("got %q, want empty", got)
 	}
 }
 
