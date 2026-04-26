@@ -242,7 +242,9 @@ func patchOpsStaff(w http.ResponseWriter, r *http.Request, client *spanner.Clien
 	}
 
 	m := spanner.Update("WarehouseStaff", cols, vals)
-	if _, err := client.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+	if _, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
 		log.Printf("[WH STAFF] patch error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return

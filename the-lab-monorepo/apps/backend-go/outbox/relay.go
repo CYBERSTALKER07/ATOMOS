@@ -284,8 +284,8 @@ func (r *Relay) publish(ctx context.Context, topic, key, eventType, traceID stri
 	})
 }
 
-// batchMarkPublished commits all eventIDs to Spanner in a single Apply call.
-// One RPC regardless of batch size — replaces the previous per-event Apply loop.
+// batchMarkPublished commits all eventIDs to Spanner in a single transaction.
+// One transaction callback regardless of batch size — replaces the previous per-event Apply loop.
 func (r *Relay) batchMarkPublished(ctx context.Context, eventIDs []string) error {
 	muts := make([]*spanner.Mutation, len(eventIDs))
 	for i, id := range eventIDs {
@@ -293,7 +293,9 @@ func (r *Relay) batchMarkPublished(ctx context.Context, eventIDs []string) error
 			[]string{"EventId", "PublishedAt"},
 			[]interface{}{id, spanner.CommitTimestamp})
 	}
-	_, err := r.spanner.Apply(ctx, muts)
+	_, err := r.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(muts)
+	})
 	return err
 }
 

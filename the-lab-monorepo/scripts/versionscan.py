@@ -169,14 +169,19 @@ def parse_event_constants(events_file: Path, root: Path) -> dict[str, dict[str, 
     return constants
 
 
-def classify_event_reference(line: str) -> str:
+def classify_event_reference(line: str, context_window: str) -> str:
     if re.search(r"\bcase\s+Event[A-Za-z0-9_]+\b", line):
         return "consumer"
-    if "outbox.Emit" in line:
+
+    combined = f"{context_window}\n{line}" if context_window else line
+
+    if "outbox.Emit" in combined:
         return "producer"
-    if "EmitNotification(" in line:
+    if "EmitNotification(" in combined:
         return "producer"
-    if re.search(r"\.\s*WriteMessages\s*\(", line):
+    if re.search(r"\b[pP]ublishEvent\s*\(", combined):
+        return "producer"
+    if re.search(r"\.\s*WriteMessages\s*\(", combined):
         return "producer"
     return "other"
 
@@ -210,7 +215,10 @@ def scan_event_graph(root: Path, files: list[Path]) -> dict[str, Any]:
                 if token not in event_map:
                     continue
                 ref = {"file": rel, "line": idx}
-                kind = classify_event_reference(line)
+                start = max(0, idx - 4)
+                end = min(len(lines), idx + 1)
+                context_window = "\n".join(lines[start:end])
+                kind = classify_event_reference(line, context_window)
                 if kind == "producer":
                     event_map[token]["producerRefs"].append(ref)
                 elif kind == "consumer":
@@ -221,13 +229,16 @@ def scan_event_graph(root: Path, files: list[Path]) -> dict[str, Any]:
     events: list[dict[str, Any]] = []
     producer_orphans: list[str] = []
     consumer_orphans: list[str] = []
+    dead_events: list[str] = []
     for token, meta in sorted(event_map.items()):
         producers = len(meta["producerRefs"])
         consumers = len(meta["consumerRefs"])
-        if producers == 0:
+        if producers > 0 and consumers == 0:
             producer_orphans.append(token)
-        if consumers == 0:
+        if consumers > 0 and producers == 0:
             consumer_orphans.append(token)
+        if consumers == 0 and producers == 0:
+            dead_events.append(token)
 
         events.append(
             {
@@ -248,6 +259,7 @@ def scan_event_graph(root: Path, files: list[Path]) -> dict[str, Any]:
         "events": events,
         "producerOrphans": producer_orphans,
         "consumerOrphans": consumer_orphans,
+        "deadEvents": dead_events,
     }
 
 
@@ -574,6 +586,7 @@ def write_outputs(scan: dict[str, Any], output_dir: Path) -> None:
             "events": scan["eventGraph"]["eventCount"],
             "producerOrphans": len(scan["eventGraph"]["producerOrphans"]),
             "consumerOrphans": len(scan["eventGraph"]["consumerOrphans"]),
+            "deadEvents": len(scan["eventGraph"].get("deadEvents", [])),
             "guardrailFindings": scan["guardrails"]["findingCount"],
             "goOnlyCriticalKeys": len(scan["modelParity"]["goOnlyCriticalKeys"]),
         },
@@ -647,6 +660,7 @@ def print_report(scan: dict[str, Any]) -> None:
         "events": scan["eventGraph"]["eventCount"],
         "producerOrphans": len(scan["eventGraph"]["producerOrphans"]),
         "consumerOrphans": len(scan["eventGraph"]["consumerOrphans"]),
+        "deadEvents": len(scan["eventGraph"].get("deadEvents", [])),
         "guardrailFindings": scan["guardrails"]["findingCount"],
         "goOnlyCriticalKeys": len(scan["modelParity"]["goOnlyCriticalKeys"]),
     }

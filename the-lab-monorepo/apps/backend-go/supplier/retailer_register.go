@@ -122,7 +122,9 @@ func HandleRetailerRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			insertMap["StorageCeilingHeightCM"] = req.StorageCeilingHeightCM
 		}
 		m := spanner.InsertMap("Retailers", insertMap)
-		if _, err := spannerClient.Apply(ctx, []*spanner.Mutation{m}); err != nil {
+		if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{m})
+		}); err != nil {
 			log.Printf("[RETAILER REGISTER] spanner insert error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
@@ -141,8 +143,10 @@ func HandleRetailerRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			"retailer_id": retailerId,
 		})
 		if fbErr == nil && fbUid != "" {
-			_, _ = spannerClient.Apply(ctx, []*spanner.Mutation{
-				spanner.Update("Retailers", []string{"RetailerId", "FirebaseUid"}, []interface{}{retailerId, fbUid}),
+			_, _ = spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite([]*spanner.Mutation{
+					spanner.Update("Retailers", []string{"RetailerId", "FirebaseUid"}, []interface{}{retailerId, fbUid}),
+				})
 			})
 			firebaseToken, _ = auth.MintCustomToken(ctx, fbUid, map[string]interface{}{"role": "RETAILER", "retailer_id": retailerId})
 		}

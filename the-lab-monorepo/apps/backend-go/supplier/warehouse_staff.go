@@ -1,6 +1,7 @@
 package supplier
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -190,7 +191,9 @@ func HandleWarehouseStaffToggle(spannerClient *spanner.Client) http.HandlerFunc 
 			[]string{"WorkerId", "IsActive"},
 			[]interface{}{workerID, req.IsActive},
 		)
-		if _, err := spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+		if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{m})
+		}); err != nil {
 			log.Printf("[WAREHOUSE STAFF TOGGLE] spanner error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return

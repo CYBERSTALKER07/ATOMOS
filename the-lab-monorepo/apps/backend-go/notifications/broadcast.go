@@ -92,7 +92,9 @@ func (bs *BroadcastService) HandleBroadcast(w http.ResponseWriter, r *http.Reque
 			if end > len(mutations) {
 				end = len(mutations)
 			}
-			_, err := bs.Spanner.Apply(r.Context(), mutations[i:end])
+			_, err := bs.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite(mutations[i:end])
+			})
 			if err != nil {
 				log.Printf("[BROADCAST] Failed to write notification records: %v", err)
 			}

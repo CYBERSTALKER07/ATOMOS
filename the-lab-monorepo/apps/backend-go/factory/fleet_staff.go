@@ -382,7 +382,9 @@ func createFactoryStaff(w http.ResponseWriter, r *http.Request, spannerClient *s
 		[]string{"StaffId", "FactoryId", "SupplierId", "Name", "Phone", "PasswordHash", "StaffRole", "IsActive", "CreatedAt"},
 		[]interface{}{staffId, factoryID, supplierID, req.Name, req.Phone, string(hash), req.StaffRole, true, spanner.CommitTimestamp},
 	)
-	if _, err := spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+	if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
 		log.Printf("[FACTORY STAFF] create error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -421,7 +423,9 @@ func deactivateStaff(w http.ResponseWriter, r *http.Request, spannerClient *span
 		[]string{"StaffId", "IsActive"},
 		[]interface{}{staffID, false},
 	)
-	if _, err := spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+	if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
 		log.Printf("[FACTORY STAFF] deactivate error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return

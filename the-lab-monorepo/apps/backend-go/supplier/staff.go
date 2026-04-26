@@ -344,8 +344,10 @@ func createPayloader(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		"supplier_id": supplierID,
 	})
 	if fbErr == nil && fbUid != "" {
-		_, _ = client.Apply(r.Context(), []*spanner.Mutation{
-			spanner.Update("WarehouseStaff", []string{"WorkerId", "FirebaseUid"}, []interface{}{workerID, fbUid}),
+		_, _ = client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{
+				spanner.Update("WarehouseStaff", []string{"WorkerId", "FirebaseUid"}, []interface{}{workerID, fbUid}),
+			})
 		})
 	}
 

@@ -297,7 +297,9 @@ func ensureCanonicalCategoriesSeeded(ctx context.Context, client *spanner.Client
 		)
 	}
 
-	if _, err := client.Apply(ctx, mutations); err != nil {
+	if _, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(mutations)
+	}); err != nil {
 		return fmt.Errorf("seed canonical categories: %w", err)
 	}
 

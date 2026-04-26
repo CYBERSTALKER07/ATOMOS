@@ -766,10 +766,12 @@ func StartPreOrderConfirmationSweeper(client *spanner.Client, fcm *notifications
 						rt.ShopName, rt.DeliveryDate.In(proximity.TashkentLocation).Format("Jan 02"), daysUntil))
 				}
 
-				_, err := client.Apply(ctx, []*spanner.Mutation{
-					spanner.Update("Orders",
-						[]string{"OrderId", "PreorderReminderSentAt"},
-						[]interface{}{rt.OrderID, spanner.CommitTimestamp}),
+				_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+					return txn.BufferWrite([]*spanner.Mutation{
+						spanner.Update("Orders",
+							[]string{"OrderId", "PreorderReminderSentAt"},
+							[]interface{}{rt.OrderID, spanner.CommitTimestamp}),
+					})
 				})
 				if err != nil {
 					fmt.Printf("[MIDNIGHT GUARD] Failed to mark reminder %s: %v\n", rt.OrderID, err)
@@ -853,10 +855,12 @@ func StartPreOrderConfirmationSweeper(client *spanner.Client, fcm *notifications
 						nt.ShopName, nt.DeliveryDate.In(proximity.TashkentLocation).Format("Jan 02")))
 				}
 
-				_, err := client.Apply(ctx, []*spanner.Mutation{
-					spanner.Update("Orders",
-						[]string{"OrderId", "NudgeNotifiedAt"},
-						[]interface{}{nt.OrderID, spanner.CommitTimestamp}),
+				_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+					return txn.BufferWrite([]*spanner.Mutation{
+						spanner.Update("Orders",
+							[]string{"OrderId", "NudgeNotifiedAt"},
+							[]interface{}{nt.OrderID, spanner.CommitTimestamp}),
+					})
 				})
 				if err != nil {
 					fmt.Printf("[MIDNIGHT GUARD] Failed to mark nudge %s: %v\n", nt.OrderID, err)

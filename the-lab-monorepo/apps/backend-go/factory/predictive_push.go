@@ -176,17 +176,19 @@ func (s *PredictivePushService) RunPredictivePush(ctx context.Context, supplierI
 			itemID := uuid.New().String()
 			volVU := float64(deficit) * 0.01
 
-			_, err = s.Spanner.Apply(ctx, []*spanner.Mutation{
-				spanner.Insert("InternalTransferOrders",
-					[]string{"TransferId", "FactoryId", "WarehouseId", "SupplierId", "State",
-						"TotalVolumeVU", "Source", "CreatedAt"},
-					[]interface{}{transferID, factory, whID, supplierID, "DRAFT",
-						volVU, "SYSTEM_PREDICTED", spanner.CommitTimestamp},
-				),
-				spanner.Insert("InternalTransferItems",
-					[]string{"TransferId", "ItemId", "ProductId", "Quantity", "VolumeVU"},
-					[]interface{}{transferID, itemID, skuID, deficit, volVU},
-				),
+			_, err = s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite([]*spanner.Mutation{
+					spanner.Insert("InternalTransferOrders",
+						[]string{"TransferId", "FactoryId", "WarehouseId", "SupplierId", "State",
+							"TotalVolumeVU", "Source", "CreatedAt"},
+						[]interface{}{transferID, factory, whID, supplierID, "DRAFT",
+							volVU, "SYSTEM_PREDICTED", spanner.CommitTimestamp},
+					),
+					spanner.Insert("InternalTransferItems",
+						[]string{"TransferId", "ItemId", "ProductId", "Quantity", "VolumeVU"},
+						[]interface{}{transferID, itemID, skuID, deficit, volVU},
+					),
+				})
 			})
 			if err != nil {
 				log.Printf("[PREDICTIVE_PUSH] Failed to create transfer for %s: %v", skuID, err)

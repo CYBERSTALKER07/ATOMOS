@@ -140,15 +140,17 @@ func HandleApplyTerritory(spannerClient *spanner.Client, isDispatchLocked func(c
 
 		// Acquire transient SPATIAL_UPDATE lock scoped to the TARGET warehouse
 		spatialLockID := uuid.New().String()
-		_, lockErr := spannerClient.Apply(ctx, []*spanner.Mutation{
-			spanner.InsertMap("DispatchLocks", map[string]interface{}{
-				"LockId":      spatialLockID,
-				"SupplierId":  supplierID,
-				"WarehouseId": req.WarehouseID,
-				"LockType":    "SPATIAL_UPDATE",
-				"LockedAt":    spanner.CommitTimestamp,
-				"LockedBy":    claims.UserID,
-			}),
+		_, lockErr := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{
+				spanner.InsertMap("DispatchLocks", map[string]interface{}{
+					"LockId":      spatialLockID,
+					"SupplierId":  supplierID,
+					"WarehouseId": req.WarehouseID,
+					"LockType":    "SPATIAL_UPDATE",
+					"LockedAt":    spanner.CommitTimestamp,
+					"LockedBy":    claims.UserID,
+				}),
+			})
 		})
 		if lockErr != nil {
 			log.Printf("[TERRITORY] Failed to acquire spatial lock: %v", lockErr)
@@ -157,11 +159,13 @@ func HandleApplyTerritory(spannerClient *spanner.Client, isDispatchLocked func(c
 		}
 		// Guarantee lock release even on panic
 		defer func() {
-			_, _ = spannerClient.Apply(context.Background(), []*spanner.Mutation{
-				spanner.UpdateMap("DispatchLocks", map[string]interface{}{
-					"LockId":     spatialLockID,
-					"UnlockedAt": TashkentNow(),
-				}),
+			_, _ = spannerClient.ReadWriteTransaction(context.Background(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite([]*spanner.Mutation{
+					spanner.UpdateMap("DispatchLocks", map[string]interface{}{
+						"LockId":     spatialLockID,
+						"UnlockedAt": TashkentNow(),
+					}),
+				})
 			})
 		}()
 

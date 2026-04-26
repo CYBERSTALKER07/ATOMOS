@@ -1410,7 +1410,9 @@ func runAutoDispatch(ctx context.Context, client *spanner.Client, readRouter pro
 			}
 		}
 		if len(metaMutations) > 0 {
-			if _, err := client.Apply(ctx, metaMutations); err != nil {
+			if _, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite(metaMutations)
+			}); err != nil {
 				log.Printf("[AUTO-DISPATCH] WARNING: failed to persist dispatch metadata: %v", err)
 				// Non-fatal — dispatch result is still valid
 			} else {

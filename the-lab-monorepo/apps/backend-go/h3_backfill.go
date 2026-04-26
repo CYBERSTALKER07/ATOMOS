@@ -150,7 +150,9 @@ func applyH3Updates(ctx context.Context, sc *spanner.Client, table, pkCol string
 				[]string{pkCol, "H3Index"},
 				[]interface{}{u.id, u.h3Index}))
 		}
-		if _, err := sc.Apply(ctx, muts); err != nil {
+		if _, err := sc.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite(muts)
+		}); err != nil {
 			log.Printf("[H3-BACKFILL] %s batch [%d:%d] error: %v", table, i, end, err)
 			return i
 		}

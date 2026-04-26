@@ -426,14 +426,16 @@ func logDecryptAccess(client *spanner.Client, supplierID, gatewayName, configID 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	logID := "AUDIT-VAULT-" + time.Now().Format("20060102150405") + "-" + configID[:8]
-	_, err := client.Apply(ctx, []*spanner.Mutation{
-		spanner.Insert("AuditLog",
-			[]string{"LogId", "ActorId", "ActorRole", "Action", "ResourceType", "ResourceId", "Metadata", "CreatedAt"},
-			[]interface{}{logID, "SYSTEM", "BACKEND", "DECRYPT", "PAYMENT_CONFIG", configID,
-				`{"supplier_id":"` + supplierID + `","gateway":"` + gatewayName + `"}`,
-				spanner.CommitTimestamp,
-			},
-		),
+	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Insert("AuditLog",
+				[]string{"LogId", "ActorId", "ActorRole", "Action", "ResourceType", "ResourceId", "Metadata", "CreatedAt"},
+				[]interface{}{logID, "SYSTEM", "BACKEND", "DECRYPT", "PAYMENT_CONFIG", configID,
+					`{"supplier_id":"` + supplierID + `","gateway":"` + gatewayName + `"}`,
+					spanner.CommitTimestamp,
+				},
+			),
+		})
 	})
 	if err != nil {
 		log.Printf("[VAULT] Audit log write failed: %v", err)

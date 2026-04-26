@@ -52,7 +52,9 @@ func HandleNukeAllData(spannerClient *spanner.Client) http.HandlerFunc {
 			mutations = append(mutations, spanner.Delete(t, spanner.AllKeys()))
 		}
 
-		if _, err := spannerClient.Apply(ctx, mutations); err != nil {
+		if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite(mutations)
+		}); err != nil {
 			log.Printf("[NUKE] Spanner delete failed: %v", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)

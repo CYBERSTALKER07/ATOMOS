@@ -191,7 +191,9 @@ func HandleCreateProduct(client *spanner.Client) http.HandlerFunc {
 			[]interface{}{p.SkuId, supplierId, int64(0), spanner.CommitTimestamp},
 		)
 
-		_, err = client.Apply(ctx, []*spanner.Mutation{productMut, inventoryMut})
+		_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{productMut, inventoryMut})
+		})
 		if err != nil {
 			http.Error(w, "Ledger write fault", http.StatusInternalServerError)
 			return

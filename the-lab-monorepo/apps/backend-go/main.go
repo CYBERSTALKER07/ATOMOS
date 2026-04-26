@@ -1443,7 +1443,9 @@ func main() {
 			))
 		}
 		if len(mutations) > 0 {
-			if _, err := spannerClient.Apply(ctx, mutations); err != nil {
+			if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite(mutations)
+			}); err != nil {
 				log.Printf("[PROCUREMENT] OrderLineItems insert failed for %s: %v", orderID, err)
 			}
 		}

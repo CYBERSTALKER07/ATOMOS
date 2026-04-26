@@ -1,6 +1,7 @@
 package supplier
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -196,8 +197,10 @@ func HandleSupplierShift(client *spanner.Client) http.HandlerFunc {
 			vals = append(vals, spanner.NullJSON{Value: json.RawMessage(schedStr), Valid: true})
 		}
 
-		_, err := client.Apply(ctx, []*spanner.Mutation{
-			spanner.Update("Suppliers", cols, vals),
+		_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{
+				spanner.Update("Suppliers", cols, vals),
+			})
 		})
 		if err != nil {
 			log.Printf("[shift] Failed to update shift for supplier %s: %v", supplierID, err)

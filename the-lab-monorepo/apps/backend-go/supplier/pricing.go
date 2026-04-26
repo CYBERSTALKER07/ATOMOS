@@ -74,7 +74,9 @@ func (s *PricingService) UpsertPricingRule(ctx context.Context, supplierId strin
 		},
 	)
 
-	_, err := s.Client.Apply(ctx, []*spanner.Mutation{m})
+	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	})
 	if err != nil {
 		return fmt.Errorf("supplier: spanner upsert failed: %w", err)
 	}

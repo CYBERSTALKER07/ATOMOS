@@ -268,7 +268,9 @@ func (s *OrderService) SavePrediction(ctx context.Context, retailerId string, am
 		},
 	)
 
-	_, err = s.Client.Apply(ctx, []*spanner.Mutation{m})
+	_, err = s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	})
 	if err == nil {
 		fmt.Printf("[PREDICTION SAVED] %s will trigger on %s for %d\n", retailerId, triggerDate, amount)
 	}

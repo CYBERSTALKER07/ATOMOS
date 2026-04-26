@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -242,7 +243,9 @@ func HandleFactoryManifestTransition(spannerClient *spanner.Client) http.Handler
 			[]string{"ManifestId", "State"},
 			[]interface{}{manifestID, targetState},
 		)
-		if _, err := spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+		if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{m})
+		}); err != nil {
 			log.Printf("[FACTORY MANIFESTS] transition error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return

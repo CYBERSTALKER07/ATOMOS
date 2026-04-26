@@ -83,7 +83,9 @@ func runAuditCycle(ctx context.Context, client *spanner.Client) {
 
 	// 4. Batch commit all newly discovered anomalies to the ledger
 	if len(mutations) > 0 {
-		_, err := client.Apply(ctx, mutations)
+		_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite(mutations)
+		})
 		if err != nil {
 			fmt.Printf("[AUDIT_CRON_FAULT] Failed to write anomalies: %v\n", err)
 		} else {

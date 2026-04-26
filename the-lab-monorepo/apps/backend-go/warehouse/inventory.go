@@ -1,6 +1,7 @@
 package warehouse
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -144,7 +145,9 @@ func adjustOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.
 	vals = append(vals, spanner.CommitTimestamp)
 
 	m := spanner.InsertOrUpdate("SupplierInventory", cols, vals)
-	if _, err := client.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+	if _, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{m})
+	}); err != nil {
 		log.Printf("[WH INVENTORY] upsert error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return

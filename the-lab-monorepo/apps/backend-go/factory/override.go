@@ -177,8 +177,8 @@ func (o *OverrideService) HandleManifestRebalance(w http.ResponseWriter, r *http
 			return err
 		}
 
-		// Emit MANIFEST_REBALANCED via outbox — atomic with the mutation.
-		return outbox.EmitJSON(txn, "Manifest", req.SourceManifestID, internalKafka.EventManifestRebalanced, internalKafka.TopicMain,
+		// Emit MANIFEST_REBALANCED and PAYLOAD_SYNC via outbox — atomic with the mutation.
+		if err := outbox.EmitJSON(txn, "Manifest", req.SourceManifestID, internalKafka.EventManifestRebalanced, internalKafka.TopicMain,
 			internalKafka.ManifestRebalancedEvent{
 				FactoryID:        factoryScope.FactoryID,
 				SupplierID:       supplierID,
@@ -188,6 +188,26 @@ func (o *OverrideService) HandleManifestRebalance(w http.ResponseWriter, r *http
 				Reason:           reason,
 				RebalancedBy:     claims.UserID,
 				Timestamp:        time.Now().UTC(),
+			}, telemetry.TraceIDFromContext(ctx)); err != nil {
+			return err
+		}
+
+		if err := outbox.EmitJSON(txn, "Manifest", req.SourceManifestID, internalKafka.EventPayloadSync, internalKafka.TopicMain,
+			internalKafka.PayloadSyncEvent{
+				SupplierID: supplierID,
+				ManifestID: req.SourceManifestID,
+				Reason:     "REBALANCED",
+				Timestamp:  time.Now().UTC(),
+			}, telemetry.TraceIDFromContext(ctx)); err != nil {
+			return err
+		}
+
+		return outbox.EmitJSON(txn, "Manifest", req.TargetManifestID, internalKafka.EventPayloadSync, internalKafka.TopicMain,
+			internalKafka.PayloadSyncEvent{
+				SupplierID: supplierID,
+				ManifestID: req.TargetManifestID,
+				Reason:     "REBALANCED",
+				Timestamp:  time.Now().UTC(),
 			}, telemetry.TraceIDFromContext(ctx))
 	})
 
@@ -301,8 +321,8 @@ func (o *OverrideService) HandleCancelManifestTransfer(w http.ResponseWriter, r 
 			return err
 		}
 
-		// Emit TRANSFER_UNASSIGNED via outbox — atomic with the mutation.
-		return outbox.EmitJSON(txn, "Manifest", req.ManifestID, internalKafka.EventTransferUnassigned, internalKafka.TopicMain,
+		// Emit TRANSFER_UNASSIGNED and PAYLOAD_SYNC via outbox — atomic with the mutation.
+		if err := outbox.EmitJSON(txn, "Manifest", req.ManifestID, internalKafka.EventTransferUnassigned, internalKafka.TopicMain,
 			internalKafka.TransferUnassignedEvent{
 				ManifestID:   req.ManifestID,
 				TransferID:   req.TransferID,
@@ -311,6 +331,16 @@ func (o *OverrideService) HandleCancelManifestTransfer(w http.ResponseWriter, r 
 				Reason:       req.Reason,
 				UnassignedBy: claims.UserID,
 				Timestamp:    time.Now().UTC(),
+			}, telemetry.TraceIDFromContext(ctx)); err != nil {
+			return err
+		}
+
+		return outbox.EmitJSON(txn, "Manifest", req.ManifestID, internalKafka.EventPayloadSync, internalKafka.TopicMain,
+			internalKafka.PayloadSyncEvent{
+				SupplierID: supplierID,
+				ManifestID: req.ManifestID,
+				Reason:     "REBALANCED",
+				Timestamp:  time.Now().UTC(),
 			}, telemetry.TraceIDFromContext(ctx))
 	})
 
@@ -430,8 +460,8 @@ func (o *OverrideService) HandleCancelManifest(w http.ResponseWriter, r *http.Re
 			return err
 		}
 
-		// Emit MANIFEST_CANCELLED via outbox — atomic with the mutation.
-		return outbox.EmitJSON(txn, "Manifest", req.ManifestID, internalKafka.EventManifestCancelled, internalKafka.TopicMain,
+		// Emit MANIFEST_CANCELLED and PAYLOAD_SYNC via outbox — atomic with the mutation.
+		if err := outbox.EmitJSON(txn, "Manifest", req.ManifestID, internalKafka.EventManifestCancelled, internalKafka.TopicMain,
 			internalKafka.ManifestCancelledEvent{
 				ManifestID:   req.ManifestID,
 				SupplierID:   supplierID,
@@ -441,6 +471,16 @@ func (o *OverrideService) HandleCancelManifest(w http.ResponseWriter, r *http.Re
 				Reason:       cancelReason,
 				CancelledBy:  claims.UserID,
 				Timestamp:    time.Now().UTC(),
+			}, telemetry.TraceIDFromContext(ctx)); err != nil {
+			return err
+		}
+
+		return outbox.EmitJSON(txn, "Manifest", req.ManifestID, internalKafka.EventPayloadSync, internalKafka.TopicMain,
+			internalKafka.PayloadSyncEvent{
+				SupplierID: supplierID,
+				ManifestID: req.ManifestID,
+				Reason:     "CANCELLED",
+				Timestamp:  time.Now().UTC(),
 			}, telemetry.TraceIDFromContext(ctx))
 	})
 

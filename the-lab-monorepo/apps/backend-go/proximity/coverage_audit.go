@@ -111,7 +111,9 @@ func VerifyCoverageConsistency(ctx context.Context, client *spanner.Client, supp
 			end = len(allMutations)
 		}
 		batch := allMutations[i:end]
-		_, err := client.Apply(ctx, batch)
+		_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite(batch)
+		})
 		if err != nil {
 			log.Printf("[COVERAGE AUDIT] Batch write failed (supplier=%s, batch=%d): %v", supplierID, i/auditBatchSize, err)
 			return err

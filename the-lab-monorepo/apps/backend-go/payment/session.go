@@ -241,11 +241,13 @@ func (s *SessionService) CreateAttempt(ctx context.Context, sessionID, gateway s
 // BindProviderCheckout stores provider-created redirect metadata on the session
 // after a hosted checkout has been initialized.
 func (s *SessionService) BindProviderCheckout(ctx context.Context, sessionID, gateway, invoiceID, redirectURL, providerReference string, expiresAt *time.Time) error {
-	_, err := s.Spanner.Apply(ctx, []*spanner.Mutation{
-		spanner.Update("PaymentSessions",
-			[]string{"SessionId", "Gateway", "InvoiceId", "RedirectUrl", "ProviderReference", "ExpiresAt", "UpdatedAt"},
-			[]interface{}{sessionID, gateway, nullStr(invoiceID), nullStr(redirectURL), nullStr(providerReference), nullTime(expiresAt), spanner.CommitTimestamp},
-		),
+	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Update("PaymentSessions",
+				[]string{"SessionId", "Gateway", "InvoiceId", "RedirectUrl", "ProviderReference", "ExpiresAt", "UpdatedAt"},
+				[]interface{}{sessionID, gateway, nullStr(invoiceID), nullStr(redirectURL), nullStr(providerReference), nullTime(expiresAt), spanner.CommitTimestamp},
+			),
+		})
 	})
 	if err != nil {
 		return fmt.Errorf("bind provider checkout failed for session %s: %w", sessionID, err)

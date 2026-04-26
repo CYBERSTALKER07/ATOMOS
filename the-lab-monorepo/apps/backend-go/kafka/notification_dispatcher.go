@@ -64,6 +64,12 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handlePaymentSettled(deps, m.Value)
 			case EventPaymentFailed:
 				handlePaymentFailed(deps, m.Value)
+			case EventCashCollectionRequired:
+				handleCashCollectionRequired(deps, m.Value)
+			case EventFulfillmentPaymentCompleted:
+				handleFulfillmentPaymentCompleted(deps, m.Value)
+			case EventFulfillmentPaid:
+				handleFulfillmentPaid(deps, m.Value)
 			case EventDriverAvailabilityChanged:
 				handleDriverAvailabilityChanged(deps, m.Value)
 			case EventOrderReassigned:
@@ -80,16 +86,56 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handleCancelRequested(deps, m.Value)
 			case EventCancelApproved:
 				handleCancelApproved(deps, m.Value)
+			case EventPaymentBypassIssued:
+				handlePaymentBypassIssued(deps, m.Value)
+			case EventPaymentBypassCompleted:
+				handlePaymentBypassCompleted(deps, m.Value)
 			case EventOrderCompleted:
 				handleOrderCompleted(deps, m.Value)
+			case EventOrderCreated:
+				handleOrderCreated(deps, m.Value)
+			case EventUnifiedCheckoutCompleted:
+				handleUnifiedCheckoutCompleted(deps, m.Value)
+			case EventStockBackordered:
+				handleStockBackordered(deps, m.Value)
+			case EventOrderCancelled:
+				handleOrderCancelled(deps, m.Value)
+			case EventOffloadConfirmed:
+				handleOffloadConfirmed(deps, m.Value)
+			case EventSmsQuickComplete:
+				handleSMSQuickComplete(deps, m.Value)
 			case EventEarlyCompleteRequested:
 				handleEarlyCompleteRequested(deps, m.Value)
+			case EventEarlyCompleteApproved:
+				handleEarlyCompleteApproved(deps, m.Value)
 			case EventNegotiationProposed:
 				handleNegotiationProposed(deps, m.Value)
+			case EventNegotiationResolved:
+				handleNegotiationResolved(deps, m.Value)
 			case EventCreditDeliveryMarked:
 				handleCreditDeliveryMarked(deps, m.Value)
+			case EventCreditDeliveryResolved:
+				handleCreditDeliveryResolved(deps, m.Value)
 			case EventMissingItemsReported:
 				handleMissingItemsReported(deps, m.Value)
+			case EventSplitPaymentCreated:
+				handleSplitPaymentCreated(deps, m.Value)
+			case EventAiOrderConfirmed:
+				handleAiOrderConfirmed(deps, m.Value)
+			case EventAiOrderRejected:
+				handleAiOrderRejected(deps, m.Value)
+			case EventShopClosed:
+				handleShopClosed(deps, m.Value)
+			case EventShopClosedResponse:
+				handleShopClosedResponse(deps, m.Value)
+			case EventPowerOutageReported:
+				handlePowerOutageReported(deps, m.Value)
+			case EventShopClosedEscalated:
+				handleShopClosedEscalated(deps, m.Value)
+			case EventShopClosedResolved:
+				handleShopClosedResolved(deps, m.Value)
+			case EventSupplyRequestSubmitted:
+				handleSupplyRequestSubmitted(deps, m.Value)
 			case EventPreOrderAutoAccepted:
 				handlePreOrderAutoAccepted(deps, m.Value)
 			case EventPreOrderConfirmed:
@@ -112,6 +158,18 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handleVehicleCreated(deps, m.Value)
 			case EventManifestRebalanced:
 				handleManifestRebalanced(deps, m.Value)
+			case EventManifestDraftCreated:
+				handleManifestDraftCreated(deps, m.Value)
+			case EventManifestLoadingStarted:
+				handleManifestLoadingStarted(deps, m.Value)
+			case EventManifestSealed:
+				handleManifestSealed(deps, m.Value)
+			case EventManifestOrderException:
+				handleManifestOrderException(deps, m.Value)
+			case EventManifestOrderInjected:
+				handleManifestOrderInjected(deps, m.Value)
+			case EventManifestForceSeal:
+				handleManifestForceSeal(deps, m.Value)
 			case EventManifestCancelled:
 				handleManifestCancelled(deps, m.Value)
 			case EventManifestDispatched:
@@ -124,14 +182,40 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handleForceSealAlert(deps, m.Value)
 			case EventOrderDelayed:
 				handleOrderDelayed(deps, m.Value)
-			case EventManifestOrderReassigned:
-				handleManifestOrderReassigned(deps, m.Value)
 			case EventPayloadSync:
 				handlePayloadSync(deps, m.Value)
 			case EventOrderCancelledByOrigin:
 				handleOrderCancelledByOrigin(deps, m.Value)
 			case EventPayloadOverflow:
 				handlePayloadOverflow(deps, m.Value)
+			case EventRouteCreated:
+				handleRouteCreated(deps, m.Value)
+			case EventOrderAssigned:
+				handleOrderAssigned(deps, m.Value)
+			case EventRouteFinalized:
+				handleRouteFinalized(deps, m.Value)
+			case EventWarehouseCreated:
+				handleWarehouseCreated(deps, m.Value)
+			case EventWarehouseSpatialUpdated:
+				handleWarehouseSpatialUpdated(deps, m.Value)
+			case EventFactorySLABreach:
+				handleFactorySLABreach(deps, m.Value)
+			case EventInboundFreightUnannounced:
+				handleInboundFreightUnannounced(deps, m.Value)
+			case EventSupplyLaneTransitUpdated:
+				handleSupplyLaneTransitUpdated(deps, m.Value)
+			case EventTransferStateChanged:
+				handleTransferStateChanged(deps, m.Value)
+			case EventTransferApproved:
+				handleTransferApproved(deps, m.Value)
+			case EventTransferReceived:
+				handleTransferReceived(deps, m.Value)
+			case EventTransferUnassigned:
+				handleTransferUnassigned(deps, m.Value)
+			case EventNetworkModeChanged:
+				handleNetworkModeChanged(deps, m.Value)
+			case EventPullMatrixCompleted:
+				handlePullMatrixCompleted(deps, m.Value)
 			}
 			return nil
 		},
@@ -490,6 +574,125 @@ func handleOrderCompleted(deps NotificationDeps, data []byte) {
 	}
 }
 
+func handlePaymentBypassIssued(deps NotificationDeps, data []byte) {
+	var event struct {
+		OrderID  string `json:"order_id"`
+		IssuedBy string `json:"issued_by"`
+		Reason   string `json:"reason"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "PAYMENT_BYPASS_ISSUED", "err", err)
+		return
+	}
+	if event.OrderID == "" {
+		return
+	}
+
+	ctx := context.Background()
+	row, err := deps.SpannerClient.Single().ReadRow(ctx, "Orders", spanner.Key{event.OrderID}, []string{"RetailerId"})
+	if err != nil {
+		slog.Error("notification_dispatcher.lookup", "event", "PAYMENT_BYPASS_ISSUED", "order_id", event.OrderID, "err", err)
+		return
+	}
+	var retailerID spanner.NullString
+	if err := row.Columns(&retailerID); err != nil || !retailerID.Valid {
+		return
+	}
+
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	body := fmt.Sprintf("Supplier issued a payment bypass token for order %s.", orderRef)
+	if event.Reason != "" {
+		body = fmt.Sprintf("Supplier issued a payment bypass token for order %s (%s).", orderRef, event.Reason)
+	}
+	dispatchToRecipient(deps, retailerID.StringVal, "RETAILER", EventPaymentBypassIssued,
+		notifications.FormattedNotification{
+			Title: "Payment Bypass Issued",
+			Body:  body,
+		})
+}
+
+func handlePaymentBypassCompleted(deps NotificationDeps, data []byte) {
+	var event struct {
+		OrderID  string `json:"order_id"`
+		DriverID string `json:"driver_id"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "PAYMENT_BYPASS_COMPLETED", "err", err)
+		return
+	}
+	if event.OrderID == "" {
+		return
+	}
+
+	ctx := context.Background()
+	row, err := deps.SpannerClient.Single().ReadRow(ctx, "Orders", spanner.Key{event.OrderID}, []string{"RetailerId", "SupplierId"})
+	if err != nil {
+		slog.Error("notification_dispatcher.lookup", "event", "PAYMENT_BYPASS_COMPLETED", "order_id", event.OrderID, "err", err)
+		return
+	}
+	var retailerID, supplierID spanner.NullString
+	if err := row.Columns(&retailerID, &supplierID); err != nil {
+		return
+	}
+
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	if retailerID.Valid {
+		dispatchToRecipient(deps, retailerID.StringVal, "RETAILER", EventPaymentBypassCompleted,
+			notifications.FormattedNotification{
+				Title: "Payment Completed",
+				Body:  fmt.Sprintf("Payment for order %s was completed using bypass verification.", orderRef),
+			})
+	}
+	if supplierID.Valid {
+		dispatchToRecipient(deps, supplierID.StringVal, "SUPPLIER", EventPaymentBypassCompleted,
+			notifications.FormattedNotification{
+				Title: "Bypass Payment Completed",
+				Body:  fmt.Sprintf("Order %s was completed with payment bypass confirmation.", orderRef),
+			})
+	}
+}
+
+func handleSMSQuickComplete(deps NotificationDeps, data []byte) {
+	var event struct {
+		OrderID  string `json:"order_id"`
+		DriverID string `json:"driver_id"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "SMS_QUICK_COMPLETE", "err", err)
+		return
+	}
+	if event.OrderID == "" {
+		return
+	}
+
+	ctx := context.Background()
+	row, err := deps.SpannerClient.Single().ReadRow(ctx, "Orders", spanner.Key{event.OrderID}, []string{"RetailerId", "SupplierId"})
+	if err != nil {
+		slog.Error("notification_dispatcher.lookup", "event", "SMS_QUICK_COMPLETE", "order_id", event.OrderID, "err", err)
+		return
+	}
+	var retailerID, supplierID spanner.NullString
+	if err := row.Columns(&retailerID, &supplierID); err != nil {
+		return
+	}
+
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	if retailerID.Valid {
+		dispatchToRecipient(deps, retailerID.StringVal, "RETAILER", EventSmsQuickComplete,
+			notifications.FormattedNotification{
+				Title: "Delivery Completed",
+				Body:  fmt.Sprintf("Order %s was completed via SMS fallback confirmation.", orderRef),
+			})
+	}
+	if supplierID.Valid {
+		dispatchToRecipient(deps, supplierID.StringVal, "SUPPLIER", EventSmsQuickComplete,
+			notifications.FormattedNotification{
+				Title: "SMS Completion",
+				Body:  fmt.Sprintf("Driver completed order %s using SMS quick-complete fallback.", orderRef),
+			})
+	}
+}
+
 func handleEarlyCompleteRequested(deps NotificationDeps, data []byte) {
 	var event EarlyCompleteRequestedEvent
 	if err := json.Unmarshal(data, &event); err != nil {
@@ -503,6 +706,22 @@ func handleEarlyCompleteRequested(deps NotificationDeps, data []byte) {
 		}
 		dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventEarlyCompleteRequested, notif)
 	}
+}
+
+func handleEarlyCompleteApproved(deps NotificationDeps, data []byte) {
+	var event EarlyCompleteRequestedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "EARLY_COMPLETE_APPROVED", "err", err)
+		return
+	}
+	if event.DriverID == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.DriverID, "DRIVER", EventEarlyCompleteApproved,
+		notifications.FormattedNotification{
+			Title: "Early Completion Approved",
+			Body:  fmt.Sprintf("Supplier approved early completion for %d remaining orders. Return to your home node.", len(event.OrderIDs)),
+		})
 }
 
 func handleNegotiationProposed(deps NotificationDeps, data []byte) {
@@ -527,6 +746,42 @@ func handleNegotiationProposed(deps NotificationDeps, data []byte) {
 	}
 }
 
+func handleNegotiationResolved(deps NotificationDeps, data []byte) {
+	var event NegotiationResolvedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "NEGOTIATION_RESOLVED", "err", err)
+		return
+	}
+	if event.OrderID == "" {
+		return
+	}
+
+	ctx := context.Background()
+	row, err := deps.SpannerClient.Single().ReadRow(ctx, "Orders", spanner.Key{event.OrderID}, []string{"RetailerId"})
+	if err != nil {
+		slog.Error("notification_dispatcher.lookup", "event", "NEGOTIATION_RESOLVED", "order_id", event.OrderID, "err", err)
+		return
+	}
+	var retailerID spanner.NullString
+	if err := row.Columns(&retailerID); err != nil || !retailerID.Valid {
+		return
+	}
+
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	action := "updated"
+	if event.Action == "APPROVED" {
+		action = "approved"
+	} else if event.Action == "REJECTED" {
+		action = "rejected"
+	}
+
+	dispatchToRecipient(deps, retailerID.StringVal, "RETAILER", EventNegotiationResolved,
+		notifications.FormattedNotification{
+			Title: "Negotiation Resolved",
+			Body:  fmt.Sprintf("Supplier %s your quantity negotiation for order %s.", action, orderRef),
+		})
+}
+
 func handleCreditDeliveryMarked(deps NotificationDeps, data []byte) {
 	var event CreditDeliveryEvent
 	if err := json.Unmarshal(data, &event); err != nil {
@@ -539,6 +794,44 @@ func handleCreditDeliveryMarked(deps NotificationDeps, data []byte) {
 			Body:  "Order " + event.OrderID[:min(8, len(event.OrderID))] + " delivered on credit. Awaiting supplier decision.",
 		}
 		dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventCreditDeliveryMarked, notif)
+	}
+}
+
+func handleCreditDeliveryResolved(deps NotificationDeps, data []byte) {
+	var event CreditDeliveryEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "CREDIT_DELIVERY_RESOLVED", "err", err)
+		return
+	}
+	if event.OrderID == "" {
+		return
+	}
+
+	ctx := context.Background()
+	row, err := deps.SpannerClient.Single().ReadRow(ctx, "Orders", spanner.Key{event.OrderID}, []string{"DriverId", "RetailerId"})
+	if err != nil {
+		slog.Error("notification_dispatcher.lookup", "event", "CREDIT_DELIVERY_RESOLVED", "order_id", event.OrderID, "err", err)
+		return
+	}
+	var driverID, retailerID spanner.NullString
+	if err := row.Columns(&driverID, &retailerID); err != nil {
+		return
+	}
+
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	action := "APPROVED"
+	if event.Action == "DENY" {
+		action = "DENIED"
+	}
+	body := fmt.Sprintf("Credit delivery for order %s was %s by supplier.", orderRef, action)
+
+	if driverID.Valid {
+		dispatchToRecipient(deps, driverID.StringVal, "DRIVER", EventCreditDeliveryResolved,
+			notifications.FormattedNotification{Title: "Credit Delivery Resolved", Body: body})
+	}
+	if retailerID.Valid {
+		dispatchToRecipient(deps, retailerID.StringVal, "RETAILER", EventCreditDeliveryResolved,
+			notifications.FormattedNotification{Title: "Credit Delivery Update", Body: body})
 	}
 }
 
@@ -555,6 +848,797 @@ func handleMissingItemsReported(deps NotificationDeps, data []byte) {
 		}
 		dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventMissingItemsReported, notif)
 	}
+}
+
+func handleSplitPaymentCreated(deps NotificationDeps, data []byte) {
+	var event SplitPaymentEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "SPLIT_PAYMENT_CREATED", "err", err)
+		return
+	}
+	if event.OrderID == "" {
+		return
+	}
+
+	ctx := context.Background()
+	row, err := deps.SpannerClient.Single().ReadRow(ctx, "Orders", spanner.Key{event.OrderID}, []string{"RetailerId", "SupplierId"})
+	if err != nil {
+		slog.Error("notification_dispatcher.lookup", "event", "SPLIT_PAYMENT_CREATED", "order_id", event.OrderID, "err", err)
+		return
+	}
+	var retailerID, supplierID spanner.NullString
+	if err := row.Columns(&retailerID, &supplierID); err != nil {
+		return
+	}
+
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	body := fmt.Sprintf("Split payment created for order %s: first %d, second %d.", orderRef, event.FirstAmount, event.SecondAmount)
+	if retailerID.Valid {
+		dispatchToRecipient(deps, retailerID.StringVal, "RETAILER", EventSplitPaymentCreated,
+			notifications.FormattedNotification{Title: "Split Payment Created", Body: body})
+	}
+	if supplierID.Valid {
+		dispatchToRecipient(deps, supplierID.StringVal, "SUPPLIER", EventSplitPaymentCreated,
+			notifications.FormattedNotification{Title: "Split Payment Created", Body: body})
+	}
+}
+
+func handleAiOrderConfirmed(deps NotificationDeps, data []byte) {
+	var event AiOrderEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "AI_ORDER_CONFIRMED", "err", err)
+		return
+	}
+	if event.OrderID == "" {
+		return
+	}
+
+	ctx := context.Background()
+	row, err := deps.SpannerClient.Single().ReadRow(ctx, "Orders", spanner.Key{event.OrderID}, []string{"SupplierId"})
+	if err != nil {
+		slog.Error("notification_dispatcher.lookup", "event", "AI_ORDER_CONFIRMED", "order_id", event.OrderID, "err", err)
+		return
+	}
+	var supplierID spanner.NullString
+	if err := row.Columns(&supplierID); err != nil || !supplierID.Valid {
+		return
+	}
+
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	dispatchToRecipient(deps, supplierID.StringVal, "SUPPLIER", EventAiOrderConfirmed,
+		notifications.FormattedNotification{
+			Title: "AI Order Confirmed",
+			Body:  fmt.Sprintf("Retailer confirmed AI-suggested order %s.", orderRef),
+		})
+}
+
+func handleAiOrderRejected(deps NotificationDeps, data []byte) {
+	var event AiOrderEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "AI_ORDER_REJECTED", "err", err)
+		return
+	}
+	if event.OrderID == "" {
+		return
+	}
+
+	ctx := context.Background()
+	row, err := deps.SpannerClient.Single().ReadRow(ctx, "Orders", spanner.Key{event.OrderID}, []string{"SupplierId"})
+	if err != nil {
+		slog.Error("notification_dispatcher.lookup", "event", "AI_ORDER_REJECTED", "order_id", event.OrderID, "err", err)
+		return
+	}
+	var supplierID spanner.NullString
+	if err := row.Columns(&supplierID); err != nil || !supplierID.Valid {
+		return
+	}
+
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	body := fmt.Sprintf("Retailer rejected AI-suggested order %s.", orderRef)
+	if event.Reason != "" {
+		body = fmt.Sprintf("Retailer rejected AI-suggested order %s (%s).", orderRef, event.Reason)
+	}
+	dispatchToRecipient(deps, supplierID.StringVal, "SUPPLIER", EventAiOrderRejected,
+		notifications.FormattedNotification{Title: "AI Order Rejected", Body: body})
+}
+
+func handleShopClosed(deps NotificationDeps, data []byte) {
+	var event ShopClosedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "SHOP_CLOSED", "err", err)
+		return
+	}
+	if event.SupplierID == "" || event.OrderID == "" {
+		return
+	}
+
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventShopClosed,
+		notifications.FormattedNotification{
+			Title: "Shop Closed Reported",
+			Body:  fmt.Sprintf("Driver reported shop closed for order %s. Attempt %s requires follow-up.", orderRef, event.AttemptID),
+		})
+}
+
+func handlePowerOutageReported(deps NotificationDeps, data []byte) {
+	var event ShopClosedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "POWER_OUTAGE_REPORTED", "err", err)
+		return
+	}
+	if event.SupplierID == "" || event.OrderID == "" {
+		return
+	}
+
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventPowerOutageReported,
+		notifications.FormattedNotification{
+			Title: "Power Outage Reported",
+			Body:  fmt.Sprintf("Driver reported probable power outage at retailer for order %s.", orderRef),
+		})
+}
+
+func handleShopClosedEscalated(deps NotificationDeps, data []byte) {
+	var event ShopClosedEscalatedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "SHOP_CLOSED_ESCALATED", "err", err)
+		return
+	}
+	if event.EscalatedTo == "" {
+		return
+	}
+
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	dispatchToRecipient(deps, event.EscalatedTo, "SUPPLIER", EventShopClosedEscalated,
+		notifications.FormattedNotification{
+			Title: "Shop Closed Escalation",
+			Body:  fmt.Sprintf("Order %s was escalated for immediate supplier action.", orderRef),
+		})
+}
+
+func handleOffloadConfirmed(deps NotificationDeps, data []byte) {
+	var event OffloadConfirmedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "OFFLOAD_CONFIRMED", "err", err)
+		return
+	}
+	if event.RetailerID == "" || event.OrderID == "" {
+		return
+	}
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventOffloadConfirmed,
+		notifications.FormattedNotification{
+			Title: "Offload Confirmed",
+			Body:  fmt.Sprintf("Offload confirmed for order %s. Payment flow is now active.", orderRef),
+		})
+}
+
+func handleSupplyRequestSubmitted(deps NotificationDeps, data []byte) {
+	var event SupplyRequestEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "SUPPLY_REQUEST_SUBMITTED", "err", err)
+		return
+	}
+	if event.SupplierID == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventSupplyRequestSubmitted,
+		notifications.FormattedNotification{
+			Title: "Supply Request Submitted",
+			Body:  fmt.Sprintf("Supply request %s moved to %s priority %s.", event.RequestID, event.State, event.Priority),
+		})
+}
+
+func handleManifestDraftCreated(deps NotificationDeps, data []byte) {
+	var event ManifestLifecycleEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "MANIFEST_DRAFT_CREATED", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventManifestDraftCreated,
+		notifications.FormattedNotification{
+			Title: "Manifest Draft Created",
+			Body:  fmt.Sprintf("Manifest %s draft created with %d planned stops.", event.ManifestID, event.StopCount),
+		})
+}
+
+func handleManifestLoadingStarted(deps NotificationDeps, data []byte) {
+	var event ManifestLifecycleEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "MANIFEST_LOADING_STARTED", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventManifestLoadingStarted,
+		notifications.FormattedNotification{
+			Title: "Manifest Loading Started",
+			Body:  fmt.Sprintf("Loading started for manifest %s.", event.ManifestID),
+		})
+}
+
+func handleManifestSealed(deps NotificationDeps, data []byte) {
+	var event ManifestLifecycleEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "MANIFEST_SEALED", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventManifestSealed,
+		notifications.FormattedNotification{
+			Title: "Manifest Sealed",
+			Body:  fmt.Sprintf("Manifest %s sealed at %.1f/%.1f VU.", event.ManifestID, event.VolumeVU, event.MaxVolumeVU),
+		})
+}
+
+func handleManifestOrderException(deps NotificationDeps, data []byte) {
+	var event ManifestOrderExceptionEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "MANIFEST_ORDER_EXCEPTION", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventManifestOrderException,
+		notifications.FormattedNotification{
+			Title: "Manifest Exception",
+			Body:  fmt.Sprintf("Exception %s on order %s in manifest %s.", event.Reason, orderRef, event.ManifestID),
+		})
+}
+
+func handleManifestOrderInjected(deps NotificationDeps, data []byte) {
+	var event ManifestOrderInjectedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "MANIFEST_ORDER_INJECTED", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventManifestOrderInjected,
+		notifications.FormattedNotification{
+			Title: "Order Injected Into Manifest",
+			Body:  fmt.Sprintf("Order %s was injected into manifest %s.", orderRef, event.ManifestID),
+		})
+}
+
+func handleManifestForceSeal(deps NotificationDeps, data []byte) {
+	var event ManifestForceSealEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "MANIFEST_FORCE_SEALED", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventManifestForceSeal,
+		notifications.FormattedNotification{
+			Title: "Manifest Force-Sealed",
+			Body:  fmt.Sprintf("Manifest %s force-sealed by %s (%s).", event.ManifestID, event.SealedBy, event.Reason),
+		})
+}
+
+func handleRouteCreated(deps NotificationDeps, data []byte) {
+	var event RouteCreatedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "ROUTE_CREATED", "err", err)
+		return
+	}
+	if event.SupplierID != "" {
+		dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventRouteCreated,
+			notifications.FormattedNotification{
+				Title: "Route Created",
+				Body:  fmt.Sprintf("Route %s created with %d stops.", event.RouteID, event.StopCount),
+			})
+	}
+	if event.DriverID != "" {
+		dispatchToRecipient(deps, event.DriverID, "DRIVER", EventRouteCreated,
+			notifications.FormattedNotification{
+				Title: "New Route Assigned",
+				Body:  fmt.Sprintf("Route %s is ready with %d planned stops.", event.RouteID, event.StopCount),
+			})
+	}
+}
+
+func handleOrderAssigned(deps NotificationDeps, data []byte) {
+	var event OrderAssignedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "ORDER_ASSIGNED", "err", err)
+		return
+	}
+	if event.DriverID == "" || event.OrderID == "" {
+		return
+	}
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	dispatchToRecipient(deps, event.DriverID, "DRIVER", EventOrderAssigned,
+		notifications.FormattedNotification{
+			Title: "Order Assigned",
+			Body:  fmt.Sprintf("Order %s assigned to route %s.", orderRef, event.RouteID),
+		})
+}
+
+func handleRouteFinalized(deps NotificationDeps, data []byte) {
+	var event RouteFinalizedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "ROUTE_FINALIZED", "err", err)
+		return
+	}
+	if event.DriverID == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.DriverID, "DRIVER", EventRouteFinalized,
+		notifications.FormattedNotification{
+			Title: "Route Finalized",
+			Body:  fmt.Sprintf("Manifest %s route finalized with %d stops.", event.ManifestID, event.StopCount),
+		})
+}
+
+func handleWarehouseCreated(deps NotificationDeps, data []byte) {
+	var event WarehouseCreatedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "WAREHOUSE_CREATED", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventWarehouseCreated,
+		notifications.FormattedNotification{
+			Title: "Warehouse Created",
+			Body:  fmt.Sprintf("Warehouse %s is now active for supplier operations.", event.Name),
+		})
+}
+
+func handleWarehouseSpatialUpdated(deps NotificationDeps, data []byte) {
+	var event WarehouseSpatialUpdatedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "WAREHOUSE_SPATIAL_UPDATED", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventWarehouseSpatialUpdated,
+		notifications.FormattedNotification{
+			Title: "Warehouse Coverage Updated",
+			Body:  fmt.Sprintf("Warehouse %s coverage updated: H3 %d → %d.", event.WarehouseId, event.OldH3Count, event.NewH3Count),
+		})
+}
+
+func handleFactorySLABreach(deps NotificationDeps, data []byte) {
+	var event FactorySLABreachEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "FACTORY_SLA_BREACH", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventFactorySLABreach,
+		notifications.FormattedNotification{
+			Title: "Factory SLA Breach",
+			Body:  fmt.Sprintf("Transfer %s breached SLA at %s level.", event.TransferId, event.EscalationLevel),
+		})
+}
+
+func handleInboundFreightUnannounced(deps NotificationDeps, data []byte) {
+	var event InboundFreightUnannouncedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "INBOUND_FREIGHT_UNANNOUNCED", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventInboundFreightUnannounced,
+		notifications.FormattedNotification{
+			Title: "Unannounced Freight Received",
+			Body:  fmt.Sprintf("Warehouse force-received transfer %s with %d items.", event.TransferId, event.ItemsCount),
+		})
+}
+
+func handleSupplyLaneTransitUpdated(deps NotificationDeps, data []byte) {
+	var event SupplyLaneTransitUpdatedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "SUPPLY_LANE_TRANSIT_UPDATED", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventSupplyLaneTransitUpdated,
+		notifications.FormattedNotification{
+			Title: "Supply Lane Updated",
+			Body:  fmt.Sprintf("Transit estimate updated for lane %s to %.1fh.", event.LaneId, event.NewDampenedHours),
+		})
+}
+
+func handleNetworkModeChanged(deps NotificationDeps, data []byte) {
+	var event NetworkModeChangedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "NETWORK_MODE_CHANGED", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventNetworkModeChanged,
+		notifications.FormattedNotification{
+			Title: "Network Mode Changed",
+			Body:  fmt.Sprintf("Optimization mode changed from %s to %s.", event.OldMode, event.NewMode),
+		})
+}
+
+func handlePullMatrixCompleted(deps NotificationDeps, data []byte) {
+	var event PullMatrixCompletedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "PULL_MATRIX_COMPLETED", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventPullMatrixCompleted,
+		notifications.FormattedNotification{
+			Title: "Pull Matrix Completed",
+			Body:  fmt.Sprintf("Run %s generated %d transfers across %d SKUs.", event.RunId, event.TransfersGenerated, event.SKUsProcessed),
+		})
+}
+
+func handleCashCollectionRequired(deps NotificationDeps, data []byte) {
+	var event struct {
+		OrderID    string `json:"order_id"`
+		RetailerID string `json:"retailer_id"`
+		Amount     int64  `json:"amount"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "CASH_COLLECTION_REQUIRED", "err", err)
+		return
+	}
+	if event.RetailerID == "" || event.OrderID == "" {
+		return
+	}
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventCashCollectionRequired,
+		notifications.FormattedNotification{
+			Title: "Cash Collection Required",
+			Body:  fmt.Sprintf("Order %s is awaiting cash collection for %d.", orderRef, event.Amount),
+		})
+}
+
+func handleFulfillmentPaymentCompleted(deps NotificationDeps, data []byte) {
+	var event struct {
+		OrderID    string `json:"order_id"`
+		SupplierID string `json:"supplier_id"`
+		RetailerID string `json:"retailer_id"`
+		DriverID   string `json:"driver_id"`
+		Amount     int64  `json:"amount"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "FULFILLMENT_PAYMENT_COMPLETED", "err", err)
+		return
+	}
+	if event.OrderID == "" {
+		return
+	}
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	if event.RetailerID != "" {
+		dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventFulfillmentPaymentCompleted,
+			notifications.FormattedNotification{
+				Title: "Payment Completed",
+				Body:  fmt.Sprintf("Payment for order %s was completed successfully.", orderRef),
+			})
+	}
+	if event.SupplierID != "" {
+		dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventFulfillmentPaymentCompleted,
+			notifications.FormattedNotification{
+				Title: "Fulfillment Payment Completed",
+				Body:  fmt.Sprintf("Order %s payment completed for %d.", orderRef, event.Amount),
+			})
+	}
+	if event.DriverID != "" {
+		dispatchToRecipient(deps, event.DriverID, "DRIVER", EventFulfillmentPaymentCompleted,
+			notifications.FormattedNotification{
+				Title: "Retailer Payment Confirmed",
+				Body:  fmt.Sprintf("Order %s payment is confirmed. Continue route execution.", orderRef),
+			})
+	}
+}
+
+func handleFulfillmentPaid(deps NotificationDeps, data []byte) {
+	var event struct {
+		OrderID    string `json:"order_id"`
+		SupplierID string `json:"supplier_id"`
+		RetailerID string `json:"retailer_id"`
+		Amount     int64  `json:"amount"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "FULFILLMENT_PAID", "err", err)
+		return
+	}
+	if event.SupplierID == "" || event.OrderID == "" {
+		return
+	}
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventFulfillmentPaid,
+		notifications.FormattedNotification{
+			Title: "Fulfillment Paid",
+			Body:  fmt.Sprintf("Order %s marked paid: %d.", orderRef, event.Amount),
+		})
+}
+
+func handleOrderCreated(deps NotificationDeps, data []byte) {
+	var event struct {
+		OrderID    string `json:"order_id"`
+		SupplierID string `json:"supplier_id"`
+		RetailerID string `json:"retailer_id"`
+		Total      int64  `json:"total"`
+		Currency   string `json:"currency"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "ORDER_CREATED", "err", err)
+		return
+	}
+	if event.OrderID == "" {
+		return
+	}
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	if event.SupplierID != "" {
+		dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventOrderCreated,
+			notifications.FormattedNotification{
+				Title: "New Order Created",
+				Body:  fmt.Sprintf("Order %s created for %d %s.", orderRef, event.Total, event.Currency),
+			})
+	}
+	if event.RetailerID != "" {
+		dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventOrderCreated,
+			notifications.FormattedNotification{
+				Title: "Order Placed",
+				Body:  fmt.Sprintf("Order %s was placed successfully.", orderRef),
+			})
+	}
+}
+
+func handleUnifiedCheckoutCompleted(deps NotificationDeps, data []byte) {
+	var event struct {
+		InvoiceID  string `json:"invoice_id"`
+		RetailerID string `json:"retailer_id"`
+		Total      int64  `json:"total"`
+		Currency   string `json:"currency"`
+		OrderCount int    `json:"order_count"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "UNIFIED_CHECKOUT_COMPLETED", "err", err)
+		return
+	}
+	if event.RetailerID == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventUnifiedCheckoutCompleted,
+		notifications.FormattedNotification{
+			Title: "Checkout Completed",
+			Body:  fmt.Sprintf("Checkout completed: %d orders, total %d %s.", event.OrderCount, event.Total, event.Currency),
+		})
+}
+
+func handleStockBackordered(deps NotificationDeps, data []byte) {
+	var event struct {
+		BackOrderID string `json:"backorder_id"`
+		SupplierID  string `json:"supplier_id"`
+		RetailerID  string `json:"retailer_id"`
+		Total       int64  `json:"total"`
+		Currency    string `json:"currency"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "STOCK_BACKORDERED", "err", err)
+		return
+	}
+	if event.BackOrderID == "" {
+		return
+	}
+	orderRef := event.BackOrderID[:min(8, len(event.BackOrderID))]
+	if event.RetailerID != "" {
+		dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventStockBackordered,
+			notifications.FormattedNotification{
+				Title: "Backorder Created",
+				Body:  fmt.Sprintf("Backorder %s created for %d %s.", orderRef, event.Total, event.Currency),
+			})
+	}
+	if event.SupplierID != "" {
+		dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventStockBackordered,
+			notifications.FormattedNotification{
+				Title: "Backorder Added",
+				Body:  fmt.Sprintf("Backorder %s was created from shortfall handling.", orderRef),
+			})
+	}
+}
+
+func handleOrderCancelled(deps NotificationDeps, data []byte) {
+	var event struct {
+		OrderID string `json:"order_id"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "ORDER_CANCELLED", "err", err)
+		return
+	}
+	if event.OrderID == "" {
+		return
+	}
+
+	ctx := context.Background()
+	row, err := deps.SpannerClient.Single().ReadRow(ctx, "Orders", spanner.Key{event.OrderID}, []string{"RetailerId", "SupplierId"})
+	if err != nil {
+		slog.Error("notification_dispatcher.lookup", "event", "ORDER_CANCELLED", "order_id", event.OrderID, "err", err)
+		return
+	}
+	var retailerID, supplierID spanner.NullString
+	if err := row.Columns(&retailerID, &supplierID); err != nil {
+		return
+	}
+
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	if retailerID.Valid {
+		dispatchToRecipient(deps, retailerID.StringVal, "RETAILER", EventOrderCancelled,
+			notifications.FormattedNotification{
+				Title: "Order Cancelled",
+				Body:  fmt.Sprintf("Order %s has been cancelled.", orderRef),
+			})
+	}
+	if supplierID.Valid {
+		dispatchToRecipient(deps, supplierID.StringVal, "SUPPLIER", EventOrderCancelled,
+			notifications.FormattedNotification{
+				Title: "Order Cancelled",
+				Body:  fmt.Sprintf("Order %s was cancelled and removed from active flow.", orderRef),
+			})
+	}
+}
+
+func handleShopClosedResponse(deps NotificationDeps, data []byte) {
+	var event ShopClosedResponseEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "SHOP_CLOSED_RESPONSE", "err", err)
+		return
+	}
+	if event.AttemptID == "" || event.OrderID == "" {
+		return
+	}
+
+	ctx := context.Background()
+	row, err := deps.SpannerClient.Single().ReadRow(ctx, "ShopClosedAttempts", spanner.Key{event.AttemptID}, []string{"DriverId"})
+	if err != nil {
+		slog.Error("notification_dispatcher.lookup", "event", "SHOP_CLOSED_RESPONSE", "attempt_id", event.AttemptID, "err", err)
+		return
+	}
+	var driverID spanner.NullString
+	if err := row.Columns(&driverID); err != nil || !driverID.Valid {
+		return
+	}
+
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	dispatchToRecipient(deps, driverID.StringVal, "DRIVER", EventShopClosedResponse,
+		notifications.FormattedNotification{
+			Title: "Retailer Responded",
+			Body:  fmt.Sprintf("Retailer response for order %s: %s.", orderRef, event.Response),
+		})
+}
+
+func handleShopClosedResolved(deps NotificationDeps, data []byte) {
+	var event ShopClosedResolvedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "SHOP_CLOSED_RESOLVED", "err", err)
+		return
+	}
+	if event.AttemptID == "" || event.OrderID == "" {
+		return
+	}
+
+	ctx := context.Background()
+	row, err := deps.SpannerClient.Single().ReadRow(ctx, "ShopClosedAttempts", spanner.Key{event.AttemptID}, []string{"DriverId", "RetailerId"})
+	if err != nil {
+		slog.Error("notification_dispatcher.lookup", "event", "SHOP_CLOSED_RESOLVED", "attempt_id", event.AttemptID, "err", err)
+		return
+	}
+	var driverID, retailerID spanner.NullString
+	if err := row.Columns(&driverID, &retailerID); err != nil {
+		return
+	}
+
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	body := fmt.Sprintf("Shop-closed case for order %s resolved as %s.", orderRef, event.Resolution)
+	if driverID.Valid {
+		dispatchToRecipient(deps, driverID.StringVal, "DRIVER", EventShopClosedResolved,
+			notifications.FormattedNotification{Title: "Shop-Closed Resolved", Body: body})
+	}
+	if retailerID.Valid {
+		dispatchToRecipient(deps, retailerID.StringVal, "RETAILER", EventShopClosedResolved,
+			notifications.FormattedNotification{Title: "Shop-Closed Resolved", Body: body})
+	}
+}
+
+func handleTransferStateChanged(deps NotificationDeps, data []byte) {
+	var event struct {
+		TransferID string `json:"transfer_id"`
+		SupplierID string `json:"supplier_id"`
+		FromState  string `json:"from_state"`
+		ToState    string `json:"to_state"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "TRANSFER_STATE_CHANGED", "err", err)
+		return
+	}
+	if event.SupplierID == "" || event.TransferID == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventTransferStateChanged,
+		notifications.FormattedNotification{
+			Title: "Transfer State Updated",
+			Body:  fmt.Sprintf("Transfer %s moved from %s to %s.", event.TransferID, event.FromState, event.ToState),
+		})
+}
+
+func handleTransferApproved(deps NotificationDeps, data []byte) {
+	var event struct {
+		TransferID string  `json:"transfer_id"`
+		SupplierID string  `json:"supplier_id"`
+		VolumeVU   float64 `json:"volume_vu"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "TRANSFER_APPROVED", "err", err)
+		return
+	}
+	if event.SupplierID == "" || event.TransferID == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventTransferApproved,
+		notifications.FormattedNotification{
+			Title: "Transfer Approved",
+			Body:  fmt.Sprintf("Transfer %s approved for %.1f VU.", event.TransferID, event.VolumeVU),
+		})
+}
+
+func handleTransferReceived(deps NotificationDeps, data []byte) {
+	var event struct {
+		TransferID string `json:"transfer_id"`
+		SupplierID string `json:"supplier_id"`
+		ItemsCount int    `json:"items_count"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "TRANSFER_RECEIVED", "err", err)
+		return
+	}
+	if event.SupplierID == "" || event.TransferID == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventTransferReceived,
+		notifications.FormattedNotification{
+			Title: "Transfer Received",
+			Body:  fmt.Sprintf("Transfer %s received with %d items reconciled.", event.TransferID, event.ItemsCount),
+		})
+}
+
+func handleTransferUnassigned(deps NotificationDeps, data []byte) {
+	var event TransferUnassignedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "TRANSFER_UNASSIGNED", "err", err)
+		return
+	}
+	if event.SupplierID == "" || event.TransferID == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventTransferUnassigned,
+		notifications.FormattedNotification{
+			Title: "Transfer Unassigned",
+			Body:  fmt.Sprintf("Transfer %s was unassigned from manifest %s.", event.TransferID, event.ManifestID),
+		})
 }
 
 // ─── Dispatch Protocol ─────────────────────────────────────────────────────────
@@ -883,19 +1967,6 @@ func handleOrderDelayed(deps NotificationDeps, data []byte) {
 	if event.SupplierID != "" {
 		notif := notifications.FormatOrderDelayed(event.OrderID, event.Reason)
 		dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventOrderDelayed, notif)
-	}
-}
-
-func handleManifestOrderReassigned(deps NotificationDeps, data []byte) {
-	var event ManifestOrderReassignedEvent
-	if err := json.Unmarshal(data, &event); err != nil {
-		slog.Error("notification_dispatcher.unmarshal", "event", "MANIFEST_ORDER_REASSIGNED", "err", err)
-		return
-	}
-	retailerMap := notifications.LookupRetailerIDsForOrders(deps.SpannerClient, []string{event.OrderID})
-	if rid, ok := retailerMap[event.OrderID]; ok && rid != "" {
-		notif := notifications.FormatManifestOrderReassigned(event.OrderID)
-		dispatchToRecipient(deps, rid, "RETAILER", EventManifestOrderReassigned, notif)
 	}
 }
 

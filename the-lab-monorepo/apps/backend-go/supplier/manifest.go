@@ -677,12 +677,14 @@ func (s *ManifestService) HandleSealManifest() http.HandlerFunc {
 				result.totalVolume, result.maxVolume, overrideReason)
 
 			overrideID := uuid.New().String()
-			_, _ = s.Spanner.Apply(r.Context(), []*spanner.Mutation{
-				spanner.Insert("SupplierOverrides",
-					[]string{"SupplierId", "OverrideId", "OverrideType", "Timestamp", "Reason"},
-					[]interface{}{result.supplierID, overrideID, "FORCE_SEAL", spanner.CommitTimestamp,
-						fmt.Sprintf("manifest=%s volume=%.1f/%.1f reason=%s", manifestID, result.totalVolume, result.maxVolume, overrideReason)},
-				),
+			_, _ = s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite([]*spanner.Mutation{
+					spanner.Insert("SupplierOverrides",
+						[]string{"SupplierId", "OverrideId", "OverrideType", "Timestamp", "Reason"},
+						[]interface{}{result.supplierID, overrideID, "FORCE_SEAL", spanner.CommitTimestamp,
+							fmt.Sprintf("manifest=%s volume=%.1f/%.1f reason=%s", manifestID, result.totalVolume, result.maxVolume, overrideReason)},
+					),
+				})
 			})
 		}
 

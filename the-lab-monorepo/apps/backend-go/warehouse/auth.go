@@ -1,6 +1,7 @@
 package warehouse
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -200,7 +201,9 @@ func HandleWarehouseRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			[]string{"WorkerId", "SupplierId", "WarehouseId", "Name", "Phone", "PinHash", "Role", "IsActive", "CreatedAt"},
 			[]interface{}{workerId, claims.ResolveSupplierID(), req.WarehouseId, req.Name, req.Phone, string(hash), req.Role, true, spanner.CommitTimestamp},
 		)
-		if _, err := spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+		if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite([]*spanner.Mutation{m})
+		}); err != nil {
 			log.Printf("[WAREHOUSE REGISTER] spanner insert error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return

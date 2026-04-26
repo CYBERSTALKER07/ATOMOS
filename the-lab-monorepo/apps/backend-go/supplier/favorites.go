@@ -1,6 +1,7 @@
 package supplier
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -140,9 +141,11 @@ func listRetailerSuppliers(w http.ResponseWriter, r *http.Request, client *spann
 func addRetailerSupplier(w http.ResponseWriter, r *http.Request, client *spanner.Client, retailerID, supplierID string) {
 	ctx := r.Context()
 
-	_, err := client.Apply(ctx, []*spanner.Mutation{
-		spanner.InsertOrUpdate("RetailerSuppliers", []string{"RetailerId", "SupplierId", "AddedAt"},
-			[]interface{}{retailerID, supplierID, spanner.CommitTimestamp}),
+	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.InsertOrUpdate("RetailerSuppliers", []string{"RetailerId", "SupplierId", "AddedAt"},
+				[]interface{}{retailerID, supplierID, spanner.CommitTimestamp}),
+		})
 	})
 	if err != nil {
 		log.Printf("[favorites] Failed to add supplier %s for retailer %s: %v", supplierID, retailerID, err)
@@ -161,8 +164,10 @@ func addRetailerSupplier(w http.ResponseWriter, r *http.Request, client *spanner
 func removeRetailerSupplier(w http.ResponseWriter, r *http.Request, client *spanner.Client, retailerID, supplierID string) {
 	ctx := r.Context()
 
-	_, err := client.Apply(ctx, []*spanner.Mutation{
-		spanner.Delete("RetailerSuppliers", spanner.Key{retailerID, supplierID}),
+	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Delete("RetailerSuppliers", spanner.Key{retailerID, supplierID}),
+		})
 	})
 	if err != nil {
 		log.Printf("[favorites] Failed to remove supplier %s for retailer %s: %v", supplierID, retailerID, err)

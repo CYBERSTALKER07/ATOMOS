@@ -294,7 +294,9 @@ func (e *ReplenishmentEngine) analyzeWarehouse(ctx context.Context, wh warehouse
 			),
 		}
 
-		if _, err := e.Spanner.Apply(ctx, mutations); err != nil {
+		if _, err := e.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			return txn.BufferWrite(mutations)
+		}); err != nil {
 			log.Printf("[REPLENISHMENT] Failed to write insight for %s/%s: %v",
 				wh.WarehouseId, sku.SkuId, err)
 			continue

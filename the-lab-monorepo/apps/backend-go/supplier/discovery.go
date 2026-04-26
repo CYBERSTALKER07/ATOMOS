@@ -573,8 +573,10 @@ func putRetailerProfile(w http.ResponseWriter, r *http.Request, client *spanner.
 	}
 
 	ctx := r.Context()
-	_, err := client.Apply(ctx, []*spanner.Mutation{
-		spanner.Update("Retailers", cols, vals),
+	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Update("Retailers", cols, vals),
+		})
 	})
 	if err != nil {
 		log.Printf("[profile] Failed to update profile for %s: %v", retailerID, err)

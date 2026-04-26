@@ -83,7 +83,9 @@ func putSystemConfig(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	if _, err := client.Apply(ctx, mutations); err != nil {
+	if _, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite(mutations)
+	}); err != nil {
 		log.Printf("[ADMIN CONFIG] write error: %v", err)
 		http.Error(w, "Failed to save config", http.StatusInternalServerError)
 		return

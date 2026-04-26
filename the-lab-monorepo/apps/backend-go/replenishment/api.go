@@ -188,10 +188,12 @@ func HandleInsightAction(spannerClient *spanner.Client, producer *kafka.Writer) 
 		}
 
 		if action == "dismiss" {
-			_, err := spannerClient.Apply(ctx, []*spanner.Mutation{
-				spanner.Update("ReplenishmentInsights",
-					[]string{"InsightId", "Status"},
-					[]interface{}{insightID, "DISMISSED"}),
+			_, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite([]*spanner.Mutation{
+					spanner.Update("ReplenishmentInsights",
+						[]string{"InsightId", "Status"},
+						[]interface{}{insightID, "DISMISSED"}),
+				})
 			})
 			if err != nil {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)

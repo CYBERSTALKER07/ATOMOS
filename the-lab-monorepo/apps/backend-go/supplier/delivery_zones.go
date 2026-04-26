@@ -152,14 +152,16 @@ func createDeliveryZone(w http.ResponseWriter, r *http.Request, client *spanner.
 		whID = spanner.NullString{StringVal: req.WarehouseId, Valid: true}
 	}
 
-	_, err := client.Apply(r.Context(), []*spanner.Mutation{
-		spanner.Insert("DeliveryZones",
-			[]string{"ZoneId", "SupplierId", "WarehouseId", "ZoneName",
-				"MinDistanceKm", "MaxDistanceKm", "FeeMinor", "Priority",
-				"IsActive", "CreatedAt", "UpdatedAt"},
-			[]interface{}{zoneID, supplierID, whID, req.ZoneName,
-				req.MinDistanceKm, req.MaxDistanceKm, req.FeeMinor, req.Priority,
-				true, spanner.CommitTimestamp, spanner.CommitTimestamp}),
+	_, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Insert("DeliveryZones",
+				[]string{"ZoneId", "SupplierId", "WarehouseId", "ZoneName",
+					"MinDistanceKm", "MaxDistanceKm", "FeeMinor", "Priority",
+					"IsActive", "CreatedAt", "UpdatedAt"},
+				[]interface{}{zoneID, supplierID, whID, req.ZoneName,
+					req.MinDistanceKm, req.MaxDistanceKm, req.FeeMinor, req.Priority,
+					true, spanner.CommitTimestamp, spanner.CommitTimestamp}),
+		})
 	})
 	if err != nil {
 		log.Printf("[ZONES] create error: %v", err)
@@ -229,11 +231,13 @@ func updateDeliveryZone(w http.ResponseWriter, r *http.Request, client *spanner.
 	json.NewEncoder(w).Encode(map[string]string{"message": "Zone updated"})
 }
 
-func deactivateDeliveryZone(w http.ResponseWriter, _ *http.Request, client *spanner.Client, supplierID, zoneID string) {
-	_, err := client.Apply(context.Background(), []*spanner.Mutation{
-		spanner.Update("DeliveryZones",
-			[]string{"SupplierId", "ZoneId", "IsActive", "UpdatedAt"},
-			[]interface{}{supplierID, zoneID, false, spanner.CommitTimestamp}),
+func deactivateDeliveryZone(w http.ResponseWriter, r *http.Request, client *spanner.Client, supplierID, zoneID string) {
+	_, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Update("DeliveryZones",
+				[]string{"SupplierId", "ZoneId", "IsActive", "UpdatedAt"},
+				[]interface{}{supplierID, zoneID, false, spanner.CommitTimestamp}),
+		})
 	})
 	if err != nil {
 		log.Printf("[ZONES] deactivate error: %v", err)

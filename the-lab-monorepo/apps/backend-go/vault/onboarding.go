@@ -79,11 +79,13 @@ func (s *Service) CreateOnboardingSession(ctx context.Context, supplierID, gatew
 	now := time.Now()
 	expiresAt := now.Add(onboardingSessionTTL)
 
-	_, err = s.Spanner.Apply(ctx, []*spanner.Mutation{
-		spanner.Insert("GatewayOnboardingSessions",
-			[]string{"SessionId", "SupplierId", "Gateway", "Status", "StateNonce", "ReturnSurface", "ExpiresAt", "CreatedAt", "UpdatedAt"},
-			[]interface{}{sessionID, supplierID, gateway, string(OnboardingCreated), nonce, returnSurface, expiresAt, spanner.CommitTimestamp, spanner.CommitTimestamp},
-		),
+	_, err = s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Insert("GatewayOnboardingSessions",
+				[]string{"SessionId", "SupplierId", "Gateway", "Status", "StateNonce", "ReturnSurface", "ExpiresAt", "CreatedAt", "UpdatedAt"},
+				[]interface{}{sessionID, supplierID, gateway, string(OnboardingCreated), nonce, returnSurface, expiresAt, spanner.CommitTimestamp, spanner.CommitTimestamp},
+			),
+		})
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create onboarding session: %w", err)
