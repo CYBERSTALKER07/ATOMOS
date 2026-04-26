@@ -172,6 +172,10 @@ def parse_event_constants(events_file: Path, root: Path) -> dict[str, dict[str, 
 def classify_event_reference(line: str, context_window: str) -> str:
     if re.search(r"\bcase\s+Event[A-Za-z0-9_]+\b", line):
         return "consumer"
+    if re.search(r"\b\w+\s*(?:==|!=)\s*Event[A-Za-z0-9_]+\b", line):
+        return "consumer"
+    if re.search(r"\bEvent[A-Za-z0-9_]+\s*(?:==|!=)\s*\w+\b", line):
+        return "consumer"
 
     combined = f"{context_window}\n{line}" if context_window else line
 

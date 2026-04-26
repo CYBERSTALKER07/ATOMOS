@@ -170,6 +170,8 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handleManifestOrderInjected(deps, m.Value)
 			case EventManifestForceSeal:
 				handleManifestForceSeal(deps, m.Value)
+			case EventManifestDLQEscalation:
+				handleManifestDLQEscalation(deps, m.Value)
 			case EventManifestCancelled:
 				handleManifestCancelled(deps, m.Value)
 			case EventManifestDispatched:
@@ -190,6 +192,8 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handlePayloadOverflow(deps, m.Value)
 			case EventRouteCreated:
 				handleRouteCreated(deps, m.Value)
+			case EventFactoryManifestCreated:
+				handleFactoryManifestCreated(deps, m.Value)
 			case EventOrderAssigned:
 				handleOrderAssigned(deps, m.Value)
 			case EventRouteFinalized:
@@ -216,6 +220,10 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handleNetworkModeChanged(deps, m.Value)
 			case EventPullMatrixCompleted:
 				handlePullMatrixCompleted(deps, m.Value)
+			case EventReplenishmentTransferCreated:
+				handleReplenishmentTransferCreated(deps, m.Value)
+			case EventInsightApprovedTransferCreated:
+				handleInsightApprovedTransferCreated(deps, m.Value)
 			}
 			return nil
 		},
@@ -1127,6 +1135,23 @@ func handleManifestForceSeal(deps NotificationDeps, data []byte) {
 		})
 }
 
+func handleManifestDLQEscalation(deps NotificationDeps, data []byte) {
+	var event ManifestOrderExceptionEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "MANIFEST_DLQ_ESCALATION", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	orderRef := event.OrderID[:min(8, len(event.OrderID))]
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventManifestDLQEscalation,
+		notifications.FormattedNotification{
+			Title: "Manifest DLQ Escalation",
+			Body:  fmt.Sprintf("Order %s on manifest %s exceeded retry threshold and requires intervention.", orderRef, event.ManifestID),
+		})
+}
+
 func handleRouteCreated(deps NotificationDeps, data []byte) {
 	var event RouteCreatedEvent
 	if err := json.Unmarshal(data, &event); err != nil {
@@ -1147,6 +1172,22 @@ func handleRouteCreated(deps NotificationDeps, data []byte) {
 				Body:  fmt.Sprintf("Route %s is ready with %d planned stops.", event.RouteID, event.StopCount),
 			})
 	}
+}
+
+func handleFactoryManifestCreated(deps NotificationDeps, data []byte) {
+	var event RouteCreatedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "FACTORY_MANIFEST_CREATED", "err", err)
+		return
+	}
+	if event.SupplierID == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventFactoryManifestCreated,
+		notifications.FormattedNotification{
+			Title: "Factory Manifest Created",
+			Body:  fmt.Sprintf("Factory manifest %s created with %d convoy stops.", event.RouteID, event.StopCount),
+		})
 }
 
 func handleOrderAssigned(deps NotificationDeps, data []byte) {
@@ -1291,6 +1332,64 @@ func handlePullMatrixCompleted(deps NotificationDeps, data []byte) {
 		notifications.FormattedNotification{
 			Title: "Pull Matrix Completed",
 			Body:  fmt.Sprintf("Run %s generated %d transfers across %d SKUs.", event.RunId, event.TransfersGenerated, event.SKUsProcessed),
+		})
+}
+
+func handleReplenishmentTransferCreated(deps NotificationDeps, data []byte) {
+	var event struct {
+		TransferID  string `json:"transfer_id"`
+		SupplierID  string `json:"supplier_id"`
+		WarehouseID string `json:"warehouse_id"`
+		Source      string `json:"source"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "REPLENISHMENT_TRANSFER_CREATED", "err", err)
+		return
+	}
+	if event.SupplierID == "" || event.TransferID == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventReplenishmentTransferCreated,
+		notifications.FormattedNotification{
+			Title: "Replenishment Transfer Created",
+			Body:  fmt.Sprintf("Transfer %s created for warehouse %s (%s).", event.TransferID, event.WarehouseID, event.Source),
+		})
+}
+
+func handleInsightApprovedTransferCreated(deps NotificationDeps, data []byte) {
+	var event struct {
+		InsightID   string `json:"insight_id"`
+		TransferID  string `json:"transfer_id"`
+		WarehouseID string `json:"warehouse_id"`
+		SupplierID  string `json:"supplier_id"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "INSIGHT_APPROVED_TRANSFER_CREATED", "err", err)
+		return
+	}
+	if event.TransferID == "" {
+		return
+	}
+
+	supplierID := event.SupplierID
+	if supplierID == "" {
+		ctx := context.Background()
+		row, err := deps.SpannerClient.Single().ReadRow(ctx, "InternalTransferOrders", spanner.Key{event.TransferID}, []string{"SupplierId"})
+		if err == nil {
+			var sid spanner.NullString
+			if row.Columns(&sid) == nil && sid.Valid {
+				supplierID = sid.StringVal
+			}
+		}
+	}
+	if supplierID == "" {
+		return
+	}
+
+	dispatchToRecipient(deps, supplierID, "SUPPLIER", EventInsightApprovedTransferCreated,
+		notifications.FormattedNotification{
+			Title: "Insight Transfer Created",
+			Body:  fmt.Sprintf("Insight %s created transfer %s for warehouse %s.", event.InsightID, event.TransferID, event.WarehouseID),
 		})
 }
 
