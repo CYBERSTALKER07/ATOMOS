@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/cache"
 	"backend-go/spannerx"
 
 	"cloud.google.com/go/spanner"
@@ -30,13 +31,14 @@ type InventoryItem struct {
 }
 
 // HandleOpsInventory — GET/PATCH for /v1/warehouse/ops/inventory
-func HandleOpsInventory(spannerClient *spanner.Client) http.HandlerFunc {
+
+func HandleOpsInventory(spannerClient *spanner.Client, rc *cache.Cache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			listOpsInventory(w, r, spannerClient)
 		case http.MethodPatch:
-			adjustOpsInventory(w, r, spannerClient)
+			adjustOpsInventory(w, r, spannerClient, rc)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
@@ -106,7 +108,7 @@ func listOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.Cl
 	json.NewEncoder(w).Encode(map[string]interface{}{"inventory": items, "total": len(items)})
 }
 
-func adjustOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.Client) {
+func adjustOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.Client, rc *cache.Cache) {
 	ops := auth.GetWarehouseOps(r.Context())
 	if ops == nil {
 		http.Error(w, "Warehouse scope required", http.StatusForbidden)
@@ -151,6 +153,10 @@ func adjustOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.
 		log.Printf("[WH INVENTORY] upsert error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
+	}
+
+	if rc != nil {
+		rc.Invalidate(r.Context(), cache.WarehouseGeoMember(ops.WarehouseID), cache.PrefixWarehouseDetail+ops.WarehouseID)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

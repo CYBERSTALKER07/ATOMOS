@@ -100,7 +100,7 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 
 	// ── 4. Payment + vault services ───────────────────────────────────────
 	vaultSvc := &vault.Service{Spanner: spannerClient}
-	sessionSvc := &payment.SessionService{Spanner: spannerClient}
+	sessionSvc := &payment.SessionService{Spanner: spannerClient, Cache: c}
 	cardTokenSvc := &payment.CardTokenService{Spanner: spannerClient}
 	cardsClient := payment.NewGlobalPayCardsClient()   // nil when GLOBAL_PAY_GATEWAY_BASE_URL unset
 	directClient := payment.NewGlobalPayDirectClient() // nil when GLOBAL_PAY_GATEWAY_BASE_URL unset

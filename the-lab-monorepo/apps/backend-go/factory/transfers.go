@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/cache"
 	internalKafka "backend-go/kafka"
 	"backend-go/outbox"
 	"backend-go/telemetry"
@@ -71,6 +72,7 @@ type TransferItemDetail struct {
 // TransferService holds dependencies for transfer endpoints.
 type TransferService struct {
 	Spanner  *spanner.Client
+	Cache    *cache.Cache
 	Producer *kafka.Writer
 }
 
@@ -251,6 +253,8 @@ func (s *TransferService) HandleTransferTransition(w http.ResponseWriter, r *htt
 		return
 	}
 
+	var supplierID, warehouseID string
+
 	err := func() error {
 		_, txErr := s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			row, readErr := txn.ReadRow(ctx, "InternalTransferOrders",
@@ -259,7 +263,7 @@ func (s *TransferService) HandleTransferTransition(w http.ResponseWriter, r *htt
 				return readErr
 			}
 
-			var currentState, rowFactoryID, supplierID, warehouseID string
+			var currentState, rowFactoryID string
 			if colErr := row.Columns(&currentState, &rowFactoryID, &supplierID, &warehouseID); colErr != nil {
 				return colErr
 			}
@@ -308,6 +312,13 @@ func (s *TransferService) HandleTransferTransition(w http.ResponseWriter, r *htt
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 		return
+	}
+
+	if s.Cache != nil {
+		s.Cache.Invalidate(r.Context(),
+			cache.PrefixFactoryProfile+factoryID,
+			cache.PrefixWarehouseDetail+warehouseID,
+		)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -455,6 +466,13 @@ func (s *TransferService) HandleApproveTransfer(w http.ResponseWriter, r *http.R
 		log.Printf("[TRANSFERS] approve outbox emit failed for %s: %v", transferID, emitErr)
 	}
 
+	if s.Cache != nil {
+		s.Cache.Invalidate(ctx,
+			cache.PrefixFactoryProfile+factoryID,
+			cache.PrefixWarehouseDetail+warehouseID,
+		)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"transfer_id":  transferID,
@@ -571,6 +589,13 @@ func (s *TransferService) HandleWarehouseReceiveTransfer(w http.ResponseWriter, 
 		log.Printf("[TRANSFERS] receive error: %v", err)
 		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusConflict)
 		return
+	}
+
+	if s.Cache != nil {
+		s.Cache.Invalidate(r.Context(),
+			cache.PrefixFactoryProfile+factoryID,
+			cache.PrefixWarehouseDetail+whID,
+		)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -37,6 +37,9 @@ const (
 	PrefixDeliveryToken = "delivery_token:" // STRING: delivery_token:<orderId>
 	PrefixActiveOrders  = "active_orders:"  // STRING (cached): active_orders:<retailerId>
 	PrefixEarlyComplete = "early_complete:" // STRING (JSON): early_complete:<driverId>
+	PrefixManifestDetail  = "manifest_detail:"
+	PrefixManifestOrders  = "manifest_orders:"
+
 	PrefixPowerOutage   = "power_outage:"   // STRING (flag): power_outage:<orderId>
 
 	// ── Idempotency ────────────────────────────────────────────────────────

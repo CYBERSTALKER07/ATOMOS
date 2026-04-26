@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/cache"
 	kafkaEvents "backend-go/kafka"
 	"backend-go/outbox"
 	"backend-go/routing"
@@ -38,7 +39,9 @@ const DLQThreshold = 3
 // ── Manifest Service ────────────────────────────────────────────────────────
 
 type ManifestService struct {
-	Spanner       *spanner.Client
+	Spanner *spanner.Client
+	Cache   *cache.Cache
+
 	MapsAPIKey    string // Google Maps Directions API key for JIT route optimization at seal
 	DepotLocation string // fallback "lat,lng" when warehouse depot is unresolved
 }
@@ -264,6 +267,13 @@ func (s *ManifestService) HandleStartLoading() http.HandlerFunc {
 			return
 		}
 
+		if s.Cache != nil {
+			s.Cache.Invalidate(r.Context(),
+				cache.PrefixManifestDetail+manifestID,
+				cache.PrefixManifestOrders+manifestID,
+			)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
 			"manifest_id": manifestID,
@@ -395,6 +405,13 @@ func (s *ManifestService) HandleInjectOrder() http.HandlerFunc {
 			log.Printf("[LEO] inject-order error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
+		}
+
+		if s.Cache != nil {
+			s.Cache.Invalidate(r.Context(),
+				cache.PrefixManifestDetail+manifestID,
+				cache.PrefixManifestOrders+manifestID,
+			)
 		}
 
 		log.Printf("[LEO] INJECTED order %s into manifest %s: %.1f VU, %d stops",
@@ -691,6 +708,13 @@ func (s *ManifestService) HandleSealManifest() http.HandlerFunc {
 		// MANIFEST_SEALED is now emitted via outbox INSIDE the seal txn above
 		// (atomic with the state mutation). No post-commit emission needed.
 		_ = now
+
+		if s.Cache != nil {
+			s.Cache.Invalidate(r.Context(),
+				cache.PrefixManifestDetail+manifestID,
+				cache.PrefixManifestOrders+manifestID,
+			)
+		}
 
 		// ── Phase A: JIT Route Optimization at Seal Time ────────────────
 		// Fetch DISPATCHED orders for this driver and trigger route recalculation.

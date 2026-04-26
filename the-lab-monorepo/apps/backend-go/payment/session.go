@@ -15,6 +15,8 @@ import (
 	"log"
 	"time"
 
+	"backend-go/cache"
+
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 )
@@ -102,10 +104,11 @@ type CreateSessionRequest struct {
 // SessionService manages payment session lifecycle in Spanner.
 type SessionService struct {
 	Spanner *spanner.Client
+	Cache   *cache.Cache
 }
 
-func NewSessionService(client *spanner.Client) *SessionService {
-	return &SessionService{Spanner: client}
+func NewSessionService(client *spanner.Client, rc *cache.Cache) *SessionService {
+	return &SessionService{Spanner: client, Cache: rc}
 }
 
 // ─── Create Session ──────────────────────────────────────────────────────────
@@ -172,6 +175,10 @@ func (s *SessionService) CreateSession(ctx context.Context, req CreateSessionReq
 		return nil, err
 	}
 
+	if s.Cache != nil {
+		s.Cache.Invalidate(ctx, "session:"+sessionID, "order:"+req.OrderID, "active_orders:"+req.RetailerID)
+	}
+
 	log.Printf("[PAYMENT_SESSION] Created session %s for order %s (%s, %d)",
 		sessionID, req.OrderID, req.Gateway, req.Amount)
 	return session, nil
@@ -233,6 +240,10 @@ func (s *SessionService) CreateAttempt(ctx context.Context, sessionID, gateway s
 		return nil, err
 	}
 
+	if s.Cache != nil {
+		s.Cache.Invalidate(ctx, "session:"+sessionID, "attempt:"+attemptID)
+	}
+
 	log.Printf("[PAYMENT_SESSION] Created attempt %s (#%d) for session %s",
 		attemptID, attempt.AttemptNo, sessionID)
 	return &attempt, nil
@@ -252,6 +263,11 @@ func (s *SessionService) BindProviderCheckout(ctx context.Context, sessionID, ga
 	if err != nil {
 		return fmt.Errorf("bind provider checkout failed for session %s: %w", sessionID, err)
 	}
+
+	if s.Cache != nil {
+		s.Cache.Invalidate(ctx, "session:"+sessionID)
+	}
+
 	return nil
 }
 
@@ -329,6 +345,11 @@ func (s *SessionService) SettleSession(ctx context.Context, sessionID string, pr
 		return err
 	}
 
+	if s.Cache != nil {
+		// we don't have orderID outside unfortunately, so we just invalidate session
+		s.Cache.Invalidate(ctx, "session:"+sessionID)
+	}
+
 	log.Printf("[PAYMENT_SESSION] Session %s settled (providerTxn=%s)", sessionID, providerTxnID)
 	return nil
 }
@@ -401,6 +422,11 @@ func (s *SessionService) FailSession(ctx context.Context, sessionID, errorCode, 
 
 		return nil
 	})
+
+	if err == nil && s.Cache != nil {
+		s.Cache.Invalidate(ctx, "session:"+sessionID)
+	}
+
 	return err
 }
 
@@ -475,6 +501,10 @@ func (s *SessionService) ExpireSession(ctx context.Context, sessionID string) er
 
 	if err != nil {
 		return err
+	}
+
+	if s.Cache != nil {
+		s.Cache.Invalidate(ctx, "session:"+sessionID)
 	}
 
 	log.Printf("[PAYMENT_SESSION] Session %s expired", sessionID)
@@ -877,6 +907,11 @@ func (s *SessionService) PartialSettleSession(ctx context.Context, sessionID str
 
 		return nil
 	})
+
+	if err == nil && s.Cache != nil {
+		s.Cache.Invalidate(ctx, "session:"+sessionID)
+	}
+
 	return err
 }
 
@@ -965,6 +1000,11 @@ func (s *SessionService) RetryPaymentSession(ctx context.Context, orderID string
 	if err != nil {
 		return nil, err
 	}
+
+	if s.Cache != nil {
+		s.Cache.Invalidate(ctx, "session:"+newSession.SessionID, "order:"+orderID)
+	}
+
 	return newSession, nil
 }
 

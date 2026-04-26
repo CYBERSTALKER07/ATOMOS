@@ -316,6 +316,7 @@ func main() {
 
 	manifestSvc := &supplier.ManifestService{
 		Spanner:       spannerClient,
+		Cache:         app.Cache,
 		MapsAPIKey:    cfg.GoogleMapsAPIKey,
 		DepotLocation: cfg.DepotLocation,
 	}
@@ -3973,7 +3974,7 @@ func main() {
 	// ══════════════════════════════════════════════════════════════════════════════
 
 	// Factory Transfer Services (need Kafka producer)
-	transferSvc := &factory.TransferService{Spanner: spannerClient, Producer: svc.Producer}
+	transferSvc := &factory.TransferService{Spanner: spannerClient, Cache: app.Cache, Producer: svc.Producer}
 	emergencySvc := &factory.EmergencyTransferService{Spanner: spannerClient, Producer: svc.Producer}
 
 	// /v1/auth/factory/{login,register} → authroutes package.
@@ -4117,6 +4118,7 @@ func main() {
 		Optimizer:       app.OptimizerClient,
 		DispatchCounts:  app.DispatchOptimizer,
 		Log:             loggingMiddleware,
+		Cache:           app.Cache,
 	})
 
 	// ── Spatial Recommendation (Territory Voronoi + Apply) ────────────────────

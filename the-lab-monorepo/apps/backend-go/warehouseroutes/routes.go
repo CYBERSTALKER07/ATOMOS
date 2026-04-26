@@ -36,6 +36,7 @@ import (
 	"cloud.google.com/go/spanner"
 
 	"backend-go/auth"
+	"backend-go/cache"
 	"backend-go/dispatch/optimizerclient"
 	"backend-go/dispatch/plan"
 	"backend-go/factory"
@@ -68,6 +69,7 @@ type Deps struct {
 	Optimizer       *optimizerclient.Client
 	DispatchCounts  *plan.SourceCounters
 	Log             Middleware
+	Cache           *cache.Cache
 }
 
 // RegisterRoutes mounts the twenty-eight warehouse endpoints:
@@ -166,7 +168,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	http.HandleFunc("/v1/warehouse/ops/orders/", whOps(warehouse.HandleOpsOrderDetail(d.Spanner, d.ReadRouter)))
 
 	r.HandleFunc("/v1/warehouse/ops/dispatch/preview", whOps(warehouse.HandleOpsDispatchPreview(d.Spanner, d.Optimizer, d.DispatchCounts)))
-	r.HandleFunc("/v1/warehouse/ops/inventory", whOps(warehouse.HandleOpsInventory(d.Spanner)))
+	r.HandleFunc("/v1/warehouse/ops/inventory", whOps(warehouse.HandleOpsInventory(d.Spanner, d.Cache)))
 	r.HandleFunc("/v1/warehouse/ops/products", whOps(warehouse.HandleOpsProducts(d.Spanner)))
 	r.HandleFunc("/v1/warehouse/ops/manifests", whOps(warehouse.HandleOpsManifests(d.Spanner)))
 	r.HandleFunc("/v1/warehouse/ops/analytics", whOps(warehouse.HandleOpsAnalytics(d.Spanner)))

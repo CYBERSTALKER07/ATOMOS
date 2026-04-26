@@ -73,7 +73,6 @@ type SplittingGateway interface {
 	Void(authorizationID string) error
 }
 
-
 // GlobalPayClient handles full-capture charges and partial refunds via the GlobalPay
 // merchant API. All credentials are loaded from environment variables — never
 // hardcoded.
@@ -83,9 +82,6 @@ type SplittingGateway interface {
 //	GLOBAL_PAY_MERCHANT_ID  — your GlobalPay merchant ID
 //	GLOBAL_PAY_SECRET_KEY   — your GlobalPay secret key (test or prod)
 //	GLOBAL_PAY_API_URL      — defaults to https://checkout.paycom.uz/api
-
-
-
 
 type global_payRequest struct {
 	Method string                 `json:"method"`
@@ -100,14 +96,9 @@ type global_payResponse struct {
 	} `json:"error"`
 }
 
-
-
 // Charge executes a FULL CAPTURE for the given order.
 
-
 // Refund issues a PARTIAL refund for rejected/damaged line items.
-
-
 
 // CashClient handles full-capture charges and partial refunds via Cash Up's
 // merchant API.
@@ -119,9 +110,6 @@ type global_payResponse struct {
 //	CASH_SECRET_KEY    — your Cash secret key
 //	CASH_API_URL       — defaults to https://api.cash.uz/v2/merchant
 
-
-
-
 type cashInvoiceRequest struct {
 	ServiceID   string `json:"service_id"`
 	OrderID     string `json:"merchant_trans_id"`
@@ -131,9 +119,7 @@ type cashInvoiceRequest struct {
 
 // Charge issues a full invoice/capture via Cash Up.
 
-
 // Refund issues a partial refund for rejected line items via Cash.
-
 
 // ─── FACTORY ─────────────────────────────────────────────────────────────────
 
@@ -183,9 +169,7 @@ func CheckoutURL(gateway string, orderID string, amount int64) (string, error) {
 // global_payCheckoutURL builds the GlobalPay checkout redirect URL.
 // Format: https://checkout.paycom.uz/<base64(m=MERCHANT_ID;ac.order_id=ORDER_ID;a=AMOUNT_TIYINS)>
 
-
 // cashCheckoutURL builds the Cash checkout redirect URL.
-
 
 // globalPayCheckoutURL expands a hosted-checkout URL template.
 // The template is supplied by GLOBAL_PAY_CHECKOUT_URL and may include
@@ -347,7 +331,3 @@ func CheckoutURLWithCredentials(gateway, orderID string, amount int64, merchantI
 		return "", nil
 	}
 }
-
-
-
-
