@@ -13,7 +13,7 @@
 
 resource "google_compute_global_address" "void_frontend" {
   name         = "void-frontend-ip"
-  project      = var.project_id
+  project      = local.project_id
   address_type = "EXTERNAL"
   ip_version   = "IPV4"
   description  = "Anycast IP for the V.O.I.D. Global Load Balancer."
@@ -23,7 +23,7 @@ resource "google_compute_global_address" "void_frontend" {
 
 resource "google_compute_security_policy" "void_armor" {
   name        = "void-armor"
-  project     = var.project_id
+  project     = local.project_id
   description = "Cloud Armor WAF + DDoS + rate limiting for V.O.I.D. backend."
 
   # ── Rule 1000: throttle individual IPs to 1000 req/min ──────────────────
@@ -119,7 +119,7 @@ resource "google_compute_security_policy" "void_armor" {
 
 resource "google_compute_backend_service" "void_backend" {
   name                  = "void-backend"
-  project               = var.project_id
+  project               = local.project_id
   protocol              = "HTTP2"
   port_name             = "http"
   timeout_sec           = 30
@@ -177,7 +177,7 @@ resource "google_compute_backend_service" "void_backend" {
 
 resource "google_compute_health_check" "void_http" {
   name    = "void-http-hc"
-  project = var.project_id
+  project = local.project_id
 
   http_health_check {
     request_path = "/healthz"
@@ -194,7 +194,7 @@ resource "google_compute_health_check" "void_http" {
 
 resource "google_compute_url_map" "void_http_redirect" {
   name    = "void-http-redirect"
-  project = var.project_id
+  project = local.project_id
 
   default_url_redirect {
     https_redirect         = true
@@ -205,13 +205,13 @@ resource "google_compute_url_map" "void_http_redirect" {
 
 resource "google_compute_target_http_proxy" "void_redirect" {
   name    = "void-http-redirect-proxy"
-  project = var.project_id
+  project = local.project_id
   url_map = google_compute_url_map.void_http_redirect.id
 }
 
 resource "google_compute_global_forwarding_rule" "void_http" {
   name                  = "void-http-fwd"
-  project               = var.project_id
+  project               = local.project_id
   target                = google_compute_target_http_proxy.void_redirect.id
   ip_address            = google_compute_global_address.void_frontend.address
   port_range            = "80"
@@ -220,7 +220,7 @@ resource "google_compute_global_forwarding_rule" "void_http" {
 
 resource "google_compute_url_map" "void_https" {
   name    = "void-https"
-  project = var.project_id
+  project = local.project_id
 
   default_service = google_compute_backend_service.void_backend.id
 
@@ -244,7 +244,7 @@ resource "google_compute_url_map" "void_https" {
 
 resource "google_compute_managed_ssl_certificate" "void_cert" {
   name    = "void-managed-cert"
-  project = var.project_id
+  project = local.project_id
 
   managed {
     domains = [var.backend_hostname]
@@ -253,27 +253,45 @@ resource "google_compute_managed_ssl_certificate" "void_cert" {
 
 resource "google_compute_target_https_proxy" "void_https" {
   name             = "void-https-proxy"
-  project          = var.project_id
+  project          = local.project_id
   url_map          = google_compute_url_map.void_https.id
   ssl_certificates = [google_compute_managed_ssl_certificate.void_cert.id]
 }
 
 resource "google_compute_global_forwarding_rule" "void_https" {
   name                  = "void-https-fwd"
-  project               = var.project_id
+  project               = local.project_id
   target                = google_compute_target_https_proxy.void_https.id
   ip_address            = google_compute_global_address.void_frontend.address
   port_range            = "443"
   load_balancing_scheme = "EXTERNAL_MANAGED"
 }
 
-# ── 5. Private Service Connect — Spanner ──────────────────────────────────
+# ── 5. Cloud DNS — backend hostname on the global anycast IP ───────────────
+
+resource "google_dns_managed_zone" "void_public_zone" {
+  name        = var.dns_zone_name
+  project     = local.project_id
+  dns_name    = var.dns_zone_dns_name
+  description = "Public DNS zone for V.O.I.D. platform ingress hostnames."
+}
+
+resource "google_dns_record_set" "void_backend_a" {
+  name         = "${trimsuffix(var.backend_hostname, ".")}."
+  project      = local.project_id
+  managed_zone = google_dns_managed_zone.void_public_zone.name
+  type         = "A"
+  ttl          = 300
+  rrdatas      = [google_compute_global_address.void_frontend.address]
+}
+
+# ── 6. Private Service Connect — Spanner ──────────────────────────────────
 # Routes Spanner API calls from GKE pods through VPC-internal PSC endpoints
 # so no Spanner traffic traverses the public internet.
 
 resource "google_compute_global_address" "spanner_psc" {
   name          = "void-spanner-psc"
-  project       = var.project_id
+  project       = local.project_id
   purpose       = "PRIVATE_SERVICE_CONNECT"
   network       = var.vpc_network
   address_type  = "INTERNAL"
@@ -283,26 +301,26 @@ resource "google_compute_global_address" "spanner_psc" {
 
 resource "google_compute_global_forwarding_rule" "spanner_psc" {
   name                  = "void-spanner-psc-fwd"
-  project               = var.project_id
+  project               = local.project_id
   target                = "all-apis"
   ip_address            = google_compute_global_address.spanner_psc.id
   network               = var.vpc_network
   load_balancing_scheme = ""
 }
 
-# ── 6. Cloud NAT — controlled egress for GKE nodes ────────────────────────
+# ── 7. Cloud NAT — controlled egress for GKE nodes ────────────────────────
 
 resource "google_compute_router" "void_nat_router" {
   name    = "void-nat-router"
-  project = var.project_id
-  region  = var.region
+  project = local.project_id
+  region  = local.region
   network = var.vpc_network
 }
 
 resource "google_compute_router_nat" "void_nat" {
   name                               = "void-nat"
-  project                            = var.project_id
-  region                             = var.region
+  project                            = local.project_id
+  region                             = local.region
   router                             = google_compute_router.void_nat_router.name
   nat_ip_allocate_option             = "AUTO_ONLY"
   source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
@@ -319,4 +337,16 @@ variable "vpc_network" {
   type        = string
   description = "Self-link or name of the VPC network."
   default     = "default"
+}
+
+variable "dns_zone_name" {
+  type        = string
+  description = "Cloud DNS managed zone resource name for public ingress records."
+  default     = "void-public-zone"
+}
+
+variable "dns_zone_dns_name" {
+  type        = string
+  description = "Cloud DNS zone suffix (must end with a dot), e.g. void.thelab.uz."
+  default     = "void.thelab.uz."
 }

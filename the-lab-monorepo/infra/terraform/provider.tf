@@ -25,8 +25,13 @@ terraform {
 }
 
 provider "google" {
-  project = var.gcp_project_id
-  region  = "asia-south1"
+  project = local.project_id
+  region  = local.region
+}
+
+locals {
+  project_id = trimspace(var.project_id) != "" ? var.project_id : var.gcp_project_id
+  region     = trimspace(var.region) != "" ? var.region : "asia-south1"
 }
 
 # Helm and kubernetes providers share the same GKE credentials so both blocks
@@ -41,4 +46,16 @@ provider "kubernetes" {
 variable "gcp_project_id" {
   type        = string
   description = "The Google Cloud Project ID for The Lab Industries"
+}
+
+variable "project_id" {
+  type        = string
+  description = "Optional alias of gcp_project_id for modules that still reference project_id."
+  default     = ""
+}
+
+variable "region" {
+  type        = string
+  description = "Primary region used by networking and observability resources."
+  default     = "asia-south1"
 }

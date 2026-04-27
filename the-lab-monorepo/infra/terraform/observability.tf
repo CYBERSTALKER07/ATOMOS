@@ -13,8 +13,8 @@
 # ── Prometheus / Managed Grafana workspace ─────────────────────────────────
 
 resource "google_monitoring_monitored_project" "void" {
-  metrics_scope = "locations/global/metricsScopes/${var.project_id}"
-  name          = "locations/global/metricsScopes/${var.project_id}/projects/${var.project_id}"
+  metrics_scope = "locations/global/metricsScopes/${local.project_id}"
+  name          = "locations/global/metricsScopes/${local.project_id}/projects/${local.project_id}"
 }
 
 # ── Kafka consumer lag alert ───────────────────────────────────────────────
@@ -180,7 +180,7 @@ resource "google_monitoring_uptime_check_config" "backend_health" {
   monitored_resource {
     type = "uptime_url"
     labels = {
-      project_id = var.project_id
+      project_id = local.project_id
       host       = var.backend_hostname
     }
   }
@@ -200,8 +200,8 @@ resource "google_monitoring_uptime_check_config" "ai_worker_grpc" {
   monitored_resource {
     type = "k8s_pod"
     labels = {
-      project_id     = var.project_id
-      location       = var.region
+      project_id     = local.project_id
+      location       = local.region
       cluster_name   = var.gke_cluster_name
       namespace_name = "void"
       pod_name       = "ai-worker"

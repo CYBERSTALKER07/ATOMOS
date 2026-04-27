@@ -41,7 +41,7 @@ export default function PayloadOverridePage() {
       const res = await apiFetch('/v1/factory/manifests?state=LOADING');
       if (res.ok) {
         const data = await res.json();
-        setManifests(data.manifests || []);
+        setManifests(data.manifests || data.data || []);
       }
     } catch (e) {
       console.error('[PAYLOAD OVERRIDE]', e);
@@ -59,7 +59,7 @@ export default function PayloadOverridePage() {
       const res = await apiFetch('/v1/factory/manifests/rebalance', {
         method: 'POST',
         body: JSON.stringify({
-          transfer_id: rebalanceModal.transfer.transfer_id,
+          transfer_ids: [rebalanceModal.transfer.transfer_id],
           source_manifest_id: rebalanceModal.sourceManifest,
           target_manifest_id: targetManifestId,
         }),

@@ -25,7 +25,7 @@ variable "enable_multiregion" {
 resource "google_spanner_instance" "void_multiregion" {
   count        = var.enable_multiregion ? 1 : 0
   name         = "void-db-global"
-  project      = var.project_id
+  project      = local.project_id
   config       = "nam-eur-asia3"     # 3-continent multi-region config
   display_name = "V.O.I.D. Global Spanner (nam-eur-asia3)"
 
@@ -51,7 +51,7 @@ resource "google_spanner_database" "void_multiregion" {
   count    = var.enable_multiregion ? 1 : 0
   instance = google_spanner_instance.void_multiregion[0].name
   name     = "void-db"
-  project  = var.project_id
+  project  = local.project_id
 
   # DDL is managed via schema/ migrations; Terraform only provisions the
   # empty database. Never pass DDL statements here.
@@ -65,7 +65,7 @@ resource "google_spanner_database" "void_multiregion" {
 resource "google_container_cluster" "void_eu" {
   count    = var.enable_multiregion ? 1 : 0
   name     = "void-cluster-eu"
-  project  = var.project_id
+  project  = local.project_id
   location = "europe-west1"
 
   remove_default_node_pool = true
@@ -76,7 +76,7 @@ resource "google_container_cluster" "void_eu" {
   }
 
   workload_identity_config {
-    workload_pool = "${var.project_id}.svc.id.goog"
+    workload_pool = "${local.project_id}.svc.id.goog"
   }
 
   addons_config {
@@ -89,7 +89,7 @@ resource "google_container_cluster" "void_eu" {
 resource "google_container_node_pool" "void_eu_nodes" {
   count      = var.enable_multiregion ? 1 : 0
   name       = "void-eu-node-pool"
-  project    = var.project_id
+  project    = local.project_id
   location   = "europe-west1"
   cluster    = google_container_cluster.void_eu[0].name
   node_count = var.gke_node_count
@@ -122,7 +122,7 @@ resource "google_container_node_pool" "void_eu_nodes" {
 resource "google_container_cluster" "void_us" {
   count    = var.enable_multiregion ? 1 : 0
   name     = "void-cluster-us"
-  project  = var.project_id
+  project  = local.project_id
   location = "us-central1"
 
   remove_default_node_pool = true
@@ -133,7 +133,7 @@ resource "google_container_cluster" "void_us" {
   }
 
   workload_identity_config {
-    workload_pool = "${var.project_id}.svc.id.goog"
+    workload_pool = "${local.project_id}.svc.id.goog"
   }
 
   addons_config {
@@ -146,7 +146,7 @@ resource "google_container_cluster" "void_us" {
 resource "google_container_node_pool" "void_us_nodes" {
   count      = var.enable_multiregion ? 1 : 0
   name       = "void-us-node-pool"
-  project    = var.project_id
+  project    = local.project_id
   location   = "us-central1"
   cluster    = google_container_cluster.void_us[0].name
   node_count = var.gke_node_count
