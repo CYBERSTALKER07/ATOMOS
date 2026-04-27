@@ -306,7 +306,7 @@ func main() {
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplierPricingSvc.HandlePricingRuleAction)))
 
 	// ── Per-Retailer Pricing Overrides ──────────────────────────────────────
-	retailerPricingSvc := supplier.NewRetailerPricingService(spannerClient, app.SpannerRouter, svc.Producer)
+	retailerPricingSvc := supplier.NewRetailerPricingService(spannerClient, app.SpannerRouter, svc.Producer, app.Cache)
 	http.HandleFunc("/v1/supplier/pricing/retailer-overrides",
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(retailerPricingSvc.HandleRetailerPricingOverrides))))
 	http.HandleFunc("/v1/supplier/pricing/retailer-overrides/",
@@ -585,14 +585,14 @@ func main() {
 		if r.Method == http.MethodGet {
 			auth.HandleListFamilyMembers(spannerClient)(w, r)
 		} else if r.Method == http.MethodPost {
-			auth.HandleCreateFamilyMember(spannerClient)(w, r)
+			func(w http.ResponseWriter, r *http.Request) { invalidate := func(ctx context.Context, keys ...string) { if app.Cache != nil { app.Cache.Invalidate(ctx, keys...) } }; auth.HandleCreateFamilyMember(spannerClient, invalidate)(w, r) }(w, r)
 		} else {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
 	})))
 
 	// Edge 29: DELETE /v1/retailer/family-members/{id} — Remove family sub-profile
-	http.HandleFunc("/v1/retailer/family-members/", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(auth.HandleDeleteFamilyMember(spannerClient))))
+	http.HandleFunc("/v1/retailer/family-members/", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(auth.HandleDeleteFamilyMember(spannerClient, func(ctx context.Context, keys ...string) { if app.Cache != nil { app.Cache.Invalidate(ctx, keys...) } }))))
 
 	// /v1/delivery/credit-delivery moved to deliveryroutes.
 
@@ -3652,7 +3652,7 @@ func main() {
 	)
 
 	// ── Empathy Engine: Hierarchical Auto-Order Settings (PATCH) ──
-	empathySvc := &settings.EmpathyService{Client: spannerClient}
+	empathySvc := &settings.EmpathyService{Client: spannerClient, Cache: app.Cache}
 	http.HandleFunc("/v1/retailer/settings/auto-order/global",
 		auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(empathySvc.HandlePatchGlobal)))
 	http.HandleFunc("/v1/retailer/settings/auto-order/supplier/",

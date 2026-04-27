@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"backend-go/cache"
 	"backend-go/auth"
 	"backend-go/models"
 	"backend-go/spannerx"
@@ -19,6 +20,7 @@ import (
 
 // EmpathyService holds the Spanner client for Empathy Engine operations.
 type EmpathyService struct {
+	Cache *cache.Cache
 	Client *spanner.Client
 }
 
@@ -193,6 +195,9 @@ func (s *EmpathyService) HandlePatchGlobal(w http.ResponseWriter, r *http.Reques
 		go s.promoteDormantPredictions(retailerID)
 	}
 
+	if s.Cache != nil {
+		s.Cache.InvalidatePrefix(r.Context(), cache.PrefixSettings+retailerID+":")
+	}
 	log.Printf("[EMPATHY ENGINE] %s -> GlobalAutoOrder = %v", retailerID, req.Enabled)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

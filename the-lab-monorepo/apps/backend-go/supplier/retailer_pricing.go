@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/cache"
 	"backend-go/kafka"
 	"backend-go/outbox"
 	"backend-go/proximity"
@@ -48,12 +49,13 @@ type RetailerPriceOverrideResponse struct {
 // ── Service ───────────────────────────────────────────────────────────────────
 
 type RetailerPricingService struct {
+	Cache      *cache.Cache
 	Client     *spanner.Client
 	ReadRouter proximity.ReadRouter
 	Producer   *kafkago.Writer
 }
 
-func NewRetailerPricingService(client *spanner.Client, readRouter proximity.ReadRouter, producer *kafkago.Writer) *RetailerPricingService {
+func NewRetailerPricingService(client *spanner.Client, readRouter proximity.ReadRouter, producer *kafkago.Writer, c *cache.Cache) *RetailerPricingService {
 	return &RetailerPricingService{Client: client, ReadRouter: readRouter, Producer: producer}
 }
 
@@ -332,6 +334,10 @@ func (s *RetailerPricingService) createOverride(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	if s.Cache != nil {
+		s.Cache.Invalidate(r.Context(), cache.RetailerProfile(req.RetailerId))
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -349,6 +355,7 @@ func (s *RetailerPricingService) deactivateOverride(w http.ResponseWriter, r *ht
 	supplierID := claims.ResolveSupplierID()
 	ctx := r.Context()
 
+	var invalidateRetailerID string
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "RetailerPricingOverrides", spanner.Key{overrideID},
 			[]string{"SupplierId", "WarehouseId", "RetailerId", "SkuId", "OverridePrice"})
@@ -366,6 +373,8 @@ func (s *RetailerPricingService) deactivateOverride(w http.ResponseWriter, r *ht
 		if ownerSid != supplierID {
 			return fmt.Errorf("access denied")
 		}
+
+		invalidateRetailerID = retailerID
 
 		// NODE_ADMIN: can only deactivate overrides for their warehouse
 		scope := auth.GetWarehouseScope(ctx)
@@ -411,6 +420,10 @@ func (s *RetailerPricingService) deactivateOverride(w http.ResponseWriter, r *ht
 		log.Printf("[RETAILER_PRICING] Deactivate error: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
+	}
+
+	if s.Cache != nil && invalidateRetailerID != "" {
+		s.Cache.Invalidate(r.Context(), cache.RetailerProfile(invalidateRetailerID))
 	}
 
 	w.Header().Set("Content-Type", "application/json")

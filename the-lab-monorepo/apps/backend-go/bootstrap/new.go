@@ -116,7 +116,7 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 	countrycfg.SeedDefaultConfigs(ctx, spannerClient)
 
 	platformCfg := settings.NewPlatformConfig(spannerClient)
-	empathySvc := &settings.EmpathyService{Client: spannerClient}
+	empathySvc := &settings.EmpathyService{Client: spannerClient, Cache: c}
 	supplierPricingSvc := supplier.NewPricingService(spannerClient)
 
 	orderSvc := &order.OrderService{

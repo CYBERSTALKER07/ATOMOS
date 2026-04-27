@@ -36,6 +36,23 @@ var (
 // NOT propagate to the caller beyond a log line. An invalidation that
 // partially succeeds is still safer than a mutation with no invalidation at
 // all — downstream reads will eventually re-populate from the source of truth.
+// InvalidatePrefix scans for keys matching the prefix and invalidates them.
+func (c *Cache) InvalidatePrefix(ctx context.Context, prefix string) error {
+	if c.Client() == nil { return nil }
+	var keys []string
+	iter := c.Client().Scan(ctx, 0, prefix+"*", 1000).Iterator()
+	for iter.Next(ctx) {
+		keys = append(keys, iter.Val())
+	}
+	if err := iter.Err(); err != nil {
+		return err
+	}
+	if len(keys) > 0 {
+		c.Invalidate(ctx, keys...)
+	}
+	return nil
+}
+
 func (c *Cache) Invalidate(ctx context.Context, keys ...string) {
 	if len(keys) == 0 {
 		return

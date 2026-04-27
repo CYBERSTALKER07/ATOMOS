@@ -79,7 +79,7 @@ func HandleListFamilyMembers(client *spanner.Client) http.HandlerFunc {
 
 // HandleCreateFamilyMember adds a cosmetic sub-profile for a family-run shop.
 // POST /v1/retailer/family-members (RETAILER role)
-func HandleCreateFamilyMember(client *spanner.Client) http.HandlerFunc {
+func HandleCreateFamilyMember(client *spanner.Client, invalidate func(context.Context, ...string)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -143,6 +143,10 @@ func HandleCreateFamilyMember(client *spanner.Client) http.HandlerFunc {
 			return
 		}
 
+		if invalidate != nil {
+			invalidate(r.Context(), "profile:retailer:"+claims.UserID)
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(map[string]string{
@@ -154,7 +158,7 @@ func HandleCreateFamilyMember(client *spanner.Client) http.HandlerFunc {
 
 // HandleDeleteFamilyMember removes a family member sub-profile.
 // DELETE /v1/retailer/family-members/{id} (RETAILER role)
-func HandleDeleteFamilyMember(client *spanner.Client) http.HandlerFunc {
+func HandleDeleteFamilyMember(client *spanner.Client, invalidate func(context.Context, ...string)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -198,6 +202,10 @@ func HandleDeleteFamilyMember(client *spanner.Client) http.HandlerFunc {
 			log.Printf("[FAMILY_MEMBER] Delete failed: %v", err)
 			http.Error(w, `{"error":"delete failed"}`, http.StatusInternalServerError)
 			return
+		}
+
+		if invalidate != nil {
+			invalidate(ctx, "profile:retailer:"+claims.UserID)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
