@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"backend-go/cache"
-
 	"backend-go/outbox"
 	"backend-go/telemetry"
 
@@ -195,6 +194,10 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 			"timestamp":   now.Format(time.RFC3339),
 		}
 
+		// NOTE: cannot import backend-go/kafka here — kafka/gateway_worker.go
+		// imports backend-go/payment, which would create an import cycle. The
+		// versionscan literal-name resolver counts this string-literal use as
+		// a producer reference for kafka.EventPaymentRefunded.
 		return outbox.EmitJSON(txn, "Refund", refundID, "PAYMENT_REFUNDED", "lab-logistics-events", payload, telemetry.TraceIDFromContext(ctx))
 	})
 

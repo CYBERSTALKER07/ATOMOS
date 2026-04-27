@@ -35,33 +35,38 @@ import (
 func Register(r chi.Router, deps Deps) {
 	s := deps.Spanner
 	log := deps.Log
-	rl := deps.RateLimit
+	authRL := deps.RateLimit
+	actorRL := deps.ActorRateLimit
+	if actorRL == nil {
+		actorRL = authRL
+	}
 
-	// Legacy web retailer login + generic refresh (no rate-limiter — matches
-	// the original main.go placement).
-	refresh := log(auth.HandleTokenRefresh())
-	r.HandleFunc("/v1/auth/login", log(handleLegacyRetailerLogin(deps.RetailerStatus)))
+	// Legacy web retailer login now shares the auth limiter for brute-force
+	// protection parity with role-specific login endpoints.
+	refresh := actorRL(log(auth.HandleTokenRefresh()))
+	r.HandleFunc("/v1/auth/login", authRL(log(handleLegacyRetailerLogin(deps.RetailerStatus))))
 	r.HandleFunc("/v1/auth/refresh", refresh)
 	r.HandleFunc("/v1/auth/factory/refresh", refresh)
 	r.HandleFunc("/v1/auth/warehouse/refresh", refresh)
 
 	// Rate-limited login/register pairs.
-	r.HandleFunc("/v1/auth/driver/login", rl(log(supplier.HandleDriverLogin(s))))
-	r.HandleFunc("/v1/auth/admin/login", rl(log(auth.HandleAdminLogin(s))))
-	r.HandleFunc("/v1/auth/admin/register", rl(log(auth.HandleAdminRegister(s))))
-	r.HandleFunc("/v1/auth/supplier/login", rl(log(supplier.HandleSupplierLogin(s))))
-	r.HandleFunc("/v1/auth/supplier/register", rl(log(supplier.HandleSupplierRegister(s))))
-	r.HandleFunc("/v1/auth/retailer/login", rl(log(supplier.HandleRetailerLogin(s))))
-	r.HandleFunc("/v1/auth/retailer/register", rl(log(supplier.HandleRetailerRegister(s))))
-	r.HandleFunc("/v1/auth/warehouse/login", rl(log(warehouse.HandleWarehouseLogin(s))))
+	r.HandleFunc("/v1/auth/driver/login", authRL(log(supplier.HandleDriverLogin(s))))
+	r.HandleFunc("/v1/auth/admin/login", authRL(log(auth.HandleAdminLogin(s))))
+	r.HandleFunc("/v1/auth/admin/register", authRL(log(auth.HandleAdminRegister(s))))
+	r.HandleFunc("/v1/auth/supplier/login", authRL(log(supplier.HandleSupplierLogin(s))))
+	r.HandleFunc("/v1/auth/supplier/register", authRL(log(supplier.HandleSupplierRegister(s))))
+	r.HandleFunc("/v1/auth/retailer/login", authRL(log(supplier.HandleRetailerLogin(s))))
+	r.HandleFunc("/v1/auth/retailer/register", authRL(log(supplier.HandleRetailerRegister(s))))
+	r.HandleFunc("/v1/auth/warehouse/login", authRL(log(warehouse.HandleWarehouseLogin(s))))
 
-	// No-rate-limit payloader + factory login (matches original placement).
-	r.HandleFunc("/v1/auth/payloader/login", log(supplier.HandlePayloaderLogin(s)))
-	r.HandleFunc("/v1/auth/factory/login", log(factory.HandleFactoryLogin(s)))
+	// Previously unthrottled auth endpoints now share the same brute-force guard.
+	r.HandleFunc("/v1/auth/payloader/login", authRL(log(supplier.HandlePayloaderLogin(s))))
+	r.HandleFunc("/v1/auth/factory/login", authRL(log(factory.HandleFactoryLogin(s))))
 
-	// Role-gated registration endpoints (SUPPLIER or ADMIN required).
+	// Role-gated registration endpoints (SUPPLIER or ADMIN required) also carry
+	// actor-scoped throttling to protect management flows.
 	r.HandleFunc("/v1/auth/factory/register",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, log(factory.HandleFactoryRegister(s))))
+		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, actorRL(log(factory.HandleFactoryRegister(s)))))
 	r.HandleFunc("/v1/auth/warehouse/register",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, log(warehouse.HandleWarehouseRegister(s))))
+		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, actorRL(log(warehouse.HandleWarehouseRegister(s)))))
 }

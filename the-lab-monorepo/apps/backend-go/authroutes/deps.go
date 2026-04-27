@@ -43,4 +43,7 @@ type Deps struct {
 	// RateLimit is the auth-specific rate-limit middleware (typically
 	// cache.RateLimitMiddleware(cache.AuthRateLimit())).
 	RateLimit Middleware
+	// ActorRateLimit is a per-authenticated-actor limiter used on token-refresh
+	// and role-gated auth management paths (typically APIRateLimit).
+	ActorRateLimit Middleware
 }

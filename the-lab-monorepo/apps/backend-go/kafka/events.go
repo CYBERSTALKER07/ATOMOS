@@ -32,9 +32,6 @@ const (
 	EventCancelRequested = "CANCEL_REQUESTED"
 	EventCancelApproved  = "CANCEL_APPROVED"
 
-	// Phase I: Capacity events
-	EventNoCapacity = "NO_CAPACITY" // Scaffolding: no producer, no consumer — planned for capacity overflow flow
-
 	// Phase II: Human-Centric Edge Cases (FRIDAY v3.1)
 	EventEarlyCompleteRequested = "EARLY_COMPLETE_REQUESTED"
 	EventEarlyCompleteApproved  = "EARLY_COMPLETE_APPROVED"
@@ -92,6 +89,13 @@ const (
 	EventOutOfStock              = "OUT_OF_STOCK"
 	EventRetailerPriceOverride   = "RETAILER_PRICE_OVERRIDE"
 
+	// Node Sovereignty Events: emitted atomically with Spanner row creation
+	// via outbox. Producers: factory/crud.go#createFactory,
+	// supplier/retailer_register.go. Consumers: analytics, search index,
+	// supplier portal real-time list refresh (external, via WS hub).
+	EventFactoryCreated     = "FACTORY_CREATED"
+	EventRetailerRegistered = "RETAILER_REGISTERED"
+
 	// Internal Transfer Lifecycle Events
 	EventTransferStateChanged = "TRANSFER_STATE_CHANGED"
 	EventTransferApproved     = "TRANSFER_APPROVED"
@@ -109,7 +113,6 @@ const (
 	EventPaymentBypassIssued         = "PAYMENT_BYPASS_ISSUED"
 	EventPaymentBypassCompleted      = "PAYMENT_BYPASS_COMPLETED"
 	EventSmsQuickComplete            = "SMS_QUICK_COMPLETE"
-	EventReturnsClearedLegacy        = "RETURNS_CLEARED" // Scaffolding: legacy constant, no producer, no consumer
 
 	// Checkout Events
 	EventStockBackordered         = "STOCK_BACKORDERED"
@@ -117,7 +120,7 @@ const (
 	EventUnifiedCheckoutCompleted = "UNIFIED_CHECKOUT_COMPLETED"
 
 	// Payment Events
-	EventPaymentRefunded = "PAYMENT_REFUNDED" // Scaffolding: no producer, no consumer — wire when refund flow is implemented
+	EventPaymentRefunded = "PAYMENT_REFUNDED" // Producer: payment/refund.go via outbox; consumer: mobile push + admin refund log (external).
 
 	// Manifest Alerts
 	EventForceSealAlert = "FORCE_SEAL_ALERT"
@@ -760,6 +763,38 @@ type WarehouseSpatialUpdatedEvent struct {
 	NewH3Count     int       `json:"new_h3_count"`
 	CoverageRadius float64   `json:"coverage_radius_km"`
 	Timestamp      time.Time `json:"timestamp"`
+}
+
+// FactoryCreatedEvent is emitted when a new factory node is provisioned by
+// a GLOBAL_ADMIN. Consumed by analytics, the supplier-portal node list
+// refresh, and the cache-warming relay for warehouse↔factory edges.
+type FactoryCreatedEvent struct {
+	FactoryId            string    `json:"factory_id"`
+	SupplierId           string    `json:"supplier_id"`
+	Name                 string    `json:"name"`
+	Lat                  float64   `json:"lat"`
+	Lng                  float64   `json:"lng"`
+	RegionCode           string    `json:"region_code"`
+	LeadTimeDays         int64     `json:"lead_time_days"`
+	ProductionCapacityVU float64   `json:"production_capacity_vu"`
+	WarehousesLinked     int       `json:"warehouses_linked"`
+	Timestamp            time.Time `json:"timestamp"`
+}
+
+// RetailerRegisteredEvent is emitted when a retailer self-registers via the
+// public registration endpoint. Consumed by the catalog discovery indexer,
+// supplier-portal new-retailer feed, and the AI demand-forecaster cold-start
+// bootstrapper.
+type RetailerRegisteredEvent struct {
+	RetailerId  string    `json:"retailer_id"`
+	OwnerName   string    `json:"owner_name"`
+	ShopName    string    `json:"shop_name"`
+	PhoneNumber string    `json:"phone_number"`
+	Lat         float64   `json:"lat"`
+	Lng         float64   `json:"lng"`
+	H3Cell      string    `json:"h3_cell"`
+	RegionCode  string    `json:"region_code"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // WarehouseStatusChangedEvent is emitted when IsActive or IsOnShift toggles.

@@ -397,6 +397,7 @@ func main() {
 		RetailerStatus: svc,
 		Log:            loggingMiddleware,
 		RateLimit:      cache.RateLimitMiddleware(cache.AuthRateLimit()),
+		ActorRateLimit: cache.RateLimitMiddleware(cache.APIRateLimit()),
 	})
 
 	// /v1/user/* — device-token + notification inbox (3 routes).
@@ -585,14 +586,25 @@ func main() {
 		if r.Method == http.MethodGet {
 			auth.HandleListFamilyMembers(spannerClient)(w, r)
 		} else if r.Method == http.MethodPost {
-			func(w http.ResponseWriter, r *http.Request) { invalidate := func(ctx context.Context, keys ...string) { if app.Cache != nil { app.Cache.Invalidate(ctx, keys...) } }; auth.HandleCreateFamilyMember(spannerClient, invalidate)(w, r) }(w, r)
+			func(w http.ResponseWriter, r *http.Request) {
+				invalidate := func(ctx context.Context, keys ...string) {
+					if app.Cache != nil {
+						app.Cache.Invalidate(ctx, keys...)
+					}
+				}
+				auth.HandleCreateFamilyMember(spannerClient, invalidate)(w, r)
+			}(w, r)
 		} else {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
 	})))
 
 	// Edge 29: DELETE /v1/retailer/family-members/{id} — Remove family sub-profile
-	http.HandleFunc("/v1/retailer/family-members/", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(auth.HandleDeleteFamilyMember(spannerClient, func(ctx context.Context, keys ...string) { if app.Cache != nil { app.Cache.Invalidate(ctx, keys...) } }))))
+	http.HandleFunc("/v1/retailer/family-members/", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(auth.HandleDeleteFamilyMember(spannerClient, func(ctx context.Context, keys ...string) {
+		if app.Cache != nil {
+			app.Cache.Invalidate(ctx, keys...)
+		}
+	}))))
 
 	// /v1/delivery/credit-delivery moved to deliveryroutes.
 
@@ -3981,9 +3993,9 @@ func main() {
 
 	// ── Supplier → Factory CRUD ───────────────────────────────────────────────
 	http.HandleFunc("/v1/supplier/factories",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(factory.HandleSupplierFactories(spannerClient)))))
+		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(factory.HandleSupplierFactories(spannerClient, app.Cache)))))
 	http.HandleFunc("/v1/supplier/factories/",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(factory.HandleSupplierFactoryDetail(spannerClient)))))
+		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(factory.HandleSupplierFactoryDetail(spannerClient, app.Cache)))))
 
 	// ── Factory-Warehouse Recommendations & Assignments ───────────────────────
 	http.HandleFunc("/v1/supplier/factories/recommend-warehouses",

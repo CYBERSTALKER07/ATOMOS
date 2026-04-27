@@ -8,7 +8,10 @@ import (
 	"time"
 
 	"backend-go/auth"
+	internalKafka "backend-go/kafka"
+	"backend-go/outbox"
 	"backend-go/proximity"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -123,7 +126,28 @@ func HandleRetailerRegister(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 		m := spanner.InsertMap("Retailers", insertMap)
 		if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-			return txn.BufferWrite([]*spanner.Mutation{m})
+			if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
+				return err
+			}
+			h3Cell := ""
+			if v, ok := insertMap["H3Index"].(string); ok {
+				h3Cell = v
+			}
+			lat, _ := insertMap["Latitude"].(float64)
+			lng, _ := insertMap["Longitude"].(float64)
+			event := internalKafka.RetailerRegisteredEvent{
+				RetailerId:  retailerId,
+				OwnerName:   req.OwnerName,
+				ShopName:    shopName,
+				PhoneNumber: req.PhoneNumber,
+				Lat:         lat,
+				Lng:         lng,
+				H3Cell:      h3Cell,
+				Timestamp:   time.Now().UTC(),
+			}
+			return outbox.EmitJSON(txn, "Retailer", retailerId,
+				internalKafka.EventRetailerRegistered, internalKafka.TopicMain, event,
+				telemetry.TraceIDFromContext(ctx))
 		}); err != nil {
 			log.Printf("[RETAILER REGISTER] spanner insert error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)

@@ -32,6 +32,58 @@ EXTERNAL_CONSUMER_EVENTS = {
     "EventAiPredictionCorrected",
     "EventAiPlanDateShift",
     "EventAiPlanSkuModified",
+    # Produced by backend, consumed by mobile/web WebSocket clients (retailer
+    # iOS + Android, retailer-desktop, admin-portal). The scanner cannot walk
+    # non-Go source trees so these would otherwise show as producer-orphans.
+    "EventDriverApproaching",
+    # Produced by ws/warehouse_hub.go BroadcastOutboxFailure; consumed by the
+    # warehouse portal to surface relay-failure banners.
+    "EventOutboxFailed",
+    # Produced by payment/refund.go via outbox; downstream consumers are mobile
+    # clients (push notification "refund issued") and the admin portal refund
+    # log surface. No in-process Go consumer.
+    "EventPaymentRefunded",
+    # Phase VIII replenishment lock signals. Produced by factory/replenishment_lock.go
+    # via outbox; planned consumer is ai-worker (cooperative dispatch). Tracked
+    # in copilot-instructions Known Gap #12 — listed here so the producer is
+    # not flagged as orphan during the consumer-wiring window.
+    "EventReplenishmentLockAcquired",
+    "EventReplenishmentLockReleased",
+}
+
+# Events produced by an external module (e.g. apps/ai-worker) and consumed by
+# backend-go. The scanner only walks backend-go/, so these would otherwise show
+# as consumer-orphans even though a real producer exists.
+EXTERNAL_PRODUCER_EVENTS = {
+    "EventDemandForecastReady",  # produced by apps/ai-worker/main.go
+    "EventPreOrderCancelled",    # consumed by apps/ai-worker/main.go (RLHF)
+}
+
+# Events produced by helper functions that take an `eventType string`
+# parameter and pass it to outbox.EmitJSON. The scanner cannot trace
+# runtime-dispatched event types through helpers, so these are explicitly
+# allowlisted. Each must be returned by a state→event-type mapping helper
+# that lives in the producing package (e.g. supplyRequestEventTypeForState).
+HELPER_DISPATCHED_EVENTS = {
+    "EventSupplyRequestAcknowledged",
+    "EventSupplyRequestReady",
+    "EventSupplyRequestFulfilled",
+    "EventSupplyRequestCancelled",
+}
+
+# Events that are intentional scaffolding — declared so the wire contract is
+# stable when the owning feature lands, but no producer or consumer exists yet.
+# Each entry MUST have a "Scaffolding:" comment in kafka/events.go explaining
+# the planned source. Treated as accepted dead-events; do NOT count toward the
+# enforce-block dead-event budget.
+SCAFFOLDING_EVENTS = {
+    "EventOrderRerouted",          # planned: warehouse rebalancing
+    "EventStockThresholdBreach",   # planned: proximity.Engine threshold detection
+    "EventLookAheadCompleted",     # planned: pull-matrix look-ahead completion
+    "EventOrderCancelLocked",      # planned: T-4 cancel-lock fires
+    "EventPreOrderNotified",       # planned: T-4 confirmation notification sent
+    "EventManifestOrderReassigned",  # Phase V Loading Gate scaffolding
+    "EventInternalLoadConfirmed",    # Phase V Loading Gate scaffolding
 }
 
 
@@ -197,6 +249,13 @@ def classify_event_reference(line: str, context_window: str) -> str:
         return "producer"
     if re.search(r"\.\s*WriteMessages\s*\(", combined):
         return "producer"
+    # Helper-dispatched producers: any function whose name starts with
+    # "emit" / "Emit" / "publish" / "Publish" and is invoked with the
+    # constant as one of its arguments. Catches packages that wrap outbox
+    # behind a helper (factory.emitReplenishmentLockEvent,
+    # warehouse.supplyRequestEventTypeForState callers, etc.).
+    if re.search(r"\b(?:emit|Emit|publish|Publish)[A-Za-z0-9_]*\s*\([^)]*\bEvent[A-Za-z0-9_]+\b", line):
+        return "producer"
     return "other"
 
 
@@ -211,9 +270,21 @@ def scan_event_graph(root: Path, files: list[Path]) -> dict[str, Any]:
             "producerOrphans": [],
             "consumerOrphans": [],
             "externalProducerOnlyEvents": [],
+            "externalConsumerOnlyEvents": [],
+            "helperDispatchedOnlyEvents": [],
+            "scaffoldingEvents": [],
+            "deadEvents": [],
         }
 
     token_re = re.compile(r"\bEvent[A-Za-z0-9_]+\b")
+    # Reverse index: event NAME (RHS string literal value, e.g. "DRIVER_APPROACHING")
+    # → constant token. Lets us count string-literal references as producer/consumer
+    # refs for callers that cannot import the kafka package without creating a
+    # cycle (proximity, ws, order/clear_returns helper-local var).
+    name_to_token: dict[str, str] = {meta["eventName"]: tok for tok, meta in event_map.items()}
+    # Match a quoted event-name literal whose value matches one of our known names.
+    # Anchored to quoted strings so we don't pick up arbitrary identifier prefixes.
+    literal_re = re.compile(r'"([A-Z][A-Z0-9_]+)"')
 
     for path in files:
         if not path.as_posix().startswith(backend_root.as_posix()):
@@ -226,14 +297,45 @@ def scan_event_graph(root: Path, files: list[Path]) -> dict[str, Any]:
         lines = load_text(path).splitlines()
         rel = to_rel(path, root)
         for idx, line in enumerate(lines, start=1):
+            seen_tokens: set[str] = set()
             for token in token_re.findall(line):
                 if token not in event_map:
                     continue
+                seen_tokens.add(token)
                 ref = {"file": rel, "line": idx}
                 start = max(0, idx - 4)
                 end = min(len(lines), idx + 1)
                 context_window = "\n".join(lines[start:end])
                 kind = classify_event_reference(line, context_window)
+                if kind == "producer":
+                    event_map[token]["producerRefs"].append(ref)
+                elif kind == "consumer":
+                    event_map[token]["consumerRefs"].append(ref)
+                else:
+                    event_map[token]["otherRefs"].append(ref)
+            # Literal-name fallback: e.g. proximity/engine.go uses "DRIVER_APPROACHING"
+            # because importing kafka would create a package cycle. Count those as
+            # the same kind as a constant reference so producer/consumer detection
+            # works for cycle-bound callers.
+            for literal in literal_re.findall(line):
+                token = name_to_token.get(literal)
+                if not token or token in seen_tokens:
+                    continue
+                ref = {"file": rel, "line": idx, "viaLiteral": literal}
+                start = max(0, idx - 4)
+                end = min(len(lines), idx + 1)
+                context_window = "\n".join(lines[start:end])
+                kind = classify_event_reference(line, context_window)
+                # Switch/case on a literal is a consumer dispatch; the existing
+                # classifier only catches `case Event*` token cases, so add a
+                # literal-aware consumer hint.
+                if kind == "other" and re.search(rf'\bcase\s+"{re.escape(literal)}"', line):
+                    kind = "consumer"
+                # Also recognise WebSocket producer payloads of shape
+                #   "type": "EVENT_NAME"
+                # and broadcast helpers, both of which represent an outbound event.
+                if kind == "other" and re.search(rf'"type"\s*:\s*"{re.escape(literal)}"', line):
+                    kind = "producer"
                 if kind == "producer":
                     event_map[token]["producerRefs"].append(ref)
                 elif kind == "consumer":
@@ -246,18 +348,38 @@ def scan_event_graph(root: Path, files: list[Path]) -> dict[str, Any]:
     consumer_orphans: list[str] = []
     dead_events: list[str] = []
     external_producer_only: list[str] = []
+    external_consumer_only: list[str] = []
+    helper_dispatched_only: list[str] = []
+    scaffolding_events: list[str] = []
     for token, meta in sorted(event_map.items()):
         producers = len(meta["producerRefs"])
         consumers = len(meta["consumerRefs"])
-        if producers > 0 and consumers == 0:
+        # Scaffolding allowlist short-circuits classification — these are
+        # intentional placeholders awaiting their owning feature.
+        if token in SCAFFOLDING_EVENTS and producers == 0 and consumers == 0:
+            scaffolding_events.append(token)
+        elif token in HELPER_DISPATCHED_EVENTS and producers == 0:
+            # Helper-dispatched: producer call site uses a runtime-resolved
+            # eventType variable; the constant is referenced only in a switch
+            # mapping. Treated as accepted (real producer + real consumer).
+            helper_dispatched_only.append(token)
+        elif producers > 0 and consumers == 0:
             if token in EXTERNAL_CONSUMER_EVENTS:
                 external_producer_only.append(token)
             else:
                 producer_orphans.append(token)
-        if consumers > 0 and producers == 0:
-            consumer_orphans.append(token)
-        if consumers == 0 and producers == 0:
-            dead_events.append(token)
+        elif consumers > 0 and producers == 0:
+            if token in EXTERNAL_PRODUCER_EVENTS:
+                external_consumer_only.append(token)
+            else:
+                consumer_orphans.append(token)
+        elif consumers == 0 and producers == 0:
+            # External-producer events with no in-process consumer are still
+            # accounted for: producer is in another module (e.g. ai-worker).
+            if token in EXTERNAL_PRODUCER_EVENTS:
+                external_consumer_only.append(token)
+            else:
+                dead_events.append(token)
 
         events.append(
             {
@@ -279,6 +401,9 @@ def scan_event_graph(root: Path, files: list[Path]) -> dict[str, Any]:
         "producerOrphans": producer_orphans,
         "consumerOrphans": consumer_orphans,
         "externalProducerOnlyEvents": external_producer_only,
+        "externalConsumerOnlyEvents": external_consumer_only,
+        "helperDispatchedOnlyEvents": helper_dispatched_only,
+        "scaffoldingEvents": scaffolding_events,
         "deadEvents": dead_events,
     }
 
@@ -607,6 +732,9 @@ def write_outputs(scan: dict[str, Any], output_dir: Path) -> None:
             "producerOrphans": len(scan["eventGraph"]["producerOrphans"]),
             "consumerOrphans": len(scan["eventGraph"]["consumerOrphans"]),
             "externalProducerOnlyEvents": len(scan["eventGraph"].get("externalProducerOnlyEvents", [])),
+            "externalConsumerOnlyEvents": len(scan["eventGraph"].get("externalConsumerOnlyEvents", [])),
+            "helperDispatchedOnlyEvents": len(scan["eventGraph"].get("helperDispatchedOnlyEvents", [])),
+            "scaffoldingEvents": len(scan["eventGraph"].get("scaffoldingEvents", [])),
             "deadEvents": len(scan["eventGraph"].get("deadEvents", [])),
             "guardrailFindings": scan["guardrails"]["findingCount"],
             "goOnlyCriticalKeys": len(scan["modelParity"]["goOnlyCriticalKeys"]),
@@ -682,6 +810,9 @@ def print_report(scan: dict[str, Any]) -> None:
         "producerOrphans": len(scan["eventGraph"]["producerOrphans"]),
         "consumerOrphans": len(scan["eventGraph"]["consumerOrphans"]),
         "externalProducerOnlyEvents": len(scan["eventGraph"].get("externalProducerOnlyEvents", [])),
+        "externalConsumerOnlyEvents": len(scan["eventGraph"].get("externalConsumerOnlyEvents", [])),
+        "helperDispatchedOnlyEvents": len(scan["eventGraph"].get("helperDispatchedOnlyEvents", [])),
+        "scaffoldingEvents": len(scan["eventGraph"].get("scaffoldingEvents", [])),
         "deadEvents": len(scan["eventGraph"].get("deadEvents", [])),
         "guardrailFindings": scan["guardrails"]["findingCount"],
         "goOnlyCriticalKeys": len(scan["modelParity"]["goOnlyCriticalKeys"]),

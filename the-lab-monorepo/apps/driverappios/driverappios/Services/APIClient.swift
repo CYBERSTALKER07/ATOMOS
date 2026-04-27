@@ -156,7 +156,7 @@ final class APIClient: @unchecked Sendable {
     }
 
     func confirmPaymentBypass(orderId: String, token: String) async throws -> [String: String] {
-        let body = ["order_id": orderId, "token": token]
+        let body = ["order_id": orderId, "bypass_token": token]
         return try await post("v1/delivery/confirm-payment-bypass", body: body)
     }
 
@@ -185,7 +185,7 @@ final class APIClient: @unchecked Sendable {
         let _: Resp = try await post("v1/driver/availability", body: Req(available: available, reason: reason, note: note))
     }
 
-    func reorderStops(routeId: String, orderSequence: [String]) async throws -> [String: String] {
+    func reorderStops(routeId: String, orderSequence: [String]) async throws -> RouteReorderResponse {
         let body = ReorderStopsRequest(routeId: routeId, orderSequence: orderSequence)
         return try await post("v1/fleet/route/reorder", body: body)
     }
@@ -193,9 +193,23 @@ final class APIClient: @unchecked Sendable {
     // MARK: - v3.1 Human-Centric Edges
 
     /// Edge 27: Request early route completion (fatigue/issue)
-    func requestEarlyComplete(reason: String, note: String) async throws -> [String: String] {
+    func requestEarlyComplete(reason: String, note: String) async throws -> EarlyCompleteRequestResponse {
         struct Req: Encodable { let reason: String; let note: String }
         return try await post("v1/fleet/route/request-early-complete", body: Req(reason: reason, note: note))
+    }
+
+    /// Edge 28: Propose quantity negotiation to supplier
+    func proposeNegotiation(orderId: String, items: [NegotiationItemRequest]) async throws -> NegotiationProposalResponse {
+        struct Req: Encodable {
+            let orderId: String
+            let items: [NegotiationItemRequest]
+
+            enum CodingKeys: String, CodingKey {
+                case orderId = "order_id"
+                case items
+            }
+        }
+        return try await post("v1/delivery/negotiate", body: Req(orderId: orderId, items: items))
     }
 
     /// Edge 32: Mark order as delivered on credit
@@ -366,6 +380,56 @@ struct ManifestGateResponse: Decodable {
     enum CodingKeys: String, CodingKey {
         case cleared, state
         case manifestId = "manifest_id"
+    }
+}
+
+/// Edge 27 response payload for /v1/fleet/route/request-early-complete.
+struct EarlyCompleteRequestResponse: Decodable {
+    let status: String
+    let orderCount: Int
+    let orderIds: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case orderCount = "order_count"
+        case orderIds = "order_ids"
+    }
+}
+
+/// Edge 28 request item payload for /v1/delivery/negotiate.
+struct NegotiationItemRequest: Encodable {
+    let skuId: String
+    let originalQty: Int64
+    let proposedQty: Int64
+
+    enum CodingKeys: String, CodingKey {
+        case skuId = "sku_id"
+        case originalQty = "original_qty"
+        case proposedQty = "proposed_qty"
+    }
+}
+
+/// Edge 28 response payload for /v1/delivery/negotiate.
+struct NegotiationProposalResponse: Decodable {
+    let status: String
+    let proposalId: String
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case proposalId = "proposal_id"
+    }
+}
+
+/// Response payload for /v1/fleet/route/reorder.
+struct RouteReorderResponse: Decodable {
+    let status: String
+    let routeId: String
+    let stopCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case routeId = "route_id"
+        case stopCount = "stop_count"
     }
 }
 

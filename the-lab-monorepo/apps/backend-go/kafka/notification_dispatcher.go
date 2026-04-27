@@ -202,6 +202,10 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handleWarehouseCreated(deps, m.Value)
 			case EventWarehouseSpatialUpdated:
 				handleWarehouseSpatialUpdated(deps, m.Value)
+			case EventFactoryCreated:
+				handleFactoryCreated(deps, m.Value)
+			case EventRetailerRegistered:
+				handleRetailerRegistered(deps, m.Value)
 			case EventFactorySLABreach:
 				handleFactorySLABreach(deps, m.Value)
 			case EventInboundFreightUnannounced:
@@ -1236,6 +1240,41 @@ func handleWarehouseCreated(deps NotificationDeps, data []byte) {
 		notifications.FormattedNotification{
 			Title: "Warehouse Created",
 			Body:  fmt.Sprintf("Warehouse %s is now active for supplier operations.", event.Name),
+		})
+}
+
+func handleFactoryCreated(deps NotificationDeps, data []byte) {
+	var event FactoryCreatedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "FACTORY_CREATED", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventFactoryCreated,
+		notifications.FormattedNotification{
+			Title: "Factory Created",
+			Body:  fmt.Sprintf("Factory %s is now active (%d warehouses linked).", event.Name, event.WarehousesLinked),
+		})
+}
+
+func handleRetailerRegistered(deps NotificationDeps, data []byte) {
+	var event RetailerRegisteredEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "RETAILER_REGISTERED", "err", err)
+		return
+	}
+	if event.RetailerId == "" {
+		return
+	}
+	// Retailer self-registration is not scoped to a single supplier — broadcast
+	// to the retailer themselves as a welcome receipt. Supplier-side discovery
+	// of new retailers happens via the catalog indexer (separate consumer).
+	dispatchToRecipient(deps, event.RetailerId, "RETAILER", EventRetailerRegistered,
+		notifications.FormattedNotification{
+			Title: "Welcome to The Lab",
+			Body:  fmt.Sprintf("Account %s registered. You can now place orders.", event.ShopName),
 		})
 }
 

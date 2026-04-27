@@ -11,8 +11,11 @@ import (
 
 	"backend-go/auth"
 	"backend-go/cache"
+	internalKafka "backend-go/kafka"
+	"backend-go/outbox"
 	"backend-go/proximity"
 	"backend-go/spannerx"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -142,13 +145,13 @@ func fetchFactoryProfile(ctx context.Context, spannerClient *spanner.Client, fac
 
 // HandleSupplierFactories handles GET (list) and POST (create) for /v1/supplier/factories.
 // SUPPLIER role — manages factories under their organization.
-func HandleSupplierFactories(spannerClient *spanner.Client) http.HandlerFunc {
+func HandleSupplierFactories(spannerClient *spanner.Client, rc *cache.Cache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			listSupplierFactories(w, r, spannerClient)
 		case http.MethodPost:
-			createFactory(w, r, spannerClient)
+			createFactory(w, r, spannerClient, rc)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
@@ -157,8 +160,8 @@ func HandleSupplierFactories(spannerClient *spanner.Client) http.HandlerFunc {
 
 // HandleSupplierFactoryDetail handles GET, PUT, DELETE for /v1/supplier/factories/{id}
 // Also routes /v1/supplier/factories/{id}/warehouses to the assignment handler.
-func HandleSupplierFactoryDetail(spannerClient *spanner.Client) http.HandlerFunc {
-	assignHandler := HandleFactoryWarehouseAssignment(spannerClient)
+func HandleSupplierFactoryDetail(spannerClient *spanner.Client, rc *cache.Cache) http.HandlerFunc {
+	assignHandler := HandleFactoryWarehouseAssignment(spannerClient, rc)
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		remainder := strings.TrimPrefix(r.URL.Path, "/v1/supplier/factories/")
@@ -184,9 +187,9 @@ func HandleSupplierFactoryDetail(spannerClient *spanner.Client) http.HandlerFunc
 		case http.MethodGet:
 			getFactory(w, r, spannerClient, factoryID)
 		case http.MethodPut:
-			updateFactory(w, r, spannerClient, factoryID)
+			updateFactory(w, r, spannerClient, factoryID, rc)
 		case http.MethodDelete:
-			deactivateFactory(w, r, spannerClient, factoryID)
+			deactivateFactory(w, r, spannerClient, factoryID, rc)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
@@ -240,7 +243,7 @@ func listSupplierFactories(w http.ResponseWriter, r *http.Request, spannerClient
 }
 
 // SOVEREIGN ACTION: createFactory requires GLOBAL_ADMIN supplier role.
-func createFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client) {
+func createFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, rc *cache.Cache) {
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -308,11 +311,38 @@ func createFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 	}
 
 	if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite(mutations)
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+		event := internalKafka.FactoryCreatedEvent{
+			FactoryId:            factoryId,
+			SupplierId:           claims.ResolveSupplierID(),
+			Name:                 req.Name,
+			Lat:                  req.Lat,
+			Lng:                  req.Lng,
+			RegionCode:           req.RegionCode,
+			LeadTimeDays:         req.LeadTimeDays,
+			ProductionCapacityVU: req.ProductionCapacityVU,
+			WarehousesLinked:     assignedCount,
+			Timestamp:            time.Now().UTC(),
+		}
+		return outbox.EmitJSON(txn, "Factory", factoryId,
+			internalKafka.EventFactoryCreated, internalKafka.TopicMain, event,
+			telemetry.TraceIDFromContext(ctx))
 	}); err != nil {
 		log.Printf("[FACTORY] create error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
+	}
+
+	if rc != nil {
+		keys := []string{cache.FactoryProfile(factoryId), cache.SupplierProfile(claims.ResolveSupplierID())}
+		for _, whID := range req.WarehouseIDs {
+			if whID != "" {
+				keys = append(keys, cache.PrefixWarehouseDetail+whID)
+			}
+		}
+		rc.Invalidate(r.Context(), keys...)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -363,7 +393,7 @@ func getFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanner.C
 	json.NewEncoder(w).Encode(f)
 }
 
-func updateFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, factoryID string) {
+func updateFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, factoryID string, rc *cache.Cache) {
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -453,6 +483,10 @@ func updateFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 		return
 	}
 
+	if rc != nil {
+		rc.Invalidate(r.Context(), cache.FactoryProfile(factoryID), cache.SupplierProfile(claims.ResolveSupplierID()))
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"status":     "UPDATED",
@@ -460,7 +494,7 @@ func updateFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 	})
 }
 
-func deactivateFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, factoryID string) {
+func deactivateFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, factoryID string, rc *cache.Cache) {
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -496,6 +530,10 @@ func deactivateFactory(w http.ResponseWriter, r *http.Request, spannerClient *sp
 		return
 	}
 
+	if rc != nil {
+		rc.Invalidate(r.Context(), cache.FactoryProfile(factoryID), cache.SupplierProfile(claims.ResolveSupplierID()))
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"status":     "DEACTIVATED",
@@ -505,7 +543,7 @@ func deactivateFactory(w http.ResponseWriter, r *http.Request, spannerClient *sp
 
 // HandleFactoryWarehouseAssignment handles PUT /v1/supplier/factories/{id}/warehouses
 // Sets PrimaryFactoryId on the listed warehouses, linking them to this factory.
-func HandleFactoryWarehouseAssignment(spannerClient *spanner.Client) http.HandlerFunc {
+func HandleFactoryWarehouseAssignment(spannerClient *spanner.Client, rc *cache.Cache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -586,6 +624,17 @@ func HandleFactoryWarehouseAssignment(spannerClient *spanner.Client) http.Handle
 			log.Printf("[FACTORY] assign warehouses error: %v", err)
 			http.Error(w, `{"error":"failed to assign warehouses — verify all IDs belong to your organization"}`, http.StatusInternalServerError)
 			return
+		}
+
+		if rc != nil {
+			keys := make([]string, 0, len(req.WarehouseIDs)+1)
+			keys = append(keys, cache.FactoryProfile(factoryID))
+			for _, whID := range req.WarehouseIDs {
+				if whID != "" {
+					keys = append(keys, cache.PrefixWarehouseDetail+whID)
+				}
+			}
+			rc.Invalidate(r.Context(), keys...)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
