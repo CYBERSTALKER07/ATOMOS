@@ -71,6 +71,7 @@ const NAV: NavSection[] = [
       { href: '/configuration/countries', icon: 'global', label: 'Country Config', globalOnly: true },
       { href: '/dashboard', icon: 'global', label: 'Global Supply', globalOnly: true },
       { href: '/dlq', icon: 'dlq', label: 'DLQ Monitor', globalOnly: true },
+      { href: '/admin/control-center', icon: 'config', label: 'Control Center', globalOnly: true },
     ],
   },
 ];

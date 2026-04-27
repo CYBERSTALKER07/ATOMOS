@@ -44,6 +44,7 @@ type ReassignRequest struct {
 	SourceManifestID string   `json:"source_manifest_id"`
 	TargetManifestID string   `json:"target_manifest_id"`
 	TransferIDs      []string `json:"transfer_ids"`
+	TransferID       string   `json:"transfer_id,omitempty"`
 	Reason           string   `json:"reason,omitempty"`
 }
 
@@ -71,6 +72,9 @@ func (o *OverrideService) HandleManifestRebalance(w http.ResponseWriter, r *http
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid JSON body"}`, http.StatusBadRequest)
 		return
+	}
+	if len(req.TransferIDs) == 0 && req.TransferID != "" {
+		req.TransferIDs = []string{req.TransferID}
 	}
 	if req.SourceManifestID == "" || req.TargetManifestID == "" || len(req.TransferIDs) == 0 {
 		http.Error(w, `{"error":"source_manifest_id, target_manifest_id, and transfer_ids are required"}`, http.StatusBadRequest)

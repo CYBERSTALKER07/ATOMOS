@@ -20,8 +20,11 @@ type ManifestItem struct {
 	DriverID     string `json:"driver_id"`
 	DriverName   string `json:"driver_name"`
 	VehicleID    string `json:"vehicle_id,omitempty"`
+	VehicleLabel string `json:"vehicle_label,omitempty"`
+	LicensePlate string `json:"license_plate,omitempty"`
 	VehicleClass string `json:"vehicle_class,omitempty"`
 	State        string `json:"state"`
+	Status       string `json:"status"`
 	StopCount    int64  `json:"stop_count"`
 	CreatedAt    string `json:"created_at"`
 	SealedAt     string `json:"sealed_at,omitempty"`
@@ -55,7 +58,7 @@ func HandleOpsManifests(spannerClient *spanner.Client) http.HandlerFunc {
 
 		stmt := spanner.Statement{
 			SQL: `SELECT m.ManifestId, m.DriverId, COALESCE(d.Name, ''),
-			             COALESCE(m.VehicleId, ''), COALESCE(v.VehicleClass, ''),
+			             COALESCE(m.VehicleId, ''), COALESCE(v.Label, ''), COALESCE(v.LicensePlate, ''), COALESCE(v.VehicleClass, ''),
 			             m.State,
 			             (SELECT COUNT(*) FROM ManifestStops ms WHERE ms.ManifestId = m.ManifestId),
 			             m.CreatedAt, m.SealedAt
@@ -89,11 +92,12 @@ func HandleOpsManifests(spannerClient *spanner.Client) http.HandlerFunc {
 			var createdAt time.Time
 			var sealedAt spanner.NullTime
 			if err := row.Columns(&m.ManifestID, &m.DriverID, &m.DriverName,
-				&m.VehicleID, &m.VehicleClass, &m.State, &m.StopCount,
+				&m.VehicleID, &m.VehicleLabel, &m.LicensePlate, &m.VehicleClass, &m.State, &m.StopCount,
 				&createdAt, &sealedAt); err != nil {
 				log.Printf("[WH MANIFESTS] parse: %v", err)
 				continue
 			}
+			m.Status = m.State
 			m.CreatedAt = createdAt.Format(time.RFC3339)
 			if sealedAt.Valid {
 				m.SealedAt = sealedAt.Time.Format(time.RFC3339)
@@ -105,6 +109,10 @@ func HandleOpsManifests(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"manifests": manifests, "total": len(manifests)})
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"manifests": manifests,
+			"data":      manifests,
+			"total":     len(manifests),
+		})
 	}
 }

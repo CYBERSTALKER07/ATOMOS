@@ -299,7 +299,7 @@ export default function OrdersPage() {
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="md-typescale-body-small text-muted truncate">
-                        {order.payment_gateway || "Invoice"}
+                        {order.payment_gateway || "UNSPECIFIED"}
                       </span>
                       <span className="text-muted opacity-40">·</span>
                       <span className="md-typescale-label-small font-mono tabular-nums text-muted">
@@ -360,13 +360,13 @@ export default function OrdersPage() {
                   )}
                 </div>
                 <div className="bento-card" style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
-                  <span className="md-typescale-label-small uppercase tracking-widest opacity-80 font-semibold">Invoice</span>
+                  <span className="md-typescale-label-small uppercase tracking-widest opacity-80 font-semibold">Payment</span>
                   <p className="md-typescale-headline-small font-bold mt-1 tabular-nums">
                     {detail.amount.toLocaleString()}
                   </p>
                   <p className="md-typescale-body-small mt-1 opacity-80 flex items-center gap-1.5 font-medium">
                     <CheckCircle2 size={14} />
-                    {detail.payment_gateway || "Invoice"}
+                    {detail.payment_gateway || "UNSPECIFIED"}
                   </p>
                 </div>
               </div>

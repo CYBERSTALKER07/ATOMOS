@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { X, Building2, Ticket, CreditCard, Loader2 } from "lucide-react";
+import { X, Ticket, CreditCard, Loader2 } from "lucide-react";
 import { useCart } from "../lib/cart";
 import { apiFetch } from "../lib/auth";
 import { useRouter } from "next/navigation";
@@ -23,7 +23,7 @@ interface CheckoutModalProps {
 
 export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalProps) {
   const { items, clearCart } = useCart();
-  const [method, setMethod] = useState<'global_pay'|'invoice'|'cash'>('invoice');
+  const [method, setMethod] = useState<'global_pay'|'cash'>('global_pay');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [oosItems, setOosItems] = useState<string[]>([]);
@@ -41,7 +41,6 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
 
       // Map payment method to backend gateway name
       const gatewayMap: Record<string, string> = {
-        invoice: 'BANK_TRANSFER',
         cash: 'CASH',
         global_pay: 'GLOBAL_PAY',
       };
@@ -58,7 +57,7 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
         method: 'POST',
         body: JSON.stringify({
           retailer_id: profile.id,
-          payment_gateway: gatewayMap[method] || 'BANK_TRANSFER',
+          payment_gateway: gatewayMap[method] || 'GLOBAL_PAY',
           latitude: 0,
           longitude: 0,
           items: lineItems,
@@ -102,7 +101,6 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
           });
         }
       }
-      // invoice method: no extra payment step needed — orders created with BANK_TRANSFER
 
       clearCart();
       onClose();
@@ -191,36 +189,6 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
                   <p className="md-typescale-body-small text-muted flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full" style={{ background: 'var(--success)' }} />
                     Credit & Debit Cards
-                  </p>
-                </div>
-              </div>
-
-              <div 
-                onClick={() => setMethod('invoice')}
-                className={`border p-5 rounded-2xl cursor-pointer transition-all flex items-center gap-4 relative overflow-hidden ${method === 'invoice' ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border)]'}`}
-              >
-                {method === 'invoice' && <div className="absolute top-0 right-0 w-2 h-full" style={{ background: 'var(--accent)' }} />}
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
-                  <Building2 size={24} />
-                </div>
-                <div>
-                  <h4 className="md-typescale-title-medium font-bold text-foreground">Invoice / Net 30</h4>
-                  <p className="md-typescale-body-small text-muted">Pre-approved corporate line</p>
-                </div>
-              </div>
-              
-              <div 
-                onClick={() => setMethod('cash')}
-                className={`border p-5 rounded-2xl cursor-pointer transition-all flex items-center gap-4 ${method === 'cash' ? 'border-[var(--warning)] bg-[var(--warning)]/8' : 'border-[var(--border)] hover:border-[var(--warning)] hover:bg-[var(--warning)]/4'}`}
-              >
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-muted" style={{ background: 'var(--surface)' }}>
-                  <Ticket size={24} />
-                </div>
-                <div>
-                  <h4 className="md-typescale-title-medium font-bold text-foreground">Cash on Delivery</h4>
-                  <p className="md-typescale-body-small text-muted flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full" style={{ background: 'var(--warning)' }} />
-                    Available for overrides
                   </p>
                 </div>
               </div>
