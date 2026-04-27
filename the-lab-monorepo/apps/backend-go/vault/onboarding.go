@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"backend-go/cache"
 	"backend-go/hotspot"
 
 	"cloud.google.com/go/spanner"
@@ -91,6 +92,8 @@ func (s *Service) CreateOnboardingSession(ctx context.Context, supplierID, gatew
 		return nil, fmt.Errorf("create onboarding session: %w", err)
 	}
 
+	cache.Invalidate(ctx, cache.SupplierProfile(supplierID))
+
 	return &OnboardingSessionSummary{
 		SessionID:     sessionID,
 		Gateway:       gateway,
@@ -157,7 +160,12 @@ func (s *Service) CancelOnboardingSession(ctx context.Context, supplierID, sessi
 				[]interface{}{sessionID, string(OnboardingCancelled), spanner.CommitTimestamp}),
 		})
 	})
-	return err
+	if err != nil {
+		return err
+	}
+
+	cache.Invalidate(ctx, cache.SupplierProfile(supplierID))
+	return nil
 }
 
 // ListActiveOnboardingSessions returns non-terminal sessions for the supplier.

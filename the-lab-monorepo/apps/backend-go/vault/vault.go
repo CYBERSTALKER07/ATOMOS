@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"backend-go/cache"
 	"backend-go/hotspot"
 
 	"cloud.google.com/go/spanner"
@@ -232,6 +233,8 @@ func (s *Service) UpsertConfig(ctx context.Context, supplierId, gatewayName, mer
 		return nil, fmt.Errorf("upsert config failed: %w", err)
 	}
 
+	cache.Invalidate(ctx, cache.SupplierProfile(supplierId))
+
 	return &GatewayConfigSummary{
 		ConfigID:    configId,
 		GatewayName: gatewayName,
@@ -273,6 +276,8 @@ func (s *Service) SetRecipientId(ctx context.Context, supplierId, gatewayName, r
 	if err != nil {
 		return fmt.Errorf("set recipient id: %w", err)
 	}
+
+	cache.Invalidate(ctx, cache.SupplierProfile(supplierId))
 	return nil
 }
 
@@ -369,7 +374,12 @@ func (s *Service) DeactivateConfig(ctx context.Context, supplierId, configId str
 				[]interface{}{configId, false, spanner.CommitTimestamp}),
 		})
 	})
-	return err
+	if err != nil {
+		return err
+	}
+
+	cache.Invalidate(ctx, cache.SupplierProfile(supplierId))
+	return nil
 }
 
 // GetDecryptedConfig returns the full decrypted credentials for a supplier+gateway.

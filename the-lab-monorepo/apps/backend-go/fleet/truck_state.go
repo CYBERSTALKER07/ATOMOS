@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/cache"
 	kafkaEvents "backend-go/kafka"
 	"backend-go/outbox"
 	"backend-go/routing"
@@ -111,6 +112,8 @@ func HandleTruckSeal(client *spanner.Client) http.HandlerFunc {
 			http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
 			return
 		}
+
+		cache.Invalidate(ctx, cache.DriverProfile(truckID))
 
 		log.Printf("[FLEET] truck %s sealed → READY (payloader: %s)", truckID, claims.UserID)
 
@@ -279,6 +282,8 @@ func HandleDriverDepart(client *spanner.Client, mapsAPIKey string, retailerHub R
 			http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
 			return
 		}
+
+		cache.Invalidate(ctx, cache.DriverProfile(req.TruckID))
 
 		log.Printf("[FLEET] truck %s departed → IN_TRANSIT (driver: %s, departed_at: %s)",
 			req.TruckID, claims.UserID, departedAt.Format(time.RFC3339))
@@ -452,6 +457,8 @@ func CheckAndAutoReleaseTruck(ctx context.Context, client *spanner.Client, order
 		return
 	}
 
+	cache.Invalidate(ctx, cache.DriverProfile(driverID.StringVal))
+
 	log.Printf("[FLEET-AUTORELEASE] truck %s → RETURNING (route %s fully delivered)", driverID.StringVal, routeID.StringVal)
 
 	// Broadcast status change to supplier
@@ -590,6 +597,8 @@ func HandleReturnComplete(client *spanner.Client) http.HandlerFunc {
 			http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
 			return
 		}
+
+		cache.Invalidate(ctx, cache.DriverProfile(req.TruckID))
 
 		log.Printf("[FLEET] truck %s return complete → AVAILABLE (driver: %s)", req.TruckID, claims.UserID)
 
@@ -740,6 +749,8 @@ func HandleTruckStatusUpdate(client *spanner.Client) http.HandlerFunc {
 			http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
 			return
 		}
+
+		cache.Invalidate(ctx, cache.DriverProfile(truckID))
 
 		log.Printf("[FLEET] truck %s status → %s (admin override)", truckID, req.Status)
 

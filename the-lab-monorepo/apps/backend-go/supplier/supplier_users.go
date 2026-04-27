@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/cache"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -314,6 +315,8 @@ func inviteOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		}
 	}
 
+	cache.Invalidate(ctx, cache.SupplierProfile(supplierID))
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -487,6 +490,8 @@ func updateOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		return
 	}
 
+	cache.Invalidate(r.Context(), cache.SupplierProfile(supplierID))
+
 	// Read back the updated member for enriched response (avoids frontend re-fetch)
 	var updatedRole, updatedWarehouse, updatedFactory, updatedName string
 	var updatedActive bool
@@ -562,6 +567,8 @@ func deactivateOrgMember(w http.ResponseWriter, r *http.Request, client *spanner
 		return
 	}
 
+	cache.Invalidate(r.Context(), cache.SupplierProfile(supplierID))
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "deactivated", "user_id": targetUserID})
 }
@@ -626,6 +633,7 @@ func ensureRootMirrored(ctx context.Context, client *spanner.Client, claims *aut
 	}); err != nil {
 		log.Printf("[ORG] auto-mirror root supplier %s failed: %v", supplierID, err)
 	} else {
+		cache.Invalidate(ctx, cache.SupplierProfile(supplierID))
 		log.Printf("[ORG] Auto-mirrored root supplier %s into SupplierUsers as GLOBAL_ADMIN", supplierID)
 	}
 }

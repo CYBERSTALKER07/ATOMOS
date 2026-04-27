@@ -481,7 +481,7 @@ As an advanced Google AI (Gemini), you must apply Google-scale engineering princ
 Code must remain simple to read, test, and maintain, but efficiency is non-negotiable. "Simple" means cleanly decoupled domains, single responsibility, and predictable state transitions — it does NOT mean naive implementation. 
 - ✗ Naive (Forbidden): Synchronous HTTP blocking to do background work, N+1 queries in a loop, unbounded `go func()` spawns.
 - ✓ Simple - ✓ Simple & Efficient: Asynchronous eventing (Outbox + Kafka), bulk operations (`spanner.InsertOrUpdateMap`), bounded worker pools (`errgroup` with limit), and stale reads for dashboard data. Efficient: Asynchronous eventing (Outbox + Kafka), bulk operations (`spanner.InsertOrUpdateMap`), bounded worker pools (`errgroup` with limit), and stale reads for dashboard data.
-- **Exception Reporting (Mandatory):** If keeping a feature "simple and efficient" is impossible or naive simple logic will not work under our hyper-scale parameters, you MUST explicitly state this before generating code. After every task completion, you MUST output a brief report confirming how the implementation achieved hyper-scale efficiency or what trade-offs were made.
+- **Exception Reporting (Mandatory):** If keeping a feature "simple and efficient" is impossible or naive simple logic will not work under our hyper-scale parameters, you MUST explicitly state this before generating code. Provide one brief efficiency/trade-off note in the final completion response only; do not emit interim phase reports.
 
 ### 2. Infrastructure & Cloud-Native Scaling
 We run a Dockerized local dev loop, but production relies on top-tier managed subscriptions for all foundational systems (Google Cloud Spanner, Memorystore Redis, Managed Kafka). Your code must assume a highly distributed footprint:
@@ -812,9 +812,9 @@ This protocol is not optional guidance — it is the operational discipline that
 ### Phase I — Task Ingestion (Understand Before Touching)
 1. Parse the request literally. Distinguish between:
    - a **specific ask** (one route, one bug, one rename) — execute narrowly;
-   - a **directive** (audit, migrate, harden, refactor phase) — split into phases, use the task management tool, confirm scope BEFORE writing code.
+   - a **directive** (audit, migrate, harden, refactor phase) — execute end-to-end in one uninterrupted pass by default, using the task management tool internally; only split user-visible phases when the user explicitly requests staged execution.
 2. Identify the **blast radius** up front: backend packages, Spanner tables, Kafka topics, WebSocket rooms, frontend surfaces, mobile apps, shared types. If blast radius is unknown, the first tool call is `codebase-retrieval` — never guess.
-3. Refuse invisible scope creep. If the directive implies touching payments, AI worker, and mobile in one pass, state the phases and ask which to do first rather than silently expanding the PR.
+3. Refuse invisible scope creep. If the directive implies touching payments, AI worker, and mobile in one pass, execute all required connected work in the same pass whenever feasible; ask for staged execution only when blocked by risk, tooling, or explicit user preference.
 4. When a single user message contains ≥3 distinct asks, write them into the task list in the same reply that begins execution.
 
 ### Phase II — Context Gathering (Ground Truth Over Assumption)
