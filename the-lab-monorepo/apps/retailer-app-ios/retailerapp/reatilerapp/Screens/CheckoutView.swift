@@ -8,7 +8,7 @@ struct CheckoutView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
-    @State private var selectedPayment = "Cash"
+    @State private var selectedPayment = "GlobalPay"
     @State private var showPaymentPicker = false
     @State private var isSubmitting = false
     @State private var showSuccess = false
@@ -18,15 +18,12 @@ struct CheckoutView: View {
     @State private var showSupplierClosedWarning = false
 
     private let api = APIClient.shared
-    private let paymentMethods = ["Cash", "GlobalPay", "GlobalPay", "Cash on Delivery"]
+    private let paymentMethods = ["GlobalPay", "Cash on Delivery"]
 
     /// Map UI labels to backend gateway codes expected by /v1/checkout/unified
     private func gatewayCode(for method: String) -> String {
         switch method {
-        
-        
         case "GlobalPay": return "GLOBAL_PAY"
-        case "UzCard": return "UZCARD"
         case "Cash on Delivery": return "CASH"
         default: return "GLOBAL_PAY"
         }
@@ -309,10 +306,7 @@ struct CheckoutView: View {
 
     private func paymentIcon(_ method: String) -> String {
         switch method {
-        case "Cash": "creditcard"
         case "GlobalPay": "wallet.pass"
-        case "GlobalPay": "creditcard.fill"
-        case "UzCard": "creditcard.fill"
         case "Cash on Delivery": "banknote"
         default: "creditcard"
         }

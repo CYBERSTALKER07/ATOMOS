@@ -47,7 +47,7 @@ resource "google_redis_instance" "cache" {
   tier           = "STANDARD_HA" # Active-passive HA — required once Kafka lag-based autoscaling is live
   memory_size_gb = 1
   region         = "asia-south1"
-  network        = google_compute_network.lab_vpc.id
+  authorized_network = google_compute_network.lab_vpc.id
   redis_version  = "REDIS_7_0"
 }
 
@@ -79,8 +79,10 @@ resource "google_cloud_run_v2_service" "backend" {
     }
     
     vpc_access {
-      network = google_compute_network.lab_vpc.id
-      egress  = "PRIVATE_RANGES_ONLY" # Secures Redis connection
+      egress = "PRIVATE_RANGES_ONLY" # Secures Redis connection
+      network_interfaces {
+        network = google_compute_network.lab_vpc.id
+      }
     }
 
     containers {

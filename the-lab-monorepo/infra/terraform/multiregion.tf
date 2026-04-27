@@ -223,11 +223,6 @@ output "gke_us_endpoint" {
 
 # ── Variables referenced from main.tf that multiregion scales ─────────────
 
-variable "gke_node_count" {
-  type    = number
-  default = 3
-}
-
 variable "gke_node_min" {
   type    = number
   default = 2

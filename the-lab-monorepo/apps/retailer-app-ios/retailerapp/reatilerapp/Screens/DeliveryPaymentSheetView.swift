@@ -364,9 +364,9 @@ struct DeliveryPaymentSheetView: View {
     private var cardGatewayOptions: [CardGatewayOption] {
         let configuredGateways = event.availableCardGateways
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
-            .filter { ["GLOBAL_PAY", "UZCARD", "CASH"].contains($0) }
+            .filter { ["GLOBAL_PAY", "CASH"].contains($0) }
 
-        let gateways = configuredGateways.isEmpty ? ["GLOBAL_PAY", "UZCARD", "CASH"] : Array(NSOrderedSet(array: configuredGateways)) as? [String] ?? configuredGateways
+        let gateways = configuredGateways.isEmpty ? ["GLOBAL_PAY", "CASH"] : Array(NSOrderedSet(array: configuredGateways)) as? [String] ?? configuredGateways
 
         return gateways.compactMap { gateway in
             switch gateway {
