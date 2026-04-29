@@ -10,8 +10,14 @@ ATOMOS is an enterprise-grade logistics operating system that coordinates suppli
 
 The platform is built for high-consequence physical operations where route sequencing, payment integrity, geofence rules, and telemetry accuracy must remain coherent under high concurrency.
 
+Audience variants:
+
+1. Engineering master document: this file.
+2. Investor and partner narrative: [README-investors.md](README-investors.md).
+
 ## Table of Contents
 
+- [Audience Variants](#audience-variants)
 - [Executive Summary](#executive-summary)
 - [Architecture Overview](#architecture-overview)
 - [Exceptional Capabilities](#exceptional-capabilities)
@@ -27,6 +33,11 @@ The platform is built for high-consequence physical operations where route seque
 - [Observability and Operations](#observability-and-operations)
 - [Engineering Doctrine](#engineering-doctrine)
 - [Documentation and Diagram Assets](#documentation-and-diagram-assets)
+
+## Audience Variants
+
+1. Engineering master reference: [README.md](README.md).
+2. External investor and partner variant: [README-investors.md](README-investors.md).
 
 ## Executive Summary
 
@@ -55,6 +66,7 @@ Business-critical invariants:
 ### Logical Architecture
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"background":"#191622","primaryColor":"#232136","primaryTextColor":"#E1E1E6","primaryBorderColor":"#78D1E1","secondaryColor":"#2A2338","secondaryTextColor":"#E1E1E6","secondaryBorderColor":"#988BC7","tertiaryColor":"#1F3026","tertiaryTextColor":"#E1E1E6","tertiaryBorderColor":"#67E480","lineColor":"#E1E1E6","textColor":"#C7C7D1","mainBkg":"#232136","nodeBorder":"#78D1E1","clusterBkg":"#232136","clusterBorder":"#988BC7","titleColor":"#E1E1E6","edgeLabelBackground":"#232136","actorBkg":"#232136","actorBorder":"#78D1E1","actorTextColor":"#E1E1E6","actorLineColor":"#E1E1E6","signalColor":"#E1E1E6","signalTextColor":"#E1E1E6","labelBoxBkgColor":"#232136","labelBoxBorderColor":"#988BC7","labelTextColor":"#C7C7D1","loopTextColor":"#E1E1E6","activationBkgColor":"#2A2338","activationBorderColor":"#988BC7","sequenceNumberColor":"#191622","stateBkg":"#232136","stateBorder":"#67E480","stateTextColor":"#E1E1E6"}}}%%
 flowchart LR
    subgraph Clients[Execution Surfaces]
       SP[Supplier Portals]
@@ -121,6 +133,7 @@ flowchart LR
 ### Dispatch Pipeline
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"background":"#191622","primaryColor":"#232136","primaryTextColor":"#E1E1E6","primaryBorderColor":"#78D1E1","secondaryColor":"#2A2338","secondaryTextColor":"#E1E1E6","secondaryBorderColor":"#988BC7","tertiaryColor":"#1F3026","tertiaryTextColor":"#E1E1E6","tertiaryBorderColor":"#67E480","lineColor":"#E1E1E6","textColor":"#C7C7D1","mainBkg":"#232136","nodeBorder":"#78D1E1","clusterBkg":"#232136","clusterBorder":"#988BC7","titleColor":"#E1E1E6","edgeLabelBackground":"#232136","actorBkg":"#232136","actorBorder":"#78D1E1","actorTextColor":"#E1E1E6","actorLineColor":"#E1E1E6","signalColor":"#E1E1E6","signalTextColor":"#E1E1E6","labelBoxBkgColor":"#232136","labelBoxBorderColor":"#988BC7","labelTextColor":"#C7C7D1","loopTextColor":"#E1E1E6","activationBkgColor":"#2A2338","activationBorderColor":"#988BC7","sequenceNumberColor":"#191622","stateBkg":"#232136","stateBorder":"#67E480","stateTextColor":"#E1E1E6"}}}%%
 flowchart LR
    A[Demand and inventory signals] --> B[Eligibility filter\nstatus payment lock]
    B --> C[H3 geo batching]
@@ -156,6 +169,7 @@ flowchart LR
 ### Order Lifecycle
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"background":"#191622","primaryColor":"#232136","primaryTextColor":"#E1E1E6","primaryBorderColor":"#78D1E1","secondaryColor":"#2A2338","secondaryTextColor":"#E1E1E6","secondaryBorderColor":"#988BC7","tertiaryColor":"#1F3026","tertiaryTextColor":"#E1E1E6","tertiaryBorderColor":"#67E480","lineColor":"#E1E1E6","textColor":"#C7C7D1","mainBkg":"#232136","nodeBorder":"#78D1E1","clusterBkg":"#232136","clusterBorder":"#988BC7","titleColor":"#E1E1E6","edgeLabelBackground":"#232136","actorBkg":"#232136","actorBorder":"#78D1E1","actorTextColor":"#E1E1E6","actorLineColor":"#E1E1E6","signalColor":"#E1E1E6","signalTextColor":"#E1E1E6","labelBoxBkgColor":"#232136","labelBoxBorderColor":"#988BC7","labelTextColor":"#C7C7D1","loopTextColor":"#E1E1E6","activationBkgColor":"#2A2338","activationBorderColor":"#988BC7","sequenceNumberColor":"#191622","stateBkg":"#232136","stateBorder":"#67E480","stateTextColor":"#E1E1E6"}}}%%
 stateDiagram-v2
    [*] --> PENDING
    PENDING --> LOADED
@@ -171,6 +185,7 @@ stateDiagram-v2
 ### Delivery Sequence and Control Points
 
 ```mermaid
+%%{init: {"theme":"base","themeVariables":{"background":"#191622","primaryColor":"#232136","primaryTextColor":"#E1E1E6","primaryBorderColor":"#78D1E1","secondaryColor":"#2A2338","secondaryTextColor":"#E1E1E6","secondaryBorderColor":"#988BC7","tertiaryColor":"#1F3026","tertiaryTextColor":"#E1E1E6","tertiaryBorderColor":"#67E480","lineColor":"#E1E1E6","textColor":"#C7C7D1","mainBkg":"#232136","nodeBorder":"#78D1E1","clusterBkg":"#232136","clusterBorder":"#988BC7","titleColor":"#E1E1E6","edgeLabelBackground":"#232136","actorBkg":"#232136","actorBorder":"#78D1E1","actorTextColor":"#E1E1E6","actorLineColor":"#E1E1E6","signalColor":"#E1E1E6","signalTextColor":"#E1E1E6","labelBoxBkgColor":"#232136","labelBoxBorderColor":"#988BC7","labelTextColor":"#C7C7D1","loopTextColor":"#E1E1E6","activationBkgColor":"#2A2338","activationBorderColor":"#988BC7","sequenceNumberColor":"#191622","stateBkg":"#232136","stateBorder":"#67E480","stateTextColor":"#E1E1E6"}}}%%
 sequenceDiagram
    participant Portal as Supplier Portal
    participant API as Backend API
