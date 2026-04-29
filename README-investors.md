@@ -176,9 +176,9 @@ Near-term focus areas for market execution:
 1. Business and partnership discussions: use this brief as the starting narrative.
 2. Technical due diligence: review [README.md](README.md) for architecture and operations depth.
 3. Diagram assets used in this brief:
-    1. [the-lab-monorepo/docs/assets/architecture-overview.svg](the-lab-monorepo/docs/assets/architecture-overview.svg)
-    2. [the-lab-monorepo/docs/assets/autodispatch-pipeline.svg](the-lab-monorepo/docs/assets/autodispatch-pipeline.svg)
-    3. [the-lab-monorepo/docs/assets/reliability-control-plane.svg](the-lab-monorepo/docs/assets/reliability-control-plane.svg)
+   1. [the-lab-monorepo/docs/assets/architecture-overview.svg](the-lab-monorepo/docs/assets/architecture-overview.svg)
+   2. [the-lab-monorepo/docs/assets/autodispatch-pipeline.svg](the-lab-monorepo/docs/assets/autodispatch-pipeline.svg)
+   3. [the-lab-monorepo/docs/assets/reliability-control-plane.svg](the-lab-monorepo/docs/assets/reliability-control-plane.svg)
     4. [the-lab-monorepo/docs/assets/maglev-load-balancers.svg](the-lab-monorepo/docs/assets/maglev-load-balancers.svg)
     5. [the-lab-monorepo/docs/assets/omni-hero-banner.svg](the-lab-monorepo/docs/assets/omni-hero-banner.svg)
     6. [the-lab-monorepo/docs/assets/omni-section-divider.svg](the-lab-monorepo/docs/assets/omni-section-divider.svg)
