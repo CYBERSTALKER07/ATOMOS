@@ -1,152 +1,152 @@
-<svg width="1600" height="820" viewBox="0 0 1600 820" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Auto-dispatch pipeline in omni keynote style">
+<svg width="2200" height="1128" viewBox="0 0 1600 820" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Auto-dispatch pipeline clean glass style">
   <defs>
-    <linearGradient id="gPink" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ff3ea5"/>
-      <stop offset="100%" stop-color="#ff7a18"/>
+    <linearGradient id="accentA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a73e8"/>
+      <stop offset="100%" stop-color="#34a853"/>
     </linearGradient>
-    <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#39ddff"/>
-      <stop offset="100%" stop-color="#2e56ff"/>
+    <linearGradient id="accentB" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ea4335"/>
+      <stop offset="100%" stop-color="#fbbc05"/>
     </linearGradient>
-    <linearGradient id="gGreen" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#9cff00"/>
-      <stop offset="100%" stop-color="#00c96b"/>
-    </linearGradient>
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="9" result="b"/>
+    <radialGradient id="mistTop" cx="0" cy="0" r="1" gradientTransform="translate(1320 96) rotate(-8) scale(380 180)" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1a73e8" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#f1f3f4" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softShape" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
       <feMerge>
-        <feMergeNode in="b"/>
+        <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    <filter id="glassCard" x="-20%" y="-20%" width="140%" height="160%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="0.6" result="edgeBlur"/>
-      <feOffset in="edgeBlur" dx="0" dy="8" result="offsetBlur"/>
-      <feColorMatrix in="offsetBlur" type="matrix" values="0 0 0 0 0.03 0 0 0 0 0.05 0 0 0 0 0.12 0 0 0 0.42 0" result="shadow"/>
+    <filter id="glassShadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="0.8" result="edgeBlur"/>
+      <feOffset in="edgeBlur" dx="0" dy="10" result="offsetBlur"/>
+      <feColorMatrix in="offsetBlur" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.35 0" result="shadow"/>
       <feMerge>
         <feMergeNode in="shadow"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,4 L0,8 Z" fill="#f6f8ff"/>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#111827"/>
     </marker>
     <style>
-      .bg { fill: #090b12; }
-      .title { font: 700 36px Arial, sans-serif; fill: #f6f8ff; }
-      .subtitle { font: 500 18px Arial, sans-serif; fill: #c9d0f5; }
-      .lane { fill: rgba(176, 202, 255, 0.10); stroke: none; filter: url(#glassCard); }
-      .step { fill: rgba(173, 198, 255, 0.12); stroke: none; filter: url(#glassCard); }
-      .stepTitle { font: 700 16px Arial, sans-serif; fill: #f6f8ff; }
-      .stepText { font: 500 13px Arial, sans-serif; fill: #c9d0f5; }
-      .laneLabel { font: 700 14px Arial, sans-serif; fill: #f6f8ff; }
-      .guard { fill: rgba(255, 168, 114, 0.16); stroke: none; filter: url(#glassCard); }
-      .guardText { font: 600 13px Arial, sans-serif; fill: #ffd0ac; }
-      .outcome { fill: rgba(154, 255, 132, 0.15); stroke: none; filter: url(#glassCard); }
-      .outcomeTitle { font: 700 16px Arial, sans-serif; fill: #cfff8a; }
-      .arrow { stroke: #f6f8ff; stroke-width: 2.5; fill: none; marker-end: url(#ah); }
+      .bg { fill: #f1f3f4; }
+      .title { font: 700 36px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 500 18px Arial, sans-serif; fill: #4b5563; }
+      .lane { fill: rgba(0, 0, 0, 0.5); stroke: none; filter: url(#glassShadow); }
+      .step { fill: rgba(0, 0, 0, 0.42); stroke: none; filter: url(#glassShadow); }
+      .stepTitle { font: 700 16px Arial, sans-serif; fill: #f9fafb; }
+      .stepText { font: 500 13px Arial, sans-serif; fill: #e5e7eb; }
+      .laneLabel { font: 700 15px Arial, sans-serif; fill: #f9fafb; }
+      .guard { fill: rgba(0, 0, 0, 0.48); stroke: none; filter: url(#glassShadow); }
+      .guardText { font: 600 13px Arial, sans-serif; fill: #fef3c7; }
+      .outcome { fill: rgba(0, 0, 0, 0.48); stroke: none; filter: url(#glassShadow); }
+      .outcomeTitle { font: 700 16px Arial, sans-serif; fill: #d1fae5; }
+      .arrowLine { stroke: #111827; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
     </style>
   </defs>
 
   <rect class="bg" x="0" y="0" width="1600" height="820"/>
+  <rect x="0" y="0" width="1600" height="820" fill="url(#mistTop)"/>
 
-  <g filter="url(#glow)">
-    <path d="M30,730 C30,560 160,438 332,438 L332,522 C212,522 114,618 114,730 Z" fill="url(#gPink)"/>
-    <rect x="1360" y="66" width="176" height="60" rx="18" fill="url(#gBlue)"/>
-    <rect x="1360" y="132" width="110" height="60" rx="18" fill="url(#gBlue)"/>
-    <circle cx="1274" cy="126" r="54" fill="url(#gGreen)" opacity="0.34"/>
+  <g filter="url(#softShape)">
+    <path d="M24,736 C24,560 154,438 320,438 L320,512 C210,512 122,604 122,736 Z" fill="url(#accentA)" opacity="0.74"/>
+    <rect x="1374" y="70" width="170" height="62" rx="30" fill="url(#accentB)" opacity="0.78"/>
+    <circle cx="1248" cy="108" r="52" fill="#34a853" opacity="0.22"/>
   </g>
 
-  <text class="title" x="60" y="72">Auto-Dispatch Intelligence Pipeline</text>
-  <text class="subtitle" x="60" y="104">Optimization-first route orchestration with policy-safe human override controls</text>
+  <text class="title" x="58" y="72">Auto-Dispatch Intelligence Pipeline</text>
+  <text class="subtitle" x="58" y="104">Optimization-first routing with bounded manual override and auditable execution feedback</text>
 
-  <rect class="lane" x="40" y="138" width="1520" height="176" rx="16"/>
-  <rect class="lane" x="40" y="326" width="1520" height="176" rx="16"/>
-  <rect class="lane" x="40" y="514" width="1520" height="176" rx="16"/>
+  <rect class="lane" x="40" y="138" width="1520" height="180" rx="40"/>
+  <rect class="lane" x="40" y="328" width="1520" height="180" rx="40"/>
+  <rect class="lane" x="40" y="518" width="1520" height="180" rx="40"/>
 
-  <text class="laneLabel" x="62" y="166">Signal and Eligibility</text>
-  <text class="laneLabel" x="62" y="354">Optimization and Assignment</text>
-  <text class="laneLabel" x="62" y="542">Execution and Feedback</text>
+  <text class="laneLabel" x="64" y="170">Signal and Eligibility</text>
+  <text class="laneLabel" x="64" y="360">Optimization and Assignment</text>
+  <text class="laneLabel" x="64" y="550">Execution and Feedback</text>
 
-  <rect class="step" x="68" y="184" width="214" height="106" rx="14"/>
-  <text class="stepTitle" x="86" y="216">1. Demand Inputs</text>
-  <text class="stepText" x="86" y="240">Low stock alerts, order queue,</text>
-  <text class="stepText" x="86" y="258">SLA windows, node capacity</text>
+  <rect class="step" x="68" y="186" width="214" height="112" rx="32"/>
+  <text class="stepTitle" x="86" y="218">1. Demand Inputs</text>
+  <text class="stepText" x="86" y="242">Low stock alerts, order queue,</text>
+  <text class="stepText" x="86" y="260">SLA windows, node capacity</text>
 
-  <rect class="step" x="334" y="184" width="218" height="106" rx="14"/>
-  <text class="stepTitle" x="352" y="216">2. Eligibility Filter</text>
-  <text class="stepText" x="352" y="240">Status, payment, freeze-lock,</text>
-  <text class="stepText" x="352" y="258">home-node scope constraints</text>
+  <rect class="step" x="334" y="186" width="218" height="112" rx="32"/>
+  <text class="stepTitle" x="352" y="218">2. Eligibility Filter</text>
+  <text class="stepText" x="352" y="242">Status, payment, freeze-lock,</text>
+  <text class="stepText" x="352" y="260">home-node scope constraints</text>
 
-  <rect class="step" x="604" y="184" width="220" height="106" rx="14"/>
-  <text class="stepTitle" x="622" y="216">3. Geo Batching</text>
-  <text class="stepText" x="622" y="240">H3 cell grouping with ring-1</text>
-  <text class="stepText" x="622" y="258">adjacency for route cohesion</text>
+  <rect class="step" x="604" y="186" width="220" height="112" rx="32"/>
+  <text class="stepTitle" x="622" y="218">3. Geo Batching</text>
+  <text class="stepText" x="622" y="242">H3 cell grouping with ring-1</text>
+  <text class="stepText" x="622" y="260">adjacency for route cohesion</text>
 
-  <rect class="step" x="876" y="184" width="220" height="106" rx="14"/>
-  <text class="stepTitle" x="894" y="216">4. Capacity Fit</text>
-  <text class="stepText" x="894" y="240">Tetris-style bin packing by</text>
-  <text class="stepText" x="894" y="258">driver capacity and proximity</text>
+  <rect class="step" x="876" y="186" width="220" height="112" rx="32"/>
+  <text class="stepTitle" x="894" y="218">4. Capacity Fit</text>
+  <text class="stepText" x="894" y="242">Tetris-style bin packing by</text>
+  <text class="stepText" x="894" y="260">driver capacity and proximity</text>
 
-  <rect class="step" x="1148" y="184" width="228" height="106" rx="14"/>
-  <text class="stepTitle" x="1166" y="216">5. Route Synthesis</text>
-  <text class="stepText" x="1166" y="240">Sequence stops, split oversize</text>
-  <text class="stepText" x="1166" y="258">manifests, compute ETAs</text>
+  <rect class="step" x="1148" y="186" width="228" height="112" rx="32"/>
+  <text class="stepTitle" x="1166" y="218">5. Route Synthesis</text>
+  <text class="stepText" x="1166" y="242">Sequence stops, split oversize</text>
+  <text class="stepText" x="1166" y="260">manifests, compute ETAs</text>
 
-  <rect class="step" x="168" y="372" width="236" height="106" rx="14"/>
-  <text class="stepTitle" x="186" y="404">6. Policy Guard</text>
-  <text class="stepText" x="186" y="428">Priority guard, role scope,</text>
-  <text class="stepText" x="186" y="446">version gate conflict checks</text>
+  <rect class="step" x="168" y="376" width="236" height="112" rx="32"/>
+  <text class="stepTitle" x="186" y="408">6. Policy Guard</text>
+  <text class="stepText" x="186" y="432">Priority guard, role scope,</text>
+  <text class="stepText" x="186" y="450">version gate conflict checks</text>
 
-  <rect class="step" x="456" y="372" width="238" height="106" rx="14"/>
-  <text class="stepTitle" x="474" y="404">7. Atomic Commit</text>
-  <text class="stepText" x="474" y="428">Spanner mutation + outbox event</text>
-  <text class="stepText" x="474" y="446">inside one transaction</text>
+  <rect class="step" x="456" y="376" width="238" height="112" rx="32"/>
+  <text class="stepTitle" x="474" y="408">7. Atomic Commit</text>
+  <text class="stepText" x="474" y="432">Spanner mutation + outbox event</text>
+  <text class="stepText" x="474" y="450">inside one transaction</text>
 
-  <rect class="step" x="746" y="372" width="238" height="106" rx="14"/>
-  <text class="stepTitle" x="764" y="404">8. Event Fanout</text>
-  <text class="stepText" x="764" y="428">Kafka publish, websocket room</text>
-  <text class="stepText" x="764" y="446">broadcast, push notification</text>
+  <rect class="step" x="746" y="376" width="238" height="112" rx="32"/>
+  <text class="stepTitle" x="764" y="408">8. Event Fanout</text>
+  <text class="stepText" x="764" y="432">Kafka publish, websocket room</text>
+  <text class="stepText" x="764" y="450">broadcast, push notification</text>
 
-  <rect class="guard" x="1036" y="372" width="330" height="106" rx="14"/>
-  <text class="stepTitle" x="1056" y="404">Manual Override Protection</text>
-  <text class="guardText" x="1056" y="428">Freeze-lock blocks AI reassign during</text>
-  <text class="guardText" x="1056" y="446">operator intervention window</text>
+  <rect class="guard" x="1036" y="376" width="330" height="112" rx="32"/>
+  <text class="stepTitle" x="1056" y="408">Manual Override Protection</text>
+  <text class="guardText" x="1056" y="432">Freeze-lock blocks AI reassign during</text>
+  <text class="guardText" x="1056" y="450">operator intervention window</text>
 
-  <rect class="step" x="224" y="560" width="284" height="106" rx="14"/>
-  <text class="stepTitle" x="244" y="592">9. Driver Execution</text>
-  <text class="stepText" x="244" y="616">Follow optimized stop order or choose</text>
-  <text class="stepText" x="244" y="634">next task when policy permits</text>
+  <rect class="step" x="224" y="566" width="284" height="112" rx="32"/>
+  <text class="stepTitle" x="244" y="598">9. Driver Execution</text>
+  <text class="stepText" x="244" y="622">Follow optimized stop order or choose</text>
+  <text class="stepText" x="244" y="640">next task when policy permits</text>
 
-  <rect class="step" x="560" y="560" width="284" height="106" rx="14"/>
-  <text class="stepTitle" x="580" y="592">10. Telemetry Reconciliation</text>
-  <text class="stepText" x="580" y="616">Actual route progress vs planned</text>
-  <text class="stepText" x="580" y="634">sequence and SLA envelope</text>
+  <rect class="step" x="560" y="566" width="284" height="112" rx="32"/>
+  <text class="stepTitle" x="580" y="598">10. Telemetry Reconciliation</text>
+  <text class="stepText" x="580" y="622">Actual route progress vs planned</text>
+  <text class="stepText" x="580" y="640">sequence and SLA envelope</text>
 
-  <rect class="step" x="896" y="560" width="284" height="106" rx="14"/>
-  <text class="stepTitle" x="916" y="592">11. Continuous Re-plan</text>
-  <text class="stepText" x="916" y="616">Deviation and delay signals trigger</text>
-  <text class="stepText" x="916" y="634">adaptive optimization cycles</text>
+  <rect class="step" x="896" y="566" width="284" height="112" rx="32"/>
+  <text class="stepTitle" x="916" y="598">11. Continuous Re-plan</text>
+  <text class="stepText" x="916" y="622">Deviation and delay signals trigger</text>
+  <text class="stepText" x="916" y="640">adaptive optimization cycles</text>
 
-  <rect class="outcome" x="1232" y="560" width="292" height="106" rx="14"/>
-  <text class="outcomeTitle" x="1254" y="592">Operational Outcome</text>
-  <text class="stepText" x="1254" y="616">Lower empty miles, safer handoffs,</text>
-  <text class="stepText" x="1254" y="634">auditable dispatch decisions</text>
+  <rect class="outcome" x="1232" y="566" width="292" height="112" rx="32"/>
+  <text class="outcomeTitle" x="1254" y="598">Operational Outcome</text>
+  <text class="stepText" x="1254" y="622">Lower empty miles, safer handoffs,</text>
+  <text class="stepText" x="1254" y="640">auditable dispatch decisions</text>
 
-  <path class="arrow" d="M282 236 L334 236"/>
-  <path class="arrow" d="M552 236 L604 236"/>
-  <path class="arrow" d="M824 236 L876 236"/>
-  <path class="arrow" d="M1096 236 L1148 236"/>
+  <path class="arrowLine" d="M282 242 L334 242"/>
+  <path class="arrowLine" d="M552 242 L604 242"/>
+  <path class="arrowLine" d="M824 242 L876 242"/>
+  <path class="arrowLine" d="M1096 242 L1148 242"/>
 
-  <path class="arrow" d="M1262 292 L1262 354"/>
-  <path class="arrow" d="M404 426 L456 426"/>
-  <path class="arrow" d="M694 426 L746 426"/>
-  <path class="arrow" d="M984 426 L1036 426"/>
+  <path class="arrowLine" d="M1262 298 L1262 358"/>
+  <path class="arrowLine" d="M404 432 L456 432"/>
+  <path class="arrowLine" d="M694 432 L746 432"/>
+  <path class="arrowLine" d="M984 432 L1036 432"/>
 
-  <path class="arrow" d="M368 478 L368 558"/>
-  <path class="arrow" d="M508 612 L560 612"/>
-  <path class="arrow" d="M844 612 L896 612"/>
-  <path class="arrow" d="M1180 612 L1232 612"/>
+  <path class="arrowLine" d="M368 488 L368 564"/>
+  <path class="arrowLine" d="M508 622 L560 622"/>
+  <path class="arrowLine" d="M844 622 L896 622"/>
+  <path class="arrowLine" d="M1180 622 L1232 622"/>
 
-  <text class="subtitle" x="60" y="752">Dispatch philosophy: automation stays default, while manual control remains bounded, visible, and reversible.</text>
+  <text class="subtitle" x="58" y="766">Design language: enterprise-neutral background, transparent black glass cards, 4XL rounding, and borderless containment.</text>
 </svg>

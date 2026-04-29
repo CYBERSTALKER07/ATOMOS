@@ -1,128 +1,130 @@
-<svg width="1600" height="790" viewBox="0 0 1600 790" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reliability control plane in omni style">
+<svg width="2200" height="1086" viewBox="0 0 1600 790" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reliability control plane clean glass style">
   <defs>
-    <linearGradient id="rPink" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ff3ea5"/>
-      <stop offset="100%" stop-color="#ff7a18"/>
+    <linearGradient id="accentBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a73e8"/>
+      <stop offset="100%" stop-color="#34a853"/>
     </linearGradient>
-    <linearGradient id="rBlue" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#40e0ff"/>
-      <stop offset="100%" stop-color="#2f5bff"/>
+    <linearGradient id="accentRed" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ea4335"/>
+      <stop offset="100%" stop-color="#fbbc05"/>
     </linearGradient>
-    <filter id="g" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="8" result="b"/>
+    <radialGradient id="mist" cx="0" cy="0" r="1" gradientTransform="translate(186 124) rotate(6) scale(400 220)" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#34a853" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#f1f3f4" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softShape" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
       <feMerge>
-        <feMergeNode in="b"/>
+        <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    <filter id="glassCard" x="-20%" y="-20%" width="140%" height="160%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="0.6" result="edgeBlur"/>
-      <feOffset in="edgeBlur" dx="0" dy="8" result="offsetBlur"/>
-      <feColorMatrix in="offsetBlur" type="matrix" values="0 0 0 0 0.03 0 0 0 0 0.05 0 0 0 0 0.12 0 0 0 0.42 0" result="shadow"/>
+    <filter id="glassShadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="0.8" result="edgeBlur"/>
+      <feOffset in="edgeBlur" dx="0" dy="10" result="offsetBlur"/>
+      <feColorMatrix in="offsetBlur" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.35 0" result="shadow"/>
       <feMerge>
         <feMergeNode in="shadow"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,4 L0,8 Z" fill="#f6f8ff"/>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#111827"/>
     </marker>
     <style>
-      .bg { fill: #090b12; }
-      .panel { fill: rgba(176, 202, 255, 0.10); stroke: none; filter: url(#glassCard); }
-      .title { font: 700 34px Arial, sans-serif; fill: #f6f8ff; }
-      .subtitle { font: 500 17px Arial, sans-serif; fill: #c9d0f5; }
-      .nodeA { fill: rgba(78, 198, 255, 0.12); stroke: none; filter: url(#glassCard); }
-      .nodeB { fill: rgba(161, 129, 255, 0.12); stroke: none; filter: url(#glassCard); }
-      .nodeC { fill: rgba(137, 233, 116, 0.11); stroke: none; filter: url(#glassCard); }
-      .nodeD { fill: rgba(255, 154, 92, 0.12); stroke: none; filter: url(#glassCard); }
-      .h { font: 700 16px Arial, sans-serif; fill: #f6f8ff; }
-      .t { font: 500 13px Arial, sans-serif; fill: #c9d0f5; }
-      .arrow { stroke: #f6f8ff; stroke-width: 2.4; fill: none; marker-end: url(#ah); }
-      .arrowDashed { stroke: #c9d0f5; stroke-width: 2.2; stroke-dasharray: 8 6; fill: none; marker-end: url(#ah); }
-      .callout { fill: rgba(255, 126, 183, 0.14); stroke: none; filter: url(#glassCard); }
-      .calloutText { font: 600 13px Arial, sans-serif; fill: #ffd6ef; }
-      .calloutTitle { font: 700 15px Arial, sans-serif; fill: #ffd6ef; }
+      .bg { fill: #f1f3f4; }
+      .panel { fill: rgba(0, 0, 0, 0.5); stroke: none; filter: url(#glassShadow); }
+      .title { font: 700 34px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 500 17px Arial, sans-serif; fill: #4b5563; }
+      .node { fill: rgba(0, 0, 0, 0.44); stroke: none; filter: url(#glassShadow); }
+      .h { font: 700 16px Arial, sans-serif; fill: #f9fafb; }
+      .t { font: 500 13px Arial, sans-serif; fill: #e5e7eb; }
+      .arrowLine { stroke: #111827; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .arrowDashed { stroke: #374151; stroke-width: 2; stroke-dasharray: 8 6; fill: none; marker-end: url(#arrow); }
+      .callout { fill: rgba(0, 0, 0, 0.48); stroke: none; filter: url(#glassShadow); }
+      .calloutTitle { font: 700 15px Arial, sans-serif; fill: #f9fafb; }
+      .calloutText { font: 600 13px Arial, sans-serif; fill: #f3f4f6; }
     </style>
   </defs>
 
   <rect class="bg" x="0" y="0" width="1600" height="790"/>
+  <rect x="0" y="0" width="1600" height="790" fill="url(#mist)"/>
 
-  <g filter="url(#g)">
-    <circle cx="130" cy="120" r="78" fill="url(#rBlue)" opacity="0.35"/>
-    <path d="M1430,80 l82,0 0,52 52,0 0,52 -52,0 0,52 -82,0 0,-52 -52,0 0,-52 52,0 z" fill="url(#rPink)" opacity="0.86"/>
+  <g filter="url(#softShape)">
+    <circle cx="122" cy="114" r="72" fill="url(#accentBlue)" opacity="0.32"/>
+    <path d="M1410,74 l84,0 0,56 56,0 0,56 -56,0 0,56 -84,0 0,-56 -56,0 0,-56 56,0 z" fill="url(#accentRed)" opacity="0.74"/>
   </g>
 
   <text class="title" x="54" y="66">Reliability and Consistency Control Plane</text>
   <text class="subtitle" x="54" y="96">State mutation, outbox publication, cache coherence, and fanout stability under high concurrency</text>
 
-  <rect class="panel" x="42" y="128" width="1516" height="620" rx="18"/>
+  <rect class="panel" x="42" y="128" width="1516" height="620" rx="40"/>
 
-  <rect class="nodeA" x="80" y="190" width="230" height="112" rx="12"/>
+  <rect class="node" x="80" y="190" width="230" height="118" rx="32"/>
   <text class="h" x="98" y="220">1. Mutating API Call</text>
   <text class="t" x="98" y="244">Authenticated request enters</text>
   <text class="t" x="98" y="262">chi router middleware chain</text>
 
-  <rect class="nodeA" x="352" y="190" width="246" height="112" rx="12"/>
+  <rect class="node" x="352" y="190" width="246" height="118" rx="32"/>
   <text class="h" x="370" y="220">2. Role and Scope Gate</text>
   <text class="t" x="370" y="244">RequireRole and scope resolve</text>
   <text class="t" x="370" y="262">request authority boundary</text>
 
-  <rect class="nodeB" x="640" y="190" width="280" height="112" rx="12"/>
+  <rect class="node" x="640" y="190" width="280" height="118" rx="32"/>
   <text class="h" x="660" y="220">3. Spanner RW Transaction</text>
   <text class="t" x="660" y="244">Domain mutation and version gate</text>
   <text class="t" x="660" y="262">execute atomically</text>
 
-  <rect class="nodeB" x="962" y="190" width="264" height="112" rx="12"/>
+  <rect class="node" x="962" y="190" width="264" height="118" rx="32"/>
   <text class="h" x="982" y="220">4. Outbox Row Emit</text>
   <text class="t" x="982" y="244">Event payload written in same</text>
   <text class="t" x="982" y="262">transaction as state update</text>
 
-  <rect class="nodeC" x="1268" y="190" width="242" height="112" rx="12"/>
+  <rect class="node" x="1268" y="190" width="242" height="118" rx="32"/>
   <text class="h" x="1288" y="220">5. Commit Success</text>
   <text class="t" x="1288" y="244">State and event become</text>
   <text class="t" x="1288" y="262">durable together</text>
 
-  <rect class="nodeD" x="220" y="374" width="270" height="112" rx="12"/>
-  <text class="h" x="240" y="404">6. Cache Invalidate</text>
-  <text class="t" x="240" y="428">Delete key and publish</text>
-  <text class="t" x="240" y="446">invalidation over Redis channel</text>
+  <rect class="node" x="220" y="376" width="270" height="118" rx="32"/>
+  <text class="h" x="240" y="406">6. Cache Invalidate</text>
+  <text class="t" x="240" y="430">Delete key and publish</text>
+  <text class="t" x="240" y="448">invalidation over Redis channel</text>
 
-  <rect class="nodeD" x="552" y="374" width="286" height="112" rx="12"/>
-  <text class="h" x="572" y="404">7. Outbox Relay Loop</text>
-  <text class="t" x="572" y="428">Poll unpublished rows, write to</text>
-  <text class="t" x="572" y="446">Kafka with aggregate key order</text>
+  <rect class="node" x="552" y="376" width="286" height="118" rx="32"/>
+  <text class="h" x="572" y="406">7. Outbox Relay Loop</text>
+  <text class="t" x="572" y="430">Poll unpublished rows, write to</text>
+  <text class="t" x="572" y="448">Kafka with aggregate key order</text>
 
-  <rect class="nodeD" x="900" y="374" width="254" height="112" rx="12"/>
-  <text class="h" x="920" y="404">8. Consumer Apply</text>
-  <text class="t" x="920" y="428">Idempotency and version checks</text>
-  <text class="t" x="920" y="446">reject stale replays</text>
+  <rect class="node" x="900" y="376" width="254" height="118" rx="32"/>
+  <text class="h" x="920" y="406">8. Consumer Apply</text>
+  <text class="t" x="920" y="430">Idempotency and version checks</text>
+  <text class="t" x="920" y="448">reject stale replays</text>
 
-  <rect class="nodeD" x="1216" y="374" width="266" height="112" rx="12"/>
-  <text class="h" x="1236" y="404">9. Realtime Fanout</text>
-  <text class="t" x="1236" y="428">WebSocket broadcast and push</text>
-  <text class="t" x="1236" y="446">notify subscribed actors</text>
+  <rect class="node" x="1216" y="376" width="266" height="118" rx="32"/>
+  <text class="h" x="1236" y="406">9. Realtime Fanout</text>
+  <text class="t" x="1236" y="430">WebSocket broadcast and push</text>
+  <text class="t" x="1236" y="448">notify subscribed actors</text>
 
-  <rect class="callout" x="118" y="546" width="1366" height="176" rx="12"/>
-  <text class="calloutTitle" x="146" y="576">Failure-tolerant behavior:</text>
-  <text class="calloutText" x="146" y="600">1) Redis publish failure does not block local websocket delivery (fail-open relay).</text>
-  <text class="calloutText" x="146" y="624">2) Webhook flows verify signature first, then idempotency guard, then transactional mutation.</text>
-  <text class="calloutText" x="146" y="648">3) Priority guard sheds lower-priority requests under load to protect critical payment and dispatch paths.</text>
-  <text class="calloutText" x="146" y="672">4) Edge ingress uses header-based ring-hash affinity to stabilize supplier-to-pod routing.</text>
+  <rect class="callout" x="118" y="548" width="1366" height="176" rx="40"/>
+  <text class="calloutTitle" x="146" y="578">Failure-tolerant behavior:</text>
+  <text class="calloutText" x="146" y="602">1) Redis publish failure does not block local websocket delivery (fail-open relay).</text>
+  <text class="calloutText" x="146" y="626">2) Webhook flow verifies signature first, then idempotency guard, then transactional mutation.</text>
+  <text class="calloutText" x="146" y="650">3) Priority guard sheds lower-priority requests under load to protect payment and dispatch paths.</text>
+  <text class="calloutText" x="146" y="674">4) Edge ingress uses header-based ring-hash affinity to stabilize supplier-to-pod routing.</text>
 
-  <path class="arrow" d="M310 246 L352 246"/>
-  <path class="arrow" d="M598 246 L640 246"/>
-  <path class="arrow" d="M920 246 L962 246"/>
-  <path class="arrow" d="M1226 246 L1268 246"/>
+  <path class="arrowLine" d="M310 248 L352 248"/>
+  <path class="arrowLine" d="M598 248 L640 248"/>
+  <path class="arrowLine" d="M920 248 L962 248"/>
+  <path class="arrowLine" d="M1226 248 L1268 248"/>
 
-  <path class="arrow" d="M1388 302 L1388 362"/>
-  <path class="arrow" d="M355 374 L355 314"/>
-  <path class="arrow" d="M490 430 L552 430"/>
-  <path class="arrow" d="M838 430 L900 430"/>
-  <path class="arrow" d="M1154 430 L1216 430"/>
+  <path class="arrowLine" d="M1388 308 L1388 364"/>
+  <path class="arrowLine" d="M355 376 L355 320"/>
+  <path class="arrowLine" d="M490 436 L552 436"/>
+  <path class="arrowLine" d="M838 436 L900 436"/>
+  <path class="arrowLine" d="M1154 436 L1216 436"/>
 
-  <path class="arrowDashed" d="M1350 374 L1350 314"/>
-  <path class="arrowDashed" d="M780 374 L780 314"/>
+  <path class="arrowDashed" d="M1350 376 L1350 320"/>
+  <path class="arrowDashed" d="M780 376 L780 320"/>
 
-  <text class="subtitle" x="54" y="770">Control plane objective: deterministic state transitions with replay-safe eventing and operator-visible realtime outcomes.</text>
+  <text class="subtitle" x="54" y="770">Enterprise glass composition: transparent black cards, soft depth blur, 4XL corners, and no borders.</text>
 </svg>
