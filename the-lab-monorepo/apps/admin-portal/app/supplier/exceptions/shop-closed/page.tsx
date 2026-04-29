@@ -46,7 +46,7 @@ export default function ShopClosedExceptions() {
     else alert('Failed to resolve');
   };
 
-  if (!loading && data.length === 0) return <EmptyState icon="done_all" title="No Escalations" subtitle="You are all caught up." />;
+  if (!loading && data.length === 0) return <EmptyState icon="done_all" headline="No Escalations" body="You are all caught up." />;
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-4">
@@ -62,15 +62,15 @@ export default function ShopClosedExceptions() {
           <div key={item.attempt_id} className="md-card md-elevation-1 p-4 flex flex-col md:flex-row gap-4 items-start md:items-center">
             <div className="flex-1">
               <p className="md-typescale-title-medium font-bold">Order ID: {item.order_id}</p>
-              <p className="text-sm text-[var(--color-md-on-surface-variant)]">Driver: {item.driver_id} | Route: {item.original_route_id}</p>
+              <p className="text-sm text-(--color-md-on-surface-variant)">Driver: {item.driver_id} | Route: {item.original_route_id}</p>
               <span className={`mt-2 inline-block px-2 py-1 text-xs rounded md-shape-xs bg-yellow-100 text-yellow-800`}>
                 {item.resolution}
               </span>
             </div>
             <div className="flex gap-2">
-              <Button color="primary" variant="flat" onPress={() => resolve(item.attempt_id, 'WAIT')}>Wait</Button>
-              <Button color="warning" variant="flat" onPress={() => resolve(item.attempt_id, 'BYPASS')}>Bypass / Offload</Button>
-              <Button color="danger" variant="flat" onPress={() => resolve(item.attempt_id, 'RETURN_TO_DEPOT')}>Return to Depot</Button>
+              <Button variant="primary" onPress={() => resolve(item.attempt_id, 'WAIT')}>Wait</Button>
+              <Button variant="secondary" onPress={() => resolve(item.attempt_id, 'BYPASS')}>Bypass / Offload</Button>
+              <Button variant="danger" onPress={() => resolve(item.attempt_id, 'RETURN_TO_DEPOT')}>Return to Depot</Button>
             </div>
           </div>
         ))}

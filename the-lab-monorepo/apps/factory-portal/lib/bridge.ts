@@ -15,7 +15,12 @@ async function getTauriCore() {
 
 async function getTauriEvent() {
   if (!isTauri()) throw new Error("Not running in Tauri");
-  return await import("@tauri-apps/api/event");
+  return (await import("@tauri-apps/api/event")) as unknown as {
+    listen: <T>(
+      event: string,
+      handler: (event: { payload: T }) => void
+    ) => Promise<() => void>;
+  };
 }
 
 export async function tauriInvoke<T>(
@@ -31,7 +36,7 @@ export async function tauriListen<T>(
   handler: (payload: T) => void
 ): Promise<() => void> {
   const { listen } = await getTauriEvent();
-  const unlisten = await listen(event, (e: any) => handler(e.payload));
+  const unlisten = await listen<T>(event, (e) => handler(e.payload));
   return unlisten;
 }
 

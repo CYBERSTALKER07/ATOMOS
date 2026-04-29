@@ -378,23 +378,28 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 	var statusChanged bool
 	var oldIsActive, newIsActive bool
 	var oldIsOnShift, newIsOnShift bool
+	var cacheRefreshNeeded bool
+	var oldCacheEntry, newCacheEntry cache.WarehouseGeoEntry
 
 	_, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		geoChanged = false
 		statusChanged = false
+		cacheRefreshNeeded = false
 
 		// Verify ownership — also read current status fields for change detection
 		row, err := txn.ReadRow(ctx, "Warehouses", spanner.Key{warehouseID},
-			[]string{"SupplierId", "Lat", "Lng", "CoverageRadiusKm", "IsActive", "IsOnShift"})
+			[]string{"SupplierId", "Name", "Lat", "Lng", "CoverageRadiusKm", "H3Indexes", "IsActive", "IsOnShift"})
 		if err != nil {
 			return fmt.Errorf("warehouse not found: %w", err)
 		}
 		var existingSupplierId string
+		var existingName string
 		var existingLat, existingLng spanner.NullFloat64
 		var existingRadius float64
+		var existingH3Cells []string
 		var curActive bool
 		var curOnShift spanner.NullBool
-		if err := row.Columns(&existingSupplierId, &existingLat, &existingLng, &existingRadius, &curActive, &curOnShift); err != nil {
+		if err := row.Columns(&existingSupplierId, &existingName, &existingLat, &existingLng, &existingRadius, &existingH3Cells, &curActive, &curOnShift); err != nil {
 			return err
 		}
 		if existingSupplierId != supplierID {
@@ -484,6 +489,13 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		lat := existingLat.Float64
 		lng := existingLng.Float64
 		radius := existingRadius
+		name := existingName
+		h3Cells := existingH3Cells
+
+		if req.Name != nil {
+			name = *req.Name
+			cacheRefreshNeeded = true
+		}
 
 		if req.Lat != nil {
 			lat = *req.Lat
@@ -499,9 +511,29 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		}
 
 		if geoChanged {
-			h3Cells := proximity.ComputeGridCoverage(lat, lng, radius)
+			h3Cells = proximity.ComputeGridCoverage(lat, lng, radius)
 			cols = append(cols, "H3Indexes")
 			vals = append(vals, h3Cells)
+			cacheRefreshNeeded = true
+		}
+
+		oldCacheEntry = cache.WarehouseGeoEntry{
+			WarehouseId: warehouseID,
+			SupplierId:  supplierID,
+			Name:        existingName,
+			Lat:         existingLat.Float64,
+			Lng:         existingLng.Float64,
+			RadiusKm:    existingRadius,
+			H3Cells:     existingH3Cells,
+		}
+		newCacheEntry = cache.WarehouseGeoEntry{
+			WarehouseId: warehouseID,
+			SupplierId:  supplierID,
+			Name:        name,
+			Lat:         lat,
+			Lng:         lng,
+			RadiusKm:    radius,
+			H3Cells:     h3Cells,
 		}
 
 		m := spanner.Update("Warehouses", cols, vals)
@@ -583,6 +615,22 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		log.Printf("[WAREHOUSE] Update failed for %s: %v", warehouseID, err)
 		http.Error(w, "Failed to update warehouse", http.StatusInternalServerError)
 		return
+	}
+
+	if cacheRefreshNeeded {
+		capturedOld := oldCacheEntry
+		capturedNew := newCacheEntry
+		capturedGeoChanged := geoChanged
+		workers.EventPool.Submit(func() {
+			if capturedGeoChanged {
+				if err := cache.RemoveWarehouse(context.Background(), capturedOld); err != nil {
+					log.Printf("[WAREHOUSE] Cache remove failed for %s: %v", capturedOld.WarehouseId, err)
+				}
+			}
+			if err := cache.IndexWarehouse(context.Background(), capturedNew); err != nil {
+				log.Printf("[WAREHOUSE] Cache index failed for %s: %v", capturedNew.WarehouseId, err)
+			}
+		})
 	}
 
 	if geoChanged {
