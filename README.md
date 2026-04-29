@@ -6,7 +6,7 @@
 ![Runtime](https://img.shields.io/badge/Runtime-Go%20%2B%20Next.js%20%2B%20Kotlin%20%2B%20SwiftUI-40E0FF?style=for-the-badge)
 ![Consistency](https://img.shields.io/badge/Consistency-Transactional%20Outbox%20and%20Version%20Gates-FF7A18?style=for-the-badge)
 
-![Glass Hero Banner](the-lab-monorepo/docs/assets/glass-hero-variant-a.svg)
+![ATOMOS](the-lab-monorepo/assets/image.png)
 
 ATOMOS is an enterprise-grade logistics operating system that coordinates supplier, factory, warehouse, driver, retailer, and payload operations across web, desktop, and native mobile surfaces.
 
