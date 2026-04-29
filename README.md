@@ -309,36 +309,28 @@ Role naming note:
 
 ## Technology Stack and Platforms
 
-![Technology Stack Current Image](the-lab-monorepo/assets/image.png)
-
-![Technology Stack Composite Visual](the-lab-monorepo/docs/assets/techstack-visual-composite.svg)
+![ATOMOS Visual Composite](the-lab-monorepo/docs/assets/techstack-visual-composite.svg)
 
 ![Tech Stack Matrix](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg)
 
 ![Tech Stack Compact](the-lab-monorepo/docs/assets/techstack-glass-compact.svg)
 
-<img src="https://cdn.simpleicons.org/go/00ADD8" alt="Go" width="32" height="32" />
-<img src="https://cdn.simpleicons.org/apachekafka/E8ECF6" alt="Apache Kafka" width="32" height="32" />
-<img src="https://cdn.simpleicons.org/redis/DC382D" alt="Redis" width="32" height="32" />
-<img src="https://cdn.simpleicons.org/googlecloud/4285F4" alt="Google Cloud Spanner" width="32" height="32" />
-<img src="https://cdn.simpleicons.org/nextdotjs/E8ECF6" alt="Next.js" width="32" height="32" />
-<img src="https://cdn.simpleicons.org/react/61DAFB" alt="React" width="32" height="32" />
-<img src="https://cdn.simpleicons.org/tailwindcss/06B6D4" alt="Tailwind CSS" width="32" height="32" />
-<img src="https://cdn.simpleicons.org/tauri/FFC131" alt="Tauri" width="32" height="32" />
-<img src="https://cdn.simpleicons.org/kotlin/7F52FF" alt="Kotlin" width="32" height="32" />
-<img src="https://cdn.simpleicons.org/swift/F05138" alt="Swift" width="32" height="32" />
-<img src="https://cdn.simpleicons.org/terraform/844FBA" alt="Terraform" width="32" height="32" />
-<img src="https://cdn.simpleicons.org/docker/2496ED" alt="Docker" width="32" height="32" />
+### ATOMOS Bento Grid (Text)
 
-| Layer | Primary Technologies | Notes |
-|---|---|---|
-| Backend | Go 1.22+, chi router, gRPC, websocket hubs | Domain APIs, realtime fanout, role-scoped control plane |
-| Event and Cache Plane | Kafka, transactional outbox relay, Redis | Durable async workflows, invalidate bus, rate-limit primitives |
-| Data | Google Cloud Spanner, H3 indexing | Transactional source of truth and geospatial dispatch grouping |
-| Web and Desktop | Next.js 15, React 19, Tailwind v4, Tauri 2 | Supplier, retailer, factory, and warehouse operational portals |
-| Mobile | Kotlin + Jetpack Compose M3, SwiftUI, Expo | Driver, retailer, payload, factory, and warehouse execution surfaces |
-| Infra and Delivery | Terraform, GKE, Cloud LB ring-hash, Docker Compose | Infrastructure-as-code, scale routing, local emulator loops |
-| Quality and Testing | go test, go vet, Playwright, Vitest, Gradle, Xcode | Cross-role validation across backend, web, desktop, and mobile |
+<table>
+   <tr>
+      <td><strong>Backend Core</strong><br/>Go 1.22+, chi router, gRPC, websocket hubs</td>
+      <td><strong>Event Fabric</strong><br/>Kafka, transactional outbox relay, Redis invalidation</td>
+      <td><strong>Data Core</strong><br/>Google Cloud Spanner, H3 indexing, index-backed reads</td>
+      <td><strong>Web Control</strong><br/>Next.js 15, React 19, Tailwind v4, Tauri 2 shells</td>
+   </tr>
+   <tr>
+      <td><strong>Native Mobile</strong><br/>Kotlin + Compose M3, SwiftUI, Expo payload terminal</td>
+      <td><strong>Infra Plane</strong><br/>Terraform, GKE, Cloud LB ring-hash, Docker Compose</td>
+      <td><strong>Quality Gate</strong><br/>go test, go vet, Playwright, Vitest, Gradle, Xcode</td>
+      <td><strong>Operational Model</strong><br/>Role-scoped APIs, realtime telemetry, audit-safe transitions</td>
+   </tr>
+</table>
 
 ## Repository Topology
 
