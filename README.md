@@ -1,10 +1,12 @@
 # ATOMOS
 
 ![Platform](https://img.shields.io/badge/Platform-Enterprise%20Logistics-191622?style=for-the-badge)
-![Architecture](https://img.shields.io/badge/Architecture-Event%20Driven%20Control%20Plane-988BC7?style=for-the-badge)
-![Dispatch](https://img.shields.io/badge/Dispatch-H3%20Geo%20Batching%20%2B%20Capacity%20Fit-67E480?style=for-the-badge)
-![Runtime](https://img.shields.io/badge/Runtime-Go%20%2B%20Next.js%20%2B%20Kotlin%20%2B%20SwiftUI-78D1E1?style=for-the-badge)
-![Consistency](https://img.shields.io/badge/Consistency-Transactional%20Outbox%20and%20Version%20Gates-E89E64?style=for-the-badge)
+![Architecture](https://img.shields.io/badge/Architecture-Event%20Driven%20Control%20Plane-2F5BFF?style=for-the-badge)
+![Dispatch](https://img.shields.io/badge/Dispatch-H3%20Geo%20Batching%20%2B%20Capacity%20Fit-00C96B?style=for-the-badge)
+![Runtime](https://img.shields.io/badge/Runtime-Go%20%2B%20Next.js%20%2B%20Kotlin%20%2B%20SwiftUI-40E0FF?style=for-the-badge)
+![Consistency](https://img.shields.io/badge/Consistency-Transactional%20Outbox%20and%20Version%20Gates-FF7A18?style=for-the-badge)
+
+![Omni Hero Banner](the-lab-monorepo/docs/assets/omni-hero-banner.svg)
 
 ATOMOS is an enterprise-grade logistics operating system that coordinates supplier, factory, warehouse, driver, retailer, and payload operations across web, desktop, and native mobile surfaces.
 
@@ -40,6 +42,8 @@ Audience variants:
 1. Engineering master reference: [README.md](README.md).
 2. External investor and partner variant: [README-investors.md](README-investors.md).
 
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+
 ## Executive Summary
 
 ATOMOS applies a control-plane architecture to real-world logistics execution.
@@ -61,6 +65,8 @@ Business-critical invariants:
 5. Replay safety: version gates and idempotency guard against duplicate side effects.
 
 ## Architecture Overview
+
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ![ATOMOS Enterprise Architecture](the-lab-monorepo/docs/assets/architecture-overview.svg)
 
@@ -116,6 +122,8 @@ flowchart LR
 
 ## Maglev Load Balancing Coverage
 
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+
 ![Maglev Load Balancer Coverage](the-lab-monorepo/docs/assets/maglev-load-balancers.svg)
 
 Implemented Maglev or Maglev-derived load balancer paths:
@@ -156,6 +164,8 @@ Operational note:
 | Cross-role coherence | Shared contracts, role-specific clients, synchronized rollout protocol | Reduced product fragmentation |
 
 ## Auto-Dispatch Deep Dive
+
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ![Auto Dispatch Pipeline](the-lab-monorepo/docs/assets/autodispatch-pipeline.svg)
 
@@ -239,6 +249,8 @@ sequenceDiagram
 ```
 
 ## Reliability Control Plane
+
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ![Reliability Control Plane](the-lab-monorepo/docs/assets/reliability-control-plane.svg)
 
@@ -325,11 +337,19 @@ V.O.I.D/
 |  |  |  |- architecture-overview.svg
 |  |  |  |- autodispatch-pipeline.svg
 |  |  |  |- reliability-control-plane.svg
+|  |  |  |- maglev-load-balancers.svg
+|  |  |  |- omni-hero-banner.svg
+|  |  |  |- omni-section-divider.svg
+|  |  |  |- omni-code-surface.svg
 |  |- infra/
 |  |- tests/
 ```
 
 ## Quick Start
+
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+
+![Omni Code Surface](the-lab-monorepo/docs/assets/omni-code-surface.svg)
 
 ### Prerequisites
 
@@ -363,6 +383,10 @@ go run .
 ```
 
 ## Run and Build Commands
+
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+
+![Omni Code Surface](the-lab-monorepo/docs/assets/omni-code-surface.svg)
 
 ### Core Environment
 
@@ -404,6 +428,8 @@ npm run desktop:retailer:dev
 
 ## Testing and Quality Gates
 
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+
 ### Backend
 
 ```bash
@@ -435,6 +461,8 @@ npm run versionscan:enforce
 ```
 
 ## Observability and Operations
+
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 Operational telemetry is designed for incident triage, execution debugging, and audit reconstruction.
 
@@ -477,6 +505,9 @@ Architecture graphics in this README:
 2. the-lab-monorepo/docs/assets/autodispatch-pipeline.svg
 3. the-lab-monorepo/docs/assets/reliability-control-plane.svg
 4. the-lab-monorepo/docs/assets/maglev-load-balancers.svg
+5. the-lab-monorepo/docs/assets/omni-hero-banner.svg
+6. the-lab-monorepo/docs/assets/omni-section-divider.svg
+7. the-lab-monorepo/docs/assets/omni-code-surface.svg
 
 ---
 

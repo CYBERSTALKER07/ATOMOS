@@ -1,114 +1,155 @@
-<svg width="1600" height="980" viewBox="0 0 1600 980" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ATOMOS enterprise architecture overview">
+<svg width="1600" height="980" viewBox="0 0 1600 980" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ATOMOS enterprise architecture overview in omni neon style">
   <defs>
+    <linearGradient id="grad-pink" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff3ea5"/>
+      <stop offset="100%" stop-color="#ff7a18"/>
+    </linearGradient>
+    <linearGradient id="grad-blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#40e0ff"/>
+      <stop offset="100%" stop-color="#2f5bff"/>
+    </linearGradient>
+    <linearGradient id="grad-green" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#9cff00"/>
+      <stop offset="100%" stop-color="#00c96b"/>
+    </linearGradient>
+    <linearGradient id="grad-violet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#9c7dff"/>
+      <stop offset="100%" stop-color="#5d2dff"/>
+    </linearGradient>
+    <radialGradient id="glow-a" cx="0" cy="0" r="1" gradientTransform="translate(260 890) rotate(14) scale(430 260)" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ff3ea5" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#0b0c14" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow-b" cx="0" cy="0" r="1" gradientTransform="translate(1320 120) rotate(-8) scale(400 240)" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#40e0ff" stop-opacity="0.38"/>
+      <stop offset="100%" stop-color="#0b0c14" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
     <style>
-      .bg { fill: #191622; }
-      .panel { fill: #232136; stroke: #2d2a42; stroke-width: 2; }
-      .title { font: 700 36px Arial, sans-serif; fill: #e1e1e6; }
-      .subtitle { font: 500 18px Arial, sans-serif; fill: #c7c7d1; }
-      .section { font: 700 24px Arial, sans-serif; fill: #ff79c6; }
-      .boxTitle { font: 700 17px Arial, sans-serif; fill: #e1e1e6; }
-      .boxText { font: 500 14px Arial, sans-serif; fill: #c7c7d1; }
-      .chip { fill: #2d2a42; stroke: #ff79c6; stroke-width: 1.5; }
-      .chipText { font: 600 13px Arial, sans-serif; fill: #e7de79; }
-      .nodeA { fill: #232136; stroke: #78d1e1; stroke-width: 2; }
-      .nodeB { fill: #232136; stroke: #988bc7; stroke-width: 2; }
-      .nodeC { fill: #232136; stroke: #67e480; stroke-width: 2; }
-      .nodeD { fill: #232136; stroke: #e89e64; stroke-width: 2; }
-      .link { stroke: #e1e1e6; stroke-width: 2.4; fill: none; marker-end: url(#arrow); }
-      .linkDashed { stroke: #a6a6b2; stroke-dasharray: 8 6; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .bg { fill: #0b0c14; }
+      .panel { fill: #14182a; stroke: #2b3356; stroke-width: 2; }
+      .title { font: 700 38px Arial, sans-serif; fill: #f6f8ff; }
+      .subtitle { font: 500 18px Arial, sans-serif; fill: #c9d0f5; }
+      .section { font: 700 24px Arial, sans-serif; fill: #f6f8ff; }
+      .boxTitle { font: 700 17px Arial, sans-serif; fill: #f6f8ff; }
+      .boxText { font: 500 14px Arial, sans-serif; fill: #c9d0f5; }
+      .chip { fill: #101629; stroke: #4e5ea3; stroke-width: 1.5; }
+      .chipText { font: 600 13px Arial, sans-serif; fill: #f6f8ff; }
+      .nodeA { fill: #101629; stroke: #40e0ff; stroke-width: 2; }
+      .nodeB { fill: #101629; stroke: #9c7dff; stroke-width: 2; }
+      .nodeC { fill: #101629; stroke: #9cff00; stroke-width: 2; }
+      .nodeD { fill: #101629; stroke: #ff7a18; stroke-width: 2; }
+      .link { stroke: #f6f8ff; stroke-width: 2.4; fill: none; marker-end: url(#arrow); }
+      .linkDashed { stroke: #b8c0ea; stroke-dasharray: 8 6; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
     </style>
     <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,4 L0,8 Z" fill="#e1e1e6" />
+      <path d="M0,0 L10,4 L0,8 Z" fill="#f6f8ff" />
     </marker>
   </defs>
 
-  <rect class="bg" x="0" y="0" width="1600" height="980" rx="0" />
-  <text class="title" x="68" y="68">ATOMOS Enterprise Architecture Overview</text>
-  <text class="subtitle" x="68" y="100">Multi-role logistics operating system with event-driven control plane, geospatial dispatch intelligence, and native-plus-web execution surfaces</text>
+  <rect class="bg" x="0" y="0" width="1600" height="980"/>
+  <rect x="0" y="0" width="1600" height="980" fill="url(#glow-a)"/>
+  <rect x="0" y="0" width="1600" height="980" fill="url(#glow-b)"/>
 
-  <rect class="panel" x="52" y="140" width="470" height="790" rx="18" />
-  <rect class="panel" x="565" y="140" width="470" height="790" rx="18" />
-  <rect class="panel" x="1078" y="140" width="470" height="790" rx="18" />
+  <g filter="url(#softGlow)">
+    <path d="M28,820 C28,620 180,468 382,468 L382,568 C236,568 128,676 128,820 Z" fill="url(#grad-pink)"/>
+    <rect x="28" y="198" width="104" height="288" fill="url(#grad-blue)"/>
+    <path d="M1418,84 l66,0 0,66 66,0 0,66 -66,0 0,66 -66,0 0,-66 -66,0 0,-66 66,0 z" fill="url(#grad-green)"/>
+    <path d="M1186,44 C1238,44 1278,84 1278,136 C1278,188 1238,228 1186,228 C1134,228 1094,188 1094,136 C1094,84 1134,44 1186,44 Z" fill="url(#grad-violet)" opacity="0.4"/>
+  </g>
 
-  <text class="section" x="74" y="184">Execution Surfaces</text>
-  <text class="section" x="586" y="184">Platform Core</text>
-  <text class="section" x="1100" y="184">Data and Event Plane</text>
+  <text class="title" x="430" y="98">ATOMOS Enterprise Architecture</text>
+  <text class="subtitle" x="430" y="130">Control-plane logistics ecosystem with Maglev-aware ingress, event safety, and geo-intelligent dispatch</text>
 
-  <rect class="nodeA" x="82" y="220" width="410" height="92" rx="14" />
-  <text class="boxTitle" x="104" y="254">Supplier Operations</text>
-  <text class="boxText" x="104" y="278">Admin Portal (web + desktop), Factory Portal, Warehouse Portal</text>
+  <rect class="panel" x="52" y="164" width="470" height="744" rx="20"/>
+  <rect class="panel" x="565" y="164" width="470" height="744" rx="20"/>
+  <rect class="panel" x="1078" y="164" width="470" height="744" rx="20"/>
 
-  <rect class="nodeA" x="82" y="334" width="410" height="92" rx="14" />
-  <text class="boxTitle" x="104" y="368">Driver Surfaces</text>
-  <text class="boxText" x="104" y="392">Android (Compose) and iOS (SwiftUI) route execution clients</text>
+  <text class="section" x="74" y="208">Execution Surfaces</text>
+  <text class="section" x="586" y="208">Platform Core</text>
+  <text class="section" x="1100" y="208">Data and Event Plane</text>
 
-  <rect class="nodeA" x="82" y="448" width="410" height="92" rx="14" />
-  <text class="boxTitle" x="104" y="482">Retailer Surfaces</text>
-  <text class="boxText" x="104" y="506">Android, iOS, and desktop ordering plus receiving workflows</text>
+  <rect class="nodeA" x="82" y="244" width="410" height="92" rx="14"/>
+  <text class="boxTitle" x="104" y="278">Supplier Operations</text>
+  <text class="boxText" x="104" y="302">Admin Portal (web + desktop), Factory Portal, Warehouse Portal</text>
 
-  <rect class="nodeA" x="82" y="562" width="410" height="92" rx="14" />
-  <text class="boxTitle" x="104" y="596">Payload Surfaces</text>
-  <text class="boxText" x="104" y="620">Terminal (Expo) and native tablet apps for manifest operations</text>
+  <rect class="nodeA" x="82" y="358" width="410" height="92" rx="14"/>
+  <text class="boxTitle" x="104" y="392">Driver Surfaces</text>
+  <text class="boxText" x="104" y="416">Android (Compose) and iOS (SwiftUI) route execution clients</text>
 
-  <rect class="chip" x="82" y="686" width="192" height="42" rx="10" />
-  <text class="chipText" x="99" y="712">Role-scoped access</text>
-  <rect class="chip" x="292" y="686" width="200" height="42" rx="10" />
-  <text class="chipText" x="309" y="712">Realtime state visibility</text>
+  <rect class="nodeA" x="82" y="472" width="410" height="92" rx="14"/>
+  <text class="boxTitle" x="104" y="506">Retailer Surfaces</text>
+  <text class="boxText" x="104" y="530">Android, iOS, and desktop ordering plus receiving workflows</text>
 
-  <rect class="nodeB" x="594" y="220" width="410" height="110" rx="14" />
-  <text class="boxTitle" x="616" y="254">API and Router Layer</text>
-  <text class="boxText" x="616" y="278">Go services on chi router, middleware for auth, priority guard, and trace propagation</text>
-  <text class="boxText" x="616" y="300">Ingress supports Maglev ring-hash affinity keyed by supplier header</text>
+  <rect class="nodeA" x="82" y="586" width="410" height="92" rx="14"/>
+  <text class="boxTitle" x="104" y="620">Payload Surfaces</text>
+  <text class="boxText" x="104" y="644">Terminal (Expo) and native tablet apps for manifest operations</text>
 
-  <rect class="nodeB" x="594" y="352" width="410" height="134" rx="14" />
-  <text class="boxTitle" x="616" y="386">Domain Service Mesh</text>
-  <text class="boxText" x="616" y="410">Order, Dispatch, Fleet, Payment, Warehouse, Factory, Supplier</text>
-  <text class="boxText" x="616" y="432">Telemetry, Replenishment, Routing, Notification, Idempotency</text>
-  <text class="boxText" x="616" y="454">Mutation path: ReadWriteTransaction + outbox emit + cache invalidation</text>
+  <rect class="chip" x="82" y="710" width="192" height="42" rx="10"/>
+  <text class="chipText" x="99" y="736">Role-scoped access</text>
+  <rect class="chip" x="292" y="710" width="200" height="42" rx="10"/>
+  <text class="chipText" x="309" y="736">Realtime state visibility</text>
 
-  <rect class="nodeB" x="594" y="508" width="410" height="120" rx="14" />
-  <text class="boxTitle" x="616" y="542">Realtime Hubs</text>
-  <text class="boxText" x="616" y="566">Fleet, Driver, Retailer, Supplier, Telemetry hubs with Redis relay</text>
-  <text class="boxText" x="616" y="588">Fail-open local fanout under cross-pod pub-sub degradation</text>
+  <rect class="nodeB" x="594" y="244" width="410" height="110" rx="14"/>
+  <text class="boxTitle" x="616" y="278">API and Router Layer</text>
+  <text class="boxText" x="616" y="302">Go services on chi router, auth, priority guard, and trace propagation</text>
+  <text class="boxText" x="616" y="324">Ingress supports Maglev ring-hash affinity keyed by supplier header</text>
 
-  <rect class="chip" x="594" y="654" width="194" height="42" rx="10" />
-  <text class="chipText" x="610" y="680">Auto-dispatch engine</text>
-  <rect class="chip" x="804" y="654" width="200" height="42" rx="10" />
-  <text class="chipText" x="819" y="680">Manual override freeze-lock</text>
+  <rect class="nodeB" x="594" y="376" width="410" height="134" rx="14"/>
+  <text class="boxTitle" x="616" y="410">Domain Service Mesh</text>
+  <text class="boxText" x="616" y="434">Order, Dispatch, Fleet, Payment, Warehouse, Factory, Supplier</text>
+  <text class="boxText" x="616" y="456">Telemetry, Replenishment, Routing, Notification, Idempotency</text>
+  <text class="boxText" x="616" y="478">Mutation path: ReadWriteTransaction + outbox emit + cache invalidation</text>
 
-  <rect class="nodeC" x="1108" y="220" width="410" height="110" rx="14" />
-  <text class="boxTitle" x="1130" y="254">Google Cloud Spanner</text>
-  <text class="boxText" x="1130" y="278">Source of truth for orders, ledger, manifests, routes, nodes, and users</text>
-  <text class="boxText" x="1130" y="300">Maglev-derived read-router pattern supports deterministic regional reads</text>
+  <rect class="nodeB" x="594" y="532" width="410" height="120" rx="14"/>
+  <text class="boxTitle" x="616" y="566">Realtime Hubs</text>
+  <text class="boxText" x="616" y="590">Fleet, Driver, Retailer, Supplier, Telemetry hubs with Redis relay</text>
+  <text class="boxText" x="616" y="612">Fail-open local fanout under cross-pod pub-sub degradation</text>
 
-  <rect class="nodeC" x="1108" y="352" width="410" height="122" rx="14" />
-  <text class="boxTitle" x="1130" y="386">Redis and Cache Bus</text>
-  <text class="boxText" x="1130" y="410">Low-latency reads, token bucket limits, invalidate publish fanout</text>
-  <text class="boxText" x="1130" y="432">Distributed guardrails for spikes and replay-safe write paths</text>
+  <rect class="chip" x="594" y="678" width="194" height="42" rx="10"/>
+  <text class="chipText" x="610" y="704">Auto-dispatch engine</text>
+  <rect class="chip" x="804" y="678" width="200" height="42" rx="10"/>
+  <text class="chipText" x="819" y="704">Manual override freeze-lock</text>
 
-  <rect class="nodeC" x="1108" y="496" width="410" height="134" rx="14" />
-  <text class="boxTitle" x="1130" y="530">Kafka and Outbox Relay</text>
-  <text class="boxText" x="1130" y="554">Transactional outbox guarantees event and state atomicity</text>
-  <text class="boxText" x="1130" y="576">Partition key by aggregate id for per-entity ordering</text>
-  <text class="boxText" x="1130" y="598">Worker consumers, notifications, AI planning, reconciliation</text>
+  <rect class="nodeC" x="1108" y="244" width="410" height="110" rx="14"/>
+  <text class="boxTitle" x="1130" y="278">Google Cloud Spanner</text>
+  <text class="boxText" x="1130" y="302">Source of truth for orders, ledger, manifests, routes, nodes, and users</text>
+  <text class="boxText" x="1130" y="324">Maglev-derived read-router pattern supports deterministic regional reads</text>
 
-  <rect class="nodeD" x="1108" y="652" width="410" height="120" rx="14" />
-  <text class="boxTitle" x="1130" y="686">AI and Optimization Plane</text>
-  <text class="boxText" x="1130" y="710">Demand forecasting, dispatch optimization, freeze-lock aware automation</text>
-  <text class="boxText" x="1130" y="732">Operator override support with auditable decision boundaries</text>
+  <rect class="nodeC" x="1108" y="376" width="410" height="122" rx="14"/>
+  <text class="boxTitle" x="1130" y="410">Redis and Cache Bus</text>
+  <text class="boxText" x="1130" y="434">Low-latency reads, token bucket limits, invalidate publish fanout</text>
+  <text class="boxText" x="1130" y="456">Distributed guardrails for spikes and replay-safe write paths</text>
 
-  <path class="link" d="M492 266 L592 266" />
-  <path class="link" d="M492 380 L592 380" />
-  <path class="link" d="M492 494 L592 494" />
-  <path class="link" d="M492 608 L592 608" />
+  <rect class="nodeC" x="1108" y="520" width="410" height="134" rx="14"/>
+  <text class="boxTitle" x="1130" y="554">Kafka and Outbox Relay</text>
+  <text class="boxText" x="1130" y="578">Transactional outbox guarantees event and state atomicity</text>
+  <text class="boxText" x="1130" y="600">Partition key by aggregate id for per-entity ordering</text>
+  <text class="boxText" x="1130" y="622">Worker consumers, notifications, AI planning, reconciliation</text>
 
-  <path class="link" d="M1004 272 L1106 272" />
-  <path class="link" d="M1004 420 L1106 420" />
-  <path class="link" d="M1004 564 L1106 564" />
+  <rect class="nodeD" x="1108" y="676" width="410" height="120" rx="14"/>
+  <text class="boxTitle" x="1130" y="710">AI and Optimization Plane</text>
+  <text class="boxText" x="1130" y="734">Demand forecasting, dispatch optimization, freeze-lock aware automation</text>
+  <text class="boxText" x="1130" y="756">Operator override support with auditable decision boundaries</text>
 
-  <path class="linkDashed" d="M1312 652 L1312 638" />
-  <path class="linkDashed" d="M1312 496 L1312 486" />
-  <path class="linkDashed" d="M1312 352 L1312 340" />
+  <path class="link" d="M492 290 L592 290"/>
+  <path class="link" d="M492 404 L592 404"/>
+  <path class="link" d="M492 518 L592 518"/>
+  <path class="link" d="M492 632 L592 632"/>
 
-  <text class="subtitle" x="68" y="956">Copyright 2026 The Lab Industries. Diagram intent: operational architecture communication for engineering and platform teams.</text>
+  <path class="link" d="M1004 296 L1106 296"/>
+  <path class="link" d="M1004 444 L1106 444"/>
+  <path class="link" d="M1004 588 L1106 588"/>
+
+  <path class="linkDashed" d="M1312 676 L1312 662"/>
+  <path class="linkDashed" d="M1312 520 L1312 508"/>
+  <path class="linkDashed" d="M1312 376 L1312 364"/>
+
+  <text class="subtitle" x="68" y="938">Omni visual system: neon gradients, kinetic geometry, and high-contrast technical storytelling.</text>
 </svg>

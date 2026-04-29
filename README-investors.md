@@ -1,8 +1,10 @@
 # ATOMOS Investor and Partner Brief
 
 ![Category](https://img.shields.io/badge/Category-Logistics%20Operating%20System-191622?style=for-the-badge)
-![Positioning](https://img.shields.io/badge/Positioning-Automation%20with%20Human%20Control-988BC7?style=for-the-badge)
-![Core Value](https://img.shields.io/badge/Core%20Value-Reliable%20Fulfillment%20at%20Scale-67E480?style=for-the-badge)
+![Positioning](https://img.shields.io/badge/Positioning-Automation%20with%20Human%20Control-2F5BFF?style=for-the-badge)
+![Core Value](https://img.shields.io/badge/Core%20Value-Reliable%20Fulfillment%20at%20Scale-00C96B?style=for-the-badge)
+
+![Omni Hero Banner](the-lab-monorepo/docs/assets/omni-hero-banner.svg)
 
 This document is the external audience variant of ATOMOS.
 
@@ -22,7 +24,11 @@ The product combines:
 
 In practical terms, ATOMOS helps logistics operators move from fragmented tools to one coherent system of action.
 
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+
 ## The Business Problem
+
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 Most logistics stacks break at handoff boundaries:
 
@@ -36,6 +42,8 @@ The result is margin erosion through delays, empty miles, exception overhead, an
 
 ## The ATOMOS Approach
 
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+
 ATOMOS is built as an execution control plane, not a static dashboard.
 
 Key product characteristics:
@@ -46,6 +54,8 @@ Key product characteristics:
 4. Realtime updates that keep every role aligned on actual progress.
 
 ## Product Surface Coverage
+
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 | Role | Primary Experience | Outcome Focus |
 |---|---|---|
@@ -58,12 +68,16 @@ Key product characteristics:
 
 ## Why the Product Is Defensible
 
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+
 1. Operational depth across the entire logistics chain, not a single point tool.
 2. Built-in support for mixed automation and operator decisions.
 3. Unified cross-role model that reduces process drift.
 4. Engineering architecture optimized for high-scale reliability patterns.
 
 ## Exceptional Product Features
+
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ![Architecture Snapshot](the-lab-monorepo/docs/assets/architecture-overview.svg)
 
@@ -73,6 +87,8 @@ Key product characteristics:
 4. Reliability-focused event flow for stronger consistency at scale.
 
 ## Maglev Traffic Stability
+
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ![Maglev Load Balancer Coverage](the-lab-monorepo/docs/assets/maglev-load-balancers.svg)
 
@@ -86,6 +102,8 @@ Maglev and Maglev-derived balancing footprint:
 
 ## Value Flywheel
 
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#191622","primaryColor":"#232136","primaryTextColor":"#E1E1E6","primaryBorderColor":"#78D1E1","secondaryColor":"#2A2338","secondaryTextColor":"#E1E1E6","secondaryBorderColor":"#988BC7","tertiaryColor":"#1F3026","tertiaryTextColor":"#E1E1E6","tertiaryBorderColor":"#67E480","lineColor":"#E1E1E6","textColor":"#E1E1E6","mainBkg":"#232136","nodeBorder":"#78D1E1","clusterBkg":"#232136","clusterBorder":"#988BC7","titleColor":"#E1E1E6","edgeLabelBackground":"#232136","noteBkgColor":"#232136","noteTextColor":"#E1E1E6","noteBorderColor":"#988BC7"},"themeCSS":".edgeLabel text,.label text,.nodeLabel{fill:#E1E1E6 !important;color:#E1E1E6 !important;} .edgeLabel rect{fill:#232136 !important;opacity:1 !important;}"}}%%
 flowchart LR
@@ -98,6 +116,8 @@ flowchart LR
 ```
 
 ## Partnership Opportunities
+
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 Potential partner profiles:
 
@@ -114,6 +134,8 @@ Typical partnership outcomes:
 
 ## Commercialization Lenses
 
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+
 The platform supports multiple commercialization motions:
 
 1. Enterprise subscription for control-plane software access.
@@ -123,6 +145,8 @@ The platform supports multiple commercialization motions:
 
 ## Risk Framing and Mitigation
 
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+
 | Risk Category | Typical Concern | ATOMOS Mitigation Direction |
 |---|---|---|
 | Adoption complexity | Multi-role rollout friction | Role-specific surfaces and staged rollout paths |
@@ -130,7 +154,11 @@ The platform supports multiple commercialization motions:
 | Data consistency | Mismatch between state and events | Transaction-safe event architecture patterns |
 | Scale pressure | Performance at growth milestones | Control-plane design with reliability guardrails |
 
+![Reliability Control Snapshot](the-lab-monorepo/docs/assets/reliability-control-plane.svg)
+
 ## Current Position and Next Steps
+
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 Near-term focus areas for market execution:
 
@@ -141,10 +169,17 @@ Near-term focus areas for market execution:
 
 ## Contact and Technical Due Diligence
 
+![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+
+![Omni Code Surface](the-lab-monorepo/docs/assets/omni-code-surface.svg)
+
 1. Business and partnership discussions: use this brief as the starting narrative.
 2. Technical due diligence: review [README.md](README.md) for architecture and operations depth.
 3. Diagram assets used in this brief:
-   1. [the-lab-monorepo/docs/assets/architecture-overview.svg](the-lab-monorepo/docs/assets/architecture-overview.svg)
-   2. [the-lab-monorepo/docs/assets/autodispatch-pipeline.svg](the-lab-monorepo/docs/assets/autodispatch-pipeline.svg)
-   3. [the-lab-monorepo/docs/assets/reliability-control-plane.svg](the-lab-monorepo/docs/assets/reliability-control-plane.svg)
-  4. [the-lab-monorepo/docs/assets/maglev-load-balancers.svg](the-lab-monorepo/docs/assets/maglev-load-balancers.svg)
+    1. [the-lab-monorepo/docs/assets/architecture-overview.svg](the-lab-monorepo/docs/assets/architecture-overview.svg)
+    2. [the-lab-monorepo/docs/assets/autodispatch-pipeline.svg](the-lab-monorepo/docs/assets/autodispatch-pipeline.svg)
+    3. [the-lab-monorepo/docs/assets/reliability-control-plane.svg](the-lab-monorepo/docs/assets/reliability-control-plane.svg)
+    4. [the-lab-monorepo/docs/assets/maglev-load-balancers.svg](the-lab-monorepo/docs/assets/maglev-load-balancers.svg)
+    5. [the-lab-monorepo/docs/assets/omni-hero-banner.svg](the-lab-monorepo/docs/assets/omni-hero-banner.svg)
+    6. [the-lab-monorepo/docs/assets/omni-section-divider.svg](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+    7. [the-lab-monorepo/docs/assets/omni-code-surface.svg](the-lab-monorepo/docs/assets/omni-code-surface.svg)
