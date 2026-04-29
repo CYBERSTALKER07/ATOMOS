@@ -15,7 +15,7 @@
     </filter>
   </defs>
 
-  <rect x="0" y="0" width="1600" height="180" fill="#f1f3f4"/>
+  <rect x="0" y="0" width="1600" height="180" fill="#000000"/>
   <g filter="url(#soft)">
     <path d="M0,90 C230,28 470,154 698,90 C926,28 1140,154 1368,90 C1468,62 1538,76 1600,90" stroke="url(#wave)" stroke-width="10" fill="none" stroke-linecap="round"/>
     <circle cx="112" cy="90" r="22" fill="#1a73e8" opacity="0.68"/>

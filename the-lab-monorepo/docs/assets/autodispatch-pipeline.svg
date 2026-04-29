@@ -29,22 +29,22 @@
       </feMerge>
     </filter>
     <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,4 L0,8 Z" fill="#111827"/>
+      <path d="M0,0 L10,4 L0,8 Z" fill="#E5E7EB"/>
     </marker>
     <style>
-      .bg { fill: #f1f3f4; }
-      .title { font: 700 36px Arial, sans-serif; fill: #111827; }
-      .subtitle { font: 500 18px Arial, sans-serif; fill: #4b5563; }
-      .lane { fill: rgba(0, 0, 0, 0.5); stroke: none; filter: url(#glassShadow); }
-      .step { fill: rgba(0, 0, 0, 0.42); stroke: none; filter: url(#glassShadow); }
+      .bg { fill: #000000; }
+      .title { font: 700 36px Arial, sans-serif; fill: #F9FAFB; }
+      .subtitle { font: 500 18px Arial, sans-serif; fill: #D1D5DB; }
+      .lane { fill: rgba(255, 255, 255, 0.5); stroke: none; filter: url(#glassShadow); }
+      .step { fill: rgba(255, 255, 255, 0.42); stroke: none; filter: url(#glassShadow); }
       .stepTitle { font: 700 16px Arial, sans-serif; fill: #f9fafb; }
       .stepText { font: 500 13px Arial, sans-serif; fill: #e5e7eb; }
       .laneLabel { font: 700 15px Arial, sans-serif; fill: #f9fafb; }
-      .guard { fill: rgba(0, 0, 0, 0.48); stroke: none; filter: url(#glassShadow); }
+      .guard { fill: rgba(255, 255, 255, 0.48); stroke: none; filter: url(#glassShadow); }
       .guardText { font: 600 13px Arial, sans-serif; fill: #fef3c7; }
-      .outcome { fill: rgba(0, 0, 0, 0.48); stroke: none; filter: url(#glassShadow); }
+      .outcome { fill: rgba(255, 255, 255, 0.48); stroke: none; filter: url(#glassShadow); }
       .outcomeTitle { font: 700 16px Arial, sans-serif; fill: #d1fae5; }
-      .arrowLine { stroke: #111827; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .arrowLine { stroke: #E5E7EB; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
     </style>
   </defs>
 

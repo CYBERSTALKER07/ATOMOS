@@ -26,16 +26,6 @@ In practical terms, ATOMOS helps logistics operators move from fragmented tools 
 
 ![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
-## Visual Variations
-
-![Glass Hero Variant A](the-lab-monorepo/docs/assets/glass-hero-variant-a.svg)
-
-![Glass Hero Variant B](the-lab-monorepo/docs/assets/glass-hero-variant-b.svg)
-
-These visual variants are designed for campaign decks, investor updates, and partner landing pages while preserving the same clean enterprise glass language used in the technical diagrams.
-
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
-
 ## The Business Problem
 
 ![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
@@ -83,6 +73,19 @@ Key product characteristics:
 ![Technology Stack Matrix](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg)
 
 ![Technology Stack Compact](the-lab-monorepo/docs/assets/techstack-glass-compact.svg)
+
+![Go](https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white)
+![Kafka](https://img.shields.io/badge/Apache%20Kafka-231F20?style=for-the-badge&logo=apachekafka&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![Spanner](https://img.shields.io/badge/Cloud%20Spanner-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-149ECA?style=for-the-badge&logo=react&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-0EA5E9?style=for-the-badge&logo=tailwindcss&logoColor=white)
+![Tauri](https://img.shields.io/badge/Tauri-FFC131?style=for-the-badge&logo=tauri&logoColor=111111)
+![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
+![Swift](https://img.shields.io/badge/Swift-F05138?style=for-the-badge&logo=swift&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-844FBA?style=for-the-badge&logo=terraform&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 
 Core technologies used across ATOMOS:
 

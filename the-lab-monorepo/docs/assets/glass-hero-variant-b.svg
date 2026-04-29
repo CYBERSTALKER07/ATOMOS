@@ -18,11 +18,11 @@
       </feMerge>
     </filter>
     <style>
-      .bg { fill: #f1f3f4; }
-      .card { fill: rgba(0, 0, 0, 0.5); stroke: none; filter: url(#glass); }
+      .bg { fill: #000000; }
+      .card { fill: rgba(255, 255, 255, 0.5); stroke: none; filter: url(#glass); }
       .title { font: 700 56px Arial, sans-serif; fill: #f9fafb; }
       .sub { font: 500 22px Arial, sans-serif; fill: #e5e7eb; }
-      .chip { fill: rgba(0, 0, 0, 0.38); stroke: none; filter: url(#glass); }
+      .chip { fill: rgba(255, 255, 255, 0.38); stroke: none; filter: url(#glass); }
       .chipText { font: 600 16px Arial, sans-serif; fill: #f9fafb; }
     </style>
   </defs>

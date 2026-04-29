@@ -18,8 +18,8 @@
       </feMerge>
     </filter>
     <style>
-      .bg { fill: #f1f3f4; }
-      .card { fill: rgba(0, 0, 0, 0.52); stroke: none; filter: url(#glass); }
+      .bg { fill: #000000; }
+      .card { fill: rgba(255, 255, 255, 0.52); stroke: none; filter: url(#glass); }
       .title { font: 700 62px Arial, sans-serif; fill: #f9fafb; }
       .sub { font: 500 24px Arial, sans-serif; fill: #e5e7eb; }
     </style>

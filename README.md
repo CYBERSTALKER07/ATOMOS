@@ -36,7 +36,6 @@ Audience variants:
 - [Testing and Quality Gates](#testing-and-quality-gates)
 - [Observability and Operations](#observability-and-operations)
 - [Engineering Doctrine](#engineering-doctrine)
-- [Visual Variations](#visual-variations)
 - [Documentation and Diagram Assets](#documentation-and-diagram-assets)
 
 ## Audience Variants
@@ -75,13 +74,17 @@ Business-critical invariants:
 ### Logical Architecture
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#191622","primaryColor":"#232136","primaryTextColor":"#E1E1E6","primaryBorderColor":"#78D1E1","secondaryColor":"#2A2338","secondaryTextColor":"#E1E1E6","secondaryBorderColor":"#988BC7","tertiaryColor":"#1F3026","tertiaryTextColor":"#E1E1E6","tertiaryBorderColor":"#67E480","lineColor":"#E1E1E6","textColor":"#E1E1E6","mainBkg":"#232136","nodeBorder":"#78D1E1","clusterBkg":"#232136","clusterBorder":"#988BC7","titleColor":"#E1E1E6","edgeLabelBackground":"#232136","actorBkg":"#232136","actorBorder":"#78D1E1","actorTextColor":"#E1E1E6","actorLineColor":"#E1E1E6","signalColor":"#E1E1E6","signalTextColor":"#E1E1E6","labelBoxBkgColor":"#232136","labelBoxBorderColor":"#988BC7","labelTextColor":"#E1E1E6","loopTextColor":"#E1E1E6","activationBkgColor":"#2A2338","activationBorderColor":"#988BC7","sequenceNumberColor":"#191622","stateBkg":"#232136","stateBorder":"#67E480","stateTextColor":"#E1E1E6","noteBkgColor":"#232136","noteTextColor":"#E1E1E6","noteBorderColor":"#988BC7"},"themeCSS":".edgeLabel text,.label text,.stateLabel text,.messageText,.nodeLabel{fill:#E1E1E6 !important;color:#E1E1E6 !important;} .edgeLabel rect{fill:#232136 !important;opacity:1 !important;}"}}%%
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#000000","primaryColor":"#171923","primaryTextColor":"#E8ECF6","primaryBorderColor":"#000000","secondaryColor":"#1F2430","secondaryTextColor":"#E8ECF6","secondaryBorderColor":"#000000","tertiaryColor":"#222A35","tertiaryTextColor":"#E8ECF6","tertiaryBorderColor":"#000000","lineColor":"#D1D8E5","textColor":"#E8ECF6","mainBkg":"#171923","nodeBorder":"#000000","clusterBkg":"#171923","clusterBorder":"#000000","titleColor":"#E8ECF6","edgeLabelBackground":"#171923","actorBkg":"#171923","actorBorder":"#000000","actorTextColor":"#E8ECF6","actorLineColor":"#D1D8E5","signalColor":"#D1D8E5","signalTextColor":"#E8ECF6","labelBoxBkgColor":"#171923","labelBoxBorderColor":"#000000","labelTextColor":"#E8ECF6","loopTextColor":"#E8ECF6","activationBkgColor":"#242B38","activationBorderColor":"#000000","sequenceNumberColor":"#000000","stateBkg":"#171923","stateBorder":"#000000","stateTextColor":"#E8ECF6","noteBkgColor":"#171923","noteTextColor":"#E8ECF6","noteBorderColor":"#000000"},"themeCSS":".edgeLabel text,.label text,.stateLabel text,.messageText,.nodeLabel{fill:#E8ECF6 !important;color:#E8ECF6 !important;} rect,.actor,.note,.labelBox,.edgeLabel rect{stroke:none !important;rx:40px !important;ry:40px !important;} .edgeLabel rect{fill:rgba(255,255,255,0.12) !important;opacity:1 !important;} .messageLine0,.messageLine1,.loopLine{stroke:#D1D8E5 !important;} .stateGroup circle,.stateGroup rect,.statediagram-state rect{stroke:none !important;}"}}%%
 flowchart LR
    subgraph Clients[Execution Surfaces]
       SP[Supplier Portals]
       DP[Driver Apps]
       RP[Retailer Apps]
       PP[Payload Apps]
+   end
+
+   subgraph Ingress[Global Ingress]
+      MAG[Maglev Ring-Hash Affinity\nX-Supplier-Id]
    end
 
    subgraph Core[Platform Core]
@@ -98,10 +101,11 @@ flowchart LR
       AI[AI Worker and Optimization]
    end
 
-   SP --> API
-   DP --> API
-   RP --> API
-   PP --> API
+   SP --> MAG
+   DP --> MAG
+   RP --> MAG
+   PP --> MAG
+   MAG --> API
 
    API --> DOM
    API --> HUB
@@ -210,7 +214,7 @@ flowchart LR
 ### Order Lifecycle
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#191622","primaryColor":"#232136","primaryTextColor":"#E1E1E6","primaryBorderColor":"#78D1E1","secondaryColor":"#2A2338","secondaryTextColor":"#E1E1E6","secondaryBorderColor":"#988BC7","tertiaryColor":"#1F3026","tertiaryTextColor":"#E1E1E6","tertiaryBorderColor":"#67E480","lineColor":"#E1E1E6","textColor":"#E1E1E6","mainBkg":"#232136","nodeBorder":"#78D1E1","clusterBkg":"#232136","clusterBorder":"#988BC7","titleColor":"#E1E1E6","edgeLabelBackground":"#232136","actorBkg":"#232136","actorBorder":"#78D1E1","actorTextColor":"#E1E1E6","actorLineColor":"#E1E1E6","signalColor":"#E1E1E6","signalTextColor":"#E1E1E6","labelBoxBkgColor":"#232136","labelBoxBorderColor":"#988BC7","labelTextColor":"#E1E1E6","loopTextColor":"#E1E1E6","activationBkgColor":"#2A2338","activationBorderColor":"#988BC7","sequenceNumberColor":"#191622","stateBkg":"#232136","stateBorder":"#67E480","stateTextColor":"#E1E1E6","noteBkgColor":"#232136","noteTextColor":"#E1E1E6","noteBorderColor":"#988BC7"},"themeCSS":".edgeLabel text,.label text,.stateLabel text,.messageText,.nodeLabel{fill:#E1E1E6 !important;color:#E1E1E6 !important;} .edgeLabel rect{fill:#232136 !important;opacity:1 !important;}"}}%%
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#000000","primaryColor":"#171923","primaryTextColor":"#E8ECF6","primaryBorderColor":"#000000","secondaryColor":"#1F2430","secondaryTextColor":"#E8ECF6","secondaryBorderColor":"#000000","tertiaryColor":"#222A35","tertiaryTextColor":"#E8ECF6","tertiaryBorderColor":"#000000","lineColor":"#D1D8E5","textColor":"#E8ECF6","mainBkg":"#171923","nodeBorder":"#000000","clusterBkg":"#171923","clusterBorder":"#000000","titleColor":"#E8ECF6","edgeLabelBackground":"#171923","actorBkg":"#171923","actorBorder":"#000000","actorTextColor":"#E8ECF6","actorLineColor":"#D1D8E5","signalColor":"#D1D8E5","signalTextColor":"#E8ECF6","labelBoxBkgColor":"#171923","labelBoxBorderColor":"#000000","labelTextColor":"#E8ECF6","loopTextColor":"#E8ECF6","activationBkgColor":"#242B38","activationBorderColor":"#000000","sequenceNumberColor":"#000000","stateBkg":"#171923","stateBorder":"#000000","stateTextColor":"#E8ECF6","noteBkgColor":"#171923","noteTextColor":"#E8ECF6","noteBorderColor":"#000000"},"themeCSS":".edgeLabel text,.label text,.stateLabel text,.messageText,.nodeLabel{fill:#E8ECF6 !important;color:#E8ECF6 !important;} rect,.actor,.note,.labelBox,.edgeLabel rect{stroke:none !important;rx:40px !important;ry:40px !important;} .edgeLabel rect{fill:rgba(255,255,255,0.12) !important;opacity:1 !important;} .messageLine0,.messageLine1,.loopLine{stroke:#D1D8E5 !important;} .stateGroup circle,.stateGroup rect,.statediagram-state rect{stroke:none !important;}"}}%%
 stateDiagram-v2
    [*] --> PENDING
    PENDING --> LOADED
@@ -222,14 +226,14 @@ stateDiagram-v2
    IN_TRANSIT --> EXCEPTION: delivery incident
    EXCEPTION --> IN_TRANSIT: resolved and resumed
 
-   classDef omniState fill:#232136,stroke:#67E480,color:#E1E1E6,stroke-width:2px
+   classDef omniState fill:#171923,stroke:none,color:#E8ECF6,stroke-width:0px
    class PENDING,LOADED,IN_TRANSIT,ARRIVED,COMPLETED,CANCELLED,EXCEPTION omniState
 ```
 
 ### Delivery Sequence and Control Points
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#191622","primaryColor":"#232136","primaryTextColor":"#E1E1E6","primaryBorderColor":"#78D1E1","secondaryColor":"#2A2338","secondaryTextColor":"#E1E1E6","secondaryBorderColor":"#988BC7","tertiaryColor":"#1F3026","tertiaryTextColor":"#E1E1E6","tertiaryBorderColor":"#67E480","lineColor":"#E1E1E6","textColor":"#E1E1E6","mainBkg":"#232136","nodeBorder":"#78D1E1","clusterBkg":"#232136","clusterBorder":"#988BC7","titleColor":"#E1E1E6","edgeLabelBackground":"#232136","actorBkg":"#232136","actorBorder":"#78D1E1","actorTextColor":"#E1E1E6","actorLineColor":"#E1E1E6","signalColor":"#E1E1E6","signalTextColor":"#E1E1E6","labelBoxBkgColor":"#232136","labelBoxBorderColor":"#988BC7","labelTextColor":"#E1E1E6","loopTextColor":"#E1E1E6","activationBkgColor":"#2A2338","activationBorderColor":"#988BC7","sequenceNumberColor":"#191622","stateBkg":"#232136","stateBorder":"#67E480","stateTextColor":"#E1E1E6","noteBkgColor":"#232136","noteTextColor":"#E1E1E6","noteBorderColor":"#988BC7"},"themeCSS":".edgeLabel text,.label text,.stateLabel text,.messageText,.nodeLabel{fill:#E1E1E6 !important;color:#E1E1E6 !important;} .edgeLabel rect{fill:#232136 !important;opacity:1 !important;}"}}%%
+%%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#000000","primaryColor":"#171923","primaryTextColor":"#E8ECF6","primaryBorderColor":"#000000","secondaryColor":"#1F2430","secondaryTextColor":"#E8ECF6","secondaryBorderColor":"#000000","tertiaryColor":"#222A35","tertiaryTextColor":"#E8ECF6","tertiaryBorderColor":"#000000","lineColor":"#D1D8E5","textColor":"#E8ECF6","mainBkg":"#171923","nodeBorder":"#000000","clusterBkg":"#171923","clusterBorder":"#000000","titleColor":"#E8ECF6","edgeLabelBackground":"#171923","actorBkg":"#171923","actorBorder":"#000000","actorTextColor":"#E8ECF6","actorLineColor":"#D1D8E5","signalColor":"#D1D8E5","signalTextColor":"#E8ECF6","labelBoxBkgColor":"#171923","labelBoxBorderColor":"#000000","labelTextColor":"#E8ECF6","loopTextColor":"#E8ECF6","activationBkgColor":"#242B38","activationBorderColor":"#000000","sequenceNumberColor":"#000000","stateBkg":"#171923","stateBorder":"#000000","stateTextColor":"#E8ECF6","noteBkgColor":"#171923","noteTextColor":"#E8ECF6","noteBorderColor":"#000000"},"themeCSS":".edgeLabel text,.label text,.stateLabel text,.messageText,.nodeLabel{fill:#E8ECF6 !important;color:#E8ECF6 !important;} rect,.actor,.note,.labelBox,.edgeLabel rect{stroke:none !important;rx:40px !important;ry:40px !important;} .edgeLabel rect{fill:rgba(255,255,255,0.12) !important;opacity:1 !important;} .messageLine0,.messageLine1,.loopLine{stroke:#D1D8E5 !important;} .stateGroup circle,.stateGroup rect,.statediagram-state rect{stroke:none !important;}"}}%%
 sequenceDiagram
    participant Portal as Supplier Portal
    participant API as Backend API
@@ -308,6 +312,19 @@ Role naming note:
 ![Tech Stack Matrix](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg)
 
 ![Tech Stack Compact](the-lab-monorepo/docs/assets/techstack-glass-compact.svg)
+
+![Go](https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white)
+![Kafka](https://img.shields.io/badge/Apache%20Kafka-231F20?style=for-the-badge&logo=apachekafka&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
+![Spanner](https://img.shields.io/badge/Cloud%20Spanner-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-149ECA?style=for-the-badge&logo=react&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-0EA5E9?style=for-the-badge&logo=tailwindcss&logoColor=white)
+![Tauri](https://img.shields.io/badge/Tauri-FFC131?style=for-the-badge&logo=tauri&logoColor=111111)
+![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
+![Swift](https://img.shields.io/badge/Swift-F05138?style=for-the-badge&logo=swift&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-844FBA?style=for-the-badge&logo=terraform&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 
 | Layer | Primary Technologies | Notes |
 |---|---|---|
@@ -511,14 +528,6 @@ This repository follows a systems doctrine focused on correctness under load and
 3. Mutation handlers follow strict shape: auth gate -> validate -> transaction -> outbox -> invalidate cache -> structured response.
 4. Any role feature must ship coherently across all client surfaces for that role.
 5. Additive contract evolution is required to protect older client versions.
-
-## Visual Variations
-
-![Glass Hero Variant A](the-lab-monorepo/docs/assets/glass-hero-variant-a.svg)
-
-![Glass Hero Variant B](the-lab-monorepo/docs/assets/glass-hero-variant-b.svg)
-
-These variants provide alternate clean enterprise compositions for hero blocks and campaign surfaces while preserving the same card language used by the architecture diagrams.
 
 ## Documentation and Diagram Assets
 
