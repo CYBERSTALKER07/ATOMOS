@@ -201,15 +201,14 @@ Near-term focus areas for market execution:
 
 1. Business and partnership discussions: use this brief as the starting narrative.
 2. Technical due diligence: review [README.md](README.md) for architecture and operations depth.
-3. Diagram assets used in this brief:
-   1. [the-lab-monorepo/docs/assets/architecture-overview.svg](the-lab-monorepo/docs/assets/architecture-overview.svg)
-   2. [the-lab-monorepo/docs/assets/autodispatch-pipeline.svg](the-lab-monorepo/docs/assets/autodispatch-pipeline.svg)
-   3. [the-lab-monorepo/docs/assets/reliability-control-plane.svg](the-lab-monorepo/docs/assets/reliability-control-plane.svg)
-  4. [the-lab-monorepo/docs/assets/maglev-load-balancers.svg](the-lab-monorepo/docs/assets/maglev-load-balancers.svg)
-  5. [the-lab-monorepo/docs/assets/omni-hero-banner.svg](the-lab-monorepo/docs/assets/omni-hero-banner.svg)
-  6. [the-lab-monorepo/docs/assets/omni-section-divider.svg](the-lab-monorepo/docs/assets/omni-section-divider.svg)
-  7. [the-lab-monorepo/docs/assets/omni-code-surface.svg](the-lab-monorepo/docs/assets/omni-code-surface.svg)
-  8. [the-lab-monorepo/docs/assets/glass-hero-variant-a.svg](the-lab-monorepo/docs/assets/glass-hero-variant-a.svg)
-  9. [the-lab-monorepo/docs/assets/glass-hero-variant-b.svg](the-lab-monorepo/docs/assets/glass-hero-variant-b.svg)
-  10. [the-lab-monorepo/docs/assets/techstack-glass-matrix.svg](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg)
-  11. [the-lab-monorepo/docs/assets/techstack-glass-compact.svg](the-lab-monorepo/docs/assets/techstack-glass-compact.svg)
+3. Architecture visual: [the-lab-monorepo/docs/assets/architecture-overview.svg](the-lab-monorepo/docs/assets/architecture-overview.svg).
+4. Auto-dispatch visual: [the-lab-monorepo/docs/assets/autodispatch-pipeline.svg](the-lab-monorepo/docs/assets/autodispatch-pipeline.svg).
+5. Reliability visual: [the-lab-monorepo/docs/assets/reliability-control-plane.svg](the-lab-monorepo/docs/assets/reliability-control-plane.svg).
+6. Maglev visual: [the-lab-monorepo/docs/assets/maglev-load-balancers.svg](the-lab-monorepo/docs/assets/maglev-load-balancers.svg).
+7. Core hero visual: [the-lab-monorepo/docs/assets/omni-hero-banner.svg](the-lab-monorepo/docs/assets/omni-hero-banner.svg).
+8. Divider visual: [the-lab-monorepo/docs/assets/omni-section-divider.svg](the-lab-monorepo/docs/assets/omni-section-divider.svg).
+9. Code-surface visual: [the-lab-monorepo/docs/assets/omni-code-surface.svg](the-lab-monorepo/docs/assets/omni-code-surface.svg).
+10. Hero variation A: [the-lab-monorepo/docs/assets/glass-hero-variant-a.svg](the-lab-monorepo/docs/assets/glass-hero-variant-a.svg).
+11. Hero variation B: [the-lab-monorepo/docs/assets/glass-hero-variant-b.svg](the-lab-monorepo/docs/assets/glass-hero-variant-b.svg).
+12. Tech-stack matrix: [the-lab-monorepo/docs/assets/techstack-glass-matrix.svg](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg).
+13. Tech-stack compact: [the-lab-monorepo/docs/assets/techstack-glass-compact.svg](the-lab-monorepo/docs/assets/techstack-glass-compact.svg).
