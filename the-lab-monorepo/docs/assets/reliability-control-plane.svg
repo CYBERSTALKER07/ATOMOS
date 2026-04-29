@@ -1,0 +1,96 @@
+<svg width="1600" height="760" viewBox="0 0 1600 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reliability control plane">
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .panel { fill: #ffffff; stroke: #d4dbe7; stroke-width: 2; }
+      .title { font: 700 33px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 17px Arial, sans-serif; fill: #334155; }
+      .nodeA { fill: #eef2ff; stroke: #c7d2fe; stroke-width: 2; }
+      .nodeB { fill: #ecfeff; stroke: #a5f3fc; stroke-width: 2; }
+      .nodeC { fill: #f0fdf4; stroke: #bbf7d0; stroke-width: 2; }
+      .nodeD { fill: #fff7ed; stroke: #fdba74; stroke-width: 2; }
+      .h { font: 700 16px Arial, sans-serif; fill: #0f172a; }
+      .t { font: 500 13px Arial, sans-serif; fill: #334155; }
+      .arrow { stroke: #334155; stroke-width: 2.4; fill: none; marker-end: url(#ah); }
+      .arrowDashed { stroke: #64748b; stroke-width: 2.2; stroke-dasharray: 8 6; fill: none; marker-end: url(#ah); }
+      .callout { fill: #fefce8; stroke: #fde68a; stroke-width: 2; }
+      .calloutText { font: 600 13px Arial, sans-serif; fill: #854d0e; }
+    </style>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#334155" />
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="760" />
+  <text class="title" x="54" y="62">Reliability and Consistency Control Plane</text>
+  <text class="subtitle" x="54" y="92">How ATOMOS keeps state, events, cache, and realtime delivery coherent under high concurrency</text>
+
+  <rect class="panel" x="42" y="126" width="1516" height="598" rx="16" />
+
+  <rect class="nodeA" x="80" y="184" width="230" height="108" rx="12" />
+  <text class="h" x="98" y="214">1. Mutating API Call</text>
+  <text class="t" x="98" y="236">Authenticated request enters</text>
+  <text class="t" x="98" y="254">chi router middleware chain</text>
+
+  <rect class="nodeA" x="352" y="184" width="246" height="108" rx="12" />
+  <text class="h" x="370" y="214">2. Role and Scope Gate</text>
+  <text class="t" x="370" y="236">RequireRole and scope resolve</text>
+  <text class="t" x="370" y="254">request authority boundary</text>
+
+  <rect class="nodeB" x="640" y="184" width="280" height="108" rx="12" />
+  <text class="h" x="660" y="214">3. Spanner RW Transaction</text>
+  <text class="t" x="660" y="236">Domain mutation and version gate</text>
+  <text class="t" x="660" y="254">execute atomically</text>
+
+  <rect class="nodeB" x="962" y="184" width="264" height="108" rx="12" />
+  <text class="h" x="982" y="214">4. Outbox Row Emit</text>
+  <text class="t" x="982" y="236">Event payload written in same</text>
+  <text class="t" x="982" y="254">transaction as state update</text>
+
+  <rect class="nodeC" x="1268" y="184" width="242" height="108" rx="12" />
+  <text class="h" x="1288" y="214">5. Commit Success</text>
+  <text class="t" x="1288" y="236">State and event become</text>
+  <text class="t" x="1288" y="254">durable together</text>
+
+  <rect class="nodeD" x="220" y="356" width="270" height="108" rx="12" />
+  <text class="h" x="240" y="386">6. Cache Invalidate</text>
+  <text class="t" x="240" y="408">Delete key and publish</text>
+  <text class="t" x="240" y="426">invalidation over Redis channel</text>
+
+  <rect class="nodeD" x="552" y="356" width="286" height="108" rx="12" />
+  <text class="h" x="572" y="386">7. Outbox Relay Loop</text>
+  <text class="t" x="572" y="408">Poll unpublished rows, write to</text>
+  <text class="t" x="572" y="426">Kafka with aggregate key order</text>
+
+  <rect class="nodeD" x="900" y="356" width="254" height="108" rx="12" />
+  <text class="h" x="920" y="386">8. Consumer Apply</text>
+  <text class="t" x="920" y="408">Idempotency and version checks</text>
+  <text class="t" x="920" y="426">reject stale replays</text>
+
+  <rect class="nodeD" x="1216" y="356" width="266" height="108" rx="12" />
+  <text class="h" x="1236" y="386">9. Realtime Fanout</text>
+  <text class="t" x="1236" y="408">WebSocket broadcast and push</text>
+  <text class="t" x="1236" y="426">notify subscribed actors</text>
+
+  <rect class="callout" x="118" y="526" width="1366" height="150" rx="12" />
+  <text class="calloutText" x="146" y="560">Failure-tolerant behavior:</text>
+  <text class="calloutText" x="146" y="584">1) Redis publish failure does not block local websocket delivery (fail-open relay).</text>
+  <text class="calloutText" x="146" y="608">2) Webhook flows verify signature first, then idempotency guard, then transactional mutation.</text>
+  <text class="calloutText" x="146" y="632">3) Priority guard sheds lower-priority requests under load to protect critical payment and dispatch paths.</text>
+
+  <path class="arrow" d="M310 238 L352 238" />
+  <path class="arrow" d="M598 238 L640 238" />
+  <path class="arrow" d="M920 238 L962 238" />
+  <path class="arrow" d="M1226 238 L1268 238" />
+
+  <path class="arrow" d="M1388 292 L1388 344" />
+  <path class="arrow" d="M355 356 L355 304" />
+  <path class="arrow" d="M490 410 L552 410" />
+  <path class="arrow" d="M838 410 L900 410" />
+  <path class="arrow" d="M1154 410 L1216 410" />
+
+  <path class="arrowDashed" d="M1350 356 L1350 304" />
+  <path class="arrowDashed" d="M780 356 L780 304" />
+
+  <text class="subtitle" x="54" y="742">Control plane intent: deterministic state transitions, replay-safe eventing, and fast operator-visible feedback.</text>
+</svg>
