@@ -309,7 +309,7 @@ Role naming note:
 
 ## Technology Stack and Platforms
 
-![ATOMOS Visual Composite](the-lab-monorepo/docs/assets/techstack-visual-composite.svg)
+![ATOMOS Technology Stack Image](the-lab-monorepo/assets/image.png)
 
 ![Tech Stack Matrix](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg)
 
