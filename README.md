@@ -309,6 +309,10 @@ Role naming note:
 
 ## Technology Stack and Platforms
 
+![Technology Stack Current Image](the-lab-monorepo/assets/image.png)
+
+![Technology Stack Composite Visual](the-lab-monorepo/docs/assets/techstack-visual-composite.svg)
+
 ![Tech Stack Matrix](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg)
 
 ![Tech Stack Compact](the-lab-monorepo/docs/assets/techstack-glass-compact.svg)
@@ -551,6 +555,8 @@ Architecture graphics in this README:
 9. the-lab-monorepo/docs/assets/glass-hero-variant-b.svg
 10. the-lab-monorepo/docs/assets/techstack-glass-matrix.svg
 11. the-lab-monorepo/docs/assets/techstack-glass-compact.svg
+12. the-lab-monorepo/docs/assets/techstack-visual-composite.svg
+13. the-lab-monorepo/assets/image.png
 
 ---
 
