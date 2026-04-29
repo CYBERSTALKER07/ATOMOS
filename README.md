@@ -6,7 +6,7 @@
 ![Runtime](https://img.shields.io/badge/Runtime-Go%20%2B%20Next.js%20%2B%20Kotlin%20%2B%20SwiftUI-40E0FF?style=for-the-badge)
 ![Consistency](https://img.shields.io/badge/Consistency-Transactional%20Outbox%20and%20Version%20Gates-FF7A18?style=for-the-badge)
 
-![Omni Hero Banner](the-lab-monorepo/docs/assets/omni-hero-banner.svg)
+![Glass Hero Banner](the-lab-monorepo/docs/assets/omni-hero-banner.svg)
 
 ATOMOS is an enterprise-grade logistics operating system that coordinates supplier, factory, warehouse, driver, retailer, and payload operations across web, desktop, and native mobile surfaces.
 
@@ -42,7 +42,7 @@ Audience variants:
 1. Engineering master reference: [README.md](README.md).
 2. External investor and partner variant: [README-investors.md](README-investors.md).
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ## Executive Summary
 
@@ -66,7 +66,7 @@ Business-critical invariants:
 
 ## Architecture Overview
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ![ATOMOS Enterprise Architecture](the-lab-monorepo/docs/assets/architecture-overview.svg)
 
@@ -122,7 +122,7 @@ flowchart LR
 
 ## Maglev Load Balancing Coverage
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ![Maglev Load Balancer Coverage](the-lab-monorepo/docs/assets/maglev-load-balancers.svg)
 
@@ -165,7 +165,7 @@ Operational note:
 
 ## Auto-Dispatch Deep Dive
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ![Auto Dispatch Pipeline](the-lab-monorepo/docs/assets/autodispatch-pipeline.svg)
 
@@ -250,7 +250,7 @@ sequenceDiagram
 
 ## Reliability Control Plane
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ![Reliability Control Plane](the-lab-monorepo/docs/assets/reliability-control-plane.svg)
 
@@ -347,9 +347,9 @@ V.O.I.D/
 
 ## Quick Start
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
-![Omni Code Surface](the-lab-monorepo/docs/assets/omni-code-surface.svg)
+![Glass Code Surface](the-lab-monorepo/docs/assets/omni-code-surface.svg)
 
 ### Prerequisites
 
@@ -384,9 +384,9 @@ go run .
 
 ## Run and Build Commands
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
-![Omni Code Surface](the-lab-monorepo/docs/assets/omni-code-surface.svg)
+![Glass Code Surface](the-lab-monorepo/docs/assets/omni-code-surface.svg)
 
 ### Core Environment
 
@@ -428,7 +428,7 @@ npm run desktop:retailer:dev
 
 ## Testing and Quality Gates
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ### Backend
 
@@ -462,7 +462,7 @@ npm run versionscan:enforce
 
 ## Observability and Operations
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 Operational telemetry is designed for incident triage, execution debugging, and audit reconstruction.
 

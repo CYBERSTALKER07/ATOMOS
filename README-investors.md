@@ -4,7 +4,7 @@
 ![Positioning](https://img.shields.io/badge/Positioning-Automation%20with%20Human%20Control-2F5BFF?style=for-the-badge)
 ![Core Value](https://img.shields.io/badge/Core%20Value-Reliable%20Fulfillment%20at%20Scale-00C96B?style=for-the-badge)
 
-![Omni Hero Banner](the-lab-monorepo/docs/assets/omni-hero-banner.svg)
+![Glass Hero Banner](the-lab-monorepo/docs/assets/omni-hero-banner.svg)
 
 This document is the external audience variant of ATOMOS.
 
@@ -24,11 +24,11 @@ The product combines:
 
 In practical terms, ATOMOS helps logistics operators move from fragmented tools to one coherent system of action.
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ## The Business Problem
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 Most logistics stacks break at handoff boundaries:
 
@@ -42,7 +42,7 @@ The result is margin erosion through delays, empty miles, exception overhead, an
 
 ## The ATOMOS Approach
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ATOMOS is built as an execution control plane, not a static dashboard.
 
@@ -55,7 +55,7 @@ Key product characteristics:
 
 ## Product Surface Coverage
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 | Role | Primary Experience | Outcome Focus |
 |---|---|---|
@@ -68,7 +68,7 @@ Key product characteristics:
 
 ## Why the Product Is Defensible
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 1. Operational depth across the entire logistics chain, not a single point tool.
 2. Built-in support for mixed automation and operator decisions.
@@ -77,7 +77,7 @@ Key product characteristics:
 
 ## Exceptional Product Features
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ![Architecture Snapshot](the-lab-monorepo/docs/assets/architecture-overview.svg)
 
@@ -88,7 +88,7 @@ Key product characteristics:
 
 ## Maglev Traffic Stability
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ![Maglev Load Balancer Coverage](the-lab-monorepo/docs/assets/maglev-load-balancers.svg)
 
@@ -102,7 +102,7 @@ Maglev and Maglev-derived balancing footprint:
 
 ## Value Flywheel
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#191622","primaryColor":"#232136","primaryTextColor":"#E1E1E6","primaryBorderColor":"#78D1E1","secondaryColor":"#2A2338","secondaryTextColor":"#E1E1E6","secondaryBorderColor":"#988BC7","tertiaryColor":"#1F3026","tertiaryTextColor":"#E1E1E6","tertiaryBorderColor":"#67E480","lineColor":"#E1E1E6","textColor":"#E1E1E6","mainBkg":"#232136","nodeBorder":"#78D1E1","clusterBkg":"#232136","clusterBorder":"#988BC7","titleColor":"#E1E1E6","edgeLabelBackground":"#232136","noteBkgColor":"#232136","noteTextColor":"#E1E1E6","noteBorderColor":"#988BC7"},"themeCSS":".edgeLabel text,.label text,.nodeLabel{fill:#E1E1E6 !important;color:#E1E1E6 !important;} .edgeLabel rect{fill:#232136 !important;opacity:1 !important;}"}}%%
@@ -117,7 +117,7 @@ flowchart LR
 
 ## Partnership Opportunities
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 Potential partner profiles:
 
@@ -134,7 +134,7 @@ Typical partnership outcomes:
 
 ## Commercialization Lenses
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 The platform supports multiple commercialization motions:
 
@@ -145,7 +145,7 @@ The platform supports multiple commercialization motions:
 
 ## Risk Framing and Mitigation
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 | Risk Category | Typical Concern | ATOMOS Mitigation Direction |
 |---|---|---|
@@ -158,7 +158,7 @@ The platform supports multiple commercialization motions:
 
 ## Current Position and Next Steps
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
 Near-term focus areas for market execution:
 
@@ -169,9 +169,9 @@ Near-term focus areas for market execution:
 
 ## Contact and Technical Due Diligence
 
-![Omni Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
-![Omni Code Surface](the-lab-monorepo/docs/assets/omni-code-surface.svg)
+![Glass Code Surface](the-lab-monorepo/docs/assets/omni-code-surface.svg)
 
 1. Business and partnership discussions: use this brief as the starting narrative.
 2. Technical due diligence: review [README.md](README.md) for architecture and operations depth.
