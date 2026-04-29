@@ -43,15 +43,23 @@ local.properties
 .env.*
 !.env.example
 
+# === Terraform (local artifacts) ===
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/tfplan
+**/tfplan.*
+
+# === Tauri (build artifacts) ===
+**/src-tauri/target/
+
 # === Misc ===
 *.log
 tmp/
-**/admin-portal/src-tauri/target/
 .git_backup/
 .git_backup/
 the-lab-monorepo/backend-go
 the-lab-monorepo/lab-ai-worker
-*/src-tauri/target/
 node_modules/
 dist/
 .git_backup/

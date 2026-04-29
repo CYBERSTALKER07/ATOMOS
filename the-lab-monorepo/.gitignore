@@ -43,6 +43,16 @@ local.properties
 .env.*
 !.env.example
 
+# === Terraform (local artifacts) ===
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/tfplan
+infra/terraform/tfplan.*
+
+# === Tauri (build artifacts) ===
+apps/*/src-tauri/target/
+
 # === Playwright ===
 test-results/
 playwright-report/
@@ -52,5 +62,4 @@ playwright/.cache/
 # === Misc ===
 *.log
 tmp/
-apps/admin-portal/src-tauri/target/
 .versionscan/
