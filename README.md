@@ -6,7 +6,7 @@
 ![Runtime](https://img.shields.io/badge/Runtime-Go%20%2B%20Next.js%20%2B%20Kotlin%20%2B%20SwiftUI-40E0FF?style=for-the-badge)
 ![Consistency](https://img.shields.io/badge/Consistency-Transactional%20Outbox%20and%20Version%20Gates-FF7A18?style=for-the-badge)
 
-![Glass Hero Banner](the-lab-monorepo/docs/assets/omni-hero-banner.svg)
+![Glass Hero Banner](the-lab-monorepo/docs/assets/glass-hero-variant-a.svg)
 
 ATOMOS is an enterprise-grade logistics operating system that coordinates supplier, factory, warehouse, driver, retailer, and payload operations across web, desktop, and native mobile surfaces.
 
@@ -29,12 +29,14 @@ Audience variants:
 - [Reliability Control Plane](#reliability-control-plane)
 - [Security and Role Integrity](#security-and-role-integrity)
 - [Role to Surface Matrix](#role-to-surface-matrix)
+- [Technology Stack and Platforms](#technology-stack-and-platforms)
 - [Repository Topology](#repository-topology)
 - [Quick Start](#quick-start)
 - [Run and Build Commands](#run-and-build-commands)
 - [Testing and Quality Gates](#testing-and-quality-gates)
 - [Observability and Operations](#observability-and-operations)
 - [Engineering Doctrine](#engineering-doctrine)
+- [Visual Variations](#visual-variations)
 - [Documentation and Diagram Assets](#documentation-and-diagram-assets)
 
 ## Audience Variants
@@ -301,6 +303,22 @@ Role naming note:
 | WAREHOUSE_ADMIN | Android | Kotlin + Jetpack Compose | the-lab-monorepo/apps/warehouse-app-android |
 | WAREHOUSE_ADMIN | iOS | SwiftUI | the-lab-monorepo/apps/warehouse-app-ios |
 
+## Technology Stack and Platforms
+
+![Tech Stack Matrix](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg)
+
+![Tech Stack Compact](the-lab-monorepo/docs/assets/techstack-glass-compact.svg)
+
+| Layer | Primary Technologies | Notes |
+|---|---|---|
+| Backend | Go 1.22+, chi router, gRPC, websocket hubs | Domain APIs, realtime fanout, role-scoped control plane |
+| Event and Cache Plane | Kafka, transactional outbox relay, Redis | Durable async workflows, invalidate bus, rate-limit primitives |
+| Data | Google Cloud Spanner, H3 indexing | Transactional source of truth and geospatial dispatch grouping |
+| Web and Desktop | Next.js 15, React 19, Tailwind v4, Tauri 2 | Supplier, retailer, factory, and warehouse operational portals |
+| Mobile | Kotlin + Jetpack Compose M3, SwiftUI, Expo | Driver, retailer, payload, factory, and warehouse execution surfaces |
+| Infra and Delivery | Terraform, GKE, Cloud LB ring-hash, Docker Compose | Infrastructure-as-code, scale routing, local emulator loops |
+| Quality and Testing | go test, go vet, Playwright, Vitest, Gradle, Xcode | Cross-role validation across backend, web, desktop, and mobile |
+
 ## Repository Topology
 
 ```text
@@ -341,6 +359,10 @@ V.O.I.D/
 |  |  |  |- omni-hero-banner.svg
 |  |  |  |- omni-section-divider.svg
 |  |  |  |- omni-code-surface.svg
+|  |  |  |- glass-hero-variant-a.svg
+|  |  |  |- glass-hero-variant-b.svg
+|  |  |  |- techstack-glass-matrix.svg
+|  |  |  |- techstack-glass-compact.svg
 |  |- infra/
 |  |- tests/
 ```
@@ -490,6 +512,14 @@ This repository follows a systems doctrine focused on correctness under load and
 4. Any role feature must ship coherently across all client surfaces for that role.
 5. Additive contract evolution is required to protect older client versions.
 
+## Visual Variations
+
+![Glass Hero Variant A](the-lab-monorepo/docs/assets/glass-hero-variant-a.svg)
+
+![Glass Hero Variant B](the-lab-monorepo/docs/assets/glass-hero-variant-b.svg)
+
+These variants provide alternate clean enterprise compositions for hero blocks and campaign surfaces while preserving the same card language used by the architecture diagrams.
+
 ## Documentation and Diagram Assets
 
 Primary docs:
@@ -508,6 +538,10 @@ Architecture graphics in this README:
 5. the-lab-monorepo/docs/assets/omni-hero-banner.svg
 6. the-lab-monorepo/docs/assets/omni-section-divider.svg
 7. the-lab-monorepo/docs/assets/omni-code-surface.svg
+8. the-lab-monorepo/docs/assets/glass-hero-variant-a.svg
+9. the-lab-monorepo/docs/assets/glass-hero-variant-b.svg
+10. the-lab-monorepo/docs/assets/techstack-glass-matrix.svg
+11. the-lab-monorepo/docs/assets/techstack-glass-compact.svg
 
 ---
 

@@ -4,7 +4,7 @@
 ![Positioning](https://img.shields.io/badge/Positioning-Automation%20with%20Human%20Control-2F5BFF?style=for-the-badge)
 ![Core Value](https://img.shields.io/badge/Core%20Value-Reliable%20Fulfillment%20at%20Scale-00C96B?style=for-the-badge)
 
-![Glass Hero Banner](the-lab-monorepo/docs/assets/omni-hero-banner.svg)
+![Glass Hero Banner](the-lab-monorepo/docs/assets/glass-hero-variant-b.svg)
 
 This document is the external audience variant of ATOMOS.
 
@@ -23,6 +23,16 @@ The product combines:
 4. Cross-device operations across web, desktop, Android, and iOS.
 
 In practical terms, ATOMOS helps logistics operators move from fragmented tools to one coherent system of action.
+
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+
+## Visual Variations
+
+![Glass Hero Variant A](the-lab-monorepo/docs/assets/glass-hero-variant-a.svg)
+
+![Glass Hero Variant B](the-lab-monorepo/docs/assets/glass-hero-variant-b.svg)
+
+These visual variants are designed for campaign decks, investor updates, and partner landing pages while preserving the same clean enterprise glass language used in the technical diagrams.
 
 ![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
 
@@ -65,6 +75,22 @@ Key product characteristics:
 | Driver | Native Android and iOS apps | Route execution and delivery completion |
 | Retailer | Mobile and desktop retail execution | Ordering, receiving, dispute workflows |
 | Payload Teams | Terminal and tablet workflows | Manifest integrity and transfer speed |
+
+## Technology Stack Snapshot
+
+![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+
+![Technology Stack Matrix](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg)
+
+![Technology Stack Compact](the-lab-monorepo/docs/assets/techstack-glass-compact.svg)
+
+Core technologies used across ATOMOS:
+
+1. Backend and APIs: Go 1.22+, chi router, gRPC, websocket hubs, Kafka outbox relay, Redis invalidation.
+2. Data and event plane: Cloud Spanner, Kafka, Redis, and H3 geospatial indexing.
+3. Web and desktop: Next.js 15, React 19, Tailwind v4, and Tauri 2 desktop shells.
+4. Mobile and terminal: Kotlin + Compose M3, SwiftUI native apps, and Expo payload terminal.
+5. Infrastructure and quality: Terraform, GKE, Cloud LB ring-hash, Docker Compose, Playwright, Vitest, Go tests, Gradle, and Xcode.
 
 ## Why the Product Is Defensible
 
@@ -179,7 +205,11 @@ Near-term focus areas for market execution:
    1. [the-lab-monorepo/docs/assets/architecture-overview.svg](the-lab-monorepo/docs/assets/architecture-overview.svg)
    2. [the-lab-monorepo/docs/assets/autodispatch-pipeline.svg](the-lab-monorepo/docs/assets/autodispatch-pipeline.svg)
    3. [the-lab-monorepo/docs/assets/reliability-control-plane.svg](the-lab-monorepo/docs/assets/reliability-control-plane.svg)
-    4. [the-lab-monorepo/docs/assets/maglev-load-balancers.svg](the-lab-monorepo/docs/assets/maglev-load-balancers.svg)
-    5. [the-lab-monorepo/docs/assets/omni-hero-banner.svg](the-lab-monorepo/docs/assets/omni-hero-banner.svg)
-    6. [the-lab-monorepo/docs/assets/omni-section-divider.svg](the-lab-monorepo/docs/assets/omni-section-divider.svg)
-    7. [the-lab-monorepo/docs/assets/omni-code-surface.svg](the-lab-monorepo/docs/assets/omni-code-surface.svg)
+  4. [the-lab-monorepo/docs/assets/maglev-load-balancers.svg](the-lab-monorepo/docs/assets/maglev-load-balancers.svg)
+  5. [the-lab-monorepo/docs/assets/omni-hero-banner.svg](the-lab-monorepo/docs/assets/omni-hero-banner.svg)
+  6. [the-lab-monorepo/docs/assets/omni-section-divider.svg](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+  7. [the-lab-monorepo/docs/assets/omni-code-surface.svg](the-lab-monorepo/docs/assets/omni-code-surface.svg)
+  8. [the-lab-monorepo/docs/assets/glass-hero-variant-a.svg](the-lab-monorepo/docs/assets/glass-hero-variant-a.svg)
+  9. [the-lab-monorepo/docs/assets/glass-hero-variant-b.svg](the-lab-monorepo/docs/assets/glass-hero-variant-b.svg)
+  10. [the-lab-monorepo/docs/assets/techstack-glass-matrix.svg](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg)
+  11. [the-lab-monorepo/docs/assets/techstack-glass-compact.svg](the-lab-monorepo/docs/assets/techstack-glass-compact.svg)
