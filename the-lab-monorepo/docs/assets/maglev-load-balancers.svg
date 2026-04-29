@@ -1,119 +1,118 @@
-<svg width="1600" height="920" viewBox="0 0 1600 920" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Maglev load balancer coverage in omni keynote style">
+<svg width="2200" height="1265" viewBox="0 0 1600 920" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Maglev load balancer coverage clean glass style">
   <defs>
-    <linearGradient id="mPink" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ff3ea5"/>
-      <stop offset="100%" stop-color="#ff7a18"/>
+    <linearGradient id="accentBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a73e8"/>
+      <stop offset="100%" stop-color="#34a853"/>
     </linearGradient>
-    <linearGradient id="mBlue" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#40e0ff"/>
-      <stop offset="100%" stop-color="#2f5bff"/>
+    <linearGradient id="accentWarm" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ea4335"/>
+      <stop offset="100%" stop-color="#fbbc05"/>
     </linearGradient>
-    <linearGradient id="mGreen" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#9cff00"/>
-      <stop offset="100%" stop-color="#00c96b"/>
-    </linearGradient>
-    <filter id="mg" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="8" result="b"/>
+    <radialGradient id="mist" cx="0" cy="0" r="1" gradientTransform="translate(1470 150) rotate(-12) scale(360 220)" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1a73e8" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#f1f3f4" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softShape" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
       <feMerge>
-        <feMergeNode in="b"/>
+        <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    <filter id="glassCard" x="-20%" y="-20%" width="140%" height="160%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="0.6" result="edgeBlur"/>
-      <feOffset in="edgeBlur" dx="0" dy="8" result="offsetBlur"/>
-      <feColorMatrix in="offsetBlur" type="matrix" values="0 0 0 0 0.03 0 0 0 0 0.05 0 0 0 0 0.12 0 0 0 0.42 0" result="shadow"/>
+    <filter id="glassShadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="0.8" result="edgeBlur"/>
+      <feOffset in="edgeBlur" dx="0" dy="10" result="offsetBlur"/>
+      <feColorMatrix in="offsetBlur" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.35 0" result="shadow"/>
       <feMerge>
         <feMergeNode in="shadow"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
     <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,4 L0,8 Z" fill="#f6f8ff" />
+      <path d="M0,0 L10,4 L0,8 Z" fill="#111827"/>
     </marker>
     <style>
-      .bg { fill: #090b12; }
-      .panel { fill: rgba(176, 202, 255, 0.10); stroke: none; filter: url(#glassCard); }
-      .title { font: 700 36px Arial, sans-serif; fill: #f6f8ff; }
-      .subtitle { font: 500 18px Arial, sans-serif; fill: #c9d0f5; }
-      .laneTitle { font: 700 22px Arial, sans-serif; fill: #f6f8ff; }
-      .boxA { fill: rgba(78, 198, 255, 0.12); stroke: none; filter: url(#glassCard); }
-      .boxB { fill: rgba(161, 129, 255, 0.12); stroke: none; filter: url(#glassCard); }
-      .boxC { fill: rgba(137, 233, 116, 0.11); stroke: none; filter: url(#glassCard); }
-      .boxTitle { font: 700 16px Arial, sans-serif; fill: #f6f8ff; }
-      .boxText { font: 500 13px Arial, sans-serif; fill: #c9d0f5; }
-      .arrowLine { stroke: #f6f8ff; stroke-width: 2.3; fill: none; marker-end: url(#arrow); }
-      .chip { fill: rgba(198, 221, 255, 0.14); stroke: none; filter: url(#glassCard); }
-      .chipText { font: 600 12px Arial, sans-serif; fill: #f6f8ff; }
-      .warn { fill: rgba(255, 126, 183, 0.14); stroke: none; filter: url(#glassCard); }
-      .warnTitle { font: 700 15px Arial, sans-serif; fill: #ffd6ef; }
-      .warnText { font: 500 13px Arial, sans-serif; fill: #ffd6ef; }
+      .bg { fill: #f1f3f4; }
+      .panel { fill: rgba(0, 0, 0, 0.5); stroke: none; filter: url(#glassShadow); }
+      .title { font: 700 36px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 500 18px Arial, sans-serif; fill: #4b5563; }
+      .laneTitle { font: 700 22px Arial, sans-serif; fill: #f9fafb; }
+      .box { fill: rgba(0, 0, 0, 0.44); stroke: none; filter: url(#glassShadow); }
+      .boxTitle { font: 700 16px Arial, sans-serif; fill: #f9fafb; }
+      .boxText { font: 500 13px Arial, sans-serif; fill: #e5e7eb; }
+      .arrowLine { stroke: #111827; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .chip { fill: rgba(0, 0, 0, 0.38); stroke: none; filter: url(#glassShadow); }
+      .chipText { font: 600 12px Arial, sans-serif; fill: #f9fafb; }
+      .callout { fill: rgba(0, 0, 0, 0.48); stroke: none; filter: url(#glassShadow); }
+      .calloutTitle { font: 700 15px Arial, sans-serif; fill: #f9fafb; }
+      .calloutText { font: 500 13px Arial, sans-serif; fill: #f3f4f6; }
     </style>
   </defs>
 
   <rect class="bg" x="0" y="0" width="1600" height="920"/>
+  <rect x="0" y="0" width="1600" height="920" fill="url(#mist)"/>
 
-  <g filter="url(#mg)">
-    <path d="M0,0 L220,0 220,86 116,86 116,188 0,188 Z" fill="url(#mBlue)" opacity="0.86"/>
-    <path d="M1506,92 C1562,92 1600,132 1600,188 C1600,244 1562,284 1506,284 C1450,284 1412,244 1412,188 C1412,132 1450,92 1506,92 Z" fill="url(#mGreen)" opacity="0.35"/>
-    <path d="M1270,36 l72,0 0,72 72,0 0,72 -72,0 0,72 -72,0 0,-72 -72,0 0,-72 72,0 z" fill="url(#mPink)"/>
+  <g filter="url(#softShape)">
+    <path d="M0,0 L212,0 212,82 112,82 112,182 0,182 Z" fill="url(#accentBlue)" opacity="0.72"/>
+    <path d="M1258,32 l72,0 0,72 72,0 0,72 -72,0 0,72 -72,0 0,-72 -72,0 0,-72 72,0 z" fill="url(#accentWarm)" opacity="0.72"/>
+    <circle cx="1496" cy="186" r="88" fill="#34a853" opacity="0.22"/>
   </g>
 
   <text class="title" x="58" y="74">ATOMOS Maglev Load Balancer Coverage</text>
   <text class="subtitle" x="58" y="106">Implemented ring-hash and Maglev-derived routing paths across ingress, data reads, and internal control-plane traffic</text>
 
-  <rect class="panel" x="44" y="142" width="1512" height="646" rx="18"/>
+  <rect class="panel" x="44" y="142" width="1512" height="646" rx="40"/>
 
   <text class="laneTitle" x="72" y="188">Edge Ingress Path</text>
-  <rect class="boxA" x="70" y="208" width="440" height="176" rx="14"/>
+  <rect class="box" x="70" y="208" width="440" height="184" rx="32"/>
   <text class="boxTitle" x="92" y="242">Global External HTTP(S) Load Balancer</text>
   <text class="boxText" x="92" y="266">Configured with HEADER_FIELD session affinity and RING_HASH policy.</text>
   <text class="boxText" x="92" y="288">Consistent hash key: X-Supplier-Id header.</text>
   <text class="boxText" x="92" y="310">Behavior: stable supplier-to-pod routing under scale events.</text>
   <text class="boxText" x="92" y="332">Source: infra/terraform/networking.tf</text>
 
-  <rect class="chip" x="70" y="398" width="214" height="38" rx="10"/>
-  <text class="chipText" x="86" y="423">Policy: RING_HASH + HEADER</text>
-  <rect class="chip" x="296" y="398" width="214" height="38" rx="10"/>
-  <text class="chipText" x="312" y="423">Hash header: X-Supplier-Id</text>
+  <rect class="chip" x="70" y="404" width="214" height="44" rx="24"/>
+  <text class="chipText" x="86" y="431">Policy: RING_HASH + HEADER</text>
+  <rect class="chip" x="296" y="404" width="214" height="44" rx="24"/>
+  <text class="chipText" x="312" y="431">Hash key: X-Supplier-Id</text>
 
   <text class="laneTitle" x="560" y="188">Data Read Path</text>
-  <rect class="boxB" x="540" y="208" width="480" height="176" rx="14"/>
+  <rect class="box" x="540" y="208" width="480" height="184" rx="32"/>
   <text class="boxTitle" x="562" y="242">Spanner Read Router (Maglev-derived)</text>
   <text class="boxText" x="562" y="266">Pre-built H3 parent-cell lookup table for O(1) regional selection.</text>
-  <text class="boxText" x="562" y="288">Zero coordination routing decision, deterministic table per pod.</text>
+  <text class="boxText" x="562" y="288">Deterministic lookup table generated consistently per pod.</text>
   <text class="boxText" x="562" y="310">Current runtime mode in bootstrap: single-region fallback.</text>
   <text class="boxText" x="562" y="332">Source: apps/backend-go/bootstrap/spannerrouter/router.go</text>
 
-  <rect class="chip" x="540" y="398" width="232" height="38" rx="10"/>
-  <text class="chipText" x="556" y="423">Pattern: lookup-table routing</text>
-  <rect class="chip" x="788" y="398" width="232" height="38" rx="10"/>
-  <text class="chipText" x="804" y="423">Current mode: NewSingleRegion</text>
+  <rect class="chip" x="540" y="404" width="232" height="44" rx="24"/>
+  <text class="chipText" x="556" y="431">Pattern: lookup-table routing</text>
+  <rect class="chip" x="788" y="404" width="232" height="44" rx="24"/>
+  <text class="chipText" x="804" y="431">Current mode: NewSingleRegion</text>
 
   <text class="laneTitle" x="1072" y="188">Internal RPC Path</text>
-  <rect class="boxC" x="1050" y="208" width="470" height="176" rx="14"/>
+  <rect class="box" x="1050" y="208" width="470" height="184" rx="32"/>
   <text class="boxTitle" x="1072" y="242">Optimizer gRPC via xDS Service Mesh</text>
   <text class="boxText" x="1072" y="266">Backend can dial xds:///ai-worker when OPTIMIZER_GRPC_ADDR is set.</text>
-  <text class="boxText" x="1072" y="288">Mesh control-plane applies balancing and retry policy.</text>
-  <text class="boxText" x="1072" y="310">This path is load-balanced, but explicit ring-hash policy is external.</text>
+  <text class="boxText" x="1072" y="288">Mesh control plane applies balancing and retry policy.</text>
+  <text class="boxText" x="1072" y="310">Path is load-balanced; explicit ring-hash policy remains external.</text>
   <text class="boxText" x="1072" y="332">Sources: optimizergrpc client and ai-worker gRPC server</text>
 
-  <rect class="chip" x="1050" y="398" width="222" height="38" rx="10"/>
-  <text class="chipText" x="1066" y="423">xDS target: xds:///ai-worker</text>
-  <rect class="chip" x="1288" y="398" width="232" height="38" rx="10"/>
-  <text class="chipText" x="1304" y="423">Env gate: OPTIMIZER_GRPC_ADDR</text>
+  <rect class="chip" x="1050" y="404" width="222" height="44" rx="24"/>
+  <text class="chipText" x="1066" y="431">xDS target: xds:///ai-worker</text>
+  <rect class="chip" x="1288" y="404" width="232" height="44" rx="24"/>
+  <text class="chipText" x="1304" y="431">Env gate: OPTIMIZER_GRPC_ADDR</text>
 
-  <path class="arrowLine" d="M510 294 L538 294"/>
-  <path class="arrowLine" d="M1020 294 L1048 294"/>
+  <path class="arrowLine" d="M510 300 L538 300"/>
+  <path class="arrowLine" d="M1020 300 L1048 300"/>
 
-  <rect class="warn" x="70" y="486" width="1450" height="274" rx="14"/>
-  <text class="warnTitle" x="94" y="518">Coverage status across ecosystem surfaces</text>
-  <text class="warnText" x="94" y="546">1) Ring-hash Maglev behavior is implemented at backend ingress infrastructure (not at web/mobile client layer).</text>
-  <text class="warnText" x="94" y="572">2) Maglev-derived read-router code exists in backend, but runtime is currently single-region unless multiregion activation is wired in boot.</text>
-  <text class="warnText" x="94" y="598">3) Internal xDS optimizer traffic is load-balanced; explicit Maglev/ring-hash policy is not declared in current app code.</text>
-  <text class="warnText" x="94" y="624">4) Warehouse sibling reroute logic is operational load balancing and should not be conflated with Maglev ring-hash routing.</text>
-  <text class="warnText" x="94" y="658">Authoritative code paths: infra/terraform/networking.tf, bootstrap/spannerrouter/router.go, bootstrap/new.go,</text>
-  <text class="warnText" x="94" y="682">internal/rpc/optimizergrpc/client.go, and apps/ai-worker/grpc_server.go.</text>
+  <rect class="callout" x="70" y="492" width="1450" height="272" rx="40"/>
+  <text class="calloutTitle" x="94" y="524">Coverage status across ecosystem surfaces</text>
+  <text class="calloutText" x="94" y="552">1) Ring-hash Maglev behavior is implemented at backend ingress infrastructure, not web or mobile clients.</text>
+  <text class="calloutText" x="94" y="578">2) Maglev-derived read-router code exists in backend, with single-region runtime default until multiregion activation.</text>
+  <text class="calloutText" x="94" y="604">3) Internal xDS optimizer traffic is load-balanced; explicit Maglev/ring-hash policy is not declared in current app code.</text>
+  <text class="calloutText" x="94" y="630">4) Warehouse sibling reroute logic is operational load balancing and separate from Maglev ring-hash routing.</text>
+  <text class="calloutText" x="94" y="664">Authoritative code paths: infra/terraform/networking.tf, bootstrap/spannerrouter/router.go, bootstrap/new.go,</text>
+  <text class="calloutText" x="94" y="688">internal/rpc/optimizergrpc/client.go, and apps/ai-worker/grpc_server.go.</text>
 
-  <text class="subtitle" x="58" y="878">Diagram intent: make implemented Maglev and Maglev-derived paths explicit, including activation boundaries.</text>
+  <text class="subtitle" x="58" y="878">Enterprise glass composition: transparent black cards, 4XL rounding, no borders, and neutral clean background.</text>
 </svg>

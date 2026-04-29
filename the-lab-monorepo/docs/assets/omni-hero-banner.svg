@@ -1,60 +1,60 @@
-<svg width="1600" height="560" viewBox="0 0 1600 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ATOMOS omni hero banner">
+<svg width="2200" height="770" viewBox="0 0 1600 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ATOMOS clean glass hero banner">
   <defs>
-    <linearGradient id="hA" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ff3ea5"/>
-      <stop offset="100%" stop-color="#ff7a18"/>
+    <linearGradient id="shapeA" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ea4335"/>
+      <stop offset="100%" stop-color="#fbbc05"/>
     </linearGradient>
-    <linearGradient id="hB" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#40e0ff"/>
-      <stop offset="100%" stop-color="#2f5bff"/>
+    <linearGradient id="shapeB" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a73e8"/>
+      <stop offset="100%" stop-color="#34a853"/>
     </linearGradient>
-    <linearGradient id="hC" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#9cff00"/>
-      <stop offset="100%" stop-color="#00c96b"/>
-    </linearGradient>
-    <filter id="hg" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="8" result="b"/>
+    <radialGradient id="mist" cx="0" cy="0" r="1" gradientTransform="translate(1240 120) rotate(-8) scale(360 180)" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1a73e8" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#f1f3f4" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softShape" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
       <feMerge>
-        <feMergeNode in="b"/>
+        <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    <filter id="glassCard" x="-20%" y="-20%" width="140%" height="160%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="0.6" result="edgeBlur"/>
-      <feOffset in="edgeBlur" dx="0" dy="8" result="offsetBlur"/>
-      <feColorMatrix in="offsetBlur" type="matrix" values="0 0 0 0 0.03 0 0 0 0 0.05 0 0 0 0 0.12 0 0 0 0.42 0" result="shadow"/>
+    <filter id="glassShadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="0.8" result="edgeBlur"/>
+      <feOffset in="edgeBlur" dx="0" dy="10" result="offsetBlur"/>
+      <feColorMatrix in="offsetBlur" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.35 0" result="shadow"/>
       <feMerge>
         <feMergeNode in="shadow"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
     <style>
-      .bg { fill: #090b12; }
-      .t1 { font: 700 58px Arial, sans-serif; fill: #f6f8ff; }
-      .t2 { font: 500 22px Arial, sans-serif; fill: #c9d0f5; }
-      .chip { fill: rgba(198, 221, 255, 0.14); stroke: none; filter: url(#glassCard); }
-      .chipText { font: 600 15px Arial, sans-serif; fill: #f6f8ff; }
+      .bg { fill: #f1f3f4; }
+      .headline { font: 700 58px Arial, sans-serif; fill: #111827; }
+      .subline { font: 500 22px Arial, sans-serif; fill: #4b5563; }
+      .chip { fill: rgba(0, 0, 0, 0.48); stroke: none; filter: url(#glassShadow); }
+      .chipText { font: 600 15px Arial, sans-serif; fill: #f9fafb; }
     </style>
   </defs>
 
   <rect class="bg" x="0" y="0" width="1600" height="560"/>
+  <rect x="0" y="0" width="1600" height="560" fill="url(#mist)"/>
 
-  <g filter="url(#hg)">
-    <path d="M0,560 L0,310 C180,318 314,224 346,72 L506,72 C482,286 310,474 70,540 Z" fill="url(#hA)" opacity="0.88"/>
-    <path d="M1600,0 L1600,260 C1410,274 1278,350 1200,520 L1070,520 C1148,294 1322,116 1548,44 Z" fill="url(#hB)" opacity="0.92"/>
-    <path d="M1248,64 l84,0 0,84 84,0 0,84 -84,0 0,84 -84,0 0,-84 -84,0 0,-84 84,0 z" fill="url(#hC)" opacity="0.85"/>
-    <circle cx="272" cy="174" r="62" fill="url(#hB)" opacity="0.36"/>
+  <g filter="url(#softShape)">
+    <path d="M0,560 L0,296 C176,304 302,218 338,70 L476,70 C454,274 292,456 72,534 Z" fill="url(#shapeB)" opacity="0.74"/>
+    <path d="M1600,0 L1600,248 C1432,266 1310,338 1240,522 L1122,522 C1188,304 1348,124 1546,48 Z" fill="url(#shapeA)" opacity="0.76"/>
+    <circle cx="264" cy="166" r="54" fill="#1a73e8" opacity="0.2"/>
   </g>
 
-  <text class="t1" x="120" y="214">ATOMOS</text>
-  <text class="t2" x="120" y="258">Enterprise logistics orchestration at hyperscale with omni-grade clarity and control.</text>
+  <text class="headline" x="118" y="214">ATOMOS</text>
+  <text class="subline" x="118" y="258">Enterprise logistics orchestration at hyperscale with clean operational clarity and control.</text>
 
-  <rect class="chip" x="120" y="304" width="246" height="48" rx="12"/>
-  <text class="chipText" x="144" y="334">Maglev-aware ingress</text>
+  <rect class="chip" x="118" y="304" width="252" height="52" rx="26"/>
+  <text class="chipText" x="144" y="336">Maglev-aware ingress</text>
 
-  <rect class="chip" x="384" y="304" width="286" height="48" rx="12"/>
-  <text class="chipText" x="408" y="334">Transactional outbox safety</text>
+  <rect class="chip" x="386" y="304" width="300" height="52" rx="26"/>
+  <text class="chipText" x="412" y="336">Transactional outbox safety</text>
 
-  <rect class="chip" x="688" y="304" width="278" height="48" rx="12"/>
-  <text class="chipText" x="712" y="334">Geo-intelligent auto-dispatch</text>
+  <rect class="chip" x="702" y="304" width="292" height="52" rx="26"/>
+  <text class="chipText" x="728" y="336">Geo-intelligent auto-dispatch</text>
 </svg>
