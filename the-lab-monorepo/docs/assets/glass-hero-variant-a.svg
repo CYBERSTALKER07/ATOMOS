@@ -30,7 +30,7 @@
   <path d="M1580,54 C1440,84 1354,146 1266,294 C1210,388 1118,468 980,516" fill="none" stroke="url(#a2)" stroke-width="68" stroke-linecap="round" opacity="0.7"/>
 
   <rect class="card" x="250" y="132" width="1100" height="296" rx="40"/>
-  <text class="title" x="302" y="242">What is next is already here</text>
+  <text class="title" x="302" y="242">ATOMOS</text>
   <text class="sub" x="302" y="294">ATOMOS | Enterprise logistics control plane with clean glass visual language</text>
   <text class="sub" x="302" y="334">Maglev-aware ingress, outbox-safe mutation flow, and cross-role execution coherence</text>
 </svg>
