@@ -19,24 +19,33 @@
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
+    <filter id="glassCard" x="-20%" y="-20%" width="140%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="0.6" result="edgeBlur"/>
+      <feOffset in="edgeBlur" dx="0" dy="8" result="offsetBlur"/>
+      <feColorMatrix in="offsetBlur" type="matrix" values="0 0 0 0 0.03 0 0 0 0 0.05 0 0 0 0 0.12 0 0 0 0.42 0" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
     <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
       <path d="M0,0 L10,4 L0,8 Z" fill="#f6f8ff" />
     </marker>
     <style>
       .bg { fill: #090b12; }
-      .panel { fill: #131a2d; stroke: #2b3356; stroke-width: 2; }
+      .panel { fill: rgba(176, 202, 255, 0.10); stroke: none; filter: url(#glassCard); }
       .title { font: 700 36px Arial, sans-serif; fill: #f6f8ff; }
       .subtitle { font: 500 18px Arial, sans-serif; fill: #c9d0f5; }
       .laneTitle { font: 700 22px Arial, sans-serif; fill: #f6f8ff; }
-      .boxA { fill: #101629; stroke: #40e0ff; stroke-width: 2.2; }
-      .boxB { fill: #101629; stroke: #9c7dff; stroke-width: 2.2; }
-      .boxC { fill: #101629; stroke: #9cff00; stroke-width: 2.2; }
+      .boxA { fill: rgba(78, 198, 255, 0.12); stroke: none; filter: url(#glassCard); }
+      .boxB { fill: rgba(161, 129, 255, 0.12); stroke: none; filter: url(#glassCard); }
+      .boxC { fill: rgba(137, 233, 116, 0.11); stroke: none; filter: url(#glassCard); }
       .boxTitle { font: 700 16px Arial, sans-serif; fill: #f6f8ff; }
       .boxText { font: 500 13px Arial, sans-serif; fill: #c9d0f5; }
       .arrowLine { stroke: #f6f8ff; stroke-width: 2.3; fill: none; marker-end: url(#arrow); }
-      .chip { fill: #121c34; stroke: #4e5ea3; stroke-width: 1.6; }
+      .chip { fill: rgba(198, 221, 255, 0.14); stroke: none; filter: url(#glassCard); }
       .chipText { font: 600 12px Arial, sans-serif; fill: #f6f8ff; }
-      .warn { fill: #261b2a; stroke: #ff3ea5; stroke-width: 2; }
+      .warn { fill: rgba(255, 126, 183, 0.14); stroke: none; filter: url(#glassCard); }
       .warnTitle { font: 700 15px Arial, sans-serif; fill: #ffd6ef; }
       .warnText { font: 500 13px Arial, sans-serif; fill: #ffd6ef; }
     </style>

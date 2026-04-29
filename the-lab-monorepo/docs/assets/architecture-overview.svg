@@ -31,20 +31,29 @@
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
+    <filter id="glassCard" x="-20%" y="-20%" width="140%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="0.6" result="edgeBlur"/>
+      <feOffset in="edgeBlur" dx="0" dy="8" result="offsetBlur"/>
+      <feColorMatrix in="offsetBlur" type="matrix" values="0 0 0 0 0.03 0 0 0 0 0.05 0 0 0 0 0.12 0 0 0 0.42 0" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
     <style>
       .bg { fill: #0b0c14; }
-      .panel { fill: #14182a; stroke: #2b3356; stroke-width: 2; }
+      .panel { fill: rgba(176, 202, 255, 0.10); stroke: none; filter: url(#glassCard); }
       .title { font: 700 38px Arial, sans-serif; fill: #f6f8ff; }
       .subtitle { font: 500 18px Arial, sans-serif; fill: #c9d0f5; }
       .section { font: 700 24px Arial, sans-serif; fill: #f6f8ff; }
       .boxTitle { font: 700 17px Arial, sans-serif; fill: #f6f8ff; }
       .boxText { font: 500 14px Arial, sans-serif; fill: #c9d0f5; }
-      .chip { fill: #101629; stroke: #4e5ea3; stroke-width: 1.5; }
+      .chip { fill: rgba(198, 221, 255, 0.14); stroke: none; filter: url(#glassCard); }
       .chipText { font: 600 13px Arial, sans-serif; fill: #f6f8ff; }
-      .nodeA { fill: #101629; stroke: #40e0ff; stroke-width: 2; }
-      .nodeB { fill: #101629; stroke: #9c7dff; stroke-width: 2; }
-      .nodeC { fill: #101629; stroke: #9cff00; stroke-width: 2; }
-      .nodeD { fill: #101629; stroke: #ff7a18; stroke-width: 2; }
+      .nodeA { fill: rgba(78, 198, 255, 0.12); stroke: none; filter: url(#glassCard); }
+      .nodeB { fill: rgba(161, 129, 255, 0.12); stroke: none; filter: url(#glassCard); }
+      .nodeC { fill: rgba(137, 233, 116, 0.11); stroke: none; filter: url(#glassCard); }
+      .nodeD { fill: rgba(255, 154, 92, 0.12); stroke: none; filter: url(#glassCard); }
       .link { stroke: #f6f8ff; stroke-width: 2.4; fill: none; marker-end: url(#arrow); }
       .linkDashed { stroke: #b8c0ea; stroke-dasharray: 8 6; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
     </style>

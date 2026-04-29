@@ -8,9 +8,18 @@
       <stop offset="0%" stop-color="#40e0ff"/>
       <stop offset="100%" stop-color="#2f5bff"/>
     </linearGradient>
+    <filter id="glassCard" x="-20%" y="-20%" width="140%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="0.6" result="edgeBlur"/>
+      <feOffset in="edgeBlur" dx="0" dy="8" result="offsetBlur"/>
+      <feColorMatrix in="offsetBlur" type="matrix" values="0 0 0 0 0.03 0 0 0 0 0.05 0 0 0 0 0.12 0 0 0 0.42 0" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
     <style>
       .bg { fill: #090b12; }
-      .panel { fill: #12182b; stroke: #33427a; stroke-width: 2; }
+      .panel { fill: rgba(176, 202, 255, 0.10); stroke: none; filter: url(#glassCard); }
       .title { font: 700 30px Arial, sans-serif; fill: #f6f8ff; }
       .lineA { fill: #40e0ff; }
       .lineB { fill: #9cff00; }
