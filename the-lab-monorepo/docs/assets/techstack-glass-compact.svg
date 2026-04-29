@@ -1,0 +1,65 @@
+<svg width="2200" height="908" viewBox="0 0 1600 660" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tech stack compact glass style">
+  <defs>
+    <filter id="glass" x="-20%" y="-20%" width="140%" height="160%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="0.8" result="edgeBlur"/>
+      <feOffset in="edgeBlur" dx="0" dy="10" result="offsetBlur"/>
+      <feColorMatrix in="offsetBlur" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.35 0" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <style>
+      .bg { fill: #f1f3f4; }
+      .title { font: 700 36px Arial, sans-serif; fill: #111827; }
+      .card { fill: rgba(0, 0, 0, 0.52); stroke: none; filter: url(#glass); }
+      .h { font: 700 20px Arial, sans-serif; fill: #f9fafb; }
+      .t { font: 500 14px Arial, sans-serif; fill: #e5e7eb; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="660"/>
+  <text class="title" x="64" y="70">Technology Stack Snapshot</text>
+
+  <rect class="card" x="64" y="108" width="300" height="240" rx="40"/>
+  <text class="h" x="88" y="146">Backend</text>
+  <text class="t" x="88" y="172">Go 1.22+</text>
+  <text class="t" x="88" y="194">chi router</text>
+  <text class="t" x="88" y="216">gRPC + websockets</text>
+  <text class="t" x="88" y="238">Kafka outbox flow</text>
+  <text class="t" x="88" y="260">Redis invalidate bus</text>
+
+  <rect class="card" x="392" y="108" width="300" height="240" rx="40"/>
+  <text class="h" x="416" y="146">Web and Desktop</text>
+  <text class="t" x="416" y="172">Next.js 15 + React 19</text>
+  <text class="t" x="416" y="194">Tailwind CSS v4</text>
+  <text class="t" x="416" y="216">Tauri 2 shells</text>
+  <text class="t" x="416" y="238">Recharts + MapLibre</text>
+
+  <rect class="card" x="720" y="108" width="300" height="240" rx="40"/>
+  <text class="h" x="744" y="146">Mobile</text>
+  <text class="t" x="744" y="172">Kotlin Compose M3</text>
+  <text class="t" x="744" y="194">SwiftUI native</text>
+  <text class="t" x="744" y="216">Expo payload terminal</text>
+  <text class="t" x="744" y="238">Role-specific apps</text>
+
+  <rect class="card" x="1048" y="108" width="300" height="240" rx="40"/>
+  <text class="h" x="1072" y="146">Data Plane</text>
+  <text class="t" x="1072" y="172">Cloud Spanner</text>
+  <text class="t" x="1072" y="194">Redis</text>
+  <text class="t" x="1072" y="216">Kafka</text>
+  <text class="t" x="1072" y="238">H3 indexing</text>
+
+  <rect class="card" x="1276" y="108" width="260" height="240" rx="40"/>
+  <text class="h" x="1300" y="146">Infra</text>
+  <text class="t" x="1300" y="172">GKE</text>
+  <text class="t" x="1300" y="194">Terraform</text>
+  <text class="t" x="1300" y="216">Cloud LB ring-hash</text>
+  <text class="t" x="1300" y="238">Docker Compose</text>
+
+  <rect class="card" x="64" y="388" width="1472" height="214" rx="40"/>
+  <text class="h" x="96" y="428">Quality and Reliability Toolchain</text>
+  <text class="t" x="96" y="456">Go test, go vet, Playwright E2E, Vitest, Gradle, Xcode, structured logging, trace propagation, and strict role-scoped endpoint controls.</text>
+  <text class="t" x="96" y="484">Mutating operations are modeled for event safety: transactional write + outbox emit + cache invalidation + realtime fanout.</text>
+  <text class="t" x="96" y="512">This stack supports supplier, factory, warehouse, retailer, driver, and payload execution paths under a unified operational doctrine.</text>
+</svg>
