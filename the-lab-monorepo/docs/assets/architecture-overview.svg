@@ -34,18 +34,18 @@
     </filter>
     <style>
       .bg { fill: #000000; }
-      .panel { fill: rgba(255, 255, 255, 0.52); stroke: none; filter: url(#glassShadow); }
+      .panel { fill: rgba(0, 0, 0, 0.68); stroke: none; filter: url(#glassShadow); }
       .title { font: 700 38px Arial, sans-serif; fill: #F9FAFB; }
       .subtitle { font: 500 18px Arial, sans-serif; fill: #D1D5DB; }
       .section { font: 700 24px Arial, sans-serif; fill: #f9fafb; }
       .cardTitle { font: 700 17px Arial, sans-serif; fill: #f9fafb; }
       .cardText { font: 500 14px Arial, sans-serif; fill: #e5e7eb; }
-      .chip { fill: rgba(255, 255, 255, 0.38); stroke: none; filter: url(#glassShadow); }
+      .chip { fill: rgba(0, 0, 0, 0.54); stroke: none; filter: url(#glassShadow); }
       .chipText { font: 600 13px Arial, sans-serif; fill: #f9fafb; }
-      .nodeA { fill: rgba(255, 255, 255, 0.44); stroke: none; filter: url(#glassShadow); }
-      .nodeB { fill: rgba(255, 255, 255, 0.44); stroke: none; filter: url(#glassShadow); }
-      .nodeC { fill: rgba(255, 255, 255, 0.44); stroke: none; filter: url(#glassShadow); }
-      .nodeD { fill: rgba(255, 255, 255, 0.44); stroke: none; filter: url(#glassShadow); }
+      .nodeA { fill: rgba(0, 0, 0, 0.60); stroke: none; filter: url(#glassShadow); }
+      .nodeB { fill: rgba(0, 0, 0, 0.60); stroke: none; filter: url(#glassShadow); }
+      .nodeC { fill: rgba(0, 0, 0, 0.60); stroke: none; filter: url(#glassShadow); }
+      .nodeD { fill: rgba(0, 0, 0, 0.60); stroke: none; filter: url(#glassShadow); }
       .link { stroke: #E5E7EB; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
       .linkDashed { stroke: #9CA3AF; stroke-dasharray: 8 6; stroke-width: 2; fill: none; marker-end: url(#arrow); }
     </style>

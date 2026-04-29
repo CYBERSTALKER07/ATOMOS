@@ -32,7 +32,7 @@
       .bg { fill: #000000; }
       .headline { font: 700 58px Arial, sans-serif; fill: #F9FAFB; }
       .subline { font: 500 22px Arial, sans-serif; fill: #D1D5DB; }
-      .chip { fill: rgba(255, 255, 255, 0.48); stroke: none; filter: url(#glassShadow); }
+      .chip { fill: rgba(0, 0, 0, 0.64); stroke: none; filter: url(#glassShadow); }
       .chipText { font: 600 15px Arial, sans-serif; fill: #f9fafb; }
     </style>
   </defs>

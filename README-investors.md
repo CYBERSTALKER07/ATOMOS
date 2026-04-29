@@ -211,7 +211,5 @@ Near-term focus areas for market execution:
 7. Core hero visual: [the-lab-monorepo/docs/assets/omni-hero-banner.svg](the-lab-monorepo/docs/assets/omni-hero-banner.svg).
 8. Divider visual: [the-lab-monorepo/docs/assets/omni-section-divider.svg](the-lab-monorepo/docs/assets/omni-section-divider.svg).
 9. Code-surface visual: [the-lab-monorepo/docs/assets/omni-code-surface.svg](the-lab-monorepo/docs/assets/omni-code-surface.svg).
-10. Hero variation A: [the-lab-monorepo/docs/assets/glass-hero-variant-a.svg](the-lab-monorepo/docs/assets/glass-hero-variant-a.svg).
-11. Hero variation B: [the-lab-monorepo/docs/assets/glass-hero-variant-b.svg](the-lab-monorepo/docs/assets/glass-hero-variant-b.svg).
-12. Tech-stack matrix: [the-lab-monorepo/docs/assets/techstack-glass-matrix.svg](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg).
-13. Tech-stack compact: [the-lab-monorepo/docs/assets/techstack-glass-compact.svg](the-lab-monorepo/docs/assets/techstack-glass-compact.svg).
+10. Tech-stack matrix: [the-lab-monorepo/docs/assets/techstack-glass-matrix.svg](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg).
+11. Tech-stack compact: [the-lab-monorepo/docs/assets/techstack-glass-compact.svg](the-lab-monorepo/docs/assets/techstack-glass-compact.svg).

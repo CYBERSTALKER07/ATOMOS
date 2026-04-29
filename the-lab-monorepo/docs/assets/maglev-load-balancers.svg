@@ -33,17 +33,17 @@
     </marker>
     <style>
       .bg { fill: #000000; }
-      .panel { fill: rgba(255, 255, 255, 0.5); stroke: none; filter: url(#glassShadow); }
+      .panel { fill: rgba(0, 0, 0, 0.66); stroke: none; filter: url(#glassShadow); }
       .title { font: 700 36px Arial, sans-serif; fill: #F9FAFB; }
       .subtitle { font: 500 18px Arial, sans-serif; fill: #D1D5DB; }
       .laneTitle { font: 700 22px Arial, sans-serif; fill: #f9fafb; }
-      .box { fill: rgba(255, 255, 255, 0.44); stroke: none; filter: url(#glassShadow); }
+      .box { fill: rgba(0, 0, 0, 0.60); stroke: none; filter: url(#glassShadow); }
       .boxTitle { font: 700 16px Arial, sans-serif; fill: #f9fafb; }
       .boxText { font: 500 13px Arial, sans-serif; fill: #e5e7eb; }
       .arrowLine { stroke: #E5E7EB; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
-      .chip { fill: rgba(255, 255, 255, 0.38); stroke: none; filter: url(#glassShadow); }
+      .chip { fill: rgba(0, 0, 0, 0.54); stroke: none; filter: url(#glassShadow); }
       .chipText { font: 600 12px Arial, sans-serif; fill: #f9fafb; }
-      .callout { fill: rgba(255, 255, 255, 0.48); stroke: none; filter: url(#glassShadow); }
+      .callout { fill: rgba(0, 0, 0, 0.64); stroke: none; filter: url(#glassShadow); }
       .calloutTitle { font: 700 15px Arial, sans-serif; fill: #f9fafb; }
       .calloutText { font: 500 13px Arial, sans-serif; fill: #f3f4f6; }
     </style>

@@ -35,14 +35,14 @@
       .bg { fill: #000000; }
       .title { font: 700 36px Arial, sans-serif; fill: #F9FAFB; }
       .subtitle { font: 500 18px Arial, sans-serif; fill: #D1D5DB; }
-      .lane { fill: rgba(255, 255, 255, 0.5); stroke: none; filter: url(#glassShadow); }
-      .step { fill: rgba(255, 255, 255, 0.42); stroke: none; filter: url(#glassShadow); }
+      .lane { fill: rgba(0, 0, 0, 0.66); stroke: none; filter: url(#glassShadow); }
+      .step { fill: rgba(0, 0, 0, 0.58); stroke: none; filter: url(#glassShadow); }
       .stepTitle { font: 700 16px Arial, sans-serif; fill: #f9fafb; }
       .stepText { font: 500 13px Arial, sans-serif; fill: #e5e7eb; }
       .laneLabel { font: 700 15px Arial, sans-serif; fill: #f9fafb; }
-      .guard { fill: rgba(255, 255, 255, 0.48); stroke: none; filter: url(#glassShadow); }
+      .guard { fill: rgba(0, 0, 0, 0.64); stroke: none; filter: url(#glassShadow); }
       .guardText { font: 600 13px Arial, sans-serif; fill: #fef3c7; }
-      .outcome { fill: rgba(255, 255, 255, 0.48); stroke: none; filter: url(#glassShadow); }
+      .outcome { fill: rgba(0, 0, 0, 0.64); stroke: none; filter: url(#glassShadow); }
       .outcomeTitle { font: 700 16px Arial, sans-serif; fill: #d1fae5; }
       .arrowLine { stroke: #E5E7EB; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
     </style>

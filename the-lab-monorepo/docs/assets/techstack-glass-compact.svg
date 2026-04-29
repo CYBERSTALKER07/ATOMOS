@@ -12,7 +12,7 @@
     <style>
       .bg { fill: #000000; }
       .title { font: 700 36px Arial, sans-serif; fill: #F9FAFB; }
-      .card { fill: rgba(255, 255, 255, 0.52); stroke: none; filter: url(#glass); }
+      .card { fill: rgba(0, 0, 0, 0.68); stroke: none; filter: url(#glass); }
       .h { font: 700 20px Arial, sans-serif; fill: #f9fafb; }
       .t { font: 500 14px Arial, sans-serif; fill: #e5e7eb; }
     </style>

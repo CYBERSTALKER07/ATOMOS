@@ -13,7 +13,7 @@
       .bg { fill: #000000; }
       .title { font: 700 40px Arial, sans-serif; fill: #F9FAFB; }
       .sub { font: 500 18px Arial, sans-serif; fill: #D1D5DB; }
-      .card { fill: rgba(255, 255, 255, 0.52); stroke: none; filter: url(#glass); }
+      .card { fill: rgba(0, 0, 0, 0.68); stroke: none; filter: url(#glass); }
       .h { font: 700 22px Arial, sans-serif; fill: #f9fafb; }
       .t { font: 500 15px Arial, sans-serif; fill: #e5e7eb; }
     </style>

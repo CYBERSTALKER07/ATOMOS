@@ -8,6 +8,8 @@ Thumbs.db
 .vscode/
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
+*.xcuserstate
+**/*.xcuserstate
 
 # === Node ===
 node_modules/

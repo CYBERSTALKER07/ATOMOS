@@ -33,15 +33,15 @@
     </marker>
     <style>
       .bg { fill: #000000; }
-      .panel { fill: rgba(255, 255, 255, 0.5); stroke: none; filter: url(#glassShadow); }
+      .panel { fill: rgba(0, 0, 0, 0.66); stroke: none; filter: url(#glassShadow); }
       .title { font: 700 34px Arial, sans-serif; fill: #F9FAFB; }
       .subtitle { font: 500 17px Arial, sans-serif; fill: #D1D5DB; }
-      .node { fill: rgba(255, 255, 255, 0.44); stroke: none; filter: url(#glassShadow); }
+      .node { fill: rgba(0, 0, 0, 0.60); stroke: none; filter: url(#glassShadow); }
       .h { font: 700 16px Arial, sans-serif; fill: #f9fafb; }
       .t { font: 500 13px Arial, sans-serif; fill: #e5e7eb; }
       .arrowLine { stroke: #E5E7EB; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
       .arrowDashed { stroke: #9CA3AF; stroke-width: 2; stroke-dasharray: 8 6; fill: none; marker-end: url(#arrow); }
-      .callout { fill: rgba(255, 255, 255, 0.48); stroke: none; filter: url(#glassShadow); }
+      .callout { fill: rgba(0, 0, 0, 0.64); stroke: none; filter: url(#glassShadow); }
       .calloutTitle { font: 700 15px Arial, sans-serif; fill: #f9fafb; }
       .calloutText { font: 600 13px Arial, sans-serif; fill: #f3f4f6; }
     </style>

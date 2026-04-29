@@ -19,7 +19,7 @@
     </filter>
     <style>
       .bg { fill: #000000; }
-      .panel { fill: rgba(255, 255, 255, 0.5); stroke: none; filter: url(#glassShadow); }
+      .panel { fill: rgba(0, 0, 0, 0.66); stroke: none; filter: url(#glassShadow); }
       .title { font: 700 30px Arial, sans-serif; fill: #f9fafb; }
       .lineA { fill: #1a73e8; }
       .lineB { fill: #34a853; }
