@@ -58,7 +58,7 @@
   <rect class="nodeB" x="594" y="220" width="410" height="110" rx="14" />
   <text class="boxTitle" x="616" y="254">API and Router Layer</text>
   <text class="boxText" x="616" y="278">Go services on chi router, middleware for auth, priority guard, and trace propagation</text>
-  <text class="boxText" x="616" y="300">HTTP + WebSocket endpoints with role and scope enforcement</text>
+  <text class="boxText" x="616" y="300">Ingress supports Maglev ring-hash affinity keyed by supplier header</text>
 
   <rect class="nodeB" x="594" y="352" width="410" height="134" rx="14" />
   <text class="boxTitle" x="616" y="386">Domain Service Mesh</text>
@@ -79,7 +79,7 @@
   <rect class="nodeC" x="1108" y="220" width="410" height="110" rx="14" />
   <text class="boxTitle" x="1130" y="254">Google Cloud Spanner</text>
   <text class="boxText" x="1130" y="278">Source of truth for orders, ledger, manifests, routes, nodes, and users</text>
-  <text class="boxText" x="1130" y="300">Strong consistency writes and stale reads for scalable query paths</text>
+  <text class="boxText" x="1130" y="300">Maglev-derived read-router pattern supports deterministic regional reads</text>
 
   <rect class="nodeC" x="1108" y="352" width="410" height="122" rx="14" />
   <text class="boxTitle" x="1130" y="386">Redis and Cache Bus</text>

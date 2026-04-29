@@ -72,11 +72,12 @@
   <text class="t" x="1236" y="408">WebSocket broadcast and push</text>
   <text class="t" x="1236" y="426">notify subscribed actors</text>
 
-  <rect class="callout" x="118" y="526" width="1366" height="150" rx="12" />
+  <rect class="callout" x="118" y="526" width="1366" height="170" rx="12" />
   <text class="calloutText" x="146" y="560">Failure-tolerant behavior:</text>
   <text class="calloutText" x="146" y="584">1) Redis publish failure does not block local websocket delivery (fail-open relay).</text>
   <text class="calloutText" x="146" y="608">2) Webhook flows verify signature first, then idempotency guard, then transactional mutation.</text>
   <text class="calloutText" x="146" y="632">3) Priority guard sheds lower-priority requests under load to protect critical payment and dispatch paths.</text>
+  <text class="calloutText" x="146" y="656">4) Edge ingress uses header-based ring-hash affinity to stabilize supplier-to-pod routing.</text>
 
   <path class="arrow" d="M310 238 L352 238" />
   <path class="arrow" d="M598 238 L640 238" />

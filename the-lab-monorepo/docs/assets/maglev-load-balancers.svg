@@ -1,0 +1,84 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Maglev load balancer coverage across ATOMOS ecosystem">
+  <defs>
+    <style>
+      .bg { fill: #191622; }
+      .panel { fill: #232136; stroke: #2d2a42; stroke-width: 2; }
+      .title { font: 700 36px Arial, sans-serif; fill: #e1e1e6; }
+      .subtitle { font: 500 18px Arial, sans-serif; fill: #c7c7d1; }
+      .laneTitle { font: 700 22px Arial, sans-serif; fill: #ff79c6; }
+      .boxA { fill: #232136; stroke: #78d1e1; stroke-width: 2.2; }
+      .boxB { fill: #232136; stroke: #988bc7; stroke-width: 2.2; }
+      .boxC { fill: #232136; stroke: #67e480; stroke-width: 2.2; }
+      .boxD { fill: #232136; stroke: #e89e64; stroke-width: 2.2; }
+      .boxTitle { font: 700 16px Arial, sans-serif; fill: #e1e1e6; }
+      .boxText { font: 500 13px Arial, sans-serif; fill: #c7c7d1; }
+      .arrow { stroke: #e1e1e6; stroke-width: 2.3; fill: none; marker-end: url(#arrowHead); }
+      .chip { fill: #2d2a42; stroke: #ff79c6; stroke-width: 1.6; }
+      .chipText { font: 600 12px Arial, sans-serif; fill: #e7de79; }
+      .warn { fill: #2b253b; stroke: #ff79c6; stroke-width: 2; }
+      .warnTitle { font: 700 15px Arial, sans-serif; fill: #ff79c6; }
+      .warnText { font: 500 13px Arial, sans-serif; fill: #e7de79; }
+    </style>
+    <marker id="arrowHead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#e1e1e6" />
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="900" />
+  <text class="title" x="58" y="72">ATOMOS Maglev Load Balancer Coverage</text>
+  <text class="subtitle" x="58" y="104">Implemented ring-hash and Maglev-derived routing paths across ingress, data reads, and internal control-plane traffic</text>
+
+  <rect class="panel" x="44" y="138" width="1512" height="620" rx="16" />
+
+  <text class="laneTitle" x="72" y="182">Edge Ingress Path</text>
+  <rect class="boxA" x="70" y="202" width="440" height="170" rx="12" />
+  <text class="boxTitle" x="92" y="234">Global External HTTP(S) Load Balancer</text>
+  <text class="boxText" x="92" y="258">Configured with HEADER_FIELD session affinity and RING_HASH policy.</text>
+  <text class="boxText" x="92" y="280">Consistent hash key: X-Supplier-Id header.</text>
+  <text class="boxText" x="92" y="302">Behavior: stable supplier-to-pod routing under scale events.</text>
+  <text class="boxText" x="92" y="324">Source: infra/terraform/networking.tf</text>
+
+  <rect class="chip" x="70" y="386" width="214" height="36" rx="9" />
+  <text class="chipText" x="86" y="409">Policy: RING_HASH + HEADER</text>
+  <rect class="chip" x="296" y="386" width="214" height="36" rx="9" />
+  <text class="chipText" x="312" y="409">Hash header: X-Supplier-Id</text>
+
+  <text class="laneTitle" x="560" y="182">Data Read Path</text>
+  <rect class="boxB" x="540" y="202" width="480" height="170" rx="12" />
+  <text class="boxTitle" x="562" y="234">Spanner Read Router (Maglev-derived)</text>
+  <text class="boxText" x="562" y="258">Pre-built H3 parent-cell lookup table for O(1) regional selection.</text>
+  <text class="boxText" x="562" y="280">Zero coordination routing decision, deterministic table per pod.</text>
+  <text class="boxText" x="562" y="302">Current runtime mode in bootstrap: single-region fallback.</text>
+  <text class="boxText" x="562" y="324">Source: apps/backend-go/bootstrap/spannerrouter/router.go</text>
+
+  <rect class="chip" x="540" y="386" width="232" height="36" rx="9" />
+  <text class="chipText" x="556" y="409">Pattern: lookup-table routing</text>
+  <rect class="chip" x="788" y="386" width="232" height="36" rx="9" />
+  <text class="chipText" x="804" y="409">Current mode: NewSingleRegion</text>
+
+  <text class="laneTitle" x="1072" y="182">Internal RPC Path</text>
+  <rect class="boxC" x="1050" y="202" width="470" height="170" rx="12" />
+  <text class="boxTitle" x="1072" y="234">Optimizer gRPC via xDS Service Mesh</text>
+  <text class="boxText" x="1072" y="258">Backend can dial xds:///ai-worker when OPTIMIZER_GRPC_ADDR is set.</text>
+  <text class="boxText" x="1072" y="280">Mesh control-plane applies balancing and retry policy.</text>
+  <text class="boxText" x="1072" y="302">This path is load-balanced, but explicit ring-hash policy is external.</text>
+  <text class="boxText" x="1072" y="324">Sources: optimizergrpc client and ai-worker gRPC server</text>
+
+  <rect class="chip" x="1050" y="386" width="222" height="36" rx="9" />
+  <text class="chipText" x="1066" y="409">xDS target: xds:///ai-worker</text>
+  <rect class="chip" x="1288" y="386" width="232" height="36" rx="9" />
+  <text class="chipText" x="1304" y="409">Env gate: OPTIMIZER_GRPC_ADDR</text>
+
+  <path class="arrow" d="M510 286 L538 286" />
+  <path class="arrow" d="M1020 286 L1048 286" />
+
+  <rect class="warn" x="70" y="470" width="1450" height="250" rx="12" />
+  <text class="warnTitle" x="94" y="500">Coverage status across ecosystem surfaces</text>
+  <text class="warnText" x="94" y="528">1) Ring-hash Maglev behavior is implemented at backend ingress infrastructure (not at web/mobile client layer).</text>
+  <text class="warnText" x="94" y="552">2) Maglev-derived read-router code exists in backend, but runtime is currently single-region unless multiregion activation is wired in boot.</text>
+  <text class="warnText" x="94" y="576">3) Internal xDS optimizer traffic is load-balanced; explicit Maglev/ring-hash policy is not declared in current app code.</text>
+  <text class="warnText" x="94" y="600">4) Warehouse sibling reroute logic is operational load balancing and should not be conflated with Maglev ring-hash routing.</text>
+  <text class="warnText" x="94" y="636">Authoritative code paths: infra/terraform/networking.tf, bootstrap/spannerrouter/router.go, bootstrap/new.go, internal/rpc/optimizergrpc/client.go, ai-worker/grpc_server.go.</text>
+
+  <text class="subtitle" x="58" y="846">Diagram intent: make implemented Maglev and Maglev-derived paths explicit, including activation boundaries.</text>
+</svg>
