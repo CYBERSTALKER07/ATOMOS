@@ -1,23 +1,23 @@
 <svg width="1600" height="760" viewBox="0 0 1600 760" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reliability control plane">
   <defs>
     <style>
-      .bg { fill: #f8fafc; }
-      .panel { fill: #ffffff; stroke: #d4dbe7; stroke-width: 2; }
-      .title { font: 700 33px Arial, sans-serif; fill: #0f172a; }
-      .subtitle { font: 500 17px Arial, sans-serif; fill: #334155; }
-      .nodeA { fill: #eef2ff; stroke: #c7d2fe; stroke-width: 2; }
-      .nodeB { fill: #ecfeff; stroke: #a5f3fc; stroke-width: 2; }
-      .nodeC { fill: #f0fdf4; stroke: #bbf7d0; stroke-width: 2; }
-      .nodeD { fill: #fff7ed; stroke: #fdba74; stroke-width: 2; }
-      .h { font: 700 16px Arial, sans-serif; fill: #0f172a; }
-      .t { font: 500 13px Arial, sans-serif; fill: #334155; }
-      .arrow { stroke: #334155; stroke-width: 2.4; fill: none; marker-end: url(#ah); }
-      .arrowDashed { stroke: #64748b; stroke-width: 2.2; stroke-dasharray: 8 6; fill: none; marker-end: url(#ah); }
-      .callout { fill: #fefce8; stroke: #fde68a; stroke-width: 2; }
-      .calloutText { font: 600 13px Arial, sans-serif; fill: #854d0e; }
+      .bg { fill: #191622; }
+      .panel { fill: #232136; stroke: #2d2a42; stroke-width: 2; }
+      .title { font: 700 33px Arial, sans-serif; fill: #e1e1e6; }
+      .subtitle { font: 500 17px Arial, sans-serif; fill: #c7c7d1; }
+      .nodeA { fill: #232136; stroke: #78d1e1; stroke-width: 2; }
+      .nodeB { fill: #232136; stroke: #988bc7; stroke-width: 2; }
+      .nodeC { fill: #232136; stroke: #67e480; stroke-width: 2; }
+      .nodeD { fill: #232136; stroke: #e89e64; stroke-width: 2; }
+      .h { font: 700 16px Arial, sans-serif; fill: #e1e1e6; }
+      .t { font: 500 13px Arial, sans-serif; fill: #c7c7d1; }
+      .arrow { stroke: #e1e1e6; stroke-width: 2.4; fill: none; marker-end: url(#ah); }
+      .arrowDashed { stroke: #a6a6b2; stroke-width: 2.2; stroke-dasharray: 8 6; fill: none; marker-end: url(#ah); }
+      .callout { fill: #2b253b; stroke: #ff79c6; stroke-width: 2; }
+      .calloutText { font: 600 13px Arial, sans-serif; fill: #e7de79; }
     </style>
     <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,4 L0,8 Z" fill="#334155" />
+      <path d="M0,0 L10,4 L0,8 Z" fill="#e1e1e6" />
     </marker>
   </defs>
 

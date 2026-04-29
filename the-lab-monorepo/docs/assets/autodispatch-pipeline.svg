@@ -1,24 +1,24 @@
 <svg width="1600" height="780" viewBox="0 0 1600 780" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Auto-dispatch optimization pipeline">
   <defs>
     <style>
-      .bg { fill: #f8fafc; }
-      .title { font: 700 34px Arial, sans-serif; fill: #0f172a; }
-      .subtitle { font: 500 17px Arial, sans-serif; fill: #334155; }
-      .step { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; }
-      .stepTitle { font: 700 16px Arial, sans-serif; fill: #0f172a; }
-      .stepText { font: 500 13px Arial, sans-serif; fill: #334155; }
-      .laneA { fill: #eff6ff; }
-      .laneB { fill: #ecfeff; }
-      .laneC { fill: #f0fdf4; }
-      .laneLabel { font: 700 14px Arial, sans-serif; fill: #1e293b; }
-      .arrow { stroke: #334155; stroke-width: 2.5; fill: none; marker-end: url(#arrowHead); }
-      .guard { fill: #fff7ed; stroke: #fdba74; stroke-width: 2; }
-      .guardText { font: 600 13px Arial, sans-serif; fill: #9a3412; }
-      .outcome { fill: #ecfccb; stroke: #bef264; stroke-width: 2; }
-      .outcomeText { font: 700 16px Arial, sans-serif; fill: #365314; }
+      .bg { fill: #191622; }
+      .title { font: 700 34px Arial, sans-serif; fill: #e1e1e6; }
+      .subtitle { font: 500 17px Arial, sans-serif; fill: #c7c7d1; }
+      .step { fill: #232136; stroke: #2d2a42; stroke-width: 2; }
+      .stepTitle { font: 700 16px Arial, sans-serif; fill: #e1e1e6; }
+      .stepText { font: 500 13px Arial, sans-serif; fill: #c7c7d1; }
+      .laneA { fill: #1f2a36; }
+      .laneB { fill: #2a2338; }
+      .laneC { fill: #1f3026; }
+      .laneLabel { font: 700 14px Arial, sans-serif; fill: #78d1e1; }
+      .arrow { stroke: #e1e1e6; stroke-width: 2.5; fill: none; marker-end: url(#arrowHead); }
+      .guard { fill: #32271f; stroke: #e89e64; stroke-width: 2; }
+      .guardText { font: 600 13px Arial, sans-serif; fill: #e89e64; }
+      .outcome { fill: #1f3026; stroke: #67e480; stroke-width: 2; }
+      .outcomeText { font: 700 16px Arial, sans-serif; fill: #67e480; }
     </style>
     <marker id="arrowHead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
-      <path d="M0,0 L10,4 L0,8 Z" fill="#334155" />
+      <path d="M0,0 L10,4 L0,8 Z" fill="#e1e1e6" />
     </marker>
   </defs>
 

@@ -1,10 +1,10 @@
 # ATOMOS
 
-![Platform](https://img.shields.io/badge/Platform-Enterprise%20Logistics-0A66C2?style=for-the-badge)
-![Architecture](https://img.shields.io/badge/Architecture-Event%20Driven%20Control%20Plane-0B7285?style=for-the-badge)
-![Dispatch](https://img.shields.io/badge/Dispatch-H3%20Geo%20Batching%20%2B%20Capacity%20Fit-166534?style=for-the-badge)
-![Runtime](https://img.shields.io/badge/Runtime-Go%20%2B%20Next.js%20%2B%20Kotlin%20%2B%20SwiftUI-5B21B6?style=for-the-badge)
-![Consistency](https://img.shields.io/badge/Consistency-Transactional%20Outbox%20and%20Version%20Gates-7C2D12?style=for-the-badge)
+![Platform](https://img.shields.io/badge/Platform-Enterprise%20Logistics-191622?style=for-the-badge)
+![Architecture](https://img.shields.io/badge/Architecture-Event%20Driven%20Control%20Plane-988BC7?style=for-the-badge)
+![Dispatch](https://img.shields.io/badge/Dispatch-H3%20Geo%20Batching%20%2B%20Capacity%20Fit-67E480?style=for-the-badge)
+![Runtime](https://img.shields.io/badge/Runtime-Go%20%2B%20Next.js%20%2B%20Kotlin%20%2B%20SwiftUI-78D1E1?style=for-the-badge)
+![Consistency](https://img.shields.io/badge/Consistency-Transactional%20Outbox%20and%20Version%20Gates-E89E64?style=for-the-badge)
 
 ATOMOS is an enterprise-grade logistics operating system that coordinates supplier, factory, warehouse, driver, retailer, and payload operations across web, desktop, and native mobile surfaces.
 
