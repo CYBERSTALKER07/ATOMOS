@@ -313,18 +313,18 @@ Role naming note:
 
 ![Tech Stack Compact](the-lab-monorepo/docs/assets/techstack-glass-compact.svg)
 
-![Go](https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white)
-![Kafka](https://img.shields.io/badge/Apache%20Kafka-231F20?style=for-the-badge&logo=apachekafka&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
-![Spanner](https://img.shields.io/badge/Cloud%20Spanner-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white)
-![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
-![React](https://img.shields.io/badge/React-149ECA?style=for-the-badge&logo=react&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-0EA5E9?style=for-the-badge&logo=tailwindcss&logoColor=white)
-![Tauri](https://img.shields.io/badge/Tauri-FFC131?style=for-the-badge&logo=tauri&logoColor=111111)
-![Kotlin](https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
-![Swift](https://img.shields.io/badge/Swift-F05138?style=for-the-badge&logo=swift&logoColor=white)
-![Terraform](https://img.shields.io/badge/Terraform-844FBA?style=for-the-badge&logo=terraform&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+<img src="https://cdn.simpleicons.org/go/00ADD8" alt="Go" width="32" height="32" />
+<img src="https://cdn.simpleicons.org/apachekafka/E8ECF6" alt="Apache Kafka" width="32" height="32" />
+<img src="https://cdn.simpleicons.org/redis/DC382D" alt="Redis" width="32" height="32" />
+<img src="https://cdn.simpleicons.org/googlecloud/4285F4" alt="Google Cloud Spanner" width="32" height="32" />
+<img src="https://cdn.simpleicons.org/nextdotjs/E8ECF6" alt="Next.js" width="32" height="32" />
+<img src="https://cdn.simpleicons.org/react/61DAFB" alt="React" width="32" height="32" />
+<img src="https://cdn.simpleicons.org/tailwindcss/06B6D4" alt="Tailwind CSS" width="32" height="32" />
+<img src="https://cdn.simpleicons.org/tauri/FFC131" alt="Tauri" width="32" height="32" />
+<img src="https://cdn.simpleicons.org/kotlin/7F52FF" alt="Kotlin" width="32" height="32" />
+<img src="https://cdn.simpleicons.org/swift/F05138" alt="Swift" width="32" height="32" />
+<img src="https://cdn.simpleicons.org/terraform/844FBA" alt="Terraform" width="32" height="32" />
+<img src="https://cdn.simpleicons.org/docker/2496ED" alt="Docker" width="32" height="32" />
 
 | Layer | Primary Technologies | Notes |
 |---|---|---|
