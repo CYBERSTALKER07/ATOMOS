@@ -53,7 +53,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
-import com.thelab.driver.R
+import com.pegasus.driver.R
 import com.thelab.driver.data.model.ValidateQRResponse
 import com.thelab.driver.ui.theme.StatusGreen
 import com.thelab.driver.ui.theme.StatusRed

@@ -1,6 +1,6 @@
 package com.thelab.factory.data.remote
 
-import com.thelab.factory.BuildConfig
+import com.pegasus.factory.BuildConfig
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences

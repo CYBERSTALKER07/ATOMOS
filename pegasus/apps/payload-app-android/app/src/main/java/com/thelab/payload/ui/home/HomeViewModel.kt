@@ -3,7 +3,7 @@ package com.thelab.payload.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.messaging.FirebaseMessaging
-import com.thelab.payload.BuildConfig
+import com.pegasus.payload.BuildConfig
 import com.thelab.payload.data.local.SecureStore
 import com.thelab.payload.data.model.InjectOrderRequest
 import com.thelab.payload.data.model.LiveOrder

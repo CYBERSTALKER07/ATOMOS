@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import com.thelab.warehouse.BuildConfig
+import com.pegasus.warehouse.BuildConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

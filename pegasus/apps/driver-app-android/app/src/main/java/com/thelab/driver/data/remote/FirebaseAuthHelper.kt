@@ -32,12 +32,12 @@ object FirebaseAuthHelper {
                 FirebaseApp.initializeApp(context, options)
             }
             // Connect to emulator in debug builds
-            if (com.thelab.driver.BuildConfig.DEBUG) {
+            if (com.pegasus.driver.BuildConfig.DEBUG) {
                 val emulatorHost = "10.0.2.2" // Android emulator localhost
                 FirebaseAuth.getInstance().useEmulator(emulatorHost, 9099)
             }
             initialized = true
-            Log.d(TAG, "Firebase Auth initialized (debug=${com.thelab.driver.BuildConfig.DEBUG})")
+            Log.d(TAG, "Firebase Auth initialized (debug=${com.pegasus.driver.BuildConfig.DEBUG})")
         } catch (e: Exception) {
             Log.w(TAG, "Firebase Auth init failed (non-fatal): ${e.message}")
         }

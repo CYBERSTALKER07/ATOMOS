@@ -7,7 +7,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import com.thelab.retailer.R
+import com.pegasus.retailer.R
 import com.thelab.retailer.data.api.LabApi
 import com.thelab.retailer.data.local.TokenManager
 import dagger.hilt.android.AndroidEntryPoint

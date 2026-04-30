@@ -8,13 +8,20 @@ import Security
 
 // MARK: - Keychain Helper
 
+private enum AuthNamespace {
+    static let primaryService = "com.pegasus.driver"
+    static let legacyService = "com.thelab.driver"
+    static let primaryPrefix = "com.pegasus.driver"
+    static let legacyPrefix = "com.thelab.driver"
+}
+
 private enum KeychainHelper {
     static func save(_ value: String, forKey key: String) {
         guard let data = value.data(using: .utf8) else { return }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
-            kSecAttrService as String: "com.thelab.driver",
+            kSecAttrService as String: AuthNamespace.primaryService,
         ]
         SecItemDelete(query as CFDictionary)
         var add = query
@@ -24,17 +31,10 @@ private enum KeychainHelper {
     }
 
     static func load(forKey key: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key,
-            kSecAttrService as String: "com.thelab.driver",
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-        guard status == errSecSuccess, let data = result as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
+        if let value = loadFromService(AuthNamespace.primaryService, forKey: key) {
+            return value
+        }
+        return loadFromService(AuthNamespace.legacyService, forKey: key)
     }
 
     static func saveDouble(_ value: Double, forKey key: String) {
@@ -47,10 +47,29 @@ private enum KeychainHelper {
     }
 
     static func delete(forKey key: String) {
+        deleteFromService(AuthNamespace.primaryService, forKey: key)
+        deleteFromService(AuthNamespace.legacyService, forKey: key)
+    }
+
+    private static func loadFromService(_ service: String, forKey key: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
-            kSecAttrService as String: "com.thelab.driver",
+            kSecAttrService as String: service,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status == errSecSuccess, let data = result as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func deleteFromService(_ service: String, forKey key: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecAttrService as String: service,
         ]
         SecItemDelete(query as CFDictionary)
     }
@@ -79,41 +98,70 @@ final class TokenStore {
 
     var isAuthenticated: Bool { token != nil }
 
-    private let tokenKey = "com.thelab.driver.token"
-    private let userKey  = "com.thelab.driver.userId"
-    private let nameKey  = "com.thelab.driver.driverName"
-    private let vehicleKey = "com.thelab.driver.vehicleType"
-    private let plateKey = "com.thelab.driver.licensePlate"
-    private let vehicleIdKey = "com.thelab.driver.vehicleId"
-    private let vehicleClassKey = "com.thelab.driver.vehicleClass"
-    private let maxVolumeVUKey = "com.thelab.driver.maxVolumeVU"
-    private let warehouseIdKey = "com.thelab.driver.warehouseId"
-    private let warehouseNameKey = "com.thelab.driver.warehouseName"
-    private let warehouseLatKey = "com.thelab.driver.warehouseLat"
-    private let warehouseLngKey = "com.thelab.driver.warehouseLng"
+    private let tokenKey = "\(AuthNamespace.primaryPrefix).token"
+    private let userKey  = "\(AuthNamespace.primaryPrefix).userId"
+    private let nameKey  = "\(AuthNamespace.primaryPrefix).driverName"
+    private let vehicleKey = "\(AuthNamespace.primaryPrefix).vehicleType"
+    private let plateKey = "\(AuthNamespace.primaryPrefix).licensePlate"
+    private let vehicleIdKey = "\(AuthNamespace.primaryPrefix).vehicleId"
+    private let vehicleClassKey = "\(AuthNamespace.primaryPrefix).vehicleClass"
+    private let maxVolumeVUKey = "\(AuthNamespace.primaryPrefix).maxVolumeVU"
+    private let warehouseIdKey = "\(AuthNamespace.primaryPrefix).warehouseId"
+    private let warehouseNameKey = "\(AuthNamespace.primaryPrefix).warehouseName"
+    private let warehouseLatKey = "\(AuthNamespace.primaryPrefix).warehouseLat"
+    private let warehouseLngKey = "\(AuthNamespace.primaryPrefix).warehouseLng"
+
+    private let legacyTokenKey = "\(AuthNamespace.legacyPrefix).token"
+    private let legacyUserKey  = "\(AuthNamespace.legacyPrefix).userId"
+    private let legacyNameKey  = "\(AuthNamespace.legacyPrefix).driverName"
+    private let legacyVehicleKey = "\(AuthNamespace.legacyPrefix).vehicleType"
+    private let legacyPlateKey = "\(AuthNamespace.legacyPrefix).licensePlate"
+    private let legacyVehicleIdKey = "\(AuthNamespace.legacyPrefix).vehicleId"
+    private let legacyVehicleClassKey = "\(AuthNamespace.legacyPrefix).vehicleClass"
+    private let legacyMaxVolumeVUKey = "\(AuthNamespace.legacyPrefix).maxVolumeVU"
+    private let legacyWarehouseIdKey = "\(AuthNamespace.legacyPrefix).warehouseId"
+    private let legacyWarehouseNameKey = "\(AuthNamespace.legacyPrefix).warehouseName"
+    private let legacyWarehouseLatKey = "\(AuthNamespace.legacyPrefix).warehouseLat"
+    private let legacyWarehouseLngKey = "\(AuthNamespace.legacyPrefix).warehouseLng"
 
     private init() {
-        // Restore from Keychain (migrate from UserDefaults on first run)
-        token = KeychainHelper.load(forKey: tokenKey) ?? migrateString(tokenKey)
-        userId = KeychainHelper.load(forKey: userKey) ?? migrateString(userKey)
-        driverName = KeychainHelper.load(forKey: nameKey) ?? migrateString(nameKey)
-        vehicleType = KeychainHelper.load(forKey: vehicleKey) ?? migrateString(vehicleKey)
-        licensePlate = KeychainHelper.load(forKey: plateKey) ?? migrateString(plateKey)
-        vehicleId = KeychainHelper.load(forKey: vehicleIdKey) ?? migrateString(vehicleIdKey)
-        vehicleClass = KeychainHelper.load(forKey: vehicleClassKey) ?? migrateString(vehicleClassKey)
-        maxVolumeVU = KeychainHelper.loadDouble(forKey: maxVolumeVUKey)
+        token = loadString(primaryKey: tokenKey, legacyKey: legacyTokenKey)
+            ?? migrateString(legacyTokenKey)
+            ?? migrateString(tokenKey)
+        userId = loadString(primaryKey: userKey, legacyKey: legacyUserKey)
+            ?? migrateString(legacyUserKey)
+            ?? migrateString(userKey)
+        driverName = loadString(primaryKey: nameKey, legacyKey: legacyNameKey)
+            ?? migrateString(legacyNameKey)
+            ?? migrateString(nameKey)
+        vehicleType = loadString(primaryKey: vehicleKey, legacyKey: legacyVehicleKey)
+            ?? migrateString(legacyVehicleKey)
+            ?? migrateString(vehicleKey)
+        licensePlate = loadString(primaryKey: plateKey, legacyKey: legacyPlateKey)
+            ?? migrateString(legacyPlateKey)
+            ?? migrateString(plateKey)
+        vehicleId = loadString(primaryKey: vehicleIdKey, legacyKey: legacyVehicleIdKey)
+            ?? migrateString(legacyVehicleIdKey)
+            ?? migrateString(vehicleIdKey)
+        vehicleClass = loadString(primaryKey: vehicleClassKey, legacyKey: legacyVehicleClassKey)
+            ?? migrateString(legacyVehicleClassKey)
+            ?? migrateString(vehicleClassKey)
+        maxVolumeVU = loadDouble(primaryKey: maxVolumeVUKey, legacyKey: legacyMaxVolumeVUKey)
         if maxVolumeVU == 0 {
-            let legacy = UserDefaults.standard.double(forKey: maxVolumeVUKey)
-            if legacy > 0 {
-                maxVolumeVU = legacy
-                KeychainHelper.saveDouble(legacy, forKey: maxVolumeVUKey)
+            let legacyPrimary = UserDefaults.standard.double(forKey: maxVolumeVUKey)
+            let legacyOld = UserDefaults.standard.double(forKey: legacyMaxVolumeVUKey)
+            let persisted = legacyPrimary > 0 ? legacyPrimary : legacyOld
+            if persisted > 0 {
+                maxVolumeVU = persisted
+                saveDouble(persisted, primaryKey: maxVolumeVUKey, legacyKey: legacyMaxVolumeVUKey)
                 UserDefaults.standard.removeObject(forKey: maxVolumeVUKey)
+                UserDefaults.standard.removeObject(forKey: legacyMaxVolumeVUKey)
             }
         }
-        warehouseId = KeychainHelper.load(forKey: warehouseIdKey)
-        warehouseName = KeychainHelper.load(forKey: warehouseNameKey)
-        warehouseLat = KeychainHelper.loadDouble(forKey: warehouseLatKey)
-        warehouseLng = KeychainHelper.loadDouble(forKey: warehouseLngKey)
+        warehouseId = loadString(primaryKey: warehouseIdKey, legacyKey: legacyWarehouseIdKey)
+        warehouseName = loadString(primaryKey: warehouseNameKey, legacyKey: legacyWarehouseNameKey)
+        warehouseLat = loadDouble(primaryKey: warehouseLatKey, legacyKey: legacyWarehouseLatKey)
+        warehouseLng = loadDouble(primaryKey: warehouseLngKey, legacyKey: legacyWarehouseLngKey)
     }
 
     /// One-shot migration from UserDefaults → Keychain
@@ -122,6 +170,32 @@ final class TokenStore {
         KeychainHelper.save(value, forKey: key)
         UserDefaults.standard.removeObject(forKey: key)
         return value
+    }
+
+    private func loadString(primaryKey: String, legacyKey: String) -> String? {
+        if let value = KeychainHelper.load(forKey: primaryKey) {
+            return value
+        }
+        guard let legacy = KeychainHelper.load(forKey: legacyKey) else { return nil }
+        saveString(legacy, primaryKey: primaryKey, legacyKey: legacyKey)
+        return legacy
+    }
+
+    private func loadDouble(primaryKey: String, legacyKey: String) -> Double {
+        guard let value = loadString(primaryKey: primaryKey, legacyKey: legacyKey) else {
+            return 0
+        }
+        return Double(value) ?? 0
+    }
+
+    private func saveString(_ value: String, primaryKey: String, legacyKey: String) {
+        KeychainHelper.save(value, forKey: primaryKey)
+        KeychainHelper.delete(forKey: legacyKey)
+    }
+
+    private func saveDouble(_ value: Double, primaryKey: String, legacyKey: String) {
+        KeychainHelper.saveDouble(value, forKey: primaryKey)
+        KeychainHelper.delete(forKey: legacyKey)
     }
 
     func save(response: AuthResponse) {
@@ -139,9 +213,9 @@ final class TokenStore {
         warehouseLat = response.warehouseLat ?? 0
         warehouseLng = response.warehouseLng ?? 0
 
-        KeychainHelper.save(response.token, forKey: tokenKey)
-        KeychainHelper.save(response.userId, forKey: userKey)
-        KeychainHelper.save(response.name, forKey: nameKey)
+        saveString(response.token, primaryKey: tokenKey, legacyKey: legacyTokenKey)
+        saveString(response.userId, primaryKey: userKey, legacyKey: legacyUserKey)
+        saveString(response.name, primaryKey: nameKey, legacyKey: legacyNameKey)
         persistVehicleInfo()
 
         // Exchange Firebase custom token for ID token session (graceful degradation)
@@ -152,21 +226,21 @@ final class TokenStore {
 
     /// Persist current vehicle fields to Keychain. Called after profile polling updates.
     func persistVehicleInfo() {
-        KeychainHelper.save(vehicleType ?? "", forKey: vehicleKey)
-        KeychainHelper.save(licensePlate ?? "", forKey: plateKey)
-        KeychainHelper.save(vehicleId ?? "", forKey: vehicleIdKey)
-        KeychainHelper.save(vehicleClass ?? "", forKey: vehicleClassKey)
-        KeychainHelper.saveDouble(maxVolumeVU, forKey: maxVolumeVUKey)
-        KeychainHelper.save(warehouseId ?? "", forKey: warehouseIdKey)
-        KeychainHelper.save(warehouseName ?? "", forKey: warehouseNameKey)
-        KeychainHelper.saveDouble(warehouseLat, forKey: warehouseLatKey)
-        KeychainHelper.saveDouble(warehouseLng, forKey: warehouseLngKey)
+        saveString(vehicleType ?? "", primaryKey: vehicleKey, legacyKey: legacyVehicleKey)
+        saveString(licensePlate ?? "", primaryKey: plateKey, legacyKey: legacyPlateKey)
+        saveString(vehicleId ?? "", primaryKey: vehicleIdKey, legacyKey: legacyVehicleIdKey)
+        saveString(vehicleClass ?? "", primaryKey: vehicleClassKey, legacyKey: legacyVehicleClassKey)
+        saveDouble(maxVolumeVU, primaryKey: maxVolumeVUKey, legacyKey: legacyMaxVolumeVUKey)
+        saveString(warehouseId ?? "", primaryKey: warehouseIdKey, legacyKey: legacyWarehouseIdKey)
+        saveString(warehouseName ?? "", primaryKey: warehouseNameKey, legacyKey: legacyWarehouseNameKey)
+        saveDouble(warehouseLat, primaryKey: warehouseLatKey, legacyKey: legacyWarehouseLatKey)
+        saveDouble(warehouseLng, primaryKey: warehouseLngKey, legacyKey: legacyWarehouseLngKey)
     }
 
     /// Update only the token (used after silent refresh).
     func updateToken(_ newToken: String) {
         token = newToken
-        KeychainHelper.save(newToken, forKey: tokenKey)
+        saveString(newToken, primaryKey: tokenKey, legacyKey: legacyTokenKey)
     }
 
     func logout() {
@@ -185,17 +259,29 @@ final class TokenStore {
         warehouseLng = 0
 
         KeychainHelper.delete(forKey: tokenKey)
+        KeychainHelper.delete(forKey: legacyTokenKey)
         KeychainHelper.delete(forKey: userKey)
+        KeychainHelper.delete(forKey: legacyUserKey)
         KeychainHelper.delete(forKey: nameKey)
+        KeychainHelper.delete(forKey: legacyNameKey)
         KeychainHelper.delete(forKey: vehicleKey)
+        KeychainHelper.delete(forKey: legacyVehicleKey)
         KeychainHelper.delete(forKey: plateKey)
+        KeychainHelper.delete(forKey: legacyPlateKey)
         KeychainHelper.delete(forKey: vehicleIdKey)
+        KeychainHelper.delete(forKey: legacyVehicleIdKey)
         KeychainHelper.delete(forKey: vehicleClassKey)
+        KeychainHelper.delete(forKey: legacyVehicleClassKey)
         KeychainHelper.delete(forKey: maxVolumeVUKey)
+        KeychainHelper.delete(forKey: legacyMaxVolumeVUKey)
         KeychainHelper.delete(forKey: warehouseIdKey)
+        KeychainHelper.delete(forKey: legacyWarehouseIdKey)
         KeychainHelper.delete(forKey: warehouseNameKey)
+        KeychainHelper.delete(forKey: legacyWarehouseNameKey)
         KeychainHelper.delete(forKey: warehouseLatKey)
+        KeychainHelper.delete(forKey: legacyWarehouseLatKey)
         KeychainHelper.delete(forKey: warehouseLngKey)
+        KeychainHelper.delete(forKey: legacyWarehouseLngKey)
     }
 }
 

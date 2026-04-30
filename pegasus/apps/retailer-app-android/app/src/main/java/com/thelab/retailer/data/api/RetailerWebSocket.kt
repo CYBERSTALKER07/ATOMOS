@@ -1,6 +1,6 @@
 package com.thelab.retailer.data.api
 
-import com.thelab.retailer.BuildConfig
+import com.pegasus.retailer.BuildConfig
 import com.thelab.retailer.data.local.TokenManager
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow

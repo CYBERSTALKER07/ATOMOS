@@ -1,6 +1,6 @@
 package com.thelab.payload.services
 
-import com.thelab.payload.BuildConfig
+import com.pegasus.payload.BuildConfig
 import com.thelab.payload.data.model.WsMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

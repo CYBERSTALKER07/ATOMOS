@@ -3,7 +3,7 @@ package com.thelab.driver.ui.screens.offload
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.thelab.driver.BuildConfig
+import com.pegasus.driver.BuildConfig
 import com.thelab.driver.data.model.CompleteOrderRequest
 import com.thelab.driver.data.remote.DriverApi
 import com.thelab.driver.data.remote.DriverWebSocket

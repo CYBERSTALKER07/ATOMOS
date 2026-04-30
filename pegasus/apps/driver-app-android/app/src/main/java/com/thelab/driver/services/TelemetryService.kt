@@ -22,8 +22,8 @@ import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import com.thelab.driver.BuildConfig
-import com.thelab.driver.R
+import com.pegasus.driver.BuildConfig
+import com.pegasus.driver.R
 import com.thelab.driver.data.local.OrderDao
 import com.thelab.driver.data.model.OrderState
 import com.thelab.driver.data.model.TelemetryPayload
