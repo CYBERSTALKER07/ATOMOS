@@ -1,8 +1,8 @@
 [package]
-name = "app"
+name = "pegasus-retailer-desktop"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "Pegasus Retailer Desktop"
+authors = ["Pegasus"]
 license = ""
 repository = ""
 edition = "2021"
@@ -20,6 +20,7 @@ tauri-build = { version = "2.5.6", features = [] }
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
+keyring = { version = "3", features = ["apple-native", "windows-native"] }
 log = "0.4"
 tauri = { version = "2.10.3", features = [] }
 tauri-plugin-log = "2"

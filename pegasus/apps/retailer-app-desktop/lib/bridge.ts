@@ -28,7 +28,8 @@ export async function getStoredToken(): Promise<string | null> {
   if (isTauri()) {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      return await invoke('get_stored_token');
+      const result = (await invoke('get_token')) as { token?: string | null } | null;
+      return result?.token ?? null;
     } catch (err) {
       console.warn('Tauri getStoredToken failed', err);
       return null;
@@ -44,7 +45,7 @@ export async function clearStoredToken(): Promise<void> {
   if (isTauri()) {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('clear_stored_token');
+      await invoke('clear_token');
     } catch (err) {
       console.warn('Tauri clearStoredToken failed', err);
     }
