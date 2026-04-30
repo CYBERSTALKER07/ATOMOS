@@ -161,7 +161,7 @@ resource "google_compute_backend_service" "void_backend" {
   #
   # Falls back to round-robin automatically when X-Supplier-Id is absent
   # (e.g. public catalogue reads, unauthenticated health checks).
-  session_affinity  = "HEADER_FIELD"
+  session_affinity   = "HEADER_FIELD"
   locality_lb_policy = "RING_HASH"
 
   consistent_hash {
@@ -347,6 +347,6 @@ variable "dns_zone_name" {
 
 variable "dns_zone_dns_name" {
   type        = string
-  description = "Cloud DNS zone suffix (must end with a dot), e.g. void.thelab.uz."
-  default     = "void.thelab.uz."
+  description = "Cloud DNS zone suffix (must end with a dot), e.g. void.pegasus.uz. Legacy suffixes remain valid when passed explicitly."
+  default     = "void.pegasus.uz."
 }

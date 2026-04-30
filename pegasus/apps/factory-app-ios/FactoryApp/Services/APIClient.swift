@@ -18,8 +18,10 @@ final class APIClient: Sendable {
         else { s = "http://\(raw):8080/" }
         return URL(string: s)!
     }()
+    private let legacyBaseURL: URL? = nil
     #else
-    private let baseURL = URL(string: "https://api.thelab.uz/")!
+    private let baseURL = URL(string: "https://api.pegasus.uz/")!
+    private let legacyBaseURL = URL(string: "https://api.thelab.uz/")!
     #endif
 
     private let session: URLSession
@@ -63,7 +65,7 @@ final class APIClient: Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try encoder.encode(body)
         await attachToken(&request)
-        let (_, response) = try await session.data(for: request)
+        let (_, response) = try await dataForRequestWithFallback(request)
         guard let http = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
@@ -72,7 +74,7 @@ final class APIClient: Sendable {
             if refreshed {
                 var retry = request
                 await attachToken(&retry)
-                let (_, retryResp) = try await session.data(for: retry)
+                let (_, retryResp) = try await dataForRequestWithFallback(retry)
                 guard let retryHttp = retryResp as? HTTPURLResponse, (200...299).contains(retryHttp.statusCode) else {
                     throw APIError.httpError((retryResp as? HTTPURLResponse)?.statusCode ?? 0)
                 }
@@ -87,7 +89,7 @@ final class APIClient: Sendable {
 
     // MARK: - Execute with 401 retry
     private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await dataForRequestWithFallback(request)
         guard let http = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
         }
@@ -96,7 +98,7 @@ final class APIClient: Sendable {
             if refreshed {
                 var retry = request
                 await attachToken(&retry)
-                let (retryData, retryResp) = try await session.data(for: retry)
+                let (retryData, retryResp) = try await dataForRequestWithFallback(retry)
                 guard let retryHttp = retryResp as? HTTPURLResponse, (200...299).contains(retryHttp.statusCode) else {
                     throw APIError.httpError((retryResp as? HTTPURLResponse)?.statusCode ?? 0)
                 }
@@ -125,7 +127,7 @@ final class APIClient: Sendable {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try encoder.encode(["refresh_token": refresh])
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await dataForRequestWithFallback(request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             await MainActor.run { TokenStore.shared.clear() }
             return false
@@ -133,6 +135,36 @@ final class APIClient: Sendable {
         let auth = try decoder.decode(AuthResponse.self, from: data)
         await MainActor.run { TokenStore.shared.updateTokens(token: auth.token, refresh: auth.refreshToken) }
         return true
+    }
+
+    private func fallbackRequest(for request: URLRequest) -> URLRequest? {
+        guard let legacyBaseURL,
+              let requestURL = request.url,
+              requestURL.host == baseURL.host,
+              requestURL.host != legacyBaseURL.host else {
+            return nil
+        }
+
+        var components = URLComponents(url: requestURL, resolvingAgainstBaseURL: false)
+        components?.scheme = legacyBaseURL.scheme
+        components?.host = legacyBaseURL.host
+        components?.port = legacyBaseURL.port
+        guard let rewritten = components?.url else { return nil }
+
+        var fallback = request
+        fallback.url = rewritten
+        return fallback
+    }
+
+    private func dataForRequestWithFallback(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await session.data(for: request)
+        } catch {
+            guard let fallback = fallbackRequest(for: request) else {
+                throw error
+            }
+            return try await session.data(for: fallback)
+        }
     }
 }
 

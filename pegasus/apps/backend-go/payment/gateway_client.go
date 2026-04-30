@@ -206,13 +206,21 @@ func stripeCheckoutURL(orderID string, amount int64) (string, error) {
 	if cur == "" {
 		cur = "usd"
 	}
+	appBaseURL := strings.TrimRight(strings.TrimSpace(os.Getenv("APP_BASE_URL")), "/")
+	if appBaseURL == "" {
+		// Legacy bridge: allow old env wiring to keep redirects stable during cutover.
+		appBaseURL = strings.TrimRight(strings.TrimSpace(os.Getenv("APP_BASE_URL_LEGACY")), "/")
+	}
+	if appBaseURL == "" {
+		appBaseURL = "https://app.pegasus.uz"
+	}
 	successURL := os.Getenv("STRIPE_SUCCESS_URL")
 	if successURL == "" {
-		successURL = "https://app.thelab.uz/checkout/success?order_id=" + orderID
+		successURL = appBaseURL + "/checkout/success?order_id=" + orderID
 	}
 	cancelURL := os.Getenv("STRIPE_CANCEL_URL")
 	if cancelURL == "" {
-		cancelURL = "https://app.thelab.uz/checkout/cancel?order_id=" + orderID
+		cancelURL = appBaseURL + "/checkout/cancel?order_id=" + orderID
 	}
 
 	data := url.Values{

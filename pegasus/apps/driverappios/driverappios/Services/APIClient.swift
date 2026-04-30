@@ -55,8 +55,10 @@ final class APIClient: @unchecked Sendable {
         if raw.hasPrefix("http://") || raw.hasPrefix("https://") { return raw }
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8080"
     }()
+    let legacyAPIBaseURL: String? = nil
     #else
-    let apiBaseURL = "https://api.thelab.uz"
+    let apiBaseURL = "https://api.pegasus.uz"
+    let legacyAPIBaseURL: String? = "https://api.thelab.uz"
     #endif
 
     private var baseURL: String { apiBaseURL }
@@ -272,6 +274,38 @@ final class APIClient: @unchecked Sendable {
         return request
     }
 
+    private func fallbackRequest(for request: URLRequest) -> URLRequest? {
+        guard let legacyBase = legacyAPIBaseURL,
+              let requestURL = request.url,
+              let primaryURL = URL(string: baseURL),
+              let legacyURL = URL(string: legacyBase),
+              requestURL.host == primaryURL.host,
+              requestURL.host != legacyURL.host else {
+            return nil
+        }
+
+        var components = URLComponents(url: requestURL, resolvingAgainstBaseURL: false)
+        components?.scheme = legacyURL.scheme
+        components?.host = legacyURL.host
+        components?.port = legacyURL.port
+        guard let rewritten = components?.url else { return nil }
+
+        var fallback = request
+        fallback.url = rewritten
+        return fallback
+    }
+
+    private func dataWithFallback(for request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await session.data(for: request)
+        } catch {
+            guard let fallback = fallbackRequest(for: request) else {
+                throw error
+            }
+            return try await session.data(for: fallback)
+        }
+    }
+
     /// Flag to prevent recursive refresh loops
     private var isRefreshing = false
 
@@ -280,7 +314,7 @@ final class APIClient: @unchecked Sendable {
         let response: URLResponse
 
         do {
-            (data, response) = try await session.data(for: request)
+            (data, response) = try await dataWithFallback(for: request)
         } catch {
             throw APIError.networkError
         }
@@ -348,25 +382,34 @@ final class APIClient: @unchecked Sendable {
         isRefreshing = true
         defer { isRefreshing = false }
 
-        guard let url = URL(string: "\(baseURL)/v1/auth/refresh") else { return nil }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(currentToken)", forHTTPHeaderField: "Authorization")
-
-        guard let (data, response) = try? await session.data(for: request),
-              let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-            return nil
+        var refreshBases = [baseURL]
+        if let legacy = legacyAPIBaseURL, legacy != baseURL {
+            refreshBases.append(legacy)
         }
 
-        struct RefreshResponse: Decodable { let token: String }
-        guard let refreshed = try? JSONDecoder().decode(RefreshResponse.self, from: data) else {
-            return nil
+        for refreshBase in refreshBases {
+            guard let url = URL(string: "\(refreshBase)/v1/auth/refresh") else { continue }
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(currentToken)", forHTTPHeaderField: "Authorization")
+
+            guard let (data, response) = try? await session.data(for: request),
+                  let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                continue
+            }
+
+            struct RefreshResponse: Decodable { let token: String }
+            guard let refreshed = try? JSONDecoder().decode(RefreshResponse.self, from: data) else {
+                continue
+            }
+
+            // Persist the new token
+            await MainActor.run { TokenStore.shared.updateToken(refreshed.token) }
+            return refreshed.token
         }
 
-        // Persist the new token
-        await MainActor.run { TokenStore.shared.updateToken(refreshed.token) }
-        return refreshed.token
+        return nil
     }
 }
 

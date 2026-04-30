@@ -50,7 +50,7 @@ Rollback checkpoint A:
 
 1. Verify backend health checks are green in Compute backend service.
 2. Validate public HTTPS endpoint against forwarding IP + Host header:
-   - `curl -sS --resolve api.void.thelab.uz:443:<GLOBAL_IP> https://api.void.thelab.uz/healthz`
+   - `curl -sS --resolve api.void.pegasus.uz:443:<GLOBAL_IP> https://api.void.pegasus.uz/healthz`
 3. Validate representative APIs:
    - auth login (non-mutating smoke)
    - catalog read
@@ -144,7 +144,7 @@ cd infra/terraform
 terraform init -upgrade
 terraform fmt -check
 terraform validate
-terraform plan -var="gcp_project_id=<PROJECT_ID>" -var="project_id=<PROJECT_ID>" -var="backend_hostname=api.void.thelab.uz"
+terraform plan -var="gcp_project_id=<PROJECT_ID>" -var="project_id=<PROJECT_ID>" -var="backend_hostname=api.void.pegasus.uz"
 
 # Backend compile + targeted tests
 cd ../../apps/backend-go

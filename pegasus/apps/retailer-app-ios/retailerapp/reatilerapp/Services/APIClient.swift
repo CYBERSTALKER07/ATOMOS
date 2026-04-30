@@ -21,8 +21,10 @@ final class APIClient {
         if raw.hasPrefix("http://") || raw.hasPrefix("https://") { return raw }
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8080"
     }()
+    var legacyBaseURL: String? = nil
     #else
-    var baseURL = "https://api.thelab.uz"
+    var baseURL = "https://api.pegasus.uz"
+    var legacyBaseURL: String? = "https://api.thelab.uz"
     #endif
 
     private init() {
@@ -76,7 +78,7 @@ final class APIClient {
             request.httpBody = try encoder.encode(AnyEncodable(body))
         }
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await dataForRequestWithFallback(request)
 
         guard let http = response as? HTTPURLResponse else {
             throw APIError.invalidResponse
@@ -110,24 +112,62 @@ final class APIClient {
         isRefreshing = true
         defer { isRefreshing = false }
 
-        guard let url = URL(string: "\(baseURL)/v1/auth/refresh") else { return nil }
-        var req = URLRequest(url: url)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue("Bearer \(currentToken)", forHTTPHeaderField: "Authorization")
-        req.httpBody = "{}".data(using: .utf8)
+        var refreshBases = [baseURL]
+        if let legacy = legacyBaseURL, legacy != baseURL {
+            refreshBases.append(legacy)
+        }
 
-        do {
-            let (data, response) = try await session.data(for: req)
-            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                return nil
+        for refreshBase in refreshBases {
+            guard let url = URL(string: "\(refreshBase)/v1/auth/refresh") else { continue }
+            var req = URLRequest(url: url)
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.setValue("Bearer \(currentToken)", forHTTPHeaderField: "Authorization")
+            req.httpBody = "{}".data(using: .utf8)
+
+            do {
+                let (data, response) = try await session.data(for: req)
+                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                    continue
+                }
+                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+                guard let newToken = json?["token"] as? String else { continue }
+                authToken = newToken
+                return newToken
+            } catch {
+                continue
             }
-            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            guard let newToken = json?["token"] as? String else { return nil }
-            authToken = newToken
-            return newToken
-        } catch {
+        }
+
+        return nil
+    }
+
+    private func fallbackURL(for url: URL) -> URL? {
+        guard let legacyBaseURL,
+              let primary = URL(string: baseURL),
+              let legacy = URL(string: legacyBaseURL),
+              url.host == primary.host,
+              url.host != legacy.host else {
             return nil
+        }
+
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        components?.scheme = legacy.scheme
+        components?.host = legacy.host
+        components?.port = legacy.port
+        return components?.url
+    }
+
+    private func dataForRequestWithFallback(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await session.data(for: request)
+        } catch {
+            guard let url = request.url, let fallback = fallbackURL(for: url) else {
+                throw error
+            }
+            var retry = request
+            retry.url = fallback
+            return try await session.data(for: retry)
         }
     }
 

@@ -43,8 +43,10 @@ final class APIClient: @unchecked Sendable {
         if raw.hasPrefix("http://") || raw.hasPrefix("https://") { return raw }
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8080"
     }()
+    let legacyBaseURL: String? = nil
     #else
-    let baseURL = "https://api.thelab.uz"
+    let baseURL = "https://api.pegasus.uz"
+    let legacyBaseURL: String? = "https://api.thelab.uz"
     #endif
 
     /// WebSocket origin derived from baseURL: http → ws, https → wss.
@@ -157,7 +159,7 @@ final class APIClient: @unchecked Sendable {
         let path = endpoint.hasPrefix("/") ? String(endpoint.dropFirst()) : endpoint
         var req = try buildRequest(path: path, method: method)
         if !body.isEmpty { req.httpBody = body.data(using: .utf8) }
-        let (data, response) = try await session.data(for: req)
+        let (data, response) = try await dataForRequestWithFallback(req)
         guard let http = response as? HTTPURLResponse else { throw APIError.networkError }
         return (http.statusCode, data)
     }
@@ -191,7 +193,7 @@ final class APIClient: @unchecked Sendable {
 
     private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
         let data: Data; let response: URLResponse
-        do { (data, response) = try await session.data(for: request) }
+        do { (data, response) = try await dataForRequestWithFallback(request) }
         catch { throw APIError.networkError }
 
         guard let http = response as? HTTPURLResponse else { throw APIError.networkError }
@@ -217,5 +219,37 @@ final class APIClient: @unchecked Sendable {
 
     private func parseProblem(_ data: Data) -> ProblemDetail? {
         try? decoder.decode(ProblemDetail.self, from: data)
+    }
+
+    private func fallbackRequest(for request: URLRequest) -> URLRequest? {
+        guard let legacyBaseURL,
+              let requestURL = request.url,
+              let primaryURL = URL(string: baseURL),
+              let legacyURL = URL(string: legacyBaseURL),
+              requestURL.host == primaryURL.host,
+              requestURL.host != legacyURL.host else {
+            return nil
+        }
+
+        var components = URLComponents(url: requestURL, resolvingAgainstBaseURL: false)
+        components?.scheme = legacyURL.scheme
+        components?.host = legacyURL.host
+        components?.port = legacyURL.port
+        guard let rewritten = components?.url else { return nil }
+
+        var fallback = request
+        fallback.url = rewritten
+        return fallback
+    }
+
+    private func dataForRequestWithFallback(_ request: URLRequest) async throws -> (Data, URLResponse) {
+        do {
+            return try await session.data(for: request)
+        } catch {
+            guard let fallback = fallbackRequest(for: request) else {
+                throw error
+            }
+            return try await session.data(for: fallback)
+        }
     }
 }

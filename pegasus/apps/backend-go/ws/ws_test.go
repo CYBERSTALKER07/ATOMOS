@@ -38,12 +38,16 @@ func TestCheckWSOrigin_LocalhostAllowed(t *testing.T) {
 
 func TestCheckWSOrigin_ProductionAllowlistAllowed(t *testing.T) {
 	t.Setenv("ENVIRONMENT", "production")
-	t.Setenv("CORS_ALLOWED_ORIGINS", "https://admin.thelab.uz,https://supplier.thelab.uz")
+	t.Setenv("CORS_ALLOWED_ORIGINS", "https://admin.pegasus.uz,https://supplier.pegasus.uz,https://admin.thelab.uz,https://supplier.thelab.uz")
 
-	r, _ := http.NewRequest("GET", "/ws", nil)
-	r.Header.Set("Origin", "https://admin.thelab.uz")
-	if !CheckWSOrigin(r) {
-		t.Error("production allowlisted origin should be allowed")
+	for _, origin := range []string{"https://admin.pegasus.uz", "https://admin.thelab.uz"} {
+		t.Run(origin, func(t *testing.T) {
+			r, _ := http.NewRequest("GET", "/ws", nil)
+			r.Header.Set("Origin", origin)
+			if !CheckWSOrigin(r) {
+				t.Error("production allowlisted origin should be allowed")
+			}
+		})
 	}
 }
 

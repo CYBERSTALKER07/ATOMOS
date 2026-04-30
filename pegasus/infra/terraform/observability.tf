@@ -219,6 +219,6 @@ variable "alert_notification_channels" {
 
 variable "backend_hostname" {
   type        = string
-  description = "Hostname for the backend uptime check (e.g. api.void.thelab.uz)."
-  default     = "api.void.thelab.uz"
+  description = "Hostname for the backend uptime check (e.g. api.void.pegasus.uz; legacy hostnames can still be passed explicitly)."
+  default     = "api.void.pegasus.uz"
 }
