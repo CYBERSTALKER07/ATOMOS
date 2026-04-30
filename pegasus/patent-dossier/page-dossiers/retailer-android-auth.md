@@ -10,7 +10,7 @@
 
 # Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/auth/AuthScreen.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/auth/AuthScreen.kt
 
 **Shell:** retailer-android-auth
 
@@ -27,7 +27,7 @@
 ## Contents
 
 - black storefront icon disk
-- The Lab title
+- Pegasus title
 - Retailer Portal subtitle
 
 ---

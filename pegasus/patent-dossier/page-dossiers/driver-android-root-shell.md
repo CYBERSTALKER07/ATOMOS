@@ -10,8 +10,8 @@
 
 # Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/navigation/DriverNavigation.kt
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/navigation/MainTabView.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/navigation/DriverNavigation.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/navigation/MainTabView.kt
 
 **Shell:** driver-android-main
 

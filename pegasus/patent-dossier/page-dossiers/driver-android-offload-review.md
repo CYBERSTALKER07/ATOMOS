@@ -10,7 +10,7 @@
 
 # Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/offload/OffloadReviewScreen.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/offload/OffloadReviewScreen.kt
 
 **Shell:** driver-android-main
 

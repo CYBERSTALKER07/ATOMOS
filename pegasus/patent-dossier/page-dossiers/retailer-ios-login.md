@@ -27,7 +27,7 @@
 ## Contents
 
 - gradient storefront logo disk
-- The Lab title
+- Pegasus title
 - Retailer Portal subtitle
 
 ---

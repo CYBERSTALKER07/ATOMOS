@@ -79,7 +79,7 @@ If product reverses this decision for an app, follow the steps for that platform
    <uses-feature android:name="android.hardware.camera" android:required="false" />
    ```
 3. Request camera permission at runtime (`Manifest.permission.CAMERA`) before launching the scanner screen.
-4. Copy the scanner screen template from `apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/scanner/` (ScannerScreen.kt + ScannerViewModel.kt) and adapt package paths.
+4. Copy the scanner screen template from `apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/scanner/` (ScannerScreen.kt + ScannerViewModel.kt) and adapt package paths.
 5. Wire the route in the app's `*Navigation.kt` and add the CTA on the home screen.
 6. `./gradlew :app:assembleDebug` to verify.
 

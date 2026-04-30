@@ -26,7 +26,7 @@
 
 ## Contents
 
-- The Lab Payload Terminal label
+- Pegasus Payload Terminal label
 - Payloader Login headline
 
 ---

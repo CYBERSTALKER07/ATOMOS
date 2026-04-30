@@ -18,7 +18,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/auth/LocationPickerScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/auth/LocationPickerScreen.kt
 
 **Purpose:** Signup or profile location selector using a map-centered pin and confirm affordance.
 
@@ -80,7 +80,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/dashboard/DashboardScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/dashboard/DashboardScreen.kt
 
 **Purpose:** Retailer dashboard of service-entry tiles, reorder intelligence, and date-range driven spend snapshots.
 
@@ -146,7 +146,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/catalog/CategorySuppliersScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/catalog/CategorySuppliersScreen.kt
 
 **Purpose:** Category-scoped supplier browser for narrowing supplier selection before catalog exploration.
 
@@ -206,7 +206,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/suppliers/SupplierCatalogScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/suppliers/SupplierCatalogScreen.kt
 
 **Purpose:** Supplier-specific catalog grouped by product category with top-bar supplier identity and availability badge.
 
@@ -268,7 +268,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/product/ProductDetailScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/product/ProductDetailScreen.kt
 
 **Purpose:** Retailer product inspector with variant choice, quantity control, per-variant auto-order toggle, and fixed add-to-cart bar.
 
@@ -341,7 +341,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/analytics/AnalyticsScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/analytics/AnalyticsScreen.kt
 
 **Purpose:** Retailer expense and supplier-spend analytics dashboard with date-range filters and charts.
 
@@ -403,7 +403,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/autoorder/AutoOrderScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/autoorder/AutoOrderScreen.kt
 
 **Purpose:** Hierarchy-based auto-order settings page covering global, supplier, category, and product enablement.
 
@@ -470,7 +470,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/profile/ProfileScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/profile/ProfileScreen.kt
 
 **Purpose:** Retailer profile, support, company settings, and global auto-order governance surface.
 
@@ -538,7 +538,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/suppliers/MySuppliersScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/suppliers/MySuppliersScreen.kt
 
 **Purpose:** Favorite suppliers grid with pull-to-refresh and retry-capable empty or error fallback.
 
@@ -601,7 +601,7 @@
 
 **Surfacetype:** overlay
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/OrderDetailSheet.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/OrderDetailSheet.kt
 
 **Purpose:** Bottom-sheet order drill-down showing status, items, amounts, and terminal actions tied to an active order.
 
@@ -663,7 +663,7 @@
 
 **Surfacetype:** overlay
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/QROverlay.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/QROverlay.kt
 
 **Purpose:** Retailer QR verification overlay for delivery acceptance and handoff confirmation.
 
@@ -722,7 +722,7 @@
 
 **Surfacetype:** overlay
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/SidebarMenu.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/SidebarMenu.kt
 
 **Purpose:** Drawer-style navigation overlay exposing secondary retailer destinations and profile context.
 

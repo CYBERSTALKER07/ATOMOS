@@ -34,7 +34,7 @@
 
 ## Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/offload/CashCollectionScreen.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/offload/CashCollectionScreen.kt
 
 **Entrytype:** page
 
@@ -124,7 +124,7 @@
 
 ## Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/manifest/DeliveryCorrectionScreen.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/manifest/DeliveryCorrectionScreen.kt
 
 **Entrytype:** page
 
@@ -249,7 +249,7 @@
 
 ## Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/offload/OffloadReviewScreen.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/offload/OffloadReviewScreen.kt
 
 **Entrytype:** page
 
@@ -359,7 +359,7 @@
 
 ## Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/offload/PaymentWaitingScreen.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/offload/PaymentWaitingScreen.kt
 
 **Entrytype:** page
 
@@ -447,8 +447,8 @@
 
 ## Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/navigation/DriverNavigation.kt
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/navigation/MainTabView.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/navigation/DriverNavigation.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/navigation/MainTabView.kt
 
 **Entrytype:** page
 
@@ -560,7 +560,7 @@
 
 ## Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/scanner/ScannerScreen.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/scanner/ScannerScreen.kt
 
 **Entrytype:** page
 
@@ -675,7 +675,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/auth/LoginScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/auth/LoginScreen.kt
 
 **Localizedsummary:** "android-driver-login" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -764,7 +764,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/home/HomeScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/home/HomeScreen.kt
 
 **Localizedsummary:** "android-driver-home" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -853,7 +853,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/map/MapScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/map/MapScreen.kt
 
 **Localizedsummary:** "android-driver-map" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -919,7 +919,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/manifest/ManifestScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/manifest/ManifestScreen.kt
 
 **Localizedsummary:** "android-driver-rides" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -1006,7 +1006,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/profile/ProfileScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/profile/ProfileScreen.kt
 
 **Localizedsummary:** "android-driver-profile" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -1097,7 +1097,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/manifest/DeliveryCorrectionScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/manifest/DeliveryCorrectionScreen.kt
 
 **Localizedsummary:** "android-driver-correction" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -2800,7 +2800,7 @@
 
 ### Layoutoverview
 
-- "brand-header" zonasi "top centered column" hududida joylashgan. Tarkibi: "The Lab Payload Terminal label"; "Payloader Login headline".
+- "brand-header" zonasi "top centered column" hududida joylashgan. Tarkibi: "Pegasus Payload Terminal label"; "Payloader Login headline".
 - "credential-stack" zonasi "centered form column" hududida joylashgan. Tarkibi: "phone number input"; "6-digit PIN input with centered wide letter spacing"; "Sign In button".
 
 ### Controloverview
@@ -3062,7 +3062,7 @@
 
 ## Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/ActiveDeliveriesSheet.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/ActiveDeliveriesSheet.kt
 
 **Entrytype:** page
 
@@ -3136,7 +3136,7 @@
 
 ## Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/auth/AuthScreen.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/auth/AuthScreen.kt
 
 **Entrytype:** page
 
@@ -3150,7 +3150,7 @@
 
 ### Layoutoverview
 
-- "brand-stack" zonasi "top centered column" hududida joylashgan. Tarkibi: "black storefront icon disk"; "The Lab title"; "Retailer Portal subtitle".
+- "brand-stack" zonasi "top centered column" hududida joylashgan. Tarkibi: "black storefront icon disk"; "Pegasus title"; "Retailer Portal subtitle".
 - "credential-core" zonasi "main form column" hududida joylashgan. Tarkibi: "phone field"; "password field".
 - "registration-extension" zonasi "below core credentials when login mode is off" hududida joylashgan. Ko'rinish qoidasi: "visible when isLoginMode is false". Tarkibi: "store name field"; "owner name field"; "address field"; "Open Map button"; "Use GPS button"; "selected location label"; "tax ID field"; "receiving window fields"; "access type chip buttons"; "ceiling height field".
 - "primary-action-region" zonasi "below form fields" hududida joylashgan. Tarkibi: "Sign In or Create Account button"; "error text when present"; "mode-toggle text button".
@@ -3236,7 +3236,7 @@
 
 ## Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/cart/CartScreen.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/cart/CartScreen.kt
 
 **Entrytype:** page
 
@@ -3334,7 +3334,7 @@
 
 ## Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/catalog/CatalogScreen.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/catalog/CatalogScreen.kt
 
 **Entrytype:** page
 
@@ -3418,7 +3418,7 @@
 
 ## Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/CheckoutSheet.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/CheckoutSheet.kt
 
 **Entrytype:** page
 
@@ -3510,7 +3510,7 @@
 
 ## Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/orders/OrdersScreen.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/orders/OrdersScreen.kt
 
 **Entrytype:** page
 
@@ -3604,7 +3604,7 @@
 
 ## Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/DeliveryPaymentSheet.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/DeliveryPaymentSheet.kt
 
 **Entrytype:** page
 
@@ -3710,7 +3710,7 @@
 
 **Shell:** retailer-android-root
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/navigation/RetailerNavigation.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/navigation/RetailerNavigation.kt
 
 **Entrytype:** page
 
@@ -3724,7 +3724,7 @@
 
 ### Layoutoverview
 
-- "top-bar" zonasi "top full-width" hududida joylashgan. Tarkibi: "left: avatar circle button"; "center: The Lab title"; "right: cart icon button with badge; notification icon button with badge".
+- "top-bar" zonasi "top full-width" hududida joylashgan. Tarkibi: "left: avatar circle button"; "center: Pegasus title"; "right: cart icon button with badge; notification icon button with badge".
 - "content-navhost" zonasi "center full-width" hududida joylashgan. Tarkibi: "HOME dashboard"; "CATALOG"; "ORDERS"; "PROFILE"; "SUPPLIERS"; "CART"; "ANALYTICS"; "AUTO_ORDER"; "PRODUCT_DETAIL"; "CATEGORY_SUPPLIERS"; "SUPPLIER_CATEGORY_CATALOG".
 - "bottom-stack" zonasi "bottom full-width" hududida joylashgan. Tarkibi: "FloatingActiveOrdersBar"; "LabBottomBar".
 - "global-overlays" zonasi "above shell content" hududida joylashgan. Tarkibi: "ActiveDeliveriesSheet"; "OrderDetailSheet"; "QROverlay"; "SidebarMenu"; "DeliveryPaymentSheet".
@@ -3835,7 +3835,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/auth/LocationPickerScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/auth/LocationPickerScreen.kt
 
 **Localizedsummary:** "android-retailer-location-picker" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -3917,7 +3917,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/dashboard/DashboardScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/dashboard/DashboardScreen.kt
 
 **Localizedsummary:** "android-retailer-home" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -4003,7 +4003,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/catalog/CategorySuppliersScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/catalog/CategorySuppliersScreen.kt
 
 **Localizedsummary:** "android-retailer-category-suppliers" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -4080,7 +4080,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/suppliers/SupplierCatalogScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/suppliers/SupplierCatalogScreen.kt
 
 **Localizedsummary:** "android-retailer-supplier-catalog" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -4159,7 +4159,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/product/ProductDetailScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/product/ProductDetailScreen.kt
 
 **Localizedsummary:** "android-retailer-product-detail" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -4255,7 +4255,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/analytics/AnalyticsScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/analytics/AnalyticsScreen.kt
 
 **Localizedsummary:** "android-retailer-analytics" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -4334,7 +4334,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/autoorder/AutoOrderScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/autoorder/AutoOrderScreen.kt
 
 **Localizedsummary:** "android-retailer-auto-order" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -4421,7 +4421,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/profile/ProfileScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/profile/ProfileScreen.kt
 
 **Localizedsummary:** "android-retailer-profile" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -4512,7 +4512,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/suppliers/MySuppliersScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/suppliers/MySuppliersScreen.kt
 
 **Localizedsummary:** "android-retailer-suppliers" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -4595,7 +4595,7 @@
 
 **Surfacetype:** overlay
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/OrderDetailSheet.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/OrderDetailSheet.kt
 
 **Localizedsummary:** "android-retailer-order-detail-sheet" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -4677,7 +4677,7 @@
 
 **Surfacetype:** overlay
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/QROverlay.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/QROverlay.kt
 
 **Localizedsummary:** "android-retailer-qr-overlay" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -4753,7 +4753,7 @@
 
 **Surfacetype:** overlay
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/SidebarMenu.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/SidebarMenu.kt
 
 **Localizedsummary:** "android-retailer-sidebar-menu" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -5347,7 +5347,7 @@
 
 ### Layoutoverview
 
-- "brand-stack" zonasi "top centered column" hududida joylashgan. Tarkibi: "gradient storefront logo disk"; "The Lab title"; "Retailer Portal subtitle".
+- "brand-stack" zonasi "top centered column" hududida joylashgan. Tarkibi: "gradient storefront logo disk"; "Pegasus title"; "Retailer Portal subtitle".
 - "credential-core" zonasi "main form column" hududida joylashgan. Tarkibi: "phone field"; "password field".
 - "registration-extension" zonasi "below core credentials when sign-up mode active" hududida joylashgan. Ko'rinish qoidasi: "visible when isLoginMode is false". Tarkibi: "store name field"; "owner name field"; "store address field"; "Open Map button"; "Share Location button"; "selected location label"; "tax ID field"; "receiving window open and close fields"; "loading access type chip row"; "ceiling height field".
 - "error-row" zonasi "below form fields when auth error exists" hududida joylashgan. Ko'rinish qoidasi: "visible when auth.errorMessage is non-null". Tarkibi: "warning icon"; "error text".
@@ -5566,7 +5566,7 @@
 ### Layoutoverview
 
 - "tab-layer" zonasi "full-screen base layer" hududida joylashgan. Tarkibi: "Home tab"; "Catalog tab"; "Orders tab"; "Profile tab"; "Suppliers tab".
-- "toolbar" zonasi "top navigation bar within each tab" hududida joylashgan. Tarkibi: "left: circular avatar/menu button"; "center: leaf icon plus The Lab wordmark"; "right: cart button with count badge; notification bell with count badge".
+- "toolbar" zonasi "top navigation bar within each tab" hududida joylashgan. Tarkibi: "left: circular avatar/menu button"; "center: leaf icon plus Pegasus wordmark"; "right: cart button with count badge; notification bell with count badge".
 - "floating-summary" zonasi "bottom above tab bar" hududida joylashgan. Ko'rinish qoidasi: "visible on home, orders, and suppliers tabs only". Tarkibi: "FloatingActiveOrdersBar".
 - "sheet-and-overlay-layer" zonasi "above base layer" hududida joylashgan. Tarkibi: "SidebarMenu"; "BottomSheetOverlay containing ActiveDeliveriesView"; "DeliveryPaymentSheetView"; "FutureDemandView sheet"; "AutoOrderView sheet"; "CartView sheet"; "InsightsView sheet"; "ProfileView sheet".
 
@@ -8306,7 +8306,7 @@
 
 ### Layoutoverview
 
-- "mobile-brand-strip" zonasi "top on mobile only" hududida joylashgan. Tarkibi: "brand icon tile"; "Lab Hub title"; "Supplier Operations Portal subtitle".
+- "mobile-brand-strip" zonasi "top on mobile only" hududida joylashgan. Tarkibi: "brand icon tile"; "Pegasus Hub title"; "Supplier Operations Portal subtitle".
 - "login-card" zonasi "central card" hududida joylashgan. Tarkibi: "Sign in headline"; "supporting subtitle"; "optional inline error alert"; "email field"; "password field with show-hide button"; "primary Sign In button"; "link to create account".
 - "mobile-footer-copy" zonasi "bottom on mobile only" hududida joylashgan. Tarkibi: "The Lab Industries copyright text".
 
@@ -9208,7 +9208,7 @@
 
 ### Layoutoverview
 
-- "mobile-brand-strip" zonasi "top on mobile only" hududida joylashgan. Tarkibi: "brand icon tile"; "Lab Hub title"; "Supplier Registration subtitle".
+- "mobile-brand-strip" zonasi "top on mobile only" hududida joylashgan. Tarkibi: "brand icon tile"; "Pegasus Hub title"; "Supplier Registration subtitle".
 - "step-indicator" zonasi "above main card" hududida joylashgan. Tarkibi: "Account step node"; "Location step node"; "Business step node"; "Payments step node".
 - "wizard-card" zonasi "central card" hududida joylashgan. Tarkibi: "step headline and subtitle"; "optional inline error alert"; "step-specific form body"; "Back and Continue/Create Account buttons"; "Sign in link on step 1".
 

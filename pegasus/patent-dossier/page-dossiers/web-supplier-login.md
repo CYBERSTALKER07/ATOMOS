@@ -23,7 +23,7 @@
 ## Contents
 
 - brand icon tile
-- Lab Hub title
+- Pegasus Hub title
 - Supplier Operations Portal subtitle
 
 ---

@@ -34,7 +34,7 @@
 
 ## Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/offload/CashCollectionScreen.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/offload/CashCollectionScreen.kt
 
 **Entrytype:** page
 
@@ -124,7 +124,7 @@
 
 ## Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/manifest/DeliveryCorrectionScreen.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/manifest/DeliveryCorrectionScreen.kt
 
 **Entrytype:** page
 
@@ -249,7 +249,7 @@
 
 ## Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/offload/OffloadReviewScreen.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/offload/OffloadReviewScreen.kt
 
 **Entrytype:** page
 
@@ -359,7 +359,7 @@
 
 ## Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/offload/PaymentWaitingScreen.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/offload/PaymentWaitingScreen.kt
 
 **Entrytype:** page
 
@@ -447,8 +447,8 @@
 
 ## Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/navigation/DriverNavigation.kt
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/navigation/MainTabView.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/navigation/DriverNavigation.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/navigation/MainTabView.kt
 
 **Entrytype:** page
 
@@ -560,7 +560,7 @@
 
 ## Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/scanner/ScannerScreen.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/scanner/ScannerScreen.kt
 
 **Entrytype:** page
 
@@ -675,7 +675,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/auth/LoginScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/auth/LoginScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-driver-login" для роли unknown-role на платформе unknown-platform.
 
@@ -764,7 +764,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/home/HomeScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/home/HomeScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-driver-home" для роли unknown-role на платформе unknown-platform.
 
@@ -853,7 +853,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/map/MapScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/map/MapScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-driver-map" для роли unknown-role на платформе unknown-platform.
 
@@ -919,7 +919,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/manifest/ManifestScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/manifest/ManifestScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-driver-rides" для роли unknown-role на платформе unknown-platform.
 
@@ -1006,7 +1006,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/profile/ProfileScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/profile/ProfileScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-driver-profile" для роли unknown-role на платформе unknown-platform.
 
@@ -1097,7 +1097,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/manifest/DeliveryCorrectionScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/manifest/DeliveryCorrectionScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-driver-correction" для роли unknown-role на платформе unknown-platform.
 
@@ -2800,7 +2800,7 @@
 
 ### Layoutoverview
 
-- Зона "brand-header" расположена в области "top centered column". Содержимое: "The Lab Payload Terminal label"; "Payloader Login headline".
+- Зона "brand-header" расположена в области "top centered column". Содержимое: "Pegasus Payload Terminal label"; "Payloader Login headline".
 - Зона "credential-stack" расположена в области "centered form column". Содержимое: "phone number input"; "6-digit PIN input with centered wide letter spacing"; "Sign In button".
 
 ### Controloverview
@@ -3062,7 +3062,7 @@
 
 ## Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/ActiveDeliveriesSheet.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/ActiveDeliveriesSheet.kt
 
 **Entrytype:** page
 
@@ -3136,7 +3136,7 @@
 
 ## Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/auth/AuthScreen.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/auth/AuthScreen.kt
 
 **Entrytype:** page
 
@@ -3150,7 +3150,7 @@
 
 ### Layoutoverview
 
-- Зона "brand-stack" расположена в области "top centered column". Содержимое: "black storefront icon disk"; "The Lab title"; "Retailer Portal subtitle".
+- Зона "brand-stack" расположена в области "top centered column". Содержимое: "black storefront icon disk"; "Pegasus title"; "Retailer Portal subtitle".
 - Зона "credential-core" расположена в области "main form column". Содержимое: "phone field"; "password field".
 - Зона "registration-extension" расположена в области "below core credentials when login mode is off". Правило видимости: "visible when isLoginMode is false". Содержимое: "store name field"; "owner name field"; "address field"; "Open Map button"; "Use GPS button"; "selected location label"; "tax ID field"; "receiving window fields"; "access type chip buttons"; "ceiling height field".
 - Зона "primary-action-region" расположена в области "below form fields". Содержимое: "Sign In or Create Account button"; "error text when present"; "mode-toggle text button".
@@ -3236,7 +3236,7 @@
 
 ## Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/cart/CartScreen.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/cart/CartScreen.kt
 
 **Entrytype:** page
 
@@ -3334,7 +3334,7 @@
 
 ## Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/catalog/CatalogScreen.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/catalog/CatalogScreen.kt
 
 **Entrytype:** page
 
@@ -3418,7 +3418,7 @@
 
 ## Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/CheckoutSheet.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/CheckoutSheet.kt
 
 **Entrytype:** page
 
@@ -3510,7 +3510,7 @@
 
 ## Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/orders/OrdersScreen.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/orders/OrdersScreen.kt
 
 **Entrytype:** page
 
@@ -3604,7 +3604,7 @@
 
 ## Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/DeliveryPaymentSheet.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/DeliveryPaymentSheet.kt
 
 **Entrytype:** page
 
@@ -3710,7 +3710,7 @@
 
 **Shell:** retailer-android-root
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/navigation/RetailerNavigation.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/navigation/RetailerNavigation.kt
 
 **Entrytype:** page
 
@@ -3724,7 +3724,7 @@
 
 ### Layoutoverview
 
-- Зона "top-bar" расположена в области "top full-width". Содержимое: "left: avatar circle button"; "center: The Lab title"; "right: cart icon button with badge; notification icon button with badge".
+- Зона "top-bar" расположена в области "top full-width". Содержимое: "left: avatar circle button"; "center: Pegasus title"; "right: cart icon button with badge; notification icon button with badge".
 - Зона "content-navhost" расположена в области "center full-width". Содержимое: "HOME dashboard"; "CATALOG"; "ORDERS"; "PROFILE"; "SUPPLIERS"; "CART"; "ANALYTICS"; "AUTO_ORDER"; "PRODUCT_DETAIL"; "CATEGORY_SUPPLIERS"; "SUPPLIER_CATEGORY_CATALOG".
 - Зона "bottom-stack" расположена в области "bottom full-width". Содержимое: "FloatingActiveOrdersBar"; "LabBottomBar".
 - Зона "global-overlays" расположена в области "above shell content". Содержимое: "ActiveDeliveriesSheet"; "OrderDetailSheet"; "QROverlay"; "SidebarMenu"; "DeliveryPaymentSheet".
@@ -3835,7 +3835,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/auth/LocationPickerScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/auth/LocationPickerScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-retailer-location-picker" для роли unknown-role на платформе unknown-platform.
 
@@ -3917,7 +3917,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/dashboard/DashboardScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/dashboard/DashboardScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-retailer-home" для роли unknown-role на платформе unknown-platform.
 
@@ -4003,7 +4003,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/catalog/CategorySuppliersScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/catalog/CategorySuppliersScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-retailer-category-suppliers" для роли unknown-role на платформе unknown-platform.
 
@@ -4080,7 +4080,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/suppliers/SupplierCatalogScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/suppliers/SupplierCatalogScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-retailer-supplier-catalog" для роли unknown-role на платформе unknown-platform.
 
@@ -4159,7 +4159,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/product/ProductDetailScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/product/ProductDetailScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-retailer-product-detail" для роли unknown-role на платформе unknown-platform.
 
@@ -4255,7 +4255,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/analytics/AnalyticsScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/analytics/AnalyticsScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-retailer-analytics" для роли unknown-role на платформе unknown-platform.
 
@@ -4334,7 +4334,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/autoorder/AutoOrderScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/autoorder/AutoOrderScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-retailer-auto-order" для роли unknown-role на платформе unknown-platform.
 
@@ -4421,7 +4421,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/profile/ProfileScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/profile/ProfileScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-retailer-profile" для роли unknown-role на платформе unknown-platform.
 
@@ -4512,7 +4512,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/suppliers/MySuppliersScreen.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/suppliers/MySuppliersScreen.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-retailer-suppliers" для роли unknown-role на платформе unknown-platform.
 
@@ -4595,7 +4595,7 @@
 
 **Surfacetype:** overlay
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/OrderDetailSheet.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/OrderDetailSheet.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-retailer-order-detail-sheet" для роли unknown-role на платформе unknown-platform.
 
@@ -4677,7 +4677,7 @@
 
 **Surfacetype:** overlay
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/QROverlay.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/QROverlay.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-retailer-qr-overlay" для роли unknown-role на платформе unknown-platform.
 
@@ -4753,7 +4753,7 @@
 
 **Surfacetype:** overlay
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/SidebarMenu.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/SidebarMenu.kt
 
 **Localizedsummary:** Локализованный обзор поверхности "android-retailer-sidebar-menu" для роли unknown-role на платформе unknown-platform.
 
@@ -5347,7 +5347,7 @@
 
 ### Layoutoverview
 
-- Зона "brand-stack" расположена в области "top centered column". Содержимое: "gradient storefront logo disk"; "The Lab title"; "Retailer Portal subtitle".
+- Зона "brand-stack" расположена в области "top centered column". Содержимое: "gradient storefront logo disk"; "Pegasus title"; "Retailer Portal subtitle".
 - Зона "credential-core" расположена в области "main form column". Содержимое: "phone field"; "password field".
 - Зона "registration-extension" расположена в области "below core credentials when sign-up mode active". Правило видимости: "visible when isLoginMode is false". Содержимое: "store name field"; "owner name field"; "store address field"; "Open Map button"; "Share Location button"; "selected location label"; "tax ID field"; "receiving window open and close fields"; "loading access type chip row"; "ceiling height field".
 - Зона "error-row" расположена в области "below form fields when auth error exists". Правило видимости: "visible when auth.errorMessage is non-null". Содержимое: "warning icon"; "error text".
@@ -5566,7 +5566,7 @@
 ### Layoutoverview
 
 - Зона "tab-layer" расположена в области "full-screen base layer". Содержимое: "Home tab"; "Catalog tab"; "Orders tab"; "Profile tab"; "Suppliers tab".
-- Зона "toolbar" расположена в области "top navigation bar within each tab". Содержимое: "left: circular avatar/menu button"; "center: leaf icon plus The Lab wordmark"; "right: cart button with count badge; notification bell with count badge".
+- Зона "toolbar" расположена в области "top navigation bar within each tab". Содержимое: "left: circular avatar/menu button"; "center: leaf icon plus Pegasus wordmark"; "right: cart button with count badge; notification bell with count badge".
 - Зона "floating-summary" расположена в области "bottom above tab bar". Правило видимости: "visible on home, orders, and suppliers tabs only". Содержимое: "FloatingActiveOrdersBar".
 - Зона "sheet-and-overlay-layer" расположена в области "above base layer". Содержимое: "SidebarMenu"; "BottomSheetOverlay containing ActiveDeliveriesView"; "DeliveryPaymentSheetView"; "FutureDemandView sheet"; "AutoOrderView sheet"; "CartView sheet"; "InsightsView sheet"; "ProfileView sheet".
 
@@ -8306,7 +8306,7 @@
 
 ### Layoutoverview
 
-- Зона "mobile-brand-strip" расположена в области "top on mobile only". Содержимое: "brand icon tile"; "Lab Hub title"; "Supplier Operations Portal subtitle".
+- Зона "mobile-brand-strip" расположена в области "top on mobile only". Содержимое: "brand icon tile"; "Pegasus Hub title"; "Supplier Operations Portal subtitle".
 - Зона "login-card" расположена в области "central card". Содержимое: "Sign in headline"; "supporting subtitle"; "optional inline error alert"; "email field"; "password field with show-hide button"; "primary Sign In button"; "link to create account".
 - Зона "mobile-footer-copy" расположена в области "bottom on mobile only". Содержимое: "The Lab Industries copyright text".
 
@@ -9208,7 +9208,7 @@
 
 ### Layoutoverview
 
-- Зона "mobile-brand-strip" расположена в области "top on mobile only". Содержимое: "brand icon tile"; "Lab Hub title"; "Supplier Registration subtitle".
+- Зона "mobile-brand-strip" расположена в области "top on mobile only". Содержимое: "brand icon tile"; "Pegasus Hub title"; "Supplier Registration subtitle".
 - Зона "step-indicator" расположена в области "above main card". Содержимое: "Account step node"; "Location step node"; "Business step node"; "Payments step node".
 - Зона "wizard-card" расположена в области "central card". Содержимое: "step headline and subtitle"; "optional inline error alert"; "step-specific form body"; "Back and Continue/Create Account buttons"; "Sign in link on step 1".
 

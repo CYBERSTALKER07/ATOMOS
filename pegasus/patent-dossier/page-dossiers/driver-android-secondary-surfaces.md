@@ -18,7 +18,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/auth/LoginScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/auth/LoginScreen.kt
 
 **Purpose:** Android driver sign-in form using phone and PIN with IME management and auth loading feedback.
 
@@ -84,7 +84,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/home/HomeScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/home/HomeScreen.kt
 
 **Purpose:** Android driver home dashboard with status chips, vehicle card, transit control, and quick actions.
 
@@ -153,7 +153,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/map/MapScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/map/MapScreen.kt
 
 **Purpose:** Stub placeholder reserving the future Google Maps execution surface in the Android driver stack.
 
@@ -205,7 +205,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/manifest/ManifestScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/manifest/ManifestScreen.kt
 
 **Purpose:** Android route manifest ledger with loading-mode reversal for physical truck packing and upcoming stop review.
 
@@ -272,7 +272,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/profile/ProfileScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/profile/ProfileScreen.kt
 
 **Purpose:** Android driver profile screen with truck identity, stats, quick actions, and ride-history review.
 
@@ -343,7 +343,7 @@
 
 **Surfacetype:** screen
 
-**Sourcefile:** apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/manifest/DeliveryCorrectionScreen.kt
+**Sourcefile:** apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/manifest/DeliveryCorrectionScreen.kt
 
 **Purpose:** Alias dossier for the Android driver delivery-correction workflow already documented as a primary execution surface.
 

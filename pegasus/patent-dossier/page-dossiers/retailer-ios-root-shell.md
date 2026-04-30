@@ -44,7 +44,7 @@
 
 ### Center
 
-- leaf icon plus The Lab wordmark
+- leaf icon plus Pegasus wordmark
 
 ### Right
 

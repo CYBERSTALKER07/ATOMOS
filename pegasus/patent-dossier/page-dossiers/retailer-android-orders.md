@@ -10,7 +10,7 @@
 
 # Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/orders/OrdersScreen.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/orders/OrdersScreen.kt
 
 **Shell:** retailer-android-root
 

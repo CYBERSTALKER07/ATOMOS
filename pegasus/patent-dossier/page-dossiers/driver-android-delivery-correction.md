@@ -10,7 +10,7 @@
 
 # Sourcefiles
 
-- apps/driver-app-android/app/src/main/java/com/thelab/driver/ui/screens/manifest/DeliveryCorrectionScreen.kt
+- apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/manifest/DeliveryCorrectionScreen.kt
 
 **Shell:** driver-android-main
 

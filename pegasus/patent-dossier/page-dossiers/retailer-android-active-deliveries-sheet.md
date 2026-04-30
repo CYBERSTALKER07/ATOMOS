@@ -10,7 +10,7 @@
 
 # Sourcefiles
 
-- apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/components/ActiveDeliveriesSheet.kt
+- apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/components/ActiveDeliveriesSheet.kt
 
 **Shell:** retailer-android-overlay
 

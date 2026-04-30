@@ -8,7 +8,7 @@
 
 **Role:** RETAILER
 
-**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/navigation/RetailerNavigation.kt
+**Sourcefile:** apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/navigation/RetailerNavigation.kt
 
 **Shell:** retailer-android-root
 
@@ -30,7 +30,7 @@
 
 ### Center
 
-- The Lab title
+- Pegasus title
 
 ### Right
 
