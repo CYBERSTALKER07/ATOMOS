@@ -12,13 +12,12 @@ final class TokenStore {
 
     var isAuthenticated: Bool { token != nil }
 
-    private let service = "uz.pegasusindustries.factory"
-    private let legacyService = "uz.thelabindustries.factory"
+    private let service = "com.pegasus.factory"
 
     private init() {
-        token = readCompat(account: "factory_jwt")
-        refreshToken = readCompat(account: "factory_refresh_token")
-        factoryId = readCompat(account: "factory_id")
+        token = readKeychain(account: "factory_jwt")
+        refreshToken = readKeychain(account: "factory_refresh_token")
+        factoryId = readKeychain(account: "factory_id")
     }
 
     func store(auth: AuthResponse) {
@@ -75,44 +74,10 @@ final class TokenStore {
         return String(data: data, encoding: .utf8)
     }
 
-    private func readLegacyKeychain(account: String) -> String? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: legacyService,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
-        var ref: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &ref)
-        guard status == errSecSuccess, let data = ref as? Data else { return nil }
-        return String(data: data, encoding: .utf8)
-    }
-
-    private func readCompat(account: String) -> String? {
-        if let value = readKeychain(account: account) {
-            return value
-        }
-        guard let legacy = readLegacyKeychain(account: account) else { return nil }
-        writeKeychain(account: account, value: legacy)
-        deleteLegacyKeychain(account: account)
-        return legacy
-    }
-
     private func deleteKeychain(account: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-        ]
-        SecItemDelete(query as CFDictionary)
-        deleteLegacyKeychain(account: account)
-    }
-
-    private func deleteLegacyKeychain(account: String) {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: legacyService,
             kSecAttrAccount as String: account,
         ]
         SecItemDelete(query as CFDictionary)

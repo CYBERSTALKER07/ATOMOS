@@ -21,10 +21,8 @@ final class APIClient {
         if raw.hasPrefix("http://") || raw.hasPrefix("https://") { return raw }
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8080"
     }()
-    var legacyBaseURL: String? = nil
     #else
     var baseURL = "https://api.pegasus.uz"
-    var legacyBaseURL: String? = "https://api.thelab.uz"
     #endif
 
     private init() {
@@ -112,63 +110,29 @@ final class APIClient {
         isRefreshing = true
         defer { isRefreshing = false }
 
-        var refreshBases = [baseURL]
-        if let legacy = legacyBaseURL, legacy != baseURL {
-            refreshBases.append(legacy)
-        }
+        guard let url = URL(string: "\(baseURL)/v1/auth/refresh") else { return nil }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("Bearer \(currentToken)", forHTTPHeaderField: "Authorization")
+        req.httpBody = "{}".data(using: .utf8)
 
-        for refreshBase in refreshBases {
-            guard let url = URL(string: "\(refreshBase)/v1/auth/refresh") else { continue }
-            var req = URLRequest(url: url)
-            req.httpMethod = "POST"
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            req.setValue("Bearer \(currentToken)", forHTTPHeaderField: "Authorization")
-            req.httpBody = "{}".data(using: .utf8)
-
-            do {
-                let (data, response) = try await session.data(for: req)
-                guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                    continue
-                }
-                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-                guard let newToken = json?["token"] as? String else { continue }
-                authToken = newToken
-                return newToken
-            } catch {
-                continue
+        do {
+            let (data, response) = try await session.data(for: req)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                return nil
             }
-        }
-
-        return nil
-    }
-
-    private func fallbackURL(for url: URL) -> URL? {
-        guard let legacyBaseURL,
-              let primary = URL(string: baseURL),
-              let legacy = URL(string: legacyBaseURL),
-              url.host == primary.host,
-              url.host != legacy.host else {
+            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            guard let newToken = json?["token"] as? String else { return nil }
+            authToken = newToken
+            return newToken
+        } catch {
             return nil
         }
-
-        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-        components?.scheme = legacy.scheme
-        components?.host = legacy.host
-        components?.port = legacy.port
-        return components?.url
     }
 
     private func dataForRequestWithFallback(_ request: URLRequest) async throws -> (Data, URLResponse) {
-        do {
-            return try await session.data(for: request)
-        } catch {
-            guard let url = request.url, let fallback = fallbackURL(for: url) else {
-                throw error
-            }
-            var retry = request
-            retry.url = fallback
-            return try await session.data(for: retry)
-        }
+        try await session.data(for: request)
     }
 
     // MARK: - Convenience Methods
@@ -257,7 +221,6 @@ private struct AnyEncodable: Encodable {
 
 private enum AuthNamespace {
     static let primaryService = "com.pegasus.retailerapp"
-    static let legacyService = "com.thelab.retailerapp"
 }
 
 enum KeychainHelper {
@@ -272,24 +235,14 @@ enum KeychainHelper {
             kSecValueData as String: data
         ]
         SecItemAdd(attributes as CFDictionary, nil)
-
-        // Cleanup legacy namespace to keep a single source of truth.
-        deleteFromService(AuthNamespace.legacyService, key: key)
     }
 
     static func read(key: String) -> String? {
-        if let value = readFromService(AuthNamespace.primaryService, key: key) {
-            return value
-        }
-
-        guard let legacy = readFromService(AuthNamespace.legacyService, key: key) else { return nil }
-        save(key: key, value: legacy)
-        return legacy
+        readFromService(AuthNamespace.primaryService, key: key)
     }
 
     static func delete(key: String) {
         deleteFromService(AuthNamespace.primaryService, key: key)
-        deleteFromService(AuthNamespace.legacyService, key: key)
     }
 
     private static func readFromService(_ service: String, key: String) -> String? {

@@ -1,7 +1,7 @@
 // !$*UTF8*$!
 // Factory iPad App
 // This project should be opened in Xcode and configured with:
-//   Bundle ID: uz.thelabindustries.factory
+//   Bundle ID: com.pegasus.factory
 //   Deployment Target: iOS 17.0+
 //   iPad only
 //   Supports: landscape + portrait

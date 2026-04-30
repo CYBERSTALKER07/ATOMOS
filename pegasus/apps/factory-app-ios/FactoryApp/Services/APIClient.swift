@@ -18,10 +18,8 @@ final class APIClient: Sendable {
         else { s = "http://\(raw):8080/" }
         return URL(string: s)!
     }()
-    private let legacyBaseURL: URL? = nil
     #else
     private let baseURL = URL(string: "https://api.pegasus.uz/")!
-    private let legacyBaseURL = URL(string: "https://api.thelab.uz/")!
     #endif
 
     private let session: URLSession
@@ -137,34 +135,8 @@ final class APIClient: Sendable {
         return true
     }
 
-    private func fallbackRequest(for request: URLRequest) -> URLRequest? {
-        guard let legacyBaseURL,
-              let requestURL = request.url,
-              requestURL.host == baseURL.host,
-              requestURL.host != legacyBaseURL.host else {
-            return nil
-        }
-
-        var components = URLComponents(url: requestURL, resolvingAgainstBaseURL: false)
-        components?.scheme = legacyBaseURL.scheme
-        components?.host = legacyBaseURL.host
-        components?.port = legacyBaseURL.port
-        guard let rewritten = components?.url else { return nil }
-
-        var fallback = request
-        fallback.url = rewritten
-        return fallback
-    }
-
     private func dataForRequestWithFallback(_ request: URLRequest) async throws -> (Data, URLResponse) {
-        do {
-            return try await session.data(for: request)
-        } catch {
-            guard let fallback = fallbackRequest(for: request) else {
-                throw error
-            }
-            return try await session.data(for: fallback)
-        }
+        try await session.data(for: request)
     }
 }
 

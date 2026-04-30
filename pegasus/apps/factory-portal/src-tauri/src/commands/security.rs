@@ -2,7 +2,6 @@ use keyring::Entry;
 use serde::Serialize;
 
 const SERVICE: &str = "com.pegasus.factory";
-const LEGACY_SERVICE: &str = "uz.thelabindustries.factory";
 const ACCOUNT_TOKEN: &str = "factory_jwt";
 const ACCOUNT_REFRESH: &str = "factory_refresh_token";
 
@@ -33,22 +32,9 @@ pub fn store_token(token: String, refresh_token: Option<String>) -> TokenResult 
 #[tauri::command]
 pub fn get_token() -> TokenResult {
     match read_token(SERVICE) {
-        Ok(Some(token)) => {
-            return TokenResult { success: true, token: Some(token), error: None }
-        }
-        Ok(None) => {}
-        Err(e) => return TokenResult { success: false, token: None, error: Some(e) },
-    }
-
-    match read_token(LEGACY_SERVICE) {
-        Ok(Some(token)) => {
-            if let Ok(primary) = Entry::new(SERVICE, ACCOUNT_TOKEN) {
-                let _ = primary.set_password(&token);
-            }
-            TokenResult { success: true, token: Some(token), error: None }
-        }
+        Ok(Some(token)) => TokenResult { success: true, token: Some(token), error: None },
         Ok(None) => TokenResult { success: true, token: None, error: None },
-        Err(e) => TokenResult { success: false, token: None, error: Some(e) },
+        Err(e) => return TokenResult { success: false, token: None, error: Some(e) },
     }
 }
 
@@ -56,10 +42,8 @@ pub fn get_token() -> TokenResult {
 pub fn clear_token() -> TokenResult {
     let ok_primary_token = delete_if_present(SERVICE, ACCOUNT_TOKEN);
     let ok_primary_refresh = delete_if_present(SERVICE, ACCOUNT_REFRESH);
-    let ok_legacy_token = delete_if_present(LEGACY_SERVICE, ACCOUNT_TOKEN);
-    let ok_legacy_refresh = delete_if_present(LEGACY_SERVICE, ACCOUNT_REFRESH);
 
-    if ok_primary_token && ok_primary_refresh && ok_legacy_token && ok_legacy_refresh {
+    if ok_primary_token && ok_primary_refresh {
         TokenResult { success: true, token: None, error: None }
     } else {
         TokenResult {

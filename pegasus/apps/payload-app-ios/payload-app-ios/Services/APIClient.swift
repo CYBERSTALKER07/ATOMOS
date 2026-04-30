@@ -43,10 +43,8 @@ final class APIClient: @unchecked Sendable {
         if raw.hasPrefix("http://") || raw.hasPrefix("https://") { return raw }
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8080"
     }()
-    let legacyBaseURL: String? = nil
     #else
     let baseURL = "https://api.pegasus.uz"
-    let legacyBaseURL: String? = "https://api.thelab.uz"
     #endif
 
     /// WebSocket origin derived from baseURL: http → ws, https → wss.
@@ -221,35 +219,7 @@ final class APIClient: @unchecked Sendable {
         try? decoder.decode(ProblemDetail.self, from: data)
     }
 
-    private func fallbackRequest(for request: URLRequest) -> URLRequest? {
-        guard let legacyBaseURL,
-              let requestURL = request.url,
-              let primaryURL = URL(string: baseURL),
-              let legacyURL = URL(string: legacyBaseURL),
-              requestURL.host == primaryURL.host,
-              requestURL.host != legacyURL.host else {
-            return nil
-        }
-
-        var components = URLComponents(url: requestURL, resolvingAgainstBaseURL: false)
-        components?.scheme = legacyURL.scheme
-        components?.host = legacyURL.host
-        components?.port = legacyURL.port
-        guard let rewritten = components?.url else { return nil }
-
-        var fallback = request
-        fallback.url = rewritten
-        return fallback
-    }
-
     private func dataForRequestWithFallback(_ request: URLRequest) async throws -> (Data, URLResponse) {
-        do {
-            return try await session.data(for: request)
-        } catch {
-            guard let fallback = fallbackRequest(for: request) else {
-                throw error
-            }
-            return try await session.data(for: fallback)
-        }
+        try await session.data(for: request)
     }
 }
