@@ -10,7 +10,7 @@ import dagger.hilt.android.HiltAndroidApp
 /**
  * LabPayloadApp — Hilt application root for the native iPad/Android Payload Terminal.
  *
- * Mirrors the role-app sibling pattern of [com.thelab.driver.LabDriverApp].
+ * Mirrors the role-app sibling pattern of [com.pegasus.driver.LabDriverApp].
  * All long-lived singletons (Retrofit, OkHttp, Room, WebSocket, OfflineQueue,
  * NotificationsHub) are bound via Hilt modules under [com.pegasus.payload.di].
  */
