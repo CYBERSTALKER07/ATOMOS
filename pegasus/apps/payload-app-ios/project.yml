@@ -1,6 +1,6 @@
 name: payload-app-ios
 options:
-  bundleIdPrefix: com.thelab
+  bundleIdPrefix: com.pegasus
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -37,5 +37,5 @@ targets:
           NSAllowsLocalNetworking: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.thelab.payload
+        PRODUCT_BUNDLE_IDENTIFIER: com.pegasus.payload
         INFOPLIST_FILE: payload-app-ios/Info.plist

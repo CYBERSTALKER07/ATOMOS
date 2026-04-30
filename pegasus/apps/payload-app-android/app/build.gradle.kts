@@ -16,11 +16,11 @@ val localProps = Properties().also { props ->
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
 
 android {
-    namespace = "com.thelab.payload"
+    namespace = "com.pegasus.payload"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.thelab.payload"
+        applicationId = "com.pegasus.payload"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

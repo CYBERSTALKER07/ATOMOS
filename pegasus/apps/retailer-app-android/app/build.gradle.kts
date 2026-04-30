@@ -18,11 +18,11 @@ val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
 val mapsApiKey: String = localProps.getProperty("MAPS_API_KEY", "")
 
 android {
-    namespace = "com.thelab.retailer"
+    namespace = "com.pegasus.retailer"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.thelab.retailer"
+        applicationId = "com.pegasus.retailer"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
