@@ -255,27 +255,48 @@ private struct AnyEncodable: Encodable {
 
 // MARK: - Keychain Helper
 
+private enum AuthNamespace {
+    static let primaryService = "com.pegasus.retailerapp"
+    static let legacyService = "com.thelab.retailerapp"
+}
+
 enum KeychainHelper {
     static func save(key: String, value: String) {
         guard let data = value.data(using: .utf8) else { return }
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key
-        ]
-        SecItemDelete(query as CFDictionary)
+        deleteFromService(AuthNamespace.primaryService, key: key)
 
         let attributes: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
+            kSecAttrService as String: AuthNamespace.primaryService,
             kSecValueData as String: data
         ]
         SecItemAdd(attributes as CFDictionary, nil)
+
+        // Cleanup legacy namespace to keep a single source of truth.
+        deleteFromService(AuthNamespace.legacyService, key: key)
     }
 
     static func read(key: String) -> String? {
+        if let value = readFromService(AuthNamespace.primaryService, key: key) {
+            return value
+        }
+
+        guard let legacy = readFromService(AuthNamespace.legacyService, key: key) else { return nil }
+        save(key: key, value: legacy)
+        return legacy
+    }
+
+    static func delete(key: String) {
+        deleteFromService(AuthNamespace.primaryService, key: key)
+        deleteFromService(AuthNamespace.legacyService, key: key)
+    }
+
+    private static func readFromService(_ service: String, key: String) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrAccount as String: key,
+            kSecAttrService as String: service,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
@@ -285,10 +306,11 @@ enum KeychainHelper {
         return String(data: data, encoding: .utf8)
     }
 
-    static func delete(key: String) {
+    private static func deleteFromService(_ service: String, key: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key
+            kSecAttrAccount as String: key,
+            kSecAttrService as String: service,
         ]
         SecItemDelete(query as CFDictionary)
     }

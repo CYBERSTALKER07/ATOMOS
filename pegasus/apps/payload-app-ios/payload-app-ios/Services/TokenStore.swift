@@ -14,6 +14,9 @@ import Security
 final class TokenStore {
     static let shared = TokenStore()
 
+    private let service = "com.pegasus.payload"
+    private let legacyService = "com.thelab.payload"
+
     private(set) var token: String?
     private(set) var name: String?
     private(set) var supplierId: String?
@@ -71,9 +74,21 @@ final class TokenStore {
     }
 
     private func read(_ key: Key) -> String? {
+        if let value = readFromService(service, account: key.rawValue) {
+            return value
+        }
+
+        guard let legacy = readFromService(legacyService, account: key.rawValue) else { return nil }
+        writeToService(service, account: key.rawValue, value: legacy)
+        deleteFromService(legacyService, account: key.rawValue)
+        return legacy
+    }
+
+    private func readFromService(_ serviceName: String, account: String) -> String? {
         let q: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
-            kSecAttrAccount: key.rawValue,
+            kSecAttrAccount: account,
+            kSecAttrService: serviceName,
             kSecReturnData: true,
             kSecMatchLimit: kSecMatchLimitOne,
         ]
@@ -85,10 +100,16 @@ final class TokenStore {
     }
 
     private func write(_ key: Key, value: String) {
-        delete(key)
+        writeToService(service, account: key.rawValue, value: value)
+        deleteFromService(legacyService, account: key.rawValue)
+    }
+
+    private func writeToService(_ serviceName: String, account: String, value: String) {
+        deleteFromService(serviceName, account: account)
         let q: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
-            kSecAttrAccount: key.rawValue,
+            kSecAttrAccount: account,
+            kSecAttrService: serviceName,
             kSecValueData: Data(value.utf8),
             kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlock,
         ]
@@ -96,9 +117,15 @@ final class TokenStore {
     }
 
     private func delete(_ key: Key) {
+        deleteFromService(service, account: key.rawValue)
+        deleteFromService(legacyService, account: key.rawValue)
+    }
+
+    private func deleteFromService(_ serviceName: String, account: String) {
         let q: [CFString: Any] = [
             kSecClass: kSecClassGenericPassword,
-            kSecAttrAccount: key.rawValue,
+            kSecAttrAccount: account,
+            kSecAttrService: serviceName,
         ]
         SecItemDelete(q as CFDictionary)
     }
