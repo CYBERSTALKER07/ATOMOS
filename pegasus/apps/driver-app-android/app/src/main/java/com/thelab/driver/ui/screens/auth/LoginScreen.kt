@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.screens.auth
+package com.pegasus.driver.ui.screens.auth
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,10 +43,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.thelab.driver.data.model.LoginRequest
-import com.thelab.driver.data.remote.DriverApi
-import com.thelab.driver.data.remote.FirebaseAuthHelper
-import com.thelab.driver.data.remote.TokenHolder
+import com.pegasus.driver.data.model.LoginRequest
+import com.pegasus.driver.data.remote.DriverApi
+import com.pegasus.driver.data.remote.FirebaseAuthHelper
+import com.pegasus.driver.data.remote.TokenHolder
 import kotlinx.coroutines.launch
 
 @Composable

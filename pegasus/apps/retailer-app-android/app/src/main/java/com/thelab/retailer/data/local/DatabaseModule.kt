@@ -1,4 +1,4 @@
-package com.thelab.retailer.data.local
+package com.pegasus.retailer.data.local
 
 import android.content.Context
 import androidx.room.Room

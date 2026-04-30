@@ -27,7 +27,7 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
-        android:name="com.thelab.driver.LabDriverApp"
+        android:name="com.pegasus.driver.LabDriverApp"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -37,7 +37,7 @@
         android:theme="@style/Theme.LabDriver">
 
         <activity
-            android:name="com.thelab.driver.MainActivity"
+            android:name="com.pegasus.driver.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.LabDriver.Splash">
             <intent-filter>
@@ -47,7 +47,7 @@
         </activity>
 
         <service
-            android:name="com.thelab.driver.services.TelemetryService"
+            android:name="com.pegasus.driver.services.TelemetryService"
             android:exported="false"
             android:foregroundServiceType="location" />
 

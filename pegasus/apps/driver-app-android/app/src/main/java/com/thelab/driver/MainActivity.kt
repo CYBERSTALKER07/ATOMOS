@@ -1,13 +1,13 @@
-package com.thelab.driver
+package com.pegasus.driver
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.thelab.driver.data.remote.DriverApi
-import com.thelab.driver.ui.navigation.DriverNavigation
-import com.thelab.driver.ui.theme.LabDriverTheme
+import com.pegasus.driver.data.remote.DriverApi
+import com.pegasus.driver.ui.navigation.DriverNavigation
+import com.pegasus.driver.ui.theme.LabDriverTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 

@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.theme
+package com.pegasus.driver.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

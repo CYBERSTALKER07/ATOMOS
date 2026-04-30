@@ -1,4 +1,4 @@
-package com.thelab.factory.ui.screens.transfer
+package com.pegasus.factory.ui.screens.transfer
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -12,9 +12,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.thelab.factory.data.model.Transfer
-import com.thelab.factory.data.remote.FactoryApi
-import com.thelab.factory.ui.theme.LabSpacing
+import com.pegasus.factory.data.model.Transfer
+import com.pegasus.factory.data.remote.FactoryApi
+import com.pegasus.factory.ui.theme.LabSpacing
 import kotlinx.coroutines.launch
 
 private val STATE_FILTERS = listOf("ALL", "DRAFT", "APPROVED", "LOADING", "DISPATCHED", "IN_TRANSIT", "ARRIVED", "RECEIVED", "CANCELLED")

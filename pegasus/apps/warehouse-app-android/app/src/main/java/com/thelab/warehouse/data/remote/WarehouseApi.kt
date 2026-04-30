@@ -1,6 +1,6 @@
-package com.thelab.warehouse.data.remote
+package com.pegasus.warehouse.data.remote
 
-import com.thelab.warehouse.data.model.*
+import com.pegasus.warehouse.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
 

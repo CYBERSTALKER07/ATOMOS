@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.notifications
+package com.pegasus.retailer.ui.screens.notifications
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

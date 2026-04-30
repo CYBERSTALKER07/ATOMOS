@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.analytics
+package com.pegasus.retailer.ui.screens.analytics
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -19,7 +19,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import com.thelab.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -84,13 +84,13 @@ import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import com.patrykandpatrick.vico.core.cartesian.layer.ColumnCartesianLayer
 import com.patrykandpatrick.vico.core.cartesian.layer.LineCartesianLayer
 import com.patrykandpatrick.vico.core.common.shape.CorneredShape
-import com.thelab.retailer.data.model.RetailerAnalytics
-import com.thelab.retailer.data.model.RetailerDayExpense
-import com.thelab.retailer.data.model.OrderStateCount
-import com.thelab.retailer.data.model.CategorySpend
-import com.thelab.retailer.data.model.DayOfWeekPattern
-import com.thelab.retailer.ui.components.LabEmptyState
-import com.thelab.retailer.ui.theme.SquircleShape
+import com.pegasus.retailer.data.model.RetailerAnalytics
+import com.pegasus.retailer.data.model.RetailerDayExpense
+import com.pegasus.retailer.data.model.OrderStateCount
+import com.pegasus.retailer.data.model.CategorySpend
+import com.pegasus.retailer.data.model.DayOfWeekPattern
+import com.pegasus.retailer.ui.components.LabEmptyState
+import com.pegasus.retailer.ui.theme.SquircleShape
 import java.text.NumberFormat
 import java.util.Locale
 

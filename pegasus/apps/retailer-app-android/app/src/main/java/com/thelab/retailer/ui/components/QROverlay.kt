@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.components
+package com.pegasus.retailer.ui.components
 
 import android.os.Build
 import android.view.WindowManager
@@ -13,8 +13,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import com.thelab.retailer.ui.theme.PillShape
-import com.thelab.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.ui.theme.PillShape
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material3.Icon
@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
-import com.thelab.retailer.data.model.Order
+import com.pegasus.retailer.data.model.Order
 
 @Composable
 fun QROverlay(

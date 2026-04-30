@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.components.modifiers
+package com.pegasus.retailer.ui.components.modifiers
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import com.thelab.retailer.ui.theme.MotionTokens
+import com.pegasus.retailer.ui.theme.MotionTokens
 
 /**
  * A universal squish/bounce cash modifier that implements organic scaling 

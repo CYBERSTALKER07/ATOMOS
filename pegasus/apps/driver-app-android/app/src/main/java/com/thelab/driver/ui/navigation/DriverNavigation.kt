@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.navigation
+package com.pegasus.driver.ui.navigation
 
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -13,22 +13,22 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import java.net.URLEncoder
-import com.thelab.driver.data.remote.DriverApi
-import com.thelab.driver.data.remote.TokenHolder
-import com.thelab.driver.ui.screens.auth.LoginScreen
-import com.thelab.driver.ui.screens.home.HomeScreen
-import com.thelab.driver.ui.screens.manifest.DeliveryCorrectionScreen
-import com.thelab.driver.ui.screens.manifest.ManifestScreen
-import com.thelab.driver.ui.screens.manifest.ManifestViewModel
-import com.thelab.driver.ui.screens.map.MapScreen
-import com.thelab.driver.ui.screens.offload.CashCollectionScreen
-import com.thelab.driver.ui.screens.offload.OffloadReviewScreen
-import com.thelab.driver.ui.screens.offload.PaymentWaitingScreen
-import com.thelab.driver.ui.screens.offload.ShopClosedWaitingScreen
-import com.thelab.driver.ui.screens.profile.ProfileScreen
-import com.thelab.driver.ui.screens.scanner.ScannerScreen
-import com.thelab.driver.ui.screens.notifications.DriverNotificationInboxScreen
-import com.thelab.driver.ui.theme.MotionTokens
+import com.pegasus.driver.data.remote.DriverApi
+import com.pegasus.driver.data.remote.TokenHolder
+import com.pegasus.driver.ui.screens.auth.LoginScreen
+import com.pegasus.driver.ui.screens.home.HomeScreen
+import com.pegasus.driver.ui.screens.manifest.DeliveryCorrectionScreen
+import com.pegasus.driver.ui.screens.manifest.ManifestScreen
+import com.pegasus.driver.ui.screens.manifest.ManifestViewModel
+import com.pegasus.driver.ui.screens.map.MapScreen
+import com.pegasus.driver.ui.screens.offload.CashCollectionScreen
+import com.pegasus.driver.ui.screens.offload.OffloadReviewScreen
+import com.pegasus.driver.ui.screens.offload.PaymentWaitingScreen
+import com.pegasus.driver.ui.screens.offload.ShopClosedWaitingScreen
+import com.pegasus.driver.ui.screens.profile.ProfileScreen
+import com.pegasus.driver.ui.screens.scanner.ScannerScreen
+import com.pegasus.driver.ui.screens.notifications.DriverNotificationInboxScreen
+import com.pegasus.driver.ui.theme.MotionTokens
 
 object DriverRoutes {
     const val LOGIN = "login"

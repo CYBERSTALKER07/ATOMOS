@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.screens.offload
+package com.pegasus.driver.ui.screens.offload
 
 import android.annotation.SuppressLint
 import android.app.Application
@@ -8,8 +8,8 @@ import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
-import com.thelab.driver.data.model.CollectCashRequest
-import com.thelab.driver.data.remote.DriverApi
+import com.pegasus.driver.data.model.CollectCashRequest
+import com.pegasus.driver.data.remote.DriverApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

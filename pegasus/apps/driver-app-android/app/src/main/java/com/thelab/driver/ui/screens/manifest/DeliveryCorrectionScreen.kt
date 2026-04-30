@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.screens.manifest
+package com.pegasus.driver.ui.screens.manifest
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -81,9 +81,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.thelab.driver.data.model.RejectionReason
-import com.thelab.driver.ui.theme.StatusGreen
-import com.thelab.driver.ui.theme.StatusRed
+import com.pegasus.driver.data.model.RejectionReason
+import com.pegasus.driver.ui.theme.StatusGreen
+import com.pegasus.driver.ui.theme.StatusRed
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale

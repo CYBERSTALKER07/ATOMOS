@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.components
+package com.pegasus.retailer.ui.components
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.spring
@@ -13,7 +13,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
-import com.thelab.retailer.ui.theme.MotionTokens
+import com.pegasus.retailer.ui.theme.MotionTokens
 
 // ── Animation Specs (MDC Motion Token-backed) ──
 

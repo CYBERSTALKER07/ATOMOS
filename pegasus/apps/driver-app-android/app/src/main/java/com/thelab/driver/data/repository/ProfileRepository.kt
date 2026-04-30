@@ -1,8 +1,8 @@
-package com.thelab.driver.data.repository
+package com.pegasus.driver.data.repository
 
-import com.thelab.driver.data.model.DriverProfileResponse
-import com.thelab.driver.data.remote.DriverApi
-import com.thelab.driver.data.remote.TokenHolder
+import com.pegasus.driver.data.model.DriverProfileResponse
+import com.pegasus.driver.data.remote.DriverApi
+import com.pegasus.driver.data.remote.TokenHolder
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow

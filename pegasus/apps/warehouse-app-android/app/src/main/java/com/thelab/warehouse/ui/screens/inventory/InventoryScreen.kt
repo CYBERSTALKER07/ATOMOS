@@ -1,4 +1,4 @@
-package com.thelab.warehouse.ui.screens.inventory
+package com.pegasus.warehouse.ui.screens.inventory
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,10 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.thelab.warehouse.data.model.InventoryAdjustRequest
-import com.thelab.warehouse.data.model.InventoryItem
-import com.thelab.warehouse.data.remote.WarehouseApi
-import com.thelab.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.data.model.InventoryAdjustRequest
+import com.pegasus.warehouse.data.model.InventoryItem
+import com.pegasus.warehouse.data.remote.WarehouseApi
+import com.pegasus.warehouse.ui.theme.LabSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

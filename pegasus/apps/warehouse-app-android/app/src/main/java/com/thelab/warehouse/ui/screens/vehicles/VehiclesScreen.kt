@@ -1,4 +1,4 @@
-package com.thelab.warehouse.ui.screens.vehicles
+package com.pegasus.warehouse.ui.screens.vehicles
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,10 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.thelab.warehouse.data.model.CreateVehicleRequest
-import com.thelab.warehouse.data.model.Vehicle
-import com.thelab.warehouse.data.remote.WarehouseApi
-import com.thelab.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.data.model.CreateVehicleRequest
+import com.pegasus.warehouse.data.model.Vehicle
+import com.pegasus.warehouse.data.remote.WarehouseApi
+import com.pegasus.warehouse.ui.theme.LabSpacing
 import kotlinx.coroutines.launch
 
 private val VEHICLE_CLASSES = listOf("CLASS_A" to "50 VU", "CLASS_B" to "150 VU", "CLASS_C" to "400 VU")

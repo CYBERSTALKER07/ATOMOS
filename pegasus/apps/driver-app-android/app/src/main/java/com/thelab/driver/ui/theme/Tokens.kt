@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.theme
+package com.pegasus.driver.ui.theme
 
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.spring

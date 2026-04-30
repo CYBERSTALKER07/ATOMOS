@@ -1,4 +1,4 @@
-package com.thelab.warehouse.ui.screens.treasury
+package com.pegasus.warehouse.ui.screens.treasury
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,10 +11,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.thelab.warehouse.data.model.Invoice
-import com.thelab.warehouse.data.model.TreasuryOverview
-import com.thelab.warehouse.data.remote.WarehouseApi
-import com.thelab.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.data.model.Invoice
+import com.pegasus.warehouse.data.model.TreasuryOverview
+import com.pegasus.warehouse.data.remote.WarehouseApi
+import com.pegasus.warehouse.ui.theme.LabSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale

@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.components
+package com.pegasus.driver.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
@@ -17,7 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.thelab.driver.ui.theme.MotionTokens
+import com.pegasus.driver.ui.theme.MotionTokens
 import kotlinx.coroutines.delay
 
 /**

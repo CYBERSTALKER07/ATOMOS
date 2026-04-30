@@ -1,9 +1,9 @@
-package com.thelab.retailer.data.api
+package com.pegasus.retailer.data.api
 
 import com.pegasus.retailer.BuildConfig
-import com.thelab.retailer.data.local.TokenManager
-import com.thelab.retailer.data.model.ProblemDetail
-import com.thelab.retailer.data.model.ProblemDetailException
+import com.pegasus.retailer.data.local.TokenManager
+import com.pegasus.retailer.data.model.ProblemDetail
+import com.pegasus.retailer.data.model.ProblemDetailException
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.dashboard
+package com.pegasus.retailer.ui.screens.dashboard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -65,15 +65,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.thelab.retailer.data.model.DemandForecast
-import com.thelab.retailer.data.model.Product
-import com.thelab.retailer.ui.theme.HexagonShape
-import com.thelab.retailer.ui.theme.ScallopShape
-import com.thelab.retailer.ui.theme.SoftSquircleShape
-import com.thelab.retailer.ui.theme.SquircleShape
-import com.thelab.retailer.ui.theme.StatusGreen
-import com.thelab.retailer.ui.theme.StatusOrange
-import com.thelab.retailer.ui.theme.StatusRed
+import com.pegasus.retailer.data.model.DemandForecast
+import com.pegasus.retailer.data.model.Product
+import com.pegasus.retailer.ui.theme.HexagonShape
+import com.pegasus.retailer.ui.theme.ScallopShape
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.ui.theme.SquircleShape
+import com.pegasus.retailer.ui.theme.StatusGreen
+import com.pegasus.retailer.ui.theme.StatusOrange
+import com.pegasus.retailer.ui.theme.StatusRed
 
 private val timeRanges = listOf("Day", "Week", "Month")
 

@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.screens.home
+package com.pegasus.driver.ui.screens.home
 
 import android.content.Intent
 import android.net.Uri
@@ -51,24 +51,24 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.thelab.driver.data.model.Order
-import com.thelab.driver.data.model.OrderState
-import com.thelab.driver.data.remote.TokenHolder
-import com.thelab.driver.services.TelemetryService
-import com.thelab.driver.ui.components.LabCard
-import com.thelab.driver.ui.components.StaggeredAppear
-import com.thelab.driver.ui.components.StatusPill
+import com.pegasus.driver.data.model.Order
+import com.pegasus.driver.data.model.OrderState
+import com.pegasus.driver.data.remote.TokenHolder
+import com.pegasus.driver.services.TelemetryService
+import com.pegasus.driver.ui.components.LabCard
+import com.pegasus.driver.ui.components.StaggeredAppear
+import com.pegasus.driver.ui.components.StatusPill
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import com.thelab.driver.ui.screens.manifest.ManifestViewModel
-import com.thelab.driver.ui.theme.LabSpacing
-import com.thelab.driver.ui.theme.LocalLabColors
-import com.thelab.driver.ui.theme.MotionTokens
-import com.thelab.driver.ui.theme.formattedAmount
-import com.thelab.driver.ui.theme.pressable
+import com.pegasus.driver.ui.screens.manifest.ManifestViewModel
+import com.pegasus.driver.ui.theme.LabSpacing
+import com.pegasus.driver.ui.theme.LocalLabColors
+import com.pegasus.driver.ui.theme.MotionTokens
+import com.pegasus.driver.ui.theme.formattedAmount
+import com.pegasus.driver.ui.theme.pressable
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -954,7 +954,7 @@ private fun PulsingDot(color: androidx.compose.ui.graphics.Color) {
 
 // ── Shimmer skeleton shown while orders are loading ──────────────────────────
 @Composable
-private fun HomeShimmer(lab: com.thelab.driver.ui.theme.LabColors) {
+private fun HomeShimmer(lab: com.pegasus.driver.ui.theme.LabColors) {
     val transition = rememberInfiniteTransition(label = "shimmer")
     val shimmerAlpha by transition.animateFloat(
         initialValue = 0.25f,

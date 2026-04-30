@@ -1,9 +1,9 @@
-package com.thelab.driver
+package com.pegasus.driver
 
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
-import com.thelab.driver.data.remote.TokenHolder
+import com.pegasus.driver.data.remote.TokenHolder
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 

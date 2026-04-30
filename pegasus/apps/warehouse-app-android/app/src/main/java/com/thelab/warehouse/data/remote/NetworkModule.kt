@@ -1,4 +1,4 @@
-package com.thelab.warehouse.data.remote
+package com.pegasus.warehouse.data.remote
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -104,7 +104,7 @@ private class TokenRefreshAuthenticator(
                 return null
             }
             val responseBody = refreshResponse.body?.string() ?: return null
-            val auth = json.decodeFromString<com.thelab.warehouse.data.model.AuthResponse>(responseBody)
+            val auth = json.decodeFromString<com.pegasus.warehouse.data.model.AuthResponse>(responseBody)
             TokenHolder.token = auth.token
             TokenHolder.refreshToken = auth.refreshToken
 

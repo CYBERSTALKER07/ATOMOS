@@ -1,11 +1,11 @@
-package com.thelab.retailer.ui.components
+package com.pegasus.retailer.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import com.thelab.retailer.ui.theme.MotionTokens
+import com.pegasus.retailer.ui.theme.MotionTokens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,9 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.thelab.retailer.ui.theme.PillShape
-import com.thelab.retailer.ui.theme.SoftSquircleShape
-import com.thelab.retailer.ui.theme.SquircleShape
+import com.pegasus.retailer.ui.theme.PillShape
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.ui.theme.SquircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Eco

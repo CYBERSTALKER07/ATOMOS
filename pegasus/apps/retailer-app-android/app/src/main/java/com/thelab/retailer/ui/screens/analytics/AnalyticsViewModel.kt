@@ -1,13 +1,13 @@
-package com.thelab.retailer.ui.screens.analytics
+package com.pegasus.retailer.ui.screens.analytics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.thelab.retailer.data.api.LabApi
-import com.thelab.retailer.data.model.MonthlyExpense
-import com.thelab.retailer.data.model.RetailerAnalytics
-import com.thelab.retailer.data.model.RetailerDetailedAnalytics
-import com.thelab.retailer.data.model.TopProductExpense
-import com.thelab.retailer.data.model.TopSupplierExpense
+import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.model.MonthlyExpense
+import com.pegasus.retailer.data.model.RetailerAnalytics
+import com.pegasus.retailer.data.model.RetailerDetailedAnalytics
+import com.pegasus.retailer.data.model.TopProductExpense
+import com.pegasus.retailer.data.model.TopSupplierExpense
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow

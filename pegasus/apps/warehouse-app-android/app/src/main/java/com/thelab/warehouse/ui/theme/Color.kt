@@ -1,4 +1,4 @@
-package com.thelab.warehouse.ui.theme
+package com.pegasus.warehouse.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

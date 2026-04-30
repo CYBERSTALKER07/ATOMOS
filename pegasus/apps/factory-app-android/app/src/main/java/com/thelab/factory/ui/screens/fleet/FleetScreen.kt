@@ -1,4 +1,4 @@
-package com.thelab.factory.ui.screens.fleet
+package com.pegasus.factory.ui.screens.fleet
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,9 +12,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.thelab.factory.data.model.Vehicle
-import com.thelab.factory.data.remote.FactoryApi
-import com.thelab.factory.ui.theme.LabSpacing
+import com.pegasus.factory.data.model.Vehicle
+import com.pegasus.factory.data.remote.FactoryApi
+import com.pegasus.factory.ui.theme.LabSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

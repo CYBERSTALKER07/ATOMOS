@@ -1,4 +1,4 @@
-package com.thelab.factory.data.remote
+package com.pegasus.factory.data.remote
 
 import com.pegasus.factory.BuildConfig
 import android.content.Context
@@ -107,7 +107,7 @@ private class TokenRefreshAuthenticator(
                 return null
             }
             val responseBody = refreshResponse.body?.string() ?: return null
-            val auth = json.decodeFromString<com.thelab.factory.data.model.AuthResponse>(responseBody)
+            val auth = json.decodeFromString<com.pegasus.factory.data.model.AuthResponse>(responseBody)
             TokenHolder.token = auth.token
             TokenHolder.refreshToken = auth.refreshToken
 

@@ -1,4 +1,4 @@
-package com.thelab.retailer.data.push
+package com.pegasus.retailer.data.push
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -8,8 +8,8 @@ import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.pegasus.retailer.R
-import com.thelab.retailer.data.api.LabApi
-import com.thelab.retailer.data.local.TokenManager
+import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.local.TokenManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

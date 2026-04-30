@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.suppliers
+package com.pegasus.retailer.ui.screens.suppliers
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,8 +18,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
-import com.thelab.retailer.ui.theme.StatusGreen
-import com.thelab.retailer.ui.theme.StatusRed
+import com.pegasus.retailer.ui.theme.StatusGreen
+import com.pegasus.retailer.ui.theme.StatusRed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Inventory2
@@ -41,9 +41,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.thelab.retailer.data.model.Product
-import com.thelab.retailer.ui.components.LabEmptyState
-import com.thelab.retailer.ui.components.ProductCard
+import com.pegasus.retailer.data.model.Product
+import com.pegasus.retailer.ui.components.LabEmptyState
+import com.pegasus.retailer.ui.components.ProductCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -194,7 +194,7 @@ private fun SupplierCatalogSkeletonCard() {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
-        shape = com.thelab.retailer.ui.theme.SoftSquircleShape,
+        shape = com.pegasus.retailer.ui.theme.SoftSquircleShape,
     ) {
         Row(
             modifier = Modifier.padding(16.dp),

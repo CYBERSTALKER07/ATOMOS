@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.components
+package com.pegasus.retailer.ui.components
 
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -27,7 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
-import com.thelab.retailer.ui.theme.MotionTokens
+import com.pegasus.retailer.ui.theme.MotionTokens
 
 /**
  * Reusable shimmer modifier — M3-themed alpha-based pulse.

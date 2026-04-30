@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.screens.notifications
+package com.pegasus.driver.ui.screens.notifications
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

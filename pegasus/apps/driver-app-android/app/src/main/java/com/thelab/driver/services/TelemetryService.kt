@@ -1,4 +1,4 @@
-package com.thelab.driver.services
+package com.pegasus.driver.services
 
 import android.Manifest
 import android.app.Notification
@@ -24,13 +24,13 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.pegasus.driver.BuildConfig
 import com.pegasus.driver.R
-import com.thelab.driver.data.local.OrderDao
-import com.thelab.driver.data.model.OrderState
-import com.thelab.driver.data.model.TelemetryPayload
-import com.thelab.driver.data.remote.DriverApi
-import com.thelab.driver.data.remote.TelemetrySocket
-import com.thelab.driver.data.remote.TokenHolder
-import com.thelab.driver.util.Haversine
+import com.pegasus.driver.data.local.OrderDao
+import com.pegasus.driver.data.model.OrderState
+import com.pegasus.driver.data.model.TelemetryPayload
+import com.pegasus.driver.data.remote.DriverApi
+import com.pegasus.driver.data.remote.TelemetrySocket
+import com.pegasus.driver.data.remote.TokenHolder
+import com.pegasus.driver.util.Haversine
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -45,8 +45,8 @@ class TelemetryService : Service() {
     companion object {
         const val CHANNEL_ID = "telemetry_channel"
         const val NOTIFICATION_ID = 1001
-        const val ACTION_START = "com.thelab.driver.START_TELEMETRY"
-        const val ACTION_STOP = "com.thelab.driver.STOP_TELEMETRY"
+        const val ACTION_START = "com.pegasus.driver.START_TELEMETRY"
+        const val ACTION_STOP = "com.pegasus.driver.STOP_TELEMETRY"
         private const val TAG = "TelemetryService"
         private const val WAKELOCK_TAG = "LabDriver::TelemetryWakelock"
     }

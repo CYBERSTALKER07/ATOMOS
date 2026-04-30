@@ -1,10 +1,10 @@
-package com.thelab.driver.data.local
+package com.pegasus.driver.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import com.thelab.driver.data.model.OrderEntity
-import com.thelab.driver.data.model.PendingMutationEntity
-import com.thelab.driver.data.model.RouteManifestEntity
+import com.pegasus.driver.data.model.OrderEntity
+import com.pegasus.driver.data.model.PendingMutationEntity
+import com.pegasus.driver.data.model.RouteManifestEntity
 
 @Database(
     entities = [OrderEntity::class, RouteManifestEntity::class, PendingMutationEntity::class],

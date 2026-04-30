@@ -1,8 +1,8 @@
-package com.thelab.driver.ui.screens.notifications
+package com.pegasus.driver.ui.screens.notifications
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.thelab.driver.data.remote.DriverApi
+import com.pegasus.driver.data.remote.DriverApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

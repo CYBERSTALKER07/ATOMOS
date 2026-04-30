@@ -1,12 +1,12 @@
-package com.thelab.retailer.ui.screens.autoorder
+package com.pegasus.retailer.ui.screens.autoorder
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.thelab.retailer.data.api.LabApi
-import com.thelab.retailer.data.model.AutoOrderSettings
-import com.thelab.retailer.data.model.DemandForecast
-import com.thelab.retailer.data.model.UpdateGlobalSettingsRequest
-import com.thelab.retailer.data.model.UpdateSettingsRequest
+import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.model.AutoOrderSettings
+import com.pegasus.retailer.data.model.DemandForecast
+import com.pegasus.retailer.data.model.UpdateGlobalSettingsRequest
+import com.pegasus.retailer.data.model.UpdateSettingsRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,7 +37,7 @@ data class AutoOrderUiState(
 @HiltViewModel
 class AutoOrderViewModel @Inject constructor(
     private val api: LabApi,
-    private val tokenManager: com.thelab.retailer.data.local.TokenManager,
+    private val tokenManager: com.pegasus.retailer.data.local.TokenManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AutoOrderUiState())

@@ -1,4 +1,4 @@
-package com.thelab.factory.ui.theme
+package com.pegasus.factory.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

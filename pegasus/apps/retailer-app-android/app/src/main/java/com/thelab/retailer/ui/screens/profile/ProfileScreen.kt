@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.profile
+package com.pegasus.retailer.ui.screens.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -15,8 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import com.thelab.retailer.ui.theme.SoftSquircleShape
-import com.thelab.retailer.ui.theme.SquircleShape
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.ui.theme.SquircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Logout

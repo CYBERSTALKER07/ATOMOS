@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.product
+package com.pegasus.retailer.ui.screens.product
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -53,10 +53,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.thelab.retailer.data.model.Product
-import com.thelab.retailer.data.model.Variant
-import com.thelab.retailer.ui.screens.autoorder.EnableTarget
-import com.thelab.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.data.model.Product
+import com.pegasus.retailer.data.model.Variant
+import com.pegasus.retailer.ui.screens.autoorder.EnableTarget
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
 import kotlinx.coroutines.launch
 
 @Composable

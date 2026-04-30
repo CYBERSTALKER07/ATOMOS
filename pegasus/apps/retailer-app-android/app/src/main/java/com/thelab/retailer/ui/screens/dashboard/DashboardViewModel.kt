@@ -1,12 +1,12 @@
-package com.thelab.retailer.ui.screens.dashboard
+package com.pegasus.retailer.ui.screens.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.thelab.retailer.data.api.LabApi
-import com.thelab.retailer.data.local.TokenManager
-import com.thelab.retailer.data.model.DemandForecast
-import com.thelab.retailer.data.model.Order
-import com.thelab.retailer.data.model.Product
+import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.local.TokenManager
+import com.pegasus.retailer.data.model.DemandForecast
+import com.pegasus.retailer.data.model.Order
+import com.pegasus.retailer.data.model.Product
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

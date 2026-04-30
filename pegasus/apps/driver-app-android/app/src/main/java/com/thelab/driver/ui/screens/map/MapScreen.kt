@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.screens.map
+package com.pegasus.driver.ui.screens.map
 
 import android.Manifest
 import android.content.Intent
@@ -63,10 +63,10 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-import com.thelab.driver.data.model.Order
-import com.thelab.driver.data.model.OrderState
-import com.thelab.driver.ui.screens.manifest.ManifestViewModel
-import com.thelab.driver.ui.theme.LocalLabColors
+import com.pegasus.driver.data.model.Order
+import com.pegasus.driver.data.model.OrderState
+import com.pegasus.driver.ui.screens.manifest.ManifestViewModel
+import com.pegasus.driver.ui.theme.LocalLabColors
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow

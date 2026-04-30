@@ -1,4 +1,4 @@
-package com.thelab.warehouse.ui.screens.dashboard
+package com.pegasus.warehouse.ui.screens.dashboard
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,10 +13,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.thelab.warehouse.data.model.DashboardData
-import com.thelab.warehouse.data.remote.WarehouseApi
-import com.thelab.warehouse.ui.navigation.WarehouseRoutes
-import com.thelab.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.data.model.DashboardData
+import com.pegasus.warehouse.data.remote.WarehouseApi
+import com.pegasus.warehouse.ui.navigation.WarehouseRoutes
+import com.pegasus.warehouse.ui.theme.LabSpacing
 import kotlinx.coroutines.launch
 
 private data class KpiCard(

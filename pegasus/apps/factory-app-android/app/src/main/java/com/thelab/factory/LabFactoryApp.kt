@@ -1,7 +1,7 @@
-package com.thelab.factory
+package com.pegasus.factory
 
 import android.app.Application
-import com.thelab.factory.data.remote.TokenHolder
+import com.pegasus.factory.data.remote.TokenHolder
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp

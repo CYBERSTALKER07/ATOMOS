@@ -1,10 +1,10 @@
-package com.thelab.retailer.ui.screens.profile
+package com.pegasus.retailer.ui.screens.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.thelab.retailer.data.api.LabApi
-import com.thelab.retailer.data.model.UpdateGlobalSettingsRequest
-import com.thelab.retailer.data.model.UpdateSettingsRequest
+import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.model.UpdateGlobalSettingsRequest
+import com.pegasus.retailer.data.model.UpdateSettingsRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,7 +30,7 @@ data class ProfileUiState(
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val api: LabApi,
-    private val tokenManager: com.thelab.retailer.data.local.TokenManager,
+    private val tokenManager: com.pegasus.retailer.data.local.TokenManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())

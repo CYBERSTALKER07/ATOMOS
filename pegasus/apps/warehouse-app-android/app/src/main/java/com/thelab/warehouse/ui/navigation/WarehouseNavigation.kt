@@ -1,4 +1,4 @@
-package com.thelab.warehouse.ui.navigation
+package com.pegasus.warehouse.ui.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
@@ -11,23 +11,23 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.thelab.warehouse.data.remote.TokenHolder
-import com.thelab.warehouse.data.remote.WarehouseApi
-import com.thelab.warehouse.ui.screens.analytics.AnalyticsScreen
-import com.thelab.warehouse.ui.screens.auth.LoginScreen
-import com.thelab.warehouse.ui.screens.crm.CRMScreen
-import com.thelab.warehouse.ui.screens.dashboard.DashboardScreen
-import com.thelab.warehouse.ui.screens.dispatch.DispatchScreen
-import com.thelab.warehouse.ui.screens.drivers.DriversScreen
-import com.thelab.warehouse.ui.screens.inventory.InventoryScreen
-import com.thelab.warehouse.ui.screens.manifests.ManifestsScreen
-import com.thelab.warehouse.ui.screens.orders.OrderDetailScreen
-import com.thelab.warehouse.ui.screens.orders.OrdersScreen
-import com.thelab.warehouse.ui.screens.products.ProductsScreen
-import com.thelab.warehouse.ui.screens.returns.ReturnsScreen
-import com.thelab.warehouse.ui.screens.staff.StaffScreen
-import com.thelab.warehouse.ui.screens.treasury.TreasuryScreen
-import com.thelab.warehouse.ui.screens.vehicles.VehiclesScreen
+import com.pegasus.warehouse.data.remote.TokenHolder
+import com.pegasus.warehouse.data.remote.WarehouseApi
+import com.pegasus.warehouse.ui.screens.analytics.AnalyticsScreen
+import com.pegasus.warehouse.ui.screens.auth.LoginScreen
+import com.pegasus.warehouse.ui.screens.crm.CRMScreen
+import com.pegasus.warehouse.ui.screens.dashboard.DashboardScreen
+import com.pegasus.warehouse.ui.screens.dispatch.DispatchScreen
+import com.pegasus.warehouse.ui.screens.drivers.DriversScreen
+import com.pegasus.warehouse.ui.screens.inventory.InventoryScreen
+import com.pegasus.warehouse.ui.screens.manifests.ManifestsScreen
+import com.pegasus.warehouse.ui.screens.orders.OrderDetailScreen
+import com.pegasus.warehouse.ui.screens.orders.OrdersScreen
+import com.pegasus.warehouse.ui.screens.products.ProductsScreen
+import com.pegasus.warehouse.ui.screens.returns.ReturnsScreen
+import com.pegasus.warehouse.ui.screens.staff.StaffScreen
+import com.pegasus.warehouse.ui.screens.treasury.TreasuryScreen
+import com.pegasus.warehouse.ui.screens.vehicles.VehiclesScreen
 
 object WarehouseRoutes {
     const val LOGIN = "login"

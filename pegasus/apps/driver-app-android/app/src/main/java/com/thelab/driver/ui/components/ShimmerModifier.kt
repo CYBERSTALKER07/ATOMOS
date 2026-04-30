@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.components
+package com.pegasus.driver.ui.components
 
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -11,7 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.Brush
-import com.thelab.driver.ui.theme.MotionTokens
+import com.pegasus.driver.ui.theme.MotionTokens
 
 /**
  * Reusable shimmer modifier — M3-themed horizontal gradient sweep.

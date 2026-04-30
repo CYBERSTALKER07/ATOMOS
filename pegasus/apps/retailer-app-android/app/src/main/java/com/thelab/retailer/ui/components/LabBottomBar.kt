@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.components
+package com.pegasus.retailer.ui.components
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Home

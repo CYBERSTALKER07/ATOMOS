@@ -1,4 +1,4 @@
-package com.thelab.retailer
+package com.pegasus.retailer
 
 import android.app.Application
 import dagger.hilt.android.HiltAndroidApp

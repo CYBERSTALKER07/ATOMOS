@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.orders
+package com.pegasus.retailer.ui.screens.orders
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,8 +23,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import com.thelab.retailer.ui.theme.PillShape
-import com.thelab.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.ui.theme.PillShape
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
 import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Inventory2
@@ -65,20 +65,20 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.thelab.retailer.data.model.DemandForecast
-import com.thelab.retailer.data.model.Order
-import com.thelab.retailer.data.model.OrderStatus
-import com.thelab.retailer.ui.components.CountdownTimer
-import com.thelab.retailer.ui.components.LabEmptyState
-import com.thelab.retailer.ui.components.ShimmerOrderList
-import com.thelab.retailer.ui.components.OrderDetailSheet
-import com.thelab.retailer.ui.components.OrderStatusBadge
-import com.thelab.retailer.ui.components.QROverlay
-import com.thelab.retailer.ui.components.statusColor
-import com.thelab.retailer.ui.theme.StatusGreen
-import com.thelab.retailer.ui.theme.StatusOrange
-import com.thelab.retailer.ui.theme.StatusRed
-import com.thelab.retailer.ui.theme.StatusTeal
+import com.pegasus.retailer.data.model.DemandForecast
+import com.pegasus.retailer.data.model.Order
+import com.pegasus.retailer.data.model.OrderStatus
+import com.pegasus.retailer.ui.components.CountdownTimer
+import com.pegasus.retailer.ui.components.LabEmptyState
+import com.pegasus.retailer.ui.components.ShimmerOrderList
+import com.pegasus.retailer.ui.components.OrderDetailSheet
+import com.pegasus.retailer.ui.components.OrderStatusBadge
+import com.pegasus.retailer.ui.components.QROverlay
+import com.pegasus.retailer.ui.components.statusColor
+import com.pegasus.retailer.ui.theme.StatusGreen
+import com.pegasus.retailer.ui.theme.StatusOrange
+import com.pegasus.retailer.ui.theme.StatusRed
+import com.pegasus.retailer.ui.theme.StatusTeal
 import kotlinx.coroutines.launch
 
 private enum class OrderTab(

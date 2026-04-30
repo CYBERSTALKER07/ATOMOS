@@ -1,15 +1,15 @@
-package com.thelab.driver.data.remote
+package com.pegasus.driver.data.remote
 
 import android.content.Context
 import androidx.room.Room
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.pegasus.driver.BuildConfig
-import com.thelab.driver.data.local.LabDriverDatabase
-import com.thelab.driver.data.local.OrderDao
-import com.thelab.driver.data.local.PendingMutationDao
-import com.thelab.driver.data.local.RouteManifestDao
-import com.thelab.driver.data.model.ProblemDetail
-import com.thelab.driver.data.model.ProblemDetailException
+import com.pegasus.driver.data.local.LabDriverDatabase
+import com.pegasus.driver.data.local.OrderDao
+import com.pegasus.driver.data.local.PendingMutationDao
+import com.pegasus.driver.data.local.RouteManifestDao
+import com.pegasus.driver.data.model.ProblemDetail
+import com.pegasus.driver.data.model.ProblemDetailException
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

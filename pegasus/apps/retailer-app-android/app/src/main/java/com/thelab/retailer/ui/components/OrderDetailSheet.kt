@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.components
+package com.pegasus.retailer.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,12 +36,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.thelab.retailer.data.model.Order
-import com.thelab.retailer.data.model.OrderStatus
-import com.thelab.retailer.ui.theme.PillShape
-import com.thelab.retailer.ui.theme.SoftSquircleShape
-import com.thelab.retailer.ui.theme.SquircleShape
-import com.thelab.retailer.ui.theme.StatusGreen
+import com.pegasus.retailer.data.model.Order
+import com.pegasus.retailer.data.model.OrderStatus
+import com.pegasus.retailer.ui.theme.PillShape
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.ui.theme.SquircleShape
+import com.pegasus.retailer.ui.theme.StatusGreen
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog

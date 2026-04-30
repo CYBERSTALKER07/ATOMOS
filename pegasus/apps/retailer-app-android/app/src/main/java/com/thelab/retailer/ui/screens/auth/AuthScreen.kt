@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.auth
+package com.pegasus.retailer.ui.screens.auth
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -22,8 +22,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import com.thelab.retailer.ui.theme.SquircleShape
-import com.thelab.retailer.ui.theme.PillShape
+import com.pegasus.retailer.ui.theme.SquircleShape
+import com.pegasus.retailer.ui.theme.PillShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -68,7 +68,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
-import com.thelab.retailer.ui.theme.StatusRed
+import com.pegasus.retailer.ui.theme.StatusRed
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 

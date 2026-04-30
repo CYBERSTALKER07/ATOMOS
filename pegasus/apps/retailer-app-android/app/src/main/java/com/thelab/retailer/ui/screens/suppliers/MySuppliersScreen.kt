@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.suppliers
+package com.pegasus.retailer.ui.screens.suppliers
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,9 +19,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.thelab.retailer.ui.theme.PillShape
-import com.thelab.retailer.ui.theme.SoftSquircleShape
-import com.thelab.retailer.ui.theme.SquircleShape
+import com.pegasus.retailer.ui.theme.PillShape
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.ui.theme.SquircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Business
 import androidx.compose.material.icons.rounded.Sync
@@ -43,9 +43,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.thelab.retailer.data.model.Supplier
-import com.thelab.retailer.ui.components.LabEmptyState
-import com.thelab.retailer.ui.theme.StatusGreen
+import com.pegasus.retailer.data.model.Supplier
+import com.pegasus.retailer.ui.components.LabEmptyState
+import com.pegasus.retailer.ui.theme.StatusGreen
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable

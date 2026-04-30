@@ -1,12 +1,12 @@
-package com.thelab.retailer.ui.screens.auth
+package com.pegasus.retailer.ui.screens.auth
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.thelab.retailer.data.api.LabApi
-import com.thelab.retailer.data.local.TokenManager
-import com.thelab.retailer.data.model.LoginRequest
-import com.thelab.retailer.data.model.RegisterRequest
+import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.local.TokenManager
+import com.pegasus.retailer.data.model.LoginRequest
+import com.pegasus.retailer.data.model.RegisterRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,7 +47,7 @@ class AuthViewModel @Inject constructor(
                 tokenManager.saveUserName(response.user.name)
                 // Exchange Firebase custom token (graceful degradation)
                 if (response.firebaseToken.isNotBlank()) {
-                    val fbIdToken = com.thelab.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
+                    val fbIdToken = com.pegasus.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
                     if (fbIdToken != null) tokenManager.saveFirebaseIdToken(fbIdToken)
                 }
                 _uiState.value = _uiState.value.copy(isLoading = false, isAuthenticated = true)
@@ -100,7 +100,7 @@ class AuthViewModel @Inject constructor(
                 tokenManager.saveUserName(response.user.name)
                 // Exchange Firebase custom token (graceful degradation)
                 if (response.firebaseToken.isNotBlank()) {
-                    val fbIdToken = com.thelab.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
+                    val fbIdToken = com.pegasus.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
                     if (fbIdToken != null) tokenManager.saveFirebaseIdToken(fbIdToken)
                 }
                 _uiState.value = _uiState.value.copy(isLoading = false, isAuthenticated = true)
@@ -112,7 +112,7 @@ class AuthViewModel @Inject constructor(
 
     fun logout() {
         tokenManager.clearToken()
-        com.thelab.retailer.data.auth.FirebaseAuthHelper.signOut()
+        com.pegasus.retailer.data.auth.FirebaseAuthHelper.signOut()
         _uiState.value = AuthUiState()
     }
 

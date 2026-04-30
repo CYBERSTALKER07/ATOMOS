@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.screens.profile
+package com.pegasus.driver.ui.screens.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -44,17 +44,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.thelab.driver.data.model.Order
-import com.thelab.driver.data.model.OrderState
-import com.thelab.driver.data.remote.TokenHolder
-import com.thelab.driver.ui.components.LabCard
-import com.thelab.driver.ui.components.StaggeredAppear
-import com.thelab.driver.ui.components.StatusPill
-import com.thelab.driver.ui.screens.manifest.ManifestViewModel
-import com.thelab.driver.ui.theme.LabSpacing
-import com.thelab.driver.ui.theme.LocalLabColors
-import com.thelab.driver.ui.theme.formattedAmount
-import com.thelab.driver.ui.theme.pressable
+import com.pegasus.driver.data.model.Order
+import com.pegasus.driver.data.model.OrderState
+import com.pegasus.driver.data.remote.TokenHolder
+import com.pegasus.driver.ui.components.LabCard
+import com.pegasus.driver.ui.components.StaggeredAppear
+import com.pegasus.driver.ui.components.StatusPill
+import com.pegasus.driver.ui.screens.manifest.ManifestViewModel
+import com.pegasus.driver.ui.theme.LabSpacing
+import com.pegasus.driver.ui.theme.LocalLabColors
+import com.pegasus.driver.ui.theme.formattedAmount
+import com.pegasus.driver.ui.theme.pressable
 import androidx.compose.material3.MaterialTheme
 
 @Composable

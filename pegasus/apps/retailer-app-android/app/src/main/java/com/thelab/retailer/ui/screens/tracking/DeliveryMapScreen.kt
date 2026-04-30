@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.tracking
+package com.pegasus.retailer.ui.screens.tracking
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -72,7 +72,7 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-import com.thelab.retailer.data.model.TrackingOrder
+import com.pegasus.retailer.data.model.TrackingOrder
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -1,4 +1,4 @@
-package com.thelab.warehouse.ui.screens.orders
+package com.pegasus.warehouse.ui.screens.orders
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,9 +12,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.thelab.warehouse.data.model.Order
-import com.thelab.warehouse.data.remote.WarehouseApi
-import com.thelab.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.data.model.Order
+import com.pegasus.warehouse.data.remote.WarehouseApi
+import com.pegasus.warehouse.ui.theme.LabSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale

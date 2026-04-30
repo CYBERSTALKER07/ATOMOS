@@ -1,10 +1,10 @@
-package com.thelab.retailer.ui.screens.catalog
+package com.pegasus.retailer.ui.screens.catalog
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.thelab.retailer.data.api.LabApi
-import com.thelab.retailer.data.model.Product
-import com.thelab.retailer.data.model.ProductCategory
+import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.model.Product
+import com.pegasus.retailer.data.model.ProductCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

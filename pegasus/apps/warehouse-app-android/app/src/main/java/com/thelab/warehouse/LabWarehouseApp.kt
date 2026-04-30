@@ -1,7 +1,7 @@
-package com.thelab.warehouse
+package com.pegasus.warehouse
 
 import android.app.Application
-import com.thelab.warehouse.data.remote.TokenHolder
+import com.pegasus.warehouse.data.remote.TokenHolder
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp

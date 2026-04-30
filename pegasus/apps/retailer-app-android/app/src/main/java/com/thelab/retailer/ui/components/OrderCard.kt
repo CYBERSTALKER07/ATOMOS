@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.components
+package com.pegasus.retailer.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,20 +25,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.thelab.retailer.data.model.Order
-import com.thelab.retailer.data.model.OrderStatus
-import com.thelab.retailer.ui.theme.PillShape
-import com.thelab.retailer.ui.theme.SoftSquircleShape
-import com.thelab.retailer.ui.theme.StatusBlue
-import com.thelab.retailer.ui.theme.StatusBlueSoft
-import com.thelab.retailer.ui.theme.StatusGreen
-import com.thelab.retailer.ui.theme.StatusGreenSoft
-import com.thelab.retailer.ui.theme.StatusOrange
-import com.thelab.retailer.ui.theme.StatusOrangeSoft
-import com.thelab.retailer.ui.theme.StatusRed
-import com.thelab.retailer.ui.theme.StatusRedSoft
-import com.thelab.retailer.ui.theme.StatusTeal
-import com.thelab.retailer.ui.theme.StatusTealSoft
+import com.pegasus.retailer.data.model.Order
+import com.pegasus.retailer.data.model.OrderStatus
+import com.pegasus.retailer.ui.theme.PillShape
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.ui.theme.StatusBlue
+import com.pegasus.retailer.ui.theme.StatusBlueSoft
+import com.pegasus.retailer.ui.theme.StatusGreen
+import com.pegasus.retailer.ui.theme.StatusGreenSoft
+import com.pegasus.retailer.ui.theme.StatusOrange
+import com.pegasus.retailer.ui.theme.StatusOrangeSoft
+import com.pegasus.retailer.ui.theme.StatusRed
+import com.pegasus.retailer.ui.theme.StatusRedSoft
+import com.pegasus.retailer.ui.theme.StatusTeal
+import com.pegasus.retailer.ui.theme.StatusTealSoft
 
 /**
  * Order Card — B&W minimalist matching iOS activeOrderCard / pendingOrderCard.

@@ -1,4 +1,4 @@
-package com.thelab.driver.data.model
+package com.pegasus.driver.data.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

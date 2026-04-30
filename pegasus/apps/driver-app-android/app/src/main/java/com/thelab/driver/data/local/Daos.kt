@@ -1,12 +1,12 @@
-package com.thelab.driver.data.local
+package com.pegasus.driver.data.local
 
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.thelab.driver.data.model.OrderEntity
-import com.thelab.driver.data.model.PendingMutationEntity
-import com.thelab.driver.data.model.RouteManifestEntity
+import com.pegasus.driver.data.model.OrderEntity
+import com.pegasus.driver.data.model.PendingMutationEntity
+import com.pegasus.driver.data.model.RouteManifestEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao

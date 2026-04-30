@@ -1,7 +1,7 @@
-package com.thelab.driver.data.remote
+package com.pegasus.driver.data.remote
 
 import android.util.Log
-import com.thelab.driver.data.model.TelemetryPayload
+import com.pegasus.driver.data.model.TelemetryPayload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

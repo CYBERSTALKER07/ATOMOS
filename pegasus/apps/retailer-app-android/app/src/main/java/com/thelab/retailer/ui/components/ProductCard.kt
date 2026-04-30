@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.components
+package com.pegasus.retailer.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -37,13 +37,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.thelab.retailer.data.model.Product
-import com.thelab.retailer.ui.theme.PillShape
-import com.thelab.retailer.ui.theme.SoftSquircleShape
-import com.thelab.retailer.ui.theme.StatusBlue
-import com.thelab.retailer.ui.theme.StatusBlueSoft
-import com.thelab.retailer.ui.theme.StatusGreen
-import com.thelab.retailer.ui.theme.StatusGreenSoft
+import com.pegasus.retailer.data.model.Product
+import com.pegasus.retailer.ui.theme.PillShape
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.ui.theme.StatusBlue
+import com.pegasus.retailer.ui.theme.StatusBlueSoft
+import com.pegasus.retailer.ui.theme.StatusGreen
+import com.pegasus.retailer.ui.theme.StatusGreenSoft
 import java.util.Locale
 
 @Composable
@@ -56,8 +56,8 @@ fun ProductCard(
     val scale by animateFloatAsState(
         if (isPressedState.value) 0.97f else 1f,
         animationSpec = spring(
-            dampingRatio = com.thelab.retailer.ui.theme.MotionTokens.springFastSpatial.dampingRatio,
-            stiffness = com.thelab.retailer.ui.theme.MotionTokens.springFastSpatial.stiffness,
+            dampingRatio = com.pegasus.retailer.ui.theme.MotionTokens.springFastSpatial.dampingRatio,
+            stiffness = com.pegasus.retailer.ui.theme.MotionTokens.springFastSpatial.stiffness,
         ),
         label = "press",
     )

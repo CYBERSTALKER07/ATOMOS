@@ -1,8 +1,8 @@
-package com.thelab.retailer.ui.screens.notifications
+package com.pegasus.retailer.ui.screens.notifications
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.thelab.retailer.data.api.LabApi
+import com.pegasus.retailer.data.api.LabApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

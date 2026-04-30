@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.screens.profile
+package com.pegasus.driver.ui.screens.profile
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -38,10 +38,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.thelab.driver.ui.components.LabCard
-import com.thelab.driver.ui.theme.LabSpacing
-import com.thelab.driver.ui.theme.LocalLabColors
-import com.thelab.driver.ui.theme.pressable
+import com.pegasus.driver.ui.components.LabCard
+import com.pegasus.driver.ui.theme.LabSpacing
+import com.pegasus.driver.ui.theme.LocalLabColors
+import com.pegasus.driver.ui.theme.pressable
 
 enum class OfflineReason(val code: String, val label: String, val icon: ImageVector) {
     SHIFT_COMPLETE("SHIFT_COMPLETE", "Shift Complete", Icons.Default.NightsStay),

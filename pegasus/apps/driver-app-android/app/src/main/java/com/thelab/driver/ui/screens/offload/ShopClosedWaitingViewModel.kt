@@ -1,10 +1,10 @@
-package com.thelab.driver.ui.screens.offload
+package com.pegasus.driver.ui.screens.offload
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.thelab.driver.data.remote.DriverApi
-import com.thelab.driver.data.remote.DriverWebSocket
+import com.pegasus.driver.data.remote.DriverApi
+import com.pegasus.driver.data.remote.DriverWebSocket
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

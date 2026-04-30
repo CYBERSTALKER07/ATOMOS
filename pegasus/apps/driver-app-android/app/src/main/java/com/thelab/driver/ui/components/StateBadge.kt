@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.components
+package com.pegasus.driver.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -14,11 +14,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.thelab.driver.data.model.OrderState
-import com.thelab.driver.ui.theme.Destructive
-import com.thelab.driver.ui.theme.StatusBlue
-import com.thelab.driver.ui.theme.Success
-import com.thelab.driver.ui.theme.Warning
+import com.pegasus.driver.data.model.OrderState
+import com.pegasus.driver.ui.theme.Destructive
+import com.pegasus.driver.ui.theme.StatusBlue
+import com.pegasus.driver.ui.theme.Success
+import com.pegasus.driver.ui.theme.Warning
 
 /**
  * StatusPill — monospaced capsule badge with tinted M3 surface.

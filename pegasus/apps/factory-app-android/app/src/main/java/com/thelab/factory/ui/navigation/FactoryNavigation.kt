@@ -1,4 +1,4 @@
-package com.thelab.factory.ui.navigation
+package com.pegasus.factory.ui.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
@@ -11,16 +11,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.thelab.factory.data.remote.FactoryApi
-import com.thelab.factory.data.remote.TokenHolder
-import com.thelab.factory.ui.screens.auth.LoginScreen
-import com.thelab.factory.ui.screens.dashboard.DashboardScreen
-import com.thelab.factory.ui.screens.fleet.FleetScreen
-import com.thelab.factory.ui.screens.insights.InsightsScreen
-import com.thelab.factory.ui.screens.loadingbay.LoadingBayScreen
-import com.thelab.factory.ui.screens.staff.StaffScreen
-import com.thelab.factory.ui.screens.transfer.TransferDetailScreen
-import com.thelab.factory.ui.screens.transfer.TransferListScreen
+import com.pegasus.factory.data.remote.FactoryApi
+import com.pegasus.factory.data.remote.TokenHolder
+import com.pegasus.factory.ui.screens.auth.LoginScreen
+import com.pegasus.factory.ui.screens.dashboard.DashboardScreen
+import com.pegasus.factory.ui.screens.fleet.FleetScreen
+import com.pegasus.factory.ui.screens.insights.InsightsScreen
+import com.pegasus.factory.ui.screens.loadingbay.LoadingBayScreen
+import com.pegasus.factory.ui.screens.staff.StaffScreen
+import com.pegasus.factory.ui.screens.transfer.TransferDetailScreen
+import com.pegasus.factory.ui.screens.transfer.TransferListScreen
 
 object FactoryRoutes {
     const val LOGIN = "login"

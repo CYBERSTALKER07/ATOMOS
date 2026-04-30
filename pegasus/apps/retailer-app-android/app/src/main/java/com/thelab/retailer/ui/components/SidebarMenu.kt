@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.components
+package com.pegasus.retailer.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -7,7 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import com.thelab.retailer.ui.theme.MotionTokens
+import com.pegasus.retailer.ui.theme.MotionTokens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -25,7 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import com.thelab.retailer.ui.theme.SquircleShape
+import com.pegasus.retailer.ui.theme.SquircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
@@ -56,8 +56,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.thelab.retailer.ui.components.modifiers.bounceCash
-import com.thelab.retailer.ui.theme.StatusRed
+import com.pegasus.retailer.ui.components.modifiers.bounceCash
+import com.pegasus.retailer.ui.theme.StatusRed
 
 enum class SidebarDestination(val label: String, val icon: ImageVector) {
     DASHBOARD("Dashboard", Icons.Outlined.GridView),

@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.theme
+package com.pegasus.retailer.ui.theme
 
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.spring

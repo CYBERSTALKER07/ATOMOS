@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.screens.offload
+package com.pegasus.driver.ui.screens.offload
 
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
@@ -38,10 +38,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.thelab.driver.ui.theme.LocalLabColors
-import com.thelab.driver.ui.theme.StatusGreen
-import com.thelab.driver.ui.theme.StatusRed
-import com.thelab.driver.ui.theme.formattedAmount
+import com.pegasus.driver.ui.theme.LocalLabColors
+import com.pegasus.driver.ui.theme.StatusGreen
+import com.pegasus.driver.ui.theme.StatusRed
+import com.pegasus.driver.ui.theme.formattedAmount
 
 @Composable
 fun CashCollectionScreen(

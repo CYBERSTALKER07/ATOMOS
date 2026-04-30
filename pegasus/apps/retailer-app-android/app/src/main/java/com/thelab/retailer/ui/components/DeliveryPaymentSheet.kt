@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.components
+package com.pegasus.retailer.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
@@ -48,13 +48,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.Surface
-import com.thelab.retailer.data.api.RetailerWSMessage
-import com.thelab.retailer.ui.theme.StatusGreen
-import com.thelab.retailer.ui.theme.StatusGreenSoft
-import com.thelab.retailer.ui.theme.StatusOrange
-import com.thelab.retailer.ui.theme.StatusOrangeSoft
-import com.thelab.retailer.ui.theme.StatusRed
-import com.thelab.retailer.ui.theme.StatusRedSoft
+import com.pegasus.retailer.data.api.RetailerWSMessage
+import com.pegasus.retailer.ui.theme.StatusGreen
+import com.pegasus.retailer.ui.theme.StatusGreenSoft
+import com.pegasus.retailer.ui.theme.StatusOrange
+import com.pegasus.retailer.ui.theme.StatusOrangeSoft
+import com.pegasus.retailer.ui.theme.StatusRed
+import com.pegasus.retailer.ui.theme.StatusRedSoft
 
 enum class PaymentPhase { CHOOSE, PROCESSING, CASH_PENDING, SUCCESS, FAILED }
 

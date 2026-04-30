@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.screens.scanner
+package com.pegasus.driver.ui.screens.scanner
 
 import android.app.Application
 import android.os.Build
@@ -7,9 +7,9 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.thelab.driver.data.model.ValidateQRRequest
-import com.thelab.driver.data.model.ValidateQRResponse
-import com.thelab.driver.data.remote.DriverApi
+import com.pegasus.driver.data.model.ValidateQRRequest
+import com.pegasus.driver.data.model.ValidateQRResponse
+import com.pegasus.driver.data.remote.DriverApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.TimeoutCancellationException

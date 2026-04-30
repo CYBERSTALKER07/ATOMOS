@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.catalog
+package com.pegasus.retailer.ui.screens.catalog
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,9 +41,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.thelab.retailer.data.model.Supplier
-import com.thelab.retailer.ui.components.LabEmptyState
-import com.thelab.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.data.model.Supplier
+import com.pegasus.retailer.ui.components.LabEmptyState
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -1,4 +1,4 @@
-package com.thelab.retailer.data.auth
+package com.pegasus.retailer.data.auth
 
 import android.content.Context
 import android.util.Log

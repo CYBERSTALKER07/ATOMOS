@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.screens.scanner
+package com.pegasus.driver.ui.screens.scanner
 
 import android.util.Log
 import android.view.ViewGroup
@@ -54,10 +54,10 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import com.pegasus.driver.R
-import com.thelab.driver.data.model.ValidateQRResponse
-import com.thelab.driver.ui.theme.StatusGreen
-import com.thelab.driver.ui.theme.StatusRed
-import com.thelab.driver.ui.theme.formattedAmount
+import com.pegasus.driver.data.model.ValidateQRResponse
+import com.pegasus.driver.ui.theme.StatusGreen
+import com.pegasus.driver.ui.theme.StatusRed
+import com.pegasus.driver.ui.theme.formattedAmount
 import java.util.concurrent.Executors
 
 @Composable

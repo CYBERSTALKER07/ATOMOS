@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.theme
+package com.pegasus.retailer.ui.theme
 
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape

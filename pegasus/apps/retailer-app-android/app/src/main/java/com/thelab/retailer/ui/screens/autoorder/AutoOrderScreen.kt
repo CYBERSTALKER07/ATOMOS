@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.autoorder
+package com.pegasus.retailer.ui.screens.autoorder
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -45,9 +45,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.thelab.retailer.data.model.DemandForecast
-import com.thelab.retailer.ui.theme.SoftSquircleShape
-import com.thelab.retailer.ui.theme.SquircleShape
+import com.pegasus.retailer.data.model.DemandForecast
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.ui.theme.SquircleShape
 
 @Composable
 fun AutoOrderScreen(

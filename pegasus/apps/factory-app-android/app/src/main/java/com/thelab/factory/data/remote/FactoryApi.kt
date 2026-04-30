@@ -1,6 +1,6 @@
-package com.thelab.factory.data.remote
+package com.pegasus.factory.data.remote
 
-import com.thelab.factory.data.model.*
+import com.pegasus.factory.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
 

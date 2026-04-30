@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.screens.offload
+package com.pegasus.driver.ui.screens.offload
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -42,13 +42,13 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.thelab.driver.data.model.ConfirmOffloadResponse
-import com.thelab.driver.ui.theme.LocalLabColors
-import com.thelab.driver.ui.theme.StatusGreen
-import com.thelab.driver.ui.theme.StatusOrange
-import com.thelab.driver.ui.theme.StatusRed
-import com.thelab.driver.ui.theme.StatusBlue
-import com.thelab.driver.ui.theme.formattedAmount
+import com.pegasus.driver.data.model.ConfirmOffloadResponse
+import com.pegasus.driver.ui.theme.LocalLabColors
+import com.pegasus.driver.ui.theme.StatusGreen
+import com.pegasus.driver.ui.theme.StatusOrange
+import com.pegasus.driver.ui.theme.StatusRed
+import com.pegasus.driver.ui.theme.StatusBlue
+import com.pegasus.driver.ui.theme.formattedAmount
 
 @Composable
 fun OffloadReviewScreen(

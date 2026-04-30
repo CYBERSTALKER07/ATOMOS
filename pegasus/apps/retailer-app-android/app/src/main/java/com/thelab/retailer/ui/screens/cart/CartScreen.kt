@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.cart
+package com.pegasus.retailer.ui.screens.cart
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -16,9 +16,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import com.thelab.retailer.ui.theme.PillShape
-import com.thelab.retailer.ui.theme.SoftSquircleShape
-import com.thelab.retailer.ui.theme.SquircleShape
+import com.pegasus.retailer.ui.theme.PillShape
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.ui.theme.SquircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
@@ -57,11 +57,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.thelab.retailer.data.model.CartItem
-import com.thelab.retailer.ui.components.CheckoutSheet
-import com.thelab.retailer.ui.components.DefaultCheckoutPaymentOptions
-import com.thelab.retailer.ui.theme.StatusGreen
-import com.thelab.retailer.ui.theme.StatusRed
+import com.pegasus.retailer.data.model.CartItem
+import com.pegasus.retailer.ui.components.CheckoutSheet
+import com.pegasus.retailer.ui.components.DefaultCheckoutPaymentOptions
+import com.pegasus.retailer.ui.theme.StatusGreen
+import com.pegasus.retailer.ui.theme.StatusRed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

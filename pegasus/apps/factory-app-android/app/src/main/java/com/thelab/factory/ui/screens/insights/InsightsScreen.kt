@@ -1,4 +1,4 @@
-package com.thelab.factory.ui.screens.insights
+package com.pegasus.factory.ui.screens.insights
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,9 +11,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.thelab.factory.data.model.Insight
-import com.thelab.factory.data.remote.FactoryApi
-import com.thelab.factory.ui.theme.*
+import com.pegasus.factory.data.model.Insight
+import com.pegasus.factory.data.remote.FactoryApi
+import com.pegasus.factory.ui.theme.*
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

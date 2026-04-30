@@ -1,4 +1,4 @@
-package com.thelab.factory.ui.theme
+package com.pegasus.factory.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

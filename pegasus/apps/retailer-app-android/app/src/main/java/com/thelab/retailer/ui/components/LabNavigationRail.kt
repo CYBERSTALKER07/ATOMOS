@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.components
+package com.pegasus.retailer.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,8 +22,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import com.thelab.retailer.ui.theme.MotionTokens
-import com.thelab.retailer.ui.components.modifiers.bounceCash
+import com.pegasus.retailer.ui.theme.MotionTokens
+import com.pegasus.retailer.ui.components.modifiers.bounceCash
 
 @Composable
 fun LabNavigationRail(

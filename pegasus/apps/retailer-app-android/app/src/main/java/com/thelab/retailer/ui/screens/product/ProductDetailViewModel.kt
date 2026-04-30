@@ -1,12 +1,12 @@
-package com.thelab.retailer.ui.screens.product
+package com.pegasus.retailer.ui.screens.product
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.thelab.retailer.data.api.LabApi
-import com.thelab.retailer.data.model.AutoOrderSettings
-import com.thelab.retailer.data.model.Product
-import com.thelab.retailer.data.model.UpdateSettingsRequest
-import com.thelab.retailer.ui.screens.autoorder.EnableTarget
+import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.model.AutoOrderSettings
+import com.pegasus.retailer.data.model.Product
+import com.pegasus.retailer.data.model.UpdateSettingsRequest
+import com.pegasus.retailer.ui.screens.autoorder.EnableTarget
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

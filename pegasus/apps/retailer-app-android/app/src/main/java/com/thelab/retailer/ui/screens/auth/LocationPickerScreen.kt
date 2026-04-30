@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.auth
+package com.pegasus.retailer.ui.screens.auth
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -54,7 +54,7 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.rememberCameraPositionState
-import com.thelab.retailer.ui.theme.PillShape
+import com.pegasus.retailer.ui.theme.PillShape
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 

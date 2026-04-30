@@ -1,8 +1,8 @@
-package com.thelab.retailer.ui.screens.catalog
+package com.pegasus.retailer.ui.screens.catalog
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import com.thelab.retailer.ui.components.modifiers.bounceCash
+import com.pegasus.retailer.ui.components.modifiers.bounceCash
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,8 +23,8 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.thelab.retailer.ui.theme.PillShape
-import com.thelab.retailer.ui.theme.SoftSquircleShape
+import com.pegasus.retailer.ui.theme.PillShape
+import com.pegasus.retailer.ui.theme.SoftSquircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.Inventory2
@@ -48,8 +48,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.thelab.retailer.data.model.ProductCategory
-import com.thelab.retailer.ui.components.ProductCard
+import com.pegasus.retailer.data.model.ProductCategory
+import com.pegasus.retailer.ui.components.ProductCard
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable

@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.navigation
+package com.pegasus.driver.ui.navigation
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
@@ -39,7 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.thelab.driver.ui.theme.MotionTokens
+import com.pegasus.driver.ui.theme.MotionTokens
 
 // ── Tab Enum ──
 

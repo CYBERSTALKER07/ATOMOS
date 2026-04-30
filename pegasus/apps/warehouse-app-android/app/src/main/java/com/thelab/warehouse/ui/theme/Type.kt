@@ -1,4 +1,4 @@
-package com.thelab.warehouse.ui.theme
+package com.pegasus.warehouse.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

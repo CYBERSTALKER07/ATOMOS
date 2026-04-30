@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.navigation
+package com.pegasus.retailer.ui.navigation
 
 import android.content.Intent
 import android.net.Uri
@@ -7,7 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import com.thelab.retailer.ui.theme.MotionTokens
+import com.pegasus.retailer.ui.theme.MotionTokens
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,35 +30,35 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.thelab.retailer.data.model.Order
-import com.thelab.retailer.ui.components.ActiveDeliveriesSheet
-import com.thelab.retailer.ui.components.DeliveryPaymentSheet
-import com.thelab.retailer.ui.components.FloatingActiveOrdersBar
-import com.thelab.retailer.ui.components.LabBottomBar
-import com.thelab.retailer.ui.components.LabTab
-import com.thelab.retailer.ui.components.LabTopBar
-import com.thelab.retailer.ui.components.OrderDetailSheet
-import com.thelab.retailer.ui.components.PaymentPhase
-import com.thelab.retailer.ui.components.QROverlay
+import com.pegasus.retailer.data.model.Order
+import com.pegasus.retailer.ui.components.ActiveDeliveriesSheet
+import com.pegasus.retailer.ui.components.DeliveryPaymentSheet
+import com.pegasus.retailer.ui.components.FloatingActiveOrdersBar
+import com.pegasus.retailer.ui.components.LabBottomBar
+import com.pegasus.retailer.ui.components.LabTab
+import com.pegasus.retailer.ui.components.LabTopBar
+import com.pegasus.retailer.ui.components.OrderDetailSheet
+import com.pegasus.retailer.ui.components.PaymentPhase
+import com.pegasus.retailer.ui.components.QROverlay
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.foundation.layout.Row
-import com.thelab.retailer.ui.components.LabNavigationRail
-import com.thelab.retailer.ui.components.SidebarMenu
-import com.thelab.retailer.ui.screens.cart.CartScreen
-import com.thelab.retailer.ui.screens.cart.CartViewModel
-import com.thelab.retailer.ui.screens.profile.ProfileScreen
-import com.thelab.retailer.ui.screens.catalog.CatalogScreen
-import com.thelab.retailer.ui.screens.catalog.CategorySuppliersScreen
-import com.thelab.retailer.ui.screens.dashboard.DashboardScreen
-import com.thelab.retailer.ui.screens.orders.OrdersScreen
-import com.thelab.retailer.ui.screens.suppliers.MySuppliersScreen
-import com.thelab.retailer.ui.screens.analytics.AnalyticsScreen
-import com.thelab.retailer.ui.screens.autoorder.AutoOrderScreen
-import com.thelab.retailer.ui.screens.product.ProductDetailScreen
-import com.thelab.retailer.ui.screens.suppliers.SupplierCatalogScreen
-import com.thelab.retailer.ui.screens.tracking.DeliveryMapScreen
-import com.thelab.retailer.ui.screens.notifications.NotificationInboxScreen
+import com.pegasus.retailer.ui.components.LabNavigationRail
+import com.pegasus.retailer.ui.components.SidebarMenu
+import com.pegasus.retailer.ui.screens.cart.CartScreen
+import com.pegasus.retailer.ui.screens.cart.CartViewModel
+import com.pegasus.retailer.ui.screens.profile.ProfileScreen
+import com.pegasus.retailer.ui.screens.catalog.CatalogScreen
+import com.pegasus.retailer.ui.screens.catalog.CategorySuppliersScreen
+import com.pegasus.retailer.ui.screens.dashboard.DashboardScreen
+import com.pegasus.retailer.ui.screens.orders.OrdersScreen
+import com.pegasus.retailer.ui.screens.suppliers.MySuppliersScreen
+import com.pegasus.retailer.ui.screens.analytics.AnalyticsScreen
+import com.pegasus.retailer.ui.screens.autoorder.AutoOrderScreen
+import com.pegasus.retailer.ui.screens.product.ProductDetailScreen
+import com.pegasus.retailer.ui.screens.suppliers.SupplierCatalogScreen
+import com.pegasus.retailer.ui.screens.tracking.DeliveryMapScreen
+import com.pegasus.retailer.ui.screens.notifications.NotificationInboxScreen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,34 +105,34 @@ fun RetailerNavigation(
                     companyName = navState.companyName,
                     onSidebarNavigate = { dest ->
                         when (dest) {
-                            com.thelab.retailer.ui.components.SidebarDestination.DASHBOARD -> {
+                            com.pegasus.retailer.ui.components.SidebarDestination.DASHBOARD -> {
                                 currentTab = LabTab.HOME
                                 navController.navigate(LabTab.HOME.name) {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
                                 }
                             }
-                            com.thelab.retailer.ui.components.SidebarDestination.PROCUREMENT -> {
+                            com.pegasus.retailer.ui.components.SidebarDestination.PROCUREMENT -> {
                                 currentTab = LabTab.CATALOG
                                 navController.navigate(LabTab.CATALOG.name) {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
                                 }
                             }
-                            com.thelab.retailer.ui.components.SidebarDestination.AI_PREDICTIONS -> {
+                            com.pegasus.retailer.ui.components.SidebarDestination.AI_PREDICTIONS -> {
                                 currentTab = LabTab.ORDERS
                                 navController.navigate(LabTab.ORDERS.name) {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
                                 }
                             }
-                            com.thelab.retailer.ui.components.SidebarDestination.INSIGHTS -> {
+                            com.pegasus.retailer.ui.components.SidebarDestination.INSIGHTS -> {
                                 navController.navigate("ANALYTICS") {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
                                 }
                             }
-                            com.thelab.retailer.ui.components.SidebarDestination.AUTO_ORDER -> {
+                            com.pegasus.retailer.ui.components.SidebarDestination.AUTO_ORDER -> {
                                 navController.navigate("AUTO_ORDER") {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
@@ -359,34 +359,34 @@ fun RetailerNavigation(
                 onNavigate = { dest ->
                     // Navigate based on sidebar destination
                     when (dest) {
-                        com.thelab.retailer.ui.components.SidebarDestination.DASHBOARD -> {
+                        com.pegasus.retailer.ui.components.SidebarDestination.DASHBOARD -> {
                             currentTab = LabTab.HOME
                             navController.navigate(LabTab.HOME.name) {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true
                             }
                         }
-                        com.thelab.retailer.ui.components.SidebarDestination.PROCUREMENT -> {
+                        com.pegasus.retailer.ui.components.SidebarDestination.PROCUREMENT -> {
                             currentTab = LabTab.CATALOG
                             navController.navigate(LabTab.CATALOG.name) {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true
                             }
                         }
-                        com.thelab.retailer.ui.components.SidebarDestination.AI_PREDICTIONS -> {
+                        com.pegasus.retailer.ui.components.SidebarDestination.AI_PREDICTIONS -> {
                             currentTab = LabTab.ORDERS
                             navController.navigate(LabTab.ORDERS.name) {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true
                             }
                         }
-                        com.thelab.retailer.ui.components.SidebarDestination.INSIGHTS -> {
+                        com.pegasus.retailer.ui.components.SidebarDestination.INSIGHTS -> {
                             navController.navigate("ANALYTICS") {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true
                             }
                         }
-                        com.thelab.retailer.ui.components.SidebarDestination.AUTO_ORDER -> {
+                        com.pegasus.retailer.ui.components.SidebarDestination.AUTO_ORDER -> {
                             navController.navigate("AUTO_ORDER") {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true

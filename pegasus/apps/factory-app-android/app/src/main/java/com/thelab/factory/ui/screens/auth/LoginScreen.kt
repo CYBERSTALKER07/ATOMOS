@@ -1,4 +1,4 @@
-package com.thelab.factory.ui.screens.auth
+package com.pegasus.factory.ui.screens.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
@@ -18,10 +18,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.thelab.factory.data.model.LoginRequest
-import com.thelab.factory.data.remote.FactoryApi
-import com.thelab.factory.data.remote.TokenHolder
-import com.thelab.factory.ui.theme.LabSpacing
+import com.pegasus.factory.data.model.LoginRequest
+import com.pegasus.factory.data.remote.FactoryApi
+import com.pegasus.factory.data.remote.TokenHolder
+import com.pegasus.factory.ui.theme.LabSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
