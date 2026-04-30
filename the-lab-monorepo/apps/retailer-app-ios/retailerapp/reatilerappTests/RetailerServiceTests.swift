@@ -114,13 +114,13 @@ struct RetailerServiceTests {
 
     @Test func orderLineItemDecoding() throws {
         let json = """
-        {"id":"li-1","product_id":"p-1","product_name":"Milk",
-         "variant_id":"v-1","variant_size":"1L",
-         "quantity":10,"unit_price":12000.0,"total_price":120000.0}
+        {"line_item_id":"li-1","sku_id":"v-1","sku_name":"Milk",
+         "quantity":10,"unit_price":12000.0}
         """.data(using: .utf8)!
 
         let item = try JSONDecoder().decode(OrderLineItem.self, from: json)
         #expect(item.id == "li-1")
+        #expect(item.variantId == "v-1")
         #expect(item.productName == "Milk")
         #expect(item.quantity == 10)
         #expect(item.totalPrice == 120_000.0)
