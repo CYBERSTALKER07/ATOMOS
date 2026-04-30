@@ -422,33 +422,33 @@ func main() {
 	http.HandleFunc("/v1/supplier/country-overrides/", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(countrycfg.HandleSupplierCountryOverrideByCode(countryCfgSvc))))
 
 	// GET /v1/supplier/analytics/velocity - Real-time sales data Oracle for Suppliers
-	http.HandleFunc("/v1/supplier/analytics/velocity", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(analytics.HandleGetVelocity(spannerClient))))
+	http.HandleFunc("/v1/supplier/analytics/velocity", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(analytics.HandleGetVelocity(spannerClient, app.SpannerRouter))))
 
 	// GET /v1/supplier/analytics/demand/today — AI Future Demand (next 24h) summary
-	http.HandleFunc("/v1/supplier/analytics/demand/today", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(analytics.HandleDemandToday(spannerClient))))
+	http.HandleFunc("/v1/supplier/analytics/demand/today", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(analytics.HandleDemandToday(spannerClient, app.SpannerRouter))))
 
 	// GET /v1/supplier/analytics/demand/history — Predicted vs Actual time-series + upcoming detail
-	http.HandleFunc("/v1/supplier/analytics/demand/history", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(analytics.HandleDemandHistory(spannerClient))))
+	http.HandleFunc("/v1/supplier/analytics/demand/history", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(analytics.HandleDemandHistory(spannerClient, app.SpannerRouter))))
 
 	// ── Intelligence Vector Analytics (Phase 6) ─────────────────────────────
-	http.HandleFunc("/v1/supplier/analytics/transit-heatmap", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleTransitHeatmap(spannerClient)))))
-	http.HandleFunc("/v1/supplier/analytics/throughput", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleThroughput(spannerClient)))))
-	http.HandleFunc("/v1/supplier/analytics/load-distribution", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleLoadDistribution(spannerClient)))))
-	http.HandleFunc("/v1/supplier/analytics/node-efficiency", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleNodeEfficiency(spannerClient)))))
-	http.HandleFunc("/v1/supplier/analytics/sla-health", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleSLAHealth(spannerClient)))))
+	http.HandleFunc("/v1/supplier/analytics/transit-heatmap", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleTransitHeatmap(spannerClient, app.SpannerRouter)))))
+	http.HandleFunc("/v1/supplier/analytics/throughput", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleThroughput(spannerClient, app.SpannerRouter)))))
+	http.HandleFunc("/v1/supplier/analytics/load-distribution", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleLoadDistribution(spannerClient, app.SpannerRouter)))))
+	http.HandleFunc("/v1/supplier/analytics/node-efficiency", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleNodeEfficiency(spannerClient, app.SpannerRouter)))))
+	http.HandleFunc("/v1/supplier/analytics/sla-health", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleSLAHealth(spannerClient, app.SpannerRouter)))))
 
 	// ── Advanced Revenue + CRM Analytics ──
-	http.HandleFunc("/v1/supplier/analytics/revenue", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleRevenue(spannerClient)))))
-	http.HandleFunc("/v1/supplier/analytics/top-retailers", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleTopRetailers(spannerClient)))))
+	http.HandleFunc("/v1/supplier/analytics/revenue", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleRevenue(spannerClient, app.SpannerRouter)))))
+	http.HandleFunc("/v1/supplier/analytics/top-retailers", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleTopRetailers(spannerClient, app.SpannerRouter)))))
 
 	// GET /v1/supplier/financials — Supplier-wide financials: revenue, fees, net payout, cash
-	http.HandleFunc("/v1/supplier/financials", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(analytics.HandleSupplierFinancials(spannerClient))))
+	http.HandleFunc("/v1/supplier/financials", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(analytics.HandleSupplierFinancials(spannerClient, app.SpannerRouter))))
 
 	// ── Retailer Expense Analytics (Phase 1: Insights Dashboard) ──
-	http.HandleFunc("/v1/retailer/analytics/expenses", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(analytics.HandleGetRetailerExpenses(spannerClient))))
+	http.HandleFunc("/v1/retailer/analytics/expenses", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(analytics.HandleGetRetailerExpenses(spannerClient, app.SpannerRouter))))
 
 	// ── Retailer Detailed Analytics (Advanced Analytics) ──
-	http.HandleFunc("/v1/retailer/analytics/detailed", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(analytics.HandleRetailerDetailedAnalytics(spannerClient))))
+	http.HandleFunc("/v1/retailer/analytics/detailed", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(analytics.HandleRetailerDetailedAnalytics(spannerClient, app.SpannerRouter))))
 
 	// ── Supplier CRM: Retailer Intelligence ──
 	http.HandleFunc("/v1/supplier/crm/retailers", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleCRMRetailers(spannerClient))))
@@ -630,7 +630,7 @@ func main() {
 	// /v1/user/notifications{,/read} moved to userroutes.
 
 	// GET /v1/supplier/earnings — Supplier revenue breakdown
-	http.HandleFunc("/v1/supplier/earnings", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(analytics.HandleSupplierEarnings(spannerClient))))
+	http.HandleFunc("/v1/supplier/earnings", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(analytics.HandleSupplierEarnings(spannerClient, app.SpannerRouter))))
 
 	// /v1/supplier/settlement-report → treasury package (registered above).
 
@@ -3832,6 +3832,7 @@ func main() {
 	// /v1/admin/* — 22 endpoints. Ownership lives in backend-go/adminroutes.
 	adminroutes.RegisterRoutes(r, adminroutes.Deps{
 		Spanner:            spannerClient,
+		ReadRouter:         app.SpannerRouter,
 		Order:              svc,
 		CountryConfig:      countryCfgSvc,
 		PlatformCfg:        platformCfg,
@@ -4101,6 +4102,7 @@ func main() {
 	// transferSvc (shared with /v1/warehouse/transfers/ below).
 	factoryroutes.RegisterRoutes(r, factoryroutes.Deps{
 		Spanner:          spannerClient,
+		ReadRouter:       app.SpannerRouter,
 		Producer:         svc.Producer,
 		TransferSvc:      transferSvc,
 		SupplyRequestSvc: supplyReqSvc,

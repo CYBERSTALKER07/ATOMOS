@@ -36,6 +36,7 @@ import (
 	"backend-go/auth"
 	"backend-go/cache"
 	"backend-go/factory"
+	"backend-go/proximity"
 	"backend-go/warehouse"
 )
 
@@ -50,6 +51,7 @@ type Middleware func(http.HandlerFunc) http.HandlerFunc
 // OverrideService are factory-only and instantiated inside RegisterRoutes.
 type Deps struct {
 	Spanner          *spanner.Client
+	ReadRouter       proximity.ReadRouter
 	Producer         *kafka.Writer
 	TransferSvc      *factory.TransferService
 	SupplyRequestSvc *warehouse.SupplyRequestService
@@ -89,7 +91,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	// 1. Analytics overview.
 	r.HandleFunc("/v1/factory/analytics/overview",
-		auth.RequireRole(factoryRole, log(withScope(analytics.HandleFactoryAnalytics(d.Spanner)))))
+		auth.RequireRole(factoryRole, log(withScope(analytics.HandleFactoryAnalytics(d.Spanner, d.ReadRouter)))))
 	r.HandleFunc("/v1/factory/dashboard",
 		auth.RequireRole(factoryRole, log(withScope(factory.HandleFactoryDashboardCompat(d.Spanner)))))
 

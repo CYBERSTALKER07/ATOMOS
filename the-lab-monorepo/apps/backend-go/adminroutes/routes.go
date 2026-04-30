@@ -45,6 +45,7 @@ import (
 	"backend-go/notifications"
 	"backend-go/order"
 	"backend-go/payment"
+	"backend-go/proximity"
 	"backend-go/replenishment"
 	"backend-go/settings"
 )
@@ -60,6 +61,7 @@ type Middleware func(http.HandlerFunc) http.HandlerFunc
 // the DLQ endpoints which call the internal/kafka package directly.
 type Deps struct {
 	Spanner            *spanner.Client
+	ReadRouter         proximity.ReadRouter
 	Order              *order.OrderService
 	CountryConfig      *countrycfg.Service
 	PlatformCfg        *settings.PlatformConfig
@@ -171,7 +173,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	// 14. Empathy Engine adoption dashboard.
 	r.HandleFunc("/v1/admin/empathy/adoption",
-		auth.RequireRole(adminOrSupplier, log(analytics.HandleEmpathyAdoption(d.Spanner))))
+		auth.RequireRole(adminOrSupplier, log(analytics.HandleEmpathyAdoption(d.Spanner, d.ReadRouter))))
 
 	// 15-17. Retailer KYC triage (ADMIN only).
 	r.HandleFunc("/v1/admin/retailer/pending",
