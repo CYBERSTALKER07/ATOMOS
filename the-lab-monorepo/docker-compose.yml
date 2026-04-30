@@ -57,6 +57,27 @@ services:
       - kafka
 
   # ----------------------------------------
+  # KAFKA INIT (Topic Auto-Creation)
+  # ----------------------------------------
+  kafka-init:
+    image: confluentinc/cp-kafka:7.7.0
+    container_name: lab-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: >
+      bash -c "
+        echo 'Waiting for Kafka to be ready...'
+        cub kafka-ready -b kafka:29092 1 20
+        echo 'Creating lab-logistics-events topic with 128 partitions...'
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 128 --replication-factor 1 --topic lab-logistics-events
+        echo 'Creating lab-demand-forecast topic with 128 partitions...'
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 128 --replication-factor 1 --topic lab-demand-forecast
+        echo 'Topics created successfully.'
+      "
+
+
+  # ----------------------------------------
   # REDIS (Memorystore emulator)
   # ----------------------------------------
   redis:
