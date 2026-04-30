@@ -1,7 +1,8 @@
 use keyring::Entry;
 use serde::Serialize;
 
-const SERVICE_NAME: &str = "uz.thelabindustries.admin";
+const SERVICE_NAME: &str = "com.pegasus.admin";
+const LEGACY_SERVICE_NAME: &str = "uz.thelabindustries.admin";
 const TOKEN_KEY: &str = "jwt_token";
 const REFRESH_KEY: &str = "refresh_token";
 
@@ -51,24 +52,36 @@ pub fn store_token(token: String, refresh_token: Option<String>) -> TokenResult 
 /// Retrieve JWT from OS keychain.
 #[tauri::command]
 pub fn get_token() -> TokenResult {
-    let entry = match Entry::new(SERVICE_NAME, TOKEN_KEY) {
-        Ok(e) => e,
+    match read_token(SERVICE_NAME) {
+        Ok(Some(token)) => {
+            return TokenResult {
+                success: true,
+                token: Some(token),
+                error: None,
+            }
+        }
+        Ok(None) => {}
         Err(e) => {
             return TokenResult {
                 success: false,
                 token: None,
-                error: Some(format!("Keyring init failed: {e}")),
+                error: Some(e),
             }
         }
-    };
+    }
 
-    match entry.get_password() {
-        Ok(token) => TokenResult {
-            success: true,
-            token: Some(token),
-            error: None,
-        },
-        Err(keyring::Error::NoEntry) => TokenResult {
+    match read_token(LEGACY_SERVICE_NAME) {
+        Ok(Some(token)) => {
+            if let Ok(primary) = Entry::new(SERVICE_NAME, TOKEN_KEY) {
+                let _ = primary.set_password(&token);
+            }
+            TokenResult {
+                success: true,
+                token: Some(token),
+                error: None,
+            }
+        }
+        Ok(None) => TokenResult {
             success: true,
             token: None,
             error: None,
@@ -76,7 +89,7 @@ pub fn get_token() -> TokenResult {
         Err(e) => TokenResult {
             success: false,
             token: None,
-            error: Some(format!("Failed to retrieve token: {e}")),
+            error: Some(e),
         },
     }
 }
@@ -84,18 +97,12 @@ pub fn get_token() -> TokenResult {
 /// Clear all tokens from OS keychain (logout).
 #[tauri::command]
 pub fn clear_token() -> TokenResult {
-    let cleared_jwt = Entry::new(SERVICE_NAME, TOKEN_KEY)
-        .and_then(|e| e.delete_credential());
-    let cleared_refresh = Entry::new(SERVICE_NAME, REFRESH_KEY)
-        .and_then(|e| e.delete_credential());
+    let ok_primary_token = delete_if_present(SERVICE_NAME, TOKEN_KEY);
+    let ok_primary_refresh = delete_if_present(SERVICE_NAME, REFRESH_KEY);
+    let ok_legacy_token = delete_if_present(LEGACY_SERVICE_NAME, TOKEN_KEY);
+    let ok_legacy_refresh = delete_if_present(LEGACY_SERVICE_NAME, REFRESH_KEY);
 
-    // Treat NoEntry as success (already cleared)
-    let jwt_ok = cleared_jwt.is_ok()
-        || matches!(cleared_jwt.as_ref().err(), Some(keyring::Error::NoEntry));
-    let refresh_ok = cleared_refresh.is_ok()
-        || matches!(cleared_refresh.as_ref().err(), Some(keyring::Error::NoEntry));
-
-    if jwt_ok && refresh_ok {
+    if ok_primary_token && ok_primary_refresh && ok_legacy_token && ok_legacy_refresh {
         TokenResult {
             success: true,
             token: None,
@@ -108,4 +115,19 @@ pub fn clear_token() -> TokenResult {
             error: Some("Failed to clear one or more tokens.".into()),
         }
     }
+}
+
+fn read_token(service: &str) -> Result<Option<String>, String> {
+    let entry = Entry::new(service, TOKEN_KEY).map_err(|e| format!("Keyring init failed: {e}"))?;
+
+    match entry.get_password() {
+        Ok(token) => Ok(Some(token)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(format!("Failed to retrieve token: {e}")),
+    }
+}
+
+fn delete_if_present(service: &str, key: &str) -> bool {
+    let result = Entry::new(service, key).and_then(|e| e.delete_credential());
+    result.is_ok() || matches!(result.as_ref().err(), Some(keyring::Error::NoEntry))
 }
