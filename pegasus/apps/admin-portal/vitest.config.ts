@@ -8,11 +8,11 @@ export default defineConfig({
     alias: [
       { find: "@", replacement: path.resolve(__dirname, ".") },
       {
-        find: "@lab/types",
+        find: "@pegasus/types",
         replacement: path.resolve(__dirname, "../../packages/types/index.ts"),
       },
       {
-        find: /^@lab\/types\/(.*)$/,
+        find: /^@pegasus\/types\/(.*)$/,
         replacement: path.resolve(__dirname, "../../packages/types/$1"),
       },
     ],

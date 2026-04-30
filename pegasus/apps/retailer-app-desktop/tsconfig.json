@@ -20,8 +20,8 @@
     ],
     "paths": {
       "@/*": ["./*"],
-      "@lab/types": ["../../packages/types/index.ts"],
-      "@lab/types/*": ["../../packages/types/*"]
+      "@pegasus/types": ["../../packages/types/index.ts"],
+      "@pegasus/types/*": ["../../packages/types/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

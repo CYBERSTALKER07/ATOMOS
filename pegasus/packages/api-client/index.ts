@@ -4,7 +4,7 @@
  * Wraps fetch with JWT auth, refresh, and typed responses.
  *
  * Usage:
- *   import { createApiClient } from '@lab/api-client';
+ *   import { createApiClient } from '@pegasus/api-client';
  *   const api = createApiClient({ baseUrl: 'http://localhost:8080', getToken: () => token });
  *   const orders = await api.get<Order[]>('/v1/supplier/orders');
  */
@@ -112,4 +112,4 @@ export function createApiClient(config: ApiClientConfig) {
 }
 
 // Re-export all types for convenience
-export type * from '@lab/types';
+export type * from '../types';

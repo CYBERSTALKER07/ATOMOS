@@ -1,10 +1,10 @@
 {
-  "name": "@lab/api-client",
+  "name": "@pegasus/api-client",
   "version": "0.1.0",
   "private": true,
   "main": "./index.ts",
   "types": "./index.ts",
   "dependencies": {
-    "@lab/types": "workspace:*"
+    "@pegasus/types": "workspace:*"
   }
 }

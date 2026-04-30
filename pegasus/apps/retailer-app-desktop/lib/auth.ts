@@ -1,8 +1,8 @@
 // lib/auth.ts
 import { useState, useEffect } from 'react';
 import { isTauri, getStoredToken, storeToken, clearStoredToken } from './bridge';
-import type { ProblemDetail } from '@lab/types';
-import { isProblemDetail } from '@lab/types';
+import type { ProblemDetail } from '@pegasus/types';
+import { isProblemDetail } from '@pegasus/types';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
