@@ -1,4 +1,4 @@
-package com.thelab.payload.services
+package com.pegasus.payload.services
 
 import android.app.PendingIntent
 import android.content.Intent
@@ -6,10 +6,10 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import com.thelab.payload.MainActivity
+import com.pegasus.payload.MainActivity
 import com.pegasus.payload.R
-import com.thelab.payload.data.local.SecureStore
-import com.thelab.payload.data.repository.PayloadRepository
+import com.pegasus.payload.data.local.SecureStore
+import com.pegasus.payload.data.repository.PayloadRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

@@ -1,4 +1,4 @@
-package com.thelab.payload.ui
+package com.pegasus.payload.ui
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -10,9 +10,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import com.thelab.payload.data.repository.AuthRepository
-import com.thelab.payload.ui.auth.LoginScreen
-import com.thelab.payload.ui.home.HomeScreen
+import com.pegasus.payload.data.repository.AuthRepository
+import com.pegasus.payload.ui.auth.LoginScreen
+import com.pegasus.payload.ui.home.HomeScreen
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject

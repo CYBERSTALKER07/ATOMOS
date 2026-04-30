@@ -1,8 +1,8 @@
-package com.thelab.payload.ui.auth
+package com.pegasus.payload.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.thelab.payload.data.repository.AuthRepository
+import com.pegasus.payload.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

@@ -1,7 +1,7 @@
-package com.thelab.payload.services
+package com.pegasus.payload.services
 
 import com.pegasus.payload.BuildConfig
-import com.thelab.payload.data.model.WsMessage
+import com.pegasus.payload.data.model.WsMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

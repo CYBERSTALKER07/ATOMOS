@@ -1,4 +1,4 @@
-package com.thelab.payload
+package com.pegasus.payload
 
 import android.Manifest
 import android.content.Intent
@@ -11,15 +11,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.thelab.payload.services.NotificationBus
-import com.thelab.payload.ui.PayloadRoot
-import com.thelab.payload.ui.theme.LabPayloadTheme
+import com.pegasus.payload.services.NotificationBus
+import com.pegasus.payload.ui.PayloadRoot
+import com.pegasus.payload.ui.theme.LabPayloadTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 /**
  * Single-Activity host. Composition starts at [PayloadRoot] which gates
- * authenticated vs unauthenticated routes off [com.thelab.payload.data.repository.AuthRepository].
+ * authenticated vs unauthenticated routes off [com.pegasus.payload.data.repository.AuthRepository].
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {

@@ -1,8 +1,8 @@
-package com.thelab.payload.di
+package com.pegasus.payload.di
 
 import com.pegasus.payload.BuildConfig
-import com.thelab.payload.data.remote.AuthInterceptor
-import com.thelab.payload.data.remote.PayloadApi
+import com.pegasus.payload.data.remote.AuthInterceptor
+import com.pegasus.payload.data.remote.PayloadApi
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
 import dagger.Provides

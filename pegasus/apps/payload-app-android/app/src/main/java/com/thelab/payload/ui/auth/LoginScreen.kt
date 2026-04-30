@@ -1,4 +1,4 @@
-package com.thelab.payload.ui.auth
+package com.pegasus.payload.ui.auth
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box

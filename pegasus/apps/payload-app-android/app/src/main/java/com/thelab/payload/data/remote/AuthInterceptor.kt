@@ -1,6 +1,6 @@
-package com.thelab.payload.data.remote
+package com.pegasus.payload.data.remote
 
-import com.thelab.payload.data.local.SecureStore
+import com.pegasus.payload.data.local.SecureStore
 import okhttp3.Interceptor
 import okhttp3.Response
 import java.util.UUID

@@ -1,4 +1,4 @@
-package com.thelab.payload.ui.home
+package com.pegasus.payload.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -74,12 +74,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.thelab.payload.data.model.LiveOrder
-import com.thelab.payload.data.model.Manifest
-import com.thelab.payload.data.model.RecommendReassignResponse
-import com.thelab.payload.data.model.NotificationItem
-import com.thelab.payload.data.model.Truck
-import com.thelab.payload.data.model.TruckRecommendation
+import com.pegasus.payload.data.model.LiveOrder
+import com.pegasus.payload.data.model.Manifest
+import com.pegasus.payload.data.model.RecommendReassignResponse
+import com.pegasus.payload.data.model.NotificationItem
+import com.pegasus.payload.data.model.Truck
+import com.pegasus.payload.data.model.TruckRecommendation
 
 /**
  * Master-detail home with Phase 4 loading workflow.

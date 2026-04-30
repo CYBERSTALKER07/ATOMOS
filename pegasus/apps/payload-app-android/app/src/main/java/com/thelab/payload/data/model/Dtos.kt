@@ -1,4 +1,4 @@
-package com.thelab.payload.data.model
+package com.pegasus.payload.data.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

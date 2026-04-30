@@ -1,10 +1,10 @@
-package com.thelab.payload
+package com.pegasus.payload
 
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
-import com.thelab.payload.services.NotificationBus
+import com.pegasus.payload.services.NotificationBus
 import dagger.hilt.android.HiltAndroidApp
 
 /**
@@ -12,7 +12,7 @@ import dagger.hilt.android.HiltAndroidApp
  *
  * Mirrors the role-app sibling pattern of [com.thelab.driver.LabDriverApp].
  * All long-lived singletons (Retrofit, OkHttp, Room, WebSocket, OfflineQueue,
- * NotificationsHub) are bound via Hilt modules under [com.thelab.payload.di].
+ * NotificationsHub) are bound via Hilt modules under [com.pegasus.payload.di].
  */
 @HiltAndroidApp
 class LabPayloadApp : Application() {

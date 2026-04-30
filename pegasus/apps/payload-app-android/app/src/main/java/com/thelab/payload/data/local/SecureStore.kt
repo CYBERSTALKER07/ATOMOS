@@ -1,4 +1,4 @@
-package com.thelab.payload.data.local
+package com.pegasus.payload.data.local
 
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences

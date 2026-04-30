@@ -1,4 +1,4 @@
-package com.thelab.payload.ui.theme
+package com.pegasus.payload.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
