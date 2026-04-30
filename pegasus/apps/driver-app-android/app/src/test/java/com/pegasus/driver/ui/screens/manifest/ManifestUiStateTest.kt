@@ -1,8 +1,8 @@
-package com.thelab.driver.ui.screens.manifest
+package com.pegasus.driver.ui.screens.manifest
 
-import com.thelab.driver.data.model.Order
-import com.thelab.driver.data.model.OrderLineItem
-import com.thelab.driver.data.model.OrderState
+import com.pegasus.driver.data.model.Order
+import com.pegasus.driver.data.model.OrderLineItem
+import com.pegasus.driver.data.model.OrderState
 import org.junit.Assert.*
 import org.junit.Test
 

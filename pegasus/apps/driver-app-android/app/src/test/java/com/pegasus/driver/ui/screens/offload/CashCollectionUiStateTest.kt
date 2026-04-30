@@ -1,4 +1,4 @@
-package com.thelab.driver.ui.screens.offload
+package com.pegasus.driver.ui.screens.offload
 
 import org.junit.Assert.*
 import org.junit.Test

@@ -1,4 +1,4 @@
-package com.thelab.retailer.data.model
+package com.pegasus.retailer.data.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

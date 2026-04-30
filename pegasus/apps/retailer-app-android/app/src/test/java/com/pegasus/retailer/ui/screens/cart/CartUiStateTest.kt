@@ -1,8 +1,8 @@
-package com.thelab.retailer.ui.screens.cart
+package com.pegasus.retailer.ui.screens.cart
 
-import com.thelab.retailer.data.model.CartItem
-import com.thelab.retailer.data.model.Product
-import com.thelab.retailer.data.model.Variant
+import com.pegasus.retailer.data.model.CartItem
+import com.pegasus.retailer.data.model.Product
+import com.pegasus.retailer.data.model.Variant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

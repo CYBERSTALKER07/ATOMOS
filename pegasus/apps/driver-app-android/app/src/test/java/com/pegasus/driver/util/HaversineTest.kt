@@ -1,4 +1,4 @@
-package com.thelab.driver.util
+package com.pegasus.driver.util
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

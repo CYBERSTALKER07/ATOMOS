@@ -1,4 +1,4 @@
-package com.thelab.driver.data.model
+package com.pegasus.driver.data.model
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals

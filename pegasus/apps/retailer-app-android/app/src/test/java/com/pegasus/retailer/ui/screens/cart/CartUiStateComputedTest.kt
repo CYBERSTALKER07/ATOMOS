@@ -1,4 +1,4 @@
-package com.thelab.retailer.ui.screens.cart
+package com.pegasus.retailer.ui.screens.cart
 
 import org.junit.Assert.*
 import org.junit.Test

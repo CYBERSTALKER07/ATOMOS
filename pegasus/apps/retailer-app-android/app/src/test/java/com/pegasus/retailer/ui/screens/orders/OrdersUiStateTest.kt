@@ -1,7 +1,7 @@
-package com.thelab.retailer.ui.screens.orders
+package com.pegasus.retailer.ui.screens.orders
 
-import com.thelab.retailer.data.model.Order
-import com.thelab.retailer.data.model.OrderStatus
+import com.pegasus.retailer.data.model.Order
+import com.pegasus.retailer.data.model.OrderStatus
 import org.junit.Assert.*
 import org.junit.Test
 

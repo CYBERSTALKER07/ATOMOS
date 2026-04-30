@@ -1,4 +1,4 @@
-package com.thelab.retailer.data.api
+package com.pegasus.retailer.data.api
 
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
