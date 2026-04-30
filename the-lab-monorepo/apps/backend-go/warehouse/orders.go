@@ -96,7 +96,7 @@ func HandleOpsOrders(spannerClient *spanner.Client, readRouter proximity.ReadRou
 
 		sql += " ORDER BY o.CreatedAt DESC LIMIT 200"
 
-		readClient := warehouseReadClient(r.Context(), spannerClient, readRouter, ops.WarehouseID)
+		readClient := proximity.WarehouseReadClient(r.Context(), spannerClient, readRouter, ops.WarehouseID)
 		stmt := spanner.Statement{SQL: sql, Params: params}
 		iter := readClient.Single().Query(r.Context(), stmt)
 		defer iter.Stop()
@@ -169,7 +169,7 @@ func HandleOpsOrderDetail(spannerClient *spanner.Client, readRouter proximity.Re
 			      WHERE o.OrderId = @oid AND o.SupplierId = @sid AND o.WarehouseId = @whId`,
 			Params: map[string]interface{}{"oid": orderID, "sid": ops.SupplierID, "whId": ops.WarehouseID},
 		}
-		readClient := warehouseReadClient(r.Context(), spannerClient, readRouter, ops.WarehouseID)
+		readClient := proximity.WarehouseReadClient(r.Context(), spannerClient, readRouter, ops.WarehouseID)
 		iter := readClient.Single().Query(r.Context(), stmt)
 		defer iter.Stop()
 
@@ -230,25 +230,4 @@ func HandleOpsOrderDetail(spannerClient *spanner.Client, readRouter proximity.Re
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(o)
 	}
-}
-
-func warehouseReadClient(ctx context.Context, primary *spanner.Client, readRouter proximity.ReadRouter, warehouseID string) *spanner.Client {
-	if primary == nil {
-		return nil
-	}
-	if readRouter == nil || warehouseID == "" {
-		return primary
-	}
-
-	row, err := primary.Single().ReadRow(ctx, "Warehouses", spanner.Key{warehouseID}, []string{"Lat", "Lng"})
-	if err != nil {
-		return primary
-	}
-
-	var lat, lng spanner.NullFloat64
-	if row.Columns(&lat, &lng) != nil || !lat.Valid || !lng.Valid {
-		return primary
-	}
-
-	return proximity.ReadClientForRetailer(primary, readRouter, lat.Float64, lng.Float64)
 }

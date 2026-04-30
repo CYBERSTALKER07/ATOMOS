@@ -1,6 +1,10 @@
 package proximity
 
-import "cloud.google.com/go/spanner"
+import (
+	"context"
+
+	"cloud.google.com/go/spanner"
+)
 
 // ReadRouter chooses a regional Spanner read client for an H3 cell.
 // Implemented by bootstrap/spannerrouter.Router.
@@ -47,4 +51,27 @@ func ReadClientForRetailer(primary *spanner.Client, router ReadRouter, retailerL
 // proximity package callsites while the exported helper is adopted repo-wide.
 func readClientForRetailer(primary *spanner.Client, router ReadRouter, retailerLat, retailerLng float64) *spanner.Client {
 	return ReadClientForRetailer(primary, router, retailerLat, retailerLng)
+}
+
+// WarehouseReadClient resolves a warehouse's location and returns the routed read client.
+// Falls back to primary if the warehouse cannot be found or routing fails.
+func WarehouseReadClient(ctx context.Context, primary *spanner.Client, readRouter ReadRouter, warehouseID string) *spanner.Client {
+	if primary == nil {
+		return nil
+	}
+	if readRouter == nil || warehouseID == "" {
+		return primary
+	}
+
+	row, err := primary.Single().ReadRow(ctx, "Warehouses", spanner.Key{warehouseID}, []string{"Lat", "Lng"})
+	if err != nil {
+		return primary
+	}
+
+	var lat, lng spanner.NullFloat64
+	if row.Columns(&lat, &lng) != nil || !lat.Valid || !lng.Valid {
+		return primary
+	}
+
+	return ReadClientForRetailer(primary, readRouter, lat.Float64, lng.Float64)
 }

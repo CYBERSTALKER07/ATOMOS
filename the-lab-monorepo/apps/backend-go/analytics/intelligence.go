@@ -11,6 +11,7 @@ import (
 	"google.golang.org/api/iterator"
 
 	"backend-go/auth"
+	"backend-go/proximity"
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -78,11 +79,21 @@ func writeJSON(w http.ResponseWriter, data interface{}) {
 	})
 }
 
+func getReadClient(ctx context.Context, primary *spanner.Client, readRouter proximity.ReadRouter, ws *auth.WarehouseScope) *spanner.Client {
+	if ws != nil && ws.WarehouseID != "" {
+		return proximity.WarehouseReadClient(ctx, primary, readRouter, ws.WarehouseID)
+	}
+	if readRouter != nil {
+		return readRouter.Primary()
+	}
+	return primary
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 1. TRANSIT HEATMAP — Geo-density of active orders by state
 // ═══════════════════════════════════════════════════════════════════════════════
 
-func HandleTransitHeatmap(client *spanner.Client) http.HandlerFunc {
+func HandleTransitHeatmap(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims, ws := extractScope(r)
 		scopeClause, scopeParams := ApplyScopeFilter(claims, ws, "o.SupplierId", "o.WarehouseId")
@@ -108,7 +119,7 @@ func HandleTransitHeatmap(client *spanner.Client) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 
-		iter := client.Single().Query(ctx, stmt)
+		iter := getReadClient(r.Context(), client, readRouter, ws).Single().Query(ctx, stmt)
 		defer iter.Stop()
 
 		var points []TransitPoint
@@ -146,7 +157,7 @@ func HandleTransitHeatmap(client *spanner.Client) http.HandlerFunc {
 // 2. THROUGHPUT — Orders created/completed/cancelled per day (last 30 days)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-func HandleThroughput(client *spanner.Client) http.HandlerFunc {
+func HandleThroughput(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims, ws := extractScope(r)
 		scopeClause, scopeParams := ApplyScopeFilter(claims, ws, "o.SupplierId", "o.WarehouseId")
@@ -170,7 +181,7 @@ func HandleThroughput(client *spanner.Client) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 
-		iter := client.Single().Query(ctx, stmt)
+		iter := getReadClient(r.Context(), client, readRouter, ws).Single().Query(ctx, stmt)
 		defer iter.Stop()
 
 		var buckets []ThroughputBucket
@@ -207,7 +218,7 @@ func HandleThroughput(client *spanner.Client) http.HandlerFunc {
 // 3. LOAD DISTRIBUTION — Fleet capacity utilization by vehicle class
 // ═══════════════════════════════════════════════════════════════════════════════
 
-func HandleLoadDistribution(client *spanner.Client) http.HandlerFunc {
+func HandleLoadDistribution(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims, ws := extractScope(r)
 		scopeClause, scopeParams := ApplyScopeFilter(claims, ws, "m.SupplierId", "m.WarehouseId")
@@ -232,7 +243,7 @@ func HandleLoadDistribution(client *spanner.Client) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 
-		iter := client.Single().Query(ctx, stmt)
+		iter := getReadClient(r.Context(), client, readRouter, ws).Single().Query(ctx, stmt)
 		defer iter.Stop()
 
 		var buckets []LoadBucket
@@ -270,7 +281,7 @@ func HandleLoadDistribution(client *spanner.Client) http.HandlerFunc {
 // 4. NODE EFFICIENCY — Per-warehouse operational metrics
 // ═══════════════════════════════════════════════════════════════════════════════
 
-func HandleNodeEfficiency(client *spanner.Client) http.HandlerFunc {
+func HandleNodeEfficiency(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims, ws := extractScope(r)
 		scopeClause, scopeParams := ApplyScopeFilter(claims, ws, "o.SupplierId", "o.WarehouseId")
@@ -298,7 +309,7 @@ func HandleNodeEfficiency(client *spanner.Client) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 
-		iter := client.Single().Query(ctx, stmt)
+		iter := getReadClient(r.Context(), client, readRouter, ws).Single().Query(ctx, stmt)
 		defer iter.Stop()
 
 		var metrics []NodeMetric
@@ -337,7 +348,7 @@ func HandleNodeEfficiency(client *spanner.Client) http.HandlerFunc {
 // 5. SLA HEALTH — Delivery compliance by day (last 30 days)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-func HandleSLAHealth(client *spanner.Client) http.HandlerFunc {
+func HandleSLAHealth(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims, ws := extractScope(r)
 		scopeClause, scopeParams := ApplyScopeFilter(claims, ws, "o.SupplierId", "o.WarehouseId")
@@ -369,7 +380,7 @@ func HandleSLAHealth(client *spanner.Client) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 
-		iter := client.Single().Query(ctx, stmt)
+		iter := getReadClient(r.Context(), client, readRouter, ws).Single().Query(ctx, stmt)
 		defer iter.Stop()
 
 		var entries []SLAEntry
