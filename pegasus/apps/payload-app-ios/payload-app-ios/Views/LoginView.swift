@@ -15,7 +15,7 @@ struct LoginView: View {
         ZStack {
             Color(.systemGroupedBackground).ignoresSafeArea()
             VStack(spacing: 16) {
-                Text("Lab Payload Terminal")
+                Text("Pegasus Payload Terminal")
                     .font(.largeTitle.weight(.semibold))
                 Text("Sign in with your warehouse PIN")
                     .font(.subheadline)

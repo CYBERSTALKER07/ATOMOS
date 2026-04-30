@@ -50,9 +50,9 @@ pub fn run() {
                 let _ = window.eval("window.__TAURI_DESKTOP__ = true;");
             }
 
-            log::info!("Lab Admin Desktop initialized.");
+            log::info!("Pegasus Admin Desktop initialized.");
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running Lab Admin Desktop");
+        .expect("error while running Pegasus Admin Desktop");
 }

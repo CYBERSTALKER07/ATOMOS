@@ -12,7 +12,7 @@ struct LoginView: View {
             Spacer()
 
             VStack(spacing: LabTheme.spacingSM) {
-                Text("Lab Warehouse")
+                Text("Pegasus Warehouse")
                     .font(.largeTitle.bold())
                 Text("Sign in with your phone and PIN")
                     .font(.subheadline)

@@ -1,4 +1,4 @@
-# Lab Payload — iPad App
+# Pegasus Payload — iPad App
 
 Native iPad SwiftUI client for the **PAYLOAD** role. Functional superset of the Expo `apps/payload-terminal`, optimised for iPad Pro / iPad Air landscape use in the warehouse loading bay (NavigationSplitView, VisionKit DataScannerViewController, Core Haptics, WebSocket real-time, FCM).
 

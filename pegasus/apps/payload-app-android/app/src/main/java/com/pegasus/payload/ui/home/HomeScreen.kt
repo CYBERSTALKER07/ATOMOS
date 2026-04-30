@@ -119,7 +119,7 @@ fun HomeScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Lab Payload Terminal")
+                        Text("Pegasus Payload Terminal")
                         Spacer(Modifier.size(12.dp))
                         OnlineDot(online = state.online, queued = state.queuedActions)
                     }

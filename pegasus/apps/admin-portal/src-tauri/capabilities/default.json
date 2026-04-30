@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Default capabilities for the Lab Admin desktop app",
+  "description": "Default capabilities for the Pegasus Admin desktop app",
   "windows": ["main"],
   "permissions": [
     "core:default",

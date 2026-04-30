@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
-  "productName": "Lab Admin Desktop",
+  "productName": "Pegasus Admin Desktop",
   "version": "0.1.0",
   "identifier": "com.pegasus.admin",
   "build": {
@@ -15,7 +15,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Lab Admin — Pegasus",
+        "title": "Pegasus Admin — Desktop",
         "width": 1440,
         "height": 900,
         "minWidth": 1024,

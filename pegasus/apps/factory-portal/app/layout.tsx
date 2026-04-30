@@ -33,7 +33,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: `
-          (function(){try{var m=localStorage.getItem('lab-factory-theme-mode');
+          (function(){try{var m=localStorage.getItem('pegasus-factory-theme-mode')||localStorage.getItem('lab-factory-theme-mode');
           if(m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches))
           document.documentElement.classList.add('dark')}catch(e){}})();
         `}} />

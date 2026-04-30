@@ -44,7 +44,7 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Text(
-                    text = "Lab Payload Terminal",
+                    text = "Pegasus Payload Terminal",
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                 )

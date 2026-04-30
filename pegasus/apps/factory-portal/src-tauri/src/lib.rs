@@ -21,5 +21,5 @@ pub fn run() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running Lab Factory Desktop");
+        .expect("error while running Pegasus Factory Desktop");
 }

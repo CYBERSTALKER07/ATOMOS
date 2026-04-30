@@ -1,6 +1,6 @@
 {
   "name": "Pegasus — Admin Portal",
-  "short_name": "Lab Admin",
+  "short_name": "Pegasus Admin",
   "description": "Live operational ledger and dispatch command center.",
   "start_url": "/",
   "display": "standalone",

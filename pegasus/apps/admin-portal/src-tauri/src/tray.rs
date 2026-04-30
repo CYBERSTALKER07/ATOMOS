@@ -17,7 +17,7 @@ pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
     let orders = MenuItemBuilder::with_id("orders", "Orders")
         .build(app)?;
     let separator = tauri::menu::PredefinedMenuItem::separator(app)?;
-    let quit = MenuItemBuilder::with_id("quit", "Quit Lab Admin")
+    let quit = MenuItemBuilder::with_id("quit", "Quit Pegasus Admin")
         .accelerator("CmdOrCtrl+Q")
         .build(app)?;
 
@@ -31,7 +31,7 @@ pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 
     let _tray = TrayIconBuilder::new()
         .icon(tauri::include_image!("icons/icon.png"))
-        .tooltip("Lab Admin — Desktop")
+        .tooltip("Pegasus Admin — Desktop")
         .menu(&menu)
         .on_menu_event(move |app, event| {
             let id = event.id().as_ref();

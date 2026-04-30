@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Default capabilities for the Lab Warehouse desktop app",
+  "description": "Default capabilities for the Pegasus Warehouse desktop app",
   "windows": ["main"],
   "permissions": [
     "core:default",

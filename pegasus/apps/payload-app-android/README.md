@@ -1,4 +1,4 @@
-# Lab Payload — Android Tablet App
+# Pegasus Payload — Android Tablet App
 
 Native Android tablet client for the **PAYLOAD** role. Functional superset of the Expo `apps/payload-terminal`, optimised for the warehouse loading bay (10-inch+ landscape tablets, M3 Adaptive layouts, ML Kit barcode scan, FCM, WebSocket real-time).
 
@@ -27,7 +27,7 @@ Install on a connected tablet:
 
 ## Architecture
 
-- **DI:** Hilt (`com.thelab.payload.di.NetworkModule`).
+- **DI:** Hilt (`com.pegasus.payload.di.NetworkModule`).
 - **Networking:** Retrofit 2.11 + OkHttp 4.12 + kotlinx.serialization.
 - **Persistence:** Room (manifest cache + offline action queue, Phase 6).
 - **Secure store:** EncryptedSharedPreferences (`SecureStore`).
