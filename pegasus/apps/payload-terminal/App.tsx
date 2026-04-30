@@ -13,9 +13,9 @@ import { buildManifest, type LiveOrder, type ManifestItem } from './utils/manife
 //   1. EXPO_PUBLIC_API_URL env var (set in .env or via `npx expo start --dev-client`)
 //      — required for physical devices so they can reach the Mac's LAN IP.
 //   2. __DEV__ fallback = http://localhost:8080 (simulator only).
-//   3. Production = https://api.thelab.uz.
+//   3. Production = https://api.pegasus.uz (legacy override still supported via EXPO_PUBLIC_API_URL).
 const API_BASE = (process.env.EXPO_PUBLIC_API_URL?.trim() || '') ||
-  (__DEV__ ? 'http://localhost:8080' : 'https://api.thelab.uz');
+  (__DEV__ ? 'http://localhost:8080' : 'https://api.pegasus.uz');
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 

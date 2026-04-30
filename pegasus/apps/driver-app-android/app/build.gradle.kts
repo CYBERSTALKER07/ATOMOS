@@ -16,6 +16,8 @@ val localProps = Properties().also { props ->
 }
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
 val mapsApiKey: String = localProps.getProperty("MAPS_API_KEY", "")
+val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
+val legacyProdApiBaseUrl: String = localProps.getProperty("legacy.prod.api.base.url", "https://api.thelab.uz")
 
 android {
     namespace = "com.pegasus.driver"
@@ -42,7 +44,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "API_BASE_URL", "\"https://api.thelab.uz\"")
+            buildConfigField("String", "API_BASE_URL", "\"$prodApiBaseUrl\"")
+            buildConfigField("String", "API_BASE_URL_LEGACY", "\"$legacyProdApiBaseUrl\"")
         }
     }
 
