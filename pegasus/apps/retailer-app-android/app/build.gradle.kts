@@ -17,9 +17,7 @@ val localProps = Properties().also { props ->
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
 val mapsApiKey: String = localProps.getProperty("MAPS_API_KEY", "")
 val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
-val legacyProdApiBaseUrl: String = localProps.getProperty("legacy.prod.api.base.url", "https://api.thelab.uz")
 val prodWsBaseUrl: String = localProps.getProperty("prod.ws.base.url", "wss://api.pegasus.uz")
-val legacyProdWsBaseUrl: String = localProps.getProperty("legacy.prod.ws.base.url", "wss://api.thelab.uz")
 
 android {
     namespace = "com.pegasus.retailer"
@@ -43,9 +41,7 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             buildConfigField("String", "BASE_URL", "\"${prodApiBaseUrl.trimEnd('/')}/\"")
-            buildConfigField("String", "BASE_URL_LEGACY", "\"${legacyProdApiBaseUrl.trimEnd('/')}/\"")
             buildConfigField("String", "WS_URL", "\"${prodWsBaseUrl.trimEnd('/')}/\"")
-            buildConfigField("String", "WS_URL_LEGACY", "\"${legacyProdWsBaseUrl.trimEnd('/')}/\"")
         }
     }
 

@@ -2,14 +2,10 @@
 # dev.host resolves to BuildConfig.BASE_URL / BuildConfig.WS_URL in debug builds.
 #   Android emulator (AVD):       dev.host=10.0.2.2
 #   Physical device over Wi-Fi:   dev.host=192.168.1.42
-# Production bridge window:
+# Production endpoint overrides:
 #   prod.api.base.url         -> Pegasus primary API host (default)
-#   legacy.prod.api.base.url  -> Legacy TheLab API host (fallback override)
 #   prod.ws.base.url          -> Pegasus primary WebSocket host (default)
-#   legacy.prod.ws.base.url   -> Legacy TheLab WebSocket host (fallback override)
 prod.api.base.url=https://api.pegasus.uz
-legacy.prod.api.base.url=https://api.thelab.uz
 prod.ws.base.url=wss://api.pegasus.uz
-legacy.prod.ws.base.url=wss://api.thelab.uz
 dev.host=10.0.2.2
 MAPS_API_KEY=
