@@ -172,8 +172,6 @@ export interface MasterInvoice {
   currency: string;
   state: InvoiceState;
   payment_gateway: string;
-  click_service_id: string | null;
-  payme_transaction_id: string | null;
   global_pay_order_id: string | null;
   created_at: string;
   settled_at: string | null;

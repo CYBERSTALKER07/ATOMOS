@@ -33,7 +33,7 @@ test.describe('Supplier Settings', () => {
     await supplierPage.waitForLoadState('networkidle');
 
     // Payment config page
-    const content = supplierPage.getByText(/payment|gateway|payme|click/i);
+    const content = supplierPage.getByText(/payment|gateway|global\s*pay|cash/i);
     if (await content.count() > 0) {
       await expect(content.first()).toBeVisible({ timeout: 10_000 });
     }

@@ -2581,7 +2581,15 @@ func (s *OrderService) resolveAvailableCardGateways(ctx context.Context, supplie
 		if err != nil {
 			slog.Error("order.confirm_offload_list_gateways_failed", "supplier_id", supplierId, "err", err)
 		} else if len(gateways) > 0 {
-			return gateways
+			filtered := make([]string, 0, len(gateways))
+			for _, gateway := range gateways {
+				if normalized := normalizeCardGateway(gateway); normalized != "" {
+					filtered = append(filtered, normalized)
+				}
+			}
+			if len(filtered) > 0 {
+				return filtered
+			}
 		}
 	}
 	if normalized := normalizeCardGateway(fallbackGateway); normalized != "" {

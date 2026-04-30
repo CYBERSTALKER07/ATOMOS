@@ -125,25 +125,17 @@ type cashInvoiceRequest struct {
 
 // NewGatewayClient returns the correct GatewayClient implementation based on
 // the PaymentGateway column value stored in Spanner.
-// Recognised values: "GLOBAL_PAY", "CASH", "GLOBAL_PAY", "UZCARD" (no live charge API), "CASH" (no-op).
+// Supported values: "GLOBAL_PAY" and "CASH".
 func NewGatewayClient(gateway string) (GatewayClient, error) {
 	switch gateway {
 	case "GLOBAL_PAY":
 		log.Printf("[PAYMENT] GLOBAL_PAY gateway: hosted checkout supported, direct charge/refund not wired yet")
 		return &noopGateway{gateway: "GLOBAL_PAY"}, nil
-	case "SIMULATED":
-		return NewSimulatedClient()
-	case "UZCARD":
-		// UZCARD has no public restocking API yet — log and passthrough
-		log.Printf("[PAYMENT] UZCARD gateway: no API integration, logging only")
-		return &noopGateway{gateway: "UZCARD"}, nil
 	case "CASH":
 		// Cash is collected physically — no electronic charge needed
 		return &noopGateway{gateway: "CASH"}, nil
-	case "STRIPE":
-		return NewStripeClient()
 	default:
-		return nil, fmt.Errorf("unknown payment gateway: %s", gateway)
+		return nil, fmt.Errorf("unsupported payment gateway: %s (supported: GLOBAL_PAY, CASH)", gateway)
 	}
 }
 
@@ -156,13 +148,8 @@ func CheckoutURL(gateway string, orderID string, amount int64) (string, error) {
 	switch gateway {
 	case "GLOBAL_PAY":
 		return globalPayCheckoutURL(orderID, amount)
-	case "SIMULATED":
-		// Use native deep-link format for the simulated provider.
-		return fmt.Sprintf("https://mock-gateway.lab.fake/checkout/%s?amount=%d", orderID, amount), nil
-	case "STRIPE":
-		return stripeCheckoutURL(orderID, amount)
 	default:
-		return "", nil // CASH/UZCARD — no deep link
+		return "", nil // CASH or unsupported gateways have no deep link
 	}
 }
 
@@ -325,8 +312,6 @@ func CheckoutURLWithCredentials(gateway, orderID string, amount int64, merchantI
 	switch gateway {
 	case "GLOBAL_PAY":
 		return globalPayCheckoutURLWithCreds(orderID, amount, merchantId)
-	case "SIMULATED":
-		return fmt.Sprintf("https://mock-gateway.lab.fake/checkout/%s?amount=%d&merchant=%s", orderID, amount, merchantId), nil
 	default:
 		return "", nil
 	}

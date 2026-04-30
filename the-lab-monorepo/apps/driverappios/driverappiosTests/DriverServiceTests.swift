@@ -20,7 +20,7 @@ struct DriverServiceTests {
     }
 
     @Test func missionGatewayValues() {
-        let validGateways = ["CASH", "GLOBAL_PAY", "CASH", "UZCARD"]
+        let validGateways = ["CASH", "GLOBAL_PAY"]
         for gw in validGateways {
             #expect(!gw.isEmpty)
         }
@@ -31,7 +31,7 @@ struct DriverServiceTests {
         #expect(mocks.count == 3)
         #expect(mocks[0].gateway == "GLOBAL_PAY")
         #expect(mocks[1].gateway == "CASH")
-        #expect(mocks[2].gateway == "UZCARD")
+        #expect(mocks[2].gateway == "CASH")
     }
 
     // MARK: - Order State

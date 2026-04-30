@@ -80,7 +80,7 @@ describe("PaymentEvent parsing", () => {
       order_id: "ORD-456",
       amount: 300_000,
       payment_method: "CARD",
-      available_card_gateways: ["GLOBAL_PAY", "CASH", "UZCARD"],
+      available_card_gateways: ["GLOBAL_PAY", "CASH"],
     };
 
     const evt: PaymentEvent = {
@@ -90,8 +90,8 @@ describe("PaymentEvent parsing", () => {
       available_card_gateways: msg.available_card_gateways as string[],
     };
 
-    expect(evt.available_card_gateways).toEqual(["GLOBAL_PAY", "CASH", "UZCARD"]);
-    expect(evt.available_card_gateways).toHaveLength(3);
+    expect(evt.available_card_gateways).toEqual(["GLOBAL_PAY", "CASH"]);
+    expect(evt.available_card_gateways).toHaveLength(2);
   });
 
   it("detects amended amount", () => {

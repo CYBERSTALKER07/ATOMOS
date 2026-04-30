@@ -13,7 +13,7 @@ import (
 // B2BCheckoutRequest is the payload from the Retailer App's [ AUTHORIZE PROCUREMENT ] button.
 type B2BCheckoutRequest struct {
 	RetailerID     string               `json:"retailer_id"`
-	PaymentGateway string               `json:"payment_gateway"` // "CASH" | "GLOBAL_PAY" | "UZCARD"
+	PaymentGateway string               `json:"payment_gateway"` // "CASH" | "GLOBAL_PAY"
 	Latitude       float64              `json:"latitude"`
 	Longitude      float64              `json:"longitude"`
 	Items          []cart.OrderLineItem `json:"items"`
@@ -55,6 +55,12 @@ func (s *OrderService) HandleB2BCheckout(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
+	normalizedGateway := normalizeCardGateway(req.PaymentGateway)
+	if normalizedGateway == "" {
+		http.Error(w, "payment_gateway must be GLOBAL_PAY or CASH", http.StatusUnprocessableEntity)
+		return
+	}
+	req.PaymentGateway = normalizedGateway
 
 	ctx := r.Context()
 

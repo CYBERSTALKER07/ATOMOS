@@ -1,4 +1,4 @@
-// Package adminroutes owns the /v1/admin/* surface — the twenty-two
+// Package adminroutes owns the /v1/admin/* surface — the twenty-three
 // platform-operator endpoints that span ledger reconciliation, the audit
 // log, country-level configuration, order-stage admin resolvers
 // (payment-bypass, approve-cancel, shop-closed resolve, early-complete,
@@ -76,7 +76,7 @@ type Deps struct {
 	Log Middleware
 }
 
-// RegisterRoutes mounts the twenty-two admin endpoints:
+// RegisterRoutes mounts the twenty-three admin endpoints:
 //
 //	GET   /v1/admin/reconciliation             — ledger anomalies feed
 //	GET   /v1/admin/audit-log                  — compliance timeline
@@ -84,6 +84,7 @@ type Deps struct {
 //	GET/PUT/DELETE /v1/admin/country-configs/{code}
 //	POST  /v1/admin/orders/payment-bypass      — issue bypass token
 //	POST  /v1/admin/orders/approve-cancel      — approve cancel request
+//	GET   /v1/admin/shop-closed/active         — active shop-closed escalations
 //	POST  /v1/admin/shop-closed/resolve        — resolve shop-closed
 //	POST  /v1/admin/route/approve-early-complete
 //	POST  /v1/admin/negotiate/resolve          — approve/reject negotiation
@@ -134,19 +135,23 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/admin/orders/approve-cancel",
 		auth.RequireRole(adminOrSupplier, log(order.HandleApproveCancel(d.Order))))
 
-	// 7. P0 — resolve shop-closed escalation (WAIT | BYPASS | RETURN_TO_DEPOT).
+	// 7. P0 — list active shop-closed escalations.
+	r.HandleFunc("/v1/admin/shop-closed/active",
+		auth.RequireRole(adminOrSupplier, log(d.Order.HandleListActiveShopClosedAttempts(d.ShopClosedDeps))))
+
+	// 8. P0 — resolve shop-closed escalation (WAIT | BYPASS | RETURN_TO_DEPOT).
 	r.HandleFunc("/v1/admin/shop-closed/resolve",
 		auth.RequireRole(adminOrSupplier, log(d.Order.HandleResolveShopClosed(d.ShopClosedDeps))))
 
-	// 8. Edge 27 — supplier approves early route completion.
+	// 9. Edge 27 — supplier approves early route completion.
 	r.HandleFunc("/v1/admin/route/approve-early-complete",
 		auth.RequireRole(adminOrSupplier, log(order.HandleApproveEarlyComplete(d.Order, d.EarlyCompleteDeps))))
 
-	// 9. Edge 28 — supplier approves/rejects driver-proposed negotiation.
+	// 10. Edge 28 — supplier approves/rejects driver-proposed negotiation.
 	r.HandleFunc("/v1/admin/negotiate/resolve",
 		auth.RequireRole(adminOrSupplier, log(order.HandleResolveNegotiation(d.Order, d.NegotiationDeps))))
 
-	// 10. Edge 32 — supplier approves/denies credit delivery.
+	// 11. Edge 32 — supplier approves/denies credit delivery.
 	r.HandleFunc("/v1/admin/orders/resolve-credit",
 		auth.RequireRole(adminOrSupplier, log(order.HandleResolveCreditDelivery(d.Order, d.EarlyCompleteDeps))))
 
@@ -373,4 +378,3 @@ func paymentReconcileHandler(sessionSvc *payment.SessionService, gp *payment.Glo
 		json.NewEncoder(w).Encode(result)
 	}
 }
-

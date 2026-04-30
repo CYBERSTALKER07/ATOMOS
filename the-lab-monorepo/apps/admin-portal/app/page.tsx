@@ -314,13 +314,13 @@ export default function AdminDashboard() {
     const totalRev = orders
       .filter((o) => o.state === "COMPLETED")
       .reduce((s, o) => s + (o.amount ?? 0), 0);
-    const paymeRev = orders
-      .filter((o) => o.state === "COMPLETED" && o.payment_gateway === "payme")
+    const globalPayRev = orders
+      .filter((o) => o.state === "COMPLETED" && o.payment_gateway?.toUpperCase() === "GLOBAL_PAY")
       .reduce((s, o) => s + (o.amount ?? 0), 0);
-    const clickRev = orders
-      .filter((o) => o.state === "COMPLETED" && o.payment_gateway === "click")
+    const cashRev = orders
+      .filter((o) => o.state === "COMPLETED" && o.payment_gateway?.toUpperCase() === "CASH")
       .reduce((s, o) => s + (o.amount ?? 0), 0);
-    return { activeTrucks, completed, inTransit, pending, totalRev, paymeRev, clickRev, total: orders.length };
+    return { activeTrucks, completed, inTransit, pending, totalRev, globalPayRev, cashRev, total: orders.length };
   }, [orders]);
 
   // Pipeline data for donut chart
@@ -333,8 +333,8 @@ export default function AdminDashboard() {
 
   // Revenue split for bar chart
   const revData = useMemo(() => [
-    { gateway: 'Payme', amount: kpi.paymeRev },
-    { gateway: 'Click', amount: kpi.clickRev },
+    { gateway: 'Global Pay', amount: kpi.globalPayRev },
+    { gateway: 'Cash', amount: kpi.cashRev },
   ], [kpi]);
 
   // Fake sparkline data (deterministic from order counts)

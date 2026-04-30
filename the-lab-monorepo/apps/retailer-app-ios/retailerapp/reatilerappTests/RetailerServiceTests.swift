@@ -103,8 +103,8 @@ struct RetailerServiceTests {
     // MARK: - GlobalPaynt Gateway Values
 
     @Test func global_payntGatewayOptions() {
-        let gateways = ["GLOBAL_PAY", "CASH", "UZCARD"]
-        #expect(gateways.count == 4)
+        let gateways = ["GLOBAL_PAY", "CASH"]
+        #expect(gateways.count == 2)
         
         #expect(gateways.contains("GLOBAL_PAY"))
         #expect(gateways.contains("CASH"))

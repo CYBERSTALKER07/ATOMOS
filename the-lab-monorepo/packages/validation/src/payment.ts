@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // ─── GlobalPaynt Gateway ────────────────────────────────────────────────────────
-export const GlobalPayntGatewaySchema = z.enum(["CASH", "GLOBAL_PAY", "GLOBAL_PAY", "UZCARD", "CASH"]);
+export const GlobalPayntGatewaySchema = z.enum(["CASH", "GLOBAL_PAY"]);
 
 // ─── GlobalPaynt Session Status ─────────────────────────────────────────────────
 export const GlobalPayntSessionStatusSchema = z.enum([
@@ -28,8 +28,8 @@ export const GlobalPayntAttemptStatusSchema = z.enum([
 // POST /v1/order/card-checkout
 export const CardCheckoutRequestSchema = z.object({
     order_id: z.string().uuid("Invalid order ID"),
-    gateway: z.enum(["CASH", "GLOBAL_PAY", "GLOBAL_PAY"], {
-        errorMap: () => ({ message: "Gateway must be CASH, GLOBAL_PAY, or GLOBAL_PAY" }),
+    gateway: z.enum(["CASH", "GLOBAL_PAY"], {
+        errorMap: () => ({ message: "Gateway must be CASH or GLOBAL_PAY" }),
     }),
 });
 

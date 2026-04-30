@@ -22,7 +22,7 @@ export type SLAEntry = {
   date: string; on_time: number; late: number; breached: number; total_orders: number;
 };
 export type RevenueDayBucket = {
-  date: string; total: number; payme: number; click: number; card: number; cash: number;
+  date: string; total: number; global_pay: number; card: number; cash: number;
 };
 export type GatewayBreakdown = {
   gateway: string; total: number; order_count: number;

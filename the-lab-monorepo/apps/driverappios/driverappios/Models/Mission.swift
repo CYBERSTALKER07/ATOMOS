@@ -11,7 +11,7 @@ struct Mission: Codable, Identifiable, Hashable {
     let target_lat: Double
     let target_lng: Double
     let amount: Int
-    let gateway: String         // "CASH" | "GLOBAL_PAY" | "CASH" | "UZCARD"
+    let gateway: String         // "CASH" | "GLOBAL_PAY"
     let estimated_arrival_at: String?
     let route_id: String?
     let sequence_index: Int?
@@ -51,7 +51,7 @@ extension Mission {
             target_lat: 41.3275,
             target_lng: 69.3341,
             amount: 2_100_000,
-            gateway: "UZCARD",
+            gateway: "CASH",
             estimated_arrival_at: nil,
             route_id: nil,
             sequence_index: nil

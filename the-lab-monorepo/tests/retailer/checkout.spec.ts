@@ -121,7 +121,7 @@ test.describe('Retailer Checkout', () => {
         status: 200,
         body: JSON.stringify({
           order_id: 'test-order',
-          global_paynt_url: 'https://checkout.paycom.uz/test',
+          global_paynt_url: 'https://checkout.global-pay.example/test',
           status: 'AWAITING_GLOBAL_PAYNT',
         }),
       });

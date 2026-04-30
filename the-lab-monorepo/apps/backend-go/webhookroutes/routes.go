@@ -26,12 +26,10 @@ type Deps struct {
 // RegisterRoutes mounts the payment gateway webhook surface:
 //
 //	POST /v1/webhooks/global-pay — Global Pay HPP return
-//	POST /v1/webhooks/stripe     — Stripe event (signature-verified)
 func RegisterRoutes(r chi.Router, d Deps) {
 	guard := d.PriorityGuard
 	log := d.Log
 	svc := d.WebhookSvc
 
 	r.HandleFunc("/v1/webhooks/global-pay", guard(log(svc.HandleGlobalPayWebhook)))
-	r.HandleFunc("/v1/webhooks/stripe", guard(log(svc.HandleStripeWebhook)))
 }

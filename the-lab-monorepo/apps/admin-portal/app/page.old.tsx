@@ -248,17 +248,17 @@ export default function AdminDashboard() {
             {(() => {
               const activeTrucks = new Set(orders.filter(o => o.route_id).map(o => o.route_id)).size;
               const completedToday = orders.filter(o => o.state === 'COMPLETED').length;
-              const paymeRevenue = orders
-                .filter(o => o.state === 'COMPLETED' && o.payment_gateway === 'payme')
+              const globalPayRevenue = orders
+                .filter(o => o.state === 'COMPLETED' && o.payment_gateway?.toUpperCase() === 'GLOBAL_PAY')
                 .reduce((sum, o) => sum + (o.amount ?? 0), 0);
-              const clickRevenue = orders
-                .filter(o => o.state === 'COMPLETED' && o.payment_gateway === 'click')
+              const cashRevenue = orders
+                .filter(o => o.state === 'COMPLETED' && o.payment_gateway?.toUpperCase() === 'CASH')
                 .reduce((sum, o) => sum + (o.amount ?? 0), 0);
               return [
                 { label: "Active Trucks", value: String(activeTrucks), sub: `${orders.length} total orders` },
                 { label: "Completed Today", value: String(completedToday), sub: `of ${orders.length} orders` },
-                { label: "Payme Revenue", value: `${paymeRevenue.toLocaleString()}`, sub: "Settled" },
-                { label: "Click Revenue", value: `${clickRevenue.toLocaleString()}`, sub: "Real-time" },
+                { label: "Global Pay Revenue", value: `${globalPayRevenue.toLocaleString()}`, sub: "Settled" },
+                { label: "Cash Revenue", value: `${cashRevenue.toLocaleString()}`, sub: "Collected" },
               ];
             })().map(({ label, value, sub }, i) => (
               <div

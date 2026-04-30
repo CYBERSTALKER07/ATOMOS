@@ -50,8 +50,7 @@ export default function RevenueChart({ data }: Props) {
               formatter={(value: any) => value.toLocaleString()}
             />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Area type="monotone" dataKey="payme" name="Payme" stroke="oklch(0.6 0.2 240)" fill="oklch(0.6 0.2 240 / 0.12)" strokeWidth={2} stackId="1" />
-            <Area type="monotone" dataKey="click" name="Click" stroke="oklch(0.65 0.2 150)" fill="oklch(0.65 0.2 150 / 0.12)" strokeWidth={2} stackId="1" />
+            <Area type="monotone" dataKey="global_pay" name="Global Pay" stroke="oklch(0.6 0.2 240)" fill="oklch(0.6 0.2 240 / 0.12)" strokeWidth={2} stackId="1" />
             <Area type="monotone" dataKey="card" name="Card" stroke="oklch(0.6 0.15 300)" fill="oklch(0.6 0.15 300 / 0.1)" strokeWidth={2} stackId="1" />
             <Area type="monotone" dataKey="cash" name="Cash" stroke="oklch(0.65 0.12 60)" fill="oklch(0.65 0.12 60 / 0.1)" strokeWidth={2} stackId="1" />
           </AreaChart>

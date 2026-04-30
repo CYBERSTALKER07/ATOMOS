@@ -122,7 +122,7 @@ struct MissionTests {
     }
 
     @Test func mission_gateways_allValid() {
-        let validGateways = Set(["CASH", "GLOBAL_PAY", "CASH", "UZCARD"])
+        let validGateways = Set(["CASH", "GLOBAL_PAY"])
         for m in Mission.mockMissions {
             #expect(validGateways.contains(m.gateway), "Unexpected gateway: \(m.gateway)")
         }

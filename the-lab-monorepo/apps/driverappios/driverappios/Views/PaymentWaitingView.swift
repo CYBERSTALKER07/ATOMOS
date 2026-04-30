@@ -2,7 +2,7 @@
 //  PaymentWaitingView.swift
 //  driverappios
 //
-//  Shown after driver confirms offload for Payme orders.
+//  Shown after driver confirms offload for card-payment orders.
 //  Connects to /v1/ws/driver and waits for PAYMENT_SETTLED push.
 //  Once settled, driver can tap "Complete" to finalize delivery.
 //
@@ -53,7 +53,7 @@ struct PaymentWaitingView: View {
                 ProgressView()
                     .scaleEffect(1.2)
                     .padding(.bottom, LabTheme.s8)
-                Text("Retailer is completing payment via Payme...")
+                Text("Retailer is completing card payment...")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(LabTheme.fgTertiary)
                     .multilineTextAlignment(.center)

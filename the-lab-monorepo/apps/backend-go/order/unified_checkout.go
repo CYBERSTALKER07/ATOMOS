@@ -36,7 +36,7 @@ import (
 // UnifiedCheckoutRequest is the single payload from the native app's checkout.
 type UnifiedCheckoutRequest struct {
 	RetailerID     string               `json:"retailer_id"`
-	PaymentGateway string               `json:"payment_gateway"` // "CASH" | "GLOBAL_PAY" | "UZCARD"
+	PaymentGateway string               `json:"payment_gateway"` // "CASH" | "GLOBAL_PAY"
 	Latitude       float64              `json:"latitude"`
 	Longitude      float64              `json:"longitude"`
 	Items          []cart.OrderLineItem `json:"items"`
@@ -140,6 +140,12 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		http.Error(w, `{"error":"payment_gateway is required"}`, http.StatusUnprocessableEntity)
 		return
 	}
+	normalizedGateway := normalizeCardGateway(req.PaymentGateway)
+	if normalizedGateway == "" {
+		http.Error(w, `{"error":"payment_gateway must be GLOBAL_PAY or CASH"}`, http.StatusUnprocessableEntity)
+		return
+	}
+	req.PaymentGateway = normalizedGateway
 	for _, item := range req.Items {
 		if item.SkuId == "" || item.Quantity <= 0 || item.UnitPrice <= 0 {
 			http.Error(w, `{"error":"each item must have sku_id, positive quantity, and positive unit_price"}`, http.StatusUnprocessableEntity)
