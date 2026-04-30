@@ -15,7 +15,7 @@ struct OrderModelTests {
 
     @Test func orderStateEnum_allCases() async throws {
         let count = OrderState.allCases.count
-        #expect(count == 15, "OrderState should have 15 cases, got \(count)")
+        #expect(count == 17, "OrderState should have 17 cases, got \(count)")
     }
 
     @Test func orderStateEnum_labels() async throws {

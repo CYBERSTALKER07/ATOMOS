@@ -34,9 +34,9 @@ describe('readToken', () => {
     expect(readToken()).toBe('tok/en+special');
   });
 
-  it('reads from localStorage when no cookie', () => {
+  it('does not read from localStorage when no cookie', () => {
     localStorage.setItem('retailer_jwt', 'stored-token');
-    expect(readToken()).toBe('stored-token');
+    expect(readToken()).toBe('');
   });
 
   it('prefers cookie over localStorage', () => {

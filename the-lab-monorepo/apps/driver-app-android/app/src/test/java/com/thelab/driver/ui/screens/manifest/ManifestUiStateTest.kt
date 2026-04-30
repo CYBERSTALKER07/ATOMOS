@@ -142,7 +142,7 @@ class ManifestUiStateTest {
     @Test
     fun `OrderState has all expected values`() {
         val expected = setOf(
-            "PENDING", "LOADED", "DISPATCHED", "IN_TRANSIT", "ARRIVING", "ARRIVED",
+            "PENDING", "PENDING_REVIEW", "SCHEDULED", "LOADED", "DISPATCHED", "IN_TRANSIT", "ARRIVING", "ARRIVED",
             "ARRIVED_SHOP_CLOSED", "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION",
             "CANCEL_REQUESTED", "NO_CAPACITY", "COMPLETED", "CANCELLED",
             "QUARANTINE", "DELIVERED_ON_CREDIT"

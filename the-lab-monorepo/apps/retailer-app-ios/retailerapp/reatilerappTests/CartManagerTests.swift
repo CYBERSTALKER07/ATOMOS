@@ -189,12 +189,12 @@ struct CartManagerTests {
 
         let payload = cart.buildCheckoutPayload(
             retailerId: "r123",
-            global_payntGateway: "GLOBAL_PAY",
+            paymentGateway: "GLOBAL_PAY",
             latitude: 41.3,
             longitude: 69.3
         )
         #expect(payload.retailerId == "r123")
-        #expect(payload.global_payntGateway == "GLOBAL_PAY")
+        #expect(payload.paymentGateway == "GLOBAL_PAY")
         #expect(payload.items.count == 1)
         #expect(payload.items[0].quantity == 3)
     }

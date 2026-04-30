@@ -134,38 +134,26 @@ class CartUiStateTest {
     }
 
     @Test
-    fun selectedGlobalPayntLabel_cash() {
-        val state = CartUiState(selectedGlobalPayntGateway = "CASH")
-        assertEquals("Cash", state.selectedGlobalPayntLabel)
+    fun selectedPaymentLabel_global_pay() {
+        val state = CartUiState(selectedPaymentGateway = "GLOBAL_PAY")
+        assertEquals("GlobalPay", state.selectedPaymentLabel)
     }
 
     @Test
-    fun selectedGlobalPayntLabel_global_pay() {
-        val state = CartUiState(selectedGlobalPayntGateway = "GLOBAL_PAY")
-        assertEquals("GlobalPay", state.selectedGlobalPayntLabel)
+    fun selectedPaymentLabel_cash() {
+        val state = CartUiState(selectedPaymentGateway = "CASH")
+        assertEquals("Cash on Delivery", state.selectedPaymentLabel)
     }
 
     @Test
-    fun selectedGlobalPayntLabel_globalPay() {
-        val state = CartUiState(selectedGlobalPayntGateway = "GLOBAL_PAY")
-        assertEquals("GlobalPay", state.selectedGlobalPayntLabel)
+    fun selectedPaymentLabel_unknown_fallsBackToCash() {
+        val state = CartUiState(selectedPaymentGateway = "UNKNOWN_GATEWAY")
+        assertEquals("Cash", state.selectedPaymentLabel)
     }
 
     @Test
-    fun selectedGlobalPayntLabel_cash() {
-        val state = CartUiState(selectedGlobalPayntGateway = "CASH")
-        assertEquals("Cash on Delivery", state.selectedGlobalPayntLabel)
-    }
-
-    @Test
-    fun selectedGlobalPayntLabel_unknown_fallsBackToCash() {
-        val state = CartUiState(selectedGlobalPayntGateway = "UNKNOWN_GATEWAY")
-        assertEquals("Cash", state.selectedGlobalPayntLabel)
-    }
-
-    @Test
-    fun selectedGlobalPayntLabel_handlesWhitespaceAndCase() {
-        val state = CartUiState(selectedGlobalPayntGateway = "  global_pay  ")
-        assertEquals("GlobalPay", state.selectedGlobalPayntLabel)
+    fun selectedPaymentLabel_handlesWhitespaceAndCase() {
+        val state = CartUiState(selectedPaymentGateway = "  global_pay  ")
+        assertEquals("GlobalPay", state.selectedPaymentLabel)
     }
 }

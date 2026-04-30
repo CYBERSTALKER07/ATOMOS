@@ -5,9 +5,17 @@ import path from "path";
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "."),
-    },
+    alias: [
+      { find: "@", replacement: path.resolve(__dirname, ".") },
+      {
+        find: "@lab/types",
+        replacement: path.resolve(__dirname, "../../packages/types/index.ts"),
+      },
+      {
+        find: /^@lab\/types\/(.*)$/,
+        replacement: path.resolve(__dirname, "../../packages/types/$1"),
+      },
+    ],
   },
   test: {
     environment: "jsdom",

@@ -25,8 +25,8 @@ struct OrderStatusTests {
         #expect(OrderStatus.arrived.displayName == "Driver Arrived")
     }
 
-    @Test func displayName_awaitingGlobalPaynt() {
-        #expect(OrderStatus.awaitingGlobalPaynt.displayName == "Awaiting GlobalPaynt")
+    @Test func displayName_awaitingPayment() {
+        #expect(OrderStatus.awaitingPayment.displayName == "Awaiting Payment")
     }
 
     @Test func displayName_pendingCash() {
@@ -58,7 +58,7 @@ struct OrderStatusTests {
     // MARK: - isActive
 
     @Test func isActive_activeStates() {
-        let active: [OrderStatus] = [.loaded, .dispatched, .inTransit, .arrived, .awaitingGlobalPaynt, .pendingCashCollection]
+        let active: [OrderStatus] = [.loaded, .dispatched, .inTransit, .arrived, .awaitingPayment, .pendingCashCollection]
         for status in active {
             #expect(status.isActive == true, "\(status) should be active")
         }

@@ -34,7 +34,7 @@ class OrderStatusTest {
 
     @Test
     fun displayName_awaitingGlobalPaynt() {
-        assertEquals("GlobalPaynt Required", OrderStatus.AWAITING_GLOBAL_PAYNT.displayName)
+        assertEquals("Payment Required", OrderStatus.AWAITING_GLOBAL_PAYNT.displayName)
     }
 
     @Test
@@ -92,9 +92,20 @@ class OrderStatusTest {
     }
 
     @Test
-    fun canCancel_onlyPending() {
+    fun canCancel_pendingAndEarlyStates() {
         assertTrue(OrderStatus.PENDING.canCancel)
-        val others = OrderStatus.entries.filter { it != OrderStatus.PENDING }
+        assertTrue(OrderStatus.PENDING_REVIEW.canCancel)
+        assertTrue(OrderStatus.SCHEDULED.canCancel)
+        assertTrue(OrderStatus.AUTO_ACCEPTED.canCancel)
+
+        val others = OrderStatus.entries.filter {
+            it !in setOf(
+                OrderStatus.PENDING,
+                OrderStatus.PENDING_REVIEW,
+                OrderStatus.SCHEDULED,
+                OrderStatus.AUTO_ACCEPTED,
+            )
+        }
         for (s in others) assertFalse("$s should not be cancellable", s.canCancel)
     }
 
