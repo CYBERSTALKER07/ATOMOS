@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 /**
- * The Lab — M3 Retailer Theme
+ * Pegasus — M3 Retailer Theme
  *
  * Neutral B&W brand palette as baseline.
  * Dynamic color (Android 12+) activates Material You personalization.

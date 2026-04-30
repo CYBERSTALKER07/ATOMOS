@@ -11,11 +11,12 @@ final class APIClient {
     private let encoder: JSONEncoder
 
     #if DEBUG
-    // Simulator: localhost. Physical device: set LAB_DEV_HOST scheme env variable
-    // to the Mac's LAN IP (e.g. 192.168.1.42) for backend reachability over Wi-Fi.
+    // Simulator: localhost. Physical device: set PEGASUS_DEV_HOST
+    // scheme env variable to the Mac's LAN IP (e.g. 192.168.1.42)
+    // for backend reachability over Wi-Fi.
     var baseURL: String = {
-        let raw = ProcessInfo.processInfo.environment["LAB_DEV_HOST"]?
-            .trimmingCharacters(in: .whitespaces) ?? ""
+        let raw = (ProcessInfo.processInfo.environment["PEGASUS_DEV_HOST"] ?? "")
+            .trimmingCharacters(in: .whitespaces)
         if raw.isEmpty { return "http://localhost:8080" }
         if raw.hasPrefix("http://") || raw.hasPrefix("https://") { return raw }
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8080"

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"backend-go/kafka/workerpool"
@@ -34,7 +35,7 @@ func StartGatewayWorker(ctx context.Context, deps GatewayWorkerDeps) {
 	reader := kafkago.NewReader(kafkago.ReaderConfig{
 		Brokers:  []string{deps.BrokerAddress},
 		Topic:    TopicMain,
-		GroupID:  "lab-gateway-worker-group",
+		GroupID:  "pegasus-gateway-worker-group",
 		MinBytes: 10e3,
 		MaxBytes: 10e6,
 	})
@@ -74,7 +75,7 @@ func StartGatewayWorker(ctx context.Context, deps GatewayWorkerDeps) {
 			slog.Error("gateway_worker: pool exited", "err", err)
 		}
 	}()
-	slog.Info("gateway worker ONLINE", "topic", TopicMain, "group", "lab-gateway-worker-group")
+	slog.Info("gateway worker ONLINE", "topic", TopicMain, "group", "pegasus-gateway-worker-group")
 }
 
 // executeGatewayCapture charges the payment provider and updates ledger status.
@@ -90,10 +91,17 @@ func executeGatewayCapture(deps GatewayWorkerDeps, intent PaymentIntentEvent) {
 		Timestamp: time.Now(),
 	}
 
+	platformTxnID := resolvePlatformTxnID(intent)
+	if platformTxnID == "" {
+		slog.Error("gateway_worker.missing_platform_txn_id", "order_id", intent.OrderID)
+		RouteToDLQ(dlqEvent, "missing_platform_txn_id")
+		return
+	}
+
 	// ── Idempotency guard: skip if ledger already settled or failed ──
-	currentStatus, guardErr := readLedgerStatus(deps.Spanner, intent.LabTxnId)
+	currentStatus, guardErr := readLedgerStatus(deps.Spanner, platformTxnID)
 	if guardErr != nil {
-		slog.Error("gateway_worker.ledger_status_read_failed", "order_id", intent.OrderID, "txn_id", intent.LabTxnId, "err", guardErr)
+		slog.Error("gateway_worker.ledger_status_read_failed", "order_id", intent.OrderID, "txn_id", platformTxnID, "err", guardErr)
 		return
 	}
 	if currentStatus != "PENDING_GATEWAY" {
@@ -161,6 +169,13 @@ func executeGatewayCapture(deps GatewayWorkerDeps, intent PaymentIntentEvent) {
 	updateLedgerStatus(deps.Spanner, intent, "SETTLED", "")
 }
 
+func resolvePlatformTxnID(intent PaymentIntentEvent) string {
+	if txnID := strings.TrimSpace(intent.PlatformTxnId); txnID != "" {
+		return txnID
+	}
+	return strings.TrimSpace(intent.LabTxnId)
+}
+
 // resolveGPCredentials resolves Global Pay credentials from vault for a given order.
 func resolveGPCredentials(ctx context.Context, vault payment.VaultResolver, orderID string) (payment.GlobalPayCredentials, error) {
 	if vault == nil {
@@ -197,13 +212,22 @@ func readLedgerStatus(client *spanner.Client, txnID string) (string, error) {
 func updateLedgerStatus(client *spanner.Client, intent PaymentIntentEvent, targetStatus, failureReason string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	platformTxnID := resolvePlatformTxnID(intent)
+	if platformTxnID == "" {
+		slog.Error("gateway_worker.missing_platform_txn_id_for_update", "order_id", intent.OrderID, "target_status", targetStatus)
+		return
+	}
+	if strings.TrimSpace(intent.SupplierTxnId) == "" {
+		slog.Error("gateway_worker.missing_supplier_txn_id_for_update", "order_id", intent.OrderID, "target_status", targetStatus)
+		return
+	}
 
 	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		now := time.Now()
 		mutations := make([]*spanner.Mutation, 0, 2)
 
-		// Update both ledger rows (Lab + Supplier) atomically with conditional guard.
-		for _, txnID := range []string{intent.LabTxnId, intent.SupplierTxnId} {
+		// Update both ledger rows (platform + supplier) atomically with conditional guard.
+		for _, txnID := range []string{platformTxnID, intent.SupplierTxnId} {
 			// Read current status inside the RW txn (serializable isolation).
 			row, readErr := txn.ReadRow(ctx, "LedgerEntries", spanner.Key{txnID}, []string{"Status"})
 			if readErr != nil {

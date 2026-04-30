@@ -8,11 +8,12 @@ final class APIClient: Sendable {
     }
 
     #if DEBUG
-    // Simulator: localhost. Physical device: set LAB_DEV_HOST scheme env variable
-    // to the Mac's LAN IP (e.g. 192.168.1.42) for backend reachability over Wi-Fi.
+    // Simulator: localhost. Physical device: set PEGASUS_DEV_HOST
+    // scheme env variable to the Mac's LAN IP (e.g. 192.168.1.42)
+    // for backend reachability over Wi-Fi.
     private let baseURL: URL = {
-        let raw = ProcessInfo.processInfo.environment["LAB_DEV_HOST"]?
-            .trimmingCharacters(in: .whitespaces) ?? ""
+        let raw = (ProcessInfo.processInfo.environment["PEGASUS_DEV_HOST"] ?? "")
+            .trimmingCharacters(in: .whitespaces)
         let s: String
         if raw.isEmpty { s = "http://localhost:8080/" }
         else if raw.hasPrefix("http://") || raw.hasPrefix("https://") {

@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Admin Portal - The Lab Industries",
+  title: "Admin Portal - Pegasus",
   description: "Live operational ledger and dispatch command center.",
   icons: {
     icon: [

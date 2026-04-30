@@ -117,7 +117,7 @@ fun ProfileScreen(
         // ── Version footer ──
         item {
             Text(
-                "The Lab · v1.0.0",
+                "Pegasus · v1.0.0",
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                 modifier = Modifier.fillMaxWidth(),

@@ -11,7 +11,7 @@ import (
 
 func main() {
 	os.Setenv("SPANNER_EMULATOR_HOST", "localhost:9010")
-	dbString := "projects/the-lab-project/instances/lab-instance/databases/the-lab-db"
+	dbString := "projects/pegasus-logistics/instances/pegasus-dev/databases/pegasus-db"
 	ctx := context.Background()
 	client, err := spanner.NewClient(ctx, dbString)
 	if err != nil {

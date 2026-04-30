@@ -1,8 +1,8 @@
 [package]
 name = "lab-warehouse-desktop"
 version = "0.1.0"
-description = "The Lab Industries — Warehouse Portal Desktop Shell"
-authors = ["The Lab Industries"]
+description = "Pegasus — Warehouse Portal Desktop Shell"
+authors = ["Pegasus"]
 license = "proprietary"
 repository = ""
 default-run = "lab-warehouse-desktop"

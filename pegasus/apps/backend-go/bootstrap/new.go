@@ -130,7 +130,7 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 		FeeBP:        platformCfg.PlatformFeeBasisPoints(),
 		Producer: &kafka.Writer{
 			Addr:     kafka.TCP(cfg.KafkaBrokerAddress),
-			Topic:    "lab-logistics-events",
+			Topic:    internalKafka.TopicMain,
 			Balancer: &kafka.LeastBytes{},
 		},
 	}

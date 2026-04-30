@@ -71,7 +71,7 @@ func main() {
 		os.Setenv("SPANNER_EMULATOR_HOST", "localhost:9010")
 	}
 	ctx := context.Background()
-	c, err := spanner.NewClient(ctx, "projects/lab-logistics/instances/lab-dev/databases/lab-db")
+	c, err := spanner.NewClient(ctx, "projects/pegasus-logistics/instances/pegasus-dev/databases/pegasus-db")
 	if err != nil {
 		log.Fatal(err)
 	}

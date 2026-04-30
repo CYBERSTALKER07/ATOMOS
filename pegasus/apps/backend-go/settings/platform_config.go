@@ -31,7 +31,7 @@ func NewPlatformConfig(sc *spanner.Client) *PlatformConfig {
 }
 
 // PlatformFeePercent returns the current platform fee percentage (0–100).
-// Default: 0% (zero-fee era — The Lab takes no commission).
+// Default: 0% (zero-fee era — Pegasus takes no commission).
 func (pc *PlatformConfig) PlatformFeePercent() int64 {
 	pc.mu.RLock()
 	defer pc.mu.RUnlock()

@@ -1,4 +1,4 @@
-module lab-ai-worker
+module pegasus-ai-worker
 
 go 1.25.0
 

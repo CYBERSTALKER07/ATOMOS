@@ -15,7 +15,7 @@ import (
 )
 
 // ─── Notification Dispatcher Consumer ──────────────────────────────────────────
-// Listens on lab-logistics-events and dispatches notifications for all event types
+// Listens on the logistics topic and dispatches notifications for all event types
 // to the appropriate recipients via:
 //   1. Spanner Notifications table (persistent inbox)
 //   2. WebSocket push (real-time toast)
@@ -37,8 +37,8 @@ type NotificationDeps struct {
 func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, brokerAddress string) {
 	reader := goKafka.NewReader(goKafka.ReaderConfig{
 		Brokers:  []string{brokerAddress},
-		Topic:    "lab-logistics-events",
-		GroupID:  "lab-notification-dispatcher-group",
+		Topic:    TopicMain,
+		GroupID:  "pegasus-notification-dispatcher-group",
 		MinBytes: 1,
 		MaxBytes: 10 << 20,
 	})
@@ -241,7 +241,7 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 			slog.Error("notification_dispatcher: pool exited", "err", err)
 		}
 	}()
-	slog.Info("notification dispatcher ONLINE", "topic", "lab-logistics-events")
+	slog.Info("notification dispatcher ONLINE", "topic", TopicMain)
 }
 
 // ─── Event Handlers ────────────────────────────────────────────────────────────
@@ -1273,7 +1273,7 @@ func handleRetailerRegistered(deps NotificationDeps, data []byte) {
 	// of new retailers happens via the catalog indexer (separate consumer).
 	dispatchToRecipient(deps, event.RetailerId, "RETAILER", EventRetailerRegistered,
 		notifications.FormattedNotification{
-			Title: "Welcome to The Lab",
+			Title: "Welcome to Pegasus",
 			Body:  fmt.Sprintf("Account %s registered. You can now place orders.", event.ShopName),
 		})
 }

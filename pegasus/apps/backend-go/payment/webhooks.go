@@ -46,7 +46,7 @@ import (
 const (
 	eventInvoiceSettled = "INVOICE_SETTLED"
 	eventOrderCompleted = "ORDER_COMPLETED"
-	topicMain           = "lab-logistics-events"
+	topicMain           = "pegasus-logistics-events"
 )
 
 // WebhookService holds the Spanner + Kafka handles for webhook processing.

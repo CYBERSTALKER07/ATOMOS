@@ -99,7 +99,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="auth-brand-logo">
             <Image
               src={isDark ? '/logo-light-square.png' : '/logo-dark-square.png'}
-              alt="The Lab Industries"
+              alt="Pegasus"
               width={500}
               height={500}
               priority
@@ -109,7 +109,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
 
         <p className="auth-brand-footer relative z-10">
-          The Lab Industries &copy; 2026
+          Pegasus &copy; 2026
         </p>
       </div>
 

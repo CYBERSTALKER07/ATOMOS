@@ -66,7 +66,7 @@ type Deps struct {
 
 // topicFleetEvents is the canonical destination topic for fleet state events
 // emitted through the transactional outbox.
-const topicFleetEvents = "lab-logistics-events"
+const topicFleetEvents = "pegasus-logistics-events"
 
 // RegisterRoutes mounts the twelve fleet endpoints. chi handles exact paths;
 // path-prefix dispatchers are registered on http.DefaultServeMux.

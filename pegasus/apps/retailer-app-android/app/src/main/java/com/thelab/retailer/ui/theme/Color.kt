@@ -3,7 +3,7 @@ package com.thelab.retailer.ui.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * The Lab — Black & White Minimalist Color System
+ * Pegasus — Black & White Minimalist Color System
  *
  * Matches iOS retailer app: pure B&W with status-only color accents.
  * Google Cloud Console / X aesthetic. Zero brand color pollution.

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/finance"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -173,13 +174,15 @@ func queryWarehouseFinancials(ctx context.Context, client *spanner.Client, wareh
 		      FROM LedgerEntries le
 		      JOIN Orders o ON le.OrderId = o.OrderId
 		      WHERE o.WarehouseId = @wid
-		        AND le.AccountId = 'ACC-THE-LAB'
-		        AND le.EntryType = 'COMMISSION'
+		        AND le.AccountId IN UNNEST(@platformAccountIds)
+		        AND le.EntryType IN UNNEST(@platformCreditEntryTypes)
 		        AND o.CreatedAt >= @start AND o.CreatedAt < @end`,
 		Params: map[string]interface{}{
-			"wid":   warehouseID,
-			"start": startDate,
-			"end":   endDate,
+			"wid":                      warehouseID,
+			"start":                    startDate,
+			"end":                      endDate,
+			"platformAccountIds":       finance.PlatformAccountIDsForQuery(),
+			"platformCreditEntryTypes": finance.PlatformCreditEntryTypesForQuery(),
 		},
 	}
 	fRow, err := txn.Query(ctx, fStmt).Next()

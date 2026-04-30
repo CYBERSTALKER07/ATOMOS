@@ -23,6 +23,7 @@ dist/
 **/backend-go/main
 **/backend-go/seed
 **/backend-go/setup
+**/ai-worker/pegasus-ai-worker
 **/ai-worker/lab-ai-worker
 
 # === Android ===

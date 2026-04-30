@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"time"
 
+	"backend-go/finance"
 	"backend-go/kafka/workerpool"
 	"backend-go/outbox"
 	"backend-go/settings"
@@ -43,8 +44,8 @@ func GenerateTxnId(orderID, entryType string, amount int64) string {
 func StartTreasurer(ctx context.Context, spannerClient *spanner.Client, brokerAddress string, platformCfg *settings.PlatformConfig) {
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  []string{brokerAddress},
-		Topic:    "lab-logistics-events",
-		GroupID:  "lab-treasurer-group",
+		Topic:    TopicMain,
+		GroupID:  "pegasus-treasurer-group",
 		MinBytes: 10e3,
 		MaxBytes: 10e6,
 	})
@@ -116,7 +117,7 @@ func StartTreasurer(ctx context.Context, spannerClient *spanner.Client, brokerAd
 			slog.Error("treasurer: pool exited", "err", err)
 		}
 	}()
-	slog.Info("treasurer ONLINE", "topic", "lab-logistics-events", "group", "lab-treasurer-group")
+	slog.Info("treasurer ONLINE", "topic", TopicMain, "group", "pegasus-treasurer-group")
 }
 
 // executeLedgerSplit writes PENDING ledger entries atomically with an outbox event.
@@ -179,10 +180,10 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 
 	// Strict integer math — dynamic commission from SystemConfig.
 	commissionRate := platformCfg.PlatformFeePercent()
-	labCommission := (event.Amount * commissionRate) / 100
-	supplierPayout := event.Amount - labCommission
+	platformCommission := (event.Amount * commissionRate) / 100
+	supplierPayout := event.Amount - platformCommission
 
-	txnIdA := GenerateTxnId(event.OrderId, "CREDIT_LAB", labCommission)
+	txnIdA := GenerateTxnId(event.OrderId, finance.PlatformCreditEntryType, platformCommission)
 	txnIdB := GenerateTxnId(event.OrderId, "CREDIT_SUPPLIER", supplierPayout)
 	now := time.Now()
 
@@ -215,7 +216,7 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 		}
 	}
 
-	slog.Info("treasurer.processing_order", "order_id", event.OrderId, "total", event.Amount, "lab_commission", labCommission, "supplier_id", supplierID, "supplier_payout", supplierPayout, "gateway", paymentGateway, "status", status)
+	slog.Info("treasurer.processing_order", "order_id", event.OrderId, "total", event.Amount, "platform_commission", platformCommission, "supplier_id", supplierID, "supplier_payout", supplierPayout, "gateway", paymentGateway, "status", status)
 
 	// Auth-Commit-Capture: write PENDING ledger entries + outbox event inside a single RWTxn.
 	// The gateway charge happens asynchronously in the Gateway Worker — never inline.
@@ -223,10 +224,10 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 	defer txCancel()
 	_, txErr := client.ReadWriteTransaction(txCtx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 
-		// Entry A: Credit The Lab Industries (Platform Fee)
+		// Entry A: Credit Pegasus (Platform Fee)
 		m1 := spanner.Insert("LedgerEntries",
 			[]string{"TransactionId", "OrderId", "AccountId", "Amount", "EntryType", "Status", "IdempotencyKey", "CreatedAt"},
-			[]interface{}{txnIdA, event.OrderId, "ACC-THE-LAB", labCommission, "CREDIT_LAB", status, idempotencyKey, now},
+			[]interface{}{txnIdA, event.OrderId, finance.PlatformAccountID, platformCommission, finance.PlatformCreditEntryType, status, idempotencyKey, now},
 		)
 
 		// Entry B: Credit the Supplier (Supplier Payout)
@@ -242,19 +243,21 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 		// For digital payments, emit PaymentIntentCreated so the Gateway Worker can charge.
 		if isDigital {
 			return outbox.EmitJSON(txn, "Order", event.OrderId, EventPaymentIntentCreated, TopicMain, PaymentIntentEvent{
-				OrderID:          event.OrderId,
-				SupplierId:       supplierID,
-				Amount:           event.Amount,
-				Currency:         "UZS",
-				PaymentGateway:   paymentGateway,
-				IdempotencyKey:   idempotencyKey,
-				LabCommission:    labCommission,
-				SupplierPayout:   supplierPayout,
-				LabTxnId:         txnIdA,
-				SupplierTxnId:    txnIdB,
-				AuthorizationID:  authorizationID,
-				AuthorizedAmount: authorizedAmount,
-				FinalAmount:      event.Amount, // Post-amendment amount (driver's tablet is source of truth)
+				OrderID:            event.OrderId,
+				SupplierId:         supplierID,
+				Amount:             event.Amount,
+				Currency:           "UZS",
+				PaymentGateway:     paymentGateway,
+				IdempotencyKey:     idempotencyKey,
+				PlatformCommission: platformCommission,
+				LabCommission:      platformCommission,
+				SupplierPayout:     supplierPayout,
+				PlatformTxnId:      txnIdA,
+				LabTxnId:           txnIdA,
+				SupplierTxnId:      txnIdB,
+				AuthorizationID:    authorizationID,
+				AuthorizedAmount:   authorizedAmount,
+				FinalAmount:        event.Amount, // Post-amendment amount (driver's tablet is source of truth)
 			}, telemetry.TraceIDFromContext(ctx))
 		}
 		return nil

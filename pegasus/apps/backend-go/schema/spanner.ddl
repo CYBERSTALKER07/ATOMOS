@@ -1,5 +1,5 @@
 -- ============================================================
--- THE LAB INDUSTRIES — CANONICAL SPANNER SCHEMA
+-- PEGASUS — CANONICAL SPANNER SCHEMA
 -- Last updated: Phase 6 — Abstract Volumetric Units (VU)
 -- ============================================================
 -- VU SCALE REFERENCE:

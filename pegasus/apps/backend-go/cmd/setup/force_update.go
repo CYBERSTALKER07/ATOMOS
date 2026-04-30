@@ -9,7 +9,7 @@ import (
 
 func forceUpdateTestRetailer() {
 	ctx := context.Background()
-	client, err := spanner.NewClient(ctx, "projects/the-lab-project/instances/lab-instance/databases/the-lab-db")
+	client, err := spanner.NewClient(ctx, "projects/pegasus-logistics/instances/pegasus-dev/databases/pegasus-db")
 	if err != nil {
 		log.Fatalf("failed to create client: %v", err)
 	}

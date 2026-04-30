@@ -120,7 +120,7 @@ func CreateGlobalPayHostedCheckout(ctx context.Context, creds GlobalPayCredentia
 		"clientTransactionId": req.AttemptID,
 		"callbackUrl":         callbackURL,
 		"callback_url":        callbackURL,
-		"description":         fmt.Sprintf("The Lab Industries order %s", req.OrderID),
+		"description":         fmt.Sprintf("Pegasus order %s", req.OrderID),
 	}
 	if successURL != "" {
 		payload["successRedirectUrl"] = successURL

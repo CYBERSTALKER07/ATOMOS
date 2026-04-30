@@ -5,7 +5,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.7.0
     pull_policy: if_not_present
-    container_name: lab-kafka
+    container_name: pegasus-kafka
     ports:
       - '9092:9092'
       - '9093:9093'
@@ -29,7 +29,7 @@ services:
       - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
       - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
       # Create log directory explicitly required for confluentinc KRaft images
-      - CLUSTER_ID=lab-industries-kraft-cluster
+      - CLUSTER_ID=pegasus-kraft-cluster
     volumes:
       - kafka_data:/var/lib/kafka/data
     ulimits:
@@ -40,7 +40,7 @@ services:
     command: >
       bash -c "
         if [ ! -f /var/lib/kafka/data/meta.properties ]; then
-          kafka-storage format --ignore-formatted -t $CLUSTER_ID -c /etc/kafka/kafka.properties
+          kafka-storage format --ignore-formatted -t $$CLUSTER_ID -c /etc/kafka/kafka.properties
         fi
         /etc/confluent/docker/run
       "
@@ -51,11 +51,11 @@ services:
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     pull_policy: if_not_present
-    container_name: lab-kafka-ui
+    container_name: pegasus-kafka-ui
     ports:
       - '8081:8080'
     environment:
-      - KAFKA_CLUSTERS_0_NAME=lab-local
+      - KAFKA_CLUSTERS_0_NAME=pegasus-local
       - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
     depends_on:
       - kafka
@@ -65,7 +65,7 @@ services:
   # ----------------------------------------
   kafka-init:
     image: confluentinc/cp-kafka:7.7.0
-    container_name: lab-kafka-init
+    container_name: pegasus-kafka-init
     depends_on:
       kafka:
         condition: service_healthy
@@ -73,10 +73,16 @@ services:
       bash -c "
         echo 'Waiting for Kafka to be ready...'
         cub kafka-ready -b kafka:29092 1 20
-        echo 'Creating lab-logistics-events topic with 128 partitions...'
-        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 128 --replication-factor 1 --topic lab-logistics-events
-        echo 'Creating lab-demand-forecast topic with 128 partitions...'
-        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 128 --replication-factor 1 --topic lab-demand-forecast
+        echo 'Creating pegasus-logistics-events topic with 128 partitions...'
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 128 --replication-factor 1 --topic pegasus-logistics-events
+        echo 'Creating pegasus-demand-forecast topic with 128 partitions...'
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 128 --replication-factor 1 --topic pegasus-demand-forecast
+        echo 'Creating pegasus-freeze-locks topic with 16 partitions...'
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 16 --replication-factor 1 --topic pegasus-freeze-locks
+        echo 'Creating pegasus-driver-sync-events topic with 16 partitions...'
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 16 --replication-factor 1 --topic pegasus-driver-sync-events
+        echo 'Creating pegasus-logistics-events-dlq topic with 1 partition...'
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 1 --replication-factor 1 --topic pegasus-logistics-events-dlq
         echo 'Topics created successfully.'
       "
 
@@ -87,7 +93,7 @@ services:
   redis:
     image: public.ecr.aws/docker/library/redis:alpine
     pull_policy: if_not_present
-    container_name: lab-redis
+    container_name: pegasus-redis
     ports:
       - '6379:6379'
     healthcheck:
@@ -104,7 +110,7 @@ services:
   spanner:
     image: gcr.io/cloud-spanner-emulator/emulator:latest
     pull_policy: if_not_present
-    container_name: lab-spanner
+    container_name: pegasus-spanner
     ports:
       - '9010:9010' # gRPC API
       - '9020:9020' # REST API
@@ -120,7 +126,7 @@ services:
   firebase-auth:
     image: node:22-alpine
     pull_policy: if_not_present
-    container_name: lab-firebase-auth
+    container_name: pegasus-firebase-auth
     ports:
       - '9099:9099' # Auth Emulator
       - '4000:4000' # Emulator UI
@@ -153,7 +159,7 @@ services:
   globalpay-mock:
     image: wiremock/wiremock:latest
     pull_policy: if_not_present
-    container_name: lab-globalpay-mock
+    container_name: pegasus-globalpay-mock
     ports:
       - '8085:8080'
     volumes:

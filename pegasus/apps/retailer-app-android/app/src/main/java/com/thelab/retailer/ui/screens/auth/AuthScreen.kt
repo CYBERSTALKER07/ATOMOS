@@ -167,7 +167,7 @@ fun AuthScreen(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "The Lab",
+                text = "Pegasus",
                 style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                 color = Color.Black,
             )

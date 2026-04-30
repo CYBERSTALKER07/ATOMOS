@@ -109,7 +109,7 @@ export default function FactoryLoginPage() {
         </form>
 
         <p className="text-center text-xs text-[var(--muted)] mt-6">
-          The Lab Industries — Factory Operations
+          Pegasus — Factory Operations
         </p>
       </div>
     </div>

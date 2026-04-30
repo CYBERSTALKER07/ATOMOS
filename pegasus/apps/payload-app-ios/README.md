@@ -19,10 +19,10 @@ Sources are not edited inside the `.xcodeproj` — they live in `payload-app-ios
 
 ## Physical-device dev
 
-The `APIClient` honours `LAB_DEV_HOST` from the scheme environment so a physical iPad on the LAN can reach the dev backend on the Mac:
+The `APIClient` honours `PEGASUS_DEV_HOST` from the scheme environment so a physical iPad on the LAN can reach the dev backend on the Mac:
 
 1. Edit Scheme → Run → Arguments → Environment Variables.
-2. Add `LAB_DEV_HOST` = `192.168.1.42` (your Mac's LAN IP).
+2. Add `PEGASUS_DEV_HOST` = `192.168.1.42` (your Mac's LAN IP).
 3. Run on device. Cleartext to LAN is permitted by `Info.plist` `NSAllowsLocalNetworking`.
 
 ## Architecture

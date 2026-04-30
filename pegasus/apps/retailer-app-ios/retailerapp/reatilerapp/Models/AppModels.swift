@@ -19,7 +19,7 @@ extension User {
     static let sample = User(
         id: "retailer-123",
         name: "Shakhzod",
-        company: "The Lab Retail",
+        company: "Pegasus Retail",
         email: nil,
         avatarURL: nil
     )

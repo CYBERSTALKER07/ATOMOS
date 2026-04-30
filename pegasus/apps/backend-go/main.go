@@ -159,7 +159,7 @@ func minInt(a, b int) int {
 }
 
 func main() {
-	log.Println("Booting up The Lab Industries - Backend API...")
+	log.Println("Booting up Pegasus - Backend API...")
 
 	// 1. Load config + fail-closed auth.
 	cfg, err := config.LoadConfig()

@@ -14,7 +14,7 @@ import (
 // OrderSyncEvent is the immutable event shape emitted by the Desert Protocol.
 // Each offline delivery that passes Redis deduplication fires one of these.
 // The Treasurer consumer ignores these (listens for ORDER_COMPLETED only);
-// a dedicated SyncConsumer should subscribe to "lab-driver-sync-events".
+// a dedicated SyncConsumer should subscribe to TopicDriverSync.
 type OrderSyncEvent struct {
 	OrderID   string `json:"order_id"`
 	DriverID  string `json:"driver_id"`
@@ -32,10 +32,10 @@ var syncWriter *goKafka.Writer
 func InitSyncWriter(brokerAddress string) {
 	syncWriter = &goKafka.Writer{
 		Addr:     goKafka.TCP(brokerAddress),
-		Topic:    "lab-driver-sync-events",
+		Topic:    TopicDriverSync,
 		Balancer: &goKafka.LeastBytes{},
 	}
-	log.Println("[SYNC_EMITTER] Desert Protocol Kafka writer armed on lab-driver-sync-events")
+	log.Printf("[SYNC_EMITTER] Desert Protocol Kafka writer armed on %s", TopicDriverSync)
 }
 
 // EmitOrderSyncEvent fires an immutable, append-only event to the driver sync
@@ -79,10 +79,10 @@ var correctionWriter *goKafka.Writer
 func InitCorrectionWriter(brokerAddress string) {
 	correctionWriter = &goKafka.Writer{
 		Addr:     goKafka.TCP(brokerAddress),
-		Topic:    "lab-logistics-events",
+		Topic:    TopicMain,
 		Balancer: &goKafka.LeastBytes{},
 	}
-	log.Println("[AI_FEEDBACK] Correction Kafka writer armed on lab-logistics-events")
+	log.Printf("[AI_FEEDBACK] Correction Kafka writer armed on %s", TopicMain)
 }
 
 // EmitPredictionCorrected fires an RLHF correction event to the logistics topic.

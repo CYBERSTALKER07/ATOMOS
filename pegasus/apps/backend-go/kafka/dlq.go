@@ -18,7 +18,7 @@ var dlqWriter *kafka.Writer
 func InitDLQ(brokerAddress string) {
 	dlqWriter = &kafka.Writer{
 		Addr:     kafka.TCP(brokerAddress),
-		Topic:    "lab-logistics-events-dlq",
+		Topic:    TopicMainDLQ,
 		Balancer: &kafka.LeastBytes{},
 	}
 	log.Println("[DLQ SYSTEM] Dead Letter Queue Transmitter Online.")
@@ -78,7 +78,7 @@ func ListDLQMessages(brokerAddress string, maxMessages int, offset int) ([]DLQMe
 
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:   []string{brokerAddress},
-		Topic:     "lab-logistics-events-dlq",
+		Topic:     TopicMainDLQ,
 		GroupID:   "", // No consumer group — read from offset 0 every call (observer pattern)
 		Partition: 0,
 		MinBytes:  1,
@@ -140,13 +140,13 @@ func ListDLQMessages(brokerAddress string, maxMessages int, offset int) ([]DLQMe
 }
 
 // ReplayDLQMessage reads the payload at a specific offset from the DLQ and
-// re-emits it onto the main 'lab-logistics-events' topic so the payment
-// reconciliation consumer can reprocess it without data loss.
+// re-emits it onto the main logistics topic so reconciliation workers can
+// reprocess it without data loss.
 func ReplayDLQMessage(brokerAddress string, offset int64) error {
 	// 1. Open a partition reader exactly at the target offset
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:   []string{brokerAddress},
-		Topic:     "lab-logistics-events-dlq",
+		Topic:     TopicMainDLQ,
 		Partition: 0,
 		MinBytes:  1,
 		MaxBytes:  10 << 20,
@@ -178,20 +178,13 @@ func ReplayDLQMessage(brokerAddress string, offset int64) error {
 	}
 
 	// 3. Re-emit onto the live reconciliation topic
-	mainWriter := &kafka.Writer{
-		Addr:     kafka.TCP(brokerAddress),
-		Topic:    "lab-logistics-events",
-		Balancer: &kafka.LeastBytes{},
-	}
+	mainWriter := &kafka.Writer{Addr: kafka.TCP(brokerAddress), Balancer: &kafka.LeastBytes{}}
 	defer mainWriter.Close()
 
 	writeCtx, writeCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer writeCancel()
 
-	err = mainWriter.WriteMessages(writeCtx, kafka.Message{
-		Key:   msg.Key,
-		Value: originalPayload,
-	})
+	err = mainWriter.WriteMessages(writeCtx, kafka.Message{Topic: TopicMain, Key: msg.Key, Value: originalPayload})
 	if err != nil {
 		return fmt.Errorf("DLQ replay re-emit error: %w", err)
 	}

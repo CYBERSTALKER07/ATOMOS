@@ -17,7 +17,7 @@ import kotlin.math.min
 import kotlin.math.sin
 
 /**
- * M3 Expressive Shape System — The Lab Industries
+ * M3 Expressive Shape System — Pegasus
  *
  * Custom shape morphs matching Material Design 3 Expressive spec.
  * Reference: material.io/blog/material-3-expressive-update

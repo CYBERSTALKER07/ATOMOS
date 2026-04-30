@@ -19,7 +19,7 @@ import (
 
 const (
 	eventRouteCompleted = "ROUTE_COMPLETED"
-	topicLogisticsMain  = "lab-logistics-events"
+	topicLogisticsMain  = "pegasus-logistics-events"
 )
 
 // HandleCompleteRoute transitions all undelivered orders on a route to QUARANTINE.

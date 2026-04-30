@@ -8,15 +8,17 @@ import (
 	"net/http"
 
 	"backend-go/auth"
+	"backend-go/finance"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 )
 
 type TreasuryReport struct {
-	LabRevenue     int64 `json:"lab_revenue"`
-	SupplierPayout int64 `json:"supplier_payout"`
-	TotalVolume    int64 `json:"total_volume"`
+	PlatformRevenue int64 `json:"platform_revenue"`
+	LabRevenue      int64 `json:"lab_revenue"`
+	SupplierPayout  int64 `json:"supplier_payout"`
+	TotalVolume     int64 `json:"total_volume"`
 }
 
 // GetTreasuryMetrics runs the aggregation directly on Spanner's distributed nodes
@@ -47,14 +49,16 @@ func GetTreasuryMetrics(ctx context.Context, client *spanner.Client) (*TreasuryR
 			continue
 		}
 
-		if accountId == "ACC-THE-LAB" {
-			report.LabRevenue += amount.Int64
+		if finance.IsPlatformAccount(accountId) {
+			report.PlatformRevenue += amount.Int64
 		} else {
 			report.SupplierPayout += amount.Int64
 		}
 	}
 
-	report.TotalVolume = report.LabRevenue + report.SupplierPayout
+	// Keep legacy lab_revenue response field for backward compatibility.
+	report.LabRevenue = report.PlatformRevenue
+	report.TotalVolume = report.PlatformRevenue + report.SupplierPayout
 	return report, nil
 }
 
@@ -87,7 +91,7 @@ type CashHoldingRow struct {
 	InvoiceID     string  `json:"invoice_id"`
 	DriverID      string  `json:"driver_id"`
 	RetailerID    string  `json:"retailer_id"`
-	Amount     int64   `json:"amount"`
+	Amount        int64   `json:"amount"`
 	CustodyStatus string  `json:"custody_status"`
 	CollectedAt   string  `json:"collected_at,omitempty"`
 	GeofenceDistM float64 `json:"geofence_dist_m"`
@@ -96,9 +100,9 @@ type CashHoldingRow struct {
 type CashHoldingsReport struct {
 	TotalPending   int64            `json:"total_pending"`
 	TotalCollected int64            `json:"total_collected"`
-	PendingCount      int              `json:"pending_count"`
-	CollectedCount    int              `json:"collected_count"`
-	Holdings          []CashHoldingRow `json:"holdings"`
+	PendingCount   int              `json:"pending_count"`
+	CollectedCount int              `json:"collected_count"`
+	Holdings       []CashHoldingRow `json:"holdings"`
 }
 
 func GetCashHoldings(ctx context.Context, client *spanner.Client, supplierID string) (*CashHoldingsReport, error) {
@@ -146,7 +150,7 @@ func GetCashHoldings(ctx context.Context, client *spanner.Client, supplierID str
 			InvoiceID:     invoiceID,
 			DriverID:      driverID.StringVal,
 			RetailerID:    retailerID.StringVal,
-			Amount: amount.Int64,
+			Amount:        amount.Int64,
 			CustodyStatus: custodyStatus.StringVal,
 			GeofenceDistM: geoDist.Float64,
 		}

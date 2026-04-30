@@ -64,7 +64,7 @@ struct SidebarMenu: View {
                             .padding(.top, AppTheme.spacingSM)
 
                         // Version
-                        Text("The Lab · v1.0.0")
+                        Text("Pegasus · v1.0.0")
                             .font(.system(.caption2, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
                             .padding(.horizontal, AppTheme.spacingXL)

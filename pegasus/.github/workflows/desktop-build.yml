@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# THE LAB INDUSTRIES — Desktop (Tauri) CI Build
+# PEGASUS INDUSTRIES — Desktop (Tauri) CI Build
 # Builds macOS universal + Windows x64 desktop apps on push/PR to main
 # ═══════════════════════════════════════════════════════════════════════════════
 name: Desktop Build

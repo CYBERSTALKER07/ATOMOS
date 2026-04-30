@@ -1,8 +1,8 @@
 [package]
 name = "lab-factory-desktop"
 version = "0.1.0"
-description = "The Lab Industries — Factory Portal Desktop Shell"
-authors = ["The Lab Industries"]
+description = "Pegasus — Factory Portal Desktop Shell"
+authors = ["Pegasus"]
 license = "proprietary"
 repository = ""
 default-run = "lab-factory-desktop"

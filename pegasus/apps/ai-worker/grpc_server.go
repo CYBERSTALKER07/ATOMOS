@@ -24,8 +24,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"lab-ai-worker/optimizer"
 	contract "optimizercontract"
+	"pegasus-ai-worker/optimizer"
 )
 
 const grpcPort = ":8088"

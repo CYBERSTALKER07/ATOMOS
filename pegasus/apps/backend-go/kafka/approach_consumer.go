@@ -18,7 +18,7 @@ import (
 )
 
 // ─── DRIVER_APPROACHING Consumer ───────────────────────────────────────────────
-// Listens to the lab-logistics-events topic for DRIVER_APPROACHING events
+// Listens to the logistics topic for DRIVER_APPROACHING events
 // fired by the Proximity Engine (Phase 2). On receipt, executes the Push Protocol:
 //  1. WebSocket push to connected retailer (instant QR popup)
 //  2. FCM data payload fallback (app in background)
@@ -35,8 +35,8 @@ func StartApproachConsumer(
 ) {
 	reader := goKafka.NewReader(goKafka.ReaderConfig{
 		Brokers:  []string{brokerAddress},
-		Topic:    "lab-logistics-events",
-		GroupID:  "lab-approach-consumer-group",
+		Topic:    TopicMain,
+		GroupID:  "pegasus-approach-consumer-group",
 		MinBytes: 1,
 		MaxBytes: 10 << 20,
 	})
@@ -69,7 +69,7 @@ func StartApproachConsumer(
 			slog.Error("approach consumer pool exited", "err", err)
 		}
 	}()
-	slog.Info("approach consumer ONLINE")
+	slog.Info("approach consumer ONLINE", "topic", TopicMain)
 }
 
 // approachEvent mirrors proximity.DriverApproachingEvent but is locally defined

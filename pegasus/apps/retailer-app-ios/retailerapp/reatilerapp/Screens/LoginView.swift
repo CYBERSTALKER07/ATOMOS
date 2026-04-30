@@ -64,7 +64,7 @@ struct LoginView: View {
                             }
                             .scaleEffect(logoScale)
 
-                            Text("The Lab")
+                            Text("Pegasus")
                                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
                                 .foregroundStyle(AppTheme.textPrimary)
 

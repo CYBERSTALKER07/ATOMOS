@@ -3,8 +3,8 @@ package kafka
 import "time"
 
 // ─── Kafka Event Type Constants ───────────────────────────────────────────────
-// Used as message keys on the lab-logistics-events topic.
-// The notification dispatcher consumer switches on these keys.
+// Event keys are consumed from both Pegasus and legacy logistics topics during
+// transition. The notification dispatcher switches on these keys.
 
 const (
 	EventOrderDispatched           = "ORDER_DISPATCHED"
@@ -74,9 +74,12 @@ const (
 	// Outbox Observability
 	EventOutboxFailed = "OUTBOX_FAILED"
 
-	TopicFreezeLocks    = "lab-freeze-locks"
-	TopicMain           = "lab-logistics-events"
-	TopicDemandForecast = "lab-demand-forecast"
+	// Pegasus topic names.
+	TopicFreezeLocks    = "pegasus-freeze-locks"
+	TopicMain           = "pegasus-logistics-events"
+	TopicDemandForecast = "pegasus-demand-forecast"
+	TopicDriverSync     = "pegasus-driver-sync-events"
+	TopicMainDLQ        = "pegasus-logistics-events-dlq"
 
 	// Fleet Entity Lifecycle Events
 	EventDriverCreated  = "DRIVER_CREATED"
@@ -140,7 +143,7 @@ const (
 	// onto the truck. Counterpart to EventOffloadConfirmed (delivery side).
 	EventInternalLoadConfirmed = "INTERNAL_LOAD_CONFIRMED"
 
-	// AI / Sync Events (emitter.go — lab-driver-sync-events + lab-logistics-events)
+	// AI / Sync Events (emitter.go — driver-sync + logistics topics)
 	EventOrderSync             = "ORDER_SYNC"
 	EventAiPredictionCorrected = "AI_PREDICTION_CORRECTED"
 	EventAiPlanDateShift       = "AI_PLAN_DATE_SHIFT"
@@ -301,16 +304,18 @@ type OrderCompletedEvent struct {
 // the actual charge against the payment provider (GlobalPay, Cash, etc.) with an
 // idempotency key that prevents double-charging on replay.
 type PaymentIntentEvent struct {
-	OrderID        string `json:"order_id"`
-	SupplierId     string `json:"supplier_id"`
-	Amount         int64  `json:"amount"`
-	Currency       string `json:"currency"`
-	PaymentGateway string `json:"payment_gateway"`
-	IdempotencyKey string `json:"idempotency_key"`
-	LabCommission  int64  `json:"lab_commission"`
-	SupplierPayout int64  `json:"supplier_payout"`
-	LabTxnId       string `json:"lab_txn_id"`
-	SupplierTxnId  string `json:"supplier_txn_id"`
+	OrderID            string `json:"order_id"`
+	SupplierId         string `json:"supplier_id"`
+	Amount             int64  `json:"amount"`
+	Currency           string `json:"currency"`
+	PaymentGateway     string `json:"payment_gateway"`
+	IdempotencyKey     string `json:"idempotency_key"`
+	PlatformCommission int64  `json:"platform_commission"`
+	LabCommission      int64  `json:"lab_commission"`
+	SupplierPayout     int64  `json:"supplier_payout"`
+	PlatformTxnId      string `json:"platform_txn_id"`
+	LabTxnId           string `json:"lab_txn_id"`
+	SupplierTxnId      string `json:"supplier_txn_id"`
 
 	// Global Pay auth-capture fields (omitempty for backward compat with GlobalPay/Cash consumers)
 	AuthorizationID  string `json:"authorization_id,omitempty"`

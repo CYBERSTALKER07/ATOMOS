@@ -215,7 +215,7 @@ fun SidebarMenu(
 
                     // ── Version ──
                     Text(
-                        "The Lab · v1.0.0",
+                        "Pegasus · v1.0.0",
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
                     )

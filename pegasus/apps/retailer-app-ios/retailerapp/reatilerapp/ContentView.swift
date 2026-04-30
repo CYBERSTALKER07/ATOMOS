@@ -214,7 +214,7 @@ struct ContentView: View {
                                 Image(systemName: "leaf.fill")
                                     .font(.system(size: 20, weight: .bold))
                                     .foregroundColor(AppTheme.accent)
-                                Text("The Lab")
+                                Text("Pegasus")
                                     .font(.system(.title3, design: .rounded)).fontWeight(.heavy)
                                     .foregroundStyle(AppTheme.textPrimary)
                             }
@@ -498,7 +498,7 @@ struct ContentView: View {
                 Image(systemName: "leaf.fill")
                     .font(.system(size: 13))
                     .foregroundStyle(AppTheme.accent)
-                Text("The Lab")
+                Text("Pegasus")
                     .font(.system(.headline, design: .rounded)).fontWeight(.bold)
                     .foregroundStyle(AppTheme.textPrimary)
             }

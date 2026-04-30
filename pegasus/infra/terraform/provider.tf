@@ -45,7 +45,7 @@ provider "kubernetes" {
 
 variable "gcp_project_id" {
   type        = string
-  description = "The Google Cloud Project ID for The Lab Industries"
+  description = "The Google Cloud Project ID for Pegasus"
 }
 
 variable "project_id" {

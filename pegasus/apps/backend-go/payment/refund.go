@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"backend-go/cache"
+	"backend-go/finance"
 	"backend-go/outbox"
 	"backend-go/telemetry"
 
@@ -151,19 +152,19 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 
 		// Only create reversal ledger entries if gateway actually refunded
 		if refundStatus == RefundSettled {
-			// Reversal: debit supplier account + debit lab commission account
+			// Reversal: debit supplier account + debit platform commission account
 			// Compute in tiyin using basis-point math — matches ComputeSplitRecipients exactly
 			totalTiyin := refundAmount * 100
-			labReversal := totalTiyin * rs.feeBP / 10000
-			supplierReversal := totalTiyin - labReversal
+			platformReversal := totalTiyin * rs.feeBP / 10000
+			supplierReversal := totalTiyin - platformReversal
 
-			labTxnID := fmt.Sprintf("TXN-REFUND-LAB-%s", refundID[:8])
+			platformTxnID := fmt.Sprintf("TXN-REFUND-PEGASUS-%s", refundID[:8])
 			supTxnID := fmt.Sprintf("TXN-REFUND-SUP-%s", refundID[:8])
 
-			// Debit The Lab (reverse the commission)
+			// Debit Pegasus (reverse the commission)
 			mutations = append(mutations, spanner.Insert("LedgerEntries",
 				[]string{"TransactionId", "OrderId", "AccountId", "Amount", "EntryType", "CreatedAt"},
-				[]interface{}{labTxnID, orderID, "ACC-THE-LAB", -labReversal, "DEBIT_REFUND", now},
+				[]interface{}{platformTxnID, orderID, finance.PlatformAccountID, -platformReversal, "DEBIT_REFUND", now},
 			))
 
 			// Debit the supplier (reverse the payout)
@@ -198,7 +199,7 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 		// imports backend-go/payment, which would create an import cycle. The
 		// versionscan literal-name resolver counts this string-literal use as
 		// a producer reference for kafka.EventPaymentRefunded.
-		return outbox.EmitJSON(txn, "Refund", refundID, "PAYMENT_REFUNDED", "lab-logistics-events", payload, telemetry.TraceIDFromContext(ctx))
+		return outbox.EmitJSON(txn, "Refund", refundID, "PAYMENT_REFUNDED", "pegasus-logistics-events", payload, telemetry.TraceIDFromContext(ctx))
 	})
 
 	if txErr != nil {

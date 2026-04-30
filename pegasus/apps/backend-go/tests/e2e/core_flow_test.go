@@ -45,7 +45,7 @@ func TestCoreLogisticsFlow(t *testing.T) {
 	}
 	kafkaReader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers: []string{kafkaAddr},
-		Topic:   "lab-logistics-events",
+		Topic:   "pegasus-logistics-events",
 		GroupID: "e2e-test-group-" + fmt.Sprintf("%d", time.Now().Unix()),
 	})
 	defer kafkaReader.Close()

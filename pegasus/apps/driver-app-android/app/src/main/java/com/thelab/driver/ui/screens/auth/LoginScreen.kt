@@ -131,7 +131,7 @@ fun LoginScreen(
                 )
 
                 Text(
-                    text = "The Lab",
+                    text = "Pegasus",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface

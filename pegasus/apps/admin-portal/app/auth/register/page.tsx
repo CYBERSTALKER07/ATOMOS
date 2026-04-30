@@ -738,7 +738,7 @@ export default function SupplierRegisterPage() {
         </div>
 
         <p className="text-center mt-6 md-typescale-label-small lg:hidden" style={{ color: 'var(--muted)', opacity: 0.6 }}>
-          The Lab Industries &copy; 2026
+          Pegasus &copy; 2026
         </p>
       </div>
   );

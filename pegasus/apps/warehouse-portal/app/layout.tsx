@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Warehouse Portal — The Lab Industries",
+  title: "Warehouse Portal — Pegasus",
   description: "Warehouse supply requests, demand forecasting, and dispatch operations.",
 };
 

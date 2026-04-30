@@ -11,8 +11,8 @@ on:
 
 env:
   GCP_REGION: asia-south1
-  GAR_REPO: lab-repo
-  IMAGE_NAME: lab-gateway
+  GAR_REPO: pegasus-repo
+  IMAGE_NAME: pegasus-gateway
 
 jobs:
   deploy-infrastructure:

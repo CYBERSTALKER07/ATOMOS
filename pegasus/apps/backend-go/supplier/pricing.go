@@ -1,4 +1,4 @@
-// Package supplier implements the Supplier Control API for The Lab Industries.
+// Package supplier implements the Supplier Control API for Pegasus.
 // Each supplier manages their own discount rules — isolated by SupplierId from
 // their JWT. Nestle cannot read or overwrite Coca-Cola's pricing matrix.
 package supplier

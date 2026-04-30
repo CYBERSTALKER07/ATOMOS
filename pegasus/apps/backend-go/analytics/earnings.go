@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/finance"
 	"backend-go/proximity"
 
 	"cloud.google.com/go/spanner"
@@ -73,16 +74,20 @@ func HandleSupplierEarnings(client *spanner.Client, readRouter proximity.ReadRou
 		}
 		totalIter.Stop()
 
-		// 2. Platform fee total (ACC-THE-LAB entries for this supplier's orders)
+		// 2. Platform fee total (legacy + Pegasus platform account identifiers)
 		feeStmt := spanner.Statement{
 			SQL: `SELECT IFNULL(SUM(le.Amount), 0) as fee
 				FROM LedgerEntries le
 				JOIN Orders o ON le.OrderId = o.OrderId
-				WHERE le.AccountId = 'ACC-THE-LAB'
+				WHERE le.AccountId IN UNNEST(@platformAccountIds)
 				  AND o.SupplierId = @supplierId
-				  AND le.EntryType = 'CREDIT'
+				  AND le.EntryType IN UNNEST(@platformCreditEntryTypes)
 				  AND le.Status = 'SETTLED'`,
-			Params: map[string]interface{}{"supplierId": supplierID},
+			Params: map[string]interface{}{
+				"supplierId":               supplierID,
+				"platformAccountIds":       finance.PlatformAccountIDsForQuery(),
+				"platformCreditEntryTypes": finance.PlatformCreditEntryTypesForQuery(),
+			},
 		}
 		feeIter := readClient.Single().Query(ctx, feeStmt)
 		defer feeIter.Stop()

@@ -38,7 +38,7 @@ var (
 
 // topicLogisticsEvents is the canonical destination topic for domain events
 // emitted from the order package through the transactional outbox.
-const topicLogisticsEvents = "lab-logistics-events"
+const topicLogisticsEvents = "pegasus-logistics-events"
 
 // ErrStateConflict is returned when a state mutation is blocked by a concurrent
 // write (e.g., Supplier dispatches while Retailer cancels). HTTP handlers should
@@ -3468,7 +3468,7 @@ func (s *OrderService) ReassignRoute(ctx context.Context, orderIds []string, new
 
 		// 5. Outbox emit — ORDER_REASSIGNED. Atomic with the Orders UPDATEs:
 		//    if the commit aborts the event disappears with the mutations.
-		//    The Relay publishes asynchronously onto lab-logistics-events.
+		//    The Relay publishes asynchronously onto pegasus-logistics-events.
 		//    RouteId == DriverId in this codebase (see validateTruckCapacity).
 		if len(publishedIds) > 0 {
 			if err := outbox.EmitJSON(txn, "Route", newRouteId, kafkaEvents.EventOrderReassigned, topicLogisticsEvents, map[string]interface{}{

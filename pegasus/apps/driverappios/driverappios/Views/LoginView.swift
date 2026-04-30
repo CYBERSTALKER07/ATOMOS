@@ -31,7 +31,7 @@ struct LoginView: View {
                         .foregroundStyle(LabTheme.fg)
                         .padding(.bottom, 16)
 
-                    Text("The Lab")
+                    Text("Pegasus")
                         .font(.system(size: 28, weight: .bold))
                         .foregroundStyle(LabTheme.fg)
 

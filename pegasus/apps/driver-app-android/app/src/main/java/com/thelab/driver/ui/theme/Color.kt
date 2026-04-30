@@ -3,7 +3,7 @@ package com.thelab.driver.ui.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * M3 Color System — The Lab Driver
+ * M3 Color System — Pegasus Driver
  *
  * Neutral monochrome brand palette mapped to Material Design 3 color roles.
  * Dynamic color (Android 12+) is supported and overrides these baselines.

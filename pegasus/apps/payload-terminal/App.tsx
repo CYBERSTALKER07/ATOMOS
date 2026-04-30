@@ -812,7 +812,7 @@ export default function App() {
     return (
       <View style={{ flex: 1, backgroundColor: T.colors.background, alignItems: 'center', justifyContent: 'center', padding: 48 }}>
         <Text style={{ fontWeight: '700', fontSize: 14, color: T.colors.tertiaryLabel, letterSpacing: 0.5, marginBottom: 32 }}>
-          {isIOS ? 'The Lab · Payload Terminal' : 'THE LAB · PAYLOAD TERMINAL'}
+          {isIOS ? 'Pegasus · Payload Terminal' : 'PEGASUS · PAYLOAD TERMINAL'}
         </Text>
         <Text style={{ fontSize: 22, fontWeight: '700', color: T.colors.label, letterSpacing: isIOS ? -0.4 : 0.5, marginBottom: 32 }}>
           {isIOS ? 'Payloader Login' : 'PAYLOADER LOGIN'}
@@ -891,7 +891,7 @@ export default function App() {
         <View style={{ backgroundColor: T.colors.sidebarBackground, paddingHorizontal: 32, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View>
             <Text style={{ color: T.colors.sidebarLabel, fontWeight: '700', fontSize: 14, letterSpacing: 0.3 }}>
-              {isIOS ? 'The Lab · Payload Terminal' : 'THE LAB · PAYLOAD TERMINAL'}
+              {isIOS ? 'Pegasus · Payload Terminal' : 'PEGASUS · PAYLOAD TERMINAL'}
             </Text>
             <Text style={{ color: T.colors.sidebarSecondary, fontFamily: T.typography.mono.fontFamily, fontSize: 11, marginTop: 2 }}>
               {workerName}

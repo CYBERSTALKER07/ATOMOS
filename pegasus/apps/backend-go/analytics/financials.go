@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/finance"
 	"backend-go/proximity"
 
 	"cloud.google.com/go/spanner"
@@ -181,13 +182,15 @@ func querySupplierFinancials(ctx context.Context, client *spanner.Client, suppli
 		      FROM LedgerEntries le
 		      JOIN Orders o ON le.OrderId = o.OrderId
 		      WHERE o.SupplierId = @sid
-		        AND le.AccountId = 'ACC-THE-LAB'
-		        AND le.EntryType = 'COMMISSION'
+		        AND le.AccountId IN UNNEST(@platformAccountIds)
+		        AND le.EntryType IN UNNEST(@platformCreditEntryTypes)
 		        AND o.CreatedAt >= @start AND o.CreatedAt < @end`,
 		Params: map[string]interface{}{
-			"sid":   supplierID,
-			"start": startDate,
-			"end":   endDate,
+			"sid":                      supplierID,
+			"start":                    startDate,
+			"end":                      endDate,
+			"platformAccountIds":       finance.PlatformAccountIDsForQuery(),
+			"platformCreditEntryTypes": finance.PlatformCreditEntryTypesForQuery(),
 		},
 	}
 	fRow, err := txn.Query(ctx, fStmt).Next()

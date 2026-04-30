@@ -181,7 +181,7 @@ func (s *OrderService) GeneratePreorder(ctx context.Context, retailerID string) 
 	var prompt string
 	if hasLineItems {
 		lineItemsJSON, _ := json.MarshalIndent(lineItems, "", "  ")
-		prompt = fmt.Sprintf(`You are an AI supply chain analyst for The Lab Industries, a Coca-Cola B2B distributor in Uzbekistan.
+		prompt = fmt.Sprintf(`You are an AI supply chain analyst for Pegasus, a Coca-Cola B2B distributor in Uzbekistan.
 
 Analyze the following completed order history AND line-item purchase history for retailer "%s" and predict their next reorder at SKU level.
 
@@ -204,7 +204,7 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no expl
 Include the top SKUs by frequency/recency. The items array must have at least 1 entry. predicted_amount should equal the sum of (quantity * price) across items.`,
 			retailerID, len(history), string(historyJSON), len(lineItems), string(lineItemsJSON))
 	} else {
-		prompt = fmt.Sprintf(`You are an AI supply chain analyst for The Lab Industries, a Coca-Cola B2B distributor in Uzbekistan.
+		prompt = fmt.Sprintf(`You are an AI supply chain analyst for Pegasus, a Coca-Cola B2B distributor in Uzbekistan.
 
 Analyze the following completed order history for retailer "%s" and predict their next reorder.
 

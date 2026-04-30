@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * B&W minimalist top bar matching iOS:
- * [Avatar circle] · "The Lab" center title · [Cart] [Bell]
+ * [Avatar circle] · "Pegasus" center title · [Cart] [Bell]
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,7 +42,7 @@ fun LabTopBar(
     CenterAlignedTopAppBar(
         title = {
             Text(
-                "The Lab",
+                "Pegasus",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             )
         },

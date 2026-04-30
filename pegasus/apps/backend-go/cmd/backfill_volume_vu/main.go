@@ -37,7 +37,7 @@ const batchSize = 500
 
 func main() {
 	dbName := flag.String("db",
-		"projects/lab-logistics/instances/lab-dev/databases/lab-db",
+		"projects/pegasus-logistics/instances/pegasus-dev/databases/pegasus-db",
 		"fully-qualified Spanner database name")
 	flag.Parse()
 

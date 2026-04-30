@@ -3,12 +3,14 @@ package kafka
 import (
 	"strings"
 	"testing"
+
+	"backend-go/finance"
 )
 
 // ─── GenerateTxnId ──────────────────────────────────────────────────────────
 
 func TestGenerateTxnId_Format(t *testing.T) {
-	id := GenerateTxnId("ORD-1", "CREDIT_LAB", 5000)
+	id := GenerateTxnId("ORD-1", finance.PlatformCreditEntryType, 5000)
 	if !strings.HasPrefix(id, "TXN-") {
 		t.Errorf("expected TXN- prefix, got %q", id)
 	}
@@ -19,15 +21,15 @@ func TestGenerateTxnId_Format(t *testing.T) {
 }
 
 func TestGenerateTxnId_Deterministic(t *testing.T) {
-	a := GenerateTxnId("ORD-1", "CREDIT_LAB", 5000)
-	b := GenerateTxnId("ORD-1", "CREDIT_LAB", 5000)
+	a := GenerateTxnId("ORD-1", finance.PlatformCreditEntryType, 5000)
+	b := GenerateTxnId("ORD-1", finance.PlatformCreditEntryType, 5000)
 	if a != b {
 		t.Error("same inputs should produce same TxnId")
 	}
 }
 
 func TestGenerateTxnId_DifferentInputs(t *testing.T) {
-	a := GenerateTxnId("ORD-1", "CREDIT_LAB", 5000)
+	a := GenerateTxnId("ORD-1", finance.PlatformCreditEntryType, 5000)
 	b := GenerateTxnId("ORD-1", "CREDIT_SUPPLIER", 95000)
 	if a == b {
 		t.Error("different inputs should produce different TxnIds")
@@ -35,8 +37,8 @@ func TestGenerateTxnId_DifferentInputs(t *testing.T) {
 }
 
 func TestGenerateTxnId_DifferentOrders(t *testing.T) {
-	a := GenerateTxnId("ORD-1", "CREDIT_LAB", 5000)
-	b := GenerateTxnId("ORD-2", "CREDIT_LAB", 5000)
+	a := GenerateTxnId("ORD-1", finance.PlatformCreditEntryType, 5000)
+	b := GenerateTxnId("ORD-2", finance.PlatformCreditEntryType, 5000)
 	if a == b {
 		t.Error("different orders should produce different TxnIds")
 	}
@@ -49,7 +51,7 @@ func TestLogisticsEvent_Fields(t *testing.T) {
 		EventName:  "ORDER_COMPLETED",
 		OrderId:    "ord-1",
 		RetailerId: "ret-1",
-		Amount:  100000,
+		Amount:     100000,
 	}
 	if e.EventName != "ORDER_COMPLETED" || e.Amount != 100000 {
 		t.Errorf("unexpected: %+v", e)
@@ -60,14 +62,14 @@ func TestLogisticsEvent_Fields(t *testing.T) {
 
 func TestLedgerSplitMath_5PercentCommission(t *testing.T) {
 	tests := []struct {
-		name            string
-		amount       int64
-		expectLab       int64
-		expectSupplier  int64
+		name           string
+		amount         int64
+		expectLab      int64
+		expectSupplier int64
 	}{
 		{"100000", 100000, 5000, 95000},
-		{"1", 1, 0, 1},       // integer division: 1*5/100 = 0
-		{"99", 99, 4, 95},     // 99*5/100 = 4
+		{"1", 1, 0, 1},    // integer division: 1*5/100 = 0
+		{"99", 99, 4, 95}, // 99*5/100 = 4
 		{"0", 0, 0, 0},
 		{"500000", 500000, 25000, 475000},
 	}

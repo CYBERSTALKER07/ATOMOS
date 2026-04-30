@@ -47,7 +47,7 @@ struct ProfileView: View {
                     SettingsItem(icon: "doc.text", title: "Terms of Service", subtitle: nil),
                 ]).slideIn(delay: 0.2)
 
-                Text("The Lab Retailer v1.0.0")
+                Text("Pegasus Retailer v1.0.0")
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(AppTheme.textTertiary)
                     .padding(.top, AppTheme.spacingMD)

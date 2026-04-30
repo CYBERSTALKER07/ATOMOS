@@ -19,12 +19,16 @@ type ReconcilerService struct {
 	spannerClient *spanner.Client
 }
 
+const (
+	reconcilerTopicMain = "pegasus-logistics-events"
+)
+
 func NewReconcilerService(cfg *config.EnvConfig, spannerClient *spanner.Client) *ReconcilerService {
 	return &ReconcilerService{
 		kafkaReader: kafka.NewReader(kafka.ReaderConfig{
 			Brokers:  []string{cfg.KafkaBrokerAddress},
 			GroupID:  "payment-reconciliation-group",
-			Topic:    "lab-logistics-events",
+			Topic:    reconcilerTopicMain,
 			MinBytes: 10e3,
 			MaxBytes: 10e6,
 		}),

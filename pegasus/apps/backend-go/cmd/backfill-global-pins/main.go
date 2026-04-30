@@ -30,7 +30,7 @@ import (
 func main() {
 	db := os.Getenv("SPANNER_DB")
 	if db == "" {
-		db = "projects/the-lab-project/instances/lab-instance/databases/the-lab-db"
+		db = "projects/pegasus-logistics/instances/pegasus-dev/databases/pegasus-db"
 	}
 
 	ctx := context.Background()

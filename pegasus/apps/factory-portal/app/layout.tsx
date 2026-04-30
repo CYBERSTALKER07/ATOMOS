@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Factory Portal — The Lab Industries",
+  title: "Factory Portal — Pegasus",
   description: "Factory loading bay, transfer management, and dispatch operations.",
 };
 

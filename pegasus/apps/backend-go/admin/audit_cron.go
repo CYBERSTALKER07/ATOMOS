@@ -7,7 +7,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/robfig/cron/v3"
-	// "github.com/lab-industries/backend/packages/gateways" // Your GlobalPay/Cash API clients
+	// "github.com/pegasus/backend/packages/gateways" // Your GlobalPay/Cash API clients
 )
 
 // StartReconciliationCron boots the background audit worker

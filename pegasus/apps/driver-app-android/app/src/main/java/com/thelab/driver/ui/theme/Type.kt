@@ -7,7 +7,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 /**
- * M3 Type Scale — The Lab Driver
+ * M3 Type Scale — Pegasus Driver
  *
  * Baseline Material Design 3 type scale (MDC 1.14).
  * Uses system default (Roboto on AOSP, Google Sans on Pixel, OEM sans-serif).

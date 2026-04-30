@@ -5,12 +5,12 @@ variable "image_url" {
 
 variable "backend_image" {
   type        = string
-  description = "backend-go GAR image (e.g. asia-south1-docker.pkg.dev/PROJECT/lab/backend-go:SHA)"
+  description = "backend-go GAR image (e.g. asia-south1-docker.pkg.dev/PROJECT/pegasus/backend-go:SHA)"
 }
 
 variable "ai_worker_image" {
   type        = string
-  description = "ai-worker GAR image (e.g. asia-south1-docker.pkg.dev/PROJECT/lab/ai-worker:SHA)"
+  description = "ai-worker GAR image (e.g. asia-south1-docker.pkg.dev/PROJECT/pegasus/ai-worker:SHA)"
 }
 
 variable "gke_node_count" {
@@ -36,39 +36,39 @@ resource "google_project_service" "required_apis" {
 
 # 2. The Private VPC Network
 resource "google_compute_network" "lab_vpc" {
-  name                    = "lab-industries-vpc"
+  name                    = "pegasus-vpc"
   auto_create_subnetworks = true
   depends_on              = [google_project_service.required_apis]
 }
 
 # 3. Google Cloud Memorystore (Redis)
 resource "google_redis_instance" "cache" {
-  name           = "lab-memory-layer"
-  tier           = "STANDARD_HA" # Active-passive HA — required once Kafka lag-based autoscaling is live
-  memory_size_gb = 1
-  region         = "asia-south1"
+  name               = "pegasus-memory-layer"
+  tier               = "STANDARD_HA" # Active-passive HA — required once Kafka lag-based autoscaling is live
+  memory_size_gb     = 1
+  region             = "asia-south1"
   authorized_network = google_compute_network.lab_vpc.id
-  redis_version  = "REDIS_7_0"
+  redis_version      = "REDIS_7_0"
 }
 
 # 4. Google Cloud Spanner (The Ledger)
 resource "google_spanner_instance" "ledger" {
-  name         = "lab-ledger-instance"
+  name         = "pegasus-ledger-instance"
   config       = "regional-asia-south1"
-  display_name = "The Lab Industries Ledger"
+  display_name = "Pegasus Ledger"
   num_nodes    = 1
   depends_on   = [google_project_service.required_apis]
 }
 
 resource "google_spanner_database" "main_db" {
   instance = google_spanner_instance.ledger.name
-  name     = "lab_logistics_db"
+  name     = "pegasus_logistics_db"
   # Note: DDL statements are applied via your Go migration scripts, not here.
 }
 
 # 5. Google Cloud Run (The Go Backend)
 resource "google_cloud_run_v2_service" "backend" {
-  name     = "lab-go-gateway"
+  name     = "pegasus-go-gateway"
   location = "asia-south1"
   ingress  = "INGRESS_TRAFFIC_ALL"
 
@@ -77,7 +77,7 @@ resource "google_cloud_run_v2_service" "backend" {
       min_instance_count = 0
       max_instance_count = 100
     }
-    
+
     vpc_access {
       egress = "PRIVATE_RANGES_ONLY" # Secures Redis connection
       network_interfaces {
@@ -88,7 +88,7 @@ resource "google_cloud_run_v2_service" "backend" {
     containers {
       # Placeholder image until your CI/CD builds the real one
       image = var.image_url
-      
+
       env {
         name  = "REDIS_ADDRESS"
         value = "${google_redis_instance.cache.host}:${google_redis_instance.cache.port}"

@@ -61,7 +61,7 @@ class NavigationViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 userName = name,
-                companyName = "The Lab Industries",
+                companyName = "Pegasus",
                 avatarInitial = name.firstOrNull()?.uppercase() ?: "?",
             )
         }

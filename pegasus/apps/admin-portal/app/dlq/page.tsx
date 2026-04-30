@@ -124,7 +124,7 @@ export default function DLQPage() {
         <p className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>
           These events failed to reach the{" "}
           <code className="px-1 md-shape-xs" style={{ background: 'var(--surface)', color: 'var(--foreground)' }}>
-            lab-logistics-events
+            pegasus-logistics-events
           </code>{" "}
           main topic. Each row represents a dropped payment transaction. Use{" "}
           <strong>Replay</strong> to re-inject onto the main topic for reconciliation.
@@ -282,7 +282,7 @@ export default function DLQPage() {
       {/* Footer */}
       <div className="px-6 md:px-10 py-3 mt-8" style={{ borderTop: '1px solid var(--border)' }}>
         <p className="md-typescale-label-small" style={{ color: 'var(--border)' }}>
-          Topic: <code>lab-logistics-events-dlq</code> · Auto-refresh every 5s · Replay re-emits onto <code>lab-logistics-events</code>
+          Topic: <code>pegasus-logistics-events-dlq</code> · Auto-refresh every 5s · Replay re-emits onto <code>pegasus-logistics-events</code>
         </p>
       </div>
     </div>

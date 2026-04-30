@@ -7,9 +7,9 @@
 # cooldown window expires, KEDA scales to minReplicaCount (1).
 #
 # Topic → consumer group mapping mirrors ai-worker/main.go exactly:
-#   lab-logistics-events  → ai-worker-group
-#   lab-freeze-locks      → ai-worker-freeze-group
-#   lab-demand-forecast   → ai-worker-group
+#   pegasus-logistics-events  → ai-worker-group
+#   pegasus-freeze-locks      → ai-worker-freeze-group
+#   pegasus-demand-forecast   → ai-worker-group
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -26,7 +26,7 @@ spec:
     # Primary event stream — dispatch, manifest, order lifecycle events.
     - type: kafka
       metadata:
-        topic: lab-logistics-events
+        topic: pegasus-logistics-events
         bootstrapServers: ""   # injected via authenticationRef
         consumerGroup: ai-worker-group
         lagThreshold: "50"
@@ -38,7 +38,7 @@ spec:
     # Lower lagThreshold: freeze locks are time-sensitive (≤250 ms doctrine).
     - type: kafka
       metadata:
-        topic: lab-freeze-locks
+        topic: pegasus-freeze-locks
         bootstrapServers: ""
         consumerGroup: ai-worker-freeze-group
         lagThreshold: "10"
@@ -49,7 +49,7 @@ spec:
     # Demand forecast stream — AI planning events.
     - type: kafka
       metadata:
-        topic: lab-demand-forecast
+        topic: pegasus-demand-forecast
         bootstrapServers: ""
         consumerGroup: ai-worker-group
         lagThreshold: "50"

@@ -24,8 +24,8 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/segmentio/kafka-go"
 
-	"lab-ai-worker/optimizer"
 	contract "optimizercontract"
+	"pegasus-ai-worker/optimizer"
 )
 
 // ─── Global Configuration ────────────────────────────────────────────────────
@@ -42,6 +42,12 @@ var (
 	aiRatioBlendNew   float64       = 0.3
 	aiMinTriggerWaitH float64       = 2.0
 	aiMaxConcurrent   int           = 10
+)
+
+const (
+	topicMain           = "pegasus-logistics-events"
+	topicFreezeLocks    = "pegasus-freeze-locks"
+	topicDemandForecast = "pegasus-demand-forecast"
 )
 
 // ─── Event Schemas ── matches JSON emitted by the main backend ───────────────
@@ -404,7 +410,7 @@ func main() {
 
 	internalAPIKey = os.Getenv("INTERNAL_API_KEY")
 	if internalAPIKey == "" {
-		internalAPIKey = "lab-internal-dev-key-2026"
+		internalAPIKey = "pegasus-internal-dev-key-2026"
 	}
 
 	healthPort := os.Getenv("HEALTH_PORT")
@@ -454,9 +460,9 @@ func main() {
 		cancel()
 	}
 
-	fmt.Println("╔════════════════════════════════════════════════════════╗")
-	fmt.Println("║  THE LAB INDUSTRIES — INTELLIGENCE ENGINE (AI WORKER) ║")
-	fmt.Println("╚════════════════════════════════════════════════════════╝")
+	fmt.Println("╔════════════════════════════════════════════════════╗")
+	fmt.Println("║  PEGASUS — INTELLIGENCE ENGINE (AI WORKER)        ║")
+	fmt.Println("╚════════════════════════════════════════════════════╝")
 	logger.Info("starting AI worker",
 		"broker", brokerAddress,
 		"backend", backendURL,
@@ -523,7 +529,7 @@ func main() {
 	// ── Kafka Reader (main events) ─────────────────────────────────────
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  []string{brokerAddress},
-		Topic:    "lab-logistics-events",
+		Topic:    topicMain,
 		GroupID:  "ai-worker-group",
 		MinBytes: 1e3,
 		MaxBytes: 10e6,
@@ -533,7 +539,7 @@ func main() {
 	// ── Kafka Reader (freeze locks — drop frozen entities from work queue) ──
 	freezeReader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  []string{brokerAddress},
-		Topic:    "lab-freeze-locks",
+		Topic:    topicFreezeLocks,
 		GroupID:  "ai-worker-freeze-group",
 		MinBytes: 1e3,
 		MaxBytes: 10e6,
@@ -543,7 +549,7 @@ func main() {
 	// ── Kafka Writer (demand forecast output) ───────────────────────────
 	forecastWriter := &kafka.Writer{
 		Addr:         kafka.TCP(brokerAddress),
-		Topic:        "lab-demand-forecast",
+		Topic:        topicDemandForecast,
 		Balancer:     &kafka.Hash{},
 		RequiredAcks: kafka.RequireAll,
 		MaxAttempts:  5,
@@ -631,10 +637,8 @@ func main() {
 		})
 		wctx, wcancel := context.WithTimeout(ctx, 5*time.Second)
 		defer wcancel()
-		if err := forecastWriter.WriteMessages(wctx, kafka.Message{
-			Key:   []byte(retailerID),
-			Value: payload,
-		}); err != nil {
+
+		if err := forecastWriter.WriteMessages(wctx, kafka.Message{Key: []byte(retailerID), Value: payload}); err != nil {
 			logger.Error("forecast emit failed", "retailer", retailerID, "err", err)
 		}
 	}

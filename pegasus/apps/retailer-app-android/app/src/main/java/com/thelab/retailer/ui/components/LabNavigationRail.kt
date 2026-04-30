@@ -99,7 +99,7 @@ private fun ExpandedDrawer(
             }
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = companyName.ifBlank { "The Lab" },
+                text = companyName.ifBlank { "Pegasus" },
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,

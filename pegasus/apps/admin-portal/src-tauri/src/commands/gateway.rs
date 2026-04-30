@@ -48,7 +48,7 @@ pub async fn open_gateway_connect(
                 .map_err(|e| format!("Invalid redirect URL: {e}"))?,
         ),
     )
-    .title(format!("Connect {} — The Lab Industries", request.gateway))
+    .title(format!("Connect {} — Pegasus", request.gateway))
     .inner_size(600.0, 700.0)
     .center()
     .resizable(false)

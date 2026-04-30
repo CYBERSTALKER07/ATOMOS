@@ -1177,7 +1177,7 @@ func setupSeedData(ctx context.Context, client *spanner.Client) {
 				[]interface{}{fmt.Sprintf("TXN-%04d-CR", i+1), o.id, o.retailer, o.amount, "CREDIT", spanner.CommitTimestamp}))
 			mutations = append(mutations, spanner.Insert("LedgerEntries",
 				[]string{"TransactionId", "OrderId", "AccountId", "Amount", "EntryType", "CreatedAt"},
-				[]interface{}{fmt.Sprintf("TXN-%04d-DB", i+1), o.id, "LAB-TREASURY", o.amount, "DEBIT", spanner.CommitTimestamp}))
+				[]interface{}{fmt.Sprintf("TXN-%04d-DB", i+1), o.id, "PEGASUS-TREASURY", o.amount, "DEBIT", spanner.CommitTimestamp}))
 		}
 
 		// ═══════════════════════════════════════════════════════════════════

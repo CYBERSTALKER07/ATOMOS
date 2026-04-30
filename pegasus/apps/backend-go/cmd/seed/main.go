@@ -29,7 +29,7 @@ import (
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// THE LAB INDUSTRIES — E2E SEED SCRIPT
+// PEGASUS — E2E SEED SCRIPT
 // Deterministic test matrix for local live-fire testing.
 // Connects to Spanner emulator + Redis. Idempotent (truncates before insert).
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -163,7 +163,7 @@ type demoProduct struct {
 	desc            string
 	categoryID      string
 	unitsPerBlock   int64
-	price        int64
+	price           int64
 	stockQty        int64
 	palletFootprint float64
 }
@@ -401,7 +401,7 @@ var demoCategoryByID = func() map[string]demoCategory {
 
 func main() {
 	log.Println("══════════════════════════════════════════════════════════════")
-	log.Println("  THE LAB INDUSTRIES — E2E SEED SCRIPT")
+	log.Println("  PEGASUS — E2E SEED SCRIPT")
 	log.Println("══════════════════════════════════════════════════════════════")
 
 	cfg, err := config.LoadConfig()
@@ -731,7 +731,7 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 			routeID       string
 			state         string
 			paymentStatus string
-			amount     int64
+			amount        int64
 			orderSource   string
 			deliveryToken string // empty = NULL (pre-dispatch); set for dispatched orders
 		}
@@ -864,7 +864,7 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 		type seedInvoice struct {
 			invoiceID   string
 			retailerID  string
-			total    int64
+			total       int64
 			state       string
 			orderID     string
 			paymentMode string
@@ -927,9 +927,9 @@ func seedKafkaTopics(brokerAddress string) {
 	}
 
 	topics := []string{
-		"lab-logistics-events",
-		"lab-logistics-events-dlq",
-		"lab-driver-sync-events",
+		"pegasus-logistics-events",
+		"pegasus-logistics-events-dlq",
+		"pegasus-driver-sync-events",
 		"orders.completed",
 		"orders.dispatched",
 	}

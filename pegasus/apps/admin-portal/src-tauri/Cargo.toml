@@ -1,8 +1,8 @@
 [package]
 name = "lab-admin-desktop"
 version = "0.1.0"
-description = "The Lab Industries — Admin Portal Desktop Shell"
-authors = ["The Lab Industries"]
+description = "Pegasus — Admin Portal Desktop Shell"
+authors = ["Pegasus"]
 license = "proprietary"
 repository = ""
 default-run = "lab-admin-desktop"

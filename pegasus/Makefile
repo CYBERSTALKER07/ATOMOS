@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# THE LAB INDUSTRIES — LEVIATHAN OPERATIONS MAKEFILE
+# PEGASUS — LEVIATHAN OPERATIONS MAKEFILE
 # Enterprise-grade local simulation, seeding, and E2E testing orchestrator.
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -10,9 +10,9 @@ SHELL := /bin/bash
 # Non-secret defaults for local emulators. Secrets (JWT_SECRET, VAULT_MASTER_KEY,
 # INTERNAL_API_KEY, GEMINI_API_KEY, …) are NEVER hardcoded here — they must be
 # provided via apps/backend-go/.env (see .env.example for the full schema).
-export SPANNER_PROJECT        ?= lab-logistics
-export SPANNER_INSTANCE       ?= lab-dev
-export SPANNER_DATABASE       ?= lab-db
+export SPANNER_PROJECT        ?= pegasus-logistics
+export SPANNER_INSTANCE       ?= pegasus-dev
+export SPANNER_DATABASE       ?= pegasus-db
 export SPANNER_EMULATOR_HOST  ?= localhost:9010
 export KAFKA_BROKER_ADDRESS   ?= localhost:9092
 export REDIS_ADDRESS          ?= localhost:6379
@@ -79,7 +79,7 @@ dev-devices: ## Show per-client setup for physical-device dev
 	 echo ""; \
 	 echo "iOS (driverappios / retailer-app-ios / warehouse-app-ios / factory-app-ios):"; \
 	 echo "  Xcode → Product → Scheme → Edit Scheme → Run → Arguments → Environment Variables"; \
-	 echo "  Add: LAB_DEV_HOST=$$ip   (or LAB_DEV_HOST=$$ip:$(BACKEND_PORT))"; \
+	 echo "  Add: PEGASUS_DEV_HOST=$$ip   (or PEGASUS_DEV_HOST=$$ip:$(BACKEND_PORT))"; \
 	 echo ""; \
 	 echo "Backend: already binds 0.0.0.0 — no change needed."
 

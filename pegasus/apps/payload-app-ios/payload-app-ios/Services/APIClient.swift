@@ -33,11 +33,12 @@ final class APIClient: @unchecked Sendable {
     static let shared = APIClient()
 
     #if DEBUG
-    /// Simulator: localhost. Physical iPad: set `LAB_DEV_HOST` env var
-    /// (Edit Scheme → Run → Environment Variables) to your Mac's LAN IP.
+    /// Simulator: localhost. Physical iPad: set `PEGASUS_DEV_HOST`
+    /// env var (Edit Scheme → Run → Environment Variables)
+    /// to your Mac's LAN IP.
     let baseURL: String = {
-        let raw = ProcessInfo.processInfo.environment["LAB_DEV_HOST"]?
-            .trimmingCharacters(in: .whitespaces) ?? ""
+        let raw = (ProcessInfo.processInfo.environment["PEGASUS_DEV_HOST"] ?? "")
+            .trimmingCharacters(in: .whitespaces)
         if raw.isEmpty { return "http://localhost:8080" }
         if raw.hasPrefix("http://") || raw.hasPrefix("https://") { return raw }
         return raw.contains(":") ? "http://\(raw)" : "http://\(raw):8080"

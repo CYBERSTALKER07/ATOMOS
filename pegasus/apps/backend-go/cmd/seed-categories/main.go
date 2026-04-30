@@ -12,7 +12,7 @@ import (
 
 func main() {
 	os.Setenv("SPANNER_EMULATOR_HOST", "localhost:9010")
-	db := "projects/the-lab-industries/instances/dev-instance/databases/the-lab-db"
+	db := "projects/pegasus-logistics/instances/pegasus-dev/databases/pegasus-db"
 	client, err := spanner.NewClient(context.Background(), db)
 	if err != nil {
 		log.Fatal(err)
