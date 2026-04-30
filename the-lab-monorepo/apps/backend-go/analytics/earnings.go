@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/proximity"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -33,7 +34,7 @@ type SupplierEarningsResponse struct {
 	MonthlyBreakdown []MonthlyRevenue `json:"monthly_breakdown"`
 }
 
-func HandleSupplierEarnings(client *spanner.Client) http.HandlerFunc {
+func HandleSupplierEarnings(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -63,7 +64,8 @@ func HandleSupplierEarnings(client *spanner.Client) http.HandlerFunc {
 				  AND Status = 'SETTLED'`,
 			Params: map[string]interface{}{"supplierId": supplierID},
 		}
-		totalIter := client.Single().Query(ctx, totalStmt)
+		readClient := getReadClient(r.Context(), client, readRouter, nil)
+		totalIter := readClient.Single().Query(ctx, totalStmt)
 		defer totalIter.Stop()
 		row, err := totalIter.Next()
 		if err == nil {
@@ -82,7 +84,7 @@ func HandleSupplierEarnings(client *spanner.Client) http.HandlerFunc {
 				  AND le.Status = 'SETTLED'`,
 			Params: map[string]interface{}{"supplierId": supplierID},
 		}
-		feeIter := client.Single().Query(ctx, feeStmt)
+		feeIter := readClient.Single().Query(ctx, feeStmt)
 		defer feeIter.Stop()
 		feeRow, err := feeIter.Next()
 		if err == nil {
@@ -94,7 +96,7 @@ func HandleSupplierEarnings(client *spanner.Client) http.HandlerFunc {
 
 		// Read platform fee percent from SystemConfig (default 0% — zero-fee era)
 		feePercent := int64(0)
-		if cfgRow, cfgErr := client.Single().ReadRow(ctx, "SystemConfig",
+		if cfgRow, cfgErr := readClient.Single().ReadRow(ctx, "SystemConfig",
 			spanner.Key{"platform_fee_percent"}, []string{"ConfigValue"}); cfgErr == nil {
 			var cfgVal string
 			if cfgRow.Columns(&cfgVal) == nil {
@@ -122,7 +124,7 @@ func HandleSupplierEarnings(client *spanner.Client) http.HandlerFunc {
 				"since":      twelveMonthsAgo,
 			},
 		}
-		monthlyIter := client.Single().Query(ctx, monthlyStmt)
+		monthlyIter := readClient.Single().Query(ctx, monthlyStmt)
 		defer monthlyIter.Stop()
 		for {
 			row, err := monthlyIter.Next()

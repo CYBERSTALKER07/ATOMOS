@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/proximity"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -42,7 +43,7 @@ type RetailerAnalyticsResponse struct {
 }
 
 // HandleGetRetailerExpenses aggregates expense analytics for the authenticated retailer.
-func HandleGetRetailerExpenses(client *spanner.Client) http.HandlerFunc {
+func HandleGetRetailerExpenses(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -82,7 +83,8 @@ func HandleGetRetailerExpenses(client *spanner.Client) http.HandlerFunc {
 				"since":      sixMonthsAgo,
 			},
 		}
-		monthlyIter := client.Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, monthlyStmt)
+		readClient := getReadClient(r.Context(), client, readRouter, nil)
+		monthlyIter := readClient.Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, monthlyStmt)
 		defer monthlyIter.Stop()
 		for {
 			row, err := monthlyIter.Next()
@@ -115,7 +117,7 @@ func HandleGetRetailerExpenses(client *spanner.Client) http.HandlerFunc {
 				"lastMonth":  lastMonthStart,
 			},
 		}
-		totalsIter := client.Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, totalsStmt)
+		totalsIter := readClient.Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, totalsStmt)
 		defer totalsIter.Stop()
 		if row, err := totalsIter.Next(); err == nil {
 			_ = row.Columns(&resp.TotalThisMonth, &resp.TotalLastMonth)
@@ -143,7 +145,7 @@ func HandleGetRetailerExpenses(client *spanner.Client) http.HandlerFunc {
 				"since":      sixMonthsAgo,
 			},
 		}
-		suppIter := client.Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, topSuppStmt)
+		suppIter := readClient.Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, topSuppStmt)
 		defer suppIter.Stop()
 		for {
 			row, err := suppIter.Next()
@@ -181,7 +183,7 @@ func HandleGetRetailerExpenses(client *spanner.Client) http.HandlerFunc {
 				"since":      sixMonthsAgo,
 			},
 		}
-		prodIter := client.Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, topProdStmt)
+		prodIter := readClient.Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, topProdStmt)
 		defer prodIter.Stop()
 		for {
 			row, err := prodIter.Next()

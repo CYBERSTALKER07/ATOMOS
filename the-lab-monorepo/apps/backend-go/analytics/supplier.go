@@ -9,7 +9,8 @@ import (
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 
-	"backend-go/auth" // Ensure this is available, if we extract user_id from context via auth middleware
+	"backend-go/auth"
+	"backend-go/proximity"
 )
 
 // SkuVelocity represents the aggregated sales data for a specific product
@@ -20,7 +21,7 @@ type SkuVelocity struct {
 }
 
 // HandleGetVelocity returns the real-time sales velocity for the authenticated supplier
-func HandleGetVelocity(client *spanner.Client) http.HandlerFunc {
+func HandleGetVelocity(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Extract SupplierId from JWT
 		// Assuming we retrieve it from our custom auth claims
@@ -58,7 +59,7 @@ func HandleGetVelocity(client *spanner.Client) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 
-		iter := client.Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, stmt)
+		iter := getReadClient(r.Context(), client, readRouter, nil).Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, stmt)
 		defer iter.Stop()
 
 		var velocities []SkuVelocity

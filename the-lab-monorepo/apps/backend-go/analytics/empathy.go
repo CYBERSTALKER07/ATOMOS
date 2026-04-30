@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/proximity"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -26,7 +27,7 @@ type EmpathyAdoption struct {
 }
 
 // HandleEmpathyAdoption returns adoption metrics for the Empathy Engine (GLOBAL_ADMIN only).
-func HandleEmpathyAdoption(client *spanner.Client) http.HandlerFunc {
+func HandleEmpathyAdoption(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -48,9 +49,11 @@ func HandleEmpathyAdoption(client *spanner.Client) http.HandlerFunc {
 
 		var adoption EmpathyAdoption
 
+		readClient := getReadClient(r.Context(), client, readRouter, nil)
+
 		// Total retailers
 		countQuery := func(sql string) int64 {
-			iter := client.Single().Query(ctx, spanner.Statement{SQL: sql})
+			iter := readClient.Single().Query(ctx, spanner.Statement{SQL: sql})
 			defer iter.Stop()
 			row, err := iter.Next()
 			if err != nil {
@@ -71,7 +74,7 @@ func HandleEmpathyAdoption(client *spanner.Client) http.HandlerFunc {
 
 		// Prediction status counts
 		statusQuery := `SELECT IFNULL(Status, 'UNKNOWN') as s, COUNT(*) as c FROM AIPredictions GROUP BY s`
-		iter := client.Single().Query(ctx, spanner.Statement{SQL: statusQuery})
+		iter := readClient.Single().Query(ctx, spanner.Statement{SQL: statusQuery})
 		defer iter.Stop()
 		for {
 			row, err := iter.Next()

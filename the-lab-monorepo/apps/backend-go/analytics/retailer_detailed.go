@@ -9,6 +9,7 @@ import (
 	"google.golang.org/api/iterator"
 
 	"backend-go/auth"
+	"backend-go/proximity"
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -51,7 +52,7 @@ type RetailerDetailedResponse struct {
 	AvgOrderValue     int64                `json:"avg_order_value"`
 }
 
-func HandleRetailerDetailedAnalytics(client *spanner.Client) http.HandlerFunc {
+func HandleRetailerDetailedAnalytics(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -91,7 +92,8 @@ func HandleRetailerDetailedAnalytics(client *spanner.Client) http.HandlerFunc {
 			GROUP BY Day
 			ORDER BY Day`
 
-		dailyIter := client.Single().WithTimestampBound(staleness).Query(ctx, spanner.Statement{SQL: dailySql, Params: params})
+		readClient := getReadClient(r.Context(), client, readRouter, nil)
+		dailyIter := readClient.Single().WithTimestampBound(staleness).Query(ctx, spanner.Statement{SQL: dailySql, Params: params})
 		defer dailyIter.Stop()
 
 		for {
@@ -130,7 +132,7 @@ func HandleRetailerDetailedAnalytics(client *spanner.Client) http.HandlerFunc {
 			GROUP BY o.State
 			ORDER BY Cnt DESC`
 
-		stateIter := client.Single().WithTimestampBound(staleness).Query(ctx, spanner.Statement{SQL: stateSql, Params: params})
+		stateIter := readClient.Single().WithTimestampBound(staleness).Query(ctx, spanner.Statement{SQL: stateSql, Params: params})
 		defer stateIter.Stop()
 
 		for {
@@ -168,7 +170,7 @@ func HandleRetailerDetailedAnalytics(client *spanner.Client) http.HandlerFunc {
 			ORDER BY Total DESC
 			LIMIT 10`
 
-		catIter := client.Single().WithTimestampBound(staleness).Query(ctx, spanner.Statement{SQL: catSql, Params: params})
+		catIter := readClient.Single().WithTimestampBound(staleness).Query(ctx, spanner.Statement{SQL: catSql, Params: params})
 		defer catIter.Stop()
 
 		for {
@@ -204,7 +206,7 @@ func HandleRetailerDetailedAnalytics(client *spanner.Client) http.HandlerFunc {
 			GROUP BY Weekday
 			ORDER BY Cnt DESC`
 
-		wdIter := client.Single().WithTimestampBound(staleness).Query(ctx, spanner.Statement{SQL: wdSql, Params: params})
+		wdIter := readClient.Single().WithTimestampBound(staleness).Query(ctx, spanner.Statement{SQL: wdSql, Params: params})
 		defer wdIter.Stop()
 
 		for {

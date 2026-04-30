@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/proximity"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -46,7 +47,7 @@ type WarehouseRevBucket struct {
 }
 
 // HandleSupplierFinancials serves GET /v1/supplier/financials.
-func HandleSupplierFinancials(spannerClient *spanner.Client) http.HandlerFunc {
+func HandleSupplierFinancials(spannerClient *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -75,7 +76,8 @@ func HandleSupplierFinancials(spannerClient *spanner.Client) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 
-		resp, err := querySupplierFinancials(ctx, spannerClient, supplierID, startDate, endDate, period)
+		readClient := getReadClient(r.Context(), spannerClient, readRouter, nil)
+		resp, err := querySupplierFinancials(ctx, readClient, supplierID, startDate, endDate, period)
 		if err != nil {
 			log.Printf("[FINANCIALS] supplier=%s error: %v", supplierID, err)
 			http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)

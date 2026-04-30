@@ -8,6 +8,8 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
+
+	"backend-go/proximity"
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -36,7 +38,7 @@ type RevenueResponse struct {
 	GatewayBreakdown []GatewayBreakdown `json:"gateway_breakdown"`
 }
 
-func HandleRevenue(client *spanner.Client) http.HandlerFunc {
+func HandleRevenue(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -70,7 +72,8 @@ func HandleRevenue(client *spanner.Client) http.HandlerFunc {
 			GROUP BY Day
 			ORDER BY Day`, scopeClause)
 
-		tsIter := client.Single().Query(ctx, spanner.Statement{SQL: tsSql, Params: scopeParams})
+		readClient := getReadClient(r.Context(), client, readRouter, ws)
+		tsIter := readClient.Single().Query(ctx, spanner.Statement{SQL: tsSql, Params: scopeParams})
 		defer tsIter.Stop()
 
 		for {
@@ -108,7 +111,7 @@ func HandleRevenue(client *spanner.Client) http.HandlerFunc {
 			GROUP BY Gateway
 			ORDER BY Total DESC`, scopeClause)
 
-		gbIter := client.Single().Query(ctx, spanner.Statement{SQL: gbSql, Params: scopeParams})
+		gbIter := readClient.Single().Query(ctx, spanner.Statement{SQL: gbSql, Params: scopeParams})
 		defer gbIter.Stop()
 
 		for {
@@ -158,7 +161,7 @@ type TopRetailer struct {
 	LastOrderAt   string `json:"last_order_at"`
 }
 
-func HandleTopRetailers(client *spanner.Client) http.HandlerFunc {
+func HandleTopRetailers(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -199,7 +202,7 @@ func HandleTopRetailers(client *spanner.Client) http.HandlerFunc {
 			ORDER BY %s
 			LIMIT 20`, scopeClause, orderBy)
 
-		iter := client.Single().Query(ctx, spanner.Statement{SQL: sql, Params: scopeParams})
+		iter := getReadClient(r.Context(), client, readRouter, ws).Single().Query(ctx, spanner.Statement{SQL: sql, Params: scopeParams})
 		defer iter.Stop()
 
 		var retailers []TopRetailer

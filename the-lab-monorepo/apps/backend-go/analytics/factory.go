@@ -9,6 +9,7 @@ import (
 	"google.golang.org/api/iterator"
 
 	"backend-go/auth"
+	"backend-go/proximity"
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -37,7 +38,7 @@ type FactoryOverviewResponse struct {
 	AvgLeadTimeMins  float64                `json:"avg_lead_time_mins"`
 }
 
-func HandleFactoryAnalytics(client *spanner.Client) http.HandlerFunc {
+func HandleFactoryAnalytics(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -75,7 +76,8 @@ func HandleFactoryAnalytics(client *spanner.Client) http.HandlerFunc {
 			GROUP BY Day
 			ORDER BY Day`
 
-		dailyIter := client.Single().Query(ctx, spanner.Statement{SQL: dailySql, Params: params})
+		readClient := getReadClient(r.Context(), client, readRouter, nil)
+		dailyIter := readClient.Single().Query(ctx, spanner.Statement{SQL: dailySql, Params: params})
 		defer dailyIter.Stop()
 
 		for {
@@ -110,7 +112,7 @@ func HandleFactoryAnalytics(client *spanner.Client) http.HandlerFunc {
 			GROUP BY t.State
 			ORDER BY Cnt DESC`
 
-		stateIter := client.Single().Query(ctx, spanner.Statement{SQL: stateSql, Params: params})
+		stateIter := readClient.Single().Query(ctx, spanner.Statement{SQL: stateSql, Params: params})
 		defer stateIter.Stop()
 
 		for {
@@ -141,7 +143,7 @@ func HandleFactoryAnalytics(client *spanner.Client) http.HandlerFunc {
 			AND t.State IN ('SHIPPED', 'RECEIVED')
 			AND t.CreatedAt >= @_from AND t.CreatedAt <= @_to`
 
-		ltIter := client.Single().Query(ctx, spanner.Statement{SQL: ltSql, Params: params})
+		ltIter := readClient.Single().Query(ctx, spanner.Statement{SQL: ltSql, Params: params})
 		defer ltIter.Stop()
 
 		if row, err := ltIter.Next(); err == nil {

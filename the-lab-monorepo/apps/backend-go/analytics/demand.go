@@ -8,6 +8,7 @@ import (
 
 	"backend-go/auth"
 	"backend-go/hotspot"
+	"backend-go/proximity"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -45,7 +46,7 @@ type DemandSummaryResponse struct {
 //
 // Since AIPredictions only stores RetailerId + PredictedAmount (no SKU detail),
 // we approximate SKU breakdown from the retailer's historical AI orders for this supplier.
-func HandleDemandToday(client *spanner.Client) http.HandlerFunc {
+func HandleDemandToday(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -89,7 +90,8 @@ func HandleDemandToday(client *spanner.Client) http.HandlerFunc {
 				"sid":    supplierId,
 			},
 		}
-		predIter := client.Single().Query(ctx, predStmt)
+		readClient := getReadClient(r.Context(), client, readRouter, nil)
+		predIter := readClient.Single().Query(ctx, predStmt)
 		predRow, err := predIter.Next()
 		predIter.Stop()
 		var predCount, totalValue int64
@@ -128,7 +130,7 @@ func HandleDemandToday(client *spanner.Client) http.HandlerFunc {
 			Params: map[string]interface{}{"sid": supplierId, "shards": shards, "cutoff": cutoff},
 		}
 
-		skuIter := client.Single().Query(ctx, skuStmt)
+		skuIter := readClient.Single().Query(ctx, skuStmt)
 		defer skuIter.Stop()
 
 		var items []DemandSummaryItem
@@ -219,7 +221,7 @@ type DemandHistoryResponse struct {
 
 // HandleDemandHistory returns a time-series of predicted vs actual demand
 // for the supplier, plus a detailed table of upcoming AI orders.
-func HandleDemandHistory(client *spanner.Client) http.HandlerFunc {
+func HandleDemandHistory(client *spanner.Client, readRouter proximity.ReadRouter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -280,7 +282,8 @@ func HandleDemandHistory(client *spanner.Client) http.HandlerFunc {
 			Params: map[string]interface{}{"sid": supplierId, "shards": shards},
 		}
 
-		tsIter := client.Single().Query(ctx, tsStmt)
+		readClient := getReadClient(r.Context(), client, readRouter, nil)
+		tsIter := readClient.Single().Query(ctx, tsStmt)
 		defer tsIter.Stop()
 
 		var timeSeries []DemandHistoryPoint
@@ -346,7 +349,7 @@ func HandleDemandHistory(client *spanner.Client) http.HandlerFunc {
 			Params: map[string]interface{}{"sid": supplierId, "shards": shards},
 		}
 
-		upIter := client.Single().Query(ctx, upStmt)
+		upIter := readClient.Single().Query(ctx, upStmt)
 		defer upIter.Stop()
 
 		var upcoming []DemandDetailRow
