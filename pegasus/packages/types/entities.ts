@@ -1,6 +1,6 @@
 /**
  * @file packages/types/entities.ts
- * @description Canonical entity types for the Lab Industries ecosystem.
+ * @description Canonical entity types for the Pegasus ecosystem.
  * Sync with Spanner DDL: apps/backend-go/schema/spanner.ddl
  * Sync with Go structs across: supplier/, order/, fleet/, auth/
  */

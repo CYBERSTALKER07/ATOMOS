@@ -1,6 +1,6 @@
 /**
  * @file packages/types/order.ts
- * @description Canonical shared types for the Lab Industries distribution ecosystem.
+ * @description Canonical shared types for the Pegasus distribution ecosystem.
  *
  * GOLDEN RULE: Every frontend (Next.js Admin, Retailer App, Driver App) and every
  * backend handler MUST import from this package. No local type redeclarations.

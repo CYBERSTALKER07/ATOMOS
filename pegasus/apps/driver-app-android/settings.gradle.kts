@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LabDriver"
+rootProject.name = "PegasusDriver"
 include(":app")

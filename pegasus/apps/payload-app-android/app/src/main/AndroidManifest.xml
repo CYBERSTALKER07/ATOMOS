@@ -19,7 +19,7 @@
     </queries>
 
     <application
-        android:name="com.pegasus.payload.LabPayloadApp"
+        android:name="com.pegasus.payload.PegasusPayloadApp"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"

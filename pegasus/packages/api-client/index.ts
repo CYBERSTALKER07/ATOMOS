@@ -1,6 +1,6 @@
 /**
  * @file packages/api-client/index.ts
- * @description Typed API client for the Lab Industries backend.
+ * @description Typed API client for the Pegasus backend.
  * Wraps fetch with JWT auth, refresh, and typed responses.
  *
  * Usage:

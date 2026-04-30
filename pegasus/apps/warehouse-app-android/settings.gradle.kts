@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LabWarehouse"
+rootProject.name = "PegasusWarehouse"
 include(":app")
