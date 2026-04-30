@@ -419,7 +419,7 @@ func main() {
 	aiRatioBlendNew = envFloat("AI_RATIO_BLEND_NEW", 0.3)
 	aiMinTriggerWaitH = envFloat("AI_MIN_TRIGGER_WAIT_HOURS", 2.0)
 	maxConcurrentStr := os.Getenv("MAX_CONCURRENT_PREDICTIONS")
-	aiMaxConcurrent = 10
+	aiMaxConcurrent = runtime.GOMAXPROCS(0) * 10
 	if maxConcurrentStr != "" {
 		fmt.Sscanf(maxConcurrentStr, "%d", &aiMaxConcurrent)
 	}
