@@ -99,7 +99,7 @@ type OrderCompletedEvent struct {
 ### 6. Import Cycle: payment/proximity Can't Import kafka
 ```go
 // ❌ WRONG — creates import cycle
-import "the-lab-monorepo/apps/backend-go/kafka"
+import "pegasus/apps/backend-go/kafka"
 const topic = kafka.EventOrderCompleted // CYCLE: payment → kafka → treasurer → payment
 
 // ✅ RIGHT — local constant with comment

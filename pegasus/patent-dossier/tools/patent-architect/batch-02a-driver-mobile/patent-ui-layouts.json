@@ -1,0 +1,320 @@
+{
+  "batch": "Batch 02A - Driver Mobile Surfaces",
+  "scope": {
+    "role": "DRIVER",
+    "apps": ["driver-app-android", "driverappios"],
+    "coverage_note": "All discovered driver mobile screens from page dossiers and live screen files in this batch."
+  },
+  "screens": [
+    {
+      "app": "Driver Android",
+      "screen": "Driver Main Shell",
+      "route": "android-driver-main-shell",
+      "patent_figure_number": "Fig. B2A-01",
+      "layout_prompt": "A monochrome line-art wireframe of a tab-driven driver execution shell with floating active-route status.",
+      "components": [
+        { "id": "201", "type": "Top Status Band", "position": "Top 12%", "elements": ["Driver State", "Truck Identity"] },
+        { "id": "202", "type": "Primary Workspace", "position": "Middle 70%", "elements": ["Map Entry", "Mission Entry", "Execution Actions"] },
+        { "id": "203", "type": "Tab Navigation", "position": "Bottom 18%", "elements": ["Home", "Map", "Rides", "Profile"] }
+      ]
+    },
+    {
+      "app": "Driver Android",
+      "screen": "Driver Login",
+      "route": "android-driver-login",
+      "patent_figure_number": "Fig. B2A-02",
+      "layout_prompt": "A monochrome line-art wireframe of a phone-and-pin authentication screen.",
+      "components": [
+        { "id": "204", "type": "Credential Form", "position": "Middle 60%", "elements": ["Phone Input", "PIN Input", "Submit"] }
+      ]
+    },
+    {
+      "app": "Driver Android",
+      "screen": "Driver Home Dashboard",
+      "route": "android-driver-home",
+      "patent_figure_number": "Fig. B2A-03",
+      "layout_prompt": "A monochrome line-art wireframe of a mission dashboard with operational quick actions.",
+      "components": [
+        { "id": "205", "type": "Mission Summary", "position": "Top 25%", "elements": ["Current Shift", "Stops Remaining"] },
+        { "id": "206", "type": "Action Grid", "position": "Middle 50%", "elements": ["Start Route", "Scan", "Offload", "Support"] }
+      ]
+    },
+    {
+      "app": "Driver Android",
+      "screen": "Driver Map Surface",
+      "route": "android-driver-map",
+      "patent_figure_number": "Fig. B2A-04",
+      "layout_prompt": "A monochrome line-art wireframe of a map-centric route execution view.",
+      "components": [
+        { "id": "207", "type": "Map Canvas", "position": "Middle 78%", "elements": ["Route Polyline", "Stop Markers", "Current Position"] },
+        { "id": "208", "type": "Map Controls", "position": "Bottom 22%", "elements": ["Next Stop", "Recenter", "Status"] }
+      ]
+    },
+    {
+      "app": "Driver Android",
+      "screen": "Driver Rides Ledger",
+      "route": "android-driver-rides",
+      "patent_figure_number": "Fig. B2A-05",
+      "layout_prompt": "A monochrome line-art wireframe of a manifest ride ledger with loading sequence indicators.",
+      "components": [
+        { "id": "209", "type": "Manifest List", "position": "Middle 80%", "elements": ["Route Entry", "Stop Count", "Sequence"] }
+      ]
+    },
+    {
+      "app": "Driver Android",
+      "screen": "Driver Profile",
+      "route": "android-driver-profile",
+      "patent_figure_number": "Fig. B2A-06",
+      "layout_prompt": "A monochrome line-art wireframe of a profile and session-control screen.",
+      "components": [
+        { "id": "210", "type": "Identity Card", "position": "Top 35%", "elements": ["Driver Name", "Truck", "Stats"] },
+        { "id": "211", "type": "Session Actions", "position": "Bottom 40%", "elements": ["End Session", "History", "Support"] }
+      ]
+    },
+    {
+      "app": "Driver Android",
+      "screen": "QR Scanner",
+      "route": "android-driver-scanner",
+      "patent_figure_number": "Fig. B2A-07",
+      "layout_prompt": "A monochrome line-art wireframe of a live-camera scan entry view with target reticle.",
+      "components": [
+        { "id": "212", "type": "Camera Frame", "position": "Middle 84%", "elements": ["Scan Reticle", "Guidance Text"] }
+      ]
+    },
+    {
+      "app": "Driver Android",
+      "screen": "Offload Review",
+      "route": "android-driver-offload-review",
+      "patent_figure_number": "Fig. B2A-08",
+      "layout_prompt": "A monochrome line-art wireframe of an offload confirmation list with accepted and rejected totals.",
+      "components": [
+        { "id": "213", "type": "Line Item Checklist", "position": "Middle 70%", "elements": ["Accepted Units", "Rejected Units", "Reason Chips"] },
+        { "id": "214", "type": "Decision Footer", "position": "Bottom 20%", "elements": ["Proceed to Payment", "Open Correction"] }
+      ]
+    },
+    {
+      "app": "Driver Android",
+      "screen": "Payment Waiting",
+      "route": "android-driver-payment-waiting",
+      "patent_figure_number": "Fig. B2A-09",
+      "layout_prompt": "A monochrome line-art wireframe of a settlement waiting state.",
+      "components": [
+        { "id": "215", "type": "Settlement Status Panel", "position": "Middle 60%", "elements": ["Gateway State", "Retry Timer", "Completion Gate"] }
+      ]
+    },
+    {
+      "app": "Driver Android",
+      "screen": "Cash Collection",
+      "route": "android-driver-cash-collection",
+      "patent_figure_number": "Fig. B2A-10",
+      "layout_prompt": "A monochrome line-art wireframe of a physical cash confirmation flow.",
+      "components": [
+        { "id": "216", "type": "Cash Confirmation Panel", "position": "Middle 65%", "elements": ["Amount", "Confirm Receipt", "Finalize Delivery"] }
+      ]
+    },
+    {
+      "app": "Driver Android",
+      "screen": "Delivery Correction",
+      "route": "android-driver-delivery-correction",
+      "patent_figure_number": "Fig. B2A-11",
+      "layout_prompt": "A monochrome line-art wireframe of a quantity amendment and refund impact screen.",
+      "components": [
+        { "id": "217", "type": "Correction Matrix", "position": "Middle 72%", "elements": ["Delivered Quantity", "Rejected Quantity", "Refund Delta"] }
+      ]
+    },
+    {
+      "app": "Driver Android",
+      "screen": "Notification Inbox",
+      "route": "android-driver-notification-inbox",
+      "patent_figure_number": "Fig. B2A-12",
+      "layout_prompt": "A monochrome line-art wireframe of an operational notification queue for a driver.",
+      "components": [
+        { "id": "218", "type": "Notification List", "position": "Middle 82%", "elements": ["Event Title", "Timestamp", "Unread Marker"] }
+      ]
+    },
+    {
+      "app": "Driver Android",
+      "screen": "Shop Closed Waiting",
+      "route": "android-driver-shop-closed-waiting",
+      "patent_figure_number": "Fig. B2A-13",
+      "layout_prompt": "A monochrome line-art wireframe of a closure-hold waiting state.",
+      "components": [
+        { "id": "219", "type": "Exception Hold Panel", "position": "Middle 60%", "elements": ["Closure Notice", "Escalation", "Await Instruction"] }
+      ]
+    },
+    {
+      "app": "Driver Android",
+      "screen": "End Session Sheet",
+      "route": "android-driver-end-session-sheet",
+      "patent_figure_number": "Fig. B2A-14",
+      "layout_prompt": "A monochrome line-art wireframe of a bottom sheet confirming session termination.",
+      "components": [
+        { "id": "220", "type": "Confirmation Sheet", "position": "Bottom 35%", "elements": ["Summary", "Cancel", "End Session"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Root Gate",
+      "route": "ios-driver-root-gate",
+      "patent_figure_number": "Fig. B2A-15",
+      "layout_prompt": "A monochrome line-art wireframe of a session gate deciding between login and protected shell.",
+      "components": [
+        { "id": "221", "type": "Session Gate", "position": "Full 100%", "elements": ["Token Check", "Route Decision"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Login",
+      "route": "ios-driver-login",
+      "patent_figure_number": "Fig. B2A-16",
+      "layout_prompt": "A monochrome line-art wireframe of iOS phone-and-pin login.",
+      "components": [
+        { "id": "222", "type": "Credential Stack", "position": "Middle 58%", "elements": ["Phone", "PIN", "Sign In"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Main Shell",
+      "route": "ios-driver-main-shell",
+      "patent_figure_number": "Fig. B2A-17",
+      "layout_prompt": "A monochrome line-art wireframe of a tabbed iOS driver shell with floating route status.",
+      "components": [
+        { "id": "223", "type": "Top Context Bar", "position": "Top 10%", "elements": ["Driver Status", "Trip Context"] },
+        { "id": "224", "type": "Primary Content", "position": "Middle 72%", "elements": ["Map Entry", "Mission Entry", "Action Buttons"] },
+        { "id": "225", "type": "Tab Bar", "position": "Bottom 18%", "elements": ["Home", "Map", "Rides", "Profile"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Home",
+      "route": "ios-driver-home",
+      "patent_figure_number": "Fig. B2A-18",
+      "layout_prompt": "A monochrome line-art wireframe of a driver mission dashboard.",
+      "components": [
+        { "id": "226", "type": "Mission Cards", "position": "Middle 70%", "elements": ["Current Mission", "Daily Metrics", "Quick Actions"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Map",
+      "route": "ios-driver-map",
+      "patent_figure_number": "Fig. B2A-19",
+      "layout_prompt": "A monochrome line-art wireframe of the primary iOS route execution map.",
+      "components": [
+        { "id": "227", "type": "Map Canvas", "position": "Middle 82%", "elements": ["Polyline", "Stop Pin", "Current Position"] },
+        { "id": "228", "type": "Action Dock", "position": "Bottom 18%", "elements": ["Scan", "Open Mission", "Next Stop"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Rides",
+      "route": "ios-driver-rides",
+      "patent_figure_number": "Fig. B2A-20",
+      "layout_prompt": "A monochrome line-art wireframe of a route and manifest list view.",
+      "components": [
+        { "id": "229", "type": "Manifest List", "position": "Middle 82%", "elements": ["Ride Entry", "Stop Sequence", "Status"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Profile",
+      "route": "ios-driver-profile",
+      "patent_figure_number": "Fig. B2A-21",
+      "layout_prompt": "A monochrome line-art wireframe of iOS driver profile and controls.",
+      "components": [
+        { "id": "230", "type": "Profile Card", "position": "Top 40%", "elements": ["Identity", "Vehicle", "Stats"] },
+        { "id": "231", "type": "Action List", "position": "Bottom 45%", "elements": ["History", "Support", "End Session"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "QR Scanner",
+      "route": "ios-driver-qr-scanner",
+      "patent_figure_number": "Fig. B2A-22",
+      "layout_prompt": "A monochrome line-art wireframe of an iOS QR scan capture screen.",
+      "components": [
+        { "id": "232", "type": "Camera View", "position": "Middle 84%", "elements": ["Reticle", "Lighting Control", "Instruction"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Offload Review",
+      "route": "ios-driver-offload-review",
+      "patent_figure_number": "Fig. B2A-23",
+      "layout_prompt": "A monochrome line-art wireframe of iOS offload confirmation with reject path.",
+      "components": [
+        { "id": "233", "type": "Offload Checklist", "position": "Middle 72%", "elements": ["Line Items", "Accepted", "Rejected"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Payment Waiting",
+      "route": "ios-driver-payment-waiting",
+      "patent_figure_number": "Fig. B2A-24",
+      "layout_prompt": "A monochrome line-art wireframe of payment settlement hold view.",
+      "components": [
+        { "id": "234", "type": "Settlement Gate", "position": "Middle 60%", "elements": ["Gateway Status", "Completion Trigger"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Cash Collection",
+      "route": "ios-driver-cash-collection",
+      "patent_figure_number": "Fig. B2A-25",
+      "layout_prompt": "A monochrome line-art wireframe of physical-cash confirmation state.",
+      "components": [
+        { "id": "235", "type": "Cash Panel", "position": "Middle 62%", "elements": ["Amount Due", "Collected Confirmation", "Finalize"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Delivery Correction",
+      "route": "ios-driver-delivery-correction",
+      "patent_figure_number": "Fig. B2A-26",
+      "layout_prompt": "A monochrome line-art wireframe of an item amendment and refund preview screen.",
+      "components": [
+        { "id": "236", "type": "Correction Grid", "position": "Middle 72%", "elements": ["Item Quantity", "Rejection Reason", "Refund Delta"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Offline Verifier",
+      "route": "ios-driver-offline-verifier",
+      "patent_figure_number": "Fig. B2A-27",
+      "layout_prompt": "A monochrome line-art wireframe of an offline verification terminal for delivery proof.",
+      "components": [
+        { "id": "237", "type": "Verification Terminal", "position": "Middle 70%", "elements": ["Proof Payload", "Signature Check", "Fraud Guard"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Mission Detail Sheet",
+      "route": "ios-driver-mission-detail-sheet",
+      "patent_figure_number": "Fig. B2A-28",
+      "layout_prompt": "A monochrome line-art wireframe of a bottom mission inspector sheet.",
+      "components": [
+        { "id": "238", "type": "Mission Sheet", "position": "Bottom 42%", "elements": ["Geofence Status", "Distance", "Actions"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Map Marker Detail Sheet",
+      "route": "ios-driver-map-marker-detail-sheet",
+      "patent_figure_number": "Fig. B2A-29",
+      "layout_prompt": "A monochrome line-art wireframe of a compact marker detail sheet.",
+      "components": [
+        { "id": "239", "type": "Marker Sheet", "position": "Bottom 30%", "elements": ["Stop Identity", "Route Context"] }
+      ]
+    },
+    {
+      "app": "Driver iOS",
+      "screen": "Notification Inbox",
+      "route": "ios-driver-notification-inbox",
+      "patent_figure_number": "Fig. B2A-30",
+      "layout_prompt": "A monochrome line-art wireframe of iOS operational notifications.",
+      "components": [
+        { "id": "240", "type": "Notification List", "position": "Middle 82%", "elements": ["Title", "Body", "Timestamp", "Read State"] }
+      ]
+    }
+  ]
+}

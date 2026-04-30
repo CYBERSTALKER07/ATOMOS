@@ -1,8 +1,0 @@
-<resources>
-    <style name="Theme.LabRetailer" parent="android:Theme.Material.NoActionBar" />
-
-    <style name="Theme.LabRetailer.Splash" parent="Theme.LabRetailer">
-        <item name="android:windowSplashScreenBackground">#0A0A0A</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_branding</item>
-    </style>
-</resources>

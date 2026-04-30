@@ -242,7 +242,7 @@ Before declaring any feature done, walk this list top to bottom:
 
 ## Source Material (cite when ambiguous)
 - `.github/gemini-instructions.md` — F.R.I.D.A.Y. protocol + role matrix + backend topology.
-- `the-lab-monorepo/.coderabbit.yaml` — review invariants (Rule of 25, H3 discipline, outbox, SupplierId scoping).
+- `pegasus/.coderabbit.yaml` — review invariants (Rule of 25, H3 discipline, outbox, SupplierId scoping).
 - `apps/backend-go/schema/spanner.ddl` — schema of record.
 - `apps/backend-go/kafka/events.go` — event type catalog.
 - `apps/backend-go/outbox/relay.go` — outbox relay contract + "no direct WriteMessages" rule.

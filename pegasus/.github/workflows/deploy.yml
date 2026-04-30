@@ -1,0 +1,110 @@
+name: Deploy — GKE rolling update
+
+on:
+  workflow_run:
+    workflows: ["CI — Build · Test · Push"]
+    types: [completed]
+    branches: [main]
+
+  # Manual trigger for hotfix deploys
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag to deploy (default: latest)"
+        required: false
+        default: "latest"
+
+permissions:
+  contents: read
+  id-token: write   # Workload Identity Federation
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: asia-south1
+  GKE_CLUSTER: void-cluster
+  GAR_REPO: ${{ vars.GAR_REPO }}
+  K8S_NAMESPACE: void
+
+jobs:
+  deploy:
+    name: Deploy to GKE
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (WIF — no JSON key)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SA_EMAIL }}
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.REGION }}
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          else
+            # Use the triggering workflow's SHA
+            echo "tag=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install kustomize
+        run: |
+          curl -sfLo /tmp/kustomize.tar.gz \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz"
+          tar -xzf /tmp/kustomize.tar.gz -C /usr/local/bin
+
+      - name: Update backend image
+        working-directory: pegasus/infra/k8s/backend
+        run: |
+          kustomize edit set image backend=${{ env.GAR_REPO }}/backend:${{ steps.tag.outputs.tag }}
+
+      - name: Update ai-worker image
+        working-directory: pegasus/infra/k8s/ai-worker
+        run: |
+          kustomize edit set image ai-worker=${{ env.GAR_REPO }}/ai-worker:${{ steps.tag.outputs.tag }}
+
+      - name: Apply backend manifests
+        working-directory: pegasus/infra/k8s/backend
+        run: kustomize build . | kubectl apply -f -
+
+      - name: Apply ai-worker manifests
+        working-directory: pegasus/infra/k8s/ai-worker
+        run: kustomize build . | kubectl apply -f -
+
+      - name: Wait for backend rollout
+        run: |
+          kubectl rollout status deployment/backend \
+            -n ${{ env.K8S_NAMESPACE }} \
+            --timeout=300s
+
+      - name: Wait for ai-worker rollout
+        run: |
+          kubectl rollout status deployment/ai-worker \
+            -n ${{ env.K8S_NAMESPACE }} \
+            --timeout=300s
+
+      - name: Smoke test — /healthz
+        run: |
+          BACKEND_IP=$(kubectl get svc backend -n ${{ env.K8S_NAMESPACE }} \
+            -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          curl --fail --max-time 10 "http://${BACKEND_IP}:8080/healthz"
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deploy failed — initiating rollback"
+          kubectl rollout undo deployment/backend -n ${{ env.K8S_NAMESPACE }} || true
+          kubectl rollout undo deployment/ai-worker -n ${{ env.K8S_NAMESPACE }} || true
+          kubectl rollout status deployment/backend -n ${{ env.K8S_NAMESPACE }} --timeout=120s || true
+          kubectl rollout status deployment/ai-worker -n ${{ env.K8S_NAMESPACE }} --timeout=120s || true
+          exit 1

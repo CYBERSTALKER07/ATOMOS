@@ -5,9 +5,9 @@ on:
     branches:
       - main
     paths:
-      - 'the-lab-monorepo/apps/backend-go/**'
-      - 'the-lab-monorepo/packages/**'
-      - 'the-lab-monorepo/infra/terraform/**'
+      - 'pegasus/apps/backend-go/**'
+      - 'pegasus/packages/**'
+      - 'pegasus/infra/terraform/**'
 
 env:
   GCP_REGION: asia-south1
@@ -41,7 +41,7 @@ jobs:
       - name: Build and Push Docker Image
         run: |
           IMAGE_TAG=${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GAR_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          docker build -t $IMAGE_TAG -f the-lab-monorepo/apps/backend-go/Dockerfile .
+          docker build -t $IMAGE_TAG -f pegasus/apps/backend-go/Dockerfile .
           docker push $IMAGE_TAG
           echo "IMAGE_URL=$IMAGE_TAG" >> $GITHUB_ENV
 
@@ -50,7 +50,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Apply Terraform State
-        working-directory: ./the-lab-monorepo/infra/terraform
+        working-directory: ./pegasus/infra/terraform
         run: |
           terraform init
           terraform apply -auto-approve \

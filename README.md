@@ -6,7 +6,7 @@
 ![Runtime](https://img.shields.io/badge/Runtime-Go%20%2B%20Next.js%20%2B%20Kotlin%20%2B%20SwiftUI-40E0FF?style=for-the-badge)
 ![Consistency](https://img.shields.io/badge/Consistency-Transactional%20Outbox%20and%20Version%20Gates-FF7A18?style=for-the-badge)
 
-![ATOMOS](the-lab-monorepo/assets/image.png)
+![ATOMOS](pegasus/assets/image.png)
 
 ATOMOS is an enterprise-grade logistics operating system that coordinates supplier, factory, warehouse, driver, retailer, and payload operations across web, desktop, and native mobile surfaces.
 
@@ -43,7 +43,7 @@ Audience variants:
 1. Engineering master reference: [README.md](README.md).
 2. External investor and partner variant: [README-investors.md](README-investors.md).
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
 ## Executive Summary
 
@@ -67,9 +67,9 @@ Business-critical invariants:
 
 ## Architecture Overview
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
-![ATOMOS Enterprise Architecture](the-lab-monorepo/docs/assets/architecture-overview.svg)
+![ATOMOS Enterprise Architecture](pegasus/docs/assets/architecture-overview.svg)
 
 ### Logical Architecture
 
@@ -128,9 +128,9 @@ flowchart LR
 
 ## Maglev Load Balancing Coverage
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
-![Maglev Load Balancer Coverage](the-lab-monorepo/docs/assets/maglev-load-balancers.svg)
+![Maglev Load Balancer Coverage](pegasus/docs/assets/maglev-load-balancers.svg)
 
 Implemented Maglev or Maglev-derived load balancer paths:
 
@@ -146,11 +146,11 @@ Current activation status:
 
 Implementation map:
 
-1. Edge ring-hash infrastructure: `the-lab-monorepo/infra/terraform/networking.tf`.
-2. Maglev-derived read-router engine: `the-lab-monorepo/apps/backend-go/bootstrap/spannerrouter/router.go`.
-3. Current single-region boot mode: `the-lab-monorepo/apps/backend-go/bootstrap/new.go`.
-4. xDS gRPC load-balanced client path: `the-lab-monorepo/apps/backend-go/internal/rpc/optimizergrpc/client.go`.
-5. xDS gRPC optimizer server endpoint: `the-lab-monorepo/apps/ai-worker/grpc_server.go`.
+1. Edge ring-hash infrastructure: `pegasus/infra/terraform/networking.tf`.
+2. Maglev-derived read-router engine: `pegasus/apps/backend-go/bootstrap/spannerrouter/router.go`.
+3. Current single-region boot mode: `pegasus/apps/backend-go/bootstrap/new.go`.
+4. xDS gRPC load-balanced client path: `pegasus/apps/backend-go/internal/rpc/optimizergrpc/client.go`.
+5. xDS gRPC optimizer server endpoint: `pegasus/apps/ai-worker/grpc_server.go`.
 
 Operational note:
 
@@ -171,9 +171,9 @@ Operational note:
 
 ## Auto-Dispatch Deep Dive
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
-![Auto Dispatch Pipeline](the-lab-monorepo/docs/assets/autodispatch-pipeline.svg)
+![Auto Dispatch Pipeline](pegasus/docs/assets/autodispatch-pipeline.svg)
 
 ### Dispatch Pipeline
 
@@ -256,9 +256,9 @@ sequenceDiagram
 
 ## Reliability Control Plane
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
-![Reliability Control Plane](the-lab-monorepo/docs/assets/reliability-control-plane.svg)
+![Reliability Control Plane](pegasus/docs/assets/reliability-control-plane.svg)
 
 ### Reliability Invariants
 
@@ -291,29 +291,29 @@ Role naming note:
 
 | Role | Surface | Stack | Path |
 |---|---|---|---|
-| SUPPLIER | Admin Portal (web + desktop shell) | Next.js 15 + React 19 + Tailwind v4 | the-lab-monorepo/apps/admin-portal |
-| DRIVER | Android | Kotlin + Jetpack Compose | the-lab-monorepo/apps/driver-app-android |
-| DRIVER | iOS | SwiftUI | the-lab-monorepo/apps/driverappios |
-| RETAILER | Android | Kotlin + Jetpack Compose | the-lab-monorepo/apps/retailer-app-android |
-| RETAILER | iOS | SwiftUI | the-lab-monorepo/apps/retailer-app-ios |
-| RETAILER | Desktop | Next.js + Tauri shell | the-lab-monorepo/apps/retailer-app-desktop |
-| PAYLOAD | Terminal | Expo + React Native | the-lab-monorepo/apps/payload-terminal |
-| PAYLOAD | iOS tablet | SwiftUI | the-lab-monorepo/apps/payload-app-ios |
-| PAYLOAD | Android tablet | Kotlin + Jetpack Compose | the-lab-monorepo/apps/payload-app-android |
-| FACTORY_ADMIN | Portal (web + desktop shell) | Next.js + Tailwind v4 | the-lab-monorepo/apps/factory-portal |
-| FACTORY_ADMIN | Android | Kotlin + Jetpack Compose | the-lab-monorepo/apps/factory-app-android |
-| FACTORY_ADMIN | iOS | SwiftUI | the-lab-monorepo/apps/factory-app-ios |
-| WAREHOUSE_ADMIN | Portal (web + desktop shell) | Next.js + Tailwind v4 | the-lab-monorepo/apps/warehouse-portal |
-| WAREHOUSE_ADMIN | Android | Kotlin + Jetpack Compose | the-lab-monorepo/apps/warehouse-app-android |
-| WAREHOUSE_ADMIN | iOS | SwiftUI | the-lab-monorepo/apps/warehouse-app-ios |
+| SUPPLIER | Admin Portal (web + desktop shell) | Next.js 15 + React 19 + Tailwind v4 | pegasus/apps/admin-portal |
+| DRIVER | Android | Kotlin + Jetpack Compose | pegasus/apps/driver-app-android |
+| DRIVER | iOS | SwiftUI | pegasus/apps/driverappios |
+| RETAILER | Android | Kotlin + Jetpack Compose | pegasus/apps/retailer-app-android |
+| RETAILER | iOS | SwiftUI | pegasus/apps/retailer-app-ios |
+| RETAILER | Desktop | Next.js + Tauri shell | pegasus/apps/retailer-app-desktop |
+| PAYLOAD | Terminal | Expo + React Native | pegasus/apps/payload-terminal |
+| PAYLOAD | iOS tablet | SwiftUI | pegasus/apps/payload-app-ios |
+| PAYLOAD | Android tablet | Kotlin + Jetpack Compose | pegasus/apps/payload-app-android |
+| FACTORY_ADMIN | Portal (web + desktop shell) | Next.js + Tailwind v4 | pegasus/apps/factory-portal |
+| FACTORY_ADMIN | Android | Kotlin + Jetpack Compose | pegasus/apps/factory-app-android |
+| FACTORY_ADMIN | iOS | SwiftUI | pegasus/apps/factory-app-ios |
+| WAREHOUSE_ADMIN | Portal (web + desktop shell) | Next.js + Tailwind v4 | pegasus/apps/warehouse-portal |
+| WAREHOUSE_ADMIN | Android | Kotlin + Jetpack Compose | pegasus/apps/warehouse-app-android |
+| WAREHOUSE_ADMIN | iOS | SwiftUI | pegasus/apps/warehouse-app-ios |
 
 ## Technology Stack and Platforms
 
-![ATOMOS Technology Stack Image](the-lab-monorepo/assets/image.png)
+![ATOMOS Technology Stack Image](pegasus/assets/image.png)
 
-![Tech Stack Matrix](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg)
+![Tech Stack Matrix](pegasus/docs/assets/techstack-glass-matrix.svg)
 
-![Tech Stack Compact](the-lab-monorepo/docs/assets/techstack-glass-compact.svg)
+![Tech Stack Compact](pegasus/docs/assets/techstack-glass-compact.svg)
 
 ### ATOMOS Bento Grid (Text)
 
@@ -337,7 +337,7 @@ Role naming note:
 ```text
 V.O.I.D/
 |- README.md
-|- the-lab-monorepo/
+|- pegasus/
 |  |- apps/
 |  |  |- backend-go/
 |  |  |- ai-worker/
@@ -382,9 +382,9 @@ V.O.I.D/
 
 ## Quick Start
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
-![Glass Code Surface](the-lab-monorepo/docs/assets/omni-code-surface.svg)
+![Glass Code Surface](pegasus/docs/assets/omni-code-surface.svg)
 
 ### Prerequisites
 
@@ -397,14 +397,14 @@ V.O.I.D/
 ### Bootstrap Local Infrastructure
 
 ```bash
-cd the-lab-monorepo
+cd pegasus
 docker compose up -d
 ```
 
 ### Initialize Spanner Emulator and Seed Data
 
 ```bash
-cd the-lab-monorepo
+cd pegasus
 make spanner-init
 make seed
 ```
@@ -412,21 +412,21 @@ make seed
 ### Build and Run Backend
 
 ```bash
-cd the-lab-monorepo/apps/backend-go
+cd pegasus/apps/backend-go
 go build ./...
 go run .
 ```
 
 ## Run and Build Commands
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
-![Glass Code Surface](the-lab-monorepo/docs/assets/omni-code-surface.svg)
+![Glass Code Surface](pegasus/docs/assets/omni-code-surface.svg)
 
 ### Core Environment
 
 ```bash
-cd the-lab-monorepo
+cd pegasus
 make env-up
 make env-status
 make env-down
@@ -435,26 +435,26 @@ make env-down
 ### Web and Desktop Surfaces
 
 ```bash
-cd the-lab-monorepo/apps/admin-portal && npm run dev
-cd the-lab-monorepo/apps/admin-portal && npm run tauri:dev
-cd the-lab-monorepo/apps/factory-portal && npm run dev
-cd the-lab-monorepo/apps/warehouse-portal && npm run dev
-cd the-lab-monorepo/apps/retailer-app-desktop && npm run tauri:dev
+cd pegasus/apps/admin-portal && npm run dev
+cd pegasus/apps/admin-portal && npm run tauri:dev
+cd pegasus/apps/factory-portal && npm run dev
+cd pegasus/apps/warehouse-portal && npm run dev
+cd pegasus/apps/retailer-app-desktop && npm run tauri:dev
 ```
 
 ### Mobile Surfaces
 
 ```bash
-cd the-lab-monorepo/apps/payload-terminal && npm run start
-cd the-lab-monorepo/apps/driver-app-android && ./gradlew :app:assembleDebug
-cd the-lab-monorepo/apps/retailer-app-android && ./gradlew :app:assembleDebug
-cd the-lab-monorepo/apps/payload-app-android && ./gradlew :app:assembleDebug
+cd pegasus/apps/payload-terminal && npm run start
+cd pegasus/apps/driver-app-android && ./gradlew :app:assembleDebug
+cd pegasus/apps/retailer-app-android && ./gradlew :app:assembleDebug
+cd pegasus/apps/payload-app-android && ./gradlew :app:assembleDebug
 ```
 
 ### Desktop Scripts from Monorepo Root
 
 ```bash
-cd the-lab-monorepo
+cd pegasus
 npm run desktop:admin:dev
 npm run desktop:factory:dev
 npm run desktop:warehouse:dev
@@ -463,12 +463,12 @@ npm run desktop:retailer:dev
 
 ## Testing and Quality Gates
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
 ### Backend
 
 ```bash
-cd the-lab-monorepo/apps/backend-go
+cd pegasus/apps/backend-go
 go test ./...
 go vet ./...
 go build ./...
@@ -477,7 +477,7 @@ go build ./...
 ### Workspace E2E
 
 ```bash
-cd the-lab-monorepo
+cd pegasus
 npm run test:e2e
 npm run test:e2e:admin
 npm run test:e2e:retailer
@@ -490,14 +490,14 @@ npm run test:e2e:cross
 ### Version Drift Guard
 
 ```bash
-cd the-lab-monorepo
+cd pegasus
 npm run versionscan:scan
 npm run versionscan:enforce
 ```
 
 ## Observability and Operations
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
 Operational telemetry is designed for incident triage, execution debugging, and audit reconstruction.
 
@@ -529,26 +529,26 @@ This repository follows a systems doctrine focused on correctness under load and
 
 Primary docs:
 
-1. the-lab-monorepo/docs/BARCODE_SCANNING.md
-2. the-lab-monorepo/docs/CLOUD_RUN_TO_GKE_CUTOVER_RUNBOOK.md
-3. the-lab-monorepo/docs/MAGLEV_READ_ROUTER_ROLLOUT.md
-4. the-lab-monorepo/E2E_TEST_PROTOCOL.md
+1. pegasus/docs/BARCODE_SCANNING.md
+2. pegasus/docs/CLOUD_RUN_TO_GKE_CUTOVER_RUNBOOK.md
+3. pegasus/docs/MAGLEV_READ_ROUTER_ROLLOUT.md
+4. pegasus/E2E_TEST_PROTOCOL.md
 
 Architecture graphics in this README:
 
-1. the-lab-monorepo/docs/assets/architecture-overview.svg
-2. the-lab-monorepo/docs/assets/autodispatch-pipeline.svg
-3. the-lab-monorepo/docs/assets/reliability-control-plane.svg
-4. the-lab-monorepo/docs/assets/maglev-load-balancers.svg
-5. the-lab-monorepo/docs/assets/omni-hero-banner.svg
-6. the-lab-monorepo/docs/assets/omni-section-divider.svg
-7. the-lab-monorepo/docs/assets/omni-code-surface.svg
-8. the-lab-monorepo/docs/assets/glass-hero-variant-a.svg
-9. the-lab-monorepo/docs/assets/glass-hero-variant-b.svg
-10. the-lab-monorepo/docs/assets/techstack-glass-matrix.svg
-11. the-lab-monorepo/docs/assets/techstack-glass-compact.svg
-12. the-lab-monorepo/docs/assets/techstack-visual-composite.svg
-13. the-lab-monorepo/assets/image.png
+1. pegasus/docs/assets/architecture-overview.svg
+2. pegasus/docs/assets/autodispatch-pipeline.svg
+3. pegasus/docs/assets/reliability-control-plane.svg
+4. pegasus/docs/assets/maglev-load-balancers.svg
+5. pegasus/docs/assets/omni-hero-banner.svg
+6. pegasus/docs/assets/omni-section-divider.svg
+7. pegasus/docs/assets/omni-code-surface.svg
+8. pegasus/docs/assets/glass-hero-variant-a.svg
+9. pegasus/docs/assets/glass-hero-variant-b.svg
+10. pegasus/docs/assets/techstack-glass-matrix.svg
+11. pegasus/docs/assets/techstack-glass-compact.svg
+12. pegasus/docs/assets/techstack-visual-composite.svg
+13. pegasus/assets/image.png
 
 ---
 

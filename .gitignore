@@ -60,9 +60,9 @@ local.properties
 tmp/
 .git_backup/
 .git_backup/
-the-lab-monorepo/backend-go
-the-lab-monorepo/lab-ai-worker
+pegasus/backend-go
+pegasus/lab-ai-worker
 node_modules/
 dist/
 .git_backup/
-the-lab-monorepo/backend-go
+pegasus/backend-go

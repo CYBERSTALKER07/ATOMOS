@@ -1,8 +1,0 @@
-go 1.25.0
-
-use (
-	./apps/ai-worker
-	./apps/backend-go
-	./packages/config
-	./packages/optimizer-contract
-)

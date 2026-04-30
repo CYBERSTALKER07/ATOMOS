@@ -1,8 +1,0 @@
-[
-  {
-    "origin": ["http://localhost:3000", "https://admin.thelabindustries.uz"],
-    "method": ["PUT", "OPTIONS"],
-    "responseHeader": ["Content-Type", "Access-Control-Allow-Origin"],
-    "maxAgeSeconds": 3600
-  }
-]

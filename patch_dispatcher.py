@@ -1,7 +1,7 @@
 import sys
 import re
 
-with open("the-lab-monorepo/apps/backend-go/kafka/notification_dispatcher.go", "r") as f:
+with open("pegasus/apps/backend-go/kafka/notification_dispatcher.go", "r") as f:
     text = f.read()
 
 # Replace handleShopClosed

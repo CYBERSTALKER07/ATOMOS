@@ -4,7 +4,7 @@
 ![Positioning](https://img.shields.io/badge/Positioning-Automation%20with%20Human%20Control-2F5BFF?style=for-the-badge)
 ![Core Value](https://img.shields.io/badge/Core%20Value-Reliable%20Fulfillment%20at%20Scale-00C96B?style=for-the-badge)
 
-![Glass Hero Banner](the-lab-monorepo/docs/assets/glass-hero-variant-b.svg)
+![Glass Hero Banner](pegasus/docs/assets/glass-hero-variant-b.svg)
 
 This document is the external audience variant of ATOMOS.
 
@@ -24,11 +24,11 @@ The product combines:
 
 In practical terms, ATOMOS helps logistics operators move from fragmented tools to one coherent system of action.
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
 ## The Business Problem
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
 Most logistics stacks break at handoff boundaries:
 
@@ -42,7 +42,7 @@ The result is margin erosion through delays, empty miles, exception overhead, an
 
 ## The ATOMOS Approach
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
 ATOMOS is built as an execution control plane, not a static dashboard.
 
@@ -55,7 +55,7 @@ Key product characteristics:
 
 ## Product Surface Coverage
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
 | Role | Primary Experience | Outcome Focus |
 |---|---|---|
@@ -68,11 +68,11 @@ Key product characteristics:
 
 ## Technology Stack Snapshot
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
-![Technology Stack Matrix](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg)
+![Technology Stack Matrix](pegasus/docs/assets/techstack-glass-matrix.svg)
 
-![Technology Stack Compact](the-lab-monorepo/docs/assets/techstack-glass-compact.svg)
+![Technology Stack Compact](pegasus/docs/assets/techstack-glass-compact.svg)
 
 ![Go](https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white)
 ![Kafka](https://img.shields.io/badge/Apache%20Kafka-231F20?style=for-the-badge&logo=apachekafka&logoColor=white)
@@ -97,7 +97,7 @@ Core technologies used across ATOMOS:
 
 ## Why the Product Is Defensible
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
 1. Operational depth across the entire logistics chain, not a single point tool.
 2. Built-in support for mixed automation and operator decisions.
@@ -106,9 +106,9 @@ Core technologies used across ATOMOS:
 
 ## Exceptional Product Features
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
-![Architecture Snapshot](the-lab-monorepo/docs/assets/architecture-overview.svg)
+![Architecture Snapshot](pegasus/docs/assets/architecture-overview.svg)
 
 1. Auto-dispatch intelligence using geospatial batching and capacity-aware assignment.
 2. Manual override protection through freeze-lock style controls.
@@ -117,9 +117,9 @@ Core technologies used across ATOMOS:
 
 ## Maglev Traffic Stability
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
-![Maglev Load Balancer Coverage](the-lab-monorepo/docs/assets/maglev-load-balancers.svg)
+![Maglev Load Balancer Coverage](pegasus/docs/assets/maglev-load-balancers.svg)
 
 Maglev and Maglev-derived balancing footprint:
 
@@ -127,11 +127,11 @@ Maglev and Maglev-derived balancing footprint:
 2. Backend data reads use a Maglev-derived lookup-table routing pattern for regional read selection.
 3. Internal optimizer traffic supports xDS service-mesh load balancing when enabled.
 
-![Auto Dispatch Snapshot](the-lab-monorepo/docs/assets/autodispatch-pipeline.svg)
+![Auto Dispatch Snapshot](pegasus/docs/assets/autodispatch-pipeline.svg)
 
 ## Value Flywheel
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"darkMode":true,"background":"#191622","primaryColor":"#232136","primaryTextColor":"#E1E1E6","primaryBorderColor":"#78D1E1","secondaryColor":"#2A2338","secondaryTextColor":"#E1E1E6","secondaryBorderColor":"#988BC7","tertiaryColor":"#1F3026","tertiaryTextColor":"#E1E1E6","tertiaryBorderColor":"#67E480","lineColor":"#E1E1E6","textColor":"#E1E1E6","mainBkg":"#232136","nodeBorder":"#78D1E1","clusterBkg":"#232136","clusterBorder":"#988BC7","titleColor":"#E1E1E6","edgeLabelBackground":"#232136","noteBkgColor":"#232136","noteTextColor":"#E1E1E6","noteBorderColor":"#988BC7"},"themeCSS":".edgeLabel text,.label text,.nodeLabel{fill:#E1E1E6 !important;color:#E1E1E6 !important;} .edgeLabel rect{fill:#232136 !important;opacity:1 !important;}"}}%%
@@ -146,7 +146,7 @@ flowchart LR
 
 ## Partnership Opportunities
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
 Potential partner profiles:
 
@@ -163,7 +163,7 @@ Typical partnership outcomes:
 
 ## Commercialization Lenses
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
 The platform supports multiple commercialization motions:
 
@@ -174,7 +174,7 @@ The platform supports multiple commercialization motions:
 
 ## Risk Framing and Mitigation
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
 | Risk Category | Typical Concern | ATOMOS Mitigation Direction |
 |---|---|---|
@@ -183,11 +183,11 @@ The platform supports multiple commercialization motions:
 | Data consistency | Mismatch between state and events | Transaction-safe event architecture patterns |
 | Scale pressure | Performance at growth milestones | Control-plane design with reliability guardrails |
 
-![Reliability Control Snapshot](the-lab-monorepo/docs/assets/reliability-control-plane.svg)
+![Reliability Control Snapshot](pegasus/docs/assets/reliability-control-plane.svg)
 
 ## Current Position and Next Steps
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
 Near-term focus areas for market execution:
 
@@ -198,18 +198,18 @@ Near-term focus areas for market execution:
 
 ## Contact and Technical Due Diligence
 
-![Section Divider](the-lab-monorepo/docs/assets/omni-section-divider.svg)
+![Section Divider](pegasus/docs/assets/omni-section-divider.svg)
 
-![Glass Code Surface](the-lab-monorepo/docs/assets/omni-code-surface.svg)
+![Glass Code Surface](pegasus/docs/assets/omni-code-surface.svg)
 
 1. Business and partnership discussions: use this brief as the starting narrative.
 2. Technical due diligence: review [README.md](README.md) for architecture and operations depth.
-3. Architecture visual: [the-lab-monorepo/docs/assets/architecture-overview.svg](the-lab-monorepo/docs/assets/architecture-overview.svg).
-4. Auto-dispatch visual: [the-lab-monorepo/docs/assets/autodispatch-pipeline.svg](the-lab-monorepo/docs/assets/autodispatch-pipeline.svg).
-5. Reliability visual: [the-lab-monorepo/docs/assets/reliability-control-plane.svg](the-lab-monorepo/docs/assets/reliability-control-plane.svg).
-6. Maglev visual: [the-lab-monorepo/docs/assets/maglev-load-balancers.svg](the-lab-monorepo/docs/assets/maglev-load-balancers.svg).
-7. Core hero visual: [the-lab-monorepo/docs/assets/omni-hero-banner.svg](the-lab-monorepo/docs/assets/omni-hero-banner.svg).
-8. Divider visual: [the-lab-monorepo/docs/assets/omni-section-divider.svg](the-lab-monorepo/docs/assets/omni-section-divider.svg).
-9. Code-surface visual: [the-lab-monorepo/docs/assets/omni-code-surface.svg](the-lab-monorepo/docs/assets/omni-code-surface.svg).
-10. Tech-stack matrix: [the-lab-monorepo/docs/assets/techstack-glass-matrix.svg](the-lab-monorepo/docs/assets/techstack-glass-matrix.svg).
-11. Tech-stack compact: [the-lab-monorepo/docs/assets/techstack-glass-compact.svg](the-lab-monorepo/docs/assets/techstack-glass-compact.svg).
+3. Architecture visual: [pegasus/docs/assets/architecture-overview.svg](pegasus/docs/assets/architecture-overview.svg).
+4. Auto-dispatch visual: [pegasus/docs/assets/autodispatch-pipeline.svg](pegasus/docs/assets/autodispatch-pipeline.svg).
+5. Reliability visual: [pegasus/docs/assets/reliability-control-plane.svg](pegasus/docs/assets/reliability-control-plane.svg).
+6. Maglev visual: [pegasus/docs/assets/maglev-load-balancers.svg](pegasus/docs/assets/maglev-load-balancers.svg).
+7. Core hero visual: [pegasus/docs/assets/omni-hero-banner.svg](pegasus/docs/assets/omni-hero-banner.svg).
+8. Divider visual: [pegasus/docs/assets/omni-section-divider.svg](pegasus/docs/assets/omni-section-divider.svg).
+9. Code-surface visual: [pegasus/docs/assets/omni-code-surface.svg](pegasus/docs/assets/omni-code-surface.svg).
+10. Tech-stack matrix: [pegasus/docs/assets/techstack-glass-matrix.svg](pegasus/docs/assets/techstack-glass-matrix.svg).
+11. Tech-stack compact: [pegasus/docs/assets/techstack-glass-compact.svg](pegasus/docs/assets/techstack-glass-compact.svg).

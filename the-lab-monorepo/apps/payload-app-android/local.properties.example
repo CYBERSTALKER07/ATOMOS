@@ -1,6 +1,0 @@
-# Copy to local.properties (gitignored) and adjust as needed.
-sdk.dir=/Users/you/Library/Android/sdk
-
-# LAN IP of your Mac running the backend, for physical-tablet dev.
-# Leave as 10.0.2.2 to use the Android Studio emulator's host loopback.
-dev.host=10.0.2.2

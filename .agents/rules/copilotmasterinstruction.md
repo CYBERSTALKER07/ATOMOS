@@ -46,18 +46,18 @@ Important:
 
 Respect the actual local structure.
 
-- Backend Go: `the-lab-monorepo/apps/backend-go`
-- Admin Portal Next.js: `the-lab-monorepo/apps/admin-portal`
-- Driver App Android (Kotlin/Compose): `the-lab-monorepo/apps/driver-app-android`
-- Driver App iOS (SwiftUI): `the-lab-monorepo/apps/driverappios`
-- Retailer App Android (Kotlin/Compose): `the-lab-monorepo/apps/retailer-app-android`
-- Retailer App iOS (SwiftUI): `the-lab-monorepo/apps/retailer-app-ios`
-- Expo Payload Terminal: `the-lab-monorepo/apps/payload-terminal`
-- AI Worker (Go): `the-lab-monorepo/apps/ai-worker`
-- Shared Types: `the-lab-monorepo/packages/types`
-- Shared Config: `the-lab-monorepo/packages/config`
-- Validation: `the-lab-monorepo/packages/validation`
-- Infra: `the-lab-monorepo/docker-compose.yml`
+- Backend Go: `pegasus/apps/backend-go`
+- Admin Portal Next.js: `pegasus/apps/admin-portal`
+- Driver App Android (Kotlin/Compose): `pegasus/apps/driver-app-android`
+- Driver App iOS (SwiftUI): `pegasus/apps/driverappios`
+- Retailer App Android (Kotlin/Compose): `pegasus/apps/retailer-app-android`
+- Retailer App iOS (SwiftUI): `pegasus/apps/retailer-app-ios`
+- Expo Payload Terminal: `pegasus/apps/payload-terminal`
+- AI Worker (Go): `pegasus/apps/ai-worker`
+- Shared Types: `pegasus/packages/types`
+- Shared Config: `pegasus/packages/config`
+- Validation: `pegasus/packages/validation`
+- Infra: `pegasus/docker-compose.yml`
 
 # CORE OPERATIONAL MODEL
 
@@ -242,14 +242,14 @@ That verification must check:
 
 # VERIFICATION COMMANDS
 
-- Infrastructure: `cd the-lab-monorepo && docker-compose up -d`
-- Backend: `cd the-lab-monorepo/apps/backend-go && go mod tidy && go build ./...`
-- Admin Portal: `cd the-lab-monorepo/apps/admin-portal && npm run dev`
-- Expo Payload Terminal: `cd the-lab-monorepo/apps/payload-terminal && npm run start`
-- Driver Android: build via Android Studio or Gradle in `the-lab-monorepo/apps/driver-app-android`
-- Native Driver iOS: build via Xcode in `the-lab-monorepo/apps/driverappios`
-- Native Retailer Android: build via Android Studio or Gradle in `the-lab-monorepo/apps/retailer-app-android`
-- Native Retailer iOS: build via Xcode in `the-lab-monorepo/apps/retailer-app-ios`
+- Infrastructure: `cd pegasus && docker-compose up -d`
+- Backend: `cd pegasus/apps/backend-go && go mod tidy && go build ./...`
+- Admin Portal: `cd pegasus/apps/admin-portal && npm run dev`
+- Expo Payload Terminal: `cd pegasus/apps/payload-terminal && npm run start`
+- Driver Android: build via Android Studio or Gradle in `pegasus/apps/driver-app-android`
+- Native Driver iOS: build via Xcode in `pegasus/apps/driverappios`
+- Native Retailer Android: build via Android Studio or Gradle in `pegasus/apps/retailer-app-android`
+- Native Retailer iOS: build via Xcode in `pegasus/apps/retailer-app-ios`
 
 # FINAL WORKING RULE
 

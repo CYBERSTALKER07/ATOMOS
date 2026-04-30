@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-go-config
+  namespace: void-system
+data:
+  PORT: "8080"
+  REGION: "asia-south1"
+  LOG_LEVEL: "info"

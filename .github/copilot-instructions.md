@@ -104,38 +104,38 @@ Every backend handler that serves a role must answer "which clients consume this
 This is a distributed monorepo. Respect the actual local structure.
 
 ### CRITICALLY IMPORTANT — Single Source of Truth
-- **`the-lab-monorepo/` is the ONLY canonical source tree.** All code, shared packages, infra, operational files (`docker-compose.yml`, `Makefile`, `firebase.json`, `cors.json`, `E2E_TEST_PROTOCOL.md`), and patent dossier live inside it.
+- **`pegasus/` is the ONLY canonical source tree.** All code, shared packages, infra, operational files (`docker-compose.yml`, `Makefile`, `firebase.json`, `cors.json`, `E2E_TEST_PROTOCOL.md`), and patent dossier live inside it.
 - **Do NOT recreate a root-level `apps/`, `packages/`, `infra/`, or `patent-dossier/` directory.** Prior duplicates have been removed; any reappearance is drift and must be deleted, not merged.
-- All paths in commands, workflows, and docs must use the `the-lab-monorepo/` prefix when referenced from the repo root.
+- All paths in commands, workflows, and docs must use the `pegasus/` prefix when referenced from the repo root.
 
 ### Canonical App Paths
-- **Backend (Go 1.22+)**: `the-lab-monorepo/apps/backend-go`
-- **Admin Portal (Next.js App Router)**: `the-lab-monorepo/apps/admin-portal`
-- **Admin Desktop (Tauri shell, same app)**: `the-lab-monorepo/apps/admin-portal`
-- **Driver App Android (Kotlin/Compose)**: `the-lab-monorepo/apps/driver-app-android`
-- **Driver App iOS (SwiftUI)**: `the-lab-monorepo/apps/driverappios`
-- **Retailer App Android (Kotlin/Compose)**: `the-lab-monorepo/apps/retailer-app-android`
-- **Retailer App iOS (SwiftUI)**: `the-lab-monorepo/apps/retailer-app-ios`
-- **Retailer Desktop (Next.js + Tauri)**: `the-lab-monorepo/apps/retailer-app-desktop`
-- **Expo Payload Terminal**: `the-lab-monorepo/apps/payload-terminal`
-- **Payload App iOS (SwiftUI iPad)**: `the-lab-monorepo/apps/payload-app-ios`
-- **Payload App Android (Kotlin/Compose tablet)**: `the-lab-monorepo/apps/payload-app-android`
-- **AI Worker (Go)**: `the-lab-monorepo/apps/ai-worker`
-- **Factory App Android (Kotlin/Compose)**: `the-lab-monorepo/apps/factory-app-android`
-- **Factory App iOS (SwiftUI)**: `the-lab-monorepo/apps/factory-app-ios`
-- **Factory Portal (Next.js)**: `the-lab-monorepo/apps/factory-portal`
-- **Factory Desktop (Tauri shell, same app)**: `the-lab-monorepo/apps/factory-portal`
-- **Warehouse App Android (Kotlin/Compose)**: `the-lab-monorepo/apps/warehouse-app-android`
-- **Warehouse App iOS (SwiftUI)**: `the-lab-monorepo/apps/warehouse-app-ios`
-- **Warehouse Portal (Next.js)**: `the-lab-monorepo/apps/warehouse-portal`
-- **Warehouse Desktop (Tauri shell, same app)**: `the-lab-monorepo/apps/warehouse-portal`
-- **Shared Types**: `the-lab-monorepo/packages/types`
-- **Shared Config**: `the-lab-monorepo/packages/config`
-- **Validation**: `the-lab-monorepo/packages/validation`
-- **Infrastructure**: Spanner, Kafka, Redis emulators via `the-lab-monorepo/docker-compose.yml`
+- **Backend (Go 1.22+)**: `pegasus/apps/backend-go`
+- **Admin Portal (Next.js App Router)**: `pegasus/apps/admin-portal`
+- **Admin Desktop (Tauri shell, same app)**: `pegasus/apps/admin-portal`
+- **Driver App Android (Kotlin/Compose)**: `pegasus/apps/driver-app-android`
+- **Driver App iOS (SwiftUI)**: `pegasus/apps/driverappios`
+- **Retailer App Android (Kotlin/Compose)**: `pegasus/apps/retailer-app-android`
+- **Retailer App iOS (SwiftUI)**: `pegasus/apps/retailer-app-ios`
+- **Retailer Desktop (Next.js + Tauri)**: `pegasus/apps/retailer-app-desktop`
+- **Expo Payload Terminal**: `pegasus/apps/payload-terminal`
+- **Payload App iOS (SwiftUI iPad)**: `pegasus/apps/payload-app-ios`
+- **Payload App Android (Kotlin/Compose tablet)**: `pegasus/apps/payload-app-android`
+- **AI Worker (Go)**: `pegasus/apps/ai-worker`
+- **Factory App Android (Kotlin/Compose)**: `pegasus/apps/factory-app-android`
+- **Factory App iOS (SwiftUI)**: `pegasus/apps/factory-app-ios`
+- **Factory Portal (Next.js)**: `pegasus/apps/factory-portal`
+- **Factory Desktop (Tauri shell, same app)**: `pegasus/apps/factory-portal`
+- **Warehouse App Android (Kotlin/Compose)**: `pegasus/apps/warehouse-app-android`
+- **Warehouse App iOS (SwiftUI)**: `pegasus/apps/warehouse-app-ios`
+- **Warehouse Portal (Next.js)**: `pegasus/apps/warehouse-portal`
+- **Warehouse Desktop (Tauri shell, same app)**: `pegasus/apps/warehouse-portal`
+- **Shared Types**: `pegasus/packages/types`
+- **Shared Config**: `pegasus/packages/config`
+- **Validation**: `pegasus/packages/validation`
+- **Infrastructure**: Spanner, Kafka, Redis emulators via `pegasus/docker-compose.yml`
 
 ### Backend Package Topology (CRITICALLY IMPORTANT)
-The Go module is `the-lab-monorepo/apps/backend-go`, wired via repo-root `go.work`. There is NO `replace` hack in `go.mod` — `packages/config` is resolved through the workspace.
+The Go module is `pegasus/apps/backend-go`, wired via repo-root `go.work`. There is NO `replace` hack in `go.mod` — `packages/config` is resolved through the workspace.
 
 **`main.go` is the operational lifecycle only** — config load → `bootstrap.NewApp(ctx, cfg)` → route registration → `http.Server.ListenAndServe` → graceful shutdown. Target ceiling: **200 lines**. Do not grow it. If a handler needs a home, find or create its domain package and register it there.
 
@@ -161,7 +161,7 @@ func RegisterRoutes(r chi.Router, d Deps) { /* r.HandleFunc(...) only */ }
 
 ### Go Workspace Layout
 - Root: `go.work` lists `./apps/backend-go`, `./apps/ai-worker`, `./packages/config`.
-- Run builds from repo root: `cd the-lab-monorepo && go build ./...`.
+- Run builds from repo root: `cd pegasus && go build ./...`.
 - Do NOT add `replace` directives to any `go.mod`. If a new shared Go package is needed, add it under `packages/` and include it in `go.work`.
 
 
@@ -394,22 +394,22 @@ For these changes, always verify:
 7. auditability and data integrity
 
 ## Build and Verification Commands
-- **Infrastructure**: `cd the-lab-monorepo && docker-compose up -d`
-- **Backend**: `cd the-lab-monorepo/apps/backend-go && go mod tidy && go build ./...`
-- **Admin Portal**: `cd the-lab-monorepo/apps/admin-portal && npm run dev`
-- **Admin Desktop (Tauri)**: `cd the-lab-monorepo/apps/admin-portal && npm run tauri:dev`
-- **Driver Android**: build via Android Studio or Gradle in `the-lab-monorepo/apps/driver-app-android`
-- **Driver iOS**: build via Xcode in `the-lab-monorepo/apps/driverappios`
-- **Retailer Android**: build via Android Studio or Gradle in `the-lab-monorepo/apps/retailer-app-android`
-- **Retailer iOS**: build via Xcode in `the-lab-monorepo/apps/retailer-app-ios`
-- **Retailer Desktop (Tauri)**: `cd the-lab-monorepo/apps/retailer-app-desktop && npm run tauri:dev`
-- **Factory Portal (web)**: `cd the-lab-monorepo/apps/factory-portal && npm run dev`
-- **Factory Desktop (Tauri)**: `cd the-lab-monorepo/apps/factory-portal && npm run tauri:dev`
-- **Warehouse Portal (web)**: `cd the-lab-monorepo/apps/warehouse-portal && npm run dev`
-- **Warehouse Desktop (Tauri)**: `cd the-lab-monorepo/apps/warehouse-portal && npm run tauri:dev`
-- **Expo Payload Terminal**: `cd the-lab-monorepo/apps/payload-terminal && npm run start`
-- **Payload App iOS**: `cd the-lab-monorepo/apps/payload-app-ios && xcodegen generate && open payload-app-ios.xcodeproj` (requires `brew install xcodegen`)
-- **Payload App Android**: `cd the-lab-monorepo/apps/payload-app-android && ./gradlew :app:assembleDebug`
+- **Infrastructure**: `cd pegasus && docker-compose up -d`
+- **Backend**: `cd pegasus/apps/backend-go && go mod tidy && go build ./...`
+- **Admin Portal**: `cd pegasus/apps/admin-portal && npm run dev`
+- **Admin Desktop (Tauri)**: `cd pegasus/apps/admin-portal && npm run tauri:dev`
+- **Driver Android**: build via Android Studio or Gradle in `pegasus/apps/driver-app-android`
+- **Driver iOS**: build via Xcode in `pegasus/apps/driverappios`
+- **Retailer Android**: build via Android Studio or Gradle in `pegasus/apps/retailer-app-android`
+- **Retailer iOS**: build via Xcode in `pegasus/apps/retailer-app-ios`
+- **Retailer Desktop (Tauri)**: `cd pegasus/apps/retailer-app-desktop && npm run tauri:dev`
+- **Factory Portal (web)**: `cd pegasus/apps/factory-portal && npm run dev`
+- **Factory Desktop (Tauri)**: `cd pegasus/apps/factory-portal && npm run tauri:dev`
+- **Warehouse Portal (web)**: `cd pegasus/apps/warehouse-portal && npm run dev`
+- **Warehouse Desktop (Tauri)**: `cd pegasus/apps/warehouse-portal && npm run tauri:dev`
+- **Expo Payload Terminal**: `cd pegasus/apps/payload-terminal && npm run start`
+- **Payload App iOS**: `cd pegasus/apps/payload-app-ios && xcodegen generate && open payload-app-ios.xcodeproj` (requires `brew install xcodegen`)
+- **Payload App Android**: `cd pegasus/apps/payload-app-android && ./gradlew :app:assembleDebug`
 
 ## Data & Infra Conventions
 - Use UUIDs consistently.
@@ -512,7 +512,7 @@ The V.O.I.D. backend is built for high-concurrency logistics. These standards ar
 - TTLs are a safety net, not a correctness mechanism. The default TTL is 5 minutes; anything longer requires explicit justification in the PR description.
 
 ### 3. Kafka Consumers — Parallelism & Idempotency
-- Consumers in `the-lab-monorepo/apps/ai-worker` and in the `backend-go/reconciler` / `backend-go/proximity` packages MUST use parallel partition-scoped goroutines, not a single serial loop. Target: one goroutine per partition, bounded by `runtime.GOMAXPROCS`.
+- Consumers in `pegasus/apps/ai-worker` and in the `backend-go/reconciler` / `backend-go/proximity` packages MUST use parallel partition-scoped goroutines, not a single serial loop. Target: one goroutine per partition, bounded by `runtime.GOMAXPROCS`.
 - Every consumer checks the `version_id` (or `updated_at` monotonic) of the current Spanner row before applying an event. If the event's version is ≤ the stored version, it is a stale replay — ACK and skip. Never blindly overwrite.
 - Consumer lag MUST be exported as the `kafka_consumer_lag_seconds` gauge (per topic, per partition). Alert threshold: 10 s sustained for 1 min.
 

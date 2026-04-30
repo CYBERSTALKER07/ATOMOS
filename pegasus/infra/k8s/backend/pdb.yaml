@@ -1,0 +1,17 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backend-pdb
+  namespace: void-system
+  labels:
+    app: backend-go
+    tier: api
+spec:
+  # Always keep at least 50 % of replicas during voluntary disruptions
+  # (node drain, rolling upgrade, cluster resize).
+  # Paired with minReplicas=2 on the HPA this guarantees at least 1 pod
+  # is available throughout any single-zone drain event.
+  minAvailable: "50%"
+  selector:
+    matchLabels:
+      app: backend-go

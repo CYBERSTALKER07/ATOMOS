@@ -1,0 +1,113 @@
+---
+# pod-kill-experiment.yaml — LitmusChaos PodChaos experiment
+# Kills 1 random backend pod every 60 s for 10 minutes to verify that:
+#   - PodDisruptionBudget (backend-pdb, minAvailable=50%) is respected
+#   - GKE auto-healing replaces killed pods within the HPA target window
+#   - Kafka consumers reconnect and resume from last committed offset
+#   - WebSocket hubs survive pod replacement (Redis Pub/Sub relay continues)
+#   - The Global Load Balancer removes the killed pod from the NEG within
+#     the health-check unhealthy threshold (3 × 10 s = 30 s)
+#   - No requests are 500'd during the pod kill window (Armor/ALB drain)
+#
+# Apply: kubectl apply -f infra/chaos/pod-kill-experiment.yaml -n void
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosExperiment
+metadata:
+  name: backend-pod-kill
+  namespace: void
+  labels:
+    app.kubernetes.io/part-of: void
+    chaos.layer: compute
+spec:
+  definition:
+    scope: Namespaced
+    permissions:
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["create", "list", "get", "patch", "update", "delete", "deletecollection"]
+      - apiGroups: [""]
+        resources: ["events", "pods/log"]
+        verbs: ["create", "get", "list", "patch", "update"]
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets", "replicasets", "daemonsets"]
+        verbs: ["list", "get"]
+      - apiGroups: ["batch"]
+        resources: ["jobs"]
+        verbs: ["create", "list", "get", "delete", "deletecollection"]
+    image: litmuschaos/go-runner:latest
+    imagePullPolicy: Always
+    args:
+      - -c
+      - ./experiments -name pod-delete
+    command:
+      - /bin/bash
+    env:
+      - name: TOTAL_CHAOS_DURATION
+        value: "600"    # 10 minutes
+      - name: CHAOS_INTERVAL
+        value: "60"     # kill 1 pod every 60 s
+      - name: FORCE
+        value: "false"  # graceful termination — respects SIGTERM + 30 s drain
+      - name: RAMP_TIME
+        value: "30"
+      - name: PODS_AFFECTED_PERC
+        value: "50"     # kill up to 50 % — PDB ensures at least 50 % survive
+      - name: SEQUENCE
+        value: "serial"
+---
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: backend-pod-kill-engine
+  namespace: void
+spec:
+  engineState: "active"
+  annotationCheck: "false"
+  monitoring: false
+  appinfo:
+    appns: "void"
+    applabel: "app=backend"
+    appkind: "deployment"
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: backend-pod-kill
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "600"
+            - name: CHAOS_INTERVAL
+              value: "60"
+        probe:
+          # Probe 1: /healthz — service must stay available throughout.
+          - name: healthz-probe
+            type: httpProbe
+            httpProbe/inputs:
+              url: "http://backend.void.svc.cluster.local:8080/healthz"
+              insecureSkipVerify: false
+              method:
+                get:
+                  criteria: "=="
+                  responseCode: "200"
+            mode: Continuous
+            runProperties:
+              probeTimeout: 5s
+              interval: 15s
+              stopOnFailure: true
+
+          # Probe 2: /metrics must export valid Prometheus data.
+          - name: metrics-probe
+            type: httpProbe
+            httpProbe/inputs:
+              url: "http://backend.void.svc.cluster.local:8080/metrics"
+              insecureSkipVerify: false
+              method:
+                get:
+                  criteria: "=="
+                  responseCode: "200"
+            mode: Edge
+            runProperties:
+              probeTimeout: 5s
+              interval: 60s
+              stopOnFailure: false   # metrics scrape is non-blocking; log but continue
