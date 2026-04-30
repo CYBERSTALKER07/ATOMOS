@@ -1,0 +1,122 @@
+{
+  "batch": "Batch 02B - Retailer Android, iOS, and Desktop Surfaces",
+  "algorithms": [
+    {
+      "name": "h3_dispatch_retailer_tracking",
+      "nodes": [
+        "order_acceptance",
+        "h3_cluster_assignment",
+        "route_eta_envelope",
+        "order_route_persist",
+        "outbox_emit",
+        "retailer_surface_fanout",
+        "detail_inspector"
+      ],
+      "transitions": [
+        "order_acceptance->h3_cluster_assignment",
+        "h3_cluster_assignment->route_eta_envelope",
+        "route_eta_envelope->order_route_persist",
+        "order_route_persist->outbox_emit",
+        "outbox_emit->retailer_surface_fanout",
+        "retailer_surface_fanout->detail_inspector"
+      ],
+      "guard_conditions": [
+        "tracking_payload_versioned_for_backward_compatibility",
+        "order_id_partition_key_preserves_event_ordering"
+      ],
+      "recovery_paths": [
+        "if_ws_drop_resume_with_polling_or_refresh",
+        "if_route_missing_fallback_to_order_status_summary"
+      ]
+    },
+    {
+      "name": "freeze_lock_exception_coordination",
+      "nodes": [
+        "exception_raise",
+        "freeze_lock_acquire",
+        "lock_persist_emit",
+        "ai_queue_pause",
+        "human_resolution_window",
+        "freeze_lock_release",
+        "optimizer_resume"
+      ],
+      "transitions": [
+        "exception_raise->freeze_lock_acquire",
+        "freeze_lock_acquire->lock_persist_emit",
+        "lock_persist_emit->ai_queue_pause",
+        "ai_queue_pause->human_resolution_window",
+        "human_resolution_window->freeze_lock_release",
+        "freeze_lock_release->optimizer_resume"
+      ],
+      "guard_conditions": [
+        "lock_ttl_prevents_stale_entity_freeze",
+        "manual_resolution_events_are_auditable"
+      ],
+      "recovery_paths": [
+        "if_resolution_timeout_escalate_to_operator",
+        "if_release_event_delayed_auto_expire_lock"
+      ]
+    },
+    {
+      "name": "idempotent_checkout_finalization",
+      "nodes": [
+        "checkout_submit",
+        "idempotency_check",
+        "rw_transaction",
+        "state_amount_validation",
+        "order_ledger_write",
+        "outbox_write",
+        "commit",
+        "cache_invalidate",
+        "fanout"
+      ],
+      "transitions": [
+        "checkout_submit->idempotency_check",
+        "idempotency_check->rw_transaction",
+        "rw_transaction->state_amount_validation",
+        "state_amount_validation->order_ledger_write",
+        "order_ledger_write->outbox_write",
+        "outbox_write->commit",
+        "commit->cache_invalidate",
+        "cache_invalidate->fanout"
+      ],
+      "guard_conditions": [
+        "duplicate_key_returns_original_response",
+        "double_entry_ledger_integrity_required",
+        "order_state_transition_must_be_valid"
+      ],
+      "recovery_paths": [
+        "if_gateway_timeout_return_retryable_state",
+        "if_txn_abort_retry_with_backoff"
+      ]
+    },
+    {
+      "name": "predictive_procurement_assist",
+      "nodes": [
+        "history_ingest",
+        "forecast_inference",
+        "suggested_basket",
+        "retailer_review",
+        "line_item_acceptance",
+        "cart_merge",
+        "checkout"
+      ],
+      "transitions": [
+        "history_ingest->forecast_inference",
+        "forecast_inference->suggested_basket",
+        "suggested_basket->retailer_review",
+        "retailer_review->line_item_acceptance",
+        "line_item_acceptance->cart_merge",
+        "cart_merge->checkout"
+      ],
+      "guard_conditions": [
+        "suggestions_never_force_order_creation",
+        "confidence_threshold_controls_visibility"
+      ],
+      "recovery_paths": [
+        "if_model_unavailable_use_rule_based_reorder",
+        "if_retailer_rejects_keep_manual_procurement_flow"
+      ]
+    }
+  ]
+}

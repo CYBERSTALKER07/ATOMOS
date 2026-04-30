@@ -1,0 +1,131 @@
+{
+  "batch": "Batch 01 - Supplier Web Core",
+  "systems": [
+    {
+      "system_id": "h3_dispatch",
+      "name": "H3 Hexagon Grid Dispatch System",
+      "figure": "Fig. B1-A",
+      "nodes": [
+        { "id": "n1", "label": "Order Intake", "class": "entry" },
+        { "id": "n2", "label": "Hex Cell Assignment", "class": "spatial-index" },
+        { "id": "n3", "label": "Neighbor Ring Coverage", "class": "spatial-expansion" },
+        { "id": "n4", "label": "Cell Cohesion Grouping", "class": "clustering" },
+        { "id": "n5", "label": "Capacity Buffer Check", "class": "constraint" },
+        { "id": "n6", "label": "Vehicle Match", "class": "assignment" },
+        { "id": "n7", "label": "Split Oversized Loads", "class": "fallback" },
+        { "id": "n8", "label": "Draft Manifest Persistence", "class": "transaction" },
+        { "id": "n9", "label": "Durable Event Emission", "class": "event" }
+      ],
+      "transitions": [
+        { "from": "n1", "to": "n2", "trigger": "coordinates available", "guard": "valid latitude and longitude" },
+        { "from": "n2", "to": "n3", "trigger": "origin cell computed", "guard": "cell identifier valid" },
+        { "from": "n3", "to": "n4", "trigger": "coverage window built", "guard": "ring radius derived from delivery radius" },
+        { "from": "n4", "to": "n5", "trigger": "groups finalized", "guard": "orders not manually frozen" },
+        { "from": "n5", "to": "n6", "trigger": "capacity accepted", "guard": "effective truck volume meets required volume" },
+        { "from": "n5", "to": "n7", "trigger": "capacity rejected", "guard": "order volume exceeds largest effective vehicle capacity" },
+        { "from": "n7", "to": "n6", "trigger": "chunking complete", "guard": "chunk volume within assignable envelope" },
+        { "from": "n6", "to": "n8", "trigger": "assignment complete", "guard": "driver and route sequence present" },
+        { "from": "n8", "to": "n9", "trigger": "transaction committed", "guard": "manifest and stop rows written" }
+      ],
+      "recovery_paths": [
+        { "condition": "invalid cell conversion", "action": "fallback to direct distance validation and retry mapping" },
+        { "condition": "no dispatchable vehicle", "action": "mark as orphan queue for operator intervention" },
+        { "condition": "freeze lock active", "action": "exclude from active optimization pass and preserve in pending state" }
+      ]
+    },
+    {
+      "system_id": "freeze_lock_override",
+      "name": "Freeze Lock and Manual Override State Machine",
+      "figure": "Fig. B1-B",
+      "nodes": [
+        { "id": "n1", "label": "Manual Control Request", "class": "entry" },
+        { "id": "n2", "label": "Role Scope Validation", "class": "authorization" },
+        { "id": "n3", "label": "Active Lock Check", "class": "gate" },
+        { "id": "n4", "label": "Dispatch Lock Persist", "class": "transaction" },
+        { "id": "n5", "label": "Freeze Signal Publish", "class": "event" },
+        { "id": "n6", "label": "Autonomous Queue Suppression", "class": "runtime-control" },
+        { "id": "n7", "label": "Manual Dispatch Window", "class": "manual-operation" },
+        { "id": "n8", "label": "Release and Unfreeze", "class": "exit" }
+      ],
+      "transitions": [
+        { "from": "n1", "to": "n2", "trigger": "lock request received", "guard": "authenticated operator present" },
+        { "from": "n2", "to": "n3", "trigger": "scope resolved", "guard": "entity belongs to operator organization" },
+        { "from": "n3", "to": "n4", "trigger": "no active lock", "guard": "lock uniqueness at node scope" },
+        { "from": "n3", "to": "n8", "trigger": "active lock exists", "guard": "conflict response issued" },
+        { "from": "n4", "to": "n5", "trigger": "lock committed", "guard": "lock identifier persisted" },
+        { "from": "n5", "to": "n6", "trigger": "freeze topic consumed", "guard": "entity key matches optimizer queue item" },
+        { "from": "n6", "to": "n7", "trigger": "autonomous path suppressed", "guard": "manual lock still active" },
+        { "from": "n7", "to": "n8", "trigger": "operator release", "guard": "unlock timestamp committed" }
+      ],
+      "recovery_paths": [
+        { "condition": "invalid scope identifier", "action": "reject lock request and preserve existing dispatch state" },
+        { "condition": "duplicate manual lock attempts", "action": "return conflict and keep first lock authoritative" },
+        { "condition": "late release signal", "action": "consumer checks expiry and re-queues entity safely" }
+      ]
+    },
+    {
+      "system_id": "idempotency_outbox",
+      "name": "Payloader Idempotency and Transactional Outbox",
+      "figure": "Fig. B1-C",
+      "nodes": [
+        { "id": "n1", "label": "Mutating Request Arrival", "class": "entry" },
+        { "id": "n2", "label": "Idempotency Cache Lookup", "class": "dedup" },
+        { "id": "n3", "label": "Processing Lock Acquisition", "class": "mutex" },
+        { "id": "n4", "label": "Domain Mutation Transaction", "class": "transaction" },
+        { "id": "n5", "label": "Outbox Event Append", "class": "transaction" },
+        { "id": "n6", "label": "Commit and Response Cache", "class": "response" },
+        { "id": "n7", "label": "Outbox Relay Poll", "class": "background" },
+        { "id": "n8", "label": "Event Stream Publish", "class": "event" },
+        { "id": "n9", "label": "Published Marker Update", "class": "transaction" }
+      ],
+      "transitions": [
+        { "from": "n1", "to": "n2", "trigger": "idempotency key present", "guard": "cache backend reachable" },
+        { "from": "n2", "to": "n6", "trigger": "cached response found", "guard": "response payload valid" },
+        { "from": "n2", "to": "n3", "trigger": "cache miss", "guard": "request hash accepted" },
+        { "from": "n3", "to": "n4", "trigger": "lock acquired", "guard": "no concurrent request with same key" },
+        { "from": "n4", "to": "n5", "trigger": "mutation staged", "guard": "aggregate identity present" },
+        { "from": "n5", "to": "n6", "trigger": "single commit successful", "guard": "domain row and outbox row both persisted" },
+        { "from": "n6", "to": "n7", "trigger": "background cycle", "guard": "unpublished outbox rows exist" },
+        { "from": "n7", "to": "n8", "trigger": "batch read", "guard": "topic metadata valid" },
+        { "from": "n8", "to": "n9", "trigger": "publish acknowledged", "guard": "required acknowledgement quorum achieved" }
+      ],
+      "recovery_paths": [
+        { "condition": "duplicate request while lock active", "action": "return conflict and do not execute mutation twice" },
+        { "condition": "stream publish failure", "action": "retain unpublished marker for retry in next relay cycle" },
+        { "condition": "cache backend unavailable", "action": "degrade gracefully while preserving transactional outbox integrity" }
+      ]
+    },
+    {
+      "system_id": "predictive_preorder_engine",
+      "name": "Predictive Preorder Demand Engine",
+      "figure": "Fig. B1-D",
+      "nodes": [
+        { "id": "n1", "label": "Waiting Forecast Intake", "class": "entry" },
+        { "id": "n2", "label": "Safety Horizon Resolution", "class": "policy" },
+        { "id": "n3", "label": "Demand Aggregation by Product", "class": "aggregation" },
+        { "id": "n4", "label": "Inventory and Safety Read", "class": "state-read" },
+        { "id": "n5", "label": "Projected Breach Evaluation", "class": "decision" },
+        { "id": "n6", "label": "Deficit and Volume Calculation", "class": "calculation" },
+        { "id": "n7", "label": "Optimal Source Node Selection", "class": "routing" },
+        { "id": "n8", "label": "Internal Transfer Draft Creation", "class": "transaction" },
+        { "id": "n9", "label": "Trace and Load Updates", "class": "post-commit" }
+      ],
+      "transitions": [
+        { "from": "n1", "to": "n2", "trigger": "prediction set loaded", "guard": "supplier context resolved" },
+        { "from": "n2", "to": "n3", "trigger": "horizon fixed", "guard": "active prediction status" },
+        { "from": "n3", "to": "n4", "trigger": "grouping complete", "guard": "product identity normalized" },
+        { "from": "n4", "to": "n5", "trigger": "inventory state available", "guard": "safety threshold available" },
+        { "from": "n5", "to": "n6", "trigger": "projected breach detected", "guard": "projected quantity less than or equal to safety level" },
+        { "from": "n5", "to": "n1", "trigger": "no breach detected", "guard": "wait for next scan window" },
+        { "from": "n6", "to": "n7", "trigger": "deficit computed", "guard": "network mode permits autonomous replenishment" },
+        { "from": "n7", "to": "n8", "trigger": "source node found", "guard": "lane and mode constraints satisfied" },
+        { "from": "n8", "to": "n9", "trigger": "transaction committed", "guard": "transfer and items persisted" }
+      ],
+      "recovery_paths": [
+        { "condition": "manual-only network mode", "action": "skip autonomous draft creation and preserve recommendation context" },
+        { "condition": "no available source lane", "action": "defer transfer and retain deficit for later cycle" },
+        { "condition": "commit failure", "action": "log failure and continue with remaining product candidates" }
+      ]
+    }
+  ]
+}

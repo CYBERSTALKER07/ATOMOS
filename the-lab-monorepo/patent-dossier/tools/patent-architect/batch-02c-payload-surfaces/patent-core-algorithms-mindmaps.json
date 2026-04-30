@@ -1,0 +1,123 @@
+{
+  "batch": "Batch 02C - Payload Terminal and Native Payload Surfaces",
+  "algorithms": [
+    {
+      "name": "h3_manifest_loading_route_binding",
+      "nodes": [
+        "truck_selection",
+        "h3_candidate_fetch",
+        "manifest_draft",
+        "scan_validation",
+        "manifest_seal",
+        "route_binding",
+        "outbox_emit",
+        "hub_fanout"
+      ],
+      "transitions": [
+        "truck_selection->h3_candidate_fetch",
+        "h3_candidate_fetch->manifest_draft",
+        "manifest_draft->scan_validation",
+        "scan_validation->manifest_seal",
+        "manifest_seal->route_binding",
+        "route_binding->outbox_emit",
+        "outbox_emit->hub_fanout"
+      ],
+      "guard_conditions": [
+        "order_selection_limited_to_scoped_node",
+        "route_and_manifest_identifiers_share_event_lineage"
+      ],
+      "recovery_paths": [
+        "if_scan_fails_keep_manifest_unsealed",
+        "if_publish_fails_local_state_persists_for_retry"
+      ]
+    },
+    {
+      "name": "freeze_lock_manifest_mutation",
+      "nodes": [
+        "edit_start",
+        "freeze_lock_acquire",
+        "lock_event_emit",
+        "optimizer_pause",
+        "manifest_mutation_window",
+        "lock_release",
+        "optimizer_resume"
+      ],
+      "transitions": [
+        "edit_start->freeze_lock_acquire",
+        "freeze_lock_acquire->lock_event_emit",
+        "lock_event_emit->optimizer_pause",
+        "optimizer_pause->manifest_mutation_window",
+        "manifest_mutation_window->lock_release",
+        "lock_release->optimizer_resume"
+      ],
+      "guard_conditions": [
+        "lock_scope_tied_to_manifest_or_order_cluster",
+        "ttl_auto-release_prevents_indefinite_lock"
+      ],
+      "recovery_paths": [
+        "if_worker_disconnects_resume_after_ttl",
+        "if_release_write_fails_retry_with_backoff"
+      ]
+    },
+    {
+      "name": "idempotent_seal_finalization",
+      "nodes": [
+        "seal_request",
+        "idempotency_validation",
+        "rw_transaction",
+        "manifest_state_validation",
+        "state_write",
+        "outbox_write",
+        "commit",
+        "cache_invalidation",
+        "success_trigger"
+      ],
+      "transitions": [
+        "seal_request->idempotency_validation",
+        "idempotency_validation->rw_transaction",
+        "rw_transaction->manifest_state_validation",
+        "manifest_state_validation->state_write",
+        "state_write->outbox_write",
+        "outbox_write->commit",
+        "commit->cache_invalidation",
+        "cache_invalidation->success_trigger"
+      ],
+      "guard_conditions": [
+        "duplicate_request_replays_prior_result",
+        "seal_requires_checklist_completion"
+      ],
+      "recovery_paths": [
+        "if_commit_fails_manifest_stays_unsealed",
+        "if_cache_invalidate_fails_emit_warning_and_continue"
+      ]
+    },
+    {
+      "name": "predictive_preload_assist_payload",
+      "nodes": [
+        "throughput_history",
+        "forecast_inference",
+        "suggested_group",
+        "workspace_advisory",
+        "worker_decision",
+        "draft_update",
+        "seal_flow"
+      ],
+      "transitions": [
+        "throughput_history->forecast_inference",
+        "forecast_inference->suggested_group",
+        "suggested_group->workspace_advisory",
+        "workspace_advisory->worker_decision",
+        "worker_decision->draft_update",
+        "draft_update->seal_flow"
+      ],
+      "guard_conditions": [
+        "advisory_mode_does_not_force_inclusion",
+        "capacity_constraints_checked_before_apply"
+      ],
+      "recovery_paths": [
+        "if_model_unavailable_use_manual_selection",
+        "if_worker_rejects_suggestion_keep_original_draft"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,403 @@
+{
+  "batch": "Batch 01 - Supplier Web Core",
+  "scope": {
+    "role": "SUPPLIER",
+    "app": "Supplier Portal (Admin Web)",
+    "mode": "batch-first",
+    "figure_namespace": "global",
+    "coverage_note": "All discovered Supplier route pages plus onboarding routes in this batch."
+  },
+  "screens": [
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/dashboard",
+      "screen": "Supplier Intelligence Dashboard",
+      "patent_figure_number": "Fig. B1-01",
+      "layout_prompt": "A monochrome line-art wireframe of a desktop logistics intelligence dashboard with dense operational cards.",
+      "components": [
+        { "id": "101", "type": "Header", "position": "Top 10%", "elements": ["Page Title", "Operations Shortcut"] },
+        { "id": "102", "type": "Demand Summary Card", "position": "Top 25%", "elements": ["Prediction Count", "Forecast Value", "Action Link"] },
+        { "id": "103", "type": "KPI Grid", "position": "Middle 30%", "elements": ["Gross Volume", "Pallet Count", "Velocity", "Top SKU"] },
+        { "id": "104", "type": "Trend Visualization", "position": "Middle 55%", "elements": ["Velocity Curve", "Legend"] },
+        { "id": "105", "type": "Data Table", "position": "Bottom 20%", "elements": ["SKU Breakdown", "Share Indicator"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/analytics",
+      "screen": "Supplier Analytics Hub",
+      "patent_figure_number": "Fig. B1-02",
+      "layout_prompt": "A monochrome line-art wireframe of an analytics control surface with metric bands and chart regions.",
+      "components": [
+        { "id": "106", "type": "Header", "position": "Top 10%", "elements": ["Analytics Title", "Time Filter"] },
+        { "id": "107", "type": "KPI Band", "position": "Top 20%", "elements": ["Revenue KPI", "Utilization KPI", "Variance KPI"] },
+        { "id": "108", "type": "Primary Chart Zone", "position": "Middle 45%", "elements": ["Trend Plot", "Axis Labels"] },
+        { "id": "109", "type": "Secondary Insight Zone", "position": "Middle 25%", "elements": ["Distribution View", "Outlier Summary"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/analytics/demand",
+      "screen": "Advanced Demand Analytics",
+      "patent_figure_number": "Fig. B1-03",
+      "layout_prompt": "A monochrome line-art wireframe of a demand forecast comparison page with multi-series chart and planning table.",
+      "components": [
+        { "id": "110", "type": "Navigation Header", "position": "Top 10%", "elements": ["Back Action", "Demand Analytics Title"] },
+        { "id": "111", "type": "KPI Row", "position": "Top 20%", "elements": ["Accuracy", "Upcoming Orders", "Data Points"] },
+        { "id": "112", "type": "Forecast Chart", "position": "Middle 42%", "elements": ["Predicted Series", "Actual Series", "Tooltip Layer"] },
+        { "id": "113", "type": "Upcoming Orders Table", "position": "Bottom 28%", "elements": ["Date", "Retailer", "SKU", "Predicted Quantity"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/catalog",
+      "screen": "Catalog Management",
+      "patent_figure_number": "Fig. B1-04",
+      "layout_prompt": "A monochrome line-art wireframe of a product catalog operations page with filter toolbar and editable listing.",
+      "components": [
+        { "id": "114", "type": "Header", "position": "Top 10%", "elements": ["Catalog Title", "Add Product Action"] },
+        { "id": "115", "type": "Filter Toolbar", "position": "Top 12%", "elements": ["Search", "Category Filter", "Availability Filter"] },
+        { "id": "116", "type": "Catalog Table", "position": "Middle 58%", "elements": ["SKU", "Name", "Price", "Status", "Actions"] },
+        { "id": "117", "type": "Bulk Action Bar", "position": "Bottom 20%", "elements": ["Selection Count", "Batch Update", "Export"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/country-overrides",
+      "screen": "Country Override Rules",
+      "patent_figure_number": "Fig. B1-05",
+      "layout_prompt": "A monochrome line-art wireframe of a jurisdiction-specific override editor for operational and pricing rules.",
+      "components": [
+        { "id": "118", "type": "Header", "position": "Top 10%", "elements": ["Override Title", "Country Selector"] },
+        { "id": "119", "type": "Rule Grid", "position": "Middle 65%", "elements": ["Rule Name", "Current Value", "Override Value", "Effective Period"] },
+        { "id": "120", "type": "Commit Panel", "position": "Bottom 25%", "elements": ["Validation Summary", "Save", "Discard"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/crm",
+      "screen": "Retailer Relationship Console",
+      "patent_figure_number": "Fig. B1-06",
+      "layout_prompt": "A monochrome line-art wireframe of a relationship-management panel with account list and contact timeline.",
+      "components": [
+        { "id": "121", "type": "Header", "position": "Top 10%", "elements": ["CRM Title", "Create Contact Action"] },
+        { "id": "122", "type": "Account List", "position": "Left 32%", "elements": ["Retailer Cards", "Status Badges"] },
+        { "id": "123", "type": "Detail Timeline", "position": "Right 68%", "elements": ["Interaction Log", "Follow-up Items"] },
+        { "id": "124", "type": "Task Footer", "position": "Bottom 15%", "elements": ["Assign Task", "Due Date", "Owner"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/delivery-zones",
+      "screen": "Delivery Zone Planner",
+      "patent_figure_number": "Fig. B1-07",
+      "layout_prompt": "A monochrome line-art wireframe of a geospatial zone planner with map canvas and zone list.",
+      "components": [
+        { "id": "125", "type": "Header", "position": "Top 10%", "elements": ["Delivery Zones Title", "Create Zone Action"] },
+        { "id": "126", "type": "Map Canvas", "position": "Middle 62%", "elements": ["Zone Polygons", "Coverage Overlay"] },
+        { "id": "127", "type": "Zone Registry", "position": "Right 30%", "elements": ["Zone Name", "Priority", "Service Window"] },
+        { "id": "128", "type": "Edit Drawer", "position": "Bottom 18%", "elements": ["Boundary Controls", "Save", "Rollback"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/depot-reconciliation",
+      "screen": "Depot Reconciliation Ledger",
+      "patent_figure_number": "Fig. B1-08",
+      "layout_prompt": "A monochrome line-art wireframe of a reconciliation workspace with variance rows and settlement actions.",
+      "components": [
+        { "id": "129", "type": "Header", "position": "Top 10%", "elements": ["Reconciliation Title", "Date Window"] },
+        { "id": "130", "type": "Variance Table", "position": "Middle 62%", "elements": ["Manifest Reference", "Expected", "Observed", "Delta"] },
+        { "id": "131", "type": "Resolution Panel", "position": "Bottom 28%", "elements": ["Reason Codes", "Adjustments", "Approve"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/dispatch",
+      "screen": "Dispatch Alias Redirect",
+      "patent_figure_number": "Fig. B1-09",
+      "layout_prompt": "A monochrome line-art route-flow figure showing an alias path redirecting to the canonical order operations screen.",
+      "components": [
+        { "id": "132", "type": "Redirect Guard", "position": "Full 100%", "elements": ["Alias Route", "Redirect Target", "Immediate Transition"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/exceptions/shop-closed",
+      "screen": "Shop Closed Exception Queue",
+      "patent_figure_number": "Fig. B1-10",
+      "layout_prompt": "A monochrome line-art wireframe of an exception queue for shop-closed events with triage controls.",
+      "components": [
+        { "id": "133", "type": "Header", "position": "Top 10%", "elements": ["Exception Queue Title", "Severity Filter"] },
+        { "id": "134", "type": "Exception List", "position": "Middle 60%", "elements": ["Order Reference", "Closure Reason", "Elapsed Time"] },
+        { "id": "135", "type": "Decision Panel", "position": "Bottom 30%", "elements": ["Resolve", "Escalate", "Reassign"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/factories",
+      "screen": "Factory Registry",
+      "patent_figure_number": "Fig. B1-11",
+      "layout_prompt": "A monochrome line-art wireframe of a factory management page with node cards and capacity indicators.",
+      "components": [
+        { "id": "136", "type": "Header", "position": "Top 10%", "elements": ["Factories Title", "Add Factory Action"] },
+        { "id": "137", "type": "Factory Grid", "position": "Middle 68%", "elements": ["Factory Name", "Current Load", "Bays", "Status"] },
+        { "id": "138", "type": "Node Detail Drawer", "position": "Bottom 22%", "elements": ["Address", "Roles", "Edit Actions"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/fleet",
+      "screen": "Fleet Control Surface",
+      "patent_figure_number": "Fig. B1-12",
+      "layout_prompt": "A monochrome line-art wireframe of a fleet command page combining driver roster, vehicle status, and assignment controls.",
+      "components": [
+        { "id": "139", "type": "Header", "position": "Top 10%", "elements": ["Fleet Title", "Create Driver", "Create Vehicle"] },
+        { "id": "140", "type": "Driver Vehicle Matrix", "position": "Middle 62%", "elements": ["Driver", "Vehicle", "Node", "Status"] },
+        { "id": "141", "type": "Assignment Controls", "position": "Bottom 28%", "elements": ["Assign", "Unassign", "Override"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/geo-report",
+      "screen": "Geospatial Report",
+      "patent_figure_number": "Fig. B1-13",
+      "layout_prompt": "A monochrome line-art wireframe of a geospatial reporting page with map and cell-level statistics.",
+      "components": [
+        { "id": "142", "type": "Header", "position": "Top 10%", "elements": ["Geo Report Title", "Date Selector"] },
+        { "id": "143", "type": "Map Layer", "position": "Middle 58%", "elements": ["Hex Cells", "Density Overlay"] },
+        { "id": "144", "type": "Cell Metrics Table", "position": "Bottom 32%", "elements": ["Cell Identifier", "Order Count", "Deviation"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/inventory",
+      "screen": "Inventory Operations",
+      "patent_figure_number": "Fig. B1-14",
+      "layout_prompt": "A monochrome line-art wireframe of an inventory page with stock ledger table and replenishment cues.",
+      "components": [
+        { "id": "145", "type": "Header", "position": "Top 10%", "elements": ["Inventory Title", "Warehouse Filter"] },
+        { "id": "146", "type": "Inventory Table", "position": "Middle 65%", "elements": ["SKU", "On Hand", "Safety Level", "Deficit"] },
+        { "id": "147", "type": "Action Footer", "position": "Bottom 25%", "elements": ["Adjust Stock", "Request Transfer", "Export"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/manifest-exceptions",
+      "screen": "Manifest Exception Queue",
+      "patent_figure_number": "Fig. B1-15",
+      "layout_prompt": "A monochrome line-art wireframe of manifest exception handling with event list and remediation panel.",
+      "components": [
+        { "id": "148", "type": "Header", "position": "Top 10%", "elements": ["Manifest Exceptions Title", "Filter"] },
+        { "id": "149", "type": "Exception Table", "position": "Middle 62%", "elements": ["Manifest", "Order", "Exception Type", "Timestamp"] },
+        { "id": "150", "type": "Remediation Panel", "position": "Bottom 28%", "elements": ["Acknowledge", "Escalate", "Close"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/manifests",
+      "screen": "Manifest Alias Redirect",
+      "patent_figure_number": "Fig. B1-16",
+      "layout_prompt": "A monochrome line-art route-flow figure showing manifest alias routing into the canonical order workflow.",
+      "components": [
+        { "id": "151", "type": "Redirect Guard", "position": "Full 100%", "elements": ["Alias Route", "Canonical Route", "Immediate Transition"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/onboarding",
+      "screen": "Supplier Onboarding Progress",
+      "patent_figure_number": "Fig. B1-17",
+      "layout_prompt": "A monochrome line-art wireframe of a post-registration onboarding progress panel with completion actions.",
+      "components": [
+        { "id": "152", "type": "Header", "position": "Top 10%", "elements": ["Onboarding Title", "Progress Indicator"] },
+        { "id": "153", "type": "Checklist Stack", "position": "Middle 65%", "elements": ["Profile Completion", "Billing Setup", "Operational Readiness"] },
+        { "id": "154", "type": "Primary Action Bar", "position": "Bottom 25%", "elements": ["Continue", "Skip", "Support"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/orders",
+      "screen": "Order Operations Console",
+      "patent_figure_number": "Fig. B1-18",
+      "layout_prompt": "A monochrome line-art wireframe of an operational order console with status tabs, order grid, and detail drawer.",
+      "components": [
+        { "id": "155", "type": "Header", "position": "Top 10%", "elements": ["Orders Title", "State Tabs"] },
+        { "id": "156", "type": "Order Grid", "position": "Middle 60%", "elements": ["Order Identifier", "Retailer", "State", "Amount", "Assigned Driver"] },
+        { "id": "157", "type": "Order Detail Drawer", "position": "Bottom 30%", "elements": ["Stops", "Payment State", "Next Actions"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/org",
+      "screen": "Organization Profile Console",
+      "patent_figure_number": "Fig. B1-19",
+      "layout_prompt": "A monochrome line-art wireframe of a supplier organization profile and governance configuration page.",
+      "components": [
+        { "id": "158", "type": "Header", "position": "Top 10%", "elements": ["Organization Title", "Edit Action"] },
+        { "id": "159", "type": "Identity Panel", "position": "Middle 40%", "elements": ["Legal Name", "Registration Number", "Tax Identity"] },
+        { "id": "160", "type": "Governance Panel", "position": "Bottom 50%", "elements": ["Roles", "Approval Rules", "Compliance Flags"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/payment-config",
+      "screen": "Payment Gateway Configuration",
+      "patent_figure_number": "Fig. B1-20",
+      "layout_prompt": "A monochrome line-art wireframe of a supplier gateway configuration interface with credential sections and test controls.",
+      "components": [
+        { "id": "161", "type": "Header", "position": "Top 10%", "elements": ["Payment Configuration Title", "Gateway Selector"] },
+        { "id": "162", "type": "Credential Form", "position": "Middle 58%", "elements": ["Gateway Fields", "Masked Secrets", "Validation Status"] },
+        { "id": "163", "type": "Safety Controls", "position": "Bottom 32%", "elements": ["Sandbox Toggle", "Save", "Test Connection"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/pricing",
+      "screen": "Pricing Management",
+      "patent_figure_number": "Fig. B1-21",
+      "layout_prompt": "A monochrome line-art wireframe of a pricing matrix with product rows and policy controls.",
+      "components": [
+        { "id": "164", "type": "Header", "position": "Top 10%", "elements": ["Pricing Title", "Policy Selector"] },
+        { "id": "165", "type": "Pricing Matrix", "position": "Middle 62%", "elements": ["SKU", "Base Price", "Tax", "Effective Window"] },
+        { "id": "166", "type": "Commit Controls", "position": "Bottom 28%", "elements": ["Preview", "Publish", "Rollback"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/pricing/retailer-overrides",
+      "screen": "Retailer Pricing Overrides",
+      "patent_figure_number": "Fig. B1-22",
+      "layout_prompt": "A monochrome line-art wireframe of an account-level pricing override console.",
+      "components": [
+        { "id": "167", "type": "Header", "position": "Top 10%", "elements": ["Override Title", "Retailer Search"] },
+        { "id": "168", "type": "Override Table", "position": "Middle 62%", "elements": ["Retailer", "SKU", "Default Price", "Override Price"] },
+        { "id": "169", "type": "Action Footer", "position": "Bottom 28%", "elements": ["Apply", "Revert", "Audit Trail"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/products",
+      "screen": "Product Registry",
+      "patent_figure_number": "Fig. B1-23",
+      "layout_prompt": "A monochrome line-art wireframe of a product registry page with list view and creation shortcuts.",
+      "components": [
+        { "id": "170", "type": "Header", "position": "Top 10%", "elements": ["Products Title", "Create Product"] },
+        { "id": "171", "type": "Search and Filter Band", "position": "Top 12%", "elements": ["Search", "Category", "Status"] },
+        { "id": "172", "type": "Product Table", "position": "Middle 58%", "elements": ["SKU", "Name", "Inventory Link", "Price"] },
+        { "id": "173", "type": "Quick Actions", "position": "Bottom 20%", "elements": ["Bulk Import", "Export", "Archive"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/products/[sku_id]",
+      "screen": "Product Detail Inspector",
+      "patent_figure_number": "Fig. B1-24",
+      "layout_prompt": "A monochrome line-art wireframe of a detailed product inspector with sectional tabs and edit controls.",
+      "components": [
+        { "id": "174", "type": "Header", "position": "Top 10%", "elements": ["Product Identifier", "Back Action"] },
+        { "id": "175", "type": "Summary Panel", "position": "Top 20%", "elements": ["Core Attributes", "Status Badge"] },
+        { "id": "176", "type": "Tabbed Detail Region", "position": "Middle 52%", "elements": ["Pricing Tab", "Inventory Tab", "Logistics Tab"] },
+        { "id": "177", "type": "Edit Footer", "position": "Bottom 18%", "elements": ["Save", "Discard", "Version History"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/profile",
+      "screen": "Supplier Profile",
+      "patent_figure_number": "Fig. B1-25",
+      "layout_prompt": "A monochrome line-art wireframe of a supplier profile management page with identity and contact blocks.",
+      "components": [
+        { "id": "178", "type": "Header", "position": "Top 10%", "elements": ["Profile Title", "Edit Toggle"] },
+        { "id": "179", "type": "Identity Block", "position": "Middle 36%", "elements": ["Business Name", "Tax Identifier", "Registration"] },
+        { "id": "180", "type": "Contact and Address Block", "position": "Middle 34%", "elements": ["Phone", "Email", "Address"] },
+        { "id": "181", "type": "Persistence Controls", "position": "Bottom 20%", "elements": ["Save", "Cancel"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/returns",
+      "screen": "Returns Processing",
+      "patent_figure_number": "Fig. B1-26",
+      "layout_prompt": "A monochrome line-art wireframe of a returns processing queue with dispute and resolution controls.",
+      "components": [
+        { "id": "182", "type": "Header", "position": "Top 10%", "elements": ["Returns Title", "Status Filter"] },
+        { "id": "183", "type": "Returns Queue", "position": "Middle 60%", "elements": ["Return Identifier", "Reason", "Value", "Current State"] },
+        { "id": "184", "type": "Resolution Panel", "position": "Bottom 30%", "elements": ["Approve", "Reject", "Escalate"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/settings",
+      "screen": "Supplier Settings",
+      "patent_figure_number": "Fig. B1-27",
+      "layout_prompt": "A monochrome line-art wireframe of a multi-section settings page with policy toggles and thresholds.",
+      "components": [
+        { "id": "185", "type": "Header", "position": "Top 10%", "elements": ["Settings Title", "Section Navigation"] },
+        { "id": "186", "type": "Settings Sections", "position": "Middle 65%", "elements": ["Dispatch Settings", "Notification Settings", "Finance Settings"] },
+        { "id": "187", "type": "Save Bar", "position": "Bottom 25%", "elements": ["Apply", "Revert", "Change Log"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/staff",
+      "screen": "Staff Administration",
+      "patent_figure_number": "Fig. B1-28",
+      "layout_prompt": "A monochrome line-art wireframe of a workforce administration page with roster table and role assignment controls.",
+      "components": [
+        { "id": "188", "type": "Header", "position": "Top 10%", "elements": ["Staff Title", "Invite Staff Action"] },
+        { "id": "189", "type": "Roster Table", "position": "Middle 62%", "elements": ["Name", "Role", "Node", "Status"] },
+        { "id": "190", "type": "Assignment Drawer", "position": "Bottom 28%", "elements": ["Permission Matrix", "Activate", "Suspend"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/supply-lanes",
+      "screen": "Supply Lane Network",
+      "patent_figure_number": "Fig. B1-29",
+      "layout_prompt": "A monochrome line-art wireframe of a network lane planner with origin-destination matrix and SLA indicators.",
+      "components": [
+        { "id": "191", "type": "Header", "position": "Top 10%", "elements": ["Supply Lanes Title", "Create Lane"] },
+        { "id": "192", "type": "Lane Matrix", "position": "Middle 62%", "elements": ["Origin Node", "Destination Node", "Transit Window", "Mode"] },
+        { "id": "193", "type": "Optimization Panel", "position": "Bottom 28%", "elements": ["Preferred Mode", "Capacity Rules", "Save"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/supplier/warehouses",
+      "screen": "Warehouse Registry",
+      "patent_figure_number": "Fig. B1-30",
+      "layout_prompt": "A monochrome line-art wireframe of a warehouse administration page with node cards and utilization indicators.",
+      "components": [
+        { "id": "194", "type": "Header", "position": "Top 10%", "elements": ["Warehouses Title", "Add Warehouse"] },
+        { "id": "195", "type": "Node Grid", "position": "Middle 68%", "elements": ["Warehouse Name", "Capacity", "Current Utilization", "Health"] },
+        { "id": "196", "type": "Detail Footer", "position": "Bottom 22%", "elements": ["Edit", "Assign Staff", "Deactivate"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/auth/register",
+      "screen": "Supplier Registration Wizard",
+      "patent_figure_number": "Fig. B1-31",
+      "layout_prompt": "A monochrome line-art wireframe of a four-step onboarding wizard for supplier enrollment.",
+      "components": [
+        { "id": "197", "type": "Step Indicator", "position": "Top 12%", "elements": ["Account", "Location", "Business", "Categories"] },
+        { "id": "198", "type": "Wizard Body", "position": "Middle 66%", "elements": ["Step Form Fields", "Validation Alert"] },
+        { "id": "199", "type": "Wizard Controls", "position": "Bottom 22%", "elements": ["Back", "Continue", "Create Supplier Account"] }
+      ]
+    },
+    {
+      "app": "Supplier Portal (Admin Web)",
+      "route": "/setup/billing",
+      "screen": "Supplier Billing Setup",
+      "patent_figure_number": "Fig. B1-32",
+      "layout_prompt": "A monochrome line-art wireframe of a billing setup page with bank details and gateway enrollment controls.",
+      "components": [
+        { "id": "200", "type": "Header", "position": "Top 10%", "elements": ["Billing Setup Title", "Onboarding Status"] },
+        { "id": "201", "type": "Banking Form", "position": "Middle 45%", "elements": ["Account Holder", "Bank Fields", "Settlement Preferences"] },
+        { "id": "202", "type": "Gateway Section", "position": "Middle 30%", "elements": ["Gateway Selection", "Credential Inputs", "Verification"] },
+        { "id": "203", "type": "Decision Bar", "position": "Bottom 15%", "elements": ["Save and Continue", "Skip for Now"] }
+      ]
+    }
+  ]
+}
