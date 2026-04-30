@@ -82,8 +82,8 @@ func newUniversalClient(addr string) redis.UniversalClient {
 	} else {
 		c = redis.NewClient(&redis.Options{
 			Addr:         addr,
-			PoolSize:     128,
-			MinIdleConns: 16,
+			PoolSize:     4000,
+			MinIdleConns: 100,
 			DialTimeout:  3 * time.Second,
 			ReadTimeout:  2 * time.Second,
 			WriteTimeout: 2 * time.Second,

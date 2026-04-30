@@ -290,9 +290,10 @@ func newSpannerClient(ctx context.Context, cfg *config.EnvConfig) (*spanner.Clie
 		cfg.SpannerProject, cfg.SpannerInstance, cfg.SpannerDatabase)
 	client, err := spanner.NewClientWithConfig(ctx, dbName,
 		spanner.ClientConfig{
+			NumChannels: 100,
 			SessionPoolConfig: spanner.SessionPoolConfig{
-				MinOpened:           100,
-				MaxOpened:           400,
+				MinOpened:           1000,
+				MaxOpened:           4000,
 				WriteSessions:       0.2,
 				HealthCheckInterval: 5 * time.Minute,
 			},
