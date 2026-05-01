@@ -103,49 +103,114 @@ func WriteOperational(w http.ResponseWriter, r *http.Request, p ProblemDetail) {
 
 // BadRequest writes a 400 error.
 func BadRequest(w http.ResponseWriter, r *http.Request, detail string) {
-	WriteProblem(w, r, http.StatusBadRequest, "error/bad-request", "Bad Request", detail)
+	WriteOperational(w, r, ProblemDetail{
+		Type:       "error/bad-request",
+		Title:      "Bad Request",
+		Status:     http.StatusBadRequest,
+		Detail:     detail,
+		Code:       "bad_request",
+		MessageKey: MsgKeyBadRequest,
+	})
 }
 
 // Unauthorized writes a 401 error.
 func Unauthorized(w http.ResponseWriter, r *http.Request, detail string) {
-	WriteProblem(w, r, http.StatusUnauthorized, "error/unauthorized", "Authentication Required", detail)
+	WriteOperational(w, r, ProblemDetail{
+		Type:       "error/unauthorized",
+		Title:      "Authentication Required",
+		Status:     http.StatusUnauthorized,
+		Detail:     detail,
+		Code:       "unauthorized",
+		MessageKey: MsgKeyUnauthorized,
+	})
 }
 
 // Forbidden writes a 403 error.
 func Forbidden(w http.ResponseWriter, r *http.Request, detail string) {
-	WriteProblem(w, r, http.StatusForbidden, "error/forbidden", "Insufficient Permissions", detail)
+	WriteOperational(w, r, ProblemDetail{
+		Type:       "error/forbidden",
+		Title:      "Insufficient Permissions",
+		Status:     http.StatusForbidden,
+		Detail:     detail,
+		Code:       "forbidden",
+		MessageKey: MsgKeyForbidden,
+	})
 }
 
 // NotFound writes a 404 error.
 func NotFound(w http.ResponseWriter, r *http.Request, detail string) {
-	WriteProblem(w, r, http.StatusNotFound, "error/not-found", "Resource Not Found", detail)
+	WriteOperational(w, r, ProblemDetail{
+		Type:       "error/not-found",
+		Title:      "Resource Not Found",
+		Status:     http.StatusNotFound,
+		Detail:     detail,
+		Code:       "not_found",
+		MessageKey: MsgKeyNotFound,
+	})
 }
 
 // Conflict writes a 409 error.
 func Conflict(w http.ResponseWriter, r *http.Request, detail string) {
-	WriteProblem(w, r, http.StatusConflict, "error/conflict", "Conflict", detail)
+	WriteOperational(w, r, ProblemDetail{
+		Type:       "error/conflict",
+		Title:      "Conflict",
+		Status:     http.StatusConflict,
+		Detail:     detail,
+		Code:       "conflict",
+		MessageKey: MsgKeyConflict,
+	})
 }
 
 // TooManyRequests writes a 429 error with Retry-After header.
 func TooManyRequests(w http.ResponseWriter, r *http.Request, retryAfterSec int) {
 	w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfterSec))
-	WriteProblem(w, r, http.StatusTooManyRequests, "error/rate-limit", "Too Many Requests",
-		fmt.Sprintf("Rate limit exceeded. Retry after %d seconds.", retryAfterSec))
+	WriteOperational(w, r, ProblemDetail{
+		Type:       "error/rate-limit",
+		Title:      "Too Many Requests",
+		Status:     http.StatusTooManyRequests,
+		Detail:     fmt.Sprintf("Rate limit exceeded. Retry after %d seconds.", retryAfterSec),
+		Code:       "rate_limited",
+		MessageKey: MsgKeyRateLimited,
+		Retryable:  true,
+		Action:     "retry",
+	})
 }
 
 // InternalError writes a 500 error. Does NOT expose internal error details —
 // the detail field should be a safe user-facing message.
 func InternalError(w http.ResponseWriter, r *http.Request, detail string) {
-	WriteProblem(w, r, http.StatusInternalServerError, "error/internal", "Internal Server Error", detail)
+	WriteOperational(w, r, ProblemDetail{
+		Type:       "error/internal",
+		Title:      "Internal Server Error",
+		Status:     http.StatusInternalServerError,
+		Detail:     detail,
+		Code:       "internal_error",
+		MessageKey: MsgKeyInternalError,
+	})
 }
 
 // ServiceUnavailable writes a 503 error (used by circuit breaker).
 func ServiceUnavailable(w http.ResponseWriter, r *http.Request, detail string) {
-	WriteProblem(w, r, http.StatusServiceUnavailable, "error/service-unavailable", "Service Temporarily Unavailable", detail)
+	WriteOperational(w, r, ProblemDetail{
+		Type:       "error/service-unavailable",
+		Title:      "Service Temporarily Unavailable",
+		Status:     http.StatusServiceUnavailable,
+		Detail:     detail,
+		Code:       "service_unavailable",
+		MessageKey: MsgKeyServiceUnavailable,
+		Retryable:  true,
+		Action:     "retry",
+	})
 }
 
 // MethodNotAllowed writes a 405 error.
 func MethodNotAllowed(w http.ResponseWriter, r *http.Request) {
-	WriteProblem(w, r, http.StatusMethodNotAllowed, "error/method-not-allowed", "Method Not Allowed",
-		fmt.Sprintf("%s is not supported for this endpoint.", r.Method))
+	WriteOperational(w, r, ProblemDetail{
+		Type:       "error/method-not-allowed",
+		Title:      "Method Not Allowed",
+		Status:     http.StatusMethodNotAllowed,
+		Detail:     fmt.Sprintf("%s is not supported for this endpoint.", r.Method),
+		Code:       "method_not_allowed",
+		MessageKey: MsgKeyMethodNotAllowed,
+	})
 }

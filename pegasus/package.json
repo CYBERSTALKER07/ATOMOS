@@ -2,6 +2,9 @@
   "name": "pegasus",
   "private": true,
   "scripts": {
+    "localization:validate": "node packages/i18n/scripts/validate.mjs",
+    "localization:generate": "node packages/i18n/scripts/generate.mjs",
+    "localization:inventory": "node packages/i18n/scripts/inventory.mjs",
     "versionscan:scan": "python3 scripts/versionscan.py scan --repo-root . --output-dir .versionscan",
     "versionscan:enforce": "python3 scripts/versionscan.py enforce --repo-root . --output-dir .versionscan --changed-only",
     "test:e2e": "playwright test",

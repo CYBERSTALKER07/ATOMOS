@@ -20,6 +20,8 @@
     ],
     "paths": {
       "@/*": ["./*"],
+      "@pegasus/i18n": ["../../packages/i18n/index.ts"],
+      "@pegasus/i18n/*": ["../../packages/i18n/*"],
       "@pegasus/types": ["../../packages/types/index.ts"],
       "@pegasus/types/*": ["../../packages/types/*"]
     }

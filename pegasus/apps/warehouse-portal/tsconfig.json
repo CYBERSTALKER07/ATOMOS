@@ -16,6 +16,8 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./*"],
+      "@pegasus/i18n": ["../../packages/i18n/index.ts"],
+      "@pegasus/i18n/*": ["../../packages/i18n/*"],
       "@pegasus/types": ["../../packages/types/index.ts"]
     }
   },

@@ -1,10 +1,12 @@
 // lib/auth.ts
 import { useState, useEffect } from 'react';
 import { isTauri, getStoredToken, storeToken, clearStoredToken } from './bridge';
+import { createTranslator, detectBrowserLocale, translateProblemDetail } from '@pegasus/i18n';
 import type { ProblemDetail } from '@pegasus/types';
 import { isProblemDetail } from '@pegasus/types';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const getTranslator = () => createTranslator(detectBrowserLocale());
 
 /**
  * Read the retailer JWT from cookies only. Returns empty string on server-side or when not logged in.
@@ -35,6 +37,7 @@ export function useToken(): string {
  * Throws if no token is available.
  */
 export async function getRetailerToken(): Promise<string> {
+  const t = getTranslator();
   // Desktop: try OS keyring first
   if (isTauri()) {
     try {
@@ -46,7 +49,7 @@ export async function getRetailerToken(): Promise<string> {
   const token = readToken();
   if (token) return token;
 
-  throw new Error('No auth token available. Please log in.');
+  throw new Error(t('auth.error.no_auth_token'));
 }
 
 let refreshInFlight: Promise<string | null> | null = null;
@@ -93,8 +96,9 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       const body = await cloned.json();
       if (isProblemDetail(body)) {
         (res as Response & { problem?: ProblemDetail }).problem = body;
+        const problemMessage = translateProblemDetail(body, detectBrowserLocale());
         console.error(
-          `[API] ${body.status} ${body.code || body.type} trace=${body.trace_id} detail=${body.detail}`,
+          `[API] ${body.status} ${body.code || body.type} trace=${body.trace_id} detail=${problemMessage}`,
         );
       }
     } catch { /* body parse failed — fall through */ }
@@ -119,7 +123,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       clearStoredToken().catch(() => {});
     }
     window.location.href = '/';
-    throw new Error('Session expired');
+    throw new Error(getTranslator()('auth.error.session_expired'));
   }
 
   return res;

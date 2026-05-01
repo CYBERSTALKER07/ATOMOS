@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import LocaleBootstrap from "../components/LocaleBootstrap";
 
 export const metadata: Metadata = {
   title: "Pegasus Retailer",
@@ -13,7 +14,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="md-typescale-body-medium md-surface md-on-surface">  
+      <body className="md-typescale-body-medium md-surface md-on-surface">
+        <LocaleBootstrap />
         {children}
       </body>
     </html>

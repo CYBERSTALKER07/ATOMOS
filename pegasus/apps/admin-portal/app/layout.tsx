@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import AdminShell from "../components/AdminShell";
 import AuthGuard from "../components/AuthGuard";
+import LocaleBootstrap from "../components/LocaleBootstrap";
 import { PageSkeleton } from "../components/Skeleton";
 import { ToastProvider } from "../components/Toast";
 import { ThemeProvider } from "../components/ThemeProvider";
@@ -51,6 +52,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} font-sans flex h-screen overflow-hidden bg-background text-foreground`}
       >
+        <LocaleBootstrap />
         {/* Pre-hydration splash — rendered by the browser before React mounts */}
         <div id="app-splash" aria-hidden="true">
           <Image src="/logo-solid-square.png" alt="" width={80} height={80} priority />
