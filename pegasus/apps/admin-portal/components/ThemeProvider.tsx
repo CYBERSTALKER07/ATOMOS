@@ -2,11 +2,11 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
-export type ThemeMode = 'system' | 'light' | 'dark';
+export type ThemeMode = 'system' | 'light' | 'dark' | 'synthwave';
 
 interface ThemeCtx {
   mode: ThemeMode;
-  resolved: 'light' | 'dark';
+  resolved: 'light' | 'dark' | 'synthwave';
   setMode: (m: ThemeMode) => void;
   cycle: () => void;
 }
@@ -21,26 +21,32 @@ const ThemeContext = createContext<ThemeCtx>({
 export const useTheme = () => useContext(ThemeContext);
 
 const STORAGE_KEY = 'pegasus-theme-mode';
-const CYCLE_ORDER: ThemeMode[] = ['system', 'light', 'dark'];
+const CYCLE_ORDER: ThemeMode[] = ['system', 'light', 'dark', 'synthwave'];
 
 function getSystemPreference(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light';
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-function applyTheme(resolved: 'light' | 'dark') {
+function applyTheme(resolved: 'light' | 'dark' | 'synthwave') {
   const root = document.documentElement;
+  
+  root.classList.remove('dark', 'synthwave');
+  
   if (resolved === 'dark') {
     root.classList.add('dark');
+    root.style.colorScheme = 'dark';
+  } else if (resolved === 'synthwave') {
+    root.classList.add('dark', 'synthwave');
+    root.style.colorScheme = 'dark';
   } else {
-    root.classList.remove('dark');
+    root.style.colorScheme = 'light';
   }
-  root.style.colorScheme = resolved;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>('system');
-  const [resolved, setResolved] = useState<'light' | 'dark'>('light');
+  const [resolved, setResolved] = useState<'light' | 'dark' | 'synthwave'>('light');
   const [mounted, setMounted] = useState(false);
 
   // Init from localStorage on mount

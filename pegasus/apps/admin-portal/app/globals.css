@@ -1623,6 +1623,57 @@ body {
 :root.dark body { background-color: var(--color-md-surface); }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
+/* SRD's Synthwave Dark Theme Overrides                                        */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+:root.synthwave {
+  /* Core variables overriding M3 standard dark */
+  --background: oklch(0.2 0.05 300);
+  --foreground: oklch(0.9 0.02 300);
+  --surface: oklch(0.18 0.05 300);
+  --surface-foreground: oklch(0.9 0.02 300);
+  --overlay: oklch(0.15 0.05 300);
+
+  /* M3 Token Overrides (Neon Pink/Magenta primary, Dark Purple base) */
+  --color-md-primary: oklch(62% 0.25 330); /* Neon Pinkish */
+  --color-md-on-primary: oklch(100% 0 0);
+  --color-md-primary-container: oklch(35% 0.15 330);
+  --color-md-on-primary-container: oklch(90% 0.1 330);
+
+  --color-md-secondary: oklch(75% 0.15 190); /* Cyan */
+  --color-md-on-secondary: oklch(15% 0.1 190);
+  --color-md-secondary-container: oklch(30% 0.1 190);
+  --color-md-on-secondary-container: oklch(90% 0.1 190);
+
+  --color-md-tertiary: oklch(80% 0.18 140); /* Neon Greenish */
+  --color-md-on-tertiary: oklch(15% 0.1 140);
+  
+  --color-md-surface: oklch(18% 0.05 300);
+  --color-md-surface-container-low: oklch(20% 0.05 300);
+  --color-md-surface-container: oklch(22% 0.05 300);
+  --color-md-surface-container-high: oklch(25% 0.05 300);
+  
+  --color-md-outline: oklch(40% 0.05 300);
+  --color-md-outline-variant: oklch(28% 0.05 300);
+}
+
+:root.synthwave body {
+  background-color: var(--color-md-surface);
+}
+
+:root.synthwave .md-card-elevated,
+:root.synthwave .bento-card,
+:root.synthwave .bento-skeleton {
+  border-color: var(--color-md-outline-variant);
+}
+
+:root.synthwave .md-card-elevated:hover,
+:root.synthwave .bento-card:hover {
+  border-color: var(--color-md-primary);
+  box-shadow: 0 0 0 1px var(--color-md-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
 /* Tauri Desktop Overrides                                                    */
 /* Applied when running inside the native desktop shell.                       */
 /* The Tauri window has titleBarStyle: "Overlay", so we account for the       */

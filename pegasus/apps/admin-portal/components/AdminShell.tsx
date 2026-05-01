@@ -141,11 +141,12 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
 /* ── Static nav flat list for search ── */
 const ALL_NAV_ITEMS = NAV.flatMap(s => s.items);
 
-/* ── Theme Toggle — cycles system → light → dark ── */
-const THEME_META: Record<ThemeMode, { icon: string; label: string; next: string }> = {
-  system: { icon: 'autoMode', label: 'System theme', next: 'Light' },
-  light:  { icon: 'lightMode', label: 'Light theme', next: 'Dark' },
-  dark:   { icon: 'darkMode', label: 'Dark theme', next: 'System' },
+/* ── Theme Toggle — cycles system → light → dark → synthwave ── */
+const THEME_META: Record<ThemeMode, { icon: string; label: string; next: ThemeMode }> = {
+  system: { icon: 'autoMode', label: 'System theme', next: 'light' },
+  light:  { icon: 'lightMode', label: 'Light theme', next: 'dark' },
+  dark:   { icon: 'darkMode', label: 'Dark theme', next: 'synthwave' },
+  synthwave: { icon: 'darkMode', label: 'Synthwave Dark', next: 'system' }, // Recycles darkMode icon, but gives unique label
 };
 
 function ThemeToggle() {
