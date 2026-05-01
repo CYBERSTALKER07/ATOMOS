@@ -14,7 +14,7 @@ Changed surfaces:
 - iOS keychain bridge removal:
   - removed legacy service fallback migration paths in driver, retailer, factory, warehouse, payload auth/token stores
 - iOS API host bridge removal:
-  - removed legacy host fallback (`api.thelab.uz`) in driver, retailer, factory, warehouse, payload API clients
+  - removed pre-hard-cut legacy API host fallback in driver, retailer, factory, warehouse, payload API clients
 - iOS bundle ID hard cutover:
   - factory app moved to `com.pegasus.factory`
 
