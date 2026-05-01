@@ -85,6 +85,24 @@
     }
   },
   "payload": {
+    "alert": {
+      "cache_stale_body": "Кэш манифеста старше 15 минут. Нельзя продолжить офлайн.",
+      "cache_stale_title": "Кэш устарел",
+      "exception_failed": "Не удалось обработать исключение",
+      "inject_failed": "Не удалось добавить заказ",
+      "manifest_fetch_failed": "Ошибка загрузки манифеста",
+      "manifest_sealed_title": "Манифест опечатан",
+      "offline_cached_manifest_body": "Загружен кэшированный манифест.",
+      "offline_cached_manifest_title": "Офлайн-режим",
+      "order_injected_title": "Заказ добавлен",
+      "queued_offline_body": "Добавление заказа поставлено в очередь и синхронизируется после восстановления соединения.",
+      "queued_offline_title": "Поставлено в офлайн-очередь",
+      "reassign_failed": "Не удалось переназначить",
+      "recommendation_failed": "Не удалось получить рекомендации",
+      "seal_failed": "Не удалось опечатать",
+      "start_loading_failed": "Не удалось начать загрузку",
+      "sync_complete_title": "Синхронизация завершена"
+    },
     "vehicle": {
       "none_available": "Нет доступных автомобилей",
       "select_target": "Выберите целевой автомобиль"

@@ -85,6 +85,24 @@
     }
   },
   "payload": {
+    "alert": {
+      "cache_stale_body": "Keshdagi manifest 15 daqiqadan eski. Oflayn davom ettirib bo'lmaydi.",
+      "cache_stale_title": "Kesh eskirgan",
+      "exception_failed": "Istisno amalini bajarib bo'lmadi",
+      "inject_failed": "Buyurtmani qo'shib bo'lmadi",
+      "manifest_fetch_failed": "Manifestni yuklashda xato",
+      "manifest_sealed_title": "Manifest muhrlandi",
+      "offline_cached_manifest_body": "Keshdagi manifest yuklandi.",
+      "offline_cached_manifest_title": "Oflayn rejim",
+      "order_injected_title": "Buyurtma qo'shildi",
+      "queued_offline_body": "Buyurtma qo'shish navbatga olindi. Aloqa tiklanganda sinxronlanadi.",
+      "queued_offline_title": "Oflayn navbatga qo'shildi",
+      "reassign_failed": "Qayta tayinlash amalga oshmadi",
+      "recommendation_failed": "Tavsiya olish amalga oshmadi",
+      "seal_failed": "Muhrlash amalga oshmadi",
+      "start_loading_failed": "Yuklashni boshlash amalga oshmadi",
+      "sync_complete_title": "Sinxronlash yakunlandi"
+    },
     "vehicle": {
       "none_available": "Mavjud transport yo'q",
       "select_target": "Maqsadli transportni tanlang"

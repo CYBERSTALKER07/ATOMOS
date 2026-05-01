@@ -10,6 +10,15 @@ func TestFormatOrderDispatched(t *testing.T) {
 	if n.Title != "Order Dispatched" {
 		t.Errorf("Title = %q; want Order Dispatched", n.Title)
 	}
+	if n.TitleKey != "notification.order_dispatched.title" {
+		t.Errorf("TitleKey = %q; want notification.order_dispatched.title", n.TitleKey)
+	}
+	if n.BodyKey != "notification.order_dispatched.body" {
+		t.Errorf("BodyKey = %q; want notification.order_dispatched.body", n.BodyKey)
+	}
+	if n.MessageArgs["route_id"] != "ROUTE-001" {
+		t.Errorf("route_id arg = %q; want ROUTE-001", n.MessageArgs["route_id"])
+	}
 	if !strings.Contains(n.Body, "ROUTE-001") {
 		t.Error("Body should contain route ID")
 	}
@@ -85,6 +94,15 @@ func TestFormatPaymentFailed(t *testing.T) {
 	n := FormatPaymentFailed("ORD-600", "GLOBAL_PAY", "insufficient funds")
 	if n.Title != "Payment Failed" {
 		t.Errorf("Title = %q", n.Title)
+	}
+	if n.TitleKey != "notification.payment_failed.title" {
+		t.Errorf("TitleKey = %q", n.TitleKey)
+	}
+	if n.BodyKey != "notification.payment_failed.body" {
+		t.Errorf("BodyKey = %q", n.BodyKey)
+	}
+	if n.MessageArgs["reason"] != "insufficient funds" {
+		t.Errorf("reason arg = %q", n.MessageArgs["reason"])
 	}
 	if !strings.Contains(n.Body, "insufficient funds") {
 		t.Error("Body should contain reason")

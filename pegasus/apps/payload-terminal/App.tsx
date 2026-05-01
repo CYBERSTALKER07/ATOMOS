@@ -334,17 +334,17 @@ export default function App() {
         headers: authHeaders as HeadersInit,
         body: JSON.stringify({ order_id: orderId }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(await extractProblemMessage(res, locale));
       const data = await res.json();
       setRecommendations(data.recommendations ?? []);
       setReDispatchRetailer(data.retailer_name ?? '');
       setReDispatchVolume(data.order_volume_vu ?? 0);
     } catch (e: unknown) {
-      Alert.alert('RECOMMENDATION FAILED', e instanceof Error ? e.message : 'Unknown error');
+      Alert.alert(tx('payload.alert.recommendation_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
     } finally {
       setIsLoadingRecs(false);
     }
-  }, [token]);
+  }, [authHeaders, locale, tx]);
 
   const handleReassign = useCallback(async (newDriverId: string, _newVehicleId: string) => {
     if (!reDispatchOrderId || !token) return;
@@ -360,8 +360,7 @@ export default function App() {
         }),
       });
       if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || `HTTP ${res.status}`);
+        throw new Error(await extractProblemMessage(res, locale));
       }
       const data: { conflicts?: Array<{ order_id: string; reason: string }>; reassigned?: number } = await res.json().catch(() => ({}));
       if (data.conflicts && data.conflicts.length > 0) {
@@ -378,11 +377,11 @@ export default function App() {
       setShowReDispatch(false);
       setReDispatchOrderId(null);
     } catch (e: unknown) {
-      Alert.alert('REASSIGN FAILED', e instanceof Error ? e.message : 'Unknown error');
+      Alert.alert(tx('payload.alert.reassign_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
     } finally {
       setIsReassigning(false);
     }
-  }, [token, reDispatchOrderId, orders, selectedOrderId, sealedOrderIds]);
+  }, [authHeaders, locale, orders, reDispatchOrderId, sealedOrderIds, selectedOrderId, token, tx]);
 
   // ── Fetch manifest for selected truck ────────────────────────────────────
   const fetchManifest = useCallback(async (truckId: string) => {
@@ -403,7 +402,7 @@ export default function App() {
         `${API_BASE}/v1/payloader/orders?vehicle_id=${encodeURIComponent(truckId)}&state=LOADED`,
         { headers: authHeaders as HeadersInit }
       );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(await extractProblemMessage(res, locale));
       const data: LiveOrder[] = await res.json();
       // Cache for offline fallback with timestamp
       try {
@@ -428,19 +427,19 @@ export default function App() {
             setOrders(data);
             setManifest(buildManifest(data));
             if (data.length > 0) setSelectedOrderId(data[0].order_id);
-            Alert.alert('OFFLINE MODE', 'Loaded cached manifest.');
+            Alert.alert(tx('payload.alert.offline_cached_manifest_title'), tx('payload.alert.offline_cached_manifest_body'));
             return;
           } else {
             // Cache is stale; do not use
-            Alert.alert('CACHE STALE', 'Cached manifest is older than 15 minutes. Cannot proceed offline.');
+            Alert.alert(tx('payload.alert.cache_stale_title'), tx('payload.alert.cache_stale_body'));
           }
         }
       } catch {}
-      Alert.alert('MANIFEST FETCH ERROR', e instanceof Error ? e.message : 'Unknown error');
+      Alert.alert(tx('payload.alert.manifest_fetch_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [authHeaders, locale, tx]);
 
   const handleTruckSelect = (truckId: string) => {
     setActiveTruck(truckId);
@@ -483,11 +482,11 @@ export default function App() {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(await extractProblemMessage(res, locale));
       setManifestState('LOADING');
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: unknown) {
-      Alert.alert('START LOADING FAILED', e instanceof Error ? e.message : 'Unknown error');
+      Alert.alert(tx('payload.alert.start_loading_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
     } finally {
       setIsStartingLoad(false);
     }
@@ -503,7 +502,7 @@ export default function App() {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ manifest_id: manifestId, order_id: orderId, reason }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(await extractProblemMessage(res, locale));
       const data = await res.json();
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       // Remove order from local state
@@ -517,7 +516,7 @@ export default function App() {
         Alert.alert('DLQ ESCALATION', `Order ${orderId.slice(0, 8)} has been escalated to admin after ${data.overflow_count} overflow attempts.`);
       }
     } catch (e: unknown) {
-      Alert.alert('EXCEPTION FAILED', e instanceof Error ? e.message : 'Unknown error');
+      Alert.alert(tx('payload.alert.exception_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
     } finally {
       setExceptionLoading(null);
     }
@@ -533,16 +532,15 @@ export default function App() {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `HTTP ${res.status}`);
+        throw new Error(await extractProblemMessage(res, locale));
       }
       const data = await res.json();
       setManifestState('SEALED');
       setAllSealed(true);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('MANIFEST SEALED', `${data.stop_count} stops sealed. ${data.volume_vu?.toFixed(1)}/${data.max_vu?.toFixed(1)} VU. Route finalized.`);
+      Alert.alert(tx('payload.alert.manifest_sealed_title'), `${data.stop_count} stops sealed. ${data.volume_vu?.toFixed(1)}/${data.max_vu?.toFixed(1)} VU. Route finalized.`);
     } catch (e: unknown) {
-      Alert.alert('SEAL FAILED', e instanceof Error ? e.message : 'Unknown error');
+      Alert.alert(tx('payload.alert.seal_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
     } finally {
       setIsSealingManifest(false);
     }
@@ -559,12 +557,11 @@ export default function App() {
         body: JSON.stringify({ order_id: injectOrderId.trim() }),
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `HTTP ${res.status}`);
+        throw new Error(await extractProblemMessage(res, locale));
       }
       const data = await res.json();
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('ORDER INJECTED', `Order ${injectOrderId.slice(0, 8)} added. ${data.stop_count} stops, ${data.total_volume_vu?.toFixed(1)} VU.`);
+      Alert.alert(tx('payload.alert.order_injected_title'), `Order ${injectOrderId.slice(0, 8)} added. ${data.stop_count} stops, ${data.total_volume_vu?.toFixed(1)} VU.`);
       setInjectOrderId('');
       setShowInjectOrder(false);
       // Refresh manifest to pick up new order
@@ -582,11 +579,11 @@ export default function App() {
         const updated = [...offlineQueue, action];
         setOfflineQueue(updated);
         await SecureStore.setItemAsync('offline_queue', JSON.stringify(updated));
-        Alert.alert('QUEUED OFFLINE', 'Inject order queued. Will sync when connection restores.');
+        Alert.alert(tx('payload.alert.queued_offline_title'), tx('payload.alert.queued_offline_body'));
         setInjectOrderId('');
         setShowInjectOrder(false);
       } else {
-        Alert.alert('INJECT FAILED', e instanceof Error ? e.message : 'Unknown error');
+        Alert.alert(tx('payload.alert.inject_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
       }
     } finally {
       setIsInjecting(false);
@@ -614,7 +611,7 @@ export default function App() {
     setOfflineQueue(remaining);
     await SecureStore.setItemAsync('offline_queue', JSON.stringify(remaining));
     if (remaining.length === 0 && offlineQueue.length > 0) {
-      Alert.alert('SYNC COMPLETE', `${offlineQueue.length} queued actions synced.`);
+      Alert.alert(tx('payload.alert.sync_complete_title'), `${offlineQueue.length} queued actions synced.`);
     }
   };
 
@@ -646,7 +643,7 @@ export default function App() {
           manifest_cleared: true,
         }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(await extractProblemMessage(res, locale));
       const sealData = await res.json();
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       const next = new Set(sealedOrderIds).add(selectedOrderId);
@@ -677,7 +674,7 @@ export default function App() {
         });
       }, 1000);
     } catch (e: unknown) {
-      Alert.alert('SEAL FAILED', e instanceof Error ? e.message : 'Unknown error');
+      Alert.alert(tx('payload.alert.seal_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
     } finally {
       setIsSealing(false);
     }

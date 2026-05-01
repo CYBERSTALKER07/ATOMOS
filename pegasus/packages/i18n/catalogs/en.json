@@ -85,6 +85,24 @@
     }
   },
   "payload": {
+    "alert": {
+      "cache_stale_body": "Cached manifest is older than 15 minutes. Cannot proceed offline.",
+      "cache_stale_title": "Cache stale",
+      "exception_failed": "Exception failed",
+      "inject_failed": "Inject failed",
+      "manifest_fetch_failed": "Manifest fetch error",
+      "manifest_sealed_title": "Manifest sealed",
+      "offline_cached_manifest_body": "Loaded cached manifest.",
+      "offline_cached_manifest_title": "Offline mode",
+      "order_injected_title": "Order injected",
+      "queued_offline_body": "Inject order queued. Will sync when connection restores.",
+      "queued_offline_title": "Queued offline",
+      "reassign_failed": "Reassign failed",
+      "recommendation_failed": "Recommendation failed",
+      "seal_failed": "Seal failed",
+      "start_loading_failed": "Start loading failed",
+      "sync_complete_title": "Sync complete"
+    },
     "vehicle": {
       "none_available": "No vehicles available",
       "select_target": "Select Target Vehicle"
