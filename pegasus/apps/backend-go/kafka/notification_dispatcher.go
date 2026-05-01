@@ -339,10 +339,13 @@ func handlePaymentSettled(deps NotificationDeps, data []byte) {
 
 	// Notify driver
 	if event.DriverID != "" {
-		driverNotif := notifications.FormattedNotification{
-			Title: "Payment Received",
-			Body:  "Payment confirmed for your delivery. You may proceed to complete the order.",
-		}
+		driverNotif := notifications.NewFormattedNotification(
+			"Payment Received",
+			"Payment confirmed for your delivery. You may proceed to complete the order.",
+			"notification.payment_settled.driver.title",
+			"notification.payment_settled.driver.body",
+			nil,
+		)
 		dispatchToRecipient(deps, event.DriverID, "DRIVER", EventPaymentSettled, driverNotif)
 	}
 }
@@ -442,25 +445,37 @@ func handleWarehouseStatusChanged(deps NotificationDeps, data []byte) {
 
 	var notif notifications.FormattedNotification
 	if event.Field == "is_active" && !event.NewValue {
-		notif = notifications.FormattedNotification{
-			Title: "Warehouse Disabled",
-			Body:  "Warehouse " + event.WarehouseId[:8] + " has been disabled. Orders may be rerouted.",
-		}
+		notif = notifications.NewFormattedNotification(
+			"Warehouse Disabled",
+			"Warehouse "+event.WarehouseId[:8]+" has been disabled. Orders may be rerouted.",
+			"notification.warehouse_status_changed.disabled.title",
+			"notification.warehouse_status_changed.disabled.body",
+			map[string]string{"warehouse_id": event.WarehouseId[:8]},
+		)
 	} else if event.Field == "is_on_shift" && !event.NewValue {
-		notif = notifications.FormattedNotification{
-			Title: "Warehouse Off Shift",
-			Body:  "Warehouse " + event.WarehouseId[:8] + " is now off shift.",
-		}
+		notif = notifications.NewFormattedNotification(
+			"Warehouse Off Shift",
+			"Warehouse "+event.WarehouseId[:8]+" is now off shift.",
+			"notification.warehouse_status_changed.off_shift.title",
+			"notification.warehouse_status_changed.off_shift.body",
+			map[string]string{"warehouse_id": event.WarehouseId[:8]},
+		)
 	} else if event.Field == "is_active" && event.NewValue {
-		notif = notifications.FormattedNotification{
-			Title: "Warehouse Enabled",
-			Body:  "Warehouse " + event.WarehouseId[:8] + " is back online.",
-		}
+		notif = notifications.NewFormattedNotification(
+			"Warehouse Enabled",
+			"Warehouse "+event.WarehouseId[:8]+" is back online.",
+			"notification.warehouse_status_changed.enabled.title",
+			"notification.warehouse_status_changed.enabled.body",
+			map[string]string{"warehouse_id": event.WarehouseId[:8]},
+		)
 	} else {
-		notif = notifications.FormattedNotification{
-			Title: "Warehouse On Shift",
-			Body:  "Warehouse " + event.WarehouseId[:8] + " is now on shift.",
-		}
+		notif = notifications.NewFormattedNotification(
+			"Warehouse On Shift",
+			"Warehouse "+event.WarehouseId[:8]+" is now on shift.",
+			"notification.warehouse_status_changed.on_shift.title",
+			"notification.warehouse_status_changed.on_shift.body",
+			map[string]string{"warehouse_id": event.WarehouseId[:8]},
+		)
 	}
 
 	// Notify supplier (admin portal)
@@ -474,17 +489,23 @@ func handleOutOfStock(deps NotificationDeps, data []byte) {
 		return
 	}
 
-	notif := notifications.FormattedNotification{
-		Title: "Items Out of Stock",
-		Body:  "Your checkout was blocked because all requested items are out of stock at warehouse " + event.WarehouseId[:8] + ".",
-	}
+	notif := notifications.NewFormattedNotification(
+		"Items Out of Stock",
+		"Your checkout was blocked because all requested items are out of stock at warehouse "+event.WarehouseId[:8]+".",
+		"notification.out_of_stock.retailer.title",
+		"notification.out_of_stock.retailer.body",
+		map[string]string{"warehouse_id": event.WarehouseId[:8]},
+	)
 	dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventOutOfStock, notif)
 
 	// Also alert the supplier
-	supplierNotif := notifications.FormattedNotification{
-		Title: "Out of Stock Alert",
-		Body:  "Retailer checkout blocked — all items OOS at warehouse " + event.WarehouseId[:8] + ".",
-	}
+	supplierNotif := notifications.NewFormattedNotification(
+		"Out of Stock Alert",
+		"Retailer checkout blocked - all items OOS at warehouse "+event.WarehouseId[:8]+".",
+		"notification.out_of_stock.supplier.title",
+		"notification.out_of_stock.supplier.body",
+		map[string]string{"warehouse_id": event.WarehouseId[:8]},
+	)
 	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventOutOfStock, supplierNotif)
 }
 
@@ -497,15 +518,21 @@ func handleRetailerPriceOverride(deps NotificationDeps, data []byte) {
 
 	var notif notifications.FormattedNotification
 	if event.Action == "CREATED" {
-		notif = notifications.FormattedNotification{
-			Title: "Custom Pricing Applied",
-			Body:  "A custom price has been set for you on product " + event.SkuId[:8] + ".",
-		}
+		notif = notifications.NewFormattedNotification(
+			"Custom Pricing Applied",
+			"A custom price has been set for you on product "+event.SkuId[:8]+".",
+			"notification.retailer_price_override.created.title",
+			"notification.retailer_price_override.created.body",
+			map[string]string{"sku_id": event.SkuId[:8]},
+		)
 	} else {
-		notif = notifications.FormattedNotification{
-			Title: "Custom Pricing Removed",
-			Body:  "Custom pricing for product " + event.SkuId[:8] + " has been removed. Standard pricing applies.",
-		}
+		notif = notifications.NewFormattedNotification(
+			"Custom Pricing Removed",
+			"Custom pricing for product "+event.SkuId[:8]+" has been removed. Standard pricing applies.",
+			"notification.retailer_price_override.removed.title",
+			"notification.retailer_price_override.removed.body",
+			map[string]string{"sku_id": event.SkuId[:8]},
+		)
 	}
 	dispatchToRecipient(deps, event.RetailerId, "RETAILER", EventRetailerPriceOverride, notif)
 }
@@ -532,10 +559,13 @@ func handleCancelRequested(deps NotificationDeps, data []byte) {
 		}
 	}
 	if supplierID != "" {
-		notif := notifications.FormattedNotification{
-			Title: "Cancel Request",
-			Body:  "A retailer has requested cancellation for order " + event.OrderID[:min(8, len(event.OrderID))] + ". Review and approve or deny.",
-		}
+		notif := notifications.NewFormattedNotification(
+			"Cancel Request",
+			"A retailer has requested cancellation for order "+event.OrderID[:min(8, len(event.OrderID))]+". Review and approve or deny.",
+			"notification.cancel_requested.title",
+			"notification.cancel_requested.body",
+			map[string]string{"order_id": event.OrderID[:min(8, len(event.OrderID))]},
+		)
 		dispatchToRecipient(deps, supplierID, "SUPPLIER", EventCancelRequested, notif)
 	}
 }
@@ -560,10 +590,13 @@ func handleCancelApproved(deps NotificationDeps, data []byte) {
 		}
 	}
 	if retailerID != "" {
-		notif := notifications.FormattedNotification{
-			Title: "Order Cancelled",
-			Body:  "Your cancellation request for order " + event.OrderID[:min(8, len(event.OrderID))] + " has been approved.",
-		}
+		notif := notifications.NewFormattedNotification(
+			"Order Cancelled",
+			"Your cancellation request for order "+event.OrderID[:min(8, len(event.OrderID))]+" has been approved.",
+			"notification.cancel_approved.title",
+			"notification.cancel_approved.body",
+			map[string]string{"order_id": event.OrderID[:min(8, len(event.OrderID))]},
+		)
 		dispatchToRecipient(deps, retailerID, "RETAILER", EventCancelApproved, notif)
 	}
 }
@@ -578,10 +611,13 @@ func handleOrderCompleted(deps NotificationDeps, data []byte) {
 		return
 	}
 	if event.RetailerID != "" {
-		notif := notifications.FormattedNotification{
-			Title: "Delivery Complete",
-			Body:  "Your order " + event.OrderID[:min(8, len(event.OrderID))] + " has been delivered successfully.",
-		}
+		notif := notifications.NewFormattedNotification(
+			"Delivery Complete",
+			"Your order "+event.OrderID[:min(8, len(event.OrderID))]+" has been delivered successfully.",
+			"notification.order_completed.title",
+			"notification.order_completed.body",
+			map[string]string{"order_id": event.OrderID[:min(8, len(event.OrderID))]},
+		)
 		dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventOrderCompleted, notif)
 	}
 }
@@ -902,13 +938,13 @@ func handleMissingItemsReported(deps NotificationDeps, data []byte) {
 		return
 	}
 	if event.SupplierID != "" {
-		notif := notifications.FormattedNotification{
-			Title:       "Missing Items Report",
-			Body:        fmt.Sprintf("Driver reports %d items missing from order %s after seal.", event.ItemCount, event.OrderID[:min(8, len(event.OrderID))]),
-			TitleKey:    "notification.missing_items_report.title",
-			BodyKey:     "notification.missing_items_report.body",
-			MessageArgs: map[string]string{"item_count": fmt.Sprintf("%d", event.ItemCount), "order_id": event.OrderID[:min(8, len(event.OrderID))]},
-		}
+		notif := notifications.NewFormattedNotification(
+			"Missing Items Report",
+			fmt.Sprintf("Driver reports %d items missing from order %s after seal.", event.ItemCount, event.OrderID[:min(8, len(event.OrderID))]),
+			"notification.missing_items_report.title",
+			"notification.missing_items_report.body",
+			map[string]string{"item_count": fmt.Sprintf("%d", event.ItemCount), "order_id": event.OrderID[:min(8, len(event.OrderID))]},
+		)
 		dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventMissingItemsReported, notif)
 	}
 }
@@ -1401,10 +1437,13 @@ func handleRetailerRegistered(deps NotificationDeps, data []byte) {
 	// to the retailer themselves as a welcome receipt. Supplier-side discovery
 	// of new retailers happens via the catalog indexer (separate consumer).
 	dispatchToRecipient(deps, event.RetailerId, "RETAILER", EventRetailerRegistered,
-		notifications.FormattedNotification{
-			Title: "Welcome to Pegasus",
-			Body:  fmt.Sprintf("Account %s registered. You can now place orders.", event.ShopName),
-		})
+		notifications.NewFormattedNotification(
+			"Welcome to Pegasus",
+			fmt.Sprintf("Account %s registered. You can now place orders.", event.ShopName),
+			"notification.retailer_registered.title",
+			"notification.retailer_registered.body",
+			map[string]string{"shop_name": event.ShopName},
+		))
 }
 
 func handleWarehouseSpatialUpdated(deps NotificationDeps, data []byte) {
@@ -1417,10 +1456,13 @@ func handleWarehouseSpatialUpdated(deps NotificationDeps, data []byte) {
 		return
 	}
 	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventWarehouseSpatialUpdated,
-		notifications.FormattedNotification{
-			Title: "Warehouse Coverage Updated",
-			Body:  fmt.Sprintf("Warehouse %s coverage updated: H3 %d → %d.", event.WarehouseId, event.OldH3Count, event.NewH3Count),
-		})
+		notifications.NewFormattedNotification(
+			"Warehouse Coverage Updated",
+			fmt.Sprintf("Warehouse %s coverage updated: H3 %d -> %d.", event.WarehouseId, event.OldH3Count, event.NewH3Count),
+			"notification.warehouse_spatial_updated.title",
+			"notification.warehouse_spatial_updated.body",
+			map[string]string{"warehouse_id": event.WarehouseId, "old_h3_count": fmt.Sprintf("%d", event.OldH3Count), "new_h3_count": fmt.Sprintf("%d", event.NewH3Count)},
+		))
 }
 
 func handleFactorySLABreach(deps NotificationDeps, data []byte) {
@@ -1433,10 +1475,13 @@ func handleFactorySLABreach(deps NotificationDeps, data []byte) {
 		return
 	}
 	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventFactorySLABreach,
-		notifications.FormattedNotification{
-			Title: "Factory SLA Breach",
-			Body:  fmt.Sprintf("Transfer %s breached SLA at %s level.", event.TransferId, event.EscalationLevel),
-		})
+		notifications.NewFormattedNotification(
+			"Factory SLA Breach",
+			fmt.Sprintf("Transfer %s breached SLA at %s level.", event.TransferId, event.EscalationLevel),
+			"notification.factory_sla_breach.title",
+			"notification.factory_sla_breach.body",
+			map[string]string{"transfer_id": event.TransferId, "escalation_level": event.EscalationLevel},
+		))
 }
 
 func handleInboundFreightUnannounced(deps NotificationDeps, data []byte) {
@@ -1449,10 +1494,13 @@ func handleInboundFreightUnannounced(deps NotificationDeps, data []byte) {
 		return
 	}
 	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventInboundFreightUnannounced,
-		notifications.FormattedNotification{
-			Title: "Unannounced Freight Received",
-			Body:  fmt.Sprintf("Warehouse force-received transfer %s with %d items.", event.TransferId, event.ItemsCount),
-		})
+		notifications.NewFormattedNotification(
+			"Unannounced Freight Received",
+			fmt.Sprintf("Warehouse force-received transfer %s with %d items.", event.TransferId, event.ItemsCount),
+			"notification.inbound_freight_unannounced.title",
+			"notification.inbound_freight_unannounced.body",
+			map[string]string{"transfer_id": event.TransferId, "items_count": fmt.Sprintf("%d", event.ItemsCount)},
+		))
 }
 
 func handleSupplyLaneTransitUpdated(deps NotificationDeps, data []byte) {
@@ -1465,10 +1513,13 @@ func handleSupplyLaneTransitUpdated(deps NotificationDeps, data []byte) {
 		return
 	}
 	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventSupplyLaneTransitUpdated,
-		notifications.FormattedNotification{
-			Title: "Supply Lane Updated",
-			Body:  fmt.Sprintf("Transit estimate updated for lane %s to %.1fh.", event.LaneId, event.NewDampenedHours),
-		})
+		notifications.NewFormattedNotification(
+			"Supply Lane Updated",
+			fmt.Sprintf("Transit estimate updated for lane %s to %.1fh.", event.LaneId, event.NewDampenedHours),
+			"notification.supply_lane_updated.title",
+			"notification.supply_lane_updated.body",
+			map[string]string{"lane_id": event.LaneId, "new_dampened_hours": fmt.Sprintf("%.1f", event.NewDampenedHours)},
+		))
 }
 
 func handleNetworkModeChanged(deps NotificationDeps, data []byte) {
@@ -1481,10 +1532,13 @@ func handleNetworkModeChanged(deps NotificationDeps, data []byte) {
 		return
 	}
 	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventNetworkModeChanged,
-		notifications.FormattedNotification{
-			Title: "Network Mode Changed",
-			Body:  fmt.Sprintf("Optimization mode changed from %s to %s.", event.OldMode, event.NewMode),
-		})
+		notifications.NewFormattedNotification(
+			"Network Mode Changed",
+			fmt.Sprintf("Optimization mode changed from %s to %s.", event.OldMode, event.NewMode),
+			"notification.network_mode_changed.title",
+			"notification.network_mode_changed.body",
+			map[string]string{"old_mode": event.OldMode, "new_mode": event.NewMode},
+		))
 }
 
 func handlePullMatrixCompleted(deps NotificationDeps, data []byte) {
@@ -1497,10 +1551,13 @@ func handlePullMatrixCompleted(deps NotificationDeps, data []byte) {
 		return
 	}
 	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventPullMatrixCompleted,
-		notifications.FormattedNotification{
-			Title: "Pull Matrix Completed",
-			Body:  fmt.Sprintf("Run %s generated %d transfers across %d SKUs.", event.RunId, event.TransfersGenerated, event.SKUsProcessed),
-		})
+		notifications.NewFormattedNotification(
+			"Pull Matrix Completed",
+			fmt.Sprintf("Run %s generated %d transfers across %d SKUs.", event.RunId, event.TransfersGenerated, event.SKUsProcessed),
+			"notification.pull_matrix_completed.title",
+			"notification.pull_matrix_completed.body",
+			map[string]string{"run_id": event.RunId, "transfers_generated": fmt.Sprintf("%d", event.TransfersGenerated), "skus_processed": fmt.Sprintf("%d", event.SKUsProcessed)},
+		))
 }
 
 func handleReplenishmentTransferCreated(deps NotificationDeps, data []byte) {
@@ -1518,10 +1575,13 @@ func handleReplenishmentTransferCreated(deps NotificationDeps, data []byte) {
 		return
 	}
 	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventReplenishmentTransferCreated,
-		notifications.FormattedNotification{
-			Title: "Replenishment Transfer Created",
-			Body:  fmt.Sprintf("Transfer %s created for warehouse %s (%s).", event.TransferID, event.WarehouseID, event.Source),
-		})
+		notifications.NewFormattedNotification(
+			"Replenishment Transfer Created",
+			fmt.Sprintf("Transfer %s created for warehouse %s (%s).", event.TransferID, event.WarehouseID, event.Source),
+			"notification.replenishment_transfer_created.title",
+			"notification.replenishment_transfer_created.body",
+			map[string]string{"transfer_id": event.TransferID, "warehouse_id": event.WarehouseID, "source": event.Source},
+		))
 }
 
 func handleInsightApprovedTransferCreated(deps NotificationDeps, data []byte) {
@@ -1555,10 +1615,13 @@ func handleInsightApprovedTransferCreated(deps NotificationDeps, data []byte) {
 	}
 
 	dispatchToRecipient(deps, supplierID, "SUPPLIER", EventInsightApprovedTransferCreated,
-		notifications.FormattedNotification{
-			Title: "Insight Transfer Created",
-			Body:  fmt.Sprintf("Insight %s created transfer %s for warehouse %s.", event.InsightID, event.TransferID, event.WarehouseID),
-		})
+		notifications.NewFormattedNotification(
+			"Insight Transfer Created",
+			fmt.Sprintf("Insight %s created transfer %s for warehouse %s.", event.InsightID, event.TransferID, event.WarehouseID),
+			"notification.insight_transfer_created.title",
+			"notification.insight_transfer_created.body",
+			map[string]string{"insight_id": event.InsightID, "transfer_id": event.TransferID, "warehouse_id": event.WarehouseID},
+		))
 }
 
 func handleCashCollectionRequired(deps NotificationDeps, data []byte) {
@@ -1576,10 +1639,13 @@ func handleCashCollectionRequired(deps NotificationDeps, data []byte) {
 	}
 	orderRef := event.OrderID[:min(8, len(event.OrderID))]
 	dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventCashCollectionRequired,
-		notifications.FormattedNotification{
-			Title: "Cash Collection Required",
-			Body:  fmt.Sprintf("Order %s is awaiting cash collection for %d.", orderRef, event.Amount),
-		})
+		notifications.NewFormattedNotification(
+			"Cash Collection Required",
+			fmt.Sprintf("Order %s is awaiting cash collection for %d.", orderRef, event.Amount),
+			"notification.cash_collection_required.title",
+			"notification.cash_collection_required.body",
+			map[string]string{"order_id": orderRef, "amount_minor": fmt.Sprintf("%d", event.Amount)},
+		))
 }
 
 func handleFulfillmentPaymentCompleted(deps NotificationDeps, data []byte) {
@@ -1600,24 +1666,33 @@ func handleFulfillmentPaymentCompleted(deps NotificationDeps, data []byte) {
 	orderRef := event.OrderID[:min(8, len(event.OrderID))]
 	if event.RetailerID != "" {
 		dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventFulfillmentPaymentCompleted,
-			notifications.FormattedNotification{
-				Title: "Payment Completed",
-				Body:  fmt.Sprintf("Payment for order %s was completed successfully.", orderRef),
-			})
+			notifications.NewFormattedNotification(
+				"Payment Completed",
+				fmt.Sprintf("Payment for order %s was completed successfully.", orderRef),
+				"notification.fulfillment_payment_completed.retailer.title",
+				"notification.fulfillment_payment_completed.retailer.body",
+				map[string]string{"order_id": orderRef},
+			))
 	}
 	if event.SupplierID != "" {
 		dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventFulfillmentPaymentCompleted,
-			notifications.FormattedNotification{
-				Title: "Fulfillment Payment Completed",
-				Body:  fmt.Sprintf("Order %s payment completed for %d.", orderRef, event.Amount),
-			})
+			notifications.NewFormattedNotification(
+				"Fulfillment Payment Completed",
+				fmt.Sprintf("Order %s payment completed for %d.", orderRef, event.Amount),
+				"notification.fulfillment_payment_completed.supplier.title",
+				"notification.fulfillment_payment_completed.supplier.body",
+				map[string]string{"order_id": orderRef, "amount_minor": fmt.Sprintf("%d", event.Amount)},
+			))
 	}
 	if event.DriverID != "" {
 		dispatchToRecipient(deps, event.DriverID, "DRIVER", EventFulfillmentPaymentCompleted,
-			notifications.FormattedNotification{
-				Title: "Retailer Payment Confirmed",
-				Body:  fmt.Sprintf("Order %s payment is confirmed. Continue route execution.", orderRef),
-			})
+			notifications.NewFormattedNotification(
+				"Retailer Payment Confirmed",
+				fmt.Sprintf("Order %s payment is confirmed. Continue route execution.", orderRef),
+				"notification.fulfillment_payment_completed.driver.title",
+				"notification.fulfillment_payment_completed.driver.body",
+				map[string]string{"order_id": orderRef},
+			))
 	}
 }
 
@@ -1637,10 +1712,13 @@ func handleFulfillmentPaid(deps NotificationDeps, data []byte) {
 	}
 	orderRef := event.OrderID[:min(8, len(event.OrderID))]
 	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventFulfillmentPaid,
-		notifications.FormattedNotification{
-			Title: "Fulfillment Paid",
-			Body:  fmt.Sprintf("Order %s marked paid: %d.", orderRef, event.Amount),
-		})
+		notifications.NewFormattedNotification(
+			"Fulfillment Paid",
+			fmt.Sprintf("Order %s marked paid: %d.", orderRef, event.Amount),
+			"notification.fulfillment_paid.title",
+			"notification.fulfillment_paid.body",
+			map[string]string{"order_id": orderRef, "amount_minor": fmt.Sprintf("%d", event.Amount)},
+		))
 }
 
 func handleOrderCreated(deps NotificationDeps, data []byte) {
@@ -1661,17 +1739,23 @@ func handleOrderCreated(deps NotificationDeps, data []byte) {
 	orderRef := event.OrderID[:min(8, len(event.OrderID))]
 	if event.SupplierID != "" {
 		dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventOrderCreated,
-			notifications.FormattedNotification{
-				Title: "New Order Created",
-				Body:  fmt.Sprintf("Order %s created for %d %s.", orderRef, event.Total, event.Currency),
-			})
+			notifications.NewFormattedNotification(
+				"New Order Created",
+				fmt.Sprintf("Order %s created for %d %s.", orderRef, event.Total, event.Currency),
+				"notification.order_created.supplier.title",
+				"notification.order_created.supplier.body",
+				map[string]string{"order_id": orderRef, "total_minor": fmt.Sprintf("%d", event.Total), "currency": event.Currency},
+			))
 	}
 	if event.RetailerID != "" {
 		dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventOrderCreated,
-			notifications.FormattedNotification{
-				Title: "Order Placed",
-				Body:  fmt.Sprintf("Order %s was placed successfully.", orderRef),
-			})
+			notifications.NewFormattedNotification(
+				"Order Placed",
+				fmt.Sprintf("Order %s was placed successfully.", orderRef),
+				"notification.order_created.retailer.title",
+				"notification.order_created.retailer.body",
+				map[string]string{"order_id": orderRef},
+			))
 	}
 }
 
@@ -1691,10 +1775,13 @@ func handleUnifiedCheckoutCompleted(deps NotificationDeps, data []byte) {
 		return
 	}
 	dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventUnifiedCheckoutCompleted,
-		notifications.FormattedNotification{
-			Title: "Checkout Completed",
-			Body:  fmt.Sprintf("Checkout completed: %d orders, total %d %s.", event.OrderCount, event.Total, event.Currency),
-		})
+		notifications.NewFormattedNotification(
+			"Checkout Completed",
+			fmt.Sprintf("Checkout completed: %d orders, total %d %s.", event.OrderCount, event.Total, event.Currency),
+			"notification.unified_checkout_completed.title",
+			"notification.unified_checkout_completed.body",
+			map[string]string{"order_count": fmt.Sprintf("%d", event.OrderCount), "total_minor": fmt.Sprintf("%d", event.Total), "currency": event.Currency},
+		))
 }
 
 func handleStockBackordered(deps NotificationDeps, data []byte) {
@@ -1715,17 +1802,23 @@ func handleStockBackordered(deps NotificationDeps, data []byte) {
 	orderRef := event.BackOrderID[:min(8, len(event.BackOrderID))]
 	if event.RetailerID != "" {
 		dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventStockBackordered,
-			notifications.FormattedNotification{
-				Title: "Backorder Created",
-				Body:  fmt.Sprintf("Backorder %s created for %d %s.", orderRef, event.Total, event.Currency),
-			})
+			notifications.NewFormattedNotification(
+				"Backorder Created",
+				fmt.Sprintf("Backorder %s created for %d %s.", orderRef, event.Total, event.Currency),
+				"notification.stock_backordered.retailer.title",
+				"notification.stock_backordered.retailer.body",
+				map[string]string{"backorder_id": orderRef, "total_minor": fmt.Sprintf("%d", event.Total), "currency": event.Currency},
+			))
 	}
 	if event.SupplierID != "" {
 		dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventStockBackordered,
-			notifications.FormattedNotification{
-				Title: "Backorder Added",
-				Body:  fmt.Sprintf("Backorder %s was created from shortfall handling.", orderRef),
-			})
+			notifications.NewFormattedNotification(
+				"Backorder Added",
+				fmt.Sprintf("Backorder %s was created from shortfall handling.", orderRef),
+				"notification.stock_backordered.supplier.title",
+				"notification.stock_backordered.supplier.body",
+				map[string]string{"backorder_id": orderRef},
+			))
 	}
 }
 
@@ -1755,17 +1848,23 @@ func handleOrderCancelled(deps NotificationDeps, data []byte) {
 	orderRef := event.OrderID[:min(8, len(event.OrderID))]
 	if retailerID.Valid {
 		dispatchToRecipient(deps, retailerID.StringVal, "RETAILER", EventOrderCancelled,
-			notifications.FormattedNotification{
-				Title: "Order Cancelled",
-				Body:  fmt.Sprintf("Order %s has been cancelled.", orderRef),
-			})
+			notifications.NewFormattedNotification(
+				"Order Cancelled",
+				fmt.Sprintf("Order %s has been cancelled.", orderRef),
+				"notification.order_cancelled.retailer.title",
+				"notification.order_cancelled.retailer.body",
+				map[string]string{"order_id": orderRef},
+			))
 	}
 	if supplierID.Valid {
 		dispatchToRecipient(deps, supplierID.StringVal, "SUPPLIER", EventOrderCancelled,
-			notifications.FormattedNotification{
-				Title: "Order Cancelled",
-				Body:  fmt.Sprintf("Order %s was cancelled and removed from active flow.", orderRef),
-			})
+			notifications.NewFormattedNotification(
+				"Order Cancelled",
+				fmt.Sprintf("Order %s was cancelled and removed from active flow.", orderRef),
+				"notification.order_cancelled.supplier.title",
+				"notification.order_cancelled.supplier.body",
+				map[string]string{"order_id": orderRef},
+			))
 	}
 }
 
@@ -1792,10 +1891,13 @@ func handleShopClosedResponse(deps NotificationDeps, data []byte) {
 
 	orderRef := event.OrderID[:min(8, len(event.OrderID))]
 	dispatchToRecipient(deps, driverID.StringVal, "DRIVER", EventShopClosedResponse,
-		notifications.FormattedNotification{
-			Title: "Retailer Responded",
-			Body:  fmt.Sprintf("Retailer response for order %s: %s.", orderRef, event.Response),
-		})
+		notifications.NewFormattedNotification(
+			"Retailer Responded",
+			fmt.Sprintf("Retailer response for order %s: %s.", orderRef, event.Response),
+			"notification.shop_closed_response.title",
+			"notification.shop_closed_response.body",
+			map[string]string{"order_id": orderRef, "response": event.Response},
+		))
 }
 
 func handleShopClosedResolved(deps NotificationDeps, data []byte) {
@@ -1823,11 +1925,23 @@ func handleShopClosedResolved(deps NotificationDeps, data []byte) {
 	body := fmt.Sprintf("Shop-closed case for order %s resolved as %s.", orderRef, event.Resolution)
 	if driverID.Valid {
 		dispatchToRecipient(deps, driverID.StringVal, "DRIVER", EventShopClosedResolved,
-			notifications.FormattedNotification{Title: "Shop-Closed Resolved", Body: body})
+			notifications.NewFormattedNotification(
+				"Shop-Closed Resolved",
+				body,
+				"notification.shop_closed_resolved.driver.title",
+				"notification.shop_closed_resolved.driver.body",
+				map[string]string{"order_id": orderRef, "resolution": event.Resolution},
+			))
 	}
 	if retailerID.Valid {
 		dispatchToRecipient(deps, retailerID.StringVal, "RETAILER", EventShopClosedResolved,
-			notifications.FormattedNotification{Title: "Shop-Closed Resolved", Body: body})
+			notifications.NewFormattedNotification(
+				"Shop-Closed Resolved",
+				body,
+				"notification.shop_closed_resolved.retailer.title",
+				"notification.shop_closed_resolved.retailer.body",
+				map[string]string{"order_id": orderRef, "resolution": event.Resolution},
+			))
 	}
 }
 
@@ -1846,10 +1960,13 @@ func handleTransferStateChanged(deps NotificationDeps, data []byte) {
 		return
 	}
 	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventTransferStateChanged,
-		notifications.FormattedNotification{
-			Title: "Transfer State Updated",
-			Body:  fmt.Sprintf("Transfer %s moved from %s to %s.", event.TransferID, event.FromState, event.ToState),
-		})
+		notifications.NewFormattedNotification(
+			"Transfer State Updated",
+			fmt.Sprintf("Transfer %s moved from %s to %s.", event.TransferID, event.FromState, event.ToState),
+			"notification.transfer_state_changed.title",
+			"notification.transfer_state_changed.body",
+			map[string]string{"transfer_id": event.TransferID, "from_state": event.FromState, "to_state": event.ToState},
+		))
 }
 
 func handleTransferApproved(deps NotificationDeps, data []byte) {
@@ -1866,10 +1983,13 @@ func handleTransferApproved(deps NotificationDeps, data []byte) {
 		return
 	}
 	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventTransferApproved,
-		notifications.FormattedNotification{
-			Title: "Transfer Approved",
-			Body:  fmt.Sprintf("Transfer %s approved for %.1f VU.", event.TransferID, event.VolumeVU),
-		})
+		notifications.NewFormattedNotification(
+			"Transfer Approved",
+			fmt.Sprintf("Transfer %s approved for %.1f VU.", event.TransferID, event.VolumeVU),
+			"notification.transfer_approved.title",
+			"notification.transfer_approved.body",
+			map[string]string{"transfer_id": event.TransferID, "volume_vu": fmt.Sprintf("%.1f", event.VolumeVU)},
+		))
 }
 
 func handleTransferReceived(deps NotificationDeps, data []byte) {
@@ -1886,10 +2006,13 @@ func handleTransferReceived(deps NotificationDeps, data []byte) {
 		return
 	}
 	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventTransferReceived,
-		notifications.FormattedNotification{
-			Title: "Transfer Received",
-			Body:  fmt.Sprintf("Transfer %s received with %d items reconciled.", event.TransferID, event.ItemsCount),
-		})
+		notifications.NewFormattedNotification(
+			"Transfer Received",
+			fmt.Sprintf("Transfer %s received with %d items reconciled.", event.TransferID, event.ItemsCount),
+			"notification.transfer_received.title",
+			"notification.transfer_received.body",
+			map[string]string{"transfer_id": event.TransferID, "items_count": fmt.Sprintf("%d", event.ItemsCount)},
+		))
 }
 
 func handleTransferUnassigned(deps NotificationDeps, data []byte) {
@@ -1902,10 +2025,13 @@ func handleTransferUnassigned(deps NotificationDeps, data []byte) {
 		return
 	}
 	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventTransferUnassigned,
-		notifications.FormattedNotification{
-			Title: "Transfer Unassigned",
-			Body:  fmt.Sprintf("Transfer %s was unassigned from manifest %s.", event.TransferID, event.ManifestID),
-		})
+		notifications.NewFormattedNotification(
+			"Transfer Unassigned",
+			fmt.Sprintf("Transfer %s was unassigned from manifest %s.", event.TransferID, event.ManifestID),
+			"notification.transfer_unassigned.title",
+			"notification.transfer_unassigned.body",
+			map[string]string{"transfer_id": event.TransferID, "manifest_id": event.ManifestID},
+		))
 }
 
 // ─── Dispatch Protocol ─────────────────────────────────────────────────────────
@@ -2025,10 +2151,13 @@ func handlePreOrderAutoAccepted(deps NotificationDeps, data []byte) {
 		return
 	}
 	dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventPreOrderAutoAccepted,
-		notifications.FormattedNotification{
-			Title: "Preorder Auto-Accepted",
-			Body:  fmt.Sprintf("Your scheduled order %s has been accepted and is now being prepared for delivery on %s.", event.OrderID[:8], event.DeliveryDate),
-		})
+		notifications.NewFormattedNotification(
+			"Preorder Auto-Accepted",
+			fmt.Sprintf("Your scheduled order %s has been accepted and is now being prepared for delivery on %s.", event.OrderID[:8], event.DeliveryDate),
+			"notification.preorder_auto_accepted.title",
+			"notification.preorder_auto_accepted.body",
+			map[string]string{"order_id": event.OrderID[:8], "delivery_date": event.DeliveryDate},
+		))
 }
 
 func handlePreOrderConfirmed(deps NotificationDeps, data []byte) {
@@ -2038,10 +2167,13 @@ func handlePreOrderConfirmed(deps NotificationDeps, data []byte) {
 		return
 	}
 	dispatchToRecipient(deps, event.ConfirmedBy, "RETAILER", EventPreOrderConfirmed,
-		notifications.FormattedNotification{
-			Title: "Preorder Confirmed",
-			Body:  fmt.Sprintf("You confirmed your scheduled order %s. It will be auto-accepted when the delivery date approaches.", event.OrderID[:8]),
-		})
+		notifications.NewFormattedNotification(
+			"Preorder Confirmed",
+			fmt.Sprintf("You confirmed your scheduled order %s. It will be auto-accepted when the delivery date approaches.", event.OrderID[:8]),
+			"notification.preorder_confirmed.title",
+			"notification.preorder_confirmed.body",
+			map[string]string{"order_id": event.OrderID[:8]},
+		))
 }
 
 func handlePreOrderEdited(deps NotificationDeps, data []byte) {
@@ -2055,10 +2187,13 @@ func handlePreOrderEdited(deps NotificationDeps, data []byte) {
 		body = fmt.Sprintf("Your scheduled order %s has been rescheduled to %s.", event.OrderID[:8], event.NewDate)
 	}
 	dispatchToRecipient(deps, event.EditedBy, "RETAILER", EventPreOrderEdited,
-		notifications.FormattedNotification{
-			Title: "Preorder Updated",
-			Body:  body,
-		})
+		notifications.NewFormattedNotification(
+			"Preorder Updated",
+			body,
+			"notification.preorder_edited.title",
+			"notification.preorder_edited.body",
+			map[string]string{"order_id": event.OrderID[:8], "new_date": event.NewDate},
+		))
 }
 
 // ─── Fleet / Dispatch-Lock / Resource Lifecycle Handlers ───────────────────────
