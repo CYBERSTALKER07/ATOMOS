@@ -49,7 +49,7 @@ func GetWarehouseScope(ctx context.Context) *WarehouseScope {
 // Must be placed AFTER RequireRole for SUPPLIER/ADMIN endpoints.
 func RequireWarehouseScope(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(ClaimsContextKey).(*LabClaims)
+		claims, ok := r.Context().Value(ClaimsContextKey).(*PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, "Missing authentication context", http.StatusUnauthorized)
 			return

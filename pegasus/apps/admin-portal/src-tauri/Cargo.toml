@@ -1,11 +1,11 @@
 [package]
-name = "lab-admin-desktop"
+name = "pegasus-admin-desktop"
 version = "0.1.0"
 description = "Pegasus — Admin Portal Desktop Shell"
 authors = ["Pegasus"]
 license = "proprietary"
 repository = ""
-default-run = "lab-admin-desktop"
+default-run = "pegasus-admin-desktop"
 edition = "2021"
 rust-version = "1.77"
 

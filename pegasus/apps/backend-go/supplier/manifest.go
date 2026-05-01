@@ -192,7 +192,7 @@ func (s *ManifestService) HandleStartLoading() http.HandlerFunc {
 			http.Error(w, `{"error":"manifest_id required"}`, http.StatusBadRequest)
 			return
 		}
-		_ = r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		_ = r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 
 		now := time.Now().UTC()
 
@@ -304,7 +304,7 @@ func (s *ManifestService) HandleInjectOrder() http.HandlerFunc {
 			http.Error(w, `{"error":"manifest_id required"}`, http.StatusBadRequest)
 			return
 		}
-		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 
 		var req injectReq
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" {
@@ -445,7 +445,7 @@ func (s *ManifestService) HandleSealManifest() http.HandlerFunc {
 			http.Error(w, `{"error":"manifest_id required"}`, http.StatusBadRequest)
 			return
 		}
-		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		sealedBy := claims.ResolveSupplierID()
 
 		// Phase C: Admin force-seal override — ?override=admin bypasses volumetric validation.
@@ -803,7 +803,7 @@ func (s *ManifestService) HandleListManifests() http.HandlerFunc {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		stateFilter := r.URL.Query().Get("state")
 
 		sql := `SELECT ManifestId, SupplierId, COALESCE(WarehouseId, ''), COALESCE(RouteId, ''),
@@ -1053,7 +1053,7 @@ func (s *ManifestService) HandleManifestException() http.HandlerFunc {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		_ = r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		_ = r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 
 		var req exceptionReq
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1240,7 +1240,7 @@ func (s *ManifestService) HandleListExceptions() http.HandlerFunc {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		escalatedOnly := r.URL.Query().Get("escalated") == "true"
 
 		sql := `SELECT e.ExceptionId, e.OrderId, e.ManifestId, e.Reason,

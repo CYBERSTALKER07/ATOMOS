@@ -50,7 +50,7 @@
 
 ## Contents
 
-- The Lab Industries copyright text
+- Pegasus copyright text
 
 ---
 

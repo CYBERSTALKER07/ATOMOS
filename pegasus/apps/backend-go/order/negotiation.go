@@ -44,7 +44,7 @@ func HandleProposeNegotiation(svc *OrderService, deps *NegotiationDeps) http.Han
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
@@ -169,7 +169,7 @@ func HandleResolveNegotiation(svc *OrderService, deps *NegotiationDeps) http.Han
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return

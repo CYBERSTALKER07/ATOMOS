@@ -2,7 +2,7 @@ package com.pegasus.retailer.ui.screens.autoorder
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.api.PegasusApi
 import com.pegasus.retailer.data.model.AutoOrderSettings
 import com.pegasus.retailer.data.model.DemandForecast
 import com.pegasus.retailer.data.model.UpdateGlobalSettingsRequest
@@ -36,7 +36,7 @@ data class AutoOrderUiState(
 
 @HiltViewModel
 class AutoOrderViewModel @Inject constructor(
-    private val api: LabApi,
+    private val api: PegasusApi,
     private val tokenManager: com.pegasus.retailer.data.local.TokenManager,
 ) : ViewModel() {
 

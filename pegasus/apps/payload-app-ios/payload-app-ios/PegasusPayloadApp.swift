@@ -1,5 +1,5 @@
 //
-//  LabPayloadApp.swift
+//  PegasusPayloadApp.swift
 //  payload-app-ios
 //
 //  Single-target SwiftUI iPad app for the PAYLOAD role. Mirrors the
@@ -10,7 +10,7 @@
 import SwiftUI
 
 @main
-struct LabPayloadApp: App {
+struct PegasusPayloadApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var tokenStore = TokenStore.shared
 

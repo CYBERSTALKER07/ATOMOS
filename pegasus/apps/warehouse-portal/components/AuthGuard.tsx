@@ -31,7 +31,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
     if (!isAuthRoute && !hasValidToken) {
       if (token && isTokenExpired(token)) {
-        document.cookie = "warehouse_jwt=; Max-Age=0; path=/";
+        document.cookie = "pegasus_warehouse_jwt=; Max-Age=0; path=/";
       }
       router.replace("/auth/login");
       return;

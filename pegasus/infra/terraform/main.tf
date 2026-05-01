@@ -35,7 +35,7 @@ resource "google_project_service" "required_apis" {
 }
 
 # 2. The Private VPC Network
-resource "google_compute_network" "lab_vpc" {
+resource "google_compute_network" "pegasus_vpc" {
   name                    = "pegasus-vpc"
   auto_create_subnetworks = true
   depends_on              = [google_project_service.required_apis]
@@ -47,7 +47,7 @@ resource "google_redis_instance" "cache" {
   tier               = "STANDARD_HA" # Active-passive HA — required once Kafka lag-based autoscaling is live
   memory_size_gb     = 1
   region             = "asia-south1"
-  authorized_network = google_compute_network.lab_vpc.id
+  authorized_network = google_compute_network.pegasus_vpc.id
   redis_version      = "REDIS_7_0"
 }
 
@@ -81,7 +81,7 @@ resource "google_cloud_run_v2_service" "backend" {
     vpc_access {
       egress = "PRIVATE_RANGES_ONLY" # Secures Redis connection
       network_interfaces {
-        network = google_compute_network.lab_vpc.id
+        network = google_compute_network.pegasus_vpc.id
       }
     }
 
@@ -142,7 +142,7 @@ resource "google_container_cluster" "void_gke" {
   remove_default_node_pool = true
   initial_node_count       = 1
 
-  network    = google_compute_network.lab_vpc.id
+  network    = google_compute_network.pegasus_vpc.id
   subnetwork = "default"
 
   # Workload Identity — pods authenticate to GCP APIs as the bound SA,

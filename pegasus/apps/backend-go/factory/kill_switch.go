@@ -44,7 +44,7 @@ func (s *KillSwitchService) HandleKillSwitch(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return
@@ -182,7 +182,7 @@ func (s *KillSwitchService) HandleListKillSwitchAudit(w http.ResponseWriter, r *
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return

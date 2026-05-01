@@ -67,7 +67,7 @@ func NewRetailerPricingService(client *spanner.Client, readRouter proximity.Read
 //	GET  /v1/supplier/pricing/retailer-overrides?retailer_id=X — list for specific retailer
 //	POST /v1/supplier/pricing/retailer-overrides           — create/update override
 func (s *RetailerPricingService) HandleRetailerPricingOverrides(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -85,7 +85,7 @@ func (s *RetailerPricingService) HandleRetailerPricingOverrides(w http.ResponseW
 
 // HandleRetailerPricingOverrideAction handles DELETE /v1/supplier/pricing/retailer-overrides/{id}
 func (s *RetailerPricingService) HandleRetailerPricingOverrideAction(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -106,7 +106,7 @@ func (s *RetailerPricingService) HandleRetailerPricingOverrideAction(w http.Resp
 
 // ── List Overrides ────────────────────────────────────────────────────────────
 
-func (s *RetailerPricingService) listOverrides(w http.ResponseWriter, r *http.Request, claims *auth.LabClaims) {
+func (s *RetailerPricingService) listOverrides(w http.ResponseWriter, r *http.Request, claims *auth.PegasusClaims) {
 	supplierID := claims.ResolveSupplierID()
 	retailerID := r.URL.Query().Get("retailer_id")
 	skuID := r.URL.Query().Get("sku_id")
@@ -187,7 +187,7 @@ func (s *RetailerPricingService) listOverrides(w http.ResponseWriter, r *http.Re
 
 // ── Create Override ───────────────────────────────────────────────────────────
 
-func (s *RetailerPricingService) createOverride(w http.ResponseWriter, r *http.Request, claims *auth.LabClaims) {
+func (s *RetailerPricingService) createOverride(w http.ResponseWriter, r *http.Request, claims *auth.PegasusClaims) {
 	supplierID := claims.ResolveSupplierID()
 
 	var req CreateRetailerPriceOverrideRequest
@@ -351,7 +351,7 @@ func (s *RetailerPricingService) createOverride(w http.ResponseWriter, r *http.R
 
 // ── Deactivate Override ───────────────────────────────────────────────────────
 
-func (s *RetailerPricingService) deactivateOverride(w http.ResponseWriter, r *http.Request, claims *auth.LabClaims, overrideID string) {
+func (s *RetailerPricingService) deactivateOverride(w http.ResponseWriter, r *http.Request, claims *auth.PegasusClaims, overrideID string) {
 	supplierID := claims.ResolveSupplierID()
 	ctx := r.Context()
 

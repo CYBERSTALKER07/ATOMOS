@@ -16,7 +16,6 @@ import (
 
 type TreasuryReport struct {
 	PlatformRevenue int64 `json:"platform_revenue"`
-	LabRevenue      int64 `json:"lab_revenue"`
 	SupplierPayout  int64 `json:"supplier_payout"`
 	TotalVolume     int64 `json:"total_volume"`
 }
@@ -56,8 +55,6 @@ func GetTreasuryMetrics(ctx context.Context, client *spanner.Client) (*TreasuryR
 		}
 	}
 
-	// Keep legacy lab_revenue response field for backward compatibility.
-	report.LabRevenue = report.PlatformRevenue
 	report.TotalVolume = report.PlatformRevenue + report.SupplierPayout
 	return report, nil
 }
@@ -180,7 +177,7 @@ func CashHoldingsHandler(client *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

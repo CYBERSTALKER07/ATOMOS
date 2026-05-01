@@ -21,7 +21,7 @@ import (
 // HandleGetUploadTicket grants Next.js the right to upload an image
 func HandleGetUploadTicket(w http.ResponseWriter, r *http.Request) {
 	var supplierId string
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if ok && claims != nil {
 		supplierId = claims.ResolveSupplierID()
 	} else {
@@ -82,7 +82,7 @@ type SupplierProduct struct {
 func HandleCreateProduct(client *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var supplierId string
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if ok && claims != nil {
 			supplierId = claims.ResolveSupplierID()
 		} else {
@@ -269,7 +269,7 @@ func HandleSupplierLogin(spannerClient *spanner.Client) http.HandlerFunc {
 					factoryRole = supplierRole
 				}
 
-				token, err := auth.MintIdentityToken(&auth.LabClaims{
+				token, err := auth.MintIdentityToken(&auth.PegasusClaims{
 					UserID:       userID,
 					SupplierID:   supplierID,
 					Role:         "SUPPLIER",
@@ -371,7 +371,7 @@ func HandleSupplierLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		// Root supplier → implicit GLOBAL_ADMIN with empty WarehouseID (all warehouses)
-		token, err := auth.MintIdentityToken(&auth.LabClaims{
+		token, err := auth.MintIdentityToken(&auth.PegasusClaims{
 			UserID:       supplierID,
 			SupplierID:   supplierID,
 			Role:         "SUPPLIER",
@@ -425,7 +425,7 @@ func HandleSupplierLogin(spannerClient *spanner.Client) http.HandlerFunc {
 // GET /v1/supplier/products
 func HandleListSupplierProducts(client *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

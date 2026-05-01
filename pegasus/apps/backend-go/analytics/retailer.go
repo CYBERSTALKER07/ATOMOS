@@ -50,7 +50,7 @@ func HandleGetRetailerExpenses(client *spanner.Client, readRouter proximity.Read
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil || claims.UserID == "" {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return

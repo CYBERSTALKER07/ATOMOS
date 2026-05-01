@@ -38,7 +38,7 @@ func HandleDriverEarnings(client *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil || claims.UserID == "" {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
@@ -139,7 +139,7 @@ func HandleDriverHistory(client *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil || claims.UserID == "" {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
@@ -216,7 +216,7 @@ func HandleDriverAvailability(client *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil || claims.UserID == "" {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
@@ -351,7 +351,7 @@ func HandleDriverStatus(client *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil || claims.UserID == "" {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return

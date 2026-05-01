@@ -23,7 +23,7 @@ import javax.inject.Singleton
 
 object TokenHolder {
     private const val PREF_NAME = "warehouse_secure_prefs"
-    private const val KEY_TOKEN = "warehouse_jwt"
+    private const val KEY_TOKEN = "pegasus_warehouse_jwt"
     private const val KEY_REFRESH = "warehouse_refresh_token"
     private const val KEY_WAREHOUSE_ID = "warehouse_id"
 

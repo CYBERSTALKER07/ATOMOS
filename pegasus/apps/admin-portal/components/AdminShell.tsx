@@ -327,7 +327,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     const cookies = document.cookie;
-    isAuthRef.current = cookies.includes('admin_jwt=') || cookies.includes('supplier_jwt=');
+    isAuthRef.current = cookies.includes('pegasus_admin_jwt=') || cookies.includes('pegasus_supplier_jwt=');
   }, [pathname]);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
@@ -386,9 +386,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   }, []);
 
   const handleLogout = useCallback(() => {
-    document.cookie = 'admin_jwt=; path=/; max-age=0; SameSite=Lax';
+    document.cookie = 'pegasus_admin_jwt=; path=/; max-age=0; SameSite=Lax';
     document.cookie = 'admin_name=; path=/; max-age=0; SameSite=Lax';
-    document.cookie = 'supplier_jwt=; path=/; max-age=0; SameSite=Lax';
+    document.cookie = 'pegasus_supplier_jwt=; path=/; max-age=0; SameSite=Lax';
     document.cookie = 'supplier_name=; path=/; max-age=0; SameSite=Lax';
     window.location.href = '/auth/login';
   }, []);
@@ -583,7 +583,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 <div className="md-menu" style={{ right: 0, top: 44, minWidth: 200 }}>
                   <div className="px-3 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
                     <p className="md-typescale-title-small text-foreground">Admin Supplier</p>
-                    <p className="md-typescale-body-small text-muted">admin@thelab.uz</p>
+                    <p className="md-typescale-body-small text-muted">admin@void.pegasus.uz</p>
                   </div>
                   <Link
                     href="/supplier/profile"

@@ -27,10 +27,10 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 /**
- * Retrofit interface for the Lab backend.
+ * Retrofit interface for the Pegasus backend.
  * Mirrors the iOS APIClient endpoint surface exactly.
  */
-interface LabApi {
+interface PegasusApi {
 
     // ── Auth ──
     @POST("/v1/auth/retailer/login")

@@ -15,7 +15,7 @@ final class TokenStore {
     private let service = "com.pegasus.warehouse"
 
     private init() {
-        token = readKeychain(account: "warehouse_jwt")
+        token = readKeychain(account: "pegasus_warehouse_jwt")
         refreshToken = readKeychain(account: "warehouse_refresh_token")
         warehouseId = readKeychain(account: "warehouse_id")
     }
@@ -24,7 +24,7 @@ final class TokenStore {
         token = auth.token
         refreshToken = auth.refreshToken
         warehouseId = auth.warehouseId
-        writeKeychain(account: "warehouse_jwt", value: auth.token)
+        writeKeychain(account: "pegasus_warehouse_jwt", value: auth.token)
         writeKeychain(account: "warehouse_refresh_token", value: auth.refreshToken)
         writeKeychain(account: "warehouse_id", value: auth.warehouseId)
     }
@@ -32,7 +32,7 @@ final class TokenStore {
     func updateTokens(token: String, refresh: String) {
         self.token = token
         self.refreshToken = refresh
-        writeKeychain(account: "warehouse_jwt", value: token)
+        writeKeychain(account: "pegasus_warehouse_jwt", value: token)
         writeKeychain(account: "warehouse_refresh_token", value: refresh)
     }
 
@@ -40,7 +40,7 @@ final class TokenStore {
         token = nil
         refreshToken = nil
         warehouseId = nil
-        deleteKeychain(account: "warehouse_jwt")
+        deleteKeychain(account: "pegasus_warehouse_jwt")
         deleteKeychain(account: "warehouse_refresh_token")
         deleteKeychain(account: "warehouse_id")
     }

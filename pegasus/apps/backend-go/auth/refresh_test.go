@@ -10,7 +10,7 @@ import (
 )
 
 func TestHandleTokenRefresh_PreservesExtendedClaims(t *testing.T) {
-	originalToken, err := MintIdentityToken(&LabClaims{
+	originalToken, err := MintIdentityToken(&PegasusClaims{
 		UserID:        "user-1",
 		SupplierID:    "supplier-1",
 		Role:          "PAYLOADER",
@@ -36,7 +36,7 @@ func TestHandleTokenRefresh_PreservesExtendedClaims(t *testing.T) {
 		t.Fatalf("unmarshal response: %v", err)
 	}
 
-	claims := &LabClaims{}
+	claims := &PegasusClaims{}
 	parsed, err := jwt.ParseWithClaims(body["token"], claims, func(token *jwt.Token) (interface{}, error) {
 		return JWTSecret, nil
 	})

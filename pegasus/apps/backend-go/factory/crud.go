@@ -199,7 +199,7 @@ func HandleSupplierFactoryDetail(spannerClient *spanner.Client, rc *cache.Cache)
 // ── Private handlers ──────────────────────────────────────────────────────────
 
 func listSupplierFactories(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -244,7 +244,7 @@ func listSupplierFactories(w http.ResponseWriter, r *http.Request, spannerClient
 
 // SOVEREIGN ACTION: createFactory requires GLOBAL_ADMIN supplier role.
 func createFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, rc *cache.Cache) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -356,7 +356,7 @@ func createFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 }
 
 func getFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, factoryID string) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -394,7 +394,7 @@ func getFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanner.C
 }
 
 func updateFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, factoryID string, rc *cache.Cache) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -495,7 +495,7 @@ func updateFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 }
 
 func deactivateFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, factoryID string, rc *cache.Cache) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -550,7 +550,7 @@ func HandleFactoryWarehouseAssignment(spannerClient *spanner.Client, rc *cache.C
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

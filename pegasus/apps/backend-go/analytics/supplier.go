@@ -25,7 +25,7 @@ func HandleGetVelocity(client *spanner.Client, readRouter proximity.ReadRouter) 
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Extract SupplierId from JWT
 		// Assuming we retrieve it from our custom auth claims
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		var supplierId string
 		if ok && claims != nil {
 			supplierId = claims.ResolveSupplierID()

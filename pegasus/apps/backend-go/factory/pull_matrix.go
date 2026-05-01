@@ -178,7 +178,7 @@ func (s *PullMatrixService) HandleManualPullMatrix(w http.ResponseWriter, r *htt
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return

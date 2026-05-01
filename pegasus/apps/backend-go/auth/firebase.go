@@ -30,7 +30,7 @@ func InitFirebaseAuth(ctx context.Context) (*firebaseAuth.Client, error) {
 		// The SDK reads FIREBASE_AUTH_EMULATOR_HOST automatically.
 		projectID := os.Getenv("GCLOUD_PROJECT")
 		if projectID == "" {
-			projectID = "demo-thelab"
+			projectID = "demo-pegasus"
 		}
 		conf := &firebase.Config{ProjectID: projectID}
 		app, err = firebase.NewApp(ctx, conf)
@@ -111,9 +111,9 @@ func MintCustomToken(ctx context.Context, uid string, claims map[string]interfac
 	return token, nil
 }
 
-// VerifyFirebaseToken verifies a Firebase ID token and extracts LabClaims.
+// VerifyFirebaseToken verifies a Firebase ID token and extracts PegasusClaims.
 // Returns nil claims if the token is not a valid Firebase token (allows fallback to legacy JWT).
-func VerifyFirebaseToken(ctx context.Context, tokenStr string) (*LabClaims, error) {
+func VerifyFirebaseToken(ctx context.Context, tokenStr string) (*PegasusClaims, error) {
 	if FirebaseAuthClient == nil {
 		return nil, fmt.Errorf("firebase auth not initialized")
 	}
@@ -136,7 +136,7 @@ func VerifyFirebaseToken(ctx context.Context, tokenStr string) (*LabClaims, erro
 	factoryRole, _ := decoded.Claims["factory_role"].(string)
 
 	// The UID in Firebase maps to our UserID
-	claims := &LabClaims{
+	claims := &PegasusClaims{
 		UserID:       decoded.UID,
 		Role:         role,
 		WarehouseID:  warehouseID,

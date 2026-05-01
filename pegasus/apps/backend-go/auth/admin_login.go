@@ -230,7 +230,7 @@ func HandleAdminLogin(spannerClient *spanner.Client) http.HandlerFunc {
 			if suRole == "FACTORY_ADMIN" || suRole == "FACTORY_PAYLOADER" {
 				factoryRole = suRole
 			}
-			token, err := MintIdentityToken(&LabClaims{
+			token, err := MintIdentityToken(&PegasusClaims{
 				UserID:       suUserID,
 				SupplierID:   suSupplierId,
 				Role:         "SUPPLIER",
@@ -303,7 +303,7 @@ func HandleAdminLogin(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		token, err := MintIdentityToken(&LabClaims{
+		token, err := MintIdentityToken(&PegasusClaims{
 			UserID:       supplierId,
 			SupplierID:   supplierId,
 			Role:         "SUPPLIER",
@@ -354,7 +354,7 @@ func SeedDefaultAdmin(ctx context.Context, spannerClient *spanner.Client) {
 		hash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
 		m := spanner.InsertMap("Admins", map[string]interface{}{
 			"AdminId":      "ADMIN-001",
-			"Email":        "admin@thelab.uz",
+			"Email":        "admin@void.pegasus.uz",
 			"PasswordHash": string(hash),
 			"DisplayName":  "Platform Admin",
 			"CreatedAt":    spanner.CommitTimestamp,
@@ -362,7 +362,7 @@ func SeedDefaultAdmin(ctx context.Context, spannerClient *spanner.Client) {
 		if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			return txn.BufferWrite([]*spanner.Mutation{m})
 		}); err == nil {
-			fmt.Println("[ADMIN SEED] Default admin created: admin@thelab.uz / admin123")
+			fmt.Println("[ADMIN SEED] Default admin created: admin@void.pegasus.uz / admin123")
 		}
 	}
 }

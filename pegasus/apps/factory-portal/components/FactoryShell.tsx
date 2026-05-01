@@ -129,7 +129,7 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
             <Link
               href="/auth/login"
               onClick={() => {
-                document.cookie = 'factory_jwt=; Max-Age=0; path=/';
+                document.cookie = 'pegasus_factory_jwt=; Max-Age=0; path=/';
               }}
               className="flex items-center gap-2 text-sm text-[var(--muted)] hover:text-[var(--danger)]"
             >

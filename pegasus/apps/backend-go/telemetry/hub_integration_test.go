@@ -26,7 +26,7 @@ func newTestHub() *Hub {
 
 func telemetryServer(hub *Hub, userID, role string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		claims := &auth.LabClaims{UserID: userID, Role: role}
+		claims := &auth.PegasusClaims{UserID: userID, Role: role}
 		ctx := context.WithValue(r.Context(), auth.ClaimsContextKey, claims)
 		hub.HandleConnection(w, r.WithContext(ctx))
 	}))
@@ -159,7 +159,7 @@ func TestTelemetryHub_UnauthorizedRole_Rejected(t *testing.T) {
 
 	// Try connecting as RETAILER — should be rejected
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		claims := &auth.LabClaims{UserID: "RET-001", Role: "RETAILER"}
+		claims := &auth.PegasusClaims{UserID: "RET-001", Role: "RETAILER"}
 		ctx := context.WithValue(r.Context(), auth.ClaimsContextKey, claims)
 		hub.HandleConnection(w, r.WithContext(ctx))
 	}))
@@ -306,7 +306,7 @@ func TestGraceReconnectDelay_UsesGraceDeadlineBudget(t *testing.T) {
 		t.Fatalf("graceReconnectDelay(nil) = %s, want %s", got, 30*time.Second)
 	}
 
-	claims := &auth.LabClaims{GraceDeadline: time.Now().Add(5 * time.Second)}
+	claims := &auth.PegasusClaims{GraceDeadline: time.Now().Add(5 * time.Second)}
 	got := graceReconnectDelay(claims)
 	if got > 5*time.Second {
 		t.Fatalf("graceReconnectDelay(claims) = %s, want <= 5s", got)
@@ -327,7 +327,7 @@ func TestTelemetryHub_GraceDriver_RefreshNeededThenForcedClose(t *testing.T) {
 	hub.driverSupplierCache.Store("DRV-GRACE", "SUP-GRACE")
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		claims := &auth.LabClaims{
+		claims := &auth.PegasusClaims{
 			UserID:        "DRV-GRACE",
 			Role:          "DRIVER",
 			GracePeriod:   true,

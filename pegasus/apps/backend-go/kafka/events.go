@@ -311,10 +311,8 @@ type PaymentIntentEvent struct {
 	PaymentGateway     string `json:"payment_gateway"`
 	IdempotencyKey     string `json:"idempotency_key"`
 	PlatformCommission int64  `json:"platform_commission"`
-	LabCommission      int64  `json:"lab_commission"`
 	SupplierPayout     int64  `json:"supplier_payout"`
 	PlatformTxnId      string `json:"platform_txn_id"`
-	LabTxnId           string `json:"lab_txn_id"`
 	SupplierTxnId      string `json:"supplier_txn_id"`
 
 	// Global Pay auth-capture fields (omitempty for backward compat with GlobalPay/Cash consumers)

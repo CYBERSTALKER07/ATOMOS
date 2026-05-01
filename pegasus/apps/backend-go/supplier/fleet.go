@@ -128,7 +128,7 @@ func HandleFleetDriverDetail(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 		driverID := path
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -320,7 +320,7 @@ func HandleDriverLogin(spannerClient *spanner.Client) http.HandlerFunc {
 // ── Private Handlers ──────────────────────────────────────────────────────
 
 func createDriver(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -443,7 +443,7 @@ func createDriver(w http.ResponseWriter, r *http.Request, spannerClient *spanner
 }
 
 func listDrivers(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -533,7 +533,7 @@ func HandleAssignVehicle(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 		driverID := path
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -606,7 +606,7 @@ func HandleDriverProfile(spannerClient *spanner.Client, rc *cache.Cache, flight 
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -725,7 +725,7 @@ func rotateDriverPIN(w http.ResponseWriter, r *http.Request, spannerClient *span
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

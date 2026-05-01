@@ -2,7 +2,7 @@
 
 ## Objective
 
-Migrate production API traffic from Cloud Run (`lab-go-gateway`) to the global external application load balancer fronting GKE backends with zero data-loss risk and fast rollback.
+Migrate production API traffic from Cloud Run (`pegasus-go-gateway`) to the global external application load balancer fronting GKE backends with zero data-loss risk and fast rollback.
 
 ## Scope
 
@@ -40,7 +40,7 @@ Migrate production API traffic from Cloud Run (`lab-go-gateway`) to the global e
    - outbox relay lag
    - Redis circuit breaker state
 3. Record active Cloud Run revision and traffic split:
-   - `gcloud run services describe lab-go-gateway --region asia-south1 --format='value(status.traffic)'`
+   - `gcloud run services describe pegasus-go-gateway --region asia-south1 --format='value(status.traffic)'`
 
 Rollback checkpoint A:
 

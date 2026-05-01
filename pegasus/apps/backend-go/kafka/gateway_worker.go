@@ -170,10 +170,7 @@ func executeGatewayCapture(deps GatewayWorkerDeps, intent PaymentIntentEvent) {
 }
 
 func resolvePlatformTxnID(intent PaymentIntentEvent) string {
-	if txnID := strings.TrimSpace(intent.PlatformTxnId); txnID != "" {
-		return txnID
-	}
-	return strings.TrimSpace(intent.LabTxnId)
+	return strings.TrimSpace(intent.PlatformTxnId)
 }
 
 // resolveGPCredentials resolves Global Pay credentials from vault for a given order.

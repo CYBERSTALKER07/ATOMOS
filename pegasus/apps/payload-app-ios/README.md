@@ -27,7 +27,7 @@ The `APIClient` honours `PEGASUS_DEV_HOST` from the scheme environment so a phys
 
 ## Architecture
 
-- **DI:** Manual composition root in `LabPayloadApp.swift` (mirror of `LabDriverApp`).
+- **DI:** Manual composition root in `PegasusPayloadApp.swift` (mirror of `LabDriverApp`).
 - **State:** `@Observable` macro (Observation framework) on every ViewModel and TokenStore.
 - **Networking:** `URLSession` (no third-party deps).
 - **Persistence:** SwiftData (manifest cache + offline queue, Phase 6).

@@ -181,7 +181,7 @@ func TestFleetHub_MultipleClients(t *testing.T) {
 
 func newRetailerHubServer(hub *RetailerHub, retailerID string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		claims := &auth.LabClaims{UserID: retailerID, Role: "RETAILER"}
+		claims := &auth.PegasusClaims{UserID: retailerID, Role: "RETAILER"}
 		ctx := context.WithValue(r.Context(), auth.ClaimsContextKey, claims)
 		hub.HandleConnection(w, r.WithContext(ctx))
 	}))
@@ -362,7 +362,7 @@ func TestRetailerHub_NoClaims_NoQueryParam_401(t *testing.T) {
 
 func newDriverHubServer(hub *DriverHub, driverID string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		claims := &auth.LabClaims{UserID: driverID, Role: "DRIVER"}
+		claims := &auth.PegasusClaims{UserID: driverID, Role: "DRIVER"}
 		ctx := context.WithValue(r.Context(), auth.ClaimsContextKey, claims)
 		hub.HandleConnection(w, r.WithContext(ctx))
 	}))

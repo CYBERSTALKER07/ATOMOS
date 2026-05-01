@@ -1,7 +1,7 @@
 import UIKit
 
 /// AppDelegate — UIKit adaptor bridging APNs callbacks into
-/// [PushNotificationManager]. Registered on [LabPayloadApp] via
+/// [PushNotificationManager]. Registered on [PegasusPayloadApp] via
 /// `@UIApplicationDelegateAdaptor` so SwiftUI remains the app root.
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(

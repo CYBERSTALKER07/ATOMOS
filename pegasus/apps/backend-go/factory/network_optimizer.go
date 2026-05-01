@@ -158,7 +158,7 @@ func (s *NetworkOptimizerService) HandleGetNetworkMode(w http.ResponseWriter, r 
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return
@@ -179,7 +179,7 @@ func (s *NetworkOptimizerService) HandleSetNetworkMode(w http.ResponseWriter, r 
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return
@@ -250,7 +250,7 @@ func (s *NetworkOptimizerService) HandleNetworkAnalytics(w http.ResponseWriter, 
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return

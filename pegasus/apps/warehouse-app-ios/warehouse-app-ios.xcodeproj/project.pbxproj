@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		10AEF81BB6A933A75D5E3C86 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3ACBF663F58CC0699201DA54 /* Assets.xcassets */; };
-		152BFA31C6D0E37CB08AD039 /* LabTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 003684F95EE4E80CB62B0BAE /* LabTheme.swift */; };
+		152BFA31C6D0E37CB08AD039 /* PegasusTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 003684F95EE4E80CB62B0BAE /* PegasusTheme.swift */; };
 		18A1D2E0C4D6F0934B575466 /* StaffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 641588320196037EED4D9FEE /* StaffView.swift */; };
 		47040820612B9A249FA2D2AA /* OrdersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EC4AA15F15329043C62D378 /* OrdersView.swift */; };
 		4AA72E7366EA7DAA816FDF60 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 965DB85B4231222B22162049 /* DashboardView.swift */; };
@@ -23,7 +23,7 @@
 		96E8FE2DEC95ECD540794574 /* WarehouseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C8011D2F0F212FBDACC3573 /* WarehouseModels.swift */; };
 		A46624A5099C60CA00C7451E /* InventoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 238B0D479EA4949780803C08 /* InventoryView.swift */; };
 		AF42E0EF12E758612A06106E /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EFC98185DF592ED7980F623 /* RootView.swift */; };
-		AF9147867396B69EBCF8A4AA /* LabWarehouseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2467395E749D00D1CE0BC45C /* LabWarehouseApp.swift */; };
+		AF9147867396B69EBCF8A4AA /* PegasusWarehouseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2467395E749D00D1CE0BC45C /* PegasusWarehouseApp.swift */; };
 		B01DE8A65E4576AEC4D0E394 /* DriversView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2F78C4643C21B84F27905E /* DriversView.swift */; };
 		B3043C7D1B71BFA1C7A893B8 /* TreasuryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0BB8E1ADC1FA3BDEE412344 /* TreasuryView.swift */; };
 		CABD61285ACC29D084B93924 /* VehiclesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9464A714F56F05908C4DC0 /* VehiclesView.swift */; };
@@ -35,12 +35,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		003684F95EE4E80CB62B0BAE /* LabTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabTheme.swift; sourceTree = "<group>"; };
+		003684F95EE4E80CB62B0BAE /* PegasusTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusTheme.swift; sourceTree = "<group>"; };
 		0453A074583A37ACB5ABFB1C /* OrderDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrderDetailView.swift; sourceTree = "<group>"; };
 		04D64B03C351A99A1C81BF7C /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		17E273209B7ECB0EE5D232A2 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		238B0D479EA4949780803C08 /* InventoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryView.swift; sourceTree = "<group>"; };
-		2467395E749D00D1CE0BC45C /* LabWarehouseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabWarehouseApp.swift; sourceTree = "<group>"; };
+		2467395E749D00D1CE0BC45C /* PegasusWarehouseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusWarehouseApp.swift; sourceTree = "<group>"; };
 		2EFC98185DF592ED7980F623 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		3ACBF663F58CC0699201DA54 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		403842CC49B63D9777A7CE78 /* WarehouseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseService.swift; sourceTree = "<group>"; };
@@ -166,7 +166,7 @@
 		72750FF90B22171D77BC0266 /* Theme */ = {
 			isa = PBXGroup;
 			children = (
-				003684F95EE4E80CB62B0BAE /* LabTheme.swift */,
+				003684F95EE4E80CB62B0BAE /* PegasusTheme.swift */,
 			);
 			path = Theme;
 			sourceTree = "<group>";
@@ -208,7 +208,7 @@
 			children = (
 				3ACBF663F58CC0699201DA54 /* Assets.xcassets */,
 				A8CD330B427F3414B6A76A7B /* Info.plist */,
-				2467395E749D00D1CE0BC45C /* LabWarehouseApp.swift */,
+				2467395E749D00D1CE0BC45C /* PegasusWarehouseApp.swift */,
 				2EFC98185DF592ED7980F623 /* RootView.swift */,
 				B1F83F1A6A53359BABF96E8C /* Models */,
 				43EAC447CC94978BE564DE42 /* Services */,
@@ -336,8 +336,8 @@
 				81A3DE69695EC64B009D89C0 /* DispatchView.swift in Sources */,
 				B01DE8A65E4576AEC4D0E394 /* DriversView.swift in Sources */,
 				A46624A5099C60CA00C7451E /* InventoryView.swift in Sources */,
-				152BFA31C6D0E37CB08AD039 /* LabTheme.swift in Sources */,
-				AF9147867396B69EBCF8A4AA /* LabWarehouseApp.swift in Sources */,
+				152BFA31C6D0E37CB08AD039 /* PegasusTheme.swift in Sources */,
+				AF9147867396B69EBCF8A4AA /* PegasusWarehouseApp.swift in Sources */,
 				FF313832CF3BC750CFEA31BE /* LoginView.swift in Sources */,
 				6B81C052A2CAA52CBB615C4A /* MainTabView.swift in Sources */,
 				8A575A84EAF66BCE4FD48131 /* ManifestsView.swift in Sources */,

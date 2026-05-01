@@ -37,7 +37,7 @@ export default function FactoryLoginPage() {
       if (!token) throw new Error('No token received');
 
       // Store in cookie
-      document.cookie = `factory_jwt=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `pegasus_factory_jwt=${encodeURIComponent(token)}; path=/; max-age=86400; SameSite=Lax`;
 
       // Desktop: store in OS keyring
       if (isTauri()) {

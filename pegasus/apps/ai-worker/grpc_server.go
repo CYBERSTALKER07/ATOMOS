@@ -4,7 +4,7 @@
 
 // ──────────────────────────────────────────────────────────────────────────
 // gRPC Server — optimizer service
-// Registers the lab.optimizer.v1.OptimizerService on :8082 so backend-go
+// Registers the optimizer gRPC service on :8082 so backend-go
 // can reach it via "xds:///ai-worker" (mesh) or "host:8082" (direct).
 // The existing HTTP server on :8081 remains for health checks.
 // ──────────────────────────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ func startGRPCServer(ctx context.Context) error {
 // Duplicated here to avoid a cross-module import; the ServiceName constant
 // must stay in sync with the backend-go copy.
 
-const optimizerServiceName = "lab.optimizer.v1.OptimizerService"
+const optimizerServiceName = "pegasus.optimizer.v1.OptimizerService"
 
 var optimizerServiceDesc = grpc.ServiceDesc{
 	ServiceName: optimizerServiceName,

@@ -35,7 +35,7 @@ func HandleWarehouseLoads(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

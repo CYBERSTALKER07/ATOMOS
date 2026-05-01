@@ -3,7 +3,7 @@
  *
  * Pages: /treasury, /ledger, /reconciliation
  * APIs:
- *   GET /v1/treasury/ledger → {lab_revenue, supplier_payout, total_volume}
+ *   GET /v1/treasury/ledger → {platform_revenue, supplier_payout, total_volume}
  *   GET /v1/orders?limit=26&offset=0 → LedgerEntry[]
  *   GET /v1/reconciliation → anomalies
  *
@@ -28,12 +28,12 @@ test.describe('Supplier Treasury & Ledger', () => {
     }
   });
 
-  test('treasury KPIs show lab revenue, supplier payout, total volume', async ({ supplierPage }) => {
+  test('treasury KPIs show platform revenue, supplier payout, total volume', async ({ supplierPage }) => {
     await supplierPage.route('**/v1/treasury/ledger**', async (route) => {
       await route.fulfill({
         status: 200,
         body: JSON.stringify({
-          lab_revenue: 5000000,
+          platform_revenue: 5000000,
           supplier_payout: 95000000,
           total_volume: 100000000,
         }),
@@ -59,7 +59,7 @@ test.describe('Supplier Treasury & Ledger', () => {
       apiCalls.push(Date.now());
       await route.fulfill({
         status: 200,
-        body: JSON.stringify({ lab_revenue: 0, supplier_payout: 0, total_volume: 0 }),
+        body: JSON.stringify({ platform_revenue: 0, supplier_payout: 0, total_volume: 0 }),
       });
     });
 

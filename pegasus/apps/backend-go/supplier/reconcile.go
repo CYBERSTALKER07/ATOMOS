@@ -68,7 +68,7 @@ func (s *ReconcileService) HandleQuarantineStock(w http.ResponseWriter, r *http.
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -194,7 +194,7 @@ func (s *ReconcileService) HandleReconcile(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

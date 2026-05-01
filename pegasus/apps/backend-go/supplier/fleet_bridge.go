@@ -42,7 +42,7 @@ func HandleFleetVolumetrics(client *spanner.Client) http.HandlerFunc {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -221,7 +221,7 @@ func HandleDispatchQueue(client *spanner.Client, readRouter proximity.ReadRouter
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -347,7 +347,7 @@ func HandleH3RoutePreview(client *spanner.Client, readRouter proximity.ReadRoute
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

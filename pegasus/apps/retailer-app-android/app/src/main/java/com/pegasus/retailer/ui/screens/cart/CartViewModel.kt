@@ -2,7 +2,7 @@ package com.pegasus.retailer.ui.screens.cart
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.api.PegasusApi
 import com.pegasus.retailer.data.api.RetailerWebSocket
 import com.pegasus.retailer.data.local.PendingOrderDao
 import com.pegasus.retailer.data.local.PendingOrderEntity
@@ -62,7 +62,7 @@ private fun checkoutPaymentLabel(gateway: String): String {
 
 @HiltViewModel
 class CartViewModel @Inject constructor(
-    private val api: LabApi,
+    private val api: PegasusApi,
     private val tokenManager: TokenManager,
     private val retailerWebSocket: RetailerWebSocket,
     private val pendingOrderDao: PendingOrderDao,

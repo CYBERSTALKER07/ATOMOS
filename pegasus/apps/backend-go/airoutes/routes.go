@@ -69,7 +69,7 @@ func handlePreorder(gen PreorderGenerator) http.HandlerFunc {
 			return
 		}
 		if req.RetailerID == "" {
-			if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims); ok && claims.Role == "RETAILER" {
+			if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims); ok && claims.Role == "RETAILER" {
 				req.RetailerID = claims.UserID
 			}
 		}

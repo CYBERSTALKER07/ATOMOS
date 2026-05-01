@@ -23,7 +23,7 @@ apps/backend-go/backend-go
 apps/backend-go/main
 apps/backend-go/seed
 apps/backend-go/setup
-apps/ai-worker/lab-ai-worker
+apps/ai-worker/*-ai-worker
 
 # === Android ===
 **/build/

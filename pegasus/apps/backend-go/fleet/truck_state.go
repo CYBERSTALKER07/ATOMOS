@@ -61,7 +61,7 @@ func HandleTruckSeal(client *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -141,7 +141,7 @@ func HandleDriverDepart(client *spanner.Client, mapsAPIKey string, retailerHub R
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -528,7 +528,7 @@ func HandleReturnComplete(client *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

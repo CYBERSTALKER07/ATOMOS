@@ -96,7 +96,7 @@ func (s *OrderService) HandleMarkDelayed() http.HandlerFunc {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if _, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims); !ok {
+		if _, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims); !ok {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
 		}

@@ -2,7 +2,7 @@ use keyring::Entry;
 use serde::Serialize;
 
 const SERVICE: &str = "com.pegasus.factory";
-const ACCOUNT_TOKEN: &str = "factory_jwt";
+const ACCOUNT_TOKEN: &str = "pegasus_factory_jwt";
 const ACCOUNT_REFRESH: &str = "factory_refresh_token";
 
 #[derive(Serialize)]

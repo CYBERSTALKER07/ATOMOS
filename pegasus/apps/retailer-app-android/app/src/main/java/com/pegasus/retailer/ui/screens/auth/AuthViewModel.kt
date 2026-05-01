@@ -3,7 +3,7 @@ package com.pegasus.retailer.ui.screens.auth
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.api.PegasusApi
 import com.pegasus.retailer.data.local.TokenManager
 import com.pegasus.retailer.data.model.LoginRequest
 import com.pegasus.retailer.data.model.RegisterRequest
@@ -16,7 +16,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val api: LabApi,
+    private val api: PegasusApi,
     private val tokenManager: TokenManager,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {

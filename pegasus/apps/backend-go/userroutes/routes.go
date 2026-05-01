@@ -48,7 +48,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 // Behaviour preserved verbatim from the inline closure it replaced.
 func handleDeviceToken(svc *notifications.DeviceTokenService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

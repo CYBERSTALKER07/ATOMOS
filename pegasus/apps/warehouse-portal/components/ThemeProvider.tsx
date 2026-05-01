@@ -21,7 +21,6 @@ const ThemeContext = createContext<ThemeCtx>({
 export const useTheme = () => useContext(ThemeContext);
 
 const STORAGE_KEY = 'pegasus-warehouse-theme-mode';
-const LEGACY_STORAGE_KEY = 'lab-warehouse-theme-mode';
 const CYCLE_ORDER: ThemeMode[] = ['system', 'light', 'dark'];
 
 function getSystemPreference(): 'light' | 'dark' {
@@ -45,7 +44,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const stored = (localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY)) as ThemeMode | null;
+    const stored = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
     if (stored && CYCLE_ORDER.includes(stored)) {
       setModeState(stored);
       localStorage.setItem(STORAGE_KEY, stored);

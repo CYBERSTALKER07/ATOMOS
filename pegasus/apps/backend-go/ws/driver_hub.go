@@ -47,7 +47,7 @@ func NewDriverHub() *DriverHub {
 // HandleConnection upgrades the HTTP request and registers the driver.
 // Expected path: /v1/ws/driver
 func (h *DriverHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

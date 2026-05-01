@@ -1,11 +1,11 @@
 [package]
-name = "lab-factory-desktop"
+name = "pegasus-factory-desktop"
 version = "0.1.0"
 description = "Pegasus — Factory Portal Desktop Shell"
 authors = ["Pegasus"]
 license = "proprietary"
 repository = ""
-default-run = "lab-factory-desktop"
+default-run = "pegasus-factory-desktop"
 edition = "2021"
 rust-version = "1.77"
 

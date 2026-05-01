@@ -15,10 +15,10 @@ const MUTABLE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  */
 export function readTokenFromCookie(): string {
   if (typeof document === 'undefined') return '';
-  // Admin pages use admin_jwt; supplier pages use supplier_jwt
-  const adminMatch = document.cookie.match(/(?:^|; )admin_jwt=([^;]*)/);
+  // Admin pages use pegasus_admin_jwt; supplier pages use pegasus_supplier_jwt
+  const adminMatch = document.cookie.match(/(?:^|; )pegasus_admin_jwt=([^;]*)/);
   if (adminMatch) return decodeURIComponent(adminMatch[1]);
-  const supplierMatch = document.cookie.match(/(?:^|; )supplier_jwt=([^;]*)/);
+  const supplierMatch = document.cookie.match(/(?:^|; )pegasus_supplier_jwt=([^;]*)/);
   if (supplierMatch) return decodeURIComponent(supplierMatch[1]);
   return '';
 }
@@ -78,7 +78,7 @@ async function tryRefreshToken(): Promise<string | null> {
     if (!res.ok) return null;
     const data = await res.json();
     if (data.token) {
-      document.cookie = `admin_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `pegasus_admin_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
       // Desktop: persist refreshed token in OS keyring
       if (isTauri()) {
         storeToken(data.token, data.refresh_token || '').catch(() => {});
@@ -168,8 +168,8 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       return fetch(`${API}${path}`, { ...init, headers: retryHeaders });
     }
     // Refresh failed — clear cookies (and keyring on desktop), redirect
-    document.cookie = 'admin_jwt=; Max-Age=0; path=/';
-    document.cookie = 'supplier_jwt=; Max-Age=0; path=/';
+    document.cookie = 'pegasus_admin_jwt=; Max-Age=0; path=/';
+    document.cookie = 'pegasus_supplier_jwt=; Max-Age=0; path=/';
     firebaseSignOut().catch(() => {});
     if (isTauri()) {
       clearStoredToken().catch(() => {});

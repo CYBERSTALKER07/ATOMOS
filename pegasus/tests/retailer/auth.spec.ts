@@ -2,7 +2,7 @@
  * Retailer Auth — Login, Token Refresh, Tauri Bridge, Logout
  *
  * Portal: retailer-app-desktop (localhost:3001)
- * Cookie: retailer_jwt
+ * Cookie: pegasus_retailer_jwt
  * Login: POST /v1/auth/retailer/login {phone_number, password}
  * Root path (/) is the login page
  * Authenticated routes redirect to /dashboard
@@ -10,7 +10,7 @@
 import { test, expect } from '../fixtures/auth';
 
 test.describe('Retailer Authentication', () => {
-  test('login with phone/password sets retailer_jwt cookie', async ({ page }) => {
+  test('login with phone/password sets pegasus_retailer_jwt cookie', async ({ page }) => {
     await page.goto('http://localhost:3001/');
 
     // Login form fields
@@ -30,7 +30,7 @@ test.describe('Retailer Authentication', () => {
 
       // Verify cookie
       const cookies = await page.context().cookies();
-      const retailerCookie = cookies.find((c) => c.name === 'retailer_jwt');
+      const retailerCookie = cookies.find((c) => c.name === 'pegasus_retailer_jwt');
       expect(retailerCookie).toBeTruthy();
 
       // Should redirect to dashboard
@@ -43,12 +43,12 @@ test.describe('Retailer Authentication', () => {
 
   test('token stored in cookie matches readToken regex', async ({ retailerPage }) => {
     const cookies = await retailerPage.context().cookies();
-    const jwtCookie = cookies.find((c) => c.name === 'retailer_jwt');
+    const jwtCookie = cookies.find((c) => c.name === 'pegasus_retailer_jwt');
     expect(jwtCookie).toBeTruthy();
 
     // Verify the token can be read via document.cookie regex (same as readToken())
     const tokenFromCookie = await retailerPage.evaluate(() => {
-      const match = document.cookie.match(/(?:^|; )retailer_jwt=([^;]*)/);
+      const match = document.cookie.match(/(?:^|; )pegasus_retailer_jwt=([^;]*)/);
       return match ? decodeURIComponent(match[1]) : null;
     });
     expect(tokenFromCookie).toBeTruthy();
@@ -84,7 +84,7 @@ test.describe('Retailer Authentication', () => {
 
       // Cookie should be cleared
       const cookies = await retailerPage.context().cookies();
-      const jwtCookie = cookies.find((c) => c.name === 'retailer_jwt');
+      const jwtCookie = cookies.find((c) => c.name === 'pegasus_retailer_jwt');
       expect(!jwtCookie || jwtCookie.value === '').toBeTruthy();
     }
   });

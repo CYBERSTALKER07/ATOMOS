@@ -11,7 +11,7 @@ import (
 )
 
 func TestRegister_RefreshAliasesResolve(t *testing.T) {
-	token, err := auth.MintIdentityToken(&auth.LabClaims{
+	token, err := auth.MintIdentityToken(&auth.PegasusClaims{
 		UserID: "factory-user",
 		Role:   "FACTORY",
 	})

@@ -22,26 +22,26 @@ describe('readTokenFromCookie', () => {
     expect(readTokenFromCookie()).toBe('');
   });
 
-  it('reads admin_jwt cookie', () => {
+  it('reads pegasus_admin_jwt cookie', () => {
     Object.defineProperty(document, 'cookie', {
       writable: true,
-      value: 'admin_jwt=abc123',
+      value: 'pegasus_admin_jwt=abc123',
     });
     expect(readTokenFromCookie()).toBe('abc123');
   });
 
-  it('reads supplier_jwt when admin_jwt absent', () => {
+  it('reads pegasus_supplier_jwt when pegasus_admin_jwt absent', () => {
     Object.defineProperty(document, 'cookie', {
       writable: true,
-      value: 'supplier_jwt=sup456',
+      value: 'pegasus_supplier_jwt=sup456',
     });
     expect(readTokenFromCookie()).toBe('sup456');
   });
 
-  it('prefers admin_jwt over supplier_jwt', () => {
+  it('prefers pegasus_admin_jwt over pegasus_supplier_jwt', () => {
     Object.defineProperty(document, 'cookie', {
       writable: true,
-      value: 'admin_jwt=admin1; supplier_jwt=sup2',
+      value: 'pegasus_admin_jwt=admin1; pegasus_supplier_jwt=sup2',
     });
     expect(readTokenFromCookie()).toBe('admin1');
   });
@@ -49,7 +49,7 @@ describe('readTokenFromCookie', () => {
   it('decodes URI-encoded token', () => {
     Object.defineProperty(document, 'cookie', {
       writable: true,
-      value: 'admin_jwt=' + encodeURIComponent('tok/en+val=ue'),
+      value: 'pegasus_admin_jwt=' + encodeURIComponent('tok/en+val=ue'),
     });
     expect(readTokenFromCookie()).toBe('tok/en+val=ue');
   });
@@ -57,7 +57,7 @@ describe('readTokenFromCookie', () => {
   it('handles cookie among other cookies', () => {
     Object.defineProperty(document, 'cookie', {
       writable: true,
-      value: 'theme=dark; admin_jwt=middle; lang=en',
+      value: 'theme=dark; pegasus_admin_jwt=middle; lang=en',
     });
     expect(readTokenFromCookie()).toBe('middle');
   });

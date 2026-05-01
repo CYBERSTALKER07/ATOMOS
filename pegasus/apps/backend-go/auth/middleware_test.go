@@ -27,7 +27,7 @@ func TestGenerateTestToken_AllRoles(t *testing.T) {
 			}
 
 			// Parse back and verify claims
-			claims := &LabClaims{}
+			claims := &PegasusClaims{}
 			parsed, err := jwt.ParseWithClaims(tok, claims, func(token *jwt.Token) (interface{}, error) {
 				return JWTSecret, nil
 			})
@@ -49,7 +49,7 @@ func TestGenerateTestToken_Expiry24h(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	claims := &LabClaims{}
+	claims := &PegasusClaims{}
 	jwt.ParseWithClaims(tok, claims, func(token *jwt.Token) (interface{}, error) {
 		return JWTSecret, nil
 	})
@@ -73,7 +73,7 @@ func TestGenerateTestToken_Uniqueness(t *testing.T) {
 }
 
 func TestMintIdentityToken_PreservesScopedClaims(t *testing.T) {
-	tok, err := MintIdentityToken(&LabClaims{
+	tok, err := MintIdentityToken(&PegasusClaims{
 		UserID:        "worker-1",
 		SupplierID:    "supplier-1",
 		Role:          "PAYLOADER",
@@ -84,7 +84,7 @@ func TestMintIdentityToken_PreservesScopedClaims(t *testing.T) {
 		t.Fatalf("MintIdentityToken error: %v", err)
 	}
 
-	claims := &LabClaims{}
+	claims := &PegasusClaims{}
 	parsed, err := jwt.ParseWithClaims(tok, claims, func(token *jwt.Token) (interface{}, error) {
 		return JWTSecret, nil
 	})
@@ -114,7 +114,7 @@ func TestExtractToken_Bearer(t *testing.T) {
 }
 
 func TestExtractToken_Cookies(t *testing.T) {
-	cookies := []string{"admin_jwt", "supplier_jwt", "retailer_jwt", "driver_jwt", "payloader_jwt"}
+	cookies := []string{"pegasus_admin_jwt", "pegasus_supplier_jwt", "pegasus_retailer_jwt", "pegasus_driver_jwt", "pegasus_payloader_jwt"}
 	for _, name := range cookies {
 		t.Run(name, func(t *testing.T) {
 			r := httptest.NewRequest("GET", "/", nil)
@@ -158,7 +158,7 @@ func TestExtractToken_Empty(t *testing.T) {
 func TestExtractToken_BearerPriority(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	r.Header.Set("Authorization", "Bearer bearer-wins")
-	r.AddCookie(&http.Cookie{Name: "admin_jwt", Value: "cookie-loses"})
+	r.AddCookie(&http.Cookie{Name: "pegasus_admin_jwt", Value: "cookie-loses"})
 	got := extractTokenFromRequest(r)
 	if got != "bearer-wins" {
 		t.Errorf("Bearer should take priority, got %q", got)
@@ -215,7 +215,7 @@ func TestTransportKind_WebSocket(t *testing.T) {
 func TestRequireRole_ValidToken(t *testing.T) {
 	tok, _ := GenerateTestToken("user-1", "ADMIN")
 	handler := RequireRole([]string{"ADMIN"}, func(w http.ResponseWriter, r *http.Request) {
-		claims := r.Context().Value(ClaimsContextKey).(*LabClaims)
+		claims := r.Context().Value(ClaimsContextKey).(*PegasusClaims)
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]string{"user_id": claims.UserID, "role": claims.Role})
 	})
@@ -281,7 +281,7 @@ func TestRequireRole_InvalidToken(t *testing.T) {
 }
 
 func TestRequireRole_ExpiredToken(t *testing.T) {
-	claims := &LabClaims{
+	claims := &PegasusClaims{
 		UserID: "user-1",
 		Role:   "ADMIN",
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -326,7 +326,7 @@ func TestRequireRole_OptionsPassthrough(t *testing.T) {
 
 func TestRequireRole_InternalAPIKey(t *testing.T) {
 	handler := RequireRole([]string{"ADMIN"}, func(w http.ResponseWriter, r *http.Request) {
-		claims := r.Context().Value(ClaimsContextKey).(*LabClaims)
+		claims := r.Context().Value(ClaimsContextKey).(*PegasusClaims)
 		if claims.Role != "INTERNAL" {
 			t.Errorf("role = %q, want INTERNAL", claims.Role)
 		}
@@ -403,9 +403,9 @@ func TestRequireRole_TamperedPayload(t *testing.T) {
 // ─── Context Round-Trip ─────────────────────────────────────────────────────
 
 func TestClaimsContextRoundTrip(t *testing.T) {
-	original := &LabClaims{UserID: "usr-42", Role: "SUPPLIER"}
+	original := &PegasusClaims{UserID: "usr-42", Role: "SUPPLIER"}
 	ctx := context.WithValue(context.Background(), ClaimsContextKey, original)
-	extracted := ctx.Value(ClaimsContextKey).(*LabClaims)
+	extracted := ctx.Value(ClaimsContextKey).(*PegasusClaims)
 	if extracted.UserID != "usr-42" || extracted.Role != "SUPPLIER" {
 		t.Errorf("context round-trip failed: %+v", extracted)
 	}
@@ -413,7 +413,7 @@ func TestClaimsContextRoundTrip(t *testing.T) {
 
 func TestRequireRoleWithGrace_AllowsExpiredDriverWithinWindow(t *testing.T) {
 	expiry := time.Now().Add(-15 * time.Minute)
-	claims := &LabClaims{
+	claims := &PegasusClaims{
 		UserID: "driver-1",
 		Role:   "DRIVER",
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -424,7 +424,7 @@ func TestRequireRoleWithGrace_AllowsExpiredDriverWithinWindow(t *testing.T) {
 	tok, _ := token.SignedString(JWTSecret)
 
 	handler := RequireRoleWithGrace([]string{"DRIVER"}, 2*time.Hour, func(w http.ResponseWriter, r *http.Request) {
-		got := r.Context().Value(ClaimsContextKey).(*LabClaims)
+		got := r.Context().Value(ClaimsContextKey).(*PegasusClaims)
 		if !got.GracePeriod {
 			t.Fatal("expected GracePeriod=true")
 		}
@@ -448,7 +448,7 @@ func TestRequireRoleWithGrace_AllowsExpiredDriverWithinWindow(t *testing.T) {
 }
 
 func TestRequireRoleWithGrace_RejectsExpiredDriverBeyondWindow(t *testing.T) {
-	claims := &LabClaims{
+	claims := &PegasusClaims{
 		UserID: "driver-2",
 		Role:   "DRIVER",
 		RegisteredClaims: jwt.RegisteredClaims{

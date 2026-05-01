@@ -85,7 +85,7 @@ func rotatePayloaderPIN(w http.ResponseWriter, r *http.Request, spannerClient *s
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -198,7 +198,7 @@ func HandlePayloaderLogin(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		token, err := auth.MintIdentityToken(&auth.LabClaims{
+		token, err := auth.MintIdentityToken(&auth.PegasusClaims{
 			UserID:        workerID,
 			SupplierID:    supplierID,
 			Role:          "PAYLOADER",
@@ -246,7 +246,7 @@ func HandlePayloaderLogin(spannerClient *spanner.Client) http.HandlerFunc {
 // ── Private Implementations ───────────────────────────────────────────────
 
 func listPayloaders(w http.ResponseWriter, r *http.Request, client *spanner.Client) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -298,7 +298,7 @@ func listPayloaders(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 }
 
 func createPayloader(w http.ResponseWriter, r *http.Request, client *spanner.Client) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -373,7 +373,7 @@ func HandlePayloaderTrucks(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -478,7 +478,7 @@ func HandlePayloaderOrders(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

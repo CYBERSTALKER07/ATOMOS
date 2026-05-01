@@ -35,7 +35,7 @@ func HandleEmpathyAdoption(client *spanner.Client, readRouter proximity.ReadRout
 		}
 
 		// SOVEREIGN ACTION: System-wide analytics requires GLOBAL_ADMIN
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return

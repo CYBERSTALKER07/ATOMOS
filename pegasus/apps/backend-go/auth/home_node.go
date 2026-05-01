@@ -25,7 +25,7 @@ const (
 // ResolveHomeNode derives (HomeNodeType, HomeNodeId) from the authenticated
 // claims. Returns ("", "") for GLOBAL_ADMIN or any claim shape that does not
 // bind the caller to a specific node.
-func ResolveHomeNode(claims *LabClaims) (string, string) {
+func ResolveHomeNode(claims *PegasusClaims) (string, string) {
 	if claims == nil {
 		return "", ""
 	}
@@ -45,7 +45,7 @@ func ResolveHomeNode(claims *LabClaims) (string, string) {
 // ResolveHomeNodeFromContext is a convenience wrapper that pulls the claims
 // out of the request context before delegating to ResolveHomeNode.
 func ResolveHomeNodeFromContext(ctx context.Context) (string, string) {
-	claims, _ := ctx.Value(ClaimsContextKey).(*LabClaims)
+	claims, _ := ctx.Value(ClaimsContextKey).(*PegasusClaims)
 	return ResolveHomeNode(claims)
 }
 
@@ -53,7 +53,7 @@ func ResolveHomeNodeFromContext(ctx context.Context) (string, string) {
 // request body while keeping scoped callers (NODE_ADMIN / FACTORY_ADMIN)
 // pinned to their JWT-bound node. Returns (nodeType, nodeId, ok) — ok=false
 // when the override violates the caller's scope (403-worthy).
-func ApplyHomeNodeOverride(claims *LabClaims, reqType, reqID string) (string, string, bool) {
+func ApplyHomeNodeOverride(claims *PegasusClaims, reqType, reqID string) (string, string, bool) {
 	resolvedType, resolvedID := ResolveHomeNode(claims)
 	if resolvedType != "" && resolvedID != "" {
 		// Scoped caller — override is rejected if it tries to escape scope.

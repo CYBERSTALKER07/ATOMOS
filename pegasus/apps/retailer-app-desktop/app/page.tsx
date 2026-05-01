@@ -33,7 +33,7 @@ export default function Home() {
       const data = await res.json();
       
       // Store in cookie for Next.js routing/middleware
-      document.cookie = `retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
       
       // Store in OS Keyring / LocalStorage
       await storeToken(data.token, data.refresh_token || '');

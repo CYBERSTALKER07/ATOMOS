@@ -159,7 +159,7 @@ func ipKey(r *http.Request) string {
 // userOrIPKey extracts the authenticated user ID from the request context
 // (set by auth middleware). Falls back to IP if unauthenticated.
 func userOrIPKey(r *http.Request) string {
-	if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims); ok && claims != nil && claims.UserID != "" {
+	if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims); ok && claims != nil && claims.UserID != "" {
 		return "uid:" + claims.UserID
 	}
 	return ipKey(r)

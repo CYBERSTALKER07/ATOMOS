@@ -25,7 +25,7 @@ object FirebaseAuthHelper {
         try {
             if (FirebaseApp.getApps(context).isEmpty()) {
                 val options = FirebaseOptions.Builder()
-                    .setProjectId("demo-thelab")
+                    .setProjectId("demo-pegasus")
                     .setApplicationId("1:000000000000:android:0000000000000001")
                     .setApiKey("demo-key")
                     .build()

@@ -7,13 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1000001 /* LabFactoryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000001 /* LabFactoryApp.swift */; };
+		A1000001 /* PegasusFactoryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000001 /* PegasusFactoryApp.swift */; };
 		A1000002 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000002 /* RootView.swift */; };
 		A1000003 /* FactoryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000003 /* FactoryModels.swift */; };
 		A1000004 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000004 /* TokenStore.swift */; };
 		A1000005 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000005 /* APIClient.swift */; };
 		A1000006 /* FactoryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000006 /* FactoryService.swift */; };
-		A1000007 /* LabTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000007 /* LabTheme.swift */; };
+		A1000007 /* PegasusTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000007 /* PegasusTheme.swift */; };
 		A1000008 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000008 /* LoginView.swift */; };
 		A1000009 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000009 /* MainTabView.swift */; };
 		A1000010 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000010 /* DashboardView.swift */; };
@@ -28,13 +28,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A2000001 /* LabFactoryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabFactoryApp.swift; sourceTree = "<group>"; };
+		A2000001 /* PegasusFactoryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusFactoryApp.swift; sourceTree = "<group>"; };
 		A2000002 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		A2000003 /* FactoryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryModels.swift; sourceTree = "<group>"; };
 		A2000004 /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
 		A2000005 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		A2000006 /* FactoryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FactoryService.swift; sourceTree = "<group>"; };
-		A2000007 /* LabTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabTheme.swift; sourceTree = "<group>"; };
+		A2000007 /* PegasusTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusTheme.swift; sourceTree = "<group>"; };
 		A2000008 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		A2000009 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		A2000010 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -71,7 +71,7 @@
 		A5000002 /* FactoryApp */ = {
 			isa = PBXGroup;
 			children = (
-				A2000001 /* LabFactoryApp.swift */,
+				A2000001 /* PegasusFactoryApp.swift */,
 				A2000002 /* RootView.swift */,
 				A5000003 /* Models */,
 				A5000004 /* Services */,
@@ -103,7 +103,7 @@
 		A5000005 /* Theme */ = {
 			isa = PBXGroup;
 			children = (
-				A2000007 /* LabTheme.swift */,
+				A2000007 /* PegasusTheme.swift */,
 			);
 			path = Theme;
 			sourceTree = "<group>";
@@ -259,13 +259,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1000001 /* LabFactoryApp.swift in Sources */,
+				A1000001 /* PegasusFactoryApp.swift in Sources */,
 				A1000002 /* RootView.swift in Sources */,
 				A1000003 /* FactoryModels.swift in Sources */,
 				A1000004 /* TokenStore.swift in Sources */,
 				A1000005 /* APIClient.swift in Sources */,
 				A1000006 /* FactoryService.swift in Sources */,
-				A1000007 /* LabTheme.swift in Sources */,
+				A1000007 /* PegasusTheme.swift in Sources */,
 				A1000008 /* LoginView.swift in Sources */,
 				A1000009 /* MainTabView.swift in Sources */,
 				A1000010 /* DashboardView.swift in Sources */,

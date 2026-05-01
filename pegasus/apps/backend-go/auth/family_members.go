@@ -31,7 +31,7 @@ func HandleListFamilyMembers(client *spanner.Client) http.HandlerFunc {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		claims, ok := r.Context().Value(ClaimsContextKey).(*LabClaims)
+		claims, ok := r.Context().Value(ClaimsContextKey).(*PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
@@ -85,7 +85,7 @@ func HandleCreateFamilyMember(client *spanner.Client, invalidate func(context.Co
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		claims, ok := r.Context().Value(ClaimsContextKey).(*LabClaims)
+		claims, ok := r.Context().Value(ClaimsContextKey).(*PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
@@ -164,7 +164,7 @@ func HandleDeleteFamilyMember(client *spanner.Client, invalidate func(context.Co
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		claims, ok := r.Context().Value(ClaimsContextKey).(*LabClaims)
+		claims, ok := r.Context().Value(ClaimsContextKey).(*PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return

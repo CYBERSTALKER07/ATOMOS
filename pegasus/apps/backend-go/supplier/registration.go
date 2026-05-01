@@ -178,7 +178,7 @@ func HandleSupplierRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			log.Printf("[SUPPLIER REGISTER] T=0 mirror to SupplierUsers failed (non-fatal): %v", err)
 		}
 
-		token, err := auth.MintIdentityToken(&auth.LabClaims{
+		token, err := auth.MintIdentityToken(&auth.PegasusClaims{
 			UserID:       mirrorID,
 			SupplierID:   supplierId,
 			Role:         "SUPPLIER",
@@ -241,7 +241,7 @@ func HandleSupplierConfigure(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -310,7 +310,7 @@ func HandleBillingSetup(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -444,7 +444,7 @@ func HandleGetSupplierProfile(spannerClient *spanner.Client, rc *cache.Cache, fl
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -578,7 +578,7 @@ func fetchSupplierProfile(ctx context.Context, spannerClient *spanner.Client, su
 // PUT /v1/supplier/profile
 func HandleUpdateSupplierProfile(spannerClient *spanner.Client, rc *cache.Cache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

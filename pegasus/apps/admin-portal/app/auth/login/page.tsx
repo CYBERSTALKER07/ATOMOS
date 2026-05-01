@@ -18,8 +18,8 @@ export default function AdminLoginPage() {
 
   // Clear any stale auth cookies so the user can log in fresh
   useEffect(() => {
-    document.cookie = 'admin_jwt=; Max-Age=0; path=/';
-    document.cookie = 'supplier_jwt=; Max-Age=0; path=/';
+    document.cookie = 'pegasus_admin_jwt=; Max-Age=0; path=/';
+    document.cookie = 'pegasus_supplier_jwt=; Max-Age=0; path=/';
   }, []);
 
   const handleLogin = useCallback(async (e: React.FormEvent) => {
@@ -45,7 +45,7 @@ export default function AdminLoginPage() {
       }
 
       const data = await res.json();
-      document.cookie = `admin_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `pegasus_admin_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
       document.cookie = `admin_name=${encodeURIComponent(data.display_name || '')}; path=/; max-age=86400; SameSite=Lax`;
       // Exchange Firebase custom token for ID token session (graceful — legacy cookie still works)
       if (data.firebase_token) {
@@ -113,7 +113,7 @@ export default function AdminLoginPage() {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="admin@thelab.uz"
+              placeholder="admin@void.pegasus.uz"
               required
               autoFocus
               className="md-input-outlined w-full"

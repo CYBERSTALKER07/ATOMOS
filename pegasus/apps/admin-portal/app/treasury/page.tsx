@@ -6,7 +6,7 @@ import { usePolling } from '@/lib/usePolling';
 import Link from 'next/link';
 
 interface TreasuryData {
-    lab_revenue: number;
+    platform_revenue: number;
     supplier_payout: number;
     total_volume: number;
 }
@@ -84,7 +84,7 @@ export default function TreasuryDashboard() {
                             <div className="absolute top-0 right-0 w-1 h-full" style={{ background: 'var(--success)' }} />
                             <p className="md-kpi-label">Net Revenue (5% Commission)</p>
                             <p className="md-kpi-value" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                {fmt(data.lab_revenue)} <span className="md-typescale-body-small" style={{ color: 'var(--border)' }}></span>
+                                {fmt(data.platform_revenue)} <span className="md-typescale-body-small" style={{ color: 'var(--border)' }}></span>
                             </p>
                             <p className="md-kpi-sub" style={{ color: 'var(--success)' }}>Liquid — Settled</p>
                         </div>
@@ -128,7 +128,7 @@ export default function TreasuryDashboard() {
                         <div>
                             <p className="md-kpi-label">Revenue / Volume</p>
                             <p className="md-typescale-title-large mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                {(data.lab_revenue / data.total_volume * 100).toFixed(2)}%
+                                {(data.platform_revenue / data.total_volume * 100).toFixed(2)}%
                             </p>
                         </div>
                         <div>
@@ -140,7 +140,7 @@ export default function TreasuryDashboard() {
                         <div>
                             <p className="md-kpi-label">Clearing Buffer</p>
                             <p className="md-typescale-title-large mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                {fmt(data.total_volume - data.lab_revenue - data.supplier_payout)} <span className="md-typescale-label-small"></span>
+                                {fmt(data.total_volume - data.platform_revenue - data.supplier_payout)} <span className="md-typescale-label-small"></span>
                             </p>
                         </div>
                     </div>

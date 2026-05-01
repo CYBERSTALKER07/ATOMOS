@@ -39,7 +39,7 @@ func NewPayloaderHub() *PayloaderHub {
 // Expected path: /v1/ws/payloader
 // Identifies the supplier from JWT claims or query param.
 func (h *PayloaderHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil || claims.ResolveSupplierID() == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

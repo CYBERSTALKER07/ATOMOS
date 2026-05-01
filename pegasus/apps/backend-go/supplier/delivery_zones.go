@@ -32,7 +32,7 @@ type DeliveryZone struct {
 // HandleDeliveryZones handles GET (list) and POST (create) for /v1/supplier/delivery-zones.
 func HandleDeliveryZones(client *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 
 		switch r.Method {
 		case http.MethodGet:
@@ -48,7 +48,7 @@ func HandleDeliveryZones(client *spanner.Client) http.HandlerFunc {
 // HandleDeliveryZoneAction handles PUT (update) and DELETE (deactivate) for /v1/supplier/delivery-zones/{id}.
 func HandleDeliveryZoneAction(client *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		zoneID := ExtractPathParam(r.URL.Path, "delivery-zones")
 		if zoneID == "" {
 			http.Error(w, `{"error":"zone_id required"}`, http.StatusBadRequest)

@@ -1,4 +1,4 @@
-# CodeRabbit Configuration for The Lab Industries
+# CodeRabbit Configuration for Pegasus
 language: "en-US"
 tone_and_style_guidelines: |
   Review this code as a strict, senior Go/Spanner Principal Engineer.

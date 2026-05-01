@@ -1,4 +1,4 @@
-// Package crypto implements the Lab Industries Hash Manifest Protocol.
+// Package crypto implements the Pegasus Hash Manifest Protocol.
 //
 // Security model:
 //   - The raw delivery token NEVER leaves the backend.

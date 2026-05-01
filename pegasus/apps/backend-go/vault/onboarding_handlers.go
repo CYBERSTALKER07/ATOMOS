@@ -16,7 +16,7 @@ func HandleGatewayOnboarding(client *spanner.Client) http.HandlerFunc {
 	svc := &Service{Spanner: client}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return

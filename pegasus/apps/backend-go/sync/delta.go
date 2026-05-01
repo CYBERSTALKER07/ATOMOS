@@ -80,7 +80,7 @@ func HandleDelta(client *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok {
 			writeErr(w, http.StatusUnauthorized, "unauthorized")
 			return
@@ -145,7 +145,7 @@ func HandleDelta(client *spanner.Client) http.HandlerFunc {
 func fetchOrderDelta(
 	ctx context.Context,
 	client *spanner.Client,
-	claims *auth.LabClaims,
+	claims *auth.PegasusClaims,
 	since time.Time,
 	isCursorPage bool,
 ) ([]OrderRecord, bool, int64, error) {

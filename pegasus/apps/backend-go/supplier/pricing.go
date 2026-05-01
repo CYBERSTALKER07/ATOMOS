@@ -94,7 +94,7 @@ func (s *PricingService) UpsertPricingRule(ctx context.Context, supplierId strin
 // The SUPPLIER JWT role is enforced by the auth middleware upstream — this
 // handler trusts that user_id in context is an authenticated supplier.
 func (s *PricingService) HandleUpsertPricingRule(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil || claims.UserID == "" {
 		http.Error(w, "Unauthorized: missing supplier identity", http.StatusUnauthorized)
 		return
@@ -226,7 +226,7 @@ func (s *PricingService) upsertPricingRule(w http.ResponseWriter, r *http.Reques
 
 // HandlePricingRuleAction handles DELETE /v1/supplier/pricing/rules/{tier_id}
 func (s *PricingService) HandlePricingRuleAction(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

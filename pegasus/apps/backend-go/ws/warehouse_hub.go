@@ -38,7 +38,7 @@ func NewWarehouseHub() *WarehouseHub {
 // Expected path: /ws/warehouse
 // Identifies the warehouse from JWT claims or query param.
 func (h *WarehouseHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil || claims.WarehouseID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

@@ -23,7 +23,7 @@ type ShopClosedAttemptDTO struct {
 
 func (s *OrderService) HandleListActiveShopClosedAttempts(deps *ShopClosedDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		supplierID := claims.ResolveSupplierID()
 
 		ctx := r.Context()

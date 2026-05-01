@@ -2,7 +2,7 @@
  * Factory Auth — Login, Middleware, Firebase SSO
  *
  * Portal: factory-portal (localhost:3002)
- * Cookie: factory_jwt
+ * Cookie: pegasus_factory_jwt
  * Login: POST /v1/auth/factory/login {phone, password}
  * Firebase: optional custom_token exchange
  * Dev fallback: /debug/mint-token?role=FACTORY
@@ -10,7 +10,7 @@
 import { test, expect } from '../fixtures/auth';
 
 test.describe('Factory Authentication', () => {
-  test('login with phone/password sets factory_jwt cookie', async ({ page }) => {
+  test('login with phone/password sets pegasus_factory_jwt cookie', async ({ page }) => {
     await page.goto('http://localhost:3002/auth/login');
 
     await page.getByPlaceholder(/phone/i).fill('+998901234568');
@@ -27,7 +27,7 @@ test.describe('Factory Authentication', () => {
       expect(body.token).toBeTruthy();
 
       const cookies = await page.context().cookies();
-      const factoryCookie = cookies.find((c) => c.name === 'factory_jwt');
+      const factoryCookie = cookies.find((c) => c.name === 'pegasus_factory_jwt');
       expect(factoryCookie).toBeTruthy();
     } catch {
       // Backend not running — verify form rendered

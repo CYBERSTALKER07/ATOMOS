@@ -83,7 +83,7 @@ func HandleCountryConfigByCode(svc *Service) http.HandlerFunc {
 // PUT /v1/supplier/country-overrides         -> upsert an override (body: SupplierOverride JSON)
 func HandleSupplierCountryOverrides(svc *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
@@ -152,7 +152,7 @@ func HandleSupplierCountryOverrides(svc *Service) http.HandlerFunc {
 // DELETE /v1/supplier/country-overrides/{code}  -> remove override (revert to platform defaults)
 func HandleSupplierCountryOverrideByCode(svc *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return

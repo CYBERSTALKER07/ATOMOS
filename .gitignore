@@ -24,7 +24,7 @@ dist/
 **/backend-go/seed
 **/backend-go/setup
 **/ai-worker/pegasus-ai-worker
-**/ai-worker/lab-ai-worker
+**/ai-worker/*-ai-worker
 
 # === Android ===
 **/build/
@@ -62,7 +62,7 @@ tmp/
 .git_backup/
 .git_backup/
 pegasus/backend-go
-pegasus/lab-ai-worker
+pegasus/*-ai-worker
 node_modules/
 dist/
 .git_backup/

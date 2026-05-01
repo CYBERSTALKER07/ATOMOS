@@ -33,7 +33,7 @@ final class FirebaseAuthHelper {
         //
         // if FirebaseApp.app() == nil {
         //     let options = FirebaseOptions(googleAppID: "1:000000000000:ios:0000000000000000", gcmSenderID: "000000000000")
-        //     options.projectID = "demo-thelab"
+        //     options.projectID = "demo-pegasus"
         //     options.apiKey = "demo-key"
         //     FirebaseApp.configure(options: options)
         // }

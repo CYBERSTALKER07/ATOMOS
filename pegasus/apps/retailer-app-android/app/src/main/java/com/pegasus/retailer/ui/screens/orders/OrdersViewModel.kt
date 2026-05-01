@@ -2,7 +2,7 @@ package com.pegasus.retailer.ui.screens.orders
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.api.PegasusApi
 import com.pegasus.retailer.data.api.RetailerWebSocket
 import com.pegasus.retailer.data.local.TokenManager
 import com.pegasus.retailer.data.model.DemandForecast
@@ -32,7 +32,7 @@ data class OrdersUiState(
 
 @HiltViewModel
 class OrdersViewModel @Inject constructor(
-    private val api: LabApi,
+    private val api: PegasusApi,
     private val tokenManager: TokenManager,
     private val retailerWebSocket: RetailerWebSocket,
 ) : ViewModel() {

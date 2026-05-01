@@ -14,7 +14,7 @@ type LedgerEntry = {
 };
 
 type TreasuryReport = {
-    lab_revenue: number;
+    platform_revenue: number;
     supplier_payout: number;
     total_volume: number;
 };
@@ -101,7 +101,7 @@ export default function LedgerPage() {
                             const grossVolume = treasury?.total_volume
                                 ?? entries.reduce((sum, e) => sum + (e.amount ?? 0), 0);
                             const pendingSettlement = treasury
-                                ? treasury.total_volume - treasury.lab_revenue - treasury.supplier_payout
+                                ? treasury.total_volume - treasury.platform_revenue - treasury.supplier_payout
                                 : entries.filter(e => e.state !== 'COMPLETED').reduce((sum, e) => sum + (e.amount ?? 0), 0);
                             const completedDrops = entries.filter(e => e.state === 'COMPLETED').length;
                             return [

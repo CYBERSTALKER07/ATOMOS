@@ -19,7 +19,7 @@ import (
 //
 // Five RBAC-scoped endpoints feeding the Bento Grid intelligence page.
 // All handlers follow the same contract:
-//   - Extract LabClaims + WarehouseScope from context
+//   - Extract PegasusClaims + WarehouseScope from context
 //   - Build Spanner query with ApplyScopeFilter
 //   - Return { timestamp, data } JSON envelope
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -65,8 +65,8 @@ type SLAEntry struct {
 
 // ── Helper: extract claims + scope ─────────────────────────────────────────
 
-func extractScope(r *http.Request) (*auth.LabClaims, *auth.WarehouseScope) {
-	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+func extractScope(r *http.Request) (*auth.PegasusClaims, *auth.WarehouseScope) {
+	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	ws := auth.GetWarehouseScope(r.Context())
 	return claims, ws
 }

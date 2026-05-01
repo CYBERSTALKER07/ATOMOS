@@ -1,10 +1,10 @@
 ---
-name: the-lab-doctrine
-description: Canonical playbook for implementing, extending, or auditing any feature in the V.O.I.D. / The Lab Industries monorepo. Use whenever the user asks to add a feature, endpoint, event, page, screen, or data field — before any code is authored. Captures the role→app matrix, backend package topology, the six-step mutating-handler shape, the dual event path (transactional outbox + EmitNotification), Spanner/cache/idempotency primitives, WebSocket hub discipline, auth scoping, H3 spatial rules, cross-role sync, and the local-simulator + physical-device dev loop so a new feature lands coherently across every surface that consumes it.
+name: pegasus-doctrine
+description: Canonical playbook for implementing, extending, or auditing any feature in the V.O.I.D. / Pegasus monorepo. Use whenever the user asks to add a feature, endpoint, event, page, screen, or data field — before any code is authored. Captures the role→app matrix, backend package topology, the six-step mutating-handler shape, the dual event path (transactional outbox + EmitNotification), Spanner/cache/idempotency primitives, WebSocket hub discipline, auth scoping, H3 spatial rules, cross-role sync, and the local-simulator + physical-device dev loop so a new feature lands coherently across every surface that consumes it.
 version: 1.0.0
 ---
 
-# The Lab Doctrine — Feature-Complete Authoring Across Every Surface
+# Pegasus Doctrine — Feature-Complete Authoring Across Every Surface
 
 A feature in this repo is never one file. A new order state, a new driver screen, a new supplier setting, or a new dispatch rule fans out across: Go handler → Spanner txn + outbox → Kafka topic → consumer → WebSocket hub → TS type → Swift `Codable` → Kotlin `@Serializable` → mobile view model → portal page. Skipping any link creates contract drift, zombie caches, or silent failures. This skill captures the shape of every link so a new feature is wired correctly end-to-end the first time.
 

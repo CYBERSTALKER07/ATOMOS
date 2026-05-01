@@ -11,7 +11,7 @@ import com.pegasus.driver.data.model.RouteManifestEntity
     version = 2,
     exportSchema = false
 )
-abstract class LabDriverDatabase : RoomDatabase() {
+abstract class PegasusDriverDatabase : RoomDatabase() {
     abstract fun orderDao(): OrderDao
     abstract fun routeManifestDao(): RouteManifestDao
     abstract fun pendingMutationDao(): PendingMutationDao

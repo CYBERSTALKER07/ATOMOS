@@ -2,7 +2,7 @@ package com.pegasus.retailer.ui.screens.suppliers
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.api.PegasusApi
 import com.pegasus.retailer.data.model.Supplier
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +20,7 @@ data class MySuppliersUiState(
 
 @HiltViewModel
 class MySuppliersViewModel @Inject constructor(
-    private val api: LabApi,
+    private val api: PegasusApi,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MySuppliersUiState())

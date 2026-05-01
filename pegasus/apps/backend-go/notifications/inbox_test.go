@@ -7,7 +7,7 @@ import (
 )
 
 func TestNotificationRecipientID_UsesSupplierScopeForSupplier(t *testing.T) {
-	claims := &auth.LabClaims{
+	claims := &auth.PegasusClaims{
 		UserID:     "user-1",
 		SupplierID: "supplier-1",
 		Role:       "SUPPLIER",
@@ -19,7 +19,7 @@ func TestNotificationRecipientID_UsesSupplierScopeForSupplier(t *testing.T) {
 }
 
 func TestNotificationRecipientID_UsesSupplierScopeForPayloader(t *testing.T) {
-	claims := &auth.LabClaims{
+	claims := &auth.PegasusClaims{
 		UserID:     "worker-1",
 		SupplierID: "supplier-1",
 		Role:       "PAYLOADER",
@@ -31,7 +31,7 @@ func TestNotificationRecipientID_UsesSupplierScopeForPayloader(t *testing.T) {
 }
 
 func TestNotificationRecipientID_UsesUserScopeForRetailer(t *testing.T) {
-	claims := &auth.LabClaims{
+	claims := &auth.PegasusClaims{
 		UserID: "retailer-1",
 		Role:   "RETAILER",
 	}

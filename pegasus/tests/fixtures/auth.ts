@@ -19,7 +19,7 @@ export interface PayloaderCredentials { phone: string; password: string }
 
 /* ── Default test credentials (override via env) ── */
 const SUPPLIER_CREDS: SupplierCredentials = {
-  email: process.env.TEST_SUPPLIER_EMAIL || 'test-supplier@lab.test',
+  email: process.env.TEST_SUPPLIER_EMAIL || 'test-supplier@pegasus.test',
   password: process.env.TEST_SUPPLIER_PASSWORD || 'TestPass123!',
 };
 const RETAILER_CREDS: RetailerCredentials = {
@@ -129,7 +129,7 @@ export const test = base.extend<AuthFixtures>({
   },
   supplierPage: async ({ browser, supplierToken }, use) => {
     const context = await browser.newContext();
-    await setAuthCookie(context, 'admin_jwt', supplierToken, 'localhost');
+    await setAuthCookie(context, 'pegasus_admin_jwt', supplierToken, 'localhost');
     const page = await context.newPage();
     await use(page);
     await context.close();
@@ -142,7 +142,7 @@ export const test = base.extend<AuthFixtures>({
   },
   retailerPage: async ({ browser, retailerToken }, use) => {
     const context = await browser.newContext();
-    await setAuthCookie(context, 'retailer_jwt', retailerToken, 'localhost');
+    await setAuthCookie(context, 'pegasus_retailer_jwt', retailerToken, 'localhost');
     const page = await context.newPage();
     await use(page);
     await context.close();
@@ -155,7 +155,7 @@ export const test = base.extend<AuthFixtures>({
   },
   factoryPage: async ({ browser, factoryToken }, use) => {
     const context = await browser.newContext();
-    await setAuthCookie(context, 'factory_jwt', factoryToken, 'localhost');
+    await setAuthCookie(context, 'pegasus_factory_jwt', factoryToken, 'localhost');
     const page = await context.newPage();
     await use(page);
     await context.close();
@@ -168,7 +168,7 @@ export const test = base.extend<AuthFixtures>({
   },
   warehousePage: async ({ browser, warehouseToken }, use) => {
     const context = await browser.newContext();
-    await setAuthCookie(context, 'warehouse_jwt', warehouseToken, 'localhost');
+    await setAuthCookie(context, 'pegasus_warehouse_jwt', warehouseToken, 'localhost');
     const page = await context.newPage();
     await use(page);
     await context.close();

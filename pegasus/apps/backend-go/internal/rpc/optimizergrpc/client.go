@@ -89,7 +89,7 @@ func New(apiKey string) (*GRPCClient, error) {
 		// mesh mode, so this is a lightweight safeguard for direct-dial mode.
 		grpc.WithDefaultServiceConfig(`{
 			"methodConfig": [{
-				"name": [{"service": "lab.optimizer.v1.OptimizerService"}],
+				"name": [{"service": "pegasus.optimizer.v1.OptimizerService"}],
 				"retryPolicy": {
 					"maxAttempts": 3,
 					"initialBackoff": "0.1s",

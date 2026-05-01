@@ -425,7 +425,7 @@ func HandleCatalogSearch(client *spanner.Client) http.HandlerFunc {
 // PUT  /v1/retailer/profile → update name, shop name
 func HandleRetailerProfile(client *spanner.Client, rc *cache.Cache, flight *singleflight.Group) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

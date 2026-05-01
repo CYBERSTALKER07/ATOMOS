@@ -2,7 +2,7 @@
  * Supplier Auth — Login, Registration, Billing Setup, Middleware Gates
  *
  * Portal: admin-portal (localhost:3000)
- * Cookie: admin_jwt
+ * Cookie: pegasus_admin_jwt
  * Login: POST /v1/auth/admin/login {email, password}
  * Register: POST /v1/auth/supplier/register (4-step wizard)
  * Billing: POST /v1/supplier/billing/setup
@@ -11,11 +11,11 @@
 import { test, expect } from '../fixtures/auth';
 
 test.describe('Supplier Authentication', () => {
-  test('login with email/password sets admin_jwt cookie', async ({ page, request }) => {
+  test('login with email/password sets pegasus_admin_jwt cookie', async ({ page, request }) => {
     await page.goto('http://localhost:3000/auth/login');
 
     // Fill login form
-    await page.getByPlaceholder(/email/i).fill('test-supplier@lab.test');
+    await page.getByPlaceholder(/email/i).fill('test-supplier@pegasus.test');
     await page.getByPlaceholder(/password/i).fill('TestPass123!');
 
     // Intercept login API call
@@ -30,7 +30,7 @@ test.describe('Supplier Authentication', () => {
 
     // Verify cookie was set
     const cookies = await page.context().cookies();
-    const adminCookie = cookies.find((c) => c.name === 'admin_jwt');
+    const adminCookie = cookies.find((c) => c.name === 'pegasus_admin_jwt');
     expect(adminCookie).toBeTruthy();
     expect(adminCookie!.value).toBeTruthy();
   });
@@ -64,7 +64,7 @@ test.describe('Supplier Authentication', () => {
     const fakeToken = `${header}.${body}.fakesig`;
 
     await page.context().addCookies([{
-      name: 'admin_jwt',
+      name: 'pegasus_admin_jwt',
       value: encodeURIComponent(fakeToken),
       domain: 'localhost',
       path: '/',
@@ -107,7 +107,7 @@ test.describe('Supplier Authentication', () => {
     const expiredToken = `${header}.${body}.fakesig`;
 
     await page.context().addCookies([{
-      name: 'admin_jwt',
+      name: 'pegasus_admin_jwt',
       value: encodeURIComponent(expiredToken),
       domain: 'localhost',
       path: '/',
@@ -125,7 +125,7 @@ test.describe('Supplier Authentication', () => {
     const token = `${header}.${body}.fakesig`;
 
     await page.context().addCookies([{
-      name: 'admin_jwt',
+      name: 'pegasus_admin_jwt',
       value: encodeURIComponent(token),
       domain: 'localhost',
       path: '/',

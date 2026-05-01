@@ -2,7 +2,7 @@ package com.pegasus.retailer.ui.screens.notifications
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.api.PegasusApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,7 +39,7 @@ data class NotificationInboxState(
 
 @HiltViewModel
 class NotificationInboxViewModel @Inject constructor(
-    private val api: LabApi,
+    private val api: PegasusApi,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NotificationInboxState())

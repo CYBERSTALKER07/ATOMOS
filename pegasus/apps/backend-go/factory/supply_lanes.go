@@ -59,7 +59,7 @@ type SupplyLanesService struct {
 // HandleSupplyLanes handles GET (list) and POST (create) for /v1/supplier/supply-lanes.
 // POST (create) is a SOVEREIGN ACTION requiring GLOBAL_ADMIN.
 func (s *SupplyLanesService) HandleSupplyLanes(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return
@@ -82,7 +82,7 @@ func (s *SupplyLanesService) HandleSupplyLanes(w http.ResponseWriter, r *http.Re
 // PUT with /transit suffix (dampened transit update) for /v1/supplier/supply-lanes/{id}.
 // DELETE (deactivate) is a SOVEREIGN ACTION requiring GLOBAL_ADMIN.
 func (s *SupplyLanesService) HandleSupplyLaneAction(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return

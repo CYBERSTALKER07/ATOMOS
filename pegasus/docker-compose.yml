@@ -135,14 +135,14 @@ services:
       - ./firebase.json:/app/firebase.json:ro
     working_dir: /app
     environment:
-      - GCLOUD_PROJECT=demo-thelab
+      - GCLOUD_PROJECT=demo-pegasus
       - FIREBASE_AUTH_EMULATOR_HOST=0.0.0.0:9099
     command: >
       sh -c "
         npm install -g firebase-tools@latest &&
         firebase emulators:start
           --only auth
-          --project demo-thelab
+          --project demo-pegasus
           --import /data
           --export-on-exit /data
       "

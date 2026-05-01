@@ -44,7 +44,7 @@ func (bs *BroadcastService) HandleBroadcast(w http.ResponseWriter, r *http.Reque
 	}
 
 	// SOVEREIGN ACTION: System-wide broadcast requires GLOBAL_ADMIN
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return

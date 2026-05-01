@@ -25,7 +25,7 @@ type ReconciliationRecord struct {
 // HandleGetReconciliation feeds the Admin Omniscience Dashboard
 func HandleGetReconciliation(client *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// In production, verify the admin_jwt here
+		// In production, verify the pegasus_admin_jwt here
 
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()

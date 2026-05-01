@@ -965,7 +965,7 @@ func main() {
 			http.Error(w, "card tokenization not configured", http.StatusServiceUnavailable)
 			return
 		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "retailer identity missing from token", http.StatusUnauthorized)
 			return
@@ -1008,7 +1008,7 @@ func main() {
 			http.Error(w, "card tokenization not configured", http.StatusServiceUnavailable)
 			return
 		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "retailer identity missing from token", http.StatusUnauthorized)
 			return
@@ -1057,7 +1057,7 @@ func main() {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "retailer identity missing from token", http.StatusUnauthorized)
 			return
@@ -1080,7 +1080,7 @@ func main() {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "retailer identity missing from token", http.StatusUnauthorized)
 			return
@@ -1106,7 +1106,7 @@ func main() {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "retailer identity missing from token", http.StatusUnauthorized)
 			return
@@ -1148,7 +1148,7 @@ func main() {
 		}
 
 		// Extract driver_id from JWT claims
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "driver identity missing from token", http.StatusUnauthorized)
 			return
@@ -1187,7 +1187,7 @@ func main() {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "retailer identity missing from token", http.StatusUnauthorized)
 			return
@@ -1217,7 +1217,7 @@ func main() {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "retailer identity missing from token", http.StatusUnauthorized)
 			return
@@ -1489,7 +1489,7 @@ func main() {
 		}
 		// Auto-fill RetailerID from JWT so mobile clients don't have to send it
 		if req.RetailerID == "" {
-			if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims); ok && claims.Role == "RETAILER" {
+			if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims); ok && claims.Role == "RETAILER" {
 				req.RetailerID = claims.UserID
 			}
 		}
@@ -1562,7 +1562,7 @@ func main() {
 			return
 		}
 
-		claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		var req payment.RefundRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
@@ -1634,7 +1634,7 @@ func main() {
 		stateFilter := r.URL.Query().Get("state")
 		retailerId := r.URL.Query().Get("retailer_id")
 
-		claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if claims != nil && claims.Role == "RETAILER" {
 			retailerId = claims.UserID
 		}
@@ -1863,7 +1863,7 @@ func main() {
 		retailerId := parts[0]
 
 		// Enforce: RETAILER role can only query their own orders
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if ok && claims.Role == "RETAILER" && claims.UserID != retailerId {
 			http.Error(w, `{"error":"forbidden: cannot access another retailer's orders"}`, http.StatusForbidden)
 			return
@@ -1949,7 +1949,7 @@ func main() {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return

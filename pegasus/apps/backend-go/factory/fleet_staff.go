@@ -253,7 +253,7 @@ func rotateFactoryStaffPIN(w http.ResponseWriter, r *http.Request, spannerClient
 		http.Error(w, `{"error":"staff not found"}`, http.StatusNotFound)
 		return
 	}
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.FactoryID != factoryID {
 		http.Error(w, `{"error":"staff not found"}`, http.StatusNotFound)
 		return

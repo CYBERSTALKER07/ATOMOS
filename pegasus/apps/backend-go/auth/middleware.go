@@ -36,8 +36,8 @@ func Init(jwtSecret, internalKey string) {
 	internalAPIKey = internalKey
 }
 
-// LabClaims defines the payload inside our cryptographically sealed tokens
-type LabClaims struct {
+// PegasusClaims defines the payload inside our cryptographically sealed tokens
+type PegasusClaims struct {
 	UserID        string    `json:"user_id"`
 	SupplierID    string    `json:"supplier_id"`    // Organisation-level supplier UUID — use ResolveSupplierID() in handlers
 	Role          string    `json:"role"`           // "ADMIN", "RETAILER", "SUPPLIER", "DRIVER", "PAYLOADER", "FACTORY", "WAREHOUSE"
@@ -56,7 +56,7 @@ type LabClaims struct {
 // ResolveSupplierID returns the organisation-level SupplierId.
 // New tokens carry a dedicated SupplierID field; legacy tokens
 // (minted before the field existed) fall back to UserID.
-func (c *LabClaims) ResolveSupplierID() string {
+func (c *PegasusClaims) ResolveSupplierID() string {
 	if c.SupplierID != "" {
 		return c.SupplierID
 	}
@@ -69,7 +69,7 @@ const ClaimsContextKey = contextKey("claims")
 
 // GenerateTestToken mints a cryptographically signed JWT for local testing
 func GenerateTestToken(userID string, role string) (string, error) {
-	claims := &LabClaims{
+	claims := &PegasusClaims{
 		UserID: userID,
 		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -87,7 +87,7 @@ func GenerateSupplierToken(userID, role, supplierRole, warehouseID string) (stri
 	if supplierRole == "" {
 		supplierRole = "GLOBAL_ADMIN"
 	}
-	claims := &LabClaims{
+	claims := &PegasusClaims{
 		UserID:       userID,
 		Role:         role,
 		SupplierRole: supplierRole,
@@ -100,9 +100,9 @@ func GenerateSupplierToken(userID, role, supplierRole, warehouseID string) (stri
 	return token.SignedString(JWTSecret)
 }
 
-// MintIdentityToken creates a signed JWT from pre-populated LabClaims.
+// MintIdentityToken creates a signed JWT from pre-populated PegasusClaims.
 // Sovereignty Protocol: 1-hour TTL. Eventual consistency accepted for revocation.
-func MintIdentityToken(claims *LabClaims) (string, error) {
+func MintIdentityToken(claims *PegasusClaims) (string, error) {
 	signedClaims := *claims
 	if signedClaims.Role == "SUPPLIER" && signedClaims.SupplierRole == "" {
 		signedClaims.SupplierRole = "GLOBAL_ADMIN"
@@ -117,7 +117,7 @@ func MintIdentityToken(claims *LabClaims) (string, error) {
 // RequireGlobalAdmin checks if the caller is a GLOBAL_ADMIN supplier.
 // Returns nil if authorized, writes 403 and returns error otherwise.
 // Empty SupplierRole is treated as GLOBAL_ADMIN (root Suppliers table users).
-func RequireGlobalAdmin(w http.ResponseWriter, claims *LabClaims) error {
+func RequireGlobalAdmin(w http.ResponseWriter, claims *PegasusClaims) error {
 	if claims.SupplierRole == "" || claims.SupplierRole == "GLOBAL_ADMIN" {
 		return nil
 	}
@@ -137,7 +137,7 @@ func extractTokenFromRequest(r *http.Request) string {
 		return strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
 	}
 
-	for _, cookieName := range []string{"admin_jwt", "supplier_jwt", "retailer_jwt", "driver_jwt", "payloader_jwt", "factory_jwt", "warehouse_jwt"} {
+	for _, cookieName := range []string{"pegasus_admin_jwt", "pegasus_supplier_jwt", "pegasus_retailer_jwt", "pegasus_driver_jwt", "pegasus_payloader_jwt", "pegasus_factory_jwt", "pegasus_warehouse_jwt"} {
 		if cookie, err := r.Cookie(cookieName); err == nil && strings.TrimSpace(cookie.Value) != "" {
 			return strings.TrimSpace(cookie.Value)
 		}
@@ -177,7 +177,7 @@ func RequireRole(allowedRoles []string, next http.HandlerFunc) http.HandlerFunc 
 			// for machine-to-machine calls. The request gets synthetic claims
 			// with role "INTERNAL" which satisfies any role check.
 			if ik := r.Header.Get("X-Internal-Key"); ik != "" && ik == internalAPIKey {
-				synthetic := &LabClaims{
+				synthetic := &PegasusClaims{
 					UserID: "system:ai-worker",
 					Role:   "INTERNAL",
 				}
@@ -195,7 +195,7 @@ func RequireRole(allowedRoles []string, next http.HandlerFunc) http.HandlerFunc 
 		// Try Firebase ID token first (asymmetric RS256, auto-rotated keys).
 		// If Firebase is not initialized or token is not a Firebase token,
 		// fall back to legacy HS256 JWT verification.
-		claims := &LabClaims{}
+		claims := &PegasusClaims{}
 		var verified bool
 
 		if FirebaseAuthClient != nil {
@@ -257,7 +257,7 @@ func RequireRoleWithGrace(allowedRoles []string, graceWindow time.Duration, next
 			return
 		}
 
-		claims := &LabClaims{}
+		claims := &PegasusClaims{}
 		var verified bool
 
 		if FirebaseAuthClient != nil {

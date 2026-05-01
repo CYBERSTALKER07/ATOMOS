@@ -8308,7 +8308,7 @@
 
 - "mobile-brand-strip" zonasi "top on mobile only" hududida joylashgan. Tarkibi: "brand icon tile"; "Pegasus Hub title"; "Supplier Operations Portal subtitle".
 - "login-card" zonasi "central card" hududida joylashgan. Tarkibi: "Sign in headline"; "supporting subtitle"; "optional inline error alert"; "email field"; "password field with show-hide button"; "primary Sign In button"; "link to create account".
-- "mobile-footer-copy" zonasi "bottom on mobile only" hududida joylashgan. Tarkibi: "The Lab Industries copyright text".
+- "mobile-footer-copy" zonasi "bottom on mobile only" hududida joylashgan. Tarkibi: "Pegasus copyright text".
 
 ### Controloverview
 

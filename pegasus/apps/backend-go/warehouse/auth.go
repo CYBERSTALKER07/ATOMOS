@@ -89,7 +89,7 @@ func HandleWarehouseLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		// Mint JWT with WAREHOUSE role + warehouse scope
-		claims := &auth.LabClaims{
+		claims := &auth.PegasusClaims{
 			UserID:        workerID,
 			Role:          "WAREHOUSE",
 			WarehouseID:   warehouseID,
@@ -129,7 +129,7 @@ func HandleWarehouseRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

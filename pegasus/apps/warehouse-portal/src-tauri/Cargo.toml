@@ -1,11 +1,11 @@
 [package]
-name = "lab-warehouse-desktop"
+name = "pegasus-warehouse-desktop"
 version = "0.1.0"
 description = "Pegasus — Warehouse Portal Desktop Shell"
 authors = ["Pegasus"]
 license = "proprietary"
 repository = ""
-default-run = "lab-warehouse-desktop"
+default-run = "pegasus-warehouse-desktop"
 edition = "2021"
 rust-version = "1.77"
 

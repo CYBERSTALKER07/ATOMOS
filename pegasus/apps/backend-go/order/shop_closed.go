@@ -70,7 +70,7 @@ type BypassTokenPayload struct {
 // Driver reports shop is closed. Requires ARRIVED state.
 func (s *OrderService) HandleReportShopClosed(deps *ShopClosedDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		driverID := claims.UserID
 
 		var req struct {
@@ -334,7 +334,7 @@ func (s *OrderService) findSupplierAdmin(ctx context.Context, supplierID string)
 // Retailer responds to shop-closed alert.
 func (s *OrderService) HandleShopClosedResponse(deps *ShopClosedDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		retailerID := claims.UserID
 
 		var req struct {
@@ -445,7 +445,7 @@ func (s *OrderService) HandleShopClosedResponse(deps *ShopClosedDeps) http.Handl
 // Admin resolves a shop-closed escalation: WAIT | BYPASS | RETURN_TO_DEPOT
 func (s *OrderService) HandleResolveShopClosed(deps *ShopClosedDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		adminID := claims.UserID
 
 		var req struct {
@@ -568,7 +568,7 @@ func (s *OrderService) HandleResolveShopClosed(deps *ShopClosedDeps) http.Handle
 // Driver confirms offload using a bypass token instead of retailer QR.
 func (s *OrderService) HandleBypassOffload(deps *ShopClosedDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		driverID := claims.UserID
 
 		var req struct {

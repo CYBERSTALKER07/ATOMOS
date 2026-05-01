@@ -22,7 +22,7 @@ import (
 // POST /v1/retailer/suppliers/{id}/remove → Remove from favorites
 func HandleRetailerSuppliers(client *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

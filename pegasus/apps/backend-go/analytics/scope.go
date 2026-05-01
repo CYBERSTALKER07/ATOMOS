@@ -17,7 +17,7 @@ import (
 // the first parameter (supplierCol) and optionally the warehouse column
 // (warehouseCol). If warehouseCol is empty, warehouse scoping is skipped.
 func ApplyScopeFilter(
-	claims *auth.LabClaims,
+	claims *auth.PegasusClaims,
 	ws *auth.WarehouseScope,
 	supplierCol string,
 	warehouseCol string,

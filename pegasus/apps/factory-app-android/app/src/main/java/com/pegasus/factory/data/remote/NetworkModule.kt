@@ -24,7 +24,7 @@ import javax.inject.Singleton
 // ── Token Holder (EncryptedSharedPreferences) ──
 object TokenHolder {
     private const val PREF_NAME = "factory_secure_prefs"
-    private const val KEY_TOKEN = "factory_jwt"
+    private const val KEY_TOKEN = "pegasus_factory_jwt"
     private const val KEY_REFRESH = "factory_refresh_token"
     private const val KEY_FACTORY_ID = "factory_id"
 

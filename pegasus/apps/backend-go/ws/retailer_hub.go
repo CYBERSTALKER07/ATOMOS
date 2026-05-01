@@ -53,7 +53,7 @@ func NewRetailerHub() *RetailerHub {
 // HandleConnection upgrades the HTTP request and registers the retailer.
 // Expected path: /v1/ws/retailer
 func (h *RetailerHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

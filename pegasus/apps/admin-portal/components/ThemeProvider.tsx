@@ -20,7 +20,7 @@ const ThemeContext = createContext<ThemeCtx>({
 
 export const useTheme = () => useContext(ThemeContext);
 
-const STORAGE_KEY = 'lab-theme-mode';
+const STORAGE_KEY = 'pegasus-theme-mode';
 const CYCLE_ORDER: ThemeMode[] = ['system', 'light', 'dark'];
 
 function getSystemPreference(): 'light' | 'dark' {

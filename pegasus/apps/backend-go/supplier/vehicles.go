@@ -122,7 +122,7 @@ func HandleVehicleDetail(spannerClient *spanner.Client) http.HandlerFunc {
 // ── Private Handlers ──────────────────────────────────────────────────────
 
 func createVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -220,7 +220,7 @@ func createVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 }
 
 func listVehicles(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -317,7 +317,7 @@ func listVehicles(w http.ResponseWriter, r *http.Request, spannerClient *spanner
 }
 
 func getVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, vehicleID string) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -363,7 +363,7 @@ func getVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanner.C
 }
 
 func updateVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, vehicleID string) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -418,7 +418,7 @@ func updateVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 }
 
 func deactivateVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, vehicleID string) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

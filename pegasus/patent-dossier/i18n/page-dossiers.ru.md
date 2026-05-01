@@ -8308,7 +8308,7 @@
 
 - Зона "mobile-brand-strip" расположена в области "top on mobile only". Содержимое: "brand icon tile"; "Pegasus Hub title"; "Supplier Operations Portal subtitle".
 - Зона "login-card" расположена в области "central card". Содержимое: "Sign in headline"; "supporting subtitle"; "optional inline error alert"; "email field"; "password field with show-hide button"; "primary Sign In button"; "link to create account".
-- Зона "mobile-footer-copy" расположена в области "bottom on mobile only". Содержимое: "The Lab Industries copyright text".
+- Зона "mobile-footer-copy" расположена в области "bottom on mobile only". Содержимое: "Pegasus copyright text".
 
 ### Controloverview
 

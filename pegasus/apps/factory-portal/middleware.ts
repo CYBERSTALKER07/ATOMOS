@@ -20,7 +20,7 @@ function isTokenExpired(token: string): boolean {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get('factory_jwt')?.value;
+  const token = request.cookies.get('pegasus_factory_jwt')?.value;
   const hasValidToken = !!token && !isTokenExpired(token);
 
   // Auth pages: redirect to dashboard if already authenticated
@@ -35,7 +35,7 @@ export function middleware(request: NextRequest) {
   if (!hasValidToken) {
     const res = NextResponse.redirect(new URL('/auth/login', request.url));
     if (token && isTokenExpired(token)) {
-      res.cookies.delete('factory_jwt');
+      res.cookies.delete('pegasus_factory_jwt');
     }
     return res;
   }

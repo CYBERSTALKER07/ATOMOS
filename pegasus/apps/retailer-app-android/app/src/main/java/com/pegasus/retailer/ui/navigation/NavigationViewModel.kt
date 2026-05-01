@@ -2,7 +2,7 @@ package com.pegasus.retailer.ui.navigation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.api.PegasusApi
 import com.pegasus.retailer.data.api.RetailerWSMessage
 import com.pegasus.retailer.data.api.RetailerWebSocket
 import com.pegasus.retailer.data.local.TokenManager
@@ -48,7 +48,7 @@ data class NavigationUiState(
 
 @HiltViewModel
 class NavigationViewModel @Inject constructor(
-    private val api: LabApi,
+    private val api: PegasusApi,
     private val tokenManager: TokenManager,
     private val retailerWebSocket: RetailerWebSocket,
 ) : ViewModel() {

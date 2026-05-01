@@ -6,7 +6,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export function readTokenFromCookie(): string {
   if (typeof document === 'undefined') return '';
-  const match = document.cookie.match(/(?:^|; )factory_jwt=([^;]*)/);
+  const match = document.cookie.match(/(?:^|; )pegasus_factory_jwt=([^;]*)/);
   if (match) return decodeURIComponent(match[1]);
   return '';
 }
@@ -51,7 +51,7 @@ async function tryRefreshToken(): Promise<string | null> {
     if (!res.ok) return null;
     const data = await res.json();
     if (data.token) {
-      document.cookie = `factory_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `pegasus_factory_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
       if (isTauri()) {
         storeToken(data.token, data.refresh_token || '').catch(() => {});
       }
@@ -89,7 +89,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
       };
       return fetch(`${API}${path}`, { ...init, headers: retryHeaders });
     }
-    document.cookie = 'factory_jwt=; Max-Age=0; path=/';
+    document.cookie = 'pegasus_factory_jwt=; Max-Age=0; path=/';
     firebaseSignOut().catch(() => {});
     if (isTauri()) {
       clearStoredToken().catch(() => {});

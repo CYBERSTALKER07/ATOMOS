@@ -31,7 +31,7 @@ export default function WarehouseLogin() {
       }
 
       const data = await res.json();
-      document.cookie = `warehouse_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `pegasus_warehouse_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
       router.replace('/');
     } catch {
       setError('Network error. Check connection.');

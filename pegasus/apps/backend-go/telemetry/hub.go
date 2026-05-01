@@ -60,7 +60,7 @@ var FleetHub = &Hub{
 // token refresh + reconnect while still giving clients a small handoff window.
 var graceReconnectCloseAfter = 30 * time.Second
 
-func graceReconnectDelay(claims *auth.LabClaims) time.Duration {
+func graceReconnectDelay(claims *auth.PegasusClaims) time.Duration {
 	closeAfter := graceReconnectCloseAfter
 	if claims != nil && !claims.GraceDeadline.IsZero() {
 		remaining := time.Until(claims.GraceDeadline)
@@ -74,7 +74,7 @@ func graceReconnectDelay(claims *auth.LabClaims) time.Duration {
 	return closeAfter
 }
 
-func (h *Hub) startGraceReconnectEnforcer(ws *websocket.Conn, claims *auth.LabClaims, done <-chan struct{}) {
+func (h *Hub) startGraceReconnectEnforcer(ws *websocket.Conn, claims *auth.PegasusClaims, done <-chan struct{}) {
 	closeAfter := graceReconnectDelay(claims)
 
 	refreshMsg, _ := json.Marshal(map[string]interface{}{
@@ -168,7 +168,7 @@ func (h *Hub) hasSupplierAdminLocked(supplierID string) bool {
 
 // HandleConnection upgrades the HTTP request to a persistent WebSocket
 func (h *Hub) HandleConnection(w http.ResponseWriter, r *http.Request) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil {
 		http.Error(w, "Unauthorized telemetry access", http.StatusUnauthorized)
 		return

@@ -30,7 +30,7 @@
     ],
     "security": {
       "dangerousDisableAssetCspModification": false,
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.cartocdn.com https://*.googleapis.com https://storage.googleapis.com https://*.basemaps.xyz; connect-src 'self' http://localhost:8080 https://admin.thelabindustries.uz wss://localhost:8080 ws://localhost:8080 https://*.cartocdn.com https://*.googleapis.com https://*.basemaps.xyz"
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.cartocdn.com https://*.googleapis.com https://storage.googleapis.com https://*.basemaps.xyz; connect-src 'self' http://localhost:8080 https://admin.void.pegasus.uz wss://localhost:8080 ws://localhost:8080 https://*.cartocdn.com https://*.googleapis.com https://*.basemaps.xyz"
     }
   },
   "bundle": {

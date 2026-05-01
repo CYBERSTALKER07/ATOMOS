@@ -59,7 +59,7 @@ var validReasons = map[string]bool{
 //	PATCH /v1/supplier/inventory/{sku}   → adjust stock for a specific SKU
 func HandleInventory(client *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -262,7 +262,7 @@ func HandleInventoryAuditLog(client *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

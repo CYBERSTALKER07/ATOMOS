@@ -27,7 +27,7 @@ func HandleTokenRefresh() http.HandlerFunc {
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 
 		// Parse the JWT — allow tokens expired within the last 24h grace window.
-		claims := &LabClaims{}
+		claims := &PegasusClaims{}
 		parser := jwt.NewParser(
 			jwt.WithValidMethods([]string{"HS256"}),
 			jwt.WithLeeway(24*time.Hour),

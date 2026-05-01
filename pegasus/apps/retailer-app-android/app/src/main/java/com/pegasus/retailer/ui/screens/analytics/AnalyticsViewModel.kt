@@ -2,7 +2,7 @@ package com.pegasus.retailer.ui.screens.analytics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.api.PegasusApi
 import com.pegasus.retailer.data.model.MonthlyExpense
 import com.pegasus.retailer.data.model.RetailerAnalytics
 import com.pegasus.retailer.data.model.RetailerDetailedAnalytics
@@ -37,7 +37,7 @@ data class AnalyticsUiState(
 
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
-    private val api: LabApi,
+    private val api: PegasusApi,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AnalyticsUiState())

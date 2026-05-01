@@ -180,7 +180,7 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = useCallback(async () => {
-    document.cookie = 'retailer_jwt=; Max-Age=0; path=/';
+    document.cookie = 'pegasus_retailer_jwt=; Max-Age=0; path=/';
     await clearStoredToken();
     router.push('/');
   }, [router]);

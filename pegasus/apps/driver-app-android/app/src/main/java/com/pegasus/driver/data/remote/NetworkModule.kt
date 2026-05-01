@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.pegasus.driver.BuildConfig
-import com.pegasus.driver.data.local.LabDriverDatabase
+import com.pegasus.driver.data.local.PegasusDriverDatabase
 import com.pegasus.driver.data.local.OrderDao
 import com.pegasus.driver.data.local.PendingMutationDao
 import com.pegasus.driver.data.local.RouteManifestDao
@@ -84,19 +84,19 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideDatabase(@ApplicationContext context: Context): LabDriverDatabase =
-        Room.databaseBuilder(context, LabDriverDatabase::class.java, "lab_driver.db")
+    fun provideDatabase(@ApplicationContext context: Context): PegasusDriverDatabase =
+        Room.databaseBuilder(context, PegasusDriverDatabase::class.java, "pegasus_driver.db")
             .fallbackToDestructiveMigration()
             .build()
 
     @Provides
-    fun provideOrderDao(db: LabDriverDatabase): OrderDao = db.orderDao()
+    fun provideOrderDao(db: PegasusDriverDatabase): OrderDao = db.orderDao()
 
     @Provides
-    fun provideRouteManifestDao(db: LabDriverDatabase): RouteManifestDao = db.routeManifestDao()
+    fun provideRouteManifestDao(db: PegasusDriverDatabase): RouteManifestDao = db.routeManifestDao()
 
     @Provides
-    fun providePendingMutationDao(db: LabDriverDatabase): PendingMutationDao = db.pendingMutationDao()
+    fun providePendingMutationDao(db: PegasusDriverDatabase): PendingMutationDao = db.pendingMutationDao()
 
     @Provides
     @Singleton
@@ -119,7 +119,7 @@ object TokenHolder {
             .build()
         prefs = androidx.security.crypto.EncryptedSharedPreferences.create(
             context,
-            "lab_driver_auth",
+            "pegasus_driver_auth",
             masterKey,
             androidx.security.crypto.EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             androidx.security.crypto.EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,

@@ -43,7 +43,7 @@ func (d *DispatchLockService) HandleAcquireDispatchLock(w http.ResponseWriter, r
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -173,7 +173,7 @@ func (d *DispatchLockService) HandleReleaseDispatchLock(w http.ResponseWriter, r
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -260,7 +260,7 @@ func (d *DispatchLockService) HandleListDispatchLocks(w http.ResponseWriter, r *
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -354,7 +354,7 @@ func (d *DispatchLockService) hasActiveLock(ctx context.Context, supplierID, war
 	return true, nil
 }
 
-func resolveSupplierFromClaims(ctx context.Context, client *spanner.Client, claims *auth.LabClaims) string {
+func resolveSupplierFromClaims(ctx context.Context, client *spanner.Client, claims *auth.PegasusClaims) string {
 	if claims.Role == "WAREHOUSE" && claims.WarehouseID != "" {
 		row, err := client.Single().ReadRow(ctx, "Warehouses",
 			spanner.Key{claims.WarehouseID}, []string{"SupplierId"})

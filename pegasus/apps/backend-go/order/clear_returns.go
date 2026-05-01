@@ -62,7 +62,7 @@ func (s *OrderService) HandleClearReturns(w http.ResponseWriter, r *http.Request
 	}
 
 	// Extract supplier identity from JWT claims
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return

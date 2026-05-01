@@ -2,7 +2,7 @@ package com.pegasus.retailer.ui.screens.tracking
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.api.PegasusApi
 import com.pegasus.retailer.data.api.RetailerWebSocket
 import com.pegasus.retailer.data.model.TrackingOrder
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,7 +33,7 @@ data class TrackingUiState(
 
 @HiltViewModel
 class DeliveryTrackingViewModel @Inject constructor(
-    private val api: LabApi,
+    private val api: PegasusApi,
     private val ws: RetailerWebSocket,
 ) : ViewModel() {
 

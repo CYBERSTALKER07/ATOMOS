@@ -76,11 +76,11 @@ func TestRoleMatrix_FullCoverage(t *testing.T) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 var roleToCookie = map[string]string{
-	"ADMIN":     "admin_jwt",
-	"SUPPLIER":  "supplier_jwt",
-	"RETAILER":  "retailer_jwt",
-	"DRIVER":    "driver_jwt",
-	"PAYLOADER": "payloader_jwt",
+	"ADMIN":     "pegasus_admin_jwt",
+	"SUPPLIER":  "pegasus_supplier_jwt",
+	"RETAILER":  "pegasus_retailer_jwt",
+	"DRIVER":    "pegasus_driver_jwt",
+	"PAYLOADER": "pegasus_payloader_jwt",
 }
 
 func TestRoleMatrix_CookieAuth(t *testing.T) {
@@ -90,7 +90,7 @@ func TestRoleMatrix_CookieAuth(t *testing.T) {
 			cookieName := roleToCookie[role]
 
 			handler := RequireRole([]string{role}, func(w http.ResponseWriter, r *http.Request) {
-				claims := r.Context().Value(ClaimsContextKey).(*LabClaims)
+				claims := r.Context().Value(ClaimsContextKey).(*PegasusClaims)
 				if claims.Role != role {
 					t.Errorf("claims.Role = %q, want %q", claims.Role, role)
 				}
@@ -110,7 +110,7 @@ func TestRoleMatrix_CookieAuth(t *testing.T) {
 }
 
 func TestRoleMatrix_WrongCookie_StillWorks(t *testing.T) {
-	// A DRIVER token placed in the admin_jwt cookie should still authenticate
+	// A DRIVER token placed in the pegasus_admin_jwt cookie should still authenticate
 	// because extractTokenFromRequest doesn't verify role-cookie alignment.
 	tok, _ := GenerateTestToken("sneaky-user", "DRIVER")
 	handler := RequireRole([]string{"DRIVER"}, func(w http.ResponseWriter, r *http.Request) {
@@ -118,12 +118,12 @@ func TestRoleMatrix_WrongCookie_StillWorks(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.AddCookie(&http.Cookie{Name: "admin_jwt", Value: tok})
+	req.AddCookie(&http.Cookie{Name: "pegasus_admin_jwt", Value: tok})
 	w := httptest.NewRecorder()
 	handler(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Errorf("DRIVER token in admin_jwt cookie: got %d, want 200", w.Code)
+		t.Errorf("DRIVER token in pegasus_admin_jwt cookie: got %d, want 200", w.Code)
 	}
 }
 
@@ -136,7 +136,7 @@ func TestRoleMatrix_WSQueryParamAuth(t *testing.T) {
 		t.Run(role, func(t *testing.T) {
 			tok, _ := GenerateTestToken("ws-user", role)
 			handler := RequireRole([]string{role}, func(w http.ResponseWriter, r *http.Request) {
-				claims := r.Context().Value(ClaimsContextKey).(*LabClaims)
+				claims := r.Context().Value(ClaimsContextKey).(*PegasusClaims)
 				if claims.Role != role {
 					t.Errorf("WS claims.Role = %q, want %q", claims.Role, role)
 				}
@@ -164,7 +164,7 @@ func TestInternalRole_BypassesAllGroups(t *testing.T) {
 	for _, group := range routeGroups {
 		t.Run(group.Name, func(t *testing.T) {
 			handler := RequireRole(group.Roles, func(w http.ResponseWriter, r *http.Request) {
-				claims := r.Context().Value(ClaimsContextKey).(*LabClaims)
+				claims := r.Context().Value(ClaimsContextKey).(*PegasusClaims)
 				if claims.Role != "INTERNAL" {
 					t.Errorf("expected INTERNAL role, got %q", claims.Role)
 				}
@@ -215,7 +215,7 @@ func TestClaimsInjected_UserIDPreserved(t *testing.T) {
 			userID := "uid-" + role
 			tok, _ := GenerateTestToken(userID, role)
 			handler := RequireRole([]string{role}, func(w http.ResponseWriter, r *http.Request) {
-				claims := r.Context().Value(ClaimsContextKey).(*LabClaims)
+				claims := r.Context().Value(ClaimsContextKey).(*PegasusClaims)
 				if claims.UserID != userID {
 					t.Errorf("UserID = %q, want %q", claims.UserID, userID)
 				}

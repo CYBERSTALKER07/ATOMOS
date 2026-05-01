@@ -1,4 +1,4 @@
-#\!/bin/bash
+#!/bin/bash
 set -e
 FILES=(
   "pegasus/tests/supplier/auth.spec.ts"
@@ -31,10 +31,10 @@ FILES=(
   "pegasus/apps/admin-portal/app/supplier/payment-config/page.tsx"
   "pegasus/apps/admin-portal/app/supplier/country-overrides/page.tsx"
   "pegasus/apps/admin-portal/app/treasury/chargebacks/page.tsx"
-  "pegasus/apps/retailer-app-android/app/src/test/java/com/thelab/retailer/ui/screens/cart/CartUiStateTest.kt"
-  "pegasus/apps/retailer-app-android/app/src/test/java/com/thelab/retailer/ui/screens/cart/CartUiStateComputedTest.kt"
-  "pegasus/apps/retailer-app-android/app/src/test/java/com/thelab/retailer/data/api/RetailerWSMessageTest.kt"
-  "pegasus/apps/retailer-app-android/app/src/main/java/com/thelab/retailer/ui/screens/cart/CartViewModel.kt"
+  "pegasus/apps/retailer-app-android/app/src/test/java/com/pegasus/retailer/ui/screens/cart/CartUiStateTest.kt"
+  "pegasus/apps/retailer-app-android/app/src/test/java/com/pegasus/retailer/ui/screens/cart/CartUiStateComputedTest.kt"
+  "pegasus/apps/retailer-app-android/app/src/test/java/com/pegasus/retailer/data/api/RetailerWSMessageTest.kt"
+  "pegasus/apps/retailer-app-android/app/src/main/java/com/pegasus/retailer/ui/screens/cart/CartViewModel.kt"
   "pegasus/apps/retailer-app-ios/retailerapp/reatilerappTests/RetailerServiceTests.swift"
 )
 

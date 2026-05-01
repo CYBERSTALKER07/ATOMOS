@@ -2,7 +2,7 @@ package com.pegasus.retailer.ui.screens.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.api.PegasusApi
 import com.pegasus.retailer.data.local.TokenManager
 import com.pegasus.retailer.data.model.DemandForecast
 import com.pegasus.retailer.data.model.Order
@@ -25,7 +25,7 @@ data class DashboardUiState(
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val api: LabApi,
+    private val api: PegasusApi,
     private val tokenManager: TokenManager,
 ) : ViewModel() {
 

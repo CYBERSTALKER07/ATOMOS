@@ -20,7 +20,7 @@ function isTokenExpired(token: string): boolean {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get('warehouse_jwt')?.value;
+  const token = request.cookies.get('pegasus_warehouse_jwt')?.value;
   const hasValidToken = !!token && !isTokenExpired(token);
 
   if (pathname.startsWith('/auth/')) {
@@ -33,7 +33,7 @@ export function middleware(request: NextRequest) {
   if (!hasValidToken) {
     const res = NextResponse.redirect(new URL('/auth/login', request.url));
     if (token && isTokenExpired(token)) {
-      res.cookies.delete('warehouse_jwt');
+      res.cookies.delete('pegasus_warehouse_jwt');
     }
     return res;
   }

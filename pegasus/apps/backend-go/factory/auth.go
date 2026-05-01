@@ -98,7 +98,7 @@ func HandleFactoryLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		// Mint JWT with FACTORY role + factory scope
-		claims := &auth.LabClaims{
+		claims := &auth.PegasusClaims{
 			UserID:      staffID,
 			Role:        "FACTORY",
 			FactoryID:   factoryID,
@@ -138,7 +138,7 @@ func HandleFactoryRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

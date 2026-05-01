@@ -27,7 +27,7 @@ func HandleListPredictions(client *spanner.Client) http.HandlerFunc {
 		retailerID := r.URL.Query().Get("retailer_id")
 		// Auto-fill from JWT claims when query param is missing (mobile clients)
 		if retailerID == "" {
-			if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims); ok && claims.Role == "RETAILER" {
+			if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims); ok && claims.Role == "RETAILER" {
 				retailerID = claims.UserID
 			}
 		}

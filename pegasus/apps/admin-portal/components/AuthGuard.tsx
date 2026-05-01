@@ -48,7 +48,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         const storedToken = await getStoredToken();
         if (storedToken) {
           // Write to cookie so the rest of the app (apiFetch, etc.) picks it up
-          document.cookie = `admin_jwt=${encodeURIComponent(storedToken)}; path=/; max-age=86400; SameSite=Lax`;
+          document.cookie = `pegasus_admin_jwt=${encodeURIComponent(storedToken)}; path=/; max-age=86400; SameSite=Lax`;
           token = storedToken;
         }
       }
@@ -67,8 +67,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       if (!isAuthRoute && !hasValidToken) {
         // Not authenticated — clear stale cookies and redirect
         if (token && isTokenExpired(token)) {
-          document.cookie = "admin_jwt=; Max-Age=0; path=/";
-          document.cookie = "supplier_jwt=; Max-Age=0; path=/";
+          document.cookie = "pegasus_admin_jwt=; Max-Age=0; path=/";
+          document.cookie = "pegasus_supplier_jwt=; Max-Age=0; path=/";
         }
         router.replace("/auth/login");
         return;

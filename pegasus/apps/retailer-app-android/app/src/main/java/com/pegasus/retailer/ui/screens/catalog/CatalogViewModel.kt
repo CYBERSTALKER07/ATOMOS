@@ -2,7 +2,7 @@ package com.pegasus.retailer.ui.screens.catalog
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasus.retailer.data.api.LabApi
+import com.pegasus.retailer.data.api.PegasusApi
 import com.pegasus.retailer.data.model.Product
 import com.pegasus.retailer.data.model.ProductCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,7 +25,7 @@ data class CatalogUiState(
 
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
-    private val api: LabApi,
+    private val api: PegasusApi,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CatalogUiState())

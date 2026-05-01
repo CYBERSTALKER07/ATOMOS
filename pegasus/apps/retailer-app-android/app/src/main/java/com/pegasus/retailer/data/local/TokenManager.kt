@@ -17,7 +17,7 @@ class TokenManager @Inject constructor(@ApplicationContext context: Context) {
             .build()
         EncryptedSharedPreferences.create(
             context,
-            "lab_auth_prefs",
+            "pegasus_auth_prefs",
             masterKey,
             EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
             EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,

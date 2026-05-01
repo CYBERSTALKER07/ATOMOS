@@ -28,7 +28,7 @@ import (
 )
 
 // ServiceName is the fully-qualified gRPC service name.
-const ServiceName = "lab.optimizer.v1.OptimizerService"
+const ServiceName = "pegasus.optimizer.v1.OptimizerService"
 
 // MethodSolve is the unary method path used by the client stub.
 const MethodSolve = "/" + ServiceName + "/Solve"

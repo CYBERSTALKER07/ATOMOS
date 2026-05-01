@@ -36,7 +36,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       if (!token && isTauri()) {
         const storedToken = await getStoredToken();
         if (storedToken) {
-          document.cookie = `factory_jwt=${encodeURIComponent(storedToken)}; path=/; max-age=86400; SameSite=Lax`;
+          document.cookie = `pegasus_factory_jwt=${encodeURIComponent(storedToken)}; path=/; max-age=86400; SameSite=Lax`;
           token = storedToken;
         }
       }
@@ -53,7 +53,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
       if (!isAuthRoute && !hasValidToken) {
         if (token && isTokenExpired(token)) {
-          document.cookie = "factory_jwt=; Max-Age=0; path=/";
+          document.cookie = "pegasus_factory_jwt=; Max-Age=0; path=/";
         }
         router.replace("/auth/login");
         return;

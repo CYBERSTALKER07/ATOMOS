@@ -6,8 +6,8 @@ import { SupplierShiftProvider, useSupplierShift } from '@/hooks/useSupplierShif
 import { firebaseSignOut } from '../../lib/firebase';
 
 function clearAuthCookies() {
-  document.cookie = 'admin_jwt=; path=/; max-age=0; SameSite=Lax';
-  document.cookie = 'supplier_jwt=; path=/; max-age=0; SameSite=Lax';
+  document.cookie = 'pegasus_admin_jwt=; path=/; max-age=0; SameSite=Lax';
+  document.cookie = 'pegasus_supplier_jwt=; path=/; max-age=0; SameSite=Lax';
   document.cookie = 'supplier_name=; path=/; max-age=0; SameSite=Lax';
 }
 

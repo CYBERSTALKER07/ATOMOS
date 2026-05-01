@@ -116,7 +116,7 @@ func HandleWarehouseByID(spannerClient *spanner.Client, producer ...*kafkago.Wri
 // ── List Warehouses ───────────────────────────────────────────────────────
 
 func listWarehouses(w http.ResponseWriter, r *http.Request, client *spanner.Client) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -194,7 +194,7 @@ func listWarehouses(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 // ── Get Single Warehouse ──────────────────────────────────────────────────
 
 func getWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Client, warehouseID string) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -253,7 +253,7 @@ func getWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Client
 // ── Create Warehouse ──────────────────────────────────────────────────────
 
 func createWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Client, producer *kafkago.Writer) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -361,7 +361,7 @@ func createWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 // ── Update Warehouse ──────────────────────────────────────────────────────
 
 func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Client, warehouseID string, producer *kafkago.Writer) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -650,7 +650,7 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 // ── Deactivate Warehouse ──────────────────────────────────────────────────
 
 func deactivateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Client, warehouseID string, producer *kafkago.Writer) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -781,7 +781,7 @@ func HandleWarehouseInflightVU(spannerClient *spanner.Client) http.HandlerFunc {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

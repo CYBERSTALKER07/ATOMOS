@@ -1861,7 +1861,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "lab-factory-desktop"
+name = "pegasus-factory-desktop"
 version = "0.1.0"
 dependencies = [
  "env_logger",

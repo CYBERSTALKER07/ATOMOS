@@ -92,7 +92,7 @@ func HandleOrgMemberAction(spannerClient *spanner.Client) http.HandlerFunc {
 // ── Implementations ───────────────────────────────────────────────────────────
 
 func listOrgMembers(w http.ResponseWriter, r *http.Request, client *spanner.Client) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return
@@ -151,7 +151,7 @@ func listOrgMembers(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 }
 
 func inviteOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Client) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return
@@ -331,7 +331,7 @@ func inviteOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 }
 
 func updateOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Client, targetUserID string) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return
@@ -520,7 +520,7 @@ func updateOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 }
 
 func deactivateOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Client, targetUserID string) {
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims.UserID == "" {
 		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		return
@@ -578,7 +578,7 @@ func deactivateOrgMember(w http.ResponseWriter, r *http.Request, client *spanner
 // resolveSupplierID returns the SupplierId for the authenticated user.
 // For SupplierUsers (sub-accounts), UserID != SupplierId — we look it up.
 // For root Suppliers table users, UserID == SupplierId.
-func resolveSupplierID(ctx context.Context, client *spanner.Client, claims *auth.LabClaims) (string, error) {
+func resolveSupplierID(ctx context.Context, client *spanner.Client, claims *auth.PegasusClaims) (string, error) {
 	var sid string
 	_ = client.Single().Query(ctx, spanner.Statement{
 		SQL:    "SELECT SupplierId FROM SupplierUsers WHERE UserId = @uid LIMIT 1",
@@ -603,7 +603,7 @@ func resolveSupplierID(ctx context.Context, client *spanner.Client, claims *auth
 
 // ensureRootMirrored auto-creates a SupplierUsers row for the root Suppliers
 // registrant as GLOBAL_ADMIN if they don't already exist in SupplierUsers.
-func ensureRootMirrored(ctx context.Context, client *spanner.Client, claims *auth.LabClaims, supplierID string) {
+func ensureRootMirrored(ctx context.Context, client *spanner.Client, claims *auth.PegasusClaims, supplierID string) {
 	var existingUID string
 	_ = client.Single().Query(ctx, spanner.Statement{
 		SQL:    `SELECT UserId FROM SupplierUsers WHERE SupplierId = @sid AND UserId = @sid LIMIT 1`,

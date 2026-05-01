@@ -36,8 +36,8 @@ function decodeJwt(token: string): Record<string, unknown> | null {
 
 function readToken(): string {
   if (typeof document === 'undefined') return '';
-  const m = document.cookie.match(/(?:^|; )admin_jwt=([^;]*)/) ||
-            document.cookie.match(/(?:^|; )supplier_jwt=([^;]*)/);
+  const m = document.cookie.match(/(?:^|; )pegasus_admin_jwt=([^;]*)/) ||
+            document.cookie.match(/(?:^|; )pegasus_supplier_jwt=([^;]*)/);
   return m ? decodeURIComponent(m[1]) : '';
 }
 

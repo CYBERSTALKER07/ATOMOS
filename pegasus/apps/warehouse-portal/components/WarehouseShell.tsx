@@ -144,7 +144,7 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
             <Link
               href="/auth/login"
               onClick={() => {
-                document.cookie = 'warehouse_jwt=; Max-Age=0; path=/';
+                document.cookie = 'pegasus_warehouse_jwt=; Max-Age=0; path=/';
               }}
               className="flex items-center gap-2 text-sm text-[var(--muted)] hover:text-[var(--danger)]"
             >

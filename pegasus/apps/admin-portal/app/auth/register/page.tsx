@@ -615,7 +615,7 @@ export default function SupplierRegisterPage() {
       }
 
       const data = await res.json();
-      document.cookie = `admin_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `pegasus_admin_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
       document.cookie = `admin_name=${encodeURIComponent(data.name || account.companyName)}; path=/; max-age=86400; SameSite=Lax`;
       // Exchange Firebase custom token for ID token session (graceful — legacy cookie still works)
       if (data.firebase_token) {

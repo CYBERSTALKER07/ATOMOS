@@ -2,14 +2,14 @@
  * Warehouse Auth — Login, Middleware, WebSocket Connection
  *
  * Portal: warehouse-portal (localhost:3003)
- * Cookie: warehouse_jwt
+ * Cookie: pegasus_warehouse_jwt
  * Login: POST /v1/auth/warehouse/login {phone, pin}
  * WebSocket: /ws/warehouse?warehouse_id=X&token=Y
  */
 import { test, expect } from '../fixtures/auth';
 
 test.describe('Warehouse Authentication', () => {
-  test('login with phone/pin sets warehouse_jwt cookie', async ({ page }) => {
+  test('login with phone/pin sets pegasus_warehouse_jwt cookie', async ({ page }) => {
     await page.goto('http://localhost:3003/auth/login');
 
     await page.getByPlaceholder(/phone/i).fill('+998901234569');
@@ -27,7 +27,7 @@ test.describe('Warehouse Authentication', () => {
       expect(body.token).toBeTruthy();
 
       const cookies = await page.context().cookies();
-      const whCookie = cookies.find((c) => c.name === 'warehouse_jwt');
+      const whCookie = cookies.find((c) => c.name === 'pegasus_warehouse_jwt');
       expect(whCookie).toBeTruthy();
     } catch {
       await expect(page.getByPlaceholder(/phone/i)).toBeVisible();

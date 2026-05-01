@@ -41,7 +41,7 @@ func GetWarehouseOps(ctx context.Context) *WarehouseOps {
 // and injects WarehouseOps into context. Rejects if no WarehouseID in JWT.
 func RequireWarehouseOpsScope(spannerClient *spanner.Client, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(ClaimsContextKey).(*LabClaims)
+		claims, ok := r.Context().Value(ClaimsContextKey).(*PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, "Missing authentication context", http.StatusUnauthorized)
 			return

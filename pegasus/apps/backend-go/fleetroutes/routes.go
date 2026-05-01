@@ -254,7 +254,7 @@ func handleActive(d Deps) http.HandlerFunc {
 		}
 		tid := traceID(r)
 		var supplierID string
-		if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims); ok {
+		if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims); ok {
 			supplierID = claims.ResolveSupplierID()
 		}
 		targetRoute := r.URL.Query().Get("route_id")
@@ -305,7 +305,7 @@ func handleDriverDepart(d Deps) http.HandlerFunc {
 			return
 		}
 		tid := traceID(r)
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -344,7 +344,7 @@ func handleReorder(d Deps) http.HandlerFunc {
 			return
 		}
 		tid := traceID(r)
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil {
 			writeJSONError(w, http.StatusUnauthorized, "unauthorized")
 			return
@@ -468,7 +468,7 @@ func handleDriverOrders(d Deps) http.HandlerFunc {
 			return
 		}
 		tid := traceID(r)
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return

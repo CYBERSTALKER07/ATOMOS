@@ -106,7 +106,7 @@ func notificationIDSuffix(recipientID string) string {
 	return recipientID[:8]
 }
 
-func notificationRecipientID(claims *auth.LabClaims) string {
+func notificationRecipientID(claims *auth.PegasusClaims) string {
 	if claims == nil {
 		return ""
 	}
@@ -125,7 +125,7 @@ func HandleNotificationInbox(client *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil || claims.UserID == "" {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
@@ -248,7 +248,7 @@ func HandleMarkNotificationRead(client *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil || claims.UserID == "" {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return

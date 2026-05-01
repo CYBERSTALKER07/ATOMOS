@@ -19,7 +19,7 @@ func HandlePaymentConfigs(client *spanner.Client) http.HandlerFunc {
 	svc := &Service{Spanner: client}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 			return
@@ -127,7 +127,7 @@ func HandleRegisterRecipient(client *spanner.Client, gpDirect *payment.GlobalPay
 			apierrors.MethodNotAllowed(w, r)
 			return
 		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims.UserID == "" {
 			apierrors.Unauthorized(w, r, "missing or invalid authentication token")
 			return

@@ -48,7 +48,7 @@ export default function BillingSetupPage() {
     try {
       const token = document.cookie
         .split('; ')
-        .find(c => c.startsWith('admin_jwt='))
+        .find(c => c.startsWith('pegasus_admin_jwt='))
         ?.split('=')[1];
 
       if (!token) {

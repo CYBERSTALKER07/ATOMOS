@@ -75,7 +75,7 @@ func (s *OrderVettingService) HandleSupplierOrders(w http.ResponseWriter, r *htt
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -242,7 +242,7 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.LabClaims)
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

@@ -10,8 +10,8 @@ import {
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "demo-key",
   authDomain:
-    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "demo-thelab.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "demo-thelab",
+    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "demo-pegasus.firebaseapp.com",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "demo-pegasus",
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();

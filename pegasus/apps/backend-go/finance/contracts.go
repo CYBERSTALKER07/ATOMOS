@@ -5,13 +5,13 @@ const (
 	PlatformAccountID = "ACC-PEGASUS"
 
 	// LegacyPlatformAccountID is retained for historical rows and compatibility reads.
-	LegacyPlatformAccountID = "ACC-THE-LAB"
+	LegacyPlatformAccountID = "ACC-PEGASUS"
 
 	// PlatformCreditEntryType is the canonical platform-fee entry type for new writes.
 	PlatformCreditEntryType = "CREDIT_PLATFORM"
 
 	// LegacyPlatformCreditEntryType is retained for compatibility with existing rows.
-	LegacyPlatformCreditEntryType = "CREDIT_LAB"
+	LegacyPlatformCreditEntryType = "CREDIT_PEGASUS"
 )
 
 // PlatformAccountIDsForQuery returns canonical + legacy platform account IDs.

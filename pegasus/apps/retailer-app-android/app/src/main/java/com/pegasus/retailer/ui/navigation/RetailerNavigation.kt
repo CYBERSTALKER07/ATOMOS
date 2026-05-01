@@ -36,14 +36,14 @@ import com.pegasus.retailer.ui.components.DeliveryPaymentSheet
 import com.pegasus.retailer.ui.components.FloatingActiveOrdersBar
 import com.pegasus.retailer.ui.components.LabBottomBar
 import com.pegasus.retailer.ui.components.LabTab
-import com.pegasus.retailer.ui.components.LabTopBar
+import com.pegasus.retailer.ui.components.PegasusTopBar
 import com.pegasus.retailer.ui.components.OrderDetailSheet
 import com.pegasus.retailer.ui.components.PaymentPhase
 import com.pegasus.retailer.ui.components.QROverlay
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.foundation.layout.Row
-import com.pegasus.retailer.ui.components.LabNavigationRail
+import com.pegasus.retailer.ui.components.PegasusNavigationRail
 import com.pegasus.retailer.ui.components.SidebarMenu
 import com.pegasus.retailer.ui.screens.cart.CartScreen
 import com.pegasus.retailer.ui.screens.cart.CartViewModel
@@ -97,7 +97,7 @@ fun RetailerNavigation(
     Box(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.fillMaxSize()) {
             if (!isCompact) {
-                LabNavigationRail(
+                PegasusNavigationRail(
                     isExpanded = railExpanded,
                     onToggleExpanded = { railExpanded = !railExpanded },
                     currentTab = currentTab,
@@ -156,7 +156,7 @@ fun RetailerNavigation(
             }
             Scaffold(
             topBar = {
-                LabTopBar(
+                PegasusTopBar(
                     onAvatarCash = { sidebarOpen = true },
                     onCartCash = {
                         navController.navigate("CART") {

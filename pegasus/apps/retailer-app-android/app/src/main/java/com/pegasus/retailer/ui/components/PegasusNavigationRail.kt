@@ -26,7 +26,7 @@ import com.pegasus.retailer.ui.theme.MotionTokens
 import com.pegasus.retailer.ui.components.modifiers.bounceCash
 
 @Composable
-fun LabNavigationRail(
+fun PegasusNavigationRail(
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
     currentTab: LabTab,
