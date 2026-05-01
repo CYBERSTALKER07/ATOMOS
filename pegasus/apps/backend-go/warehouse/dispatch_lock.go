@@ -139,6 +139,9 @@ func (d *DispatchLockService) HandleAcquireDispatchLock(w http.ResponseWriter, r
 			if err := outbox.EmitJSON(txn, "DispatchLock", lockID, internalKafka.EventFreezeLockAcquired, internalKafka.TopicFreezeLocks, payload, telemetry.TraceIDFromContext(ctx)); err != nil {
 				return fmt.Errorf("outbox freeze-lock-acquired: %w", err)
 			}
+			if err := outbox.EmitJSON(txn, "DispatchLock", lockID, internalKafka.EventFreezeLockAcquired, internalKafka.TopicMain, payload, telemetry.TraceIDFromContext(ctx)); err != nil {
+				return fmt.Errorf("outbox freeze-lock-acquired-main: %w", err)
+			}
 		}
 		return nil
 	})
@@ -146,14 +149,6 @@ func (d *DispatchLockService) HandleAcquireDispatchLock(w http.ResponseWriter, r
 		log.Printf("[DISPATCH LOCK] insert error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
-	}
-
-	// Post-commit notification fan-out. Outbox above is the durable spine
-	// (AI worker consumes TopicFreezeLocks keyed by LockID); these parallel
-	// EventType-keyed pushes drive the notification dispatcher (supplier admin).
-	internalKafka.EmitNotification(internalKafka.EventDispatchLockAcquired, payload)
-	if req.LockType == "MANUAL_DISPATCH" {
-		internalKafka.EmitNotification(internalKafka.EventFreezeLockAcquired, payload)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -221,7 +216,18 @@ func (d *DispatchLockService) HandleReleaseDispatchLock(w http.ResponseWriter, r
 			LockedBy:    claims.UserID,
 			Timestamp:   time.Now().UTC(),
 		}
-		return outbox.EmitJSON(txn, "DispatchLock", lockID, internalKafka.EventFreezeLockReleased, internalKafka.TopicFreezeLocks, releasedPayload, telemetry.TraceIDFromContext(ctx))
+		if err := outbox.EmitJSON(txn, "DispatchLock", lockID, internalKafka.EventDispatchLockReleased, internalKafka.TopicMain, releasedPayload, telemetry.TraceIDFromContext(ctx)); err != nil {
+			return err
+		}
+		if lockType == "MANUAL_DISPATCH" {
+			if err := outbox.EmitJSON(txn, "DispatchLock", lockID, internalKafka.EventFreezeLockReleased, internalKafka.TopicFreezeLocks, releasedPayload, telemetry.TraceIDFromContext(ctx)); err != nil {
+				return err
+			}
+			if err := outbox.EmitJSON(txn, "DispatchLock", lockID, internalKafka.EventFreezeLockReleased, internalKafka.TopicMain, releasedPayload, telemetry.TraceIDFromContext(ctx)); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 
 	if err != nil {
@@ -235,14 +241,6 @@ func (d *DispatchLockService) HandleReleaseDispatchLock(w http.ResponseWriter, r
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 		return
-	}
-
-	// Post-commit notification fan-out with real supplier/warehouse/lockType
-	// captured inside the transaction (previous implementation passed empty
-	// IDs to emitLockEvent, producing unroutable payloads).
-	internalKafka.EmitNotification(internalKafka.EventDispatchLockReleased, releasedPayload)
-	if releasedPayload.LockType == "MANUAL_DISPATCH" {
-		internalKafka.EmitNotification(internalKafka.EventFreezeLockReleased, releasedPayload)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

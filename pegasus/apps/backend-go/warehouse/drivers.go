@@ -294,7 +294,6 @@ func createOpsDriver(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	kafkaEvents.EmitNotification(kafkaEvents.EventDriverCreated, driverEvent)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

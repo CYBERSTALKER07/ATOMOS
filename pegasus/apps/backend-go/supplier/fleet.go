@@ -413,7 +413,6 @@ func createDriver(w http.ResponseWriter, r *http.Request, spannerClient *spanner
 		return
 	}
 	// Post-commit notification fan-out (EventType-keyed for dispatcher routing).
-	kafkaEvents.EmitNotification(kafkaEvents.EventDriverCreated, driverEvent)
 
 	// Create Firebase Auth user for driver (phone-based, graceful degradation)
 	fbUid, fbErr := auth.CreateFirebaseUser(r.Context(), "", "", req.Name, req.Phone, "DRIVER", map[string]interface{}{

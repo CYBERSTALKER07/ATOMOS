@@ -201,7 +201,7 @@ func (s *OrderService) HandleReportShopClosed(deps *ShopClosedDeps) http.Handler
 
 		// Emit Kafka event
 		if isPowerOutage {
-			go s.PublishEvent(context.Background(), kafkaEvents.EventPowerOutageReported, kafkaEvents.ShopClosedEvent{
+			s.PublishEvent(context.Background(), kafkaEvents.EventPowerOutageReported, kafkaEvents.ShopClosedEvent{
 				OrderID: req.OrderID, DriverID: driverID, RetailerID: retailerID,
 				SupplierID: supplierID, AttemptID: attemptID,
 				GPSLat: gpsLat, GPSLng: gpsLng, Timestamp: time.Now().UTC(),
@@ -214,7 +214,7 @@ func (s *OrderService) HandleReportShopClosed(deps *ShopClosedDeps) http.Handler
 			}
 			writeOrderEvent(context.Background(), s.Client, req.OrderID, driverID, "DRIVER", "POWER_OUTAGE_REPORTED", map[string]string{"attempt_id": attemptID}, gpsLat, gpsLng)
 		} else {
-			go s.PublishEvent(context.Background(), kafkaEvents.EventShopClosed, kafkaEvents.ShopClosedEvent{
+			s.PublishEvent(context.Background(), kafkaEvents.EventShopClosed, kafkaEvents.ShopClosedEvent{
 				OrderID: req.OrderID, DriverID: driverID, RetailerID: retailerID,
 				SupplierID: supplierID, AttemptID: attemptID,
 				GPSLat: gpsLat, GPSLng: gpsLng, Timestamp: time.Now().UTC(),
@@ -302,7 +302,7 @@ func (s *OrderService) startEscalationTimer(ctx context.Context, attemptID, orde
 	}
 
 	// Kafka
-	go s.PublishEvent(context.Background(), kafkaEvents.EventShopClosedEscalated, kafkaEvents.ShopClosedEscalatedEvent{
+	s.PublishEvent(context.Background(), kafkaEvents.EventShopClosedEscalated, kafkaEvents.ShopClosedEscalatedEvent{
 		OrderID: orderID, AttemptID: attemptID, SupplierID: supplierID,
 		EscalatedTo: adminID, Timestamp: time.Now().UTC(),
 	})
@@ -431,7 +431,7 @@ func (s *OrderService) HandleShopClosedResponse(deps *ShopClosedDeps) http.Handl
 		}
 
 		// Kafka
-		go s.PublishEvent(context.Background(), kafkaEvents.EventShopClosedResponse, kafkaEvents.ShopClosedResponseEvent{
+		s.PublishEvent(context.Background(), kafkaEvents.EventShopClosedResponse, kafkaEvents.ShopClosedResponseEvent{
 			OrderID: req.OrderID, RetailerID: retailerID, AttemptID: attemptID,
 			Response: req.Response, Timestamp: time.Now().UTC(),
 		})
@@ -551,7 +551,7 @@ func (s *OrderService) HandleResolveShopClosed(deps *ShopClosedDeps) http.Handle
 		}
 
 		// Kafka
-		go s.PublishEvent(context.Background(), kafkaEvents.EventShopClosedResolved, kafkaEvents.ShopClosedResolvedEvent{
+		s.PublishEvent(context.Background(), kafkaEvents.EventShopClosedResolved, kafkaEvents.ShopClosedResolvedEvent{
 			OrderID: orderID, AttemptID: req.AttemptID,
 			Resolution: resolution, ResolvedBy: adminID, Timestamp: time.Now().UTC(),
 		})
@@ -664,7 +664,7 @@ func (s *OrderService) HandleBypassOffload(deps *ShopClosedDeps) http.HandlerFun
 		}
 
 		// Emit Kafka status change
-		go s.PublishEvent(context.Background(), kafkaEvents.EventOrderStatusChanged, kafkaEvents.OrderStatusChangedEvent{
+		s.PublishEvent(context.Background(), kafkaEvents.EventOrderStatusChanged, kafkaEvents.OrderStatusChangedEvent{
 			OrderID: req.OrderID, SupplierID: supplierID,
 			OldState: "ARRIVED_SHOP_CLOSED", NewState: "AWAITING_PAYMENT",
 			Timestamp: time.Now().UTC(),

@@ -583,7 +583,7 @@ func HandleRequestEarlyComplete(svc *OrderService, deps *EarlyCompleteDeps) http
 				map[string]string{"type": ws.EventEarlyCompleteRequested, "driver_id": claims.UserID})
 		}
 
-		go svc.PublishEvent(context.Background(), kafkaEvents.EventEarlyCompleteRequested, kafkaEvents.EarlyCompleteRequestedEvent{
+		svc.PublishEvent(context.Background(), kafkaEvents.EventEarlyCompleteRequested, kafkaEvents.EarlyCompleteRequestedEvent{
 			DriverID: claims.UserID, SupplierID: supplierID, RouteID: routeID,
 			OrderIDs: orderIDs, Reason: req.Reason, Note: req.Note, Timestamp: time.Now().UTC(),
 		})
@@ -702,7 +702,7 @@ func HandleApproveEarlyComplete(svc *OrderService, deps *EarlyCompleteDeps) http
 			})
 		}
 
-		go svc.PublishEvent(context.Background(), kafkaEvents.EventEarlyCompleteApproved, kafkaEvents.EarlyCompleteRequestedEvent{
+		svc.PublishEvent(context.Background(), kafkaEvents.EventEarlyCompleteApproved, kafkaEvents.EarlyCompleteRequestedEvent{
 			DriverID: req.DriverID, SupplierID: claims.ResolveSupplierID(),
 			OrderIDs: orderIDs, Reason: reason, Note: note, Timestamp: time.Now().UTC(),
 		})
@@ -833,7 +833,7 @@ func HandleCreditDelivery(svc *OrderService, deps *EarlyCompleteDeps) http.Handl
 				map[string]string{"type": ws.EventCreditDeliveryMarked, "order_id": req.OrderID})
 		}
 
-		go svc.PublishEvent(context.Background(), kafkaEvents.EventCreditDeliveryMarked, kafkaEvents.CreditDeliveryEvent{
+		svc.PublishEvent(context.Background(), kafkaEvents.EventCreditDeliveryMarked, kafkaEvents.CreditDeliveryEvent{
 			OrderID: req.OrderID, RetailerID: retailerID, SupplierID: supplierID,
 			DriverID: claims.UserID, Timestamp: time.Now().UTC(),
 		})
@@ -955,7 +955,7 @@ func HandleResolveCreditDelivery(svc *OrderService, deps *EarlyCompleteDeps) htt
 			})
 		}
 
-		go svc.PublishEvent(context.Background(), kafkaEvents.EventCreditDeliveryResolved, kafkaEvents.CreditDeliveryEvent{
+		svc.PublishEvent(context.Background(), kafkaEvents.EventCreditDeliveryResolved, kafkaEvents.CreditDeliveryEvent{
 			OrderID: req.OrderID, Action: req.Action, Timestamp: time.Now().UTC(),
 		})
 		writeOrderEvent(ctx, svc.Client, req.OrderID, claims.UserID, claims.Role, "CREDIT_DELIVERY_RESOLVED",
@@ -1075,7 +1075,7 @@ func HandleMissingItems(svc *OrderService, deps *EarlyCompleteDeps) http.Handler
 			})
 		}
 
-		go svc.PublishEvent(context.Background(), kafkaEvents.EventMissingItemsReported, kafkaEvents.MissingItemsEvent{
+		svc.PublishEvent(context.Background(), kafkaEvents.EventMissingItemsReported, kafkaEvents.MissingItemsEvent{
 			OrderID: req.OrderID, DriverID: claims.UserID, SupplierID: resp.SupplierID,
 			ItemCount: len(req.MissingItems), Timestamp: time.Now().UTC(),
 		})
@@ -1204,7 +1204,7 @@ func HandleSplitPayment(svc *OrderService) http.HandlerFunc {
 			}
 		}
 
-		go svc.PublishEvent(context.Background(), kafkaEvents.EventSplitPaymentCreated, kafkaEvents.SplitPaymentEvent{
+		svc.PublishEvent(context.Background(), kafkaEvents.EventSplitPaymentCreated, kafkaEvents.SplitPaymentEvent{
 			OrderID: req.OrderID, DriverID: claims.UserID,
 			FirstAmount: req.FirstAmount, SecondAmount: req.SecondAmount,
 			Timestamp: time.Now().UTC(),
@@ -1291,7 +1291,7 @@ func HandleConfirmAiOrder(svc *OrderService) http.HandlerFunc {
 			return
 		}
 
-		go svc.PublishEvent(context.Background(), kafkaEvents.EventAiOrderConfirmed, kafkaEvents.AiOrderEvent{
+		svc.PublishEvent(context.Background(), kafkaEvents.EventAiOrderConfirmed, kafkaEvents.AiOrderEvent{
 			OrderID: req.OrderID, RetailerID: claims.UserID, Action: "CONFIRMED", Timestamp: time.Now().UTC(),
 		})
 		writeOrderEvent(ctx, svc.Client, req.OrderID, claims.UserID, "RETAILER", "AI_ORDER_CONFIRMED", nil, 0, 0)
@@ -1367,7 +1367,7 @@ func HandleRejectAiOrder(svc *OrderService) http.HandlerFunc {
 			return
 		}
 
-		go svc.PublishEvent(context.Background(), kafkaEvents.EventAiOrderRejected, kafkaEvents.AiOrderEvent{
+		svc.PublishEvent(context.Background(), kafkaEvents.EventAiOrderRejected, kafkaEvents.AiOrderEvent{
 			OrderID: req.OrderID, RetailerID: claims.UserID, Action: "REJECTED",
 			Reason: req.Reason, Timestamp: time.Now().UTC(),
 		})

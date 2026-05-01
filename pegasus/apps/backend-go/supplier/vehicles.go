@@ -199,7 +199,6 @@ func createVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	kafkaEvents.EmitNotification(kafkaEvents.EventVehicleCreated, vehicleEvent)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
