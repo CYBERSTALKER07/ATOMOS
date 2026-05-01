@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Text, View, TouchableOpacity, Alert, ScrollView, TextInput, Modal, FlatList } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -6,7 +6,9 @@ import * as ScreenOrientation from 'expo-screen-orientation';
 import * as SecureStore from 'expo-secure-store';
 import "./global.css";
 import { useT, isIOS } from './theme';
+import { extractProblemMessage, getPayloadTranslator, resolvePayloadLocale } from './localization';
 import { buildManifest, type LiveOrder, type ManifestItem } from './utils/manifest';
+import { defaultLocale, type Locale } from '../../packages/i18n/locales';
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 // Resolution order for the backend base URL:
@@ -21,6 +23,8 @@ const API_BASE = (process.env.EXPO_PUBLIC_API_URL?.trim() || '') ||
 
 export default function App() {
   const T = useT();
+  const [locale, setLocale] = useState<Locale>(defaultLocale);
+  const tx = useMemo(() => getPayloadTranslator(locale), [locale]);
 
   type BackendNotifItem = {
     notification_id: string;
@@ -132,6 +136,7 @@ export default function App() {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_LEFT);
     (async () => {
       try {
+        setLocale(await resolvePayloadLocale());
         const saved = await SecureStore.getItemAsync('payloader_token');
         const name = await SecureStore.getItemAsync('payloader_name');
         const sid = await SecureStore.getItemAsync('payloader_supplier_id');
@@ -187,8 +192,7 @@ export default function App() {
         body: JSON.stringify({ phone: phoneInput, pin: pinInput }),
       });
       if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || `HTTP ${res.status}`);
+        throw new Error(await extractProblemMessage(res, locale));
       }
       const data = await res.json();
       await SecureStore.setItemAsync('payloader_token', data.token);
@@ -204,7 +208,7 @@ export default function App() {
       setWorkerName(data.name || 'Payloader');
       if (data.supplier_id) setSupplierId(data.supplier_id);
     } catch (e: unknown) {
-      Alert.alert('LOGIN FAILED', e instanceof Error ? e.message : 'Unknown error');
+      Alert.alert(tx('auth.error.login_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
     } finally {
       setIsLoggingIn(false);
     }
@@ -684,7 +688,7 @@ export default function App() {
     return (
       <View style={{ flex: 1, backgroundColor: T.colors.background, alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ color: T.colors.tertiaryLabel, fontSize: 13, letterSpacing: 0.3 }}>
-          {isIOS ? 'Restoring session...' : 'RESTORING SESSION...'}
+          {tx('common.status.restoring_session')}
         </Text>
       </View>
     );
@@ -812,13 +816,13 @@ export default function App() {
     return (
       <View style={{ flex: 1, backgroundColor: T.colors.background, alignItems: 'center', justifyContent: 'center', padding: 48 }}>
         <Text style={{ fontWeight: '700', fontSize: 14, color: T.colors.tertiaryLabel, letterSpacing: 0.5, marginBottom: 32 }}>
-          {isIOS ? 'Pegasus · Payload Terminal' : 'PEGASUS · PAYLOAD TERMINAL'}
+          {tx('auth.login.payload_terminal')}
         </Text>
         <Text style={{ fontSize: 22, fontWeight: '700', color: T.colors.label, letterSpacing: isIOS ? -0.4 : 0.5, marginBottom: 32 }}>
-          {isIOS ? 'Payloader Login' : 'PAYLOADER LOGIN'}
+          {tx('auth.login.payloader_login')}
         </Text>
         <TextInput
-          placeholder={isIOS ? 'Phone number' : 'PHONE NUMBER'}
+          placeholder={tx('common.field.phone')}
           placeholderTextColor={T.colors.tertiaryLabel}
           value={phoneInput}
           onChangeText={setPhoneInput}
@@ -838,7 +842,7 @@ export default function App() {
           }}
         />
         <TextInput
-          placeholder={isIOS ? '6-digit PIN' : '6-DIGIT PIN'}
+          placeholder={tx('auth.login.pin_label')}
           placeholderTextColor={T.colors.tertiaryLabel}
           value={pinInput}
           onChangeText={setPinInput}
@@ -877,7 +881,7 @@ export default function App() {
             letterSpacing: isIOS ? 0.3 : 1,
             color: !isLoggingIn && phoneInput && pinInput.length >= 6 ? '#FFFFFF' : T.colors.tertiaryLabel,
           }}>
-            {isLoggingIn ? (isIOS ? 'Authenticating...' : 'AUTHENTICATING...') : (isIOS ? 'Sign In' : 'SIGN IN')}
+            {isLoggingIn ? tx('auth.login.authenticating') : tx('auth.login.submit')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -891,7 +895,7 @@ export default function App() {
         <View style={{ backgroundColor: T.colors.sidebarBackground, paddingHorizontal: 32, paddingVertical: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View>
             <Text style={{ color: T.colors.sidebarLabel, fontWeight: '700', fontSize: 14, letterSpacing: 0.3 }}>
-              {isIOS ? 'Pegasus · Payload Terminal' : 'PEGASUS · PAYLOAD TERMINAL'}
+              {tx('auth.login.payload_terminal')}
             </Text>
             <Text style={{ color: T.colors.sidebarSecondary, fontFamily: T.typography.mono.fontFamily, fontSize: 11, marginTop: 2 }}>
               {workerName}
@@ -899,7 +903,7 @@ export default function App() {
           </View>
           <TouchableOpacity onPress={handleLogout} style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
             <Text style={{ color: T.colors.sidebarSecondary, fontSize: 12, fontWeight: '600', letterSpacing: 0.3 }}>
-              {isIOS ? 'Sign Out' : 'SIGN OUT'}
+              {tx('common.action.sign_out')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -907,12 +911,12 @@ export default function App() {
         {/* Truck selector */}
         <View className="flex-1 items-center justify-center p-12">
           <Text style={{ fontSize: 13, fontWeight: '500', color: T.colors.tertiaryLabel, marginBottom: 32, letterSpacing: 0.3 }}>
-            {isIOS ? 'Select Target Vehicle' : 'SELECT TARGET VEHICLE'}
+            {tx('payload.vehicle.select_target')}
           </Text>
           <View className="flex-row gap-4">
             {trucks.length === 0 ? (
               <Text style={{ color: T.colors.tertiaryLabel, fontFamily: T.typography.mono.fontFamily, fontSize: 12 }}>
-                {isIOS ? 'No vehicles available' : 'NO VEHICLES AVAILABLE'}
+                {tx('payload.vehicle.none_available')}
               </Text>
             ) : (
               trucks.map(truck => (
