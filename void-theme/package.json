@@ -1,0 +1,22 @@
+{
+  "name": "srds-synthwave-dark",
+  "displayName": "SRD Synthwave Dark",
+  "description": "Synthwave dark theme extracted from V.O.I.D. settings",
+  "version": "1.0.0",
+  "publisher": "somerandev",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Themes"
+  ],
+  "contributes": {
+    "themes": [
+      {
+        "label": "SRD's Synthwave Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/theme.json"
+      }
+    ]
+  }
+}

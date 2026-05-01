@@ -1,0 +1,93 @@
+{
+  "app": {
+    "language": {
+      "en": "English",
+      "ru": "Russian",
+      "uz": "Uzbek"
+    }
+  },
+  "common": {
+    "action": {
+      "back": "Back",
+      "cancel": "Cancel",
+      "close": "Close",
+      "sign_out": "Sign Out",
+      "retry": "Retry",
+      "save": "Save",
+      "sign_in": "Sign In"
+    },
+    "error": {
+      "unknown": "Unknown error"
+    },
+    "field": {
+      "phone": "Phone",
+      "pin": "PIN"
+    },
+    "status": {
+      "restoring_session": "Restoring session..."
+    }
+  },
+  "auth": {
+    "error": {
+      "login_failed": "Login failed",
+      "no_auth_token": "No auth token available. Please log in.",
+      "session_expired": "Session expired"
+    },
+    "login": {
+      "authenticating": "Authenticating...",
+      "driver_terminal": "Driver Terminal",
+      "payloader_login": "Payloader Login",
+      "payload_terminal": "Payload Terminal",
+      "phone_placeholder": "+998 XX XXX XX XX",
+      "pin_label": "6-digit PIN",
+      "submit": "Sign In",
+      "title": "Pegasus"
+    }
+  },
+  "error": {
+    "bad_request": "Bad Request",
+    "conflict": "Conflict",
+    "forbidden": "Insufficient Permissions",
+    "internal": "Internal Server Error",
+    "method_not_allowed": "Method Not Allowed",
+    "not_found": "Resource Not Found",
+    "rate_limited": "Too Many Requests",
+    "service_unavailable": "Service Temporarily Unavailable",
+    "unauthorized": "Authentication Required"
+  },
+  "order": {
+    "error": {
+      "already_processed": "Order already processed",
+      "cancel_denied": "Order cannot be cancelled",
+      "not_found": "Order not found",
+      "state_conflict": "Order state conflict"
+    }
+  },
+  "payment": {
+    "error": {
+      "3ds_failed": "3DS authentication failed",
+      "3ds_required": "3DS authentication required",
+      "card_declined": "Card declined",
+      "card_expired": "Card expired",
+      "card_invalid": "Card details are invalid",
+      "gateway_unavailable": "Payment gateway unavailable",
+      "generic": "Payment failed",
+      "insufficient_funds": "Insufficient funds",
+      "otp_expired": "OTP has expired",
+      "otp_mismatch": "OTP code does not match",
+      "timeout": "Payment timed out"
+    },
+    "status": {
+      "auth_pending": "Authorization pending",
+      "auth_success": "Authorization successful",
+      "settlement_delayed": "Settlement delayed",
+      "settlement_ok": "Settlement completed"
+    }
+  },
+  "payload": {
+    "vehicle": {
+      "none_available": "No vehicles available",
+      "select_target": "Select Target Vehicle"
+    }
+  }
+}

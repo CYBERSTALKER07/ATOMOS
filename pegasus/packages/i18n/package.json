@@ -1,0 +1,15 @@
+{
+  "name": "@pegasus/i18n",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./catalog": "./catalog.ts",
+    "./locales": "./locales.ts",
+    "./browser": "./browser.ts",
+    "./messages": "./messages.ts"
+  }
+}

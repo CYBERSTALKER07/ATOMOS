@@ -1,0 +1,93 @@
+{
+  "app": {
+    "language": {
+      "en": "Ingliz tili",
+      "ru": "Rus tili",
+      "uz": "O'zbek tili"
+    }
+  },
+  "common": {
+    "action": {
+      "back": "Ortga",
+      "cancel": "Bekor qilish",
+      "close": "Yopish",
+      "sign_out": "Chiqish",
+      "retry": "Qayta urinish",
+      "save": "Saqlash",
+      "sign_in": "Kirish"
+    },
+    "error": {
+      "unknown": "Noma'lum xato"
+    },
+    "field": {
+      "phone": "Telefon",
+      "pin": "PIN"
+    },
+    "status": {
+      "restoring_session": "Sessiya tiklanmoqda..."
+    }
+  },
+  "auth": {
+    "error": {
+      "login_failed": "Kirish muvaffaqiyatsiz tugadi",
+      "no_auth_token": "Autentifikatsiya tokeni topilmadi. Iltimos, tizimga kiring.",
+      "session_expired": "Sessiya muddati tugadi"
+    },
+    "login": {
+      "authenticating": "Tekshirilmoqda...",
+      "driver_terminal": "Haydovchi terminali",
+      "payloader_login": "Yukchi kirishi",
+      "payload_terminal": "Yuk terminali",
+      "phone_placeholder": "+998 XX XXX XX XX",
+      "pin_label": "6 xonali PIN",
+      "submit": "Kirish",
+      "title": "Pegasus"
+    }
+  },
+  "error": {
+    "bad_request": "Noto'g'ri so'rov",
+    "conflict": "Ziddiyat",
+    "forbidden": "Ruxsat yetarli emas",
+    "internal": "Ichki server xatosi",
+    "method_not_allowed": "Usul qo'llab-quvvatlanmaydi",
+    "not_found": "Resurs topilmadi",
+    "rate_limited": "So'rovlar juda ko'p",
+    "service_unavailable": "Xizmat vaqtincha ishlamayapti",
+    "unauthorized": "Autentifikatsiya talab qilinadi"
+  },
+  "order": {
+    "error": {
+      "already_processed": "Buyurtma allaqachon qayta ishlangan",
+      "cancel_denied": "Buyurtmani bekor qilib bo'lmaydi",
+      "not_found": "Buyurtma topilmadi",
+      "state_conflict": "Buyurtma holati ziddiyati"
+    }
+  },
+  "payment": {
+    "error": {
+      "3ds_failed": "3DS tasdiqlashi muvaffaqiyatsiz tugadi",
+      "3ds_required": "3DS tasdiqlashi talab qilinadi",
+      "card_declined": "Karta rad etildi",
+      "card_expired": "Karta muddati tugagan",
+      "card_invalid": "Karta ma'lumotlari noto'g'ri",
+      "gateway_unavailable": "To'lov shlyuzi mavjud emas",
+      "generic": "To'lov bajarilmadi",
+      "insufficient_funds": "Mablag' yetarli emas",
+      "otp_expired": "OTP muddati tugagan",
+      "otp_mismatch": "OTP kodi mos kelmadi",
+      "timeout": "To'lov vaqti tugadi"
+    },
+    "status": {
+      "auth_pending": "Autorizatsiya kutilmoqda",
+      "auth_success": "Autorizatsiya muvaffaqiyatli",
+      "settlement_delayed": "Hisob-kitob kechikmoqda",
+      "settlement_ok": "Hisob-kitob yakunlandi"
+    }
+  },
+  "payload": {
+    "vehicle": {
+      "none_available": "Mavjud transport yo'q",
+      "select_target": "Maqsadli transportni tanlang"
+    }
+  }
+}

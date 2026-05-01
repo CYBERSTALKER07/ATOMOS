@@ -1,0 +1,93 @@
+{
+  "app": {
+    "language": {
+      "en": "Английский",
+      "ru": "Русский",
+      "uz": "Узбекский"
+    }
+  },
+  "common": {
+    "action": {
+      "back": "Назад",
+      "cancel": "Отмена",
+      "close": "Закрыть",
+      "sign_out": "Выйти",
+      "retry": "Повторить",
+      "save": "Сохранить",
+      "sign_in": "Войти"
+    },
+    "error": {
+      "unknown": "Неизвестная ошибка"
+    },
+    "field": {
+      "phone": "Телефон",
+      "pin": "PIN-код"
+    },
+    "status": {
+      "restoring_session": "Восстановление сессии..."
+    }
+  },
+  "auth": {
+    "error": {
+      "login_failed": "Ошибка входа",
+      "no_auth_token": "Токен авторизации не найден. Выполните вход.",
+      "session_expired": "Сессия истекла"
+    },
+    "login": {
+      "authenticating": "Выполняется вход...",
+      "driver_terminal": "Терминал водителя",
+      "payloader_login": "Вход загрузчика",
+      "payload_terminal": "Терминал загрузки",
+      "phone_placeholder": "+998 XX XXX XX XX",
+      "pin_label": "6-значный PIN-код",
+      "submit": "Войти",
+      "title": "Pegasus"
+    }
+  },
+  "error": {
+    "bad_request": "Некорректный запрос",
+    "conflict": "Конфликт",
+    "forbidden": "Недостаточно прав",
+    "internal": "Внутренняя ошибка сервера",
+    "method_not_allowed": "Метод не поддерживается",
+    "not_found": "Ресурс не найден",
+    "rate_limited": "Слишком много запросов",
+    "service_unavailable": "Сервис временно недоступен",
+    "unauthorized": "Требуется аутентификация"
+  },
+  "order": {
+    "error": {
+      "already_processed": "Заказ уже обработан",
+      "cancel_denied": "Заказ нельзя отменить",
+      "not_found": "Заказ не найден",
+      "state_conflict": "Конфликт состояния заказа"
+    }
+  },
+  "payment": {
+    "error": {
+      "3ds_failed": "Ошибка 3DS-аутентификации",
+      "3ds_required": "Требуется 3DS-аутентификация",
+      "card_declined": "Карта отклонена",
+      "card_expired": "Срок действия карты истек",
+      "card_invalid": "Данные карты неверны",
+      "gateway_unavailable": "Платежный шлюз недоступен",
+      "generic": "Платеж не выполнен",
+      "insufficient_funds": "Недостаточно средств",
+      "otp_expired": "Срок действия OTP истек",
+      "otp_mismatch": "Код OTP не совпадает",
+      "timeout": "Время ожидания платежа истекло"
+    },
+    "status": {
+      "auth_pending": "Ожидается авторизация",
+      "auth_success": "Авторизация успешна",
+      "settlement_delayed": "Зачисление задерживается",
+      "settlement_ok": "Зачисление завершено"
+    }
+  },
+  "payload": {
+    "vehicle": {
+      "none_available": "Нет доступных автомобилей",
+      "select_target": "Выберите целевой автомобиль"
+    }
+  }
+}
