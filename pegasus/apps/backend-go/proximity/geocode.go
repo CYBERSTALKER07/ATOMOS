@@ -17,7 +17,7 @@ import (
 // https://operations.osmfoundation.org/policies/nominatim/
 
 const nominatimURL = "https://nominatim.openstreetmap.org/reverse"
-const nominatimUA = "TheLabIndustries-Leviathan/1.0 (logistics platform)"
+const nominatimUA = "Pegasus-Leviathan/1.0 (logistics platform)"
 
 // GeocodedAddress holds the parsed result of a reverse geocode call.
 type GeocodedAddress struct {

@@ -73,7 +73,7 @@ export default function AdminLoginPage() {
         </div>
         <div>
           <h1 className="md-typescale-title-large" style={{ color: 'var(--foreground)' }}>
-            Lab Hub
+            Pegasus Hub
           </h1>
           <p className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>
             Supplier Operations Portal

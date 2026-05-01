@@ -215,7 +215,7 @@ const DrawerContent = memo(function DrawerContent({
                 L
               </div>
               <h1 className="md-typescale-title-small truncate flex-1 text-foreground">
-                Lab Hub
+                Pegasus Hub
               </h1>
               {!isMobile && (
                 <Button

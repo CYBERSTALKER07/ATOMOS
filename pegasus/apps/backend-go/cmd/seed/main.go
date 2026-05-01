@@ -215,9 +215,9 @@ var demoCategories = []demoCategory{
 var demoSuppliers = []demoSupplier{
 	{
 		id:                   supplierID,
-		name:                 "Lab Beverages Ltd.",
+		name:                 "Pegasus Beverages Ltd.",
 		phone:                supplierPhone,
-		email:                "info@labbeverages.uz",
+		email:                "info@pegasusbeverages.uz",
 		contactPerson:        "Aziz Karimov",
 		companyRegNumber:     "STIR-001-UZ",
 		billingAddress:       "12 Amir Temur St, Tashkent 100000",

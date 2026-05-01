@@ -27,7 +27,7 @@ import (
 )
 
 func main() {
-	log.Println("Initializing Lab Industries Seed Script...")
+	log.Println("Initializing Pegasus Seed Script...")
 
 	// 1. Load config
 	cfg, err := config.LoadConfig()
@@ -80,7 +80,7 @@ func main() {
 			InstanceId: cfg.SpannerInstance,
 			Instance: &instancepb.Instance{
 				Config:      fmt.Sprintf("%s/instanceConfigs/emulator-config", parentName),
-				DisplayName: "Lab Industries Emulator",
+				DisplayName: "Pegasus Emulator",
 				NodeCount:   1,
 			},
 		}

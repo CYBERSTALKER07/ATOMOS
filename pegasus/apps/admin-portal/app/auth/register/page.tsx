@@ -365,7 +365,7 @@ function Step1({
         </div>
       </div>
 
-      <InputField label="Company Name *" type="text" value={data.companyName} onChange={e => onChange('companyName', e.target.value)} placeholder="Lab Beverages Ltd." required autoFocus />
+      <InputField label="Company Name *" type="text" value={data.companyName} onChange={e => onChange('companyName', e.target.value)} placeholder="Pegasus Beverages Ltd." required autoFocus />
       <InputField label="Contact Person *" type="text" value={data.contactPerson} onChange={e => onChange('contactPerson', e.target.value)} placeholder="Aziz Karimov" required />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <InputField label="Email Address *" type="email" value={data.email} onChange={e => onChange('email', e.target.value)} placeholder="info@company.uz" required />
@@ -645,7 +645,7 @@ export default function SupplierRegisterPage() {
           </svg>
         </div>
         <div>
-          <h1 className="md-typescale-title-large" style={{ color: 'var(--foreground)' }}>Lab Hub</h1>
+          <h1 className="md-typescale-title-large" style={{ color: 'var(--foreground)' }}>Pegasus Hub</h1>
           <p className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>Supplier Registration</p>
         </div>
       </div>
