@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@heroui/react';
+import { translateProblemDetail } from '@pegasus/i18n';
+import { useLocale } from '@/hooks/useLocale';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -16,10 +18,26 @@ const gwIcons: Record<string, string> = {
 };
 
 const GLOBAL_PAYNT_GATEWAYS = [
-  { id: 'GLOBAL_PAY', label: 'Global Pay', desc: 'Global Pay checkout process' },
-  { id: 'CASH', label: 'Cash on Delivery', desc: 'Accept physical cash payouts' },
-  { id: 'CARD', label: 'Card Transfer', desc: 'Direct bank card transfer' },
-  { id: 'BANK', label: 'Bank Wire', desc: 'Corporate bank wire transfer' },
+  {
+    id: 'GLOBAL_PAY',
+    labelKey: 'supplier_portal.billing_setup.gateway.global_pay.label',
+    descKey: 'supplier_portal.billing_setup.gateway.global_pay.description',
+  },
+  {
+    id: 'CASH',
+    labelKey: 'supplier_portal.billing_setup.gateway.cash.label',
+    descKey: 'supplier_portal.billing_setup.gateway.cash.description',
+  },
+  {
+    id: 'CARD',
+    labelKey: 'supplier_portal.billing_setup.gateway.card.label',
+    descKey: 'supplier_portal.billing_setup.gateway.card.description',
+  },
+  {
+    id: 'BANK',
+    labelKey: 'supplier_portal.billing_setup.gateway.bank.label',
+    descKey: 'supplier_portal.billing_setup.gateway.bank.description',
+  },
 ];
 
 function InputField({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
@@ -33,6 +51,7 @@ function InputField({ label, ...props }: React.InputHTMLAttributes<HTMLInputElem
 
 export default function BillingSetupPage() {
   const router = useRouter();
+  const { locale, t } = useLocale();
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [bankName, setBankName] = useState('');
@@ -71,10 +90,12 @@ export default function BillingSetupPage() {
       });
 
       if (!res.ok) {
-        const j = await res.json().catch(() => ({ error: 'Setup failed' }));
-        const errorMessage = j.error === 'rate_limit_exceeded' 
-          ? 'Too many requests. Please try again later.' 
-          : (j.error || `Error ${res.status}`);
+        const body = await res.json().catch(() => ({ title: t('supplier_portal.billing_setup.error.setup_failed') }));
+        const errorMessage = body?.error === 'rate_limit_exceeded'
+          ? t('error.rate_limited')
+          : body?.message_key || body?.detail || body?.title
+            ? translateProblemDetail(body, locale)
+            : body?.error || t('supplier_portal.billing_setup.error.http_error', { status: res.status });
         setError(errorMessage);
         setSubmitting(false);
         return;
@@ -85,7 +106,7 @@ export default function BillingSetupPage() {
       // The simplest path: redirect to dashboard — the next login will have the updated flag
       router.push('/supplier/dashboard');
     } catch {
-      setError('Network error \u2014 is the backend running?');
+      setError(t('supplier_portal.billing_setup.error.network'));
       setSubmitting(false);
     }
   };
@@ -108,8 +129,12 @@ export default function BillingSetupPage() {
             </svg>
           </div>
           <div>
-            <h1 className="md-typescale-title-large" style={{ color: 'var(--foreground)' }}>Billing Setup</h1>
-            <p className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>Configure how retailers will pay you</p>
+            <h1 className="md-typescale-title-large" style={{ color: 'var(--foreground)' }}>
+              {t('supplier_portal.billing_setup.title')}
+            </h1>
+            <p className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>
+              {t('supplier_portal.billing_setup.subtitle')}
+            </p>
           </div>
         </div>
 
@@ -123,22 +148,26 @@ export default function BillingSetupPage() {
 
         {/* Bank Details */}
         <div className="space-y-4 mb-8">
-          <h2 className="md-typescale-headline-small" style={{ color: 'var(--foreground)' }}>Bank Details</h2>
+          <h2 className="md-typescale-headline-small" style={{ color: 'var(--foreground)' }}>
+            {t('supplier_portal.billing_setup.bank_details.title')}
+          </h2>
           <p className="md-typescale-body-small" style={{ color: 'var(--muted)' }}>
-            Enter your bank information for receiving global_paynts from fulfilled orders.
+            {t('supplier_portal.billing_setup.bank_details.description')}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <InputField label="Bank Name" type="text" value={bankName} onChange={e => setBankName(e.target.value)} placeholder="Kapitalbank" />
-            <InputField label="Account Number" type="text" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder="20208000900100001010" />
+            <InputField label={t('supplier_portal.billing_setup.bank_details.bank_name')} type="text" value={bankName} onChange={e => setBankName(e.target.value)} placeholder="Kapitalbank" />
+            <InputField label={t('supplier_portal.billing_setup.bank_details.account_number')} type="text" value={accountNumber} onChange={e => setAccountNumber(e.target.value)} placeholder="20208000900100001010" />
           </div>
-          <InputField label="Card Number" type="text" value={cardNumber} onChange={e => setCardNumber(e.target.value)} placeholder="8600 1234 5678 9012" />
+          <InputField label={t('supplier_portal.billing_setup.bank_details.card_number')} type="text" value={cardNumber} onChange={e => setCardNumber(e.target.value)} placeholder="8600 1234 5678 9012" />
         </div>
 
         {/* GlobalPaynt Gateway */}
         <div className="space-y-4 mb-8">
-          <h2 className="md-typescale-headline-small" style={{ color: 'var(--foreground)' }}>GlobalPaynt Gateway *</h2>
+          <h2 className="md-typescale-headline-small" style={{ color: 'var(--foreground)' }}>
+            {t('supplier_portal.billing_setup.gateway.title')}
+          </h2>
           <p className="md-typescale-body-small" style={{ color: 'var(--muted)' }}>
-            Choose how retailers will pay for fulfilled orders. You can change this later in your settings.
+            {t('supplier_portal.billing_setup.gateway.description')}
           </p>
           <div className="space-y-3">
             {GLOBAL_PAYNT_GATEWAYS.map(gw => {
@@ -160,13 +189,17 @@ export default function BillingSetupPage() {
                     <path d={gwIcons[gw.id]} />
                   </svg>
                   <div className="flex-1">
-                    <p className="md-typescale-body-medium font-medium" style={{ color: active ? 'var(--accent-soft-foreground)' : 'var(--foreground)' }}>{gw.label}</p>
-                    <p className="md-typescale-label-small mt-0.5" style={{ color: active ? 'var(--accent-soft-foreground)' : 'var(--muted)', opacity: 0.8 }}>{gw.desc}</p>
+                    <p className="md-typescale-body-medium font-medium" style={{ color: active ? 'var(--accent-soft-foreground)' : 'var(--foreground)' }}>
+                      {t(gw.labelKey)}
+                    </p>
+                    <p className="md-typescale-label-small mt-0.5" style={{ color: active ? 'var(--accent-soft-foreground)' : 'var(--muted)', opacity: 0.8 }}>
+                      {t(gw.descKey)}
+                    </p>
                   </div>
                   {active && (
                     <span className="flex items-center gap-1 md-typescale-label-small font-medium px-2.5 py-1 rounded-full" style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-                      Selected
+                      {t('common.action.selected')}
                     </span>
                   )}
                 </button>
@@ -178,7 +211,7 @@ export default function BillingSetupPage() {
         {/* Actions */}
         <div className="flex gap-3">
           <Button variant="outline" className="px-6" onPress={skip}>
-            Skip for now
+            {t('common.action.skip_for_now')}
           </Button>
           <Button
             variant="primary"
@@ -192,9 +225,9 @@ export default function BillingSetupPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Saving...
+                {t('common.status.saving')}
               </span>
-            ) : 'Save & Continue to Dashboard'}
+            ) : t('supplier_portal.billing_setup.submit')}
           </Button>
         </div>
 

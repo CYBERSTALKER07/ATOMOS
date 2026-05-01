@@ -1,16 +1,24 @@
 'use client';
 
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { useLocale } from '@/hooks/useLocale';
 
 // ─── Theme toggle icon (sun/moon) ──────────────────────────────────────────
-function ThemeToggle({ isDark, onToggle }: { isDark: boolean; onToggle: () => void }) {
+function ThemeToggle({
+  isDark,
+  onToggle,
+  ariaLabel,
+}: {
+  isDark: boolean;
+  onToggle: () => void;
+  ariaLabel: string;
+}) {
   return (
     <button
       onClick={onToggle}
       className="auth-theme-toggle"
-      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-label={ariaLabel}
     >
       {isDark ? (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -33,20 +41,8 @@ function ThemeToggle({ isDark, onToggle }: { isDark: boolean; onToggle: () => vo
   );
 }
 
-const taglines: Record<string, { heading: string; sub: string }> = {
-  '/auth/login': {
-    heading: '',
-    sub: 'Your logistics ecosystem is waiting.',
-  },
-  '/auth/register': {
-    heading: 'Join the\nnetwork.',
-    sub: 'Set up your supplier operations in minutes.',
-  },
-};
-
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const t = taglines[pathname] ?? taglines['/auth/login'];
+  const { t: translate } = useLocale();
   const [mounted, setMounted] = useState(false);
   const [isDark, setIsDark] = useState(true);
   const [splashDone, setSplashDone] = useState(() => {
@@ -116,7 +112,15 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       {/* ── Right: Form Panel ── */}
       <div className="auth-form-panel">
         <div className="flex items-center justify-end pt-4 pr-6 px-6 shrink-0 relative z-10">
-          <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
+          <ThemeToggle
+            isDark={isDark}
+            onToggle={toggleTheme}
+            ariaLabel={
+              isDark
+                ? translate('common.action.switch_to_light_mode')
+                : translate('common.action.switch_to_dark_mode')
+            }
+          />
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
           <div className="flex flex-col items-center py-8 px-6 relative z-10">

@@ -11,10 +11,16 @@
       "back": "Ortga",
       "cancel": "Bekor qilish",
       "close": "Yopish",
+      "hide_password": "Parolni yashirish",
+      "selected": "Tanlandi",
       "sign_out": "Chiqish",
       "retry": "Qayta urinish",
       "save": "Saqlash",
-      "sign_in": "Kirish"
+      "show_password": "Parolni ko'rsatish",
+      "sign_in": "Kirish",
+      "skip_for_now": "Hozircha o'tkazib yuborish",
+      "switch_to_dark_mode": "Qorong'i rejimga o'tish",
+      "switch_to_light_mode": "Yorug' rejimga o'tish"
     },
     "error": {
       "unknown": "Noma'lum xato"
@@ -24,7 +30,8 @@
       "pin": "PIN"
     },
     "status": {
-      "restoring_session": "Sessiya tiklanmoqda..."
+      "restoring_session": "Sessiya tiklanmoqda...",
+      "saving": "Saqlanmoqda..."
     }
   },
   "auth": {
@@ -106,6 +113,552 @@
     "vehicle": {
       "none_available": "Mavjud transport yo'q",
       "select_target": "Maqsadli transportni tanlang"
+    }
+  },
+  "supplier_portal": {
+    "auth": {
+      "login": {
+        "brand_title": "Pegasus Hub",
+        "brand_subtitle": "Supplier operatsiyalar portali",
+        "heading": "Kirish",
+        "subheading": "Portalga kirish uchun hisob ma'lumotlaringizni kiriting",
+        "email_label": "Elektron pochta",
+        "email_placeholder": "admin@void.pegasus.uz",
+        "password_label": "Parol",
+        "password_placeholder": "Parolingizni kiriting",
+        "no_account": "Akkauntingiz yo'qmi?",
+        "create_account": "Akkaunt yaratish",
+        "http_error": "HTTP {status}",
+        "network_error": "Tarmoq xatosi - backend ishlayaptimi?"
+      }
+    },
+    "billing_setup": {
+      "title": "Billing sozlamalari",
+      "subtitle": "Retailerlar sizga qanday to'lashini sozlang",
+      "submit": "Saqlash va dashboardga o'tish",
+      "error": {
+        "http_error": "Xato {status}",
+        "network": "Tarmoq xatosi - backend ishlayaptimi?",
+        "setup_failed": "Sozlash amalga oshmadi"
+      },
+      "bank_details": {
+        "title": "Bank ma'lumotlari",
+        "description": "Bajarilgan buyurtmalar bo'yicha to'lovlarni olish uchun bank ma'lumotlaringizni kiriting.",
+        "bank_name": "Bank nomi",
+        "account_number": "Hisob raqami",
+        "card_number": "Karta raqami"
+      },
+      "gateway": {
+        "title": "GlobalPaynt shlyuzi *",
+        "description": "Bajarilgan buyurtmalar uchun retailerlar qanday to'lashini tanlang. Buni keyin sozlamalarda o'zgartirishingiz mumkin.",
+        "global_pay": {
+          "label": "Global Pay",
+          "description": "Global Pay checkout jarayoni"
+        },
+        "cash": {
+          "label": "Naqd to'lov",
+          "description": "Jismoniy naqd to'lovlarni qabul qilish"
+        },
+        "card": {
+          "label": "Karta o'tkazmasi",
+          "description": "Bank kartasiga to'g'ridan-to'g'ri o'tkazma"
+        },
+        "bank": {
+          "label": "Bank o'tkazmasi",
+          "description": "Korporativ bank o'tkazmasi"
+        }
+      }
+    }
+  },
+  "notification": {
+    "ai_order_confirmed": {
+      "title": "AI buyurtma tasdiqlandi",
+      "body": "Retailer AI tavsiya qilgan {order_id} buyurtmani tasdiqladi."
+    },
+    "ai_order_rejected": {
+      "title": "AI buyurtma rad etildi",
+      "body": "Retailer AI tavsiya qilgan {order_id} buyurtmani rad etdi."
+    },
+    "cancel_approved": {
+      "title": "Buyurtma bekor qilindi",
+      "body": "{order_id} buyurtmasini bekor qilish so'rovingiz tasdiqlandi."
+    },
+    "cancel_requested": {
+      "title": "Bekor qilish so'rovi",
+      "body": "Retailer {order_id} buyurtmasini bekor qilishni so'radi. Ko'rib chiqing va tasdiqlang yoki rad eting."
+    },
+    "cash_collection_required": {
+      "title": "Naqd pul yig'ish talab qilinadi",
+      "body": "{order_id} buyurtmasi bo'yicha {amount_minor} miqdorda naqd pul yig'ilishi kutilmoqda."
+    },
+    "early_complete_approved": {
+      "title": "Muddatidan oldin yakunlash tasdiqlandi",
+      "body": "Supplier qolgan {remaining_count} buyurtma uchun muddatidan oldin yakunlashni tasdiqladi. Uy tuguningizga qayting."
+    },
+    "early_complete_requested": {
+      "title": "Marshrutni muddatidan oldin yakunlash so'rovi",
+      "body": "Haydovchi marshrutni muddatidan oldin yakunlashni so'radi. Sabab: {reason}. Qolgan buyurtmalar soni: {remaining_count}."
+    },
+    "fulfillment_paid": {
+      "title": "Bajarilish to'landi",
+      "body": "{order_id} buyurtmasi to'langan deb belgilandi: {amount_minor}."
+    },
+    "fulfillment_payment_completed": {
+      "driver": {
+        "title": "Retailer to'lovi tasdiqlandi",
+        "body": "{order_id} buyurtmasi uchun to'lov tasdiqlandi. Marshrut bajarilishini davom ettiring."
+      },
+      "retailer": {
+        "title": "To'lov yakunlandi",
+        "body": "{order_id} buyurtmasi uchun to'lov muvaffaqiyatli yakunlandi."
+      },
+      "supplier": {
+        "title": "Bajarilish to'lovi yakunlandi",
+        "body": "{order_id} buyurtmasi to'lovi {amount_minor} miqdorda yakunlandi."
+      }
+    },
+    "negotiation_proposed": {
+      "retailer": {
+        "title": "Yetkazib berish o'zgarishi taklif qilindi",
+        "body": "Sizning {order_id} buyurtmangiz uchun miqdor o'zgarishi taklif qilindi."
+      },
+      "supplier": {
+        "title": "Miqdor bo'yicha kelishuv",
+        "body": "Haydovchi {order_id} buyurtmasi bo'yicha miqdor o'zgarishini taklif qildi. Ko'rib chiqing va tasdiqlang yoki rad eting."
+      }
+    },
+    "negotiation_resolved": {
+      "title": "Kelishuv yakunlandi",
+      "body": "Supplier {order_id} buyurtmangiz bo'yicha miqdor kelishuvini {action}."
+    },
+    "offload_confirmed": {
+      "title": "Tushirish tasdiqlandi",
+      "body": "{order_id} buyurtmasi uchun tushirish tasdiqlandi. Endi to'lov jarayoni faol."
+    },
+    "order_assigned": {
+      "title": "Buyurtma tayinlandi",
+      "body": "{order_id} buyurtmasi {route_id} marshrutiga tayinlandi."
+    },
+    "order_cancelled": {
+      "retailer": {
+        "title": "Buyurtma bekor qilindi",
+        "body": "{order_id} buyurtmasi bekor qilindi."
+      },
+      "supplier": {
+        "title": "Buyurtma bekor qilindi",
+        "body": "{order_id} buyurtmasi bekor qilindi va faol oqimdan olib tashlandi."
+      }
+    },
+    "order_completed": {
+      "title": "Yetkazib berish yakunlandi",
+      "body": "Sizning {order_id} buyurtmangiz muvaffaqiyatli yetkazib berildi."
+    },
+    "order_created": {
+      "retailer": {
+        "title": "Buyurtma berildi",
+        "body": "{order_id} buyurtmasi muvaffaqiyatli berildi."
+      },
+      "supplier": {
+        "title": "Yangi buyurtma yaratildi",
+        "body": "{order_id} buyurtmasi {total_minor} {currency} summaga yaratildi."
+      }
+    },
+    "out_of_stock": {
+      "retailer": {
+        "title": "Mahsulotlar qolmagan",
+        "body": "Buyurtma rasmiylashtirish bloklandi, chunki so'ralgan barcha mahsulotlar {warehouse_id} omborida qolmagan."
+      },
+      "supplier": {
+        "title": "Mahsulot tugashi bo'yicha ogohlantirish",
+        "body": "Retailer buyurtmasini rasmiylashtirish bloklandi, chunki so'ralgan barcha mahsulotlar {warehouse_id} omborida qolmagan."
+      }
+    },
+    "payment_bypass_completed": {
+      "retailer": {
+        "title": "To'lov yakunlandi",
+        "body": "{order_id} buyurtmasi uchun to'lov bypass tasdiqlovi orqali yakunlandi."
+      },
+      "supplier": {
+        "title": "Bypass to'lovi yakunlandi",
+        "body": "{order_id} buyurtmasi bypass to'lov tasdig'i bilan yakunlandi."
+      }
+    },
+    "payment_bypass_issued": {
+      "title": "To'lov bypassi berildi",
+      "body": "Supplier {order_id} buyurtmasi uchun to'lov bypass tokenini berdi."
+    },
+    "payment_failed": {
+      "title": "To'lov amalga oshmadi",
+      "body": "{order_id} buyurtmasi uchun {gateway} orqali to'lov amalga oshmadi: {reason}. Qayta urinib ko'ring."
+    },
+    "payment_settled": {
+      "title": "To'lov olindi",
+      "body": "{order_id} buyurtmasi uchun {amount_minor} to'lov {gateway} orqali olindi.",
+      "driver": {
+        "title": "To'lov olindi",
+        "body": "Sizning yetkazib berishingiz bo'yicha to'lov tasdiqlandi. Buyurtmani yakunlashingiz mumkin."
+      }
+    },
+    "preorder_auto_accepted": {
+      "title": "Oldindan buyurtma avtomatik qabul qilindi",
+      "body": "Sizning rejalashtirilgan {order_id} buyurtmangiz qabul qilindi va {delivery_date} sanasiga yetkazib berish uchun tayyorlanmoqda."
+    },
+    "preorder_confirmed": {
+      "title": "Oldindan buyurtma tasdiqlandi",
+      "body": "Siz rejalashtirilgan {order_id} buyurtmani tasdiqladingiz. Yetkazib berish sanasi yaqinlashganda u avtomatik qabul qilinadi."
+    },
+    "preorder_edited": {
+      "title": "Oldindan buyurtma yangilandi",
+      "body": "Sizning rejalashtirilgan {order_id} buyurtmangiz yangilandi."
+    },
+    "retailer_registered": {
+      "title": "Pegasus'ga xush kelibsiz",
+      "body": "{shop_name} akkaunti ro'yxatdan o'tdi. Endi buyurtma berishingiz mumkin."
+    },
+    "route_created": {
+      "driver": {
+        "title": "Yangi marshrut tayinlandi",
+        "body": "{route_id} marshruti tayyor, rejalashtirilgan to'xtashlar soni: {stop_count}."
+      },
+      "supplier": {
+        "title": "Marshrut yaratildi",
+        "body": "{route_id} marshruti yaratildi, to'xtashlar soni: {stop_count}."
+      }
+    },
+    "route_finalized": {
+      "title": "Marshrut yakuniy tasdiqlandi",
+      "body": "{manifest_id} manifesti marshruti yakuniy tasdiqlandi, to'xtashlar soni: {stop_count}."
+    },
+    "shop_closed_reported": {
+      "title": "Yopiq do'kon haqida xabar berildi",
+      "body": "Haydovchi {order_id} buyurtmasi bo'yicha do'kon yopiq ekanini bildirdi. {attempt_id} urinish bo'yicha keyingi chora talab qilinadi."
+    },
+    "shop_closed_resolved": {
+      "driver": {
+        "title": "Yopiq do'kon holati hal qilindi",
+        "body": "{order_id} buyurtmasi bo'yicha yopiq do'kon holati {resolution} sifatida hal qilindi."
+      },
+      "retailer": {
+        "title": "Yopiq do'kon holati hal qilindi",
+        "body": "{order_id} buyurtmasi bo'yicha yopiq do'kon holati {resolution} sifatida hal qilindi."
+      }
+    },
+    "shop_closed_response": {
+      "title": "Retailer javob berdi",
+      "body": "{order_id} buyurtmasi bo'yicha retailer javobi: {response}."
+    },
+    "sms_quick_complete": {
+      "retailer": {
+        "title": "Yetkazib berish yakunlandi",
+        "body": "{order_id} buyurtmasi SMS zaxira tasdig'i orqali yakunlandi."
+      },
+      "supplier": {
+        "title": "SMS orqali yakunlash",
+        "body": "Haydovchi {order_id} buyurtmasini SMS tezkor zaxira yakunlashi orqali yakunladi."
+      }
+    },
+    "stock_backordered": {
+      "retailer": {
+        "title": "Backorder yaratildi",
+        "body": "{backorder_id} backorderi {total_minor} {currency} summaga yaratildi."
+      },
+      "supplier": {
+        "title": "Backorder qo'shildi",
+        "body": "{backorder_id} backorderi yetishmovchilikni qayta ishlash natijasida yaratildi."
+      }
+    },
+    "credit_delivery_marked": {
+      "title": "Kreditga yetkazib berish",
+      "body": "{order_id} buyurtmasi kreditga yetkazildi va supplier ko'rib chiqishini kutmoqda."
+    },
+    "credit_delivery_resolved": {
+      "driver": {
+        "title": "Kreditga yetkazib berish hal qilindi",
+        "body": "{order_id} buyurtmasi bo'yicha kreditga yetkazib berish supplier tomonidan {action} qilindi."
+      },
+      "retailer": {
+        "title": "Kreditga yetkazib berish yangilanishi",
+        "body": "{order_id} buyurtmasi bo'yicha kreditga yetkazib berish supplier tomonidan {action} qilindi."
+      }
+    },
+    "dispatch_lock_acquired": {
+      "title": "Dispatch lock yoqildi",
+      "body": "{lock_type} lock {locked_by} tomonidan yoqildi. Lock yechilguncha yangi buyurtmalar navbatga olinadi."
+    },
+    "dispatch_lock_released": {
+      "title": "Dispatch lock yechildi",
+      "body": "{lock_type} lock {locked_by} tomonidan yechildi. Navbatdagi buyurtmalar yana dispatch uchun ochiq."
+    },
+    "driver_arrived": {
+      "title": "Haydovchi yetib keldi",
+      "body": "Haydovchi {order_id} buyurtmasi bo'yicha yetib keldi. Yetkazib berishga tayyorlaning."
+    },
+    "driver_created": {
+      "title": "Haydovchi ro'yxatdan o'tdi",
+      "body": "{driver_name} haydovchisi ({phone}) flotga qo'shildi."
+    },
+    "driver_dispatched": {
+      "title": "Yangi dispatch topshirig'i",
+      "body": "Sizga {route_id} marshruti va {order_count} ta buyurtma tayinlandi. Marshrut tafsilotlarini tekshiring."
+    },
+    "driver_offline": {
+      "title": "Haydovchi oflaynga o'tdi",
+      "body": "{driver_name} haydovchisi oflaynga o'tdi. Sabab: {reason}."
+    },
+    "driver_online": {
+      "title": "Haydovchi yana onlayn",
+      "body": "{driver_name} haydovchisi yana onlayn va dispatch uchun tayyor."
+    },
+    "factory_created": {
+      "title": "Factory yaratildi",
+      "body": "{factory_name} factorysi endi faol ({warehouses_linked} ta ombor ulangan)."
+    },
+    "factory_manifest_created": {
+      "title": "Factory manifest yaratildi",
+      "body": "{route_id} factory manifesti yaratildi, konvoy to'xtashlari soni: {stop_count}."
+    },
+    "factory_sla_breach": {
+      "title": "Factory SLA buzildi",
+      "body": "{transfer_id} transferi {escalation_level} darajasida SLA ni buzdi."
+    },
+    "fleet_dispatched": {
+      "title": "Flot jo'natildi",
+      "body": "{route_id} marshruti {order_count} ta buyurtma bilan tasdiqlandi."
+    },
+    "force_seal_alert": {
+      "title": "FORCE-SEAL chegarasi",
+      "body": "{manifest_id} manifesti bo'yicha 24 soatda override kvotasi {quota} dan {count_24h} ga yetdi. Yuklash zonasini tekshiring."
+    },
+    "freeze_lock_acquired": {
+      "title": "AI freeze-lock yoqildi",
+      "body": "Qo'lda dispatch paytida AI worker {scope} sohasi uchun pauzaga qo'yildi."
+    },
+    "freeze_lock_released": {
+      "title": "AI freeze-lock yechildi",
+      "body": "AI worker {scope} sohasi uchun yana ishga tushdi. Dispatch avtomatik rejimi qayta yoqildi."
+    },
+    "inbound_freight_unannounced": {
+      "title": "E'lon qilinmagan yuk qabul qilindi",
+      "body": "Ombor {transfer_id} transferini {items_count} ta pozitsiya bilan majburiy qabul qildi."
+    },
+    "insight_transfer_created": {
+      "title": "Insight transfer yaratildi",
+      "body": "{insight_id} insighti {warehouse_id} ombori uchun {transfer_id} transferini yaratdi."
+    },
+    "manifest_cancelled": {
+      "title": "Manifest bekor qilindi",
+      "body": "{manifest_id} manifesti bekor qilindi ({reason}). Bo'shatilgan buyurtmalar soni: {released_count}."
+    },
+    "manifest_completed": {
+      "title": "Manifest yakunlandi",
+      "body": "{manifest_id} manifesti yopildi: barcha {stop_count} to'xtashlar yetkazildi."
+    },
+    "manifest_dispatched": {
+      "title": "Manifest jo'natildi",
+      "body": "{manifest_id} manifesti darvozadan chiqdi, to'xtashlar soni: {stop_count}."
+    },
+    "manifest_dlq_escalation": {
+      "title": "Manifest DLQ eskalatsiyasi",
+      "body": "{manifest_id} manifestidagi {order_id} buyurtmasi qayta urinish chegarasidan oshdi va aralashuv talab qiladi."
+    },
+    "manifest_draft_created": {
+      "title": "Manifest qoralamasi yaratildi",
+      "body": "{manifest_id} manifest qoralamasi yaratildi, rejalashtirilgan to'xtashlar soni: {stop_count}."
+    },
+    "manifest_force_sealed": {
+      "title": "Manifest majburan muhrlandi",
+      "body": "{manifest_id} manifesti {sealed_by} tomonidan majburan muhrlandi ({reason})."
+    },
+    "manifest_loading_started": {
+      "title": "Manifest yuklanishi boshlandi",
+      "body": "{manifest_id} manifesti uchun yuklash boshlandi."
+    },
+    "manifest_order_exception": {
+      "title": "Manifest istisnosi",
+      "body": "{manifest_id} manifestidagi {order_id} buyurtmasida {reason} istisnosi yuz berdi."
+    },
+    "manifest_order_injected": {
+      "title": "Buyurtma manifestga qo'shildi",
+      "body": "{order_id} buyurtmasi {manifest_id} manifestiga qo'shildi."
+    },
+    "manifest_rebalanced": {
+      "title": "Manifest qayta muvozanatlandi",
+      "body": "{manifest_id} manifesti qayta muvozanatlandi: {transfer_count} ta transfer ko'chirildi."
+    },
+    "manifest_sealed": {
+      "title": "Manifest muhrlandi",
+      "body": "{manifest_id} manifesti {volume_vu} / {max_volume_vu} VU darajada muhrlandi."
+    },
+    "missing_items_report": {
+      "title": "Yetishmayotgan mahsulotlar hisoboti",
+      "body": "Haydovchi muhrlangandan keyin {order_id} buyurtmasida {item_count} ta yetishmayotgan mahsulot borligini bildirdi."
+    },
+    "payload_ready_to_seal": {
+      "title": "Muhrlashga tayyor buyurtmalar",
+      "body": "{route_id} marshrutida payload muhrlash uchun tayyor {order_count} ta buyurtma bor. Yuklash zonasiga o'ting."
+    },
+    "payload_sealed": {
+      "title": "Payload muhrlandi",
+      "body": "{order_id} buyurtmasi {terminal_id} terminali tomonidan muhrlandi va jo'natishga tayyor."
+    },
+    "transfer_approved": {
+      "title": "Transfer tasdiqlandi",
+      "body": "{transfer_id} transferi {volume_vu} VU uchun tasdiqlandi."
+    },
+    "transfer_received": {
+      "title": "Transfer qabul qilindi",
+      "body": "{transfer_id} transferi qabul qilindi, moslashtirilgan pozitsiyalar soni: {items_count}."
+    },
+    "transfer_state_changed": {
+      "title": "Transfer holati yangilandi",
+      "body": "{transfer_id} transferi {from_state} holatidan {to_state} holatiga o'tdi."
+    },
+    "transfer_unassigned": {
+      "title": "Transfer tayinlovdan olindi",
+      "body": "{transfer_id} transferi {manifest_id} manifestidan chiqarildi."
+    },
+    "warehouse_created": {
+      "title": "Ombor yaratildi",
+      "body": "{warehouse_name} ombori supplier operatsiyalari uchun endi faol."
+    },
+    "warehouse_spatial_updated": {
+      "title": "Ombor qamrovi yangilandi",
+      "body": "{warehouse_id} ombori qamrovi yangilandi: H3 {old_h3_count} dan {new_h3_count} ga."
+    },
+    "warehouse_status_changed": {
+      "disabled": {
+        "title": "Ombor o'chirildi",
+        "body": "{warehouse_id} ombori o'chirildi. Buyurtmalar boshqa yo'nalishga o'tkazilishi mumkin."
+      },
+      "enabled": {
+        "title": "Ombor yoqildi",
+        "body": "{warehouse_id} ombori yana onlayn."
+      },
+      "off_shift": {
+        "title": "Ombor smenadan tashqarida",
+        "body": "{warehouse_id} ombori hozir smenadan tashqarida."
+      },
+      "on_shift": {
+        "title": "Ombor smenada",
+        "body": "{warehouse_id} ombori hozir smenada."
+      }
+    },
+    "manifest_order_reassigned": {
+      "title": "Buyurtma qayta tayinlandi",
+      "body": "{order_id} buyurtmasi yangi manifestga ko'chirildi. ETA o'zgarishi mumkin."
+    },
+    "manifest_settled": {
+      "title": "To'lov yakuniy hisoblandi",
+      "body": "{manifest_id} manifesti bo'yicha hisob-kitob yakunlandi. Supplier to'lovi: {supplier_payout_minor} {currency}."
+    },
+    "network_mode_changed": {
+      "title": "Tarmoq rejimi o'zgardi",
+      "body": "Optimizatsiya rejimi {old_mode} dan {new_mode} ga o'zgardi."
+    },
+    "order_amended": {
+      "title": "Buyurtma o'zgartirildi",
+      "refund_body": "{order_id} buyurtmasi o'zgartirildi. Qaytarilgan mahsulotlar uchun {refunded_minor} qaytarim qo'llandi.",
+      "no_refund_body": "{order_id} buyurtmasi o'zgartirildi. Qaytarim talab qilinmaydi."
+    },
+    "order_cancelled_by_origin": {
+      "title": "Buyurtma bekor qilindi",
+      "body": "{order_id} buyurtmasi manba tomonidan bekor qilindi: {reason}. Kutilayotgan to'lov bekor qilindi."
+    },
+    "order_delayed": {
+      "title": "Buyurtma kechikdi",
+      "body": "{order_id} buyurtmasi kechikdi: {reason}."
+    },
+    "order_dispatched": {
+      "title": "Buyurtma jo'natildi",
+      "body": "Sizning buyurtmangiz {route_id} marshruti orqali jo'natildi. Yo'lda {order_count} ta buyurtma bor."
+    },
+    "order_reassigned_added": {
+      "title": "Marshrutga yangi buyurtma qo'shildi",
+      "body": "{order_id} buyurtmasi sizning marshrutingizga qayta tayinlandi. Marshrut yangilanishlarini tekshiring."
+    },
+    "order_reassigned_removed": {
+      "title": "Buyurtma marshrutdan olindi",
+      "body": "{order_id} buyurtmasi boshqa haydovchiga qayta tayinlandi va marshrutingizdan olib tashlandi."
+    },
+    "order_status_changed": {
+      "title": "Buyurtma holati yangilandi",
+      "body": "{order_id} buyurtmasi holati {old_state} dan {new_state} ga o'zgardi."
+    },
+    "payload_overflow": {
+      "title": "Payload ortib ketdi",
+      "body": "{order_id} buyurtmasi payload ortib ketgani sababli {manifest_id} manifestidan olindi va qayta dispatch navbatiga qo'yildi."
+    },
+    "power_outage_reported": {
+      "title": "Elektr uzilishi haqida xabar berildi",
+      "body": "Haydovchi {order_id} buyurtmasi bo'yicha retailerda ehtimoliy elektr uzilishi borligini bildirdi."
+    },
+    "pull_matrix_completed": {
+      "title": "Pull matrix yakunlandi",
+      "body": "{run_id} ishga tushirilishi natijasida {skus_processed} ta SKU bo'yicha {transfers_generated} ta transfer yaratildi."
+    },
+    "replenishment_transfer_created": {
+      "title": "To'ldirish transferi yaratildi",
+      "body": "{warehouse_id} ombori uchun {transfer_id} transferi yaratildi ({source})."
+    },
+    "retailer_price_override": {
+      "created": {
+        "title": "Maxsus narx qo'llandi",
+        "body": "{sku_id} mahsuloti uchun sizga maxsus narx belgilandi."
+      },
+      "removed": {
+        "title": "Maxsus narx olib tashlandi",
+        "body": "{sku_id} mahsuloti uchun maxsus narx olib tashlandi. Endi standart narx amal qiladi."
+      }
+    },
+    "shop_closed": {
+      "title": "Haydovchi kutmoqda - do'kon yopiq ko'rinadi",
+      "body": "Haydovchi {order_id} buyurtmasi bo'yicha do'kon yopiq ekanini bildirdi. {attempt_id} urinish bo'yicha keyingi chora talab qilinadi."
+    },
+    "shop_closed_escalated": {
+      "title": "Yopiq do'kon eskalatsiyasi",
+      "body": "{order_id} buyurtmasi supplierning zudlik bilan harakati uchun eskalatsiya qilindi."
+    },
+    "shop_closed_escalation": {
+      "title": "Yopiq do'kon eskalatsiyasi",
+      "body": "{order_id} buyurtmasi supplierning zudlik bilan harakati uchun eskalatsiya qilindi."
+    },
+    "shop_closed_resolved": {
+      "title": "Yopiq do'kon holati hal qilindi",
+      "body": "{order_id} buyurtmasi bo'yicha yopiq do'kon holati admin tomonidan {action} tarzida hal qilindi.",
+      "driver": {
+        "title": "Yopiq do'kon holati hal qilindi",
+        "body": "{order_id} buyurtmasi bo'yicha yopiq do'kon holati {resolution} sifatida hal qilindi."
+      },
+      "retailer": {
+        "title": "Yopiq do'kon holati hal qilindi",
+        "body": "{order_id} buyurtmasi bo'yicha yopiq do'kon holati {resolution} sifatida hal qilindi."
+      }
+    },
+    "split_payment_created": {
+      "retailer": {
+        "title": "Bo'lingan to'lov yaratildi",
+        "body": "{order_id} buyurtmasi uchun bo'lingan to'lov yaratildi: birinchi qism {first_amount_minor}, ikkinchi qism {second_amount_minor}."
+      },
+      "supplier": {
+        "title": "Bo'lingan to'lov yaratildi",
+        "body": "{order_id} buyurtmasi uchun bo'lingan to'lov yaratildi: birinchi qism {first_amount_minor}, ikkinchi qism {second_amount_minor}."
+      }
+    },
+    "supply_lane_updated": {
+      "title": "Supply lane yangilandi",
+      "body": "{lane_id} yo'nalishi uchun tranzit bahosi {new_dampened_hours} soatgacha yangilandi."
+    },
+    "supply_request_submitted": {
+      "title": "Ta'minot so'rovi yuborildi",
+      "body": "{request_id} ta'minot so'rovi {state} holatiga o'tdi, ustuvorlik: {priority}."
+    },
+    "vehicle_created": {
+      "title": "Transport ro'yxatdan o'tdi",
+      "body": "{vehicle_label} transporti ({license_plate}) flotga qo'shildi."
+    },
+    "unified_checkout_completed": {
+      "title": "Rasmiylashtirish yakunlandi",
+      "body": "Rasmiylashtirish yakunlandi: buyurtmalar soni {order_count}, jami {total_minor} {currency}."
     }
   }
 }

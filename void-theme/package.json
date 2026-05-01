@@ -17,6 +17,13 @@
         "uiTheme": "vs-dark",
         "path": "./themes/theme.json"
       }
+    ],
+    "iconThemes": [
+      {
+        "id": "srds-synthwave-icons",
+        "label": "SRD Synthwave Icons",
+        "path": "./icons/icon-theme.json"
+      }
     ]
   }
 }

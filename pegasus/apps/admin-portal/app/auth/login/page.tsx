@@ -1,15 +1,17 @@
 'use client';
-'use client';
 
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@heroui/react';
+import { translateProblemDetail } from '@pegasus/i18n';
+import { useLocale } from '@/hooks/useLocale';
 import { exchangeCustomToken } from '../../../lib/firebase';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const { locale, t } = useLocale();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -35,10 +37,12 @@ export default function AdminLoginPage() {
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: 'Login failed' }));
-        const errorMessage = body.error === 'rate_limit_exceeded' 
-          ? 'Too many requests. Please try again later.' 
-          : (body.error || `HTTP ${res.status}`);
+        const body = await res.json().catch(() => ({ title: t('auth.error.login_failed') }));
+        const errorMessage = body?.error === 'rate_limit_exceeded'
+          ? t('error.rate_limited')
+          : body?.message_key || body?.detail || body?.title
+            ? translateProblemDetail(body, locale)
+            : body?.error || t('supplier_portal.auth.login.http_error', { status: res.status });
         setError(errorMessage);
         setSubmitting(false);
         return;
@@ -53,11 +57,11 @@ export default function AdminLoginPage() {
       }
       router.push('/');
     } catch {
-      setError('Network error \u2014 is the backend running?');
+      setError(t('supplier_portal.auth.login.network_error'));
     } finally {
       setSubmitting(false);
     }
-  }, [email, password, router]);
+  }, [email, locale, password, router, t]);
 
   return (
     <div className="w-full">
@@ -73,22 +77,22 @@ export default function AdminLoginPage() {
         </div>
         <div>
           <h1 className="md-typescale-title-large" style={{ color: 'var(--foreground)' }}>
-            Pegasus Hub
+            {t('supplier_portal.auth.login.brand_title')}
           </h1>
           <p className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>
-            Supplier Operations Portal
+            {t('supplier_portal.auth.login.brand_subtitle')}
           </p>
         </div>
       </div>
 
       {/* Login Form */}
-      <div className="py-2">
-        <h2 className="md-typescale-headline-small mb-1" style={{ color: 'var(--foreground)' }}>
-          Sign in
-        </h2>
-        <p className="md-typescale-body-small mb-6" style={{ color: 'var(--muted)' }}>
-          Enter your credentials to access the portal
-        </p>
+        <div className="py-2">
+          <h2 className="md-typescale-headline-small mb-1" style={{ color: 'var(--foreground)' }}>
+            {t('supplier_portal.auth.login.heading')}
+          </h2>
+          <p className="md-typescale-body-small mb-6" style={{ color: 'var(--muted)' }}>
+            {t('supplier_portal.auth.login.subheading')}
+          </p>
 
         <form onSubmit={handleLogin} className="space-y-5">
           {error && (
@@ -106,14 +110,14 @@ export default function AdminLoginPage() {
 
           <div>
             <label htmlFor="email" className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--foreground)' }}>
-              Email
+              {t('supplier_portal.auth.login.email_label')}
             </label>
             <input
               id="email"
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="admin@void.pegasus.uz"
+              placeholder={t('supplier_portal.auth.login.email_placeholder')}
               required
               autoFocus
               className="md-input-outlined w-full"
@@ -122,7 +126,7 @@ export default function AdminLoginPage() {
 
           <div>
             <label htmlFor="password" className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--foreground)' }}>
-              Password
+              {t('supplier_portal.auth.login.password_label')}
             </label>
             <div className="relative">
               <input
@@ -130,7 +134,7 @@ export default function AdminLoginPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder={t('supplier_portal.auth.login.password_placeholder')}
                 required
                 className="md-input-outlined w-full pr-12"
               />
@@ -139,7 +143,7 @@ export default function AdminLoginPage() {
                 onClick={() => setShowPassword(v => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full"
                 style={{ color: 'var(--muted)' }}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? t('common.action.hide_password') : t('common.action.show_password')}
               >
                 {showPassword ? (
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78 3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/></svg>
@@ -163,15 +167,15 @@ export default function AdminLoginPage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Authenticating...
+                {t('auth.login.authenticating')}
               </span>
-            ) : 'Sign In'}
+            ) : t('common.action.sign_in')}
           </Button>
 
           <p className="text-center md-typescale-body-small" style={{ color: 'var(--muted)' }}>
-            Don&apos;t have an account?{' '}
+            {t('supplier_portal.auth.login.no_account')}{' '}
             <a href="/auth/register" className="font-semibold hover:underline" style={{ color: 'var(--accent)' }}>
-              Create account
+              {t('supplier_portal.auth.login.create_account')}
             </a>
           </p>
         </form>

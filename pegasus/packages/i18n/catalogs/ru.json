@@ -11,10 +11,16 @@
       "back": "Назад",
       "cancel": "Отмена",
       "close": "Закрыть",
+      "hide_password": "Скрыть пароль",
+      "selected": "Выбрано",
       "sign_out": "Выйти",
       "retry": "Повторить",
       "save": "Сохранить",
-      "sign_in": "Войти"
+      "show_password": "Показать пароль",
+      "sign_in": "Войти",
+      "skip_for_now": "Пропустить пока",
+      "switch_to_dark_mode": "Переключить на темную тему",
+      "switch_to_light_mode": "Переключить на светлую тему"
     },
     "error": {
       "unknown": "Неизвестная ошибка"
@@ -24,7 +30,8 @@
       "pin": "PIN-код"
     },
     "status": {
-      "restoring_session": "Восстановление сессии..."
+      "restoring_session": "Восстановление сессии...",
+      "saving": "Сохранение..."
     }
   },
   "auth": {
@@ -106,6 +113,552 @@
     "vehicle": {
       "none_available": "Нет доступных автомобилей",
       "select_target": "Выберите целевой автомобиль"
+    }
+  },
+  "supplier_portal": {
+    "auth": {
+      "login": {
+        "brand_title": "Pegasus Hub",
+        "brand_subtitle": "Портал операций поставщика",
+        "heading": "Вход",
+        "subheading": "Введите свои учетные данные для доступа к порталу",
+        "email_label": "Электронная почта",
+        "email_placeholder": "admin@void.pegasus.uz",
+        "password_label": "Пароль",
+        "password_placeholder": "Введите пароль",
+        "no_account": "Нет аккаунта?",
+        "create_account": "Создать аккаунт",
+        "http_error": "HTTP {status}",
+        "network_error": "Сетевая ошибка - запущен ли backend?"
+      }
+    },
+    "billing_setup": {
+      "title": "Настройка биллинга",
+      "subtitle": "Настройте, как ритейлеры будут платить вам",
+      "submit": "Сохранить и перейти в дашборд",
+      "error": {
+        "http_error": "Ошибка {status}",
+        "network": "Сетевая ошибка - запущен ли backend?",
+        "setup_failed": "Не удалось выполнить настройку"
+      },
+      "bank_details": {
+        "title": "Банковские реквизиты",
+        "description": "Введите банковские данные для получения платежей по выполненным заказам.",
+        "bank_name": "Название банка",
+        "account_number": "Номер счета",
+        "card_number": "Номер карты"
+      },
+      "gateway": {
+        "title": "Шлюз GlobalPaynt *",
+        "description": "Выберите, как ритейлеры будут оплачивать выполненные заказы. Позже это можно изменить в настройках.",
+        "global_pay": {
+          "label": "Global Pay",
+          "description": "Процесс оплаты через Global Pay"
+        },
+        "cash": {
+          "label": "Оплата наличными",
+          "description": "Принимать физические наличные выплаты"
+        },
+        "card": {
+          "label": "Перевод на карту",
+          "description": "Прямой перевод на банковскую карту"
+        },
+        "bank": {
+          "label": "Банковский перевод",
+          "description": "Корпоративный банковский перевод"
+        }
+      }
+    }
+  },
+  "notification": {
+    "ai_order_confirmed": {
+      "title": "AI-заказ подтвержден",
+      "body": "Ритейлер подтвердил предложенный ИИ заказ {order_id}."
+    },
+    "ai_order_rejected": {
+      "title": "AI-заказ отклонен",
+      "body": "Ритейлер отклонил предложенный ИИ заказ {order_id}."
+    },
+    "cancel_approved": {
+      "title": "Заказ отменен",
+      "body": "Ваш запрос на отмену заказа {order_id} был одобрен."
+    },
+    "cancel_requested": {
+      "title": "Запрос на отмену",
+      "body": "Ритейлер запросил отмену заказа {order_id}. Проверьте и подтвердите или отклоните."
+    },
+    "cash_collection_required": {
+      "title": "Требуется сбор наличных",
+      "body": "По заказу {order_id} ожидается сбор наличных на сумму {amount_minor}."
+    },
+    "early_complete_approved": {
+      "title": "Досрочное завершение одобрено",
+      "body": "Поставщик одобрил досрочное завершение для {remaining_count} оставшихся заказов. Вернитесь на свой домашний узел."
+    },
+    "early_complete_requested": {
+      "title": "Запрос на досрочное завершение маршрута",
+      "body": "Водитель запросил досрочное завершение маршрута. Причина: {reason}. Осталось заказов: {remaining_count}."
+    },
+    "fulfillment_paid": {
+      "title": "Исполнение оплачено",
+      "body": "Заказ {order_id} отмечен как оплаченный: {amount_minor}."
+    },
+    "fulfillment_payment_completed": {
+      "driver": {
+        "title": "Оплата ритейлера подтверждена",
+        "body": "Оплата заказа {order_id} подтверждена. Продолжайте выполнение маршрута."
+      },
+      "retailer": {
+        "title": "Оплата завершена",
+        "body": "Оплата заказа {order_id} успешно завершена."
+      },
+      "supplier": {
+        "title": "Оплата исполнения завершена",
+        "body": "Оплата заказа {order_id} завершена на сумму {amount_minor}."
+      }
+    },
+    "negotiation_proposed": {
+      "retailer": {
+        "title": "Предложена корректировка поставки",
+        "body": "Для вашего заказа {order_id} предложено изменение количества."
+      },
+      "supplier": {
+        "title": "Переговоры по количеству",
+        "body": "Водитель предложил изменить количество по заказу {order_id}. Проверьте и подтвердите или отклоните."
+      }
+    },
+    "negotiation_resolved": {
+      "title": "Переговоры завершены",
+      "body": "Поставщик {action} ваш запрос на изменение количества по заказу {order_id}."
+    },
+    "offload_confirmed": {
+      "title": "Выгрузка подтверждена",
+      "body": "Выгрузка по заказу {order_id} подтверждена. Платежный процесс теперь активен."
+    },
+    "order_assigned": {
+      "title": "Заказ назначен",
+      "body": "Заказ {order_id} назначен на маршрут {route_id}."
+    },
+    "order_cancelled": {
+      "retailer": {
+        "title": "Заказ отменен",
+        "body": "Заказ {order_id} был отменен."
+      },
+      "supplier": {
+        "title": "Заказ отменен",
+        "body": "Заказ {order_id} был отменен и удален из активного потока."
+      }
+    },
+    "order_completed": {
+      "title": "Доставка завершена",
+      "body": "Ваш заказ {order_id} успешно доставлен."
+    },
+    "order_created": {
+      "retailer": {
+        "title": "Заказ оформлен",
+        "body": "Заказ {order_id} успешно оформлен."
+      },
+      "supplier": {
+        "title": "Создан новый заказ",
+        "body": "Заказ {order_id} создан на сумму {total_minor} {currency}."
+      }
+    },
+    "out_of_stock": {
+      "retailer": {
+        "title": "Товары отсутствуют",
+        "body": "Оформление заказа было заблокировано, потому что все запрошенные товары отсутствуют на складе {warehouse_id}."
+      },
+      "supplier": {
+        "title": "Предупреждение об отсутствии товара",
+        "body": "Оформление заказа ритейлера было заблокировано, потому что все запрошенные товары отсутствуют на складе {warehouse_id}."
+      }
+    },
+    "payment_bypass_completed": {
+      "retailer": {
+        "title": "Оплата завершена",
+        "body": "Оплата заказа {order_id} завершена с использованием bypass-подтверждения."
+      },
+      "supplier": {
+        "title": "Bypass-оплата завершена",
+        "body": "Заказ {order_id} был завершен с подтверждением bypass-оплаты."
+      }
+    },
+    "payment_bypass_issued": {
+      "title": "Выдан bypass для оплаты",
+      "body": "Поставщик выдал bypass-токен для оплаты заказа {order_id}."
+    },
+    "payment_failed": {
+      "title": "Оплата не выполнена",
+      "body": "Оплата заказа {order_id} через {gateway} завершилась ошибкой: {reason}. Попробуйте еще раз."
+    },
+    "payment_settled": {
+      "title": "Оплата получена",
+      "body": "Получена оплата {amount_minor} по заказу {order_id} через {gateway}.",
+      "driver": {
+        "title": "Оплата получена",
+        "body": "Оплата по вашей доставке подтверждена. Можно завершать заказ."
+      }
+    },
+    "preorder_auto_accepted": {
+      "title": "Предзаказ принят автоматически",
+      "body": "Ваш запланированный заказ {order_id} принят и готовится к доставке на {delivery_date}."
+    },
+    "preorder_confirmed": {
+      "title": "Предзаказ подтвержден",
+      "body": "Вы подтвердили запланированный заказ {order_id}. Он будет автоматически принят по мере приближения даты доставки."
+    },
+    "preorder_edited": {
+      "title": "Предзаказ обновлен",
+      "body": "Ваш запланированный заказ {order_id} был обновлен."
+    },
+    "retailer_registered": {
+      "title": "Добро пожаловать в Pegasus",
+      "body": "Аккаунт {shop_name} зарегистрирован. Теперь вы можете оформлять заказы."
+    },
+    "route_created": {
+      "driver": {
+        "title": "Назначен новый маршрут",
+        "body": "Маршрут {route_id} готов, запланировано остановок: {stop_count}."
+      },
+      "supplier": {
+        "title": "Маршрут создан",
+        "body": "Маршрут {route_id} создан, остановок: {stop_count}."
+      }
+    },
+    "route_finalized": {
+      "title": "Маршрут зафиксирован",
+      "body": "Маршрут манифеста {manifest_id} зафиксирован, остановок: {stop_count}."
+    },
+    "shop_closed_reported": {
+      "title": "Сообщено о закрытом магазине",
+      "body": "Водитель сообщил, что магазин закрыт по заказу {order_id}. Попытка {attempt_id} требует дальнейших действий."
+    },
+    "shop_closed_resolved": {
+      "driver": {
+        "title": "Случай с закрытым магазином решен",
+        "body": "Случай с закрытым магазином по заказу {order_id} был решен как {resolution}."
+      },
+      "retailer": {
+        "title": "Случай с закрытым магазином решен",
+        "body": "Случай с закрытым магазином по заказу {order_id} был решен как {resolution}."
+      }
+    },
+    "shop_closed_response": {
+      "title": "Ритейлер ответил",
+      "body": "Ответ ритейлера по заказу {order_id}: {response}."
+    },
+    "sms_quick_complete": {
+      "retailer": {
+        "title": "Доставка завершена",
+        "body": "Заказ {order_id} был завершен через резервное SMS-подтверждение."
+      },
+      "supplier": {
+        "title": "Завершение через SMS",
+        "body": "Водитель завершил заказ {order_id}, используя резервное быстрое завершение по SMS."
+      }
+    },
+    "stock_backordered": {
+      "retailer": {
+        "title": "Создан backorder",
+        "body": "Backorder {backorder_id} создан на сумму {total_minor} {currency}."
+      },
+      "supplier": {
+        "title": "Добавлен backorder",
+        "body": "Backorder {backorder_id} был создан из-за обработки нехватки товара."
+      }
+    },
+    "credit_delivery_marked": {
+      "title": "Доставка в кредит",
+      "body": "Заказ {order_id} был доставлен в кредит и ожидает проверки поставщика."
+    },
+    "credit_delivery_resolved": {
+      "driver": {
+        "title": "Кредитная доставка решена",
+        "body": "Кредитная доставка по заказу {order_id} была {action} поставщиком."
+      },
+      "retailer": {
+        "title": "Обновление по кредитной доставке",
+        "body": "Кредитная доставка по заказу {order_id} была {action} поставщиком."
+      }
+    },
+    "dispatch_lock_acquired": {
+      "title": "Блокировка диспетчеризации включена",
+      "body": "Блокировка {lock_type} активирована пользователем {locked_by}. Новые заказы ставятся в очередь до снятия блокировки."
+    },
+    "dispatch_lock_released": {
+      "title": "Блокировка диспетчеризации снята",
+      "body": "Блокировка {lock_type} снята пользователем {locked_by}. Заказы из очереди снова доступны для диспетчеризации."
+    },
+    "driver_arrived": {
+      "title": "Водитель прибыл",
+      "body": "Водитель прибыл по заказу {order_id}. Подготовьтесь к доставке."
+    },
+    "driver_created": {
+      "title": "Водитель зарегистрирован",
+      "body": "Водитель {driver_name} ({phone}) добавлен в ваш автопарк."
+    },
+    "driver_dispatched": {
+      "title": "Назначено новое задание",
+      "body": "Вам назначен маршрут {route_id} с {order_count} заказами. Проверьте детали маршрута."
+    },
+    "driver_offline": {
+      "title": "Водитель ушел офлайн",
+      "body": "Водитель {driver_name} ушел офлайн. Причина: {reason}."
+    },
+    "driver_online": {
+      "title": "Водитель снова онлайн",
+      "body": "Водитель {driver_name} снова онлайн и доступен для диспетчеризации."
+    },
+    "factory_created": {
+      "title": "Фабрика создана",
+      "body": "Фабрика {factory_name} теперь активна (связанных складов: {warehouses_linked})."
+    },
+    "factory_manifest_created": {
+      "title": "Фабричный манифест создан",
+      "body": "Фабричный манифест {route_id} создан, остановок в конвое: {stop_count}."
+    },
+    "factory_sla_breach": {
+      "title": "Нарушение SLA фабрики",
+      "body": "Трансфер {transfer_id} нарушил SLA на уровне {escalation_level}."
+    },
+    "fleet_dispatched": {
+      "title": "Флот отправлен",
+      "body": "Маршрут {route_id} зафиксирован с {order_count} заказами."
+    },
+    "force_seal_alert": {
+      "title": "Порог FORCE-SEAL",
+      "body": "Квота override достигла {count_24h} из {quota} за 24 часа по манифесту {manifest_id}. Проверьте зону загрузки."
+    },
+    "freeze_lock_acquired": {
+      "title": "AI freeze-lock включен",
+      "body": "AI-воркер поставлен на паузу для области {scope} во время ручной диспетчеризации."
+    },
+    "freeze_lock_released": {
+      "title": "AI freeze-lock снят",
+      "body": "AI-воркер возобновил работу для области {scope}. Автоматизация диспетчеризации снова активна."
+    },
+    "inbound_freight_unannounced": {
+      "title": "Получен незаявленный груз",
+      "body": "Склад принудительно принял трансфер {transfer_id} с {items_count} позициями."
+    },
+    "insight_transfer_created": {
+      "title": "Создан трансфер по инсайту",
+      "body": "Инсайт {insight_id} создал трансфер {transfer_id} для склада {warehouse_id}."
+    },
+    "manifest_cancelled": {
+      "title": "Манифест отменен",
+      "body": "Манифест {manifest_id} был отменен ({reason}). Освобождено заказов: {released_count}."
+    },
+    "manifest_completed": {
+      "title": "Манифест завершен",
+      "body": "Манифест {manifest_id} закрыт: все {stop_count} остановок доставлены."
+    },
+    "manifest_dispatched": {
+      "title": "Манифест отправлен",
+      "body": "Манифест {manifest_id} покинул ворота, остановок: {stop_count}."
+    },
+    "manifest_dlq_escalation": {
+      "title": "Эскалация DLQ манифеста",
+      "body": "Заказ {order_id} в манифесте {manifest_id} превысил порог повторных попыток и требует вмешательства."
+    },
+    "manifest_draft_created": {
+      "title": "Черновик манифеста создан",
+      "body": "Черновик манифеста {manifest_id} создан, запланированных остановок: {stop_count}."
+    },
+    "manifest_force_sealed": {
+      "title": "Манифест принудительно опечатан",
+      "body": "Манифест {manifest_id} был принудительно опечатан пользователем {sealed_by} ({reason})."
+    },
+    "manifest_loading_started": {
+      "title": "Загрузка манифеста началась",
+      "body": "Началась загрузка манифеста {manifest_id}."
+    },
+    "manifest_order_exception": {
+      "title": "Исключение в манифесте",
+      "body": "Исключение {reason} произошло по заказу {order_id} в манифесте {manifest_id}."
+    },
+    "manifest_order_injected": {
+      "title": "Заказ добавлен в манифест",
+      "body": "Заказ {order_id} был добавлен в манифест {manifest_id}."
+    },
+    "manifest_rebalanced": {
+      "title": "Манифест перебалансирован",
+      "body": "Манифест {manifest_id} перебалансирован: перемещено трансферов {transfer_count}."
+    },
+    "manifest_sealed": {
+      "title": "Манифест опечатан",
+      "body": "Манифест {manifest_id} опечатан на {volume_vu} из {max_volume_vu} VU."
+    },
+    "missing_items_report": {
+      "title": "Сообщение о недостающих товарах",
+      "body": "Водитель сообщил о недостающих товарах ({item_count}) в заказе {order_id} после опечатывания."
+    },
+    "payload_ready_to_seal": {
+      "title": "Заказы готовы к опечатыванию",
+      "body": "Маршрут {route_id} содержит {order_count} заказов, готовых к опечатыванию payload. Перейдите в зону загрузки."
+    },
+    "payload_sealed": {
+      "title": "Payload опечатан",
+      "body": "Заказ {order_id} был опечатан терминалом {terminal_id} и готов к отправке."
+    },
+    "transfer_approved": {
+      "title": "Трансфер одобрен",
+      "body": "Трансфер {transfer_id} одобрен на {volume_vu} VU."
+    },
+    "transfer_received": {
+      "title": "Трансфер получен",
+      "body": "Трансфер {transfer_id} получен, сверено позиций: {items_count}."
+    },
+    "transfer_state_changed": {
+      "title": "Статус трансфера обновлен",
+      "body": "Трансфер {transfer_id} перешел из состояния {from_state} в {to_state}."
+    },
+    "transfer_unassigned": {
+      "title": "Трансфер снят с назначения",
+      "body": "Трансфер {transfer_id} был снят с манифеста {manifest_id}."
+    },
+    "warehouse_created": {
+      "title": "Склад создан",
+      "body": "Склад {warehouse_name} теперь активен для операций поставщика."
+    },
+    "warehouse_spatial_updated": {
+      "title": "Покрытие склада обновлено",
+      "body": "Покрытие склада {warehouse_id} обновлено: H3 с {old_h3_count} до {new_h3_count}."
+    },
+    "warehouse_status_changed": {
+      "disabled": {
+        "title": "Склад отключен",
+        "body": "Склад {warehouse_id} был отключен. Заказы могут быть перенаправлены."
+      },
+      "enabled": {
+        "title": "Склад включен",
+        "body": "Склад {warehouse_id} снова онлайн."
+      },
+      "off_shift": {
+        "title": "Склад вне смены",
+        "body": "Склад {warehouse_id} сейчас вне смены."
+      },
+      "on_shift": {
+        "title": "Склад на смене",
+        "body": "Склад {warehouse_id} сейчас на смене."
+      }
+    },
+    "manifest_order_reassigned": {
+      "title": "Заказ переназначен",
+      "body": "Заказ {order_id} был перенесен в новый манифест. ETA может измениться."
+    },
+    "manifest_settled": {
+      "title": "Выплата проведена",
+      "body": "Манифест {manifest_id} закрыт по расчетам. Выплата поставщику: {supplier_payout_minor} {currency}."
+    },
+    "network_mode_changed": {
+      "title": "Режим сети изменен",
+      "body": "Режим оптимизации изменен с {old_mode} на {new_mode}."
+    },
+    "order_amended": {
+      "title": "Заказ изменен",
+      "refund_body": "Заказ {order_id} был изменен. Возврат за возвращенные позиции: {refunded_minor}.",
+      "no_refund_body": "Заказ {order_id} был изменен. Возврат не требуется."
+    },
+    "order_cancelled_by_origin": {
+      "title": "Заказ отменен",
+      "body": "Заказ {order_id} был отменен источником: {reason}. Ожидающий платеж аннулирован."
+    },
+    "order_delayed": {
+      "title": "Заказ задержан",
+      "body": "Заказ {order_id} задержан: {reason}."
+    },
+    "order_dispatched": {
+      "title": "Заказ отправлен",
+      "body": "Ваш заказ отправлен по маршруту {route_id}. В пути {order_count} заказов."
+    },
+    "order_reassigned_added": {
+      "title": "Новый заказ добавлен в маршрут",
+      "body": "Заказ {order_id} был переназначен на ваш маршрут. Проверьте обновления маршрута."
+    },
+    "order_reassigned_removed": {
+      "title": "Заказ удален из маршрута",
+      "body": "Заказ {order_id} был переназначен другому водителю и удален из вашего маршрута."
+    },
+    "order_status_changed": {
+      "title": "Статус заказа обновлен",
+      "body": "Статус заказа {order_id} изменился с {old_state} на {new_state}."
+    },
+    "payload_overflow": {
+      "title": "Переполнение payload",
+      "body": "Заказ {order_id} был удален из манифеста {manifest_id} из-за переполнения payload и поставлен в очередь на перераспределение."
+    },
+    "power_outage_reported": {
+      "title": "Сообщено об отключении электричества",
+      "body": "Водитель сообщил о вероятном отключении электричества у ритейлера по заказу {order_id}."
+    },
+    "pull_matrix_completed": {
+      "title": "Pull matrix завершена",
+      "body": "Прогон {run_id} сгенерировал {transfers_generated} трансферов по {skus_processed} SKU."
+    },
+    "replenishment_transfer_created": {
+      "title": "Создан трансфер пополнения",
+      "body": "Трансфер {transfer_id} создан для склада {warehouse_id} ({source})."
+    },
+    "retailer_price_override": {
+      "created": {
+        "title": "Применена индивидуальная цена",
+        "body": "Для товара {sku_id} установлена индивидуальная цена."
+      },
+      "removed": {
+        "title": "Индивидуальная цена удалена",
+        "body": "Индивидуальная цена для товара {sku_id} удалена. Действует стандартная цена."
+      }
+    },
+    "shop_closed": {
+      "title": "Водитель ожидает - магазин, вероятно, закрыт",
+      "body": "Водитель сообщил, что магазин закрыт по заказу {order_id}. Попытка {attempt_id} требует дальнейших действий."
+    },
+    "shop_closed_escalated": {
+      "title": "Эскалация закрытого магазина",
+      "body": "Заказ {order_id} был эскалирован для немедленных действий поставщика."
+    },
+    "shop_closed_escalation": {
+      "title": "Эскалация закрытого магазина",
+      "body": "Заказ {order_id} был эскалирован для немедленных действий поставщика."
+    },
+    "shop_closed_resolved": {
+      "title": "Случай с закрытым магазином решен",
+      "body": "Случай с закрытым магазином по заказу {order_id} был решен администратором: {action}.",
+      "driver": {
+        "title": "Случай с закрытым магазином решен",
+        "body": "Случай с закрытым магазином по заказу {order_id} был решен как {resolution}."
+      },
+      "retailer": {
+        "title": "Случай с закрытым магазином решен",
+        "body": "Случай с закрытым магазином по заказу {order_id} был решен как {resolution}."
+      }
+    },
+    "split_payment_created": {
+      "retailer": {
+        "title": "Создан разделенный платеж",
+        "body": "Для заказа {order_id} создан разделенный платеж: первая часть {first_amount_minor}, вторая {second_amount_minor}."
+      },
+      "supplier": {
+        "title": "Создан разделенный платеж",
+        "body": "Для заказа {order_id} создан разделенный платеж: первая часть {first_amount_minor}, вторая {second_amount_minor}."
+      }
+    },
+    "supply_lane_updated": {
+      "title": "Supply lane обновлена",
+      "body": "Оценка транзита для линии {lane_id} обновлена до {new_dampened_hours} ч."
+    },
+    "supply_request_submitted": {
+      "title": "Запрос поставки отправлен",
+      "body": "Запрос поставки {request_id} перешел в состояние {state} с приоритетом {priority}."
+    },
+    "vehicle_created": {
+      "title": "Транспорт зарегистрирован",
+      "body": "Транспорт {vehicle_label} ({license_plate}) добавлен в ваш автопарк."
+    },
+    "unified_checkout_completed": {
+      "title": "Оформление завершено",
+      "body": "Оформление завершено: заказов {order_count}, общая сумма {total_minor} {currency}."
     }
   }
 }
