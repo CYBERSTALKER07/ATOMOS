@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
@@ -113,10 +114,10 @@ fun MainTabView(
 
             // M3 NavigationBar
             NavigationBar(
-                modifier = Modifier.height(80.dp),
+                modifier = Modifier.height(88.dp),
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 tonalElevation = 0.dp,
-                windowInsets = WindowInsets(0, 0, 0, 0),
+                windowInsets = NavigationBarDefaults.windowInsets,
             ) {
                 AppTab.entries.forEach { tab ->
                     val selected = tab == selectedTab
@@ -132,7 +133,7 @@ fun MainTabView(
                         label = {
                             Text(
                                 tab.label,
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelMedium,
                             )
                         },
                         colors = NavigationBarItemDefaults.colors(

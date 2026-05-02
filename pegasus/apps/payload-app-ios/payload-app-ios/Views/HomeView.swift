@@ -947,31 +947,81 @@ private struct InjectOrderSheet: View {
     @State private var orderId: String = ""
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("Order ID", text: $orderId)
+        ZStack {
+            TermTheme.bg.ignoresSafeArea()
+            
+            VStack(spacing: 24) {
+                // Tactical Header
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("SYSTEM_INJECTION")
+                            .font(.system(size: 12, weight: .black, design: .monospaced))
+                            .foregroundStyle(TermTheme.secondary)
+                        Text("INJECT_ORDER")
+                            .font(.system(size: 24, weight: .black, design: .monospaced))
+                            .foregroundStyle(TermTheme.accent)
+                    }
+                    Spacer()
+                    Button(action: onCancel) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundStyle(TermTheme.tertiary)
+                    }
+                    .disabled(injecting)
+                }
+                .padding(.horizontal, 4)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("TARGET_ORDER_ID")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(TermTheme.secondary)
+                    
+                    TextField("ORD-XXXXXX", text: $orderId)
+                        .font(.system(size: 20, weight: .black, design: .monospaced))
+                        .padding(16)
+                        .background(TermTheme.card)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(TermTheme.accent.opacity(0.1), lineWidth: 1)
+                        }
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .disabled(injecting)
-                } footer: {
+                    
                     Text("Add an order mid-load. Dispatch will recompute the manifest.")
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundStyle(TermTheme.tertiary)
+                        .padding(.horizontal, 4)
                 }
-            }
-            .navigationTitle("Inject Order")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", action: onCancel).disabled(injecting)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button {
-                        onSubmit(orderId)
-                    } label: {
-                        if injecting { ProgressView() } else { Text("Inject") }
+                .padding(20)
+                .background(TermTheme.card.opacity(0.5))
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .tacticalCard()
+
+                Spacer()
+
+                Button {
+                    onSubmit(orderId)
+                } label: {
+                    HStack {
+                        if injecting {
+                            ProgressView().tint(TermTheme.card)
+                        } else {
+                            Image(systemName: "bolt.fill")
+                            Text("EXECUTE_INJECTION")
+                                .font(.system(size: 16, weight: .black, design: .monospaced))
+                        }
                     }
-                    .disabled(injecting || orderId.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(orderId.trimmingCharacters(in: .whitespaces).isEmpty ? TermTheme.tertiary : TermTheme.accent)
+                    .foregroundStyle(TermTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
+                .disabled(injecting || orderId.trimmingCharacters(in: .whitespaces).isEmpty)
             }
+            .padding(24)
         }
     }
 }
@@ -982,42 +1032,89 @@ private struct ExceptionReasonSheet: View {
     let onCancel: () -> Void
     let onSelect: (String) -> Void
 
-    private let reasons: [(code: String, label: String)] = [
-        ("OVERFLOW", "Overflow — no space"),
-        ("DAMAGED", "Damaged goods"),
-        ("MANUAL", "Manual exception"),
+    private let reasons: [(code: String, label: String, icon: String)] = [
+        ("OVERFLOW", "OVERFLOW - NO CAPACITY", "shippingbox.fill"),
+        ("DAMAGED", "DAMAGED - QUALITY FAIL", "exclamationmark.shield.fill"),
+        ("MANUAL", "MANUAL - OPERATOR VOID", "hand.raised.fill"),
     ]
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    ForEach(reasons, id: \.code) { reason in
-                        Button {
-                            onSelect(reason.code)
-                        } label: {
-                            HStack {
-                                Text(reason.label).foregroundStyle(.primary)
-                                Spacer()
-                                if inFlight {
-                                    ProgressView().controlSize(.small)
-                                }
-                            }
-                        }
-                        .disabled(inFlight)
+        ZStack {
+            TermTheme.bg.ignoresSafeArea()
+            
+            VStack(spacing: 24) {
+                // Header
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("EXCEPTION_REPORT")
+                            .font(.system(size: 12, weight: .black, design: .monospaced))
+                            .foregroundStyle(TermTheme.secondary)
+                        Text("REMOVE_ORD-\(orderId.suffix(6).uppercased())")
+                            .font(.system(size: 20, weight: .black, design: .monospaced))
+                            .foregroundStyle(TermTheme.warn)
                     }
-                } header: {
-                    Text("Reason")
-                } footer: {
+                    Spacer()
+                    Button(action: onCancel) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundStyle(TermTheme.tertiary)
+                    }
+                }
+                .padding(.horizontal, 4)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("SELECT_EXCEPTION_REASON")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(TermTheme.secondary)
+                    
+                    VStack(spacing: 12) {
+                        ForEach(reasons, id: \.code) { reason in
+                            Button {
+                                onSelect(reason.code)
+                            } label: {
+                                HStack(spacing: 16) {
+                                    Image(systemName: reason.icon)
+                                        .font(.system(size: 20))
+                                        .foregroundStyle(TermTheme.warn)
+                                        .frame(width: 44, height: 44)
+                                        .background(TermTheme.warn.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                                    
+                                    Text(reason.label)
+                                        .font(.system(size: 14, weight: .black, design: .monospaced))
+                                        .foregroundStyle(TermTheme.accent)
+                                    
+                                    Spacer()
+                                    
+                                    if inFlight {
+                                        ProgressView().tint(TermTheme.accent)
+                                    } else {
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundStyle(TermTheme.tertiary)
+                                    }
+                                }
+                                .padding(12)
+                                .background(TermTheme.card)
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .tacticalCard()
+                            }
+                            .disabled(inFlight)
+                        }
+                    }
+                    
                     Text("3+ overflow attempts on this manifest will escalate to admin DLQ.")
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundStyle(TermTheme.tertiary)
+                        .padding(.horizontal, 4)
+                        .padding(.top, 8)
                 }
+                
+                Spacer()
             }
-            .navigationTitle("Remove \(String(orderId.prefix(8)))")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", action: onCancel).disabled(inFlight)
-                }
+            .padding(24)
+        }
+    }
+}
             }
         }
     }
