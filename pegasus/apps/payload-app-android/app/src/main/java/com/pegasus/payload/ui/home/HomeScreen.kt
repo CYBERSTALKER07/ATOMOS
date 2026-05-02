@@ -11,8 +11,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -71,7 +73,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pegasus.payload.data.model.LiveOrder
@@ -118,9 +119,8 @@ fun HomeScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("Pegasus Payload Terminal")
-                        Spacer(Modifier.size(12.dp))
                         OnlineDot(online = state.online, queued = state.queuedActions)
                     }
                 },
@@ -237,11 +237,11 @@ private fun OnlineDot(online: Boolean, queued: Int) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             Modifier
-                .size(10.dp)
+                .size(12.dp)
                 .clip(RoundedCornerShape(50))
                 .background(color),
         )
-        Spacer(Modifier.size(6.dp))
+        Spacer(Modifier.size(8.dp))
         Text(
             text = if (online) "Live" else if (queued > 0) "Offline · $queued queued" else "Offline",
             style = MaterialTheme.typography.labelMedium,
@@ -338,11 +338,14 @@ private fun TruckListPane(
         modifier = Modifier.fillMaxSize(),
     ) {
         Column(Modifier.fillMaxSize()) {
-            Text(
-                "Vehicles",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-            )
+            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+                Text("Vehicles", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Assigned loading vehicles",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (error != null) {
                 Text(
@@ -533,7 +536,7 @@ private fun DetailHeader(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(Modifier.fillMaxWidth(0.7f)) {
+        Column(Modifier.weight(1f)) {
             Text(
                 truck.label.ifBlank { truck.licensePlate.ifBlank { truck.id.take(8) } },
                 style = MaterialTheme.typography.headlineSmall,
@@ -548,7 +551,7 @@ private fun DetailHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Spacer(Modifier.fillMaxWidth(0.5f))
+        Spacer(Modifier.width(12.dp))
         if (showInject) {
             IconButton(onClick = onShowInject) {
                 Icon(Icons.Filled.Add, contentDescription = "Inject order")
@@ -742,11 +745,14 @@ private fun OrderChecklist(
                         }
                     }
                     val excLoading = exceptionLoadingOrderId == selected.orderId
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
                         OutlinedButton(
                             onClick = { onShowException(selected.orderId) },
                             enabled = !excLoading,
-                            modifier = Modifier.fillMaxWidth(0.5f).height(44.dp),
+                            modifier = Modifier.weight(1f).height(48.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         ) {
                             if (excLoading) {
@@ -759,7 +765,7 @@ private fun OrderChecklist(
                         }
                         OutlinedButton(
                             onClick = { onShowReDispatch(selected.orderId) },
-                            modifier = Modifier.fillMaxWidth().height(44.dp),
+                            modifier = Modifier.weight(1f).height(48.dp),
                         ) {
                             Icon(Icons.Filled.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(6.dp))
@@ -839,16 +845,17 @@ private fun ItemRow(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(10.dp))
             .clickable(enabled = enabled, onClick = onToggle)
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
     ) {
         Checkbox(checked = checked, onCheckedChange = { if (enabled) onToggle() }, enabled = enabled)
-        Spacer(Modifier.size(4.dp))
+        Spacer(Modifier.size(8.dp))
         Text(
             label,
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.fillMaxWidth(0.7f),
+            modifier = Modifier.weight(1f),
         )
         Text(
             "x$quantity",
@@ -898,7 +905,9 @@ private fun PostSealCountdownCard(
                 modifier = Modifier.fillMaxWidth().height(4.dp),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onDismiss) { Text("Continue", fontSize = 14.sp) }
+                TextButton(onClick = onDismiss) {
+                    Text("Continue", style = MaterialTheme.typography.labelLarge)
+                }
             }
         }
     }

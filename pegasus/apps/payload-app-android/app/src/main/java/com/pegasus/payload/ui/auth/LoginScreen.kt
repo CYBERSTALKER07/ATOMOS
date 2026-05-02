@@ -36,67 +36,75 @@ fun LoginScreen(viewModel: LoginViewModel = hiltViewModel()) {
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(
+            Surface(
                 modifier = Modifier
-                    .widthIn(max = 480.dp)
+                    .widthIn(max = 560.dp)
                     .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
             ) {
-                Text(
-                    text = "Pegasus Payload Terminal",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                )
-                Text(
-                    text = "Sign in with your warehouse PIN",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = state.phone,
-                    onValueChange = viewModel::onPhoneChange,
-                    label = { Text("Phone") },
-                    singleLine = true,
-                    enabled = !state.loading,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                OutlinedTextField(
-                    value = state.pin,
-                    onValueChange = viewModel::onPinChange,
-                    label = { Text("6-digit PIN") },
-                    singleLine = true,
-                    enabled = !state.loading,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                state.error?.let { msg ->
-                    Text(
-                        text = msg,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-
-                Button(
-                    onClick = viewModel::submit,
-                    enabled = !state.loading,
-                    modifier = Modifier.fillMaxWidth(),
+                Column(
+                    modifier = Modifier.padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
-                    if (state.loading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.height(20.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp,
+                    Text(
+                        text = "Pegasus Payload Terminal",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Text(
+                        text = "Sign in with your warehouse phone and PIN to continue loading operations.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(4.dp))
+
+                    OutlinedTextField(
+                        value = state.phone,
+                        onValueChange = viewModel::onPhoneChange,
+                        label = { Text("Phone") },
+                        singleLine = true,
+                        enabled = !state.loading,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    OutlinedTextField(
+                        value = state.pin,
+                        onValueChange = viewModel::onPinChange,
+                        label = { Text("6-digit PIN") },
+                        singleLine = true,
+                        enabled = !state.loading,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    state.error?.let { msg ->
+                        Text(
+                            text = msg,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
                         )
-                    } else {
-                        Text("Sign In")
+                    }
+
+                    Button(
+                        onClick = viewModel::submit,
+                        enabled = !state.loading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                    ) {
+                        if (state.loading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.height(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Text("Sign In", style = MaterialTheme.typography.titleMedium)
+                        }
                     }
                 }
             }
