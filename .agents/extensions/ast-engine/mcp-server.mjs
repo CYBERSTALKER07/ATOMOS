@@ -11,6 +11,8 @@ const execFileAsync = promisify(execFile);
 const SERVER_NAME = "void-ast-engine";
 const SERVER_VERSION = "0.1.0";
 const DEFAULT_PROTOCOL_VERSION = "2024-11-05";
+const TRANSPORT_HEADERS = "headers";
+const TRANSPORT_NDJSON = "ndjson";
 
 function workspaceRoot() {
   return process.cwd();
@@ -145,6 +147,11 @@ const TOOL_DEFS = [
 
 function writeMessage(message) {
   const encoded = JSON.stringify(message);
+  if (activeTransport === TRANSPORT_NDJSON) {
+    process.stdout.write(`${encoded}\n`);
+    return;
+  }
+
   const contentLength = Buffer.byteLength(encoded, "utf8");
   process.stdout.write(`Content-Length: ${contentLength}\r\n\r\n${encoded}`);
 }
@@ -320,6 +327,7 @@ async function handleRpcMessage(message) {
 }
 
 let inputBuffer = Buffer.alloc(0);
+let activeTransport = null;
 
 function findHeaderBoundary(buffer) {
   const crlfEnd = buffer.indexOf("\r\n\r\n");
@@ -346,54 +354,101 @@ function findHeaderBoundary(buffer) {
 
 function consumeInputBuffer() {
   while (true) {
-    const boundary = findHeaderBoundary(inputBuffer);
-    if (!boundary) {
-      return;
-    }
+    if (activeTransport !== TRANSPORT_NDJSON) {
+      const boundary = findHeaderBoundary(inputBuffer);
+      if (boundary) {
+        const { headerEnd, separatorLength } = boundary;
 
-    const { headerEnd, separatorLength } = boundary;
+        const headerRaw = inputBuffer.slice(0, headerEnd).toString("utf8");
+        const lengthMatch = headerRaw.match(/content-length:\s*(\d+)/i);
+        if (!lengthMatch) {
+          inputBuffer = inputBuffer.slice(headerEnd + separatorLength);
+          continue;
+        }
 
-    const headerRaw = inputBuffer.slice(0, headerEnd).toString("utf8");
-    const lengthMatch = headerRaw.match(/content-length:\s*(\d+)/i);
-    if (!lengthMatch) {
-      inputBuffer = inputBuffer.slice(headerEnd + separatorLength);
-      continue;
-    }
+        const length = Number.parseInt(lengthMatch[1], 10);
+        if (Number.isNaN(length) || length < 0) {
+          inputBuffer = inputBuffer.slice(headerEnd + separatorLength);
+          continue;
+        }
 
-    const length = Number.parseInt(lengthMatch[1], 10);
-    if (Number.isNaN(length) || length < 0) {
-      inputBuffer = inputBuffer.slice(headerEnd + separatorLength);
-      continue;
-    }
+        const totalSize = headerEnd + separatorLength + length;
+        if (inputBuffer.length < totalSize) {
+          return;
+        }
 
-    const totalSize = headerEnd + separatorLength + length;
-    if (inputBuffer.length < totalSize) {
-      return;
-    }
+        const payload = inputBuffer
+          .slice(headerEnd + separatorLength, totalSize)
+          .toString("utf8");
 
-    const payload = inputBuffer
-      .slice(headerEnd + separatorLength, totalSize)
-      .toString("utf8");
+        inputBuffer = inputBuffer.slice(totalSize);
+        activeTransport = TRANSPORT_HEADERS;
 
-    inputBuffer = inputBuffer.slice(totalSize);
+        let message;
+        try {
+          message = JSON.parse(payload);
+        } catch {
+          continue;
+        }
 
-    let message;
-    try {
-      message = JSON.parse(payload);
-    } catch {
-      continue;
-    }
-
-    handleRpcMessage(message).catch((error) => {
-      if (typeof message?.id !== "undefined") {
-        writeError(
-          message.id,
-          -32000,
-          "Internal server error",
-          error?.message || String(error),
-        );
+        handleRpcMessage(message).catch((error) => {
+          if (typeof message?.id !== "undefined") {
+            writeError(
+              message.id,
+              -32000,
+              "Internal server error",
+              error?.message || String(error),
+            );
+          }
+        });
+        continue;
       }
-    });
+    }
+
+    if (activeTransport !== TRANSPORT_HEADERS) {
+      const newlineIndex = inputBuffer.indexOf("\n");
+      if (newlineIndex !== -1) {
+        const rawLine = inputBuffer.slice(0, newlineIndex).toString("utf8");
+        inputBuffer = inputBuffer.slice(newlineIndex + 1);
+
+        const line = rawLine.replace(/\r$/, "").trim();
+        if (!line) {
+          continue;
+        }
+
+        if (!line.startsWith("{") && !line.startsWith("[")) {
+          if (activeTransport === TRANSPORT_NDJSON) {
+            continue;
+          }
+          return;
+        }
+
+        let message;
+        try {
+          message = JSON.parse(line);
+        } catch {
+          if (activeTransport === TRANSPORT_NDJSON) {
+            continue;
+          }
+          return;
+        }
+
+        activeTransport = TRANSPORT_NDJSON;
+        handleRpcMessage(message).catch((error) => {
+          if (typeof message?.id !== "undefined") {
+            writeError(
+              message.id,
+              -32000,
+              "Internal server error",
+              error?.message || String(error),
+            );
+          }
+        });
+        continue;
+      }
+    }
+
+    return;
   }
 }
 
