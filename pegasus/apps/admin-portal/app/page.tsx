@@ -11,7 +11,7 @@ import CountUp from "@/components/CountUp";
 import MiniSparkline from "@/components/MiniSparkline";
 import {
   Truck, CheckCircle, CreditCard,
-  ArrowUpRight, Activity, Send, Warehouse,
+  ArrowUpRight, Activity, Send,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer,
@@ -62,6 +62,8 @@ type TruckManifest = {
   orders: { order_id: string }[];
   loading_manifest: LoadingManifestEntry[];
 };
+
+type OrderViewFilter = "ALL" | "PENDING" | "ACTIVE" | "COMPLETED" | "REVIEW";
 
 // ─── Status Chip ────────────────────────────────────────────────────────────
 
@@ -119,6 +121,7 @@ export default function AdminDashboard() {
   const [drivers, setDrivers] = useState<FleetDriver[]>([]);
   const [isApiOnline, setIsApiOnline] = useState(false);
   const [lastUpdated, setLastUpdated] = useState("");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
@@ -128,6 +131,9 @@ export default function AdminDashboard() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [manifests, setManifests] = useState<TruckManifest[]>([]);
   const [printManifest, setPrintManifest] = useState<TruckManifest | null>(null);
+  const [orderView, setOrderView] = useState<OrderViewFilter>("ALL");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showUrgentOnly, setShowUrgentOnly] = useState(false);
 
   // ── Polling ──────────────────────────────────────────────────────────────
 
@@ -150,6 +156,7 @@ export default function AdminDashboard() {
           setOrders(data ?? []);
           setIsApiOnline(true);
           setLastUpdated(new Date().toLocaleTimeString());
+          setLastUpdatedAt(Date.now());
         } else {
           setIsApiOnline(false);
         }
@@ -234,6 +241,55 @@ export default function AdminDashboard() {
     [orders],
   );
 
+  useEffect(() => {
+    setSelectedOrders((prev) => {
+      if (prev.size === 0) return prev;
+      const selectable = new Set(pendingOrders.map((o) => o.order_id));
+      const next = new Set([...prev].filter((id) => selectable.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [pendingOrders]);
+
+  const filteredOrders = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    const matchesOrderView = (order: Order) => {
+      switch (orderView) {
+        case "PENDING":
+          return order.state === "PENDING";
+        case "ACTIVE":
+          return order.state === "IN_TRANSIT" || order.state === "EN_ROUTE" || order.state === "DISPATCHED";
+        case "COMPLETED":
+          return order.state === "COMPLETED";
+        case "REVIEW":
+          return order.state === "PENDING_REVIEW";
+        default:
+          return true;
+      }
+    };
+
+    const urgencyWeight = (label: string | null) => {
+      if (label === "Overdue") return 3;
+      if (label === "Critical") return 2;
+      if (label === "Urgent") return 1;
+      return 0;
+    };
+
+    return orders
+      .filter((order) => {
+        if (!matchesOrderView(order)) return false;
+        const temporal = getTemporalStatus(order.deliver_before);
+        if (showUrgentOnly && !temporal.label) return false;
+        if (!query) return true;
+        const haystack = `${order.order_id} ${order.retailer_id} ${order.route_id ?? ""}`.toLowerCase();
+        return haystack.includes(query);
+      })
+      .sort((a, b) => {
+        const urgencyDelta = urgencyWeight(getTemporalStatus(b.deliver_before).label) - urgencyWeight(getTemporalStatus(a.deliver_before).label);
+        if (urgencyDelta !== 0) return urgencyDelta;
+        return a.order_id.localeCompare(b.order_id);
+      });
+  }, [orders, orderView, searchTerm, showUrgentOnly]);
+
   const allSelected =
     pendingOrders.length > 0 &&
     pendingOrders.every((o) => selectedOrders.has(o.order_id));
@@ -303,6 +359,19 @@ export default function AdminDashboard() {
     const h = new Date().getHours();
     return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
   }, []);
+
+  const isDataStale = useMemo(() => {
+    if (lastUpdatedAt == null) return false;
+    return Date.now() - lastUpdatedAt > 20_000;
+  }, [lastUpdatedAt]);
+
+  const filterCounts = useMemo(() => {
+    const pending = orders.filter((o) => o.state === "PENDING").length;
+    const active = orders.filter((o) => o.state === "IN_TRANSIT" || o.state === "EN_ROUTE" || o.state === "DISPATCHED").length;
+    const completed = orders.filter((o) => o.state === "COMPLETED").length;
+    const review = orders.filter((o) => o.state === "PENDING_REVIEW").length;
+    return { all: orders.length, pending, active, completed, review };
+  }, [orders]);
 
   const kpi = useMemo(() => {
     const activeTrucks = new Set(
@@ -394,7 +463,36 @@ export default function AdminDashboard() {
             </span>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          {isDataStale && (
+            <Chip color="warning" variant="soft" size="sm">
+              Data stale
+            </Chip>
+          )}
+          <Button variant="outline" size="sm" onPress={() => void fetchOrders()}>
+            Refresh
+          </Button>
+        </div>
       </header>
+
+      {(!isApiOnline || isDataStale) && (
+        <div
+          className="mb-6 rounded-xl px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+          style={{
+            border: '1px solid var(--border)',
+            background: 'var(--surface)',
+          }}
+        >
+          <span className="md-typescale-body-small" style={{ color: 'var(--muted)' }}>
+            {!isApiOnline
+              ? "Realtime feed is disconnected. Dashboard is showing the most recent successful snapshot."
+              : "Data is older than 20 seconds. Verify network stability or refresh manually."}
+          </span>
+          <Button variant="secondary" size="sm" onPress={() => void fetchOrders()}>
+            Retry sync
+          </Button>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════ */}
       {/* BENTO GRID — Modular cells. Size = Priority.                     */}
@@ -664,15 +762,106 @@ export default function AdminDashboard() {
         )}
       </section>
 
+      {/* ── Order View Controls ────────────────────────────────────────── */}
+      <section className="mb-3">
+        <Card className="p-3 md:p-4">
+          <div className="flex flex-col xl:flex-row gap-3 xl:items-center">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant={orderView === "ALL" ? "primary" : "outline"}
+                onPress={() => setOrderView("ALL")}
+              >
+                All ({filterCounts.all})
+              </Button>
+              <Button
+                size="sm"
+                variant={orderView === "PENDING" ? "primary" : "outline"}
+                onPress={() => setOrderView("PENDING")}
+              >
+                Pending ({filterCounts.pending})
+              </Button>
+              <Button
+                size="sm"
+                variant={orderView === "ACTIVE" ? "primary" : "outline"}
+                onPress={() => setOrderView("ACTIVE")}
+              >
+                Active ({filterCounts.active})
+              </Button>
+              <Button
+                size="sm"
+                variant={orderView === "COMPLETED" ? "primary" : "outline"}
+                onPress={() => setOrderView("COMPLETED")}
+              >
+                Completed ({filterCounts.completed})
+              </Button>
+              <Button
+                size="sm"
+                variant={orderView === "REVIEW" ? "primary" : "outline"}
+                onPress={() => setOrderView("REVIEW")}
+              >
+                Review ({filterCounts.review})
+              </Button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 xl:ml-auto xl:min-w-140">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search order, retailer, or route"
+                className="md-input-outlined flex-1"
+                aria-label="Search orders"
+              />
+              <label className="inline-flex items-center gap-2 px-3 rounded cursor-pointer" style={{ border: '1px solid var(--border)' }}>
+                <input
+                  type="checkbox"
+                  checked={showUrgentOnly}
+                  onChange={(e) => setShowUrgentOnly(e.target.checked)}
+                  style={{ accentColor: 'var(--accent)' }}
+                />
+                <span className="md-typescale-label-small">Urgency only</span>
+              </label>
+              <Button
+                size="sm"
+                variant="outline"
+                onPress={() => {
+                  setOrderView("ALL");
+                  setSearchTerm("");
+                  setShowUrgentOnly(false);
+                }}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </section>
+
       {/* ── Orders Table ────────────────────────────────────────────────── */}
-      {orders.length === 0 ? (
+      {filteredOrders.length === 0 ? (
         <div className="bento-card flex items-center justify-center py-16">
           <span className="md-typescale-body-medium" style={{ color: 'var(--muted)' }}>
-            {isApiOnline ? "No active orders" : "Awaiting connection..."}
+            {orders.length === 0
+              ? (isApiOnline ? "No active orders" : "Awaiting connection...")
+              : "No orders match the current filters"}
           </span>
         </div>
       ) : (
         <div className="bento-card p-0 overflow-hidden">
+          <div
+            className="px-4 py-3 flex items-center justify-between"
+            style={{ borderBottom: '1px solid var(--border)' }}
+          >
+            <span className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>
+              Showing {filteredOrders.length} of {orders.length} orders
+            </span>
+            {selectedOrders.size > 0 && (
+              <span className="md-typescale-label-small tabular-nums" style={{ color: 'var(--foreground)' }}>
+                {selectedOrders.size} selected for dispatch
+              </span>
+            )}
+          </div>
           <div className="overflow-x-auto">
             <table className="md-table">
               <thead>
@@ -696,7 +885,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => {
+                {filteredOrders.map((order) => {
                   const isPending = order.state === "PENDING" || order.state === "PENDING_REVIEW";
                   const isSelected = selectedOrders.has(order.order_id);
                   const temporal = getTemporalStatus(order.deliver_before);
