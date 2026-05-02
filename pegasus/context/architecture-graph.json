@@ -56,14 +56,20 @@
     "oneEyeGuards": {
       "workflow": ".github/workflows/one-eye-guards.yml",
       "scripts": [
-        "pegasus/scripts/contract_drift_guard.py",
-        "pegasus/scripts/architecture_boundary_guard.py",
-        "pegasus/scripts/design_token_enforcement_guard.py"
+        "pegasus/scripts/contract_guard_mcp.py",
+        "pegasus/scripts/architecture_guard_mcp.py",
+        "pegasus/scripts/design_system_guard_mcp.py",
+        "pegasus/scripts/production_safety_guard.py",
+        "pegasus/scripts/visual_test_intelligence_guard.py",
+        "pegasus/scripts/security_guard.py"
       ],
       "checks": [
-        "contract_drift",
-        "architecture_boundary",
-        "design_token_enforcement"
+        "contract_guard_mcp",
+        "architecture_guard_mcp",
+        "design_system_guard_mcp",
+        "production_safety",
+        "visual_test_intelligence",
+        "security"
       ]
     }
   },

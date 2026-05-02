@@ -85,9 +85,12 @@ From Terraform under `pegasus/infra/terraform`:
 
 ## Engineering Guard Tooling
 
-- Contract drift checker: `pegasus/scripts/contract_drift_guard.py`
-- Architecture boundary checker: `pegasus/scripts/architecture_boundary_guard.py`
-- Design-token enforcement checker: `pegasus/scripts/design_token_enforcement_guard.py`
+- Contract Guard MCP: `pegasus/scripts/contract_guard_mcp.py`
+- Architecture Guard MCP: `pegasus/scripts/architecture_guard_mcp.py`
+- Design System Guard MCP: `pegasus/scripts/design_system_guard_mcp.py`
+- Production Safety Guard: `pegasus/scripts/production_safety_guard.py`
+- Visual + Test Intelligence Guard: `pegasus/scripts/visual_test_intelligence_guard.py`
+- Security Guard: `pegasus/scripts/security_guard.py`
 - Aggregated PR workflow: `.github/workflows/one-eye-guards.yml`
 
 ## External Integrations And Providers

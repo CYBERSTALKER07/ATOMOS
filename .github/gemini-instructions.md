@@ -48,7 +48,7 @@ For every request, enforce the following strict retrieval loop:
 - Prompt verification gate is mandatory: classify each request as `safe`, `risky`, `production-breaking`, or `scope-conflict` before implementation; if not `safe`, respond with a better approach first.
 - Always include production checks for Spanner, Kafka, Redis, Terraform, Maglev, and hyper-scale readiness (10M-request class assumptions).
 - Keep local Docker-first validation and production migration discipline aligned: code should be production-compatible now, and later server cutover should be wiring/config only.
-- One-eye guard suite is mandatory for PR gatekeeping: `pegasus/scripts/contract_drift_guard.py`, `pegasus/scripts/architecture_boundary_guard.py`, and `pegasus/scripts/design_token_enforcement_guard.py`.
+- One-eye guard suite is mandatory for PR gatekeeping: `pegasus/scripts/contract_guard_mcp.py`, `pegasus/scripts/architecture_guard_mcp.py`, `pegasus/scripts/design_system_guard_mcp.py`, `pegasus/scripts/production_safety_guard.py`, `pegasus/scripts/visual_test_intelligence_guard.py`, and `pegasus/scripts/security_guard.py`.
 
 ## Ground Rules
 1. **Ground Truth Override**: Ignore stale assumptions. Use the local file system as source of truth for paths, app structure, package versions, route names, models, and role definitions.

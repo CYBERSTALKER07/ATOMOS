@@ -63,10 +63,13 @@ Transform weak plans into safe, phased execution:
 5. Rollback readiness: additive schema and event changes, version-safe clients, and explicit rollback path.
 
 ## One-Eye Guard Suite (Mandatory On PR)
-Run and pass all three guard scripts for pull requests:
-1. `python3 pegasus/scripts/contract_drift_guard.py --repo-root . --base-sha <base> --head-sha <head>`
-2. `python3 pegasus/scripts/architecture_boundary_guard.py --repo-root . --base-sha <base> --head-sha <head>`
-3. `python3 pegasus/scripts/design_token_enforcement_guard.py --repo-root . --base-sha <base> --head-sha <head>`
+Run and pass all six guard scripts for pull requests:
+1. `python3 pegasus/scripts/contract_guard_mcp.py --repo-root . --base-sha <base> --head-sha <head>`
+2. `python3 pegasus/scripts/architecture_guard_mcp.py --repo-root . --base-sha <base> --head-sha <head>`
+3. `python3 pegasus/scripts/design_system_guard_mcp.py --repo-root . --base-sha <base> --head-sha <head>`
+4. `python3 pegasus/scripts/production_safety_guard.py --repo-root . --base-sha <base> --head-sha <head>`
+5. `python3 pegasus/scripts/visual_test_intelligence_guard.py --repo-root . --base-sha <base> --head-sha <head>`
+6. `python3 pegasus/scripts/security_guard.py --repo-root . --base-sha <base> --head-sha <head>`
 
 ## Sync-On-Change Contract
 After every execution that changes architecture, integrations, dependencies, or operational behavior, update all relevant files in one change set:

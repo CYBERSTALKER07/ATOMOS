@@ -101,4 +101,4 @@ graph TD
     - `pegasus/context/technology-inventory.md`
     - `pegasus/context/technology-inventory.json`
 6. **ACT Mandatory**: Follow `.github/ACT.md`; challenge unsafe plans and enforce Spanner, Kafka, Redis, Terraform, Maglev, and hyper-scale readiness checks before execution.
-7. **One-Eye Guard Suite Mandatory**: PRs must pass `contract_drift_guard.py`, `architecture_boundary_guard.py`, and `design_token_enforcement_guard.py`.
+7. **One-Eye Guard Suite Mandatory**: PRs must pass `contract_guard_mcp.py`, `architecture_guard_mcp.py`, `design_system_guard_mcp.py`, `production_safety_guard.py`, `visual_test_intelligence_guard.py`, and `security_guard.py`.
