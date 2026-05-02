@@ -91,12 +91,23 @@ describe('sectionOrder', () => {
 
   it('should handle mixed aliases and canonical names', () => {
     const state = {
-      sections: ['Brand & Style', 'Colors', 'Typography', 'Layout & Spacing', 'Elevation & Depth', 'Shapes', 'Components'],
+      sections: ['Brand & Style', 'Colors', 'Typography', 'Layout & Spacing', 'Elevation & Depth', 'Shapes', 'Components', 'Platform Application', 'Motion & Feedback', 'Backend & Frontend Wiring', 'Delivery Gates'],
     } as unknown as DesignSystemState;
 
     const findings = sectionOrder(state);
 
     expect(findings.length).toBe(0);
+  });
+
+  it('should detect out-of-order platform sections', () => {
+    const state = {
+      sections: ['Overview', 'Colors', 'Interaction & Motion', 'Components'],
+    } as unknown as DesignSystemState;
+
+    const findings = sectionOrder(state);
+
+    expect(findings.length).toBe(1);
+    expect(findings[0]!.message).toContain('out of order');
   });
 });
 

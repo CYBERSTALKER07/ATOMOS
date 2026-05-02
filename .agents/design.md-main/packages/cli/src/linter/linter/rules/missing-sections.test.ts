@@ -34,6 +34,20 @@ describe('missingSections', () => {
       colors: { primary: '#ff0000' },
       rounded: { regular: '4px' },
       spacing: { unit: '8px' },
+      sections: [
+        'Overview',
+        'Colors',
+        'Typography',
+        'Layout',
+        'Elevation & Depth',
+        'Shapes',
+        'Components',
+        'Platforms & Surfaces',
+        'Interaction & Motion',
+        'Feature Wiring',
+        'Delivery Checklist',
+        "Do's and Don'ts",
+      ],
     });
     expect(missingSections(state)).toEqual([]);
   });
@@ -41,5 +55,23 @@ describe('missingSections', () => {
   it('returns empty when no colors exist (nothing to compare against)', () => {
     const state = buildState({});
     expect(missingSections(state)).toEqual([]);
+  });
+
+  it('emits info when platform and wiring sections are missing', () => {
+    const state = buildState({
+      colors: { primary: '#ff0000' },
+      typography: {
+        body: {
+          fontFamily: 'Inter',
+          fontSize: '16px',
+          fontWeight: '400',
+        },
+      },
+      sections: ['Overview', 'Colors', 'Typography', 'Layout', 'Components'],
+    });
+    const findings = missingSections(state);
+    expect(findings.find(d => d.path === 'Platforms & Surfaces')).toBeDefined();
+    expect(findings.find(d => d.path === 'Feature Wiring')).toBeDefined();
+    expect(findings.find(d => d.path === 'Delivery Checklist')).toBeDefined();
   });
 });

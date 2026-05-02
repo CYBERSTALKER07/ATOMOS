@@ -140,7 +140,20 @@ Sections use `##` headings. They can be omitted, but those present must appear i
 | 5 | Elevation & Depth | Elevation |
 | 6 | Shapes | |
 | 7 | Components | |
-| 8 | Do's and Don'ts | |
+| 8 | Platforms & Surfaces | Platform Application, Device Adaptation |
+| 9 | Interaction & Motion | Motion & Feedback |
+| 10 | Feature Wiring | Backend & Frontend Wiring, Service Contract & UI Wiring |
+| 11 | Delivery Checklist | Validation Checklist, Delivery Gates |
+| 12 | Do's and Don'ts | |
+
+### Ecosystem Feature Delivery
+
+For multi-surface products such as V.O.I.D., DESIGN.md should do more than define colors and typography. It should also tell agents:
+
+1. **Which platform gets which primitive** — dropdown vs menu vs segmented control vs filter chips vs sheet vs drawer.
+2. **How motion is used** — snackbar, toast, morphing confirmation, banner, dialog, inline validation, and reduced-motion fallback.
+3. **How backend contracts land in UI** — which DTO/event drives which component and state on each surface.
+4. **How completion is reported** — agents should name the actual components and feedback patterns they used instead of saying "updated the UI".
 
 ### Component Tokens
 

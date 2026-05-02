@@ -323,6 +323,23 @@ Expected qualities:
 - **SwiftUI-native for iOS.** All iOS surfaces (driver app, retailer app) must follow native SwiftUI patterns: SF Symbols for icons, system colors, native navigation, and platform-standard controls.
 - **Expo Payload Terminal** follows the same Material 3 discipline as the web portal.
 
+### Platform-Aware Feature Design Contract
+- For every user-facing feature, the agent MUST define the backend→frontend wiring and the per-platform component choices before implementation is considered complete.
+- The source design contract lives in `.agents/design.md-main/docs/spec.md`. When UI work is non-trivial, the agent must follow its extended sections: **Platforms & Surfaces**, **Interaction & Motion**, **Feature Wiring**, and **Delivery Checklist**.
+- "Real UI" is mandatory. The agent must name and use actual primitives per surface rather than vague placeholders:
+  - **Web / Desktop:** dropdown, combobox, data table, popover, command bar, inspector drawer, modal dialog, inline banner.
+  - **Android:** filter chips, segmented button row, modal bottom sheet, snackbar, FAB, navigation rail, Material dialog.
+  - **iOS:** `Menu`, `Picker`, `confirmationDialog`, `sheet`, `popover`, `swipeActions`, toolbar actions, split view.
+- The same business action may use different controls on different devices. That is correct when the information architecture stays aligned and the platform interaction model improves usability.
+- Motion must be purposeful and reduced-motion safe. "Smooth morphing toasts" or similar transitions are allowed only when they communicate a low-risk state change better than a static banner/snackbar and do not hide critical information.
+- The agent's completion report for UI work MUST state the actual component decisions and why they were chosen, e.g. "used a searchable dropdown on desktop for long warehouse lists, filter chips on Android for thumb-reachable state switching, and an iOS `Menu` for compact toolbar filtering."
+- Never claim a feature is wired end-to-end unless the report can name:
+  1. the backend endpoint/event/DTO feeding the UI,
+  2. the data layer/view model mapping,
+  3. the exact per-platform controls,
+  4. the loading/empty/error/offline/restricted states,
+  5. the feedback primitive used for success/failure/undo.
+
 ### Bento Grid Dashboard Protocol
 The Admin Portal dashboard uses a **Bento Grid** layout — a modular CSS Grid mosaic where **cell size equals data priority**.
 

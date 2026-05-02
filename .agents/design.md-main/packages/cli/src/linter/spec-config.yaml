@@ -37,6 +37,21 @@ sections:
       - Elevation
   - canonical: Shapes
   - canonical: Components
+  - canonical: Platforms & Surfaces
+    aliases:
+      - Platform Application
+      - Device Adaptation
+  - canonical: Interaction & Motion
+    aliases:
+      - Motion & Feedback
+  - canonical: Feature Wiring
+    aliases:
+      - Backend & Frontend Wiring
+      - Service Contract & UI Wiring
+  - canonical: Delivery Checklist
+    aliases:
+      - Validation Checklist
+      - Delivery Gates
   - canonical: "Do's and Don'ts"
 
 typography_properties:

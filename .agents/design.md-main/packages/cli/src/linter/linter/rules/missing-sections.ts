@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import type { DesignSystemState } from '../../model/spec.js';
+import { resolveAlias } from '../../spec-config.js';
 import type { RuleDescriptor, RuleFinding } from './types.js';
 
 /**
@@ -20,17 +21,51 @@ import type { RuleDescriptor, RuleFinding } from './types.js';
  */
 export function missingSections(state: DesignSystemState): RuleFinding[] {
   const findings: RuleFinding[] = [];
-  const sections = [
+  const tokenSections = [
     { map: state.spacing, name: 'spacing', fallback: 'Layout spacing will fall back to agent defaults.' },
     { map: state.rounded, name: 'rounded', fallback: 'Corner rounding will fall back to agent defaults.' },
   ];
+  const definedSections = new Set((state.sections ?? []).map(resolveAlias));
+  const proseSections = [
+    {
+      name: 'Components',
+      fallback: 'Agents may guess primitive choices instead of following an explicit component system.',
+    },
+    {
+      name: 'Platforms & Surfaces',
+      fallback: 'Cross-device adaptation may drift between desktop, tablet, phone, Android, and iOS.',
+    },
+    {
+      name: 'Interaction & Motion',
+      fallback: 'Feedback patterns and reduced-motion-safe transitions will fall back to agent defaults.',
+    },
+    {
+      name: 'Feature Wiring',
+      fallback: 'Backend-to-frontend handoffs, DTO mapping, live updates, and offline behavior may be underspecified.',
+    },
+    {
+      name: 'Delivery Checklist',
+      fallback: 'Accessibility, responsive states, and component rationale may be skipped during delivery.',
+    },
+  ];
 
-  for (const { map, name, fallback } of sections) {
+  for (const { map, name, fallback } of tokenSections) {
     if (map.size === 0 && state.colors.size > 0) {
       findings.push({
         path: name,
         message: `No '${name}' section defined. ${fallback}`,
       });
+    }
+  }
+
+  if ((state.colors.size > 0 || state.typography.size > 0) && state.sections?.length) {
+    for (const { name, fallback } of proseSections) {
+      if (!definedSections.has(name)) {
+        findings.push({
+          path: name,
+          message: `No '${name}' section defined. ${fallback}`,
+        });
+      }
     }
   }
   return findings;
