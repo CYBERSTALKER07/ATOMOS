@@ -791,40 +791,75 @@ private struct AllSealedSuccessView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                Image(systemName: "checkmark.seal.fill")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 72, height: 72)
-                    .foregroundStyle(.green)
-                Text("Manifest Sealed").font(.title.weight(.bold))
-                Text("\(dispatchCodes.count) order\(dispatchCodes.count == 1 ? "" : "s") dispatched")
-                    .foregroundStyle(.secondary)
+            VStack(spacing: 32) {
+                VStack(spacing: 16) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 80))
+                        .foregroundStyle(TermTheme.live)
+                    
+                    Text("MANIFEST_LOCKED")
+                        .font(.system(size: 24, weight: .black, design: .monospaced))
+                        .foregroundStyle(TermTheme.accent)
+                    
+                    Text("All items verified and sealed for transport.")
+                        .font(.system(size: 16, weight: .medium, design: .monospaced))
+                        .foregroundStyle(TermTheme.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 40)
 
-                if !dispatchCodes.isEmpty {
-                    GroupBox("Dispatch Codes") {
-                        VStack(spacing: 6) {
-                            ForEach(dispatchCodes.sorted(by: { $0.key < $1.key }), id: \.key) { (orderId, code) in
-                                HStack {
-                                    Text(String(orderId.prefix(8))).font(.footnote)
-                                    Spacer()
-                                    Text(code).font(.callout.monospaced().weight(.bold))
-                                }
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("DISPATCH_MANIFEST_SUMMARY")
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .foregroundStyle(TermTheme.tertiary)
+                    
+                    VStack(spacing: 8) {
+                        ForEach(dispatchCodes.sorted(by: { $0.key < $1.key }), id: \.key) { id, code in
+                            HStack {
+                                Text("ORD-\(id.suffix(6).uppercased())")
+                                    .font(.system(size: 14, weight: .black, design: .monospaced))
+                                    .foregroundStyle(TermTheme.accent)
+                                Spacer()
+                                Text(code)
+                                    .font(.system(size: 18, weight: .black, design: .monospaced))
+                                    .foregroundStyle(TermTheme.live)
+                            }
+                            .padding(16)
+                            .background(TermTheme.card)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(TermTheme.separator.opacity(0.1), lineWidth: 1)
                             }
                         }
-                        .padding(.vertical, 4)
                     }
                 }
-
-                Button(action: onStartNew) {
-                    Text("Start New Manifest")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, minHeight: 48)
+                .padding(24)
+                .background(TermTheme.bg)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(TermTheme.separator.opacity(0.1), lineWidth: 1)
                 }
-                .buttonStyle(.borderedProminent)
+
+                Button {
+                    onStartNew()
+                } label: {
+                    HStack {
+                        Image(systemName: "plus.circle.fill")
+                        Text("START_NEXT_LOAD")
+                            .font(.system(size: 18, weight: .black, design: .monospaced))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                    .background(TermTheme.accent)
+                    .foregroundStyle(TermTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
             }
-            .padding()
+            .padding(24)
         }
+        .background(TermTheme.bg)
     }
 }
 
