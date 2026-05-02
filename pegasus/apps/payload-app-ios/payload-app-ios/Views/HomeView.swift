@@ -1129,58 +1129,120 @@ private struct ReDispatchSheet: View {
     let onPick: (String) -> Void
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if loading {
-                    ProgressView().controlSize(.large)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let resp = response {
-                    List {
-                        Section {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(resp.retailerName?.isEmpty == false ? resp.retailerName! : "Order")
-                                    .font(.headline)
-                                Text(String(format: "%.1f VU", resp.orderVolumeVu ?? 0))
-                                    .font(.subheadline.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                            }
+        ZStack {
+            TermTheme.bg.ignoresSafeArea()
+            
+            VStack(spacing: 24) {
+                // Header
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("LOGISTICS_OPTIMIZER")
+                            .font(.system(size: 12, weight: .black, design: .monospaced))
+                            .foregroundStyle(TermTheme.secondary)
+                        Text("RE_DISPATCH_ORD-\(orderId.suffix(6).uppercased())")
+                            .font(.system(size: 20, weight: .black, design: .monospaced))
+                            .foregroundStyle(TermTheme.accent)
+                    }
+                    Spacer()
+                    Button(action: onClose) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundStyle(TermTheme.tertiary)
+                    }
+                }
+                .padding(.horizontal, 4)
+
+                Group {
+                    if loading {
+                        VStack(spacing: 20) {
+                            ProgressView()
+                                .tint(TermTheme.accent)
+                            Text("SOLVING_CONSTRAINTS...")
+                                .font(.system(size: 12, weight: .black, design: .monospaced))
+                                .foregroundStyle(TermTheme.secondary)
                         }
-                        if (resp.recommendations).isEmpty {
-                            Section {
-                                Text("No suitable trucks. Try again later or remove the order.")
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                            }
-                        } else {
-                            Section("Recommendations") {
-                                ForEach(resp.recommendations) { rec in
-                                    Button {
-                                        onPick(rec.driverId)
-                                    } label: {
-                                        RecommendationRow(rec: rec)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else if let resp = response {
+                        ScrollView {
+                            VStack(spacing: 20) {
+                                // Order Info Card
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("TARGET_OBJECT")
+                                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                                        .foregroundStyle(TermTheme.secondary)
+                                    
+                                    HStack {
+                                        Text(resp.retailerName?.uppercased() ?? "OFFLINE_RETAILER")
+                                            .font(.system(size: 16, weight: .black, design: .monospaced))
+                                            .foregroundStyle(TermTheme.accent)
+                                        Spacer()
+                                        Text(String(format: "%.1f VU", resp.orderVolumeVu ?? 0))
+                                            .font(.system(size: 16, weight: .black, design: .monospaced))
+                                            .foregroundStyle(TermTheme.accent)
                                     }
-                                    .disabled(reassigning)
+                                }
+                                .padding(16)
+                                .background(TermTheme.card)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .tacticalCard()
+
+                                if (resp.recommendations).isEmpty {
+                                    VStack(spacing: 12) {
+                                        Image(systemName: "exclamationmark.triangle.fill")
+                                            .font(.title)
+                                            .foregroundStyle(TermTheme.warn)
+                                        Text("NO_SUITABLE_CARRIERS_FOUND")
+                                            .font(.system(size: 14, weight: .black, design: .monospaced))
+                                            .foregroundStyle(TermTheme.secondary)
+                                    }
+                                    .padding(40)
+                                    .frame(maxWidth: .infinity)
+                                    .background(TermTheme.card)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    .tacticalCard()
+                                } else {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("AI_RECOMMENDATIONS")
+                                            .font(.system(size: 12, weight: .black, design: .monospaced))
+                                            .foregroundStyle(TermTheme.secondary)
+                                            .padding(.horizontal, 4)
+                                        
+                                        VStack(spacing: 12) {
+                                            ForEach(resp.recommendations) { rec in
+                                                Button {
+                                                    onPick(rec.driverId)
+                                                } label: {
+                                                    RecommendationRow(rec: rec)
+                                                }
+                                                .disabled(reassigning)
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
+                    } else {
+                        VStack(spacing: 16) {
+                            Image(systemName: "tray.fill")
+                                .font(.system(size: 40))
+                                .foregroundStyle(TermTheme.tertiary)
+                            Text("NO_DATA_AVAILABLE")
+                                .font(.system(size: 14, weight: .black, design: .monospaced))
+                                .foregroundStyle(TermTheme.secondary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                } else {
-                    ContentUnavailableView(
-                        "No recommendations",
-                        systemImage: "tray",
-                        description: Text("No recommendations available.")
-                    )
                 }
             }
-            .navigationTitle("Re-Dispatch \(String(orderId.prefix(8)))")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    if reassigning {
-                        ProgressView()
-                    } else {
-                        Button("Close", action: onClose)
-                    }
+            .padding(24)
+            
+            if reassigning {
+                Color.bg.opacity(0.8).ignoresSafeArea()
+                VStack(spacing: 16) {
+                    ProgressView().tint(TermTheme.accent)
+                    Text("REASSIGNING_ORDER...")
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
+                        .foregroundStyle(TermTheme.accent)
                 }
             }
         }
@@ -1191,37 +1253,67 @@ private struct RecommendationRow: View {
     let rec: TruckRecommendation
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(rec.driverName?.isEmpty == false ? rec.driverName! : String(rec.driverId.prefix(8)))
-                    .font(.subheadline.weight(.semibold))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(rec.driverName?.uppercased() ?? "ID-\(rec.driverId.prefix(8).uppercased())")
+                        .font(.system(size: 14, weight: .black, design: .monospaced))
+                        .foregroundStyle(TermTheme.accent)
+                    
+                    let meta = [rec.licensePlate, rec.vehicleClass, rec.truckStatus]
+                        .compactMap { ($0?.isEmpty == false) ? $0 : nil }
+                        .joined(separator: " • ")
+                        .uppercased()
+                    
+                    if !meta.isEmpty {
+                        Text(meta)
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundStyle(TermTheme.secondary)
+                    }
+                }
+                
                 Spacer()
-                Text(String(format: "score %.2f", rec.score ?? 0))
-                    .font(.caption.monospaced())
-                    .foregroundStyle(.secondary)
+                
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("OPTIMIZATION_SCORE")
+                        .font(.system(size: 8, weight: .black, design: .monospaced))
+                        .foregroundStyle(TermTheme.tertiary)
+                    Text(String(format: "%.2f", rec.score ?? 0))
+                        .font(.system(size: 16, weight: .black, design: .monospaced))
+                        .foregroundStyle(TermTheme.live)
+                }
             }
-            Text(meta).font(.caption).foregroundStyle(.secondary)
-            Text(stats).font(.caption.monospacedDigit())
-            if let r = rec.recommendation, !r.isEmpty {
-                Text(r).font(.caption2).foregroundStyle(.tint)
+            
+            HStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("EST_TRAVEL")
+                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .foregroundStyle(TermTheme.tertiary)
+                    Text(String(format: "%.1f KM", rec.distanceKm ?? 0))
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundStyle(TermTheme.secondary)
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("FREE_CAP")
+                        .font(.system(size: 8, weight: .bold, design: .monospaced))
+                        .foregroundStyle(TermTheme.tertiary)
+                    Text(String(format: "%.1f VU", rec.freeVolumeVu ?? 0))
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                        .foregroundStyle(TermTheme.secondary)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right.square.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(TermTheme.accent)
             }
         }
-        .padding(.vertical, 2)
-    }
-
-    private var meta: String {
-        [rec.licensePlate, rec.vehicleClass, rec.truckStatus]
-            .compactMap { ($0?.isEmpty == false) ? $0 : nil }
-            .joined(separator: " • ")
-    }
-
-    private var stats: String {
-        String(
-            format: "%.1f km • free %.1f VU • %d orders",
-            rec.distanceKm ?? 0,
-            rec.freeVolumeVu ?? 0,
-            rec.orderCount ?? 0
-        )
+        .padding(16)
+        .background(TermTheme.card)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .tacticalCard()
     }
 }
 

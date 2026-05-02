@@ -163,25 +163,25 @@ fun ManifestScreen(
                                         IconButton(
                                             onClick = { if (index > 0) viewModel.moveOrder(index, index - 1) },
                                             enabled = index > 0,
-                                            modifier = Modifier.size(32.dp)
+                                            modifier = Modifier.size(48.dp)
                                         ) {
                                             Icon(
                                                 Icons.Default.KeyboardArrowUp,
                                                 contentDescription = "Move up",
                                                 tint = if (index > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                                modifier = Modifier.size(20.dp)
+                                                modifier = Modifier.size(24.dp)
                                             )
                                         }
                                         IconButton(
                                             onClick = { if (index < displayOrders.lastIndex) viewModel.moveOrder(index, index + 1) },
                                             enabled = index < displayOrders.lastIndex,
-                                            modifier = Modifier.size(32.dp)
+                                            modifier = Modifier.size(48.dp)
                                         ) {
                                             Icon(
                                                 Icons.Default.KeyboardArrowDown,
                                                 contentDescription = "Move down",
                                                 tint = if (index < displayOrders.lastIndex) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                                modifier = Modifier.size(20.dp)
+                                                modifier = Modifier.size(24.dp)
                                             )
                                         }
                                     }
@@ -325,7 +325,7 @@ private fun ManifestHeader(
                 if (pendingCount > 0) {
                     Box(
                         modifier = Modifier
-                            .size(24.dp)
+                            .size(28.dp)
                             .clip(CircleShape)
                             .background(if (loadingMode) colorScheme.primary else colorScheme.primary),
                         contentAlignment = Alignment.Center
@@ -381,7 +381,7 @@ private fun RideCard(order: Order, loadSeqLabel: String? = null, onClick: () -> 
                 ) {
                     Text(
                         text = loadSeqLabel,
-                        fontSize = 10.sp,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
                         color = colorScheme.onPrimaryContainer,
@@ -397,7 +397,7 @@ private fun RideCard(order: Order, loadSeqLabel: String? = null, onClick: () -> 
             ) {
                 Text(
                     text = order.id,
-                    fontSize = 15.sp,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
                     color = lab.fg
@@ -415,7 +415,7 @@ private fun RideCard(order: Order, loadSeqLabel: String? = null, onClick: () -> 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = "DELIVERY TARGET",
-                    fontSize = 9.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
                     color = lab.fgTertiary
@@ -423,7 +423,7 @@ private fun RideCard(order: Order, loadSeqLabel: String? = null, onClick: () -> 
                 if (order.latitude != null && order.longitude != null) {
                     Text(
                         text = String.format("%.4f, %.4f", order.latitude, order.longitude),
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         fontFamily = FontFamily.Monospace,
                         color = lab.fg
@@ -431,7 +431,7 @@ private fun RideCard(order: Order, loadSeqLabel: String? = null, onClick: () -> 
                 } else {
                     Text(
                         text = order.deliveryAddress,
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = lab.fg
                     )
@@ -446,14 +446,14 @@ private fun RideCard(order: Order, loadSeqLabel: String? = null, onClick: () -> 
             ) {
                 Text(
                     text = "${order.items.size} items",
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
                     color = lab.fgSecondary
                 )
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(40.dp)
                         .clip(CircleShape)
                         .background(lab.fg.copy(alpha = 0.08f)),
                     contentAlignment = Alignment.Center
@@ -462,7 +462,7 @@ private fun RideCard(order: Order, loadSeqLabel: String? = null, onClick: () -> 
                         imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null,
                         tint = lab.fg,
-                        modifier = Modifier.size(12.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
@@ -497,7 +497,7 @@ private fun InfoChip(
             imageVector = icon,
             contentDescription = null,
             tint = colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(10.dp)
+            modifier = Modifier.size(14.dp)
         )
         Text(
             text = text,
@@ -548,7 +548,7 @@ private fun EmptyView() {
                 imageVector = Icons.Default.LocalShipping,
                 contentDescription = null,
                 tint = colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(48.dp)
             )
             Text(
                 text = "No upcoming rides",

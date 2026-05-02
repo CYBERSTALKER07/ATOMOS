@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.ShieldMoon
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -298,11 +299,11 @@ private fun StatusChip(
             imageVector = icon,
             contentDescription = null,
             tint = tint,
-            modifier = Modifier.size(11.dp)
+            modifier = Modifier.size(16.dp)
         )
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall.copy(
+            style = MaterialTheme.typography.labelMedium.copy(
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
             ),
@@ -331,7 +332,7 @@ private fun VehicleInfoCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(48.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(lab.separator),
                 contentAlignment = Alignment.Center
@@ -340,14 +341,14 @@ private fun VehicleInfoCard(
                     imageVector = Icons.Default.LocalShipping,
                     contentDescription = null,
                     tint = lab.fg,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = truckId,
-                    fontSize = 15.sp,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = lab.fg
                 )
@@ -359,7 +360,7 @@ private fun VehicleInfoCard(
                 }
                 Text(
                     text = subtitle,
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     fontFamily = FontFamily.Monospace,
                     color = lab.fgTertiary
@@ -397,7 +398,7 @@ private fun TransitControlCard(
                         PulsingDot(color = lab.live)
                         Text(
                             text = "IN TRANSIT",
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Black,
                             fontFamily = FontFamily.Monospace,
                             color = lab.live
@@ -405,7 +406,7 @@ private fun TransitControlCard(
                         Spacer(modifier = Modifier.weight(1f))
                         Text(
                             text = "${inTransitOrders.size} deliveries",
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
                             color = lab.fgTertiary
                         )
@@ -413,7 +414,7 @@ private fun TransitControlCard(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Telemetry active — drive safely",
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = lab.fgTertiary
                     )
@@ -422,7 +423,7 @@ private fun TransitControlCard(
                     // Ready to depart
                     Text(
                         text = "READY TO DEPART",
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
                         color = lab.fg
@@ -430,26 +431,23 @@ private fun TransitControlCard(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "${loadedOrders.size} orders loaded",
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = lab.fgTertiary
                     )
                     Spacer(modifier = Modifier.height(14.dp))
-                    Box(
+                    Button(
+                        onClick = {
+                            val intent =
+                                Intent(context, TelemetryService::class.java).apply {
+                                    action = TelemetryService.ACTION_START
+                                }
+                            context.startForegroundService(intent)
+                            onDepart()
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(MaterialTheme.shapes.medium)
-                            .background(lab.fg)
-                            .pressable {
-                                val intent =
-                                    Intent(context, TelemetryService::class.java).apply {
-                                        action = TelemetryService.ACTION_START
-                                    }
-                                context.startForegroundService(intent)
-                                onDepart()
-                            }
-                            .padding(vertical = 14.dp),
-                        contentAlignment = Alignment.Center
+                            .height(LabSpacing.s48),
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -458,15 +456,13 @@ private fun TransitControlCard(
                             Icon(
                                 imageVector = Icons.Default.LocalShipping,
                                 contentDescription = null,
-                                tint = lab.buttonFg,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                             Text(
                                 text = "START TRANSIT",
-                                fontSize = 13.sp,
+                                style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Black,
                                 fontFamily = FontFamily.Monospace,
-                                color = lab.buttonFg
                             )
                         }
                     }
@@ -481,11 +477,11 @@ private fun TransitControlCard(
                             imageVector = Icons.Default.Schedule,
                             contentDescription = null,
                             tint = lab.fgTertiary,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                         Text(
                             text = "No orders loaded yet",
-                            fontSize = 13.sp,
+                            style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = lab.fgTertiary
                         )
@@ -519,7 +515,7 @@ private fun ReturningToWarehouseCard(
                 PulsingDot(color = lab.warning)
                 Text(
                     text = "RETURNING TO WAREHOUSE",
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
                     color = lab.warning
@@ -528,7 +524,7 @@ private fun ReturningToWarehouseCard(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "All deliveries completed. Return to warehouse to finish shift.",
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = lab.fgTertiary
             )
@@ -562,14 +558,11 @@ private fun ReturningToWarehouseCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Arrived at warehouse
-            Box(
+            Button(
+                onClick = onArrived,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(lab.fg)
-                    .pressable { onArrived() }
-                    .padding(vertical = 14.dp),
-                contentAlignment = Alignment.Center
+                    .height(LabSpacing.s48),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -578,15 +571,13 @@ private fun ReturningToWarehouseCard(
                     Icon(
                         imageVector = Icons.Default.Home,
                         contentDescription = null,
-                        tint = lab.buttonFg,
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                     Text(
                         text = "ARRIVED AT WAREHOUSE",
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
-                        color = lab.buttonFg
                     )
                 }
             }
@@ -622,13 +613,13 @@ private fun TodaySummaryCard(orders: List<Order>) {
             ) {
                 Text(
                     text = "Today",
-                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = lab.fg
                 )
                 Text(
                     text = todayDate,
-                    fontSize = 11.sp,
+                    style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium,
                     fontFamily = FontFamily.Monospace,
                     color = lab.fgTertiary
@@ -679,11 +670,11 @@ private fun SummaryTile(
             imageVector = icon,
             contentDescription = null,
             tint = lab.fgTertiary,
-            modifier = Modifier.size(12.dp)
+            modifier = Modifier.size(16.dp)
         )
         Text(
             text = value,
-            fontSize = 18.sp,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             fontFamily = FontFamily.Monospace,
             color = lab.fg,
@@ -691,7 +682,7 @@ private fun SummaryTile(
         )
         Text(
             text = label,
-            fontSize = 10.sp,
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium,
             color = lab.fgTertiary
         )
@@ -740,13 +731,13 @@ private fun MapButton(pendingCount: Int, onOpenMap: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Open Map",
-                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = lab.fg
                 )
                 Text(
                     text = "$pendingCount deliveries waiting",
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = lab.fgSecondary
                 )
@@ -756,7 +747,7 @@ private fun MapButton(pendingCount: Int, onOpenMap: () -> Unit) {
                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = null,
                 tint = lab.fgTertiary,
-                modifier = Modifier.size(13.dp)
+                modifier = Modifier.size(18.dp)
             )
         }
     }
@@ -770,7 +761,7 @@ private fun QuickActionsSection(onScanQR: () -> Unit, hasArrivedOrder: Boolean =
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             text = "Quick Actions",
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             color = lab.fg,
             modifier = Modifier.padding(horizontal = LabSpacing.s4)
@@ -820,18 +811,26 @@ private fun ActionTile(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = lab.fg.copy(alpha = alpha),
-                modifier = Modifier.size(18.dp)
-            )
+            Box(
+                modifier = Modifier
+                    .size(LabSpacing.s48)
+                    .clip(CircleShape)
+                    .background(lab.separator.copy(alpha = alpha)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = lab.fg.copy(alpha = alpha),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
             Text(
                 text = label,
-                fontSize = 10.sp,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = lab.fgSecondary.copy(alpha = alpha),
-                lineHeight = 13.sp,
+                lineHeight = MaterialTheme.typography.labelMedium.lineHeight,
                 maxLines = 2
             )
         }
@@ -846,7 +845,7 @@ private fun RecentActivitySection(completedOrders: List<Order>) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             text = "Recent",
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             color = lab.fg,
             modifier = Modifier.padding(horizontal = LabSpacing.s4)
@@ -865,11 +864,11 @@ private fun RecentActivitySection(completedOrders: List<Order>) {
                         imageVector = Icons.Default.Schedule,
                         contentDescription = null,
                         tint = lab.fgTertiary,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                     Text(
                         text = "No deliveries yet",
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = lab.fgSecondary
                     )
@@ -887,7 +886,7 @@ private fun RecentActivitySection(completedOrders: List<Order>) {
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(32.dp)
+                                .size(40.dp)
                                 .clip(CircleShape)
                                 .background(lab.success.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
@@ -896,21 +895,21 @@ private fun RecentActivitySection(completedOrders: List<Order>) {
                                 imageVector = Icons.Default.CheckCircle,
                                 contentDescription = null,
                                 tint = lab.success,
-                                modifier = Modifier.size(11.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                         }
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = order.id,
-                                fontSize = 12.sp,
+                                style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace,
                                 color = lab.fg
                             )
                             Text(
                                 text = order.totalAmount.formattedAmount(),
-                                fontSize = 11.sp,
+                                style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Medium,
                                 color = lab.fgSecondary
                             )
@@ -918,7 +917,7 @@ private fun RecentActivitySection(completedOrders: List<Order>) {
 
                         Text(
                             text = order.retailerName,
-                            fontSize = 10.sp,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = lab.fgTertiary
                         )
