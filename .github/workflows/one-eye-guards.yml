@@ -6,18 +6,25 @@ on:
     paths:
       - '.github/workflows/one-eye-guards.yml'
       - 'pegasus/.github/workflows/ci.yml'
+      - '.agents/extensions/ast-engine/**'
       - 'pegasus/scripts/guard_utils.py'
       - 'pegasus/scripts/contract_drift_guard.py'
       - 'pegasus/scripts/architecture_boundary_guard.py'
       - 'pegasus/scripts/design_token_enforcement_guard.py'
+      - 'pegasus/scripts/contract_guard_mcp.py'
+      - 'pegasus/scripts/architecture_guard_mcp.py'
+      - 'pegasus/scripts/design_system_guard_mcp.py'
+      - 'pegasus/scripts/production_safety_guard.py'
+      - 'pegasus/scripts/visual_test_intelligence_guard.py'
+      - 'pegasus/scripts/security_guard.py'
       - 'pegasus/apps/backend-go/**/*.go'
       - 'pegasus/apps/backend-go/kafka/**'
       - 'pegasus/apps/backend-go/notifications/**'
+      - 'pegasus/apps/ai-worker/**'
       - 'pegasus/packages/types/**'
       - 'pegasus/packages/api-client/**'
       - 'pegasus/packages/validation/**'
       - 'pegasus/packages/optimizer-contract/**'
-      - 'pegasus/apps/ai-worker/**'
       - 'pegasus/apps/admin-portal/**'
       - 'pegasus/apps/factory-portal/**'
       - 'pegasus/apps/warehouse-portal/**'
@@ -27,6 +34,12 @@ on:
       - 'pegasus/apps/*-app-android/**'
       - 'pegasus/apps/*-app-ios/**'
       - 'pegasus/packages/ui-kit/**'
+      - 'pegasus/infra/**'
+      - 'pegasus/docker-compose.yml'
+      - 'tests/**'
+      - 'pegasus/tests/**'
+      - 'pegasus/playwright.config.ts'
+      - 'pegasus/context/design-system.md'
 
 permissions:
   contents: read
@@ -49,18 +62,25 @@ jobs:
             relevant:
               - '.github/workflows/one-eye-guards.yml'
               - 'pegasus/.github/workflows/ci.yml'
+              - '.agents/extensions/ast-engine/**'
               - 'pegasus/scripts/guard_utils.py'
               - 'pegasus/scripts/contract_drift_guard.py'
               - 'pegasus/scripts/architecture_boundary_guard.py'
               - 'pegasus/scripts/design_token_enforcement_guard.py'
+              - 'pegasus/scripts/contract_guard_mcp.py'
+              - 'pegasus/scripts/architecture_guard_mcp.py'
+              - 'pegasus/scripts/design_system_guard_mcp.py'
+              - 'pegasus/scripts/production_safety_guard.py'
+              - 'pegasus/scripts/visual_test_intelligence_guard.py'
+              - 'pegasus/scripts/security_guard.py'
               - 'pegasus/apps/backend-go/**/*.go'
               - 'pegasus/apps/backend-go/kafka/**'
               - 'pegasus/apps/backend-go/notifications/**'
+              - 'pegasus/apps/ai-worker/**'
               - 'pegasus/packages/types/**'
               - 'pegasus/packages/api-client/**'
               - 'pegasus/packages/validation/**'
               - 'pegasus/packages/optimizer-contract/**'
-              - 'pegasus/apps/ai-worker/**'
               - 'pegasus/apps/admin-portal/**'
               - 'pegasus/apps/factory-portal/**'
               - 'pegasus/apps/warehouse-portal/**'
@@ -70,6 +90,12 @@ jobs:
               - 'pegasus/apps/*-app-android/**'
               - 'pegasus/apps/*-app-ios/**'
               - 'pegasus/packages/ui-kit/**'
+              - 'pegasus/infra/**'
+              - 'pegasus/docker-compose.yml'
+              - 'tests/**'
+              - 'pegasus/tests/**'
+              - 'pegasus/playwright.config.ts'
+              - 'pegasus/context/design-system.md'
 
       - name: Skip one-eye guard suite (no relevant path changes)
         if: steps.one_eye_paths.outputs.relevant != 'true'
@@ -80,26 +106,50 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Contract drift checker
+      - name: Contract Guard MCP
         if: steps.one_eye_paths.outputs.relevant == 'true'
         run: |
-          python3 pegasus/scripts/contract_drift_guard.py \
+          python3 pegasus/scripts/contract_guard_mcp.py \
             --repo-root . \
             --base-sha "${{ github.event.pull_request.base.sha }}" \
             --head-sha "${{ github.event.pull_request.head.sha }}"
 
-      - name: Architecture boundary checker
+      - name: Architecture Guard MCP
         if: steps.one_eye_paths.outputs.relevant == 'true'
         run: |
-          python3 pegasus/scripts/architecture_boundary_guard.py \
+          python3 pegasus/scripts/architecture_guard_mcp.py \
             --repo-root . \
             --base-sha "${{ github.event.pull_request.base.sha }}" \
             --head-sha "${{ github.event.pull_request.head.sha }}"
 
-      - name: Design-token enforcement checker
+      - name: Design System Guard MCP
         if: steps.one_eye_paths.outputs.relevant == 'true'
         run: |
-          python3 pegasus/scripts/design_token_enforcement_guard.py \
+          python3 pegasus/scripts/design_system_guard_mcp.py \
+            --repo-root . \
+            --base-sha "${{ github.event.pull_request.base.sha }}" \
+            --head-sha "${{ github.event.pull_request.head.sha }}"
+
+      - name: Production Safety Guard
+        if: steps.one_eye_paths.outputs.relevant == 'true'
+        run: |
+          python3 pegasus/scripts/production_safety_guard.py \
+            --repo-root . \
+            --base-sha "${{ github.event.pull_request.base.sha }}" \
+            --head-sha "${{ github.event.pull_request.head.sha }}"
+
+      - name: Visual + Test Intelligence
+        if: steps.one_eye_paths.outputs.relevant == 'true'
+        run: |
+          python3 pegasus/scripts/visual_test_intelligence_guard.py \
+            --repo-root . \
+            --base-sha "${{ github.event.pull_request.base.sha }}" \
+            --head-sha "${{ github.event.pull_request.head.sha }}"
+
+      - name: Security Guard
+        if: steps.one_eye_paths.outputs.relevant == 'true'
+        run: |
+          python3 pegasus/scripts/security_guard.py \
             --repo-root . \
             --base-sha "${{ github.event.pull_request.base.sha }}" \
             --head-sha "${{ github.event.pull_request.head.sha }}"
