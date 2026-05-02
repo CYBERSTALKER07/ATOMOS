@@ -441,14 +441,29 @@ private struct OrderChecklistSection: View {
     let onShowReDispatch: (String) -> Void
 
     var body: some View {
-        GroupBox("Orders (\(viewModel.sealedOrderIds.count)/\(viewModel.orders.count) sealed)") {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("ORDER_CHECKLIST")
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .foregroundStyle(TermTheme.secondary)
+                Spacer()
+                Text("\(viewModel.sealedOrderIds.count) / \(viewModel.orders.count) SEALED")
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .foregroundStyle(viewModel.allOrdersSealed ? TermTheme.live : TermTheme.accent)
+            }
+            .padding(.horizontal, 4)
+
             if viewModel.loadingOrders {
-                ProgressView().padding()
-            } else if viewModel.orders.isEmpty {
-                Text("No LOADED orders for this vehicle yet. They appear once dispatch assigns them.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                ProgressView()
+                    .frame(maxWidth: .infinity)
                     .padding()
+            } else if viewModel.orders.isEmpty {
+                Text("NO_ORDERS_ASSIGNED")
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+                    .foregroundStyle(TermTheme.tertiary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(32)
+                    .tacticalCard()
             } else {
                 VStack(spacing: 8) {
                     ForEach(viewModel.orders) { order in
@@ -461,43 +476,93 @@ private struct OrderChecklistSection: View {
                         )
                     }
                 }
+
                 if let selected = viewModel.orders.first(where: { $0.orderId == viewModel.selectedOrderId }) {
-                    Divider().padding(.vertical, 8)
-                    Text("Items — \(String(selected.orderId.prefix(8)))")
-                        .font(.headline)
-                    let items = selected.items ?? []
-                    if items.isEmpty {
-                        Text("No line items on this order.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(items) { item in
-                            ItemRow(
-                                checked: viewModel.checkedItems.contains(item.lineItemId),
-                                enabled: !viewModel.sealedOrderIds.contains(selected.orderId),
-                                label: item.skuName.isEmpty ? item.skuId : item.skuName,
-                                quantity: item.quantity,
-                                onToggle: { viewModel.toggleItem(item.lineItemId) }
-                            )
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("LINE_ITEMS")
+                                .font(.system(size: 12, weight: .black, design: .monospaced))
+                                .foregroundStyle(TermTheme.secondary)
+                            Spacer()
+                            Text("ORD-\(selected.orderId.suffix(6).uppercased())")
+                                .font(.system(size: 12, weight: .black, design: .monospaced))
+                                .foregroundStyle(TermTheme.accent)
                         }
-                    }
-                    if viewModel.sealedOrderIds.contains(selected.orderId) {
-                        Text("Order sealed. Dispatch code \(viewModel.dispatchCodes[selected.orderId] ?? "").")
-                            .font(.footnote)
-                            .foregroundStyle(.green)
-                    } else {
-                        Button {
-                            Task { await viewModel.sealSelectedOrder() }
-                        } label: {
-                            HStack {
-                                Image(systemName: "lock.fill")
-                                if viewModel.sealingOrderId == selected.orderId {
-                                    ProgressView().controlSize(.regular)
-                                } else {
-                                    Text("Seal Order").font(.headline)
+                        .padding(.top, 8)
+                        
+                        let items = selected.items ?? []
+                        if items.isEmpty {
+                            Text("NO_ITEMS_IN_ORDER")
+                                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                .foregroundStyle(TermTheme.tertiary)
+                        } else {
+                            VStack(spacing: 2) {
+                                ForEach(items) { item in
+                                    ItemRow(
+                                        checked: viewModel.checkedItems.contains(item.lineItemId),
+                                        enabled: !viewModel.sealedOrderIds.contains(selected.orderId),
+                                        label: item.skuName.isEmpty ? item.skuId : item.skuName,
+                                        quantity: item.quantity,
+                                        onToggle: { viewModel.toggleItem(item.lineItemId) }
+                                    )
                                 }
                             }
-                            .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+
+                        if viewModel.sealedOrderIds.contains(selected.orderId) {
+                            HStack {
+                                Image(systemName: "lock.fill")
+                                Text("ORDER_SEALED: \(viewModel.dispatchCodes[selected.orderId] ?? "")")
+                            }
+                            .font(.system(size: 14, weight: .black, design: .monospaced))
+                            .foregroundStyle(TermTheme.live)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(TermTheme.live.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                        } else {
+                            Button {
+                                Task { await viewModel.sealSelectedOrder() }
+                            } label: {
+                                HStack(spacing: 12) {
+                                    if viewModel.sealingOrderId == selected.orderId {
+                                        ProgressView().controlSize(.regular)
+                                    } else {
+                                        Image(systemName: "lock.shield.fill")
+                                            .font(.system(size: 20))
+                                        Text("SEAL_ORDER")
+                                            .font(.system(size: 16, weight: .black, design: .monospaced))
+                                    }
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(viewModel.allChecked(selected) ? TermTheme.accent : TermTheme.tertiary.opacity(0.3))
+                                .foregroundStyle(TermTheme.card)
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            }
+                            .disabled(viewModel.sealingOrderId != nil || !viewModel.allChecked(selected))
+                            
+                            HStack(spacing: 12) {
+                                Button("REPORT_ISSUE") { onShowException(selected.orderId) }
+                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                    .padding(.vertical, 10)
+                                    .frame(maxWidth: .infinity)
+                                    .background(TermTheme.warn.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                                    .foregroundStyle(TermTheme.warn)
+
+                                Button("RE_DISPATCH") { onShowReDispatch(selected.orderId) }
+                                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                                    .padding(.vertical, 10)
+                                    .frame(maxWidth: .infinity)
+                                    .background(TermTheme.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
+                                    .foregroundStyle(TermTheme.accent)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
                         }
                         .buttonStyle(.bordered)
                         .tint(.blue)
@@ -613,14 +678,39 @@ private struct ItemRow: View {
 
     var body: some View {
         Button(action: { if enabled { onToggle() } }) {
-            HStack {
-                Image(systemName: checked ? "checkmark.square.fill" : "square")
-                    .foregroundStyle(checked ? .blue : .secondary)
-                Text(label)
+            HStack(spacing: 14) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(checked ? TermTheme.accent : TermTheme.accent.opacity(0.06))
+                        .frame(width: 32, height: 32)
+                    
+                    if checked {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundStyle(TermTheme.card)
+                    }
+                }
+                
+                Text(label.uppercased())
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Text("x\(quantity)").font(.body.weight(.medium))
+                    .foregroundStyle(checked ? TermTheme.accent : TermTheme.secondary)
+                
+                Text("QTY: \(quantity)")
+                    .font(.system(size: 13, weight: .black, design: .monospaced))
+                    .foregroundStyle(TermTheme.accent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(TermTheme.accent.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .background {
+                if checked {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(TermTheme.accent.opacity(0.03))
+                }
+            }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
