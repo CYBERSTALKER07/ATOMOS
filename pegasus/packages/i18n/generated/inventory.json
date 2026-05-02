@@ -1,105 +1,15 @@
 {
-  "generated_at": "2026-05-02T06:44:47.261Z",
+  "generated_at": "2026-05-02T06:46:42.856Z",
   "total_files_scanned": 1487,
-  "total_matches": 2103,
+  "total_matches": 2088,
   "summary": {
-    "web-jsx-text": 1196,
+    "web-jsx-text": 1181,
     "backend-inline-problem-text": 26,
     "xml-inline-text": 29,
     "compose-inline-text": 222,
     "swiftui-inline-text": 630
   },
   "entries": [
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/countries/page.tsx",
-      "line": 91,
-      "text": "Country Configuration"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/countries/page.tsx",
-      "line": 100,
-      "text": "Countries"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/countries/page.tsx",
-      "line": 103,
-      "text": "Loading…"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/countries/page.tsx",
-      "line": 126,
-      "text": "Select a country to edit."
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/countries/page.tsx",
-      "line": 130,
-      "text": "Country Code"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/countries/page.tsx",
-      "line": 134,
-      "text": "Country Name"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/countries/page.tsx",
-      "line": 138,
-      "text": "Timezone"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/countries/page.tsx",
-      "line": 142,
-      "text": "Currency Code"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/countries/page.tsx",
-      "line": 146,
-      "text": "Breach Radius (m)"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/countries/page.tsx",
-      "line": 150,
-      "text": "SMS Provider"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/countries/page.tsx",
-      "line": 154,
-      "text": "Payment Gateways (comma separated)"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/page.tsx",
-      "line": 104,
-      "text": "System Configuration"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/page.tsx",
-      "line": 105,
-      "text": "Logistics physics and gateway parameters"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/page.tsx",
-      "line": 212,
-      "text": "Configured via Secret Manager"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/configuration/page.tsx",
-      "line": 227,
-      "text": "Configured via Secret Manager"
-    },
     {
       "kind": "web-jsx-text",
       "file": "apps/admin-portal/app/dashboard/page.tsx",
