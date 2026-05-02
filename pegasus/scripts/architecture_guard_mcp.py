@@ -61,6 +61,7 @@ def main() -> int:
         return 0
 
     context_sync_changes = [path for path in files if match_any(path, CONTEXT_SYNC_PATTERNS)]
+    codebase_focus_changes = sorted(set(trigger_changes))
     missing_mcp_files = [
         path for path in MCP_REQUIRED_FILES if not (repo_root / path).exists()
     ]
@@ -88,6 +89,13 @@ def main() -> int:
             "Architecture context sync missing. Update ACT/instructions/architecture/inventory sync-set files."
         )
 
+    if context_sync_changes and len(codebase_focus_changes) < len(context_sync_changes):
+        failures.append(
+            "Codebase-first MCP policy violated. Architecture-triggered diffs must rely primarily on "
+            "real codebase surfaces; context docs are secondary verification. "
+            f"codebase_focus={len(codebase_focus_changes)} context_sync={len(context_sync_changes)}."
+        )
+
     if missing_mcp_files:
         failures.append(
             "Missing required AST MCP engine file(s): " + ", ".join(missing_mcp_files)
@@ -97,11 +105,18 @@ def main() -> int:
     for path in trigger_changes:
         print(f"  - {path}")
 
+    print(
+        "architecture-guard-mcp: context summary "
+        f"(codebase_focus={len(codebase_focus_changes)}, context_sync={len(context_sync_changes)})"
+    )
+
     if out.strip():
         print(out.strip())
 
     if not failures:
-        print("architecture-guard-mcp: boundary, context, and MCP checks passed.")
+        print(
+            "architecture-guard-mcp: boundary, context, and codebase-first MCP checks passed."
+        )
         return 0
 
     print("\narchitecture-guard-mcp: FAIL — architecture governance violations detected.", file=sys.stderr)

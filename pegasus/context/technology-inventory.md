@@ -86,8 +86,11 @@ From Terraform under `pegasus/infra/terraform`:
 ## Engineering Guard Tooling
 
 - Contract Guard MCP: `pegasus/scripts/contract_guard_mcp.py`
+	- Enforces codebase-first MCP context weighting on contract-triggered diffs (runtime code surfaces must dominate context-doc touches).
 - Architecture Guard MCP: `pegasus/scripts/architecture_guard_mcp.py`
+	- Enforces codebase-first MCP context weighting on architecture-triggered diffs (runtime code surfaces must dominate context-doc touches).
 - Design System Guard MCP: `pegasus/scripts/design_system_guard_mcp.py`
+	- Enforces codebase-first MCP context weighting on design-triggered diffs (runtime code surfaces must dominate context-doc touches).
 - Production Safety Guard: `pegasus/scripts/production_safety_guard.py`
 - Visual + Test Intelligence Guard: `pegasus/scripts/visual_test_intelligence_guard.py`
 - Security Guard: `pegasus/scripts/security_guard.py`

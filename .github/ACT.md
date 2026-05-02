@@ -32,7 +32,8 @@ Apply ACT for all technical asks, including:
    - `pegasus/context/technology-inventory.json`
    - `pegasus/context/design-system.md`
    - `pegasus/context/purpose.md`
-4. Identify blast radius across API, mobile, web, workers, and infra.
+4. Apply codebase-first weighting: primary context must come from real runtime code (definitions, usages, graph). Docs are mandatory verification, not a substitute for code retrieval.
+5. Identify blast radius across API, mobile, web, workers, and infra.
 
 ## C: Challenge
 If prompt/plan is unsafe, incomplete, or likely to break production, do not execute it as-is.
@@ -70,6 +71,8 @@ Run and pass all six guard scripts for pull requests:
 4. `python3 pegasus/scripts/production_safety_guard.py --repo-root . --base-sha <base> --head-sha <head>`
 5. `python3 pegasus/scripts/visual_test_intelligence_guard.py --repo-root . --base-sha <base> --head-sha <head>`
 6. `python3 pegasus/scripts/security_guard.py --repo-root . --base-sha <base> --head-sha <head>`
+
+`contract_guard_mcp.py`, `architecture_guard_mcp.py`, and `design_system_guard_mcp.py` enforce codebase-first MCP context discipline: trigger-scoped PRs must include stronger real-codebase coverage than context-doc coverage.
 
 ## Sync-On-Change Contract
 After every execution that changes architecture, integrations, dependencies, or operational behavior, update all relevant files in one change set:

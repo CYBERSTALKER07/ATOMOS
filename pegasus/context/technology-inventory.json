@@ -180,6 +180,18 @@
   },
   "engineeringGuardTooling": {
     "workflow": ".github/workflows/one-eye-guards.yml",
+    "codebaseFirstPolicy": {
+      "enforcedBy": [
+        "pegasus/scripts/contract_guard_mcp.py",
+        "pegasus/scripts/architecture_guard_mcp.py",
+        "pegasus/scripts/design_system_guard_mcp.py"
+      ],
+      "rules": {
+        "contract_guard_mcp": "for contract-triggered diffs, codebase-focus changes must be >= context-sync documentation changes",
+        "architecture_guard_mcp": "for architecture-triggered diffs, codebase-focus changes must be >= context-sync documentation changes",
+        "design_system_guard_mcp": "for design-triggered diffs, codebase-focus changes must be >= context-sync documentation changes"
+      }
+    },
     "scripts": [
       "pegasus/scripts/contract_guard_mcp.py",
       "pegasus/scripts/architecture_guard_mcp.py",

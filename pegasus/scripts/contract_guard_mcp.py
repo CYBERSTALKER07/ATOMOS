@@ -83,6 +83,7 @@ def main() -> int:
     shared_changes = [path for path in files if match_any(path, SHARED_CONTRACT_PATTERNS)]
     consumer_changes = [path for path in files if match_any(path, CONSUMER_SURFACE_PATTERNS)]
     context_sync_changes = [path for path in files if match_any(path, CONTEXT_SYNC_PATTERNS)]
+    codebase_focus_changes = sorted(set(trigger_changes + shared_changes + consumer_changes))
 
     missing_mcp_files = [
         path for path in MCP_REQUIRED_FILES if not (repo_root / path).exists()
@@ -107,6 +108,13 @@ def main() -> int:
             "MCP context sync missing. Update at least one architecture/technology context file."
         )
 
+    if context_sync_changes and len(codebase_focus_changes) < len(context_sync_changes):
+        failures.append(
+            "Codebase-first MCP policy violated. Contract-triggered diffs must rely primarily on "
+            "real codebase surfaces; context docs are secondary verification. "
+            f"codebase_focus={len(codebase_focus_changes)} context_sync={len(context_sync_changes)}."
+        )
+
     if missing_mcp_files:
         failures.append(
             "Missing required AST MCP engine file(s): " + ", ".join(missing_mcp_files)
@@ -116,8 +124,15 @@ def main() -> int:
     for path in trigger_changes:
         print(f"  - {path}")
 
+    print(
+        "contract-guard-mcp: context summary "
+        f"(codebase_focus={len(codebase_focus_changes)}, context_sync={len(context_sync_changes)})"
+    )
+
     if not failures:
-        print("contract-guard-mcp: contract, consumer, and MCP context checks passed.")
+        print(
+            "contract-guard-mcp: contract, consumer, and codebase-first MCP context checks passed."
+        )
         return 0
 
     print("\ncontract-guard-mcp: FAIL — contract governance violations detected.", file=sys.stderr)

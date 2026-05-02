@@ -11,6 +11,7 @@ You are operating in a massive codebase. Do NOT rely on your pre-trained memory.
 For every request, enforce the following strict retrieval loop:
 
 1. **Rely on Codebase & Docs (The Dual-Read Mandate)**: You are strictly forbidden from writing code without first reading both the canonical source code AND its accompanying architecture documentation.
+   - **Codebase-first weighting**: runtime code is the primary evidence source; docs validate and synchronize. If docs conflict with code, treat code as source of truth and sync docs in the same change set.
 2. **Index the Entry Point**: Use `file_search` or `grep_search` to find the exact file and line number relevant to the user's request.
 3. **Trace Definitions**: If the target code references a commercial type, interface, class, or function, you MUST use `grep_search`, `semantic_search`, or language server tools to read its definition. Never guess the shape of a struct/interface.
 4. **Find Usages**: Before modifying an existing function or type, use usage-finding tools (like `vscode_listCodeUsages` or grep) to find all places in the codebase where it is consumed.
@@ -48,6 +49,7 @@ For every request, enforce the following strict retrieval loop:
 - Always include production checks for Spanner, Kafka, Redis, Terraform, Maglev, and hyper-scale readiness (10M-request class assumptions).
 - Keep local Docker-first validation and production migration discipline aligned: code should be production-compatible now, and later server cutover should be wiring/config only.
 - One-eye guard suite is mandatory for PR gatekeeping: `pegasus/scripts/contract_guard_mcp.py`, `pegasus/scripts/architecture_guard_mcp.py`, `pegasus/scripts/design_system_guard_mcp.py`, `pegasus/scripts/production_safety_guard.py`, `pegasus/scripts/visual_test_intelligence_guard.py`, and `pegasus/scripts/security_guard.py`.
+- MCP-facing one-eye guards (`contract_guard_mcp.py`, `architecture_guard_mcp.py`, `design_system_guard_mcp.py`) enforce codebase-first weighting: trigger-scoped codebase changes must be greater than or equal to context-doc sync changes.
 
 ## Ground Rules
 1. **Ground Truth Override**: Ignore stale assumptions. Use the local file system as source of truth for paths, app structure, package versions, route names, models, and role definitions.

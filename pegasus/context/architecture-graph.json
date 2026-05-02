@@ -53,6 +53,17 @@
       "markdown": "technology-inventory.md",
       "json": "technology-inventory.json"
     },
+    "sourceOfTruthPolicy": {
+      "mode": "codebase_first_dual_read",
+      "primary": "runtime_code",
+      "secondary": "architecture_docs",
+      "syncOnDrift": true,
+      "enforcedBy": [
+        "pegasus/scripts/contract_guard_mcp.py",
+        "pegasus/scripts/architecture_guard_mcp.py",
+        "pegasus/scripts/design_system_guard_mcp.py"
+      ]
+    },
     "oneEyeGuards": {
       "workflow": ".github/workflows/one-eye-guards.yml",
       "scripts": [
@@ -120,6 +131,7 @@
     { "from": "gemini_agent", "to": "act_protocol", "relationship": "follows" },
     { "from": "act_protocol", "to": "ast_mcp_server", "relationship": "requires" },
     { "from": "act_protocol", "to": "ast_engine", "relationship": "fallback_requires" },
+    { "from": "act_protocol", "to": "handlers", "relationship": "codebase_primary" },
     { "from": "act_protocol", "to": "arch_docs", "relationship": "requires" },
     { "from": "act_protocol", "to": "tech_inventory", "relationship": "requires" },
     { "from": "act_protocol", "to": "one_eye_guards", "relationship": "requires" },
