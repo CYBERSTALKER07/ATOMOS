@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Text, View, TouchableOpacity, Alert, ScrollView, TextInput, Modal, FlatList } from 'react-native';
+import { Text, View, TouchableOpacity, Alert, ScrollView, TextInput, Modal, FlatList, Animated, PanResponder, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -19,10 +19,56 @@ import { defaultLocale, type Locale } from '../../packages/i18n/locales';
 const API_BASE = (process.env.EXPO_PUBLIC_API_URL?.trim() || '') ||
   (__DEV__ ? 'http://localhost:8080' : 'https://api.pegasus.uz');
 
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function App() {
   const T = useT();
+  const { width, height } = useWindowDimensions();
+  const isTabletLayout = Math.min(width, height) >= 768;
+
+  const toastMotionProfile = useMemo(
+    () => isTabletLayout
+      ? {
+          startOffsetY: 18,
+          hiddenOffsetY: 12,
+          initialScale: 0.975,
+          enterDuration: 250,
+          exitDuration: 170,
+          swipeDismissDuration: 190,
+          swipeSnapDuration: 170,
+          swipeStartThreshold: 8,
+          swipeDismissDistance: 124,
+          swipeDismissVelocity: 1.2,
+          maxDragDistance: 260,
+          swipeDismissTravel: 520,
+          swipeSnapFriction: 8,
+          swipeSnapTension: 110,
+          dragOpacityDistance: 300,
+          defaultDurationMs: 3200,
+        }
+      : {
+          startOffsetY: 10,
+          hiddenOffsetY: 7,
+          initialScale: 0.97,
+          enterDuration: 165,
+          exitDuration: 115,
+          swipeDismissDuration: 125,
+          swipeSnapDuration: 110,
+          swipeStartThreshold: 4,
+          swipeDismissDistance: 76,
+          swipeDismissVelocity: 0.88,
+          maxDragDistance: 200,
+          swipeDismissTravel: 340,
+          swipeSnapFriction: 6,
+          swipeSnapTension: 158,
+          dragOpacityDistance: 220,
+          defaultDurationMs: 2300,
+        },
+    [isTabletLayout]
+  );
+
   const [locale, setLocale] = useState<Locale>(defaultLocale);
   const tx = useMemo(() => getPayloadTranslator(locale), [locale]);
 
@@ -99,6 +145,18 @@ export default function App() {
   type QueuedAction = { id: string; endpoint: string; method: string; body: string; createdAt: number };
   const [offlineQueue, setOfflineQueue] = useState<QueuedAction[]>([]);
   const [isOnline, setIsOnline] = useState(true);
+
+  // Lightweight in-app toast for non-blocking feedback.
+  type UiToastTone = 'info' | 'success' | 'warning' | 'error';
+  type UiToast = { id: number; title: string; message?: string; tone: UiToastTone };
+  const [uiToast, setUiToast] = useState<UiToast | null>(null);
+  const toastTranslateX = useRef(new Animated.Value(0)).current;
+  const toastTranslateY = useRef(new Animated.Value(toastMotionProfile.startOffsetY)).current;
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastScale = useRef(new Animated.Value(toastMotionProfile.initialScale)).current;
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastIdRef = useRef(0);
+  const activeToastIdRef = useRef<number | null>(null);
 
   // Notification state
   type NotifItem = { id: string; type: string; title: string; body: string; read_at: string | null; created_at: string };
@@ -208,7 +266,7 @@ export default function App() {
       setWorkerName(data.name || 'Payloader');
       if (data.supplier_id) setSupplierId(data.supplier_id);
     } catch (e: unknown) {
-      Alert.alert(tx('auth.error.login_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
+      showToast(tx('auth.error.login_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
     } finally {
       setIsLoggingIn(false);
     }
@@ -320,6 +378,221 @@ export default function App() {
   };
   const authHeaders = getAuthHeaders();
 
+  const clearToastTimer = useCallback(() => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+  }, []);
+
+  const clearToastImmediate = useCallback(() => {
+    activeToastIdRef.current = null;
+    setUiToast(null);
+    toastTranslateX.setValue(0);
+    toastTranslateY.setValue(toastMotionProfile.startOffsetY);
+    toastOpacity.setValue(0);
+    toastScale.setValue(toastMotionProfile.initialScale);
+  }, [toastMotionProfile.initialScale, toastMotionProfile.startOffsetY, toastOpacity, toastScale, toastTranslateX, toastTranslateY]);
+
+  const dismissToast = useCallback((immediate = false) => {
+    clearToastTimer();
+    if (immediate) {
+      clearToastImmediate();
+      return;
+    }
+
+    Animated.parallel([
+      Animated.timing(toastOpacity, { toValue: 0, duration: toastMotionProfile.exitDuration, useNativeDriver: true }),
+      Animated.timing(toastTranslateY, { toValue: toastMotionProfile.hiddenOffsetY, duration: toastMotionProfile.exitDuration, useNativeDriver: true }),
+      Animated.timing(toastScale, { toValue: 0.985, duration: toastMotionProfile.exitDuration, useNativeDriver: true }),
+    ]).start(() => clearToastImmediate());
+  }, [clearToastImmediate, clearToastTimer, toastMotionProfile.exitDuration, toastMotionProfile.hiddenOffsetY, toastOpacity, toastScale, toastTranslateY]);
+
+  const showToast = useCallback((title: string, message?: string, tone: UiToastTone = 'info', durationMs = toastMotionProfile.defaultDurationMs) => {
+    clearToastTimer();
+
+    const id = ++toastIdRef.current;
+    activeToastIdRef.current = id;
+    setUiToast({ id, title, message, tone });
+
+    toastTranslateX.setValue(0);
+    toastTranslateY.setValue(toastMotionProfile.startOffsetY);
+    toastOpacity.setValue(0);
+    toastScale.setValue(toastMotionProfile.initialScale);
+
+    Animated.parallel([
+      Animated.timing(toastOpacity, { toValue: 1, duration: toastMotionProfile.enterDuration, useNativeDriver: true }),
+      Animated.timing(toastTranslateY, { toValue: 0, duration: toastMotionProfile.enterDuration, useNativeDriver: true }),
+      Animated.timing(toastScale, { toValue: 1, duration: toastMotionProfile.enterDuration, useNativeDriver: true }),
+    ]).start();
+
+    toastTimerRef.current = setTimeout(() => {
+      if (activeToastIdRef.current === id) {
+        dismissToast();
+      }
+    }, durationMs);
+  }, [clearToastTimer, dismissToast, toastMotionProfile.defaultDurationMs, toastMotionProfile.enterDuration, toastMotionProfile.initialScale, toastMotionProfile.startOffsetY, toastOpacity, toastScale, toastTranslateX, toastTranslateY]);
+
+  const toastPanResponder = useMemo(
+    () => PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) => {
+        if (!uiToast) return false;
+        return Math.abs(gesture.dx) > toastMotionProfile.swipeStartThreshold && Math.abs(gesture.dx) > Math.abs(gesture.dy);
+      },
+      onPanResponderMove: (_, gesture) => {
+        toastTranslateX.setValue(clamp(gesture.dx, -toastMotionProfile.maxDragDistance, toastMotionProfile.maxDragDistance));
+        toastOpacity.setValue(Math.max(0.35, 1 - Math.abs(gesture.dx) / toastMotionProfile.dragOpacityDistance));
+      },
+      onPanResponderRelease: (_, gesture) => {
+        const shouldDismiss =
+          Math.abs(gesture.dx) > toastMotionProfile.swipeDismissDistance ||
+          Math.abs(gesture.vx) > toastMotionProfile.swipeDismissVelocity;
+        if (shouldDismiss) {
+          clearToastTimer();
+          Animated.parallel([
+            Animated.timing(toastTranslateX, {
+              toValue: gesture.dx >= 0 ? toastMotionProfile.swipeDismissTravel : -toastMotionProfile.swipeDismissTravel,
+              duration: toastMotionProfile.swipeDismissDuration,
+              useNativeDriver: true,
+            }),
+            Animated.timing(toastOpacity, { toValue: 0, duration: toastMotionProfile.swipeDismissDuration, useNativeDriver: true }),
+          ]).start(() => dismissToast(true));
+          return;
+        }
+
+        Animated.parallel([
+          Animated.spring(toastTranslateX, {
+            toValue: 0,
+            friction: toastMotionProfile.swipeSnapFriction,
+            tension: toastMotionProfile.swipeSnapTension,
+            useNativeDriver: true,
+          }),
+          Animated.timing(toastOpacity, { toValue: 1, duration: toastMotionProfile.swipeSnapDuration, useNativeDriver: true }),
+        ]).start();
+      },
+      onPanResponderTerminate: () => {
+        Animated.parallel([
+          Animated.spring(toastTranslateX, {
+            toValue: 0,
+            friction: toastMotionProfile.swipeSnapFriction,
+            tension: toastMotionProfile.swipeSnapTension,
+            useNativeDriver: true,
+          }),
+          Animated.timing(toastOpacity, { toValue: 1, duration: toastMotionProfile.swipeSnapDuration, useNativeDriver: true }),
+        ]).start();
+      },
+    }),
+    [
+      clearToastTimer,
+      dismissToast,
+      toastMotionProfile.dragOpacityDistance,
+      toastMotionProfile.maxDragDistance,
+      toastMotionProfile.swipeDismissDistance,
+      toastMotionProfile.swipeDismissDuration,
+      toastMotionProfile.swipeDismissTravel,
+      toastMotionProfile.swipeDismissVelocity,
+      toastMotionProfile.swipeSnapDuration,
+      toastMotionProfile.swipeSnapFriction,
+      toastMotionProfile.swipeSnapTension,
+      toastMotionProfile.swipeStartThreshold,
+      toastOpacity,
+      toastTranslateX,
+      uiToast,
+    ]
+  );
+
+  const renderUiToast = () => {
+    if (!uiToast) return null;
+
+    const toneStyles: Record<UiToastTone, {
+      bg: string;
+      border: string;
+      title: string;
+      message: string;
+      icon: keyof typeof MaterialIcons.glyphMap;
+    }> = {
+      info: {
+        bg: T.colors.cardBackground,
+        border: T.colors.separator,
+        title: T.colors.label,
+        message: T.colors.secondaryLabel,
+        icon: 'info-outline',
+      },
+      success: {
+        bg: 'rgba(22, 163, 74, 0.12)',
+        border: 'rgba(22, 163, 74, 0.35)',
+        title: '#166534',
+        message: '#15803D',
+        icon: 'check-circle',
+      },
+      warning: {
+        bg: 'rgba(245, 158, 11, 0.14)',
+        border: 'rgba(245, 158, 11, 0.4)',
+        title: '#92400E',
+        message: '#B45309',
+        icon: 'warning-amber',
+      },
+      error: {
+        bg: 'rgba(239, 68, 68, 0.14)',
+        border: 'rgba(239, 68, 68, 0.45)',
+        title: '#991B1B',
+        message: '#B91C1C',
+        icon: 'error-outline',
+      },
+    };
+
+    const tone = toneStyles[uiToast.tone];
+
+    return (
+      <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: 14, alignItems: 'center', zIndex: 1200, elevation: 1200 }}>
+        <Animated.View
+          {...toastPanResponder.panHandlers}
+          style={{
+            width: '86%',
+            maxWidth: 560,
+            minHeight: 62,
+            borderRadius: isIOS ? 18 : 14,
+            borderWidth: 1,
+            borderColor: tone.border,
+            backgroundColor: tone.bg,
+            paddingHorizontal: 14,
+            paddingVertical: 12,
+            flexDirection: 'row',
+            alignItems: 'flex-start',
+            opacity: toastOpacity,
+            transform: [
+              { translateX: toastTranslateX },
+              { translateY: toastTranslateY },
+              { scale: toastScale },
+            ],
+            ...T.shadow.card,
+          }}
+        >
+          <MaterialIcons name={tone.icon} size={18} color={tone.title} style={{ marginTop: 1, marginRight: 10 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: tone.title, fontWeight: '700', fontSize: 13, letterSpacing: 0.2 }} numberOfLines={2}>
+              {uiToast.title}
+            </Text>
+            {uiToast.message ? (
+              <Text style={{ color: tone.message, fontSize: 12, marginTop: 3, lineHeight: 17 }} numberOfLines={2}>
+                {uiToast.message}
+              </Text>
+            ) : null}
+          </View>
+          <TouchableOpacity onPress={() => dismissToast()} style={{ marginLeft: 10, padding: 2 }}>
+            <MaterialIcons name="close" size={16} color={tone.message} />
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    );
+  };
+
+  useEffect(() => {
+    return () => {
+      clearToastTimer();
+    };
+  }, [clearToastTimer]);
+
   // ── Re-dispatch: fetch recommendations ──────────────────────────────────
   const openReDispatch = useCallback(async (orderId: string) => {
     setReDispatchOrderId(orderId);
@@ -340,11 +613,11 @@ export default function App() {
       setReDispatchRetailer(data.retailer_name ?? '');
       setReDispatchVolume(data.order_volume_vu ?? 0);
     } catch (e: unknown) {
-      Alert.alert(tx('payload.alert.recommendation_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
+      showToast(tx('payload.alert.recommendation_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
     } finally {
       setIsLoadingRecs(false);
     }
-  }, [authHeaders, locale, tx]);
+  }, [authHeaders, locale, showToast, tx]);
 
   const handleReassign = useCallback(async (newDriverId: string, _newVehicleId: string) => {
     if (!reDispatchOrderId || !token) return;
@@ -377,11 +650,11 @@ export default function App() {
       setShowReDispatch(false);
       setReDispatchOrderId(null);
     } catch (e: unknown) {
-      Alert.alert(tx('payload.alert.reassign_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
+      showToast(tx('payload.alert.reassign_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
     } finally {
       setIsReassigning(false);
     }
-  }, [authHeaders, locale, orders, reDispatchOrderId, sealedOrderIds, selectedOrderId, token, tx]);
+  }, [authHeaders, locale, orders, reDispatchOrderId, sealedOrderIds, selectedOrderId, showToast, token, tx]);
 
   // ── Fetch manifest for selected truck ────────────────────────────────────
   const fetchManifest = useCallback(async (truckId: string) => {
@@ -427,19 +700,19 @@ export default function App() {
             setOrders(data);
             setManifest(buildManifest(data));
             if (data.length > 0) setSelectedOrderId(data[0].order_id);
-            Alert.alert(tx('payload.alert.offline_cached_manifest_title'), tx('payload.alert.offline_cached_manifest_body'));
+            showToast(tx('payload.alert.offline_cached_manifest_title'), tx('payload.alert.offline_cached_manifest_body'), 'info', 3200);
             return;
           } else {
             // Cache is stale; do not use
-            Alert.alert(tx('payload.alert.cache_stale_title'), tx('payload.alert.cache_stale_body'));
+            showToast(tx('payload.alert.cache_stale_title'), tx('payload.alert.cache_stale_body'), 'warning', 3400);
           }
         }
       } catch {}
-      Alert.alert(tx('payload.alert.manifest_fetch_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
+      showToast(tx('payload.alert.manifest_fetch_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
     } finally {
       setIsLoading(false);
     }
-  }, [authHeaders, locale, tx]);
+  }, [authHeaders, locale, showToast, tx]);
 
   const handleTruckSelect = (truckId: string) => {
     setActiveTruck(truckId);
@@ -486,7 +759,7 @@ export default function App() {
       setManifestState('LOADING');
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: unknown) {
-      Alert.alert(tx('payload.alert.start_loading_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
+      showToast(tx('payload.alert.start_loading_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
     } finally {
       setIsStartingLoad(false);
     }
@@ -513,10 +786,10 @@ export default function App() {
         setSelectedOrderId(remaining.length > 0 ? remaining[0].order_id : null);
       }
       if (data.escalated) {
-        Alert.alert('DLQ ESCALATION', `Order ${orderId.slice(0, 8)} has been escalated to admin after ${data.overflow_count} overflow attempts.`);
+        showToast('DLQ ESCALATION', `Order ${orderId.slice(0, 8)} escalated after ${data.overflow_count} overflow attempts.`, 'warning', 3800);
       }
     } catch (e: unknown) {
-      Alert.alert(tx('payload.alert.exception_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
+      showToast(tx('payload.alert.exception_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
     } finally {
       setExceptionLoading(null);
     }
@@ -538,9 +811,14 @@ export default function App() {
       setManifestState('SEALED');
       setAllSealed(true);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(tx('payload.alert.manifest_sealed_title'), `${data.stop_count} stops sealed. ${data.volume_vu?.toFixed(1)}/${data.max_vu?.toFixed(1)} VU. Route finalized.`);
+      showToast(
+        tx('payload.alert.manifest_sealed_title'),
+        `${data.stop_count} stops sealed. ${data.volume_vu?.toFixed(1)}/${data.max_vu?.toFixed(1)} VU. Route finalized.`,
+        'success',
+        3600
+      );
     } catch (e: unknown) {
-      Alert.alert(tx('payload.alert.seal_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
+      showToast(tx('payload.alert.seal_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
     } finally {
       setIsSealingManifest(false);
     }
@@ -561,7 +839,12 @@ export default function App() {
       }
       const data = await res.json();
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(tx('payload.alert.order_injected_title'), `Order ${injectOrderId.slice(0, 8)} added. ${data.stop_count} stops, ${data.total_volume_vu?.toFixed(1)} VU.`);
+      showToast(
+        tx('payload.alert.order_injected_title'),
+        `Order ${injectOrderId.slice(0, 8)} added. ${data.stop_count} stops, ${data.total_volume_vu?.toFixed(1)} VU.`,
+        'success',
+        3400
+      );
       setInjectOrderId('');
       setShowInjectOrder(false);
       // Refresh manifest to pick up new order
@@ -579,11 +862,11 @@ export default function App() {
         const updated = [...offlineQueue, action];
         setOfflineQueue(updated);
         await SecureStore.setItemAsync('offline_queue', JSON.stringify(updated));
-        Alert.alert(tx('payload.alert.queued_offline_title'), tx('payload.alert.queued_offline_body'));
+        showToast(tx('payload.alert.queued_offline_title'), tx('payload.alert.queued_offline_body'), 'warning', 3600);
         setInjectOrderId('');
         setShowInjectOrder(false);
       } else {
-        Alert.alert(tx('payload.alert.inject_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
+        showToast(tx('payload.alert.inject_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
       }
     } finally {
       setIsInjecting(false);
@@ -611,7 +894,7 @@ export default function App() {
     setOfflineQueue(remaining);
     await SecureStore.setItemAsync('offline_queue', JSON.stringify(remaining));
     if (remaining.length === 0 && offlineQueue.length > 0) {
-      Alert.alert(tx('payload.alert.sync_complete_title'), `${offlineQueue.length} queued actions synced.`);
+      showToast(tx('payload.alert.sync_complete_title'), `${offlineQueue.length} queued actions synced.`, 'success', 3200);
     }
   };
 
@@ -674,7 +957,7 @@ export default function App() {
         });
       }, 1000);
     } catch (e: unknown) {
-      Alert.alert(tx('payload.alert.seal_failed'), e instanceof Error ? e.message : tx('common.error.unknown'));
+      showToast(tx('payload.alert.seal_failed'), e instanceof Error ? e.message : tx('common.error.unknown'), 'error');
     } finally {
       setIsSealing(false);
     }
@@ -687,6 +970,7 @@ export default function App() {
         <Text style={{ color: T.colors.tertiaryLabel, fontSize: 13, letterSpacing: 0.3 }}>
           {tx('common.status.restoring_session')}
         </Text>
+        {renderUiToast()}
       </View>
     );
   }
@@ -730,12 +1014,13 @@ export default function App() {
                         body: JSON.stringify({ order_id: postSealOrderId, items: [], source: 'PAYLOAD_TERMINAL' }),
                       });
                       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                      Alert.alert(
+                      showToast(
                         isIOS ? 'Reported' : 'REPORTED',
-                        isIOS ? 'Missing items flagged for review.' : 'MISSING ITEMS FLAGGED FOR REVIEW.'
+                        isIOS ? 'Missing items flagged for review.' : 'MISSING ITEMS FLAGGED FOR REVIEW.',
+                        'warning'
                       );
                     } catch (e: unknown) {
-                      Alert.alert('ERROR', e instanceof Error ? e.message : 'Failed to report');
+                      showToast('ERROR', e instanceof Error ? e.message : 'Failed to report', 'error');
                     }
                   },
                 },
@@ -758,6 +1043,7 @@ export default function App() {
             {isIOS ? 'Report Missing Items' : 'REPORT MISSING ITEMS'}
           </Text>
         </TouchableOpacity>
+        {renderUiToast()}
       </View>
     );
   }
@@ -804,6 +1090,7 @@ export default function App() {
             {isIOS ? 'New Manifest' : 'NEW MANIFEST'}
           </Text>
         </TouchableOpacity>
+        {renderUiToast()}
       </View>
     );
   }
@@ -881,6 +1168,7 @@ export default function App() {
             {isLoggingIn ? tx('auth.login.authenticating') : tx('auth.login.submit')}
           </Text>
         </TouchableOpacity>
+        {renderUiToast()}
       </View>
     );
   }
@@ -952,6 +1240,7 @@ export default function App() {
               : (isIOS ? 'Select target vehicle' : 'SELECT TARGET VEHICLE')}
           </Text>
         </View>
+        {renderUiToast()}
       </View>
     );
   }
@@ -1629,6 +1918,8 @@ export default function App() {
           </View>
         </View>
       </Modal>
+
+      {renderUiToast()}
     </View>
   );
 }
