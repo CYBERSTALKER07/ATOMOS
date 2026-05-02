@@ -213,8 +213,8 @@ struct FleetMapView: View {
         }
         .onChange(of: vm.latestTransmitLocation) { _, loc in
             // V.O.I.D. Adaptive Transmission Protocol Filtered Execution
-            if let loc { 
-                telemetryVM.sendLocation(loc.coordinate, accuracy: loc.horizontalAccuracy) 
+            if let loc {
+                telemetryVM.sendLocation(loc.coordinate, accuracy: loc.horizontalAccuracy)
             }
         }
         .sheet(isPresented: $vm.showOfflineVerifier) {
@@ -423,7 +423,7 @@ struct FleetMapView: View {
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(LabTheme.fgTertiary)
             }
-            .padding(LabTheme.s14)
+            .padding(LabTheme.s16)
             .background {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(LabTheme.fg.opacity(0.04))
