@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@heroui/react';
 import { useToken } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
+import { useLocale } from '@/hooks/useLocale';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -25,6 +26,7 @@ interface ApiResponse {
 export default function CountryConfigsPage() {
   const token = useToken();
   const { toast } = useToast();
+  const { t } = useLocale();
 
   const [rows, setRows] = useState<CountryConfig[]>([]);
   const [selectedCode, setSelectedCode] = useState<string>('');
@@ -41,7 +43,7 @@ export default function CountryConfigsPage() {
       const res = await fetch(`${API}/v1/admin/country-configs`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error('Failed to load country configs');
+      if (!res.ok) throw new Error(t('supplier_portal.configuration.countries.error.load_failed'));
       const payload = (await res.json()) as ApiResponse;
       const data = payload.data || [];
       setRows(data);
@@ -50,11 +52,11 @@ export default function CountryConfigsPage() {
         setSelectedCode((prev) => prev || pick);
       }
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Failed to load country configs', 'error');
+      toast(e instanceof Error ? e.message : t('supplier_portal.configuration.countries.error.load_failed'), 'error');
     } finally {
       setLoading(false);
     }
-  }, [token, toast]);
+  }, [t, token, toast]);
 
   useEffect(() => {
     load();
@@ -76,31 +78,33 @@ export default function CountryConfigsPage() {
         body: JSON.stringify(draft),
       });
       if (!res.ok) throw new Error(await res.text());
-      toast(`Saved ${draft.country_code}`, 'success');
+      toast(t('supplier_portal.configuration.countries.toast.saved', { country_code: draft.country_code }), 'success');
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Save failed', 'error');
+      toast(e instanceof Error ? e.message : t('supplier_portal.configuration.countries.error.save_failed'), 'error');
     } finally {
       setSaving(false);
     }
-  }, [draft, load, token, toast]);
+  }, [draft, load, t, token, toast]);
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto px-4 py-6">
       <div>
-        <h1 className="md-typescale-headline-small" style={{ color: 'var(--color-md-on-surface)' }}>Country Configuration</h1>
+        <h1 className="md-typescale-headline-small" style={{ color: 'var(--color-md-on-surface)' }}>
+          {t('supplier_portal.configuration.countries.title')}
+        </h1>
         <p className="md-typescale-body-small mt-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
-          Operational controls by country (geofence, gateways, provider preferences).
+          {t('supplier_portal.configuration.countries.subtitle')}
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="md-card md-elevation-1 md-shape-md overflow-hidden" style={{ background: 'var(--color-md-surface)' }}>
           <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
-            <p className="md-typescale-title-small">Countries</p>
+            <p className="md-typescale-title-small">{t('supplier_portal.configuration.countries.list_title')}</p>
           </div>
           {loading ? (
-            <div className="p-4">Loading…</div>
+            <div className="p-4">{t('supplier_portal.configuration.countries.state.loading')}</div>
           ) : (
             <div className="max-h-[520px] overflow-y-auto">
               {rows.map((r) => (
@@ -123,35 +127,37 @@ export default function CountryConfigsPage() {
 
         <div className="lg:col-span-2 md-card md-elevation-1 md-shape-md p-4" style={{ background: 'var(--color-md-surface)' }}>
           {!draft ? (
-            <div className="text-sm" style={{ color: 'var(--color-md-on-surface-variant)' }}>Select a country to edit.</div>
+            <div className="text-sm" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+              {t('supplier_portal.configuration.countries.state.select_country')}
+            </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <label className="flex flex-col gap-1">
-                <span className="text-xs">Country Code</span>
+                <span className="text-xs">{t('supplier_portal.configuration.countries.field.country_code')}</span>
                 <input className="md-input-outlined px-3 py-2" value={draft.country_code} onChange={(e) => setDraft({ ...draft, country_code: e.target.value.toUpperCase() })} />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs">Country Name</span>
+                <span className="text-xs">{t('supplier_portal.configuration.countries.field.country_name')}</span>
                 <input className="md-input-outlined px-3 py-2" value={draft.country_name} onChange={(e) => setDraft({ ...draft, country_name: e.target.value })} />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs">Timezone</span>
+                <span className="text-xs">{t('supplier_portal.configuration.countries.field.timezone')}</span>
                 <input className="md-input-outlined px-3 py-2" value={draft.timezone} onChange={(e) => setDraft({ ...draft, timezone: e.target.value })} />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs">Currency Code</span>
+                <span className="text-xs">{t('supplier_portal.configuration.countries.field.currency_code')}</span>
                 <input className="md-input-outlined px-3 py-2" value={draft.currency_code} onChange={(e) => setDraft({ ...draft, currency_code: e.target.value.toUpperCase() })} />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs">Breach Radius (m)</span>
+                <span className="text-xs">{t('supplier_portal.configuration.countries.field.breach_radius_meters')}</span>
                 <input className="md-input-outlined px-3 py-2" type="number" min="1" value={draft.breach_radius_meters} onChange={(e) => setDraft({ ...draft, breach_radius_meters: Number(e.target.value) })} />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-xs">SMS Provider</span>
+                <span className="text-xs">{t('supplier_portal.configuration.countries.field.sms_provider')}</span>
                 <input className="md-input-outlined px-3 py-2" value={draft.sms_provider} onChange={(e) => setDraft({ ...draft, sms_provider: e.target.value })} />
               </label>
               <label className="flex flex-col gap-1 md:col-span-2">
-                <span className="text-xs">Payment Gateways (comma separated)</span>
+                <span className="text-xs">{t('supplier_portal.configuration.countries.field.payment_gateways')}</span>
                 <input
                   className="md-input-outlined px-3 py-2"
                   value={(draft.payment_gateways || []).join(',')}
@@ -160,7 +166,9 @@ export default function CountryConfigsPage() {
               </label>
               <div className="md:col-span-2 pt-2">
                 <Button variant="primary" onPress={save} isDisabled={saving}>
-                  {saving ? 'Saving...' : 'Save Country Config'}
+                  {saving
+                    ? t('common.status.saving')
+                    : t('supplier_portal.configuration.countries.action.save')}
                 </Button>
               </div>
             </div>

@@ -173,7 +173,6 @@ export default function AdvancedAnalyticsPage() {
 
         <BentoCard size="stat" delay={40}>
           <div className="md-card md-elevation-1 md-shape-md p-5 h-full flex flex-col items-center justify-center" style={{ background: 'var(--color-md-surface-container)' }}>
-            <span className="md-typescale-label-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>Total Revenue</span>
             <span className="md-typescale-label-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>
               {t('supplier_portal.analytics.advanced.total_revenue')}
             </span>

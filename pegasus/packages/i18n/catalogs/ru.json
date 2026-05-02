@@ -563,6 +563,26 @@
         }
       }
     },
+    "analytics": {
+      "advanced": {
+        "title": "Расширенная аналитика",
+        "action": {
+          "refresh": "Обновить"
+        },
+        "total_revenue": "Общая выручка",
+        "sla_rate": "Уровень SLA",
+        "factory": {
+          "title": "Аналитика фабрики",
+          "summary_title": "Сводка фабрики",
+          "total_transfers": "Всего трансферов",
+          "avg_lead_time": "Среднее время выполнения",
+          "minutes_value": "{value} мин"
+        },
+        "error": {
+          "fault": "Сбой аналитики: {detail}"
+        }
+      }
+    },
     "billing_setup": {
       "title": "Настройка биллинга",
       "subtitle": "Настройте, как ритейлеры будут платить вам",

@@ -563,6 +563,26 @@
         }
       }
     },
+    "analytics": {
+      "advanced": {
+        "title": "Kengaytirilgan tahlil",
+        "action": {
+          "refresh": "Yangilash"
+        },
+        "total_revenue": "Jami tushum",
+        "sla_rate": "SLA darajasi",
+        "factory": {
+          "title": "Fabrika tahlili",
+          "summary_title": "Fabrika xulosasi",
+          "total_transfers": "Jami transferlar",
+          "avg_lead_time": "O'rtacha yetaklash vaqti",
+          "minutes_value": "{value} daqiqa"
+        },
+        "error": {
+          "fault": "Tahlil xatosi: {detail}"
+        }
+      }
+    },
     "billing_setup": {
       "title": "Billing sozlamalari",
       "subtitle": "Retailerlar sizga qanday to'lashini sozlang",

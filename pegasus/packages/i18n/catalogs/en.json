@@ -563,6 +563,91 @@
         }
       }
     },
+    "analytics": {
+      "advanced": {
+        "title": "Advanced Analytics",
+        "action": {
+          "refresh": "Refresh"
+        },
+        "total_revenue": "Total Revenue",
+        "sla_rate": "SLA Rate",
+        "factory": {
+          "title": "Factory Analytics",
+          "summary_title": "Factory Summary",
+          "total_transfers": "Total Transfers",
+          "avg_lead_time": "Avg Lead Time",
+          "minutes_value": "{value} min"
+        },
+        "error": {
+          "fault": "Analytics fault: {detail}"
+        }
+      }
+    },
+    "configuration": {
+      "countries": {
+        "title": "Country Configuration",
+        "subtitle": "Operational controls by country (geofence, gateways, provider preferences).",
+        "list_title": "Countries",
+        "state": {
+          "loading": "Loading...",
+          "select_country": "Select a country to edit."
+        },
+        "field": {
+          "country_code": "Country Code",
+          "country_name": "Country Name",
+          "timezone": "Timezone",
+          "currency_code": "Currency Code",
+          "breach_radius_meters": "Breach Radius (m)",
+          "sms_provider": "SMS Provider",
+          "payment_gateways": "Payment Gateways (comma separated)"
+        },
+        "action": {
+          "save": "Save Country Config"
+        },
+        "toast": {
+          "saved": "Saved {country_code}"
+        },
+        "error": {
+          "load_failed": "Failed to load country configs",
+          "save_failed": "Save failed"
+        }
+      },
+      "system": {
+        "title": "System Configuration",
+        "subtitle": "Logistics physics and gateway parameters",
+        "physics": {
+          "title": "Logistics Physics",
+          "geofence_radius_label": "Geofence Lock Radius (Meters)",
+          "geofence_help": "Minimum proximity for delivery completion confirmation.",
+          "delivery_fee_label": "Base Delivery Fee (Amount)",
+          "delivery_fee_help": "Applied per delivery to the retailer invoice.",
+          "update_action": "Update Physics"
+        },
+        "platform_fee": {
+          "label": "Platform Fee Percent (0-50)",
+          "update_action": "Update Platform Fee"
+        },
+        "gateway": {
+          "title": "Financial Gateways",
+          "click_up_merchant_id": "Click Up Merchant ID",
+          "payme_secret_key": "Payme Secret Key",
+          "configured_via_secret_manager": "Configured via Secret Manager",
+          "keys_help": "Payment gateway keys are managed via infrastructure secrets."
+        },
+        "action": {
+          "open_country_configuration": "Open Country Configuration"
+        },
+        "toast": {
+          "config_saved": "Configuration saved.",
+          "platform_fee_updated": "Platform fee updated."
+        },
+        "error": {
+          "network_failure": "Network failure",
+          "failed_with_reason": "Failed: {detail}",
+          "generic_with_reason": "Error: {detail}"
+        }
+      }
+    },
     "billing_setup": {
       "title": "Billing Setup",
       "subtitle": "Configure how retailers will pay you",

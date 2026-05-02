@@ -5,12 +5,13 @@ import { Button } from '@heroui/react';
 import Link from 'next/link';
 import { getAdminToken } from "@/lib/auth";
 import { useToast } from '@/components/Toast';
+import { useLocale } from '@/hooks/useLocale';
 
 type ConfigMap = Record<string, string>;
 
 const CONFIG_KEYS = {
-    geofence_radius: { label: "Geofence Lock Radius (Meters)", default: "100" },
-    delivery_fee: { label: "Base Delivery Fee (Amount)", default: "15000" },
+    geofence_radius: { label_key: "supplier_portal.configuration.system.physics.geofence_radius_label", default: "100" },
+    delivery_fee: { label_key: "supplier_portal.configuration.system.physics.delivery_fee_label", default: "15000" },
 };
 
 export default function ConfigurationPage() {
@@ -20,6 +21,7 @@ export default function ConfigurationPage() {
     const [isSavingPhysics, setIsSavingPhysics] = useState(false);
     const [isSavingPlatformFee, setIsSavingPlatformFee] = useState(false);
     const { toast } = useToast();
+    const { t } = useLocale();
 
     useEffect(() => {
         (async () => {
@@ -66,13 +68,18 @@ export default function ConfigurationPage() {
                 body: JSON.stringify(entries),
             });
             if (res.ok) {
-                toast('Configuration saved.' , 'success');
+                toast(t('supplier_portal.configuration.system.toast.config_saved') , 'success');
             } else {
                 const err = await res.text();
-                toast(`Failed: ${err}`, 'error');
+                toast(t('supplier_portal.configuration.system.error.failed_with_reason', { detail: err }), 'error');
             }
         } catch (e: unknown) {
-            toast(`Error: ${e instanceof Error ? e.message : 'Network failure'}`, 'error');
+            toast(
+                t('supplier_portal.configuration.system.error.generic_with_reason', {
+                    detail: e instanceof Error ? e.message : t('supplier_portal.configuration.system.error.network_failure'),
+                }),
+                'error',
+            );
         } finally {
             setIsSavingPhysics(false);
         }
@@ -90,9 +97,14 @@ export default function ConfigurationPage() {
             if (!res.ok) {
                 throw new Error(await res.text());
             }
-            toast('Platform fee updated.', 'success');
+            toast(t('supplier_portal.configuration.system.toast.platform_fee_updated'), 'success');
         } catch (e: unknown) {
-            toast(`Error: ${e instanceof Error ? e.message : 'Network failure'}`, 'error');
+            toast(
+                t('supplier_portal.configuration.system.error.generic_with_reason', {
+                    detail: e instanceof Error ? e.message : t('supplier_portal.configuration.system.error.network_failure'),
+                }),
+                'error',
+            );
         } finally {
             setIsSavingPlatformFee(false);
         }
@@ -101,8 +113,10 @@ export default function ConfigurationPage() {
     return (
         <div className="min-h-full p-6 md:p-10" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
             <header className="mb-8">
-                <h1 className="md-typescale-headline-medium">System Configuration</h1>
-                <p className="md-typescale-body-medium mt-2" style={{ color: 'var(--muted)' }}>Logistics physics and gateway parameters</p>
+                <h1 className="md-typescale-headline-medium">{t('supplier_portal.configuration.system.title')}</h1>
+                <p className="md-typescale-body-medium mt-2" style={{ color: 'var(--muted)' }}>
+                    {t('supplier_portal.configuration.system.subtitle')}
+                </p>
             </header>
 
             <div className="md-divider mb-8" />
@@ -111,7 +125,7 @@ export default function ConfigurationPage() {
                 {/* Logistics Physics */}
                 <div className="md-card md-card-elevated p-6">
                     <h2 className="md-typescale-title-small pb-3 mb-6" style={{ borderBottom: '1px solid var(--border)' }}>
-                        Logistics Physics
+                        {t('supplier_portal.configuration.system.physics.title')}
                     </h2>
 
                     {isLoading ? (
@@ -127,7 +141,7 @@ export default function ConfigurationPage() {
                         <>
                             <div className="mb-6">
                                 <label className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
-                                    {CONFIG_KEYS.geofence_radius.label}
+                                    {t(CONFIG_KEYS.geofence_radius.label_key)}
                                 </label>
                                 <input
                                     type="number"
@@ -139,13 +153,13 @@ export default function ConfigurationPage() {
                                     style={{ fontVariantNumeric: 'tabular-nums' }}
                                 />
                                 <p className="md-typescale-label-small mt-1.5" style={{ color: 'var(--border)' }}>
-                                    Minimum proximity for delivery completion confirmation.
+                                    {t('supplier_portal.configuration.system.physics.geofence_help')}
                                 </p>
                             </div>
 
                             <div className="mb-6">
                                 <label className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
-                                    {CONFIG_KEYS.delivery_fee.label}
+                                    {t(CONFIG_KEYS.delivery_fee.label_key)}
                                 </label>
                                 <input
                                     type="number"
@@ -156,7 +170,7 @@ export default function ConfigurationPage() {
                                     style={{ fontVariantNumeric: 'tabular-nums' }}
                                 />
                                 <p className="md-typescale-label-small mt-1.5" style={{ color: 'var(--border)' }}>
-                                    Applied per delivery to the retailer invoice.
+                                    {t('supplier_portal.configuration.system.physics.delivery_fee_help')}
                                 </p>
                             </div>
 
@@ -167,12 +181,14 @@ export default function ConfigurationPage() {
                                 onPress={savePhysics}
                                 isDisabled={isSavingPhysics}
                             >
-                                {isSavingPhysics ? "Saving..." : "Update Physics"}
+                                {isSavingPhysics
+                                    ? t('common.status.saving')
+                                    : t('supplier_portal.configuration.system.physics.update_action')}
                             </Button>
 
                             <div className="mt-8 pt-6" style={{ borderTop: '1px solid var(--border)' }}>
                                 <label className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
-                                    Platform Fee Percent (0-50)
+                                    {t('supplier_portal.configuration.system.platform_fee.label')}
                                 </label>
                                 <input
                                     type="number"
@@ -190,7 +206,9 @@ export default function ConfigurationPage() {
                                     onPress={savePlatformFee}
                                     isDisabled={isSavingPlatformFee}
                                 >
-                                    {isSavingPlatformFee ? "Saving..." : "Update Platform Fee"}
+                                    {isSavingPlatformFee
+                                        ? t('common.status.saving')
+                                        : t('supplier_portal.configuration.system.platform_fee.update_action')}
                                 </Button>
                             </div>
                         </>
@@ -200,31 +218,31 @@ export default function ConfigurationPage() {
                 {/* Financial Gateways — sensitive, display-only */}
                 <div className="md-card md-card-elevated p-6">
                     <h2 className="md-typescale-title-small pb-3 mb-6" style={{ borderBottom: '1px solid var(--border)' }}>
-                        Financial Gateways
+                        {t('supplier_portal.configuration.system.gateway.title')}
                     </h2>
 
                     <div className="mb-6">
                         <label className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
-                            Click Up Merchant ID
+                            {t('supplier_portal.configuration.system.gateway.click_up_merchant_id')}
                         </label>
                         <input
                             type="text"
-                            placeholder="Configured via Secret Manager"
+                            placeholder={t('supplier_portal.configuration.system.gateway.configured_via_secret_manager')}
                             disabled
                             className="md-input-outlined w-full font-mono opacity-60"
                         />
                         <p className="md-typescale-label-small mt-1" style={{ color: 'var(--border)' }}>
-                            Payment gateway keys are managed via infrastructure secrets.
+                            {t('supplier_portal.configuration.system.gateway.keys_help')}
                         </p>
                     </div>
 
                     <div className="mb-2">
                         <label className="md-typescale-label-small block mb-2" style={{ color: 'var(--muted)' }}>
-                            Payme Secret Key
+                            {t('supplier_portal.configuration.system.gateway.payme_secret_key')}
                         </label>
                         <input
                             type="password"
-                            placeholder="Configured via Secret Manager"
+                            placeholder={t('supplier_portal.configuration.system.gateway.configured_via_secret_manager')}
                             disabled
                             className="md-input-outlined w-full font-mono opacity-60"
                         />
@@ -232,7 +250,7 @@ export default function ConfigurationPage() {
 
                     <div className="mt-6 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
                         <Link href="/configuration/countries" className="md-btn md-btn-tonal md-typescale-label-large inline-flex px-4 py-2">
-                            Open Country Configuration
+                            {t('supplier_portal.configuration.system.action.open_country_configuration')}
                         </Link>
                     </div>
                 </div>

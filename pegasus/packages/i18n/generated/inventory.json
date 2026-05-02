@@ -1,141 +1,15 @@
 {
-  "generated_at": "2026-05-02T06:39:51.579Z",
+  "generated_at": "2026-05-02T06:44:47.261Z",
   "total_files_scanned": 1487,
-  "total_matches": 2124,
+  "total_matches": 2103,
   "summary": {
-    "web-jsx-text": 1217,
+    "web-jsx-text": 1196,
     "backend-inline-problem-text": 26,
     "xml-inline-text": 29,
     "compose-inline-text": 222,
     "swiftui-inline-text": 630
   },
   "entries": [
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/control-center/page.tsx",
-      "line": 171,
-      "text": "Control Center"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/control-center/page.tsx",
-      "line": 180,
-      "text": "Issue Payment Bypass"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/control-center/page.tsx",
-      "line": 219,
-      "text": "Manual Session Reconcile"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/control-center/page.tsx",
-      "line": 252,
-      "text": "System Broadcast"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/control-center/page.tsx",
-      "line": 276,
-      "text": "ALL"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/control-center/page.tsx",
-      "line": 277,
-      "text": "RETAILER"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/control-center/page.tsx",
-      "line": 278,
-      "text": "DRIVER"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/control-center/page.tsx",
-      "line": 306,
-      "text": "Manual Replenishment Cycle"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/control-center/page.tsx",
-      "line": 189,
-      "text": "Order ID"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/control-center/page.tsx",
-      "line": 195,
-      "text": "Reason"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/control-center/page.tsx",
-      "line": 228,
-      "text": "Session ID"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/control-center/page.tsx",
-      "line": 261,
-      "text": "Title"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/control-center/page.tsx",
-      "line": 267,
-      "text": "Body"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/empathy/page.tsx",
-      "line": 89,
-      "text": "Empathy Engine"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/empathy/page.tsx",
-      "line": 104,
-      "text": "Engine Online"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/empathy/page.tsx",
-      "line": 160,
-      "text": "Prediction Pipeline"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/admin/empathy/page.tsx",
-      "line": 205,
-      "text": "Resolution Hierarchy"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/analytics/advanced/page.tsx",
-      "line": 86,
-      "text": "Factory Summary"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/analytics/advanced/page.tsx",
-      "line": 89,
-      "text": "Total Transfers"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/analytics/advanced/page.tsx",
-      "line": 95,
-      "text": "Avg Lead Time"
-    },
-    {
-      "kind": "web-jsx-text",
-      "file": "apps/admin-portal/app/analytics/advanced/page.tsx",
-      "line": 166,
-      "text": "Total Revenue"
-    },
     {
       "kind": "web-jsx-text",
       "file": "apps/admin-portal/app/configuration/countries/page.tsx",
