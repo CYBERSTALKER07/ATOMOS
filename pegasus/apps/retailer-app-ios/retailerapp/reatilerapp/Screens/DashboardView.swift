@@ -74,45 +74,55 @@ struct DashboardView: View {
             Spacer()
 
             Image(systemName: icon)
-                .font(.system(size: 28, weight: .medium))
-                .foregroundStyle(AppTheme.textPrimary)
+                .font(.system(size: 28, weight: .semibold)) // Bold icons
+                .foregroundStyle(AppTheme.accent)
                 .padding(.bottom, AppTheme.spacingSM)
 
             Text(title)
-                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                .font(.system(.subheadline, design: .rounded, weight: .bold)) // Bold titles
                 .foregroundStyle(AppTheme.textPrimary)
 
             if let subtitle {
                 Text(subtitle)
-                    .font(.system(.caption2, design: .rounded))
+                    .font(.system(.caption2, design: .rounded, weight: .medium)) // Medium weight
                     .foregroundStyle(AppTheme.textTertiary)
-                    .padding(.top, 1)
+                    .padding(.top, 2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: height)
         .padding(AppTheme.spacingMD)
-        .background(AppTheme.cardBackground)
-        .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
-        .shadow(color: AppTheme.shadowColor, radius: 4, x: 0, y: 2)
+        .background {
+            RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
+                .fill(AppTheme.cardBackground)
+                .overlay {
+                    RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
+                        .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
+                }
+        }
         .pressable()
     }
 
     private func serviceTileSmall(title: String, icon: String) -> some View {
         VStack(spacing: AppTheme.spacingSM) {
             Image(systemName: icon)
-                .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(AppTheme.textPrimary)
+                .font(.system(size: 20, weight: .semibold)) // Bold icons
+                .foregroundStyle(AppTheme.accent)
 
             Text(title)
-                .font(.system(.caption2, design: .rounded, weight: .medium))
+                .font(.system(.caption2, design: .rounded, weight: .bold)) // Bold titles
                 .foregroundStyle(AppTheme.textSecondary)
         }
         .frame(maxWidth: .infinity)
         .frame(height: 80)
-        .background(AppTheme.cardBackground)
-        .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
-        .shadow(color: AppTheme.shadowColor, radius: 4, x: 0, y: 2)
+        .background {
+            RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
+                .fill(AppTheme.cardBackground)
+                .overlay {
+                    RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
+                        .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
+                }
+        }
         .pressable()
     }
 

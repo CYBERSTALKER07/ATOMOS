@@ -3,25 +3,26 @@ import SwiftUI
 // MARK: - Design Tokens
 
 enum AppTheme {
-    // MARK: Colors (Black & White)
-    static let background = Color(.systemGroupedBackground)
-    static let cardBackground = Color(.systemBackground)
-    static let separator = Color(.separator)
-    static let accent = Color(.label)                              // Pure black (light) / white (dark)
-    static let accentSoft = Color(.systemGray6)                    // Very light gray
-    static let accentDark = Color(.label)                          // Same as accent
-    static let destructive = Color(.systemRed)
-    static let destructiveSoft = Color(.systemRed).opacity(0.1)
-    static let success = Color(.systemGreen)
-    static let successSoft = Color(.systemGreen).opacity(0.1)
-    static let warning = Color(.systemOrange)
-    static let warningSoft = Color(.systemOrange).opacity(0.1)
-    static let info = Color(.systemBlue)
-    static let infoSoft = Color(.systemBlue).opacity(0.1)
-    static let textPrimary = Color(.label)
-    static let textSecondary = Color(.secondaryLabel)
-    static let textTertiary = Color(.tertiaryLabel)
-    static let surfaceElevated = Color(.systemGray6)
+    // MARK: Colors (Native Tactical)
+    static let background = Color(UIColor.systemGroupedBackground)
+    static let cardBackground = Color(UIColor.systemBackground)
+    static let secondaryBackground = Color(UIColor.secondarySystemGroupedBackground)
+    static let separator = Color(UIColor.separator)
+    static let accent = Color(UIColor.label)                              // Pure black (light) / white (dark)
+    static let accentSoft = Color(UIColor.systemGray6)                    // Very light gray
+    static let accentDark = Color(UIColor.label)                          // Same as accent
+    static let destructive = Color(UIColor.systemRed)
+    static let destructiveSoft = Color(UIColor.systemRed).opacity(0.1)
+    static let success = Color(UIColor.systemGreen)
+    static let successSoft = Color(UIColor.systemGreen).opacity(0.1)
+    static let warning = Color(UIColor.systemOrange)
+    static let warningSoft = Color(UIColor.systemOrange).opacity(0.1)
+    static let info = Color(UIColor.systemBlue)
+    static let infoSoft = Color(UIColor.systemBlue).opacity(0.1)
+    static let textPrimary = Color(UIColor.label)
+    static let textSecondary = Color(UIColor.secondaryLabel)
+    static let textTertiary = Color(UIColor.tertiaryLabel)
+    static let surfaceElevated = Color(UIColor.systemGray6)
 
     // MARK: Gradients (B&W)
     static let accentGradient = LinearGradient(
@@ -50,14 +51,15 @@ enum AppTheme {
         endPoint: .bottom
     )
 
-    // MARK: Corner Radii
+    // MARK: Corner Radii (Native Fluid)
     static let radiusXS: Double = 4
     static let radiusSM: Double = 8
     static let radiusMD: Double = 12
-    static let radiusLG: Double = 16
-    static let radiusXL: Double = 20
-    static let radiusCard: Double = 16
-    static let radiusButton: Double = 12
+    static let radiusLG: Double = 20
+    static let radiusXL: Double = 24
+    static let radiusXXL: Double = 32
+    static let radiusCard: Double = 24
+    static let radiusButton: Double = 16
     static let radiusPill: Double = 100
 
     // MARK: Spacing
@@ -69,12 +71,12 @@ enum AppTheme {
     static let spacingXXL: Double = 32
     static let spacingHuge: Double = 48
 
-    // MARK: Shadows
-    static let shadowRadius: Double = 8
-    static let shadowColor = Color.black.opacity(0.06)
-    static let shadowOffsetY: Double = 4
-    static let shadowRadiusLG: Double = 16
-    static let shadowColorLG = Color.black.opacity(0.1)
+    // MARK: Shadows (Tactical - Deprioritized)
+    static let shadowRadius: Double = 4
+    static let shadowColor = Color.black.opacity(0.04)
+    static let shadowOffsetY: Double = 2
+    static let shadowRadiusLG: Double = 8
+    static let shadowColorLG = Color.black.opacity(0.08)
 
     // MARK: Separator
     static let separatorHeight: Double = 0.33

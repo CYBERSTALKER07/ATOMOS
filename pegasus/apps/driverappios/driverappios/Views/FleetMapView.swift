@@ -398,15 +398,15 @@ struct FleetMapView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(mission.order_id)
-                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    Text("ORD-\(mission.order_id.suffix(4).uppercased())")
+                        .font(.system(size: 13, weight: .black, design: .monospaced)) // Black mono
                         .foregroundStyle(LabTheme.fg)
-                    HStack(spacing: 3) {
-                        Text(mission.gateway)
-                        Text("·")
+                    HStack(spacing: 4) {
+                        Text(mission.gateway.uppercased())
+                        Text("—")
                         Text(mission.amount.formattedAmount)
                     }
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 10, weight: .bold, design: .monospaced)) // Bold mono
                     .foregroundStyle(LabTheme.fgSecondary)
                 }
 
@@ -415,16 +415,23 @@ struct FleetMapView: View {
                 if let loc = vm.location {
                     let d = haversineDistance(from: loc, to: CLLocationCoordinate2D(latitude: mission.target_lat, longitude: mission.target_lng))
                     Text(formattedDistance(d))
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
                         .foregroundStyle(LabTheme.fgTertiary)
                 }
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(LabTheme.fgTertiary)
             }
-            .padding(LabTheme.s12)
-            .background(LabTheme.fg.opacity(0.03), in: .rect(cornerRadius: 14))
+            .padding(LabTheme.s14)
+            .background {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(LabTheme.fg.opacity(0.04))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .stroke(LabTheme.separator.opacity(0.12), lineWidth: 1)
+                    }
+            }
         }
         .buttonStyle(.pressable)
         .staggeredAppear(index: index)
@@ -442,39 +449,41 @@ struct FleetMapView: View {
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(mission.order_id)
-                        .font(.system(size: 18, weight: .bold, design: .monospaced))
+                    Text("ORD-\(mission.order_id.suffix(6).uppercased())")
+                        .font(.system(size: 20, weight: .black, design: .monospaced))
                         .foregroundStyle(LabTheme.fg)
+                        .tracking(1.2)
                     HStack(spacing: 6) {
-                        Text(mission.gateway)
-                            .font(.system(size: 10, weight: .bold))
-                            .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(LabTheme.fg.opacity(0.07), in: Capsule())
+                        Text(mission.gateway.uppercased())
+                            .font(.system(size: 9, weight: .black, design: .monospaced))
+                            .padding(.horizontal, 10).padding(.vertical, 4)
+                            .background(LabTheme.fg.opacity(0.1), in: Capsule())
                         Text(mission.amount.formattedAmount)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 13, weight: .bold, design: .monospaced))
                             .foregroundStyle(LabTheme.fgSecondary)
                     }
                 }
                 Spacer()
-                StatusPill(label: mission.state, color: LabTheme.fg)
+                StatusPill(label: mission.state.uppercased(), color: LabTheme.fg)
             }
             .padding(.horizontal, LabTheme.s20)
 
             VStack(alignment: .leading, spacing: 7) {
-                Text("DESTINATION")
-                    .font(.system(size: 9, weight: .heavy, design: .monospaced))
+                Text("STRATEGIC_ENDPOINT")
+                    .font(.system(size: 9, weight: .black, design: .monospaced))
                     .foregroundStyle(LabTheme.fgTertiary)
-                Text(String(format: "%.4f, %.4f", mission.target_lat, mission.target_lng))
-                    .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                    .tracking(1.4)
+                Text(String(format: "%.5f, %.5f", mission.target_lat, mission.target_lng))
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
                     .foregroundStyle(LabTheme.fg)
                 if let d = dist {
                     HStack(spacing: 5) {
                         Circle().fill(inRange ? LabTheme.success : LabTheme.warning).frame(width: 6, height: 6)
                         Text(formattedDistance(d))
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .font(.system(size: 12, weight: .black, design: .monospaced))
                             .foregroundStyle(inRange ? LabTheme.success : LabTheme.fgSecondary)
-                        Text(inRange ? "In range" : "Approaching")
-                            .font(.system(size: 11, weight: .medium))
+                        Text(inRange ? "GEOFENCE_ACTIVE" : "APPROACHING_TARGET")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
                             .foregroundStyle(inRange ? LabTheme.success : LabTheme.warning)
                     }
                 }
@@ -517,11 +526,13 @@ struct FleetMapView: View {
                     withAnimation(Anim.sheetReveal) { phase = .activeDelivery }
                     Task { await telemetryVM.start() }
                 } label: {
-                    Text("Start Delivery")
-                        .font(.system(size: 15, weight: .bold))
+                    Text("START_OPERATIONAL_FLOW")
+                        .font(.system(size: 14, weight: .black, design: .monospaced))
+                        .tracking(1.2)
                         .foregroundStyle(LabTheme.buttonFg)
-                        .frame(maxWidth: .infinity).padding(.vertical, 15)
-                        .background(LabTheme.fg, in: .rect(cornerRadius: 14))
+                        .frame(maxWidth: .infinity).padding(.vertical, 18)
+                        .background(LabTheme.fg)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.pressable)
 
@@ -530,14 +541,23 @@ struct FleetMapView: View {
                     Haptics.light()
                     openDestinationInMaps(lat: mission.target_lat, lng: mission.target_lng, name: mission.order_id)
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 8) {
                         Image(systemName: "arrow.triangle.turn.up.right.diamond.fill")
-                            .font(.system(size: 12, weight: .semibold))
-                        Text("Navigate")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 14, weight: .bold))
+                        Text("EXTERNAL_NAVIGATION")
+                            .font(.system(size: 12, weight: .black, design: .monospaced))
+                            .tracking(1.2)
                     }
                     .foregroundStyle(LabTheme.fgSecondary)
-                    .frame(maxWidth: .infinity).padding(.vertical, 11)
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(LabTheme.fg.opacity(0.06))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(LabTheme.separator.opacity(0.12), lineWidth: 1)
+                            }
+                    }
                 }
                 .buttonStyle(.pressable)
 
@@ -789,13 +809,17 @@ struct FleetMapView: View {
             VStack(spacing: 0) {
                 ZStack {
                     Circle()
-                        .fill(isSelected ? LabTheme.fg : LabTheme.fg.opacity(0.5))
-                        .frame(width: isSelected ? 40 : 34, height: isSelected ? 40 : 34)
+                        .fill(isSelected ? LabTheme.fg : LabTheme.bg) // Toggle bg/fg
+                        .frame(width: isSelected ? 42 : 36, height: isSelected ? 42 : 36)
+                        .overlay {
+                            Circle()
+                                .stroke(isSelected ? LabTheme.fg : LabTheme.separator.opacity(0.12), lineWidth: 1)
+                        }
                     Image(systemName: "shippingbox.fill")
-                        .font(.system(size: isSelected ? 16 : 13, weight: .semibold))
-                        .foregroundStyle(LabTheme.buttonFg)
+                        .font(.system(size: isSelected ? 18 : 14, weight: .black)) // Tactical weights
+                        .foregroundStyle(isSelected ? LabTheme.buttonFg : LabTheme.fg)
                 }
-                .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+                .shadow(color: .black.opacity(0.1), radius: 6, y: 3)
                 .animation(Anim.snappy, value: isSelected)
 
                 Image(systemName: "triangle.fill")

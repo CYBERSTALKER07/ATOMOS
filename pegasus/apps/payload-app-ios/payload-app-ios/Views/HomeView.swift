@@ -219,29 +219,40 @@ private struct TruckRow: View {
     let truck: Truck
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "truck.box.fill")
-                .foregroundStyle(.tint)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(displayLabel).font(.headline)
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        HStack(spacing: 16) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(TermTheme.accent.opacity(0.06))
+                    .frame(width: 48, height: 48)
+                
+                Image(systemName: "truck.box.fill")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(TermTheme.accent)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(displayLabel.uppercased())
+                    .font(.system(size: 16, weight: .black, design: .monospaced))
+                    .foregroundStyle(TermTheme.accent)
+                
+                Text(subtitle.uppercased())
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(TermTheme.secondary)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
     }
 
     private var displayLabel: String {
         if let l = truck.label, !l.isEmpty { return l }
         if let p = truck.licensePlate, !p.isEmpty { return p }
-        return String(truck.id.prefix(8))
+        return "TRK-\(truck.id.prefix(6))"
     }
 
     private var subtitle: String {
         [truck.licensePlate, truck.vehicleClass]
             .compactMap { $0?.isEmpty == false ? $0 : nil }
-            .joined(separator: " • ")
+            .joined(separator: " — ")
     }
 }
 
@@ -296,25 +307,55 @@ private struct ManifestWorkflow: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 24) { // Increased tactical spacing
                 if let truck { TruckHeader(truck: truck) }
-                StateBadge(state: manifest.state)
-
-                GroupBox("Capacity") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(volumeLabel).font(.body.monospacedDigit())
+                
+                HStack(spacing: 20) {
+                    StateBadge(state: manifest.state)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("PAYLOAD_VOLUME")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .foregroundStyle(TermTheme.tertiary)
+                        Text(volumeLabel)
+                            .font(.system(size: 16, weight: .bold, design: .monospaced))
+                            .foregroundStyle(TermTheme.accent)
+                        
                         ProgressView(value: progress)
+                            .tint(TermTheme.accent)
+                            .scaleEffect(x: 1, y: 1.5, anchor: .center)
                     }
-                    .padding(.vertical, 4)
+                    .padding(TermTheme.s20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .tacticalCard()
                 }
 
-                GroupBox("Stops") {
-                    Text("\(manifest.stopCount ?? 0) drop\(manifest.stopCount == 1 ? "" : "s")")
-                        .font(.title3.weight(.medium))
-                }
+                HStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("TARGET_STOPS")
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .foregroundStyle(TermTheme.tertiary)
+                        Text("\(manifest.stopCount ?? 0) UNITS")
+                            .font(.system(size: 20, weight: .black, design: .monospaced))
+                            .foregroundStyle(TermTheme.accent)
+                    }
+                    .padding(TermTheme.s20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .tacticalCard()
 
-                if let region = manifest.regionCode, !region.isEmpty {
-                    GroupBox("Region") { Text(region) }
+                    if let region = manifest.regionCode, !region.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("DEPLOYMENT_ZONE")
+                                .font(.system(size: 10, weight: .black, design: .monospaced))
+                                .foregroundStyle(TermTheme.tertiary)
+                            Text(region.uppercased())
+                                .font(.system(size: 20, weight: .black, design: .monospaced))
+                                .foregroundStyle(TermTheme.accent)
+                        }
+                        .padding(TermTheme.s20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .tacticalCard()
+                    }
                 }
 
                 if let err = viewModel.error {
@@ -506,35 +547,60 @@ private struct OrderChip: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack {
+            HStack(spacing: 12) {
                 if sealed {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                    Image(systemName: "checkmark.seal.fill") // Tactical seal icon
+                        .font(.system(size: 20))
+                        .foregroundStyle(TermTheme.live)
+                } else {
+                    Image(systemName: "circle.dotted")
+                        .font(.system(size: 20))
+                        .foregroundStyle(selected ? TermTheme.accent : TermTheme.tertiary)
                 }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Order \(String(order.orderId.prefix(8)))")
-                        .font(.subheadline.weight(.medium))
-                    Text("\((order.items ?? []).count) item\((order.items ?? []).count == 1 ? "" : "s")")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("ORD-\(order.orderId.suffix(6).uppercased())")
+                        .font(.system(size: 14, weight: .black, design: .monospaced))
+                        .foregroundStyle(TermTheme.accent)
+                    
+                    Text("\((order.items ?? []).count) UNITS")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundStyle(TermTheme.secondary)
                 }
+                
                 Spacer()
+                
                 if sealed, let code = dispatchCode, !code.isEmpty {
                     Text(code)
-                        .font(.callout.monospaced().weight(.bold))
-                        .foregroundStyle(.green)
+                        .font(.system(size: 16, weight: .black, design: .monospaced))
+                        .foregroundStyle(TermTheme.live)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(TermTheme.live.opacity(0.12), in: Capsule())
                 }
             }
-            .padding(10)
-            .background(background, in: RoundedRectangle(cornerRadius: 10))
+            .padding(14)
+            .background {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(background)
+                    .overlay {
+                        if selected {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(TermTheme.accent.opacity(0.2), lineWidth: 2)
+                        } else {
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(TermTheme.separator.opacity(0.08), lineWidth: 1)
+                        }
+                    }
+            }
         }
         .buttonStyle(.plain)
     }
 
     private var background: Color {
-        if sealed { return Color.green.opacity(0.12) }
-        if selected { return Color.blue.opacity(0.14) }
-        return Color.secondary.opacity(0.08)
+        if sealed { return TermTheme.live.opacity(0.04) }
+        if selected { return TermTheme.accent.opacity(0.08) }
+        return TermTheme.card
     }
 }
 
@@ -639,40 +705,75 @@ private struct TruckHeader: View {
     let truck: Truck
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(truck.label ?? truck.licensePlate ?? String(truck.id.prefix(8)))
-                .font(.title2.weight(.semibold))
-            HStack(spacing: 6) {
+            Text(truck.label?.uppercased() ?? truck.licensePlate?.uppercased() ?? "VEHICLE-\(truck.id.prefix(8).uppercased())")
+                .font(.system(size: 28, weight: .black, design: .monospaced)) // Massive tactical header
+                .foregroundStyle(TermTheme.accent)
+                .tracking(1.4)
+            
+            HStack(spacing: 8) {
                 if let p = truck.licensePlate, !p.isEmpty {
-                    Text(p).foregroundStyle(.secondary)
+                    Text(p.uppercased())
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .foregroundStyle(TermTheme.secondary)
                 }
+                
                 if let c = truck.vehicleClass, !c.isEmpty {
-                    Text("•").foregroundStyle(.tertiary)
-                    Text(c).foregroundStyle(.secondary)
+                    Text("—")
+                        .foregroundStyle(TermTheme.tertiary)
+                    Text(c.uppercased())
+                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                        .foregroundStyle(TermTheme.secondary)
                 }
+                
+                Spacer()
+                
+                // Active Marker
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(TermTheme.live)
+                        .frame(width: 8, height: 8)
+                    Text("ACTIVE_NODE")
+                        .font(.system(size: 10, weight: .black, design: .monospaced))
+                        .foregroundStyle(TermTheme.live)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(TermTheme.live.opacity(0.12), in: Capsule())
             }
-            .font(.subheadline)
         }
+        .padding(TermTheme.s24)
+        .tacticalCard(radius: TermTheme.radiusMD)
     }
 }
 
 private struct StateBadge: View {
     let state: String
     var body: some View {
-        Text(state)
-            .font(.caption.weight(.semibold))
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(color.opacity(0.18), in: Capsule())
-            .foregroundStyle(color)
+        VStack(alignment: .leading, spacing: 6) {
+            Text("PROTOCOL_STATE")
+                .font(.system(size: 10, weight: .black, design: .monospaced))
+                .foregroundStyle(TermTheme.tertiary)
+                .tracking(1.4)
+            
+            Text(state.uppercased())
+                .font(.system(size: 24, weight: .black, design: .monospaced))
+                .foregroundStyle(statusColor)
+                .tracking(2.0)
+        }
+        .padding(TermTheme.s24)
+        .frame(minWidth: 200, alignment: .leading)
+        .tacticalCard()
     }
-    private var color: Color {
-        switch state {
-        case "DRAFT": return .orange
-        case "LOADING": return .blue
-        case "SEALED", "DISPATCHED": return .green
-        default: return .gray
+
+    private var statusColor: Color {
+        switch state.uppercased() {
+        case "LOADING": return TermTheme.progress
+        case "SEALED", "DISPATCHED": return TermTheme.live
+        case "DRAFT": return TermTheme.warn
+        default: return TermTheme.accent
         }
     }
+}
 }
 
 // MARK: - Phase 5 sheets

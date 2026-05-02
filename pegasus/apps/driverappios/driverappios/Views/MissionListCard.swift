@@ -72,7 +72,7 @@ struct MissionListCard: View {
             HStack(spacing: 14) {
                 // Icon
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(LabTheme.fg.opacity(0.06))
                         .frame(width: 44, height: 44)
 
@@ -82,16 +82,27 @@ struct MissionListCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(mission.order_id)
-                        .font(.system(size: 14, weight: .bold, design: .monospaced))
-                        .foregroundStyle(LabTheme.fg)
+                    HStack(spacing: 6) {
+                        Text("ORD-\(mission.order_id.suffix(4).uppercased())") // Tactical ID
+                            .font(.system(size: 14, weight: .black, design: .monospaced)) // Black weight
+                            .foregroundStyle(LabTheme.fg)
+                        
+                        // Status Pill
+                        Text("ACTIVE")
+                            .font(.system(size: 8, weight: .black))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(LabTheme.live.opacity(0.12))
+                            .foregroundStyle(LabTheme.live)
+                            .clipShape(.capsule)
+                    }
 
                     HStack(spacing: 4) {
-                        Text(mission.gateway)
-                        Text("·")
+                        Text(mission.gateway.uppercased())
+                        Text("—")
                         Text(mission.amount.formattedAmount)
                     }
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 12, weight: .bold, design: .monospaced)) // Bold mono
                     .foregroundStyle(LabTheme.fgSecondary)
 
                     distanceLabel(for: mission)

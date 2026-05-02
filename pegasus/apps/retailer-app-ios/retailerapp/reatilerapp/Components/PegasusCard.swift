@@ -12,11 +12,14 @@ struct LabCard<Content: View>: View {
             content
         }
         .background {
-            RoundedRectangle(cornerRadius: AppTheme.radiusCard)
+            RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
                 .fill(AppTheme.cardBackground)
-                .shadow(color: AppTheme.shadowColor, radius: AppTheme.shadowRadius, x: 0, y: AppTheme.shadowOffsetY)
+                .overlay {
+                    RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
+                        .stroke(AppTheme.separator.opacity(0.15), lineWidth: 1)
+                }
         }
-        .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous))
     }
 }
 

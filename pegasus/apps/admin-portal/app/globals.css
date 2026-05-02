@@ -149,6 +149,78 @@
 :root.dark .table__row:hover { background: oklch(1 0 0 / 0.03); }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
+/* Native Fluid Layout & Motion                                               */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --native-radius-lg: 24px;
+  --native-radius-md: 16px;
+  --native-radius-sm: 8px;
+  --native-font-sm: 13px;
+  --native-font-base: 15px;
+  --native-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --native-mask: blur(20px) saturate(180%);
+}
+
+@layer base {
+  * {
+    @apply selection:bg-accent selection:text-accent-foreground;
+  }
+  
+  body {
+    @apply antialiased subpixel-antialiased;
+    letter-spacing: -0.011em; /* Apple-style SF subpixel tracking */
+    background: var(--color-md-surface);
+    color: var(--color-md-on-surface);
+    font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* Bento Grid — Native Fluidity                                               */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-auto-rows: 240px;
+  grid-auto-flow: dense;
+  gap: 16px;
+  padding: 16px;
+}
+
+.bento-card {
+  @apply md-card-elevated flex flex-col overflow-hidden;
+  border-radius: var(--native-radius-lg);
+  background: var(--color-md-surface);
+  border: 1px solid var(--color-md-outline-variant);
+  transition: all 0.5s var(--md-easing-emphasized);
+}
+
+.bento-card:hover {
+  @apply -translate-y-1;
+  box-shadow: 0 12px 32px -12px oklch(0% 0 0 / 0.1);
+  border-color: var(--color-md-outline);
+}
+
+.dark .bento-card:hover {
+  box-shadow: 0 12px 32px -12px oklch(0% 0 0 / 0.5);
+}
+
+/* Bento Sizes */
+.bento-stat { grid-column: span 1; grid-row: span 1; }
+.bento-anchor { grid-column: span 2; grid-row: span 2; }
+.bento-list { grid-column: span 1; grid-row: span 2; }
+.bento-control { grid-column: span 2; grid-row: span 1; }
+.bento-wide { grid-column: span 2; grid-row: span 1; }
+.bento-full { grid-column: 1 / -1; min-height: 240px; }
+
+@media (max-width: 768px) {
+  .bento-grid { grid-template-columns: 1fr; grid-auto-rows: auto; }
+  .bento-card { grid-column: span 1 !important; grid-row: span 1 !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
 /* X-Style Monochrome Design System (M3 Legacy Tokens)                        */
 /* Light: White surfaces · Black text · Gray accents                          */
 /* Dark: Black surfaces · White text · Gray accents                           */
@@ -863,13 +935,13 @@ body {
 
 .md-chip {
   display: inline-flex; align-items: center; gap: 8px;
-  height: 32px; padding: 0 16px; border-radius: 9999px;
-  font-size: 13px; line-height: 20px; font-weight: 500; letter-spacing: 0.1px;
-  cursor: pointer; transition: all 200ms var(--md-easing-standard);
+  height: 32px; padding: 0 16px; border-radius: var(--native-radius-sm);
+  font-size: 13px; line-height: 20px; font-weight: 500; letter-spacing: -0.01em;
+  cursor: pointer; transition: all 0.2s var(--md-easing-standard);
   border: 1px solid var(--color-md-outline-variant);
-  background: transparent; color: var(--color-md-on-surface-variant); white-space: nowrap;
+  background: var(--color-md-surface-container); color: var(--color-md-on-surface-variant); white-space: nowrap;
 }
-.md-chip:hover { background: rgba(0,0,0,0.04); }
+.md-chip:hover { background: var(--color-md-surface-container-high); color: var(--color-md-on-surface); }
 .md-chip[data-selected="true"], .md-chip.md-chip-selected {
   background: var(--color-md-primary); color: var(--color-md-on-primary); border-color: transparent;
 }
@@ -888,13 +960,17 @@ body {
 .md-input:focus { border-bottom: 2px solid var(--color-md-primary); }
 
 .md-input-outlined {
-  height: 44px; padding: 0 16px; border-radius: 12px;
+  height: 44px; padding: 0 16px; border-radius: var(--native-radius-md);
   font-size: 14px; line-height: 20px; font-weight: 400; letter-spacing: 0.25px;
-  background: transparent; color: var(--color-md-on-surface);
+  background: var(--color-md-surface-container-low); color: var(--color-md-on-surface);
   border: 1px solid var(--color-md-outline-variant);
-  outline: none; width: 100%; transition: border-color 200ms;
+  outline: none; width: 100%; transition: all 0.3s var(--md-easing-emphasized);
 }
-.md-input-outlined:focus { border-color: var(--color-md-on-surface); }
+.md-input-outlined:focus { 
+  border-color: var(--color-md-outline); 
+  background: var(--color-md-surface);
+  box-shadow: 0 0 0 4px oklch(from var(--color-md-primary) l c h / 0.1);
+}
 .md-input-outlined::placeholder { color: var(--color-md-on-surface-variant); }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
@@ -921,20 +997,20 @@ body {
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 .md-nav-item {
-  display: flex; align-items: center; gap: 12px; padding: 0 12px;
-  height: 42px; border-radius: 12px;
-  font-size: 14px; line-height: 20px; font-weight: 450; letter-spacing: 0.1px;
+  display: flex; align-items: center; gap: 12px; padding: 0 16px;
+  height: 44px; border-radius: var(--native-radius-md);
+  font-size: var(--native-font-base); line-height: 20px; font-weight: 500; letter-spacing: -0.01em;
   color: var(--color-md-on-surface-variant);
   text-decoration: none; position: relative; overflow: hidden;
-  transition: all 180ms var(--md-easing-standard); cursor: pointer;
+  transition: all 0.3s var(--md-easing-emphasized); cursor: pointer;
 }
 .md-nav-item::before {
   content: ''; position: absolute; inset: 0; opacity: 0;
-  transition: opacity 180ms var(--md-easing-standard);
+  transition: opacity 250ms var(--md-easing-standard);
   background: currentColor; pointer-events: none; border-radius: inherit;
 }
-.md-nav-item:hover::before { opacity: 0.06; }
-.md-nav-item:hover { color: var(--color-md-on-surface); }
+.md-nav-item:hover::before { opacity: 0.08; }
+.md-nav-item:hover { color: var(--color-md-on-surface); transform: translateX(2px); }
 .md-nav-item:focus-visible { outline: 2px solid var(--color-md-on-surface); outline-offset: -2px; }
 .md-nav-item[data-active="true"], .md-nav-item.md-nav-active {
   background: var(--color-md-primary); color: var(--color-md-on-primary); font-weight: 600;
@@ -973,17 +1049,18 @@ body {
 /* Data Table                                                                 */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
-.md-table { width: 100%; text-align: left; border-collapse: collapse; }
-.md-table thead { border-bottom: 1px solid var(--color-md-outline-variant); }
+.md-table { width: 100%; text-align: left; border-collapse: separate; border-spacing: 0; }
+.md-table thead { background: var(--color-md-surface-container-low); }
 .md-table th {
-  padding: 10px 16px; font-size: 12px; line-height: 16px; font-weight: 600;
-  letter-spacing: 0.3px; color: var(--color-md-on-surface-variant); text-transform: uppercase;
+  padding: 12px 16px; font-size: 12px; line-height: 16px; font-weight: 600;
+  letter-spacing: -0.01em; color: var(--color-md-on-surface-variant); text-transform: none;
 }
 .md-table td { padding: 14px 16px; font-size: 14px; line-height: 20px; color: var(--color-md-on-surface); }
 .md-table tbody tr {
-  border-bottom: 1px solid var(--color-md-outline-variant); transition: background 150ms;
+  border-bottom: 1px solid var(--color-md-outline-variant); transition: background 0.2s var(--md-easing-standard);
 }
-.md-table tbody tr:hover { background: rgba(0,0,0,0.02); }
+.md-table tbody tr:hover { background: oklch(from var(--color-md-primary) l c h / 0.02); }
+.md-table tr:last-child { border-bottom: none; }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* Tabs                                                                       */

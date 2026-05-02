@@ -63,10 +63,9 @@ struct ActiveOrderView: View {
                     HStack(spacing: 6) {
                         Circle()
                             .fill(AppTheme.success)
-                            .frame(width: 7, height: 7)
-                            .shadow(color: AppTheme.success.opacity(0.5), radius: 4)
-                        Text("IN TRANSIT")
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .frame(width: 6, height: 6) // Slightly smaller
+                        Text("TACTICAL") // Strategic status
+                            .font(.system(size: 10, weight: .black, design: .rounded))
                             .foregroundStyle(AppTheme.success)
                     }
                     .padding(.horizontal, 10).padding(.vertical, 5)
@@ -77,15 +76,18 @@ struct ActiveOrderView: View {
                 // ETA
                 if let eta = order.estimatedDelivery {
                     VStack(spacing: AppTheme.spacingSM) {
-                        Text("Estimated Arrival")
-                            .font(.system(.caption, design: .rounded))
+                        Text("IMPACT TIME") // Tactical label
+                            .font(.system(size: 10, weight: .black, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
+                            .tracking(1)
                         CountdownText(targetISO: eta, font: .system(.title2, design: .monospaced, weight: .bold), color: AppTheme.accent)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(AppTheme.spacingMD)
-                    .background(AppTheme.accentSoft.opacity(0.2))
-                    .clipShape(.rect(cornerRadius: AppTheme.radiusMD))
+                    .background {
+                        RoundedRectangle(cornerRadius: AppTheme.radiusMD, style: .continuous)
+                            .fill(AppTheme.accentSoft.opacity(0.12)) // Softer background
+                    }
                 }
 
                 // Items

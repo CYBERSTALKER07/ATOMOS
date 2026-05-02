@@ -29,24 +29,23 @@ struct LabButtonStyle: ButtonStyle {
             .background {
                 if variant == .primary {
                     AppTheme.accentGradient
+                } else if variant == .outline {
+                    ContainerRelativeShape()
+                        .fill(AppTheme.cardBackground)
                 } else {
                     backgroundColor.asLinearGradient
                 }
             }
-            .clipShape(.rect(cornerRadius: AppTheme.radiusButton))
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.radiusButton, style: .continuous))
             .overlay {
                 if variant == .outline {
-                    RoundedRectangle(cornerRadius: AppTheme.radiusButton)
-                        .strokeBorder(AppTheme.accent.opacity(0.5), lineWidth: 1.5)
+                    RoundedRectangle(cornerRadius: AppTheme.radiusButton, style: .continuous)
+                        .strokeBorder(AppTheme.accent.opacity(0.15), lineWidth: 1)
                 }
             }
-            .shadow(
-                color: variant == .primary ? AppTheme.accent.opacity(0.25) : .clear,
-                radius: 8, x: 0, y: 4
-            )
-            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .opacity(configuration.isPressed ? 0.9 : 1.0)
-            .animation(.spring(response: 0.15, dampingFraction: 0.86), value: configuration.isPressed)
+            .animation(.interpolatingSpring(stiffness: 300, damping: 20), value: configuration.isPressed)
             .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed)
     }
 

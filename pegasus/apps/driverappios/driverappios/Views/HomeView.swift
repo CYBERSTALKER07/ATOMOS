@@ -23,13 +23,13 @@ struct HomeView: View {
                 // MARK: - Greeting
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(greetingText)
-                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
-                            .foregroundStyle(LabTheme.fgTertiary)
-                            .tracking(1.2)
+                        Text(vm.hasActiveRoute ? "MISSION ACTIVE" : greetingText)
+                            .font(.system(size: 10, weight: .black, design: .monospaced)) // Tactical weight
+                            .foregroundStyle(vm.hasActiveRoute ? LabTheme.live : LabTheme.fgTertiary)
+                            .tracking(1.4) // Increased tracking
 
                         Text(vm.driverName)
-                            .font(.system(size: 30, weight: .bold))
+                            .font(.system(size: 32, weight: .bold)) // Slightly larger
                             .foregroundStyle(LabTheme.fg)
                     }
 
@@ -128,17 +128,17 @@ struct HomeView: View {
         let chipColor = tint ?? (active ? LabTheme.fg : LabTheme.fgTertiary)
         return HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
-            Text(label)
+                .font(.system(size: 11, weight: .black)) // Tactical bold
+            Text(label.uppercased()) // Constant uppercase
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
         }
         .foregroundStyle(chipColor)
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous) // Using token
                 .fill(LabTheme.card)
-                .stroke(LabTheme.separator, lineWidth: 0.5)
+                .stroke(LabTheme.separator.opacity(0.12), lineWidth: 1) // Modern stroke
         }
     }
 

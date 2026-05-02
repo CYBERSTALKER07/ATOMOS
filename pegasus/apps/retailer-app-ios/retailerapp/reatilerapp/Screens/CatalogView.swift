@@ -62,11 +62,11 @@ struct CatalogView: View {
     private var searchBar: some View {
         HStack(spacing: AppTheme.spacingMD) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(AppTheme.textTertiary)
+                .font(.system(size: 15, weight: .bold)) // Bold icon
+                .foregroundStyle(AppTheme.accent)
 
             TextField("Search products...", text: $searchText)
-                .font(.system(.subheadline, design: .rounded))
+                .font(.system(.subheadline, design: .rounded, weight: .medium)) // Medium weight
                 .textFieldStyle(.plain)
                 .autocorrectionDisabled()
 
@@ -82,9 +82,14 @@ struct CatalogView: View {
         }
         .padding(.horizontal, AppTheme.spacingMD)
         .padding(.vertical, AppTheme.spacingMD)
-        .background(AppTheme.cardBackground)
-        .clipShape(.rect(cornerRadius: AppTheme.radiusButton))
-        .shadow(color: AppTheme.shadowColor, radius: 4, x: 0, y: 2)
+        .background {
+            RoundedRectangle(cornerRadius: AppTheme.radiusButton, style: .continuous)
+                .fill(AppTheme.cardBackground)
+                .overlay {
+                    RoundedRectangle(cornerRadius: AppTheme.radiusButton, style: .continuous)
+                        .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
+                }
+        }
     }
 
     // MARK: - Bento Grid
@@ -173,24 +178,29 @@ struct CatalogView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Spacer()
                 Image(systemName: cat.icon)
-                    .font(.system(size: 36, weight: .medium))
-                    .foregroundStyle(AppTheme.textPrimary)
+                    .font(.system(size: 32, weight: .bold)) // Bold & slightly smaller icon
+                    .foregroundStyle(AppTheme.accent)
                     .padding(.bottom, AppTheme.spacingSM)
                 Text(cat.name)
                     .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .foregroundStyle(AppTheme.textPrimary)
                 if let count = cat.productCount {
                     Text("\(count) items")
-                        .font(.system(.caption2, design: .rounded))
+                        .font(.system(.caption2, design: .rounded, weight: .medium)) // Medium weight
                         .foregroundStyle(AppTheme.textTertiary)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: height)
             .padding(AppTheme.spacingMD)
-            .background(AppTheme.cardBackground)
-            .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
-            .shadow(color: AppTheme.shadowColor, radius: 4, x: 0, y: 2)
+            .background {
+                RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
+                    .fill(AppTheme.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
+                            .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
+                    }
+            }
         }
         .buttonStyle(.plain)
         .pressable()
@@ -202,15 +212,15 @@ struct CatalogView: View {
         } label: {
             HStack(spacing: AppTheme.spacingMD) {
                 Image(systemName: cat.icon)
-                    .font(.system(size: 42, weight: .medium))
-                    .foregroundStyle(AppTheme.textPrimary)
+                    .font(.system(size: 38, weight: .bold)) // Bold icon
+                    .foregroundStyle(AppTheme.accent)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(cat.name)
-                        .font(.system(.headline, design: .rounded))
+                        .font(.system(.headline, design: .rounded, weight: .bold)) // Bold title
                         .foregroundStyle(AppTheme.textPrimary)
                     if let count = cat.productCount {
                         Text("\(count) items")
-                            .font(.system(.caption, design: .rounded))
+                            .font(.system(.caption, design: .rounded, weight: .medium)) // Medium weight
                             .foregroundStyle(AppTheme.textTertiary)
                     }
                 }
@@ -218,9 +228,14 @@ struct CatalogView: View {
             }
             .frame(height: height)
             .padding(AppTheme.spacingMD)
-            .background(AppTheme.cardBackground)
-            .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
-            .shadow(color: AppTheme.shadowColor, radius: 4, x: 0, y: 2)
+            .background {
+                RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
+                    .fill(AppTheme.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: AppTheme.radiusCard, style: .continuous)
+                            .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
+                    }
+            }
         }
         .buttonStyle(.plain)
         .pressable()
@@ -232,19 +247,24 @@ struct CatalogView: View {
         } label: {
             HStack(spacing: AppTheme.spacingSM) {
                 Image(systemName: cat.icon)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(AppTheme.textPrimary)
+                    .font(.system(size: 18, weight: .bold)) // Bold icon
+                    .foregroundStyle(AppTheme.accent)
                 Text(cat.name)
-                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                    .font(.system(.caption, design: .rounded, weight: .bold)) // Bold title
                     .foregroundStyle(AppTheme.textPrimary)
                     .lineLimit(1)
                 Spacer()
             }
             .frame(height: 54)
             .padding(.horizontal, AppTheme.spacingMD)
-            .background(AppTheme.cardBackground)
-            .clipShape(.rect(cornerRadius: AppTheme.radiusMD))
-            .shadow(color: AppTheme.shadowColor, radius: 3, x: 0, y: 1)
+            .background {
+                RoundedRectangle(cornerRadius: AppTheme.radiusMD, style: .continuous)
+                    .fill(AppTheme.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: AppTheme.radiusMD, style: .continuous)
+                            .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
+                    }
+            }
         }
         .buttonStyle(.plain)
         .pressable()
@@ -256,17 +276,22 @@ struct CatalogView: View {
         } label: {
             VStack(spacing: AppTheme.spacingSM) {
                 Image(systemName: cat.icon)
-                    .font(.system(size: 24, weight: .medium))
-                    .foregroundStyle(AppTheme.textPrimary)
+                    .font(.system(size: 24, weight: .bold)) // Bold icon
+                    .foregroundStyle(AppTheme.accent)
                 Text(cat.name)
-                    .font(.system(.caption2, design: .rounded, weight: .medium))
+                    .font(.system(.caption2, design: .rounded, weight: .bold)) // Bold title
                     .foregroundStyle(AppTheme.textSecondary)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 80)
-            .background(AppTheme.cardBackground)
-            .clipShape(.rect(cornerRadius: AppTheme.radiusMD))
-            .shadow(color: AppTheme.shadowColor, radius: 3, x: 0, y: 1)
+            .background {
+                RoundedRectangle(cornerRadius: AppTheme.radiusMD, style: .continuous)
+                    .fill(AppTheme.cardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: AppTheme.radiusMD, style: .continuous)
+                            .stroke(AppTheme.separator.opacity(0.12), lineWidth: 1)
+                    }
+            }
         }
         .buttonStyle(.plain)
         .pressable()

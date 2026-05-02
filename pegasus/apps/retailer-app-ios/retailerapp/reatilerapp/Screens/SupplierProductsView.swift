@@ -70,11 +70,11 @@ struct SupplierProductsView: View {
             HStack(spacing: AppTheme.spacingLG) {
                 ZStack {
                     Circle()
-                        .fill(AppTheme.surfaceElevated)
+                        .fill(AppTheme.accentGradient.opacity(0.1)) // Subtle gradient theme
                         .frame(width: 64, height: 64)
                     Text(supplier.initials)
                         .font(.system(.title2, design: .rounded, weight: .bold))
-                        .foregroundStyle(AppTheme.textSecondary)
+                        .foregroundStyle(AppTheme.accent)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -82,32 +82,33 @@ struct SupplierProductsView: View {
                         .font(.system(.title3, design: .rounded, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
                     if let cat = supplier.displayCategory {
-                        Text(cat)
-                            .font(.system(.caption, design: .rounded))
+                        Text(cat.uppercased()) // Uppercase category for tactical feel
+                            .font(.system(size: 10, weight: .black, design: .rounded))
                             .foregroundStyle(AppTheme.textTertiary)
+                            .tracking(1)
                     }
 
                     // OPEN/CLOSED status badge
                     HStack(spacing: 5) {
                         Circle()
                             .fill(supplier.isActive ? AppTheme.success : AppTheme.destructive)
-                            .frame(width: 7, height: 7)
-                        Text(supplier.isActive ? "OPEN" : "CLOSED")
+                            .frame(width: 6, height: 6)
+                        Text(supplier.isActive ? "ACTIVE" : "OFFLINE") // More tactical labels
                             .font(.system(.caption2, design: .rounded, weight: .bold))
                             .foregroundStyle(supplier.isActive ? AppTheme.success : AppTheme.destructive)
                     }
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, 10)
                     .padding(.vertical, 4)
                     .background((supplier.isActive ? AppTheme.success : AppTheme.destructive).opacity(0.12))
                     .clipShape(.capsule)
 
                     HStack(spacing: AppTheme.spacingSM) {
-                        Label("\(supplier.catalogSubtitle)", systemImage: "shippingbox")
+                        Label("\(supplier.catalogSubtitle)", systemImage: "shippingbox.fill")
                         if let date = supplier.lastOrderDate {
                             Label(date, systemImage: "calendar")
                         }
                     }
-                    .font(.system(.caption2, design: .rounded))
+                    .font(.system(.caption2, design: .rounded, weight: .medium))
                     .foregroundStyle(AppTheme.textTertiary)
                 }
 

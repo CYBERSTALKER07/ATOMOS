@@ -16,26 +16,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.AddShoppingCart
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.ShoppingBag
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.TrendingUp
+import androidx.compose.material.icons.rounded.Storefront
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MultiChoiceSegmentedButtonRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -51,29 +51,24 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasus.retailer.data.model.DemandForecast
 import com.pegasus.retailer.data.model.Product
 import com.pegasus.retailer.ui.theme.HexagonShape
-import com.pegasus.retailer.ui.theme.ScallopShape
-import com.pegasus.retailer.ui.theme.SoftSquircleShape
-import com.pegasus.retailer.ui.theme.SquircleShape
 import com.pegasus.retailer.ui.theme.StatusGreen
 import com.pegasus.retailer.ui.theme.StatusOrange
 import com.pegasus.retailer.ui.theme.StatusRed
+import com.pegasus.retailer.ui.theme.SquircleShape
 
 private val timeRanges = listOf("Day", "Week", "Month")
 
@@ -97,207 +92,460 @@ fun DashboardScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
-    PullToRefreshBox(
-        isRefreshing = uiState.isLoading,
-        onRefresh = viewModel::refresh,
-        modifier = Modifier.fillMaxSize().padding(innerPadding),
-    ) {
-        LazyColumn(
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-            modifier = Modifier.fillMaxSize(),
+        PullToRefreshBox(
+            isRefreshing = uiState.isLoading,
+            onRefresh = viewModel::refresh,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
         ) {
-            // ── Bento Service Grid ──
-            item { ServiceGrid(activeOrderCount = uiState.activeOrders.size, predictionCount = uiState.predictions.size) }
-
-            // ── Quick Reorder ──
-            if (uiState.recentProducts.isNotEmpty()) {
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
                 item {
-                    SectionHeader(title = "Quick Reorder", icon = Icons.Rounded.History)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    QuickReorderRow(products = uiState.recentProducts)
-                }
-            }
-
-            // ── AI Predictions ──
-            if (uiState.predictions.isNotEmpty()) {
-                item {
-                    SectionHeader(title = "AI Predictions", icon = Icons.Rounded.AutoAwesome, count = uiState.predictions.size)
+                    DashboardOverviewCard(
+                        activeOrderCount = uiState.activeOrders.size,
+                        predictionCount = uiState.predictions.size,
+                        recentProductCount = uiState.recentProducts.size,
+                    )
                 }
 
-                // ── M3 Segmented Button (Day / Week / Month) ──
                 item {
-                    SingleChoiceSegmentedButtonRow(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    ) {
-                        timeRanges.forEachIndexed { index, label ->
-                            SegmentedButton(
-                                selected = selectedRange == index,
-                                onClick = { selectedRange = index },
-                                shape = SegmentedButtonDefaults.itemShape(index = index, count = timeRanges.size),
-                                icon = {
-                                    SegmentedButtonDefaults.Icon(active = selectedRange == index) {
-                                        Icon(
-                                            Icons.Rounded.Check,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(SegmentedButtonDefaults.IconSize),
-                                        )
-                                    }
-                                },
-                            ) {
-                                Text(label)
+                    ServiceGrid(
+                        activeOrderCount = uiState.activeOrders.size,
+                        predictionCount = uiState.predictions.size,
+                    )
+                }
+
+                if (uiState.recentProducts.isNotEmpty()) {
+                    item {
+                        SectionHeader(title = "Quick reorder", icon = Icons.Rounded.History)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        QuickReorderRow(products = uiState.recentProducts)
+                    }
+                }
+
+                if (uiState.predictions.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "AI predictions",
+                            icon = Icons.Rounded.AutoAwesome,
+                            count = uiState.predictions.size,
+                        )
+                    }
+
+                    item {
+                        SingleChoiceSegmentedButtonRow(
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            timeRanges.forEachIndexed { index, label ->
+                                SegmentedButton(
+                                    selected = selectedRange == index,
+                                    onClick = { selectedRange = index },
+                                    shape = SegmentedButtonDefaults.itemShape(
+                                        index = index,
+                                        count = timeRanges.size,
+                                    ),
+                                    icon = {
+                                        SegmentedButtonDefaults.Icon(active = selectedRange == index) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Check,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(SegmentedButtonDefaults.IconSize),
+                                            )
+                                        }
+                                    },
+                                ) {
+                                    Text(label)
+                                }
                             }
                         }
                     }
-                }
-                itemsIndexed(uiState.predictions, key = { _, f -> f.id }) { _, forecast ->
-                    PredictionCard(forecast = forecast, onPreorder = { viewModel.requestPreorder(forecast) })
-                }
-            }
 
-            item { Spacer(modifier = Modifier.height(32.dp)) }
+                    items(uiState.predictions, key = { it.id }) { forecast ->
+                        PredictionCard(
+                            forecast = forecast,
+                            onPreorder = { viewModel.requestPreorder(forecast) },
+                        )
+                    }
+                }
+
+                item { Spacer(modifier = Modifier.height(32.dp)) }
+            }
         }
     }
-    } // Scaffold
 }
 
-// ── Bento Service Grid (Yandex Go style) ──
+@Composable
+private fun DashboardOverviewCard(
+    activeOrderCount: Int,
+    predictionCount: Int,
+    recentProductCount: Int,
+) {
+    Surface(
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "Retail operations",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "Track deliveries, restock faster, and act on demand signals from one place.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                MetricPill(
+                    label = "Active orders",
+                    value = activeOrderCount.toString(),
+                    modifier = Modifier.weight(1f),
+                )
+                MetricPill(
+                    label = "Predictions",
+                    value = predictionCount.toString(),
+                    modifier = Modifier.weight(1f),
+                )
+                MetricPill(
+                    label = "Recent items",
+                    value = recentProductCount.toString(),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
 
 @Composable
-private fun ServiceGrid(activeOrderCount: Int, predictionCount: Int) {
+private fun MetricPill(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ServiceGrid(
+    activeOrderCount: Int,
+    predictionCount: Int,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        // Row 1: two big tiles
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            ServiceTile("Catalog", Icons.Rounded.ShoppingBag, "Browse products", Modifier.weight(1f).height(130.dp))
-            ServiceTile("AI Insights", Icons.Rounded.AutoAwesome, "$predictionCount predictions", Modifier.weight(1f).height(130.dp))
-        }
-        // Row 2: one wide + two small stacked
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            ServiceTile("Orders", Icons.Rounded.Inventory2, "$activeOrderCount active", Modifier.weight(1f).height(120.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
-                ServiceTile("Inbox", Icons.Rounded.Inventory2, null, Modifier.fillMaxWidth().height(54.dp))
-                ServiceTile("History", Icons.Rounded.History, null, Modifier.fillMaxWidth().height(54.dp))
-            }
-        }
-        // Row 3: three equal small tiles
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            ServiceTileSmall("Procurement", Icons.Rounded.TrendingUp, Modifier.weight(1f))
-            ServiceTileSmall("Search", Icons.Rounded.Search, Modifier.weight(1f))
-            ServiceTileSmall("Profile", Icons.Rounded.History, Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-private fun ServiceTile(title: String, icon: ImageVector, subtitle: String?, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier
-            .shadow(4.dp, SoftSquircleShape, ambientColor = Color.Black.copy(alpha = 0.06f), spotColor = Color.Black.copy(alpha = 0.06f)),
-        shape = SoftSquircleShape,
-        color = MaterialTheme.colorScheme.surface,
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
-            verticalArrangement = Arrangement.Bottom,
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp), tint = MaterialTheme.colorScheme.onSurface)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-            if (subtitle != null) {
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+            ServiceTile(
+                title = "Catalog",
+                subtitle = "Browse products and suppliers",
+                icon = Icons.Rounded.ShoppingBag,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(152.dp),
+            )
+            ServiceTile(
+                title = "AI insights",
+                subtitle = "$predictionCount restock signals",
+                icon = Icons.Rounded.AutoAwesome,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(152.dp),
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ServiceTile(
+                title = "Orders",
+                subtitle = "$activeOrderCount active now",
+                icon = Icons.Rounded.Inventory2,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(128.dp),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                ServiceTileCompact(
+                    title = "Inbox",
+                    icon = Icons.Rounded.Storefront,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                ServiceTileCompact(
+                    title = "Search",
+                    icon = Icons.Rounded.Search,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ServiceTileCompact(
+                title = "Procurement",
+                icon = Icons.AutoMirrored.Rounded.TrendingUp,
+                modifier = Modifier.weight(1f),
+            )
+            ServiceTileCompact(
+                title = "History",
+                icon = Icons.Rounded.History,
+                modifier = Modifier.weight(1f),
+            )
+            ServiceTileCompact(
+                title = "Profile",
+                icon = Icons.Rounded.Storefront,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
 
 @Composable
-private fun ServiceTileSmall(title: String, icon: ImageVector, modifier: Modifier = Modifier) {
+private fun ServiceTile(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+) {
     Surface(
-        modifier = modifier.height(80.dp)
-            .shadow(4.dp, SquircleShape, ambientColor = Color.Black.copy(alpha = 0.06f), spotColor = Color.Black.copy(alpha = 0.06f)),
+        modifier = modifier,
         shape = SquircleShape,
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurface)
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(title, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        shape = CircleShape,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
 
-// ── Quick Reorder Row ──
+@Composable
+private fun ServiceTileCompact(
+    title: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.height(88.dp),
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        shape = CircleShape,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+    }
+}
 
 @Composable
 private fun QuickReorderRow(products: List<Product>) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(end = 4.dp),
     ) {
-        items(products.size) { idx ->
-            val product = products[idx]
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.width(80.dp).clickable { /* add to cart */ },
+        items(products, key = { it.id }) { product ->
+            Surface(
+                modifier = Modifier
+                    .width(112.dp)
+                    .clickable { },
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
             ) {
-                Box(
-                    modifier = Modifier.size(64.dp)
-                        .clip(HexagonShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                    contentAlignment = Alignment.Center,
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Icon(Icons.Rounded.Inventory2, contentDescription = null, modifier = Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                shape = HexagonShape,
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Inventory2,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    }
+
+                    Text(
+                        text = product.name,
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = product.displayPrice,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(product.name, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(product.displayPrice, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
-// ── AI Prediction Card ──
-
 @Composable
-private fun PredictionCard(forecast: DemandForecast, onPreorder: () -> Unit) {
+private fun PredictionCard(
+    forecast: DemandForecast,
+    onPreorder: () -> Unit,
+) {
     Surface(
-        modifier = Modifier.fillMaxWidth()
-            .shadow(4.dp, SoftSquircleShape, ambientColor = Color.Black.copy(alpha = 0.06f), spotColor = Color.Black.copy(alpha = 0.06f)),
-        shape = SoftSquircleShape,
-        color = MaterialTheme.colorScheme.surface,
+        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Confidence ring
-            ConfidenceRing(confidence = forecast.confidence, size = 44)
+            ConfidenceRing(confidence = forecast.confidence, size = 52.dp)
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(forecast.productName, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(forecast.reasoning, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = forecast.productName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = forecast.reasoning,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("${forecast.predictedQuantity}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("units", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                Spacer(modifier = Modifier.height(6.dp))
-                Box(
-                    modifier = Modifier.size(32.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
-                        .clickable { onPreorder() },
-                    contentAlignment = Alignment.Center,
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = forecast.predictedQuantity.toString(),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "units",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FilledIconButton(
+                    onClick = onPreorder,
+                    modifier = Modifier.size(48.dp),
                 ) {
-                    Icon(Icons.Rounded.AddShoppingCart, contentDescription = "Pre-order", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                    Icon(
+                        imageVector = Icons.Rounded.AddShoppingCart,
+                        contentDescription = "Create preorder",
+                    )
                 }
             }
         }
@@ -305,55 +553,88 @@ private fun PredictionCard(forecast: DemandForecast, onPreorder: () -> Unit) {
 }
 
 @Composable
-private fun ConfidenceRing(confidence: Double, size: Int) {
+private fun ConfidenceRing(
+    confidence: Double,
+    size: Dp,
+) {
     val color = when {
         confidence >= 0.8 -> StatusGreen
         confidence >= 0.6 -> StatusOrange
         else -> StatusRed
     }
-    val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+    val trackColor = MaterialTheme.colorScheme.outlineVariant
 
     Box(
-        modifier = Modifier.size(size.dp)
+        modifier = Modifier
+            .size(size)
             .drawBehind {
-                val strokeWidth = 3.dp.toPx()
+                val strokeWidth = 4.dp.toPx()
                 val arcSize = Size(this.size.width - strokeWidth, this.size.height - strokeWidth)
                 val topLeft = Offset(strokeWidth / 2, strokeWidth / 2)
-                drawArc(trackColor, 0f, 360f, false, topLeft = topLeft, size = arcSize, style = Stroke(strokeWidth))
-                drawArc(color, -90f, (confidence * 360).toFloat(), false, topLeft = topLeft, size = arcSize, style = Stroke(strokeWidth, cap = StrokeCap.Round))
+                drawArc(
+                    color = trackColor,
+                    startAngle = 0f,
+                    sweepAngle = 360f,
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(strokeWidth),
+                )
+                drawArc(
+                    color = color,
+                    startAngle = -90f,
+                    sweepAngle = (confidence * 360).toFloat(),
+                    useCenter = false,
+                    topLeft = topLeft,
+                    size = arcSize,
+                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                )
             },
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            "${(confidence * 100).toInt()}%",
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold),
+            text = "${(confidence * 100).toInt()}%",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
             color = color,
         )
     }
 }
 
-// ── Section Header ──
-
 @Composable
-private fun SectionHeader(title: String, icon: ImageVector, count: Int? = null) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        if (count != null) {
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                "$count",
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.ExtraBold),
-                color = Color.White,
-                modifier = Modifier
-                    .size(20.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
-                    .padding(2.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            )
-        }
+private fun SectionHeader(
+    title: String,
+    icon: ImageVector,
+    count: Int? = null,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
         Spacer(modifier = Modifier.weight(1f))
+        if (count != null) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+            ) {
+                Text(
+                    text = count.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+            }
+        }
     }
 }

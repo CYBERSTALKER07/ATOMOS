@@ -90,7 +90,7 @@ struct ProductDetailView: View {
         }
         .frame(height: 260)
         .clipped()
-        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: AppTheme.radiusXL, bottomTrailingRadius: AppTheme.radiusXL))
+        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: AppTheme.radiusXXL, bottomTrailingRadius: AppTheme.radiusXXL)) // Using high-radius token
         .scaleEffect(imageScale)
     }
 

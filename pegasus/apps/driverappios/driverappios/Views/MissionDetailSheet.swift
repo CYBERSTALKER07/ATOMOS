@@ -23,18 +23,20 @@ struct MissionDetailSheet: View {
             // MARK: - Header
             ZStack(alignment: .topTrailing) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(mission.order_id)
-                        .font(.system(size: 24, weight: .bold, design: .monospaced))
+                    Text("ORD-\(mission.order_id.suffix(6).uppercased())") // Increased tactical length
+                        .font(.system(size: 26, weight: .black, design: .monospaced)) // Black weight
                         .foregroundStyle(LabTheme.fg)
+                        .tracking(1.2)
 
                     HStack(spacing: 6) {
-                        Text(mission.gateway)
-                            .font(.system(size: 12, weight: .semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(LabTheme.fg.opacity(0.08), in: Capsule())
+                        Text(mission.gateway.uppercased())
+                            .font(.system(size: 10, weight: .black, design: .monospaced)) // Tactical badge
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(LabTheme.fg.opacity(0.1), in: Capsule())
+                        
                         Text(mission.amount.formattedAmount)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 14, weight: .bold, design: .monospaced)) // Bold mono
                             .foregroundStyle(LabTheme.fgSecondary)
                     }
                 }
@@ -55,12 +57,13 @@ struct MissionDetailSheet: View {
 
             // MARK: - Delivery Endpoint Card
             VStack(alignment: .leading, spacing: 10) {
-                Text("DELIVERY ENDPOINT")
-                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                Text("TACTICAL ENDPOINT") // Strategic relabel
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
                     .foregroundStyle(LabTheme.fgTertiary)
+                    .tracking(1.4)
 
-                Text(String(format: "%.4f, %.4f", mission.target_lat, mission.target_lng))
-                    .font(.system(size: 16, weight: .semibold, design: .monospaced))
+                Text(String(format: "%.5f, %.5f", mission.target_lat, mission.target_lng)) // High precision
+                    .font(.system(size: 16, weight: .bold, design: .monospaced))
                     .foregroundStyle(LabTheme.fg)
 
                 HStack(spacing: 8) {
@@ -70,20 +73,23 @@ struct MissionDetailSheet: View {
 
                     if let dist = distance {
                         Text(formattedDistance(dist))
-                            .font(.system(size: 13, weight: .bold, design: .monospaced))
+                            .font(.system(size: 13, weight: .black, design: .monospaced)) // Black mono
                     }
 
-                    Text(isInRange ? "Geofence cleared" : "Proximity check fault")
-                        .font(.system(size: 13, weight: .medium))
+                    Text(isInRange ? "GEOFENCE_CLEARED" : "PROXIMITY_FAULT") // Tactical caps
+                        .font(.system(size: 12, weight: .black, design: .monospaced))
                         .foregroundStyle(isInRange ? LabTheme.success : LabTheme.warning)
                 }
             }
-            .padding(LabTheme.s16)
+            .padding(LabTheme.s20) // Spacing token
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(LabTheme.fg.opacity(0.03), in: .rect(cornerRadius: LabTheme.cardRadius - 4))
-            .overlay {
-                RoundedRectangle(cornerRadius: LabTheme.cardRadius - 4)
-                    .stroke(LabTheme.separator, lineWidth: 0.5)
+            .background {
+                RoundedRectangle(cornerRadius: LabTheme.cardRadius - 4, style: .continuous)
+                    .fill(LabTheme.fg.opacity(0.04))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: LabTheme.cardRadius - 4, style: .continuous)
+                            .stroke(LabTheme.separator.opacity(0.12), lineWidth: 1)
+                    }
             }
             .padding(.horizontal, LabTheme.s24)
 
@@ -94,16 +100,24 @@ struct MissionDetailSheet: View {
                 Haptics.light()
                 onCorrection()
             } label: {
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     Image(systemName: "pencil.and.list.clipboard")
-                        .font(.system(size: 12))
-                    Text("Delivery Correction")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 14, weight: .bold))
+                    Text("PROCEDURAL_CORRECTION")
+                        .font(.system(size: 11, weight: .black, design: .monospaced))
+                        .tracking(1.2)
                 }
                 .foregroundStyle(LabTheme.fgSecondary)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(LabTheme.fg.opacity(0.04), in: .rect(cornerRadius: LabTheme.buttonRadius))
+                .padding(.vertical, 14)
+                .background {
+                    RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous)
+                        .fill(LabTheme.fg.opacity(0.06))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous)
+                                .stroke(LabTheme.separator.opacity(0.12), lineWidth: 1)
+                        }
+                }
             }
             .buttonStyle(.pressable)
             .padding(.horizontal, LabTheme.s24)
@@ -119,22 +133,27 @@ struct MissionDetailSheet: View {
                     showOutOfRangeAlert = true
                 }
             } label: {
-                Text(isInRange ? "Initiate Proof of Delivery" : "Approach Target for Scan")
-                    .font(.system(size: 15, weight: .bold))
+                Text(isInRange ? "INITIATE_POD" : "AWAITING_PROXIMITY")
+                    .font(.system(size: 14, weight: .black, design: .monospaced))
+                    .tracking(1.2)
                     .foregroundStyle(isInRange ? LabTheme.buttonFg : LabTheme.fgSecondary)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(
-                        isInRange ? LabTheme.fg : LabTheme.fg.opacity(0.06),
-                        in: .rect(cornerRadius: LabTheme.buttonRadius)
-                    )
+                    .padding(.vertical, 18)
+                    .background {
+                        RoundedRectangle(cornerRadius: LabTheme.buttonRadius, style: .continuous)
+                            .fill(isInRange ? LabTheme.fg : LabTheme.fg.opacity(0.08))
+                    }
             }
             .buttonStyle(.pressable)
             .disabled(!isInRange)
             .padding(.horizontal, LabTheme.s24)
-            .padding(.bottom, LabTheme.s24)
+            .padding(.bottom, LabTheme.s24 + 10) // Extra padding for home bar
         }
-        .background(.ultraThinMaterial)
+        .background {
+            LabTheme.bg
+                .ignoresSafeArea()
+                .overlay(.ultraThinMaterial)
+        }
         .alert("Out of Range", isPresented: $showOutOfRangeAlert) {
             Button("OK", role: .cancel) { }
         } message: {

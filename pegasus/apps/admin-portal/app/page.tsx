@@ -11,7 +11,7 @@ import CountUp from "@/components/CountUp";
 import MiniSparkline from "@/components/MiniSparkline";
 import {
   Truck, CheckCircle, CreditCard,
-  ArrowUpRight, Activity, Send,
+  ArrowUpRight, Activity, Send, Search,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer,
@@ -392,20 +392,6 @@ export default function AdminDashboard() {
     return { activeTrucks, completed, inTransit, pending, totalRev, globalPayRev, cashRev, total: orders.length };
   }, [orders]);
 
-  // Pipeline data for donut chart
-  const pipelineData = useMemo(() => [
-    { name: 'Completed', value: kpi.completed },
-    { name: 'In Transit', value: kpi.inTransit },
-    { name: 'Pending', value: kpi.pending },
-    { name: 'Other', value: Math.max(0, kpi.total - kpi.completed - kpi.inTransit - kpi.pending) },
-  ].filter(d => d.value > 0), [kpi]);
-
-  // Revenue split for bar chart
-  const revData = useMemo(() => [
-    { gateway: 'Global Pay', amount: kpi.globalPayRev },
-    { gateway: 'Cash', amount: kpi.cashRev },
-  ], [kpi]);
-
   // Fake sparkline data (deterministic from order counts)
   const truckSparkline = useMemo(() =>
     Array.from({ length: 12 }, (_, i) => Math.max(0, kpi.activeTrucks + Math.sin(i * 0.8) * 2)),
@@ -415,6 +401,14 @@ export default function AdminDashboard() {
     Array.from({ length: 12 }, (_, i) => Math.max(0, kpi.completed * 0.3 + i * (kpi.completed * 0.06))),
     [kpi.completed]
   );
+
+  // Pipeline data for donut chart
+  const pipelineData = useMemo(() => [
+    { name: 'Completed', value: kpi.completed, sparkline: completedSparkline },
+    { name: 'In Transit', value: kpi.inTransit },
+    { name: 'Pending', value: kpi.pending },
+    { name: 'Other', value: Math.max(0, kpi.total - kpi.completed - kpi.inTransit - kpi.pending) },
+  ].filter(d => d.value > 0), [kpi, completedSparkline]);
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -510,66 +504,77 @@ export default function AdminDashboard() {
 
         {/* ── STATISTICS (1×1): Active Trucks ─────────────────────────── */}
         <BentoCard size="stat" delay={60}>
-          <div className="md-kpi-card h-full">
-            <div className="flex items-center justify-between">
-              <span className="md-kpi-label">Active Trucks</span>
-              <Truck size={18} strokeWidth={1.5} style={{ color: 'var(--muted)' }} />
+          <div className="flex flex-col justify-between h-full p-5 active:scale-[0.98] transition-transform cursor-default">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-10 h-10 rounded-2xl bg-surface-container flex items-center justify-center">
+                <Truck size={20} strokeWidth={1.5} className="text-muted" />
+              </div>
+              <MiniSparkline data={truckSparkline} width={64} height={24} />
             </div>
-            <div className="flex items-end justify-between gap-4">
-              <CountUp end={kpi.activeTrucks} className="md-kpi-value" />
-              <MiniSparkline data={truckSparkline} width={72} height={28} />
+            <div>
+              <p className="md-typescale-label-medium text-muted mb-1">Active Trucks</p>
+              <div className="flex items-baseline gap-2">
+                <CountUp end={kpi.activeTrucks} className="md-typescale-display-small font-bold tabular-nums tracking-tighter" />
+                <span className="md-typescale-label-small text-muted">/ {kpi.total} orders</span>
+              </div>
             </div>
-            <span className="md-kpi-sub">{kpi.total} total orders</span>
           </div>
         </BentoCard>
 
         {/* ── STATISTICS (1×1): Completed ─────────────────────────────── */}
         <BentoCard size="stat" delay={120}>
-          <div className="md-kpi-card h-full">
-            <div className="flex items-center justify-between">
-              <span className="md-kpi-label">Completed</span>
-              <CheckCircle size={18} strokeWidth={1.5} style={{ color: 'var(--muted)' }} />
-            </div>
-            <div className="flex items-end justify-between gap-4">
-              <CountUp end={kpi.completed} className="md-kpi-value" />
-              <MiniSparkline data={completedSparkline} width={72} height={28} />
-            </div>
-            <div className="flex items-center gap-1.5">
-              {kpi.total > 0 ? (
-                <>
-                  <ArrowUpRight size={14} strokeWidth={2} style={{ color: 'var(--success)' }} />
-                  <span className="md-kpi-sub" style={{ color: 'var(--success)' }}>
-                    {((kpi.completed / kpi.total) * 100).toFixed(0)}%
-                  </span>
-                </>
-              ) : (
-                <span className="md-kpi-sub">—</span>
+          <div className="flex flex-col justify-between h-full p-5 active:scale-[0.98] transition-transform cursor-default">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-10 h-10 rounded-2xl bg-success-container/10 flex items-center justify-center">
+                <CheckCircle size={20} strokeWidth={1.5} className="text-success" />
+              </div>
+              {kpi.total > 0 && (
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-container/10 text-success md-typescale-label-small">
+                  <ArrowUpRight size={12} strokeWidth={2.5} />
+                  {((kpi.completed / kpi.total) * 100).toFixed(0)}%
+                </div>
               )}
+            </div>
+            <div>
+              <p className="md-typescale-label-medium text-muted mb-1">Completed</p>
+              <CountUp end={kpi.completed} className="md-typescale-display-small font-bold tabular-nums tracking-tighter" />
             </div>
           </div>
         </BentoCard>
 
         {/* ── STATISTICS (1×1): In Transit ────────────────────────────── */}
         <BentoCard size="stat" delay={180}>
-          <div className="md-kpi-card h-full">
-            <div className="flex items-center justify-between">
-              <span className="md-kpi-label">In Transit</span>
-              <Activity size={18} strokeWidth={1.5} style={{ color: 'var(--muted)' }} />
+          <div className="flex flex-col justify-between h-full p-5 active:scale-[0.98] transition-transform cursor-default">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-10 h-10 rounded-2xl bg-surface-container flex items-center justify-center">
+                <Activity size={20} strokeWidth={1.5} className="text-muted" />
+              </div>
             </div>
-            <CountUp end={kpi.inTransit} className="md-kpi-value" />
-            <span className="md-kpi-sub">{kpi.pending} pending</span>
+            <div>
+              <p className="md-typescale-label-medium text-muted mb-1">In Transit</p>
+              <div className="flex items-baseline gap-2">
+                <CountUp end={kpi.inTransit} className="md-typescale-display-small font-bold tabular-nums tracking-tighter" />
+                <span className="md-typescale-label-small text-muted">{kpi.pending} pending</span>
+              </div>
+            </div>
           </div>
         </BentoCard>
 
         {/* ── STATISTICS (1×1): Revenue ───────────────────────────────── */}
         <BentoCard size="stat" delay={240}>
-          <div className="md-kpi-card h-full">
-            <div className="flex items-center justify-between">
-              <span className="md-kpi-label">Revenue</span>
-              <CreditCard size={18} strokeWidth={1.5} style={{ color: 'var(--muted)' }} />
+          <div className="flex flex-col justify-between h-full p-5 active:scale-[0.98] transition-transform cursor-default">
+            <div className="flex items-center justify-between mb-2">
+              <div className="w-10 h-10 rounded-2xl bg-accent text-accent-foreground flex items-center justify-center">
+                <CreditCard size={20} strokeWidth={1.5} />
+              </div>
             </div>
-            <CountUp end={kpi.totalRev} className="md-kpi-value" prefix="" suffix=" " />
-            <span className="md-kpi-sub">Settled today</span>
+            <div>
+              <p className="md-typescale-label-medium text-muted mb-1">Revenue</p>
+              <div className="flex items-baseline gap-1">
+                <CountUp end={kpi.totalRev} className="md-typescale-display-small font-bold tabular-nums tracking-tighter" />
+                <span className="md-typescale-label-small text-muted">Total</span>
+              </div>
+            </div>
           </div>
         </BentoCard>
 
@@ -763,128 +768,128 @@ export default function AdminDashboard() {
       </section>
 
       {/* ── Order View Controls ────────────────────────────────────────── */}
-      <section className="mb-3">
-        <Card className="p-3 md:p-4">
-          <div className="flex flex-col xl:flex-row gap-3 xl:items-center">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant={orderView === "ALL" ? "primary" : "outline"}
-                onPress={() => setOrderView("ALL")}
+      <section className="mb-4">
+        <div className="flex flex-col xl:flex-row gap-4 xl:items-center">
+          <div className="flex flex-wrap p-1 gap-1 bg-surface-container rounded-[20px] shadow-sm">
+            {[
+              { id: "ALL", label: "All", count: filterCounts.all },
+              { id: "PENDING", label: "Pending", count: filterCounts.pending },
+              { id: "ACTIVE", label: "Active", count: filterCounts.active },
+              { id: "COMPLETED", label: "Completed", count: filterCounts.completed },
+              { id: "REVIEW", label: "Review", count: filterCounts.review },
+            ].map((v) => (
+              <button
+                key={v.id}
+                onClick={() => setOrderView(v.id as "ALL" | "PENDING" | "ACTIVE" | "COMPLETED" | "REVIEW")}
+                className={`px-4 py-2 rounded-4xl md-typescale-label-medium transition-all duration-200 flex items-center gap-2 ${
+                  orderView === v.id
+                    ? "bg-accent text-accent-foreground shadow-md scale-105"
+                    : "text-muted hover:bg-surface-container-high"
+                }`}
               >
-                All ({filterCounts.all})
-              </Button>
-              <Button
-                size="sm"
-                variant={orderView === "PENDING" ? "primary" : "outline"}
-                onPress={() => setOrderView("PENDING")}
-              >
-                Pending ({filterCounts.pending})
-              </Button>
-              <Button
-                size="sm"
-                variant={orderView === "ACTIVE" ? "primary" : "outline"}
-                onPress={() => setOrderView("ACTIVE")}
-              >
-                Active ({filterCounts.active})
-              </Button>
-              <Button
-                size="sm"
-                variant={orderView === "COMPLETED" ? "primary" : "outline"}
-                onPress={() => setOrderView("COMPLETED")}
-              >
-                Completed ({filterCounts.completed})
-              </Button>
-              <Button
-                size="sm"
-                variant={orderView === "REVIEW" ? "primary" : "outline"}
-                onPress={() => setOrderView("REVIEW")}
-              >
-                Review ({filterCounts.review})
-              </Button>
-            </div>
+                {v.label}
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] tabular-nums ${
+                  orderView === v.id ? "bg-accent-foreground/20" : "bg-surface-container-highest"
+                }`}>
+                  {v.count}
+                </span>
+              </button>
+            ))}
+          </div>
 
-            <div className="flex flex-col sm:flex-row gap-2 xl:ml-auto xl:min-w-140">
+          <div className="flex flex-col sm:flex-row gap-3 xl:ml-auto xl:min-w-140">
+            <div className="relative flex-1 group">
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search order, retailer, or route"
-                className="md-input-outlined flex-1"
+                placeholder="Search orders..."
+                className="w-full md-input-outlined rounded-[20px]! pl-10 h-10 transition-all focus:ring-2 focus:ring-accent/20"
                 aria-label="Search orders"
               />
-              <label className="inline-flex items-center gap-2 px-3 rounded cursor-pointer" style={{ border: '1px solid var(--border)' }}>
-                <input
-                  type="checkbox"
-                  checked={showUrgentOnly}
-                  onChange={(e) => setShowUrgentOnly(e.target.checked)}
-                  style={{ accentColor: 'var(--accent)' }}
-                />
-                <span className="md-typescale-label-small">Urgency only</span>
-              </label>
-              <Button
-                size="sm"
-                variant="outline"
-                onPress={() => {
-                  setOrderView("ALL");
-                  setSearchTerm("");
-                  setShowUrgentOnly(false);
-                }}
-              >
-                Clear
-              </Button>
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-accent transition-colors" size={16} />
             </div>
+            
+            <button
+              onClick={() => setShowUrgentOnly(!showUrgentOnly)}
+              className={`flex items-center gap-2 px-4 rounded-[20px] border transition-all h-10 ${
+                showUrgentOnly 
+                ? "border-danger bg-danger/5 text-danger" 
+                : "border-border bg-surface text-muted hover:bg-surface-container"
+              }`}
+            >
+              <div className={`w-1.5 h-1.5 rounded-full ${showUrgentOnly ? "bg-danger animate-pulse" : "bg-muted"}`} />
+              <span className="md-typescale-label-small">Urgency</span>
+            </button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-[20px]! px-4"
+              onPress={() => {
+                setOrderView("ALL");
+                setSearchTerm("");
+                setShowUrgentOnly(false);
+              }}
+            >
+              Clear
+            </Button>
           </div>
-        </Card>
+        </div>
       </section>
 
       {/* ── Orders Table ────────────────────────────────────────────────── */}
       {filteredOrders.length === 0 ? (
-        <div className="bento-card flex items-center justify-center py-16">
-          <span className="md-typescale-body-medium" style={{ color: 'var(--muted)' }}>
+        <div className="bento-card flex flex-col items-center justify-center py-24 rounded-[32px]!">
+          <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center mb-4">
+            <Search size={24} className="text-muted" />
+          </div>
+          <span className="md-typescale-body-medium text-muted">
             {orders.length === 0
               ? (isApiOnline ? "No active orders" : "Awaiting connection...")
               : "No orders match the current filters"}
           </span>
         </div>
       ) : (
-        <div className="bento-card p-0 overflow-hidden">
+        <div className="bento-card p-0 overflow-hidden rounded-[32px]! border-none! shadow-xl bg-surface">
           <div
-            className="px-4 py-3 flex items-center justify-between"
-            style={{ borderBottom: '1px solid var(--border)' }}
+            className="px-6 py-4 flex items-center justify-between bg-surface-container/30"
           >
-            <span className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>
-              Showing {filteredOrders.length} of {orders.length} orders
-            </span>
-            {selectedOrders.size > 0 && (
-              <span className="md-typescale-label-small tabular-nums" style={{ color: 'var(--foreground)' }}>
-                {selectedOrders.size} selected for dispatch
+            <div className="flex items-center gap-2">
+              <span className="md-typescale-label-medium">Manifest Feed</span>
+              <span className="md-typescale-label-small text-muted px-2 py-0.5 rounded-full bg-surface-container">
+                {filteredOrders.length} records
               </span>
+            </div>
+            {selectedOrders.size > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-accent text-accent-foreground md-typescale-label-small animate-in fade-in zoom-in duration-300">
+                <Activity size={12} strokeWidth={3} />
+                {selectedOrders.size} selected for dispatch
+              </div>
             )}
           </div>
           <div className="overflow-x-auto">
-            <table className="md-table">
-              <thead>
+            <table className="md-table border-none!">
+              <thead className="bg-surface-container/30">
                 <tr>
-                  <th className="w-12 px-4 py-3">
+                  <th className="w-14 px-6 py-4">
                     <input
                       type="checkbox"
                       checked={allSelected}
                       onChange={toggleSelectAll}
                       disabled={pendingOrders.length === 0}
-                      className="h-4 w-4 cursor-pointer rounded disabled:opacity-30"
-                      style={{ accentColor: 'var(--accent)' }}
+                      className="h-4 w-4 cursor-pointer rounded-xl transition-all accent-accent"
                       aria-label="Select all pending orders"
                     />
                   </th>
-                  <th>Order</th>
-                  <th>Retailer</th>
-                  <th>Amount</th>
-                  <th>Route</th>
-                  <th className="text-right">Status</th>
+                  <th className="px-4 py-4 text-left md-typescale-label-medium text-muted uppercase tracking-wider">Order ID</th>
+                  <th className="px-4 py-4 text-left md-typescale-label-medium text-muted uppercase tracking-wider">Retailer</th>
+                  <th className="px-4 py-4 text-left md-typescale-label-medium text-muted uppercase tracking-wider">Amount</th>
+                  <th className="px-4 py-4 text-left md-typescale-label-medium text-muted uppercase tracking-wider">Fleet Assignment</th>
+                  <th className="px-4 py-4 text-right md-typescale-label-medium text-muted uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border/20">
                 {filteredOrders.map((order) => {
                   const isPending = order.state === "PENDING" || order.state === "PENDING_REVIEW";
                   const isSelected = selectedOrders.has(order.order_id);
@@ -893,63 +898,53 @@ export default function AdminDashboard() {
                   return (
                     <tr
                       key={order.order_id}
-                      className={`transition-colors duration-100 ${isPending ? "cursor-pointer" : ""}`}
-                      style={{
-                        background: isSelected
-                          ? "var(--accent-soft)"
-                          : temporal.label === "Overdue" || temporal.label === "Critical"
-                          ? "var(--danger)"
-                          : temporal.label === "Urgent"
-                          ? "var(--default)"
-                          : undefined,
-                        borderLeft:
-                          temporal.label === "Overdue" || temporal.label === "Critical"
-                            ? "3px solid var(--danger)"
-                            : temporal.label === "Urgent"
-                            ? "3px solid var(--muted)"
-                            : undefined,
-                      }}
+                      className={`group transition-all duration-200 ${isPending ? "cursor-pointer" : ""} ${isSelected ? "bg-accent/3" : "hover:bg-surface-container/20"}`}
                       onClick={() => isPending && toggleOrder(order.order_id)}
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-4">
                         <input
                           type="checkbox"
                           checked={isSelected}
                           disabled={!isPending}
                           onChange={() => toggleOrder(order.order_id)}
                           onClick={(e) => e.stopPropagation()}
-                          className="h-4 w-4 cursor-pointer rounded disabled:opacity-20 disabled:cursor-not-allowed"
-                          style={{ accentColor: 'var(--accent)' }}
+                          className={`h-4 w-4 cursor-pointer rounded-xl transition-all accent-accent ${isSelected ? "scale-110" : "scale-100 opacity-40 group-hover:opacity-100"}`}
                         />
                       </td>
-                      <td className="font-mono text-xs">{order.order_id}</td>
-                      <td>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="md-typescale-body-small font-medium">{order.retailer_id}</span>
-                          {order.order_source === "AI_GENERATED" && (
-                            <Chip color="accent" variant="soft" size="sm">AI</Chip>
-                          )}
+                      <td className="px-4 py-4">
+                        <span className="md-typescale-label-medium font-mono text-muted group-hover:text-foreground transition-colors">
+                          #{order.order_id.slice(-8).toUpperCase()}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col">
+                          <span className="md-typescale-body-medium font-medium group-hover:text-accent transition-colors">{order.retailer_id}</span>
+                          <span className="md-typescale-label-small text-muted">Buston, UZ</span>
                         </div>
                       </td>
-                      <td className="font-mono text-xs tabular-nums">
-                        {order.amount?.toLocaleString() ?? "—"}
+                      <td className="px-4 py-4">
+                        <span className="md-typescale-label-large tabular-nums font-mono">
+                          {order.amount?.toLocaleString() ?? "—"}<span className="text-[10px] ml-0.5 text-muted">UZS</span>
+                        </span>
                       </td>
-                      <td className="font-mono text-xs">
-                        {order.route_id ?? <span style={{ color: 'var(--muted)' }}>—</span>}
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${order.route_id ? "bg-success" : "bg-muted/30"}`} />
+                          <span className="md-typescale-label-medium font-mono text-muted">
+                            {order.route_id ?? "NOT_ASSIGNED"}
+                          </span>
+                        </div>
                       </td>
-                      <td className="text-right">
-                        <StatusChip status={order.state} />
-                        {temporal.label && (
-                          <div className="mt-1">
-                            <Chip
-                              color={temporal.label === "Overdue" || temporal.label === "Critical" ? "danger" : "warning"}
-                              variant="soft"
-                              size="sm"
-                            >
-                              {temporal.label}
-                            </Chip>
-                          </div>
-                        )}
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex flex-col items-end gap-1.5">
+                          <StatusChip status={order.state} />
+                          {temporal.label && (
+                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-danger/10 text-danger md-typescale-label-small animate-pulse font-medium">
+                              <Activity size={10} />
+                              {temporal.label.toUpperCase()}
+                            </div>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

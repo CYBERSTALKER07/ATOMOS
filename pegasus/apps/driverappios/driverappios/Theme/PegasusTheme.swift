@@ -9,40 +9,41 @@ import SwiftUI
 
 enum LabTheme {
 
-    // MARK: Adaptive Colors (system-backed, automatic light/dark)
+    // MARK: Adaptive Colors (Native Tactical)
 
     /// Primary foreground — adapts automatically
-    static let fg = Color.primary
+    static let fg = Color(uiColor: .label)
     /// Secondary foreground
-    static let fgSecondary = Color.secondary
-    /// Tertiary foreground
+    static let fgSecondary = Color(uiColor: .secondaryLabel)
+    /// Tertiary foreground (Strategic label color)
     static let fgTertiary = Color(uiColor: .tertiaryLabel)
-    /// Card surface
+    /// Card surface (Pure Apple background)
     static let card = Color(uiColor: .secondarySystemGroupedBackground)
     /// Page background
     static let bg = Color(uiColor: .systemGroupedBackground)
     /// Button foreground on filled buttons
     static let buttonFg = Color(uiColor: .systemBackground)
-    /// Separator
+    /// Separator (Tactical stroke)
     static let separator = Color(uiColor: .separator)
 
-    // MARK: Semantic (minimal color for status only)
+    // MARK: Semantic Status (Monochrome + Tactical Accents)
 
     static let destructive = Color(uiColor: .systemRed)
     static let success     = Color(uiColor: .systemGreen)
     static let warning     = Color(uiColor: .systemOrange)
     static let live        = Color(uiColor: .systemGreen)
     static let offline     = Color(uiColor: .systemRed)
+    static let transit     = Color(uiColor: .systemBlue)
 
-    // MARK: Corner Radii (continuous rounding is default in clipShape)
+    // MARK: Corner Radii (Native Fluid)
 
-    static let cardRadius: Double   = 20
-    static let buttonRadius: Double = 14
-    static let pillRadius: Double   = 24
-    static let modalRadius: Double  = 28
-    static let sheetRadius: Double  = 32
+    static let cardRadius: Double   = 24
+    static let buttonRadius: Double = 16
+    static let pillRadius: Double   = 100
+    static let modalRadius: Double  = 30
+    static let sheetRadius: Double  = 34
 
-    // MARK: Spacing
+    // MARK: Spacing (H-Scale)
 
     static let s4: Double  = 4
     static let s8: Double  = 8
