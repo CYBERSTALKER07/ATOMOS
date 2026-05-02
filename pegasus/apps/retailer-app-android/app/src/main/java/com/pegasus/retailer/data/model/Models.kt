@@ -37,7 +37,7 @@ enum class OrderStatus {
     @SerialName("ARRIVING") ARRIVING,
     @SerialName("ARRIVED") ARRIVED,
     @SerialName("ARRIVED_SHOP_CLOSED") ARRIVED_SHOP_CLOSED,
-    @SerialName("AWAITING_GLOBAL_PAYNT") AWAITING_GLOBAL_PAYNT,
+    @SerialName("AWAITING_PAYMENT") AWAITING_PAYMENT,
     @SerialName("PENDING_CASH_COLLECTION") PENDING_CASH_COLLECTION,
     @SerialName("CANCEL_REQUESTED") CANCEL_REQUESTED,
     @SerialName("NO_CAPACITY") NO_CAPACITY,
@@ -59,7 +59,7 @@ enum class OrderStatus {
             ARRIVING -> "Driver Nearby"
             ARRIVED -> "Driver Arrived"
             ARRIVED_SHOP_CLOSED -> "Shop Closed"
-            AWAITING_GLOBAL_PAYNT -> "Payment Required"
+            AWAITING_PAYMENT -> "Payment Required"
             PENDING_CASH_COLLECTION -> "Cash Collection"
             CANCEL_REQUESTED -> "Cancel Requested"
             NO_CAPACITY -> "No Capacity"
@@ -70,7 +70,7 @@ enum class OrderStatus {
         }
 
     val isActive: Boolean
-        get() = this in listOf(AUTO_ACCEPTED, LOADED, DISPATCHED, IN_TRANSIT, ARRIVING, ARRIVED, ARRIVED_SHOP_CLOSED, AWAITING_GLOBAL_PAYNT, PENDING_CASH_COLLECTION)
+        get() = this in listOf(AUTO_ACCEPTED, LOADED, DISPATCHED, IN_TRANSIT, ARRIVING, ARRIVED, ARRIVED_SHOP_CLOSED, AWAITING_PAYMENT, PENDING_CASH_COLLECTION)
 
     /** 6-step logistics pipeline for the timeline. */
     val progressFraction: Float
@@ -81,7 +81,7 @@ enum class OrderStatus {
             DISPATCHED -> 0.50f
             IN_TRANSIT -> 0.67f
             ARRIVING, ARRIVED, ARRIVED_SHOP_CLOSED -> 0.83f
-            AWAITING_GLOBAL_PAYNT -> 0.83f
+            AWAITING_PAYMENT -> 0.83f
             PENDING_CASH_COLLECTION -> 0.83f
             COMPLETED, DELIVERED_ON_CREDIT -> 1.0f
             CANCELLED, CANCEL_REQUESTED, NO_CAPACITY, QUARANTINE -> 0f
@@ -95,7 +95,7 @@ enum class OrderStatus {
             DISPATCHED -> "3/6"
             IN_TRANSIT -> "4/6"
             ARRIVING, ARRIVED, ARRIVED_SHOP_CLOSED -> "5/6"
-            AWAITING_GLOBAL_PAYNT -> "Pay"
+            AWAITING_PAYMENT -> "Pay"
             PENDING_CASH_COLLECTION -> "Cash"
             COMPLETED, DELIVERED_ON_CREDIT -> "Done"
             CANCELLED, CANCEL_REQUESTED, NO_CAPACITY, QUARANTINE -> "X"

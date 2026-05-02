@@ -50,13 +50,13 @@ import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffold
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -136,7 +136,7 @@ fun HomeScreen(
                         Icon(Icons.Filled.Refresh, contentDescription = "Refresh trucks")
                     }
                     IconButton(onClick = onLogout) {
-                        Icon(Icons.Filled.Logout, contentDescription = "Logout")
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -810,7 +810,7 @@ private fun OrderChip(
                 Icon(Icons.Filled.CheckCircle, contentDescription = "Sealed", modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
             }
-            Column(Modifier.fillMaxWidth(0.7f)) {
+            Column(Modifier.weight(1f)) {
                 Text(
                     "Order ${order.orderId.take(8)}",
                     style = MaterialTheme.typography.bodyMedium,
@@ -1228,7 +1228,7 @@ private fun RecommendationCard(
                     rec.driverName.ifBlank { rec.driverId.take(8) },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.fillMaxWidth(0.7f),
+                    modifier = Modifier.weight(1f),
                 )
                 Text(
                     "score %.2f".format(rec.score),
