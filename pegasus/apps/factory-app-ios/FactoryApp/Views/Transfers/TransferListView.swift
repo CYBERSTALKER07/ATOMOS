@@ -5,14 +5,17 @@ struct TransferListView: View {
     @State private var loading = true
     @State private var error: String?
     @State private var selectedFilter = "ALL"
-    @State private var selectedTransfer: Transfer?
+    @State private var selectedTransferID: String?
 
     private let filters = ["ALL", "DRAFT", "APPROVED", "LOADING", "DISPATCHED", "IN_TRANSIT", "ARRIVED", "RECEIVED", "CANCELLED"]
+
+    private var selectedTransfer: Transfer? {
+        transfers.first { $0.id == selectedTransferID }
+    }
 
     var body: some View {
         NavigationSplitView {
             VStack(spacing: 0) {
-                // Filter chips
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: LabTheme.spacingSM) {
                         ForEach(filters, id: \.self) { filter in
@@ -20,12 +23,11 @@ struct TransferListView: View {
                                 selectedFilter = filter
                             } label: {
                                 Text(filter)
-                                    .font(.caption.bold())
+                                    .font(.footnote.bold())
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 6)
-                                    .background(selectedFilter == filter ? Color.primary : Color.clear)
-                                    .foregroundStyle(selectedFilter == filter ? Color(uiColor: .systemBackground) : .primary)
-                                    .clipShape(Capsule())
+                                    .background(selectedFilter == filter ? LabTheme.label : Color.clear, in: Capsule())
+                                    .foregroundStyle(selectedFilter == filter ? Color(.systemBackground) : LabTheme.label)
                                     .overlay(Capsule().stroke(.quaternary))
                             }
                             .buttonStyle(PressableButtonStyle())
@@ -46,17 +48,34 @@ struct TransferListView: View {
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { load() }
+                        Button("Retry") {
+                            Task { await load() }
+                        }
                     }
                 } else if transfers.isEmpty {
-                    ContentUnavailableView("No Transfers", systemImage: "arrow.left.arrow.right", description: Text("No transfers match filter"))
+                    ContentUnavailableView(
+                        "No Transfers",
+                        systemImage: "arrow.left.arrow.right",
+                        description: Text(
+                            selectedFilter == "ALL"
+                                ? "There are no transfers available right now."
+                                : "There are no \(selectedFilter) transfers in the current queue."
+                        )
+                    )
                 } else {
-                    List(transfers, selection: Binding(
-                        get: { selectedTransfer?.id },
-                        set: { id in selectedTransfer = transfers.first { $0.id == id } }
-                    )) { transfer in
-                        TransferRow(transfer: transfer)
-                            .tag(transfer.id)
+                    List(selection: $selectedTransferID) {
+                        Section {
+                            TransferListSummary(count: transfers.count, selectedFilter: selectedFilter)
+                                .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                                .listRowBackground(Color.clear)
+                        }
+
+                        Section {
+                            ForEach(transfers) { transfer in
+                                TransferRow(transfer: transfer)
+                                    .tag(transfer.id)
+                            }
+                        }
                     }
                     .listStyle(.plain)
                 }
@@ -65,59 +84,122 @@ struct TransferListView: View {
             .navigationTitle("Transfers")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { load() } label: {
-                        Image(systemName: "arrow.clockwise")
+                    Button("Refresh", systemImage: "arrow.clockwise") {
+                        Task { await load() }
                     }
+                    .labelStyle(.iconOnly)
                 }
             }
         } detail: {
             if let transfer = selectedTransfer {
                 TransferDetailView(transferId: transfer.id)
             } else {
-                ContentUnavailableView("Select a Transfer", systemImage: "arrow.left.arrow.right", description: Text("Choose a transfer from the list"))
+                ContentUnavailableView(
+                    "Select a Transfer",
+                    systemImage: "arrow.left.arrow.right",
+                    description: Text("Choose a transfer from the list.")
+                )
             }
         }
-        .task { load() }
-        .onChange(of: selectedFilter) { _, _ in load() }
+        .task(id: selectedFilter) { await load() }
     }
 
-    private func load() {
+    @MainActor
+    private func load() async {
         loading = true
         error = nil
-        Task {
-            do {
-                let state = selectedFilter == "ALL" ? nil : selectedFilter
-                let resp = try await FactoryService.transfers(state: state)
-                transfers = resp.transfers
-            } catch {
-                self.error = error.localizedDescription
+
+        do {
+            let state = selectedFilter == "ALL" ? nil : selectedFilter
+            let response = try await FactoryService.transfers(state: state)
+            transfers = response.transfers
+
+            if let selectedTransferID, transfers.contains(where: { $0.id == selectedTransferID }) {
+                self.selectedTransferID = selectedTransferID
+            } else {
+                selectedTransferID = transfers.first?.id
             }
-            loading = false
+        } catch {
+            self.error = error.localizedDescription
         }
+
+        loading = false
     }
 }
 
-// MARK: - Transfer Row
+private struct TransferListSummary: View {
+    let count: Int
+    let selectedFilter: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+            Text("\(count) transfers in view")
+                .font(.headline)
+            Text(selectedFilter == "ALL" ? "Showing every transfer state across the factory queue." : "Filtered to \(selectedFilter) transfers.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .labCard()
+    }
+}
+
 private struct TransferRow: View {
     let transfer: Transfer
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(transfer.warehouseName.isEmpty ? String(transfer.warehouseId.prefix(8)) : transfer.warehouseName)
-                    .font(.subheadline.bold())
-                Text("\(transfer.totalItems) items · \(transfer.priority)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
+            HStack(alignment: .top, spacing: LabTheme.spacingMD) {
+                VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                    Text(transfer.warehouseName.isEmpty ? String(transfer.warehouseId.prefix(8)) : transfer.warehouseName)
+                        .font(.subheadline.bold())
+                    Text("Transfer \(transfer.id.prefix(8))")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
+                    TransferRowTag(text: transfer.state)
+                    TransferRowTag(text: transfer.priority.isEmpty ? "STANDARD" : transfer.priority, emphasized: false)
+                }
             }
-            Spacer()
-            Text(transfer.state)
-                .font(.caption2.bold())
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(.quaternary)
-                .clipShape(Capsule())
+
+            HStack(spacing: LabTheme.spacingSM) {
+                TransferRowMetric(label: "Items", value: "\(transfer.totalItems)")
+                TransferRowMetric(label: "Volume", value: String(format: "%.0fL", transfer.totalVolumeL))
+            }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, LabTheme.spacingXS)
+    }
+}
+
+private struct TransferRowMetric: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+            Text(value)
+                .font(.subheadline.bold())
+            Text(label)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(LabTheme.spacingSM)
+        .background(LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
+    }
+}
+
+private struct TransferRowTag: View {
+    let text: String
+    var emphasized = true
+
+    var body: some View {
+        Text(text)
+            .font(.footnote.bold())
+            .padding(.horizontal, LabTheme.spacingSM)
+            .padding(.vertical, LabTheme.spacingXS)
+            .background(emphasized ? LabTheme.fill : LabTheme.tertiaryBackground, in: Capsule())
     }
 }

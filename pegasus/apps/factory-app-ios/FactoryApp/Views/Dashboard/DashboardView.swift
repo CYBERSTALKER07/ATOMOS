@@ -18,7 +18,9 @@ struct DashboardView: View {
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { Task { await load() } }
+                        Button("Retry") {
+                            Task { await load() }
+                        }
                     }
                 } else {
                     VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
@@ -26,6 +28,7 @@ struct DashboardView: View {
                         Text("Operations at a glance")
                             .font(.headline)
                             .padding(.horizontal)
+
                         LazyVGrid(
                             columns: [GridItem(.adaptive(minimum: 160), spacing: LabTheme.spacingMD)],
                             spacing: LabTheme.spacingMD
@@ -63,11 +66,13 @@ struct DashboardView: View {
     private func load() async {
         loading = true
         error = nil
+
         do {
             stats = try await FactoryService.dashboard()
         } catch {
             self.error = error.localizedDescription
         }
+
         loading = false
     }
 }
@@ -79,8 +84,6 @@ private struct DashboardMetric {
     let icon: String
 }
 
-private var dashboardMetrics: [DashboardMetric] = []
-
 private struct KpiCard: View {
     let metric: DashboardMetric
     let index: Int
@@ -90,6 +93,7 @@ private struct KpiCard: View {
             Image(systemName: metric.icon)
                 .font(.title3)
                 .foregroundStyle(.secondary)
+
             VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                 Text(metric.value)
                     .font(.title2.bold())
@@ -118,6 +122,7 @@ private struct DashboardHeroCard: View {
                     .font(.body)
                     .foregroundStyle(.secondary)
             }
+
             HStack(spacing: LabTheme.spacingSM) {
                 OverviewMetric(label: "Queued", value: "\(stats.pendingTransfers)")
                 OverviewMetric(label: "Loading", value: "\(stats.loadingTransfers)")

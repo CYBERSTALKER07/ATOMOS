@@ -18,70 +18,89 @@ struct TransferDetailView: View {
                 } description: {
                     Text(error)
                 } actions: {
-                    Button("Retry") { load() }
+                    Button("Retry") {
+                        Task { await load() }
+                    }
                 }
             } else if let transfer {
                 ScrollView {
                     VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
-                        // Summary cards
-                        HStack(spacing: LabTheme.spacingMD) {
-                            SummaryCard(label: "State", value: transfer.state)
-                            SummaryCard(label: "Priority", value: transfer.priority)
+                        TransferOverviewCard(transfer: transfer)
+
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.flexible(), spacing: LabTheme.spacingMD),
+                                GridItem(.flexible(), spacing: LabTheme.spacingMD)
+                            ],
+                            spacing: LabTheme.spacingMD
+                        ) {
                             SummaryCard(label: "Items", value: "\(transfer.totalItems)")
                             SummaryCard(label: "Volume", value: String(format: "%.0fL", transfer.totalVolumeL))
                         }
 
-                        // Warehouse
-                        Text("Warehouse: \(transfer.warehouseName.isEmpty ? String(transfer.warehouseId.prefix(8)) : transfer.warehouseName)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        if transfer.state == "APPROVED" || transfer.state == "LOADING" {
+                            HStack(spacing: LabTheme.spacingMD) {
+                                if transfer.state == "APPROVED" {
+                                    Button("Start Loading") {
+                                        Task { await transition(to: "LOADING") }
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .buttonStyle(.borderedProminent)
+                                }
 
-                        // Actions
-                        HStack(spacing: LabTheme.spacingMD) {
-                            if transfer.state == "APPROVED" {
-                                Button("Start Loading") { transition(to: "LOADING") }
+                                if transfer.state == "LOADING" {
+                                    Button("Mark Dispatched") {
+                                        Task { await transition(to: "DISPATCHED") }
+                                    }
+                                    .frame(maxWidth: .infinity)
                                     .buttonStyle(.borderedProminent)
-                                    .disabled(transitioning)
+                                }
                             }
-                            if transfer.state == "LOADING" {
-                                Button("Mark Dispatched") { transition(to: "DISPATCHED") }
-                                    .buttonStyle(.borderedProminent)
-                                    .disabled(transitioning)
-                            }
+                            .disabled(transitioning)
+                        } else {
+                            Text("No manual transition is available for the current state.")
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(LabTheme.spacingLG)
+                                .background(LabTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
                         }
 
                         Divider()
 
-                        // Items
                         Text("Items")
                             .font(.headline)
 
                         ForEach(Array(transfer.items.enumerated()), id: \.element.id) { index, item in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
+                                VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                     Text(item.productName.isEmpty ? String(item.productId.prefix(8)) : item.productName)
                                         .font(.subheadline.bold())
-                                    Text("Qty: \(item.quantity) · Available: \(item.quantityAvailable)")
-                                        .font(.caption)
+                                    Text(String(item.productId.prefix(8)))
+                                        .font(.footnote)
                                         .foregroundStyle(.secondary)
                                 }
-                                Spacer()
-                                Text(String(format: "%.1fL/unit", item.unitVolumeL))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+
+                                HStack(spacing: LabTheme.spacingSM) {
+                                    SummaryCard(label: "Qty", value: "\(item.quantity)")
+                                    SummaryCard(label: "Available", value: "\(item.quantityAvailable)")
+                                    SummaryCard(label: "Volume", value: String(format: "%.1fL", item.unitVolumeL))
+                                }
                             }
                             .labCard()
                             .staggeredAppear(index: index)
                         }
 
-                        // Notes
                         if !transfer.notes.isEmpty {
                             Divider()
                             Text("Notes")
                                 .font(.headline)
                             Text(transfer.notes)
-                                .font(.subheadline)
+                                .font(.body)
                                 .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(LabTheme.spacingLG)
+                                .background(LabTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
                         }
                     }
                     .padding()
@@ -92,54 +111,93 @@ struct TransferDetailView: View {
         .navigationTitle("Transfer")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { load() } label: {
-                    Image(systemName: "arrow.clockwise")
+                Button("Refresh", systemImage: "arrow.clockwise") {
+                    Task { await load() }
                 }
+                .labelStyle(.iconOnly)
             }
         }
-        .task { load() }
+        .task { await load() }
     }
 
-    private func load() {
+    @MainActor
+    private func load() async {
         loading = true
         error = nil
-        Task {
-            do {
-                transfer = try await FactoryService.transfer(id: transferId)
-            } catch {
-                self.error = error.localizedDescription
-            }
-            loading = false
+
+        do {
+            transfer = try await FactoryService.transfer(id: transferId)
+        } catch {
+            self.error = error.localizedDescription
         }
+
+        loading = false
     }
 
-    private func transition(to target: String) {
+    @MainActor
+    private func transition(to target: String) async {
         transitioning = true
-        Task {
-            do {
-                transfer = try await FactoryService.transitionTransfer(id: transferId, target: target)
-            } catch {
-                self.error = error.localizedDescription
-            }
-            transitioning = false
+
+        do {
+            transfer = try await FactoryService.transitionTransfer(id: transferId, target: target)
+        } catch {
+            self.error = error.localizedDescription
         }
+
+        transitioning = false
     }
 }
 
-// MARK: - Summary Card
+private struct TransferOverviewCard: View {
+    let transfer: Transfer
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
+            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                Text(transfer.warehouseName.isEmpty ? String(transfer.warehouseId.prefix(8)) : transfer.warehouseName)
+                    .font(.title3.bold())
+                Text("Transfer \(transfer.id.prefix(8))")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: LabTheme.spacingSM) {
+                DetailTag(text: transfer.state)
+                DetailTag(text: transfer.priority.isEmpty ? "STANDARD" : transfer.priority, emphasized: false)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .labCard()
+    }
+}
+
 private struct SummaryCard: View {
     let label: String
     let value: String
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
             Text(value)
-                .font(.title3.bold())
+                .font(.headline)
             Text(label)
-                .font(.caption)
+                .font(.footnote)
                 .foregroundStyle(.secondary)
         }
-        .frame(maxWidth: .infinity)
-        .labCard()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(LabTheme.spacingMD)
+        .background(LabTheme.secondaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
+    }
+}
+
+private struct DetailTag: View {
+    let text: String
+    var emphasized = true
+
+    var body: some View {
+        Text(text)
+            .font(.footnote.bold())
+            .padding(.horizontal, LabTheme.spacingSM)
+            .padding(.vertical, LabTheme.spacingXS)
+            .background(emphasized ? LabTheme.fill : LabTheme.tertiaryBackground, in: Capsule())
     }
 }
