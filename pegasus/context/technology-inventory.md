@@ -83,6 +83,13 @@ From Terraform under `pegasus/infra/terraform`:
 - Cloud Armor WAF + OWASP rules + per-IP throttling
 - Circuit-breaker and priority-guard readiness patterns
 
+## Engineering Guard Tooling
+
+- Contract drift checker: `pegasus/scripts/contract_drift_guard.py`
+- Architecture boundary checker: `pegasus/scripts/architecture_boundary_guard.py`
+- Design-token enforcement checker: `pegasus/scripts/design_token_enforcement_guard.py`
+- Aggregated PR workflow: `.github/workflows/one-eye-guards.yml`
+
 ## External Integrations And Providers
 
 - Payme

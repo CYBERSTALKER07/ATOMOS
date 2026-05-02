@@ -62,6 +62,12 @@ Transform weak plans into safe, phased execution:
 4. Cutover readiness: keep local code production-compatible so real server migration is wiring/config only.
 5. Rollback readiness: additive schema and event changes, version-safe clients, and explicit rollback path.
 
+## One-Eye Guard Suite (Mandatory On PR)
+Run and pass all three guard scripts for pull requests:
+1. `python3 pegasus/scripts/contract_drift_guard.py --repo-root . --base-sha <base> --head-sha <head>`
+2. `python3 pegasus/scripts/architecture_boundary_guard.py --repo-root . --base-sha <base> --head-sha <head>`
+3. `python3 pegasus/scripts/design_token_enforcement_guard.py --repo-root . --base-sha <base> --head-sha <head>`
+
 ## Sync-On-Change Contract
 After every execution that changes architecture, integrations, dependencies, or operational behavior, update all relevant files in one change set:
 1. `.github/ACT.md`

@@ -39,6 +39,80 @@ jobs:
             --base-sha "${{ github.event.pull_request.base.sha }}" \
             --head-sha "${{ github.event.pull_request.head.sha }}"
 
+  # ── One-eye guard suite ───────────────────────────────────────────────────
+  one-eye-guards:
+    name: One Eye Guards — contract · boundaries · design tokens
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: One-eye relevant paths filter
+        id: one_eye_paths
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            relevant:
+              - '.github/workflows/one-eye-guards.yml'
+              - 'pegasus/.github/workflows/ci.yml'
+              - 'pegasus/scripts/guard_utils.py'
+              - 'pegasus/scripts/contract_drift_guard.py'
+              - 'pegasus/scripts/architecture_boundary_guard.py'
+              - 'pegasus/scripts/design_token_enforcement_guard.py'
+              - 'pegasus/apps/backend-go/**/*.go'
+              - 'pegasus/apps/backend-go/kafka/**'
+              - 'pegasus/apps/backend-go/notifications/**'
+              - 'pegasus/packages/types/**'
+              - 'pegasus/packages/api-client/**'
+              - 'pegasus/packages/validation/**'
+              - 'pegasus/packages/optimizer-contract/**'
+              - 'pegasus/apps/ai-worker/**'
+              - 'pegasus/apps/admin-portal/**'
+              - 'pegasus/apps/factory-portal/**'
+              - 'pegasus/apps/warehouse-portal/**'
+              - 'pegasus/apps/retailer-app-desktop/**'
+              - 'pegasus/apps/driverappios/**'
+              - 'pegasus/apps/payload-terminal/**'
+              - 'pegasus/apps/*-app-android/**'
+              - 'pegasus/apps/*-app-ios/**'
+              - 'pegasus/packages/ui-kit/**'
+
+      - name: Skip one-eye guard suite (no relevant path changes)
+        if: steps.one_eye_paths.outputs.relevant != 'true'
+        run: echo "No one-eye relevant paths changed; skipping."
+
+      - uses: actions/setup-python@v5
+        if: steps.one_eye_paths.outputs.relevant == 'true'
+        with:
+          python-version: '3.12'
+
+      - name: Contract drift checker
+        if: steps.one_eye_paths.outputs.relevant == 'true'
+        run: |
+          python3 pegasus/scripts/contract_drift_guard.py \
+            --repo-root . \
+            --base-sha "${{ github.event.pull_request.base.sha }}" \
+            --head-sha "${{ github.event.pull_request.head.sha }}"
+
+      - name: Architecture boundary checker
+        if: steps.one_eye_paths.outputs.relevant == 'true'
+        run: |
+          python3 pegasus/scripts/architecture_boundary_guard.py \
+            --repo-root . \
+            --base-sha "${{ github.event.pull_request.base.sha }}" \
+            --head-sha "${{ github.event.pull_request.head.sha }}"
+
+      - name: Design-token enforcement checker
+        if: steps.one_eye_paths.outputs.relevant == 'true'
+        run: |
+          python3 pegasus/scripts/design_token_enforcement_guard.py \
+            --repo-root . \
+            --base-sha "${{ github.event.pull_request.base.sha }}" \
+            --head-sha "${{ github.event.pull_request.head.sha }}"
+
   # ── VersionScan guardrails ───────────────────────────────────────────────
   versionscan:
     name: VersionScan — manifest + guardrails

@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+from guard_utils import changed_files, ensure_git_repo, match_any, run_cmd
+
+
+UI_TRIGGER_PATTERNS = [
+    "pegasus/apps/admin-portal/**",
+    "pegasus/apps/factory-portal/**",
+    "pegasus/apps/warehouse-portal/**",
+    "pegasus/apps/retailer-app-desktop/**",
+    "pegasus/packages/ui-kit/**",
+]
+
+TOKEN_SOURCE_PATTERNS = [
+    "pegasus/apps/admin-portal/app/globals.css",
+    "pegasus/apps/factory-portal/app/globals.css",
+    "pegasus/apps/warehouse-portal/app/globals.css",
+    "pegasus/apps/retailer-app-desktop/app/globals.css",
+    "pegasus/packages/ui-kit/**/tokens*.css",
+    "pegasus/packages/ui-kit/**/tokens*.ts",
+]
+
+DESIGN_SYNC_PATTERNS = [
+    "pegasus/context/design-system.md",
+    "pegasus/context/technology-inventory.md",
+    "pegasus/context/technology-inventory.json",
+]
+
+MCP_REQUIRED_FILES = [
+    ".agents/extensions/ast-engine/engine.mjs",
+    ".agents/extensions/ast-engine/mcp-server.mjs",
+]
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Design System Guard MCP: run design-token enforcement and require design-system sync on token source updates."
+        )
+    )
+    parser.add_argument("--repo-root", default=".", help="Repository root.")
+    parser.add_argument("--base-sha", default=None, help="Base commit SHA for diff.")
+    parser.add_argument("--head-sha", default=None, help="Head commit SHA for diff.")
+    args = parser.parse_args()
+
+    repo_root = Path(args.repo_root).resolve()
+
+    try:
+        ensure_git_repo(repo_root)
+    except RuntimeError as exc:
+        print(f"design-system-guard-mcp: error: {exc}", file=sys.stderr)
+        return 2
+
+    files = changed_files(repo_root, args.base_sha, args.head_sha)
+    if not files:
+        print("design-system-guard-mcp: no changed files detected; skipping.")
+        return 0
+
+    trigger_changes = [path for path in files if match_any(path, UI_TRIGGER_PATTERNS)]
+    if not trigger_changes:
+        print("design-system-guard-mcp: no UI/design-system trigger changes detected; passing.")
+        return 0
+
+    token_source_changes = [path for path in files if match_any(path, TOKEN_SOURCE_PATTERNS)]
+    design_sync_changes = [path for path in files if match_any(path, DESIGN_SYNC_PATTERNS)]
+    missing_mcp_files = [
+        path for path in MCP_REQUIRED_FILES if not (repo_root / path).exists()
+    ]
+
+    cmd = [
+        "python3",
+        "pegasus/scripts/design_token_enforcement_guard.py",
+        "--repo-root",
+        str(repo_root),
+    ]
+    if args.base_sha:
+        cmd.extend(["--base-sha", args.base_sha])
+    if args.head_sha:
+        cmd.extend(["--head-sha", args.head_sha])
+
+    code, out, err = run_cmd(cmd, cwd=repo_root, allow_fail=True)
+
+    failures: list[str] = []
+
+    if code != 0:
+        failures.append("Design-token sub-check failed.")
+
+    if token_source_changes and not design_sync_changes:
+        failures.append(
+            "Design token source changed without design-system context sync. Update pegasus/context/design-system.md."
+        )
+
+    if missing_mcp_files:
+        failures.append(
+            "Missing required AST MCP engine file(s): " + ", ".join(missing_mcp_files)
+        )
+
+    print("design-system-guard-mcp: trigger changes:")
+    for path in trigger_changes:
+        print(f"  - {path}")
+
+    if out.strip():
+        print(out.strip())
+
+    if not failures:
+        print("design-system-guard-mcp: token, design-sync, and MCP checks passed.")
+        return 0
+
+    print("\ndesign-system-guard-mcp: FAIL — design-system governance violations detected.", file=sys.stderr)
+    for item in failures:
+        print(f"  - {item}", file=sys.stderr)
+
+    if err.strip():
+        print(err.strip(), file=sys.stderr)
+
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

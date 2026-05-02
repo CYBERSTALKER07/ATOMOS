@@ -52,6 +52,19 @@
     "technologyInventory": {
       "markdown": "technology-inventory.md",
       "json": "technology-inventory.json"
+    },
+    "oneEyeGuards": {
+      "workflow": ".github/workflows/one-eye-guards.yml",
+      "scripts": [
+        "pegasus/scripts/contract_drift_guard.py",
+        "pegasus/scripts/architecture_boundary_guard.py",
+        "pegasus/scripts/design_token_enforcement_guard.py"
+      ],
+      "checks": [
+        "contract_drift",
+        "architecture_boundary",
+        "design_token_enforcement"
+      ]
     }
   },
   "nodes": [
@@ -77,7 +90,8 @@
     { "id": "ast_mcp_server", "type": "agent_tool", "label": "AST MCP Server" },
     { "id": "ast_engine", "type": "agent_tool", "label": "AST Symbol Graph Engine" },
     { "id": "arch_docs", "type": "docs", "label": "Architecture Docs + Graph" },
-    { "id": "tech_inventory", "type": "docs", "label": "Technology Inventory" }
+    { "id": "tech_inventory", "type": "docs", "label": "Technology Inventory" },
+    { "id": "one_eye_guards", "type": "policy_guard", "label": "One-Eye Guard Suite" }
   ],
   "edges": [
     { "from": "admin_portal", "to": "maglev", "relationship": "calls" },
@@ -102,6 +116,7 @@
     { "from": "act_protocol", "to": "ast_engine", "relationship": "fallback_requires" },
     { "from": "act_protocol", "to": "arch_docs", "relationship": "requires" },
     { "from": "act_protocol", "to": "tech_inventory", "relationship": "requires" },
+    { "from": "act_protocol", "to": "one_eye_guards", "relationship": "requires" },
     { "from": "copilot_agent", "to": "ast_mcp_server", "relationship": "queries" },
     { "from": "gemini_agent", "to": "ast_mcp_server", "relationship": "queries" },
     { "from": "ast_mcp_server", "to": "ast_engine", "relationship": "executes" },

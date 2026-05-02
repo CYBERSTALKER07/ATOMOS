@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+from guard_utils import changed_files, ensure_git_repo, match_any, run_cmd
+
+
+ARCH_TRIGGER_PATTERNS = [
+    "pegasus/apps/backend-go/*.go",
+    "pegasus/apps/backend-go/**/*.go",
+    "pegasus/apps/ai-worker/**/*.go",
+]
+
+CONTEXT_SYNC_PATTERNS = [
+    ".github/ACT.md",
+    ".github/copilot-instructions.md",
+    ".github/gemini-instructions.md",
+    "pegasus/context/architecture.md",
+    "pegasus/context/architecture-graph.json",
+    "pegasus/context/technology-inventory.md",
+    "pegasus/context/technology-inventory.json",
+]
+
+MCP_REQUIRED_FILES = [
+    ".agents/extensions/ast-engine/engine.mjs",
+    ".agents/extensions/ast-engine/mcp-server.mjs",
+]
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Architecture Guard MCP: run architecture boundary checks and enforce context sync + MCP readiness."
+        )
+    )
+    parser.add_argument("--repo-root", default=".", help="Repository root.")
+    parser.add_argument("--base-sha", default=None, help="Base commit SHA for diff.")
+    parser.add_argument("--head-sha", default=None, help="Head commit SHA for diff.")
+    args = parser.parse_args()
+
+    repo_root = Path(args.repo_root).resolve()
+
+    try:
+        ensure_git_repo(repo_root)
+    except RuntimeError as exc:
+        print(f"architecture-guard-mcp: error: {exc}", file=sys.stderr)
+        return 2
+
+    files = changed_files(repo_root, args.base_sha, args.head_sha)
+    if not files:
+        print("architecture-guard-mcp: no changed files detected; skipping.")
+        return 0
+
+    trigger_changes = [path for path in files if match_any(path, ARCH_TRIGGER_PATTERNS)]
+    if not trigger_changes:
+        print("architecture-guard-mcp: no architecture trigger changes detected; passing.")
+        return 0
+
+    context_sync_changes = [path for path in files if match_any(path, CONTEXT_SYNC_PATTERNS)]
+    missing_mcp_files = [
+        path for path in MCP_REQUIRED_FILES if not (repo_root / path).exists()
+    ]
+
+    cmd = [
+        "python3",
+        "pegasus/scripts/architecture_boundary_guard.py",
+        "--repo-root",
+        str(repo_root),
+    ]
+    if args.base_sha:
+        cmd.extend(["--base-sha", args.base_sha])
+    if args.head_sha:
+        cmd.extend(["--head-sha", args.head_sha])
+
+    code, out, err = run_cmd(cmd, cwd=repo_root, allow_fail=True)
+
+    failures: list[str] = []
+
+    if code != 0:
+        failures.append("Architecture boundary sub-check failed.")
+
+    if not context_sync_changes:
+        failures.append(
+            "Architecture context sync missing. Update ACT/instructions/architecture/inventory sync-set files."
+        )
+
+    if missing_mcp_files:
+        failures.append(
+            "Missing required AST MCP engine file(s): " + ", ".join(missing_mcp_files)
+        )
+
+    print("architecture-guard-mcp: trigger changes:")
+    for path in trigger_changes:
+        print(f"  - {path}")
+
+    if out.strip():
+        print(out.strip())
+
+    if not failures:
+        print("architecture-guard-mcp: boundary, context, and MCP checks passed.")
+        return 0
+
+    print("\narchitecture-guard-mcp: FAIL — architecture governance violations detected.", file=sys.stderr)
+    for item in failures:
+        print(f"  - {item}", file=sys.stderr)
+
+    if err.strip():
+        print(err.strip(), file=sys.stderr)
+
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

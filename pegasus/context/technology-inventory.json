@@ -178,6 +178,19 @@
       "version gating"
     ]
   },
+  "engineeringGuardTooling": {
+    "workflow": ".github/workflows/one-eye-guards.yml",
+    "scripts": [
+      "pegasus/scripts/contract_drift_guard.py",
+      "pegasus/scripts/architecture_boundary_guard.py",
+      "pegasus/scripts/design_token_enforcement_guard.py"
+    ],
+    "checks": [
+      "contract_drift",
+      "architecture_boundary",
+      "design_token_enforcement"
+    ]
+  },
   "externalIntegrations": [
     "Payme",
     "Click",
