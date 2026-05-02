@@ -100,12 +100,18 @@ fun TransferListScreen(
                     }
                 }
                 transfers.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No transfers", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    EmptyTransferListState(selectedFilter = selectedFilter)
                 }
                 else -> LazyColumn(
                     contentPadding = PaddingValues(LabSpacing.lg),
-                    verticalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                    verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
                 ) {
+                    item {
+                        TransferListSummary(
+                            count = transfers.size,
+                            selectedFilter = selectedFilter,
+                        )
+                    }
                     items(transfers, key = { it.id }) { transfer ->
                         TransferRow(transfer, onClick = { onTransferClick(transfer.id) })
                     }
@@ -121,25 +127,146 @@ private fun TransferRow(transfer: Transfer, onClick: () -> Unit) {
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(LabSpacing.lg),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = transfer.warehouseName.ifBlank { transfer.warehouseId.take(8) },
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                Text(
-                    text = "${transfer.totalItems} items · ${transfer.priority}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                    Text(
+                        text = transfer.warehouseName.ifBlank { transfer.warehouseId.take(8) },
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = "Transfer ${transfer.id.take(8)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+                ) {
+                    TransferTag(
+                        text = transfer.state,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                    TransferTag(
+                        text = transfer.priority.ifBlank { "STANDARD" },
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
-            AssistChip(
-                onClick = {},
-                label = { Text(transfer.state, style = MaterialTheme.typography.labelSmall) },
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+            ) {
+                TransferMetric("Items", transfer.totalItems.toString(), Modifier.weight(1f))
+                TransferMetric("Volume", "${String.format("%.0f", transfer.totalVolumeL)}L", Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransferListSummary(
+    count: Int,
+    selectedFilter: String,
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(LabSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+        ) {
+            Text(
+                text = "$count transfers in view",
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                text = if (selectedFilter == "ALL") {
+                    "Showing every transfer state across the factory queue."
+                } else {
+                    "Filtered to $selectedFilter transfers."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+@Composable
+private fun EmptyTransferListState(selectedFilter: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+    ) {
+        Text(
+            text = "No transfers found",
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = if (selectedFilter == "ALL") {
+                "There are no transfers available right now."
+            } else {
+                "There are no $selectedFilter transfers in the current queue."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun TransferMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(
+            modifier = Modifier.padding(LabSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+        ) {
+            Text(value, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TransferTag(
+    text: String,
+    containerColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color,
+) {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = containerColor,
+        contentColor = contentColor,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = LabSpacing.sm, vertical = LabSpacing.xs),
+        )
     }
 }

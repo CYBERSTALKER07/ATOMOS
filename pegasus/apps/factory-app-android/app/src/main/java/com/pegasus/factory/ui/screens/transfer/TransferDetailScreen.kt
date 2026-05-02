@@ -101,15 +101,8 @@ fun TransferDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
-                // Summary cards row
                 item {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        SummaryCard("State", transfer!!.state, Modifier.weight(1f))
-                        SummaryCard("Priority", transfer!!.priority, Modifier.weight(1f))
-                    }
+                    TransferOverviewCard(transfer = transfer!!)
                 }
                 item {
                     Row(
@@ -121,71 +114,82 @@ fun TransferDetailScreen(
                     }
                 }
 
-                // Warehouse
-                item {
-                    Text(
-                        text = "Warehouse: ${transfer!!.warehouseName.ifBlank { transfer!!.warehouseId.take(8) }}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                // Action buttons
                 item {
                     val state = transfer!!.state
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
                     ) {
                         if (state == "APPROVED") {
                             Button(
                                 onClick = { transition("LOADING") },
                                 enabled = !transitioning,
-                            ) { Text("Start Loading") }
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(LabSpacing.xxxl),
+                            ) { Text("Start loading") }
                         }
                         if (state == "LOADING") {
-                            Button(
+                            FilledTonalButton(
                                 onClick = { transition("DISPATCHED") },
                                 enabled = !transitioning,
-                            ) { Text("Mark Dispatched") }
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(LabSpacing.xxxl),
+                            ) { Text("Mark dispatched") }
+                        }
+                        if (state != "APPROVED" && state != "LOADING") {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                            ) {
+                                Text(
+                                    text = "No manual transition is available for the current state.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(LabSpacing.lg),
+                                )
+                            }
                         }
                     }
                 }
 
-                // Items header
                 item {
                     HorizontalDivider()
                     Spacer(Modifier.height(LabSpacing.sm))
                     Text("Items", style = MaterialTheme.typography.titleMedium)
                 }
 
-                // Items list
                 items(transfer!!.items) { item ->
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Row(
+                        Column(
                             modifier = Modifier.padding(LabSpacing.lg),
-                            verticalAlignment = Alignment.CenterVertically,
+                            verticalArrangement = Arrangement.spacedBy(LabSpacing.sm),
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
                                 Text(
                                     text = item.productName.ifBlank { item.productId.take(8) },
-                                    style = MaterialTheme.typography.titleSmall,
+                                    style = MaterialTheme.typography.titleMedium,
                                 )
                                 Text(
-                                    text = "Qty: ${item.quantity} · Available: ${item.quantityAvailable}",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    text = item.productId.take(8),
+                                    style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            Text(
-                                text = "${String.format("%.1f", item.unitVolumeL)}L/unit",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                            ) {
+                                SummaryCard("Qty", "${item.quantity}", Modifier.weight(1f))
+                                SummaryCard("Available", "${item.quantityAvailable}", Modifier.weight(1f))
+                                SummaryCard("Volume", "${String.format("%.1f", item.unitVolumeL)}L", Modifier.weight(1f))
+                            }
                         }
                     }
                 }
 
-                // Notes
                 if (transfer!!.notes.isNotBlank()) {
                     item {
                         Spacer(Modifier.height(LabSpacing.sm))
@@ -193,11 +197,18 @@ fun TransferDetailScreen(
                         Spacer(Modifier.height(LabSpacing.sm))
                         Text("Notes", style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(LabSpacing.xs))
-                        Text(
-                            text = transfer!!.notes,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.medium,
+                            color = MaterialTheme.colorScheme.surfaceContainerLowest,
+                        ) {
+                            Text(
+                                text = transfer!!.notes,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(LabSpacing.lg),
+                            )
+                        }
                     }
                 }
             }
@@ -206,12 +217,82 @@ fun TransferDetailScreen(
 }
 
 @Composable
+private fun TransferOverviewCard(transfer: Transfer) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(LabSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                Text(
+                    text = transfer.warehouseName.ifBlank { transfer.warehouseId.take(8) },
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = "Transfer ${transfer.id.take(8)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+            ) {
+                DetailTag(
+                    text = transfer.state,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                DetailTag(
+                    text = transfer.priority.ifBlank { "STANDARD" },
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailTag(
+    text: String,
+    containerColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color,
+) {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = containerColor,
+        contentColor = contentColor,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = LabSpacing.sm, vertical = LabSpacing.xs),
+        )
+    }
+}
+
+@Composable
 private fun SummaryCard(label: String, value: String, modifier: Modifier = Modifier) {
-    ElevatedCard(modifier = modifier) {
-        Column(modifier = Modifier.padding(LabSpacing.md)) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(
+            modifier = Modifier.padding(LabSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+        ) {
             Text(value, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(2.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

@@ -1,9 +1,10 @@
 package com.pegasus.factory.ui.screens.dashboard
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
@@ -25,17 +26,18 @@ private data class KpiCard(
     val icon: ImageVector,
     val route: String,
     val value: (DashboardStats) -> String,
+    val supporting: (DashboardStats) -> String,
 )
 
 private val kpiCards = listOf(
-    KpiCard("Pending Transfers", Icons.Default.MoveToInbox, FactoryRoutes.TRANSFERS) { it.pendingTransfers.toString() },
-    KpiCard("Now Loading", Icons.Default.LocalShipping, FactoryRoutes.LOADING_BAY) { it.loadingTransfers.toString() },
-    KpiCard("Active Manifests", Icons.AutoMirrored.Filled.List, FactoryRoutes.LOADING_BAY) { it.activeManifests.toString() },
-    KpiCard("Dispatched Today", Icons.Default.CheckCircle, FactoryRoutes.TRANSFERS) { it.dispatchedToday.toString() },
-    KpiCard("Vehicles Total", Icons.Default.DirectionsCar, FactoryRoutes.FLEET) { it.vehiclesTotal.toString() },
-    KpiCard("Available", Icons.Default.DirectionsCar, FactoryRoutes.FLEET) { it.vehiclesAvailable.toString() },
-    KpiCard("Staff on Shift", Icons.Default.People, FactoryRoutes.STAFF) { it.staffOnShift.toString() },
-    KpiCard("Critical Insights", Icons.Default.Warning, FactoryRoutes.INSIGHTS) { it.criticalInsights.toString() },
+    KpiCard("Pending Transfers", Icons.Default.MoveToInbox, FactoryRoutes.TRANSFERS, { it.pendingTransfers.toString() }, { "Awaiting release to loading" }),
+    KpiCard("Now Loading", Icons.Default.LocalShipping, FactoryRoutes.LOADING_BAY, { it.loadingTransfers.toString() }, { "Transfers staged at the bay" }),
+    KpiCard("Active Manifests", Icons.AutoMirrored.Filled.List, FactoryRoutes.LOADING_BAY, { it.activeManifests.toString() }, { "Live outbound manifest groups" }),
+    KpiCard("Dispatched Today", Icons.Default.CheckCircle, FactoryRoutes.TRANSFERS, { it.dispatchedToday.toString() }, { "Completed releases this shift" }),
+    KpiCard("Vehicles Total", Icons.Default.DirectionsCar, FactoryRoutes.FLEET, { it.vehiclesTotal.toString() }, { "Fleet capacity on record" }),
+    KpiCard("Available", Icons.Default.DirectionsCar, FactoryRoutes.FLEET, { it.vehiclesAvailable.toString() }, { "Vehicles ready for assignment" }),
+    KpiCard("Staff on Shift", Icons.Default.People, FactoryRoutes.STAFF, { it.staffOnShift.toString() }, { "Operators currently active" }),
+    KpiCard("Critical Insights", Icons.Default.Warning, FactoryRoutes.INSIGHTS, { it.criticalInsights.toString() }, { "Restock and exception pressure" }),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,7 +76,16 @@ fun DashboardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Dashboard") },
+                title = {
+                    Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                        Text("Factory dashboard")
+                        Text(
+                            text = "Dispatch, loading, fleet, and staffing status",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
                 actions = {
                     IconButton(onClick = { load() }) {
                         Icon(Icons.Default.Refresh, "Refresh")
@@ -98,42 +109,177 @@ fun DashboardScreen(
                 }
             }
             else -> LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
+                columns = GridCells.Adaptive(minSize = 168.dp),
                 contentPadding = PaddingValues(LabSpacing.lg),
                 horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
                 verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
-                items(kpiCards.size) { index ->
-                    val card = kpiCards[index]
-                    ElevatedCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onNavigate(card.route) },
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(LabSpacing.lg),
-                        ) {
-                            Icon(
-                                imageVector = card.icon,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(24.dp),
-                            )
-                            Spacer(Modifier.height(LabSpacing.md))
-                            Text(
-                                text = card.value(stats),
-                                style = MaterialTheme.typography.headlineMedium,
-                            )
-                            Spacer(Modifier.height(LabSpacing.xs))
-                            Text(
-                                text = card.label,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    DashboardHeroCard(
+                        stats = stats,
+                        onNavigate = onNavigate,
+                    )
                 }
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Text(
+                        text = "Operations at a glance",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                items(kpiCards, key = { it.label }) { card ->
+                    KpiMetricCard(
+                        card = card,
+                        stats = stats,
+                        onClick = { onNavigate(card.route) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardHeroCard(
+    stats: DashboardStats,
+    onNavigate: (String) -> Unit,
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(LabSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(LabSpacing.lg),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                Text(
+                    text = "Outbound floor status",
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = "${stats.pendingTransfers + stats.loadingTransfers} transfers are active across release and bay lanes.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+            ) {
+                OverviewMetric(
+                    label = "Queued",
+                    value = stats.pendingTransfers.toString(),
+                    modifier = Modifier.weight(1f),
+                )
+                OverviewMetric(
+                    label = "Loading",
+                    value = stats.loadingTransfers.toString(),
+                    modifier = Modifier.weight(1f),
+                )
+                OverviewMetric(
+                    label = "Critical",
+                    value = stats.criticalInsights.toString(),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+            ) {
+                FilledTonalButton(
+                    onClick = { onNavigate(FactoryRoutes.LOADING_BAY) },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.Default.LocalShipping, contentDescription = null)
+                    Spacer(Modifier.width(LabSpacing.sm))
+                    Text("Open bay")
+                }
+                OutlinedButton(
+                    onClick = { onNavigate(FactoryRoutes.TRANSFERS) },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = null)
+                    Spacer(Modifier.width(LabSpacing.sm))
+                    Text("View transfers")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OverviewMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(
+            modifier = Modifier.padding(LabSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineSmall,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun KpiMetricCard(
+    card: KpiCard,
+    stats: DashboardStats,
+    onClick: () -> Unit,
+) {
+    ElevatedCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(LabSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+        ) {
+            Surface(
+                shape = MaterialTheme.shapes.small,
+                color = MaterialTheme.colorScheme.secondaryContainer,
+            ) {
+                Icon(
+                    imageVector = card.icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier
+                        .padding(LabSpacing.sm)
+                        .size(24.dp),
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                Text(
+                    text = card.value(stats),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                Text(
+                    text = card.label,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = card.supporting(stats),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

@@ -112,22 +112,39 @@ fun LoadingBayScreen(
             }
             else -> LazyColumn(
                 contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
+                item {
+                    BayOverviewCard(
+                        readyCount = approved.size,
+                        loadingCount = loadingState.size,
+                        dispatchedCount = dispatched.size,
+                    )
+                }
                 item { BayHeader("Ready for Loading", approved.size) }
-                items(approved, key = { it.id }) { transfer ->
-                    TransferCard(transfer, onClick = { onTransferClick(transfer.id) })
+                if (approved.isEmpty()) {
+                    item { EmptyBayState("No approved transfers are waiting at the bay.") }
+                } else {
+                    items(approved, key = { it.id }) { transfer ->
+                        TransferCard(transfer, onClick = { onTransferClick(transfer.id) })
+                    }
                 }
-                item { Spacer(Modifier.height(LabSpacing.lg)) }
                 item { BayHeader("Now Loading", loadingState.size) }
-                items(loadingState, key = { it.id }) { transfer ->
-                    TransferCard(transfer, onClick = { onTransferClick(transfer.id) })
+                if (loadingState.isEmpty()) {
+                    item { EmptyBayState("Nothing is actively loading right now.") }
+                } else {
+                    items(loadingState, key = { it.id }) { transfer ->
+                        TransferCard(transfer, onClick = { onTransferClick(transfer.id) })
+                    }
                 }
-                item { Spacer(Modifier.height(LabSpacing.lg)) }
                 item { BayHeader("Dispatched", dispatched.size) }
-                items(dispatched, key = { it.id }) { transfer ->
-                    TransferCard(transfer, onClick = { onTransferClick(transfer.id) })
+                if (dispatched.isEmpty()) {
+                    item { EmptyBayState("No transfers have been dispatched in the current view.") }
+                } else {
+                    items(dispatched, key = { it.id }) { transfer ->
+                        TransferCard(transfer, onClick = { onTransferClick(transfer.id) })
+                    }
                 }
             }
         }
@@ -138,7 +155,7 @@ fun LoadingBayScreen(
 private fun BayHeader(title: String, count: Int) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(vertical = LabSpacing.sm),
+        modifier = Modifier.padding(top = LabSpacing.sm),
     ) {
         Text(
             text = title,
@@ -155,26 +172,153 @@ private fun TransferCard(transfer: Transfer, onClick: () -> Unit) {
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
+        Column(
             modifier = Modifier.padding(LabSpacing.lg),
-            verticalAlignment = Alignment.CenterVertically,
+            verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = transfer.warehouseName.ifBlank { transfer.warehouseId.take(8) },
-                    style = MaterialTheme.typography.titleSmall,
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                    Text(
+                        text = transfer.warehouseName.ifBlank { transfer.warehouseId.take(8) },
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = "Transfer ${transfer.id.take(8)}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+                ) {
+                    MetaPill(
+                        text = transfer.state,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                    MetaPill(
+                        text = transfer.priority.ifBlank { "STANDARD" },
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+            ) {
+                BayMetric(
+                    label = "Items",
+                    value = transfer.totalItems.toString(),
+                    modifier = Modifier.weight(1f),
                 )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = "${transfer.totalItems} items · ${String.format("%.0f", transfer.totalVolumeL)}L",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                BayMetric(
+                    label = "Volume",
+                    value = "${String.format("%.0f", transfer.totalVolumeL)}L",
+                    modifier = Modifier.weight(1f),
                 )
             }
-            AssistChip(
-                onClick = {},
-                label = { Text(transfer.priority, style = MaterialTheme.typography.labelSmall) },
+        }
+    }
+}
+
+@Composable
+private fun BayOverviewCard(
+    readyCount: Int,
+    loadingCount: Int,
+    dispatchedCount: Int,
+) {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(LabSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+        ) {
+            Text(
+                text = "Loading bay flow",
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                text = "Track approved transfers, active loading work, and dispatched volume from one queue.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+            ) {
+                BayMetric("Ready", readyCount.toString(), Modifier.weight(1f))
+                BayMetric("Loading", loadingCount.toString(), Modifier.weight(1f))
+                BayMetric("Out", dispatchedCount.toString(), Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun BayMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(
+            modifier = Modifier.padding(LabSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+        ) {
+            Text(value, style = MaterialTheme.typography.titleLarge)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+@Composable
+private fun EmptyBayState(message: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerLowest,
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(LabSpacing.lg),
+        )
+    }
+}
+
+@Composable
+private fun MetaPill(
+    text: String,
+    containerColor: androidx.compose.ui.graphics.Color,
+    contentColor: androidx.compose.ui.graphics.Color,
+) {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        color = containerColor,
+        contentColor = contentColor,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = LabSpacing.sm, vertical = LabSpacing.xs),
+        )
     }
 }
