@@ -321,33 +321,58 @@ async function handleRpcMessage(message) {
 
 let inputBuffer = Buffer.alloc(0);
 
+function findHeaderBoundary(buffer) {
+  const crlfEnd = buffer.indexOf("\r\n\r\n");
+  const lfEnd = buffer.indexOf("\n\n");
+
+  if (crlfEnd === -1 && lfEnd === -1) {
+    return null;
+  }
+
+  if (crlfEnd === -1) {
+    return { headerEnd: lfEnd, separatorLength: 2 };
+  }
+
+  if (lfEnd === -1) {
+    return { headerEnd: crlfEnd, separatorLength: 4 };
+  }
+
+  if (crlfEnd <= lfEnd) {
+    return { headerEnd: crlfEnd, separatorLength: 4 };
+  }
+
+  return { headerEnd: lfEnd, separatorLength: 2 };
+}
+
 function consumeInputBuffer() {
   while (true) {
-    const headerEnd = inputBuffer.indexOf("\r\n\r\n");
-    if (headerEnd === -1) {
+    const boundary = findHeaderBoundary(inputBuffer);
+    if (!boundary) {
       return;
     }
+
+    const { headerEnd, separatorLength } = boundary;
 
     const headerRaw = inputBuffer.slice(0, headerEnd).toString("utf8");
     const lengthMatch = headerRaw.match(/content-length:\s*(\d+)/i);
     if (!lengthMatch) {
-      inputBuffer = inputBuffer.slice(headerEnd + 4);
+      inputBuffer = inputBuffer.slice(headerEnd + separatorLength);
       continue;
     }
 
     const length = Number.parseInt(lengthMatch[1], 10);
     if (Number.isNaN(length) || length < 0) {
-      inputBuffer = inputBuffer.slice(headerEnd + 4);
+      inputBuffer = inputBuffer.slice(headerEnd + separatorLength);
       continue;
     }
 
-    const totalSize = headerEnd + 4 + length;
+    const totalSize = headerEnd + separatorLength + length;
     if (inputBuffer.length < totalSize) {
       return;
     }
 
     const payload = inputBuffer
-      .slice(headerEnd + 4, totalSize)
+      .slice(headerEnd + separatorLength, totalSize)
       .toString("utf8");
 
     inputBuffer = inputBuffer.slice(totalSize);
