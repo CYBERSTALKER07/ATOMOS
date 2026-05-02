@@ -15,10 +15,12 @@ import ThroughputLine from '@/components/analytics/advanced/ThroughputLine';
 import FactoryActivityChart from '@/components/analytics/advanced/FactoryActivityChart';
 import FactoryTransfersPie from '@/components/analytics/advanced/FactoryTransfersPie';
 import CircularProgress from '@/components/analytics/advanced/CircularProgress';
+import { useLocale } from '@/hooks/useLocale';
 
 export default function AdvancedAnalyticsPage() {
   const auth = useAuth();
   const analytics = useAdvancedAnalytics();
+  const { locale, t } = useLocale();
 
   const isFactory = auth.isFactoryStaff;
 
@@ -28,7 +30,7 @@ export default function AdvancedAnalyticsPage() {
       <div className="p-6 flex flex-col gap-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h1 className="md-typescale-headline-small" style={{ color: 'var(--color-md-on-surface)' }}>
-            Advanced Analytics
+            {t('supplier_portal.analytics.advanced.title')}
           </h1>
         </div>
         <BentoGrid>
@@ -50,13 +52,15 @@ export default function AdvancedAnalyticsPage() {
     return (
       <div className="p-6 flex flex-col gap-6">
         <h1 className="md-typescale-headline-small" style={{ color: 'var(--color-md-on-surface)' }}>
-          Advanced Analytics
+          {t('supplier_portal.analytics.advanced.title')}
         </h1>
         <div
           className="md-card md-elevation-1 md-shape-md p-6 flex items-center justify-center h-48"
           style={{ background: 'var(--color-md-error-container)', color: 'var(--color-md-on-error-container)' }}
         >
-          <span className="md-typescale-body-medium">Analytics fault: {analytics.error}</span>
+          <span className="md-typescale-body-medium">
+            {t('supplier_portal.analytics.advanced.error.fault', { detail: analytics.error })}
+          </span>
         </div>
       </div>
     );
@@ -69,7 +73,7 @@ export default function AdvancedAnalyticsPage() {
       <div className="p-6 flex flex-col gap-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h1 className="md-typescale-headline-small" style={{ color: 'var(--color-md-on-surface)' }}>
-            Factory Analytics
+            {t('supplier_portal.analytics.advanced.factory.title')}
           </h1>
           <DateRangePicker
             dateRange={analytics.dateRange}
@@ -83,18 +87,24 @@ export default function AdvancedAnalyticsPage() {
           <BentoCard size="wide" delay={0}>
             <div className="md-card md-elevation-1 md-shape-md p-5 h-full" style={{ background: 'var(--color-md-surface-container)' }}>
               <div className="flex flex-col gap-2 h-full justify-center">
-                <h3 className="md-typescale-title-small" style={{ color: 'var(--color-md-on-surface)' }}>Factory Summary</h3>
+                <h3 className="md-typescale-title-small" style={{ color: 'var(--color-md-on-surface)' }}>
+                  {t('supplier_portal.analytics.advanced.factory.summary_title')}
+                </h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col">
-                    <span className="md-typescale-label-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>Total Transfers</span>
+                    <span className="md-typescale-label-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                      {t('supplier_portal.analytics.advanced.factory.total_transfers')}
+                    </span>
                     <span className="md-typescale-headline-small font-bold" style={{ color: 'var(--color-md-primary)' }}>
                       {fo?.total_transfers ?? 0}
                     </span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="md-typescale-label-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>Avg Lead Time</span>
+                    <span className="md-typescale-label-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                      {t('supplier_portal.analytics.advanced.factory.avg_lead_time')}
+                    </span>
                     <span className="md-typescale-headline-small font-bold" style={{ color: 'var(--color-md-secondary)' }}>
-                      {Math.round(fo?.avg_lead_time_mins ?? 0)} min
+                      {t('supplier_portal.analytics.advanced.factory.minutes_value', { value: Math.round(fo?.avg_lead_time_mins ?? 0) })}
                     </span>
                   </div>
                 </div>
@@ -132,7 +142,7 @@ export default function AdvancedAnalyticsPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="md-typescale-headline-small" style={{ color: 'var(--color-md-on-surface)' }}>
-            Advanced Analytics
+            {t('supplier_portal.analytics.advanced.title')}
           </h1>
           <p className="md-typescale-body-small mt-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
             {analytics.dateRange.from} → {analytics.dateRange.to}
@@ -143,7 +153,7 @@ export default function AdvancedAnalyticsPage() {
             onClick={analytics.refresh}
             className="md-btn md-btn-tonal md-typescale-label-medium px-3 py-1.5"
           >
-            Refresh
+            {t('supplier_portal.analytics.advanced.action.refresh')}
           </button>
           <DateRangePicker
             dateRange={analytics.dateRange}
@@ -164,12 +174,15 @@ export default function AdvancedAnalyticsPage() {
         <BentoCard size="stat" delay={40}>
           <div className="md-card md-elevation-1 md-shape-md p-5 h-full flex flex-col items-center justify-center" style={{ background: 'var(--color-md-surface-container)' }}>
             <span className="md-typescale-label-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>Total Revenue</span>
+            <span className="md-typescale-label-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+              {t('supplier_portal.analytics.advanced.total_revenue')}
+            </span>
             <span className="md-typescale-headline-medium font-bold" style={{ color: 'var(--color-md-primary)' }}>
               {totalRevenue >= 1_000_000
                 ? `${(totalRevenue / 1_000_000).toFixed(1)}M`
                 : totalRevenue >= 1_000
                   ? `${(totalRevenue / 1_000).toFixed(0)}K`
-                  : totalRevenue.toLocaleString()
+                  : totalRevenue.toLocaleString(locale)
               }
             </span>
           </div>
@@ -181,7 +194,7 @@ export default function AdvancedAnalyticsPage() {
               value={slaRate}
               size={100}
               strokeWidth={8}
-              label="SLA Rate"
+              label={t('supplier_portal.analytics.advanced.sla_rate')}
               color={slaRate >= 80 ? 'var(--color-md-success)' : slaRate >= 50 ? 'var(--color-md-warning)' : 'var(--color-md-error)'}
             />
           </div>

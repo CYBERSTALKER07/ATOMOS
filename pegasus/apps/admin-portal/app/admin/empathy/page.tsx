@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { getAdminToken } from "@/lib/auth";
 import { usePolling } from "@/lib/usePolling";
+import { useLocale } from "@/hooks/useLocale";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -31,6 +32,7 @@ const EMPTY: EmpathyAdoption = {
 };
 
 export default function EmpathyDashboard() {
+  const { locale, t } = useLocale();
   const [data, setData] = useState<EmpathyAdoption>(EMPTY);
   const [isLive, setIsLive] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export default function EmpathyDashboard() {
       const res = await fetch(`${API}/v1/admin/empathy/adoption`, {
         headers: { Authorization: `Bearer ${token}` }, signal,
       });
-      if (!res.ok) throw new Error("Empathy telemetry disconnected");
+      if (!res.ok) throw new Error(t("supplier_portal.admin.empathy.error.telemetry_disconnected"));
       const json = await res.json();
       setData(json);
       setIsLive(true);
@@ -50,9 +52,9 @@ export default function EmpathyDashboard() {
       if ((err as Error).name === 'AbortError') return;
       console.error("[EMPATHY ERROR]", err);
       setIsLive(false);
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(err instanceof Error ? err.message : t("common.error.unknown"));
     }
-  }, 10_000);
+  }, 10_000, [t]);
 
   const adoptionRate =
     data.total_retailers > 0
@@ -66,10 +68,10 @@ export default function EmpathyDashboard() {
     data.predictions_rejected;
 
   const pipelineItems = [
-    { label: "Dormant", value: data.predictions_dormant, color: "var(--border)" },
-    { label: "Waiting", value: data.predictions_waiting, color: "var(--muted)" },
-    { label: "Fired", value: data.predictions_fired, color: "var(--success)" },
-    { label: "Rejected", value: data.predictions_rejected, color: "var(--danger)" },
+    { label: t("supplier_portal.admin.empathy.pipeline.dormant"), value: data.predictions_dormant, color: "var(--border)" },
+    { label: t("supplier_portal.admin.empathy.pipeline.waiting"), value: data.predictions_waiting, color: "var(--muted)" },
+    { label: t("supplier_portal.admin.empathy.pipeline.fired"), value: data.predictions_fired, color: "var(--success)" },
+    { label: t("supplier_portal.admin.empathy.pipeline.rejected"), value: data.predictions_rejected, color: "var(--danger)" },
   ];
 
   return (
@@ -86,12 +88,12 @@ export default function EmpathyDashboard() {
         style={{ borderBottom: "1px solid var(--border)" }}
       >
         <div>
-          <h1 className="md-typescale-headline-medium">Empathy Engine</h1>
+          <h1 className="md-typescale-headline-medium">{t("supplier_portal.admin.empathy.title")}</h1>
           <p
             className="md-typescale-body-medium mt-2"
             style={{ color: "var(--muted)" }}
           >
-            Auto-Order Intelligence — Network Adoption & Pipeline Health
+            {t("supplier_portal.admin.empathy.subtitle")}
           </p>
         </div>
         <div className="text-right">
@@ -101,7 +103,7 @@ export default function EmpathyDashboard() {
                 className="w-2 h-2 rounded-full animate-pulse"
                 style={{ background: "var(--success)" }}
               />
-              <span className="md-typescale-label-small">Engine Online</span>
+              <span className="md-typescale-label-small">{t("supplier_portal.admin.empathy.state.online")}</span>
             </div>
           ) : (
             <div
@@ -116,7 +118,7 @@ export default function EmpathyDashboard() {
                 className="md-typescale-label-small"
                 style={{ color: "var(--danger)" }}
               >
-                {error || "Engine Offline"}
+                {error || t("supplier_portal.admin.empathy.state.offline")}
               </span>
             </div>
           )}
@@ -126,30 +128,33 @@ export default function EmpathyDashboard() {
       {/* ── Adoption KPIs ────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         <KpiCard
-          label="Adoption Rate"
+          label={t("supplier_portal.admin.empathy.kpi.adoption_rate")}
           value={`${adoptionRate}%`}
-          sub={`${data.global_enabled} of ${data.total_retailers} retailers`}
+          sub={t("supplier_portal.admin.empathy.kpi.adoption_sub", {
+            enabled: data.global_enabled,
+            total: data.total_retailers,
+          })}
           accent="var(--accent)"
           delay={0}
         />
         <KpiCard
-          label="Supplier Overrides"
-          value={data.supplier_overrides.toLocaleString()}
-          sub="Active supplier-level toggles"
+          label={t("supplier_portal.admin.empathy.kpi.supplier_overrides")}
+          value={data.supplier_overrides.toLocaleString(locale)}
+          sub={t("supplier_portal.admin.empathy.kpi.supplier_overrides_sub")}
           accent="var(--muted)"
           delay={50}
         />
         <KpiCard
-          label="Product Overrides"
-          value={data.product_overrides.toLocaleString()}
-          sub="Active product-level toggles"
+          label={t("supplier_portal.admin.empathy.kpi.product_overrides")}
+          value={data.product_overrides.toLocaleString(locale)}
+          sub={t("supplier_portal.admin.empathy.kpi.product_overrides_sub")}
           accent="var(--muted)"
           delay={100}
         />
         <KpiCard
-          label="Variant Overrides"
-          value={data.variant_overrides.toLocaleString()}
-          sub="Active SKU-level toggles"
+          label={t("supplier_portal.admin.empathy.kpi.variant_overrides")}
+          value={data.variant_overrides.toLocaleString(locale)}
+          sub={t("supplier_portal.admin.empathy.kpi.variant_overrides_sub")}
           accent="var(--border)"
           delay={150}
         />
@@ -157,7 +162,7 @@ export default function EmpathyDashboard() {
 
       {/* ── Prediction Pipeline ──────────────────────────────────── */}
       <div className="mb-10">
-        <h2 className="md-typescale-title-medium mb-4">Prediction Pipeline</h2>
+        <h2 className="md-typescale-title-medium mb-4">{t("supplier_portal.admin.empathy.section.pipeline")}</h2>
         <div className="md-card md-card-elevated p-6 md-animate-in">
           {/* Status bar */}
           <div
@@ -192,7 +197,7 @@ export default function EmpathyDashboard() {
                   >
                     {item.label}
                   </p>
-                  <p className="md-typescale-title-medium" style={{ fontVariantNumeric: 'tabular-nums' }}>{item.value.toLocaleString()}</p>
+                   <p className="md-typescale-title-medium" style={{ fontVariantNumeric: 'tabular-nums' }}>{item.value.toLocaleString(locale)}</p>
                 </div>
               </div>
             ))}
@@ -202,21 +207,36 @@ export default function EmpathyDashboard() {
 
       {/* ── Resolution Hierarchy ─────────────────────────────────── */}
       <div>
-        <h2 className="md-typescale-title-medium mb-4">Resolution Hierarchy</h2>
+        <h2 className="md-typescale-title-medium mb-4">{t("supplier_portal.admin.empathy.section.hierarchy")}</h2>
         <div className="md-card md-card-filled p-6 md-animate-in" style={{ animationDelay: "100ms" }}>
           <p
             className="md-typescale-body-medium mb-4"
             style={{ color: "var(--muted)" }}
           >
-            The Empathy Engine resolves auto-order eligibility using a 4-level override cascade.
-            The most specific level wins.
+            {t("supplier_portal.admin.empathy.hierarchy.description")}
           </p>
           <div className="flex flex-col gap-3">
             {[
-              { level: "Variant (SKU)", desc: "Per-variant toggle overrides all levels below", count: data.variant_overrides },
-              { level: "Product", desc: "Per-product toggle overrides supplier & global", count: data.product_overrides },
-              { level: "Supplier", desc: "Per-supplier toggle overrides global default", count: data.supplier_overrides },
-              { level: "Global", desc: "Retailer's master auto-order switch", count: data.global_enabled },
+              {
+                level: t("supplier_portal.admin.empathy.hierarchy.variant.level"),
+                desc: t("supplier_portal.admin.empathy.hierarchy.variant.description"),
+                count: data.variant_overrides,
+              },
+              {
+                level: t("supplier_portal.admin.empathy.hierarchy.product.level"),
+                desc: t("supplier_portal.admin.empathy.hierarchy.product.description"),
+                count: data.product_overrides,
+              },
+              {
+                level: t("supplier_portal.admin.empathy.hierarchy.supplier.level"),
+                desc: t("supplier_portal.admin.empathy.hierarchy.supplier.description"),
+                count: data.supplier_overrides,
+              },
+              {
+                level: t("supplier_portal.admin.empathy.hierarchy.global.level"),
+                desc: t("supplier_portal.admin.empathy.hierarchy.global.description"),
+                count: data.global_enabled,
+              },
             ].map((row, i) => (
               <div
                 key={row.level}
@@ -247,7 +267,9 @@ export default function EmpathyDashboard() {
                     {row.desc}
                   </p>
                 </div>
-                <p className="md-typescale-title-medium">{row.count.toLocaleString()} active</p>
+                <p className="md-typescale-title-medium">
+                  {t("supplier_portal.admin.empathy.hierarchy.active_count", { count: row.count.toLocaleString(locale) })}
+                </p>
               </div>
             ))}
           </div>

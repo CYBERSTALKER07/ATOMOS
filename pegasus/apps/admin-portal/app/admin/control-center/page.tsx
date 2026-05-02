@@ -3,15 +3,16 @@
 import { useMemo, useState } from "react";
 import { apiFetch } from "@/lib/auth";
 import { useToast } from "@/components/Toast";
+import { useLocale } from "@/hooks/useLocale";
 
 type BroadcastRole = "ALL" | "RETAILER" | "DRIVER";
 
-function parseBroadcastData(raw: string): Record<string, string> {
+function parseBroadcastData(raw: string, invalidJsonMessage: string): Record<string, string> {
   if (!raw.trim()) return {};
 
   const parsed = JSON.parse(raw) as unknown;
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("Data must be a JSON object");
+    throw new Error(invalidJsonMessage);
   }
 
   const output: Record<string, string> = {};
@@ -23,9 +24,10 @@ function parseBroadcastData(raw: string): Record<string, string> {
 
 export default function ControlCenterPage() {
   const { toast } = useToast();
+  const { t } = useLocale();
 
   const [orderId, setOrderId] = useState("");
-  const [bypassReason, setBypassReason] = useState("Gateway timeout override");
+  const [bypassReason, setBypassReason] = useState("");
   const [bypassToken, setBypassToken] = useState("");
   const [bypassLoading, setBypassLoading] = useState(false);
 
@@ -71,9 +73,9 @@ export default function ControlCenterPage() {
 
       const token = String(payload?.bypass_token || "");
       setBypassToken(token);
-      toast(`Bypass issued for ${orderId.trim()}`, "success");
+      toast(t("supplier_portal.admin.control_center.toast.bypass_issued", { order_id: orderId.trim() }), "success");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to issue bypass";
+      const message = error instanceof Error ? error.message : t("supplier_portal.admin.control_center.error.bypass_failed");
       toast(message, "error");
     } finally {
       setBypassLoading(false);
@@ -97,9 +99,9 @@ export default function ControlCenterPage() {
       }
 
       setReconcileResult(JSON.stringify(payload, null, 2));
-      toast(`Reconcile completed for ${sessionId.trim()}`, "success");
+      toast(t("supplier_portal.admin.control_center.toast.reconcile_completed", { session_id: sessionId.trim() }), "success");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Reconcile failed";
+      const message = error instanceof Error ? error.message : t("supplier_portal.admin.control_center.error.reconcile_failed");
       toast(message, "error");
     } finally {
       setReconcileLoading(false);
@@ -112,7 +114,10 @@ export default function ControlCenterPage() {
     setBroadcastLoading(true);
     setBroadcastSummary("");
     try {
-      const data = parseBroadcastData(broadcastData);
+      const data = parseBroadcastData(
+        broadcastData,
+        t("supplier_portal.admin.control_center.error.broadcast_data_must_be_object"),
+      );
       const response = await apiFetch("/v1/admin/broadcast", {
         method: "POST",
         body: JSON.stringify({
@@ -131,10 +136,16 @@ export default function ControlCenterPage() {
       const recipients = Number(payload?.recipients || 0);
       const sent = Number(payload?.fcm_sent || 0);
       const failed = Number(payload?.fcm_failed || 0);
-      setBroadcastSummary(`Recipients: ${recipients} | Sent: ${sent} | Failed: ${failed}`);
-      toast("Broadcast completed", "success");
+      setBroadcastSummary(
+        t("supplier_portal.admin.control_center.broadcast.summary", {
+          recipients,
+          sent,
+          failed,
+        }),
+      );
+      toast(t("supplier_portal.admin.control_center.toast.broadcast_completed"), "success");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Broadcast failed";
+      const message = error instanceof Error ? error.message : t("supplier_portal.admin.control_center.error.broadcast_failed");
       toast(message, "error");
     } finally {
       setBroadcastLoading(false);
@@ -156,9 +167,9 @@ export default function ControlCenterPage() {
       }
 
       setReplenishStatus(String(payload?.status || "CYCLE_COMPLETE"));
-      toast("Replenishment cycle triggered", "success");
+      toast(t("supplier_portal.admin.control_center.toast.replenishment_triggered"), "success");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Replenishment trigger failed";
+      const message = error instanceof Error ? error.message : t("supplier_portal.admin.control_center.error.replenishment_failed");
       toast(message, "error");
     } finally {
       setReplenishLoading(false);
@@ -168,31 +179,31 @@ export default function ControlCenterPage() {
   return (
     <div className="min-h-full p-6 md:p-10 space-y-6" style={{ background: "var(--background)", color: "var(--foreground)" }}>
       <header className="space-y-2">
-        <h1 className="md-typescale-headline-medium">Control Center</h1>
+        <h1 className="md-typescale-headline-medium">{t("supplier_portal.admin.control_center.title")}</h1>
         <p className="md-typescale-body-medium" style={{ color: "var(--muted)" }}>
-          Supplier operator actions for payment bypass, broadcast, manual reconcile, and replenishment trigger.
+          {t("supplier_portal.admin.control_center.subtitle")}
         </p>
       </header>
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="md-card md-card-elevated p-5 space-y-4">
           <div>
-            <h2 className="md-typescale-title-medium">Issue Payment Bypass</h2>
+            <h2 className="md-typescale-title-medium">{t("supplier_portal.admin.control_center.bypass.title")}</h2>
             <p className="md-typescale-body-small" style={{ color: "var(--muted)" }}>
-              Generates a 6-digit bypass token for an order in AWAITING_PAYMENT.
+              {t("supplier_portal.admin.control_center.bypass.description")}
             </p>
           </div>
 
           <div className="space-y-3">
             <input
               className="md-input-outlined w-full"
-              placeholder="Order ID"
+              placeholder={t("supplier_portal.admin.control_center.field.order_id")}
               value={orderId}
               onChange={(event) => setOrderId(event.target.value)}
             />
             <input
               className="md-input-outlined w-full"
-              placeholder="Reason"
+              placeholder={t("supplier_portal.admin.control_center.field.reason")}
               value={bypassReason}
               onChange={(event) => setBypassReason(event.target.value)}
             />
@@ -204,11 +215,13 @@ export default function ControlCenterPage() {
               onClick={issuePaymentBypass}
               disabled={bypassLoading || !canIssueBypass}
             >
-              {bypassLoading ? "Issuing..." : "Issue Token"}
+              {bypassLoading
+                ? t("supplier_portal.admin.control_center.action.issuing")
+                : t("supplier_portal.admin.control_center.action.issue_token")}
             </button>
             {bypassToken ? (
               <span className="md-typescale-label-large" style={{ color: "var(--color-md-primary)" }}>
-                Token: {bypassToken}
+                {t("supplier_portal.admin.control_center.bypass.token", { token: bypassToken })}
               </span>
             ) : null}
           </div>
@@ -216,16 +229,16 @@ export default function ControlCenterPage() {
 
         <div className="md-card md-card-elevated p-5 space-y-4">
           <div>
-            <h2 className="md-typescale-title-medium">Manual Session Reconcile</h2>
+            <h2 className="md-typescale-title-medium">{t("supplier_portal.admin.control_center.reconcile.title")}</h2>
             <p className="md-typescale-body-small" style={{ color: "var(--muted)" }}>
-              Runs explicit reconciliation for a stuck payment session.
+              {t("supplier_portal.admin.control_center.reconcile.description")}
             </p>
           </div>
 
           <div className="space-y-3">
             <input
               className="md-input-outlined w-full"
-              placeholder="Session ID"
+              placeholder={t("supplier_portal.admin.control_center.field.session_id")}
               value={sessionId}
               onChange={(event) => setSessionId(event.target.value)}
             />
@@ -237,7 +250,9 @@ export default function ControlCenterPage() {
               onClick={reconcileSession}
               disabled={reconcileLoading || !canReconcile}
             >
-              {reconcileLoading ? "Reconciling..." : "Run Reconcile"}
+              {reconcileLoading
+                ? t("supplier_portal.admin.control_center.action.reconciling")
+                : t("supplier_portal.admin.control_center.action.run_reconcile")}
             </button>
             {reconcileResult ? (
               <pre className="md-typescale-body-small p-3 overflow-auto rounded-md" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
@@ -249,22 +264,22 @@ export default function ControlCenterPage() {
 
         <div className="md-card md-card-elevated p-5 space-y-4">
           <div>
-            <h2 className="md-typescale-title-medium">System Broadcast</h2>
+            <h2 className="md-typescale-title-medium">{t("supplier_portal.admin.control_center.broadcast.title")}</h2>
             <p className="md-typescale-body-small" style={{ color: "var(--muted)" }}>
-              Sends push + notification records to all users in target role.
+              {t("supplier_portal.admin.control_center.broadcast.description")}
             </p>
           </div>
 
           <div className="space-y-3">
             <input
               className="md-input-outlined w-full"
-              placeholder="Title"
+              placeholder={t("supplier_portal.admin.control_center.field.title")}
               value={broadcastTitle}
               onChange={(event) => setBroadcastTitle(event.target.value)}
             />
             <textarea
               className="md-input-outlined w-full min-h-24"
-              placeholder="Body"
+              placeholder={t("supplier_portal.admin.control_center.field.body")}
               value={broadcastBody}
               onChange={(event) => setBroadcastBody(event.target.value)}
             />
@@ -273,9 +288,9 @@ export default function ControlCenterPage() {
               value={broadcastRole}
               onChange={(event) => setBroadcastRole(event.target.value as BroadcastRole)}
             >
-              <option value="ALL">ALL</option>
-              <option value="RETAILER">RETAILER</option>
-              <option value="DRIVER">DRIVER</option>
+              <option value="ALL">{t("supplier_portal.admin.control_center.role.all")}</option>
+              <option value="RETAILER">{t("supplier_portal.admin.control_center.role.retailer")}</option>
+              <option value="DRIVER">{t("supplier_portal.admin.control_center.role.driver")}</option>
             </select>
             <textarea
               className="md-input-outlined w-full min-h-24 font-mono"
@@ -291,7 +306,9 @@ export default function ControlCenterPage() {
               onClick={sendBroadcast}
               disabled={broadcastLoading || !canBroadcast}
             >
-              {broadcastLoading ? "Broadcasting..." : "Send Broadcast"}
+              {broadcastLoading
+                ? t("supplier_portal.admin.control_center.action.broadcasting")
+                : t("supplier_portal.admin.control_center.action.send_broadcast")}
             </button>
             {broadcastSummary ? (
               <span className="md-typescale-label-medium" style={{ color: "var(--muted)" }}>
@@ -303,9 +320,9 @@ export default function ControlCenterPage() {
 
         <div className="md-card md-card-elevated p-5 space-y-4">
           <div>
-            <h2 className="md-typescale-title-medium">Manual Replenishment Cycle</h2>
+            <h2 className="md-typescale-title-medium">{t("supplier_portal.admin.control_center.replenishment.title")}</h2>
             <p className="md-typescale-body-small" style={{ color: "var(--muted)" }}>
-              Runs immediate warehouse deficit scan and transfer creation logic.
+              {t("supplier_portal.admin.control_center.replenishment.description")}
             </p>
           </div>
 
@@ -315,7 +332,9 @@ export default function ControlCenterPage() {
               onClick={triggerReplenishment}
               disabled={replenishLoading}
             >
-              {replenishLoading ? "Running..." : "Trigger Cycle"}
+              {replenishLoading
+                ? t("supplier_portal.admin.control_center.action.running")
+                : t("supplier_portal.admin.control_center.action.trigger_cycle")}
             </button>
             {replenishStatus ? (
               <span className="md-typescale-label-large" style={{ color: "var(--color-md-primary)" }}>
