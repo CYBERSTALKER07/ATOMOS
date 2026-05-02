@@ -17,6 +17,37 @@ For every request, enforce the following strict retrieval loop:
 5. **Map the Graph & Gather FULL Context**: Follow imports down to the repository layer, and up to the handler/UI layer. You MUST have the full context of the execution path before you output a single line of code.
 6. **Dual-Sync Execution**: If you change the code, you MUST update the corresponding architecture documentation, and vice versa. 
 7. **Architecture Graph Maintenance**: Whenever you create or modify relationships in the codebase, you must update the global architecture tracking files (e.g., `context/architecture.md`, `context/design-system.md`, or a central architecture JSON/diagrams if provided) so the documentation stays precisely in sync with the AST graph.
+
+### Local AST Engine Integration (Mandatory)
+- Before any technical task (code edits, architecture updates, plan reviews, or audits), use native MCP tools from server `void-ast-engine` first:
+   1. `void_ast_index`
+   2. `void_ast_definition` with `symbol=<TargetSymbol>`
+   3. `void_ast_usages` with `symbol=<TargetSymbol> limit=50`
+   4. `void_ast_graph` with `symbol=<TargetSymbol> limit=50`
+- MCP server registration lives in `.vscode/mcp.json` (local) with committed template `.github/mcp.vscode.example.json`.
+- If MCP tools are unavailable, use script fallback:
+   1. `npm --prefix pegasus run ast:index`
+   2. `npm --prefix pegasus run ast:def -- --symbol <TargetSymbol>`
+   3. `npm --prefix pegasus run ast:refs -- --symbol <TargetSymbol> --limit 50`
+   4. `npm --prefix pegasus run ast:graph -- --symbol <TargetSymbol> --limit 50`
+- The command results are part of required context gathering. Do not edit code until these queries confirm definition shape + usage blast radius.
+- Read `pegasus/context/technology-inventory.md` and `pegasus/context/technology-inventory.json` as part of required context gathering.
+- After applying edits that alter symbols, architecture, services, dependencies, or integrations, re-run `ast:index` and update all sync files in the same change set:
+   1. `.github/ACT.md`
+   2. `.github/copilot-instructions.md`
+   3. `.github/gemini-instructions.md`
+   4. `pegasus/context/architecture.md`
+   5. `pegasus/context/architecture-graph.json`
+   6. `pegasus/context/technology-inventory.md`
+   7. `pegasus/context/technology-inventory.json`
+
+### ACT Companion Protocol (Mandatory)
+- Follow `.github/ACT.md` for every technical request.
+- Companion behavior is required: if a user prompt, task plan, or implementation approach is risky, incomplete, or production-breaking, do NOT execute blindly. Explain the issue and provide a safer execution plan, then execute the safer plan.
+- Prompt verification gate is mandatory: classify each request as `safe`, `risky`, `production-breaking`, or `scope-conflict` before implementation; if not `safe`, respond with a better approach first.
+- Always include production checks for Spanner, Kafka, Redis, Terraform, Maglev, and hyper-scale readiness (10M-request class assumptions).
+- Keep local Docker-first validation and production migration discipline aligned: code should be production-compatible now, and later server cutover should be wiring/config only.
+
 ## Ground Rules
 1. **Ground Truth Override**: Ignore stale assumptions. Use the local file system as source of truth for paths, app structure, package versions, route names, models, and role definitions.
 2. **Ruthless Auditing**: Do not implement features narrowly. Hunt for adjacent breakage, disconnected workflows, stale UI assumptions, missing backend wiring, missing auth coverage, race conditions, missing state transitions, and unhandled exceptions.

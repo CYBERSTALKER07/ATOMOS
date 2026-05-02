@@ -1,0 +1,337 @@
+{
+  "version": "2026-05-02",
+  "generatedFrom": {
+    "manifests": [
+      "pegasus/package.json",
+      "pegasus/apps/*/package.json",
+      "pegasus/apps/backend-go/go.mod",
+      "pegasus/apps/ai-worker/go.mod",
+      "pegasus/packages/config/go.mod",
+      "pegasus/packages/optimizer-contract/go.mod",
+      "pegasus/apps/*-app-android/**/*.kts",
+      "pegasus/apps/*/src-tauri/Cargo.toml",
+      "pegasus/docker-compose.yml",
+      "pegasus/infra/terraform/*.tf"
+    ],
+    "keywordSweep": "rg-based full-codebase extraction on pegasus/**/*.{go,ts,tsx,js,json,kts,tf,yml,yaml,md}"
+  },
+  "languagesAndRuntimes": [
+    "Go",
+    "TypeScript",
+    "JavaScript",
+    "Kotlin",
+    "Swift/SwiftUI",
+    "Rust",
+    "Python",
+    "Shell"
+  ],
+  "webAndFrontend": {
+    "frameworks": [
+      "Next.js",
+      "React",
+      "Tailwind CSS",
+      "Tauri",
+      "Expo",
+      "React Native",
+      "HeroUI"
+    ],
+    "tooling": [
+      "Vite",
+      "ESLint",
+      "TypeScript",
+      "Vitest",
+      "Cypress",
+      "Playwright"
+    ],
+    "mappingAndCharts": [
+      "mapbox-gl",
+      "maplibre-gl",
+      "react-map-gl",
+      "recharts",
+      "three",
+      "h3-js"
+    ]
+  },
+  "backend": {
+    "httpAndRealtime": [
+      "go-chi/chi",
+      "gorilla/websocket",
+      "gRPC"
+    ],
+    "dataAndMessagingLibraries": [
+      "cloud.google.com/go/spanner",
+      "github.com/segmentio/kafka-go",
+      "github.com/redis/go-redis/v9",
+      "firebase.google.com/go/v4"
+    ],
+    "securityAndAuth": [
+      "github.com/golang-jwt/jwt/v5",
+      "github.com/MicahParks/keyfunc",
+      "Secret Manager"
+    ],
+    "observability": [
+      "OpenTelemetry",
+      "Prometheus client",
+      "Google Cloud Monitoring"
+    ]
+  },
+  "android": {
+    "frameworks": [
+      "Jetpack Compose",
+      "Material 3",
+      "Hilt",
+      "Retrofit",
+      "OkHttp",
+      "Room",
+      "DataStore",
+      "Firebase Messaging/Auth",
+      "Google Maps Compose",
+      "CameraX",
+      "ML Kit barcode"
+    ],
+    "build": [
+      "Gradle Kotlin DSL",
+      "KSP",
+      "Android Gradle Plugin"
+    ]
+  },
+  "ios": {
+    "frameworks": [
+      "SwiftUI",
+      "APNs",
+      "SF Symbols/HIG patterns"
+    ]
+  },
+  "desktopNative": {
+    "frameworks": [
+      "Tauri 2",
+      "Rust",
+      "Tokio",
+      "Reqwest"
+    ],
+    "plugins": [
+      "tauri-plugin-dialog",
+      "tauri-plugin-fs",
+      "tauri-plugin-log",
+      "tauri-plugin-os",
+      "tauri-plugin-process",
+      "tauri-plugin-shell"
+    ]
+  },
+  "dataEventAndState": {
+    "localComposeServices": [
+      "Kafka (confluentinc/cp-kafka)",
+      "Kafka UI",
+      "Kafka topic init job",
+      "Redis",
+      "Cloud Spanner emulator",
+      "Firebase Auth emulator",
+      "WireMock global-pay mock"
+    ],
+    "managedCloudServices": [
+      "Cloud Spanner",
+      "Memorystore Redis",
+      "Managed Kafka pattern",
+      "Cloud Run",
+      "GKE",
+      "Artifact Registry",
+      "Cloud DNS",
+      "Cloud NAT",
+      "Private Service Connect",
+      "Cloud CDN",
+      "Cloud Armor",
+      "Secret Manager"
+    ]
+  },
+  "infraProvisioning": {
+    "iac": [
+      "Terraform",
+      "Helm",
+      "Kubernetes provider"
+    ],
+    "providers": [
+      "hashicorp/google",
+      "hashicorp/helm",
+      "hashicorp/kubernetes"
+    ],
+    "clusterAndScaling": [
+      "KEDA",
+      "Workload Identity",
+      "multi-region GKE",
+      "multi-region Spanner"
+    ]
+  },
+  "securityAndReliability": {
+    "loadBalancing": [
+      "Maglev-consistent-hash style routing",
+      "Cloud Load Balancer"
+    ],
+    "wafAndRateLimit": [
+      "Cloud Armor",
+      "OWASP CRS rules",
+      "per-IP throttling"
+    ],
+    "safetyPatterns": [
+      "Transactional Outbox",
+      "cache invalidation via Redis Pub/Sub",
+      "idempotency guards",
+      "version gating"
+    ]
+  },
+  "externalIntegrations": [
+    "Payme",
+    "Click",
+    "Global Pay",
+    "Stripe",
+    "Telegram",
+    "Firebase",
+    "Google Maps"
+  ],
+  "rawDependencySets": {
+    "node": [
+      "@eslint/eslintrc",
+      "@heroui/react",
+      "@heroui/styles",
+      "@pegasus/types",
+      "@playwright/test",
+      "@tailwindcss/postcss",
+      "@tauri-apps/api",
+      "@tauri-apps/cli",
+      "@tauri-apps/plugin-dialog",
+      "@tauri-apps/plugin-fs",
+      "@testing-library/jest-dom",
+      "@testing-library/react",
+      "@types/mapbox-gl",
+      "@types/node",
+      "@types/react",
+      "@types/react-dom",
+      "@types/semver",
+      "@types/three",
+      "@vitejs/plugin-react",
+      "babel-preset-expo",
+      "cypress",
+      "eslint",
+      "eslint-config-next",
+      "expo",
+      "expo-haptics",
+      "expo-screen-orientation",
+      "expo-secure-store",
+      "expo-status-bar",
+      "firebase",
+      "gsap",
+      "h3-js",
+      "jsdom",
+      "lucide-react",
+      "mapbox-gl",
+      "maplibre-gl",
+      "motion",
+      "nativewind",
+      "next",
+      "qrcode.react",
+      "react",
+      "react-dom",
+      "react-map-gl",
+      "react-native",
+      "react-native-reanimated",
+      "react-native-web",
+      "recharts",
+      "tailwindcss",
+      "three",
+      "typescript",
+      "vitest"
+    ],
+    "go": [
+      "cloud.google.com/go/firestore",
+      "cloud.google.com/go/secretmanager",
+      "cloud.google.com/go/spanner",
+      "cloud.google.com/go/storage",
+      "firebase.google.com/go/v4",
+      "github.com/go-chi/chi/v5",
+      "github.com/golang-jwt/jwt/v5",
+      "github.com/google/uuid",
+      "github.com/gorilla/websocket",
+      "github.com/prometheus/client_golang",
+      "github.com/redis/go-redis/v9",
+      "github.com/robfig/cron/v3",
+      "github.com/segmentio/kafka-go",
+      "github.com/uber/h3-go/v4",
+      "go.opentelemetry.io/otel",
+      "golang.org/x/sync",
+      "google.golang.org/api",
+      "google.golang.org/grpc"
+    ],
+    "rust": [
+      "cc",
+      "env_logger",
+      "futures-util",
+      "keyring",
+      "log",
+      "reqwest",
+      "serde",
+      "serde_json",
+      "tauri",
+      "tauri-build",
+      "tauri-plugin-dialog",
+      "tauri-plugin-fs",
+      "tauri-plugin-log",
+      "tauri-plugin-os",
+      "tauri-plugin-process",
+      "tauri-plugin-shell",
+      "tokio",
+      "tokio-tungstenite",
+      "url"
+    ],
+    "keywordSweep": [
+      "APNs",
+      "chi",
+      "click",
+      "Cloud Armor",
+      "Cloud CDN",
+      "Cloud DNS",
+      "Cloud NAT",
+      "Cloud Run",
+      "compose",
+      "DataStore",
+      "expo",
+      "FCM",
+      "firebase",
+      "gcs",
+      "GKE",
+      "Global Pay",
+      "Grafana",
+      "gRPC",
+      "H3",
+      "helm",
+      "hilt",
+      "Jetpack Compose",
+      "Kafka",
+      "KEDA",
+      "kubernetes",
+      "Maglev",
+      "mapbox",
+      "MapLibre",
+      "Memorystore",
+      "opentelemetry",
+      "OWASP",
+      "payme",
+      "playwright",
+      "Private Service Connect",
+      "Prometheus",
+      "PubSub",
+      "recharts",
+      "Redis",
+      "Retrofit",
+      "Room",
+      "secretmanager",
+      "Spanner",
+      "Storage",
+      "Stripe",
+      "SwiftUI",
+      "tauri",
+      "Telegram",
+      "terraform",
+      "WireMock",
+      "workload identity"
+    ]
+  }
+}

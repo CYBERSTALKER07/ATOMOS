@@ -2,6 +2,11 @@
   "name": "pegasus",
   "private": true,
   "scripts": {
+    "ast:index": "node ../.agents/extensions/ast-engine/engine.mjs index --root . --index ../.agents/extensions/ast-engine/.cache/pegasus-index.json",
+    "ast:def": "node ../.agents/extensions/ast-engine/engine.mjs definition --root . --index ../.agents/extensions/ast-engine/.cache/pegasus-index.json",
+    "ast:refs": "node ../.agents/extensions/ast-engine/engine.mjs usages --root . --index ../.agents/extensions/ast-engine/.cache/pegasus-index.json",
+    "ast:graph": "node ../.agents/extensions/ast-engine/engine.mjs graph --root . --index ../.agents/extensions/ast-engine/.cache/pegasus-index.json",
+    "ast:mcp:start": "node ../.agents/extensions/ast-engine/mcp-server.mjs",
     "localization:validate": "node packages/i18n/scripts/validate.mjs",
     "localization:generate": "node packages/i18n/scripts/generate.mjs",
     "localization:inventory": "node packages/i18n/scripts/inventory.mjs",

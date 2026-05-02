@@ -1,0 +1,26 @@
+{
+  "servers": {
+    "heroui-react": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@heroui/react-mcp@latest"
+      ]
+    },
+    "void-ast-engine": {
+      "type": "stdio",
+      "command": "node",
+      "cwd": "${workspaceFolder}",
+      "args": [
+        ".agents/extensions/ast-engine/mcp-server.mjs"
+      ],
+      "env": {
+        "VOID_AST_ENGINE_PATH": "${workspaceFolder}/.agents/extensions/ast-engine/engine.mjs",
+        "VOID_AST_ROOT": "${workspaceFolder}/pegasus",
+        "VOID_AST_INDEX": "${workspaceFolder}/.agents/extensions/ast-engine/.cache/pegasus-index.json"
+      }
+    }
+  },
+  "inputs": []
+}

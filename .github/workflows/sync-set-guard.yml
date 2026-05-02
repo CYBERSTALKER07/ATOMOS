@@ -1,0 +1,30 @@
+name: Sync Set Guard
+
+on:
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync-set-guard:
+    name: Sync Set Guard — architecture/dependency drift
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Enforce sync-set updates
+        run: |
+          python3 pegasus/scripts/sync_set_guard.py \
+            --repo-root . \
+            --base-sha "${{ github.event.pull_request.base.sha }}" \
+            --head-sha "${{ github.event.pull_request.head.sha }}"

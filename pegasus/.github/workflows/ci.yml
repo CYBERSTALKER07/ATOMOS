@@ -17,6 +17,28 @@ env:
   SPANNER_EMULATOR_HOST: localhost:9010
 
 jobs:
+  # ── Sync-set drift guard ───────────────────────────────────────────────────
+  sync-set-guard:
+    name: Sync Set Guard — architecture/dependency drift
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Enforce sync-set updates
+        run: |
+          python3 pegasus/scripts/sync_set_guard.py \
+            --repo-root . \
+            --base-sha "${{ github.event.pull_request.base.sha }}" \
+            --head-sha "${{ github.event.pull_request.head.sha }}"
+
   # ── VersionScan guardrails ───────────────────────────────────────────────
   versionscan:
     name: VersionScan — manifest + guardrails

@@ -1,10 +1,17 @@
 {
   "name": "ast-engine",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Local symbol graph engine for agent context retrieval",
+  "main": "engine.mjs",
+  "bin": {
+    "void-ast-engine": "./engine.mjs"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "index": "node ./engine.mjs index --root ../../.. --index ./.cache/index.json",
+    "definition": "node ./engine.mjs definition --root ../../.. --index ./.cache/index.json",
+    "usages": "node ./engine.mjs usages --root ../../.. --index ./.cache/index.json",
+    "graph": "node ./engine.mjs graph --root ../../.. --index ./.cache/index.json",
+    "mcp:start": "node ./mcp-server.mjs"
   },
   "keywords": [],
   "author": "",

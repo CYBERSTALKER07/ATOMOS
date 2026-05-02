@@ -1,0 +1,114 @@
+{
+  "version": "2026-05-02",
+  "description": "Canonical machine-readable topology for runtime systems and agent context tooling.",
+  "agentContext": {
+    "syncSet": [
+      "../.github/ACT.md",
+      "../.github/copilot-instructions.md",
+      "../.github/gemini-instructions.md",
+      "architecture.md",
+      "architecture-graph.json",
+      "technology-inventory.md",
+      "technology-inventory.json"
+    ],
+    "actProtocol": {
+      "path": "../.github/ACT.md",
+      "alwaysOn": true,
+      "enforcedChecks": [
+        "spanner",
+        "kafka",
+        "redis",
+        "terraform",
+        "maglev",
+        "hyperscale_10m"
+      ]
+    },
+    "mcpServer": {
+      "path": "../.vscode/mcp.json",
+      "template": "../.github/mcp.vscode.example.json",
+      "serverId": "void-ast-engine",
+      "toolNames": [
+        "void_ast_index",
+        "void_ast_definition",
+        "void_ast_usages",
+        "void_ast_graph"
+      ]
+    },
+    "engine": {
+      "name": "Local AST Symbol Graph Engine",
+      "entry": "../.agents/extensions/ast-engine/engine.mjs",
+      "commands": [
+        "npm --prefix pegasus run ast:index",
+        "npm --prefix pegasus run ast:def -- --symbol <TargetSymbol>",
+        "npm --prefix pegasus run ast:refs -- --symbol <TargetSymbol> --limit 50",
+        "npm --prefix pegasus run ast:graph -- --symbol <TargetSymbol> --limit 50"
+      ],
+      "requiredFor": [
+        "symbol definition retrieval",
+        "usage blast-radius analysis",
+        "import-neighbor graph checks"
+      ]
+    },
+    "technologyInventory": {
+      "markdown": "technology-inventory.md",
+      "json": "technology-inventory.json"
+    }
+  },
+  "nodes": [
+    { "id": "maglev", "type": "infra", "label": "Maglev Reverse Proxy" },
+    { "id": "router", "type": "backend", "label": "Chi Router" },
+    { "id": "spanner", "type": "data", "label": "Cloud Spanner" },
+    { "id": "redis", "type": "data", "label": "Redis Cache + Pub/Sub" },
+    { "id": "kafka", "type": "event", "label": "Managed Kafka" },
+    { "id": "handlers", "type": "backend", "label": "Domain Handlers" },
+    { "id": "ws_hubs", "type": "backend", "label": "WebSocket Hubs" },
+    { "id": "outbox_relay", "type": "backend", "label": "Outbox Relay" },
+    { "id": "admin_portal", "type": "web", "label": "Admin Portal" },
+    { "id": "factory_portal", "type": "web", "label": "Factory Portal" },
+    { "id": "warehouse_portal", "type": "web", "label": "Warehouse Portal" },
+    { "id": "android_clients", "type": "mobile", "label": "Android Clients" },
+    { "id": "ios_clients", "type": "mobile", "label": "iOS Clients" },
+    { "id": "payload_terminal", "type": "terminal", "label": "Payload Terminal" },
+    { "id": "ai_worker", "type": "worker", "label": "AI Worker" },
+    { "id": "reconciler", "type": "worker", "label": "Financial Reconciler" },
+    { "id": "copilot_agent", "type": "agent", "label": "GitHub Copilot Agent" },
+    { "id": "gemini_agent", "type": "agent", "label": "Gemini Agent" },
+    { "id": "act_protocol", "type": "agent_policy", "label": "ACT Companion Protocol" },
+    { "id": "ast_mcp_server", "type": "agent_tool", "label": "AST MCP Server" },
+    { "id": "ast_engine", "type": "agent_tool", "label": "AST Symbol Graph Engine" },
+    { "id": "arch_docs", "type": "docs", "label": "Architecture Docs + Graph" },
+    { "id": "tech_inventory", "type": "docs", "label": "Technology Inventory" }
+  ],
+  "edges": [
+    { "from": "admin_portal", "to": "maglev", "relationship": "calls" },
+    { "from": "factory_portal", "to": "maglev", "relationship": "calls" },
+    { "from": "warehouse_portal", "to": "maglev", "relationship": "calls" },
+    { "from": "android_clients", "to": "maglev", "relationship": "calls" },
+    { "from": "ios_clients", "to": "maglev", "relationship": "calls" },
+    { "from": "payload_terminal", "to": "maglev", "relationship": "calls" },
+    { "from": "maglev", "to": "router", "relationship": "routes_to" },
+    { "from": "maglev", "to": "ws_hubs", "relationship": "upgrades_to_ws" },
+    { "from": "router", "to": "handlers", "relationship": "dispatches" },
+    { "from": "handlers", "to": "spanner", "relationship": "rwtxn_outbox_emit" },
+    { "from": "handlers", "to": "redis", "relationship": "cache_invalidate" },
+    { "from": "ws_hubs", "to": "redis", "relationship": "pubsub_fanout" },
+    { "from": "spanner", "to": "outbox_relay", "relationship": "tailed_by" },
+    { "from": "outbox_relay", "to": "kafka", "relationship": "publishes" },
+    { "from": "kafka", "to": "ai_worker", "relationship": "consumed_by" },
+    { "from": "kafka", "to": "reconciler", "relationship": "consumed_by" },
+    { "from": "copilot_agent", "to": "act_protocol", "relationship": "follows" },
+    { "from": "gemini_agent", "to": "act_protocol", "relationship": "follows" },
+    { "from": "act_protocol", "to": "ast_mcp_server", "relationship": "requires" },
+    { "from": "act_protocol", "to": "ast_engine", "relationship": "fallback_requires" },
+    { "from": "act_protocol", "to": "arch_docs", "relationship": "requires" },
+    { "from": "act_protocol", "to": "tech_inventory", "relationship": "requires" },
+    { "from": "copilot_agent", "to": "ast_mcp_server", "relationship": "queries" },
+    { "from": "gemini_agent", "to": "ast_mcp_server", "relationship": "queries" },
+    { "from": "ast_mcp_server", "to": "ast_engine", "relationship": "executes" },
+    { "from": "copilot_agent", "to": "arch_docs", "relationship": "reads" },
+    { "from": "gemini_agent", "to": "arch_docs", "relationship": "reads" },
+    { "from": "copilot_agent", "to": "tech_inventory", "relationship": "reads" },
+    { "from": "gemini_agent", "to": "tech_inventory", "relationship": "reads" },
+    { "from": "arch_docs", "to": "ast_engine", "relationship": "sync_contract" }
+  ]
+}
