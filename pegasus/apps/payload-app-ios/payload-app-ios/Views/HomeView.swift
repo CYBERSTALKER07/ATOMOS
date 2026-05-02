@@ -728,21 +728,58 @@ private struct PostSealCountdownView: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Order \(String(orderId.prefix(8))) sealed")
-                .font(.headline)
-            Text("Dispatch code").font(.caption).foregroundStyle(.secondary)
-            Text(dispatchCode)
-                .font(.largeTitle.monospaced().weight(.bold))
-                .foregroundStyle(.green)
-            Text("Double-check window: \(secondsLeft)s").font(.subheadline)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "lock.shield.fill")
+                    .foregroundStyle(TermTheme.live)
+                Text("ORDER_SEALED")
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .foregroundStyle(TermTheme.secondary)
+                Spacer()
+                Text("ORD-\(orderId.suffix(6).uppercased())")
+                    .font(.system(size: 12, weight: .black, design: .monospaced))
+                    .foregroundStyle(TermTheme.accent)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("DISPATCH_CODE")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(TermTheme.secondary)
+                
+                Text(dispatchCode)
+                    .font(.system(size: 44, weight: .black, design: .monospaced))
+                    .foregroundStyle(TermTheme.live)
+            }
+            
+            HStack {
+                Text("DOUBLE_CHECK_WINDOW: \(secondsLeft)s")
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundStyle(TermTheme.accent)
+                Spacer()
+            }
+            
             ProgressView(value: Double(secondsLeft) / 60.0)
-            Button("Continue", action: onDismiss)
-                .buttonStyle(.bordered)
+                .tint(TermTheme.live)
+            
+            Button {
+                onDismiss()
+            } label: {
+                Text("CONTINUE_TO_NEXT")
+                    .font(.system(size: 14, weight: .black, design: .monospaced))
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(TermTheme.accent)
+                    .foregroundStyle(TermTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.green.opacity(0.10), in: RoundedRectangle(cornerRadius: 16))
+        .padding(20)
+        .background(TermTheme.live.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(TermTheme.live.opacity(0.2), lineWidth: 1)
+        }
     }
 }
 
