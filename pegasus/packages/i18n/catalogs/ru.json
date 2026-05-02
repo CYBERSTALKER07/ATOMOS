@@ -583,6 +583,71 @@
         }
       }
     },
+    "configuration": {
+      "countries": {
+        "title": "Настройка стран",
+        "subtitle": "Операционные параметры по странам (геозона, шлюзы, провайдеры).",
+        "list_title": "Страны",
+        "state": {
+          "loading": "Загрузка...",
+          "select_country": "Выберите страну для редактирования."
+        },
+        "field": {
+          "country_code": "Код страны",
+          "country_name": "Название страны",
+          "timezone": "Часовой пояс",
+          "currency_code": "Код валюты",
+          "breach_radius_meters": "Радиус нарушения (м)",
+          "sms_provider": "SMS-провайдер",
+          "payment_gateways": "Платежные шлюзы (через запятую)"
+        },
+        "action": {
+          "save": "Сохранить конфиг страны"
+        },
+        "toast": {
+          "saved": "Сохранено: {country_code}"
+        },
+        "error": {
+          "load_failed": "Не удалось загрузить настройки стран",
+          "save_failed": "Сохранение не удалось"
+        }
+      },
+      "system": {
+        "title": "Системная конфигурация",
+        "subtitle": "Параметры логистической физики и платежных шлюзов",
+        "physics": {
+          "title": "Логистическая физика",
+          "geofence_radius_label": "Радиус геоблокировки (метры)",
+          "geofence_help": "Минимальная близость для подтверждения завершения доставки.",
+          "delivery_fee_label": "Базовая стоимость доставки (сумма)",
+          "delivery_fee_help": "Применяется к каждому доставленному заказу в счете ритейлера.",
+          "update_action": "Обновить физику"
+        },
+        "platform_fee": {
+          "label": "Процент комиссии платформы (0-50)",
+          "update_action": "Обновить комиссию платформы"
+        },
+        "gateway": {
+          "title": "Финансовые шлюзы",
+          "click_up_merchant_id": "Merchant ID Click Up",
+          "payme_secret_key": "Секретный ключ Payme",
+          "configured_via_secret_manager": "Настраивается через Secret Manager",
+          "keys_help": "Ключи платежных шлюзов управляются через инфраструктурные секреты."
+        },
+        "action": {
+          "open_country_configuration": "Открыть настройки стран"
+        },
+        "toast": {
+          "config_saved": "Конфигурация сохранена.",
+          "platform_fee_updated": "Комиссия платформы обновлена."
+        },
+        "error": {
+          "network_failure": "Сетевая ошибка",
+          "failed_with_reason": "Ошибка: {detail}",
+          "generic_with_reason": "Ошибка: {detail}"
+        }
+      }
+    },
     "billing_setup": {
       "title": "Настройка биллинга",
       "subtitle": "Настройте, как ритейлеры будут платить вам",

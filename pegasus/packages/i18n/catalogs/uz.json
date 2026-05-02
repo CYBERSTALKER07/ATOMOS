@@ -583,6 +583,71 @@
         }
       }
     },
+    "configuration": {
+      "countries": {
+        "title": "Mamlakat sozlamalari",
+        "subtitle": "Mamlakat bo'yicha operatsion boshqaruvlar (geofence, gatewaylar, provider tanlovlari).",
+        "list_title": "Mamlakatlar",
+        "state": {
+          "loading": "Yuklanmoqda...",
+          "select_country": "Tahrirlash uchun mamlakatni tanlang."
+        },
+        "field": {
+          "country_code": "Mamlakat kodi",
+          "country_name": "Mamlakat nomi",
+          "timezone": "Vaqt zonasi",
+          "currency_code": "Valyuta kodi",
+          "breach_radius_meters": "Breach radius (m)",
+          "sms_provider": "SMS provayder",
+          "payment_gateways": "Payment gatewaylar (vergul bilan)"
+        },
+        "action": {
+          "save": "Mamlakat konfiguratsiyasini saqlash"
+        },
+        "toast": {
+          "saved": "{country_code} saqlandi"
+        },
+        "error": {
+          "load_failed": "Mamlakat konfiguratsiyalarini yuklab bo'lmadi",
+          "save_failed": "Saqlash amalga oshmadi"
+        }
+      },
+      "system": {
+        "title": "Tizim konfiguratsiyasi",
+        "subtitle": "Logistika fizikasi va gateway parametrlar",
+        "physics": {
+          "title": "Logistika fizikasi",
+          "geofence_radius_label": "Geofence blok radiusi (metr)",
+          "geofence_help": "Yetkazib berish yakunini tasdiqlash uchun minimal yaqinlik.",
+          "delivery_fee_label": "Asosiy yetkazib berish narxi (miqdor)",
+          "delivery_fee_help": "Har bir yetkazib berishda retailer hisobiga qo'llanadi.",
+          "update_action": "Fizikani yangilash"
+        },
+        "platform_fee": {
+          "label": "Platforma komissiya foizi (0-50)",
+          "update_action": "Platforma komissiyasini yangilash"
+        },
+        "gateway": {
+          "title": "Moliyaviy gatewaylar",
+          "click_up_merchant_id": "Click Up Merchant ID",
+          "payme_secret_key": "Payme maxfiy kaliti",
+          "configured_via_secret_manager": "Secret Manager orqali sozlangan",
+          "keys_help": "To'lov gateway kalitlari infratuzilma secretlari orqali boshqariladi."
+        },
+        "action": {
+          "open_country_configuration": "Mamlakat konfiguratsiyasini ochish"
+        },
+        "toast": {
+          "config_saved": "Konfiguratsiya saqlandi.",
+          "platform_fee_updated": "Platforma komissiyasi yangilandi."
+        },
+        "error": {
+          "network_failure": "Tarmoq xatosi",
+          "failed_with_reason": "Xato: {detail}",
+          "generic_with_reason": "Xato: {detail}"
+        }
+      }
+    },
     "billing_setup": {
       "title": "Billing sozlamalari",
       "subtitle": "Retailerlar sizga qanday to'lashini sozlang",
