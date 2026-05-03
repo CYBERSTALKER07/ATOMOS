@@ -54,8 +54,9 @@ class LabFirebaseMessagingService : FirebaseMessagingService() {
         "DRIVER_APPROACHING" -> "Delivery Arriving"
         "DRIVER_ARRIVED" -> "Driver Has Arrived"
         "ORDER_STATUS_CHANGED" -> "Order Status Updated"
-        "GLOBAL_PAYNT_SETTLED" -> "Payment Received"
-        "GLOBAL_PAYNT_FAILED" -> "Payment Failed"
+        "PAYMENT_SETTLED", "GLOBAL_PAYNT_SETTLED" -> "Payment Received"
+        "PAYMENT_FAILED", "PAYMENT_EXPIRED", "GLOBAL_PAYNT_FAILED", "GLOBAL_PAYNT_EXPIRED" -> "Payment Failed"
+        "ORDER_COMPLETED" -> "Order Completed"
         else -> "Notification"
     }
 
@@ -66,8 +67,10 @@ class LabFirebaseMessagingService : FirebaseMessagingService() {
             "DRIVER_APPROACHING" -> "Driver from ${data["supplier_name"] ?: "a supplier"} is approaching"
             "DRIVER_ARRIVED" -> "Driver has arrived for order #$orderId"
             "ORDER_STATUS_CHANGED" -> "Order #$orderId is now ${data["new_state"] ?: "updated"}"
-            "GLOBAL_PAYNT_SETTLED" -> "Payment confirmed for order #$orderId"
-            "GLOBAL_PAYNT_FAILED" -> "Payment failed for order #$orderId"
+            "PAYMENT_SETTLED", "GLOBAL_PAYNT_SETTLED" -> "Payment confirmed for order #$orderId"
+            "PAYMENT_FAILED", "GLOBAL_PAYNT_FAILED" -> "Payment failed for order #$orderId"
+            "PAYMENT_EXPIRED", "GLOBAL_PAYNT_EXPIRED" -> "Payment session expired for order #$orderId"
+            "ORDER_COMPLETED" -> "Order #$orderId was completed"
             else -> "You have a new notification"
         }
     }

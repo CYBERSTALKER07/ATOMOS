@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Inventory2
@@ -211,8 +212,9 @@ private fun typeIcon(type: String): ImageVector = when (type) {
     "ORDER_STATUS_CHANGED" -> Icons.Outlined.SyncAlt
     "PAYLOAD_READY_TO_SEAL" -> Icons.Outlined.Inventory2
     "PAYLOAD_SEALED" -> Icons.Outlined.Verified
-    "GLOBAL_PAYNT_SETTLED" -> Icons.Outlined.Payments
-    "GLOBAL_PAYNT_FAILED" -> Icons.Outlined.ErrorOutline
+    "PAYMENT_SETTLED", "GLOBAL_PAYNT_SETTLED" -> Icons.Outlined.Payments
+    "PAYMENT_FAILED", "PAYMENT_EXPIRED", "GLOBAL_PAYNT_FAILED", "GLOBAL_PAYNT_EXPIRED" -> Icons.Outlined.ErrorOutline
+    "ORDER_COMPLETED" -> Icons.Outlined.CheckCircle
     else -> Icons.Outlined.Notifications
 }
 

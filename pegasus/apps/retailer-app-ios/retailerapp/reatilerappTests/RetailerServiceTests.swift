@@ -24,18 +24,18 @@ struct RetailerServiceTests {
 
     @Test func ordersEndpoint() {
         let retailerId = "r-123"
-        let path = "/v1/retailer/\(retailerId)/orders"
+        let path = "/v1/retailers/\(retailerId)/orders"
         #expect(path.contains(retailerId))
     }
 
     @Test func catalogEndpoint() {
-        let path = "/v1/retailer/catalog"
-        #expect(path.hasPrefix("/v1/retailer"))
+        let path = "/v1/catalog/products"
+        #expect(path.hasPrefix("/v1/catalog"))
     }
 
     @Test func predictionsEndpoint() {
         let retailerId = "r-123"
-        let path = "/v1/retailer/\(retailerId)/predictions"
+        let path = "/v1/ai/predictions?retailer_id=\(retailerId)"
         #expect(path.contains("predictions"))
     }
 
@@ -83,14 +83,10 @@ struct RetailerServiceTests {
     @Test func wsEventTypesCoverage() {
         let expected = [
             "ORDER_STATUS_CHANGED",
-            "ORDER_DISPATCHED",
-            "ORDER_DELIVERED",
-            "ORDER_ARRIVING",
-            "DELIVERY_TOKEN",
-            "GLOBAL_PAYNT_REQUIRED",
-            "GLOBAL_PAYNT_SETTLED",
-            "GLOBAL_PAYNT_FAILED",
-            "GLOBAL_PAYNT_EXPIRED",
+            "PAYMENT_REQUIRED",
+            "PAYMENT_SETTLED",
+            "PAYMENT_FAILED",
+            "PAYMENT_EXPIRED",
             "ORDER_AMENDED",
             "ORDER_COMPLETED",
             "DRIVER_APPROACHING",

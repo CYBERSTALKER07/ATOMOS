@@ -55,6 +55,8 @@ class OrdersViewModel @Inject constructor(
                 when (msg.type) {
                     "ORDER_STATUS_CHANGED", "ORDER_DISPATCHED", "ORDER_DELIVERED",
                     "ORDER_ARRIVING", "DELIVERY_TOKEN",
+                    "PAYMENT_REQUIRED", "PAYMENT_SETTLED", "PAYMENT_FAILED",
+                    "PAYMENT_EXPIRED",
                     "GLOBAL_PAYNT_REQUIRED", "GLOBAL_PAYNT_SETTLED", "GLOBAL_PAYNT_FAILED",
                     "GLOBAL_PAYNT_EXPIRED", "ORDER_AMENDED", "ORDER_COMPLETED",
                     "PRE_ORDER_AUTO_ACCEPTED", "PRE_ORDER_CONFIRMED", "PRE_ORDER_EDITED" -> refresh()

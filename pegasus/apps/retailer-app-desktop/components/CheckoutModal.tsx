@@ -5,7 +5,12 @@ import { X, Ticket, CreditCard, Loader2 } from "lucide-react";
 import { useCart } from "../lib/cart";
 import { apiFetch } from "../lib/auth";
 import { useRouter } from "next/navigation";
-import type { UnifiedCheckoutResponse, RetailerProfile } from "../lib/types";
+import type {
+  CardCheckoutResponse,
+  CashCheckoutResponse,
+  UnifiedCheckoutResponse,
+  RetailerProfile,
+} from "../lib/types";
 
 function getProfile(): RetailerProfile | null {
   if (typeof localStorage === 'undefined') return null;
@@ -88,17 +93,19 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
             }),
           });
           if (!payRes.ok) throw new Error(`Payment initiation failed for order ${so.order_id}`);
-          const payData = await payRes.json();
+          const payData: CardCheckoutResponse = await payRes.json();
           if (payData.payment_url) {
             window.open(payData.payment_url, '_blank');
           }
         }
       } else if (method === 'cash') {
         for (const so of supplierOrders) {
-          await apiFetch('/v1/order/cash-checkout', {
+          const payRes = await apiFetch('/v1/order/cash-checkout', {
             method: 'POST',
             body: JSON.stringify({ order_id: so.order_id }),
           });
+          if (!payRes.ok) throw new Error(`Cash checkout failed for order ${so.order_id}`);
+          await payRes.json() as Promise<CashCheckoutResponse>;
         }
       }
 

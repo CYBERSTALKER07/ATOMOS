@@ -1,9 +1,13 @@
 package com.pegasus.retailer.data.api
 
 import com.pegasus.retailer.data.model.ApiResponse
+import com.pegasus.retailer.data.model.ActiveFulfillmentsResponse
 import com.pegasus.retailer.data.model.AuthResponse
-import com.pegasus.retailer.data.model.UnifiedCheckoutRequest
-import com.pegasus.retailer.data.model.UnifiedCheckoutResponse
+import com.pegasus.retailer.data.model.AutoOrderSettings
+import com.pegasus.retailer.data.model.CardCheckoutRequest
+import com.pegasus.retailer.data.model.CardCheckoutResponse
+import com.pegasus.retailer.data.model.CashCheckoutRequest
+import com.pegasus.retailer.data.model.CashCheckoutResponse
 import com.pegasus.retailer.data.model.DemandForecast
 import com.pegasus.retailer.data.model.LoginRequest
 import com.pegasus.retailer.data.model.Order
@@ -14,10 +18,11 @@ import com.pegasus.retailer.data.model.RetailerAnalytics
 import com.pegasus.retailer.data.model.RetailerDetailedAnalytics
 import com.pegasus.retailer.data.model.Supplier
 import com.pegasus.retailer.data.model.TrackingResponse
-import com.pegasus.retailer.ui.screens.notifications.NotificationsResponse
-import com.pegasus.retailer.data.model.AutoOrderSettings
+import com.pegasus.retailer.data.model.UnifiedCheckoutRequest
+import com.pegasus.retailer.data.model.UnifiedCheckoutResponse
 import com.pegasus.retailer.data.model.UpdateGlobalSettingsRequest
 import com.pegasus.retailer.data.model.UpdateSettingsRequest
+import com.pegasus.retailer.ui.screens.notifications.NotificationsResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -108,15 +113,15 @@ interface PegasusApi {
 
     // ── Post-Offload Payment ──
     @POST("/v1/order/cash-checkout")
-    suspend fun cashCheckout(@Body body: Map<String, String>): Map<String, @JvmSuppressWildcards Any>
+    suspend fun cashCheckout(@Body body: CashCheckoutRequest): CashCheckoutResponse
 
     @POST("/v1/order/card-checkout")
-    suspend fun cardCheckout(@Body body: Map<String, String>): Map<String, @JvmSuppressWildcards Any>
+    suspend fun cardCheckout(@Body body: CardCheckoutRequest): CardCheckoutResponse
 
     // ── Empathy Engine Settings ──
     // ── Active Fulfillment ──
     @GET("/v1/retailer/active-fulfillment")
-    suspend fun getActiveFulfillments(): TrackingResponse
+    suspend fun getActiveFulfillments(): ActiveFulfillmentsResponse
 
     @GET("/v1/retailer/settings/auto-order")
     suspend fun getAutoOrderSettings(): AutoOrderSettings

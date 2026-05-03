@@ -33,8 +33,8 @@ class OrderStatusTest {
     }
 
     @Test
-    fun displayName_awaitingGlobalPaynt() {
-        assertEquals("Payment Required", OrderStatus.AWAITING_GLOBAL_PAYNT.displayName)
+    fun displayName_awaitingPayment() {
+        assertEquals("Payment Required", OrderStatus.AWAITING_PAYMENT.displayName)
     }
 
     @Test
@@ -56,7 +56,7 @@ class OrderStatusTest {
     fun isActive_activeStates() {
         val active = listOf(
             OrderStatus.LOADED, OrderStatus.DISPATCHED, OrderStatus.IN_TRANSIT,
-            OrderStatus.ARRIVED, OrderStatus.AWAITING_GLOBAL_PAYNT, OrderStatus.PENDING_CASH_COLLECTION
+            OrderStatus.ARRIVED, OrderStatus.AWAITING_PAYMENT, OrderStatus.PENDING_CASH_COLLECTION
         )
         for (s in active) assertTrue("$s should be active", s.isActive)
     }
@@ -156,7 +156,7 @@ class OrderStatusTest {
     }
 
     @Test
-    fun ringLabel_awaitingGlobalPaynt_isPay() {
-        assertEquals("Pay", OrderStatus.AWAITING_GLOBAL_PAYNT.ringLabel)
+    fun ringLabel_awaitingPayment_isPay() {
+        assertEquals("Pay", OrderStatus.AWAITING_PAYMENT.ringLabel)
     }
 }

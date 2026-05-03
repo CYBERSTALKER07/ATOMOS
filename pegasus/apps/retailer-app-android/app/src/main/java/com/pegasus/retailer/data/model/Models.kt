@@ -603,6 +603,42 @@ data class UnifiedCheckoutResponse(
 )
 
 @Serializable
+data class CashCheckoutRequest(
+    @SerialName("order_id") val orderId: String,
+)
+
+@Serializable
+data class CashCheckoutResponse(
+    @SerialName("order_id") val orderId: String,
+    val state: String,
+    val amount: Long,
+    @SerialName("driver_id") val driverId: String? = null,
+    @SerialName("retailer_id") val retailerId: String,
+    val message: String,
+)
+
+@Serializable
+data class CardCheckoutRequest(
+    @SerialName("order_id") val orderId: String,
+    val gateway: String,
+)
+
+@Serializable
+data class CardCheckoutResponse(
+    @SerialName("order_id") val orderId: String,
+    val state: String,
+    val amount: Long,
+    val gateway: String,
+    @SerialName("payment_url") val paymentUrl: String,
+    @SerialName("invoice_id") val invoiceId: String,
+    @SerialName("session_id") val sessionId: String? = null,
+    @SerialName("attempt_id") val attemptId: String? = null,
+    @SerialName("attempt_no") val attemptNo: Int? = null,
+    @SerialName("retailer_id") val retailerId: String,
+    val message: String,
+)
+
+@Serializable
 data class CheckoutLineItem(
     @SerialName("sku_id") val skuId: String,
     @SerialName("quantity") val quantity: Int,
@@ -651,4 +687,20 @@ data class TrackingOrder(
 @Serializable
 data class TrackingResponse(
     val orders: List<TrackingOrder> = emptyList(),
+)
+
+@Serializable
+data class ActiveFulfillmentItem(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("supplier_id") val supplierId: String,
+    @SerialName("supplier_name") val supplierName: String,
+    val state: String,
+    @SerialName("adjusted_amount") val adjustedAmount: Long,
+    @SerialName("item_count") val itemCount: Int,
+)
+
+@Serializable
+data class ActiveFulfillmentsResponse(
+    val fulfillments: List<ActiveFulfillmentItem> = emptyList(),
+    val count: Int = 0,
 )

@@ -165,6 +165,43 @@ export interface UnifiedCheckoutResponse {
   backordered_item_count?: number;
 }
 
+export interface CashCheckoutResponse {
+  order_id: string;
+  state: string;
+  amount: number;
+  driver_id?: string;
+  retailer_id: string;
+  message: string;
+}
+
+export interface CardCheckoutResponse {
+  order_id: string;
+  state: string;
+  amount: number;
+  gateway: string;
+  payment_url: string;
+  invoice_id: string;
+  session_id?: string;
+  attempt_id?: string;
+  attempt_no?: number;
+  retailer_id: string;
+  message: string;
+}
+
+export interface ActiveFulfillmentItem {
+  order_id: string;
+  supplier_id: string;
+  supplier_name: string;
+  state: string;
+  adjusted_amount: number;
+  item_count: number;
+}
+
+export interface ActiveFulfillmentsResponse {
+  fulfillments: ActiveFulfillmentItem[];
+  count: number;
+}
+
 /* ── Cancel ── */
 export interface CancelOrderRequest {
   order_id: string;

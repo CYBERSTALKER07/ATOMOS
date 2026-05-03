@@ -62,6 +62,14 @@ interface TruckOption {
   plate_number: string;
 }
 
+interface ActiveFleetRoute {
+  route_id?: string;
+  driver_id?: string;
+  driver_name?: string;
+  vehicle_class?: string;
+  plate_number?: string;
+}
+
 type Tab = 'active' | 'scheduled';
 
 const TAB_META: { key: Tab; label: string; icon: string }[] = [
@@ -95,6 +103,24 @@ function normalizeOrderListResponse(payload: unknown, pageSize: number): { items
   }
 
   return { items: [], hasMore: false };
+}
+
+function normalizeActiveFleetResponse(payload: unknown): ActiveFleetRoute[] {
+  if (Array.isArray(payload)) {
+    return payload as ActiveFleetRoute[];
+  }
+
+  if (payload && typeof payload === 'object') {
+    const record = payload as { data?: ActiveFleetRoute[]; routes?: ActiveFleetRoute[] };
+    if (Array.isArray(record.data)) {
+      return record.data;
+    }
+    if (Array.isArray(record.routes)) {
+      return record.routes;
+    }
+  }
+
+  return [];
 }
 
 /* ─── Main Page ───────────────────────────────────────────── */
@@ -258,14 +284,15 @@ export default function OrdersPage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
-      const json = await res.json();
-      const routes = json.data || json.routes || [];
-      setTrucks(routes.map((r: Record<string, string>) => ({
-        driver_id: r.driver_id || r.route_id,
-        driver_name: r.driver_name || r.driver_id || 'Unknown',
-        vehicle_class: r.vehicle_class || '',
-        plate_number: r.plate_number || '',
-      })));
+      const routes = normalizeActiveFleetResponse(await res.json());
+      setTrucks(routes
+        .map((r) => ({
+          driver_id: r.driver_id || r.route_id || '',
+          driver_name: r.driver_name || r.driver_id || r.route_id || 'Unknown',
+          vehicle_class: r.vehicle_class || '',
+          plate_number: r.plate_number || '',
+        }))
+        .filter((route): route is TruckOption => route.driver_id.length > 0));
     } catch { /* noop */ }
   }, [token]);
 

@@ -2,21 +2,16 @@
 
 import { useState, useCallback } from "react";
 import { CreditCard, Banknote, X, Loader2, ExternalLink } from "lucide-react";
+import type { PaymentRequiredEvent } from "@pegasus/types";
 import { useWsEvent, type WsMessage } from "../lib/ws";
 import { apiFetch } from "../lib/auth";
+import type { CardCheckoutResponse } from "../lib/types";
 
 /* ── Types ── */
 
-interface PaymentEvent {
-  order_id: string;
-  invoice_id?: string;
-  session_id?: string;
-  amount: number;
-  original_amount?: number;
-  payment_method: string;
+type PaymentEvent = PaymentRequiredEvent & {
   available_card_gateways?: string[];
-  message?: string;
-}
+};
 
 type PaymentState = "idle" | "choosing" | "processing" | "success" | "error";
 
@@ -38,13 +33,16 @@ export default function PaymentModal() {
     useCallback((msg: WsMessage) => {
       const evt: PaymentEvent = {
         order_id: msg.order_id as string,
-        invoice_id: msg.invoice_id as string | undefined,
-        session_id: msg.session_id as string | undefined,
+        type: "PAYMENT_REQUIRED",
+        invoice_id: (msg.invoice_id as string | null | undefined) ?? null,
+        session_id: msg.session_id as string,
         amount: msg.amount as number,
-        original_amount: msg.original_amount as number | undefined,
+        original_amount: msg.original_amount as number,
         payment_method: msg.payment_method as string,
+        gateway: msg.gateway as PaymentRequiredEvent["gateway"],
+        currency: msg.currency as string,
         available_card_gateways: msg.available_card_gateways as string[] | undefined,
-        message: msg.message as string | undefined,
+        message: (msg.message as string | undefined) ?? "",
       };
       setEvent(evt);
       setState("choosing");
@@ -111,10 +109,10 @@ export default function PaymentModal() {
           const text = await res.text();
           throw new Error(text || "Card checkout failed");
         }
-        const data = await res.json();
-        if (data.checkout_url) {
-          setCheckoutUrl(data.checkout_url);
-          window.open(data.checkout_url, "_blank", "noopener");
+        const data: CardCheckoutResponse = await res.json();
+        if (data.payment_url) {
+          setCheckoutUrl(data.payment_url);
+          window.open(data.payment_url, "_blank", "noopener");
         }
         // Stay in processing until PAYMENT_SETTLED WS event arrives
       } catch (err) {

@@ -6,6 +6,8 @@ import com.pegasus.retailer.data.api.PegasusApi
 import com.pegasus.retailer.data.api.RetailerWSMessage
 import com.pegasus.retailer.data.api.RetailerWebSocket
 import com.pegasus.retailer.data.local.TokenManager
+import com.pegasus.retailer.data.model.CardCheckoutRequest
+import com.pegasus.retailer.data.model.CashCheckoutRequest
 import com.pegasus.retailer.data.model.Order
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,7 +91,7 @@ class NavigationViewModel @Inject constructor(
 
     suspend fun cashCheckout(orderId: String): Result<Unit> {
         return try {
-            api.cashCheckout(mapOf("order_id" to orderId))
+            api.cashCheckout(CashCheckoutRequest(orderId = orderId))
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -98,12 +100,12 @@ class NavigationViewModel @Inject constructor(
 
     suspend fun cardCheckout(orderId: String, gateway: String): Result<CardCheckoutResult> {
         return try {
-            val resp = api.cardCheckout(mapOf("order_id" to orderId, "gateway" to gateway))
+            val resp = api.cardCheckout(CardCheckoutRequest(orderId = orderId, gateway = gateway))
             val result = CardCheckoutResult(
-                paymentUrl = resp["payment_url"] as? String,
-                sessionId = resp["session_id"] as? String,
-                attemptId = resp["attempt_id"] as? String,
-                attemptNo = (resp["attempt_no"] as? Number)?.toInt() ?: 0,
+                paymentUrl = resp.paymentUrl,
+                sessionId = resp.sessionId,
+                attemptId = resp.attemptId,
+                attemptNo = resp.attemptNo ?: 0,
             )
             Result.success(result)
         } catch (e: Exception) {
@@ -115,7 +117,7 @@ class NavigationViewModel @Inject constructor(
         retailerWebSocket.connect()
         viewModelScope.launch {
             retailerWebSocket.events
-                .filter { it.type == "GLOBAL_PAYNT_REQUIRED" }
+                .filter { it.type == "PAYMENT_REQUIRED" || it.type == "GLOBAL_PAYNT_REQUIRED" }
                 .collect { msg ->
                     _uiState.update { it.copy(paymentEvent = msg) }
                 }
@@ -146,7 +148,7 @@ class NavigationViewModel @Inject constructor(
         }
         viewModelScope.launch {
             retailerWebSocket.events
-                .filter { it.type == "GLOBAL_PAYNT_SETTLED" }
+                .filter { it.type == "PAYMENT_SETTLED" || it.type == "GLOBAL_PAYNT_SETTLED" }
                 .collect { msg ->
                     // If this settlement matches the active payment event, signal success
                     val current = _uiState.value.paymentEvent
@@ -158,7 +160,12 @@ class NavigationViewModel @Inject constructor(
         }
         viewModelScope.launch {
             retailerWebSocket.events
-                .filter { it.type == "GLOBAL_PAYNT_FAILED" || it.type == "GLOBAL_PAYNT_EXPIRED" }
+                .filter {
+                    it.type == "PAYMENT_FAILED" ||
+                        it.type == "PAYMENT_EXPIRED" ||
+                        it.type == "GLOBAL_PAYNT_FAILED" ||
+                        it.type == "GLOBAL_PAYNT_EXPIRED"
+                }
                 .collect { msg ->
                     // If this failure/expiry matches the active payment event, signal failure
                     val current = _uiState.value.paymentEvent
@@ -167,7 +174,11 @@ class NavigationViewModel @Inject constructor(
                             it.copy(
                                 paymentFailed = true,
                                 paymentFailureMessage = msg.message.ifBlank {
-                                    if (msg.type == "GLOBAL_PAYNT_EXPIRED") "Payment session expired" else "Payment failed"
+                                    if (msg.type == "PAYMENT_EXPIRED" || msg.type == "GLOBAL_PAYNT_EXPIRED") {
+                                        "Payment session expired"
+                                    } else {
+                                        "Payment failed"
+                                    }
                                 },
                             )
                         }
