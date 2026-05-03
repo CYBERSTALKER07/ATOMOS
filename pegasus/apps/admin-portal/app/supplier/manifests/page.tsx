@@ -97,7 +97,7 @@ export default function ManifestsPage() {
       }
       if (ordersRes.ok) {
         const j = await ordersRes.json();
-        setOrders(j.orders || []);
+        setOrders(j.data || j.orders || []);
       }
       if (manifestsRes.ok) {
         const j = await manifestsRes.json();

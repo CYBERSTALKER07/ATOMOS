@@ -20,11 +20,16 @@ import (
 
 // GeoReport contains the full spatial health audit for a supplier's coverage.
 type GeoReport struct {
-	TotalRetailers   int                `json:"total_retailers"`
-	CoveredRetailers int                `json:"covered_retailers"`
-	DeadZones        []DeadZoneRetailer `json:"dead_zones"`
-	Overlaps         []OverlapResult    `json:"overlaps"`
-	Warehouses       []WarehouseSummary `json:"warehouses"`
+	TotalWarehouses       int                `json:"total_warehouses"`
+	TotalHexes            int                `json:"total_hexes"`
+	TotalRetailersCovered int                `json:"total_retailers_covered"`
+	UnassignedRetailers   int                `json:"unassigned_retailers"`
+	Zones                 []WarehouseSummary `json:"zones"`
+	TotalRetailers        int                `json:"total_retailers"`
+	CoveredRetailers      int                `json:"covered_retailers"`
+	DeadZones             []DeadZoneRetailer `json:"dead_zones"`
+	Overlaps              []OverlapResult    `json:"overlaps"`
+	Warehouses            []WarehouseSummary `json:"warehouses"`
 }
 
 // DeadZoneRetailer is a retailer with no serving warehouse.
@@ -39,17 +44,21 @@ type DeadZoneRetailer struct {
 
 // WarehouseSummary shows a warehouse's coverage stats in the report.
 type WarehouseSummary struct {
-	WarehouseId      string  `json:"warehouse_id"`
-	Name             string  `json:"name"`
-	Lat              float64 `json:"lat"`
-	Lng              float64 `json:"lng"`
-	CoverageRadiusKm float64 `json:"coverage_radius_km"`
-	CellCount        int     `json:"cell_count"`
-	RetailersCovered int     `json:"retailers_covered"`
-	QueueDepth       int64   `json:"queue_depth"`
-	MaxCapacity      int64   `json:"max_capacity"`
-	LoadPercent      float64 `json:"load_percent"`
-	LoadStatus       string  `json:"load_status"` // GREEN | YELLOW | RED
+	WarehouseId      string   `json:"warehouse_id"`
+	WarehouseName    string   `json:"warehouse_name"`
+	Name             string   `json:"name"`
+	Lat              float64  `json:"lat"`
+	Lng              float64  `json:"lng"`
+	CoverageRadiusKm float64  `json:"coverage_radius_km"`
+	HexCount         int      `json:"hex_count"`
+	Hexes            []string `json:"hexes"`
+	RetailerCount    int      `json:"retailer_count"`
+	CellCount        int      `json:"cell_count"`
+	RetailersCovered int      `json:"retailers_covered"`
+	QueueDepth       int64    `json:"queue_depth"`
+	MaxCapacity      int64    `json:"max_capacity"`
+	LoadPercent      float64  `json:"load_percent"`
+	LoadStatus       string   `json:"load_status"` // GREEN | YELLOW | RED
 }
 
 // HandleGeoReport — GET /v1/supplier/geo-report
@@ -196,6 +205,7 @@ func buildGeoReport(ctx context.Context, client *spanner.Client, supplierID stri
 	queueDepths := cache.GetAllWarehouseLoads(ctx, whIDs)
 
 	summaries := make([]WarehouseSummary, len(warehouses))
+	totalHexes := 0
 	for i, wh := range warehouses {
 		depth := queueDepths[wh.WarehouseId]
 		maxCap := wh.MaxCapacity
@@ -209,10 +219,14 @@ func buildGeoReport(ctx context.Context, client *spanner.Client, supplierID stri
 
 		summaries[i] = WarehouseSummary{
 			WarehouseId:      wh.WarehouseId,
+			WarehouseName:    wh.Name,
 			Name:             wh.Name,
 			Lat:              wh.Lat,
 			Lng:              wh.Lng,
 			CoverageRadiusKm: wh.CoverageRadiusKm,
+			HexCount:         len(wh.H3Indexes),
+			Hexes:            append([]string(nil), wh.H3Indexes...),
+			RetailerCount:    whCoveredCounts[wh.WarehouseId],
 			CellCount:        len(wh.H3Indexes),
 			RetailersCovered: whCoveredCounts[wh.WarehouseId],
 			QueueDepth:       depth,
@@ -220,6 +234,7 @@ func buildGeoReport(ctx context.Context, client *spanner.Client, supplierID stri
 			LoadPercent:      loadPct,
 			LoadStatus:       cache.LoadStatus(loadPct),
 		}
+		totalHexes += len(wh.H3Indexes)
 	}
 
 	if deadZones == nil {
@@ -230,11 +245,16 @@ func buildGeoReport(ctx context.Context, client *spanner.Client, supplierID stri
 	}
 
 	return &GeoReport{
-		TotalRetailers:   len(retailers),
-		CoveredRetailers: len(retailers) - len(deadZones),
-		DeadZones:        deadZones,
-		Overlaps:         overlaps,
-		Warehouses:       summaries,
+		TotalWarehouses:       len(summaries),
+		TotalHexes:            totalHexes,
+		TotalRetailersCovered: len(retailers) - len(deadZones),
+		UnassignedRetailers:   len(deadZones),
+		Zones:                 summaries,
+		TotalRetailers:        len(retailers),
+		CoveredRetailers:      len(retailers) - len(deadZones),
+		DeadZones:             deadZones,
+		Overlaps:              overlaps,
+		Warehouses:            summaries,
 	}, nil
 }
 
