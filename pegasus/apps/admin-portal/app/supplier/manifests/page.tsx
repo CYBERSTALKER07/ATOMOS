@@ -78,13 +78,13 @@ export default function ManifestsPage() {
 
   const fetchData = useCallback(async () => {
     if (!token) return;
-    setLoading(true);
-    try {
-      const [linesRes, ordersRes, manifestsRes] = await Promise.all([
-        fetch(`${API}/v1/supplier/manifests?date=${date}`, {
+      setLoading(true);
+      try {
+        const [linesRes, ordersRes, manifestsRes] = await Promise.all([
+        fetch(`${API}/v1/supplier/picking-manifests?date=${date}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${API}/v1/supplier/manifests/orders?date=${date}`, {
+        fetch(`${API}/v1/supplier/picking-manifests/orders?date=${date}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${API}/v1/supplier/manifests`, {
@@ -120,7 +120,7 @@ export default function ManifestsPage() {
     if (!token) return;
     setExporting(true);
     try {
-      const res = await fetch(`${API}/v1/supplier/manifests?date=${date}&format=csv`, {
+      const res = await fetch(`${API}/v1/supplier/picking-manifests?date=${date}&format=csv`, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'text/csv' },
       });
       if (!res.ok) throw new Error('CSV export failed');

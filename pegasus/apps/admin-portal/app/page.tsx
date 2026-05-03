@@ -410,6 +410,23 @@ export default function AdminDashboard() {
     { name: 'Other', value: Math.max(0, kpi.total - kpi.completed - kpi.inTransit - kpi.pending) },
   ].filter(d => d.value > 0), [kpi, completedSparkline]);
 
+  const revData = useMemo(() => {
+    const revenueByGateway = orders
+      .filter((order) => order.state === "COMPLETED" && (order.amount ?? 0) > 0)
+      .reduce<Record<string, number>>((acc, order) => {
+        const gateway = (order.payment_gateway ?? "UNSPECIFIED").toUpperCase();
+        acc[gateway] = (acc[gateway] ?? 0) + (order.amount ?? 0);
+        return acc;
+      }, {});
+
+    return Object.entries(revenueByGateway)
+      .map(([gateway, amount]) => ({
+        gateway: gateway.replace(/_/g, " "),
+        amount,
+      }))
+      .sort((left, right) => right.amount - left.amount);
+  }, [orders]);
+
   // ── Render ───────────────────────────────────────────────────────────────
 
   if (isLoading) {

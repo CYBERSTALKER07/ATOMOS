@@ -190,7 +190,7 @@
 }
 
 .bento-card {
-  @apply md-card-elevated flex flex-col overflow-hidden;
+  @apply flex flex-col overflow-hidden;
   border-radius: var(--native-radius-lg);
   background: var(--color-md-surface);
   border: 1px solid var(--color-md-outline-variant);
