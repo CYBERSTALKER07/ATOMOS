@@ -81,6 +81,7 @@ CREATE TABLE Vehicles (
     WidthCM       FLOAT64,                  -- Physical width in cm
     HeightCM      FLOAT64,                  -- Physical height in cm  (VU = L×W×H / 5000)
     IsActive      BOOL        NOT NULL DEFAULT (true),
+    UnavailableReason STRING(64),
     CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
 ) PRIMARY KEY (VehicleId);
 
@@ -1716,6 +1717,7 @@ ALTER TABLE Drivers  ADD COLUMN HomeNodeType STRING(20);
 ALTER TABLE Drivers  ADD COLUMN HomeNodeId   STRING(36);
 ALTER TABLE Vehicles ADD COLUMN HomeNodeType STRING(20);
 ALTER TABLE Vehicles ADD COLUMN HomeNodeId   STRING(36);
+ALTER TABLE Vehicles ADD COLUMN UnavailableReason STRING(64);
 CREATE INDEX Idx_Drivers_ByHomeNode  ON Drivers(HomeNodeType, HomeNodeId);
 CREATE INDEX Idx_Vehicles_ByHomeNode ON Vehicles(HomeNodeType, HomeNodeId);
 

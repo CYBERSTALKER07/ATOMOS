@@ -43,10 +43,25 @@ type VehicleItem struct {
 	CapacityVU         float64 `json:"capacity_vu"`
 	IsActive           bool    `json:"is_active"`
 	Status             string  `json:"status"`
+	UnavailableReason  string  `json:"unavailable_reason,omitempty"`
 	CreatedAt          string  `json:"created_at"`
 	AssignedDriverID   string  `json:"assigned_driver_id,omitempty"`
 	AssignedDriverName string  `json:"assigned_driver_name,omitempty"`
 	DriverTruckStatus  string  `json:"driver_truck_status,omitempty"`
+}
+
+const (
+	warehouseVehicleUnavailableReasonMaintenance    = "MAINTENANCE"
+	warehouseVehicleUnavailableReasonTruckDamaged   = "TRUCK_DAMAGED"
+	warehouseVehicleUnavailableReasonRegulatoryHold = "REGULATORY_HOLD"
+	warehouseVehicleUnavailableReasonManualHold     = "MANUAL_HOLD"
+)
+
+var warehouseVehicleUnavailableReasons = map[string]struct{}{
+	warehouseVehicleUnavailableReasonMaintenance:    {},
+	warehouseVehicleUnavailableReasonTruckDamaged:   {},
+	warehouseVehicleUnavailableReasonRegulatoryHold: {},
+	warehouseVehicleUnavailableReasonManualHold:     {},
 }
 
 func vehicleAvailabilityStatus(isActive bool) string {
@@ -119,7 +134,7 @@ func listOpsVehicles(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 
 	stmt := spanner.Statement{
 		SQL: `SELECT v.VehicleId, v.VehicleClass, COALESCE(v.Label, ''), COALESCE(v.LicensePlate, ''),
-		             v.MaxVolumeVU, COALESCE(v.IsActive, true), v.CreatedAt,
+		             v.MaxVolumeVU, COALESCE(v.IsActive, true), COALESCE(v.UnavailableReason, ''), v.CreatedAt,
 		             COALESCE(d.DriverId, ''), COALESCE(d.Name, ''), COALESCE(d.TruckStatus, '')
 		      FROM Vehicles v
 		      LEFT JOIN Drivers d ON d.VehicleId = v.VehicleId AND d.SupplierId = @sid
@@ -146,7 +161,7 @@ func listOpsVehicles(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		var v VehicleItem
 		var createdAt time.Time
 		if err := row.Columns(&v.VehicleID, &v.VehicleClass, &v.Label,
-			&v.LicensePlate, &v.MaxVolumeVU, &v.IsActive, &createdAt, &v.AssignedDriverID, &v.AssignedDriverName, &v.DriverTruckStatus); err != nil {
+			&v.LicensePlate, &v.MaxVolumeVU, &v.IsActive, &v.UnavailableReason, &createdAt, &v.AssignedDriverID, &v.AssignedDriverName, &v.DriverTruckStatus); err != nil {
 			log.Printf("[WH VEHICLES] parse: %v", err)
 			continue
 		}
@@ -236,7 +251,7 @@ func createOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Cl
 func getOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Client, ops *auth.WarehouseOps, vehicleID string) {
 	stmt := spanner.Statement{
 		SQL: `SELECT v.VehicleId, v.VehicleClass, COALESCE(v.Label, ''), COALESCE(v.LicensePlate, ''),
-		             v.MaxVolumeVU, COALESCE(v.IsActive, true), v.CreatedAt,
+		             v.MaxVolumeVU, COALESCE(v.IsActive, true), COALESCE(v.UnavailableReason, ''), v.CreatedAt,
 		             COALESCE(d.DriverId, ''), COALESCE(d.Name, ''), COALESCE(d.TruckStatus, '')
 		      FROM Vehicles v
 		      LEFT JOIN Drivers d ON d.VehicleId = v.VehicleId AND d.SupplierId = @sid
@@ -259,7 +274,7 @@ func getOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Clien
 	var v VehicleItem
 	var createdAt time.Time
 	if err := row.Columns(&v.VehicleID, &v.VehicleClass, &v.Label,
-		&v.LicensePlate, &v.MaxVolumeVU, &v.IsActive, &createdAt, &v.AssignedDriverID, &v.AssignedDriverName, &v.DriverTruckStatus); err != nil {
+		&v.LicensePlate, &v.MaxVolumeVU, &v.IsActive, &v.UnavailableReason, &createdAt, &v.AssignedDriverID, &v.AssignedDriverName, &v.DriverTruckStatus); err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -281,6 +296,7 @@ func patchOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		Label        *string `json:"label,omitempty"`
 		LicensePlate *string `json:"license_plate,omitempty"`
 		IsActive     *bool   `json:"is_active,omitempty"`
+		UnavailableReason *string `json:"unavailable_reason,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
@@ -308,6 +324,35 @@ func patchOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 			vehicleValues = append(vehicleValues, *req.LicensePlate)
 		}
 
+		shouldWriteUnavailableReason := false
+		unavailableReason := ""
+		if req.IsActive != nil {
+			if *req.IsActive {
+				shouldWriteUnavailableReason = true
+			} else {
+				shouldWriteUnavailableReason = true
+				unavailableReason = normalizeWarehouseVehicleUnavailableReason(req.UnavailableReason)
+				if unavailableReason == "" {
+					unavailableReason = warehouseVehicleUnavailableReasonManualHold
+				}
+				if !isWarehouseVehicleUnavailableReason(unavailableReason) {
+					return &warehouseFleetMutationRuleError{StatusCode: http.StatusBadRequest, Message: "invalid unavailable_reason"}
+				}
+			}
+		} else if req.UnavailableReason != nil {
+			if vehicleState.IsActive {
+				return &warehouseFleetMutationRuleError{StatusCode: http.StatusBadRequest, Message: "unavailable_reason requires is_active=false"}
+			}
+			unavailableReason = normalizeWarehouseVehicleUnavailableReason(req.UnavailableReason)
+			if unavailableReason == "" {
+				return &warehouseFleetMutationRuleError{StatusCode: http.StatusBadRequest, Message: "unavailable_reason is required when updating an inactive vehicle"}
+			}
+			if !isWarehouseVehicleUnavailableReason(unavailableReason) {
+				return &warehouseFleetMutationRuleError{StatusCode: http.StatusBadRequest, Message: "invalid unavailable_reason"}
+			}
+			shouldWriteUnavailableReason = true
+		}
+
 		mutations := make([]*spanner.Mutation, 0, 2)
 		assignedDriver, err := readWarehouseDriverByVehicle(ctx, txn, ops, vehicleID, "")
 		if err != nil {
@@ -325,7 +370,7 @@ func patchOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 						driverColumns = append(driverColumns, "TruckStatus")
 						driverValues = append(driverValues, warehouseDriverStatusAvailable)
 					}
-				} else {
+				} else if warehouseVehicleReasonRequiresMaintenance(unavailableReason) {
 					driverColumns = append(driverColumns, "TruckStatus")
 					driverValues = append(driverValues, warehouseDriverStatusMaintenance)
 				}
@@ -336,6 +381,10 @@ func patchOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 			}
 			vehicleColumns = append(vehicleColumns, "IsActive")
 			vehicleValues = append(vehicleValues, *req.IsActive)
+		}
+		if shouldWriteUnavailableReason {
+			vehicleColumns = append(vehicleColumns, "UnavailableReason")
+			vehicleValues = append(vehicleValues, warehouseNullableString(unavailableReason))
 		}
 
 		if len(vehicleColumns) == 1 && len(mutations) == 0 {
@@ -359,7 +408,28 @@ func patchOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 	warehouseInvalidateDriverProfiles(ctx, cacheDriverIDs...)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "updated", "vehicle_id": vehicleID})
+	json.NewEncoder(w).Encode(map[string]interface{}{"status": "updated", "vehicle_id": vehicleID, "unavailable_reason": normalizeWarehouseVehicleUnavailableReason(req.UnavailableReason)})
+}
+
+func normalizeWarehouseVehicleUnavailableReason(reason *string) string {
+	if reason == nil {
+		return ""
+	}
+	return strings.ToUpper(strings.TrimSpace(*reason))
+}
+
+func isWarehouseVehicleUnavailableReason(reason string) bool {
+	_, ok := warehouseVehicleUnavailableReasons[reason]
+	return ok
+}
+
+func warehouseVehicleReasonRequiresMaintenance(reason string) bool {
+	switch reason {
+	case warehouseVehicleUnavailableReasonMaintenance, warehouseVehicleUnavailableReasonTruckDamaged:
+		return true
+	default:
+		return false
+	}
 }
 
 func vehicleClassLabel(class string) string {

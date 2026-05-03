@@ -130,6 +130,7 @@ func main() {
 			WidthCM       FLOAT64,
 			HeightCM      FLOAT64,
 			IsActive      BOOL        NOT NULL DEFAULT (true),
+			UnavailableReason STRING(64),
 			CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
 		) PRIMARY KEY (VehicleId)`,
 		`CREATE INDEX Idx_Vehicles_BySupplier ON Vehicles(SupplierId)`,

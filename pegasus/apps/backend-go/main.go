@@ -43,6 +43,7 @@ import (
 	"backend-go/settings"
 	"backend-go/simulation"
 	"backend-go/supplier"
+	"backend-go/supplierroutes"
 	"backend-go/sync"
 	"backend-go/telemetry"
 	"backend-go/treasury"
@@ -640,42 +641,15 @@ func main() {
 
 	// /v1/driver/profile moved to driverroutes.
 
-	// POST /v1/supplier/configure — Supplier onboarding (TaxId, categories)
-	http.HandleFunc("/v1/supplier/configure",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleSupplierConfigure(spannerClient))))
-
-	// POST /v1/supplier/billing/setup — Post-registration billing setup (bank, payment gateway)
-	http.HandleFunc("/v1/supplier/billing/setup",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleBillingSetup(spannerClient))))
-
-	// GET/PUT /v1/supplier/profile — Supplier profile read & update
-	http.HandleFunc("/v1/supplier/profile",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				supplier.HandleGetSupplierProfile(spannerClient, app.Cache, app.CacheFlight)(w, r)
-			case http.MethodPut:
-				supplier.HandleUpdateSupplierProfile(spannerClient, app.Cache)(w, r)
-			default:
-				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			}
-		})))
-
-	// PATCH /v1/supplier/shift — Toggle ManualOffShift and/or update OperatingSchedule
-	http.HandleFunc("/v1/supplier/shift",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleSupplierShift(spannerClient))))
-
-	// GET/POST/DELETE /v1/supplier/payment-config — Supplier payment gateway vault CRUD
-	http.HandleFunc("/v1/supplier/payment-config",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(vault.HandlePaymentConfigs(spannerClient))))
-
-	// POST/GET/DELETE /v1/supplier/gateway-onboarding — Supplier gateway connect sessions
-	http.HandleFunc("/v1/supplier/gateway-onboarding",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(vault.HandleGatewayOnboarding(spannerClient))))
-
-	// POST /v1/supplier/payment/recipient/register — Global Pay split-payment recipient onboarding
-	http.HandleFunc("/v1/supplier/payment/recipient/register",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(vault.HandleRegisterRecipient(spannerClient, directClient))))
+	// /v1/supplier/{configure,billing/setup,profile,shift,payment-config,
+	// gateway-onboarding,payment/recipient/register} moved to supplierroutes.
+	supplierroutes.RegisterRoutes(r, supplierroutes.Deps{
+		Spanner:      spannerClient,
+		Cache:        app.Cache,
+		CacheFlight:  app.CacheFlight,
+		DirectClient: directClient,
+		Log:          loggingMiddleware,
+	})
 
 	// /v1/catalog/platform-categories moved to catalogroutes.
 
@@ -2521,6 +2495,7 @@ func main() {
 				LicensePlate STRING(30),
 				MaxVolumeVU  FLOAT64     NOT NULL,
 				IsActive     BOOL        NOT NULL DEFAULT (true),
+				UnavailableReason STRING(64),
 				CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
 			) PRIMARY KEY (VehicleId)`,
 			`CREATE INDEX Idx_Vehicles_BySupplier ON Vehicles(SupplierId)`,
@@ -3464,6 +3439,7 @@ func main() {
 			"ALTER TABLE Drivers ADD COLUMN HomeNodeId STRING(36)",
 			"ALTER TABLE Vehicles ADD COLUMN HomeNodeType STRING(20)",
 			"ALTER TABLE Vehicles ADD COLUMN HomeNodeId STRING(36)",
+			"ALTER TABLE Vehicles ADD COLUMN UnavailableReason STRING(64)",
 			"CREATE INDEX Idx_Drivers_ByHomeNode ON Drivers(HomeNodeType, HomeNodeId)",
 			"CREATE INDEX Idx_Vehicles_ByHomeNode ON Vehicles(HomeNodeType, HomeNodeId)",
 			// Transactional Outbox — single mechanism for durable state-change

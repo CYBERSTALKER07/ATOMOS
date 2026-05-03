@@ -57,6 +57,13 @@ export interface WarehouseAssignVehicleResponse {
   previously_assigned_driver?: string;
 }
 
+export type WarehouseVehicleUnavailableReason =
+  | 'MAINTENANCE'
+  | 'TRUCK_DAMAGED'
+  | 'REGULATORY_HOLD'
+  | 'MANUAL_HOLD'
+  | string;
+
 export interface WarehouseFleetVehicle {
   vehicle_id: string;
   vehicle_class: string;
@@ -67,6 +74,7 @@ export interface WarehouseFleetVehicle {
   capacity_vu: number;
   is_active: boolean;
   status: string;
+  unavailable_reason?: WarehouseVehicleUnavailableReason;
   created_at: string;
   assigned_driver_id?: string;
   assigned_driver_name?: string;
@@ -82,11 +90,13 @@ export interface WarehouseUpdateVehicleRequest {
   label?: string;
   license_plate?: string;
   is_active?: boolean;
+  unavailable_reason?: WarehouseVehicleUnavailableReason;
 }
 
 export interface WarehouseVehicleMutationResponse {
   status: string;
   vehicle_id: string;
+  unavailable_reason?: WarehouseVehicleUnavailableReason;
 }
 
 export interface WarehouseSupplyRequest {
