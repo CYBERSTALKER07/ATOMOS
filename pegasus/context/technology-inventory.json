@@ -372,6 +372,31 @@
       ]
     },
     {
+      "name": "Supplier core surface",
+      "path": "/v1/supplier/{dashboard,earnings,inventory*,orders*}",
+      "owner": "pegasus/apps/backend-go/suppliercoreroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/supplier/dashboard",
+        "GET /v1/supplier/earnings",
+        "GET /v1/supplier/inventory",
+        "PATCH /v1/supplier/inventory",
+        "GET /v1/supplier/inventory/audit",
+        "GET /v1/supplier/orders",
+        "POST /v1/supplier/orders/vet"
+      ],
+      "consumers": [
+        "admin-portal supplier dashboard",
+        "admin-portal supplier earnings view",
+        "admin-portal supplier inventory surfaces",
+        "admin-portal supplier order vetting surfaces"
+      ],
+      "notes": [
+        "Route composition moved out of main.go into suppliercoreroutes while preserving existing order, analytics, and supplier handlers.",
+        "This extraction removes the final inline /v1/supplier/* registrations from backend-go/main.go."
+      ]
+    },
+    {
         "name": "Warehouse ops compatibility surface",
         "path": "/v1/warehouse/ops/*",
         "owner": "pegasus/apps/backend-go/warehouseroutes/routes.go",

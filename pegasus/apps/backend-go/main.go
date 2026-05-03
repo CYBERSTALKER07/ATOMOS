@@ -3516,7 +3516,7 @@ func main() {
 
 	// Phase 3c: Boot the Payloader WebSocket Hub (receives PAYLOAD_READY_TO_SEAL pushes)
 	http.HandleFunc("/v1/ws/payloader",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, payloaderHub.HandleConnection))
+		auth.RequireRole([]string{"SUPPLIER", "ADMIN", "PAYLOADER"}, payloaderHub.HandleConnection))
 	fmt.Println("[BOOT] Payloader WebSocket Hub: ONLINE")
 
 	// Boot the Notification Dispatcher Consumer (inbox + WS + Telegram for all event types)

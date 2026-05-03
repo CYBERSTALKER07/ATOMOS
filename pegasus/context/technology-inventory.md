@@ -168,3 +168,7 @@ If any feature, dependency, service, or runtime changes, update all of:
 5. `.github/gemini-instructions.md`
 6. `pegasus/context/architecture.md`
 7. `pegasus/context/architecture-graph.json`
+- Supplier core route composition: `pegasus/apps/backend-go/suppliercoreroutes/routes.go`
+	- Owns `GET /v1/supplier/dashboard`, `GET /v1/supplier/earnings`, `GET/PATCH /v1/supplier/inventory`, `GET /v1/supplier/inventory/audit`, `GET /v1/supplier/orders`, and `POST /v1/supplier/orders/vet`
+	- Supports the supplier core portal loop: dashboard metrics, earnings analytics, inventory management, and supplier-side order approval
+	- Removes the final inline `/v1/supplier/*` registrations from `backend-go/main.go`

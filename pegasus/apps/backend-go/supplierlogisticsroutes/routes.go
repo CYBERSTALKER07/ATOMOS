@@ -53,16 +53,16 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
 	supplierOrPayload := []string{"SUPPLIER", "PAYLOADER", "ADMIN"}
-	supplierOrPayloadException := []string{"SUPPLIER", "ADMIN", "PAYLOAD"}
+	supplierOrPayloadException := []string{"SUPPLIER", "ADMIN", "PAYLOADER"}
 
 	r.HandleFunc("/v1/supplier/picking-manifests",
 		auth.RequireRole(supplierOrPayload, log(supplier.HandleManifests(d.Spanner))))
 	r.HandleFunc("/v1/supplier/picking-manifests/orders",
 		auth.RequireRole(supplierOrPayload, log(supplier.HandleManifestOrders(d.Spanner))))
 	r.HandleFunc("/v1/supplier/manifests",
-		auth.RequireRole(supplierRole, log(manifestRootHandler(d.ManifestSvc))))
+		auth.RequireRole(supplierOrPayload, log(manifestRootHandler(d.ManifestSvc))))
 	r.HandleFunc("/v1/supplier/manifests/",
-		auth.RequireRole(supplierRole, log(manifestPathHandler(d.ManifestSvc))))
+		auth.RequireRole(supplierOrPayload, log(manifestPathHandler(d.ManifestSvc))))
 	r.HandleFunc("/v1/payload/manifest-exception",
 		auth.RequireRole(supplierOrPayloadException, log(idempotency.Guard(d.ManifestSvc.HandleManifestException()))))
 	r.HandleFunc("/v1/supplier/manifest-exceptions",
