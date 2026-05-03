@@ -66,7 +66,7 @@ export default function CatalogDashboard() {
     Promise.all([
       fetch(`${API}/v1/supplier/products`, { headers })
         .then(r => { if (!r.ok) throw new Error(`Catalog fetch failed: ${r.status}`); return r.json(); })
-        .then(json => setCatalog(json.data || [])),
+        .then(json => setCatalog(Array.isArray(json) ? json : (json.data || []))),
       fetch(`${API}/v1/supplier/profile`, { headers })
         .then(r => r.ok ? r.json() : null)
         .then(async profile => {

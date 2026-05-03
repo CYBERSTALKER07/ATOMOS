@@ -58,7 +58,7 @@ export default function MyProductsPage() {
     Promise.all([
       fetch(`${API}/v1/supplier/products`, { headers })
         .then(r => { if (!r.ok) throw new Error(`Fetch failed: ${r.status}`); return r.json(); })
-        .then(json => setProducts(json.data || [])),
+        .then(json => setProducts(Array.isArray(json) ? json : (json.data || []))),
       fetch(`${API}/v1/supplier/profile`, { headers })
         .then(r => r.ok ? r.json() : null)
         .then(async profile => {

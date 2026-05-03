@@ -66,6 +66,10 @@ interface CapacityInfo {
   pending_returns_vu: number;
 }
 
+interface ActiveMission {
+  route_id: string;
+}
+
 type FleetTab = 'drivers' | 'vehicles';
 
 const VEHICLE_CLASSES: { value: string; label: string; vu: number }[] = [
@@ -118,22 +122,43 @@ export default function FleetPage() {
 
   async function fetchCapacity() {
     try {
-      const res = await fetch(`${API}/v1/supplier/fleet/capacity`, {
+      const activeRes = await fetch(`${API}/v1/fleet/active`, {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
-      if (res.ok) {
-        const data: CapacityInfo[] = await res.json();
-        const map: Record<string, number> = {};
-        for (const c of data ?? []) {
-          // capacity is keyed by route; surface pending_returns_vu per vehicle via route lookup
-          if (c.pending_returns_vu > 0) map[c.route_id] = c.pending_returns_vu;
-        }
-        setPendingReturns(map);
+
+      if (!activeRes.ok) {
+        return;
       }
+
+      const activeMissions: ActiveMission[] = await activeRes.json();
+      const routeIds = [...new Set((activeMissions ?? []).map((mission) => mission.route_id).filter(Boolean))];
+
+      if (routeIds.length === 0) {
+        setPendingReturns({});
+        return;
+      }
+
+      const capacityResponses = await Promise.all(
+        routeIds.map(async (routeId) => {
+          const res = await fetch(`${API}/v1/fleet/capacity?route_id=${encodeURIComponent(routeId)}`, {
+            headers: { Authorization: `Bearer ${getToken()}` },
+          });
+          if (!res.ok) return null;
+          return (await res.json()) as CapacityInfo;
+        }),
+      );
+
+      const map: Record<string, number> = {};
+      for (const capacity of capacityResponses) {
+        if (capacity && capacity.pending_returns_vu > 0) {
+          map[capacity.route_id] = capacity.pending_returns_vu;
+        }
+      }
+      setPendingReturns(map);
     } catch (e) {
       console.error('Capacity fetch error:', e);
     }
-}
+  }
 
   async function fetchVehicles() {
     try {

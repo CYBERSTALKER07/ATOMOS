@@ -77,6 +77,26 @@ function shortId(id: string): string {
   return id.slice(0, 12) + '…';
 }
 
+function normalizeOrderListResponse(payload: unknown, pageSize: number): { items: Order[]; hasMore: boolean } {
+  if (Array.isArray(payload)) {
+    return {
+      items: payload as Order[],
+      hasMore: payload.length === pageSize,
+    };
+  }
+
+  if (payload && typeof payload === 'object') {
+    const record = payload as { data?: Order[]; has_more?: boolean };
+    const items = Array.isArray(record.data) ? record.data : [];
+    return {
+      items,
+      hasMore: typeof record.has_more === 'boolean' ? record.has_more : items.length === pageSize,
+    };
+  }
+
+  return { items: [], hasMore: false };
+}
+
 /* ─── Main Page ───────────────────────────────────────────── */
 
 export default function OrdersPage() {
@@ -139,8 +159,9 @@ export default function OrdersPage() {
       });
       if (!res.ok) throw new Error('Failed to load orders');
       const json = await res.json();
-      setOrders(json.data || []);
-      setHasMore(Boolean(json.has_more));
+      const normalized = normalizeOrderListResponse(json, pageSize);
+      setOrders(normalized.items);
+      setHasMore(normalized.hasMore);
     } catch (e) {
       toast((e as Error).message, 'error');
     } finally {
@@ -171,8 +192,9 @@ export default function OrdersPage() {
       });
       if (!res.ok) return;
       const json = await res.json();
-      setOrders(json.data || []);
-      setHasMore(Boolean(json.has_more));
+      const normalized = normalizeOrderListResponse(json, pageSize);
+      setOrders(normalized.items);
+      setHasMore(normalized.hasMore);
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
     }
