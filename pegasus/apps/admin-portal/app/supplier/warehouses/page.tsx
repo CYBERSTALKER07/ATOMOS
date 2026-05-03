@@ -130,11 +130,17 @@ export default function WarehousesPage() {
   };
 
   const handleToggleShift = async (wh: WarehouseItem) => {
-    await apiFetch(`/v1/supplier/warehouses/${wh.warehouse_id}`, {
-      method: 'PATCH',
+    const res = await apiFetch(`/v1/supplier/warehouses/${wh.warehouse_id}`, {
+      method: 'PUT',
       body: JSON.stringify({ is_on_shift: !wh.is_on_shift }),
     });
-    fetchWarehouses();
+    if (res.ok) {
+      fetchWarehouses();
+      return;
+    }
+
+    const data = await res.json().catch(() => ({}));
+    alert(data.error || 'Failed to update warehouse shift status');
   };
 
   const handleDeactivate = async (id: string) => {

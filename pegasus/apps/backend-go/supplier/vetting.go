@@ -248,6 +248,10 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	supplierId := claims.ResolveSupplierID()
+	adjustedBy := claims.UserID
+	if adjustedBy == "" {
+		adjustedBy = supplierId
+	}
 
 	var req VetOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -327,6 +331,7 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 			lineIter := txn.Query(ctx, lineStmt)
 			defer lineIter.Stop()
 
+			skuQtyMap := make(map[string]int64)
 			for {
 				lineRow, err := lineIter.Next()
 				if err != nil {
@@ -337,18 +342,25 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 				if err := lineRow.Columns(&skuId, &qty); err != nil {
 					continue
 				}
-				// Return stock to SupplierInventory
+				skuQtyMap[skuId] += qty
+			}
+
+			for skuId, qty := range skuQtyMap {
 				invRow, err := txn.ReadRow(ctx, "SupplierInventory", spanner.Key{skuId}, []string{"QuantityAvailable"})
 				if err != nil {
 					continue
 				}
 				var currentQty int64
-				invRow.Columns(&currentQty)
+				if err := invRow.Columns(&currentQty); err != nil {
+					return err
+				}
+				auditEntry := newReturnRestockAuditEntry(skuId, supplierId, adjustedBy, currentQty, qty)
 				if err := txn.BufferWrite([]*spanner.Mutation{
 					spanner.Update("SupplierInventory",
 						[]string{"ProductId", "QuantityAvailable", "UpdatedAt"},
 						[]interface{}{skuId, currentQty + qty, spanner.CommitTimestamp},
 					),
+					auditEntry.Mutation(),
 				}); err != nil {
 					return err
 				}

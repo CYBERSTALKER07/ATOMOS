@@ -159,6 +159,10 @@ func (s *ReturnsService) HandleResolveReturn(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	supplierId := claims.ResolveSupplierID()
+	adjustedBy := claims.UserID
+	if adjustedBy == "" {
+		adjustedBy = supplierId
+	}
 
 	var req ResolveReturnRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -230,28 +234,22 @@ func (s *ReturnsService) HandleResolveReturn(w http.ResponseWriter, r *http.Requ
 				return fmt.Errorf("inventory record not found for SKU %s", skuId)
 			}
 			var currentQty int64
-			invRow.Columns(&currentQty)
+			if err := invRow.Columns(&currentQty); err != nil {
+				return err
+			}
+			auditEntry := newReturnRestockAuditEntry(skuId, supplierId, adjustedBy, currentQty, qty)
 			if err := txn.BufferWrite([]*spanner.Mutation{
 				spanner.Update("SupplierInventory",
 					[]string{"ProductId", "QuantityAvailable", "UpdatedAt"},
 					[]interface{}{skuId, currentQty + qty, spanner.CommitTimestamp},
 				),
+				auditEntry.Mutation(),
 			}); err != nil {
 				return err
 			}
 		}
 
-		event := map[string]interface{}{
-			"type":         ws.EventReturnResolved,
-			"line_item_id": req.LineItemID,
-			"order_id":     orderId,
-			"sku_id":       skuId,
-			"quantity":     qty,
-			"resolution":   req.Resolution,
-			"supplier_id":  supplierId,
-			"notes":        req.Notes,
-			"timestamp":    time.Now().UnixMilli(),
-		}
+		event := buildReturnResolvedEvent(req.LineItemID, orderId, skuId, qty, req.Resolution, supplierId, req.Notes, time.Now().UTC())
 		return outbox.EmitJSON(txn, "OrderLineItem", req.LineItemID, ws.EventReturnResolved, internalKafka.TopicMain, event, telemetry.TraceIDFromContext(ctx))
 	})
 

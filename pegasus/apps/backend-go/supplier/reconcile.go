@@ -9,6 +9,10 @@ import (
 	"time"
 
 	"backend-go/auth"
+	internalKafka "backend-go/kafka"
+	"backend-go/outbox"
+	"backend-go/telemetry"
+	"backend-go/ws"
 
 	"cloud.google.com/go/spanner"
 	kafka "github.com/segmentio/kafka-go"
@@ -32,11 +36,11 @@ func NewReconcileService(client *spanner.Client, producer *kafka.Writer) *Reconc
 // ── DTOs ────────────────────────────────────────────────────────────────────
 
 type QuarantineLineItem struct {
-	LineItemID   string `json:"line_item_id"`
-	SkuID        string `json:"sku_id"`
-	ProductName  string `json:"product_name"`
-	Quantity     int64  `json:"quantity"`
-	UnitPrice int64  `json:"unit_price"`
+	LineItemID  string `json:"line_item_id"`
+	SkuID       string `json:"sku_id"`
+	ProductName string `json:"product_name"`
+	Quantity    int64  `json:"quantity"`
+	UnitPrice   int64  `json:"unit_price"`
 }
 
 type QuarantineOrder struct {
@@ -74,6 +78,10 @@ func (s *ReconcileService) HandleQuarantineStock(w http.ResponseWriter, r *http.
 		return
 	}
 	supplierID := claims.ResolveSupplierID()
+	adjustedBy := claims.UserID
+	if adjustedBy == "" {
+		adjustedBy = supplierID
+	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
@@ -169,11 +177,11 @@ func (s *ReconcileService) HandleQuarantineStock(w http.ResponseWriter, r *http.
 		}
 
 		targetOrder.Items = append(targetOrder.Items, QuarantineLineItem{
-			LineItemID:   lineItemID,
-			SkuID:        skuID,
-			ProductName:  productName,
-			Quantity:     quantity,
-			UnitPrice: unitPrice,
+			LineItemID:  lineItemID,
+			SkuID:       skuID,
+			ProductName: productName,
+			Quantity:    quantity,
+			UnitPrice:   unitPrice,
 		})
 	}
 
@@ -200,6 +208,10 @@ func (s *ReconcileService) HandleReconcile(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	supplierID := claims.ResolveSupplierID()
+	adjustedBy := claims.UserID
+	if adjustedBy == "" {
+		adjustedBy = supplierID
+	}
 
 	var req ReconcileRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -215,10 +227,7 @@ func (s *ReconcileService) HandleReconcile(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	newStatus := "WRITE_OFF"
-	if req.Action == "RESTOCK" {
-		newStatus = "RETURNED_TO_STOCK"
-	}
+	newStatus, eventResolution, restock := reconcileReturnOutcome(req.Action)
 
 	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
 	defer cancel()
@@ -228,7 +237,7 @@ func (s *ReconcileService) HandleReconcile(w http.ResponseWriter, r *http.Reques
 	_, txnErr := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// Verify supplier ownership and collect records for mutation building
 		verifyStmt := spanner.Statement{
-			SQL: `SELECT li.LineItemId, li.SkuId, li.Quantity, o.SupplierId
+			SQL: `SELECT li.LineItemId, li.OrderId, li.SkuId, li.Quantity, o.SupplierId
 			      FROM OrderLineItems li
 			      JOIN Orders o ON li.OrderId = o.OrderId
 			      WHERE li.LineItemId IN UNNEST(@ids)
@@ -240,6 +249,7 @@ func (s *ReconcileService) HandleReconcile(w http.ResponseWriter, r *http.Reques
 
 		type itemRecord struct {
 			lineItemID string
+			orderID    string
 			skuID      string
 			qty        int64
 		}
@@ -255,7 +265,7 @@ func (s *ReconcileService) HandleReconcile(w http.ResponseWriter, r *http.Reques
 			}
 			var rec itemRecord
 			var ownerSupplier string
-			if err := row.Columns(&rec.lineItemID, &rec.skuID, &rec.qty, &ownerSupplier); err != nil {
+			if err := row.Columns(&rec.lineItemID, &rec.orderID, &rec.skuID, &rec.qty, &ownerSupplier); err != nil {
 				return err
 			}
 			if ownerSupplier != supplierID {
@@ -277,7 +287,7 @@ func (s *ReconcileService) HandleReconcile(w http.ResponseWriter, r *http.Reques
 		}
 
 		// For RESTOCK, restore inventory quantities on the SupplierInventory table
-		if req.Action == "RESTOCK" {
+		if restock {
 			skuQtyMap := make(map[string]int64)
 			for _, rec := range records {
 				skuQtyMap[rec.skuID] += rec.qty
@@ -288,15 +298,27 @@ func (s *ReconcileService) HandleReconcile(w http.ResponseWriter, r *http.Reques
 					return fmt.Errorf("RESTOCK blocked: cannot read inventory for SKU %s: %w", skuID, err)
 				}
 				var current int64
-				invRow.Columns(&current)
+				if err := invRow.Columns(&current); err != nil {
+					return err
+				}
+				auditEntry := newReturnRestockAuditEntry(skuID, supplierID, adjustedBy, current, qty)
 				muts = append(muts, spanner.Update("SupplierInventory",
 					[]string{"ProductId", "QuantityAvailable", "UpdatedAt"},
 					[]interface{}{skuID, current + qty, spanner.CommitTimestamp},
-				))
+				), auditEntry.Mutation())
 			}
 		}
 
-		txn.BufferWrite(muts)
+		if err := txn.BufferWrite(muts); err != nil {
+			return err
+		}
+		resolvedAt := time.Now().UTC()
+		for _, rec := range records {
+			event := buildReturnResolvedEvent(rec.lineItemID, rec.orderID, rec.skuID, rec.qty, eventResolution, supplierID, "", resolvedAt)
+			if err := outbox.EmitJSON(txn, "OrderLineItem", rec.lineItemID, ws.EventReturnResolved, internalKafka.TopicMain, event, telemetry.TraceIDFromContext(ctx)); err != nil {
+				return err
+			}
+		}
 		resolvedCount = int64(len(records))
 		return nil
 	})

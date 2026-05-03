@@ -5,6 +5,7 @@ import { Button } from '@heroui/react';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import Drawer from '@/components/Drawer';
+import { normalizeCollectionResponse } from '../_shared/referenceData';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -79,7 +80,7 @@ export default function OrgMembersPage() {
       const res = await apiFetch('/v1/supplier/warehouses');
       if (res.ok) {
         const data = await res.json();
-        setWarehouses(Array.isArray(data) ? data : data.data || []);
+        setWarehouses(normalizeCollectionResponse<Warehouse>(data, ['warehouses', 'data']));
       }
     } catch {
       // handled
@@ -91,7 +92,7 @@ export default function OrgMembersPage() {
       const res = await apiFetch('/v1/supplier/factories');
       if (res.ok) {
         const data = await res.json();
-        setFactories(Array.isArray(data) ? data : data.data || []);
+        setFactories(normalizeCollectionResponse<Factory>(data, ['data', 'factories']));
       }
     } catch {
       // handled
