@@ -137,7 +137,30 @@
         "notes": [
           "Post-commit emitters live in warehouse/supply_requests.go and warehouse/dispatch_lock.go.",
           "Frames include warehouse_id and timestamp for cross-client filtering.",
-          "Current live event types are SUPPLY_REQUEST_UPDATE and DISPATCH_LOCK_CHANGE."
+          "Current live event types are SUPPLY_REQUEST_UPDATE and DISPATCH_LOCK_CHANGE.",
+          "Portal, iOS, and Android clients auto-reconnect and surface reconnecting/offline live state instead of silently freezing."
+        ]
+      },
+      {
+        "name": "Warehouse dispatch mutation surface",
+        "path": "/v1/warehouse/supply-requests + /v1/warehouse/dispatch-lock*",
+        "owner": "pegasus/apps/backend-go/warehouse/supply_requests.go + pegasus/apps/backend-go/warehouse/dispatch_lock.go",
+        "methods": [
+          "POST /v1/warehouse/supply-requests",
+          "PATCH /v1/warehouse/supply-requests/{id}",
+          "GET /v1/warehouse/dispatch-locks",
+          "POST /v1/warehouse/dispatch-lock",
+          "DELETE /v1/warehouse/dispatch-lock?lock_id={id}"
+        ],
+        "consumers": [
+          "warehouse-portal supply-request detail and dispatch-lock pages",
+          "warehouse-app-ios DispatchView + WarehouseService",
+          "warehouse-app-android DispatchScreen + WarehouseApi"
+        ],
+        "notes": [
+          "Create flow submits demand-forecast-backed warehouse supply requests from dispatch surfaces.",
+          "Warehouse clients can cancel supply requests in warehouse-owned states and acquire or release MANUAL_DISPATCH locks through the same contract.",
+          "Dispatch control parity now spans portal, iOS, and Android warehouse clients."
         ]
     }
   ],

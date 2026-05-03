@@ -210,7 +210,31 @@
         "notes": [
           "BroadcastSupplyRequestUpdate is defined in apps/backend-go/ws/warehouse_hub.go and called from apps/backend-go/warehouse/supply_requests.go after create and transition commits.",
           "BroadcastDispatchLockChange is defined in apps/backend-go/ws/warehouse_hub.go and called from apps/backend-go/warehouse/dispatch_lock.go after acquire and release commits.",
-          "Portal and native warehouse clients subscribe to SUPPLY_REQUEST_UPDATE and DISPATCH_LOCK_CHANGE with warehouse-scoped filtering."
+          "Portal and native warehouse clients subscribe to SUPPLY_REQUEST_UPDATE and DISPATCH_LOCK_CHANGE with warehouse-scoped filtering.",
+          "Portal, iOS, and Android clients auto-reconnect and expose reconnecting/offline live state instead of silently freezing."
+        ]
+      },
+      {
+        "id": "warehouse_dispatch_mutation_surface",
+        "path": "/v1/warehouse/supply-requests + /v1/warehouse/dispatch-lock*",
+        "owner": "pegasus/apps/backend-go/warehouse/supply_requests.go + pegasus/apps/backend-go/warehouse/dispatch_lock.go",
+        "methods": [
+          "POST /v1/warehouse/supply-requests",
+          "PATCH /v1/warehouse/supply-requests/{id}",
+          "GET /v1/warehouse/dispatch-locks",
+          "POST /v1/warehouse/dispatch-lock",
+          "DELETE /v1/warehouse/dispatch-lock?lock_id={id}"
+        ],
+        "consumers": [
+          "pegasus/apps/warehouse-portal/app/supply-requests/[id]/page.tsx",
+          "pegasus/apps/warehouse-portal/app/dispatch-locks/page.tsx",
+          "pegasus/apps/warehouse-app-ios/WarehouseApp/Views/Dispatch/DispatchView.swift",
+          "pegasus/apps/warehouse-app-android/app/src/main/java/com/pegasus/warehouse/ui/screens/dispatch/DispatchScreen.kt"
+        ],
+        "notes": [
+          "Warehouse mobile dispatch surfaces create demand-forecast-backed supply requests and cancel warehouse-owned requests through apps/warehouse-app-ios/WarehouseApp/Services/WarehouseService.swift and apps/warehouse-app-android/app/src/main/java/com/pegasus/warehouse/data/remote/WarehouseApi.kt.",
+          "Warehouse portal and native clients acquire and release MANUAL_DISPATCH locks against the same dispatch-lock contract.",
+          "Dispatch control parity now spans portal, iOS, and Android warehouse clients."
         ]
     }
   ]

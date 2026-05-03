@@ -53,6 +53,10 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 	- Owned by `pegasus/apps/backend-go/ws/warehouse_hub.go` with post-commit emitters in `pegasus/apps/backend-go/warehouse/supply_requests.go` and `pegasus/apps/backend-go/warehouse/dispatch_lock.go`
 	- Emits `SUPPLY_REQUEST_UPDATE` and `DISPATCH_LOCK_CHANGE` frames with `warehouse_id` and `timestamp`
 	- Consumed by `pegasus/apps/warehouse-portal/app/supply-requests/page.tsx`, `pegasus/apps/warehouse-portal/app/supply-requests/[id]/page.tsx`, `pegasus/apps/warehouse-portal/app/dispatch-locks/page.tsx`, `pegasus/apps/warehouse-app-ios/WarehouseApp/Views/Dispatch/DispatchView.swift`, and `pegasus/apps/warehouse-app-android/app/src/main/java/com/pegasus/warehouse/ui/screens/dispatch/DispatchScreen.kt`
+	- Client helpers in portal, iOS, and Android now auto-reconnect and surface reconnecting/offline state instead of requiring a manual screen reopen
+- Warehouse dispatch mutation surface: `/v1/warehouse/supply-requests` and `/v1/warehouse/dispatch-lock*`
+	- Owned by `pegasus/apps/backend-go/warehouse/supply_requests.go` and `pegasus/apps/backend-go/warehouse/dispatch_lock.go`
+	- Mobile and portal dispatch surfaces create demand-forecast-backed supply requests, cancel warehouse-owned requests, acquire `MANUAL_DISPATCH` locks, and release active locks through the same additive contract
 
 ## Android Stack
 

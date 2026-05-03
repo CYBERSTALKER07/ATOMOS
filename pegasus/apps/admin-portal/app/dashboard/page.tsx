@@ -6,14 +6,14 @@ import { usePolling } from "@/lib/usePolling";
 import StatsCard from "@/components/StatsCard";
 
 interface DashboardMetrics {
-  total_pipeline_uzs: number;
+  total_pipeline: number;
   pending_volume: number;
   ai_forecast_volume: number;
 }
 
 export default function SupplierDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics>({
-    total_pipeline_uzs: 0,
+    total_pipeline: 0,
     pending_volume: 0,
     ai_forecast_volume: 0,
   });
@@ -74,7 +74,7 @@ export default function SupplierDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
         <StatsCard
           label="Locked Revenue Pipeline"
-          value={metrics.total_pipeline_uzs.toLocaleString()}
+          value={metrics.total_pipeline.toLocaleString()}
           sub="UZS"
           accent="var(--accent)"
           delay={0}

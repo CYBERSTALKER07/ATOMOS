@@ -116,14 +116,17 @@ export default function GlobalPayntConfigPage() {
 
   const fetchConfigs = useCallback(async () => {
     try {
-      const res = await apiFetch('/v1/supplier/global_paynt-config');
+      const res = await apiFetch('/v1/supplier/payment-config');
       if (res.ok) {
         const data = await res.json();
         setConfigs(data.configs ?? []);
         setCapabilities(data.capabilities ?? []);
+      } else {
+        const data = await res.json().catch(() => ({ error: 'Failed to load payment configuration.' }));
+        setToast({ type: 'error', message: data.error || 'Failed to load payment configuration.' });
       }
     } catch {
-      // Silent — empty state handles it
+      setToast({ type: 'error', message: 'Network error while loading payment configuration.' });
     } finally {
       setIsLoading(false);
     }
@@ -155,7 +158,7 @@ export default function GlobalPayntConfigPage() {
     }
     setIsSaving(true);
     try {
-      const res = await apiFetch('/v1/supplier/global_paynt-config', {
+      const res = await apiFetch('/v1/supplier/payment-config', {
         method: 'POST',
         body: JSON.stringify({
           gateway_name: gateway,
@@ -182,7 +185,7 @@ export default function GlobalPayntConfigPage() {
 
   const handleDeactivate = useCallback(async (configId: string, gatewayName: string) => {
     try {
-      const res = await apiFetch('/v1/supplier/global_paynt-config', {
+      const res = await apiFetch('/v1/supplier/payment-config', {
         method: 'DELETE',
         body: JSON.stringify({ config_id: configId }),
       });
