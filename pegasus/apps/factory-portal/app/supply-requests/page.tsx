@@ -66,7 +66,7 @@ export default function SupplyRequestsPage() {
       const res = await apiFetch('/v1/factory/supply-requests');
       if (res.ok) {
         const data = await res.json();
-        setRequests(data.requests || []);
+        setRequests(Array.isArray(data) ? data : data.requests || data.data || []);
       }
     } catch (e) {
       console.error('[SUPPLY REQUESTS]', e);

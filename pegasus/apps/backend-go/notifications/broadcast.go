@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"backend-go/auth"
 	"backend-go/ws"
@@ -76,13 +75,12 @@ func (bs *BroadcastService) HandleBroadcast(w http.ResponseWriter, r *http.Reque
 
 	// Write Notification records for each recipient
 	recipients := bs.resolveRecipientIDs(r.Context(), req.Role)
-	now := time.Now()
 	var mutations []*spanner.Mutation
 	for _, recipientID := range recipients {
-		notifID := "NOTIF-BCAST-" + now.Format("20060102150405") + "-" + recipientID[:8]
+		notifID := newNotificationID()
 		mutations = append(mutations, spanner.InsertOrUpdate("Notifications",
 			[]string{"NotificationId", "RecipientId", "Type", "Title", "Body", "Channel", "CreatedAt"},
-			[]interface{}{notifID, recipientID, "BROADCAST", req.Title, req.Body, "FCM", now},
+			[]interface{}{notifID, recipientID, "BROADCAST", req.Title, req.Body, "FCM", spanner.CommitTimestamp},
 		))
 	}
 	if len(mutations) > 0 {

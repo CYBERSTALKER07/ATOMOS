@@ -8,6 +8,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -50,23 +51,70 @@ func isValidTransition(from, to string) bool {
 
 // TransferResponse is the JSON shape for an InternalTransferOrder.
 type TransferResponse struct {
-	TransferId    string               `json:"transfer_id"`
-	FactoryId     string               `json:"factory_id"`
-	WarehouseId   string               `json:"warehouse_id"`
-	SupplierId    string               `json:"supplier_id"`
-	State         string               `json:"state"`
-	TotalVolumeVU float64              `json:"total_volume_vu"`
-	ManifestId    string               `json:"manifest_id,omitempty"`
-	Source        string               `json:"source"`
-	CreatedAt     string               `json:"created_at"`
-	Items         []TransferItemDetail `json:"items,omitempty"`
+	ID                     string               `json:"id"`
+	TransferId             string               `json:"transfer_id"`
+	FactoryId              string               `json:"factory_id"`
+	SourceFactoryId        string               `json:"source_factory_id"`
+	WarehouseId            string               `json:"warehouse_id"`
+	DestinationWarehouseId string               `json:"destination_warehouse_id"`
+	WarehouseName          string               `json:"warehouse_name"`
+	SupplierId             string               `json:"supplier_id"`
+	State                  string               `json:"state"`
+	Priority               string               `json:"priority"`
+	TotalItems             int64                `json:"total_items"`
+	TotalVolumeL           float64              `json:"total_volume_l"`
+	TotalVolumeM3          float64              `json:"total_volume_m3"`
+	TotalVolumeVU          float64              `json:"total_volume_vu"`
+	ManifestId             string               `json:"manifest_id,omitempty"`
+	Source                 string               `json:"source"`
+	Notes                  string               `json:"notes"`
+	CreatedAt              string               `json:"created_at"`
+	UpdatedAt              string               `json:"updated_at"`
+	Items                  []TransferItemDetail `json:"items,omitempty"`
 }
 
 type TransferItemDetail struct {
-	ItemId    string  `json:"item_id"`
-	ProductId string  `json:"product_id"`
-	Quantity  int64   `json:"quantity"`
-	VolumeVU  float64 `json:"volume_vu"`
+	ID                string  `json:"id"`
+	ItemId            string  `json:"item_id"`
+	ProductId         string  `json:"product_id"`
+	SkuId             string  `json:"sku_id"`
+	ProductName       string  `json:"product_name"`
+	Quantity          int64   `json:"quantity"`
+	QuantityAvailable int64   `json:"quantity_available"`
+	UnitVolumeL       float64 `json:"unit_volume_l"`
+	VolumeM3          float64 `json:"volume_m3"`
+	VolumeVU          float64 `json:"volume_vu"`
+}
+
+type TransferListResponse struct {
+	Transfers []TransferResponse `json:"transfers"`
+	Total     int                `json:"total"`
+	Data      []TransferResponse `json:"data,omitempty"`
+}
+
+type approveTransferResponse struct {
+	TransferResponse
+	ConvoyCount int      `json:"convoy_count"`
+	ManifestIDs []string `json:"manifest_ids"`
+	VolumeVU    float64  `json:"volume_vu"`
+}
+
+type transferHeader struct {
+	TransferId    string
+	FactoryId     string
+	WarehouseId   string
+	SupplierId    string
+	State         string
+	TotalVolumeVU float64
+	ManifestId    string
+	Source        string
+	CreatedAt     time.Time
+	UpdatedAt     spanner.NullTime
+}
+
+type transferTransitionRequest struct {
+	Action      string `json:"action"`
+	TargetState string `json:"target_state"`
 }
 
 // TransferService holds dependencies for transfer endpoints.
@@ -88,46 +136,29 @@ func (s *TransferService) HandleListTransfers(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	stateFilter := r.URL.Query().Get("state")
-	sql := `SELECT TransferId, FactoryId, WarehouseId, SupplierId, State,
-	               TotalVolumeVU, COALESCE(ManifestId, ''), Source, CreatedAt
-	        FROM InternalTransferOrders WHERE FactoryId = @fid`
-	params := map[string]interface{}{"fid": factoryID}
+	stateFilters := parseTransferStateFilters(r)
+	limit := parseTransferLimit(r.URL.Query().Get("limit"))
 
-	if stateFilter != "" {
-		sql += " AND State = @state"
-		params["state"] = stateFilter
+	headers, err := s.listTransferHeaders(r.Context(), factoryID, stateFilters, limit)
+	if err != nil {
+		log.Printf("[TRANSFERS] list error: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
-	sql += " ORDER BY CreatedAt DESC"
 
-	stmt := spanner.Statement{SQL: sql, Params: params}
-	iter := s.Spanner.Single().Query(r.Context(), stmt)
-	defer iter.Stop()
-
-	transfers := []TransferResponse{}
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.Printf("[TRANSFERS] list error: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		var t TransferResponse
-		var createdAt time.Time
-		if err := row.Columns(&t.TransferId, &t.FactoryId, &t.WarehouseId, &t.SupplierId,
-			&t.State, &t.TotalVolumeVU, &t.ManifestId, &t.Source, &createdAt); err != nil {
-			log.Printf("[TRANSFERS] parse error: %v", err)
-			continue
-		}
-		t.CreatedAt = createdAt.Format(time.RFC3339)
-		transfers = append(transfers, t)
+	transfers, err := s.buildTransferListResponses(r.Context(), headers)
+	if err != nil {
+		log.Printf("[TRANSFERS] list enrich error: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"data": transfers})
+	json.NewEncoder(w).Encode(TransferListResponse{
+		Transfers: transfers,
+		Total:     len(transfers),
+		Data:      transfers,
+	})
 }
 
 // HandleTransferDetail — GET /v1/factory/transfers/{id}
@@ -148,60 +179,416 @@ func (s *TransferService) HandleTransferDetail(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Fetch transfer header
-	stmt := spanner.Statement{
-		SQL: `SELECT TransferId, FactoryId, WarehouseId, SupplierId, State,
-		             TotalVolumeVU, COALESCE(ManifestId, ''), Source, CreatedAt
-		      FROM InternalTransferOrders WHERE TransferId = @tid AND FactoryId = @fid`,
-		Params: map[string]interface{}{"tid": transferID, "fid": factoryID},
-	}
-	iter := s.Spanner.Single().Query(r.Context(), stmt)
-	defer iter.Stop()
-
-	row, err := iter.Next()
+	transfer, err := s.loadTransferResponse(r.Context(), factoryID, transferID)
 	if err != nil {
-		http.Error(w, `{"error":"transfer not found"}`, http.StatusNotFound)
-		return
-	}
-
-	var t TransferResponse
-	var createdAt time.Time
-	if err := row.Columns(&t.TransferId, &t.FactoryId, &t.WarehouseId, &t.SupplierId,
-		&t.State, &t.TotalVolumeVU, &t.ManifestId, &t.Source, &createdAt); err != nil {
-		log.Printf("[TRANSFERS] detail parse error: %v", err)
+		if errors.Is(err, spanner.ErrRowNotFound) {
+			http.Error(w, `{"error":"transfer not found"}`, http.StatusNotFound)
+			return
+		}
+		log.Printf("[TRANSFERS] detail error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	t.CreatedAt = createdAt.Format(time.RFC3339)
 
-	// Fetch items (interleaved)
-	itemStmt := spanner.Statement{
-		SQL:    `SELECT ItemId, ProductId, Quantity, VolumeVU FROM InternalTransferItems WHERE TransferId = @tid`,
-		Params: map[string]interface{}{"tid": transferID},
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(transfer)
+}
+
+func parseTransferStateFilters(r *http.Request) []string {
+	stateFilters := make([]string, 0, 4)
+	if state := strings.TrimSpace(r.URL.Query().Get("state")); state != "" {
+		stateFilters = append(stateFilters, strings.ToUpper(state))
 	}
-	itemIter := s.Spanner.Single().Query(r.Context(), itemStmt)
-	defer itemIter.Stop()
+	if states := strings.TrimSpace(r.URL.Query().Get("states")); states != "" {
+		for _, state := range strings.Split(states, ",") {
+			normalized := strings.ToUpper(strings.TrimSpace(state))
+			if normalized != "" {
+				stateFilters = append(stateFilters, normalized)
+			}
+		}
+	}
+	return stateFilters
+}
 
+func parseTransferLimit(raw string) int {
+	if raw == "" {
+		return 100
+	}
+	limit, err := strconv.Atoi(raw)
+	if err != nil || limit <= 0 {
+		return 100
+	}
+	if limit > 200 {
+		return 200
+	}
+	return limit
+}
+
+func normalizedTransferAction(action string) string {
+	return strings.ToLower(strings.ReplaceAll(strings.TrimSpace(action), "_", "-"))
+}
+
+func actionForTargetState(targetState string) string {
+	switch strings.ToUpper(strings.TrimSpace(targetState)) {
+	case "APPROVED":
+		return "approve"
+	case "LOADING":
+		return "start-loading"
+	case "DISPATCHED":
+		return "dispatch"
+	case "IN_TRANSIT":
+		return "in-transit"
+	case "ARRIVED":
+		return "arrive"
+	case "CANCELLED":
+		return "cancel"
+	default:
+		return ""
+	}
+}
+
+func transferPriority(source string) string {
+	switch source {
+	case "MANUAL_EMERGENCY", "SYSTEM_THRESHOLD":
+		return "HIGH"
+	case "SYSTEM_PREDICTED":
+		return "MEDIUM"
+	default:
+		return "STANDARD"
+	}
+}
+
+func transferUpdatedAt(createdAt time.Time, updatedAt spanner.NullTime) string {
+	if updatedAt.Valid {
+		return updatedAt.Time.Format(time.RFC3339)
+	}
+	return createdAt.Format(time.RFC3339)
+}
+
+func buildTransferResponse(header transferHeader, warehouseName string, totalItems int64, items []TransferItemDetail) TransferResponse {
+	return TransferResponse{
+		ID:                     header.TransferId,
+		TransferId:             header.TransferId,
+		FactoryId:              header.FactoryId,
+		SourceFactoryId:        header.FactoryId,
+		WarehouseId:            header.WarehouseId,
+		DestinationWarehouseId: header.WarehouseId,
+		WarehouseName:          warehouseName,
+		SupplierId:             header.SupplierId,
+		State:                  header.State,
+		Priority:               transferPriority(header.Source),
+		TotalItems:             totalItems,
+		TotalVolumeL:           header.TotalVolumeVU,
+		TotalVolumeM3:          header.TotalVolumeVU,
+		TotalVolumeVU:          header.TotalVolumeVU,
+		ManifestId:             header.ManifestId,
+		Source:                 header.Source,
+		Notes:                  "",
+		CreatedAt:              header.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:              transferUpdatedAt(header.CreatedAt, header.UpdatedAt),
+		Items:                  items,
+	}
+}
+
+func (s *TransferService) listTransferHeaders(ctx context.Context, factoryID string, stateFilters []string, limit int) ([]transferHeader, error) {
+	sql := `SELECT TransferId, FactoryId, WarehouseId, SupplierId, State,
+	               TotalVolumeVU, COALESCE(ManifestId, ''), Source, CreatedAt, UpdatedAt
+	        FROM InternalTransferOrders WHERE FactoryId = @fid`
+	params := map[string]interface{}{"fid": factoryID}
+
+	if len(stateFilters) == 1 {
+		sql += " AND State = @state"
+		params["state"] = stateFilters[0]
+	} else if len(stateFilters) > 1 {
+		sql += " AND State IN UNNEST(@states)"
+		params["states"] = stateFilters
+	}
+
+	sql += fmt.Sprintf(" ORDER BY COALESCE(UpdatedAt, CreatedAt) DESC LIMIT %d", limit)
+	stmt := spanner.Statement{SQL: sql, Params: params}
+	iter := s.Spanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	headers := make([]transferHeader, 0, limit)
 	for {
-		itemRow, err := itemIter.Next()
+		row, err := iter.Next()
 		if err == iterator.Done {
 			break
 		}
 		if err != nil {
-			break
+			return nil, err
 		}
-		var item TransferItemDetail
-		if err := itemRow.Columns(&item.ItemId, &item.ProductId, &item.Quantity, &item.VolumeVU); err != nil {
-			continue
+
+		var header transferHeader
+		if err := row.Columns(
+			&header.TransferId,
+			&header.FactoryId,
+			&header.WarehouseId,
+			&header.SupplierId,
+			&header.State,
+			&header.TotalVolumeVU,
+			&header.ManifestId,
+			&header.Source,
+			&header.CreatedAt,
+			&header.UpdatedAt,
+		); err != nil {
+			return nil, err
 		}
-		t.Items = append(t.Items, item)
-	}
-	if t.Items == nil {
-		t.Items = []TransferItemDetail{}
+		headers = append(headers, header)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(t)
+	return headers, nil
+}
+
+func (s *TransferService) loadTransferHeader(ctx context.Context, factoryID, transferID string) (transferHeader, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT TransferId, FactoryId, WarehouseId, SupplierId, State,
+		             TotalVolumeVU, COALESCE(ManifestId, ''), Source, CreatedAt, UpdatedAt
+		      FROM InternalTransferOrders WHERE TransferId = @tid AND FactoryId = @fid`,
+		Params: map[string]interface{}{"tid": transferID, "fid": factoryID},
+	}
+	iter := s.Spanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err != nil {
+		if err == iterator.Done {
+			return transferHeader{}, spanner.ErrRowNotFound
+		}
+		return transferHeader{}, err
+	}
+
+	var header transferHeader
+	if err := row.Columns(
+		&header.TransferId,
+		&header.FactoryId,
+		&header.WarehouseId,
+		&header.SupplierId,
+		&header.State,
+		&header.TotalVolumeVU,
+		&header.ManifestId,
+		&header.Source,
+		&header.CreatedAt,
+		&header.UpdatedAt,
+	); err != nil {
+		return transferHeader{}, err
+	}
+
+	return header, nil
+}
+
+func (s *TransferService) fetchWarehouseNames(ctx context.Context, warehouseIDs []string) (map[string]string, error) {
+	if len(warehouseIDs) == 0 {
+		return map[string]string{}, nil
+	}
+
+	stmt := spanner.Statement{
+		SQL:    `SELECT WarehouseId, Name FROM Warehouses WHERE WarehouseId IN UNNEST(@warehouse_ids)`,
+		Params: map[string]interface{}{"warehouse_ids": warehouseIDs},
+	}
+	iter := s.Spanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	names := make(map[string]string, len(warehouseIDs))
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var warehouseID, warehouseName string
+		if err := row.Columns(&warehouseID, &warehouseName); err != nil {
+			return nil, err
+		}
+		names[warehouseID] = warehouseName
+	}
+
+	return names, nil
+}
+
+func (s *TransferService) fetchTransferItemTotals(ctx context.Context, transferIDs []string) (map[string]int64, error) {
+	if len(transferIDs) == 0 {
+		return map[string]int64{}, nil
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT TransferId, SUM(Quantity)
+		      FROM InternalTransferItems
+		      WHERE TransferId IN UNNEST(@transfer_ids)
+		      GROUP BY TransferId`,
+		Params: map[string]interface{}{"transfer_ids": transferIDs},
+	}
+	iter := s.Spanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	totals := make(map[string]int64, len(transferIDs))
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var transferID string
+		var totalItems spanner.NullInt64
+		if err := row.Columns(&transferID, &totalItems); err != nil {
+			return nil, err
+		}
+		if totalItems.Valid {
+			totals[transferID] = totalItems.Int64
+		}
+	}
+
+	return totals, nil
+}
+
+func (s *TransferService) buildTransferListResponses(ctx context.Context, headers []transferHeader) ([]TransferResponse, error) {
+	if len(headers) == 0 {
+		return []TransferResponse{}, nil
+	}
+
+	transferIDs := make([]string, 0, len(headers))
+	warehouseIDs := make([]string, 0, len(headers))
+	for _, header := range headers {
+		transferIDs = append(transferIDs, header.TransferId)
+		warehouseIDs = append(warehouseIDs, header.WarehouseId)
+	}
+
+	warehouseNames, err := s.fetchWarehouseNames(ctx, warehouseIDs)
+	if err != nil {
+		return nil, err
+	}
+	totalItems, err := s.fetchTransferItemTotals(ctx, transferIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	transfers := make([]TransferResponse, 0, len(headers))
+	for _, header := range headers {
+		transfers = append(transfers, buildTransferResponse(
+			header,
+			warehouseNames[header.WarehouseId],
+			totalItems[header.TransferId],
+			nil,
+		))
+	}
+
+	return transfers, nil
+}
+
+func (s *TransferService) fetchProductNames(ctx context.Context, productIDs []string) (map[string]string, error) {
+	if len(productIDs) == 0 {
+		return map[string]string{}, nil
+	}
+
+	stmt := spanner.Statement{
+		SQL:    `SELECT ProductId, Name FROM Products WHERE ProductId IN UNNEST(@product_ids)`,
+		Params: map[string]interface{}{"product_ids": productIDs},
+	}
+	iter := s.Spanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	names := make(map[string]string, len(productIDs))
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var productID, productName string
+		if err := row.Columns(&productID, &productName); err != nil {
+			return nil, err
+		}
+		names[productID] = productName
+	}
+
+	return names, nil
+}
+
+func (s *TransferService) loadTransferItems(ctx context.Context, transferID string) ([]TransferItemDetail, int64, error) {
+	itemStmt := spanner.Statement{
+		SQL:    `SELECT ItemId, ProductId, Quantity, VolumeVU FROM InternalTransferItems WHERE TransferId = @tid`,
+		Params: map[string]interface{}{"tid": transferID},
+	}
+	itemIter := s.Spanner.Single().Query(ctx, itemStmt)
+	defer itemIter.Stop()
+
+	type itemRow struct {
+		ItemId    string
+		ProductId string
+		Quantity  int64
+		VolumeVU  float64
+	}
+
+	rows := make([]itemRow, 0, 8)
+	productIDs := make([]string, 0, 8)
+	var totalItems int64
+
+	for {
+		itemRecord, err := itemIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, 0, err
+		}
+
+		var row itemRow
+		if err := itemRecord.Columns(&row.ItemId, &row.ProductId, &row.Quantity, &row.VolumeVU); err != nil {
+			return nil, 0, err
+		}
+
+		totalItems += row.Quantity
+		productIDs = append(productIDs, row.ProductId)
+		rows = append(rows, row)
+	}
+
+	productNames, err := s.fetchProductNames(ctx, productIDs)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	items := make([]TransferItemDetail, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, TransferItemDetail{
+			ID:                row.ItemId,
+			ItemId:            row.ItemId,
+			ProductId:         row.ProductId,
+			SkuId:             row.ProductId,
+			ProductName:       productNames[row.ProductId],
+			Quantity:          row.Quantity,
+			QuantityAvailable: row.Quantity,
+			UnitVolumeL:       row.VolumeVU,
+			VolumeM3:          row.VolumeVU,
+			VolumeVU:          row.VolumeVU,
+		})
+	}
+
+	return items, totalItems, nil
+}
+
+func (s *TransferService) loadTransferResponse(ctx context.Context, factoryID, transferID string) (TransferResponse, error) {
+	header, err := s.loadTransferHeader(ctx, factoryID, transferID)
+	if err != nil {
+		return TransferResponse{}, err
+	}
+
+	warehouseNames, err := s.fetchWarehouseNames(ctx, []string{header.WarehouseId})
+	if err != nil {
+		return TransferResponse{}, err
+	}
+
+	items, totalItems, err := s.loadTransferItems(ctx, transferID)
+	if err != nil {
+		return TransferResponse{}, err
+	}
+
+	return buildTransferResponse(header, warehouseNames[header.WarehouseId], totalItems, items), nil
 }
 
 // HandleTransferTransition handles state machine transitions.
@@ -225,13 +612,34 @@ func (s *TransferService) HandleTransferTransition(w http.ResponseWriter, r *htt
 		return
 	}
 	transferID := parts[0]
-	action := parts[1]
+	action := normalizedTransferAction(parts[1])
+
+	if action == "transition" {
+		var req transferTransitionRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"error":"invalid JSON body"}`, http.StatusBadRequest)
+			return
+		}
+
+		switch {
+		case req.TargetState != "":
+			action = actionForTargetState(req.TargetState)
+		case req.Action != "":
+			action = normalizedTransferAction(req.Action)
+		default:
+			http.Error(w, `{"error":"transition action required"}`, http.StatusBadRequest)
+			return
+		}
+	}
 
 	targetState := ""
 	switch action {
 	case "accept", "approve":
-		// Delegate to dedicated approval handler with convoy manifest generation
-		s.HandleApproveTransfer(w, r)
+		compatRequest := r.Clone(r.Context())
+		compatURL := *r.URL
+		compatURL.Path = fmt.Sprintf("/v1/factory/transfers/%s/approve", transferID)
+		compatRequest.URL = &compatURL
+		s.HandleApproveTransfer(w, compatRequest)
 		return
 	case "start-loading":
 		targetState = "LOADING"
@@ -321,11 +729,15 @@ func (s *TransferService) HandleTransferTransition(w http.ResponseWriter, r *htt
 		)
 	}
 
+	transfer, loadErr := s.loadTransferResponse(r.Context(), factoryID, transferID)
+	if loadErr != nil {
+		log.Printf("[TRANSFERS] transition response load error: %v", loadErr)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"status":      targetState,
-		"transfer_id": transferID,
-	})
+	json.NewEncoder(w).Encode(transfer)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -473,13 +885,19 @@ func (s *TransferService) HandleApproveTransfer(w http.ResponseWriter, r *http.R
 		)
 	}
 
+	transfer, loadErr := s.loadTransferResponse(ctx, factoryID, transferID)
+	if loadErr != nil {
+		log.Printf("[TRANSFERS] approve response load error: %v", loadErr)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"transfer_id":  transferID,
-		"state":        "APPROVED",
-		"convoy_count": convoyCount,
-		"manifest_ids": manifestIDs,
-		"volume_vu":    totalVolumeVU,
+	json.NewEncoder(w).Encode(approveTransferResponse{
+		TransferResponse: transfer,
+		ConvoyCount:      convoyCount,
+		ManifestIDs:      manifestIDs,
+		VolumeVU:         totalVolumeVU,
 	})
 }
 
@@ -634,17 +1052,35 @@ func (s *TransferService) HandleCreateTransfer(w http.ResponseWriter, r *http.Re
 		http.Error(w, `{"error":"invalid JSON body"}`, http.StatusBadRequest)
 		return
 	}
-	if req.FactoryId == "" || req.WarehouseId == "" || len(req.Items) == 0 {
-		http.Error(w, `{"error":"factory_id, warehouse_id, and items are required"}`, http.StatusBadRequest)
+	if req.WarehouseId == "" || len(req.Items) == 0 {
+		http.Error(w, `{"error":"warehouse_id and items are required"}`, http.StatusBadRequest)
 		return
 	}
 	if req.Source == "" {
 		req.Source = "MANUAL_EMERGENCY"
 	}
 
-	// Resolve supplier from factory
+	factoryID := req.FactoryId
+	if claims.Role == "FACTORY" {
+		factoryScope := auth.GetFactoryScope(r.Context())
+		if factoryScope == nil || factoryScope.FactoryID == "" {
+			http.Error(w, `{"error":"factory scope required"}`, http.StatusForbidden)
+			return
+		}
+		if req.FactoryId != "" && req.FactoryId != factoryScope.FactoryID {
+			http.Error(w, `{"error":"factory_id must match authenticated factory scope"}`, http.StatusForbidden)
+			return
+		}
+		factoryID = factoryScope.FactoryID
+	}
+	if factoryID == "" {
+		http.Error(w, `{"error":"factory_id is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Resolve supplier from factory and enforce caller ownership.
 	fRow, err := s.Spanner.Single().ReadRow(r.Context(), "Factories",
-		spanner.Key{req.FactoryId}, []string{"SupplierId"})
+		spanner.Key{factoryID}, []string{"SupplierId"})
 	if err != nil {
 		http.Error(w, `{"error":"factory not found"}`, http.StatusNotFound)
 		return
@@ -654,13 +1090,53 @@ func (s *TransferService) HandleCreateTransfer(w http.ResponseWriter, r *http.Re
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	if claims.Role != "FACTORY" && supplierID != claims.ResolveSupplierID() {
+		http.Error(w, `{"error":"factory does not belong to your organization"}`, http.StatusForbidden)
+		return
+	}
+
+	whRow, err := s.Spanner.Single().ReadRow(r.Context(), "Warehouses",
+		spanner.Key{req.WarehouseId}, []string{"SupplierId"})
+	if err != nil {
+		http.Error(w, `{"error":"warehouse not found"}`, http.StatusNotFound)
+		return
+	}
+	var warehouseSupplierID string
+	if err := whRow.Columns(&warehouseSupplierID); err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if warehouseSupplierID != supplierID {
+		http.Error(w, `{"error":"warehouse does not belong to your organization"}`, http.StatusForbidden)
+		return
+	}
+
+	for _, item := range req.Items {
+		var productSupplierID string
+		prodIter := s.Spanner.Single().Query(r.Context(), spanner.Statement{
+			SQL:    "SELECT SupplierId FROM SupplierProducts WHERE SkuId = @skuId LIMIT 1",
+			Params: map[string]interface{}{"skuId": item.ProductId},
+		})
+		prodRow, prodErr := prodIter.Next()
+		if prodErr == nil {
+			_ = prodRow.Columns(&productSupplierID)
+		}
+		prodIter.Stop()
+
+		if productSupplierID != "" && productSupplierID != supplierID {
+			log.Printf("[TRANSFERS] cross-tenant ProductId injection blocked: product=%s belongs to %s, caller supplier=%s",
+				item.ProductId, productSupplierID, supplierID)
+			http.Error(w, `{"error":"product does not belong to your organization"}`, http.StatusForbidden)
+			return
+		}
+	}
 
 	transferID := uuid.New().String()
 	var totalVolumeVU float64
 	mutations := []*spanner.Mutation{
 		spanner.Insert("InternalTransferOrders",
 			[]string{"TransferId", "FactoryId", "WarehouseId", "SupplierId", "State", "TotalVolumeVU", "Source", "CreatedAt"},
-			[]interface{}{transferID, req.FactoryId, req.WarehouseId, supplierID, "DRAFT", 0.0, req.Source, spanner.CommitTimestamp},
+			[]interface{}{transferID, factoryID, req.WarehouseId, supplierID, "DRAFT", 0.0, req.Source, spanner.CommitTimestamp},
 		),
 	}
 
@@ -676,25 +1152,57 @@ func (s *TransferService) HandleCreateTransfer(w http.ResponseWriter, r *http.Re
 	// Update total volume on the header
 	mutations[0] = spanner.Insert("InternalTransferOrders",
 		[]string{"TransferId", "FactoryId", "WarehouseId", "SupplierId", "State", "TotalVolumeVU", "Source", "CreatedAt"},
-		[]interface{}{transferID, req.FactoryId, req.WarehouseId, supplierID, "DRAFT", totalVolumeVU, req.Source, spanner.CommitTimestamp},
+		[]interface{}{transferID, factoryID, req.WarehouseId, supplierID, "DRAFT", totalVolumeVU, req.Source, spanner.CommitTimestamp},
 	)
 
 	if _, err := s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite(mutations)
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+
+		evt := struct {
+			Event       string  `json:"event"`
+			TransferID  string  `json:"transfer_id"`
+			FactoryID   string  `json:"factory_id"`
+			WarehouseID string  `json:"warehouse_id"`
+			SupplierID  string  `json:"supplier_id"`
+			Source      string  `json:"source"`
+			VolumeVU    float64 `json:"total_volume_vu"`
+			ItemsCount  int     `json:"items_count"`
+		}{
+			Event:       internalKafka.EventReplenishmentTransferCreated,
+			TransferID:  transferID,
+			FactoryID:   factoryID,
+			WarehouseID: req.WarehouseId,
+			SupplierID:  supplierID,
+			Source:      req.Source,
+			VolumeVU:    totalVolumeVU,
+			ItemsCount:  len(req.Items),
+		}
+
+		return outbox.EmitJSON(txn, "InternalTransferOrder", transferID, internalKafka.EventReplenishmentTransferCreated, internalKafka.TopicMain, evt, telemetry.TraceIDFromContext(ctx))
 	}); err != nil {
 		log.Printf("[TRANSFERS] create error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
+	if s.Cache != nil {
+		s.Cache.Invalidate(r.Context(),
+			cache.PrefixFactoryProfile+factoryID,
+			cache.PrefixWarehouseDetail+req.WarehouseId,
+		)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"transfer_id":     transferID,
-		"factory_id":      req.FactoryId,
+		"factory_id":      factoryID,
 		"warehouse_id":    req.WarehouseId,
 		"state":           "DRAFT",
 		"total_volume_vu": totalVolumeVU,
+		"source":          req.Source,
 		"items_count":     len(req.Items),
 	})
 }

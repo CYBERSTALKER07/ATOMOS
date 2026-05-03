@@ -136,6 +136,14 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handleShopClosedResolved(deps, m.Value)
 			case EventSupplyRequestSubmitted:
 				handleSupplyRequestSubmitted(deps, m.Value)
+			case EventSupplyRequestAcknowledged:
+				handleSupplyRequestAcknowledged(deps, m.Value)
+			case EventSupplyRequestReady:
+				handleSupplyRequestReady(deps, m.Value)
+			case EventSupplyRequestFulfilled:
+				handleSupplyRequestFulfilled(deps, m.Value)
+			case EventSupplyRequestCancelled:
+				handleSupplyRequestCancelled(deps, m.Value)
 			case EventPreOrderAutoAccepted:
 				handlePreOrderAutoAccepted(deps, m.Value)
 			case EventPreOrderConfirmed:
@@ -1146,20 +1154,59 @@ func handleOffloadConfirmed(deps NotificationDeps, data []byte) {
 }
 
 func handleSupplyRequestSubmitted(deps NotificationDeps, data []byte) {
+	handleSupplyRequestStateChanged(deps, data, EventSupplyRequestSubmitted)
+}
+
+func handleSupplyRequestAcknowledged(deps NotificationDeps, data []byte) {
+	handleSupplyRequestStateChanged(deps, data, EventSupplyRequestAcknowledged)
+}
+
+func handleSupplyRequestReady(deps NotificationDeps, data []byte) {
+	handleSupplyRequestStateChanged(deps, data, EventSupplyRequestReady)
+}
+
+func handleSupplyRequestFulfilled(deps NotificationDeps, data []byte) {
+	handleSupplyRequestStateChanged(deps, data, EventSupplyRequestFulfilled)
+}
+
+func handleSupplyRequestCancelled(deps NotificationDeps, data []byte) {
+	handleSupplyRequestStateChanged(deps, data, EventSupplyRequestCancelled)
+}
+
+func handleSupplyRequestStateChanged(deps NotificationDeps, data []byte, eventName string) {
 	var event SupplyRequestEvent
 	if err := json.Unmarshal(data, &event); err != nil {
-		slog.Error("notification_dispatcher.unmarshal", "event", "SUPPLY_REQUEST_SUBMITTED", "err", err)
+		slog.Error("notification_dispatcher.unmarshal", "event", eventName, "err", err)
 		return
 	}
 	if event.SupplierID == "" {
 		return
 	}
-	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventSupplyRequestSubmitted,
+
+	title := "Supply Request Updated"
+	titleKey := "notification.supply_request_updated.title"
+	bodyKey := "notification.supply_request_updated.body"
+	switch eventName {
+	case EventSupplyRequestSubmitted:
+		title = "Supply Request Submitted"
+		titleKey = "notification.supply_request_submitted.title"
+		bodyKey = "notification.supply_request_submitted.body"
+	case EventSupplyRequestAcknowledged:
+		title = "Supply Request Acknowledged"
+	case EventSupplyRequestReady:
+		title = "Supply Request Ready"
+	case EventSupplyRequestFulfilled:
+		title = "Supply Request Fulfilled"
+	case EventSupplyRequestCancelled:
+		title = "Supply Request Cancelled"
+	}
+
+	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", eventName,
 		notifications.NewFormattedNotification(
-			"Supply Request Submitted",
+			title,
 			fmt.Sprintf("Supply request %s moved to %s priority %s.", event.RequestID, event.State, event.Priority),
-			"notification.supply_request_submitted.title",
-			"notification.supply_request_submitted.body",
+			titleKey,
+			bodyKey,
 			map[string]string{"request_id": event.RequestID, "state": event.State, "priority": event.Priority},
 		))
 }

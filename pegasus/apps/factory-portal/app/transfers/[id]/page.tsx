@@ -28,9 +28,9 @@ interface TransferDetail {
   items: TransferItem[];
 }
 
-const NEXT_STATE: Record<string, { label: string; action: string }> = {
-  APPROVED: { label: 'Start Loading', action: 'start_loading' },
-  LOADING: { label: 'Mark Dispatched', action: 'dispatch' },
+const NEXT_STATE: Record<string, { label: string; targetState: string }> = {
+  APPROVED: { label: 'Start Loading', targetState: 'LOADING' },
+  LOADING: { label: 'Mark Dispatched', targetState: 'DISPATCHED' },
 };
 
 function stateClass(state: string): string {
@@ -79,10 +79,10 @@ export default function TransferDetailPage() {
     try {
       const res = await apiFetch(`/v1/factory/transfers/${id}/transition`, {
         method: 'POST',
-        body: JSON.stringify({ action: next.action }),
+        body: JSON.stringify({ target_state: next.targetState }),
       });
       if (res.ok) {
-        toast(`Transfer ${next.action.replace('_', ' ')}`, 'success');
+        toast(next.label, 'success');
         await load();
       } else {
         const err = await res.json().catch(() => ({}));

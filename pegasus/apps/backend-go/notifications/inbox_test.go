@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"backend-go/auth"
+
+	"github.com/google/uuid"
 )
 
 func TestNotificationRecipientID_UsesSupplierScopeForSupplier(t *testing.T) {
@@ -69,12 +71,17 @@ func TestShouldUseNotificationInboxCache_NonDefaultQuery(t *testing.T) {
 	}
 }
 
-func TestNotificationIDSuffix_HandlesShortIDs(t *testing.T) {
-	if got := notificationIDSuffix("abc"); got != "abc" {
-		t.Fatalf("notificationIDSuffix(short) = %q, want %q", got, "abc")
-	}
+func TestNewNotificationID_IsUUIDAndUnique(t *testing.T) {
+	first := newNotificationID()
+	second := newNotificationID()
 
-	if got := notificationIDSuffix("1234567890"); got != "12345678" {
-		t.Fatalf("notificationIDSuffix(long) = %q, want %q", got, "12345678")
+	if _, err := uuid.Parse(first); err != nil {
+		t.Fatalf("newNotificationID() returned non-UUID %q: %v", first, err)
+	}
+	if _, err := uuid.Parse(second); err != nil {
+		t.Fatalf("newNotificationID() returned non-UUID %q: %v", second, err)
+	}
+	if first == second {
+		t.Fatalf("expected unique notification ids, got %q twice", first)
 	}
 }

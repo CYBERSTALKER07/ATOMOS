@@ -1671,51 +1671,7 @@ func main() {
 		}
 	})))
 
-	http.HandleFunc("/v1/orders/", auth.RequireRole([]string{"ADMIN", "DRIVER", "RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPatch {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		path := strings.TrimPrefix(r.URL.Path, "/v1/orders/")
-		parts := strings.Split(path, "/")
-		if len(parts) != 2 || parts[1] != "status" {
-			http.Error(w, "Not Found", http.StatusNotFound)
-			return
-		}
-
-		orderId := parts[0]
-
-		var req struct {
-			Status string `json:"status"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
-			return
-		}
-
-		_, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-			stmt := spanner.Statement{
-				SQL: `UPDATE Orders SET State = @state WHERE OrderId = @orderId`,
-				Params: map[string]interface{}{
-					"state":   req.Status,
-					"orderId": orderId,
-				},
-			}
-			_, err := txn.Update(ctx, stmt)
-			return err
-		})
-
-		if err != nil {
-			log.Printf("Failed to patch order %s: %v", orderId, err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(fmt.Sprintf(`{"status": "SUCCESS", "message": "Order %s patched to %s"}`, orderId, req.Status)))
-	})))
+	http.HandleFunc("/v1/orders/", auth.RequireRole([]string{"ADMIN", "DRIVER", "RETAILER"}, loggingMiddleware(order.HandleLegacyOrdersPath(svc))))
 
 	// Legacy /v1/orders/{id}/items and /v1/order-items/ removed — use OrderLineItems via OrderService.
 

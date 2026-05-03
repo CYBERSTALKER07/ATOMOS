@@ -285,13 +285,15 @@ func (r *Relay) publish(ctx context.Context, topic, key, eventType, traceID stri
 }
 
 // batchMarkPublished commits all eventIDs to Spanner in a single transaction.
-// One transaction callback regardless of batch size — replaces the previous per-event Apply loop.
+// PublishedAt uses a plain UTC timestamp because existing deployments define
+// the column as TIMESTAMP, not allow_commit_timestamp=true.
 func (r *Relay) batchMarkPublished(ctx context.Context, eventIDs []string) error {
+	publishedAt := time.Now().UTC()
 	muts := make([]*spanner.Mutation, len(eventIDs))
 	for i, id := range eventIDs {
 		muts[i] = spanner.Update("OutboxEvents",
 			[]string{"EventId", "PublishedAt"},
-			[]interface{}{id, spanner.CommitTimestamp})
+			[]interface{}{id, publishedAt})
 	}
 	_, err := r.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return txn.BufferWrite(muts)

@@ -1,5 +1,5 @@
 {
-  "version": "2026-05-02",
+  "version": "2026-05-03",
   "description": "Canonical machine-readable topology for runtime systems and agent context tooling.",
   "agentContext": {
     "syncSet": [
@@ -143,5 +143,28 @@
     { "from": "copilot_agent", "to": "tech_inventory", "relationship": "reads" },
     { "from": "gemini_agent", "to": "tech_inventory", "relationship": "reads" },
     { "from": "arch_docs", "to": "ast_engine", "relationship": "sync_contract" }
+  ],
+  "runtimeContracts": [
+    {
+      "id": "legacy_order_detail_surface",
+      "path": "/v1/orders/{id}",
+      "owner": "pegasus/apps/backend-go/order/legacy_orders.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/orders/{id}",
+        "PATCH /v1/orders/{id}/status",
+        "PATCH /v1/orders/{id}/state"
+      ],
+      "consumers": [
+        "pegasus/apps/driverappios/driverappios/Services/APIClient.swift#getOrder",
+        "pegasus/apps/driver-app-android/app/src/main/java/com/pegasus/driver/data/remote/DriverApi.kt#getOrder",
+        "pegasus/apps/retailer-app-desktop/app/(dashboard)/orders/page.tsx selected-order fetch"
+      ],
+      "notes": [
+        "GET returns an additive superset order-detail payload with line items.",
+        "PATCH accepts both /status and /state path aliases.",
+        "PATCH accepts either status or state in the request body for legacy compatibility."
+      ]
+    }
   ]
 }

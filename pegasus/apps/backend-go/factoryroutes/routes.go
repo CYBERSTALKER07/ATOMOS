@@ -65,7 +65,9 @@ type Deps struct {
 //	GET   /v1/factory/analytics/overview     — daily activity + lead time
 //	GET   /v1/factory/profile                — factory record
 //	GET   /v1/factory/transfers              — list transfer orders
+//	GET   /v1/factory/transfers/{id}         — transfer detail
 //	POST  /v1/factory/transfers/{id}/{verb}  — transfer state transitions
+//	POST  /v1/factory/transfers/{id}/transition — compatibility transition endpoint
 //	POST  /v1/factory/transfers/create       — create transfer (FACTORY|SUPPLIER|ADMIN)
 //	GET   /v1/factory/manifests              — Loading Bay Kanban
 //	GET   /v1/factory/manifests/{id}         — manifest detail + transfers
@@ -107,11 +109,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	//    Registered before the /v1/factory/transfers/ prefix dispatcher so the
 	//    exact-match wins on chi.
 	r.HandleFunc("/v1/factory/transfers/create",
-		auth.RequireRole(factoryCreate, log(d.TransferSvc.HandleCreateTransfer)))
+		auth.RequireRole(factoryCreate, log(withScope(d.TransferSvc.HandleCreateTransfer))))
 
-	// 4. Transfer state transitions — path-prefix dispatcher.
+	// 4. Transfer detail + state transitions — path-prefix dispatcher.
 	http.HandleFunc("/v1/factory/transfers/",
-		auth.RequireRole(factoryRole, log(withScope(d.TransferSvc.HandleTransferTransition))))
+		auth.RequireRole(factoryRole, log(withScope(transferByID(d.TransferSvc)))))
 
 	// 6. Factory truck manifests (Loading Bay Kanban).
 	r.HandleFunc("/v1/factory/manifests",
@@ -166,6 +168,21 @@ func supplyRequestByID(svc *warehouse.SupplyRequestService) http.HandlerFunc {
 			svc.HandleSupplyRequestDetail(w, r)
 		case http.MethodPatch:
 			svc.HandleSupplyRequestTransition(w, r)
+		default:
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		}
+	}
+}
+
+// transferByID routes GET→detail and POST→transition on
+// /v1/factory/transfers/{id}. Supports both /{id}/{verb} and /{id}/transition.
+func transferByID(svc *factory.TransferService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			svc.HandleTransferDetail(w, r)
+		case http.MethodPost:
+			svc.HandleTransferTransition(w, r)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}

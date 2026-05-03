@@ -122,6 +122,9 @@ fun DashboardScreen(
                     )
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
+                    DesktopOperationsCard()
+                }
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     Text(
                         text = "Operations at a glance",
                         style = MaterialTheme.typography.titleMedium,
@@ -136,6 +139,86 @@ fun DashboardScreen(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun DesktopOperationsCard() {
+    ElevatedCard(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(LabSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Computer,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier
+                            .padding(LabSpacing.sm)
+                            .size(20.dp),
+                    )
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                    Text(
+                        text = "Desktop operations",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = "Use Factory Portal for the workflows that need multi-manifest tables and higher-consequence confirmations.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            DesktopOperationRow(
+                title = "Supply requests",
+                supporting = "Acknowledge, start production, mark ready, and fulfill warehouse demand on desktop.",
+            )
+            DesktopOperationRow(
+                title = "Payload override",
+                supporting = "Rebalance or cancel live loading manifests from the desktop control surface.",
+            )
+        }
+    }
+}
+
+@Composable
+private fun DesktopOperationRow(
+    title: String,
+    supporting: String,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Column(
+            modifier = Modifier.padding(LabSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                text = supporting,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

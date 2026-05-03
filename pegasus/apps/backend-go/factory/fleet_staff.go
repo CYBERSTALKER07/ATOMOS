@@ -221,6 +221,8 @@ func HandleFactoryStaffDetail(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		switch r.Method {
+		case http.MethodGet:
+			getFactoryStaffDetail(w, r, spannerClient, staffID)
 		case http.MethodDelete:
 			deactivateStaff(w, r, spannerClient, staffID)
 		default:
@@ -398,6 +400,36 @@ func createFactoryStaff(w http.ResponseWriter, r *http.Request, spannerClient *s
 		"name":       req.Name,
 		"staff_role": req.StaffRole,
 	})
+}
+
+func getFactoryStaffDetail(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, staffID string) {
+	factoryID, ok := auth.MustFactoryID(w, r.Context())
+	if !ok {
+		return
+	}
+
+	row, err := spannerx.StaleReadRow(r.Context(), spannerClient, "FactoryStaff",
+		spanner.Key{staffID}, []string{"StaffId", "FactoryId", "Name", "Phone", "StaffRole", "IsActive", "CreatedAt"})
+	if err != nil {
+		http.Error(w, `{"error":"staff not found"}`, http.StatusNotFound)
+		return
+	}
+
+	var resp StaffResponse
+	var createdAt time.Time
+	if err := row.Columns(&resp.StaffId, &resp.FactoryId, &resp.Name, &resp.Phone, &resp.StaffRole, &resp.IsActive, &createdAt); err != nil {
+		log.Printf("[FACTORY STAFF] detail parse error: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if resp.FactoryId != factoryID {
+		http.Error(w, `{"error":"staff not found"}`, http.StatusNotFound)
+		return
+	}
+	resp.CreatedAt = createdAt.Format(time.RFC3339)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }
 
 func deactivateStaff(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, staffID string) {

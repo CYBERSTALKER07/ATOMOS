@@ -25,6 +25,7 @@ struct DashboardView: View {
                 } else {
                     VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
                         DashboardHeroCard(stats: stats)
+                        DesktopOperationsCard()
                         Text("Operations at a glance")
                             .font(.headline)
                             .padding(.horizontal)
@@ -84,6 +85,38 @@ private struct DashboardMetric {
     let icon: String
 }
 
+private struct DesktopOperationsCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
+            Label {
+                VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                    Text("Desktop operations")
+                        .font(.headline)
+                    Text("Use Factory Portal for the workflows that need side-by-side manifest tables and higher-consequence confirmations.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            } icon: {
+                Image(systemName: "desktopcomputer")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
+
+            DesktopOperationRow(
+                title: "Supply requests",
+                supporting: "Acknowledge, start production, mark ready, and fulfill warehouse demand on desktop."
+            )
+            DesktopOperationRow(
+                title: "Payload override",
+                supporting: "Rebalance or cancel live loading manifests from the desktop control surface."
+            )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .labCard()
+        .padding(.horizontal)
+    }
+}
+
 private struct KpiCard: View {
     let metric: DashboardMetric
     let index: Int
@@ -107,6 +140,24 @@ private struct KpiCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .labCard()
         .staggeredAppear(index: index)
+    }
+}
+
+private struct DesktopOperationRow: View {
+    let title: String
+    let supporting: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+            Text(title)
+                .font(.subheadline.bold())
+            Text(supporting)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(LabTheme.spacingMD)
+        .background(LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
     }
 }
 

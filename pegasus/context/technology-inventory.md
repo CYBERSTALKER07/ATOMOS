@@ -40,6 +40,12 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 - Firebase integration
 - OpenTelemetry and Prometheus metrics
 
+## Runtime Contract Surfaces
+
+- Legacy order detail compatibility handler: `pegasus/apps/backend-go/order/legacy_orders.go`
+	- Owns `GET /v1/orders/{id}`, `PATCH /v1/orders/{id}/status`, and `PATCH /v1/orders/{id}/state`
+	- Serves an additive superset detail payload for driver iOS, driver Android, and retailer desktop order detail consumers
+
 ## Android Stack
 
 - Jetpack Compose + Material 3

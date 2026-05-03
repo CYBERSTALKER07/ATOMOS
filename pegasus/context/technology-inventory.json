@@ -1,5 +1,5 @@
 {
-  "version": "2026-05-02",
+  "version": "2026-05-03",
   "generatedFrom": {
     "manifests": [
       "pegasus/package.json",
@@ -75,6 +75,29 @@
       "Google Cloud Monitoring"
     ]
   },
+  "runtimeContracts": [
+    {
+      "name": "Legacy order detail compatibility surface",
+      "path": "/v1/orders/{id}",
+      "owner": "pegasus/apps/backend-go/order/legacy_orders.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/orders/{id}",
+        "PATCH /v1/orders/{id}/status",
+        "PATCH /v1/orders/{id}/state"
+      ],
+      "consumers": [
+        "driverappios APIClient.getOrder",
+        "driver-app-android DriverApi.getOrder",
+        "retailer-app-desktop selected order detail fetch"
+      ],
+      "notes": [
+        "GET returns an additive superset order detail payload with line items.",
+        "PATCH accepts both /status and /state path aliases.",
+        "PATCH accepts either status or state request keys for legacy compatibility."
+      ]
+    }
+  ],
   "android": {
     "frameworks": [
       "Jetpack Compose",

@@ -13,6 +13,7 @@ import (
 	"backend-go/cache"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
 )
 
@@ -99,11 +100,8 @@ func InvalidateNotificationInboxCache(ctx context.Context, recipientID string) {
 	cache.Invalidate(ctx, notificationInboxCacheKey(recipientID))
 }
 
-func notificationIDSuffix(recipientID string) string {
-	if len(recipientID) <= 8 {
-		return recipientID
-	}
-	return recipientID[:8]
+func newNotificationID() string {
+	return uuid.NewString()
 }
 
 func notificationRecipientID(claims *auth.PegasusClaims) string {
@@ -329,12 +327,12 @@ func HandleMarkNotificationRead(client *spanner.Client) http.HandlerFunc {
 // Writes a notification record to Spanner. Used by other backend services.
 
 func InsertNotification(ctx context.Context, client *spanner.Client, recipientID, recipientRole, notifType, title, body, payload, channel string) error {
-	nid := "NOTIF-" + time.Now().Format("20060102150405") + "-" + notificationIDSuffix(recipientID)
+	nid := newNotificationID()
 	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return txn.BufferWrite([]*spanner.Mutation{
 			spanner.Insert("Notifications",
 				[]string{"NotificationId", "RecipientId", "RecipientRole", "Type", "Title", "Body", "Payload", "Channel", "CreatedAt"},
-				[]interface{}{nid, recipientID, recipientRole, notifType, title, body, payload, channel, time.Now()},
+				[]interface{}{nid, recipientID, recipientRole, notifType, title, body, payload, channel, spanner.CommitTimestamp},
 			),
 		})
 	})
@@ -349,9 +347,9 @@ func InsertNotification(ctx context.Context, client *spanner.Client, recipientID
 // InsertNotificationWithCorrelation writes a notification with CorrelationId
 // and optional ExpiresAt for lifecycle-managed alerts (e.g. pre-order confirmations).
 func InsertNotificationWithCorrelation(ctx context.Context, client *spanner.Client, recipientID, recipientRole, notifType, title, body, payload, channel, correlationID string, expiresAt *time.Time) error {
-	nid := "NOTIF-" + time.Now().Format("20060102150405") + "-" + notificationIDSuffix(recipientID)
+	nid := newNotificationID()
 	cols := []string{"NotificationId", "RecipientId", "RecipientRole", "Type", "Title", "Body", "Payload", "Channel", "CorrelationId", "CreatedAt"}
-	vals := []interface{}{nid, recipientID, recipientRole, notifType, title, body, payload, channel, correlationID, time.Now()}
+	vals := []interface{}{nid, recipientID, recipientRole, notifType, title, body, payload, channel, correlationID, spanner.CommitTimestamp}
 	if expiresAt != nil {
 		cols = append(cols, "ExpiresAt")
 		vals = append(vals, *expiresAt)
