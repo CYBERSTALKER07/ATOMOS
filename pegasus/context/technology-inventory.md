@@ -45,6 +45,9 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 - Legacy order detail compatibility handler: `pegasus/apps/backend-go/order/legacy_orders.go`
 	- Owns `GET /v1/orders/{id}`, `GET /v1/orders/{id}/events`, `PATCH /v1/orders/{id}/status`, and `PATCH /v1/orders/{id}/state`
 	- Serves an additive superset detail payload for driver iOS, driver Android, and retailer desktop order detail consumers, plus the supplier portal order timeline feed
+- Supplier geo-planning route composition: `pegasus/apps/backend-go/proximityroutes/routes.go`
+	- Owns `GET /v1/supplier/serving-warehouse`, `GET /v1/supplier/geo-report`, `GET /v1/supplier/zone-preview`, `POST /v1/supplier/warehouses/validate-coverage`, and `GET /v1/supplier/warehouse-loads`
+	- Current portal consumers are `app/supplier/geo-report/page.tsx`, `app/supplier/warehouses/CoverageEditor.tsx`, and `components/warehouse/CoverageMap.tsx`; the remaining endpoints stay supplier-facing support surfaces for coverage and load planning
 - Warehouse ops compatibility layer: `pegasus/apps/backend-go/warehouse/inventory.go`, `pegasus/apps/backend-go/warehouse/staff.go`, `pegasus/apps/backend-go/warehouse/vehicles.go`
 	- Keeps `GET/PATCH /v1/warehouse/ops/inventory`, `GET/POST /v1/warehouse/ops/staff`, `GET/POST /v1/warehouse/ops/drivers`, `PATCH /v1/warehouse/ops/drivers/{id}/assign-vehicle`, and `GET/POST/PATCH /v1/warehouse/ops/vehicles` additive across warehouse portal, warehouse iOS, and warehouse Android
 	- Inventory accepts `q` and `search`, accepts `sku_id` or `product_id` on mutation, and returns both `inventory` and `items` with `sku_id`/`product_id` aliases

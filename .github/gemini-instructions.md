@@ -189,8 +189,8 @@ The Go module is `pegasus/apps/backend-go`, wired via repo-root `go.work`. There
 **Domain handler packages (business logic — the shape of the system)**:
 `admin/`, `analytics/`, `auth/`, `cart/`, `countrycfg/`, `crypto/`, `dispatch/`, `errors/`, `fastjson/`, `factory/`, `fleet/`, `hotspot/`, `idempotency/`, `kafka/`, `models/`, `notifications/`, `order/`, `outbox/`, `payment/`, `pkg/`, `proximity/`, `replenishment/`, `routing/`, `schema/`, `secrets/`, `settings/`, `storage/`, `supplier/`, `telemetry/`, `vault/`, `warehouse/`, `workers/`, `ws/`.
 
-**Route-composition packages (thin — URL mounts + middleware stacking only; 15 packages today)**:
-`adminroutes/`, `airoutes/`, `authroutes/`, `catalogroutes/`, `deliveryroutes/`, `driverroutes/`, `factoryroutes/`, `fleetroutes/`, `payloaderroutes/`, `paymentroutes/`, `sync/`, `treasury/`, `userroutes/`, `warehouseroutes/`, `webhookroutes/`. Additional `*routes` packages may appear as remaining `main.go` closures are extracted (retailerroutes, orderroutes, infraroutes, treasuryroutes — names TBD based on extraction scope).
+**Route-composition packages (thin — URL mounts + middleware stacking only; 16 packages today)**:
+`adminroutes/`, `airoutes/`, `authroutes/`, `catalogroutes/`, `deliveryroutes/`, `driverroutes/`, `factoryroutes/`, `fleetroutes/`, `payloaderroutes/`, `paymentroutes/`, `proximityroutes/`, `sync/`, `treasury/`, `userroutes/`, `warehouseroutes/`, `webhookroutes/`. `proximityroutes/` now owns the supplier geo-planning surface (`/v1/supplier/serving-warehouse`, `/geo-report`, `/zone-preview`, `/warehouses/validate-coverage`, `/warehouse-loads`). Additional `*routes` packages may appear as remaining `main.go` closures are extracted (retailerroutes, orderroutes, infraroutes, treasuryroutes — names TBD based on extraction scope).
 
 **Cross-cutting infrastructure packages**: `bootstrap/` (composition root — app.go / helpers.go / middleware.go / new.go), `cache/` (Redis + Pub/Sub invalidation), `cmd/` (one-off binaries — backfill, seed, ops), `tests/` (integration-test harness).
 

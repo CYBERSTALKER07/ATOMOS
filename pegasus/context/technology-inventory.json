@@ -99,8 +99,30 @@
         "PATCH accepts both /status and /state path aliases.",
         "PATCH accepts either status or state request keys for legacy compatibility."
       ]
-      },
-      {
+    },
+    {
+      "name": "Supplier geo-planning surface",
+      "path": "/v1/supplier/{serving-warehouse,geo-report,zone-preview,warehouses/validate-coverage,warehouse-loads}",
+      "owner": "pegasus/apps/backend-go/proximityroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/supplier/serving-warehouse",
+        "GET /v1/supplier/geo-report",
+        "GET /v1/supplier/zone-preview",
+        "POST /v1/supplier/warehouses/validate-coverage",
+        "GET /v1/supplier/warehouse-loads"
+      ],
+      "consumers": [
+        "admin-portal supplier geo report page",
+        "admin-portal supplier warehouse coverage editor",
+        "admin-portal warehouse coverage map"
+      ],
+      "notes": [
+        "Route composition moved out of main.go into proximityroutes without changing the delegated proximity handlers.",
+        "The portal currently consumes geo-report, zone-preview, and validate-coverage; serving-warehouse and warehouse-loads remain supplier-facing backend planning support surfaces."
+      ]
+    },
+    {
         "name": "Warehouse ops compatibility surface",
         "path": "/v1/warehouse/ops/*",
         "owner": "pegasus/apps/backend-go/warehouseroutes/routes.go",
