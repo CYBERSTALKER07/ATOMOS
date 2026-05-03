@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useToken } from '@/lib/auth';
+import { apiFetchNoQueue, useToken } from '@/lib/auth';
 import { isTauri } from '@/lib/bridge';
 import { useTelemetry } from '@/hooks/useTelemetry';
 import type { TelemetryMessage } from '@/hooks/useTelemetry';
@@ -10,8 +10,6 @@ import Icon from './Icon';
 import { Button } from '@heroui/react';
 import { useToast } from './Toast';
 import { buildSupplierShopClosedResolveIdempotencyKey } from '../app/supplier/_shared/idempotency';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface ShopClosedEscalation {
   order_id: string;
@@ -59,16 +57,16 @@ export default function ShopClosedBanner() {
     if (!token) return;
     setResolving(orderId);
     try {
-      const res = await fetch(`${API}/v1/admin/shop-closed/resolve`, {
+      const res = await apiFetchNoQueue('/v1/admin/shop-closed/resolve', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Idempotency-Key': buildSupplierShopClosedResolveIdempotencyKey(attemptId || orderId, action),
         },
         body: JSON.stringify({ order_id: orderId, action }),
       });
-      if (!res.ok) throw new Error('Failed to resolve');
+      const body = await res.json().catch(() => ({} as { error?: string; message?: string }));
+      if (!res.ok) throw new Error(body.error || body.message || 'Failed to resolve');
       setEscalations(prev => prev.filter(e => e.order_id !== orderId));
       toast(`Order ${orderId.slice(0, 12)}… — ${action.replace(/_/g, ' ').toLowerCase()}`, 'success');
     } catch (e) {

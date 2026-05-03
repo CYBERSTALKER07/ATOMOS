@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildSupplierProductCreateIdempotencyKey } from '@/app/supplier/_shared/idempotency';
+import { apiFetch } from '@/lib/auth';
 
 type PlatformCategory = {
   category_id: string;
@@ -50,7 +51,7 @@ function SkeletonBlock({ className = '' }: { className?: string }) {
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5 MB
 
-export default function SupplierProductForm({ supplierToken, onProductCreated }: { supplierToken: string; onProductCreated?: () => void }) {
+export default function SupplierProductForm({ onProductCreated }: { onProductCreated?: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -71,13 +72,11 @@ export default function SupplierProductForm({ supplierToken, onProductCreated }:
     let isMounted = true;
 
     async function loadCatalogConstraints() {
-      try {
-        setCatalogLoading(true);
-        const [profileRes, categoriesRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/supplier/profile`, {
-            headers: { Authorization: `Bearer ${supplierToken}` },
-          }),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/catalog/platform-categories`),
+        try {
+          setCatalogLoading(true);
+          const [profileRes, categoriesRes] = await Promise.all([
+          apiFetch('/v1/supplier/profile'),
+          apiFetch('/v1/catalog/platform-categories'),
         ]);
 
         if (!profileRes.ok) {
@@ -119,7 +118,7 @@ export default function SupplierProductForm({ supplierToken, onProductCreated }:
     return () => {
       isMounted = false;
     };
-  }, [supplierToken]);
+  }, []);
 
   const allowedCategories = useMemo(() => {
     const allowed = new Set(allowedCategoryIds);
@@ -169,9 +168,7 @@ export default function SupplierProductForm({ supplierToken, onProductCreated }:
       setStatus('REQUESTING_UPLOAD_TICKET...');
       const ext = file?.name.split('.').pop() || 'jpg';
 
-      const ticketRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/supplier/products/upload-ticket?ext=${ext}`, {
-        headers: { Authorization: `Bearer ${supplierToken}` },
-      });
+      const ticketRes = await apiFetch(`/v1/supplier/products/upload-ticket?ext=${ext}`);
 
       if (!ticketRes.ok) throw new Error('Ticket rejected by matrix.');
       const { upload_url, image_url } = await ticketRes.json();
@@ -205,19 +202,24 @@ export default function SupplierProductForm({ supplierToken, onProductCreated }:
         payload.height_cm = parseFloat(heightCM);
       }
 
-      const dbRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/supplier/products`, {
+      const dbRes = await apiFetch('/v1/supplier/products', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${supplierToken}`,
           'Idempotency-Key': buildSupplierProductCreateIdempotencyKey(payload),
         },
         body: JSON.stringify(payload),
       });
+      const body = await dbRes.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+
+      if (body.queued) {
+        setStatus('QUEUED_OFFLINE — will replay when back online');
+        onProductCreated?.();
+        return;
+      }
 
       if (!dbRes.ok) {
-        const message = await dbRes.text();
-        throw new Error(message || 'Ledger write fault.');
+        throw new Error(body.error || body.message || 'Ledger write fault.');
       }
 
       setStatus('TRANSACTION_COMPLETE');

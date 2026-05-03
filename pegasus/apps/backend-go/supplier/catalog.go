@@ -3,6 +3,7 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 // HandleGetUploadTicket grants Next.js the right to upload an image
@@ -78,6 +80,30 @@ type SupplierProduct struct {
 	HeightCM        *float64 `json:"height_cm,omitempty"`
 }
 
+var (
+	errSupplierProductNotFound      = errors.New("supplier product not found")
+	errSupplierProductAccessDenied  = errors.New("supplier product access denied")
+	errPhysicalDimensionsIncomplete = errors.New("length_cm, width_cm, and height_cm must be provided together")
+	errPhysicalDimensionNonPositive = errors.New("physical dimensions must be greater than zero")
+)
+
+func validatePhysicalDimensions(lengthCM, widthCM, heightCM *float64, allowPartial bool) error {
+	provided := 0
+	for _, dimension := range []*float64{lengthCM, widthCM, heightCM} {
+		if dimension == nil {
+			continue
+		}
+		provided++
+		if *dimension <= 0 {
+			return errPhysicalDimensionNonPositive
+		}
+	}
+	if !allowPartial && provided > 0 && provided < 3 {
+		return errPhysicalDimensionsIncomplete
+	}
+	return nil
+}
+
 // HandleCreateProduct writes the catalog item to Spanner
 func HandleCreateProduct(client *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -125,6 +151,10 @@ func HandleCreateProduct(client *spanner.Client) http.HandlerFunc {
 			http.Error(w, "image_url must use HTTPS", http.StatusBadRequest)
 			return
 		}
+		if err := validatePhysicalDimensions(p.LengthCM, p.WidthCM, p.HeightCM, false); err != nil {
+			http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			return
+		}
 		if p.UnitsPerBlock <= 0 {
 			p.UnitsPerBlock = 1
 		}
@@ -162,7 +192,7 @@ func HandleCreateProduct(client *spanner.Client) http.HandlerFunc {
 		// Default VU to 1.0 if not provided (safe baseline = 1 standard case)
 		// If physical dimensions are supplied, compute VU precisely: (L×W×H) / 5000 cm³
 		if p.LengthCM != nil && p.WidthCM != nil && p.HeightCM != nil {
-			computed := (*p.LengthCM * *p.WidthCM * *p.HeightCM) / 5000.0
+			computed := CalculateVU(*p.LengthCM, *p.WidthCM, *p.HeightCM)
 			if computed > 0 {
 				p.VolumetricUnit = computed
 			}
@@ -195,6 +225,11 @@ func HandleCreateProduct(client *spanner.Client) http.HandlerFunc {
 			return txn.BufferWrite([]*spanner.Mutation{productMut, inventoryMut})
 		})
 		if err != nil {
+			if spanner.ErrCode(err) == codes.AlreadyExists {
+				http.Error(w, `{"error":"sku_id already exists"}`, http.StatusConflict)
+				return
+			}
+			log.Printf("[SUPPLIER CATALOG] create error for %s/%s: %v", supplierId, p.SkuId, err)
 			http.Error(w, "Ledger write fault", http.StatusInternalServerError)
 			return
 		}

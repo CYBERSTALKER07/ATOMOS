@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@heroui/react';
 import { apiFetch } from '@/lib/auth';
 import Link from 'next/link';
@@ -120,7 +120,6 @@ export default function FleetPage() {
   const [vehHeightCM, setVehHeightCM] = useState('');
 
   const { toast } = useToast();
-  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { fetchDrivers(); fetchVehicles(); fetchCapacity(); }, []);
 

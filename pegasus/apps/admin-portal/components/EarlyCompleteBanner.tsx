@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useToken } from '@/lib/auth';
+import { apiFetchNoQueue, useToken } from '@/lib/auth';
 import { isTauri } from '@/lib/bridge';
 import { useTelemetry } from '@/hooks/useTelemetry';
 import type { TelemetryMessage } from '@/hooks/useTelemetry';
@@ -9,8 +9,6 @@ import Icon from './Icon';
 import { Button } from '@heroui/react';
 import { useToast } from './Toast';
 import { buildSupplierApproveEarlyCompleteIdempotencyKey } from '../app/supplier/_shared/idempotency';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface EarlyCompleteRequest {
   driver_id: string;
@@ -54,16 +52,16 @@ export default function EarlyCompleteBanner() {
     if (!token) return;
     setResolving(driverId);
     try {
-      const res = await fetch(`${API}/v1/admin/route/approve-early-complete`, {
+      const res = await apiFetchNoQueue('/v1/admin/route/approve-early-complete', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Idempotency-Key': buildSupplierApproveEarlyCompleteIdempotencyKey(driverId),
         },
         body: JSON.stringify({ driver_id: driverId }),
       });
-      if (!res.ok) throw new Error('Failed to approve');
+      const body = await res.json().catch(() => ({} as { error?: string; message?: string }));
+      if (!res.ok) throw new Error(body.error || body.message || 'Failed to approve');
       setRequests(prev => prev.filter(r => r.driver_id !== driverId));
       toast(`Early route complete approved for ${driverId.slice(0, 12)}…`, 'success');
     } catch (e) {

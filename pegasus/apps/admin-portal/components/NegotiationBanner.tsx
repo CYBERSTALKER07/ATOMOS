@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useToken } from '@/lib/auth';
+import { apiFetchNoQueue, useToken } from '@/lib/auth';
 import { isTauri } from '@/lib/bridge';
 import { useTelemetry } from '@/hooks/useTelemetry';
 import type { TelemetryMessage } from '@/hooks/useTelemetry';
@@ -9,8 +9,6 @@ import Icon from './Icon';
 import { Button } from '@heroui/react';
 import { useToast } from './Toast';
 import { buildSupplierNegotiationResolveIdempotencyKey } from '../app/supplier/_shared/idempotency';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface NegotiationProposal {
   proposal_id: string;
@@ -56,16 +54,16 @@ export default function NegotiationBanner() {
     if (!token) return;
     setResolving(proposalId);
     try {
-      const res = await fetch(`${API}/v1/admin/negotiate/resolve`, {
+      const res = await apiFetchNoQueue('/v1/admin/negotiate/resolve', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Idempotency-Key': buildSupplierNegotiationResolveIdempotencyKey(proposalId, decision),
         },
         body: JSON.stringify({ proposal_id: proposalId, decision }),
       });
-      if (!res.ok) throw new Error('Failed to resolve negotiation');
+      const body = await res.json().catch(() => ({} as { error?: string; message?: string }));
+      if (!res.ok) throw new Error(body.error || body.message || 'Failed to resolve negotiation');
       setProposals(prev => prev.filter(p => p.proposal_id !== proposalId));
       toast(`Negotiation ${decision === 'APPROVE' ? 'approved' : 'rejected'} — ${proposalId.slice(0, 12)}…`, 'success');
     } catch (e) {

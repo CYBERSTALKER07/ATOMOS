@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo } from 'react';
 import { apiFetch, apiFetchNoQueue, useToken } from '@/lib/auth';
 import { usePolling } from '@/lib/usePolling';
-import StatusBadge from '@/components/StatusBadge';
 import EmptyState from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
 import Icon from '@/components/Icon';
@@ -129,7 +128,7 @@ export default function DispatchPage() {
   const [expandedManifest, setExpandedManifest] = useState<string | null>(null);
 
   // Excluded trucks
-  const [excludedTrucks, setExcludedTrucks] = useState<Set<string>>(new Set());
+  const [excludedTrucks] = useState<Set<string>>(new Set());
 
   // Re-dispatch modal state
   const [reDispatchOrderId, setReDispatchOrderId] = useState<string | null>(null);
@@ -279,7 +278,7 @@ export default function DispatchPage() {
     }
   }, [token, toast]);
 
-  const handleReassign = useCallback(async (newDriverId: string, _newVehicleId: string) => {
+  const handleReassign = useCallback(async (newDriverId: string) => {
     if (!token || !reDispatchOrderId) return;
     setReassigning(true);
     try {
@@ -1210,7 +1209,7 @@ export default function DispatchPage() {
                   return (
                     <button
                       key={rec.driver_id}
-                      onClick={() => !isMaintenance && !reassigning && handleReassign(rec.driver_id, rec.vehicle_id)}
+                      onClick={() => !isMaintenance && !reassigning && handleReassign(rec.driver_id)}
                       disabled={isMaintenance || reassigning}
                       className="w-full flex items-center gap-4 px-6 py-4 border-b text-left hover:opacity-90 transition-opacity disabled:opacity-40"
                       style={{

@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { buildSupplierPricingRuleUpsertIdempotencyKey } from '@/app/supplier/_shared/idempotency';
+import { apiFetch } from '@/lib/auth';
 
-export default function SupplierPromotionForm({ supplierToken, availableSkus }: { supplierToken: string, availableSkus: { id: string; name: string }[] }) {
+export default function SupplierPromotionForm({ availableSkus }: { availableSkus: { id: string; name: string }[] }) {
   const [status, setStatus] = useState<string>('AWAITING_INPUT');
   const [formData, setFormData] = useState({
     sku_id: '',
@@ -23,17 +24,21 @@ export default function SupplierPromotionForm({ supplierToken, availableSkus }: 
       setStatus('LOCKING_PROMOTION...');
       const tierId = crypto.randomUUID();
       const payload = { ...formData, tier_id: tierId };
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/supplier/pricing/rules`, {
+      const res = await apiFetch('/v1/supplier/pricing/rules', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supplierToken}`,
           'Idempotency-Key': buildSupplierPricingRuleUpsertIdempotencyKey(payload),
         },
         body: JSON.stringify(payload)
       });
-      
-      if (!res.ok) throw new Error('Ledger rejected promotion matrix.');
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+
+      if (body.queued) {
+        setStatus('QUEUED_OFFLINE');
+        return;
+      }
+      if (!res.ok) throw new Error(body.error || body.message || 'Ledger rejected promotion matrix.');
       
       setStatus('PROMOTION_LOCKED');
     } catch (error: unknown) {

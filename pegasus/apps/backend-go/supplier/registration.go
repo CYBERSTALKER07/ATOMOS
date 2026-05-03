@@ -291,6 +291,8 @@ func HandleSupplierConfigure(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
+		cache.Invalidate(ctx, cache.SupplierProfile(supplierID))
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":        "CONFIGURED",
@@ -366,6 +368,8 @@ func HandleBillingSetup(spannerClient *spanner.Client) http.HandlerFunc {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
+
+		cache.Invalidate(ctx, cache.SupplierProfile(supplierID))
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{

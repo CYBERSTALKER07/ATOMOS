@@ -3,6 +3,7 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -138,6 +139,10 @@ func createVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 	maxVU, validClass := VehicleClassCapacity[req.VehicleClass]
 	if !validClass {
 		http.Error(w, `{"error":"invalid vehicle_class — must be CLASS_A, CLASS_B, or CLASS_C"}`, http.StatusBadRequest)
+		return
+	}
+	if err := validatePhysicalDimensions(req.LengthCM, req.WidthCM, req.HeightCM, false); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusUnprocessableEntity)
 		return
 	}
 

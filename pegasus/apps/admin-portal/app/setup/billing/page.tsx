@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@heroui/react';
 import { translateProblemDetail } from '@pegasus/i18n';
 import { useLocale } from '@/hooks/useLocale';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+import { apiFetch } from '@/lib/auth';
 
 const gwIcons: Record<string, string> = {
   GLOBAL_PAY: 'M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z',
@@ -85,21 +84,9 @@ export default function BillingSetupPage() {
     setError('');
     setSubmitting(true);
     try {
-      const token = document.cookie
-        .split('; ')
-        .find(c => c.startsWith('pegasus_admin_jwt='))
-        ?.split('=')[1];
-
-      if (!token) {
-        router.push('/auth/login');
-        return;
-      }
-
-      const res = await fetch(`${API}/v1/supplier/billing/setup`, {
+      const res = await apiFetch('/v1/supplier/billing/setup', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${decodeURIComponent(token)}`,
           'Idempotency-Key': buildBillingSetupIdempotencyKey(
             bankName,
             accountNumber,
@@ -114,9 +101,15 @@ export default function BillingSetupPage() {
           payment_gateway: global_payntGateway,
         }),
       });
+      const body = await res.json().catch(() => ({ title: t('supplier_portal.billing_setup.error.setup_failed') }));
+
+      if (body?.queued) {
+        setError('Billing setup queued — reconnect to finish onboarding.');
+        setSubmitting(false);
+        return;
+      }
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ title: t('supplier_portal.billing_setup.error.setup_failed') }));
         const errorMessage = body?.error === 'rate_limit_exceeded'
           ? t('error.rate_limited')
           : body?.message_key || body?.detail || body?.title
@@ -127,9 +120,6 @@ export default function BillingSetupPage() {
         return;
       }
 
-      // Re-fetch profile to get updated token with is_configured=true
-      // For now, refresh the JWT by re-logging in via profile endpoint
-      // The simplest path: redirect to dashboard — the next login will have the updated flag
       router.push('/supplier/dashboard');
     } catch {
       setError(t('supplier_portal.billing_setup.error.network'));

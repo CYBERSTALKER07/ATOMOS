@@ -3,6 +3,7 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,6 +13,8 @@ import (
 	"backend-go/auth"
 
 	"cloud.google.com/go/spanner"
+	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 // HandleUpdateProduct applies partial updates to an existing supplier product.
@@ -38,7 +41,7 @@ func HandleUpdateProduct(client *spanner.Client) http.HandlerFunc {
 			CategoryId      *string  `json:"category_id"`
 			SellByBlock     *bool    `json:"sell_by_block"`
 			UnitsPerBlock   *int64   `json:"units_per_block"`
-			BasePrice    *int64   `json:"base_price"`
+			BasePrice       *int64   `json:"base_price"`
 			MinimumOrderQty *int64   `json:"minimum_order_qty"`
 			StepSize        *int64   `json:"step_size"`
 			IsActive        *bool    `json:"is_active"`
@@ -63,6 +66,10 @@ func HandleUpdateProduct(client *spanner.Client) http.HandlerFunc {
 			http.Error(w, `{"error":"base_price must be greater than zero"}`, http.StatusBadRequest)
 			return
 		}
+		if err := validatePhysicalDimensions(update.LengthCM, update.WidthCM, update.HeightCM, true); err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusUnprocessableEntity)
+			return
+		}
 
 		if update.CategoryId != nil {
 			if err := ensureCanonicalCategoriesSeeded(r.Context(), client); err != nil {
@@ -74,8 +81,12 @@ func HandleUpdateProduct(client *spanner.Client) http.HandlerFunc {
 				return
 			}
 			isConfigured, operatingCategories, err := loadSupplierCategoryAccess(r.Context(), client, supplierId)
-			if err != nil || !isConfigured {
+			if err != nil {
 				http.Error(w, "Supplier profile unavailable", http.StatusInternalServerError)
+				return
+			}
+			if !isConfigured {
+				http.Error(w, `{"error":"supplier must complete onboarding before updating category"}`, http.StatusForbidden)
 				return
 			}
 			if !containsCategoryID(operatingCategories, *update.CategoryId) {
@@ -102,7 +113,10 @@ func HandleUpdateProduct(client *spanner.Client) http.HandlerFunc {
 
 			row, err := iter.Next()
 			if err != nil {
-				return fmt.Errorf("product not found")
+				if errors.Is(err, iterator.Done) {
+					return errSupplierProductNotFound
+				}
+				return fmt.Errorf("read supplier product %s: %w", skuId, err)
 			}
 
 			var ownerSid, name, description, imageUrl, categoryId string
@@ -119,7 +133,7 @@ func HandleUpdateProduct(client *spanner.Client) http.HandlerFunc {
 			}
 
 			if ownerSid != supplierId {
-				return fmt.Errorf("access denied")
+				return errSupplierProductAccessDenied
 			}
 
 			if update.Name != nil {
@@ -164,7 +178,7 @@ func HandleUpdateProduct(client *spanner.Client) http.HandlerFunc {
 
 			// Recompute VU if all dimensions present
 			if lengthCM.Valid && widthCM.Valid && heightCM.Valid {
-				computed := (lengthCM.Float64 * widthCM.Float64 * heightCM.Float64) / 5000.0
+				computed := CalculateVU(lengthCM.Float64, widthCM.Float64, heightCM.Float64)
 				if computed > 0 {
 					volumetricUnit = computed
 				}
@@ -183,7 +197,7 @@ func HandleUpdateProduct(client *spanner.Client) http.HandlerFunc {
 				unitsPerBlock = 1
 			}
 
-			txn.BufferWrite([]*spanner.Mutation{
+			if err := txn.BufferWrite([]*spanner.Mutation{
 				spanner.Update("SupplierProducts",
 					[]string{"SkuId", "SupplierId", "Name", "Description", "ImageUrl", "CategoryId",
 						"SellByBlock", "UnitsPerBlock", "BasePrice", "VolumetricUnit",
@@ -192,15 +206,16 @@ func HandleUpdateProduct(client *spanner.Client) http.HandlerFunc {
 						sellByBlock, unitsPerBlock, basePrice, volumetricUnit,
 						minimumOrderQty, stepSize, isActive, lengthCM, widthCM, heightCM},
 				),
-			})
+			}); err != nil {
+				return fmt.Errorf("buffer supplier product update %s: %w", skuId, err)
+			}
 			return nil
 		})
 
 		if err != nil {
-			errMsg := err.Error()
-			if strings.Contains(errMsg, "not found") {
+			if errors.Is(err, errSupplierProductNotFound) {
 				http.Error(w, `{"error":"product not found"}`, http.StatusNotFound)
-			} else if strings.Contains(errMsg, "access denied") {
+			} else if errors.Is(err, errSupplierProductAccessDenied) {
 				http.Error(w, `{"error":"access denied"}`, http.StatusForbidden)
 			} else {
 				log.Printf("[SUPPLIER CATALOG] update error for %s/%s: %v", supplierId, skuId, err)
@@ -240,30 +255,34 @@ func HandleDeactivateProduct(client *spanner.Client) http.HandlerFunc {
 		_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			row, err := txn.ReadRow(ctx, "SupplierProducts", spanner.Key{skuId}, []string{"SupplierId"})
 			if err != nil {
-				return fmt.Errorf("product not found")
+				if spanner.ErrCode(err) == codes.NotFound {
+					return errSupplierProductNotFound
+				}
+				return fmt.Errorf("read supplier product %s for deactivation: %w", skuId, err)
 			}
 			var ownerSid string
 			if err := row.Columns(&ownerSid); err != nil {
-				return err
+				return fmt.Errorf("parse supplier product %s for deactivation: %w", skuId, err)
 			}
 			if ownerSid != supplierId {
-				return fmt.Errorf("access denied")
+				return errSupplierProductAccessDenied
 			}
 
-			txn.BufferWrite([]*spanner.Mutation{
+			if err := txn.BufferWrite([]*spanner.Mutation{
 				spanner.Update("SupplierProducts",
 					[]string{"SkuId", "SupplierId", "IsActive"},
 					[]interface{}{skuId, supplierId, false},
 				),
-			})
+			}); err != nil {
+				return fmt.Errorf("buffer supplier product deactivation %s: %w", skuId, err)
+			}
 			return nil
 		})
 
 		if err != nil {
-			errMsg := err.Error()
-			if strings.Contains(errMsg, "not found") {
+			if errors.Is(err, errSupplierProductNotFound) {
 				http.Error(w, `{"error":"product not found"}`, http.StatusNotFound)
-			} else if strings.Contains(errMsg, "access denied") {
+			} else if errors.Is(err, errSupplierProductAccessDenied) {
 				http.Error(w, `{"error":"access denied"}`, http.StatusForbidden)
 			} else {
 				log.Printf("[SUPPLIER CATALOG] deactivate error for %s/%s: %v", supplierId, skuId, err)
@@ -290,7 +309,7 @@ func HandleGetProduct(client *spanner.Client) http.HandlerFunc {
 		ImageURL        string   `json:"image_url"`
 		SellByBlock     bool     `json:"sell_by_block"`
 		UnitsPerBlock   int64    `json:"units_per_block"`
-		BasePrice    int64    `json:"base_price"`
+		BasePrice       int64    `json:"base_price"`
 		IsActive        bool     `json:"is_active"`
 		CategoryID      string   `json:"category_id"`
 		CategoryName    string   `json:"category_name"`

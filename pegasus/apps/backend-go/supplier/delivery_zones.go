@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"backend-go/auth"
 
@@ -20,6 +21,11 @@ import (
 var (
 	errDeliveryZoneWarehouseNotFound  = errors.New("warehouse not found")
 	errDeliveryZoneWarehouseForbidden = errors.New("warehouse does not belong to your organization")
+	errDeliveryZoneNotFound           = errors.New("delivery zone not found")
+	errDeliveryZoneInvalidRange       = errors.New("min_distance_km must be less than max_distance_km")
+	errDeliveryZoneMaxDistance        = errors.New("max_distance_km must be greater than zero")
+	errDeliveryZoneNameRequired       = errors.New("zone_name required")
+	errDeliveryZoneNegativeFee        = errors.New("fee_minor must be non-negative")
 )
 
 // DeliveryZone represents a distance-based fee band for a supplier.
@@ -33,6 +39,18 @@ type DeliveryZone struct {
 	FeeMinor      int64   `json:"fee_minor"`
 	Priority      int64   `json:"priority"`
 	IsActive      bool    `json:"is_active"`
+}
+
+type deliveryZoneRecord struct {
+	ZoneId        string
+	SupplierId    string
+	WarehouseId   spanner.NullString
+	ZoneName      string
+	MinDistanceKm float64
+	MaxDistanceKm float64
+	FeeMinor      int64
+	Priority      int64
+	IsActive      bool
 }
 
 // HandleDeliveryZones handles GET (list) and POST (create) for /v1/supplier/delivery-zones.
@@ -126,14 +144,93 @@ type createZoneReq struct {
 	Priority      int64   `json:"priority"`
 }
 
+type updateZoneReq struct {
+	WarehouseId   *string  `json:"warehouse_id,omitempty"`
+	ZoneName      *string  `json:"zone_name,omitempty"`
+	MinDistanceKm *float64 `json:"min_distance_km,omitempty"`
+	MaxDistanceKm *float64 `json:"max_distance_km,omitempty"`
+	FeeMinor      *int64   `json:"fee_minor,omitempty"`
+	Priority      *int64   `json:"priority,omitempty"`
+}
+
+func validateDeliveryZoneWarehouse(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID, warehouseID string) error {
+	if warehouseID == "" {
+		return nil
+	}
+
+	whRow, err := txn.ReadRow(ctx, "Warehouses", spanner.Key{warehouseID}, []string{"SupplierId"})
+	switch {
+	case errors.Is(err, spanner.ErrRowNotFound):
+		return errDeliveryZoneWarehouseNotFound
+	case err != nil:
+		return fmt.Errorf("read warehouse %s: %w", warehouseID, err)
+	}
+
+	var whOwner string
+	if err := whRow.Column(0, &whOwner); err != nil {
+		return fmt.Errorf("read warehouse %s owner: %w", warehouseID, err)
+	}
+	if whOwner != supplierID {
+		return errDeliveryZoneWarehouseForbidden
+	}
+
+	return nil
+}
+
+func readDeliveryZone(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID, zoneID string) (deliveryZoneRecord, error) {
+	row, err := txn.ReadRow(ctx, "DeliveryZones", spanner.Key{supplierID, zoneID}, []string{
+		"ZoneId",
+		"SupplierId",
+		"WarehouseId",
+		"ZoneName",
+		"MinDistanceKm",
+		"MaxDistanceKm",
+		"FeeMinor",
+		"Priority",
+		"IsActive",
+	})
+	if errors.Is(err, spanner.ErrRowNotFound) {
+		return deliveryZoneRecord{}, errDeliveryZoneNotFound
+	}
+	if err != nil {
+		return deliveryZoneRecord{}, fmt.Errorf("read delivery zone %s: %w", zoneID, err)
+	}
+
+	var zone deliveryZoneRecord
+	if err := row.Columns(
+		&zone.ZoneId,
+		&zone.SupplierId,
+		&zone.WarehouseId,
+		&zone.ZoneName,
+		&zone.MinDistanceKm,
+		&zone.MaxDistanceKm,
+		&zone.FeeMinor,
+		&zone.Priority,
+		&zone.IsActive,
+	); err != nil {
+		return deliveryZoneRecord{}, fmt.Errorf("decode delivery zone %s: %w", zoneID, err)
+	}
+
+	return zone, nil
+}
+
 func createDeliveryZone(w http.ResponseWriter, r *http.Request, client *spanner.Client, supplierID string) {
 	var req createZoneReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-	if req.ZoneName == "" || req.MaxDistanceKm <= 0 {
-		http.Error(w, `{"error":"zone_name and max_distance_km required"}`, http.StatusUnprocessableEntity)
+	req.ZoneName = strings.TrimSpace(req.ZoneName)
+	if req.ZoneName == "" {
+		http.Error(w, `{"error":"zone_name required"}`, http.StatusUnprocessableEntity)
+		return
+	}
+	if req.MaxDistanceKm <= 0 {
+		http.Error(w, `{"error":"max_distance_km must be greater than zero"}`, http.StatusUnprocessableEntity)
+		return
+	}
+	if req.FeeMinor < 0 {
+		http.Error(w, `{"error":"fee_minor must be non-negative"}`, http.StatusUnprocessableEntity)
 		return
 	}
 	if req.MinDistanceKm >= req.MaxDistanceKm {
@@ -149,20 +246,8 @@ func createDeliveryZone(w http.ResponseWriter, r *http.Request, client *spanner.
 
 	_, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		if whID.Valid {
-			whRow, lookupErr := txn.ReadRow(ctx, "Warehouses", spanner.Key{req.WarehouseId}, []string{"SupplierId"})
-			switch {
-			case errors.Is(lookupErr, spanner.ErrRowNotFound):
-				return errDeliveryZoneWarehouseNotFound
-			case lookupErr != nil:
-				return fmt.Errorf("read warehouse %s: %w", req.WarehouseId, lookupErr)
-			}
-
-			var whOwner string
-			if err := whRow.Column(0, &whOwner); err != nil {
-				return fmt.Errorf("read warehouse %s owner: %w", req.WarehouseId, err)
-			}
-			if whOwner != supplierID {
-				return errDeliveryZoneWarehouseForbidden
+			if err := validateDeliveryZoneWarehouse(ctx, txn, supplierID, req.WarehouseId); err != nil {
+				return err
 			}
 		}
 
@@ -199,51 +284,103 @@ func createDeliveryZone(w http.ResponseWriter, r *http.Request, client *spanner.
 }
 
 func updateDeliveryZone(w http.ResponseWriter, r *http.Request, client *spanner.Client, supplierID, zoneID string) {
-	var req createZoneReq
+	var req updateZoneReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+	if req.WarehouseId == nil && req.ZoneName == nil && req.MinDistanceKm == nil && req.MaxDistanceKm == nil && req.FeeMinor == nil && req.Priority == nil {
+		http.Error(w, `{"error":"no fields to update"}`, http.StatusBadRequest)
+		return
+	}
 
 	_, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		// Verify ownership
-		row, err := txn.ReadRow(ctx, "DeliveryZones",
-			spanner.Key{supplierID, zoneID},
-			[]string{"SupplierId"})
+		current, err := readDeliveryZone(ctx, txn, supplierID, zoneID)
 		if err != nil {
 			return err
 		}
-		var owner string
-		if err := row.Columns(&owner); err != nil {
-			return err
-		}
-		if owner != supplierID {
-			return fmt.Errorf("FORBIDDEN")
+
+		nextWarehouse := current.WarehouseId
+		nextZoneName := current.ZoneName
+		nextMinDistance := current.MinDistanceKm
+		nextMaxDistance := current.MaxDistanceKm
+		nextFee := current.FeeMinor
+		nextPriority := current.Priority
+
+		if req.WarehouseId != nil {
+			warehouseID := strings.TrimSpace(*req.WarehouseId)
+			if warehouseID == "" {
+				nextWarehouse = spanner.NullString{}
+			} else {
+				if err := validateDeliveryZoneWarehouse(ctx, txn, supplierID, warehouseID); err != nil {
+					return err
+				}
+				nextWarehouse = spanner.NullString{StringVal: warehouseID, Valid: true}
+			}
 		}
 
-		cols := []string{"SupplierId", "ZoneId", "UpdatedAt"}
-		vals := []interface{}{supplierID, zoneID, spanner.CommitTimestamp}
+		if req.ZoneName != nil {
+			nextZoneName = strings.TrimSpace(*req.ZoneName)
+			if nextZoneName == "" {
+				return errDeliveryZoneNameRequired
+			}
+		}
 
-		if req.ZoneName != "" {
-			cols = append(cols, "ZoneName")
-			vals = append(vals, req.ZoneName)
+		if req.MinDistanceKm != nil {
+			nextMinDistance = *req.MinDistanceKm
 		}
-		if req.MaxDistanceKm > 0 {
-			cols = append(cols, "MinDistanceKm", "MaxDistanceKm")
-			vals = append(vals, req.MinDistanceKm, req.MaxDistanceKm)
+		if req.MaxDistanceKm != nil {
+			nextMaxDistance = *req.MaxDistanceKm
 		}
-		if req.FeeMinor > 0 {
-			cols = append(cols, "FeeMinor")
-			vals = append(vals, req.FeeMinor)
+		if nextMaxDistance <= 0 {
+			return errDeliveryZoneMaxDistance
+		}
+		if nextMinDistance >= nextMaxDistance {
+			return errDeliveryZoneInvalidRange
+		}
+
+		if req.FeeMinor != nil {
+			if *req.FeeMinor < 0 {
+				return errDeliveryZoneNegativeFee
+			}
+			nextFee = *req.FeeMinor
+		}
+		if req.Priority != nil {
+			nextPriority = *req.Priority
 		}
 
 		return txn.BufferWrite([]*spanner.Mutation{
-			spanner.Update("DeliveryZones", cols, vals),
+			spanner.Update("DeliveryZones",
+				[]string{"SupplierId", "ZoneId", "WarehouseId", "ZoneName", "MinDistanceKm", "MaxDistanceKm", "FeeMinor", "Priority", "UpdatedAt"},
+				[]interface{}{supplierID, zoneID, nextWarehouse, nextZoneName, nextMinDistance, nextMaxDistance, nextFee, nextPriority, spanner.CommitTimestamp}),
 		})
 	})
 
 	if err != nil {
-		log.Printf("[ZONES] update error: %v", err)
+		switch {
+		case errors.Is(err, errDeliveryZoneNotFound):
+			http.Error(w, `{"error":"delivery zone not found"}`, http.StatusNotFound)
+			return
+		case errors.Is(err, errDeliveryZoneWarehouseNotFound):
+			http.Error(w, `{"error":"warehouse not found"}`, http.StatusNotFound)
+			return
+		case errors.Is(err, errDeliveryZoneWarehouseForbidden):
+			http.Error(w, `{"error":"warehouse does not belong to your organization"}`, http.StatusForbidden)
+			return
+		case errors.Is(err, errDeliveryZoneInvalidRange):
+			http.Error(w, `{"error":"min_distance_km must be less than max_distance_km"}`, http.StatusUnprocessableEntity)
+			return
+		case errors.Is(err, errDeliveryZoneMaxDistance):
+			http.Error(w, `{"error":"max_distance_km must be greater than zero"}`, http.StatusUnprocessableEntity)
+			return
+		case errors.Is(err, errDeliveryZoneNameRequired):
+			http.Error(w, `{"error":"zone_name required"}`, http.StatusUnprocessableEntity)
+			return
+		case errors.Is(err, errDeliveryZoneNegativeFee):
+			http.Error(w, `{"error":"fee_minor must be non-negative"}`, http.StatusUnprocessableEntity)
+			return
+		}
+		log.Printf("[ZONES] update zone %s error: %v", zoneID, err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -254,6 +391,10 @@ func updateDeliveryZone(w http.ResponseWriter, r *http.Request, client *spanner.
 
 func deactivateDeliveryZone(w http.ResponseWriter, r *http.Request, client *spanner.Client, supplierID, zoneID string) {
 	_, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if _, err := readDeliveryZone(ctx, txn, supplierID, zoneID); err != nil {
+			return err
+		}
+
 		return txn.BufferWrite([]*spanner.Mutation{
 			spanner.Update("DeliveryZones",
 				[]string{"SupplierId", "ZoneId", "IsActive", "UpdatedAt"},
@@ -261,7 +402,11 @@ func deactivateDeliveryZone(w http.ResponseWriter, r *http.Request, client *span
 		})
 	})
 	if err != nil {
-		log.Printf("[ZONES] deactivate error: %v", err)
+		if errors.Is(err, errDeliveryZoneNotFound) {
+			http.Error(w, `{"error":"delivery zone not found"}`, http.StatusNotFound)
+			return
+		}
+		log.Printf("[ZONES] deactivate zone %s error: %v", zoneID, err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}

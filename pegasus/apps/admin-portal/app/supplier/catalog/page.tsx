@@ -300,8 +300,8 @@ export default function CatalogDashboard() {
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
-        <SupplierProductForm supplierToken={token} onProductCreated={fetchCatalog} />
-        <SupplierPromotionForm supplierToken={token} availableSkus={availableSkus} />
+        <SupplierProductForm onProductCreated={fetchCatalog} />
+        <SupplierPromotionForm availableSkus={availableSkus} />
       </div>
 
       {/* ─── Product Ledger ─── */}

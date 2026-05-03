@@ -4,10 +4,9 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import MapGL, { Marker, Source, Layer, NavigationControl, type MapRef } from 'react-map-gl/maplibre';
 import type { MapLayerMouseEvent } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { readTokenFromCookie as getToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 
 const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 const TASHKENT = { latitude: 41.2995, longitude: 69.2401 };
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -131,9 +130,7 @@ export default function CoverageMap({
       });
       if (excludeWarehouseId) params.set('exclude_warehouse_id', excludeWarehouseId);
 
-      const res = await fetch(`${API}/v1/supplier/zone-preview?${params}`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
+      const res = await apiFetch(`/v1/supplier/zone-preview?${params}`);
       if (res.ok) {
         const data = await res.json();
         setPreview(data);
