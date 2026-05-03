@@ -25,3 +25,26 @@ func TestLegacyOrderPatchTarget(t *testing.T) {
 		})
 	}
 }
+
+func TestLegacyOrderEventsTarget(t *testing.T) {
+	tests := []struct {
+		name   string
+		path   string
+		wantID string
+		wantOK bool
+	}{
+		{name: "events path", path: "/v1/orders/ord-1/events", wantID: "ord-1", wantOK: true},
+		{name: "detail path", path: "/v1/orders/ord-1", wantID: "", wantOK: false},
+		{name: "status path", path: "/v1/orders/ord-1/status", wantID: "", wantOK: false},
+		{name: "missing id", path: "/v1/orders//events", wantID: "", wantOK: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			gotID, gotOK := legacyOrderEventsTarget(test.path)
+			if gotID != test.wantID || gotOK != test.wantOK {
+				t.Fatalf("legacyOrderEventsTarget(%q) = (%q, %v), want (%q, %v)", test.path, gotID, gotOK, test.wantID, test.wantOK)
+			}
+		})
+	}
+}

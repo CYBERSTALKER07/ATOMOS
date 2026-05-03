@@ -27,6 +27,68 @@ export interface CreateWarehouseStaffResponse {
   pin: string;
 }
 
+export interface WarehouseFleetDriver {
+  driver_id: string;
+  name: string;
+  phone: string;
+  driver_type?: string;
+  vehicle_type?: string;
+  license_plate?: string;
+  is_active: boolean;
+  truck_status: string;
+  created_at: string;
+  vehicle_id?: string;
+  vehicle_class?: string;
+  max_volume_vu?: number;
+}
+
+export interface WarehouseFleetDriverListResponse {
+  drivers: WarehouseFleetDriver[];
+}
+
+export interface WarehouseAssignVehicleRequest {
+  vehicle_id?: string;
+}
+
+export interface WarehouseAssignVehicleResponse {
+  status: 'ASSIGNED' | 'UNASSIGNED' | string;
+  driver_id: string;
+  vehicle_id?: string;
+  previously_assigned_driver?: string;
+}
+
+export interface WarehouseFleetVehicle {
+  vehicle_id: string;
+  vehicle_class: string;
+  class_label: string;
+  label: string;
+  license_plate: string;
+  max_volume_vu: number;
+  capacity_vu: number;
+  is_active: boolean;
+  status: string;
+  created_at: string;
+  assigned_driver_id?: string;
+  assigned_driver_name?: string;
+  driver_truck_status?: string;
+}
+
+export interface WarehouseFleetVehicleListResponse {
+  vehicles: WarehouseFleetVehicle[];
+  total?: number;
+}
+
+export interface WarehouseUpdateVehicleRequest {
+  label?: string;
+  license_plate?: string;
+  is_active?: boolean;
+}
+
+export interface WarehouseVehicleMutationResponse {
+  status: string;
+  vehicle_id: string;
+}
+
 export interface WarehouseSupplyRequest {
   request_id: string;
   warehouse_id: string;

@@ -64,17 +64,31 @@ type legacyOrderDetailResponse struct {
 	Items                []legacyOrderItemResponse `json:"items"`
 }
 
+type legacyOrderEventResponse struct {
+	EventID   string `json:"event_id"`
+	EventType string `json:"event_type"`
+	ActorRole string `json:"actor_role"`
+	ActorID   string `json:"actor_id"`
+	Metadata  string `json:"metadata,omitempty"`
+	CreatedAt string `json:"created_at"`
+}
+
 type legacyOrderScope struct {
 	clause string
 	params map[string]interface{}
 }
 
 // HandleLegacyOrdersPath serves the legacy /v1/orders/* surface used by the
-// driver and retailer clients: GET /v1/orders/{id} and PATCH /v1/orders/{id}/status|state.
+// driver, retailer, and supplier clients: GET /v1/orders/{id},
+// GET /v1/orders/{id}/events, and PATCH /v1/orders/{id}/status|state.
 func HandleLegacyOrdersPath(svc *OrderService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
+			if orderID, ok := legacyOrderEventsTarget(r.URL.Path); ok {
+				svc.handleLegacyOrderEvents(w, r, orderID)
+				return
+			}
 			svc.handleLegacyOrderDetail(w, r)
 		case http.MethodPatch:
 			svc.handleLegacyOrderStatusPatch(w, r)
@@ -119,6 +133,49 @@ func (s *OrderService) handleLegacyOrderDetail(w http.ResponseWriter, r *http.Re
 		"error", err.Error())
 	apperrors.InternalError(w, r, "failed to load order detail")
 	return
+}
+
+func (s *OrderService) handleLegacyOrderEvents(w http.ResponseWriter, r *http.Request, orderID string) {
+	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
+	if claims == nil {
+		apperrors.Unauthorized(w, r, "authentication required")
+		return
+	}
+
+	scope, err := legacyOrderScopeForClaims(claims)
+	if err != nil {
+		apperrors.Forbidden(w, r, "order is outside caller scope")
+		return
+	}
+	if _, _, err := s.fetchLegacyOrderHeader(r.Context(), orderID, scope); err != nil {
+		if errors.Is(err, spanner.ErrRowNotFound) {
+			apperrors.NotFound(w, r, fmt.Sprintf("order %s not found", orderID))
+			return
+		}
+		slog.ErrorContext(r.Context(), "legacy_orders.events_scope_failed",
+			"trace_id", telemetry.TraceIDFromContext(r.Context()),
+			"order_id", orderID,
+			"role", claims.Role,
+			"actor_id", claims.UserID,
+			"error", err.Error())
+		apperrors.InternalError(w, r, "failed to load order events")
+		return
+	}
+
+	events, err := s.fetchLegacyOrderEvents(r.Context(), orderID)
+	if err != nil {
+		slog.ErrorContext(r.Context(), "legacy_orders.events_failed",
+			"trace_id", telemetry.TraceIDFromContext(r.Context()),
+			"order_id", orderID,
+			"role", claims.Role,
+			"actor_id", claims.UserID,
+			"error", err.Error())
+		apperrors.InternalError(w, r, "failed to load order events")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string][]legacyOrderEventResponse{"events": events})
 }
 
 func (s *OrderService) handleLegacyOrderStatusPatch(w http.ResponseWriter, r *http.Request) {
@@ -355,6 +412,51 @@ func (s *OrderService) fetchLegacyOrderItems(ctx context.Context, orderID string
 	}
 }
 
+func (s *OrderService) fetchLegacyOrderEvents(ctx context.Context, orderID string) ([]legacyOrderEventResponse, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT EventId,
+		             EventType,
+		             ActorRole,
+		             ActorId,
+		             COALESCE(Metadata, '') AS Metadata,
+		             CreatedAt
+		      FROM OrderEvents@{FORCE_INDEX=Idx_OrderEvents_ByOrder}
+		      WHERE OrderId = @orderId
+		      ORDER BY CreatedAt DESC
+		      LIMIT 50`,
+		Params: map[string]interface{}{"orderId": orderID},
+	}
+
+	iter := s.Client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	events := make([]legacyOrderEventResponse, 0, 8)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return events, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("query order events %s: %w", orderID, err)
+		}
+
+		var eventID, eventType, actorRole, actorID, metadata string
+		var createdAt time.Time
+		if err := row.Columns(&eventID, &eventType, &actorRole, &actorID, &metadata, &createdAt); err != nil {
+			return nil, fmt.Errorf("scan order event %s: %w", orderID, err)
+		}
+
+		events = append(events, legacyOrderEventResponse{
+			EventID:   eventID,
+			EventType: eventType,
+			ActorRole: actorRole,
+			ActorID:   actorID,
+			Metadata:  metadata,
+			CreatedAt: createdAt.Format(time.RFC3339),
+		})
+	}
+}
+
 func legacyOrderScopeForClaims(claims *auth.PegasusClaims) (legacyOrderScope, error) {
 	if claims == nil {
 		return legacyOrderScope{}, errLegacyOrderForbidden
@@ -395,6 +497,17 @@ func legacyOrderPatchTarget(path string) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+func legacyOrderEventsTarget(path string) (string, bool) {
+	parts := legacyOrderPathParts(path)
+	if len(parts) != 2 || parts[0] == "" {
+		return "", false
+	}
+	if parts[1] != "events" {
+		return "", false
+	}
+	return parts[0], true
 }
 
 func nullableString(value spanner.NullString) *string {

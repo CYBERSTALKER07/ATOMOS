@@ -114,11 +114,17 @@ struct Driver: Decodable, Identifiable {
     let name: String
     let phone: String
     let truckStatus: String
+    let isActive: Bool
+    let vehicleId: String?
+    let vehicleClass: String?
 
     enum CodingKeys: String, CodingKey {
         case driverId = "driver_id"
         case name, phone
         case truckStatus = "truck_status"
+        case isActive = "is_active"
+        case vehicleId = "vehicle_id"
+        case vehicleClass = "vehicle_class"
     }
 
     init(from decoder: Decoder) throws {
@@ -127,6 +133,9 @@ struct Driver: Decodable, Identifiable {
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
         phone = try c.decodeIfPresent(String.self, forKey: .phone) ?? ""
         truckStatus = try c.decodeIfPresent(String.self, forKey: .truckStatus) ?? ""
+        isActive = try c.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
+        vehicleId = try c.decodeIfPresent(String.self, forKey: .vehicleId)
+        vehicleClass = try c.decodeIfPresent(String.self, forKey: .vehicleClass)
     }
 }
 
@@ -149,6 +158,28 @@ struct CreateDriverResponse: Decodable {
     }
 }
 
+struct AssignDriverVehicleRequest: Encodable {
+    let vehicleId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case vehicleId = "vehicle_id"
+    }
+}
+
+struct AssignDriverVehicleResponse: Decodable {
+    let status: String
+    let driverId: String
+    let vehicleId: String?
+    let previouslyAssignedDriver: String?
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case driverId = "driver_id"
+        case vehicleId = "vehicle_id"
+        case previouslyAssignedDriver = "previously_assigned_driver"
+    }
+}
+
 // MARK: - Vehicle
 
 struct Vehicle: Decodable, Identifiable {
@@ -159,6 +190,9 @@ struct Vehicle: Decodable, Identifiable {
     let vehicleClass: String
     let capacityVu: Int
     let status: String
+    let isActive: Bool
+    let assignedDriverId: String?
+    let assignedDriverName: String?
 
     enum CodingKeys: String, CodingKey {
         case vehicleId = "vehicle_id"
@@ -167,6 +201,9 @@ struct Vehicle: Decodable, Identifiable {
         case vehicleClass = "vehicle_class"
         case capacityVu = "capacity_vu"
         case status
+        case isActive = "is_active"
+        case assignedDriverId = "assigned_driver_id"
+        case assignedDriverName = "assigned_driver_name"
     }
 
     init(from decoder: Decoder) throws {
@@ -177,6 +214,9 @@ struct Vehicle: Decodable, Identifiable {
         vehicleClass = try c.decodeIfPresent(String.self, forKey: .vehicleClass) ?? ""
         capacityVu = try c.decodeIfPresent(Int.self, forKey: .capacityVu) ?? 0
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
+        isActive = try c.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
+        assignedDriverId = try c.decodeIfPresent(String.self, forKey: .assignedDriverId)
+        assignedDriverName = try c.decodeIfPresent(String.self, forKey: .assignedDriverName)
     }
 }
 
@@ -193,6 +233,24 @@ struct CreateVehicleRequest: Encodable {
         case label
         case licensePlate = "license_plate"
         case vehicleClass = "vehicle_class"
+    }
+}
+
+struct UpdateVehicleRequest: Encodable {
+    let isActive: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case isActive = "is_active"
+    }
+}
+
+struct VehicleMutationResponse: Decodable {
+    let status: String
+    let vehicleId: String
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case vehicleId = "vehicle_id"
     }
 }
 

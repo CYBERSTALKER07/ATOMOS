@@ -65,6 +65,8 @@ data class Driver(
     val phone: String = "",
     @SerialName("truck_status") val truckStatus: String = "",
     @SerialName("is_active") val isActive: Boolean = true,
+    @SerialName("vehicle_id") val vehicleId: String? = null,
+    @SerialName("vehicle_class") val vehicleClass: String = "",
 )
 
 @Serializable
@@ -84,6 +86,19 @@ data class DriverListResponse(
     val drivers: List<Driver> = emptyList(),
 )
 
+@Serializable
+data class AssignVehicleRequest(
+    @SerialName("vehicle_id") val vehicleId: String? = null,
+)
+
+@Serializable
+data class AssignVehicleResponse(
+    val status: String = "",
+    @SerialName("driver_id") val driverId: String = "",
+    @SerialName("vehicle_id") val vehicleId: String? = null,
+    @SerialName("previously_assigned_driver") val previouslyAssignedDriver: String? = null,
+)
+
 // ── Vehicles ──
 @Serializable
 data class Vehicle(
@@ -93,6 +108,9 @@ data class Vehicle(
     @SerialName("vehicle_class") val vehicleClass: String = "",
     @SerialName("capacity_vu") val capacityVu: Int = 0,
     val status: String = "",
+    @SerialName("is_active") val isActive: Boolean = true,
+    @SerialName("assigned_driver_id") val assignedDriverId: String? = null,
+    @SerialName("assigned_driver_name") val assignedDriverName: String = "",
 )
 
 @Serializable
@@ -105,6 +123,17 @@ data class CreateVehicleRequest(
 @Serializable
 data class VehicleListResponse(
     val vehicles: List<Vehicle> = emptyList(),
+)
+
+@Serializable
+data class UpdateVehicleRequest(
+    @SerialName("is_active") val isActive: Boolean? = null,
+)
+
+@Serializable
+data class VehicleMutationResponse(
+    val status: String = "",
+    @SerialName("vehicle_id") val vehicleId: String = "",
 )
 
 // ── Inventory ──

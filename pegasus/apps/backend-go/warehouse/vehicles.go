@@ -3,6 +3,7 @@ package warehouse
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -33,16 +34,19 @@ type CreateVehicleReq struct {
 }
 
 type VehicleItem struct {
-	VehicleID    string  `json:"vehicle_id"`
-	VehicleClass string  `json:"vehicle_class"`
-	ClassLabel   string  `json:"class_label"`
-	Label        string  `json:"label"`
-	LicensePlate string  `json:"license_plate"`
-	MaxVolumeVU  float64 `json:"max_volume_vu"`
-	CapacityVU   float64 `json:"capacity_vu"`
-	IsActive     bool    `json:"is_active"`
-	Status       string  `json:"status"`
-	CreatedAt    string  `json:"created_at"`
+	VehicleID          string  `json:"vehicle_id"`
+	VehicleClass       string  `json:"vehicle_class"`
+	ClassLabel         string  `json:"class_label"`
+	Label              string  `json:"label"`
+	LicensePlate       string  `json:"license_plate"`
+	MaxVolumeVU        float64 `json:"max_volume_vu"`
+	CapacityVU         float64 `json:"capacity_vu"`
+	IsActive           bool    `json:"is_active"`
+	Status             string  `json:"status"`
+	CreatedAt          string  `json:"created_at"`
+	AssignedDriverID   string  `json:"assigned_driver_id,omitempty"`
+	AssignedDriverName string  `json:"assigned_driver_name,omitempty"`
+	DriverTruckStatus  string  `json:"driver_truck_status,omitempty"`
 }
 
 func vehicleAvailabilityStatus(isActive bool) string {
@@ -58,6 +62,9 @@ func normalizeVehicleItemAliases(item *VehicleItem) {
 	}
 	item.CapacityVU = item.MaxVolumeVU
 	item.Status = vehicleAvailabilityStatus(item.IsActive)
+	if item.IsActive && strings.TrimSpace(item.DriverTruckStatus) != "" {
+		item.Status = strings.TrimSpace(item.DriverTruckStatus)
+	}
 }
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
@@ -111,11 +118,14 @@ func listOpsVehicles(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 	}
 
 	stmt := spanner.Statement{
-		SQL: `SELECT VehicleId, VehicleClass, COALESCE(Label, ''), COALESCE(LicensePlate, ''),
-		             MaxVolumeVU, COALESCE(IsActive, true), CreatedAt
-		      FROM Vehicles
-		      WHERE SupplierId = @sid AND (WarehouseId = @whId OR (HomeNodeType = 'WAREHOUSE' AND HomeNodeId = @whId))
-		      ORDER BY CreatedAt DESC`,
+		SQL: `SELECT v.VehicleId, v.VehicleClass, COALESCE(v.Label, ''), COALESCE(v.LicensePlate, ''),
+		             v.MaxVolumeVU, COALESCE(v.IsActive, true), v.CreatedAt,
+		             COALESCE(d.DriverId, ''), COALESCE(d.Name, ''), COALESCE(d.TruckStatus, '')
+		      FROM Vehicles v
+		      LEFT JOIN Drivers d ON d.VehicleId = v.VehicleId AND d.SupplierId = @sid
+		        AND (d.WarehouseId = @whId OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = @whId))
+		      WHERE v.SupplierId = @sid AND (v.WarehouseId = @whId OR (v.HomeNodeType = 'WAREHOUSE' AND v.HomeNodeId = @whId))
+		      ORDER BY v.CreatedAt DESC`,
 		Params: map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID},
 	}
 
@@ -136,7 +146,7 @@ func listOpsVehicles(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		var v VehicleItem
 		var createdAt time.Time
 		if err := row.Columns(&v.VehicleID, &v.VehicleClass, &v.Label,
-			&v.LicensePlate, &v.MaxVolumeVU, &v.IsActive, &createdAt); err != nil {
+			&v.LicensePlate, &v.MaxVolumeVU, &v.IsActive, &createdAt, &v.AssignedDriverID, &v.AssignedDriverName, &v.DriverTruckStatus); err != nil {
 			log.Printf("[WH VEHICLES] parse: %v", err)
 			continue
 		}
@@ -225,10 +235,13 @@ func createOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Cl
 
 func getOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Client, ops *auth.WarehouseOps, vehicleID string) {
 	stmt := spanner.Statement{
-		SQL: `SELECT VehicleId, VehicleClass, COALESCE(Label, ''), COALESCE(LicensePlate, ''),
-		             MaxVolumeVU, COALESCE(IsActive, true), CreatedAt
-		      FROM Vehicles
-		      WHERE VehicleId = @vid AND SupplierId = @sid AND (WarehouseId = @whId OR (HomeNodeType = 'WAREHOUSE' AND HomeNodeId = @whId))`,
+		SQL: `SELECT v.VehicleId, v.VehicleClass, COALESCE(v.Label, ''), COALESCE(v.LicensePlate, ''),
+		             v.MaxVolumeVU, COALESCE(v.IsActive, true), v.CreatedAt,
+		             COALESCE(d.DriverId, ''), COALESCE(d.Name, ''), COALESCE(d.TruckStatus, '')
+		      FROM Vehicles v
+		      LEFT JOIN Drivers d ON d.VehicleId = v.VehicleId AND d.SupplierId = @sid
+		        AND (d.WarehouseId = @whId OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = @whId))
+		      WHERE v.VehicleId = @vid AND v.SupplierId = @sid AND (v.WarehouseId = @whId OR (v.HomeNodeType = 'WAREHOUSE' AND v.HomeNodeId = @whId))`,
 		Params: map[string]interface{}{"vid": vehicleID, "sid": ops.SupplierID, "whId": ops.WarehouseID},
 	}
 	iter := client.Single().Query(r.Context(), stmt)
@@ -246,7 +259,7 @@ func getOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Clien
 	var v VehicleItem
 	var createdAt time.Time
 	if err := row.Columns(&v.VehicleID, &v.VehicleClass, &v.Label,
-		&v.LicensePlate, &v.MaxVolumeVU, &v.IsActive, &createdAt); err != nil {
+		&v.LicensePlate, &v.MaxVolumeVU, &v.IsActive, &createdAt, &v.AssignedDriverID, &v.AssignedDriverName, &v.DriverTruckStatus); err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -274,33 +287,76 @@ func patchOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		return
 	}
 
-	cols := []string{"VehicleId"}
-	vals := []interface{}{vehicleID}
-	if req.Label != nil {
-		cols = append(cols, "Label")
-		vals = append(vals, *req.Label)
-	}
-	if req.LicensePlate != nil {
-		cols = append(cols, "LicensePlate")
-		vals = append(vals, *req.LicensePlate)
-	}
-	if req.IsActive != nil {
-		cols = append(cols, "IsActive")
-		vals = append(vals, *req.IsActive)
-	}
-	if len(cols) == 1 {
-		http.Error(w, `{"error":"no fields to update"}`, http.StatusBadRequest)
-		return
-	}
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
 
-	m := spanner.Update("Vehicles", cols, vals)
-	if _, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{m})
+	cacheDriverIDs := []string{}
+	if _, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		vehicleState, err := readWarehouseVehicleAssignmentState(ctx, txn, ops, vehicleID)
+		if err != nil {
+			return err
+		}
+
+		vehicleColumns := []string{"VehicleId"}
+		vehicleValues := []interface{}{vehicleID}
+		if req.Label != nil {
+			vehicleColumns = append(vehicleColumns, "Label")
+			vehicleValues = append(vehicleValues, *req.Label)
+		}
+		if req.LicensePlate != nil {
+			vehicleColumns = append(vehicleColumns, "LicensePlate")
+			vehicleValues = append(vehicleValues, *req.LicensePlate)
+		}
+
+		mutations := make([]*spanner.Mutation, 0, 2)
+		assignedDriver, err := readWarehouseDriverByVehicle(ctx, txn, ops, vehicleID, "")
+		if err != nil {
+			return err
+		}
+		if req.IsActive != nil && vehicleState.IsActive != *req.IsActive {
+			if assignedDriver != nil {
+				if ruleErr := warehouseVehicleAssignmentRuleError(*assignedDriver); ruleErr != nil {
+					return ruleErr
+				}
+				driverColumns := []string{"DriverId"}
+				driverValues := []interface{}{assignedDriver.DriverID}
+				if *req.IsActive {
+					if strings.EqualFold(assignedDriver.TruckStatus, warehouseDriverStatusMaintenance) {
+						driverColumns = append(driverColumns, "TruckStatus")
+						driverValues = append(driverValues, warehouseDriverStatusAvailable)
+					}
+				} else {
+					driverColumns = append(driverColumns, "TruckStatus")
+					driverValues = append(driverValues, warehouseDriverStatusMaintenance)
+				}
+				if len(driverColumns) > 1 {
+					mutations = append(mutations, spanner.Update("Drivers", driverColumns, driverValues))
+					cacheDriverIDs = append(cacheDriverIDs, assignedDriver.DriverID)
+				}
+			}
+			vehicleColumns = append(vehicleColumns, "IsActive")
+			vehicleValues = append(vehicleValues, *req.IsActive)
+		}
+
+		if len(vehicleColumns) == 1 && len(mutations) == 0 {
+			return &warehouseFleetMutationRuleError{StatusCode: http.StatusBadRequest, Message: "no fields to update"}
+		}
+		if len(vehicleColumns) > 1 {
+			mutations = append(mutations, spanner.Update("Vehicles", vehicleColumns, vehicleValues))
+		}
+		return txn.BufferWrite(mutations)
 	}); err != nil {
+		var ruleErr *warehouseFleetMutationRuleError
+		if errors.As(err, &ruleErr) {
+			http.Error(w, `{"error":"`+ruleErr.Message+`"}`, ruleErr.StatusCode)
+			return
+		}
 		log.Printf("[WH VEHICLES] patch error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
+	warehouseInvalidateDriverProfiles(ctx, cacheDriverIDs...)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "updated", "vehicle_id": vehicleID})

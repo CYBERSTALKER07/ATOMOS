@@ -50,7 +50,7 @@ final class FleetViewModel: NSObject, CLLocationManagerDelegate {
     // MARK: - Computed
 
     var driverId: String { TokenStore.shared.userId ?? "DRV-UNKNOWN" }
-    var truckId: String { TokenStore.shared.vehicleType ?? "—" }
+    var truckId: String { TokenStore.shared.vehicleId ?? "—" }
     var driverName: String { TokenStore.shared.driverName ?? "Driver" }
     var licensePlate: String { TokenStore.shared.licensePlate ?? "—" }
     var vehicleClass: String { TokenStore.shared.vehicleClass ?? "—" }

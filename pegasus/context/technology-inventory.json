@@ -83,16 +83,19 @@
       "delegatedFrom": "pegasus/apps/backend-go/main.go",
       "methods": [
         "GET /v1/orders/{id}",
+        "GET /v1/orders/{id}/events",
         "PATCH /v1/orders/{id}/status",
         "PATCH /v1/orders/{id}/state"
       ],
       "consumers": [
         "driverappios APIClient.getOrder",
         "driver-app-android DriverApi.getOrder",
-        "retailer-app-desktop selected order detail fetch"
+        "retailer-app-desktop selected order detail fetch",
+        "admin-portal supplier order detail drawer event timeline"
       ],
       "notes": [
         "GET returns an additive superset order detail payload with line items.",
+        "GET /v1/orders/{id}/events returns the scoped OrderEvents audit timeline for the same legacy order surface.",
         "PATCH accepts both /status and /state path aliases.",
         "PATCH accepts either status or state request keys for legacy compatibility."
       ]
@@ -106,12 +109,16 @@
           "PATCH /v1/warehouse/ops/inventory",
           "GET /v1/warehouse/ops/staff",
           "POST /v1/warehouse/ops/staff",
+          "GET /v1/warehouse/ops/drivers",
+          "POST /v1/warehouse/ops/drivers",
+          "PATCH /v1/warehouse/ops/drivers/{id}/assign-vehicle",
           "GET /v1/warehouse/ops/vehicles",
           "POST /v1/warehouse/ops/vehicles",
+          "PATCH /v1/warehouse/ops/vehicles/{id}",
           "GET /v1/warehouse/ops/vehicles/{id}"
         ],
         "consumers": [
-          "warehouse-portal inventory/staff/vehicles pages",
+          "warehouse-portal inventory/staff/drivers/vehicles pages",
           "warehouse-app-ios WarehouseService",
           "warehouse-app-android WarehouseApi"
         ],
@@ -119,7 +126,9 @@
           "Inventory accepts q and search filters and accepts sku_id or product_id for mutations.",
           "Inventory responses expose both inventory and items collections plus sku_id and product_id aliases.",
           "Staff create accepts an optional pin and returns the effective one-time pin for native client parity.",
-          "Vehicle responses expose both max_volume_vu and capacity_vu plus a derived availability status."
+          "Vehicle responses expose both max_volume_vu and capacity_vu plus a derived availability status.",
+          "Warehouse fleet controls now share driver assign/reset and vehicle activate/deactivate mutations across portal, iOS, and Android.",
+          "Warehouse dispatch preview excludes inactive vehicles from the available-driver list so vehicle availability mutations affect dispatch eligibility immediately."
         ]
       },
       {

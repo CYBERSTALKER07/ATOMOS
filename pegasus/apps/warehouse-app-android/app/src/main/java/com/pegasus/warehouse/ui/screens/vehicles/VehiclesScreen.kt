@@ -30,6 +30,7 @@ fun VehiclesScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
+    var mutatingVehicleId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -80,8 +81,38 @@ fun VehiclesScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(v.label.ifBlank { v.licensePlate }, style = MaterialTheme.typography.titleSmall)
                                 Text("${v.vehicleClass} · ${v.capacityVu} VU", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(v.assignedDriverName.ifBlank { "Unassigned" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            AssistChip(onClick = {}, label = { Text(v.status.ifBlank { "AVAILABLE" }, style = MaterialTheme.typography.labelSmall) })
+                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(LabSpacing.sm)) {
+                                AssistChip(onClick = {}, label = { Text(v.status.ifBlank { "AVAILABLE" }, style = MaterialTheme.typography.labelSmall) })
+                                OutlinedButton(
+                                    onClick = {
+                                        mutatingVehicleId = v.vehicleId
+                                        scope.launch {
+                                            try {
+                                                val resp = api.updateVehicle(v.vehicleId, UpdateVehicleRequest(isActive = !v.isActive))
+                                                if (resp.isSuccessful) {
+                                                    load()
+                                                    snackbarHostState.showSnackbar("Vehicle availability updated")
+                                                } else {
+                                                    error = "Failed (${resp.code()})"
+                                                }
+                                            } catch (e: Exception) {
+                                                error = e.message ?: "Network error"
+                                            } finally {
+                                                mutatingVehicleId = null
+                                            }
+                                        }
+                                    },
+                                    enabled = mutatingVehicleId != v.vehicleId,
+                                ) {
+                                    if (mutatingVehicleId == v.vehicleId) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    } else {
+                                        Text(if (v.isActive) "Unavailable" else "Restore")
+                                    }
+                                }
+                            }
                         }
                     }
                 }

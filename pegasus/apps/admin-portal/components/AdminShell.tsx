@@ -38,6 +38,7 @@ const NAV: NavSection[] = [
   {
     label: 'Supplier',
     items: [
+      { href: '/supplier/dashboard', icon: 'overview', label: 'Demand Dashboard' },
       { href: '/supplier/analytics', icon: 'analytics', label: 'Analytics' },
       { href: '/supplier/pricing', icon: 'pricing', label: 'Pricing Engine', factoryHidden: true },
       { href: '/supplier/pricing/retailer-overrides', icon: 'pricing', label: 'Retailer Pricing', factoryHidden: true },
@@ -48,6 +49,8 @@ const NAV: NavSection[] = [
       { href: '/supplier/orders', icon: 'orders', label: 'Orders' },
       { href: '/supplier/dispatch', icon: 'dispatch', label: 'Dispatch', factoryHidden: true },
       { href: '/supplier/manifests', icon: 'manifests', label: 'Manifests', factoryHidden: true },
+      { href: '/supplier/manifest-exceptions', icon: 'dlq', label: 'Manifest Exceptions', factoryHidden: true },
+      { href: '/supplier/exceptions/shop-closed', icon: 'dlq', label: 'Shop Closed', factoryHidden: true },
       { href: '/supplier/delivery-zones', icon: 'fleet', label: 'Delivery Zones', factoryHidden: true },
       { href: '/supplier/returns', icon: 'returns', label: 'Returns', factoryHidden: true },
       { href: '/supplier/depot-reconciliation', icon: 'warehouse', label: 'Depot', factoryHidden: true },
@@ -55,6 +58,7 @@ const NAV: NavSection[] = [
       { href: '/supplier/fleet', icon: 'fleet', label: 'Fleet', factoryHidden: true },
       { href: '/supplier/warehouses', icon: 'warehouse', label: 'Warehouses', globalOnly: true },
       { href: '/supplier/factories', icon: 'factory', label: 'Factories', globalOnly: true },
+      { href: '/supplier/geo-report', icon: 'global', label: 'Coverage Map', globalOnly: true },
       { href: '/supplier/supply-lanes', icon: 'fleet', label: 'Supply Lanes', globalOnly: true },
       { href: '/supplier/staff', icon: 'warehouse', label: 'Warehouse Staff', factoryHidden: true },
       { href: '/supplier/org', icon: 'supplier', label: 'Org Members', globalOnly: true },

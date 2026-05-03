@@ -152,16 +152,19 @@
       "delegatedFrom": "pegasus/apps/backend-go/main.go",
       "methods": [
         "GET /v1/orders/{id}",
+        "GET /v1/orders/{id}/events",
         "PATCH /v1/orders/{id}/status",
         "PATCH /v1/orders/{id}/state"
       ],
       "consumers": [
         "pegasus/apps/driverappios/driverappios/Services/APIClient.swift#getOrder",
         "pegasus/apps/driver-app-android/app/src/main/java/com/pegasus/driver/data/remote/DriverApi.kt#getOrder",
-        "pegasus/apps/retailer-app-desktop/app/(dashboard)/orders/page.tsx selected-order fetch"
+        "pegasus/apps/retailer-app-desktop/app/(dashboard)/orders/page.tsx selected-order fetch",
+        "pegasus/apps/admin-portal/app/supplier/orders/page.tsx order detail drawer timeline fetch"
       ],
       "notes": [
         "GET returns an additive superset order-detail payload with line items.",
+        "GET /v1/orders/{id}/events returns the scoped OrderEvents audit timeline for the same compatibility surface.",
         "PATCH accepts both /status and /state path aliases.",
         "PATCH accepts either status or state in the request body for legacy compatibility."
       ]
@@ -175,13 +178,18 @@
           "PATCH /v1/warehouse/ops/inventory",
           "GET /v1/warehouse/ops/staff",
           "POST /v1/warehouse/ops/staff",
+          "GET /v1/warehouse/ops/drivers",
+          "POST /v1/warehouse/ops/drivers",
+          "PATCH /v1/warehouse/ops/drivers/{id}/assign-vehicle",
           "GET /v1/warehouse/ops/vehicles",
           "POST /v1/warehouse/ops/vehicles",
+          "PATCH /v1/warehouse/ops/vehicles/{id}",
           "GET /v1/warehouse/ops/vehicles/{id}"
         ],
         "consumers": [
           "pegasus/apps/warehouse-portal/app/inventory/page.tsx",
           "pegasus/apps/warehouse-portal/app/staff/page.tsx",
+          "pegasus/apps/warehouse-portal/app/drivers/page.tsx",
           "pegasus/apps/warehouse-portal/app/vehicles/page.tsx",
           "pegasus/apps/warehouse-app-ios/WarehouseApp/Services/WarehouseService.swift",
           "pegasus/apps/warehouse-app-android/app/src/main/java/com/pegasus/warehouse/data/remote/WarehouseApi.kt"
@@ -190,7 +198,9 @@
           "Inventory compatibility accepts q and search filters and accepts sku_id or product_id on mutations.",
           "Inventory responses expose both inventory and items collections plus sku_id and product_id aliases.",
           "Staff create accepts an optional pin and returns the effective one-time pin for native client parity.",
-          "Vehicle responses expose both max_volume_vu and capacity_vu plus a derived availability status."
+          "Vehicle responses expose both max_volume_vu and capacity_vu plus a derived availability status.",
+          "Warehouse fleet controls now share driver assign/reset and vehicle activate/deactivate mutations across portal, iOS, and Android.",
+          "Warehouse dispatch preview excludes inactive vehicles from the available-driver list so vehicle availability mutations affect dispatch eligibility immediately."
         ]
       },
       {

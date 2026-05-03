@@ -2,10 +2,12 @@ import SwiftUI
 
 struct DriversView: View {
     @State private var drivers: [Driver] = []
+    @State private var vehicles: [Vehicle] = []
     @State private var loading = true
     @State private var error: String?
     @State private var showCreate = false
     @State private var createdPin: String?
+    @State private var updatingDriverId: String?
 
     var body: some View {
         NavigationStack {
@@ -32,13 +34,37 @@ struct DriversView: View {
                                 Text(driver.phone)
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
+                                Text(assignedVehicleLabel(for: driver))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Text(driver.truckStatus.isEmpty ? "IDLE" : driver.truckStatus)
-                                .font(.caption.bold())
-                                .padding(.horizontal, LabTheme.spacingSM)
-                                .padding(.vertical, LabTheme.spacingXS)
-                                .background(.quaternary, in: Capsule())
+                            VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
+                                Text(driver.truckStatus.isEmpty ? "IDLE" : driver.truckStatus)
+                                    .font(.caption.bold())
+                                    .padding(.horizontal, LabTheme.spacingSM)
+                                    .padding(.vertical, LabTheme.spacingXS)
+                                    .background(.quaternary, in: Capsule())
+                                Menu {
+                                    Button("Unassign") {
+                                        assign(driverId: driver.driverId, vehicleId: nil)
+                                    }
+                                    ForEach(assignableVehicles(for: driver)) { vehicle in
+                                        Button(vehicleLabel(for: vehicle)) {
+                                            assign(driverId: driver.driverId, vehicleId: vehicle.vehicleId)
+                                        }
+                                    }
+                                } label: {
+                                    if updatingDriverId == driver.driverId {
+                                        ProgressView()
+                                            .controlSize(.small)
+                                    } else {
+                                        Label(driver.vehicleId == nil ? "Assign" : "Reassign", systemImage: "truck.box")
+                                            .font(.caption)
+                                    }
+                                }
+                                .disabled(updatingDriverId == driver.driverId)
+                            }
                         }
                     }
                     .listStyle(.insetGrouped)
@@ -78,13 +104,47 @@ struct DriversView: View {
         error = nil
         Task {
             do {
-                let resp = try await WarehouseService.drivers()
-                drivers = resp.drivers
+                async let driverResponse = WarehouseService.drivers()
+                async let vehicleResponse = WarehouseService.vehicles()
+                let (driverResp, vehicleResp) = try await (driverResponse, vehicleResponse)
+                drivers = driverResp.drivers
+                vehicles = vehicleResp.vehicles
             } catch {
                 self.error = error.localizedDescription
             }
             loading = false
         }
+    }
+
+    private func assign(driverId: String, vehicleId: String?) {
+        updatingDriverId = driverId
+        error = nil
+        Task {
+            do {
+                _ = try await WarehouseService.assignDriver(driverId: driverId, vehicleId: vehicleId)
+                load()
+            } catch {
+                self.error = error.localizedDescription
+            }
+            updatingDriverId = nil
+        }
+    }
+
+    private func assignedVehicleLabel(for driver: Driver) -> String {
+        guard let vehicleId = driver.vehicleId,
+              let vehicle = vehicles.first(where: { $0.vehicleId == vehicleId }) else {
+            return "Unassigned"
+        }
+        return vehicleLabel(for: vehicle)
+    }
+
+    private func assignableVehicles(for driver: Driver) -> [Vehicle] {
+        vehicles.filter { $0.isActive || $0.vehicleId == driver.vehicleId }
+    }
+
+    private func vehicleLabel(for vehicle: Vehicle) -> String {
+        let title = vehicle.label.isEmpty ? vehicle.licensePlate : vehicle.label
+        return [title, vehicle.vehicleClass].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 }
 

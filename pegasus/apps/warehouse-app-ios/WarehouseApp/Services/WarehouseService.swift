@@ -33,6 +33,13 @@ enum WarehouseService {
         try await api.post("v1/warehouse/ops/drivers", body: CreateDriverRequest(name: name, phone: phone))
     }
 
+    static func assignDriver(driverId: String, vehicleId: String?) async throws -> AssignDriverVehicleResponse {
+        try await api.patch(
+            "v1/warehouse/ops/drivers/\(driverId)/assign-vehicle",
+            body: AssignDriverVehicleRequest(vehicleId: vehicleId)
+        )
+    }
+
     // MARK: - Vehicles
     static func vehicles() async throws -> VehicleListResponse {
         try await api.get("v1/warehouse/ops/vehicles")
@@ -40,6 +47,13 @@ enum WarehouseService {
 
     static func createVehicle(label: String, licensePlate: String, vehicleClass: String) async throws -> Vehicle {
         try await api.post("v1/warehouse/ops/vehicles", body: CreateVehicleRequest(label: label, licensePlate: licensePlate, vehicleClass: vehicleClass))
+    }
+
+    static func updateVehicleAvailability(vehicleId: String, isActive: Bool) async throws -> VehicleMutationResponse {
+        try await api.patch(
+            "v1/warehouse/ops/vehicles/\(vehicleId)",
+            body: UpdateVehicleRequest(isActive: isActive)
+        )
     }
 
     // MARK: - Inventory

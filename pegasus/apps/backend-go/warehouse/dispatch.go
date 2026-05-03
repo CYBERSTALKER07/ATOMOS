@@ -107,7 +107,9 @@ func HandleOpsDispatchPreview(spannerClient *spanner.Client, optimizer *optimize
 			      LEFT JOIN Vehicles v ON d.VehicleId = v.VehicleId
 			      WHERE d.SupplierId = @sid AND (d.WarehouseId = @whId OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = @whId))
 			        AND d.IsActive = true AND d.IsOffline = false
-			        AND d.TruckStatus IN ('IDLE','AVAILABLE','RETURNING')
+			        AND COALESCE(d.VehicleId, '') != ''
+			        AND COALESCE(v.IsActive, false) = true
+			        AND d.TruckStatus IN ('IDLE','AVAILABLE')
 			      ORDER BY d.Name`,
 			Params: map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID},
 		}

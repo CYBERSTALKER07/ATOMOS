@@ -3,6 +3,7 @@ package warehouse
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/cache"
 	kafkaEvents "backend-go/kafka"
 	"backend-go/outbox"
 	"backend-go/pkg/pin"
@@ -47,6 +49,54 @@ type DriverItem struct {
 	MaxVolumeVU  float64 `json:"max_volume_vu,omitempty"`
 }
 
+const (
+	warehouseDriverStatusAvailable   = "AVAILABLE"
+	warehouseDriverStatusIdle        = "IDLE"
+	warehouseDriverStatusInTransit   = "IN_TRANSIT"
+	warehouseDriverStatusReturning   = "RETURNING"
+	warehouseDriverStatusMaintenance = "MAINTENANCE"
+)
+
+type warehouseAssignVehicleRequest struct {
+	VehicleID string `json:"vehicle_id"`
+}
+
+type warehouseAssignVehicleResponse struct {
+	Status                   string `json:"status"`
+	DriverID                 string `json:"driver_id"`
+	VehicleID                string `json:"vehicle_id,omitempty"`
+	PreviouslyAssignedDriver string `json:"previously_assigned_driver,omitempty"`
+}
+
+type warehouseFleetMutationRuleError struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *warehouseFleetMutationRuleError) Error() string {
+	return e.Message
+}
+
+type warehouseDriverAssignmentState struct {
+	DriverID     string
+	SupplierID   string
+	HomeNodeType string
+	HomeNodeID   string
+	WarehouseID  string
+	VehicleID    string
+	RouteID      string
+	TruckStatus  string
+}
+
+type warehouseVehicleAssignmentState struct {
+	VehicleID    string
+	SupplierID   string
+	HomeNodeType string
+	HomeNodeID   string
+	WarehouseID  string
+	IsActive     bool
+}
+
 // PIN generation is handled by backend-go/pkg/pin.GenerateUnique.
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
@@ -81,6 +131,12 @@ func HandleOpsDriverDetail(spannerClient *spanner.Client) http.HandlerFunc {
 		if strings.HasSuffix(path, "/rotate-pin") {
 			driverID := strings.TrimSuffix(path, "/rotate-pin")
 			rotateOpsDriverPIN(w, r, spannerClient, ops, driverID)
+			return
+		}
+
+		if strings.HasSuffix(path, "/assign-vehicle") {
+			driverID := strings.TrimSuffix(path, "/assign-vehicle")
+			assignOpsDriverVehicle(w, r, spannerClient, ops, driverID)
 			return
 		}
 
@@ -363,4 +419,282 @@ func rotateOpsDriverPIN(w http.ResponseWriter, r *http.Request, spannerClient *s
 		"driver_id": driverID,
 		"pin":       pinResult.Plaintext,
 	})
+}
+
+func assignOpsDriverVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Client, ops *auth.WarehouseOps, driverID string) {
+	if r.Method != http.MethodPatch {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if ops.WarehouseRole != "WAREHOUSE_ADMIN" {
+		http.Error(w, `{"error":"warehouse admin required"}`, http.StatusForbidden)
+		return
+	}
+	driverID = strings.TrimSuffix(strings.TrimSpace(driverID), "/")
+	if driverID == "" || strings.Contains(driverID, "/") {
+		http.Error(w, `{"error":"driver_id required"}`, http.StatusBadRequest)
+		return
+	}
+
+	var req warehouseAssignVehicleRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
+		return
+	}
+	targetVehicleID := strings.TrimSpace(req.VehicleID)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	response := warehouseAssignVehicleResponse{
+		Status:    warehouseAssignmentStatus(targetVehicleID),
+		DriverID:  driverID,
+		VehicleID: targetVehicleID,
+	}
+	cacheDriverIDs := []string{driverID}
+
+	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		driverState, err := readWarehouseDriverAssignmentState(ctx, txn, ops, driverID)
+		if err != nil {
+			return err
+		}
+		if ruleErr := warehouseVehicleAssignmentRuleError(driverState); ruleErr != nil {
+			return ruleErr
+		}
+		if driverState.VehicleID == targetVehicleID {
+			return nil
+		}
+
+		mutations := make([]*spanner.Mutation, 0, 2)
+		if targetVehicleID != "" {
+			vehicleState, err := readWarehouseVehicleAssignmentState(ctx, txn, ops, targetVehicleID)
+			if err != nil {
+				return err
+			}
+			if !vehicleState.IsActive {
+				return &warehouseFleetMutationRuleError{StatusCode: http.StatusConflict, Message: "vehicle is inactive and cannot be assigned"}
+			}
+			if !warehouseFleetHomeNodeMatch(driverState.HomeNodeType, driverState.HomeNodeID, driverState.WarehouseID, vehicleState.HomeNodeType, vehicleState.HomeNodeID, vehicleState.WarehouseID) {
+				return &warehouseFleetMutationRuleError{StatusCode: http.StatusForbidden, Message: "vehicle is outside this warehouse fleet scope"}
+			}
+			conflictingDriver, err := readWarehouseDriverByVehicle(ctx, txn, ops, targetVehicleID, driverID)
+			if err != nil {
+				return err
+			}
+			if conflictingDriver != nil {
+				if ruleErr := warehouseVehicleAssignmentRuleError(*conflictingDriver); ruleErr != nil {
+					return ruleErr
+				}
+				mutations = append(mutations, spanner.Update(
+					"Drivers",
+					[]string{"DriverId", "VehicleId"},
+					[]interface{}{conflictingDriver.DriverID, warehouseNullableString("")},
+				))
+				cacheDriverIDs = append(cacheDriverIDs, conflictingDriver.DriverID)
+				response.PreviouslyAssignedDriver = conflictingDriver.DriverID
+			}
+		}
+
+		driverColumns := []string{"DriverId", "VehicleId"}
+		driverValues := []interface{}{driverID, warehouseNullableString(targetVehicleID)}
+		if targetVehicleID != "" && strings.EqualFold(driverState.TruckStatus, warehouseDriverStatusMaintenance) {
+			driverColumns = append(driverColumns, "TruckStatus")
+			driverValues = append(driverValues, warehouseDriverStatusAvailable)
+		}
+		mutations = append(mutations, spanner.Update("Drivers", driverColumns, driverValues))
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		var ruleErr *warehouseFleetMutationRuleError
+		if errors.As(err, &ruleErr) {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, ruleErr.Message), ruleErr.StatusCode)
+			return
+		}
+		log.Printf("[WH FLEET] assign vehicle error: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	warehouseInvalidateDriverProfiles(ctx, cacheDriverIDs...)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func warehouseAssignmentStatus(vehicleID string) string {
+	if vehicleID == "" {
+		return "UNASSIGNED"
+	}
+	return "ASSIGNED"
+}
+
+func warehouseVehicleAssignmentRuleError(state warehouseDriverAssignmentState) *warehouseFleetMutationRuleError {
+	switch strings.ToUpper(strings.TrimSpace(state.TruckStatus)) {
+	case warehouseDriverStatusInTransit, warehouseDriverStatusReturning:
+		return &warehouseFleetMutationRuleError{
+			StatusCode: http.StatusConflict,
+			Message:    fmt.Sprintf("driver %s is %s and cannot change vehicle assignment until route completes", state.DriverID, strings.ToUpper(strings.TrimSpace(state.TruckStatus))),
+		}
+	}
+	if strings.TrimSpace(state.RouteID) != "" {
+		return &warehouseFleetMutationRuleError{
+			StatusCode: http.StatusConflict,
+			Message:    fmt.Sprintf("driver %s has an active route and cannot change vehicle assignment", state.DriverID),
+		}
+	}
+	return nil
+}
+
+func readWarehouseDriverAssignmentState(ctx context.Context, txn *spanner.ReadWriteTransaction, ops *auth.WarehouseOps, driverID string) (warehouseDriverAssignmentState, error) {
+	row, err := txn.ReadRow(ctx, "Drivers", spanner.Key{driverID}, []string{"SupplierId", "HomeNodeType", "HomeNodeId", "WarehouseId", "VehicleId", "RouteId", "TruckStatus"})
+	if err != nil {
+		return warehouseDriverAssignmentState{}, &warehouseFleetMutationRuleError{StatusCode: http.StatusNotFound, Message: "driver not found"}
+	}
+
+	var state warehouseDriverAssignmentState
+	var homeNodeType, homeNodeID, warehouseID, vehicleID, routeID, truckStatus spanner.NullString
+	if err := row.Columns(&state.SupplierID, &homeNodeType, &homeNodeID, &warehouseID, &vehicleID, &routeID, &truckStatus); err != nil {
+		return warehouseDriverAssignmentState{}, err
+	}
+	state.DriverID = driverID
+	state.HomeNodeType = nullStringValue(homeNodeType)
+	state.HomeNodeID = nullStringValue(homeNodeID)
+	state.WarehouseID = nullStringValue(warehouseID)
+	state.VehicleID = nullStringValue(vehicleID)
+	state.RouteID = nullStringValue(routeID)
+	state.TruckStatus = strings.TrimSpace(nullStringValue(truckStatus))
+	if state.TruckStatus == "" {
+		state.TruckStatus = warehouseDriverStatusIdle
+	}
+	if state.SupplierID != ops.SupplierID || !warehouseHomeNodeMatches(state.HomeNodeType, state.HomeNodeID, state.WarehouseID, ops.WarehouseID) {
+		return warehouseDriverAssignmentState{}, &warehouseFleetMutationRuleError{StatusCode: http.StatusNotFound, Message: "driver not found"}
+	}
+	return state, nil
+}
+
+func readWarehouseVehicleAssignmentState(ctx context.Context, txn *spanner.ReadWriteTransaction, ops *auth.WarehouseOps, vehicleID string) (warehouseVehicleAssignmentState, error) {
+	row, err := txn.ReadRow(ctx, "Vehicles", spanner.Key{vehicleID}, []string{"SupplierId", "HomeNodeType", "HomeNodeId", "WarehouseId", "IsActive"})
+	if err != nil {
+		return warehouseVehicleAssignmentState{}, &warehouseFleetMutationRuleError{StatusCode: http.StatusNotFound, Message: "vehicle not found"}
+	}
+
+	var state warehouseVehicleAssignmentState
+	var homeNodeType, homeNodeID, warehouseID spanner.NullString
+	var isActive spanner.NullBool
+	if err := row.Columns(&state.SupplierID, &homeNodeType, &homeNodeID, &warehouseID, &isActive); err != nil {
+		return warehouseVehicleAssignmentState{}, err
+	}
+	state.VehicleID = vehicleID
+	state.HomeNodeType = nullStringValue(homeNodeType)
+	state.HomeNodeID = nullStringValue(homeNodeID)
+	state.WarehouseID = nullStringValue(warehouseID)
+	state.IsActive = !isActive.Valid || isActive.Bool
+	if state.SupplierID != ops.SupplierID || !warehouseHomeNodeMatches(state.HomeNodeType, state.HomeNodeID, state.WarehouseID, ops.WarehouseID) {
+		return warehouseVehicleAssignmentState{}, &warehouseFleetMutationRuleError{StatusCode: http.StatusNotFound, Message: "vehicle not found"}
+	}
+	return state, nil
+}
+
+func readWarehouseDriverByVehicle(ctx context.Context, txn *spanner.ReadWriteTransaction, ops *auth.WarehouseOps, vehicleID, excludeDriverID string) (*warehouseDriverAssignmentState, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT DriverId, SupplierId, COALESCE(HomeNodeType, ''), COALESCE(HomeNodeId, ''),
+		             COALESCE(WarehouseId, ''), COALESCE(VehicleId, ''), COALESCE(RouteId, ''),
+		             COALESCE(TruckStatus, 'IDLE')
+		      FROM Drivers
+		      WHERE SupplierId = @sid AND VehicleId = @vehicleId
+		        AND (WarehouseId = @whId OR (HomeNodeType = 'WAREHOUSE' AND HomeNodeId = @whId))
+		        AND DriverId != @excludeDriverId
+		      LIMIT 1`,
+		Params: map[string]interface{}{
+			"sid":             ops.SupplierID,
+			"vehicleId":       vehicleID,
+			"whId":            ops.WarehouseID,
+			"excludeDriverId": excludeDriverID,
+		},
+	}
+	iter := txn.Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var state warehouseDriverAssignmentState
+	var homeNodeType, homeNodeID, warehouseID, assignedVehicleID, routeID, truckStatus spanner.NullString
+	if err := row.Columns(&state.DriverID, &state.SupplierID, &homeNodeType, &homeNodeID, &warehouseID, &assignedVehicleID, &routeID, &truckStatus); err != nil {
+		return nil, err
+	}
+	state.HomeNodeType = nullStringValue(homeNodeType)
+	state.HomeNodeID = nullStringValue(homeNodeID)
+	state.WarehouseID = nullStringValue(warehouseID)
+	state.VehicleID = nullStringValue(assignedVehicleID)
+	state.RouteID = nullStringValue(routeID)
+	state.TruckStatus = strings.TrimSpace(nullStringValue(truckStatus))
+	if state.TruckStatus == "" {
+		state.TruckStatus = warehouseDriverStatusIdle
+	}
+	return &state, nil
+}
+
+func warehouseHomeNodeMatches(homeNodeType, homeNodeID, warehouseID, targetWarehouseID string) bool {
+	if strings.TrimSpace(warehouseID) == targetWarehouseID {
+		return true
+	}
+	return strings.EqualFold(strings.TrimSpace(homeNodeType), "WAREHOUSE") && strings.TrimSpace(homeNodeID) == targetWarehouseID
+}
+
+func warehouseFleetHomeNodeMatch(driverHomeNodeType, driverHomeNodeID, driverWarehouseID, vehicleHomeNodeType, vehicleHomeNodeID, vehicleWarehouseID string) bool {
+	driverNodeType, driverNodeID := effectiveWarehouseFleetHomeNode(driverHomeNodeType, driverHomeNodeID, driverWarehouseID)
+	vehicleNodeType, vehicleNodeID := effectiveWarehouseFleetHomeNode(vehicleHomeNodeType, vehicleHomeNodeID, vehicleWarehouseID)
+	return driverNodeType != "" && driverNodeType == vehicleNodeType && driverNodeID == vehicleNodeID
+}
+
+func effectiveWarehouseFleetHomeNode(homeNodeType, homeNodeID, warehouseID string) (string, string) {
+	if strings.TrimSpace(homeNodeType) != "" && strings.TrimSpace(homeNodeID) != "" {
+		return strings.TrimSpace(homeNodeType), strings.TrimSpace(homeNodeID)
+	}
+	if strings.TrimSpace(warehouseID) != "" {
+		return "WAREHOUSE", strings.TrimSpace(warehouseID)
+	}
+	return "", ""
+}
+
+func warehouseNullableString(value string) spanner.NullString {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return spanner.NullString{}
+	}
+	return spanner.NullString{StringVal: trimmed, Valid: true}
+}
+
+func nullStringValue(value spanner.NullString) string {
+	if !value.Valid {
+		return ""
+	}
+	return value.StringVal
+}
+
+func warehouseInvalidateDriverProfiles(ctx context.Context, driverIDs ...string) {
+	if len(driverIDs) == 0 {
+		return
+	}
+	keys := make([]string, 0, len(driverIDs))
+	seen := make(map[string]struct{}, len(driverIDs))
+	for _, driverID := range driverIDs {
+		if strings.TrimSpace(driverID) == "" {
+			continue
+		}
+		if _, exists := seen[driverID]; exists {
+			continue
+		}
+		seen[driverID] = struct{}{}
+		keys = append(keys, cache.DriverProfile(driverID))
+	}
+	if len(keys) > 0 {
+		cache.Invalidate(ctx, keys...)
+	}
 }

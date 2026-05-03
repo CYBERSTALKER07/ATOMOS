@@ -5,6 +5,7 @@ struct VehiclesView: View {
     @State private var loading = true
     @State private var error: String?
     @State private var showCreate = false
+    @State private var mutatingVehicleId: String?
 
     var body: some View {
         NavigationStack {
@@ -31,13 +32,27 @@ struct VehiclesView: View {
                                 Text("\(vehicle.vehicleClass) · \(vehicle.capacityVu) VU")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
+                                Text(vehicle.assignedDriverName ?? "Unassigned")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Text(vehicle.status.isEmpty ? "AVAILABLE" : vehicle.status)
-                                .font(.caption.bold())
-                                .padding(.horizontal, LabTheme.spacingSM)
-                                .padding(.vertical, LabTheme.spacingXS)
-                                .background(.quaternary, in: Capsule())
+                            if mutatingVehicleId == vehicle.vehicleId {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Text(vehicle.status.isEmpty ? "AVAILABLE" : vehicle.status)
+                                    .font(.caption.bold())
+                                    .padding(.horizontal, LabTheme.spacingSM)
+                                    .padding(.vertical, LabTheme.spacingXS)
+                                    .background(.quaternary, in: Capsule())
+                            }
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(vehicle.isActive ? "Unavailable" : "Restore") {
+                                toggleAvailability(for: vehicle)
+                            }
+                            .tint(vehicle.isActive ? .orange : .green)
                         }
                     }
                     .listStyle(.insetGrouped)
@@ -72,6 +87,20 @@ struct VehiclesView: View {
                 self.error = error.localizedDescription
             }
             loading = false
+        }
+    }
+
+    private func toggleAvailability(for vehicle: Vehicle) {
+        mutatingVehicleId = vehicle.vehicleId
+        error = nil
+        Task {
+            do {
+                _ = try await WarehouseService.updateVehicleAvailability(vehicleId: vehicle.vehicleId, isActive: !vehicle.isActive)
+                load()
+            } catch {
+                self.error = error.localizedDescription
+            }
+            mutatingVehicleId = nil
         }
     }
 }

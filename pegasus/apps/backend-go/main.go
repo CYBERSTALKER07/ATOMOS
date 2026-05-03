@@ -37,6 +37,7 @@ import (
 	"backend-go/payment"
 	"backend-go/paymentroutes"
 	"backend-go/proximity"
+	"backend-go/proximityroutes"
 	"backend-go/replenishment"
 	"backend-go/routing"
 	"backend-go/settings"
@@ -701,22 +702,13 @@ func main() {
 	// GET /v1/supplier/warehouse-inflight-vu?warehouse_id=X — VU utilization for capacity guardrails
 	http.HandleFunc("/v1/supplier/warehouse-inflight-vu", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleWarehouseInflightVU(spannerClient)))))
 
-	// ── Geo-Spatial Sovereignty ──────────────────────────────────────────────
-	// GET /v1/supplier/serving-warehouse?retailer_lat=X&retailer_lng=Y — Exclusive warehouse resolver
-	http.HandleFunc("/v1/supplier/serving-warehouse",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(proximity.HandleGetServingWarehouse(spannerClient, app.SpannerRouter))))
-	// GET /v1/supplier/geo-report — Coverage health: dead zones, overlaps, warehouse stats
-	http.HandleFunc("/v1/supplier/geo-report",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(proximity.HandleGeoReport(spannerClient))))
-	// GET /v1/supplier/zone-preview?lat=X&lng=Y&radius_km=R — Real-time density preview for warehouse zone
-	http.HandleFunc("/v1/supplier/zone-preview",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(proximity.HandleZonePreview(spannerClient))))
-	// POST /v1/supplier/warehouses/validate-coverage — H3 cell computation + overlap detection for CoverageEditor
-	http.HandleFunc("/v1/supplier/warehouses/validate-coverage",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(proximity.HandleValidateCoverage(spannerClient))))
-	// GET /v1/supplier/warehouse-loads — Live warehouse queue depth + load factor (Redis-primary, 15s poll)
-	http.HandleFunc("/v1/supplier/warehouse-loads",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(proximity.HandleWarehouseLoads(spannerClient))))
+	// /v1/supplier/{serving-warehouse,geo-report,zone-preview,
+	// warehouses/validate-coverage,warehouse-loads} moved to proximityroutes.
+	proximityroutes.RegisterRoutes(r, proximityroutes.Deps{
+		Spanner:    spannerClient,
+		ReadRouter: app.SpannerRouter,
+		Log:        loggingMiddleware,
+	})
 
 	// /v1/auth/payloader/login → authroutes package.
 
@@ -1671,7 +1663,7 @@ func main() {
 		}
 	})))
 
-	http.HandleFunc("/v1/orders/", auth.RequireRole([]string{"ADMIN", "DRIVER", "RETAILER"}, loggingMiddleware(order.HandleLegacyOrdersPath(svc))))
+	http.HandleFunc("/v1/orders/", auth.RequireRole([]string{"ADMIN", "DRIVER", "RETAILER", "SUPPLIER"}, loggingMiddleware(order.HandleLegacyOrdersPath(svc))))
 
 	// Legacy /v1/orders/{id}/items and /v1/order-items/ removed — use OrderLineItems via OrderService.
 

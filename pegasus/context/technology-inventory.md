@@ -43,12 +43,13 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 ## Runtime Contract Surfaces
 
 - Legacy order detail compatibility handler: `pegasus/apps/backend-go/order/legacy_orders.go`
-	- Owns `GET /v1/orders/{id}`, `PATCH /v1/orders/{id}/status`, and `PATCH /v1/orders/{id}/state`
-	- Serves an additive superset detail payload for driver iOS, driver Android, and retailer desktop order detail consumers
+	- Owns `GET /v1/orders/{id}`, `GET /v1/orders/{id}/events`, `PATCH /v1/orders/{id}/status`, and `PATCH /v1/orders/{id}/state`
+	- Serves an additive superset detail payload for driver iOS, driver Android, and retailer desktop order detail consumers, plus the supplier portal order timeline feed
 - Warehouse ops compatibility layer: `pegasus/apps/backend-go/warehouse/inventory.go`, `pegasus/apps/backend-go/warehouse/staff.go`, `pegasus/apps/backend-go/warehouse/vehicles.go`
-	- Keeps `GET/PATCH /v1/warehouse/ops/inventory`, `GET/POST /v1/warehouse/ops/staff`, and `GET/POST /v1/warehouse/ops/vehicles` additive across warehouse portal, warehouse iOS, and warehouse Android
+	- Keeps `GET/PATCH /v1/warehouse/ops/inventory`, `GET/POST /v1/warehouse/ops/staff`, `GET/POST /v1/warehouse/ops/drivers`, `PATCH /v1/warehouse/ops/drivers/{id}/assign-vehicle`, and `GET/POST/PATCH /v1/warehouse/ops/vehicles` additive across warehouse portal, warehouse iOS, and warehouse Android
 	- Inventory accepts `q` and `search`, accepts `sku_id` or `product_id` on mutation, and returns both `inventory` and `items` with `sku_id`/`product_id` aliases
 	- Staff create accepts an optional PIN and returns the effective one-time PIN; vehicle responses expose both `max_volume_vu` and `capacity_vu` plus a derived `status`
+	- Fleet controls now let warehouse admins assign or reset driver vehicles and toggle vehicle availability from portal, iOS, and Android against the same backend contract; dispatch preview excludes inactive vehicles from available-driver output
 - Warehouse live websocket surface: `/ws/warehouse`
 	- Owned by `pegasus/apps/backend-go/ws/warehouse_hub.go` with post-commit emitters in `pegasus/apps/backend-go/warehouse/supply_requests.go` and `pegasus/apps/backend-go/warehouse/dispatch_lock.go`
 	- Emits `SUPPLY_REQUEST_UPDATE` and `DISPATCH_LOCK_CHANGE` frames with `warehouse_id` and `timestamp`

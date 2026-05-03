@@ -34,12 +34,24 @@ interface WarehouseApi {
     @POST("v1/warehouse/ops/drivers")
     suspend fun createDriver(@Body body: CreateDriverRequest): Response<CreateDriverResponse>
 
+    @PATCH("v1/warehouse/ops/drivers/{id}/assign-vehicle")
+    suspend fun assignDriverVehicle(
+        @Path("id") id: String,
+        @Body body: AssignVehicleRequest,
+    ): Response<AssignVehicleResponse>
+
     // ── Vehicles ──
     @GET("v1/warehouse/ops/vehicles")
     suspend fun getVehicles(): Response<VehicleListResponse>
 
     @POST("v1/warehouse/ops/vehicles")
     suspend fun createVehicle(@Body body: CreateVehicleRequest): Response<Vehicle>
+
+    @PATCH("v1/warehouse/ops/vehicles/{id}")
+    suspend fun updateVehicle(
+        @Path("id") id: String,
+        @Body body: UpdateVehicleRequest,
+    ): Response<VehicleMutationResponse>
 
     // ── Inventory ──
     @GET("v1/warehouse/ops/inventory")
