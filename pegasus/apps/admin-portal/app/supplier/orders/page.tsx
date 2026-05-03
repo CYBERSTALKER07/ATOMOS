@@ -18,6 +18,12 @@ import ShopClosedBanner from '@/components/ShopClosedBanner';
 import EarlyCompleteBanner from '@/components/EarlyCompleteBanner';
 import NegotiationBanner from '@/components/NegotiationBanner';
 import { Button } from '@heroui/react';
+import {
+  buildSupplierAutoDispatchIdempotencyKey,
+  buildSupplierApproveCancelIdempotencyKey,
+  buildSupplierFleetReassignIdempotencyKey,
+  buildSupplierResolveCreditIdempotencyKey,
+} from '../_shared/idempotency';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -336,7 +342,11 @@ export default function OrdersPage() {
     try {
       const res = await fetch(`${API}/v1/admin/orders/approve-cancel`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierApproveCancelIdempotencyKey(orderId),
+        },
         body: JSON.stringify({ order_id: orderId }),
       });
       if (!res.ok) {
@@ -360,7 +370,11 @@ export default function OrdersPage() {
     try {
       const res = await fetch(`${API}/v1/admin/orders/resolve-credit`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierResolveCreditIdempotencyKey(orderId, decision),
+        },
         body: JSON.stringify({ order_id: orderId, decision }),
       });
       if (!res.ok) {
@@ -393,7 +407,11 @@ export default function OrdersPage() {
     try {
       const res = await fetch(`${API}/v1/fleet/reassign`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierFleetReassignIdempotencyKey(targetTruck, reassignOrderIds),
+        },
         body: JSON.stringify({ order_ids: reassignOrderIds, new_route_id: targetTruck }),
       });
       const json = await res.json();
@@ -441,7 +459,11 @@ export default function OrdersPage() {
       const token = readTokenFromCookie();
       const res = await fetch(`${API}/v1/supplier/manifests/auto-dispatch`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'Idempotency-Key': buildSupplierAutoDispatchIdempotencyKey(Array.from(selected)),
+        },
         body: JSON.stringify({ order_ids: Array.from(selected) }),
       });
       if (!res.ok) throw new Error(await res.text());

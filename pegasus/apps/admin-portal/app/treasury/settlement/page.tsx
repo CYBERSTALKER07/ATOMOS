@@ -49,6 +49,14 @@ function shortId(id: string): string {
   return id.length > 12 ? id.slice(0, 12) + '…' : id;
 }
 
+function buildBatchSettlementIdempotencyKey(invoiceIds: string[], reference: string): string {
+  return ['treasury-batch-settle', [...invoiceIds].map((id) => id.trim()).sort().join(','), reference.trim()].join(':');
+}
+
+function buildInvoiceStatusOverrideIdempotencyKey(invoiceId: string, nextStatus: string, reason: string): string {
+  return ['treasury-invoice-status', invoiceId.trim(), nextStatus.trim().toUpperCase(), reason.trim()].join(':');
+}
+
 function thirtyDaysAgo(): string {
   const d = new Date();
   d.setDate(d.getDate() - 30);
@@ -112,7 +120,11 @@ export default function SettlementPage() {
     try {
       const res = await fetch(`${API}/v1/treasury/batch-settle`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildBatchSettlementIdempotencyKey(selectedInvoiceIds, reference),
+        },
         body: JSON.stringify({ invoice_ids: selectedInvoiceIds, reference }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -134,7 +146,11 @@ export default function SettlementPage() {
     try {
       const res = await fetch(`${API}/v1/treasury/invoice/status`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildInvoiceStatusOverrideIdempotencyKey(invoiceId, nextStatus, reason),
+        },
         body: JSON.stringify({ invoice_id: invoiceId, status: nextStatus, reason }),
       });
       if (!res.ok) throw new Error(await res.text());

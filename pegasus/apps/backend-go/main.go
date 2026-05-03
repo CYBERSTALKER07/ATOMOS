@@ -308,7 +308,11 @@ func main() {
 	})
 
 	// /v1/treasury/* + /v1/supplier/settlement-report → treasury package.
-	treasury.RegisterRoutes(r, treasury.Deps{Spanner: spannerClient, Log: loggingMiddleware})
+	treasury.RegisterRoutes(r, treasury.Deps{
+		Spanner:     spannerClient,
+		Log:         loggingMiddleware,
+		Idempotency: idempotency.Guard,
+	})
 
 	// /v1/admin/{reconciliation,audit-log,country-configs,country-configs/} moved to adminroutes.
 
@@ -1027,7 +1031,7 @@ func main() {
 	// ── Refund Endpoint (Phase 3.1) ──
 	refundSvc := payment.NewRefundService(spannerClient, platformCfg.PlatformFeeBasisPoints())
 	chargebackSvc := payment.NewChargebackService(spannerClient)
-	http.HandleFunc("/v1/order/refund", auth.RequireRole([]string{"ADMIN", "SUPPLIER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/v1/order/refund", auth.RequireRole([]string{"ADMIN", "SUPPLIER"}, loggingMiddleware(idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 			return
@@ -1054,7 +1058,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(result)
-	})))
+	}))))
 
 	// GET /v1/order/{id}/refunds — List refunds for an order
 	http.HandleFunc("/v1/order/refunds", auth.RequireRole([]string{"ADMIN", "SUPPLIER", "RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {

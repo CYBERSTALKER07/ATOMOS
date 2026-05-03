@@ -7,6 +7,7 @@ import StatusBadge from './StatusBadge';
 import Icon from './Icon';
 import { Button } from '@heroui/react';
 import { useToast } from './Toast';
+import { buildSupplierShopClosedResolveIdempotencyKey } from '../app/supplier/_shared/idempotency';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -78,7 +79,11 @@ export default function ShopClosedBanner() {
     };
   }, [token]);
 
-  const resolve = useCallback(async (orderId: string, action: 'INSTRUCT_WAIT' | 'ISSUE_BYPASS' | 'RETURN_TO_DEPOT') => {
+  const resolve = useCallback(async (
+    attemptId: string,
+    orderId: string,
+    action: 'INSTRUCT_WAIT' | 'ISSUE_BYPASS' | 'RETURN_TO_DEPOT',
+  ) => {
     if (!token) return;
     setResolving(orderId);
     try {
@@ -87,6 +92,7 @@ export default function ShopClosedBanner() {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierShopClosedResolveIdempotencyKey(attemptId || orderId, action),
         },
         body: JSON.stringify({ order_id: orderId, action }),
       });
@@ -131,7 +137,7 @@ export default function ShopClosedBanner() {
               size="sm"
               variant="secondary"
               isDisabled={resolving === esc.order_id}
-              onPress={() => resolve(esc.order_id, 'INSTRUCT_WAIT')}
+              onPress={() => resolve(esc.attempt_id, esc.order_id, 'INSTRUCT_WAIT')}
             >
               Wait
             </Button>
@@ -139,7 +145,7 @@ export default function ShopClosedBanner() {
               size="sm"
               variant="primary"
               isDisabled={resolving === esc.order_id}
-              onPress={() => resolve(esc.order_id, 'ISSUE_BYPASS')}
+              onPress={() => resolve(esc.attempt_id, esc.order_id, 'ISSUE_BYPASS')}
             >
               Bypass
             </Button>
@@ -147,7 +153,7 @@ export default function ShopClosedBanner() {
               size="sm"
               variant="danger"
               isDisabled={resolving === esc.order_id}
-              onPress={() => resolve(esc.order_id, 'RETURN_TO_DEPOT')}
+              onPress={() => resolve(esc.attempt_id, esc.order_id, 'RETURN_TO_DEPOT')}
             >
               Return
             </Button>

@@ -142,6 +142,11 @@ export function useNotifications() {
     const ws = new WebSocket(`${wsBase}/v1/ws/payloader?token=${encodeURIComponent(token)}`);
     wsRef.current = ws;
 
+    ws.onopen = () => {
+      if (disposedRef.current) return;
+      void fetchInbox();
+    };
+
     ws.onmessage = (event) => {
       if (disposedRef.current) return;
       try {
@@ -158,8 +163,11 @@ export function useNotifications() {
             created_at: msg.created_at || new Date().toISOString(),
           };
           setState(s => ({
-            items: [notif, ...s.items].slice(0, 100),
-            unreadCount: s.unreadCount + 1,
+            ...s,
+            items: s.items.some(existing => existing.id === notif.id)
+              ? s.items
+              : [notif, ...s.items].slice(0, 100),
+            unreadCount: s.items.some(existing => existing.id === notif.id) ? s.unreadCount : s.unreadCount + 1,
             loading: false,
           }));
         }
@@ -175,7 +183,7 @@ export function useNotifications() {
     };
 
     ws.onerror = () => ws.close();
-  }, []);
+  }, [fetchInbox]);
 
   // ── Lifecycle ──
   useEffect(() => {
@@ -183,9 +191,19 @@ export function useNotifications() {
     const ac = new AbortController();
     fetchInbox(ac.signal);
     connectWS();
+
+    const handleOnline = () => {
+      void fetchInbox();
+      if (!wsRef.current) {
+        connectWS();
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
     return () => {
       disposedRef.current = true;
       ac.abort();
+      window.removeEventListener('online', handleOnline);
       clearTimeout(reconnectTimer.current);
       wsRef.current?.close();
       wsRef.current = null;

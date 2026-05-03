@@ -20,6 +20,10 @@ function formatAmount(v: number): string {
   return new Intl.NumberFormat('en-US').format(v);
 }
 
+function buildRefundIdempotencyKey(orderId: string, reason: string, amountUZS: number): string {
+  return ['refund', orderId.trim(), reason.trim().toUpperCase(), String(amountUZS)].join(':');
+}
+
 export default function RefundsPage() {
   const token = useToken();
   const { toast } = useToast();
@@ -64,6 +68,7 @@ export default function RefundsPage() {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'Idempotency-Key': buildRefundIdempotencyKey(orderId, reason, Number.isFinite(parsedAmount) ? parsedAmount : 0),
         },
         body: JSON.stringify({
           order_id: orderId.trim(),

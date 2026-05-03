@@ -3,6 +3,7 @@ package suppliercatalogroutes
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"backend-go/auth"
@@ -120,6 +121,60 @@ func TestRegisterRoutes_RetailerOverrideActionUsesIdempotency(t *testing.T) {
 	}
 	if got := rec.Header().Get("X-Idempotency-Guard"); got != "retailer-override-action" {
 		t.Fatalf("idempotency guard header = %q, want retailer-override-action", got)
+	}
+}
+
+func TestRegisterRoutes_ProductCreateUsesIdempotency(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
+	if err != nil {
+		t.Fatalf("GenerateSupplierToken() error = %v", err)
+	}
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "product-create"),
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/supplier/products", strings.NewReader("{"))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "product-create" {
+		t.Fatalf("idempotency guard header = %q, want product-create", got)
+	}
+}
+
+func TestRegisterRoutes_ProductDetailUpdateUsesIdempotency(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
+	if err != nil {
+		t.Fatalf("GenerateSupplierToken() error = %v", err)
+	}
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "product-detail"),
+	})
+
+	req := httptest.NewRequest(http.MethodPut, "/v1/supplier/products/", strings.NewReader("{"))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "product-detail" {
+		t.Fatalf("idempotency guard header = %q, want product-detail", got)
 	}
 }
 

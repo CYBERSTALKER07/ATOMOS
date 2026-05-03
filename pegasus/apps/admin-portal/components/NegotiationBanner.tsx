@@ -6,6 +6,7 @@ import { isTauri } from '@/lib/bridge';
 import Icon from './Icon';
 import { Button } from '@heroui/react';
 import { useToast } from './Toast';
+import { buildSupplierNegotiationResolveIdempotencyKey } from '../app/supplier/_shared/idempotency';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -88,6 +89,7 @@ export default function NegotiationBanner() {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierNegotiationResolveIdempotencyKey(proposalId, decision),
         },
         body: JSON.stringify({ proposal_id: proposalId, decision }),
       });

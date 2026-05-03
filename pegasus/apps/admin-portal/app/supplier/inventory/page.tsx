@@ -7,6 +7,7 @@ import type { PaginationState } from '@/lib/usePagination';
 import PaginationControls from '@/components/PaginationControls';
 import EmptyState from '@/components/EmptyState';
 import { useToast } from '@/components/Toast';
+import { buildSupplierInventoryAdjustIdempotencyKey } from '../_shared/idempotency';
 
 export const dynamic = 'force-dynamic';
 
@@ -150,7 +151,11 @@ export default function InventoryPage() {
     try {
       const res = await fetch(`${API}/v1/supplier/inventory`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierInventoryAdjustIdempotencyKey(productId, delta, adjustReason),
+        },
         body: JSON.stringify({ product_id: productId, adjustment: delta, reason: adjustReason }),
       });
       if (!res.ok) {

@@ -6,6 +6,7 @@ import { isTauri } from '@/lib/bridge';
 import Icon from './Icon';
 import { Button } from '@heroui/react';
 import { useToast } from './Toast';
+import { buildSupplierApproveEarlyCompleteIdempotencyKey } from '../app/supplier/_shared/idempotency';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -86,6 +87,7 @@ export default function EarlyCompleteBanner() {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierApproveEarlyCompleteIdempotencyKey(driverId),
         },
         body: JSON.stringify({ driver_id: driverId }),
       });

@@ -160,6 +160,41 @@ export function buildSupplierDepotReconciliationIdempotencyKey(
   return ['supplier-depot-reconciliation', action, stableSerialize([...lineItemIds].sort())].join(':');
 }
 
+export function buildSupplierShopClosedResolveIdempotencyKey(attemptId: string, action: string): string {
+  return ['supplier-shop-closed-resolve', attemptId.trim(), action.trim().toUpperCase()].join(':');
+}
+
+export function buildSupplierInventoryAdjustIdempotencyKey(
+  productId: string,
+  adjustment: number,
+  reason: string,
+): string {
+  return ['supplier-inventory-adjust', productId.trim(), String(adjustment), reason.trim().toUpperCase()].join(':');
+}
+
+export function buildSupplierProductUpdateIdempotencyKey(
+  skuId: string,
+  payload: Record<string, unknown>,
+): string {
+  return ['supplier-product-update', skuId.trim(), stableSerialize(payload)].join(':');
+}
+
+export function buildSupplierApproveCancelIdempotencyKey(orderId: string): string {
+  return ['supplier-approve-cancel', orderId.trim()].join(':');
+}
+
+export function buildSupplierResolveCreditIdempotencyKey(orderId: string, decision: string): string {
+  return ['supplier-resolve-credit', orderId.trim(), decision.trim().toUpperCase()].join(':');
+}
+
+export function buildSupplierApproveEarlyCompleteIdempotencyKey(driverId: string): string {
+  return ['supplier-approve-early-complete', driverId.trim()].join(':');
+}
+
+export function buildSupplierNegotiationResolveIdempotencyKey(proposalId: string, decision: string): string {
+  return ['supplier-negotiation-resolve', proposalId.trim(), decision.trim().toUpperCase()].join(':');
+}
+
 export function buildSupplierWarehouseStaffCreateIdempotencyKey(payload: Record<string, unknown>): string {
   return ['supplier-warehouse-staff-create', stableSerialize(payload)].join(':');
 }

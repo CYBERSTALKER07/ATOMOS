@@ -14,8 +14,9 @@ type Middleware func(http.HandlerFunc) http.HandlerFunc
 
 // Deps bundles the collaborators required to register the treasury surface.
 type Deps struct {
-	Spanner *spanner.Client
-	Log     Middleware
+	Spanner     *spanner.Client
+	Log         Middleware
+	Idempotency Middleware
 }
 
 // RegisterRoutes mounts the /v1/treasury/* surface plus the supplier
@@ -24,15 +25,16 @@ type Deps struct {
 // Supplier Cockpit).
 func RegisterRoutes(r chi.Router, d Deps) {
 	supplierAdmin := []string{"SUPPLIER", "ADMIN"}
+	idem := d.Idempotency
 
 	r.HandleFunc("/v1/treasury/ledger",
 		auth.RequireRole(supplierAdmin, d.Log(TreasuryHandler(d.Spanner))))
 	r.HandleFunc("/v1/treasury/cash-holdings",
 		auth.RequireRole(supplierAdmin, d.Log(CashHoldingsHandler(d.Spanner))))
 	r.HandleFunc("/v1/treasury/batch-settle",
-		auth.RequireRole(supplierAdmin, d.Log(HandleBatchSettle(d.Spanner))))
+		auth.RequireRole(supplierAdmin, d.Log(idem(HandleBatchSettle(d.Spanner)))))
 	r.HandleFunc("/v1/treasury/invoice/status",
-		auth.RequireRole(supplierAdmin, d.Log(HandleInvoiceStatusOverride(d.Spanner))))
+		auth.RequireRole(supplierAdmin, d.Log(idem(HandleInvoiceStatusOverride(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/settlement-report",
 		auth.RequireRole(supplierAdmin, d.Log(HandleSettlementReport(d.Spanner))))
 }

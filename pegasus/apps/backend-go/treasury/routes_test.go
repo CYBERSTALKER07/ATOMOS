@@ -1,44 +1,17 @@
-package suppliercoreroutes
+package treasury
 
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"backend-go/auth"
-	"backend-go/supplier"
+
 	"github.com/go-chi/chi/v5"
 )
 
-func TestRegisterRoutes_OrderVettingUsesIdempotency(t *testing.T) {
-	auth.Init("test-jwt-secret", "test-internal-key")
-	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
-	if err != nil {
-		t.Fatalf("GenerateSupplierToken() error = %v", err)
-	}
-
-	r := chi.NewRouter()
-	RegisterRoutes(r, Deps{
-		Vetting:     &supplier.OrderVettingService{},
-		Log:         passthroughMiddleware,
-		Idempotency: markerMiddleware("X-Idempotency-Guard", "supplier-vet"),
-	})
-
-	req := httptest.NewRequest(http.MethodOptions, "/v1/supplier/orders/vet", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-	rec := httptest.NewRecorder()
-
-	r.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
-	}
-	if got := rec.Header().Get("X-Idempotency-Guard"); got != "supplier-vet" {
-		t.Fatalf("idempotency guard header = %q, want supplier-vet", got)
-	}
-}
-
-func TestRegisterRoutes_InventoryAdjustUsesIdempotency(t *testing.T) {
+func TestRegisterRoutes_BatchSettleUsesIdempotency(t *testing.T) {
 	auth.Init("test-jwt-secret", "test-internal-key")
 	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
 	if err != nil {
@@ -48,10 +21,10 @@ func TestRegisterRoutes_InventoryAdjustUsesIdempotency(t *testing.T) {
 	r := chi.NewRouter()
 	RegisterRoutes(r, Deps{
 		Log:         passthroughMiddleware,
-		Idempotency: markerMiddleware("X-Idempotency-Guard", "inventory-adjust"),
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "batch-settle"),
 	})
 
-	req := httptest.NewRequest(http.MethodPatch, "/v1/supplier/inventory", nil)
+	req := httptest.NewRequest(http.MethodPost, "/v1/treasury/batch-settle", strings.NewReader("{"))
 	req.Header.Set("Authorization", "Bearer "+token)
 	rec := httptest.NewRecorder()
 
@@ -60,8 +33,35 @@ func TestRegisterRoutes_InventoryAdjustUsesIdempotency(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
-	if got := rec.Header().Get("X-Idempotency-Guard"); got != "inventory-adjust" {
-		t.Fatalf("idempotency guard header = %q, want inventory-adjust", got)
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "batch-settle" {
+		t.Fatalf("idempotency guard header = %q, want batch-settle", got)
+	}
+}
+
+func TestRegisterRoutes_InvoiceStatusOverrideUsesIdempotency(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
+	if err != nil {
+		t.Fatalf("GenerateSupplierToken() error = %v", err)
+	}
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "invoice-status"),
+	})
+
+	req := httptest.NewRequest(http.MethodPatch, "/v1/treasury/invoice/status", strings.NewReader("{"))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "invoice-status" {
+		t.Fatalf("idempotency guard header = %q, want invoice-status", got)
 	}
 }
 

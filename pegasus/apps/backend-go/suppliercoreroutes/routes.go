@@ -48,13 +48,33 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/earnings",
 		auth.RequireRole(supplierRole, log(analytics.HandleSupplierEarnings(d.Spanner, d.ReadRouter))))
 	r.HandleFunc("/v1/supplier/inventory",
-		auth.RequireRole(supplierRole, log(supplier.HandleInventory(d.Spanner))))
+		auth.RequireRole(supplierRole, log(withMethodIdempotency(supplier.HandleInventory(d.Spanner), idem, http.MethodPatch))))
 	r.HandleFunc("/v1/supplier/inventory/audit",
 		auth.RequireRole(supplierRole, log(supplier.HandleInventoryAuditLog(d.Spanner))))
 	r.HandleFunc("/v1/supplier/orders",
 		auth.RequireRole(supplierRole, log(d.Vetting.HandleSupplierOrders)))
 	r.HandleFunc("/v1/supplier/orders/vet",
 		auth.RequireRole(supplierRole, log(idem(d.Vetting.HandleVetOrder))))
+}
+
+func withMethodIdempotency(next http.HandlerFunc, middleware Middleware, methods ...string) http.HandlerFunc {
+	if middleware == nil || len(methods) == 0 {
+		return next
+	}
+
+	allowed := make(map[string]struct{}, len(methods))
+	for _, method := range methods {
+		allowed[method] = struct{}{}
+	}
+
+	guarded := middleware(next)
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := allowed[r.Method]; ok {
+			guarded(w, r)
+			return
+		}
+		next(w, r)
+	}
 }
 
 func dashboardHandler(orderSvc *order.OrderService) http.HandlerFunc {

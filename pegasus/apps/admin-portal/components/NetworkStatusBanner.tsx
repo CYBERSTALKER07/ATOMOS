@@ -2,12 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useNetworkStatus } from '@/lib/offline-queue';
-import { OfflineManager } from '@/lib/api/offlineQueue';
 
 export function NetworkStatusBanner() {
   const { isOnline, pendingCount } = useNetworkStatus();
   const [backpressureMs, setBackpressureMs] = useState(0);
-  const [persistedQueue, setPersistedQueue] = useState(0);
   const backpressureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Listen for backpressure signals from apiFetch
@@ -34,29 +32,7 @@ export function NetworkStatusBanner() {
     };
   }, []);
 
-  // Track persisted offline queue length
-  useEffect(() => {
-    const handler = (e: Event) => {
-      setPersistedQueue((e as CustomEvent<number>).detail);
-    };
-    window.addEventListener('sync-pending', handler);
-    setPersistedQueue(OfflineManager.getLength());
-    return () => window.removeEventListener('sync-pending', handler);
-  }, []);
-
-  // Drain persisted queue when we come back online
-  useEffect(() => {
-    if (isOnline && persistedQueue > 0) {
-      OfflineManager.drainQueue(async (url, method, body, headers) => {
-        return fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}${url}`,
-          { method, body, headers },
-        );
-      });
-    }
-  }, [isOnline, persistedQueue]);
-
-  const totalPending = pendingCount + persistedQueue;
+  const totalPending = pendingCount;
 
   // Nothing to show
   if (isOnline && totalPending === 0 && backpressureMs === 0) return null;

@@ -42,9 +42,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/products/upload-ticket",
 		auth.RequireRole(supplierRole, log(supplierUploadTicketHandler())))
 	r.HandleFunc("/v1/supplier/products",
-		auth.RequireRole(supplierRole, log(supplierProductsHandler(d.Spanner))))
+		auth.RequireRole(supplierRole, log(withMethodIdempotency(supplierProductsHandler(d.Spanner), idem, http.MethodPost))))
 	r.HandleFunc("/v1/supplier/products/",
-		auth.RequireRole(supplierRole, log(supplierProductDetailHandler(d.Spanner))))
+		auth.RequireRole(supplierRole, log(withMethodIdempotency(supplierProductDetailHandler(d.Spanner), idem, http.MethodPut, http.MethodDelete))))
 	r.HandleFunc("/v1/supplier/pricing/rules",
 		auth.RequireRole(supplierRole, log(idem(d.Pricing.HandleUpsertPricingRule))))
 	r.HandleFunc("/v1/supplier/pricing/rules/",
@@ -53,6 +53,26 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrides)))))
 	r.HandleFunc("/v1/supplier/pricing/retailer-overrides/",
 		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrideAction)))))
+}
+
+func withMethodIdempotency(next http.HandlerFunc, middleware Middleware, methods ...string) http.HandlerFunc {
+	if middleware == nil || len(methods) == 0 {
+		return next
+	}
+
+	allowed := make(map[string]struct{}, len(methods))
+	for _, method := range methods {
+		allowed[method] = struct{}{}
+	}
+
+	guarded := middleware(next)
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := allowed[r.Method]; ok {
+			guarded(w, r)
+			return
+		}
+		next(w, r)
+	}
 }
 
 func supplierUploadTicketHandler() http.HandlerFunc {

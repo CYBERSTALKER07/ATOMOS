@@ -41,6 +41,7 @@ import (
 	"backend-go/analytics"
 	"backend-go/auth"
 	"backend-go/countrycfg"
+	"backend-go/idempotency"
 	internalKafka "backend-go/kafka"
 	"backend-go/notifications"
 	"backend-go/order"
@@ -135,7 +136,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	// 6. Edge 7 — approve retailer cancel request.
 	r.HandleFunc("/v1/admin/orders/approve-cancel",
-		auth.RequireRole(adminOrSupplier, log(order.HandleApproveCancel(d.Order))))
+		auth.RequireRole(adminOrSupplier, log(idempotency.Guard(order.HandleApproveCancel(d.Order)))))
 
 	// 7. P0 — list active shop-closed escalations.
 	r.HandleFunc("/v1/admin/shop-closed/active",
@@ -143,19 +144,19 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	// 8. P0 — resolve shop-closed escalation (WAIT | BYPASS | RETURN_TO_DEPOT).
 	r.HandleFunc("/v1/admin/shop-closed/resolve",
-		auth.RequireRole(adminOrSupplier, log(d.Order.HandleResolveShopClosed(d.ShopClosedDeps))))
+		auth.RequireRole(adminOrSupplier, log(idempotency.Guard(d.Order.HandleResolveShopClosed(d.ShopClosedDeps)))))
 
 	// 9. Edge 27 — supplier approves early route completion.
 	r.HandleFunc("/v1/admin/route/approve-early-complete",
-		auth.RequireRole(adminOrSupplier, log(order.HandleApproveEarlyComplete(d.Order, d.EarlyCompleteDeps))))
+		auth.RequireRole(adminOrSupplier, log(idempotency.Guard(order.HandleApproveEarlyComplete(d.Order, d.EarlyCompleteDeps)))))
 
 	// 10. Edge 28 — supplier approves/rejects driver-proposed negotiation.
 	r.HandleFunc("/v1/admin/negotiate/resolve",
-		auth.RequireRole(adminOrSupplier, log(order.HandleResolveNegotiation(d.Order, d.NegotiationDeps))))
+		auth.RequireRole(adminOrSupplier, log(idempotency.Guard(order.HandleResolveNegotiation(d.Order, d.NegotiationDeps)))))
 
 	// 11. Edge 32 — supplier approves/denies credit delivery.
 	r.HandleFunc("/v1/admin/orders/resolve-credit",
-		auth.RequireRole(adminOrSupplier, log(order.HandleResolveCreditDelivery(d.Order, d.EarlyCompleteDeps))))
+		auth.RequireRole(adminOrSupplier, log(idempotency.Guard(order.HandleResolveCreditDelivery(d.Order, d.EarlyCompleteDeps)))))
 
 	// 11. Dev-only data purge (ADMIN only, irreversible).
 	r.HandleFunc("/v1/admin/nuke",

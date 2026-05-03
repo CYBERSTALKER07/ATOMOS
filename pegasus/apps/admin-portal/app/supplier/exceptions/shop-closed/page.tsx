@@ -5,6 +5,7 @@ import { readTokenFromCookie as getToken } from '@/lib/auth';
 import { Button } from '@heroui/react';
 import Icon from '@/components/Icon';
 import EmptyState from '@/components/EmptyState';
+import { buildSupplierShopClosedResolveIdempotencyKey } from '../../_shared/idempotency';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -39,7 +40,11 @@ export default function ShopClosedExceptions() {
     const token = getToken();
     const res = await fetch(`${API}/v1/admin/shop-closed/resolve`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': buildSupplierShopClosedResolveIdempotencyKey(attemptId, action),
+      },
       body: JSON.stringify({ attempt_id: attemptId, action })
     });
     if (res.ok) fetchExceptions();

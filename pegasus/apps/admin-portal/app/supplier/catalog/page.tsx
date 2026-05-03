@@ -6,6 +6,7 @@ import SupplierPromotionForm from '@/components/SupplierPromotionForm';
 import EmptyState from '@/components/EmptyState';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useToken } from '@/lib/auth';
+import { buildSupplierProductUpdateIdempotencyKey } from '../_shared/idempotency';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -164,7 +165,11 @@ export default function CatalogDashboard() {
 
       const res = await fetch(`${API}/v1/supplier/products/${editProduct.sku_id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'Idempotency-Key': buildSupplierProductUpdateIdempotencyKey(editProduct.sku_id, payload),
+        },
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
@@ -183,10 +188,15 @@ export default function CatalogDashboard() {
     if (!token) return;
     setToggling(p.sku_id);
     try {
+      const payload = { is_active: !p.is_active };
       const res = await fetch(`${API}/v1/supplier/products/${p.sku_id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ is_active: !p.is_active }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'Idempotency-Key': buildSupplierProductUpdateIdempotencyKey(p.sku_id, payload),
+        },
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('Toggle failed');
       fetchCatalog();

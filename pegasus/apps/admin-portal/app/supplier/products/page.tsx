@@ -7,6 +7,7 @@ import { useToken } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import EmptyState from '@/components/EmptyState';
 import Icon from '@/components/Icon';
+import { buildSupplierProductUpdateIdempotencyKey } from '../_shared/idempotency';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -108,10 +109,15 @@ export default function MyProductsPage() {
     if (!token) return;
     setToggling(p.sku_id);
     try {
+      const payload = { is_active: !p.is_active };
       const res = await fetch(`${API}/v1/supplier/products/${p.sku_id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ is_active: !p.is_active }),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'Idempotency-Key': buildSupplierProductUpdateIdempotencyKey(p.sku_id, payload),
+        },
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('Toggle failed');
       fetchProducts();
