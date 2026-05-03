@@ -39,7 +39,6 @@ Apply ACT for all technical asks, including:
 7. Warehouse live gate: treat `/ws/warehouse` plus the supply-request and dispatch-lock DTOs as one contract across warehouse portal, warehouse iOS, and warehouse Android. Do not change one consumer without checking the other two.
 8. Warehouse live resilience gate: `/ws/warehouse` consumers must auto-reconnect and surface stale/offline state. A silent frozen live view does not count as complete.
 9. Supplier geo-planning gate: treat `/v1/supplier/serving-warehouse`, `/v1/supplier/geo-report`, `/v1/supplier/zone-preview`, `/v1/supplier/warehouses/validate-coverage`, and `/v1/supplier/warehouse-loads` as one contract owned by `pegasus/apps/backend-go/proximityroutes/routes.go`; check the supplier portal coverage map and warehouse coverage-editor consumers before changing one path.
-9. Supplier geo-planning gate: treat `/v1/supplier/serving-warehouse`, `/v1/supplier/geo-report`, `/v1/supplier/zone-preview`, `/v1/supplier/warehouses/validate-coverage`, and `/v1/supplier/warehouse-loads` as one contract owned by `pegasus/apps/backend-go/proximityroutes/routes.go`; check the supplier portal coverage map and warehouse coverage-editor consumers before changing one path.
 
 ## C: Challenge
 If prompt/plan is unsafe, incomplete, or likely to break production, do not execute it as-is.
