@@ -2,6 +2,25 @@
   "theme": {
     "mode": "dark",
     "dark": "SRD's Synthwave Dark",
-    "light": "SRD's Synthwave Dark"
-  }
+    "light": "SRD's Synthwave Dark",
+  },
+  "context_servers": {
+    "void-ast-engine": {
+      "command": "node",
+      "args": [
+        "/Users/shakhzod/Desktop/V.O.I.D/.agents/extensions/ast-engine/mcp-server.mjs",
+      ],
+      "env": {
+        "VOID_AST_ENGINE_PATH": "/Users/shakhzod/Desktop/V.O.I.D/.agents/extensions/ast-engine/engine.mjs",
+        "VOID_AST_ROOT": "/Users/shakhzod/Desktop/V.O.I.D/pegasus",
+        "VOID_AST_INDEX": "/Users/shakhzod/Desktop/V.O.I.D/.agents/extensions/ast-engine/.cache/pegasus-index.json",
+      },
+    },
+    "refero": {
+      "endpoint": "https://api.refero.design/mcp",
+      "headers": {
+        "Authorization": "Bearer mcp-y0ATChAzL8rWjJ1Z",
+      },
+    },
+  },
 }

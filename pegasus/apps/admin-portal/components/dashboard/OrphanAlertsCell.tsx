@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { getAdminToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import { AlertTriangle, CheckCircle2, Radio } from 'lucide-react';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -28,18 +28,12 @@ export default function OrphanAlertsCell() {
 
   const fetchAlerts = useCallback(async (signal?: AbortSignal) => {
     try {
-      const token = await getAdminToken();
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/v1/supplier/dispatch-audits?type=ORPHAN_DETECTED&unresolved=true&limit=50`,
-        { headers: { Authorization: `Bearer ${token}` }, signal },
-      );
+      const res = await apiFetch('/v1/supplier/dispatch-audits?type=ORPHAN_DETECTED&unresolved=true&limit=50', {
+        signal,
+      });
       if (res.ok) {
         const data = await res.json();
         setAlerts(Array.isArray(data) ? data : data?.audits ?? []);
-        setError(null);
-      } else if (res.status === 404) {
-        // Endpoint not wired yet — show empty
-        setAlerts([]);
         setError(null);
       } else {
         setError('Failed to load');

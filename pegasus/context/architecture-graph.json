@@ -226,12 +226,13 @@
     },
     {
       "id": "supplier_geo_planning_surface",
-      "path": "/v1/supplier/{serving-warehouse,geo-report,zone-preview,warehouses/validate-coverage,warehouse-loads}",
+      "path": "/v1/supplier/{serving-warehouse,geo-report,dispatch-audits,zone-preview,warehouses/validate-coverage,warehouse-loads}",
       "owner": "pegasus/apps/backend-go/proximityroutes/routes.go",
       "delegatedFrom": "pegasus/apps/backend-go/main.go",
       "methods": [
         "GET /v1/supplier/serving-warehouse",
         "GET /v1/supplier/geo-report",
+        "GET /v1/supplier/dispatch-audits",
         "GET /v1/supplier/zone-preview",
         "POST /v1/supplier/warehouses/validate-coverage",
         "GET /v1/supplier/warehouse-loads"
@@ -239,11 +240,12 @@
       "consumers": [
         "pegasus/apps/admin-portal/app/supplier/geo-report/page.tsx",
         "pegasus/apps/admin-portal/app/supplier/warehouses/CoverageEditor.tsx",
-        "pegasus/apps/admin-portal/components/warehouse/CoverageMap.tsx"
+        "pegasus/apps/admin-portal/components/warehouse/CoverageMap.tsx",
+        "pegasus/apps/admin-portal/components/dashboard/OrphanAlertsCell.tsx"
       ],
       "notes": [
         "Route composition moved out of main.go into proximityroutes without changing the delegated proximity handlers.",
-        "Portal consumers currently depend on geo-report, zone-preview, and validate-coverage while serving-warehouse and warehouse-loads remain supplier-facing backend planning support paths."
+        "Portal consumers currently depend on geo-report, dispatch-audits, zone-preview, and validate-coverage while serving-warehouse and warehouse-loads remain supplier-facing backend planning support paths."
       ]
     },
     {

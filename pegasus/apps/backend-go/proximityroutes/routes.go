@@ -1,6 +1,7 @@
 // Package proximityroutes owns the supplier geo-spatial planning surface —
-// the five /v1/supplier/* endpoints for serving-warehouse resolution, coverage
-// reporting, zone preview, coverage validation, and live warehouse load stats.
+// the six /v1/supplier/* endpoints for serving-warehouse resolution, coverage
+// reporting, dispatch-audit alerts, zone preview, coverage validation, and live
+// warehouse load stats.
 //
 // Handler bodies live in backend-go/proximity. This package is a thin composer
 // that mounts them behind the SUPPLIER / ADMIN role guard and the caller-
@@ -31,6 +32,7 @@ type Deps struct {
 //
 //	GET  /v1/supplier/serving-warehouse           — exclusive warehouse resolver
 //	GET  /v1/supplier/geo-report                  — coverage health report
+//	GET  /v1/supplier/dispatch-audits             — coverage audit feed
 //	GET  /v1/supplier/zone-preview                — real-time coverage preview
 //	POST /v1/supplier/warehouses/validate-coverage — H3 coverage + conflict check
 //	GET  /v1/supplier/warehouse-loads             — live warehouse queue depth
@@ -42,6 +44,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplier, log(proximity.HandleGetServingWarehouse(d.Spanner, d.ReadRouter))))
 	r.HandleFunc("/v1/supplier/geo-report",
 		auth.RequireRole(supplier, log(proximity.HandleGeoReport(d.Spanner))))
+	r.HandleFunc("/v1/supplier/dispatch-audits",
+		auth.RequireRole(supplier, log(proximity.HandleDispatchAudits(d.Spanner))))
 	r.HandleFunc("/v1/supplier/zone-preview",
 		auth.RequireRole(supplier, log(proximity.HandleZonePreview(d.Spanner))))
 	r.HandleFunc("/v1/supplier/warehouses/validate-coverage",

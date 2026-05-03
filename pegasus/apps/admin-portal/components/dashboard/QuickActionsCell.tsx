@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getAdminToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import {
   RotateCcw,
   Zap,
@@ -79,6 +79,15 @@ export default function QuickActionsCell() {
   const router = useRouter();
   const [executing, setExecuting] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ id: string; ok: boolean; msg: string } | null>(null);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimerRef.current) {
+        clearTimeout(feedbackTimerRef.current);
+      }
+    };
+  }, []);
 
   const execute = async (action: ActionConfig) => {
     if (action.navigateTo) {
@@ -91,12 +100,10 @@ export default function QuickActionsCell() {
     setFeedback(null);
 
     try {
-      const token = await getAdminToken();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${action.endpoint}`, {
+      const res = await apiFetch(action.endpoint, {
         method: action.method,
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: action.method !== 'GET' ? JSON.stringify({}) : undefined,
       });
@@ -110,8 +117,10 @@ export default function QuickActionsCell() {
       setFeedback({ id: action.id, ok: false, msg: 'Network error' });
     } finally {
       setExecuting(null);
-      // Clear feedback after 3s
-      setTimeout(() => setFeedback(null), 3000);
+      if (feedbackTimerRef.current) {
+        clearTimeout(feedbackTimerRef.current);
+      }
+      feedbackTimerRef.current = setTimeout(() => setFeedback(null), 3000);
     }
   };
 
