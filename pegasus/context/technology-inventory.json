@@ -123,6 +123,37 @@
       ]
     },
     {
+      "name": "Supplier self-service setup surface",
+      "path": "/v1/supplier/{configure,billing/setup,profile,shift,payment-config,gateway-onboarding,payment/recipient/register}",
+      "owner": "pegasus/apps/backend-go/supplierroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "POST /v1/supplier/configure",
+        "POST /v1/supplier/billing/setup",
+        "GET /v1/supplier/profile",
+        "PUT /v1/supplier/profile",
+        "PATCH /v1/supplier/shift",
+        "GET /v1/supplier/payment-config",
+        "POST /v1/supplier/payment-config",
+        "DELETE /v1/supplier/payment-config",
+        "GET /v1/supplier/gateway-onboarding",
+        "POST /v1/supplier/gateway-onboarding",
+        "DELETE /v1/supplier/gateway-onboarding",
+        "POST /v1/supplier/payment/recipient/register"
+      ],
+      "consumers": [
+        "admin-portal setup billing page",
+        "admin-portal supplier profile page",
+        "admin-portal supplier payment-config page",
+        "admin-portal supplier shift hook",
+        "admin-portal supplier product/profile readers"
+      ],
+      "notes": [
+        "Route composition moved out of main.go into supplierroutes while preserving the existing supplier and vault handlers.",
+        "The portal currently consumes billing setup, profile, shift, and payment-config paths as one supplier self-service contract."
+      ]
+    },
+    {
         "name": "Warehouse ops compatibility surface",
         "path": "/v1/warehouse/ops/*",
         "owner": "pegasus/apps/backend-go/warehouseroutes/routes.go",
@@ -149,6 +180,7 @@
           "Inventory responses expose both inventory and items collections plus sku_id and product_id aliases.",
           "Staff create accepts an optional pin and returns the effective one-time pin for native client parity.",
           "Vehicle responses expose both max_volume_vu and capacity_vu plus a derived availability status.",
+          "Vehicle availability is schema-backed with Vehicles.UnavailableReason and travels across the warehouse portal, iOS, and Android fleet clients.",
           "Warehouse fleet controls now share driver assign/reset and vehicle activate/deactivate mutations across portal, iOS, and Android.",
           "Warehouse dispatch preview excludes inactive vehicles from the available-driver list so vehicle availability mutations affect dispatch eligibility immediately."
         ]

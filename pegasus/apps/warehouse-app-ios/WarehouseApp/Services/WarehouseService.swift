@@ -49,10 +49,10 @@ enum WarehouseService {
         try await api.post("v1/warehouse/ops/vehicles", body: CreateVehicleRequest(label: label, licensePlate: licensePlate, vehicleClass: vehicleClass))
     }
 
-    static func updateVehicleAvailability(vehicleId: String, isActive: Bool) async throws -> VehicleMutationResponse {
+    static func updateVehicleAvailability(vehicleId: String, isActive: Bool, unavailableReason: String? = nil) async throws -> VehicleMutationResponse {
         try await api.patch(
             "v1/warehouse/ops/vehicles/\(vehicleId)",
-            body: UpdateVehicleRequest(isActive: isActive)
+            body: UpdateVehicleRequest(isActive: isActive, unavailableReason: unavailableReason)
         )
     }
 

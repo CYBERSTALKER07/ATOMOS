@@ -182,6 +182,33 @@ struct AssignDriverVehicleResponse: Decodable {
 
 // MARK: - Vehicle
 
+enum VehicleUnavailableReasonOption: String, CaseIterable, Identifiable {
+    case maintenance = "MAINTENANCE"
+    case truckDamaged = "TRUCK_DAMAGED"
+    case regulatoryHold = "REGULATORY_HOLD"
+    case manualHold = "MANUAL_HOLD"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .maintenance:
+            return "Maintenance"
+        case .truckDamaged:
+            return "Truck Damaged"
+        case .regulatoryHold:
+            return "Regulatory Hold"
+        case .manualHold:
+            return "Manual Hold"
+        }
+    }
+}
+
+func vehicleUnavailableReasonLabel(_ reason: String) -> String {
+    VehicleUnavailableReasonOption(rawValue: reason)?.title
+        ?? reason.replacingOccurrences(of: "_", with: " ").capitalized
+}
+
 struct Vehicle: Decodable, Identifiable {
     var id: String { vehicleId }
     let vehicleId: String
@@ -191,6 +218,7 @@ struct Vehicle: Decodable, Identifiable {
     let capacityVu: Int
     let status: String
     let isActive: Bool
+    let unavailableReason: String?
     let assignedDriverId: String?
     let assignedDriverName: String?
 
@@ -202,6 +230,7 @@ struct Vehicle: Decodable, Identifiable {
         case capacityVu = "capacity_vu"
         case status
         case isActive = "is_active"
+        case unavailableReason = "unavailable_reason"
         case assignedDriverId = "assigned_driver_id"
         case assignedDriverName = "assigned_driver_name"
     }
@@ -215,6 +244,7 @@ struct Vehicle: Decodable, Identifiable {
         capacityVu = try c.decodeIfPresent(Int.self, forKey: .capacityVu) ?? 0
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
         isActive = try c.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
+        unavailableReason = try c.decodeIfPresent(String.self, forKey: .unavailableReason)
         assignedDriverId = try c.decodeIfPresent(String.self, forKey: .assignedDriverId)
         assignedDriverName = try c.decodeIfPresent(String.self, forKey: .assignedDriverName)
     }
@@ -238,19 +268,23 @@ struct CreateVehicleRequest: Encodable {
 
 struct UpdateVehicleRequest: Encodable {
     let isActive: Bool?
+    let unavailableReason: String?
 
     enum CodingKeys: String, CodingKey {
         case isActive = "is_active"
+        case unavailableReason = "unavailable_reason"
     }
 }
 
 struct VehicleMutationResponse: Decodable {
     let status: String
     let vehicleId: String
+    let unavailableReason: String?
 
     enum CodingKeys: String, CodingKey {
         case status
         case vehicleId = "vehicle_id"
+        case unavailableReason = "unavailable_reason"
     }
 }
 

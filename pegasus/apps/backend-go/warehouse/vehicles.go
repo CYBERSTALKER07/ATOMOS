@@ -293,9 +293,9 @@ func patchOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 	}
 
 	var req struct {
-		Label        *string `json:"label,omitempty"`
-		LicensePlate *string `json:"license_plate,omitempty"`
-		IsActive     *bool   `json:"is_active,omitempty"`
+		Label             *string `json:"label,omitempty"`
+		LicensePlate      *string `json:"license_plate,omitempty"`
+		IsActive          *bool   `json:"is_active,omitempty"`
 		UnavailableReason *string `json:"unavailable_reason,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -306,6 +306,7 @@ func patchOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
+	appliedUnavailableReason := ""
 	cacheDriverIDs := []string{}
 	if _, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		vehicleState, err := readWarehouseVehicleAssignmentState(ctx, txn, ops, vehicleID)
@@ -385,6 +386,7 @@ func patchOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		if shouldWriteUnavailableReason {
 			vehicleColumns = append(vehicleColumns, "UnavailableReason")
 			vehicleValues = append(vehicleValues, warehouseNullableString(unavailableReason))
+			appliedUnavailableReason = unavailableReason
 		}
 
 		if len(vehicleColumns) == 1 && len(mutations) == 0 {
@@ -408,7 +410,7 @@ func patchOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 	warehouseInvalidateDriverProfiles(ctx, cacheDriverIDs...)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"status": "updated", "vehicle_id": vehicleID, "unavailable_reason": normalizeWarehouseVehicleUnavailableReason(req.UnavailableReason)})
+	json.NewEncoder(w).Encode(map[string]interface{}{"status": "updated", "vehicle_id": vehicleID, "unavailable_reason": appliedUnavailableReason})
 }
 
 func normalizeWarehouseVehicleUnavailableReason(reason *string) string {

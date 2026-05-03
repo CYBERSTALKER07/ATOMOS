@@ -4,13 +4,34 @@ import { useEffect, useState, useCallback } from 'react';
 import type {
   WarehouseFleetVehicle,
   WarehouseFleetVehicleListResponse,
+  WarehouseVehicleUnavailableReason,
   WarehouseVehicleMutationResponse,
 } from '@pegasus/types';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 
+const VEHICLE_UNAVAILABLE_REASONS: WarehouseVehicleUnavailableReason[] = [
+  'MAINTENANCE',
+  'TRUCK_DAMAGED',
+  'REGULATORY_HOLD',
+  'MANUAL_HOLD',
+];
+
+function formatUnavailableReason(reason?: string) {
+  if (!reason) {
+    return '';
+  }
+
+  return reason
+    .toLowerCase()
+    .split('_')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 export default function VehiclesPage() {
   const [vehicles, setVehicles] = useState<WarehouseFleetVehicle[]>([]);
+  const [vehicleReasons, setVehicleReasons] = useState<Record<string, WarehouseVehicleUnavailableReason>>({});
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ label: '', license_plate: '', vehicle_class: 'CLASS_A' });
@@ -27,7 +48,17 @@ export default function VehiclesPage() {
       }
 
       const data = await res.json() as WarehouseFleetVehicleListResponse;
-      setVehicles(data.vehicles || []);
+      const nextVehicles = data.vehicles || [];
+      setVehicles(nextVehicles);
+      setVehicleReasons(current => {
+        const next = { ...current };
+        for (const vehicle of nextVehicles) {
+          if (!next[vehicle.vehicle_id]) {
+            next[vehicle.vehicle_id] = vehicle.unavailable_reason || 'MANUAL_HOLD';
+          }
+        }
+        return next;
+      });
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load vehicles');
     }
@@ -58,13 +89,14 @@ export default function VehiclesPage() {
     finally { setCreating(false); }
   }
 
-  async function handleToggleAvailability(vehicle: WarehouseFleetVehicle) {
+	async function handleToggleAvailability(vehicle: WarehouseFleetVehicle, nextActive: boolean) {
     setMutatingVehicleId(vehicle.vehicle_id);
     setError('');
     try {
+	    const unavailableReason = vehicleReasons[vehicle.vehicle_id] || vehicle.unavailable_reason || 'MANUAL_HOLD';
       const res = await apiFetch(`/v1/warehouse/ops/vehicles/${vehicle.vehicle_id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ is_active: !vehicle.is_active }),
+		  body: JSON.stringify(nextActive ? { is_active: true } : { is_active: false, unavailable_reason: unavailableReason }),
       });
       if (!res.ok) {
         throw new Error('Unable to update vehicle availability');
@@ -167,22 +199,45 @@ export default function VehiclesPage() {
                   <td className="py-2.5 px-3 text-(--muted)">{v.assigned_driver_name || 'Unassigned'}</td>
                   <td className="py-2.5 px-3 text-right font-mono">{v.capacity_vu} VU</td>
                   <td className="py-2.5 px-3">
-                    <span className={`status-chip ${v.is_active ? 'status-chip--stable' : 'status-chip--draft'}`}>
-                      {v.is_active ? v.status || 'Active' : 'Inactive'}
-                    </span>
+                    <div className="space-y-1">
+                      <span className={`status-chip ${v.is_active ? 'status-chip--stable' : 'status-chip--draft'}`}>
+                        {v.is_active ? v.status || 'Active' : 'Unavailable'}
+                      </span>
+                      {!v.is_active && v.unavailable_reason && (
+                        <div className="text-xs text-(--muted)">{formatUnavailableReason(v.unavailable_reason)}</div>
+                      )}
+                    </div>
                   </td>
                   <td className="py-2.5 px-3">
-                    <button
-                      onClick={() => handleToggleAvailability(v)}
-                      disabled={mutatingVehicleId === v.vehicle_id}
-                      className="rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50"
-                      style={{
-                        background: v.is_active ? 'color-mix(in srgb, var(--warning) 15%, transparent)' : 'color-mix(in srgb, var(--success) 15%, transparent)',
-                        color: v.is_active ? 'var(--warning)' : 'var(--success)',
-                      }}
-                    >
-                      {mutatingVehicleId === v.vehicle_id ? 'Updating...' : v.is_active ? 'Set Unavailable' : 'Restore Vehicle'}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {v.is_active && (
+                        <select
+                          value={vehicleReasons[v.vehicle_id] || v.unavailable_reason || 'MANUAL_HOLD'}
+                          onChange={event => setVehicleReasons(current => ({
+                            ...current,
+                            [v.vehicle_id]: event.target.value as WarehouseVehicleUnavailableReason,
+                          }))}
+                          disabled={mutatingVehicleId === v.vehicle_id}
+                          className="rounded-lg border px-3 py-1.5 text-sm"
+                          style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)', color: 'var(--field-foreground)' }}
+                        >
+                          {VEHICLE_UNAVAILABLE_REASONS.map(reason => (
+                            <option key={reason} value={reason}>{formatUnavailableReason(reason)}</option>
+                          ))}
+                        </select>
+                      )}
+                      <button
+                        onClick={() => handleToggleAvailability(v, !v.is_active)}
+                        disabled={mutatingVehicleId === v.vehicle_id}
+                        className="rounded-lg px-3 py-1.5 text-sm font-medium disabled:opacity-50"
+                        style={{
+                          background: v.is_active ? 'color-mix(in srgb, var(--warning) 15%, transparent)' : 'color-mix(in srgb, var(--success) 15%, transparent)',
+                          color: v.is_active ? 'var(--warning)' : 'var(--success)',
+                        }}
+                      >
+                        {mutatingVehicleId === v.vehicle_id ? 'Updating...' : v.is_active ? 'Set Unavailable' : 'Restore Vehicle'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

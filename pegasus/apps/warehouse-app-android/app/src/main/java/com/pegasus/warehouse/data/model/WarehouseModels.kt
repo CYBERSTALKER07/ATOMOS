@@ -109,6 +109,7 @@ data class Vehicle(
     @SerialName("capacity_vu") val capacityVu: Int = 0,
     val status: String = "",
     @SerialName("is_active") val isActive: Boolean = true,
+    @SerialName("unavailable_reason") val unavailableReason: String? = null,
     @SerialName("assigned_driver_id") val assignedDriverId: String? = null,
     @SerialName("assigned_driver_name") val assignedDriverName: String = "",
 )
@@ -128,12 +129,14 @@ data class VehicleListResponse(
 @Serializable
 data class UpdateVehicleRequest(
     @SerialName("is_active") val isActive: Boolean? = null,
+    @SerialName("unavailable_reason") val unavailableReason: String? = null,
 )
 
 @Serializable
 data class VehicleMutationResponse(
     val status: String = "",
     @SerialName("vehicle_id") val vehicleId: String = "",
+    @SerialName("unavailable_reason") val unavailableReason: String? = null,
 )
 
 // ── Inventory ──

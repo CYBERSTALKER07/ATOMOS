@@ -6,6 +6,7 @@ struct VehiclesView: View {
     @State private var error: String?
     @State private var showCreate = false
     @State private var mutatingVehicleId: String?
+    @State private var reasonVehicle: Vehicle?
 
     var body: some View {
         NavigationStack {
@@ -35,13 +36,18 @@ struct VehiclesView: View {
                                 Text(vehicle.assignedDriverName ?? "Unassigned")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                if !vehicle.isActive, let unavailableReason = vehicle.unavailableReason, !unavailableReason.isEmpty {
+                                    Text(vehicleUnavailableReasonLabel(unavailableReason))
+                                        .font(.caption)
+                                        .foregroundStyle(.orange)
+                                }
                             }
                             Spacer()
                             if mutatingVehicleId == vehicle.vehicleId {
                                 ProgressView()
                                     .controlSize(.small)
                             } else {
-                                Text(vehicle.status.isEmpty ? "AVAILABLE" : vehicle.status)
+                                Text(vehicle.isActive ? (vehicle.status.isEmpty ? "AVAILABLE" : vehicle.status) : "UNAVAILABLE")
                                     .font(.caption.bold())
                                     .padding(.horizontal, LabTheme.spacingSM)
                                     .padding(.vertical, LabTheme.spacingXS)
@@ -49,10 +55,17 @@ struct VehiclesView: View {
                             }
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(vehicle.isActive ? "Unavailable" : "Restore") {
-                                toggleAvailability(for: vehicle)
+                            if vehicle.isActive {
+                                Button("Unavailable") {
+                                    reasonVehicle = vehicle
+                                }
+                                .tint(.orange)
+                            } else {
+                                Button("Restore") {
+                                    toggleAvailability(for: vehicle, isActive: true)
+                                }
+                                .tint(.green)
                             }
-                            .tint(vehicle.isActive ? .orange : .green)
                         }
                     }
                     .listStyle(.insetGrouped)
@@ -73,6 +86,29 @@ struct VehiclesView: View {
             .sheet(isPresented: $showCreate) {
                 CreateVehicleSheet { load() }
             }
+            .confirmationDialog(
+                "Set Vehicle Unavailable",
+                isPresented: Binding(
+                    get: { reasonVehicle != nil },
+                    set: { isPresented in
+                        if !isPresented {
+                            reasonVehicle = nil
+                        }
+                    }
+                ),
+                presenting: reasonVehicle
+            ) { vehicle in
+                ForEach(VehicleUnavailableReasonOption.allCases) { reason in
+                    Button(reason.title) {
+                        toggleAvailability(for: vehicle, isActive: false, unavailableReason: reason.rawValue)
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    reasonVehicle = nil
+                }
+            } message: { vehicle in
+                Text("Choose why \(vehicle.label.isEmpty ? vehicle.licensePlate : vehicle.label) is unavailable.")
+            }
         }
     }
 
@@ -90,12 +126,13 @@ struct VehiclesView: View {
         }
     }
 
-    private func toggleAvailability(for vehicle: Vehicle) {
+    private func toggleAvailability(for vehicle: Vehicle, isActive: Bool, unavailableReason: String? = nil) {
         mutatingVehicleId = vehicle.vehicleId
         error = nil
+        reasonVehicle = nil
         Task {
             do {
-                _ = try await WarehouseService.updateVehicleAvailability(vehicleId: vehicle.vehicleId, isActive: !vehicle.isActive)
+                _ = try await WarehouseService.updateVehicleAvailability(vehicleId: vehicle.vehicleId, isActive: isActive, unavailableReason: unavailableReason)
                 load()
             } catch {
                 self.error = error.localizedDescription

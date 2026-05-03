@@ -13,12 +13,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasus.warehouse.data.model.CreateVehicleRequest
+import com.pegasus.warehouse.data.model.UpdateVehicleRequest
 import com.pegasus.warehouse.data.model.Vehicle
 import com.pegasus.warehouse.data.remote.WarehouseApi
 import com.pegasus.warehouse.ui.theme.LabSpacing
 import kotlinx.coroutines.launch
 
 private val VEHICLE_CLASSES = listOf("CLASS_A" to "50 VU", "CLASS_B" to "150 VU", "CLASS_C" to "400 VU")
+private val VEHICLE_UNAVAILABLE_REASONS = listOf(
+    "MAINTENANCE" to "Maintenance",
+    "TRUCK_DAMAGED" to "Truck Damaged",
+    "REGULATORY_HOLD" to "Regulatory Hold",
+    "MANUAL_HOLD" to "Manual Hold",
+)
+
+private fun vehicleUnavailableReasonLabel(reason: String): String =
+    VEHICLE_UNAVAILABLE_REASONS.firstOrNull { it.first == reason }?.second
+        ?: reason.lowercase().split('_').joinToString(" ") { token -> token.replaceFirstChar { ch -> ch.titlecase() } }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +42,7 @@ fun VehiclesScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var showCreate by remember { mutableStateOf(false) }
     var mutatingVehicleId by remember { mutableStateOf<String?>(null) }
+    var reasonVehicle by remember { mutableStateOf<Vehicle?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -43,6 +55,29 @@ fun VehiclesScreen(
                 else error = "Failed (${resp.code()})"
             } catch (e: Exception) { error = e.message ?: "Network error" }
             finally { loading = false }
+        }
+    }
+
+    fun updateVehicleAvailability(vehicle: Vehicle, isActive: Boolean, unavailableReason: String? = null) {
+        mutatingVehicleId = vehicle.vehicleId
+        reasonVehicle = null
+        scope.launch {
+            try {
+                val resp = api.updateVehicle(
+                    vehicle.vehicleId,
+                    UpdateVehicleRequest(isActive = isActive, unavailableReason = unavailableReason),
+                )
+                if (resp.isSuccessful) {
+                    load()
+                    snackbarHostState.showSnackbar(if (isActive) "Vehicle restored" else "Vehicle marked unavailable")
+                } else {
+                    error = "Failed (${resp.code()})"
+                }
+            } catch (e: Exception) {
+                error = e.message ?: "Network error"
+            } finally {
+                mutatingVehicleId = null
+            }
         }
     }
 
@@ -82,28 +117,18 @@ fun VehiclesScreen(
                                 Text(v.label.ifBlank { v.licensePlate }, style = MaterialTheme.typography.titleSmall)
                                 Text("${v.vehicleClass} · ${v.capacityVu} VU", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(v.assignedDriverName.ifBlank { "Unassigned" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (!v.isActive && !v.unavailableReason.isNullOrBlank()) {
+                                    Text(
+                                        vehicleUnavailableReasonLabel(v.unavailableReason),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.tertiary,
+                                    )
+                                }
                             }
                             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(LabSpacing.sm)) {
-                                AssistChip(onClick = {}, label = { Text(v.status.ifBlank { "AVAILABLE" }, style = MaterialTheme.typography.labelSmall) })
+                                AssistChip(onClick = {}, label = { Text(if (v.isActive) v.status.ifBlank { "AVAILABLE" } else "UNAVAILABLE", style = MaterialTheme.typography.labelSmall) })
                                 OutlinedButton(
-                                    onClick = {
-                                        mutatingVehicleId = v.vehicleId
-                                        scope.launch {
-                                            try {
-                                                val resp = api.updateVehicle(v.vehicleId, UpdateVehicleRequest(isActive = !v.isActive))
-                                                if (resp.isSuccessful) {
-                                                    load()
-                                                    snackbarHostState.showSnackbar("Vehicle availability updated")
-                                                } else {
-                                                    error = "Failed (${resp.code()})"
-                                                }
-                                            } catch (e: Exception) {
-                                                error = e.message ?: "Network error"
-                                            } finally {
-                                                mutatingVehicleId = null
-                                            }
-                                        }
-                                    },
+                                    onClick = { if (v.isActive) reasonVehicle = v else updateVehicleAvailability(v, true) },
                                     enabled = mutatingVehicleId != v.vehicleId,
                                 ) {
                                     if (mutatingVehicleId == v.vehicleId) {
@@ -125,6 +150,32 @@ fun VehiclesScreen(
             api = api,
             onDismiss = { showCreate = false },
             onCreated = { showCreate = false; load(); scope.launch { snackbarHostState.showSnackbar("Vehicle created") } },
+        )
+    }
+
+    if (reasonVehicle != null) {
+        AlertDialog(
+            onDismissRequest = { reasonVehicle = null },
+            title = { Text("Set Vehicle Unavailable") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.sm)) {
+                    Text("Choose why ${reasonVehicle?.label?.ifBlank { reasonVehicle?.licensePlate ?: "this vehicle" } ?: "this vehicle"} is unavailable.")
+                    VEHICLE_UNAVAILABLE_REASONS.forEach { (reason, label) ->
+                        OutlinedButton(
+                            onClick = { reasonVehicle?.let { updateVehicleAvailability(it, false, reason) } },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(label)
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { reasonVehicle = null }) {
+                    Text("Cancel")
+                }
+            },
         )
     }
 }
