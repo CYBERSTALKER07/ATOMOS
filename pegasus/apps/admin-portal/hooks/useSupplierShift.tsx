@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { apiFetch } from '@/lib/auth';
+import { buildSupplierShiftIdempotencyKey } from '@/app/supplier/_shared/idempotency';
 
 type DayWindow = { open: string; close: string };
 type ScheduleKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
@@ -50,10 +51,14 @@ export function SupplierShiftProvider({ children }: { children: ReactNode }) {
     if (isToggling || isActive === null) return;
     setIsToggling(true);
     try {
+      const payload = { manual_off_shift: isActive };
       const res = await apiFetch('/v1/supplier/shift', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ manual_off_shift: isActive }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierShiftIdempotencyKey(payload),
+        },
+        body: JSON.stringify(payload),
       });
       if (res.ok) {
         const data: { is_active: boolean; manual_off_shift: boolean } = await res.json();
@@ -68,13 +73,17 @@ export function SupplierShiftProvider({ children }: { children: ReactNode }) {
   const updateShift = useCallback(
     async (manualOff: boolean, sched: OperatingSchedule): Promise<{ ok: boolean }> => {
       try {
+        const payload = {
+          manual_off_shift: manualOff,
+          operating_schedule: sched,
+        };
         const res = await apiFetch('/v1/supplier/shift', {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            manual_off_shift: manualOff,
-            operating_schedule: sched,
-          }),
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': buildSupplierShiftIdempotencyKey(payload),
+          },
+          body: JSON.stringify(payload),
         });
         if (res.ok) {
           const data: { is_active: boolean; manual_off_shift: boolean } = await res.json();

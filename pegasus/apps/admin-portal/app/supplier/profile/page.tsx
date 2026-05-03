@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@heroui/react';
 import Icon from '../../../components/Icon';
 import { apiFetch } from '../../../lib/auth';
+import { buildSupplierProfileUpdateIdempotencyKey } from '../_shared/idempotency';
 
 interface SupplierProfile {
   supplier_id: string;
@@ -114,7 +115,10 @@ export default function SupplierProfilePage() {
 
       const res = await apiFetch('/v1/supplier/profile', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierProfileUpdateIdempotencyKey(payload),
+        },
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`${res.status}`);

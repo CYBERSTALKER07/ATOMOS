@@ -5,7 +5,7 @@ import { Button } from '@heroui/react';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import Drawer from '@/components/Drawer';
-import { buildSupplierOrgInviteIdempotencyKey } from '../_shared/idempotency';
+import { buildSupplierOrgInviteIdempotencyKey, buildSupplierOrgMemberActionIdempotencyKey } from '../_shared/idempotency';
 import { normalizeCollectionResponse } from '../_shared/referenceData';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -167,11 +167,17 @@ export default function OrgMembersPage() {
     if (member.is_active) {
       const res = await apiFetch(`/v1/supplier/org/members/${member.user_id}`, {
         method: 'DELETE',
+        headers: {
+          'Idempotency-Key': buildSupplierOrgMemberActionIdempotencyKey(member.user_id, 'DELETE'),
+        },
       });
       if (res.ok) fetchMembers();
     } else {
       const res = await apiFetch(`/v1/supplier/org/members/${member.user_id}`, {
         method: 'PUT',
+        headers: {
+          'Idempotency-Key': buildSupplierOrgMemberActionIdempotencyKey(member.user_id, 'PUT', { is_active: true }),
+        },
         body: JSON.stringify({ is_active: true }),
       });
       if (res.ok) fetchMembers();

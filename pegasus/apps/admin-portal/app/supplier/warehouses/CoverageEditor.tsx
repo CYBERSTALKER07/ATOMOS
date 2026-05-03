@@ -6,6 +6,7 @@ import { Button } from '@heroui/react';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import { cellToBoundary, latLngToCell } from 'h3-js';
+import { buildSupplierWarehouseCoverageIdempotencyKey } from '../_shared/idempotency';
 
 const MapGL = dynamic(() => import('react-map-gl/maplibre').then(m => m.default), { ssr: false });
 const Source = dynamic(() => import('react-map-gl/maplibre').then(m => m.Source), { ssr: false });
@@ -158,12 +159,16 @@ export default function CoverageEditor({ warehouseId, warehouseName, lat, lng, e
     setSaving(true);
     setError('');
     try {
+      const payload = {
+        polygon: polygon.map(p => [p[0], p[1]]),
+        h3_resolution: resolution,
+      };
       const res = await apiFetch(`/v1/supplier/warehouses/${warehouseId}/coverage`, {
         method: 'POST',
-        body: JSON.stringify({
-          polygon: polygon.map(p => [p[0], p[1]]),
-          h3_resolution: resolution,
-        }),
+        headers: {
+          'Idempotency-Key': buildSupplierWarehouseCoverageIdempotencyKey(warehouseId, payload),
+        },
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const data = await res.json();

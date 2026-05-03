@@ -11,6 +11,7 @@ import WarehouseForm from './WarehouseForm';
 import CoverageEditor from './CoverageEditor';
 import WarehouseStaffPanel from './WarehouseStaffPanel';
 import OperatingScheduleEditor from './OperatingScheduleEditor';
+import { buildSupplierWarehouseActionIdempotencyKey } from '../_shared/idempotency';
 
 interface WarehouseItem {
   warehouse_id: string;
@@ -155,6 +156,9 @@ export default function WarehousesPage() {
     if (!selectedWarehouse) return;
     const res = await apiFetch(`/v1/supplier/warehouses/${selectedWarehouse.warehouse_id}`, {
       method: 'PUT',
+      headers: {
+        'Idempotency-Key': buildSupplierWarehouseActionIdempotencyKey(selectedWarehouse.warehouse_id, 'PUT', updates),
+      },
       body: JSON.stringify(updates),
     });
     if (res.ok) {
@@ -167,9 +171,13 @@ export default function WarehousesPage() {
   };
 
   const handleToggleShift = async (wh: WarehouseItem) => {
+    const payload = { is_on_shift: !wh.is_on_shift };
     const res = await apiFetch(`/v1/supplier/warehouses/${wh.warehouse_id}`, {
       method: 'PUT',
-      body: JSON.stringify({ is_on_shift: !wh.is_on_shift }),
+      headers: {
+        'Idempotency-Key': buildSupplierWarehouseActionIdempotencyKey(wh.warehouse_id, 'PUT', payload),
+      },
+      body: JSON.stringify(payload),
     });
     if (res.ok) {
       fetchWarehouses();
@@ -181,7 +189,12 @@ export default function WarehousesPage() {
   };
 
   const handleDeactivate = async (id: string) => {
-    const res = await apiFetch(`/v1/supplier/warehouses/${id}`, { method: 'DELETE' });
+    const res = await apiFetch(`/v1/supplier/warehouses/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Idempotency-Key': buildSupplierWarehouseActionIdempotencyKey(id, 'DELETE'),
+      },
+    });
     if (res.ok) {
       closeDrawer();
       fetchWarehouses();

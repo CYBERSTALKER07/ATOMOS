@@ -8,7 +8,7 @@ import { usePagination } from '@/lib/usePagination';
 import PaginationControls from '@/components/PaginationControls';
 import Icon from '@/components/Icon';
 import Drawer from '@/components/Drawer';
-import { buildSupplierOrgInviteIdempotencyKey } from '../_shared/idempotency';
+import { buildSupplierOrgInviteIdempotencyKey, buildSupplierOrgMemberActionIdempotencyKey } from '../_shared/idempotency';
 import { normalizeCollectionResponse } from '../_shared/referenceData';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -251,7 +251,12 @@ export default function StaffManagementPage() {
   async function toggleActive(m: OrgMember) {
     if (m.user_id === userId) return; // Self-protection
     if (m.is_active) {
-      const res = await apiFetch(`/v1/supplier/org/members/${m.user_id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/v1/supplier/org/members/${m.user_id}`, {
+        method: 'DELETE',
+        headers: {
+          'Idempotency-Key': buildSupplierOrgMemberActionIdempotencyKey(m.user_id, 'DELETE'),
+        },
+      });
       if (res.ok) fetchMembers();
       else {
         const err = await res.json().catch(() => ({ error: 'Failed' }));
@@ -260,6 +265,9 @@ export default function StaffManagementPage() {
     } else {
       const res = await apiFetch(`/v1/supplier/org/members/${m.user_id}`, {
         method: 'PUT',
+        headers: {
+          'Idempotency-Key': buildSupplierOrgMemberActionIdempotencyKey(m.user_id, 'PUT', { is_active: true }),
+        },
         body: JSON.stringify({ is_active: true }),
       });
       if (res.ok) fetchMembers();
@@ -304,6 +312,9 @@ export default function StaffManagementPage() {
     try {
       const res = await apiFetch(`/v1/supplier/org/members/${editTarget.user_id}`, {
         method: 'PUT',
+        headers: {
+          'Idempotency-Key': buildSupplierOrgMemberActionIdempotencyKey(editTarget.user_id, 'PUT', body),
+        },
         body: JSON.stringify(body),
       });
       if (!res.ok) {

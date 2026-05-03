@@ -66,9 +66,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/billing/setup",
 		auth.RequireRole(supplierRole, log(idem(supplier.HandleBillingSetup(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/profile",
-		auth.RequireRole(supplierRole, log(supplierProfileHandler(d))))
+		auth.RequireRole(supplierRole, log(idem(supplierProfileHandler(d)))))
 	r.HandleFunc("/v1/supplier/shift",
-		auth.RequireRole(supplierRole, log(supplier.HandleSupplierShift(d.Spanner))))
+		auth.RequireRole(supplierRole, log(idem(supplier.HandleSupplierShift(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/payment-config",
 		auth.RequireRole(supplierRole, log(idem(vault.HandlePaymentConfigs(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/gateway-onboarding",
@@ -80,7 +80,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/org/members/invite",
 		auth.RequireRole(supplierRole, log(idem(supplier.HandleOrgInvite(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/org/members/",
-		auth.RequireRole(supplierRole, log(supplier.HandleOrgMemberAction(d.Spanner))))
+		auth.RequireRole(supplierRole, log(idem(supplier.HandleOrgMemberAction(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/staff/payloader",
 		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleStaffPayloaders(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/staff/payloader/",
@@ -90,9 +90,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/warehouse-staff/",
 		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleWarehouseStaffToggle(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/warehouses",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleWarehouses(d.Spanner, d.Producer)))))
+		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(supplier.HandleWarehouses(d.Spanner, d.Producer))))))
 	r.HandleFunc("/v1/supplier/warehouses/",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleWarehouseByID(d.Spanner, d.Producer)))))
+		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(supplier.HandleWarehouseByID(d.Spanner, d.Producer))))))
 	r.HandleFunc("/v1/supplier/warehouse-inflight-vu",
 		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleWarehouseInflightVU(d.Spanner)))))
 }

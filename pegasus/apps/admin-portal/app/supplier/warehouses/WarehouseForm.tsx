@@ -5,6 +5,7 @@ import { Button } from '@heroui/react';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import dynamic from 'next/dynamic';
+import { buildSupplierWarehouseCreateIdempotencyKey } from '../_shared/idempotency';
 
 const MapLocationPicker = dynamic(() => import('@/components/MapLocationPicker'), { ssr: false });
 
@@ -37,16 +38,20 @@ export default function WarehouseForm({ onSuccess, onCancel }: Props) {
     setSaving(true);
     setError('');
     try {
+      const payload = {
+        name: name.trim(),
+        address: address.trim(),
+        lat,
+        lng,
+        coverage_radius_km: parseFloat(radius) || 50,
+        is_default: isDefault,
+      };
       const res = await apiFetch('/v1/supplier/warehouses', {
         method: 'POST',
-        body: JSON.stringify({
-          name: name.trim(),
-          address: address.trim(),
-          lat,
-          lng,
-          coverage_radius_km: parseFloat(radius) || 50,
-          is_default: isDefault,
-        }),
+        headers: {
+          'Idempotency-Key': buildSupplierWarehouseCreateIdempotencyKey(payload),
+        },
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const data = await res.json();

@@ -55,6 +55,52 @@ func TestRegisterRoutes_PaymentConfigUsesIdempotency(t *testing.T) {
 	}
 }
 
+func TestRegisterRoutes_ProfileUsesIdempotency(t *testing.T) {
+	token := supplierTestToken(t)
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "profile"),
+	})
+
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/profile", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "profile" {
+		t.Fatalf("idempotency guard header = %q, want profile", got)
+	}
+}
+
+func TestRegisterRoutes_ShiftUsesIdempotency(t *testing.T) {
+	token := supplierTestToken(t)
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "shift"),
+	})
+
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/shift", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "shift" {
+		t.Fatalf("idempotency guard header = %q, want shift", got)
+	}
+}
+
 func TestRegisterRoutes_OrgInviteUsesIdempotency(t *testing.T) {
 	token := supplierTestToken(t)
 
@@ -75,6 +121,75 @@ func TestRegisterRoutes_OrgInviteUsesIdempotency(t *testing.T) {
 	}
 	if got := rec.Header().Get("X-Idempotency-Guard"); got != "org-invite" {
 		t.Fatalf("idempotency guard header = %q, want org-invite", got)
+	}
+}
+
+func TestRegisterRoutes_OrgMemberActionUsesIdempotency(t *testing.T) {
+	token := supplierTestToken(t)
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "org-member"),
+	})
+
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/org/members/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "org-member" {
+		t.Fatalf("idempotency guard header = %q, want org-member", got)
+	}
+}
+
+func TestRegisterRoutes_WarehousesUsesIdempotency(t *testing.T) {
+	token := supplierTestToken(t)
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "warehouses"),
+	})
+
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/warehouses", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "warehouses" {
+		t.Fatalf("idempotency guard header = %q, want warehouses", got)
+	}
+}
+
+func TestRegisterRoutes_WarehouseActionUsesIdempotency(t *testing.T) {
+	token := supplierTestToken(t)
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "warehouse-action"),
+	})
+
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/warehouses/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "warehouse-action" {
+		t.Fatalf("idempotency guard header = %q, want warehouse-action", got)
 	}
 }
 
