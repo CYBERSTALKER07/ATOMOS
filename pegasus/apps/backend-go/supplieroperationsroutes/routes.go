@@ -67,7 +67,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/quarantine-stock",
 		auth.RequireRole(supplierRole, log(reconcileSvc.HandleQuarantineStock)))
 	r.HandleFunc("/v1/inventory/reconcile-returns",
-		auth.RequireRole(supplierRole, log(reconcileSvc.HandleReconcile)))
+		auth.RequireRole(supplierRole, log(idem(reconcileSvc.HandleReconcile))))
 }
 
 func withMethodIdempotency(next http.HandlerFunc, middleware Middleware, methods ...string) http.HandlerFunc {

@@ -5,6 +5,7 @@ import { Button } from '@heroui/react';
 import { useToken } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import { useToast } from '@/components/Toast';
+import { buildSupplierDepotReconciliationIdempotencyKey } from '../_shared/idempotency';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -80,7 +81,11 @@ export default function DepotReconciliationPage() {
     try {
       const res = await fetch(`${API}/v1/inventory/reconcile-returns`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'Idempotency-Key': buildSupplierDepotReconciliationIdempotencyKey(lineItemIds, action),
+        },
         body: JSON.stringify({ line_item_ids: lineItemIds, action }),
       });
       if (!res.ok) {

@@ -153,6 +153,13 @@ export function buildSupplierFleetReassignIdempotencyKey(newRouteId: string, ord
   return ['supplier-fleet-reassign', newRouteId.trim(), stableSerialize([...orderIds].sort())].join(':');
 }
 
+export function buildSupplierDepotReconciliationIdempotencyKey(
+  lineItemIds: string[],
+  action: 'RESTOCK' | 'WRITE_OFF_DAMAGED',
+): string {
+  return ['supplier-depot-reconciliation', action, stableSerialize([...lineItemIds].sort())].join(':');
+}
+
 export function buildSupplierWarehouseStaffCreateIdempotencyKey(payload: Record<string, unknown>): string {
   return ['supplier-warehouse-staff-create', stableSerialize(payload)].join(':');
 }

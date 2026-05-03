@@ -119,6 +119,33 @@ func TestRegisterRoutes_FleetVehicleCreateUsesIdempotency(t *testing.T) {
 	}
 }
 
+func TestRegisterRoutes_ReconcileReturnsUsesIdempotency(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
+	if err != nil {
+		t.Fatalf("GenerateSupplierToken() error = %v", err)
+	}
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "reconcile-returns"),
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/inventory/reconcile-returns", strings.NewReader("{"))
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "reconcile-returns" {
+		t.Fatalf("idempotency guard header = %q, want reconcile-returns", got)
+	}
+}
+
 func passthroughMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		next(w, r)
