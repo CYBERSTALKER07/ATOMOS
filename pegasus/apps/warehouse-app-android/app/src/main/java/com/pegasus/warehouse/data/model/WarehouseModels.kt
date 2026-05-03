@@ -253,6 +253,7 @@ data class DispatchOrder(
     @SerialName("retailer_name") val retailerName: String = "",
     @SerialName("total_uzs") val totalUzs: Long = 0,
     @SerialName("created_at") val createdAt: String = "",
+    @SerialName("item_count") val itemCount: Int = 0,
 )
 
 @Serializable
@@ -260,7 +261,49 @@ data class AvailableDriver(
     @SerialName("driver_id") val driverId: String,
     val name: String = "",
     val phone: String = "",
+    @SerialName("vehicle_label") val vehicleLabel: String = "",
     @SerialName("truck_status") val truckStatus: String = "",
+)
+
+// ── Warehouse Realtime ──
+@Serializable
+data class WarehouseSupplyRequest(
+    @SerialName("request_id") val requestId: String,
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("factory_id") val factoryId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    val state: String = "",
+    val priority: String = "",
+    @SerialName("requested_delivery_date") val requestedDeliveryDate: String? = null,
+    @SerialName("total_volume_vu") val totalVolumeVu: Double = 0.0,
+    val notes: String = "",
+    @SerialName("transfer_order_id") val transferOrderId: String? = null,
+    @SerialName("created_by") val createdBy: String = "",
+    @SerialName("created_at") val createdAt: String = "",
+    @SerialName("updated_at") val updatedAt: String? = null,
+)
+
+@Serializable
+data class WarehouseDispatchLock(
+    @SerialName("lock_id") val lockId: String,
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("factory_id") val factoryId: String = "",
+    @SerialName("lock_type") val lockType: String = "",
+    @SerialName("locked_at") val lockedAt: String = "",
+    @SerialName("unlocked_at") val unlockedAt: String? = null,
+    @SerialName("locked_by") val lockedBy: String = "",
+)
+
+@Serializable
+data class WarehouseLiveEvent(
+    val type: String,
+    @SerialName("warehouse_id") val warehouseId: String = "",
+    @SerialName("request_id") val requestId: String? = null,
+    val state: String? = null,
+    @SerialName("lock_id") val lockId: String? = null,
+    val action: String? = null,
+    val timestamp: String? = null,
 )
 
 // ── Staff ──

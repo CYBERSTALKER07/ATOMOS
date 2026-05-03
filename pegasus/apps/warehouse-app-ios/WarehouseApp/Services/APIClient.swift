@@ -182,6 +182,14 @@ final class APIClient: Sendable {
     private func dataForRequestWithFallback(_ request: URLRequest) async throws -> (Data, URLResponse) {
         try await session.data(for: request)
     }
+
+    func warehouseWebSocketURL(token: String) -> URL {
+        var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)!
+        components.scheme = components.scheme == "https" ? "wss" : "ws"
+        components.path = "/ws/warehouse"
+        components.queryItems = [URLQueryItem(name: "token", value: token)]
+        return components.url!
+    }
 }
 
 // MARK: - Errors

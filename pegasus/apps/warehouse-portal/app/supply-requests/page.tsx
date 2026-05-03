@@ -1,24 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/auth';
+import { useEffect, useEffectEvent, useState } from 'react';
+import { apiFetch, connectWarehouseWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
-
-interface SupplyRequest {
-  request_id: string;
-  factory_id: string;
-  factory_name?: string;
-  state: string;
-  priority: string;
-  requested_delivery_date?: string;
-  total_volume_vu: number;
-  notes: string;
-  created_at: string;
-  item_count?: number;
-}
+import type { WarehouseLiveEvent, WarehouseSupplyRequest } from '@pegasus/types';
 
 const STATE_FILTERS = ['ALL', 'DRAFT', 'SUBMITTED', 'ACKNOWLEDGED', 'IN_PRODUCTION', 'READY', 'FULFILLED', 'CANCELLED'];
 
@@ -38,16 +26,16 @@ function chipClass(state: string): string {
 export default function SupplyRequestsPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [requests, setRequests] = useState<SupplyRequest[]>([]);
+  const [requests, setRequests] = useState<WarehouseSupplyRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
 
-  async function loadRequests() {
+  const loadRequests = useEffectEvent(async () => {
     setLoading(true);
     try {
       const res = await apiFetch('/v1/warehouse/supply-requests');
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as WarehouseSupplyRequest[] | { supply_requests?: WarehouseSupplyRequest[] };
         setRequests(Array.isArray(data) ? data : (data.supply_requests || []));
       }
     } catch {
@@ -55,9 +43,30 @@ export default function SupplyRequestsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  });
 
-  useEffect(() => { loadRequests(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const handleWarehouseLiveEvent = useEffectEvent((event: WarehouseLiveEvent) => {
+    if (event.type !== 'SUPPLY_REQUEST_UPDATE') {
+      return;
+    }
+    void loadRequests();
+  });
+
+  useEffect(() => {
+    void loadRequests();
+  }, [loadRequests]);
+
+  useEffect(() => {
+    const socket = connectWarehouseWS();
+    socket.onmessage = message => {
+      try {
+        handleWarehouseLiveEvent(JSON.parse(message.data) as WarehouseLiveEvent);
+      } catch {
+        // Ignore unrelated frames.
+      }
+    };
+    return () => socket.close();
+  }, [handleWarehouseLiveEvent]);
 
   const filtered = filter === 'ALL' ? requests : requests.filter(r => r.state === filter);
 
@@ -138,7 +147,7 @@ export default function SupplyRequestsPage() {
                   className="border-b border-[var(--border)] last:border-b-0 hover:bg-[var(--surface)] cursor-pointer transition-colors"
                 >
                   <td className="px-4 py-3 font-mono text-xs">{req.request_id.slice(0, 8)}...</td>
-                  <td className="px-4 py-3">{req.factory_name || req.factory_id.slice(0, 8)}</td>
+                  <td className="px-4 py-3">{req.factory_id.slice(0, 8)}</td>
                   <td className="px-4 py-3">
                     <span className={`status-chip ${chipClass(req.state)}`}>{req.state}</span>
                   </td>

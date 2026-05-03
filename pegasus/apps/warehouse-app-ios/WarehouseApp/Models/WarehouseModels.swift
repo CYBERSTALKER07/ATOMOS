@@ -537,6 +537,113 @@ struct AvailableDriver: Decodable, Identifiable {
     }
 }
 
+// MARK: - Warehouse Realtime
+
+struct WarehouseSupplyRequest: Decodable, Identifiable {
+    var id: String { requestId }
+    let requestId: String
+    let warehouseId: String
+    let factoryId: String
+    let supplierId: String
+    let state: String
+    let priority: String
+    let requestedDeliveryDate: String?
+    let totalVolumeVu: Double
+    let notes: String
+    let transferOrderId: String?
+    let createdBy: String
+    let createdAt: String
+    let updatedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case requestId = "request_id"
+        case warehouseId = "warehouse_id"
+        case factoryId = "factory_id"
+        case supplierId = "supplier_id"
+        case state
+        case priority
+        case requestedDeliveryDate = "requested_delivery_date"
+        case totalVolumeVu = "total_volume_vu"
+        case notes
+        case transferOrderId = "transfer_order_id"
+        case createdBy = "created_by"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        requestId = try c.decode(String.self, forKey: .requestId)
+        warehouseId = try c.decodeIfPresent(String.self, forKey: .warehouseId) ?? ""
+        factoryId = try c.decodeIfPresent(String.self, forKey: .factoryId) ?? ""
+        supplierId = try c.decodeIfPresent(String.self, forKey: .supplierId) ?? ""
+        state = try c.decodeIfPresent(String.self, forKey: .state) ?? ""
+        priority = try c.decodeIfPresent(String.self, forKey: .priority) ?? ""
+        requestedDeliveryDate = try c.decodeIfPresent(String.self, forKey: .requestedDeliveryDate)
+        totalVolumeVu = try c.decodeIfPresent(Double.self, forKey: .totalVolumeVu) ?? 0
+        notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        transferOrderId = try c.decodeIfPresent(String.self, forKey: .transferOrderId)
+        createdBy = try c.decodeIfPresent(String.self, forKey: .createdBy) ?? ""
+        createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
+        updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt)
+    }
+}
+
+struct WarehouseDispatchLock: Decodable, Identifiable {
+    var id: String { lockId }
+    let lockId: String
+    let supplierId: String
+    let warehouseId: String
+    let factoryId: String
+    let lockType: String
+    let lockedAt: String
+    let unlockedAt: String?
+    let lockedBy: String
+
+    enum CodingKeys: String, CodingKey {
+        case lockId = "lock_id"
+        case supplierId = "supplier_id"
+        case warehouseId = "warehouse_id"
+        case factoryId = "factory_id"
+        case lockType = "lock_type"
+        case lockedAt = "locked_at"
+        case unlockedAt = "unlocked_at"
+        case lockedBy = "locked_by"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        lockId = try c.decode(String.self, forKey: .lockId)
+        supplierId = try c.decodeIfPresent(String.self, forKey: .supplierId) ?? ""
+        warehouseId = try c.decodeIfPresent(String.self, forKey: .warehouseId) ?? ""
+        factoryId = try c.decodeIfPresent(String.self, forKey: .factoryId) ?? ""
+        lockType = try c.decodeIfPresent(String.self, forKey: .lockType) ?? ""
+        lockedAt = try c.decodeIfPresent(String.self, forKey: .lockedAt) ?? ""
+        unlockedAt = try c.decodeIfPresent(String.self, forKey: .unlockedAt)
+        lockedBy = try c.decodeIfPresent(String.self, forKey: .lockedBy) ?? ""
+    }
+}
+
+struct WarehouseLiveEvent: Decodable {
+    let type: String
+    let warehouseId: String
+    let requestId: String?
+    let state: String?
+    let lockId: String?
+    let action: String?
+    let timestamp: String?
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case warehouseId = "warehouse_id"
+        case requestId = "request_id"
+        case state
+        case lockId = "lock_id"
+        case action
+        case timestamp
+    }
+}
+
 // MARK: - Staff
 
 struct StaffMember: Decodable, Identifiable {

@@ -192,6 +192,26 @@
           "Staff create accepts an optional pin and returns the effective one-time pin for native client parity.",
           "Vehicle responses expose both max_volume_vu and capacity_vu plus a derived availability status."
         ]
+      },
+      {
+        "id": "warehouse_live_ws_surface",
+        "path": "/ws/warehouse",
+        "owner": "pegasus/apps/backend-go/ws/warehouse_hub.go",
+        "methods": [
+          "WS /ws/warehouse"
+        ],
+        "consumers": [
+          "pegasus/apps/warehouse-portal/app/supply-requests/page.tsx",
+          "pegasus/apps/warehouse-portal/app/supply-requests/[id]/page.tsx",
+          "pegasus/apps/warehouse-portal/app/dispatch-locks/page.tsx",
+          "pegasus/apps/warehouse-app-ios/WarehouseApp/Views/Dispatch/DispatchView.swift",
+          "pegasus/apps/warehouse-app-android/app/src/main/java/com/pegasus/warehouse/ui/screens/dispatch/DispatchScreen.kt"
+        ],
+        "notes": [
+          "BroadcastSupplyRequestUpdate is defined in apps/backend-go/ws/warehouse_hub.go and called from apps/backend-go/warehouse/supply_requests.go after create and transition commits.",
+          "BroadcastDispatchLockChange is defined in apps/backend-go/ws/warehouse_hub.go and called from apps/backend-go/warehouse/dispatch_lock.go after acquire and release commits.",
+          "Portal and native warehouse clients subscribe to SUPPLY_REQUEST_UPDATE and DISPATCH_LOCK_CHANGE with warehouse-scoped filtering."
+        ]
     }
   ]
 }

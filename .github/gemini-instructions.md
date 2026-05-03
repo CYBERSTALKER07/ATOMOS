@@ -129,6 +129,7 @@ When implementing a feature for a role, walk every client in that role's row:
 5. **Feature flag, if used, is keyed consistently** — same flag name, same default, same rollout cohort across all clients of the role.
 6. **Navigation / deep link parity** — if the portal surfaces a new page, the mobile apps surface the equivalent view (or a clear "manage on desktop" handoff); deep links resolve on every client.
 7. **WebSocket / push channel coverage** — every client in the row subscribes to the same hub room OR receives the same FCM / APNs channel for the new event.
+   For warehouse admin surfaces, `/ws/warehouse` is the canonical live channel for `SUPPLY_REQUEST_UPDATE` and `DISPATCH_LOCK_CHANGE`; update backend emitters, portal subscribers, and native Dispatch surfaces together when its payload changes.
 8. **Offline / reconnect behavior** — mobile clients cache the new data locally, restore on cold start, reconcile on reconnect. Web clients handle WebSocket drop with a toast + auto-retry.
 9. **Version gating on the wire** — if a field is added, older app versions must continue to work (backend responds additively). If a field is removed, the oldest deployed client version must have been updated at least one release ahead.
 

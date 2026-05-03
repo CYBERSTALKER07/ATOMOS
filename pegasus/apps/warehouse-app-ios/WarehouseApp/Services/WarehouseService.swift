@@ -92,6 +92,16 @@ enum WarehouseService {
         try await api.get("v1/warehouse/ops/dispatch/preview")
     }
 
+    static func supplyRequests(state: String? = nil) async throws -> [WarehouseSupplyRequest] {
+        var query: [String: String] = [:]
+        if let state { query["state"] = state }
+        return try await api.get("v1/warehouse/supply-requests", query: query)
+    }
+
+    static func dispatchLocks() async throws -> [WarehouseDispatchLock] {
+        try await api.get("v1/warehouse/dispatch-locks")
+    }
+
     // MARK: - Staff
     static func staff() async throws -> StaffListResponse {
         try await api.get("v1/warehouse/ops/staff")

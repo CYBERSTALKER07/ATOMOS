@@ -1,38 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { apiFetch } from '@/lib/auth';
+import { apiFetch, connectWarehouseWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import { useToast } from '@/components/Toast';
-
-interface SupplyRequestItem {
-  item_id: string;
-  product_id: string;
-  product_name: string;
-  quantity_requested: number;
-  quantity_fulfilled: number;
-  unit: string;
-}
-
-interface SupplyRequestDetail {
-  request_id: string;
-  warehouse_id: string;
-  factory_id: string;
-  factory_name?: string;
-  supplier_id: string;
-  state: string;
-  priority: string;
-  requested_delivery_date?: string;
-  total_volume_vu: number;
-  notes: string;
-  demand_breakdown?: string;
-  transfer_order_id?: string;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  items: SupplyRequestItem[];
-}
+import type { WarehouseLiveEvent, WarehouseSupplyRequestDetail } from '@pegasus/types';
 
 const ACTIONS: Record<string, { label: string; action: string; variant: string }[]> = {
   DRAFT: [
@@ -66,18 +39,18 @@ export default function SupplyRequestDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const [detail, setDetail] = useState<SupplyRequestDetail | null>(null);
+  const [detail, setDetail] = useState<WarehouseSupplyRequestDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
 
   const id = params.id as string;
 
-  async function loadDetail() {
+  const loadDetail = useEffectEvent(async () => {
     setLoading(true);
     try {
       const res = await apiFetch(`/v1/warehouse/supply-requests/${id}`);
       if (res.ok) {
-        setDetail(await res.json());
+        setDetail(await res.json() as WarehouseSupplyRequestDetail);
       } else {
         toast('Request not found', 'error');
         router.replace('/supply-requests');
@@ -87,9 +60,30 @@ export default function SupplyRequestDetailPage() {
     } finally {
       setLoading(false);
     }
-  }
+  });
 
-  useEffect(() => { loadDetail(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const handleWarehouseLiveEvent = useEffectEvent((event: WarehouseLiveEvent) => {
+    if (event.type !== 'SUPPLY_REQUEST_UPDATE' || event.request_id !== id) {
+      return;
+    }
+    void loadDetail();
+  });
+
+  useEffect(() => {
+    void loadDetail();
+  }, [id, loadDetail]);
+
+  useEffect(() => {
+    const socket = connectWarehouseWS();
+    socket.onmessage = message => {
+      try {
+        handleWarehouseLiveEvent(JSON.parse(message.data) as WarehouseLiveEvent);
+      } catch {
+        // Ignore unrelated frames.
+      }
+    };
+    return () => socket.close();
+  }, [handleWarehouseLiveEvent]);
 
   async function handleAction(action: string) {
     setActing(true);
@@ -100,7 +94,7 @@ export default function SupplyRequestDetailPage() {
       });
       if (res.ok) {
         toast(`Request ${action}ed successfully`, 'success');
-        loadDetail();
+        void loadDetail();
       } else {
         const data = await res.json().catch(() => ({}));
         toast(data.error || `Failed to ${action}`, 'error');
@@ -181,17 +175,17 @@ export default function SupplyRequestDetailPage() {
               <tr className="border-b border-[var(--border)]" style={{ background: 'var(--surface)' }}>
                 <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Product</th>
                 <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Requested</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Fulfilled</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Unit</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Recommended</th>
+                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Unit Volume</th>
               </tr>
             </thead>
             <tbody>
               {detail.items.map(item => (
                 <tr key={item.item_id} className="border-b border-[var(--border)] last:border-b-0">
-                  <td className="px-4 py-3">{item.product_name || item.product_id.slice(0, 8)}</td>
-                  <td className="px-4 py-3 font-mono">{item.quantity_requested}</td>
-                  <td className="px-4 py-3 font-mono">{item.quantity_fulfilled}</td>
-                  <td className="px-4 py-3 text-[var(--muted)]">{item.unit}</td>
+                  <td className="px-4 py-3 font-mono text-xs">{item.product_id}</td>
+                  <td className="px-4 py-3 font-mono">{item.requested_quantity}</td>
+                  <td className="px-4 py-3 font-mono">{item.recommended_qty}</td>
+                  <td className="px-4 py-3 text-[var(--muted)]">{item.unit_volume_vu} VU</td>
                 </tr>
               ))}
             </tbody>

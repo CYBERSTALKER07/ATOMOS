@@ -121,6 +121,24 @@
           "Staff create accepts an optional pin and returns the effective one-time pin for native client parity.",
           "Vehicle responses expose both max_volume_vu and capacity_vu plus a derived availability status."
         ]
+      },
+      {
+        "name": "Warehouse live websocket surface",
+        "path": "/ws/warehouse",
+        "owner": "pegasus/apps/backend-go/ws/warehouse_hub.go",
+        "methods": [
+          "WS /ws/warehouse"
+        ],
+        "consumers": [
+          "warehouse-portal supply-requests and dispatch-lock pages",
+          "warehouse-app-ios DispatchView",
+          "warehouse-app-android DispatchScreen"
+        ],
+        "notes": [
+          "Post-commit emitters live in warehouse/supply_requests.go and warehouse/dispatch_lock.go.",
+          "Frames include warehouse_id and timestamp for cross-client filtering.",
+          "Current live event types are SUPPLY_REQUEST_UPDATE and DISPATCH_LOCK_CHANGE."
+        ]
     }
   ],
   "android": {

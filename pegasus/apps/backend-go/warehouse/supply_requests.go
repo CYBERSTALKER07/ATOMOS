@@ -514,6 +514,7 @@ func (s *SupplyRequestService) HandleSupplyRequestTransition(w http.ResponseWrit
 		return
 	}
 
+	var warehouseID string
 	_, err := s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "SupplyRequests",
 			spanner.Key{requestID}, []string{"State", "WarehouseId", "FactoryId", "SupplierId"})
@@ -521,7 +522,7 @@ func (s *SupplyRequestService) HandleSupplyRequestTransition(w http.ResponseWrit
 			return fmt.Errorf("supply request not found")
 		}
 
-		var currentState, warehouseID, factoryID, supplierID string
+		var currentState, factoryID, supplierID string
 		if err := row.Columns(&currentState, &warehouseID, &factoryID, &supplierID); err != nil {
 			return err
 		}

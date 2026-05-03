@@ -2,9 +2,12 @@ import SwiftUI
 
 struct DispatchView: View {
     @State private var preview: DispatchPreview?
+    @State private var supplyRequests: [WarehouseSupplyRequest] = []
+    @State private var dispatchLocks: [WarehouseDispatchLock] = []
     @State private var loading = true
     @State private var error: String?
     @State private var selectedSegment = 0
+    @State private var realtimeClient = WarehouseRealtimeClient()
 
     var body: some View {
         NavigationStack {
@@ -25,6 +28,8 @@ struct DispatchView: View {
                         Picker("View", selection: $selectedSegment) {
                             Text("Orders (\(preview.undispatchedOrders.count))").tag(0)
                             Text("Drivers (\(preview.availableDrivers.count))").tag(1)
+                            Text("Supply (\(supplyRequests.count))").tag(2)
+                            Text("Locks (\(dispatchLocks.count))").tag(3)
                         }
                         .pickerStyle(.segmented)
                         .padding()
@@ -46,7 +51,7 @@ struct DispatchView: View {
                                 }
                                 .listStyle(.insetGrouped)
                             }
-                        } else {
+                        } else if selectedSegment == 1 {
                             if preview.availableDrivers.isEmpty {
                                 ContentUnavailableView("No Drivers", systemImage: "person.badge.key", description: Text("No available drivers"))
                             } else {
@@ -63,6 +68,52 @@ struct DispatchView: View {
                                 }
                                 .listStyle(.insetGrouped)
                             }
+                        } else if selectedSegment == 2 {
+                            if supplyRequests.isEmpty {
+                                ContentUnavailableView("No Supply Requests", systemImage: "shippingbox", description: Text("No active supply requests"))
+                            } else {
+                                List(supplyRequests) { request in
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                            Text(String(request.requestId.prefix(8)))
+                                                .font(.headline)
+                                            Text("\(request.state) · \(request.priority) · \(Int(request.totalVolumeVu)) VU")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        Text(request.state)
+                                            .font(.caption.bold())
+                                            .padding(.horizontal, LabTheme.spacingSM)
+                                            .padding(.vertical, LabTheme.spacingXS)
+                                            .background(.quaternary, in: Capsule())
+                                    }
+                                }
+                                .listStyle(.insetGrouped)
+                            }
+                        } else {
+                            if dispatchLocks.isEmpty {
+                                ContentUnavailableView("No Dispatch Locks", systemImage: "lock.open", description: Text("Dispatch is currently unlocked"))
+                            } else {
+                                List(dispatchLocks) { lock in
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                            Text(lock.lockType)
+                                                .font(.headline)
+                                            Text(lock.lockedBy.isEmpty ? String(lock.lockId.prefix(8)) : String(lock.lockedBy.prefix(8)))
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        Text(lock.warehouseId.isEmpty ? "Global" : String(lock.warehouseId.prefix(8)))
+                                            .font(.caption.bold())
+                                            .padding(.horizontal, LabTheme.spacingSM)
+                                            .padding(.vertical, LabTheme.spacingXS)
+                                            .background(.quaternary, in: Capsule())
+                                    }
+                                }
+                                .listStyle(.insetGrouped)
+                            }
                         }
                     }
                 }
@@ -74,8 +125,25 @@ struct DispatchView: View {
                     Button("Refresh", systemImage: "arrow.clockwise") { load() }
                 }
             }
-            .task { load() }
+            .task {
+                load()
+                connectRealtime()
+            }
             .refreshable { load() }
+            .onDisappear { realtimeClient.disconnect() }
+        }
+    }
+
+    private func connectRealtime() {
+        realtimeClient.connect { event in
+            switch event.type {
+            case "SUPPLY_REQUEST_UPDATE":
+                Task { await reloadSupplyRequests() }
+            case "DISPATCH_LOCK_CHANGE":
+                Task { await reloadDispatchLocks() }
+            default:
+                break
+            }
         }
     }
 
@@ -84,11 +152,32 @@ struct DispatchView: View {
         error = nil
         Task {
             do {
-                preview = try await WarehouseService.dispatchPreview()
+                async let previewData = WarehouseService.dispatchPreview()
+                async let supplyData = WarehouseService.supplyRequests()
+                async let lockData = WarehouseService.dispatchLocks()
+                preview = try await previewData
+                supplyRequests = try await supplyData
+                dispatchLocks = try await lockData
             } catch {
                 self.error = error.localizedDescription
             }
             loading = false
+        }
+    }
+
+    private func reloadSupplyRequests() async {
+        do {
+            supplyRequests = try await WarehouseService.supplyRequests()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    private func reloadDispatchLocks() async {
+        do {
+            dispatchLocks = try await WarehouseService.dispatchLocks()
+        } catch {
+            self.error = error.localizedDescription
         }
     }
 }

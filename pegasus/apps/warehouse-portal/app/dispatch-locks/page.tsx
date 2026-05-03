@@ -1,32 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { apiFetch } from '@/lib/auth';
+import { useEffect, useEffectEvent, useState } from 'react';
+import { apiFetch, connectWarehouseWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import { useToast } from '@/components/Toast';
-
-interface DispatchLock {
-  lock_id: string;
-  supplier_id: string;
-  warehouse_id?: string;
-  factory_id?: string;
-  lock_type: string;
-  locked_at: string;
-  locked_by: string;
-}
+import type { WarehouseDispatchLock, WarehouseLiveEvent } from '@pegasus/types';
 
 export default function DispatchLocksPage() {
   const { toast } = useToast();
-  const [locks, setLocks] = useState<DispatchLock[]>([]);
+  const [locks, setLocks] = useState<WarehouseDispatchLock[]>([]);
   const [loading, setLoading] = useState(true);
   const [releasing, setReleasing] = useState<string | null>(null);
 
-  async function loadLocks() {
+  const loadLocks = useEffectEvent(async () => {
     setLoading(true);
     try {
       const res = await apiFetch('/v1/warehouse/dispatch-locks');
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json() as WarehouseDispatchLock[] | { locks?: WarehouseDispatchLock[] };
         setLocks(Array.isArray(data) ? data : (data.locks || []));
       }
     } catch {
@@ -34,19 +25,40 @@ export default function DispatchLocksPage() {
     } finally {
       setLoading(false);
     }
-  }
+  });
 
-  useEffect(() => { loadLocks(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const handleWarehouseLiveEvent = useEffectEvent((event: WarehouseLiveEvent) => {
+    if (event.type !== 'DISPATCH_LOCK_CHANGE') {
+      return;
+    }
+    void loadLocks();
+  });
+
+  useEffect(() => {
+    void loadLocks();
+  }, [loadLocks]);
+
+  useEffect(() => {
+    const socket = connectWarehouseWS();
+    socket.onmessage = message => {
+      try {
+        handleWarehouseLiveEvent(JSON.parse(message.data) as WarehouseLiveEvent);
+      } catch {
+        // Ignore unrelated frames.
+      }
+    };
+    return () => socket.close();
+  }, [handleWarehouseLiveEvent]);
 
   async function handleAcquire() {
     try {
       const res = await apiFetch('/v1/warehouse/dispatch-lock', {
         method: 'POST',
-        body: JSON.stringify({ lock_type: 'WAREHOUSE_DISPATCH' }),
+        body: JSON.stringify({ lock_type: 'MANUAL_DISPATCH' }),
       });
       if (res.ok) {
         toast('Dispatch lock acquired', 'success');
-        loadLocks();
+        void loadLocks();
       } else {
         const data = await res.json().catch(() => ({}));
         toast(data.error || 'Failed to acquire lock', 'error');
@@ -64,7 +76,7 @@ export default function DispatchLocksPage() {
       });
       if (res.ok) {
         toast('Lock released', 'success');
-        loadLocks();
+        void loadLocks();
       } else {
         const data = await res.json().catch(() => ({}));
         toast(data.error || 'Failed to release lock', 'error');

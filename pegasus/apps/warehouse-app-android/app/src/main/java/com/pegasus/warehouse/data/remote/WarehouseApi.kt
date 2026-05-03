@@ -92,6 +92,14 @@ interface WarehouseApi {
     @GET("v1/warehouse/ops/dispatch/preview")
     suspend fun getDispatchPreview(): Response<DispatchPreview>
 
+    @GET("v1/warehouse/supply-requests")
+    suspend fun getSupplyRequests(
+        @Query("state") state: String? = null,
+    ): Response<List<WarehouseSupplyRequest>>
+
+    @GET("v1/warehouse/dispatch-locks")
+    suspend fun getDispatchLocks(): Response<List<WarehouseDispatchLock>>
+
     // ── Staff ──
     @GET("v1/warehouse/ops/staff")
     suspend fun getStaff(): Response<StaffListResponse>

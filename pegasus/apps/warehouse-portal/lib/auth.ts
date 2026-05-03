@@ -94,7 +94,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
 }
 
 /** Open a WebSocket to the warehouse hub */
-export function connectWarehouseWS(_warehouseId: string): WebSocket {
+export function connectWarehouseWS(): WebSocket {
   const wsBase = (API.replace(/^http/, 'ws'));
   const token = readTokenFromCookie();
   return new WebSocket(`${wsBase}/ws/warehouse?token=${encodeURIComponent(token)}`);

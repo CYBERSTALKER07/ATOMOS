@@ -36,6 +36,7 @@ Apply ACT for all technical asks, including:
 4. Apply codebase-first weighting: primary context must come from real runtime code (definitions, usages, graph). Docs are mandatory verification, not a substitute for code retrieval.
 5. Identify blast radius across API, mobile, web, workers, and infra.
 6. UI gate (mandatory for UI-affecting work): before editing any user-facing surface, enumerate the backend endpoint/event/DTO feeding the screen, the frontend data layer that maps it, and every client in the role row that also consumes the feature. Do not treat a single web page or app screen as complete context.
+7. Warehouse live gate: treat `/ws/warehouse` plus the supply-request and dispatch-lock DTOs as one contract across warehouse portal, warehouse iOS, and warehouse Android. Do not change one consumer without checking the other two.
 
 ## C: Challenge
 If prompt/plan is unsafe, incomplete, or likely to break production, do not execute it as-is.
