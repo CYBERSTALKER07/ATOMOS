@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
+
+	"backend-go/cache"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -68,6 +71,8 @@ type Service struct {
 	cache         sync.Map // string → *cacheEntry
 	overrideCache sync.Map // "supplierID:countryCode" → *overrideCacheEntry
 	cacheTTL      time.Duration
+	invalidator   *cache.Cache
+	hookOnce      sync.Once
 }
 
 // NewService creates a config service with default 5min cache TTL.
@@ -76,6 +81,18 @@ func NewService(client *spanner.Client) *Service {
 		Spanner:  client,
 		cacheTTL: 5 * time.Minute,
 	}
+}
+
+// AttachInvalidation wires the in-process country-config caches into the shared
+// Redis invalidation spine so edits evict stale entries across pods.
+func (s *Service) AttachInvalidation(c *cache.Cache) {
+	if s == nil || c == nil {
+		return
+	}
+	s.invalidator = c
+	s.hookOnce.Do(func() {
+		c.OnInvalidate(s.handleInvalidation)
+	})
 }
 
 // defaultUZ returns the hardcoded UZ fallback — used when Spanner has no row.
@@ -240,6 +257,43 @@ func (s *Service) InvalidateCache(countryCode string) {
 		}
 		return true
 	})
+}
+
+func (s *Service) invalidateCountryConfig(ctx context.Context, countryCode string) {
+	s.InvalidateCache(countryCode)
+	if s.invalidator != nil {
+		s.invalidator.Invalidate(ctx, cache.CountryConfigCacheKey(countryCode))
+	}
+}
+
+func (s *Service) invalidateSupplierOverride(ctx context.Context, supplierID, countryCode string) {
+	s.overrideCache.Delete(supplierID + ":" + countryCode)
+	if s.invalidator != nil {
+		s.invalidator.Invalidate(ctx, cache.CountryOverrideCacheKey(supplierID, countryCode))
+	}
+}
+
+func (s *Service) handleInvalidation(keys []string) {
+	for _, key := range keys {
+		switch {
+		case strings.HasPrefix(key, cache.PrefixCountryConfigCache):
+			countryCode := strings.TrimSpace(strings.TrimPrefix(key, cache.PrefixCountryConfigCache))
+			if countryCode != "" {
+				s.InvalidateCache(countryCode)
+			}
+		case strings.HasPrefix(key, cache.PrefixCountryOverrideCache):
+			parts := strings.Split(strings.TrimPrefix(key, cache.PrefixCountryOverrideCache), ":")
+			if len(parts) != 2 {
+				continue
+			}
+			supplierID := strings.TrimSpace(parts[0])
+			countryCode := strings.TrimSpace(parts[1])
+			if supplierID == "" || countryCode == "" {
+				continue
+			}
+			s.overrideCache.Delete(supplierID + ":" + countryCode)
+		}
+	}
 }
 
 func (s *Service) readCountryConfig(ctx context.Context, countryCode string) *CountryConfig {
@@ -488,9 +542,7 @@ func (s *Service) UpsertSupplierOverride(ctx context.Context, o *SupplierOverrid
 		return fmt.Errorf("upsert supplier override %s/%s: %w", o.SupplierId, o.CountryCode, err)
 	}
 
-	// Invalidate cached entry.
-	cacheKey := o.SupplierId + ":" + o.CountryCode
-	s.overrideCache.Delete(cacheKey)
+	s.invalidateSupplierOverride(ctx, o.SupplierId, o.CountryCode)
 	log.Printf("[CountryCfg] Upserted override %s/%s", o.SupplierId, o.CountryCode)
 	return nil
 }
@@ -509,8 +561,7 @@ func (s *Service) DeleteSupplierOverride(ctx context.Context, supplierID, countr
 		return fmt.Errorf("delete supplier override %s/%s: %w", supplierID, countryCode, err)
 	}
 
-	cacheKey := supplierID + ":" + countryCode
-	s.overrideCache.Delete(cacheKey)
+	s.invalidateSupplierOverride(ctx, supplierID, countryCode)
 	log.Printf("[CountryCfg] Deleted override %s/%s", supplierID, countryCode)
 	return nil
 }
@@ -699,6 +750,6 @@ func (s *Service) UpsertConfig(ctx context.Context, cfg *CountryConfig) error {
 		return err
 	}
 
-	s.InvalidateCache(merged.CountryCode)
+	s.invalidateCountryConfig(ctx, merged.CountryCode)
 	return nil
 }

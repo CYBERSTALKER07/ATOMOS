@@ -82,6 +82,10 @@ const (
 
 	// ── Analytics Cache ────────────────────────────────────────────────
 	PrefixAnalytics = "analytics:" // STRING (JSON): analytics:<scope>:<id>
+
+	// ── Country Config Invalidation ────────────────────────────────────
+	PrefixCountryConfigCache   = "countrycfg:config:"   // signal-only invalidation key: countrycfg:config:<countryCode>
+	PrefixCountryOverrideCache = "countrycfg:override:" // signal-only invalidation key: countrycfg:override:<supplierId>:<countryCode>
 )
 
 // ─── TTL Constants ─────────────────────────────────────────────────────────────
@@ -138,3 +142,11 @@ func FactoryProfile(factoryID string) string { return PrefixFactoryProfile + fac
 
 // SettingsKey returns the cache key for a retailer's resolved settings.
 func SettingsKey(retailerID, scope string) string { return PrefixSettings + retailerID + ":" + scope }
+
+// CountryConfigCacheKey returns the invalidation key for a country config row.
+func CountryConfigCacheKey(countryCode string) string { return PrefixCountryConfigCache + countryCode }
+
+// CountryOverrideCacheKey returns the invalidation key for a supplier country override row.
+func CountryOverrideCacheKey(supplierID, countryCode string) string {
+	return PrefixCountryOverrideCache + supplierID + ":" + countryCode
+}

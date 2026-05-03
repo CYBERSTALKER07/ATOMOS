@@ -1,6 +1,11 @@
 package countrycfg
 
-import "testing"
+import (
+	"testing"
+	"time"
+
+	"backend-go/cache"
+)
 
 func TestMergeCountryConfigForUpsertPreservesExistingFields(t *testing.T) {
 	existing := &CountryConfig{
@@ -73,5 +78,61 @@ func TestMergeCountryConfigForUpsertFallsBackToDefaultWhenMissing(t *testing.T) 
 	}
 	if merged.ShopClosedGraceMinutes != 5 {
 		t.Fatalf("ShopClosedGraceMinutes = %d, want default fallback", merged.ShopClosedGraceMinutes)
+	}
+}
+
+func TestHandleInvalidation_CountryConfigClearsCountryAndOverrideCaches(t *testing.T) {
+	svc := NewService(nil)
+	svc.cache.Store("KZ", &cacheEntry{
+		config:    &CountryConfig{CountryCode: "KZ"},
+		expiresAt: time.Now().Add(time.Minute),
+	})
+	svc.overrideCache.Store("supplier-1:KZ", &overrideCacheEntry{
+		override:  &SupplierOverride{SupplierId: "supplier-1", CountryCode: "KZ"},
+		expiresAt: time.Now().Add(time.Minute),
+	})
+	svc.overrideCache.Store("supplier-2:US", &overrideCacheEntry{
+		override:  &SupplierOverride{SupplierId: "supplier-2", CountryCode: "US"},
+		expiresAt: time.Now().Add(time.Minute),
+	})
+
+	svc.handleInvalidation([]string{cache.CountryConfigCacheKey("KZ")})
+
+	if _, ok := svc.cache.Load("KZ"); ok {
+		t.Fatal("country cache entry should be evicted")
+	}
+	if _, ok := svc.overrideCache.Load("supplier-1:KZ"); ok {
+		t.Fatal("country-specific override should be evicted")
+	}
+	if _, ok := svc.overrideCache.Load("supplier-2:US"); !ok {
+		t.Fatal("unrelated override should remain cached")
+	}
+}
+
+func TestHandleInvalidation_SupplierOverrideClearsOnlyTargetOverride(t *testing.T) {
+	svc := NewService(nil)
+	svc.cache.Store("KZ", &cacheEntry{
+		config:    &CountryConfig{CountryCode: "KZ"},
+		expiresAt: time.Now().Add(time.Minute),
+	})
+	svc.overrideCache.Store("supplier-1:KZ", &overrideCacheEntry{
+		override:  &SupplierOverride{SupplierId: "supplier-1", CountryCode: "KZ"},
+		expiresAt: time.Now().Add(time.Minute),
+	})
+	svc.overrideCache.Store("supplier-2:KZ", &overrideCacheEntry{
+		override:  &SupplierOverride{SupplierId: "supplier-2", CountryCode: "KZ"},
+		expiresAt: time.Now().Add(time.Minute),
+	})
+
+	svc.handleInvalidation([]string{cache.CountryOverrideCacheKey("supplier-1", "KZ")})
+
+	if _, ok := svc.overrideCache.Load("supplier-1:KZ"); ok {
+		t.Fatal("target override should be evicted")
+	}
+	if _, ok := svc.overrideCache.Load("supplier-2:KZ"); !ok {
+		t.Fatal("other supplier override should remain cached")
+	}
+	if _, ok := svc.cache.Load("KZ"); !ok {
+		t.Fatal("base country cache should remain cached")
 	}
 }

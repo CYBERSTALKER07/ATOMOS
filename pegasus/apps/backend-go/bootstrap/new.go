@@ -113,6 +113,7 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 
 	// ── 5. Country/platform/empathy/pricing services ──────────────────────
 	countryCfgSvc := countrycfg.NewService(spannerClient)
+	countryCfgSvc.AttachInvalidation(c)
 	countrycfg.SeedDefaultConfigs(ctx, spannerClient)
 
 	platformCfg := settings.NewPlatformConfig(spannerClient)
