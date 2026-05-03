@@ -325,6 +325,7 @@ Expected qualities:
 
 ### Platform-Aware Feature Design Contract
 - For every user-facing feature, the agent MUST define the backend→frontend wiring and the per-platform component choices before implementation is considered complete.
+- ACT frontend-context gate is mandatory for UI work: run AST/codebase retrieval first, read `pegasus/context/ui-design.md`, identify the backend endpoint/event/DTO, then verify every client in the affected role row that consumes the feature before coding.
 - The source design contract lives in `.agents/design.md-main/docs/spec.md`. When UI work is non-trivial, the agent must follow its extended sections: **Platforms & Surfaces**, **Interaction & Motion**, **Feature Wiring**, and **Delivery Checklist**.
 - "Real UI" is mandatory. The agent must name and use actual primitives per surface rather than vague placeholders:
   - **Web / Desktop:** dropdown, combobox, data table, popover, command bar, inspector drawer, modal dialog, inline banner.
@@ -336,9 +337,10 @@ Expected qualities:
 - Never claim a feature is wired end-to-end unless the report can name:
   1. the backend endpoint/event/DTO feeding the UI,
   2. the data layer/view model mapping,
-  3. the exact per-platform controls,
-  4. the loading/empty/error/offline/restricted states,
-  5. the feedback primitive used for success/failure/undo.
+  3. every client surface in the role row that was checked or updated,
+  4. the exact per-platform controls,
+  5. the loading/empty/error/offline/restricted states,
+  6. the feedback primitive used for success/failure/undo.
 
 ### Bento Grid Dashboard Protocol
 The Admin Portal dashboard uses a **Bento Grid** layout — a modular CSS Grid mosaic where **cell size equals data priority**.

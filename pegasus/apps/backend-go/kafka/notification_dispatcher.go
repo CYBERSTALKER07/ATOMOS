@@ -369,7 +369,7 @@ func handleDriverAvailabilityChanged(deps NotificationDeps, data []byte) {
 	}
 
 	// Look up driver name for the notification
-	driverName := event.DriverID[:8] // fallback
+	driverName := shortRecipientID(event.DriverID) // fallback
 	ctx := context.Background()
 	row, err := deps.SpannerClient.Single().ReadRow(ctx, "Drivers", spanner.Key{event.DriverID}, []string{"FullName"})
 	if err == nil {
@@ -2139,7 +2139,14 @@ func dispatchToRecipient(deps NotificationDeps, recipientID, role, eventType str
 		}
 	}
 
-	slog.Info("notification_dispatcher.delivered", "event", eventType, "role", role, "recipient_id", recipientID[:8], "ws", wsDelivered)
+	slog.Info("notification_dispatcher.delivered", "event", eventType, "role", role, "recipient_id", shortRecipientID(recipientID), "ws", wsDelivered)
+}
+
+func shortRecipientID(recipientID string) string {
+	if len(recipientID) <= 8 {
+		return recipientID
+	}
+	return recipientID[:8]
 }
 
 // ─── Preorder Lifecycle Handlers ───────────────────────────────────────────────

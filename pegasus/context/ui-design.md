@@ -25,3 +25,15 @@ The Admin Portal heavily relies on CSS Grid logic.
 - **Android**: Pure Kotlin Multiplatform / Jetpack Compose Material 3.
 - **iOS**: Pure SwiftUI, strict Apple HIG, SF Symbols. No pseudo-material iOS.
 - **Payload Terminal**: React Native + Expo enforcing M3 metrics.
+
+## Frontend Context Gate
+This file is the mandatory frontend-context source for UI-affecting work under ACT.
+
+Before editing any user-facing feature, the agent must confirm:
+1. the backend endpoint, event, or DTO that feeds the feature,
+2. the frontend data layer, repository, or view model that maps it,
+3. every client in the affected role row that also consumes the feature,
+4. the exact UI primitive chosen per platform,
+5. the loading, empty, offline, restricted, and error states.
+
+Do not mark a feature "end-to-end" because one page or one app looks complete. End-to-end means the backend contract and UI behavior were checked across all affected clients for the role, or the missing clients are explicitly hidden behind a rollout plan.
