@@ -398,6 +398,50 @@
       ]
     },
     {
+      "id": "supplier_planning_surface",
+      "path": "/v1/supplier/{delivery-zones*,factories*,geocode/reverse,retailers/locations,supply-lanes*,network-mode,network-analytics,replenishment/{kill-switch,audit,pull-matrix,predictive-push},warehouses/{territory-preview,apply-territory}}",
+      "owner": "pegasus/apps/backend-go/supplierplanningroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/supplier/delivery-zones",
+        "POST /v1/supplier/delivery-zones",
+        "PUT /v1/supplier/delivery-zones/{id}",
+        "DELETE /v1/supplier/delivery-zones/{id}",
+        "GET /v1/supplier/factories",
+        "POST /v1/supplier/factories",
+        "GET /v1/supplier/factories/{id}",
+        "PATCH /v1/supplier/factories/{id}",
+        "DELETE /v1/supplier/factories/{id}",
+        "GET /v1/supplier/factories/recommend-warehouses",
+        "GET /v1/supplier/factories/optimal-assignments",
+        "GET /v1/supplier/geocode/reverse",
+        "GET /v1/supplier/retailers/locations",
+        "GET /v1/supplier/supply-lanes",
+        "POST /v1/supplier/supply-lanes",
+        "GET /v1/supplier/supply-lanes/{id}",
+        "PATCH /v1/supplier/supply-lanes/{id}",
+        "DELETE /v1/supplier/supply-lanes/{id}",
+        "GET /v1/supplier/network-mode",
+        "PUT /v1/supplier/network-mode",
+        "GET /v1/supplier/network-analytics",
+        "POST /v1/supplier/replenishment/kill-switch",
+        "GET /v1/supplier/replenishment/audit",
+        "POST /v1/supplier/replenishment/pull-matrix",
+        "POST /v1/supplier/replenishment/predictive-push",
+        "GET /v1/supplier/warehouses/territory-preview",
+        "POST /v1/supplier/warehouses/apply-territory"
+      ],
+      "consumers": [
+        "pegasus/apps/admin-portal/app/supplier/map/**",
+        "pegasus/apps/admin-portal/app/supplier/factories/**",
+        "pegasus/apps/admin-portal/app/supplier/replenishment/**"
+      ],
+      "notes": [
+        "Route composition moved out of main.go into supplierplanningroutes while preserving the existing supplier, factory, and proximity handlers.",
+        "Cron startup for replenishment remains in main.go; the extracted composer only owns the supplier-facing HTTP planning surface."
+      ]
+    },
+    {
         "id": "warehouse_ops_compatibility_surface",
         "path": "/v1/warehouse/ops/*",
         "owner": "pegasus/apps/backend-go/warehouseroutes/routes.go",
