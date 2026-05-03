@@ -86,6 +86,10 @@ export default function App() {
     title?: string;
     body?: string;
     channel?: string;
+    manifest_id?: string;
+    warehouse_id?: string;
+    reason?: string;
+    timestamp?: string;
   };
 
   const normalizeNotification = (item: BackendNotifItem): NotifItem => ({
@@ -163,6 +167,7 @@ export default function App() {
   const [notifications, setNotifications] = useState<NotifItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [liveSyncRevision, setLiveSyncRevision] = useState(0);
   const wsRef = useRef<WebSocket | null>(null);
 
   // Re-dispatch state
@@ -319,6 +324,10 @@ export default function App() {
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data) as LiveNotifFrame;
+          if (msg.type === 'PAYLOAD_SYNC') {
+            setLiveSyncRevision(prev => prev + 1);
+            return;
+          }
           if ((msg.title && msg.title.length > 0) || (msg.body && msg.body.length > 0)) {
             const n: NotifItem = {
               id: `live-${Date.now()}`,
@@ -749,6 +758,12 @@ export default function App() {
   }, [token, activeTruck]);
 
   useEffect(() => { fetchTruckManifest(); }, [fetchTruckManifest]);
+
+  useEffect(() => {
+    if (!token || !activeTruck || liveSyncRevision === 0) return;
+    fetchManifest(activeTruck);
+    fetchTruckManifest();
+  }, [token, activeTruck, liveSyncRevision, fetchManifest, fetchTruckManifest]);
 
   // ── LEO: Start Loading (DRAFT → LOADING) ─────────────────────────────
   const handleStartLoading = async () => {

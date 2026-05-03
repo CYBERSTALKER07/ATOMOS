@@ -2911,6 +2911,25 @@ func main() {
 		adminClient.Close()
 	}
 
+	// ── MIGRATION: Supplier factory planning metadata — ProductTypes ───────────
+	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
+	if err == nil {
+		factoryMetadataDDL := []string{
+			"ALTER TABLE Factories ADD COLUMN ProductTypes ARRAY<STRING(MAX)>",
+		}
+		for _, stmt := range factoryMetadataDDL {
+			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
+				Database:   dbName,
+				Statements: []string{stmt},
+			})
+			if ddlErr == nil {
+				op.Wait(ctx)
+				fmt.Println("DATABASE MIGRATION SUCCESS:", stmt)
+			}
+		}
+		adminClient.Close()
+	}
+
 	// ── BACKFILL: H3Index for rows created before the H3 migration ────────────
 	// Runs once per boot, a no-op after the first successful pass (all rows
 	// already have H3Index populated). Uses h3-go/v4 at resolution 7 to emit
@@ -3007,9 +3026,11 @@ func main() {
 				Address              STRING(MAX),
 				Lat                  FLOAT64,
 				Lng                  FLOAT64,
+				H3Index              STRING(MAX),
 				RegionCode           STRING(20),
 				LeadTimeDays         INT64       NOT NULL DEFAULT (2),
 				ProductionCapacityVU FLOAT64     NOT NULL DEFAULT (0),
+				ProductTypes         ARRAY<STRING(MAX)>,
 				IsActive             BOOL        NOT NULL DEFAULT (true),
 				CreatedAt            TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 				UpdatedAt            TIMESTAMP   OPTIONS (allow_commit_timestamp=true)

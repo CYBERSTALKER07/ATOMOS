@@ -357,7 +357,8 @@
       "notes": [
         "Payload terminal, payload iOS, and payload Android all depend on one payloader auth, manifest lifecycle, inbox, and websocket contract.",
         "Shared supplier manifest routes and the payloader websocket now admit PAYLOADER alongside SUPPLIER and ADMIN on the paths the payload clients already consume.",
-        "SupplierTruckManifests remains the payload-facing manifest lifecycle source, keeping payload clients aligned on DRAFT, LOADING, SEALED, DISPATCHED, and COMPLETED states."
+        "SupplierTruckManifests remains the payload-facing manifest lifecycle source, keeping payload clients aligned on DRAFT, LOADING, SEALED, DISPATCHED, and COMPLETED states.",
+        "The payloader websocket now emits typed PAYLOAD_SYNC frames with channel SYNC so payload clients can refresh active manifest state without rendering blank notifications."
       ]
     },
     {
@@ -472,7 +473,8 @@
       ],
       "notes": [
         "Route composition moved out of main.go into supplierplanningroutes while preserving the existing supplier, factory, and proximity handlers.",
-        "Cron startup for replenishment remains in main.go; the extracted composer only owns the supplier-facing HTTP planning surface."
+        "Cron startup for replenishment remains in main.go; the extracted composer only owns the supplier-facing HTTP planning surface.",
+        "Supplier factory create/list/detail/profile payloads now persist and return additive h3_index and product_types metadata for the admin-portal factory planning consumers."
       ]
     },
     {

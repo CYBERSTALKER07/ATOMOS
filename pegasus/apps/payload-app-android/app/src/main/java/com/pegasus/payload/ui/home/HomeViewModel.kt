@@ -125,6 +125,11 @@ class HomeViewModel @Inject constructor(
             .launchInVm()
         webSocket.frames
             .onEach { frame ->
+                if (frame.type == "PAYLOAD_SYNC") {
+                    refreshManifest()
+                    return@onEach
+                }
+
                 // Surface the live frame instantly; full inbox refresh follows on reconnect.
                 val item = NotificationItem(
                     notificationId = "live-" + System.currentTimeMillis(),
@@ -265,7 +270,28 @@ class HomeViewModel @Inject constructor(
     }
 
     fun refreshManifest() {
-        _state.value.selectedTruckId?.let { selectTruck(it) }
+        val truckId = _state.value.selectedTruckId ?: return
+        _state.update { it.copy(loadingManifest = true, loadingOrders = true, error = null) }
+        viewModelScope.launch {
+            runCatching { repository.loadOpenManifest(truckId) }
+                .onSuccess { manifest -> _state.update { it.copy(manifest = manifest, loadingManifest = false) } }
+                .onFailure { e -> _state.update { it.copy(loadingManifest = false, error = e.message ?: "Failed to load manifest") } }
+        }
+        viewModelScope.launch {
+            runCatching { repository.loadOrders(truckId) }
+                .onSuccess { orders ->
+                    _state.update { state ->
+                        val selectedOrderId = state.selectedOrderId?.takeIf { selected -> orders.any { it.orderId == selected } }
+                            ?: orders.firstOrNull()?.orderId
+                        state.copy(
+                            orders = orders,
+                            loadingOrders = false,
+                            selectedOrderId = selectedOrderId,
+                        )
+                    }
+                }
+                .onFailure { e -> _state.update { it.copy(loadingOrders = false, error = e.message ?: "Failed to load orders") } }
+        }
     }
 
     // ── Per-order checklist + seal ──────────────────────────────────────────

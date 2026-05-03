@@ -247,6 +247,10 @@ data class WsMessage(
     val title: String? = null,
     val body: String? = null,
     val channel: String? = null,
+    @SerialName("manifest_id") val manifestId: String? = null,
+    @SerialName("warehouse_id") val warehouseId: String? = null,
+    val reason: String? = null,
+    val timestamp: String? = null,
 )
 
 // ─── Offline action queue ────────────────────────────────────────────────────

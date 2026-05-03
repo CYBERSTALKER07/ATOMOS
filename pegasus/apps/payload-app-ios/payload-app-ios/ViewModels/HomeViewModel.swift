@@ -125,8 +125,14 @@ final class HomeViewModel {
     }
 
     func refreshManifest() async {
-        guard let id = selectedTruckId else { return }
-        await selectTruck(id)
+        await reloadSelectedTruck()
+    }
+
+    private func reloadSelectedTruck() async {
+        guard let truckId = selectedTruckId else { return }
+        error = nil
+        await loadManifest(for: truckId)
+        await loadOrders(for: truckId)
     }
 
     private func loadManifest(for truckId: String) async {
@@ -158,7 +164,11 @@ final class HomeViewModel {
         do {
             let result = try await api.orders(vehicleId: truckId, state: "LOADED")
             orders = result
-            if selectedOrderId == nil { selectedOrderId = result.first?.orderId }
+            if let current = selectedOrderId, result.contains(where: { $0.orderId == current }) {
+                selectedOrderId = current
+            } else {
+                selectedOrderId = result.first?.orderId
+            }
         } catch {
             self.error = describe(error)
         }
@@ -445,6 +455,14 @@ final class HomeViewModel {
     }
 
     private func handleFrame(_ frame: WsMessage) {
+        if frame.type == "PAYLOAD_SYNC" {
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                await self.reloadSelectedTruck()
+            }
+            return
+        }
+
         let item = NotificationItem(
             notificationId: "live-\(Int(Date().timeIntervalSince1970 * 1000))",
             type: frame.type ?? "",

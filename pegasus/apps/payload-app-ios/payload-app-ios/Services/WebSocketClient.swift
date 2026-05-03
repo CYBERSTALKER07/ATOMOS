@@ -3,8 +3,8 @@
 //  payload-app-ios
 //
 //  URLSessionWebSocketTask wrapper for /v1/ws/payloader. Auto-reconnects every
-//  3 s while a token is present. Emits raw `WsMessage` frames; the VM filters
-//  empty (keep-alive) frames. Mirrors Android `PayloadWebSocket`.
+//  3 s while a token is present. Emits notification frames plus PAYLOAD_SYNC
+//  refresh frames. Mirrors Android `PayloadWebSocket`.
 //
 
 import Foundation
@@ -14,7 +14,7 @@ import Foundation
 final class WebSocketClient {
     private(set) var online = false
 
-    /// Called for every notification frame (frames whose title or body is non-empty).
+    /// Called for every notification frame and PAYLOAD_SYNC refresh frame.
     var onFrame: ((WsMessage) -> Void)?
     /// Called every time the socket transitions from offline → online (after reconnect).
     var onReconnect: (() -> Void)?
@@ -74,7 +74,8 @@ final class WebSocketClient {
                     guard let text, let data = text.data(using: .utf8) else { continue }
                     if let frame = try? JSONDecoder().decode(WsMessage.self, from: data) {
                         let hasContent = !(frame.title ?? "").isEmpty || !(frame.body ?? "").isEmpty
-                        if hasContent { self.onFrame?(frame) }
+                        let isPayloadSync = frame.type == "PAYLOAD_SYNC"
+                        if hasContent || isPayloadSync { self.onFrame?(frame) }
                     }
                 } catch {
                     self.handleDisconnect()

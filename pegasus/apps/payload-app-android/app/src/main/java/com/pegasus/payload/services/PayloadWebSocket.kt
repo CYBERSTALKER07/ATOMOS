@@ -33,8 +33,10 @@ import javax.inject.Singleton
  *   - exposes inbound notification frames as a [SharedFlow] for the ViewModel
  *
  * Backend wire shape (notification_dispatcher.go::HandleEvent):
- *   `{ "type": "<EVENT_NAME>", "title": "...", "body": "...", "channel": "PUSH" }`
- * Anything carrying a `title`+`body` is rendered as an in-app notification.
+ *   notification: `{ "type": "<EVENT_NAME>", "title": "...", "body": "...", "channel": "PUSH" }`
+ *   sync: `{ "type": "PAYLOAD_SYNC", "channel": "SYNC", "manifest_id": "...", ... }`
+ * PAYLOAD_SYNC is forwarded so the VM can refresh the active manifest slice without
+ * rendering a blank notification.
  */
 @Singleton
 class PayloadWebSocket @Inject constructor(
@@ -86,7 +88,8 @@ class PayloadWebSocket @Inject constructor(
             override fun onMessage(webSocket: WebSocket, text: String) {
                 val frame = runCatching { json.decodeFromString(WsMessage.serializer(), text) }
                     .getOrNull() ?: return
-                if (frame.title.isNullOrEmpty() && frame.body.isNullOrEmpty()) return
+                val isPayloadSync = frame.type == "PAYLOAD_SYNC"
+                if (!isPayloadSync && frame.title.isNullOrEmpty() && frame.body.isNullOrEmpty()) return
                 scope.launch { _frames.emit(frame) }
             }
 

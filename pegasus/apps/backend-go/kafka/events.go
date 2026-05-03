@@ -777,9 +777,11 @@ type FactoryCreatedEvent struct {
 	Name                 string    `json:"name"`
 	Lat                  float64   `json:"lat"`
 	Lng                  float64   `json:"lng"`
+	H3Index              string    `json:"h3_index,omitempty"`
 	RegionCode           string    `json:"region_code"`
 	LeadTimeDays         int64     `json:"lead_time_days"`
 	ProductionCapacityVU float64   `json:"production_capacity_vu"`
+	ProductTypes         []string  `json:"product_types,omitempty"`
 	WarehousesLinked     int       `json:"warehouses_linked"`
 	Timestamp            time.Time `json:"timestamp"`
 }

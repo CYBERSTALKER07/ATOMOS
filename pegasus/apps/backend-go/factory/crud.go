@@ -45,17 +45,43 @@ func validateWarehousesBelongToSupplier(ctx context.Context, client *spanner.Cli
 // ── Factory CRUD ──────────────────────────────────────────────────────────────
 
 type FactoryResponse struct {
-	FactoryId            string  `json:"factory_id"`
-	SupplierId           string  `json:"supplier_id"`
-	Name                 string  `json:"name"`
-	Address              string  `json:"address"`
-	Lat                  float64 `json:"lat"`
-	Lng                  float64 `json:"lng"`
-	RegionCode           string  `json:"region_code"`
-	LeadTimeDays         int64   `json:"lead_time_days"`
-	ProductionCapacityVU float64 `json:"production_capacity_vu"`
-	IsActive             bool    `json:"is_active"`
-	CreatedAt            string  `json:"created_at"`
+	FactoryId            string   `json:"factory_id"`
+	SupplierId           string   `json:"supplier_id"`
+	Name                 string   `json:"name"`
+	Address              string   `json:"address"`
+	Lat                  float64  `json:"lat"`
+	Lng                  float64  `json:"lng"`
+	H3Index              string   `json:"h3_index"`
+	RegionCode           string   `json:"region_code"`
+	LeadTimeDays         int64    `json:"lead_time_days"`
+	ProductionCapacityVU float64  `json:"production_capacity_vu"`
+	ProductTypes         []string `json:"product_types"`
+	IsActive             bool     `json:"is_active"`
+	CreatedAt            string   `json:"created_at"`
+}
+
+func normalizeFactoryProductTypes(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+
+	normalized := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		if _, exists := seen[trimmed]; exists {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+		normalized = append(normalized, trimmed)
+	}
+	if len(normalized) == 0 {
+		return nil
+	}
+	return normalized
 }
 
 // HandleFactoryProfile returns the authenticated factory staff's factory.
@@ -118,8 +144,8 @@ func HandleFactoryProfile(spannerClient *spanner.Client, rc *cache.Cache, flight
 func fetchFactoryProfile(ctx context.Context, spannerClient *spanner.Client, factoryID string) ([]byte, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT FactoryId, SupplierId, Name, COALESCE(Address, ''),
-		             IFNULL(Lat, 0), IFNULL(Lng, 0), COALESCE(RegionCode, ''),
-		             LeadTimeDays, ProductionCapacityVU, IsActive, CreatedAt
+		             IFNULL(Lat, 0), IFNULL(Lng, 0), COALESCE(H3Index, ''), COALESCE(RegionCode, ''),
+		             LeadTimeDays, ProductionCapacityVU, ProductTypes, IsActive, CreatedAt
 		      FROM Factories WHERE FactoryId = @fid`,
 		Params: map[string]interface{}{"fid": factoryID},
 	}
@@ -133,11 +159,13 @@ func fetchFactoryProfile(ctx context.Context, spannerClient *spanner.Client, fac
 
 	var f FactoryResponse
 	var createdAt time.Time
+	var productTypes []string
 	if err := row.Columns(&f.FactoryId, &f.SupplierId, &f.Name, &f.Address,
-		&f.Lat, &f.Lng, &f.RegionCode, &f.LeadTimeDays, &f.ProductionCapacityVU,
-		&f.IsActive, &createdAt); err != nil {
+		&f.Lat, &f.Lng, &f.H3Index, &f.RegionCode, &f.LeadTimeDays, &f.ProductionCapacityVU,
+		&productTypes, &f.IsActive, &createdAt); err != nil {
 		return nil, fmt.Errorf("parse factory %s: %w", factoryID, err)
 	}
+	f.ProductTypes = normalizeFactoryProductTypes(productTypes)
 	f.CreatedAt = createdAt.Format(time.RFC3339)
 
 	return json.Marshal(f)
@@ -207,8 +235,8 @@ func listSupplierFactories(w http.ResponseWriter, r *http.Request, spannerClient
 
 	stmt := spanner.Statement{
 		SQL: `SELECT FactoryId, SupplierId, Name, COALESCE(Address, ''),
-		             IFNULL(Lat, 0), IFNULL(Lng, 0), COALESCE(RegionCode, ''),
-		             LeadTimeDays, ProductionCapacityVU, IsActive, CreatedAt
+		             IFNULL(Lat, 0), IFNULL(Lng, 0), COALESCE(H3Index, ''), COALESCE(RegionCode, ''),
+		             LeadTimeDays, ProductionCapacityVU, ProductTypes, IsActive, CreatedAt
 		      FROM Factories WHERE SupplierId = @sid ORDER BY CreatedAt DESC`,
 		Params: map[string]interface{}{"sid": claims.ResolveSupplierID()},
 	}
@@ -228,12 +256,14 @@ func listSupplierFactories(w http.ResponseWriter, r *http.Request, spannerClient
 		}
 		var f FactoryResponse
 		var createdAt time.Time
+		var productTypes []string
 		if err := row.Columns(&f.FactoryId, &f.SupplierId, &f.Name, &f.Address,
-			&f.Lat, &f.Lng, &f.RegionCode, &f.LeadTimeDays, &f.ProductionCapacityVU,
-			&f.IsActive, &createdAt); err != nil {
+			&f.Lat, &f.Lng, &f.H3Index, &f.RegionCode, &f.LeadTimeDays, &f.ProductionCapacityVU,
+			&productTypes, &f.IsActive, &createdAt); err != nil {
 			log.Printf("[FACTORY] list parse error: %v", err)
 			continue
 		}
+		f.ProductTypes = normalizeFactoryProductTypes(productTypes)
 		f.CreatedAt = createdAt.Format(time.RFC3339)
 		factories = append(factories, f)
 	}
@@ -261,6 +291,7 @@ func createFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 		RegionCode           string   `json:"region_code"`
 		LeadTimeDays         int64    `json:"lead_time_days"`
 		ProductionCapacityVU float64  `json:"production_capacity_vu"`
+		ProductTypes         []string `json:"product_types"`
 		WarehouseIDs         []string `json:"warehouse_ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -274,6 +305,7 @@ func createFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 	if req.LeadTimeDays <= 0 {
 		req.LeadTimeDays = 2
 	}
+	req.ProductTypes = normalizeFactoryProductTypes(req.ProductTypes)
 
 	factoryId := uuid.New().String()
 	h3Index := ""
@@ -285,9 +317,9 @@ func createFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 	mutations := []*spanner.Mutation{
 		spanner.Insert("Factories",
 			[]string{"FactoryId", "SupplierId", "Name", "Address", "Lat", "Lng",
-				"RegionCode", "LeadTimeDays", "ProductionCapacityVU", "IsActive", "CreatedAt", "H3Index"},
+				"H3Index", "RegionCode", "LeadTimeDays", "ProductionCapacityVU", "ProductTypes", "IsActive", "CreatedAt"},
 			[]interface{}{factoryId, claims.ResolveSupplierID(), req.Name, req.Address, req.Lat, req.Lng,
-				req.RegionCode, req.LeadTimeDays, req.ProductionCapacityVU, true, spanner.CommitTimestamp, h3Index},
+				h3Index, req.RegionCode, req.LeadTimeDays, req.ProductionCapacityVU, req.ProductTypes, true, spanner.CommitTimestamp},
 		),
 	}
 
@@ -320,9 +352,11 @@ func createFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 			Name:                 req.Name,
 			Lat:                  req.Lat,
 			Lng:                  req.Lng,
+			H3Index:              h3Index,
 			RegionCode:           req.RegionCode,
 			LeadTimeDays:         req.LeadTimeDays,
 			ProductionCapacityVU: req.ProductionCapacityVU,
+			ProductTypes:         req.ProductTypes,
 			WarehousesLinked:     assignedCount,
 			Timestamp:            time.Now().UTC(),
 		}
@@ -351,6 +385,8 @@ func createFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 		"factory_id":        factoryId,
 		"supplier_id":       claims.ResolveSupplierID(),
 		"name":              req.Name,
+		"h3_index":          h3Index,
+		"product_types":     req.ProductTypes,
 		"warehouses_linked": assignedCount,
 	})
 }
@@ -364,8 +400,8 @@ func getFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanner.C
 
 	stmt := spanner.Statement{
 		SQL: `SELECT FactoryId, SupplierId, Name, COALESCE(Address, ''),
-		             IFNULL(Lat, 0), IFNULL(Lng, 0), COALESCE(RegionCode, ''),
-		             LeadTimeDays, ProductionCapacityVU, IsActive, CreatedAt
+		             IFNULL(Lat, 0), IFNULL(Lng, 0), COALESCE(H3Index, ''), COALESCE(RegionCode, ''),
+		             LeadTimeDays, ProductionCapacityVU, ProductTypes, IsActive, CreatedAt
 		      FROM Factories WHERE FactoryId = @fid AND SupplierId = @sid`,
 		Params: map[string]interface{}{"fid": factoryID, "sid": claims.ResolveSupplierID()},
 	}
@@ -380,13 +416,15 @@ func getFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanner.C
 
 	var f FactoryResponse
 	var createdAt time.Time
+	var productTypes []string
 	if err := row.Columns(&f.FactoryId, &f.SupplierId, &f.Name, &f.Address,
-		&f.Lat, &f.Lng, &f.RegionCode, &f.LeadTimeDays, &f.ProductionCapacityVU,
-		&f.IsActive, &createdAt); err != nil {
+		&f.Lat, &f.Lng, &f.H3Index, &f.RegionCode, &f.LeadTimeDays, &f.ProductionCapacityVU,
+		&productTypes, &f.IsActive, &createdAt); err != nil {
 		log.Printf("[FACTORY] detail parse error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	f.ProductTypes = normalizeFactoryProductTypes(productTypes)
 	f.CreatedAt = createdAt.Format(time.RFC3339)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -401,13 +439,14 @@ func updateFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 	}
 
 	var req struct {
-		Name                 *string  `json:"name"`
-		Address              *string  `json:"address"`
-		Lat                  *float64 `json:"lat"`
-		Lng                  *float64 `json:"lng"`
-		RegionCode           *string  `json:"region_code"`
-		LeadTimeDays         *int64   `json:"lead_time_days"`
-		ProductionCapacityVU *float64 `json:"production_capacity_vu"`
+		Name                 *string   `json:"name"`
+		Address              *string   `json:"address"`
+		Lat                  *float64  `json:"lat"`
+		Lng                  *float64  `json:"lng"`
+		RegionCode           *string   `json:"region_code"`
+		LeadTimeDays         *int64    `json:"lead_time_days"`
+		ProductionCapacityVU *float64  `json:"production_capacity_vu"`
+		ProductTypes         *[]string `json:"product_types"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid JSON body"}`, http.StatusBadRequest)
@@ -416,13 +455,14 @@ func updateFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 
 	// Verify ownership
 	fRow, err := spannerClient.Single().ReadRow(r.Context(), "Factories",
-		spanner.Key{factoryID}, []string{"SupplierId"})
+		spanner.Key{factoryID}, []string{"SupplierId", "Lat", "Lng"})
 	if err != nil {
 		http.Error(w, `{"error":"factory not found"}`, http.StatusNotFound)
 		return
 	}
 	var ownerSid string
-	if err := fRow.Columns(&ownerSid); err != nil || ownerSid != claims.ResolveSupplierID() {
+	var currentLat, currentLng spanner.NullFloat64
+	if err := fRow.Columns(&ownerSid, &currentLat, &currentLng); err != nil || ownerSid != claims.ResolveSupplierID() {
 		http.Error(w, `{"error":"factory not found"}`, http.StatusNotFound)
 		return
 	}
@@ -449,16 +489,24 @@ func updateFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 	// Recompute H3Index when coordinates change
 	if req.Lat != nil || req.Lng != nil {
 		newLat := 0.0
+		if currentLat.Valid {
+			newLat = currentLat.Float64
+		}
 		newLng := 0.0
+		if currentLng.Valid {
+			newLng = currentLng.Float64
+		}
 		if req.Lat != nil {
 			newLat = *req.Lat
 		}
 		if req.Lng != nil {
 			newLng = *req.Lng
 		}
+		cols = append(cols, "H3Index")
 		if newLat != 0 || newLng != 0 {
-			cols = append(cols, "H3Index")
 			vals = append(vals, proximity.LookupCell(newLat, newLng))
+		} else {
+			vals = append(vals, "")
 		}
 	}
 	if req.RegionCode != nil {
@@ -472,6 +520,10 @@ func updateFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 	if req.ProductionCapacityVU != nil {
 		cols = append(cols, "ProductionCapacityVU")
 		vals = append(vals, *req.ProductionCapacityVU)
+	}
+	if req.ProductTypes != nil {
+		cols = append(cols, "ProductTypes")
+		vals = append(vals, normalizeFactoryProductTypes(*req.ProductTypes))
 	}
 
 	m := spanner.Update("Factories", cols, vals)

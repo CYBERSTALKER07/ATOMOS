@@ -259,6 +259,16 @@ struct WsMessage: Decodable {
     let title: String?
     let body: String?
     let channel: String?
+    let manifestId: String?
+    let warehouseId: String?
+    let reason: String?
+    let timestamp: String?
+
+    enum CodingKeys: String, CodingKey {
+        case type, title, body, channel, reason, timestamp
+        case manifestId = "manifest_id"
+        case warehouseId = "warehouse_id"
+    }
 }
 
 // MARK: - Offline queue (for inject-order while WebSocket is disconnected)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"backend-go/kafka/workerpool"
 	"backend-go/notifications"
@@ -2457,6 +2458,26 @@ func handleOrderDelayed(deps NotificationDeps, data []byte) {
 	}
 }
 
+type payloadSyncFrame struct {
+	Type        string    `json:"type"`
+	Channel     string    `json:"channel"`
+	ManifestID  string    `json:"manifest_id"`
+	WarehouseID string    `json:"warehouse_id,omitempty"`
+	Reason      string    `json:"reason"`
+	Timestamp   time.Time `json:"timestamp"`
+}
+
+func newPayloadSyncFrame(event PayloadSyncEvent) payloadSyncFrame {
+	return payloadSyncFrame{
+		Type:        EventPayloadSync,
+		Channel:     "SYNC",
+		ManifestID:  event.ManifestID,
+		WarehouseID: event.WarehouseID,
+		Reason:      event.Reason,
+		Timestamp:   event.Timestamp,
+	}
+}
+
 func handlePayloadSync(deps NotificationDeps, data []byte) {
 	var event PayloadSyncEvent
 	if err := json.Unmarshal(data, &event); err != nil {
@@ -2466,7 +2487,7 @@ func handlePayloadSync(deps NotificationDeps, data []byte) {
 	if event.SupplierID == "" || deps.PayloaderHub == nil {
 		return
 	}
-	deps.PayloaderHub.PushToPayloader(event.SupplierID, data)
+	deps.PayloaderHub.PushToPayloader(event.SupplierID, newPayloadSyncFrame(event))
 }
 
 // Stakeholder is a (recipientID, role) pair for multi-party notification fan-out.
