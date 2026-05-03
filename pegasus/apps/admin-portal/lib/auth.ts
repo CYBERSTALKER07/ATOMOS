@@ -32,7 +32,28 @@ export function readTokenFromCookie(): string {
 export function useToken(): string {
   const [token, setToken] = useState('');
   useEffect(() => {
-    setToken(readTokenFromCookie());
+    const syncToken = () => {
+      setToken(readTokenFromCookie());
+    };
+
+    syncToken();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncToken();
+      }
+    };
+
+    window.addEventListener('focus', syncToken);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const interval = window.setInterval(syncToken, 30_000);
+
+    return () => {
+      window.removeEventListener('focus', syncToken);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.clearInterval(interval);
+    };
   }, []);
   return token;
 }
@@ -44,6 +65,9 @@ export function useToken(): string {
  */
 export async function getAdminToken(): Promise<string> {
   const t = getTranslator();
+  const cookie = readTokenFromCookie();
+  if (cookie) return cookie;
+
   // Desktop: try OS keyring first
   if (isTauri()) {
     try {
@@ -51,9 +75,6 @@ export async function getAdminToken(): Promise<string> {
       if (stored) return stored;
     } catch { /* fall through to cookie */ }
   }
-
-  const cookie = readTokenFromCookie();
-  if (cookie) return cookie;
 
   // Dev-only fallback — this endpoint is disabled in production
   if (process.env.NODE_ENV === 'development') {

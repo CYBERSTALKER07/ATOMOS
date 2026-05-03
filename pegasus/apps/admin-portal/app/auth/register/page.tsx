@@ -7,6 +7,7 @@ import { Button } from '@heroui/react';
 import { translateProblemDetail } from '@pegasus/i18n';
 import { useLocale } from '@/hooks/useLocale';
 import { exchangeCustomToken } from '../../../lib/firebase';
+import { isTauri, storeToken } from '../../../lib/bridge';
 import { COUNTRIES, DEFAULT_COUNTRY, findCountry, dialingPrefix } from '../../../lib/constants/countries';
 
 function LocationPickerLoading() {
@@ -642,6 +643,9 @@ export default function SupplierRegisterPage() {
       const data = await res.json();
       document.cookie = `pegasus_admin_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
       document.cookie = `admin_name=${encodeURIComponent(data.name || account.companyName)}; path=/; max-age=86400; SameSite=Lax`;
+      if (isTauri()) {
+        await storeToken(data.token, data.refresh_token || '');
+      }
       // Exchange Firebase custom token for ID token session (graceful — legacy cookie still works)
       if (data.firebase_token) {
         await exchangeCustomToken(data.firebase_token);

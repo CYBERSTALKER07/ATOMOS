@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { readTokenFromCookie } from "@/lib/auth";
-import { isTauri, getStoredToken } from "@/lib/bridge";
+import { clearStoredToken, getStoredToken, isTauri } from "@/lib/bridge";
 
 /**
  * Decode JWT payload without verification (matches middleware.ts logic).
@@ -46,10 +46,12 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       // Desktop: try OS keychain if cookie is empty
       if (!token && isTauri()) {
         const storedToken = await getStoredToken();
-        if (storedToken) {
+        if (storedToken && !isTokenExpired(storedToken)) {
           // Write to cookie so the rest of the app (apiFetch, etc.) picks it up
           document.cookie = `pegasus_admin_jwt=${encodeURIComponent(storedToken)}; path=/; max-age=86400; SameSite=Lax`;
           token = storedToken;
+        } else if (storedToken) {
+          clearStoredToken().catch(() => {});
         }
       }
 
@@ -69,6 +71,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
         if (token && isTokenExpired(token)) {
           document.cookie = "pegasus_admin_jwt=; Max-Age=0; path=/";
           document.cookie = "pegasus_supplier_jwt=; Max-Age=0; path=/";
+          if (isTauri()) {
+            clearStoredToken().catch(() => {});
+          }
         }
         router.replace("/auth/login");
         return;

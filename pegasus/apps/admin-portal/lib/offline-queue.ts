@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { OfflineManager } from './api/offlineQueue';
+import { readTokenFromCookie } from './auth';
 
 /**
  * Offline mutation queue for the Admin Portal.
@@ -37,9 +38,18 @@ export async function flushQueue(): Promise<{ succeeded: number; failed: number 
   if (before === 0) return { succeeded: 0, failed: 0 };
 
   await OfflineManager.drainQueue(async (url, method, body, headers) => {
+    const token = readTokenFromCookie();
+    const replayHeaders: Record<string, string> = {
+      ...headers,
+      'X-Trace-Id': crypto.randomUUID(),
+    };
+    if (token) {
+      replayHeaders.Authorization = `Bearer ${token}`;
+    }
+
     return fetch(
       `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}${url}`,
-      { method, body: body ?? undefined, headers },
+      { method, body: body ?? undefined, headers: replayHeaders },
     );
   });
 
