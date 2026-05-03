@@ -91,7 +91,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	// 4. POST /v1/fleet/reassign — move orders between routes.
 	r.HandleFunc("/v1/fleet/reassign",
-		auth.RequireRole([]string{"ADMIN", "SUPPLIER", "PAYLOADER"}, log(handleReassign(d))))
+		auth.RequireRole([]string{"ADMIN", "SUPPLIER", "PAYLOADER"}, log(idempotency.Guard(handleReassign(d)))))
 
 	// 5. GET /v1/fleet/capacity?route_id=... — truck capacity snapshot.
 	r.HandleFunc("/v1/fleet/capacity",

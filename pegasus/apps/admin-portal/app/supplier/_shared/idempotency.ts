@@ -145,6 +145,14 @@ export function buildSupplierManualDispatchIdempotencyKey(driverId: string, orde
   return ['supplier-manual-dispatch', driverId.trim(), stableSerialize([...orderIds].sort())].join(':');
 }
 
+export function buildSupplierFleetDispatchIdempotencyKey(routeId: string, orderIds: string[]): string {
+  return ['supplier-fleet-dispatch', routeId.trim(), stableSerialize([...orderIds].sort())].join(':');
+}
+
+export function buildSupplierFleetReassignIdempotencyKey(newRouteId: string, orderIds: string[]): string {
+  return ['supplier-fleet-reassign', newRouteId.trim(), stableSerialize([...orderIds].sort())].join(':');
+}
+
 export function buildSupplierWarehouseStaffCreateIdempotencyKey(payload: Record<string, unknown>): string {
   return ['supplier-warehouse-staff-create', stableSerialize(payload)].join(':');
 }

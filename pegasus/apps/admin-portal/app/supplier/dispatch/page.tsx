@@ -11,6 +11,8 @@ import { useToast } from '@/components/Toast';
 import { Button } from '@heroui/react';
 import {
   buildSupplierAutoDispatchIdempotencyKey,
+  buildSupplierFleetDispatchIdempotencyKey,
+  buildSupplierFleetReassignIdempotencyKey,
   buildSupplierManualDispatchIdempotencyKey,
 } from '../_shared/idempotency';
 
@@ -222,7 +224,11 @@ export default function DispatchPage() {
       try {
         const res = await fetch(`${API}/v1/fleet/dispatch`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Idempotency-Key': buildSupplierFleetDispatchIdempotencyKey(m.route_id, m.orders.map((o) => o.order_id)),
+          },
           body: JSON.stringify({ order_ids: m.orders.map((o) => o.order_id), route_id: m.route_id }),
         });
         if (res.ok) ok++;
@@ -274,7 +280,11 @@ export default function DispatchPage() {
       // RouteId == DriverId in this codebase; vehicle is bound to the driver.
       const res = await fetch(`${API}/v1/fleet/reassign`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierFleetReassignIdempotencyKey(newDriverId, [reDispatchOrderId]),
+        },
         body: JSON.stringify({ order_ids: [reDispatchOrderId], new_route_id: newDriverId }),
       });
       if (!res.ok) throw new Error(await res.text() || `HTTP ${res.status}`);
@@ -351,7 +361,11 @@ export default function DispatchPage() {
 
       const confirmRes = await fetch(`${API}/v1/fleet/dispatch`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierFleetDispatchIdempotencyKey(manifest.route_id, [...orderIds]),
+        },
         body: JSON.stringify({ order_ids: [...orderIds], route_id: manifest.route_id }),
       });
       if (!confirmRes.ok) throw new Error('Fleet dispatch confirmation failed');
