@@ -30,6 +30,7 @@ enum TermTheme {
     static let s8: Double = 8
     static let s12: Double = 12
     static let s16: Double = 16
+    static let s20: Double = 20
     static let s24: Double = 24
     static let s32: Double = 32
 }

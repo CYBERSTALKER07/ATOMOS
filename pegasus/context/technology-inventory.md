@@ -45,6 +45,9 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 - Legacy order detail compatibility handler: `pegasus/apps/backend-go/order/legacy_orders.go`
 	- Owns `GET /v1/orders/{id}`, `GET /v1/orders/{id}/events`, `PATCH /v1/orders/{id}/status`, and `PATCH /v1/orders/{id}/state`
 	- Serves an additive superset detail payload for driver iOS, driver Android, and retailer desktop order detail consumers, plus the supplier portal order timeline feed
+- Retailer core route composition: `pegasus/apps/backend-go/retailerroutes/routes.go`
+	- Owns `GET /v1/retailer/analytics/{expenses,detailed}`, `POST /v1/orders/request-cancel`, `POST /v1/retailer/shop-closed-response`, `GET/POST/DELETE /v1/retailer/family-members*`, `POST /v1/retailer/orders/{confirm-ai,reject-ai}`, `POST /v1/orders/{edit-preorder,confirm-preorder}`, `GET/POST /v1/retailer/cart/sync`, `GET/POST /v1/retailer/suppliers*`, `GET/PUT /v1/retailer/profile`, `GET /v1/retailers/{retailerID}/orders`, and `GET /v1/retailer/tracking`
+	- Current role-row consumers span retailer desktop supplier/analytics/tracking surfaces plus the richer iOS and Android retailer order/tracking flows, so the shared retailer contract is now extracted out of `main.go`
 - Supplier geo-planning route composition: `pegasus/apps/backend-go/proximityroutes/routes.go`
 	- Owns `GET /v1/supplier/serving-warehouse`, `GET /v1/supplier/geo-report`, `GET /v1/supplier/zone-preview`, `POST /v1/supplier/warehouses/validate-coverage`, and `GET /v1/supplier/warehouse-loads`
 	- Current portal consumers are `app/supplier/geo-report/page.tsx`, `app/supplier/warehouses/CoverageEditor.tsx`, and `components/warehouse/CoverageMap.tsx`; the remaining endpoints stay supplier-facing support surfaces for coverage and load planning

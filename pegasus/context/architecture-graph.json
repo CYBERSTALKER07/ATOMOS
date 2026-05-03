@@ -170,6 +170,44 @@
       ]
     },
     {
+      "id": "retailer_core_surface",
+      "path": "/v1/{retailer/analytics/*,orders/request-cancel,retailer/shop-closed-response,retailer/family-members*,retailer/orders/{confirm-ai,reject-ai},orders/{edit-preorder,confirm-preorder},retailer/cart/sync,retailer/suppliers*,retailer/profile,retailers/{retailerID}/orders,retailer/tracking}",
+      "owner": "pegasus/apps/backend-go/retailerroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/retailer/analytics/expenses",
+        "GET /v1/retailer/analytics/detailed",
+        "POST /v1/orders/request-cancel",
+        "POST /v1/retailer/shop-closed-response",
+        "GET /v1/retailer/family-members",
+        "POST /v1/retailer/family-members",
+        "DELETE /v1/retailer/family-members/{memberID}",
+        "POST /v1/retailer/orders/confirm-ai",
+        "POST /v1/retailer/orders/reject-ai",
+        "POST /v1/orders/edit-preorder",
+        "POST /v1/orders/confirm-preorder",
+        "GET /v1/retailer/cart/sync",
+        "POST /v1/retailer/cart/sync",
+        "GET /v1/retailer/suppliers",
+        "POST /v1/retailer/suppliers/{supplierID}/{action}",
+        "GET /v1/retailer/profile",
+        "PUT /v1/retailer/profile",
+        "GET /v1/retailers/{retailerID}/orders",
+        "GET /v1/retailer/tracking"
+      ],
+      "consumers": [
+        "pegasus/apps/retailer-app-desktop app/(dashboard)/suppliers page and hooks",
+        "pegasus/apps/retailer-app-desktop app/(dashboard)/analytics page",
+        "pegasus/apps/retailer-app-desktop app/(dashboard)/tracking page",
+        "pegasus/apps/retailer-app-ios RetailerService order and tracking flows",
+        "pegasus/apps/retailer-app-android RetailerApi order and tracking flows"
+      ],
+      "notes": [
+        "Route composition moved out of main.go into retailerroutes while preserving existing analytics, auth, order, and supplier handlers.",
+        "This extracted surface centralizes the retailer read and action contract shared across desktop, iOS, and Android before payment, settings, and websocket families are migrated."
+      ]
+    },
+    {
       "id": "supplier_geo_planning_surface",
       "path": "/v1/supplier/{serving-warehouse,geo-report,zone-preview,warehouses/validate-coverage,warehouse-loads}",
       "owner": "pegasus/apps/backend-go/proximityroutes/routes.go",

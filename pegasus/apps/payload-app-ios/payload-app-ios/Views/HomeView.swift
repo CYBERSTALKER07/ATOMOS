@@ -535,11 +535,11 @@ private struct OrderChecklistSection: View {
                                 }
                                 .padding()
                                 .frame(maxWidth: .infinity)
-                                .background(viewModel.allChecked(selected) ? TermTheme.accent : TermTheme.tertiary.opacity(0.3))
+                                .background(viewModel.canSealOrder(selected.orderId) ? TermTheme.accent : TermTheme.tertiary.opacity(0.3))
                                 .foregroundStyle(TermTheme.card)
                                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             }
-                            .disabled(viewModel.sealingOrderId != nil || !viewModel.allChecked(selected))
+                            .disabled(viewModel.sealingOrderId != nil || !viewModel.canSealOrder(selected.orderId))
                             
                             HStack(spacing: 12) {
                                 Button("REPORT_ISSUE") { onShowException(selected.orderId) }
@@ -1193,7 +1193,7 @@ private struct ReDispatchSheet: View {
             .padding(24)
             
             if reassigning {
-                Color.bg.opacity(0.8).ignoresSafeArea()
+                TermTheme.bg.opacity(0.8).ignoresSafeArea()
                 VStack(spacing: 16) {
                     ProgressView().tint(TermTheme.accent)
                     Text("REASSIGNING_ORDER...")
