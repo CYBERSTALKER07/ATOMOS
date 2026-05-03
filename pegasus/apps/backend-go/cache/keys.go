@@ -34,13 +34,13 @@ const (
 	PrefixWarehouseQueue  = "wh:queue:" // STRING (counter): wh:queue:<warehouseId>
 
 	// ── Order ──────────────────────────────────────────────────────────────
-	PrefixDeliveryToken = "delivery_token:" // STRING: delivery_token:<orderId>
-	PrefixActiveOrders  = "active_orders:"  // STRING (cached): active_orders:<retailerId>
-	PrefixEarlyComplete = "early_complete:" // STRING (JSON): early_complete:<driverId>
-	PrefixManifestDetail  = "manifest_detail:"
-	PrefixManifestOrders  = "manifest_orders:"
+	PrefixDeliveryToken  = "delivery_token:" // STRING: delivery_token:<orderId>
+	PrefixActiveOrders   = "active_orders:"  // STRING (cached): active_orders:<retailerId>
+	PrefixEarlyComplete  = "early_complete:" // STRING (JSON): early_complete:<driverId>
+	PrefixManifestDetail = "manifest_detail:"
+	PrefixManifestOrders = "manifest_orders:"
 
-	PrefixPowerOutage   = "power_outage:"   // STRING (flag): power_outage:<orderId>
+	PrefixPowerOutage = "power_outage:" // STRING (flag): power_outage:<orderId>
 
 	// ── Idempotency ────────────────────────────────────────────────────────
 	PrefixIdempotency     = "idem:" // STRING (JSON): idem:<key>
@@ -75,7 +75,7 @@ const (
 
 	// ── Catalog Search Cache ───────────────────────────────────────────
 	PrefixCatalogSearch     = "cache:catalog:search:"     // STRING (JSON): cache:catalog:search:<query>
-	PrefixCategorySuppliers = "cache:category:suppliers:"  // STRING (JSON): cache:category:suppliers:<query>
+	PrefixCategorySuppliers = "cache:category:suppliers:" // STRING (JSON): cache:category:suppliers:<query>
 
 	// ── Settings Cache ─────────────────────────────────────────────────
 	PrefixSettings = "settings:" // STRING (JSON): settings:<retailerId>:<scope>
