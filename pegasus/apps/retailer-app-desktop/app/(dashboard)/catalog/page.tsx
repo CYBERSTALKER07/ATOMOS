@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
-  ShoppingCart, Search, SlidersHorizontal, ChevronRight,
-  Package, Star, ArrowUpRight, Layers, TrendingUp, AlertTriangle,
+  ShoppingCart,
+  Search,
+  SlidersHorizontal,
+  Package,
+  Star,
+  Layers,
+  TrendingUp,
+  Building2,
 } from "lucide-react";
 import { Button, Chip, Skeleton } from "@heroui/react";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
@@ -16,6 +22,10 @@ import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
 import type { Product, Category, Supplier } from "../../../lib/types";
 
+const EMPTY_PRODUCTS: Product[] = [];
+const EMPTY_CATEGORIES: Category[] = [];
+const EMPTY_SUPPLIERS: Supplier[] = [];
+
 export default function CatalogPage() {
   const { data: products, loading: loadingProducts } = useLiveData<Product[]>("/v1/catalog/products");
   const { data: categories } = useLiveData<Category[]>("/v1/catalog/categories");
@@ -25,52 +35,60 @@ export default function CatalogPage() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
-  const [activeSupplier, setActiveSupplier] = useState<string | null>(null);
+  const [activeSupplier, setActiveSupplier] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  const productList = products ?? [];
-  const categoryList = categories ?? [];
-  const supplierList = suppliers ?? [];
+  const productList = products ?? EMPTY_PRODUCTS;
+  const categoryList = categories ?? EMPTY_CATEGORIES;
+  const supplierList = suppliers ?? EMPTY_SUPPLIERS;
+  const cartQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  const sparkOrders = useMemo(() => Array.from({ length: 12 }, (_, i) => 30 + Math.sin(i * 0.7) * 15 + i * 2), []);
-  const sparkRevenue = useMemo(() => Array.from({ length: 12 }, (_, i) => 50 + i * 8 + Math.cos(i * 0.5) * 10), []);
+  const sparkOrders = useMemo(() => Array.from({ length: 12 }, (_, index) => 30 + Math.sin(index * 0.7) * 15 + index * 2), []);
+  const sparkRevenue = useMemo(() => Array.from({ length: 12 }, (_, index) => 50 + index * 8 + Math.cos(index * 0.5) * 10), []);
 
-  const filtered = useMemo(() => {
+  const filteredProducts = useMemo(() => {
     let list = productList;
     if (activeCategory !== "All") {
-      list = list.filter((p) => p.category_name === activeCategory);
+      list = list.filter((product) => product.category_name === activeCategory);
     }
     if (activeSupplier) {
-      list = list.filter((p) => p.supplier_id === activeSupplier);
+      list = list.filter((product) => product.supplier_id === activeSupplier);
     }
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter((p) => p.name.toLowerCase().includes(q) || p.supplier_name.toLowerCase().includes(q));
+      const query = searchQuery.toLowerCase();
+      list = list.filter(
+        (product) =>
+          product.name.toLowerCase().includes(query) ||
+          product.supplier_name.toLowerCase().includes(query),
+      );
     }
     return list;
   }, [productList, activeCategory, activeSupplier, searchQuery]);
 
-  const categoryTabs = useMemo(() => {
-    const names = ["All", ...categoryList.map((c) => c.name)];
-    return names;
-  }, [categoryList]);
+  const categoryTabs = useMemo(() => ["All", ...categoryList.map((category) => category.name)], [categoryList]);
+  const activeSupplierRecord = supplierList.find((supplier) => supplier.id === activeSupplier) ?? null;
 
-  /* ── Loading skeleton ── */
   if (loadingProducts) {
     return (
       <div className="min-h-full p-6 md:p-8">
-        <Skeleton className="h-8 w-64 rounded-lg mb-2" />
-        <Skeleton className="h-4 w-96 rounded-lg mb-8" />
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}
+        <Skeleton className="mb-2 h-8 w-64 rounded-lg" />
+        <Skeleton className="mb-8 h-4 w-96 rounded-lg" />
+        <div className="mb-8 grid grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map((item) => (
+            <Skeleton key={item} className="h-28 rounded-2xl" />
+          ))}
         </div>
         <div className="flex gap-6">
-          <div className="w-[240px] flex flex-col gap-2">
-            {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-16 rounded-2xl" />)}
+          <div className="hidden w-[280px] flex-col gap-2 lg:flex">
+            {[0, 1, 2, 3].map((item) => (
+              <Skeleton key={item} className="h-16 rounded-2xl" />
+            ))}
           </div>
-          <div className="flex-1 grid grid-cols-3 gap-4">
-            {[0, 1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-64 rounded-2xl" />)}
+          <div className="grid flex-1 grid-cols-3 gap-4">
+            {[0, 1, 2, 3, 4, 5].map((item) => (
+              <Skeleton key={item} className="h-64 rounded-2xl" />
+            ))}
           </div>
         </div>
       </div>
@@ -79,19 +97,18 @@ export default function CatalogPage() {
 
   return (
     <div className="min-h-full p-6 md:p-8">
-      {/* ── Header ── */}
-      <header className="mb-6 flex items-end justify-between gap-4 flex-wrap">
+      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="md-typescale-headline-large">Supplier Catalog</h1>
-          <p className="md-typescale-body-medium mt-1" style={{ color: "var(--muted)" }}>
-            Browse and procure inventory directly from approved suppliers.
+          <h1 className="md-typescale-headline-large">Supplier catalog</h1>
+          <p className="mt-1 md-typescale-body-medium text-muted">
+            Search approved suppliers, compare stock status, and stage replenishment with desktop-grade controls.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Button
             variant="primary"
             onPress={() => setIsCartOpen(true)}
-            className="md-btn md-btn-filled md-typescale-label-large px-5 h-10 flex items-center gap-2"
+            className="md-btn md-btn-filled md-typescale-label-large flex h-10 items-center gap-2 px-5"
           >
             <ShoppingCart size={18} />
             Cart ({items.length})
@@ -99,20 +116,19 @@ export default function CatalogPage() {
         </div>
       </header>
 
-      {/* ── KPI Bento ── */}
       <BentoGrid className="mb-8">
-        <BentoCard delay={0}>
+        <BentoCard>
           <div className="md-kpi-card">
             <div className="flex items-center justify-between">
-              <span className="md-kpi-label">Products Available</span>
+              <span className="md-kpi-label">Products available</span>
               <Package size={18} strokeWidth={1.5} style={{ color: "var(--muted)" }} />
             </div>
             <CountUp end={productList.length} className="md-kpi-value" />
-            <span className="md-kpi-sub">{supplierList.length} suppliers</span>
+            <span className="md-kpi-sub">{supplierList.length} suppliers in view</span>
           </div>
         </BentoCard>
 
-        <BentoCard delay={60}>
+        <BentoCard>
           <div className="md-kpi-card">
             <div className="flex items-center justify-between">
               <span className="md-kpi-label">Categories</span>
@@ -126,171 +142,204 @@ export default function CatalogPage() {
           </div>
         </BentoCard>
 
-        <BentoCard delay={120}>
+        <BentoCard>
           <div className="md-kpi-card">
             <div className="flex items-center justify-between">
-              <span className="md-kpi-label">In Cart</span>
+              <span className="md-kpi-label">In cart</span>
               <TrendingUp size={18} strokeWidth={1.5} style={{ color: "var(--muted)" }} />
             </div>
             <div className="flex items-end justify-between gap-4">
-              <CountUp end={items.reduce((s, i) => s + i.quantity, 0)} className="md-kpi-value" suffix=" items" />
+              <CountUp end={cartQuantity} className="md-kpi-value" />
               <MiniSparkline data={sparkRevenue} width={72} height={28} />
             </div>
-            <span className="md-kpi-sub">Ready to order</span>
+            <span className="md-kpi-sub">Items ready to order</span>
           </div>
         </BentoCard>
 
-        <BentoCard delay={180}>
+        <BentoCard>
           <div className="md-kpi-card">
             <div className="flex items-center justify-between">
-              <span className="md-kpi-label">Suppliers</span>
+              <span className="md-kpi-label">Active suppliers</span>
               <Star size={18} strokeWidth={1.5} style={{ color: "var(--muted)" }} />
             </div>
-            <CountUp end={supplierList.filter((s) => s.is_active).length} className="md-kpi-value" />
-            <span className="md-kpi-sub">Active partners</span>
+            <CountUp end={supplierList.filter((supplier) => supplier.is_active).length} className="md-kpi-value" />
+            <span className="md-kpi-sub">{filteredProducts.length} products match current filters</span>
           </div>
         </BentoCard>
       </BentoGrid>
 
-      {/* ── Search + Filters ── */}
-      <div className="flex items-center gap-3 mb-6 border-b border-[var(--border)] pb-3 flex-wrap">
-        <div className="md-search-bar flex-1 max-w-sm">
+      <div className="mb-6 flex flex-wrap items-center gap-3 border-b border-[var(--border)] pb-3">
+        <div className="md-search-bar max-w-sm flex-1">
           <Search size={18} />
           <input
             type="text"
-            placeholder="Search products..."
+            placeholder="Search products or suppliers..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(event) => setSearchQuery(event.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2 overflow-x-auto">
-          {categoryTabs.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`md-typescale-label-large px-4 py-2 rounded-full font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                activeCategory === cat
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted hover:text-foreground hover:bg-surface"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-        <div className="flex-1" />
+
+        <label className="flex h-11 min-w-[240px] items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-muted">
+          <Building2 size={16} />
+          <span className="md-typescale-label-large whitespace-nowrap">Supplier</span>
+          <select
+            value={activeSupplier}
+            onChange={(event) => setActiveSupplier(event.target.value)}
+            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none"
+          >
+            <option value="">All suppliers</option>
+            {supplierList.map((supplier) => (
+              <option key={supplier.id} value={supplier.id}>
+                {supplier.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
         <Button
           variant="ghost"
           className="text-muted md-typescale-label-large flex items-center gap-2"
-          onPress={() => { setActiveCategory("All"); setActiveSupplier(null); setSearchQuery(""); }}
+          onPress={() => {
+            setActiveCategory("All");
+            setActiveSupplier("");
+            setSearchQuery("");
+          }}
         >
-          <SlidersHorizontal size={16} /> Reset Filters
+          <SlidersHorizontal size={16} />
+          Reset filters
         </Button>
       </div>
 
-      {/* ── Split: Supplier List + Product Grid ── */}
-      <div className="flex gap-6 min-h-[520px]">
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        {categoryTabs.map((category) => (
+          <button
+            key={category}
+            onClick={() => setActiveCategory(category)}
+            className={`rounded-full px-4 py-2 md-typescale-label-large font-semibold transition-colors ${
+              activeCategory === category
+                ? "bg-accent text-accent-foreground"
+                : "text-muted hover:bg-surface hover:text-foreground"
+            }`}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
 
-        {/* Left: Supplier sidebar */}
-        <div className="w-[240px] shrink-0 hidden lg:flex flex-col gap-1">
-          <span className="md-typescale-label-small font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--muted)" }}>
-            Top Suppliers
-          </span>
-          {supplierList.slice(0, 6).map((sup) => (
-            <button
-              key={sup.id}
-              onClick={() => setActiveSupplier(activeSupplier === sup.id ? null : sup.id)}
-              className={`bento-card text-left cursor-pointer transition-all duration-150 ${activeSupplier === sup.id ? "ring-1 ring-accent" : ""}`}
-              style={{ padding: "12px 16px" }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--surface)" }}>
-                  <Package size={16} style={{ color: "var(--muted)" }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="md-typescale-title-small font-semibold text-foreground truncate block">{sup.name}</span>
-                  <span className="md-typescale-body-small text-muted">{sup.order_count} orders</span>
-                </div>
-                <ChevronRight size={16} style={{ color: "var(--muted)" }} />
-              </div>
-            </button>
-          ))}
-        </div>
-
-        {/* Right: Product Grid */}
-        <div className="flex-1 overflow-y-auto max-h-[calc(100dvh-460px)] pr-1">
-          <div className="flex items-center justify-between mb-4 sticky top-0 z-10 py-2 bg-background/80 backdrop-blur-sm">
-            <div>
-              <h2 className="md-typescale-title-large font-semibold text-foreground">{activeCategory}</h2>
-              <p className="md-typescale-body-small text-muted">{filtered.length} products from {supplierList.length} suppliers</p>
+      <div className="flex gap-6">
+        <aside className="hidden w-[280px] shrink-0 lg:flex lg:flex-col lg:gap-3">
+          <div className="bento-card">
+            <p className="md-typescale-label-small uppercase tracking-[0.16em] text-muted">Supplier shortcuts</p>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                onClick={() => setActiveSupplier("")}
+                className={`md-nav-item w-full ${activeSupplier === "" ? "md-nav-active" : ""}`}
+                data-active={activeSupplier === ""}
+              >
+                <Building2 size={18} />
+                <span>All suppliers</span>
+              </button>
+              {supplierList.slice(0, 6).map((supplier) => (
+                <button
+                  key={supplier.id}
+                  onClick={() => setActiveSupplier(supplier.id)}
+                  className={`md-nav-item w-full ${activeSupplier === supplier.id ? "md-nav-active" : ""}`}
+                  data-active={activeSupplier === supplier.id}
+                >
+                  <Building2 size={18} />
+                  <span className="truncate">{supplier.name}</span>
+                </button>
+              ))}
             </div>
           </div>
+        </aside>
 
-          {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <section className="min-w-0 flex-1">
+          <div className="sticky top-0 z-10 mb-4 flex flex-wrap items-end justify-between gap-3 bg-background/85 py-2 backdrop-blur-sm">
+            <div>
+              <h2 className="md-typescale-title-large font-semibold text-foreground">{activeCategory}</h2>
+              <p className="md-typescale-body-small text-muted">
+                {filteredProducts.length} products
+                {activeSupplierRecord ? ` from ${activeSupplierRecord.name}` : ` from ${supplierList.length} suppliers`}
+              </p>
+            </div>
+            {activeSupplierRecord && (
+              <Chip size="sm" color="default" variant="soft">
+                Supplier filter: {activeSupplierRecord.name}
+              </Chip>
+            )}
+          </div>
+
+          {filteredProducts.length === 0 ? (
+            <div className="bento-card flex flex-col items-center justify-center gap-3 py-16">
               <Package size={40} style={{ color: "var(--muted)" }} />
               <p className="md-typescale-title-medium text-foreground">No products found</p>
-              <p className="md-typescale-body-medium text-muted">Try adjusting your search or filters.</p>
+              <p className="md-typescale-body-medium text-muted">Try a different supplier, category, or search query.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 pb-8">
-              {filtered.map((product) => (
-                <div key={product.id} onClick={() => setSelectedProduct(product)} className="bento-card flex flex-col cursor-pointer group" style={{ padding: 0, overflow: "hidden" }}>
-                  {/* Image area */}
-                  <div className="h-36 flex items-center justify-center relative" style={{ background: "var(--surface)" }}>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {filteredProducts.map((product) => (
+                <article
+                  key={product.id}
+                  onClick={() => setSelectedProduct(product)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setSelectedProduct(product);
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  className="bento-card flex cursor-pointer flex-col gap-4 text-left transition-all duration-150 hover:ring-1 hover:ring-accent"
+                  style={{ padding: 0, overflow: "hidden" }}
+                >
+                  <div className="relative flex h-36 items-center justify-center" style={{ background: "var(--surface)" }}>
                     {product.image_url ? (
-                      <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
                     ) : (
                       <Package size={32} style={{ color: "var(--muted)", opacity: 0.4 }} />
                     )}
-                    {product.available_stock !== undefined && product.available_stock <= 0 && (
-                      <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.45)' }}>
-                        <span className="md-typescale-label-large font-bold text-white">Out of Stock</span>
-                      </div>
-                    )}
-                    {product.available_stock !== undefined && product.available_stock > 0 && product.available_stock <= 5 && (
-                      <span className="absolute bottom-2 left-2 md-typescale-label-small font-bold px-2 py-0.5 rounded-full" style={{ background: 'var(--danger)', color: 'white' }}>
-                        Low Stock
-                      </span>
-                    )}
+                    <div className="absolute left-3 top-3">
+                      <StockBadge stock={product.available_stock} />
+                    </div>
                   </div>
 
-                  {/* Content */}
-                  <div className="p-4 flex-1 flex flex-col justify-between gap-3">
-                    <div>
-                      <p className="md-typescale-title-small font-semibold text-foreground leading-snug line-clamp-2">
-                        {product.name}
-                      </p>
-                      <p className="md-typescale-body-small text-muted mt-1">{product.supplier_name}</p>
+                  <div className="flex flex-1 flex-col justify-between gap-4 p-4">
+                    <div className="space-y-1">
+                      <p className="line-clamp-2 md-typescale-title-small font-semibold text-foreground">{product.name}</p>
+                      <p className="md-typescale-body-small text-muted">{product.supplier_name}</p>
+                      <p className="md-typescale-label-small text-muted">{product.category_name}</p>
                     </div>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-end justify-between gap-3">
                       <div>
-                        <span className="md-typescale-title-medium font-bold text-foreground tabular-nums">
+                        <p className="md-typescale-label-small uppercase tracking-[0.14em] text-muted">Unit price</p>
+                        <p className="md-typescale-title-medium font-bold tabular-nums text-foreground">
                           {product.price.toLocaleString()}
-                        </span>
-                        {product.category_name && (
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <span className="md-typescale-label-small text-muted">{product.category_name}</span>
-                          </div>
-                        )}
+                        </p>
                       </div>
-                      <Button
-                        isIconOnly
-                        variant="secondary"
-                        className="bg-accent text-accent-foreground rounded-full w-9 h-9 min-w-0 font-bold text-lg"
-                        isDisabled={product.available_stock !== undefined && product.available_stock <= 0}
-                        onPress={() => addToCart(product)}
-                      >
-                        +
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <span className="hidden md-typescale-label-small text-muted md:inline-flex">View details</span>
+                        <Button
+                          variant="primary"
+                          className="md-btn md-btn-filled h-10 px-4"
+                          isDisabled={product.available_stock !== undefined && product.available_stock <= 0}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            addToCart(product);
+                          }}
+                        >
+                          Add
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </article>
               ))}
             </div>
           )}
-        </div>
+        </section>
       </div>
 
       <CartDrawer
@@ -304,7 +353,7 @@ export default function CatalogPage() {
       <CheckoutModal
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
-        total={items.reduce((s, i) => s + i.price * i.quantity, 0)}
+        total={items.reduce((sum, item) => sum + item.price * item.quantity, 0)}
       />
       <ProductDetailDrawer
         product={selectedProduct}
@@ -312,5 +361,35 @@ export default function CatalogPage() {
         onClose={() => setSelectedProduct(null)}
       />
     </div>
+  );
+}
+
+function StockBadge({ stock }: { stock?: number }) {
+  if (stock !== undefined && stock <= 0) {
+    return (
+      <span
+        className="rounded-full px-2.5 py-1 md-typescale-label-small font-semibold"
+        style={{ background: "var(--danger)", color: "var(--danger-foreground)" }}
+      >
+        Out of stock
+      </span>
+    );
+  }
+
+  if (stock !== undefined && stock <= 5) {
+    return (
+      <span
+        className="rounded-full px-2.5 py-1 md-typescale-label-small font-semibold"
+        style={{ background: "var(--warning)", color: "var(--warning-foreground)" }}
+      >
+        Low stock
+      </span>
+    );
+  }
+
+  return (
+    <span className="rounded-full bg-[var(--surface)] px-2.5 py-1 md-typescale-label-small font-semibold text-foreground">
+      Ready
+    </span>
   );
 }

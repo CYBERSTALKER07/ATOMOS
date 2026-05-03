@@ -12,6 +12,7 @@ final class CorrectionViewModel {
     // MARK: - State
 
     var lineItems: [LineItem] = []
+    var rejectionReasons: [String: RejectionReason] = [:]
     var isLoading = false
     var showConfirmation = false
     var isSubmitting = false
@@ -64,16 +65,35 @@ final class CorrectionViewModel {
     func toggleStatus(for itemId: String) {
         guard let index = lineItems.firstIndex(where: { $0.id == itemId }) else { return }
         Haptics.selectionChanged()
-        lineItems[index].status = lineItems[index].status == .DELIVERED
-            ? .REJECTED_DAMAGED
-            : .DELIVERED
+        let isRejecting = lineItems[index].status == .DELIVERED
+        lineItems[index].status = isRejecting ? .REJECTED_DAMAGED : .DELIVERED
+        if isRejecting {
+            rejectionReasons[itemId] = rejectionReasons[itemId] ?? .DAMAGED
+        } else {
+            rejectionReasons.removeValue(forKey: itemId)
+        }
+    }
+
+    func reason(for itemId: String) -> RejectionReason {
+        rejectionReasons[itemId] ?? .DAMAGED
+    }
+
+    func setReason(_ reason: RejectionReason, for itemId: String) {
+        rejectionReasons[itemId] = reason
     }
 
     func submitAmendment(orderId: String, driverId: String) async -> Bool {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
-            let items = lineItems.map { (lineItemId: $0.id, rejectedQty: $0.status == .REJECTED_DAMAGED ? $0.quantity : 0, status: $0.status) }
+            let items = lineItems.map {
+                (
+                    lineItemId: $0.id,
+                    rejectedQty: $0.status == .REJECTED_DAMAGED ? $0.quantity : 0,
+                    status: $0.status,
+                    reason: $0.status == .REJECTED_DAMAGED ? reason(for: $0.id).rawValue : ""
+                )
+            }
             try await fleetService.amendOrder(
                 orderId: orderId,
                 driverId: driverId,

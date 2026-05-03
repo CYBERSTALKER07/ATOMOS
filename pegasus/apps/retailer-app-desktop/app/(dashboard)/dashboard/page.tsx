@@ -3,50 +3,59 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import {
-  ShoppingCart, PackageSearch, Activity, BarChart3, Settings,
-  Inbox, Clock, Search, User, Truck, Brain, ArrowUpRight,
-  Package, RefreshCcw, AlertTriangle,
+  ShoppingCart,
+  PackageSearch,
+  Inbox,
+  Truck,
+  Brain,
+  Package,
+  RefreshCcw,
+  ArrowRight,
+  ArrowUpRight,
+  Layers3,
 } from "lucide-react";
-import { Button, Chip, Skeleton } from "@heroui/react";
-import { BentoCard } from "../../../components/BentoGrid";
+import { Chip, Skeleton } from "@heroui/react";
+import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
-import { apiFetch } from "../../../lib/auth";
 import type { Order, Prediction, Product } from "../../../lib/types";
+
+const EMPTY_ORDERS: Order[] = [];
+const EMPTY_PREDICTIONS: Prediction[] = [];
+const EMPTY_PRODUCTS: Product[] = [];
 
 export default function DashboardPage() {
   const { data: orders, loading: loadingOrders } = useLiveData<Order[]>("/v1/orders", 30000);
   const { data: predictions, loading: loadingPred } = useLiveData<Prediction[]>("/v1/ai/predictions");
   const { data: products } = useLiveData<Product[]>("/v1/catalog/products");
-  const { addToCart } = useCart();
+  const { addToCart, items } = useCart();
 
-  const orderList = orders ?? [];
-  const predList = predictions ?? [];
-  const productList = products ?? [];
+  const orderList = orders ?? EMPTY_ORDERS;
+  const predictionList = predictions ?? EMPTY_PREDICTIONS;
+  const productList = products ?? EMPTY_PRODUCTS;
+  const cartQuantity = items.reduce((total, item) => total + item.quantity, 0);
 
   const activeOrders = useMemo(
-    () => orderList.filter((o) => o.state !== "COMPLETED" && o.state !== "CANCELLED"),
+    () => orderList.filter((order) => order.state !== "COMPLETED" && order.state !== "CANCELLED"),
     [orderList],
   );
-
-  const reorderProducts = productList.slice(0, 8);
-
+  const completedOrders = useMemo(
+    () => orderList.filter((order) => order.state === "COMPLETED"),
+    [orderList],
+  );
+  const reorderProducts = useMemo(() => productList.slice(0, 8), [productList]);
   const loading = loadingOrders || loadingPred;
 
   if (loading) {
     return (
       <div className="min-h-full p-6 md:p-8">
-        <Skeleton className="h-8 w-48 rounded-lg mb-2" />
-        <Skeleton className="h-4 w-80 rounded-lg mb-8" />
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-32 rounded-2xl" />
+        <Skeleton className="mb-2 h-8 w-56 rounded-lg" />
+        <Skeleton className="mb-8 h-4 w-96 rounded-lg" />
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((item) => (
+            <Skeleton key={item} className="h-32 rounded-2xl" />
           ))}
-        </div>
-        <div className="grid grid-cols-2 gap-6">
-          <Skeleton className="h-64 rounded-2xl" />
-          <Skeleton className="h-64 rounded-2xl" />
         </div>
       </div>
     );
@@ -54,130 +63,185 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-full p-6 md:p-8">
-      {/* Header */}
-      <header className="mb-8">
-        <h1 className="md-typescale-headline-large">Hub</h1>
-        <p className="md-typescale-body-medium mt-1" style={{ color: "var(--muted)" }}>
-          Quick access to everything. Your operations at a glance.
-        </p>
+      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="md-typescale-headline-large">Retailer operations hub</h1>
+          <p className="mt-1 md-typescale-body-medium" style={{ color: "var(--muted)" }}>
+            Review active deliveries, restock signals, and fast reorder actions from one workspace.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link href="/orders" className="md-btn md-btn-outlined md-typescale-label-large inline-flex h-10 items-center px-5">
+            Review orders
+          </Link>
+          <Link href="/catalog" className="md-btn md-btn-filled md-typescale-label-large inline-flex h-10 items-center px-5">
+            Open catalog
+          </Link>
+        </div>
       </header>
 
-      {/* Service Grid — Yandex Go inspired */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
-        {/* Row 1: two big tiles */}
-        <ServiceTile href="/catalog" icon={PackageSearch} title="Catalog" subtitle="Browse products" height="h-32" />
-        <ServiceTile href="/insights" icon={Brain} title="AI Insights" subtitle={`${predList.length} predictions`} height="h-32" />
+      <BentoGrid className="mb-8">
+        <BentoCard span={2} className="lg:min-h-[240px]">
+          <div className="flex h-full flex-col justify-between gap-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-2xl">
+                <p className="md-typescale-label-small uppercase tracking-[0.16em] text-muted">Today&apos;s focus</p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">Keep replenishment predictable and deliveries confirmed.</h2>
+                <p className="mt-2 max-w-xl md-typescale-body-medium text-muted">
+                  {activeOrders.length} active deliveries and {predictionList.length} AI restock signals are currently shaping your next procurement run.
+                </p>
+              </div>
+              <Chip size="sm" color="default" variant="soft" className="font-semibold">
+                {productList.length} catalog SKUs available
+              </Chip>
+            </div>
 
-        {/* Row 2: orders wide + stacked small */}
-        <ServiceTile href="/orders" icon={ShoppingCart} title="Orders" subtitle={`${activeOrders.length} active`} height="h-28" />
-        <div className="flex flex-col gap-4">
-          <ServiceTile href="/notifications" icon={Inbox} title="Inbox" height="h-[calc(50%-8px)]" compact />
-          <ServiceTile href="/orders" icon={Clock} title="History" height="h-[calc(50%-8px)]" compact />
-        </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <WorkspaceActionCard
+                href="/catalog"
+                icon={PackageSearch}
+                title="Supplier catalog"
+                subtitle="Search SKUs, compare partners, and add products to the cart."
+              />
+              <WorkspaceActionCard
+                href="/orders"
+                icon={ShoppingCart}
+                title="Order desk"
+                subtitle="Verify inbound deliveries and review order exceptions."
+              />
+              <WorkspaceActionCard
+                href="/insights"
+                icon={Brain}
+                title="AI planning"
+                subtitle="Inspect demand predictions before the next procurement cycle."
+              />
+            </div>
+          </div>
+        </BentoCard>
 
-        {/* Row 3: three equal small tiles */}
-        <ServiceTile href="/procurement" icon={Activity} title="Procurement" compact height="h-20" />
-        <ServiceTile href="/catalog" icon={Search} title="Search" compact height="h-20" />
-        <ServiceTile href="/settings" icon={User} title="Profile" compact height="h-20" />
-      </div>
+        <KpiCard
+          label="Active deliveries"
+          value={activeOrders.length}
+          supporting={`${completedOrders.length} completed`}
+          icon={<Truck size={18} strokeWidth={1.5} style={{ color: "var(--muted)" }} />}
+        />
+        <KpiCard
+          label="Restock signals"
+          value={predictionList.length}
+          supporting="AI recommendations ready"
+          icon={<Brain size={18} strokeWidth={1.5} style={{ color: "var(--muted)" }} />}
+        />
+        <KpiCard
+          label="Cart quantity"
+          value={cartQuantity}
+          supporting="Items staged for checkout"
+          icon={<ShoppingCart size={18} strokeWidth={1.5} style={{ color: "var(--muted)" }} />}
+        />
+        <KpiCard
+          label="Supplier coverage"
+          value={new Set(productList.map((product) => product.supplier_id)).size}
+          supporting="Partners represented in catalog"
+          icon={<Layers3 size={18} strokeWidth={1.5} style={{ color: "var(--muted)" }} />}
+        />
+      </BentoGrid>
 
-      {/* Quick Reorder + AI Predictions side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Quick Reorder */}
+      <div className="grid gap-8 xl:grid-cols-[1.2fr_0.8fr]">
         <section>
-          <div className="flex items-center gap-2 mb-4">
+          <div className="mb-4 flex items-center gap-2">
             <RefreshCcw size={16} style={{ color: "var(--muted)" }} />
-            <h2 className="md-typescale-title-large font-semibold text-foreground">Quick Reorder</h2>
+            <h2 className="md-typescale-title-large font-semibold text-foreground">Quick reorder</h2>
           </div>
 
           {reorderProducts.length === 0 ? (
-            <div className="bento-card flex flex-col items-center justify-center py-10 gap-2">
+            <div className="bento-card flex flex-col items-center justify-center gap-2 py-10">
               <Package size={32} style={{ color: "var(--muted)" }} />
-              <p className="md-typescale-body-medium text-muted">No products available</p>
+              <p className="md-typescale-body-medium text-muted">No products available for reorder.</p>
             </div>
           ) : (
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {reorderProducts.map((product) => (
                 <button
                   key={product.id}
                   onClick={() => addToCart(product)}
-                  className="flex flex-col items-center gap-2 p-3 shrink-0 cursor-pointer group"
+                  className="bento-card flex cursor-pointer flex-col gap-4 text-left transition-all duration-150 hover:ring-1 hover:ring-accent"
                 >
-                  <div
-                    className="w-16 h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105"
-                    style={{ background: "var(--surface)" }}
-                  >
-                    {product.image_url ? (
-                      <img src={product.image_url} alt={product.name} className="w-full h-full rounded-2xl object-cover" />
-                    ) : (
-                      <Package size={24} style={{ color: "var(--muted)", opacity: 0.5 }} />
-                    )}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div
+                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+                        style={{ background: "var(--surface)" }}
+                      >
+                        <Package size={20} style={{ color: "var(--muted)" }} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate md-typescale-title-small font-semibold text-foreground">{product.name}</p>
+                        <p className="truncate md-typescale-body-small text-muted">{product.supplier_name}</p>
+                      </div>
+                    </div>
+                    <ArrowUpRight size={16} style={{ color: "var(--muted)" }} />
                   </div>
-                  <span className="md-typescale-label-small font-medium text-foreground text-center w-[72px] truncate">
-                    {product.name}
-                  </span>
-                  <span className="md-typescale-label-small font-bold text-foreground tabular-nums">
-                    {product.price.toLocaleString()}
-                  </span>
+                  <div className="flex items-end justify-between gap-3">
+                    <div>
+                      <p className="md-typescale-label-small uppercase tracking-[0.14em] text-muted">Price</p>
+                      <p className="md-typescale-title-medium font-semibold tabular-nums text-foreground">
+                        {product.price.toLocaleString()}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-[var(--surface)] px-3 py-1 md-typescale-label-small font-semibold text-foreground">
+                      Add item
+                    </span>
+                  </div>
                 </button>
               ))}
             </div>
           )}
         </section>
 
-        {/* AI Predictions */}
         <section>
-          <div className="flex items-center gap-2 mb-4">
+          <div className="mb-4 flex items-center gap-2">
             <Brain size={16} style={{ color: "var(--accent)" }} />
-            <h2 className="md-typescale-title-large font-semibold text-foreground">AI Predictions</h2>
-            <Chip size="sm" color="default" variant="soft" className="ml-1">{predList.length}</Chip>
+            <h2 className="md-typescale-title-large font-semibold text-foreground">AI restock queue</h2>
+            <Chip size="sm" color="default" variant="soft">{predictionList.length}</Chip>
           </div>
 
-          {predList.length === 0 ? (
-            <div className="bento-card flex flex-col items-center justify-center py-10 gap-2">
+          {predictionList.length === 0 ? (
+            <div className="bento-card flex flex-col items-center justify-center gap-2 py-10">
               <Brain size={32} style={{ color: "var(--muted)" }} />
-              <p className="md-typescale-body-medium text-muted">No predictions yet</p>
+              <p className="md-typescale-body-medium text-muted">No predictions available yet.</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2 max-h-[360px] overflow-y-auto pr-1">
-              {predList.slice(0, 6).map((forecast) => (
-                <PredictionCard key={forecast.id} forecast={forecast} />
+            <div className="flex max-h-[420px] flex-col gap-3 overflow-y-auto pr-1">
+              {predictionList.slice(0, 6).map((prediction) => (
+                <PredictionCard key={prediction.id} forecast={prediction} />
               ))}
-              {predList.length > 6 && (
-                <Link
-                  href="/insights"
-                  className="md-typescale-label-large text-accent font-semibold text-center py-2 hover:underline"
-                >
-                  View all {predList.length} predictions
-                </Link>
-              )}
+              <Link href="/insights" className="inline-flex items-center gap-2 px-2 md-typescale-label-large font-semibold text-accent hover:underline">
+                Review all predictions
+                <ArrowRight size={16} />
+              </Link>
             </div>
           )}
         </section>
       </div>
 
-      {/* Active Deliveries */}
       {activeOrders.length > 0 && (
         <section className="mt-10">
-          <div className="flex items-center gap-2 mb-4">
-            <Truck size={16} style={{ color: "var(--muted)" }} />
-            <h2 className="md-typescale-title-large font-semibold text-foreground">Active Deliveries</h2>
-            <Chip size="sm" color="warning" variant="soft" className="ml-1">{activeOrders.length}</Chip>
+          <div className="mb-4 flex items-center gap-2">
+            <Inbox size={16} style={{ color: "var(--muted)" }} />
+            <h2 className="md-typescale-title-large font-semibold text-foreground">Active deliveries</h2>
+            <Chip size="sm" color="warning" variant="soft">{activeOrders.length}</Chip>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="grid gap-3 xl:grid-cols-3">
             {activeOrders.slice(0, 6).map((order) => (
-              <Link key={order.order_id} href="/orders" className="bento-card hover:ring-1 hover:ring-accent transition-all">
+              <Link key={order.order_id} href="/orders" className="bento-card transition-all duration-150 hover:ring-1 hover:ring-accent">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--surface)" }}>
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" style={{ background: "var(--surface)" }}>
                     <Truck size={18} style={{ color: "var(--muted)" }} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="md-typescale-title-small font-semibold text-foreground truncate block">
-                      #{order.order_id.slice(-8)}
-                    </span>
-                    <span className="md-typescale-body-small text-muted">{order.state.replace(/_/g, " ")}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate md-typescale-title-small font-semibold text-foreground">#{order.order_id.slice(-8)}</p>
+                    <p className="truncate md-typescale-body-small text-muted">{order.state.replace(/_/g, " ")}</p>
                   </div>
-                  <span className="md-typescale-label-large font-semibold tabular-nums shrink-0">
+                  <span className="md-typescale-label-large font-semibold tabular-nums text-foreground">
                     {order.amount.toLocaleString()}
                   </span>
                 </div>
@@ -190,45 +254,58 @@ export default function DashboardPage() {
   );
 }
 
-/* ── Service Tile Component ── */
-
-function ServiceTile({
+function WorkspaceActionCard({
   href,
   icon: Icon,
   title,
   subtitle,
-  height = "h-28",
-  compact = false,
 }: {
   href: string;
   icon: React.ElementType;
   title: string;
-  subtitle?: string;
-  height?: string;
-  compact?: boolean;
+  subtitle: string;
 }) {
   return (
     <Link
       href={href}
-      className={`bento-card flex flex-col justify-end cursor-pointer group hover:ring-1 hover:ring-accent transition-all ${height}`}
-      style={{ padding: compact ? "12px 16px" : "16px 20px" }}
+      className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-all duration-150 hover:border-[var(--color-md-outline)] hover:bg-[var(--color-md-surface-container-low)]"
     >
-      <Icon
-        size={compact ? 22 : 28}
-        strokeWidth={1.5}
-        className="mb-2 text-foreground transition-transform group-hover:scale-110"
-      />
-      <span className={`font-semibold text-foreground ${compact ? "md-typescale-label-medium" : "md-typescale-title-small"}`}>
-        {title}
-      </span>
-      {subtitle && (
-        <span className="md-typescale-label-small text-muted mt-0.5">{subtitle}</span>
-      )}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--color-md-surface-container)]">
+          <Icon size={18} strokeWidth={1.6} className="text-foreground" />
+        </div>
+        <ArrowRight size={16} style={{ color: "var(--muted)" }} />
+      </div>
+      <p className="mt-4 md-typescale-title-small font-semibold text-foreground">{title}</p>
+      <p className="mt-1 md-typescale-body-small text-muted">{subtitle}</p>
     </Link>
   );
 }
 
-/* ── Prediction Card ── */
+function KpiCard({
+  label,
+  value,
+  supporting,
+  icon,
+}: {
+  label: string;
+  value: number;
+  supporting: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <BentoCard>
+      <div className="md-kpi-card">
+        <div className="flex items-center justify-between">
+          <span className="md-kpi-label">{label}</span>
+          {icon}
+        </div>
+        <CountUp end={value} className="md-kpi-value" />
+        <span className="md-kpi-sub">{supporting}</span>
+      </div>
+    </BentoCard>
+  );
+}
 
 function PredictionCard({ forecast }: { forecast: Prediction }) {
   const confidenceColor =
@@ -237,48 +314,25 @@ function PredictionCard({ forecast }: { forecast: Prediction }) {
       : forecast.confidence >= 0.6
         ? "var(--warning)"
         : "var(--danger)";
-
-  const pct = Math.round(forecast.confidence * 100);
+  const confidence = Math.round(forecast.confidence * 100);
 
   return (
     <div className="bento-card">
       <div className="flex items-center gap-3">
-        {/* Confidence ring */}
-        <div className="shrink-0 relative w-11 h-11">
-          <svg width={44} height={44} className="rotate-[-90deg]">
-            <circle cx={22} cy={22} r={19} fill="none" stroke="var(--border)" strokeWidth={3} />
-            <circle
-              cx={22} cy={22} r={19}
-              fill="none"
-              stroke={confidenceColor}
-              strokeWidth={3}
-              strokeLinecap="round"
-              strokeDasharray={`${2 * Math.PI * 19}`}
-              strokeDashoffset={`${2 * Math.PI * 19 * (1 - forecast.confidence)}`}
-            />
-          </svg>
-          <span
-            className="absolute inset-0 flex items-center justify-center text-[10px] font-bold"
-            style={{ color: confidenceColor }}
-          >
-            {pct}%
-          </span>
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-sm font-bold" style={{ color: confidenceColor }}>
+          {confidence}%
         </div>
-
-        <div className="flex-1 min-w-0">
-          <span className="md-typescale-title-small font-semibold text-foreground truncate block">
+        <div className="min-w-0 flex-1">
+          <p className="truncate md-typescale-title-small font-semibold text-foreground">
             {forecast.productName || `Prediction ${forecast.id.slice(-6)}`}
-          </span>
-          <span className="md-typescale-body-small text-muted line-clamp-1">
+          </p>
+          <p className="line-clamp-2 md-typescale-body-small text-muted">
             {forecast.reasoning || "AI recommendation"}
-          </span>
+          </p>
         </div>
-
-        <div className="text-right shrink-0">
-          <span className="md-typescale-title-small font-bold tabular-nums text-foreground block">
-            {forecast.predictedQuantity}
-          </span>
-          <span className="md-typescale-label-small text-muted">units</span>
+        <div className="shrink-0 text-right">
+          <p className="md-typescale-title-small font-bold tabular-nums text-foreground">{forecast.predictedQuantity}</p>
+          <p className="md-typescale-label-small text-muted">units</p>
         </div>
       </div>
     </div>

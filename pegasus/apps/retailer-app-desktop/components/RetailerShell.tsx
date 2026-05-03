@@ -17,6 +17,7 @@ import { clearStoredToken } from '../lib/bridge';
 
 type NavEntry = { href: string; icon: React.ElementType; label: string };
 type NavSection = { label?: string; items: NavEntry[] };
+type RetailerIdentity = { name: string; company: string; initials: string };
 
 const NAV: NavSection[] = [
   {
@@ -38,7 +39,11 @@ const NAV: NavSection[] = [
   },
 ];
 
-const ALL_NAV_ITEMS = NAV.flatMap((s) => s.items);
+const DEFAULT_IDENTITY: RetailerIdentity = {
+  name: "Retailer",
+  company: "Workspace",
+  initials: "R",
+};
 
 function isActiveRoute(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/';
@@ -94,9 +99,10 @@ const DrawerContent = memo(function DrawerContent({
               <div className="w-8 h-8 flex items-center justify-center text-xs font-semibold md-shape-full shrink-0 bg-accent text-accent-foreground">
                 <Store size={18} />
               </div>
-              <h1 className="md-typescale-title-small truncate flex-1 text-foreground">
-                V.O.I.D Hub
-              </h1>
+              <div className="min-w-0 flex-1">
+                <p className="md-typescale-label-small uppercase tracking-[0.16em] text-muted">Retailer workspace</p>
+                <h1 className="md-typescale-title-small truncate text-foreground">V.O.I.D Hub</h1>
+              </div>
               {!isMobile && (
                 <Button
                   variant="ghost"
@@ -159,9 +165,12 @@ const DrawerContent = memo(function DrawerContent({
           {!isRail && <span>Sign Out</span>}
         </button>
         {!isRail && (
-          <div className="flex items-center gap-2 mt-3 px-4">
-            <div className="w-2 h-2 rounded-full bg-success" />
-            <p className="md-typescale-label-small text-muted">v2.0.0 (Retailer)</p>
+          <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-success" />
+              <p className="md-typescale-label-small text-foreground">Desktop workspace ready</p>
+            </div>
+            <p className="mt-1 md-typescale-label-small text-muted">v2.0.0 · notifications, payments, and live tracking enabled</p>
           </div>
         )}
       </div>
@@ -178,6 +187,7 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
   const { unreadCount } = useRetailerNotifications();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [identity, setIdentity] = useState<RetailerIdentity>(DEFAULT_IDENTITY);
 
   const handleLogout = useCallback(async () => {
     document.cookie = 'pegasus_retailer_jwt=; Max-Age=0; path=/';
@@ -186,9 +196,31 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
   }, [router]);
 
   const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname), [pathname]);
+  const currentPageLabel = breadcrumbs[breadcrumbs.length - 1]?.label ?? "Hub";
 
   /* Close mobile drawer on route change */
   useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => {
+    if (typeof localStorage === "undefined") return;
+    try {
+      const profile = JSON.parse(localStorage.getItem("retailer_profile") || "{}");
+      const source = (profile.name || profile.company || "Retailer").trim();
+      const initials = source
+        .split(" ")
+        .filter(Boolean)
+        .map((part: string) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase() || "R";
+      setIdentity({
+        name: profile.name || "Retailer",
+        company: profile.company || "Workspace",
+        initials,
+      });
+    } catch {
+      setIdentity(DEFAULT_IDENTITY);
+    }
+  }, []);
 
   const drawerWidth = collapsed ? 64 : 240;
 
@@ -238,7 +270,7 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
       <div className="flex-1 flex flex-col min-w-0 bg-background relative z-0">
         
         {/* Top App Bar */}
-        <header className="h-14 shrink-0 flex items-center justify-between px-4 border-b border-[var(--border)] bg-surface/80 backdrop-blur-md sticky top-0 z-20">
+        <header className="h-16 shrink-0 flex items-center justify-between px-4 border-b border-[var(--border)] bg-surface/80 backdrop-blur-md sticky top-0 z-20">
           <div className="flex items-center gap-3 overflow-hidden">
             <Button
               variant="ghost"
@@ -273,16 +305,33 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
           </div>
 
           <div className="flex items-center gap-2">
-            <div className={`hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest mr-2 border ${
+            <div className="hidden xl:flex flex-col mr-2">
+              <span className="md-typescale-label-small uppercase tracking-[0.14em] text-muted">Current workspace</span>
+              <span className="md-typescale-title-small truncate text-foreground">{currentPageLabel}</span>
+            </div>
+            <div className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest mr-1 border ${
               isConnected
                 ? 'bg-success/10 text-success border-success/20'
                 : 'bg-danger/10 text-danger border-danger/20'
             }`}>
               <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-success animate-pulse' : 'bg-danger'}`} />
-              {isConnected ? 'Online' : 'Offline'}
+              {isConnected ? 'Live feed' : 'Offline'}
             </div>
 
-            <Button variant="ghost" isIconOnly className="w-9 h-9 min-w-0 text-muted" aria-label="Search">
+            <Button
+              variant="ghost"
+              className="hidden md:flex h-10 min-w-[172px] items-center justify-between rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 text-muted"
+              aria-label="Open catalog search"
+              onPress={() => router.push('/catalog')}
+            >
+              <span className="flex items-center gap-2">
+                <Search size={16} />
+                <span className="md-typescale-label-large">Search catalog</span>
+              </span>
+              <span className="md-typescale-label-small text-muted">⌘K</span>
+            </Button>
+
+            <Button variant="ghost" isIconOnly className="md:hidden w-9 h-9 min-w-0 text-muted" aria-label="Search catalog" onPress={() => router.push('/catalog')}>
               <Search size={20} />
             </Button>
 
@@ -301,21 +350,15 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
               )}
             </Button>
 
-            {(() => {
-              let initials = 'R';
-              if (typeof localStorage !== 'undefined') {
-                try {
-                  const p = JSON.parse(localStorage.getItem('retailer_profile') || '{}');
-                  if (p.name) initials = p.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
-                  else if (p.company) initials = p.company.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
-                } catch { /* fallback */ }
-              }
-              return (
-                <div className="w-8 h-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-bold text-xs border shadow-inner cursor-pointer hover:opacity-90 transition-opacity ml-1">
-                  {initials}
-                </div>
-              );
-            })()}
+            <div className="ml-1 flex items-center gap-3 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5">
+              <div className="w-8 h-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-bold text-xs border shadow-inner">
+                {identity.initials}
+              </div>
+              <div className="hidden lg:flex flex-col min-w-0 max-w-[140px]">
+                <span className="md-typescale-label-large truncate text-foreground">{identity.name}</span>
+                <span className="md-typescale-label-small truncate text-muted">{identity.company}</span>
+              </div>
+            </div>
           </div>
         </header>
 

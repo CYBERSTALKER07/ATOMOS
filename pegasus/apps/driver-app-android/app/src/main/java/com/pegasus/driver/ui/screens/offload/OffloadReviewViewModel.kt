@@ -41,6 +41,7 @@ data class OffloadReviewUiState(
     val originalTotal: Long get() = audits.sumOf { it.item.lineTotal }
     val adjustedTotal: Long get() = audits.sumOf { it.acceptedTotal }
     val hasExclusions: Boolean get() = audits.any { it.excluded }
+    val hasRejections: Boolean get() = audits.any { it.rejected > 0 }
 }
 
 @HiltViewModel
@@ -105,7 +106,7 @@ class OffloadReviewViewModel @Inject constructor(
             try {
                 // If items were excluded, amend first
                 val current = _state.value
-                if (current.hasExclusions) {
+                if (current.hasRejections) {
                     val amendPayload = AmendOrderRequest(
                         orderId = orderId,
                         items = current.audits.filter { it.rejected > 0 }.map { audit ->

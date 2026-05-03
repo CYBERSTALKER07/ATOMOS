@@ -19,6 +19,7 @@ struct OffloadReviewView: View {
     var onReportMissing: ((String) -> Void)?
 
     @State private var rejectedQty: [String: Int] = [:]
+    @State private var rejectionReasons: [String: RejectionReason] = [:]
     @State private var isSubmitting = false
     @State private var errorMessage: String?
 
@@ -26,6 +27,14 @@ struct OffloadReviewView: View {
 
     private var hasRejections: Bool {
         rejectedQty.values.contains { $0 > 0 }
+    }
+
+    private func selectedReason(for item: OrderLineItem) -> RejectionReason {
+        rejectionReasons[item.id] ?? .DAMAGED
+    }
+
+    private func reasonLabel(for reason: RejectionReason) -> String {
+        reason.rawValue.replacingOccurrences(of: "_", with: " ").capitalized
     }
 
     var body: some View {
@@ -74,45 +83,84 @@ struct OffloadReviewView: View {
                         let rejected = rejectedQty[item.id] ?? 0
                         let fullyRejected = rejected == item.quantity
                         let partiallyRejected = rejected > 0 && rejected < item.quantity
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(item.productName)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundStyle(fullyRejected ? LabTheme.fgTertiary : LabTheme.fg)
-                                    .strikethrough(fullyRejected)
-                                Text("\(item.quantity) × \(item.unitPrice.formattedAmount)")
-                                    .font(.system(size: 12, design: .monospaced))
-                                    .foregroundStyle(LabTheme.fgTertiary)
-                            }
-                            Spacer()
-
-                            // Stepper: how many units to reject (0 … item.quantity)
-                            HStack(spacing: 6) {
-                                Button {
-                                    if (rejectedQty[item.id] ?? 0) > 0 {
-                                        rejectedQty[item.id] = (rejectedQty[item.id] ?? 0) - 1
-                                    }
-                                } label: {
-                                    Image(systemName: "minus.circle.fill")
-                                        .font(.system(size: 20))
-                                        .foregroundStyle((rejectedQty[item.id] ?? 0) > 0 ? LabTheme.destructive : LabTheme.fgTertiary)
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.productName)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundStyle(fullyRejected ? LabTheme.fgTertiary : LabTheme.fg)
+                                        .strikethrough(fullyRejected)
+                                    Text("\(item.quantity) × \(item.unitPrice.formattedAmount)")
+                                        .font(.system(size: 12, design: .monospaced))
+                                        .foregroundStyle(LabTheme.fgTertiary)
                                 }
-                                Text("\(rejected)")
-                                    .font(.system(size: 14, weight: .bold, design: .monospaced))
-                                    .foregroundStyle(
-                                        fullyRejected ? LabTheme.destructive :
-                                        partiallyRejected ? Color.orange :
-                                        LabTheme.success
-                                    )
-                                    .frame(minWidth: 22, alignment: .center)
-                                Button {
-                                    if (rejectedQty[item.id] ?? 0) < item.quantity {
-                                        rejectedQty[item.id] = (rejectedQty[item.id] ?? 0) + 1
+                                Spacer()
+
+                                HStack(spacing: 6) {
+                                    Button {
+                                        if (rejectedQty[item.id] ?? 0) > 0 {
+                                            let nextRejected = (rejectedQty[item.id] ?? 0) - 1
+                                            rejectedQty[item.id] = nextRejected
+                                            if nextRejected == 0 {
+                                                rejectionReasons.removeValue(forKey: item.id)
+                                            }
+                                        }
+                                    } label: {
+                                        Image(systemName: "minus.circle.fill")
+                                            .font(.system(size: 20))
+                                            .foregroundStyle((rejectedQty[item.id] ?? 0) > 0 ? LabTheme.destructive : LabTheme.fgTertiary)
                                     }
-                                } label: {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 20))
-                                        .foregroundStyle((rejectedQty[item.id] ?? 0) < item.quantity ? LabTheme.destructive : LabTheme.fgTertiary)
+                                    Text("\(rejected)")
+                                        .font(.system(size: 14, weight: .bold, design: .monospaced))
+                                        .foregroundStyle(
+                                            fullyRejected ? LabTheme.destructive :
+                                            partiallyRejected ? Color.orange :
+                                            LabTheme.success
+                                        )
+                                        .frame(minWidth: 22, alignment: .center)
+                                    Button {
+                                        if (rejectedQty[item.id] ?? 0) < item.quantity {
+                                            rejectedQty[item.id] = (rejectedQty[item.id] ?? 0) + 1
+                                            if rejectionReasons[item.id] == nil {
+                                                rejectionReasons[item.id] = .DAMAGED
+                                            }
+                                        }
+                                    } label: {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.system(size: 20))
+                                            .foregroundStyle((rejectedQty[item.id] ?? 0) < item.quantity ? LabTheme.destructive : LabTheme.fgTertiary)
+                                    }
+                                }
+                            }
+
+                            if rejected > 0 {
+                                HStack {
+                                    Spacer()
+                                    Menu {
+                                        ForEach(RejectionReason.allCases, id: \.self) { reason in
+                                            Button {
+                                                rejectionReasons[item.id] = reason
+                                            } label: {
+                                                if selectedReason(for: item) == reason {
+                                                    Label(reasonLabel(for: reason), systemImage: "checkmark")
+                                                } else {
+                                                    Text(reasonLabel(for: reason))
+                                                }
+                                            }
+                                        }
+                                    } label: {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "exclamationmark.circle")
+                                            Text(reasonLabel(for: selectedReason(for: item)))
+                                            Image(systemName: "chevron.down")
+                                                .font(.system(size: 11, weight: .bold))
+                                        }
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(LabTheme.fg)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 8)
+                                        .background(LabTheme.fg.opacity(0.06), in: Capsule())
+                                    }
                                 }
                             }
                         }
@@ -237,10 +285,11 @@ struct OffloadReviewView: View {
             // Build amendment items from stepper state
             let hasRejections = rejectedQty.values.contains { $0 > 0 }
             if hasRejections {
-                let amendItems: [(lineItemId: String, rejectedQty: Int, status: LineItemStatus)] = response.items.map { item in
+                let amendItems: [(lineItemId: String, rejectedQty: Int, status: LineItemStatus, reason: String)] = response.items.map { item in
                     let rejected = rejectedQty[item.id] ?? 0
                     let status: LineItemStatus = rejected == item.quantity ? .REJECTED_DAMAGED : .DELIVERED
-                    return (lineItemId: item.productId, rejectedQty: rejected, status: status)
+                    let reason = rejected > 0 ? selectedReason(for: item).rawValue : ""
+                    return (lineItemId: item.productId, rejectedQty: rejected, status: status, reason: reason)
                 }
                 do {
                     try await fleetService.amendOrder(

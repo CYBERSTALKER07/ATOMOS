@@ -30,7 +30,7 @@ protocol FleetServiceProtocol {
     func fetchOrderLineItems(orderId: String) async throws -> [LineItem]
 
     /// POST /v1/order/amend — partial-quantity reconciliation. rejectedQty 0 = fully accepted, item.quantity = fully rejected.
-    func amendOrder(orderId: String, driverId: String, items: [(lineItemId: String, rejectedQty: Int, status: LineItemStatus)]) async throws
+    func amendOrder(orderId: String, driverId: String, items: [(lineItemId: String, rejectedQty: Int, status: LineItemStatus, reason: String)]) async throws
 }
 
 // MARK: - Stub Implementation
@@ -72,7 +72,7 @@ final class FleetServiceStub: FleetServiceProtocol {
         return LineItem.mockLineItems
     }
 
-    func amendOrder(orderId: String, driverId: String, items: [(lineItemId: String, rejectedQty: Int, status: LineItemStatus)]) async throws {
+    func amendOrder(orderId: String, driverId: String, items: [(lineItemId: String, rejectedQty: Int, status: LineItemStatus, reason: String)]) async throws {
         try await Task.sleep(nanoseconds: 500_000_000)
         // Stub: always succeeds
     }

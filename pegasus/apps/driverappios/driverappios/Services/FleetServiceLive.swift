@@ -109,22 +109,21 @@ final class FleetServiceLive: FleetServiceProtocol {
     func amendOrder(
         orderId: String,
         driverId: String,
-        items: [(lineItemId: String, rejectedQty: Int, status: LineItemStatus)]
+        items: [(lineItemId: String, rejectedQty: Int, status: LineItemStatus, reason: String)]
     ) async throws {
         // Build AmendItemPayload from partial quantities
         let order = try await api.getOrder(id: orderId)
 
-        let amendments: [AmendItemPayload] = items.compactMap { (lineItemId, rejectedQty, _) in
+        let amendments: [AmendItemPayload] = items.compactMap { (lineItemId, rejectedQty, _, reason) in
             guard let original = order.items.first(where: { $0.productId == lineItemId }) else {
                 return nil
             }
             let accepted = original.quantity - rejectedQty
-            let reason = rejectedQty > 0 ? "DAMAGED" : ""
             return AmendItemPayload(
                 productId: lineItemId,
                 acceptedQty: accepted,
                 rejectedQty: rejectedQty,
-                reason: reason
+                reason: rejectedQty > 0 ? (reason.isEmpty ? RejectionReason.DAMAGED.rawValue : reason) : ""
             )
         }
 

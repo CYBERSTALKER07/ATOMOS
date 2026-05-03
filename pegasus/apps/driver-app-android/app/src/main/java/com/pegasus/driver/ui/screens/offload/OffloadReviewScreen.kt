@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasus.driver.data.model.ConfirmOffloadResponse
+import com.pegasus.driver.data.model.RejectionReason
 import com.pegasus.driver.ui.theme.LocalLabColors
 import com.pegasus.driver.ui.theme.StatusGreen
 import com.pegasus.driver.ui.theme.StatusOrange
@@ -50,6 +54,7 @@ import com.pegasus.driver.ui.theme.StatusRed
 import com.pegasus.driver.ui.theme.StatusBlue
 import com.pegasus.driver.ui.theme.formattedAmount
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OffloadReviewScreen(
     onClose: () -> Unit,
@@ -119,7 +124,7 @@ fun OffloadReviewScreen(
                     state.adjustedTotal.formattedAmount(),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (state.hasExclusions) StatusRed else StatusGreen
+                    color = if (state.hasRejections) StatusRed else StatusGreen
                 )
             }
         }
@@ -221,6 +226,31 @@ fun OffloadReviewScreen(
                             }
                         }
                     }
+
+                    if (audit.rejected > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        FlowRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 32.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            RejectionReason.values().forEach { reason ->
+                                FilterChip(
+                                    selected = audit.reason == reason,
+                                    onClick = { viewModel.updateReason(index, reason) },
+                                    label = {
+                                        Text(
+                                            text = reason.label,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
                 if (index < state.audits.lastIndex) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
@@ -303,7 +333,7 @@ fun OffloadReviewScreen(
         }
 
         // Edge 33: Report Missing Items button
-        if (state.hasExclusions) {
+        if (state.hasRejections) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -360,7 +390,7 @@ fun OffloadReviewScreen(
                     )
                 } else {
                     Text(
-                        text = if (state.hasExclusions) "Amend & Confirm Offload" else "Confirm Offload",
+                        text = if (state.hasRejections) "Amend & Confirm Offload" else "Confirm Offload",
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
