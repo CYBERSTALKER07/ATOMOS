@@ -1,184 +1,360 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { readTokenFromCookie } from '@/lib/auth';
-import {
-  isDeltaEvent,
-  applyDelta,
-  seedCache,
-  DeltaType,
-  type DeltaEventType,
-} from '@/lib/delta-sync';
+import { useEffect, useRef, useState } from 'react';
+import { getAdminToken, readTokenFromCookie } from '@/lib/auth';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 const WS_BASE = API.replace(/^http/, 'ws');
-
 const MAX_BACKOFF_MS = 16_000;
 const INITIAL_BACKOFF_MS = 1_000;
 
+export type TelemetryConnectionStatus = 'CONNECTING' | 'LIVE' | 'OFFLINE';
+export type TelemetryMessage = Record<string, unknown>;
+
+export interface TelemetryDriverPosition {
+  driver_id: string;
+  latitude: number;
+  longitude: number;
+  timestamp?: number;
+}
+
 export interface TelemetryState {
   connected: boolean;
+  status: TelemetryConnectionStatus;
   lastSyncTs: string | null;
   reconnectCount: number;
 }
 
-type DeltaListener = (type: DeltaEventType, id: string, state: Record<string, unknown>) => void;
+interface UseTelemetryOptions {
+  enabled?: boolean;
+}
 
-/**
- * useTelemetry: Real-time delta-sync WebSocket hook.
- *
- * - Connects to /ws/telemetry with JWT auth
- * - Routes incoming DeltaEvents through the entity cache (delta-sync.ts)
- * - On reconnect, fetches catch-up deltas from /v1/sync/catchup
- * - Exponential backoff: 1s → 2s → 4s → 8s → 16s max (with jitter)
- * - Persists lastSyncTs to sessionStorage for tab-close recovery
- */
-export function useTelemetry(onDelta?: DeltaListener): TelemetryState {
-  const [state, setState] = useState<TelemetryState>({
-    connected: false,
-    lastSyncTs: null,
-    reconnectCount: 0,
-  });
+type TelemetryListener = (message: TelemetryMessage) => void;
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const backoffRef = useRef(INITIAL_BACKOFF_MS);
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const lastSyncRef = useRef<string | null>(null);
-  const isFirstConnect = useRef(true);
-  const disposedRef = useRef(false);
+const initialState: TelemetryState = {
+  connected: false,
+  status: 'OFFLINE',
+  lastSyncTs: null,
+  reconnectCount: 0,
+};
 
-  // Restore lastSyncTs from sessionStorage on mount
-  useEffect(() => {
-    const stored = sessionStorage.getItem('void_last_sync');
-    if (stored) {
-      lastSyncRef.current = stored;
-      setState((s) => ({ ...s, lastSyncTs: stored }));
+let telemetryState = initialState;
+let socket: WebSocket | null = null;
+let reconnectTimer: number | null = null;
+let reconnectDelayMs = INITIAL_BACKOFF_MS;
+let consumerCount = 0;
+let lifecycleBound = false;
+let lifecycleCleanup: (() => void) | null = null;
+
+const messageListeners = new Set<TelemetryListener>();
+const stateListeners = new Set<(state: TelemetryState) => void>();
+
+function normalizeSnapshotDriver(candidate: unknown): TelemetryDriverPosition | null {
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+    return null;
+  }
+
+  const record = candidate as Record<string, unknown>;
+  if (
+    typeof record.driver_id !== 'string' ||
+    typeof record.latitude !== 'number' ||
+    typeof record.longitude !== 'number'
+  ) {
+    return null;
+  }
+
+  return {
+    driver_id: record.driver_id,
+    latitude: record.latitude,
+    longitude: record.longitude,
+    timestamp: typeof record.timestamp === 'number' ? record.timestamp : undefined,
+  };
+}
+
+function normalizeDeltaDriver(candidate: unknown): TelemetryDriverPosition | null {
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+    return null;
+  }
+
+  const record = candidate as Record<string, unknown>;
+  const location = record.l;
+  if (
+    typeof record.d !== 'string' ||
+    !Array.isArray(location) ||
+    location.length < 2 ||
+    typeof location[0] !== 'number' ||
+    typeof location[1] !== 'number'
+  ) {
+    return null;
+  }
+
+  return {
+    driver_id: record.d,
+    latitude: location[0],
+    longitude: location[1],
+  };
+}
+
+export function extractDriverPositions(message: TelemetryMessage): TelemetryDriverPosition[] {
+  if (
+    typeof message.driver_id === 'string' &&
+    typeof message.latitude === 'number' &&
+    typeof message.longitude === 'number'
+  ) {
+    return [{
+      driver_id: message.driver_id,
+      latitude: message.latitude,
+      longitude: message.longitude,
+      timestamp: typeof message.timestamp === 'number' ? message.timestamp : undefined,
+    }];
+  }
+
+  if (message.type === 'FLEET_SNAPSHOT' && Array.isArray(message.drivers)) {
+    return message.drivers
+      .map((driver) => normalizeSnapshotDriver(driver))
+      .filter((driver): driver is TelemetryDriverPosition => driver !== null);
+  }
+
+  if (message.t === 'FLT_GPS' && message.d && typeof message.d === 'object' && !Array.isArray(message.d)) {
+    const payload = message.d as Record<string, unknown>;
+    if (!Array.isArray(payload.drivers)) {
+      return [];
     }
-  }, []);
+    return payload.drivers
+      .map((driver) => normalizeDeltaDriver(driver))
+      .filter((driver): driver is TelemetryDriverPosition => driver !== null);
+  }
 
-  const updateLastSync = useCallback((ts: string) => {
-    lastSyncRef.current = ts;
-    sessionStorage.setItem('void_last_sync', ts);
-    setState((s) => ({ ...s, lastSyncTs: ts }));
-  }, []);
+  return [];
+}
 
-  /**
-   * Fetch catch-up deltas from backend after reconnection.
-   * Seeds the entity cache with any changes that occurred while offline.
-   */
-  const runCatchUp = useCallback(async () => {
-    const since = lastSyncRef.current;
-    if (!since) return; // First connect — no catch-up needed
+function publishState(next: Partial<TelemetryState>): void {
+  telemetryState = { ...telemetryState, ...next };
+  stateListeners.forEach((listener) => listener(telemetryState));
+}
 
-    const token = readTokenFromCookie();
-    if (!token) return;
+function clearReconnectTimer(): void {
+  if (!reconnectTimer) {
+    return;
+  }
+
+  window.clearTimeout(reconnectTimer);
+  reconnectTimer = null;
+}
+
+function scheduleReconnect(): void {
+  if (typeof window === 'undefined' || consumerCount === 0 || reconnectTimer) {
+    return;
+  }
+
+  const jitterMs = Math.floor(Math.random() * 500);
+  const delayMs = Math.min(reconnectDelayMs + jitterMs, MAX_BACKOFF_MS);
+  reconnectDelayMs = Math.min(reconnectDelayMs * 2, MAX_BACKOFF_MS);
+
+  reconnectTimer = window.setTimeout(() => {
+    reconnectTimer = null;
+    void connectTelemetry();
+  }, delayMs);
+}
+
+function broadcastMessage(message: TelemetryMessage): void {
+  messageListeners.forEach((listener) => listener(message));
+}
+
+async function resolveTelemetryToken(): Promise<string> {
+  const cookieToken = readTokenFromCookie();
+  if (cookieToken) {
+    return cookieToken;
+  }
+
+  try {
+    return await getAdminToken();
+  } catch {
+    return '';
+  }
+}
+
+function closeTelemetrySocket(): void {
+  if (!socket) {
+    return;
+  }
+
+  const activeSocket = socket;
+  socket = null;
+  activeSocket.close();
+}
+
+function reconnectTelemetryNow(): void {
+  if (consumerCount === 0) {
+    return;
+  }
+  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+
+  clearReconnectTimer();
+  reconnectDelayMs = INITIAL_BACKOFF_MS;
+  void connectTelemetry();
+}
+
+function bindLifecycleEvents(): void {
+  if (lifecycleBound || typeof window === 'undefined') {
+    return;
+  }
+
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      reconnectTelemetryNow();
+    }
+  };
+
+  window.addEventListener('online', reconnectTelemetryNow);
+  window.addEventListener('focus', reconnectTelemetryNow);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+
+  lifecycleCleanup = () => {
+    window.removeEventListener('online', reconnectTelemetryNow);
+    window.removeEventListener('focus', reconnectTelemetryNow);
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+  };
+  lifecycleBound = true;
+}
+
+function unbindLifecycleEvents(): void {
+  if (!lifecycleBound) {
+    return;
+  }
+
+  lifecycleCleanup?.();
+  lifecycleCleanup = null;
+  lifecycleBound = false;
+}
+
+async function connectTelemetry(): Promise<void> {
+  if (typeof window === 'undefined' || consumerCount === 0) {
+    return;
+  }
+  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+    return;
+  }
+
+  publishState({ connected: false, status: 'CONNECTING' });
+
+  const token = await resolveTelemetryToken();
+  if (!token) {
+    publishState({ connected: false, status: 'OFFLINE' });
+    scheduleReconnect();
+    return;
+  }
+
+  const url = new URL('/ws/telemetry', WS_BASE);
+  url.searchParams.set('token', token);
+
+  const activeSocket = new WebSocket(url.toString());
+  socket = activeSocket;
+
+  activeSocket.onopen = () => {
+    if (socket !== activeSocket) {
+      activeSocket.close();
+      return;
+    }
+
+    reconnectDelayMs = INITIAL_BACKOFF_MS;
+    publishState({ connected: true, status: 'LIVE' });
+  };
+
+  activeSocket.onmessage = (event) => {
+    if (socket !== activeSocket) {
+      return;
+    }
 
     try {
-      const res = await fetch(`${API}/v1/sync/catchup?since=${encodeURIComponent(since)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-
-      const data = await res.json();
-      if (disposedRef.current) return;
-
-      // Seed cache with catch-up data
-      if (data.orders?.length) {
-        seedCache(DeltaType.ORDER_UPDATE, data.orders);
-      }
-      if (data.fleet?.length) {
-        seedCache(DeltaType.FLEET_GPS, data.fleet);
-      }
-
-      // Update sync timestamp to server time
-      if (data.server_time) {
-        updateLastSync(data.server_time);
-      }
-    } catch (err) {
-      console.error('[TELEMETRY] Catch-up failed:', err);
-    }
-  }, [updateLastSync]);
-
-  const connect = useCallback(() => {
-    if (disposedRef.current) return;
-    const token = readTokenFromCookie();
-    if (!token) return;
-
-    clearTimeout(reconnectTimer.current);
-    const ws = new WebSocket(
-      `${WS_BASE}/ws/telemetry?token=${encodeURIComponent(token)}`,
-    );
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      if (disposedRef.current) {
-        ws.close();
+      const parsed = JSON.parse(event.data);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
         return;
       }
-      backoffRef.current = INITIAL_BACKOFF_MS;
-      setState((s) => ({ ...s, connected: true }));
 
-      if (!isFirstConnect.current) {
-        // Reconnect — trigger catch-up
-        runCatchUp();
-      }
-      isFirstConnect.current = false;
+      publishState({ lastSyncTs: new Date().toISOString() });
+      broadcastMessage(parsed as TelemetryMessage);
+    } catch {
+      // Ignore malformed or non-JSON telemetry frames.
+    }
+  };
 
-      // Record sync time
-      updateLastSync(new Date().toISOString());
-    };
+  activeSocket.onclose = () => {
+    if (socket === activeSocket) {
+      socket = null;
+    }
+    if (consumerCount === 0) {
+      publishState({ connected: false, status: 'OFFLINE' });
+      return;
+    }
 
-    ws.onmessage = (event) => {
-      if (disposedRef.current) return;
-      try {
-        const msg = JSON.parse(event.data);
-        if (isDeltaEvent(msg)) {
-          // Apply to entity cache (snake_case)
-          const merged = applyDelta(msg);
+    publishState({
+      connected: false,
+      status: 'OFFLINE',
+      reconnectCount: telemetryState.reconnectCount + 1,
+    });
+    scheduleReconnect();
+  };
 
-          // Notify listener with full merged state
-          onDelta?.(msg.t, msg.i, merged);
+  activeSocket.onerror = () => {
+    activeSocket.close();
+  };
+}
 
-          // Update last sync timestamp
-          updateLastSync(new Date().toISOString());
-        }
-      } catch {
-        /* ignore malformed frames */
-      }
-    };
-
-    ws.onclose = () => {
-      if (wsRef.current === ws) {
-        wsRef.current = null;
-      }
-      if (disposedRef.current) return;
-      setState((s) => ({
-        ...s,
-        connected: false,
-        reconnectCount: s.reconnectCount + 1,
-      }));
-
-      // Exponential backoff with jitter
-      const jitter = Math.random() * 500;
-      const delay = Math.min(backoffRef.current + jitter, MAX_BACKOFF_MS);
-      backoffRef.current = Math.min(backoffRef.current * 2, MAX_BACKOFF_MS);
-
-      reconnectTimer.current = setTimeout(connect, delay);
-    };
-
-    ws.onerror = () => ws.close();
-  }, [onDelta, runCatchUp, updateLastSync]);
+/**
+ * useTelemetry subscribes a surface to the shared supplier telemetry socket so
+ * one browser tab reuses one live connection across portal screens.
+ */
+export function useTelemetry(
+  onMessage?: TelemetryListener,
+  options?: UseTelemetryOptions,
+): TelemetryState {
+  const enabled = options?.enabled ?? true;
+  const [state, setState] = useState<TelemetryState>(telemetryState);
+  const messageRef = useRef<TelemetryListener | undefined>(onMessage);
 
   useEffect(() => {
-    disposedRef.current = false;
-    connect();
-    return () => {
-      disposedRef.current = true;
-      clearTimeout(reconnectTimer.current);
-      wsRef.current?.close();
-      wsRef.current = null;
+    messageRef.current = onMessage;
+  }, [onMessage]);
+
+  useEffect(() => {
+    if (!enabled) {
+      setState((prev) => ({ ...prev, connected: false, status: 'OFFLINE' }));
+      return;
+    }
+
+    const handleState = (next: TelemetryState) => {
+      setState(next);
     };
-  }, [connect]);
+    const handleMessage = (message: TelemetryMessage) => {
+      messageRef.current?.(message);
+    };
+
+    stateListeners.add(handleState);
+    messageListeners.add(handleMessage);
+    consumerCount += 1;
+    bindLifecycleEvents();
+    setState(telemetryState);
+    void connectTelemetry();
+
+    return () => {
+      stateListeners.delete(handleState);
+      messageListeners.delete(handleMessage);
+      consumerCount = Math.max(0, consumerCount - 1);
+
+      if (consumerCount === 0) {
+        clearReconnectTimer();
+        closeTelemetrySocket();
+        unbindLifecycleEvents();
+      }
+    };
+  }, [enabled]);
+
+  if (!enabled) {
+    return { ...state, connected: false, status: 'OFFLINE' };
+  }
 
   return state;
 }

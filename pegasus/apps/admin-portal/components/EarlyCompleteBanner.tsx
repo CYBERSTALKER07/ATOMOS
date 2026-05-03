@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useToken, readTokenFromCookie } from '@/lib/auth';
+import { useState, useCallback } from 'react';
+import { useToken } from '@/lib/auth';
 import { isTauri } from '@/lib/bridge';
+import { useTelemetry } from '@/hooks/useTelemetry';
+import type { TelemetryMessage } from '@/hooks/useTelemetry';
 import Icon from './Icon';
 import { Button } from '@heroui/react';
 import { useToast } from './Toast';
@@ -25,58 +27,28 @@ export default function EarlyCompleteBanner() {
   const [requests, setRequests] = useState<EarlyCompleteRequest[]>([]);
   const [resolving, setResolving] = useState<string | null>(null);
 
-  // WS listener for EARLY_COMPLETE_REQUESTED events
-  useEffect(() => {
-    if (isTauri() || !token) return;
-
-    let disposed = false;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let backoff = 1000;
-
-    const connect = () => {
-      if (disposed) return;
-      const wsBase = API.replace(/^http/, 'ws');
-      const url = new URL('/ws/telemetry', wsBase);
-      const wsToken = readTokenFromCookie() || token;
-      if (wsToken) url.searchParams.set('token', wsToken);
-
-      const ws = new WebSocket(url.toString());
-      ws.onopen = () => { backoff = 1000; };
-      ws.onmessage = (event) => {
-        if (disposed) return;
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'EARLY_COMPLETE_REQUESTED' && data.driver_id) {
-            setRequests(prev => {
-              if (prev.some(r => r.driver_id === data.driver_id)) return prev;
-              return [{
-                driver_id: data.driver_id,
-                driver_name: data.driver_name || '',
-                reason: data.reason || '',
-                note: data.note || '',
-                remaining_orders: data.remaining_orders || 0,
-                requested_at: new Date().toISOString(),
-              }, ...prev];
-            });
-          }
-        } catch { /* ignore */ }
-      };
-      ws.onclose = () => {
-        if (disposed) return;
-        reconnectTimer = setTimeout(() => connect(), backoff);
-        backoff = Math.min(backoff * 2, 30_000);
-      };
-      ws.onerror = () => {};
-      return ws;
-    };
-
-    const ws = connect();
-    return () => {
-      disposed = true;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      ws?.close();
-    };
-  }, [token]);
+  useTelemetry(
+    useCallback((data: TelemetryMessage) => {
+      const driverId = typeof data.driver_id === 'string' ? data.driver_id : '';
+      if (data.type !== 'EARLY_COMPLETE_REQUESTED' || !driverId) {
+        return;
+      }
+      setRequests((prev) => {
+        if (prev.some((request) => request.driver_id === driverId)) {
+          return prev;
+        }
+        return [{
+          driver_id: driverId,
+          driver_name: typeof data.driver_name === 'string' ? data.driver_name : '',
+          reason: typeof data.reason === 'string' ? data.reason : '',
+          note: typeof data.note === 'string' ? data.note : '',
+          remaining_orders: typeof data.remaining_orders === 'number' ? data.remaining_orders : 0,
+          requested_at: new Date().toISOString(),
+        }, ...prev];
+      });
+    }, []),
+    { enabled: !isTauri() && Boolean(token) },
+  );
 
   const approve = useCallback(async (driverId: string) => {
     if (!token) return;

@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense } from "react";
 import { getAdminToken } from "@/lib/auth";
 import { usePolling } from "@/lib/usePolling";
+import { useTelemetry } from "@/hooks/useTelemetry";
+import type { TelemetryMessage } from "@/hooks/useTelemetry";
 import { isTauri } from "@/lib/bridge";
-import { readTokenFromCookie } from "@/lib/auth";
 import { Card, Button, Chip, Skeleton } from "@heroui/react";
 import { BentoGrid, BentoCard, BentoSkeleton } from "@/components/BentoGrid";
 import CountUp from "@/components/CountUp";
@@ -181,58 +182,14 @@ export default function AdminDashboard() {
   // ── WebSocket: instant order state change notifications ──────────────────
   const fetchOrdersRef = useRef(fetchOrders);
   fetchOrdersRef.current = fetchOrders;
-  const wsRef = useRef<WebSocket | null>(null);
-
-  useEffect(() => {
-    // Skip WS on desktop — fleet page already handles it via Tauri bridge
-    if (isTauri()) return;
-
-    let disposed = false;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let backoff = 1000;
-
-    const connect = async () => {
-      if (disposed) return;
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-      const wsBase = apiBase.replace(/^http/, "ws");
-      let token = readTokenFromCookie();
-      if (!token) {
-        try { token = await getAdminToken(); } catch { return; }
+  useTelemetry(
+    useCallback((data: TelemetryMessage) => {
+      if (data.type === "ORDER_STATE_CHANGED") {
+        fetchOrdersRef.current();
       }
-      if (disposed) return;
-
-      const url = new URL("/ws/telemetry", wsBase);
-      if (token) url.searchParams.set("token", token);
-
-      const ws = new WebSocket(url.toString());
-      wsRef.current = ws;
-
-      ws.onopen = () => { backoff = 1000; };
-      ws.onmessage = (event) => {
-        if (disposed) return;
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === "ORDER_STATE_CHANGED") {
-            fetchOrdersRef.current();
-          }
-        } catch { /* ignore GPS pings and parse errors */ }
-      };
-      ws.onclose = () => {
-        if (disposed) return;
-        reconnectTimer = setTimeout(() => connect(), backoff);
-        backoff = Math.min(backoff * 2, 30_000);
-      };
-      ws.onerror = () => { /* onclose will fire */ };
-    };
-
-    void connect();
-    return () => {
-      disposed = true;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      wsRef.current?.close();
-      wsRef.current = null;
-    };
-  }, []);
+    }, []),
+    { enabled: !isTauri() },
+  );
 
   // ── Selection ────────────────────────────────────────────────────────────
 

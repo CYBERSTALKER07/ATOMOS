@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { getAdminToken, readTokenFromCookie } from '@/lib/auth';
+import { getAdminToken } from '@/lib/auth';
 import { isTauri } from '@/lib/bridge';
+import { extractDriverPositions, useTelemetry } from '@/hooks/useTelemetry';
+import type { TelemetryMessage } from '@/hooks/useTelemetry';
 import { MapPin, Wifi, WifiOff } from 'lucide-react';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -99,80 +101,48 @@ export default function FleetMapCell() {
     };
   }, [fetchFleet]);
 
-  // ── WebSocket live GPS ────────────────────────────────────────────────
+  // ── Shared telemetry live GPS ───────────────────────────────────────────
+
+  const telemetry = useTelemetry(
+    useCallback((msg: TelemetryMessage) => {
+      const positions = extractDriverPositions(msg);
+      if (positions.length === 0) {
+        return;
+      }
+
+      setPins((prev) => {
+        const next = [...prev];
+        for (const position of positions) {
+          const idx = next.findIndex((pin) => pin.driver_id === position.driver_id);
+          const previous = idx >= 0 ? next[idx] : null;
+          const nextPin: DriverPin = {
+            driver_id: position.driver_id,
+            name: previous?.name || position.driver_id,
+            lat: position.latitude,
+            lng: position.longitude,
+            route_id: previous?.route_id,
+            truck_status: previous?.truck_status,
+            last_seen: new Date().toISOString(),
+          };
+          if (idx >= 0) {
+            next[idx] = nextPin;
+          } else {
+            next.push(nextPin);
+          }
+        }
+        return next;
+      });
+      setError(null);
+      setIsLive(true);
+    }, []),
+    { enabled: !isTauri() },
+  );
 
   useEffect(() => {
-    if (isTauri()) return; // Tauri handles telemetry via bridge
-
-    let disposed = false;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let activeSocket: WebSocket | null = null;
-    let backoff = 2000;
-
-    const connect = async () => {
-      if (disposed) return;
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-      const wsBase = apiBase.replace(/^http/, 'ws');
-      const token = readTokenFromCookie() || (await getAdminToken().catch(() => null));
-      if (!token || disposed) return;
-
-      const url = new URL('/ws/telemetry', wsBase);
-      url.searchParams.set('token', token);
-      const ws = new WebSocket(url.toString());
-      activeSocket = ws;
-
-      ws.onopen = () => { backoff = 2000; };
-      ws.onmessage = (event) => {
-        if (disposed) return;
-        try {
-          const msg = JSON.parse(event.data);
-          if (msg.type === 'DRIVER_LOCATION' && msg.driver_id && msg.lat && msg.lng) {
-            setPins((prev) => {
-              const idx = prev.findIndex((p) => p.driver_id === msg.driver_id);
-              const pin: DriverPin = {
-                driver_id: msg.driver_id,
-                name: msg.driver_name || msg.driver_id,
-                lat: msg.lat,
-                lng: msg.lng,
-                route_id: msg.route_id,
-                truck_status: msg.status,
-                last_seen: new Date().toISOString(),
-              };
-              if (idx >= 0) {
-                const next = [...prev];
-                next[idx] = pin;
-                return next;
-              }
-              return [...prev, pin];
-            });
-            setIsLive(true);
-          }
-        } catch { /* ignore non-JSON */ }
-      };
-      ws.onclose = () => {
-        if (!disposed) {
-          setIsLive(false);
-          reconnectTimer = setTimeout(connect, backoff);
-          backoff = Math.min(backoff * 2, 30_000);
-        }
-      };
-      ws.onerror = () => {
-        if (!disposed) {
-          setIsLive(false);
-        }
-      };
-    };
-
-    void connect();
-    return () => {
-      disposed = true;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (activeSocket) {
-        activeSocket.close();
-        activeSocket = null;
-      }
-    };
-  }, []);
+    if (!isTauri() && !telemetry.connected) {
+      setIsLive(false);
+    }
+  }, [telemetry.connected]);
 
   // ── MapLibre GL Rendering ─────────────────────────────────────────────
 

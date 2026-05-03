@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useToken, readTokenFromCookie } from '@/lib/auth';
+import { useState, useCallback } from 'react';
+import { useToken } from '@/lib/auth';
 import { isTauri } from '@/lib/bridge';
+import { useTelemetry } from '@/hooks/useTelemetry';
+import type { TelemetryMessage } from '@/hooks/useTelemetry';
 import StatusBadge from './StatusBadge';
 import Icon from './Icon';
 import { Button } from '@heroui/react';
@@ -26,58 +28,28 @@ export default function ShopClosedBanner() {
   const [escalations, setEscalations] = useState<ShopClosedEscalation[]>([]);
   const [resolving, setResolving] = useState<string | null>(null);
 
-  // WS listener for SHOP_CLOSED_ESCALATED events
-  useEffect(() => {
-    if (isTauri() || !token) return;
-
-    let disposed = false;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let backoff = 1000;
-
-    const connect = () => {
-      if (disposed) return;
-      const wsBase = API.replace(/^http/, 'ws');
-      const url = new URL('/ws/telemetry', wsBase);
-      const wsToken = readTokenFromCookie() || token;
-      if (wsToken) url.searchParams.set('token', wsToken);
-
-      const ws = new WebSocket(url.toString());
-      ws.onopen = () => { backoff = 1000; };
-      ws.onmessage = (event) => {
-        if (disposed) return;
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'SHOP_CLOSED_ESCALATED' && data.order_id) {
-            setEscalations(prev => {
-              if (prev.some(e => e.order_id === data.order_id)) return prev;
-              return [{
-                order_id: data.order_id,
-                driver_id: data.driver_id || '',
-                retailer_id: data.retailer_id || '',
-                retailer_name: data.retailer_name || '',
-                attempt_id: data.attempt_id || '',
-                escalated_at: new Date().toISOString(),
-              }, ...prev];
-            });
-          }
-        } catch { /* ignore */ }
-      };
-      ws.onclose = () => {
-        if (disposed) return;
-        reconnectTimer = setTimeout(() => connect(), backoff);
-        backoff = Math.min(backoff * 2, 30_000);
-      };
-      ws.onerror = () => {};
-      return ws;
-    };
-
-    const ws = connect();
-    return () => {
-      disposed = true;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      ws?.close();
-    };
-  }, [token]);
+  useTelemetry(
+    useCallback((data: TelemetryMessage) => {
+      const orderId = typeof data.order_id === 'string' ? data.order_id : '';
+      if (data.type !== 'SHOP_CLOSED_ESCALATED' || !orderId) {
+        return;
+      }
+      setEscalations((prev) => {
+        if (prev.some((escalation) => escalation.order_id === orderId)) {
+          return prev;
+        }
+        return [{
+          order_id: orderId,
+          driver_id: typeof data.driver_id === 'string' ? data.driver_id : '',
+          retailer_id: typeof data.retailer_id === 'string' ? data.retailer_id : '',
+          retailer_name: typeof data.retailer_name === 'string' ? data.retailer_name : '',
+          attempt_id: typeof data.attempt_id === 'string' ? data.attempt_id : '',
+          escalated_at: new Date().toISOString(),
+        }, ...prev];
+      });
+    }, []),
+    { enabled: !isTauri() && Boolean(token) },
+  );
 
   const resolve = useCallback(async (
     attemptId: string,

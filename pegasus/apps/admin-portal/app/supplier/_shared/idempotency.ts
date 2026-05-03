@@ -172,6 +172,10 @@ export function buildSupplierInventoryAdjustIdempotencyKey(
   return ['supplier-inventory-adjust', productId.trim(), String(adjustment), reason.trim().toUpperCase()].join(':');
 }
 
+export function buildSupplierProductCreateIdempotencyKey(payload: Record<string, unknown>): string {
+  return ['supplier-product-create', stableSerialize(payload)].join(':');
+}
+
 export function buildSupplierProductUpdateIdempotencyKey(
   skuId: string,
   payload: Record<string, unknown>,

@@ -6,6 +6,8 @@ import type { MarkerProps, SourceProps, LayerProps, NavigationControlProps } fro
 import "maplibre-gl/dist/maplibre-gl.css";
 import { getAdminToken, readTokenFromCookie } from "@/lib/auth";
 import { usePolling } from "@/lib/usePolling";
+import { extractDriverPositions, useTelemetry } from "@/hooks/useTelemetry";
+import type { TelemetryMessage } from "@/hooks/useTelemetry";
 import {
     isTauri,
     connectNativeTelemetry,
@@ -120,15 +122,13 @@ export default function FleetPage() {
     const [wsStatus, setWsStatus] = useState<"CONNECTING" | "LIVE" | "OFFLINE">("CONNECTING");
     const [log, setLog] = useState<string[]>([]);
     const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
-    const wsRef = useRef<WebSocket | null>(null);
-    const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const reconnectDelayRef = useRef(1000); // Exponential backoff starting at 1s
     const fleetInfoRef = useRef<Map<string, FleetDriverInfo>>(new Map());
+    const lastWebStatusRef = useRef<"CONNECTING" | "LIVE" | "OFFLINE" | null>(null);
 
-    const appendLog = (msg: string) => {
+    const appendLog = useCallback((msg: string) => {
         const ts = new Date().toLocaleTimeString("en-US", { hour12: false });
         setLog((prev) => [`[${ts}] ${msg}`, ...prev].slice(0, 50));
-    };
+    }, []);
 
     // ── Fetch fleet metadata + active missions ─────────────────────────────
     const fetchFleetData = useCallback(async (signal?: AbortSignal) => {
@@ -166,30 +166,74 @@ export default function FleetPage() {
     const fetchFleetDataRef = useRef(fetchFleetData);
     fetchFleetDataRef.current = fetchFleetData;
 
-    // ── WebSocket telemetry (dual-mode: Rust-backed on desktop, browser WS on web) ──
+    const handlePing = useCallback((ping: DriverPing) => {
+        if (fleetInfoRef.current.size > 0 && !fleetInfoRef.current.has(ping.driver_id)) return;
+        setDrivers((prev) => {
+            const next = new Map(prev);
+            const existing = next.get(ping.driver_id);
+            next.set(ping.driver_id, {
+                driver_id: ping.driver_id,
+                latitude: ping.latitude,
+                longitude: ping.longitude,
+                last_seen: new Date().toLocaleTimeString("en-US", { hour12: false }),
+                last_seen_epoch: Date.now(),
+                ping_count: (existing?.ping_count ?? 0) + 1,
+            });
+            return next;
+        });
+        appendLog(`${ping.driver_id} → ${ping.latitude.toFixed(5)}, ${ping.longitude.toFixed(5)}`);
+    }, [appendLog]);
+
+    const webTelemetry = useTelemetry(
+        useCallback((message: TelemetryMessage) => {
+            if (
+                message.type === "ORDER_STATE_CHANGED" ||
+                message.type === "DRIVER_APPROACHING" ||
+                message.type === "ETA_UPDATED"
+            ) {
+                fetchFleetDataRef.current();
+                appendLog(`${message.type}: ${message.order_id ?? message.driver_id ?? message.state ?? ""}`);
+                return;
+            }
+
+            const positions = extractDriverPositions(message);
+            for (const position of positions) {
+                handlePing({
+                    driver_id: position.driver_id,
+                    latitude: position.latitude,
+                    longitude: position.longitude,
+                    timestamp: position.timestamp,
+                });
+            }
+        }, [appendLog, handlePing]),
+        { enabled: !isTauri() },
+    );
+
+    useEffect(() => {
+        if (isTauri()) return;
+
+        setWsStatus(webTelemetry.status);
+        if (lastWebStatusRef.current === webTelemetry.status) {
+            return;
+        }
+
+        lastWebStatusRef.current = webTelemetry.status;
+        if (webTelemetry.status === "LIVE") {
+            appendLog("Telemetry pipe established.");
+        } else if (webTelemetry.status === "CONNECTING") {
+            appendLog("Telemetry pipe connecting.");
+        } else {
+            appendLog("Pipe offline.");
+        }
+    }, [appendLog, webTelemetry.status]);
+
+    // ── WebSocket telemetry (desktop Rust bridge only; web uses shared hook) ──
     useEffect(() => {
         let isDisposed = false;
         const unlisteners: (() => void)[] = [];
-
-        const handlePing = (ping: { driver_id: string; latitude: number; longitude: number; timestamp?: number }) => {
-            if (isDisposed) return;
-            // Only render pings from this supplier's own drivers (belt-and-suspenders — backend also filters)
-            if (fleetInfoRef.current.size > 0 && !fleetInfoRef.current.has(ping.driver_id)) return;
-            setDrivers((prev) => {
-                const next = new Map(prev);
-                const existing = next.get(ping.driver_id);
-                next.set(ping.driver_id, {
-                    driver_id: ping.driver_id,
-                    latitude: ping.latitude,
-                    longitude: ping.longitude,
-                    last_seen: new Date().toLocaleTimeString("en-US", { hour12: false }),
-                    last_seen_epoch: Date.now(),
-                    ping_count: (existing?.ping_count ?? 0) + 1,
-                });
-                return next;
-            });
-            appendLog(`${ping.driver_id} → ${ping.latitude.toFixed(5)}, ${ping.longitude.toFixed(5)}`);
-        };
+        if (!isTauri()) {
+            return;
+        }
 
         const setup = async () => {
             const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
@@ -227,64 +271,6 @@ export default function FleetPage() {
                 await connectNativeTelemetry(apiBase, token);
                 return;
             }
-
-            // ── Web: standard browser WebSocket ──
-            const wsBase = apiBase.replace(/^http/, 'ws');
-            const connectBrowserWs = () => {
-                if (isDisposed) return;
-
-                const url = new URL('/ws/telemetry', wsBase);
-                if (token) {
-                    url.searchParams.set('token', token);
-                }
-
-                const ws = new WebSocket(url.toString());
-                wsRef.current = ws;
-
-                ws.onopen = () => {
-                    if (isDisposed) return;
-                    setWsStatus("LIVE");
-                    reconnectDelayRef.current = 1000; // Reset backoff on successful connect
-                    appendLog("Telemetry pipe established.");
-                };
-
-                ws.onmessage = (event) => {
-                    if (isDisposed) return;
-                    try {
-                        const data = JSON.parse(event.data);
-                        // Route by message type — GPS pings have no `type` field
-                        if (data.type === "ORDER_STATE_CHANGED" || data.type === "DRIVER_APPROACHING" || data.type === "ETA_UPDATED") {
-                            // Business event — trigger instant metadata refetch
-                            fetchFleetDataRef.current();
-                            appendLog(`${data.type}: ${data.order_id ?? data.driver_id ?? data.state ?? ""}`);
-                        } else {
-                            // Default: GPS ping
-                            handlePing(data as DriverPing);
-                        }
-                    } catch {
-                        appendLog("[ PARSE ERROR ] Malformed payload.");
-                    }
-                };
-
-                ws.onerror = () => {
-                    if (isDisposed) return;
-                    setWsStatus("OFFLINE");
-                    appendLog(`Pipe error — reconnect in ${Math.round(reconnectDelayRef.current / 1000)}s...`);
-                };
-
-                ws.onclose = () => {
-                    if (isDisposed) return;
-                    setWsStatus("OFFLINE");
-                    appendLog("Pipe closed.");
-                    const delay = reconnectDelayRef.current;
-                    reconnectDelayRef.current = Math.min(delay * 2, 30_000); // Cap at 30s
-                    reconnectTimeoutRef.current = setTimeout(() => {
-                        connectBrowserWs();
-                    }, delay);
-                };
-            };
-
-            connectBrowserWs();
         };
 
         void setup();
@@ -294,14 +280,8 @@ export default function FleetPage() {
             if (isTauri()) {
                 disconnectNativeTelemetry().catch(() => {});
             }
-            if (reconnectTimeoutRef.current) {
-                clearTimeout(reconnectTimeoutRef.current);
-                reconnectTimeoutRef.current = null;
-            }
-            wsRef.current?.close();
-            wsRef.current = null;
         };
-    }, []);
+    }, [appendLog, handlePing]);
 
     const driverList = useMemo(() => Array.from(drivers.values()), [drivers]);
     const missionsByDriver = useMemo(() => {

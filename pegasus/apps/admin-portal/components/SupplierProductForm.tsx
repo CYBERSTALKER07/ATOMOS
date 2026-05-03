@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { buildSupplierProductCreateIdempotencyKey } from '@/app/supplier/_shared/idempotency';
 
 type PlatformCategory = {
   category_id: string;
@@ -209,6 +210,7 @@ export default function SupplierProductForm({ supplierToken, onProductCreated }:
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${supplierToken}`,
+          'Idempotency-Key': buildSupplierProductCreateIdempotencyKey(payload),
         },
         body: JSON.stringify(payload),
       });

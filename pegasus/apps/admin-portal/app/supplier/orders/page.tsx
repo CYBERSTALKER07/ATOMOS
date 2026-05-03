@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useToken } from '@/lib/auth';
 import { readTokenFromCookie } from '@/lib/auth';
 import { usePolling } from '@/lib/usePolling';
+import { useTelemetry } from '@/hooks/useTelemetry';
+import type { TelemetryMessage } from '@/hooks/useTelemetry';
 import { isTauri } from '@/lib/bridge';
 import type { PaginationState } from '@/lib/usePagination';
 import PaginationControls from '@/components/PaginationControls';
@@ -223,51 +225,14 @@ export default function OrdersPage() {
   // ── WebSocket: instant order state change notifications ──────────────────
   const fetchOrdersRef = useRef(fetchOrders);
   fetchOrdersRef.current = fetchOrders;
-
-  useEffect(() => {
-    if (isTauri()) return; // Fleet page handles it via Tauri bridge
-
-    let disposed = false;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let backoff = 1000;
-
-    const connect = () => {
-      if (disposed || !token) return;
-      const apiBase = API;
-      const wsBase = apiBase.replace(/^http/, 'ws');
-      const url = new URL('/ws/telemetry', wsBase);
-      const wsToken = readTokenFromCookie() || token;
-      if (wsToken) url.searchParams.set('token', wsToken);
-
-      const ws = new WebSocket(url.toString());
-
-      ws.onopen = () => { backoff = 1000; };
-      ws.onmessage = (event) => {
-        if (disposed) return;
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'ORDER_STATE_CHANGED') {
-            fetchOrdersRef.current();
-          }
-        } catch { /* ignore GPS pings */ }
-      };
-      ws.onclose = () => {
-        if (disposed) return;
-        reconnectTimer = setTimeout(() => connect(), backoff);
-        backoff = Math.min(backoff * 2, 30_000);
-      };
-      ws.onerror = () => {};
-
-      return ws;
-    };
-
-    const ws = connect();
-    return () => {
-      disposed = true;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      ws?.close();
-    };
-  }, [token]);
+  useTelemetry(
+    useCallback((data: TelemetryMessage) => {
+      if (data.type === 'ORDER_STATE_CHANGED') {
+        fetchOrdersRef.current();
+      }
+    }, []),
+    { enabled: !isTauri() && Boolean(token) },
+  );
 
   /* ─── Available Trucks ──────────────────────────────────── */
 

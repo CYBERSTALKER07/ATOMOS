@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { buildSupplierPricingRuleUpsertIdempotencyKey } from '@/app/supplier/_shared/idempotency';
 
 export default function SupplierPromotionForm({ supplierToken, availableSkus }: { supplierToken: string, availableSkus: { id: string; name: string }[] }) {
   const [status, setStatus] = useState<string>('AWAITING_INPUT');
@@ -21,13 +22,15 @@ export default function SupplierPromotionForm({ supplierToken, availableSkus }: 
     try {
       setStatus('LOCKING_PROMOTION...');
       const tierId = crypto.randomUUID();
+      const payload = { ...formData, tier_id: tierId };
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/supplier/pricing/rules`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supplierToken}`
+          'Authorization': `Bearer ${supplierToken}`,
+          'Idempotency-Key': buildSupplierPricingRuleUpsertIdempotencyKey(payload),
         },
-        body: JSON.stringify({ ...formData, tier_id: tierId })
+        body: JSON.stringify(payload)
       });
       
       if (!res.ok) throw new Error('Ledger rejected promotion matrix.');
