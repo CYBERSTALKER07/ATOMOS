@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiFetch } from '@/lib/auth';
+import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageSkeleton } from '@/components/Skeleton';
@@ -19,6 +20,8 @@ interface SupplyRequest {
   item_count?: number;
   created_at: string;
 }
+
+const LIVE_REFRESH_MS = 30_000;
 
 const STATE_COLORS: Record<string, string> = {
   DRAFT: 'var(--color-md-outline)',
@@ -55,27 +58,128 @@ const ACTIONS: Record<string, { label: string; action: string; color: string }[]
 
 type FilterState = 'ALL' | 'SUBMITTED' | 'ACKNOWLEDGED' | 'IN_PRODUCTION' | 'READY' | 'FULFILLED' | 'CANCELLED';
 
+function requestSignature(items: SupplyRequest[]) {
+  return items
+    .map((request) => `${request.request_id}:${request.state}:${request.total_volume_vu}`)
+    .join('|');
+}
+
+function formatSyncTime(value: number | null) {
+  if (!value) return 'Waiting for first sync';
+  return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function SupplyRequestsPage() {
+  const { toast } = useToast();
   const [requests, setRequests] = useState<SupplyRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterState>('ALL');
   const [transitioning, setTransitioning] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
+  const [isOffline, setIsOffline] = useState(() => (typeof navigator === 'undefined' ? false : !navigator.onLine));
+  const previousSignatureRef = useRef('');
 
-  const fetchRequests = useCallback(async () => {
+  const fetchRequests = useCallback(async (options?: { background?: boolean; silent?: boolean }) => {
+    const background = options?.background ?? false;
+    const silent = options?.silent ?? false;
+
+    if (background) {
+      setRefreshing(true);
+    } else if (requests.length === 0) {
+      setLoading(true);
+    }
+
     try {
       const res = await apiFetch('/v1/factory/supply-requests');
-      if (res.ok) {
-        const data = await res.json();
-        setRequests(Array.isArray(data) ? data : data.requests || data.data || []);
+      if (!res.ok) {
+        throw new Error(`Factory API responded with ${res.status}`);
       }
-    } catch (e) {
-      console.error('[SUPPLY REQUESTS]', e);
+
+      const data = await res.json();
+      const next = Array.isArray(data) ? data : data.requests || data.data || [];
+      const nextSignature = requestSignature(next);
+
+      if (background && previousSignatureRef.current && previousSignatureRef.current !== nextSignature && !silent) {
+        toast('Supply queue updated', 'info');
+      }
+
+      previousSignatureRef.current = nextSignature;
+      setRequests(next);
+      setLastSyncedAt(Date.now());
+      setError(null);
+      setIsOffline(false);
+    } catch {
+      const message = isOffline || (typeof navigator !== 'undefined' && !navigator.onLine)
+        ? 'Offline. Showing the last synced supply queue.'
+        : 'Live refresh failed. Showing the last synced supply queue.';
+
+      if (requests.length === 0) {
+        setError(message);
+      } else {
+        setError(message);
+        if (!silent) {
+          toast(message, 'warning');
+        }
+      }
+
+      if (typeof navigator !== 'undefined') {
+        setIsOffline(!navigator.onLine);
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, []);
+  }, [isOffline, requests.length, toast]);
 
-  useEffect(() => { fetchRequests(); }, [fetchRequests]);
+  useEffect(() => {
+    void fetchRequests();
+  }, [fetchRequests]);
+
+  useEffect(() => {
+    const refreshLiveData = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchRequests({ background: true, silent: true });
+      }
+    };
+
+    const handleOnline = () => {
+      setIsOffline(false);
+      toast('Connection restored. Refreshing supply queue.', 'info');
+      void fetchRequests({ background: true, silent: true });
+    };
+
+    const handleOffline = () => {
+      setIsOffline(true);
+      toast('Offline. Showing the last synced supply queue.', 'warning');
+    };
+
+    const interval = window.setInterval(refreshLiveData, LIVE_REFRESH_MS);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    document.addEventListener('visibilitychange', refreshLiveData);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', refreshLiveData);
+    };
+  }, [fetchRequests, toast]);
+
+  const filtered = useMemo(
+    () => (filter === 'ALL' ? requests : requests.filter((request) => request.state === filter)),
+    [filter, requests],
+  );
+
+  const runtimeMessage = isOffline
+    ? `Offline — showing last sync from ${formatSyncTime(lastSyncedAt)}`
+    : error && requests.length > 0
+      ? `${error} Last sync ${formatSyncTime(lastSyncedAt)}`
+      : refreshing
+        ? `Refreshing live queue — last sync ${formatSyncTime(lastSyncedAt)}`
+        : `Live sync active — last sync ${formatSyncTime(lastSyncedAt)}`;
 
   const handleTransition = async (requestId: string, action: string) => {
     setTransitioning(requestId);
@@ -84,20 +188,21 @@ export default function SupplyRequestsPage() {
         method: 'PATCH',
         body: JSON.stringify({ action }),
       });
-      if (res.ok) {
-        fetchRequests();
-      } else {
+
+      if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(err.error || 'Transition failed');
+        toast(err.error || 'Transition failed', 'error');
+        return;
       }
-    } catch (e) {
-      console.error('[SUPPLY REQUEST TRANSITION]', e);
+
+      toast('Supply request updated', 'success');
+      await fetchRequests({ background: true, silent: true });
+    } catch {
+      toast('Transition failed', 'error');
     } finally {
       setTransitioning(null);
     }
   };
-
-  const filtered = filter === 'ALL' ? requests : requests.filter(r => r.state === filter);
 
   if (loading) {
     return (
@@ -110,37 +215,82 @@ export default function SupplyRequestsPage() {
     );
   }
 
+  if (error && requests.length === 0) {
+    return (
+      <PageTransition>
+        <div className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold">Incoming Supply Requests</h1>
+            <button
+              onClick={() => void fetchRequests()}
+              className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
+            >
+              <Icon name="refresh" size={16} /> Retry
+            </button>
+          </div>
+          <div
+            className="rounded-2xl border p-6 text-sm"
+            style={{
+              borderColor: 'var(--color-md-outline-variant)',
+              background: 'var(--color-md-surface-container-lowest)',
+              color: 'var(--color-md-on-surface-variant)',
+            }}
+          >
+            {error}
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
+
   return (
     <PageTransition>
       <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Incoming Supply Requests</h1>
-          <span className="text-sm" style={{ color: 'var(--color-md-on-surface-variant)' }}>
-            {filtered.length} request{filtered.length !== 1 ? 's' : ''}
-          </span>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold">Incoming Supply Requests</h1>
+            <p className="mt-1 text-sm" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+              {filtered.length} request{filtered.length !== 1 ? 's' : ''} in view
+            </p>
+          </div>
+          <button
+            onClick={() => void fetchRequests({ background: requests.length > 0 })}
+            className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
+          >
+            <Icon name="refresh" size={16} /> Refresh
+          </button>
         </div>
 
-        {/* Filter chips */}
+        <div
+          className="rounded-2xl border px-4 py-3 text-sm"
+          style={{
+            borderColor: isOffline || error ? 'var(--color-md-warning)' : 'var(--color-md-outline-variant)',
+            background: isOffline || error ? 'var(--color-md-surface-container-high)' : 'var(--color-md-surface-container-low)',
+            color: 'var(--color-md-on-surface-variant)',
+          }}
+        >
+          {runtimeMessage}
+        </div>
+
         <div className="flex gap-2 flex-wrap">
-          {(['ALL', 'SUBMITTED', 'ACKNOWLEDGED', 'IN_PRODUCTION', 'READY', 'FULFILLED', 'CANCELLED'] as FilterState[]).map(f => (
+          {(['ALL', 'SUBMITTED', 'ACKNOWLEDGED', 'IN_PRODUCTION', 'READY', 'FULFILLED', 'CANCELLED'] as FilterState[]).map((value) => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
+              key={value}
+              onClick={() => setFilter(value)}
               className="px-3 py-1.5 rounded-full text-xs font-medium transition-colors border"
               style={{
-                background: filter === f ? 'var(--color-md-primary)' : 'transparent',
-                color: filter === f ? 'var(--color-md-on-primary)' : 'var(--color-md-on-surface-variant)',
-                borderColor: filter === f ? 'var(--color-md-primary)' : 'var(--color-md-outline-variant)',
+                background: filter === value ? 'var(--color-md-primary)' : 'transparent',
+                color: filter === value ? 'var(--color-md-on-primary)' : 'var(--color-md-on-surface-variant)',
+                borderColor: filter === value ? 'var(--color-md-primary)' : 'var(--color-md-outline-variant)',
               }}
             >
-              {f.replace(/_/g, ' ')}
+              {value.replace(/_/g, ' ')}
             </button>
           ))}
         </div>
 
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3"
-               style={{ color: 'var(--color-md-on-surface-variant)' }}>
+          <div className="flex flex-col items-center justify-center py-16 gap-3" style={{ color: 'var(--color-md-on-surface-variant)' }}>
             <Icon name="transfers" size={40} />
             <p className="text-sm">No supply requests found</p>
           </div>
@@ -159,46 +309,42 @@ export default function SupplyRequestsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(req => (
-                  <tr key={req.request_id} className="border-t" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
+                {filtered.map((request) => (
+                  <tr key={request.request_id} className="border-t" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
                     <td className="px-4 py-3">
-                      <div className="font-medium">{req.warehouse_name || req.warehouse_id.slice(0, 8)}</div>
+                      <div className="font-medium">{request.warehouse_name || request.warehouse_id.slice(0, 8)}</div>
                       <div className="text-xs" style={{ color: 'var(--color-md-on-surface-variant)' }}>
-                        {req.request_id.slice(0, 8)}
+                        {request.request_id.slice(0, 8)}
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium"
-                            style={{ color: PRIORITY_COLORS[req.priority] || 'inherit' }}>
-                        {req.priority}
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ color: PRIORITY_COLORS[request.priority] || 'inherit' }}>
+                        {request.priority}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded text-xs font-medium"
-                            style={{ color: STATE_COLORS[req.state] || 'inherit' }}>
-                        {req.state.replace(/_/g, ' ')}
+                      <span className="px-2 py-0.5 rounded text-xs font-medium" style={{ color: STATE_COLORS[request.state] || 'inherit' }}>
+                        {request.state.replace(/_/g, ' ')}
                       </span>
                     </td>
-                    <td className="px-4 py-3 tabular-nums">{req.total_volume_vu.toLocaleString()}</td>
+                    <td className="px-4 py-3 tabular-nums">{request.total_volume_vu.toLocaleString()}</td>
                     <td className="px-4 py-3">
-                      {req.requested_delivery_date
-                        ? new Date(req.requested_delivery_date).toLocaleDateString()
-                        : '—'}
+                      {request.requested_delivery_date ? new Date(request.requested_delivery_date).toLocaleDateString() : '—'}
                     </td>
                     <td className="px-4 py-3 text-xs" style={{ color: 'var(--color-md-on-surface-variant)' }}>
-                      {new Date(req.created_at).toLocaleDateString()}
+                      {new Date(request.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex gap-2 justify-end">
-                        {(ACTIONS[req.state] || []).map(a => (
+                        {(ACTIONS[request.state] || []).map((action) => (
                           <button
-                            key={a.action}
-                            onClick={() => handleTransition(req.request_id, a.action)}
-                            disabled={transitioning === req.request_id}
+                            key={action.action}
+                            onClick={() => void handleTransition(request.request_id, action.action)}
+                            disabled={transitioning === request.request_id}
                             className="px-3 py-1 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50"
-                            style={{ background: a.color, color: 'white' }}
+                            style={{ background: action.color, color: 'white' }}
                           >
-                            {transitioning === req.request_id ? '...' : a.label}
+                            {transitioning === request.request_id ? '...' : action.label}
                           </button>
                         ))}
                       </div>
