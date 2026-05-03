@@ -796,7 +796,7 @@ func (s *ManifestService) HandleSealManifest() http.HandlerFunc {
 }
 
 // ── HandleListManifests ─────────────────────────────────────────────────────
-// GET /v1/supplier/manifests?state=DRAFT|LOADING|SEALED|...
+// GET /v1/supplier/manifests?state=DRAFT|LOADING|SEALED|...&truck_id=...
 func (s *ManifestService) HandleListManifests() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -805,6 +805,7 @@ func (s *ManifestService) HandleListManifests() http.HandlerFunc {
 		}
 		claims := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		stateFilter := r.URL.Query().Get("state")
+		truckIDFilter := r.URL.Query().Get("truck_id")
 
 		sql := `SELECT ManifestId, SupplierId, COALESCE(WarehouseId, ''), COALESCE(RouteId, ''),
 		               TruckId, DriverId, State, TotalVolumeVU, MaxVolumeVU, StopCount,
@@ -816,6 +817,10 @@ func (s *ManifestService) HandleListManifests() http.HandlerFunc {
 		if stateFilter != "" {
 			sql += " AND State = @state"
 			params["state"] = stateFilter
+		}
+		if truckIDFilter != "" {
+			sql += " AND TruckId = @truck_id"
+			params["truck_id"] = truckIDFilter
 		}
 		sql += " ORDER BY CreatedAt DESC LIMIT 100"
 

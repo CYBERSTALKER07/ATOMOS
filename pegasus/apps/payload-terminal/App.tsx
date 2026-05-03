@@ -728,13 +728,17 @@ export default function App() {
   const fetchTruckManifest = useCallback(async () => {
     if (!token || !activeTruck) return;
     try {
-      const res = await fetch(`${API_BASE}/v1/supplier/manifests?state=DRAFT`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      // Find manifest for this truck (most recent DRAFT or LOADING)
-      const m = (data.manifests || []).find((m: any) => m.truck_id === activeTruck || m.state === 'LOADING');
+      const fetchManifestForState = async (state: 'DRAFT' | 'LOADING') => {
+        const res = await fetch(
+          `${API_BASE}/v1/supplier/manifests?state=${state}&truck_id=${encodeURIComponent(activeTruck)}`,
+          { headers: { 'Authorization': `Bearer ${token}` } },
+        );
+        if (!res.ok) return null;
+        const data = await res.json();
+        return (data.manifests || []).find((m: any) => m.truck_id === activeTruck) ?? null;
+      };
+
+      const m = await fetchManifestForState('DRAFT') ?? await fetchManifestForState('LOADING');
       if (m) {
         setManifestId(m.manifest_id);
         setManifestState(m.state);
