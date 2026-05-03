@@ -88,7 +88,11 @@ Every `DESIGN.md` follows the same structure. Sections can be omitted if they're
 5. **Elevation & Depth** (also: "Elevation")
 6. **Shapes**
 7. **Components**
-8. **Do's and Don'ts**
+8. **Platforms & Surfaces** (also: "Platform Application", "Device Adaptation")
+9. **Interaction & Motion** (also: "Motion & Feedback")
+10. **Feature Wiring** (also: "Backend & Frontend Wiring", "Service Contract & UI Wiring")
+11. **Delivery Checklist** (also: "Validation Checklist", "Delivery Gates")
+12. **Do's and Don'ts**
 
 ### Prose and Tokens
 
@@ -317,6 +321,94 @@ Each component has a set of properties that are themselves design tokens:
 - size: \<Dimension\>
 - height: \<Dimension\>
 - width: \<Dimension\>
+
+## Platforms & Surfaces
+
+Also known as "Platform Application" or "Device Adaptation".
+
+This section explains how the same feature system adapts across web, desktop, tablet, phone, Android, and iOS. It should define what stays invariant across every surface (entity names, state meanings, task order, destructive-action semantics) and what must feel native per platform.
+
+Use this section to describe device-specific control choices rather than leaving agents to guess. For example:
+
+* desktop portal: dropdown, data table, inspector drawer, toast banner
+* mobile Android: filter chips, modal bottom sheet, snackbar, FAB
+* mobile iOS: menu, picker, confirmation dialog, sheet, swipe actions
+* tablet: split view, persistent side panel, larger density envelope
+
+Example:
+
+```markdown
+## Platforms & Surfaces
+
+The order lifecycle is identical on every client, but the control surfaces are not.
+
+- **Desktop / Web:** Use a dense table with column sorting, a right-side inspector, and dropdown filters for large datasets.
+- **Android:** Use Material filter chips for small state sets, modal bottom sheets for secondary actions, and snackbars for transient confirmations.
+- **iOS:** Use native `Menu`, `Picker`, `confirmationDialog`, and `sheet` patterns. Prefer swipe actions for row-level affordances when they are safe and discoverable.
+- **Tablet:** Preserve the same information architecture but upgrade to split-view or master-detail layouts rather than stretching phone cards.
+```
+
+## Interaction & Motion
+
+Also known as "Motion & Feedback".
+
+This section defines interactive feedback and motion semantics: hover, focus, pressed, selected, loading, disabled, success, warning, undo, and destructive confirmation. Motion must explain cause and effect, remain interruptible, and degrade safely under reduced-motion preferences.
+
+Use this section to name the actual feedback primitives and transitions that are allowed, such as inline validation, banners, snackbars, toasts, sheets, drawers, morphing confirmations, and optimistic state transitions.
+
+Example:
+
+```markdown
+## Interaction & Motion
+
+- Use inline validation for form errors, not detached toast messages.
+- Success feedback uses a short snackbar on Android, a compact toast/banner on desktop, and a subtle top confirmation on iOS.
+- For high-consequence completion actions, use a sheet or dialog with explicit confirmation rather than a transient toast.
+- Motion should be limited to 150–250ms for state transitions, use opacity/scale rather than large travel distances, and fall back to no-motion or fade-only behavior when reduced motion is enabled.
+```
+
+## Feature Wiring
+
+Also known as "Backend & Frontend Wiring" or "Service Contract & UI Wiring".
+
+This section explains how a real feature connects service contracts to interface decisions. It should identify the backend source of truth, the DTOs/events that feed the UI, which client surfaces consume them, what loading and offline strategy applies, and which concrete UI elements render each field or state.
+
+This is where an agent should be able to read, for example:
+
+* "Use a dropdown on desktop because the warehouse list is long and search matters."
+* "Use a segmented control on iOS for three mutually exclusive filters."
+* "Use filter chips on Android for the same state set because they are glanceable and thumb-reachable."
+* "Use a smooth morphing toast only for low-risk success confirmation; use a blocking dialog for destructive actions."
+
+Example:
+
+```markdown
+## Feature Wiring
+
+- **Backend source:** `GET /v1/factory/transfers`, `POST /v1/factory/transfers/{id}/transition`, `transfer.updated` socket event
+- **Shared fields:** `state`, `priority`, `total_items`, `total_volume_l`
+- **Desktop UI:** state filter is a searchable dropdown; transfer detail opens in a side drawer.
+- **Android UI:** state filter is a chip row; detail actions live in a bottom action bar.
+- **iOS UI:** state filter is a native menu/picker; detail actions use full-width bordered buttons in a scroll view.
+- **Offline behavior:** keep last successful list cached locally, mark it stale, and disable transition buttons when the write path is unavailable.
+```
+
+## Delivery Checklist
+
+Also known as "Validation Checklist" or "Delivery Gates".
+
+This section is a pre-ship contract. It should list the pass/fail conditions that must hold before the feature is considered done, including accessibility, responsive behavior, loading/empty/error/offline/restricted states, and explicit reporting of which UI components and motion patterns were chosen.
+
+Example:
+
+```markdown
+## Delivery Checklist
+
+- Loading, empty, error, offline, stale, and permission-restricted states are all visible and labelled.
+- Color is never the only status signal; iconography or text redundancy is present.
+- Desktop, tablet, phone, Android, and iOS layouts each use native navigation and input patterns.
+- Final delivery report must name the real primitives used, e.g. "desktop dropdown", "Android filter chips", "iOS confirmationDialog", "smooth morphing toast for low-risk success".
+```
 
 ## Do's and Don'ts
 

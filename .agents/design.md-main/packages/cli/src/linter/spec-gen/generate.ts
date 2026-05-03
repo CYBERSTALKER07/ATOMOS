@@ -22,13 +22,15 @@
  */
 
 import { readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { compileMdx } from './compiler.js';
 import { SPEC_CONFIG } from '../spec-config.js';
 import * as renderers from './renderers.js';
 
-const ROOT = resolve(import.meta.dir, '../../../../../');
-const MDX_PATH = resolve(import.meta.dir, 'spec.mdx');
+const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
+const ROOT = resolve(MODULE_DIR, '../../../../../');
+const MDX_PATH = resolve(MODULE_DIR, 'spec.mdx');
 const OUTPUT_PATH = resolve(ROOT, 'docs/spec.md');
 
 const isCheck = process.argv.includes('--check');
