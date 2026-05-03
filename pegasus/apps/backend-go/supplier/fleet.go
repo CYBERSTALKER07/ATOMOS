@@ -3,6 +3,7 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -22,7 +23,50 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/sync/singleflight"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
+
+type assignVehicleRuleError struct {
+	status           int
+	message          string
+	conflictDriverID string
+}
+
+func (e *assignVehicleRuleError) Error() string {
+	return e.message
+}
+
+func effectiveFleetHomeNode(nodeType, nodeID, warehouseID string) (string, string) {
+	if nodeType != "" && nodeID != "" {
+		return nodeType, nodeID
+	}
+	if warehouseID != "" {
+		return auth.HomeNodeTypeWarehouse, warehouseID
+	}
+	return "", ""
+}
+
+func isVehicleAssignmentLocked(status, routeID string) bool {
+	if strings.TrimSpace(routeID) != "" {
+		return true
+	}
+	switch strings.TrimSpace(status) {
+	case "LOADING", "READY", "IN_TRANSIT", "RETURNING":
+		return true
+	default:
+		return false
+	}
+}
+
+func writeAssignVehicleError(w http.ResponseWriter, err *assignVehicleRuleError) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(err.status)
+	body := map[string]string{"error": err.message}
+	if err.conflictDriverID != "" {
+		body["conflict_driver_id"] = err.conflictDriverID
+	}
+	json.NewEncoder(w).Encode(body)
+}
 
 // ── Request / Response DTOs ───────────────────────────────────────────────
 
@@ -548,50 +592,120 @@ func HandleAssignVehicle(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		cols := []string{"DriverId", "SupplierId", "VehicleId"}
-		var vehicleVal interface{}
-		if req.VehicleId == "" {
-			vehicleVal = (*string)(nil) // NULL = unassign
-		} else {
-			// Conflict check: ensure vehicle is not already assigned to another active driver
-			conflictStmt := spanner.Statement{
-				SQL:    `SELECT DriverId FROM Drivers WHERE VehicleId = @vehicleId AND IsActive = true AND DriverId != @driverId AND SupplierId = @supplierId LIMIT 1`,
-				Params: map[string]interface{}{"vehicleId": req.VehicleId, "driverId": driverID, "supplierId": claims.UserID},
-			}
-			conflictIter := spannerClient.Single().Query(r.Context(), conflictStmt)
-			conflictRow, conflictErr := conflictIter.Next()
-			conflictIter.Stop()
-			if conflictErr == nil && conflictRow != nil {
-				var conflictDriverID string
-				conflictRow.Columns(&conflictDriverID)
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusConflict)
-				json.NewEncoder(w).Encode(map[string]string{
-					"error":              "vehicle already assigned to another driver",
-					"conflict_driver_id": conflictDriverID,
-				})
-				return
-			}
-			vehicleVal = req.VehicleId
-		}
+		trimmedVehicleID := strings.TrimSpace(req.VehicleId)
+		vehicleVal := spanner.NullString{StringVal: trimmedVehicleID, Valid: trimmedVehicleID != ""}
+		var clearedDriverID string
 
 		_, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			driverRow, err := txn.ReadRow(ctx, "Drivers", spanner.Key{driverID}, []string{"SupplierId", "VehicleId", "TruckStatus", "HomeNodeType", "HomeNodeId", "WarehouseId", "RouteId"})
+			if err != nil {
+				if spanner.ErrCode(err) == codes.NotFound {
+					return &assignVehicleRuleError{status: http.StatusNotFound, message: "driver not found"}
+				}
+				return fmt.Errorf("read driver %s for vehicle assignment: %w", driverID, err)
+			}
+
+			var currentSupplierID string
+			var currentVehicleID, truckStatus, driverHomeNodeType, driverHomeNodeID, driverWarehouseID, routeID spanner.NullString
+			if err := driverRow.Columns(&currentSupplierID, &currentVehicleID, &truckStatus, &driverHomeNodeType, &driverHomeNodeID, &driverWarehouseID, &routeID); err != nil {
+				return fmt.Errorf("parse driver %s for vehicle assignment: %w", driverID, err)
+			}
+			if currentSupplierID != supplierID {
+				return &assignVehicleRuleError{status: http.StatusForbidden, message: "driver is outside supplier scope"}
+			}
+
+			currentAssignedVehicleID := strings.TrimSpace(currentVehicleID.StringVal)
+			if currentAssignedVehicleID == trimmedVehicleID {
+				return nil
+			}
+
+			driverStatus := strings.TrimSpace(truckStatus.StringVal)
+			driverRouteID := strings.TrimSpace(routeID.StringVal)
+			if isVehicleAssignmentLocked(driverStatus, driverRouteID) {
+				return &assignVehicleRuleError{status: http.StatusConflict, message: fmt.Sprintf("cannot change vehicle while driver is on an active route or truck status is %s", driverStatus)}
+			}
+
+			if trimmedVehicleID != "" {
+				vehicleRow, err := txn.ReadRow(ctx, "Vehicles", spanner.Key{trimmedVehicleID}, []string{"SupplierId", "IsActive", "HomeNodeType", "HomeNodeId", "WarehouseId"})
+				if err != nil {
+					if spanner.ErrCode(err) == codes.NotFound {
+						return &assignVehicleRuleError{status: http.StatusNotFound, message: "vehicle not found"}
+					}
+					return fmt.Errorf("read vehicle %s for assignment: %w", trimmedVehicleID, err)
+				}
+
+				var vehicleSupplierID string
+				var vehicleIsActive bool
+				var vehicleHomeNodeType, vehicleHomeNodeID, vehicleWarehouseID spanner.NullString
+				if err := vehicleRow.Columns(&vehicleSupplierID, &vehicleIsActive, &vehicleHomeNodeType, &vehicleHomeNodeID, &vehicleWarehouseID); err != nil {
+					return fmt.Errorf("parse vehicle %s for assignment: %w", trimmedVehicleID, err)
+				}
+				if vehicleSupplierID != supplierID {
+					return &assignVehicleRuleError{status: http.StatusForbidden, message: "vehicle is outside supplier scope"}
+				}
+				if !vehicleIsActive {
+					return &assignVehicleRuleError{status: http.StatusConflict, message: "vehicle is inactive"}
+				}
+
+				driverNodeType, driverNodeID := effectiveFleetHomeNode(strings.TrimSpace(driverHomeNodeType.StringVal), strings.TrimSpace(driverHomeNodeID.StringVal), strings.TrimSpace(driverWarehouseID.StringVal))
+				vehicleNodeType, vehicleNodeID := effectiveFleetHomeNode(strings.TrimSpace(vehicleHomeNodeType.StringVal), strings.TrimSpace(vehicleHomeNodeID.StringVal), strings.TrimSpace(vehicleWarehouseID.StringVal))
+				if driverNodeType != "" && vehicleNodeType != "" && (driverNodeType != vehicleNodeType || driverNodeID != vehicleNodeID) {
+					return &assignVehicleRuleError{status: http.StatusForbidden, message: "driver and vehicle home nodes do not match"}
+				}
+
+				conflictStmt := spanner.Statement{
+					SQL:    `SELECT DriverId, COALESCE(TruckStatus, 'AVAILABLE'), COALESCE(RouteId, '') FROM Drivers WHERE VehicleId = @vehicleId AND DriverId != @driverId AND SupplierId = @supplierId LIMIT 1`,
+					Params: map[string]interface{}{"vehicleId": trimmedVehicleID, "driverId": driverID, "supplierId": supplierID},
+				}
+				conflictIter := txn.Query(ctx, conflictStmt)
+				defer conflictIter.Stop()
+				conflictRow, conflictErr := conflictIter.Next()
+				if conflictErr != nil && conflictErr != iterator.Done {
+					return fmt.Errorf("check vehicle %s assignment conflict: %w", trimmedVehicleID, conflictErr)
+				}
+				if conflictErr == nil && conflictRow != nil {
+					var conflictDriverID, conflictStatus, conflictRouteID string
+					if err := conflictRow.Columns(&conflictDriverID, &conflictStatus, &conflictRouteID); err != nil {
+						return fmt.Errorf("parse vehicle %s conflict row: %w", trimmedVehicleID, err)
+					}
+					if isVehicleAssignmentLocked(conflictStatus, conflictRouteID) {
+						return &assignVehicleRuleError{status: http.StatusConflict, message: "vehicle is assigned to a driver with an active route", conflictDriverID: conflictDriverID}
+					}
+					if err := txn.BufferWrite([]*spanner.Mutation{
+						spanner.Update("Drivers", cols, []interface{}{conflictDriverID, supplierID, spanner.NullString{}}),
+					}); err != nil {
+						return fmt.Errorf("clear existing vehicle assignment for driver %s: %w", conflictDriverID, err)
+					}
+					clearedDriverID = conflictDriverID
+				}
+			}
+
 			return txn.BufferWrite([]*spanner.Mutation{
 				spanner.Update("Drivers", cols, []interface{}{driverID, supplierID, vehicleVal}),
 			})
 		})
 		if err != nil {
+			var ruleErr *assignVehicleRuleError
+			if errors.As(err, &ruleErr) {
+				writeAssignVehicleError(w, ruleErr)
+				return
+			}
 			log.Printf("[FLEET] assign vehicle failed: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
 		cache.Invalidate(r.Context(), cache.DriverProfile(driverID))
+		if clearedDriverID != "" && clearedDriverID != driverID {
+			cache.Invalidate(r.Context(), cache.DriverProfile(clearedDriverID))
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
-			"status":     "VEHICLE_ASSIGNED",
-			"driver_id":  driverID,
-			"vehicle_id": req.VehicleId,
+			"status":                     "VEHICLE_ASSIGNED",
+			"driver_id":                  driverID,
+			"vehicle_id":                 trimmedVehicleID,
+			"previously_assigned_driver": clearedDriverID,
 		})
 	}
 }

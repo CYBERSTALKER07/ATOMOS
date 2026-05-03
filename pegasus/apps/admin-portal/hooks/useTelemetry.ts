@@ -45,6 +45,7 @@ export function useTelemetry(onDelta?: DeltaListener): TelemetryState {
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastSyncRef = useRef<string | null>(null);
   const isFirstConnect = useRef(true);
+  const disposedRef = useRef(false);
 
   // Restore lastSyncTs from sessionStorage on mount
   useEffect(() => {
@@ -79,6 +80,7 @@ export function useTelemetry(onDelta?: DeltaListener): TelemetryState {
       if (!res.ok) return;
 
       const data = await res.json();
+      if (disposedRef.current) return;
 
       // Seed cache with catch-up data
       if (data.orders?.length) {
@@ -98,15 +100,21 @@ export function useTelemetry(onDelta?: DeltaListener): TelemetryState {
   }, [updateLastSync]);
 
   const connect = useCallback(() => {
+    if (disposedRef.current) return;
     const token = readTokenFromCookie();
     if (!token) return;
 
+    clearTimeout(reconnectTimer.current);
     const ws = new WebSocket(
       `${WS_BASE}/ws/telemetry?token=${encodeURIComponent(token)}`,
     );
     wsRef.current = ws;
 
     ws.onopen = () => {
+      if (disposedRef.current) {
+        ws.close();
+        return;
+      }
       backoffRef.current = INITIAL_BACKOFF_MS;
       setState((s) => ({ ...s, connected: true }));
 
@@ -121,6 +129,7 @@ export function useTelemetry(onDelta?: DeltaListener): TelemetryState {
     };
 
     ws.onmessage = (event) => {
+      if (disposedRef.current) return;
       try {
         const msg = JSON.parse(event.data);
         if (isDeltaEvent(msg)) {
@@ -139,7 +148,10 @@ export function useTelemetry(onDelta?: DeltaListener): TelemetryState {
     };
 
     ws.onclose = () => {
-      wsRef.current = null;
+      if (wsRef.current === ws) {
+        wsRef.current = null;
+      }
+      if (disposedRef.current) return;
       setState((s) => ({
         ...s,
         connected: false,
@@ -158,10 +170,13 @@ export function useTelemetry(onDelta?: DeltaListener): TelemetryState {
   }, [onDelta, runCatchUp, updateLastSync]);
 
   useEffect(() => {
+    disposedRef.current = false;
     connect();
     return () => {
-      wsRef.current?.close();
+      disposedRef.current = true;
       clearTimeout(reconnectTimer.current);
+      wsRef.current?.close();
+      wsRef.current = null;
     };
   }, [connect]);
 

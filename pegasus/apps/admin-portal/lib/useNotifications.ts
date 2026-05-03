@@ -60,6 +60,7 @@ export function useNotifications() {
   });
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const disposedRef = useRef(false);
 
   // ── Fetch inbox ──
   const fetchInbox = useCallback(async (signal?: AbortSignal) => {
@@ -67,6 +68,7 @@ export function useNotifications() {
       const res = await apiFetch('/v1/user/notifications?limit=50', { signal });
       if (!res.ok) return;
       const data = await res.json();
+      if (disposedRef.current) return;
       const items = Array.isArray(data.notifications)
         ? data.notifications.map((item: BackendNotification) => normalizeNotification(item))
         : [];
@@ -76,6 +78,7 @@ export function useNotifications() {
         loading: false,
       });
     } catch {
+      if (disposedRef.current) return;
       setState(s => ({ ...s, loading: false }));
     }
   }, []);
@@ -108,14 +111,17 @@ export function useNotifications() {
 
   // ── WebSocket for real-time notifications ──
   const connectWS = useCallback(() => {
+    if (disposedRef.current) return;
     const token = readTokenFromCookie();
     if (!token) return;
 
+    clearTimeout(reconnectTimer.current);
     const wsBase = API.replace(/^http/, 'ws');
     const ws = new WebSocket(`${wsBase}/v1/ws/payloader?token=${encodeURIComponent(token)}`);
     wsRef.current = ws;
 
     ws.onmessage = (event) => {
+      if (disposedRef.current) return;
       try {
         const msg = JSON.parse(event.data);
         if (msg.type && msg.title) {
@@ -139,7 +145,10 @@ export function useNotifications() {
     };
 
     ws.onclose = () => {
-      wsRef.current = null;
+      if (wsRef.current === ws) {
+        wsRef.current = null;
+      }
+      if (disposedRef.current) return;
       reconnectTimer.current = setTimeout(connectWS, 5000);
     };
 
@@ -148,13 +157,16 @@ export function useNotifications() {
 
   // ── Lifecycle ──
   useEffect(() => {
+    disposedRef.current = false;
     const ac = new AbortController();
     fetchInbox(ac.signal);
     connectWS();
     return () => {
+      disposedRef.current = true;
       ac.abort();
-      wsRef.current?.close();
       clearTimeout(reconnectTimer.current);
+      wsRef.current?.close();
+      wsRef.current = null;
     };
   }, [fetchInbox, connectWS]);
 

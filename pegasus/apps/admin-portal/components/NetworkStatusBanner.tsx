@@ -1,26 +1,37 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNetworkStatus } from '@/lib/offline-queue';
 import { OfflineManager } from '@/lib/api/offlineQueue';
-import { apiFetch } from '@/lib/auth';
 
 export function NetworkStatusBanner() {
   const { isOnline, pendingCount } = useNetworkStatus();
   const [backpressureMs, setBackpressureMs] = useState(0);
   const [persistedQueue, setPersistedQueue] = useState(0);
+  const backpressureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Listen for backpressure signals from apiFetch
   useEffect(() => {
     const handler = (e: Event) => {
       const ms = (e as CustomEvent<number>).detail;
       setBackpressureMs(ms);
+      if (backpressureTimerRef.current) {
+        clearTimeout(backpressureTimerRef.current);
+      }
       // Auto-clear after the backpressure window expires
-      const timer = setTimeout(() => setBackpressureMs(0), ms);
-      return () => clearTimeout(timer);
+      backpressureTimerRef.current = setTimeout(() => {
+        setBackpressureMs(0);
+        backpressureTimerRef.current = null;
+      }, ms);
     };
     window.addEventListener('backpressure', handler);
-    return () => window.removeEventListener('backpressure', handler);
+    return () => {
+      window.removeEventListener('backpressure', handler);
+      if (backpressureTimerRef.current) {
+        clearTimeout(backpressureTimerRef.current);
+        backpressureTimerRef.current = null;
+      }
+    };
   }, []);
 
   // Track persisted offline queue length
