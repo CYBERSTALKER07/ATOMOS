@@ -1,0 +1,96 @@
+flowchart TB
+    classDef backend fill:#dbeafe,stroke:#1d4ed8,color:#0f172a,stroke-width:1.5px;
+    classDef web fill:#dcfce7,stroke:#15803d,color:#0f172a,stroke-width:1.5px;
+    classDef android fill:#ffedd5,stroke:#ea580c,color:#0f172a,stroke-width:1.5px;
+    classDef ios fill:#f3e8ff,stroke:#7e22ce,color:#0f172a,stroke-width:1.5px;
+    classDef realtime fill:#fee2e2,stroke:#dc2626,color:#0f172a,stroke-width:1.5px;
+    classDef role fill:#f8fafc,stroke:#334155,color:#0f172a,stroke-width:2px;
+    classDef root fill:#111827,stroke:#111827,color:#ffffff,stroke-width:2px;
+
+    ROOT["Pegasus Roles and Surfaces"]:::root
+
+    ROOT --> SUPPLIER["Supplier / Admin"]:::role
+    ROOT --> RETAILER["Retailer"]:::role
+    ROOT --> DRIVER["Driver"]:::role
+    ROOT --> PAYLOAD["Payload / Payloader"]:::role
+    ROOT --> FACTORY["Factory Admin"]:::role
+    ROOT --> WAREHOUSE["Warehouse Admin"]:::role
+
+    SUPPLIER --> SUPPLIER_BE["Backend
+    auth, core ops, planning, catalog, pricing,
+    logistics, CRM, analytics, returns, admin controls"]:::backend
+    SUPPLIER --> SUPPLIER_WEB["Web/Desktop
+    admin portal, treasury, reconciliation,
+    supplier dashboard, fleet, dispatch, manifests"]:::web
+    SUPPLIER --> SUPPLIER_RT["Realtime
+    fleet telemetry, ws/telemetry, ws/fleet"]:::realtime
+
+    RETAILER --> RETAILER_BE["Backend
+    auth, catalog, cart, checkout, saved cards,
+    profile, family members, orders, analytics"]:::backend
+    RETAILER --> RETAILER_WEB["Web/Desktop
+    dashboard, procurement, catalog, orders,
+    tracking, settings, notifications"]:::web
+    RETAILER --> RETAILER_ANDROID["Android
+    catalog, suppliers, cart, orders,
+    auto-order, analytics, profile, tracking"]:::android
+    RETAILER --> RETAILER_IOS["iOS
+    dashboard, catalog, suppliers, cart,
+    checkout, orders, tracking, inbox"]:::ios
+    RETAILER --> RETAILER_RT["Realtime
+    v1/ws/retailer, live tracking,
+    driver-approaching notifications"]:::realtime
+
+    DRIVER --> DRIVER_BE["Backend
+    earnings, history, availability, profile,
+    manifest gate, manifest hashes, collections"]:::backend
+    DRIVER --> DRIVER_ANDROID["Android
+    home, manifest, scanner, map,
+    offload, cash collection, inbox"]:::android
+    DRIVER --> DRIVER_IOS["iOS
+    home, fleet map, QR scan,
+    offload, cash collection, inbox"]:::ios
+    DRIVER --> DRIVER_RT["Realtime
+    v1/ws/driver, ws/telemetry, ws/fleet"]:::realtime
+
+    PAYLOAD --> PAYLOAD_BE["Backend
+    trucks, orders, recommend reassign,
+    shared manifest lifecycle, exceptions"]:::backend
+    PAYLOAD --> PAYLOAD_WEB["Web/Expo
+    payload terminal loading workflow"]:::web
+    PAYLOAD --> PAYLOAD_ANDROID["Android
+    login, payload home, manifest sync"]:::android
+    PAYLOAD --> PAYLOAD_IOS["iOS
+    login, payload home, manifest sync"]:::ios
+    PAYLOAD --> PAYLOAD_RT["Realtime
+    v1/ws/payloader, PAYLOAD_SYNC,
+    notifications"]:::realtime
+
+    FACTORY --> FACTORY_BE["Backend
+    dashboard, analytics, profile, transfers,
+    manifests, dispatch engine, supply requests"]:::backend
+    FACTORY --> FACTORY_WEB["Web/Desktop
+    dashboard, transfers, loading bay,
+    payload override, fleet, staff, insights"]:::web
+    FACTORY --> FACTORY_ANDROID["Android
+    dashboard, transfers, loading bay,
+    fleet, staff, insights, supply requests"]:::android
+    FACTORY --> FACTORY_IOS["iOS
+    dashboard, transfers, loading bay,
+    fleet, staff, insights"]:::ios
+
+    WAREHOUSE --> WAREHOUSE_BE["Backend
+    transfers, replenishment, demand forecast,
+    supply requests, ops dashboard, dispatch locks"]:::backend
+    WAREHOUSE --> WAREHOUSE_WEB["Web/Desktop
+    dispatch, supply requests, inventory,
+    orders, manifests, analytics, treasury"]:::web
+    WAREHOUSE --> WAREHOUSE_ANDROID["Android
+    dashboard, dispatch, inventory, orders,
+    manifests, analytics, CRM, treasury"]:::android
+    WAREHOUSE --> WAREHOUSE_IOS["iOS
+    dashboard, dispatch, inventory, orders,
+    manifests, analytics, CRM, treasury"]:::ios
+    WAREHOUSE --> WAREHOUSE_RT["Realtime
+    ws/warehouse, dispatch-lock updates,
+    supply-request updates"]:::realtime

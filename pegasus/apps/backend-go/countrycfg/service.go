@@ -103,6 +103,87 @@ func defaultUZ() *CountryConfig {
 	}
 }
 
+func cloneCountryConfig(cfg *CountryConfig) *CountryConfig {
+	if cfg == nil {
+		return nil
+	}
+
+	cloned := *cfg
+	cloned.PaymentGateways = append([]string(nil), cfg.PaymentGateways...)
+	cloned.NotificationFallbackOrder = append([]string(nil), cfg.NotificationFallbackOrder...)
+	return &cloned
+}
+
+func mergeCountryConfigForUpsert(existing *CountryConfig, incoming *CountryConfig) *CountryConfig {
+	base := cloneCountryConfig(defaultUZ())
+	if existing != nil {
+		base = cloneCountryConfig(existing)
+	}
+	if incoming == nil {
+		return base
+	}
+
+	merged := cloneCountryConfig(base)
+	if incoming.CountryCode != "" {
+		merged.CountryCode = incoming.CountryCode
+	}
+	if incoming.CountryName != "" {
+		merged.CountryName = incoming.CountryName
+	}
+	if incoming.Timezone != "" {
+		merged.Timezone = incoming.Timezone
+	}
+	if incoming.CurrencyCode != "" {
+		merged.CurrencyCode = incoming.CurrencyCode
+	}
+	if incoming.CurrencyDecimalPlaces != 0 {
+		merged.CurrencyDecimalPlaces = incoming.CurrencyDecimalPlaces
+	}
+	if incoming.DistanceUnit != "" {
+		merged.DistanceUnit = incoming.DistanceUnit
+	}
+	if incoming.DefaultVUConversion != 0 {
+		merged.DefaultVUConversion = incoming.DefaultVUConversion
+	}
+	if incoming.MapsProvider != "" {
+		merged.MapsProvider = incoming.MapsProvider
+	}
+	if incoming.LLMProvider != "" {
+		merged.LLMProvider = incoming.LLMProvider
+	}
+	if len(incoming.PaymentGateways) > 0 {
+		merged.PaymentGateways = append([]string(nil), incoming.PaymentGateways...)
+	}
+	if incoming.SMSProvider != "" {
+		merged.SMSProvider = incoming.SMSProvider
+	}
+	if len(incoming.NotificationFallbackOrder) > 0 {
+		merged.NotificationFallbackOrder = append([]string(nil), incoming.NotificationFallbackOrder...)
+	}
+	if incoming.LegalRetentionDays != 0 {
+		merged.LegalRetentionDays = incoming.LegalRetentionDays
+	}
+	if incoming.GridSystem != "" {
+		merged.GridSystem = incoming.GridSystem
+	}
+	if incoming.BreachRadiusMeters != 0 {
+		merged.BreachRadiusMeters = incoming.BreachRadiusMeters
+	}
+	if incoming.ShopClosedGraceMinutes != 0 {
+		merged.ShopClosedGraceMinutes = incoming.ShopClosedGraceMinutes
+	}
+	if incoming.ShopClosedEscalationMinutes != 0 {
+		merged.ShopClosedEscalationMinutes = incoming.ShopClosedEscalationMinutes
+	}
+	if incoming.OfflineModeDurationMinutes != 0 {
+		merged.OfflineModeDurationMinutes = incoming.OfflineModeDurationMinutes
+	}
+	if incoming.CashCustodyAlertHours != 0 {
+		merged.CashCustodyAlertHours = incoming.CashCustodyAlertHours
+	}
+	return merged
+}
+
 // GetConfig returns the config for a country code, using 5min cache.
 // Falls back to UZ defaults if the country is not found.
 func (s *Service) GetConfig(ctx context.Context, countryCode string) *CountryConfig {
@@ -582,68 +663,13 @@ func (s *Service) UpsertConfig(ctx context.Context, cfg *CountryConfig) error {
 		return fmt.Errorf("country code is required")
 	}
 
-	base := defaultUZ()
-	if cfg.CountryName == "" {
-		cfg.CountryName = base.CountryName
-	}
-	if cfg.Timezone == "" {
-		cfg.Timezone = base.Timezone
-	}
-	if cfg.CurrencyCode == "" {
-		cfg.CurrencyCode = base.CurrencyCode
-	}
-	if cfg.DistanceUnit == "" {
-		cfg.DistanceUnit = base.DistanceUnit
-	}
-	if cfg.MapsProvider == "" {
-		cfg.MapsProvider = base.MapsProvider
-	}
-	if cfg.LLMProvider == "" {
-		cfg.LLMProvider = base.LLMProvider
-	}
-	if len(cfg.PaymentGateways) == 0 {
-		cfg.PaymentGateways = base.PaymentGateways
-	}
-	if len(cfg.NotificationFallbackOrder) == 0 {
-		cfg.NotificationFallbackOrder = base.NotificationFallbackOrder
-	}
-	if cfg.SMSProvider == "" {
-		cfg.SMSProvider = base.SMSProvider
-	}
-	if cfg.CurrencyDecimalPlaces == 0 {
-		cfg.CurrencyDecimalPlaces = base.CurrencyDecimalPlaces
-	}
-	if cfg.DefaultVUConversion == 0 {
-		cfg.DefaultVUConversion = base.DefaultVUConversion
-	}
-	if cfg.LegalRetentionDays == 0 {
-		cfg.LegalRetentionDays = base.LegalRetentionDays
-	}
-	if cfg.GridSystem == "" {
-		cfg.GridSystem = base.GridSystem
-	}
-	if cfg.BreachRadiusMeters == 0 {
-		cfg.BreachRadiusMeters = base.BreachRadiusMeters
-	}
-	if cfg.ShopClosedGraceMinutes == 0 {
-		cfg.ShopClosedGraceMinutes = base.ShopClosedGraceMinutes
-	}
-	if cfg.ShopClosedEscalationMinutes == 0 {
-		cfg.ShopClosedEscalationMinutes = base.ShopClosedEscalationMinutes
-	}
-	if cfg.OfflineModeDurationMinutes == 0 {
-		cfg.OfflineModeDurationMinutes = base.OfflineModeDurationMinutes
-	}
-	if cfg.CashCustodyAlertHours == 0 {
-		cfg.CashCustodyAlertHours = base.CashCustodyAlertHours
-	}
-
-	paymentGatewaysJSON, _ := json.Marshal(cfg.PaymentGateways)
-	notifOrderJSON, _ := json.Marshal(cfg.NotificationFallbackOrder)
+	merged := mergeCountryConfigForUpsert(s.readCountryConfig(ctx, cfg.CountryCode), cfg)
+	paymentGatewaysJSON, _ := json.Marshal(merged.PaymentGateways)
+	notifOrderJSON, _ := json.Marshal(merged.NotificationFallbackOrder)
 
 	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		createdAt := interface{}(spanner.CommitTimestamp)
-		row, readErr := txn.ReadRow(ctx, "CountryConfigs", spanner.Key{cfg.CountryCode}, []string{"CreatedAt"})
+		row, readErr := txn.ReadRow(ctx, "CountryConfigs", spanner.Key{merged.CountryCode}, []string{"CreatedAt"})
 		if readErr == nil {
 			var existingCreatedAt time.Time
 			if colErr := row.Columns(&existingCreatedAt); colErr == nil {
@@ -660,11 +686,11 @@ func (s *Service) UpsertConfig(ctx context.Context, cfg *CountryConfig) error {
 				"OfflineModeDurationMinutes", "CashCustodyAlertHours", "IsActive", "CreatedAt", "UpdatedAt",
 			},
 			[]interface{}{
-				cfg.CountryCode, cfg.CountryName, cfg.Timezone, cfg.CurrencyCode, cfg.CurrencyDecimalPlaces,
-				cfg.DistanceUnit, cfg.DefaultVUConversion, cfg.MapsProvider, cfg.LLMProvider,
-				string(paymentGatewaysJSON), cfg.SMSProvider, string(notifOrderJSON), cfg.LegalRetentionDays,
-				cfg.GridSystem, cfg.BreachRadiusMeters, cfg.ShopClosedGraceMinutes, cfg.ShopClosedEscalationMinutes,
-				cfg.OfflineModeDurationMinutes, cfg.CashCustodyAlertHours, true, createdAt, spanner.CommitTimestamp,
+				merged.CountryCode, merged.CountryName, merged.Timezone, merged.CurrencyCode, merged.CurrencyDecimalPlaces,
+				merged.DistanceUnit, merged.DefaultVUConversion, merged.MapsProvider, merged.LLMProvider,
+				string(paymentGatewaysJSON), merged.SMSProvider, string(notifOrderJSON), merged.LegalRetentionDays,
+				merged.GridSystem, merged.BreachRadiusMeters, merged.ShopClosedGraceMinutes, merged.ShopClosedEscalationMinutes,
+				merged.OfflineModeDurationMinutes, merged.CashCustodyAlertHours, true, createdAt, spanner.CommitTimestamp,
 			},
 		)
 		return txn.BufferWrite([]*spanner.Mutation{m})
@@ -673,6 +699,6 @@ func (s *Service) UpsertConfig(ctx context.Context, cfg *CountryConfig) error {
 		return err
 	}
 
-	s.InvalidateCache(cfg.CountryCode)
+	s.InvalidateCache(merged.CountryCode)
 	return nil
 }
