@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { getAdminToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import { isTauri } from '@/lib/bridge';
 import { extractDriverPositions, useTelemetry } from '@/hooks/useTelemetry';
 import type { TelemetryMessage } from '@/hooks/useTelemetry';
@@ -55,9 +55,7 @@ export default function FleetMapCell() {
 
   const fetchFleet = useCallback(async (signal?: AbortSignal) => {
     try {
-      const token = await getAdminToken();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/supplier/fleet/drivers`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await apiFetch('/v1/supplier/fleet/drivers', {
         signal,
       });
       if (res.ok) {

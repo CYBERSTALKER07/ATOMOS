@@ -2,16 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { Button } from '@heroui/react';
-import { getAdminToken } from "@/lib/auth";
+import { apiFetch } from "@/lib/auth";
 import EmptyState from '@/components/EmptyState';
 import { useToast } from '@/components/Toast';
 import {
   buildSupplierPricingRuleDeleteIdempotencyKey,
   buildSupplierPricingRuleUpsertIdempotencyKey,
 } from '../_shared/idempotency';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-
 type PricingRule = {
   tier_id: string;
   sku_id: string;
@@ -64,11 +61,9 @@ export default function SupplierPricingPage() {
 
   const fetchRulesAndProducts = async () => {
     try {
-      const token = await getAdminToken();
-      const headers = { Authorization: `Bearer ${token}` };
       const [rulesRes, productsRes] = await Promise.all([
-        fetch(`${API}/v1/supplier/pricing/rules`, { headers }),
-        fetch(`${API}/v1/supplier/products`, { headers }),
+        apiFetch('/v1/supplier/pricing/rules'),
+        apiFetch('/v1/supplier/products'),
       ]);
       if (rulesRes.ok) {
         const data = await rulesRes.json();
@@ -95,17 +90,19 @@ export default function SupplierPricingPage() {
   const handleDeactivateRule = async (tierId: string) => {
     setDeactivating(tierId);
     try {
-      const token = await getAdminToken();
-      const res = await fetch(`${API}/v1/supplier/pricing/rules/${tierId}`, {
+      const res = await apiFetch(`/v1/supplier/pricing/rules/${tierId}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Idempotency-Key': buildSupplierPricingRuleDeleteIdempotencyKey(tierId),
         },
       });
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast('Pricing rule deactivation queued — will replay when back online', 'success');
+        return;
+      }
       if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || 'Deactivation failed');
+        throw new Error(body.error || body.message || 'Deactivation failed');
       }
       toast('Pricing rule deactivated', 'success');
       fetchRulesAndProducts();
@@ -130,24 +127,31 @@ export default function SupplierPricingPage() {
     };
 
     try {
-      const token = await getAdminToken();
-
-      const res = await fetch(`${API}/v1/supplier/pricing/rules`, {
+      const res = await apiFetch('/v1/supplier/pricing/rules', {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token.trim()}`,
           'Idempotency-Key': buildSupplierPricingRuleUpsertIdempotencyKey(payload as Record<string, unknown>),
         },
         body: JSON.stringify(payload),
       });
-
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || "Rule rejected");
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast('Pricing rule queued — will replay when back online', 'success');
+        setForm({
+          tier_id: "",
+          sku_id: "",
+          min_pallets: 10,
+          discount_percent: 5,
+          target_retailer_tier: "ALL",
+          valid_until: "",
+        });
+        return;
       }
 
-      await res.json();
+      if (!res.ok) {
+        throw new Error(body.error || body.message || "Rule rejected");
+      }
+
       toast('Pricing rule locked successfully' , 'success');
       fetchRulesAndProducts();
       setForm({

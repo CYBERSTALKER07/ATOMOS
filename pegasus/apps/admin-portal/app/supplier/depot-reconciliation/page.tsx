@@ -2,12 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@heroui/react';
-import { useToken } from '@/lib/auth';
+import { apiFetch, useToken } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import { useToast } from '@/components/Toast';
 import { buildSupplierDepotReconciliationIdempotencyKey } from '../_shared/idempotency';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 /* ─── Types ───────────────────────────────────────────────── */
 
@@ -59,9 +57,7 @@ export default function DepotReconciliationPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API}/v1/supplier/quarantine-stock`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch('/v1/supplier/quarantine-stock');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setVehicles(json.data ?? []);
@@ -79,18 +75,20 @@ export default function DepotReconciliationPage() {
     const key = lineItemIds.join(',') + ':' + action;
     setActionLoading(key);
     try {
-      const res = await fetch(`${API}/v1/inventory/reconcile-returns`, {
+      const res = await apiFetch('/v1/inventory/reconcile-returns', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
           'Idempotency-Key': buildSupplierDepotReconciliationIdempotencyKey(lineItemIds, action),
         },
         body: JSON.stringify({ line_item_ids: lineItemIds, action }),
       });
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast('Reconciliation queued — will replay when back online', 'success');
+        return;
+      }
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? `HTTP ${res.status}`);
+        throw new Error(body.error ?? body.message ?? `HTTP ${res.status}`);
       }
       const label = action === 'RESTOCK' ? 'Restocked' : 'Written off';
       toast(`${label} ${lineItemIds.length} item(s)`, 'success');

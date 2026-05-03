@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { Button } from '@heroui/react';
-import { readTokenFromCookie as getToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import Link from 'next/link';
 import { usePagination } from '@/lib/usePagination';
 import PaginationControls from '@/components/PaginationControls';
@@ -84,9 +84,6 @@ const VEHICLE_CLASSES: { value: string; label: string; vu: number }[] = [
   { value: 'CLASS_B', label: 'Medium Truck', vu: 150 },
   { value: 'CLASS_C', label: 'Heavy / Semi', vu: 400 },
 ];
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-
 /* ── Main Page ─────────────────────────────────────────────────────────── */
 
 export default function FleetPage() {
@@ -129,9 +126,7 @@ export default function FleetPage() {
 
   async function fetchCapacity() {
     try {
-      const activeRes = await fetch(`${API}/v1/fleet/active`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
+      const activeRes = await apiFetch('/v1/fleet/active');
 
       if (!activeRes.ok) {
         return;
@@ -147,9 +142,7 @@ export default function FleetPage() {
 
       const capacityResponses = await Promise.all(
         routeIds.map(async (routeId) => {
-          const res = await fetch(`${API}/v1/fleet/capacity?route_id=${encodeURIComponent(routeId)}`, {
-            headers: { Authorization: `Bearer ${getToken()}` },
-          });
+          const res = await apiFetch(`/v1/fleet/capacity?route_id=${encodeURIComponent(routeId)}`);
           if (!res.ok) return null;
           return (await res.json()) as CapacityInfo;
         }),
@@ -169,9 +162,7 @@ export default function FleetPage() {
 
   async function fetchVehicles() {
     try {
-      const res = await fetch(`${API}/v1/supplier/fleet/vehicles`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
+      const res = await apiFetch('/v1/supplier/fleet/vehicles');
       if (res.ok) {
         const data = await res.json();
         setVehicles(data || []);
@@ -183,9 +174,7 @@ export default function FleetPage() {
 
   async function fetchDrivers() {
     try {
-      const res = await fetch(`${API}/v1/supplier/fleet/drivers`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
+      const res = await apiFetch('/v1/supplier/fleet/drivers');
       if (res.ok) {
         const data = await res.json();
         setDrivers(data || []);
@@ -214,21 +203,29 @@ export default function FleetPage() {
         license_plate: formPlate.trim(),
         vehicle_id: formVehicleId || undefined,
       };
-      const res = await fetch(`${API}/v1/supplier/fleet/drivers`, {
+      const res = await apiFetch('/v1/supplier/fleet/drivers', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
           'Idempotency-Key': buildSupplierFleetDriverCreateIdempotencyKey(payload),
         },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        const errBody = await res.text();
-        setFormError(errBody || 'Failed to create driver');
+      const body = await res.json().catch(() => ({} as {
+        queued?: boolean;
+        error?: string;
+        message?: string;
+      }));
+      if (body.queued) {
+        setShowAdd(false);
+        resetForm();
+        toast('Driver creation queued — PIN will be available after reconnect', 'success');
         return;
       }
-      const created: CreatedDriver = await res.json();
+      if (!res.ok) {
+        setFormError(body.error || body.message || 'Failed to create driver');
+        return;
+      }
+      const created = body as CreatedDriver;
       setCreatedPin(created);
       setShowAdd(false);
       resetForm();
@@ -242,9 +239,7 @@ export default function FleetPage() {
 
   async function fetchDriverDetail(id: string) {
     try {
-      const res = await fetch(`${API}/v1/supplier/fleet/drivers/${id}`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
+      const res = await apiFetch(`/v1/supplier/fleet/drivers/${id}`);
       if (res.ok) {
         setSelectedDriver(await res.json());
       }
@@ -255,17 +250,19 @@ export default function FleetPage() {
 
   async function handleAssignVehicle(driverId: string, vehicleId: string) {
     try {
-      const res = await fetch(`${API}/v1/supplier/fleet/drivers/${driverId}/assign-vehicle`, {
+      const res = await apiFetch(`/v1/supplier/fleet/drivers/${driverId}/assign-vehicle`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
           'Idempotency-Key': buildSupplierFleetDriverAssignIdempotencyKey(driverId, vehicleId),
         },
         body: JSON.stringify({ vehicle_id: vehicleId }),
       });
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast('Vehicle assignment queued — will replay when back online', 'success');
+        return;
+      }
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: 'Assignment failed' }));
         toast(body.error || 'Failed to assign vehicle' , 'error');
         return;
       }
@@ -299,18 +296,28 @@ export default function FleetPage() {
       body.height_cm = parseFloat(vehHeightCM);
     }
     try {
-      const res = await fetch(`${API}/v1/supplier/fleet/vehicles`, {
+      const res = await apiFetch('/v1/supplier/fleet/vehicles', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
           'Idempotency-Key': buildSupplierFleetVehicleCreateIdempotencyKey(body),
         },
         body: JSON.stringify(body),
       });
+      const responseBody = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (responseBody.queued) {
+        setShowAddVehicle(false);
+        setVehClass('CLASS_A');
+        setVehLabel('');
+        setVehPlate('');
+        setVehVuMode('class');
+        setVehLengthCM('');
+        setVehWidthCM('');
+        setVehHeightCM('');
+        toast('Vehicle creation queued — will replay when back online', 'success');
+        return;
+      }
       if (!res.ok) {
-        const errBody = await res.text();
-        setVehError(errBody || 'Failed to create vehicle');
+        setVehError(responseBody.error || responseBody.message || 'Failed to create vehicle');
         return;
       }
       setShowAddVehicle(false);
@@ -331,15 +338,18 @@ export default function FleetPage() {
 
   async function handleDeactivateVehicle(vehicleId: string) {
     try {
-      const res = await fetch(`${API}/v1/supplier/fleet/vehicles/${vehicleId}`, {
+      const res = await apiFetch(`/v1/supplier/fleet/vehicles/${vehicleId}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${getToken()}`,
           'Idempotency-Key': buildSupplierFleetVehicleDeactivateIdempotencyKey(vehicleId),
         },
       });
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast('Vehicle deactivation queued — will replay when back online', 'success');
+        return;
+      }
       if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: 'Deactivate vehicle failed' }));
         toast(body.error || 'Failed to deactivate vehicle', 'error');
         return;
       }
@@ -352,18 +362,21 @@ export default function FleetPage() {
 
   async function handleClearReturns(vehicleId: string) {
     try {
-      const res = await fetch(`${API}/v1/vehicle/${vehicleId}/clear-returns`, {
+      const res = await apiFetch(`/v1/vehicle/${vehicleId}/clear-returns`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${getToken()}`,
           'Idempotency-Key': buildSupplierFleetClearReturnsIdempotencyKey(vehicleId),
         },
       });
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast('Return clearance queued — will replay when back online', 'success');
+        return;
+      }
       if (res.ok) {
         toast('Returns cleared — depot receipt confirmed', 'success');
         fetchCapacity();
       } else {
-        const body = await res.json().catch(() => ({ error: 'Clear returns failed' }));
         toast(body.error || 'Failed to clear returns', 'error');
       }
     } catch {

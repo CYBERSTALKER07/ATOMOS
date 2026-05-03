@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { readTokenFromCookie as getToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import { Button } from '@heroui/react';
 import Icon from '@/components/Icon';
 import EmptyState from '@/components/EmptyState';
 import { buildSupplierShopClosedResolveIdempotencyKey } from '../../_shared/idempotency';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface ShopClosedDTO {
   attempt_id: string;
@@ -25,10 +23,7 @@ export default function ShopClosedExceptions() {
 
   const fetchExceptions = () => {
     setLoading(true);
-    const token = getToken();
-    fetch(`${API}/v1/admin/shop-closed/active`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+    apiFetch('/v1/admin/shop-closed/active')
     .then(res => res.json())
     .then(j => setData(j.data || []))
     .finally(() => setLoading(false));
@@ -37,17 +32,16 @@ export default function ShopClosedExceptions() {
   useEffect(() => fetchExceptions(), []);
 
   const resolve = async (attemptId: string, action: string) => {
-    const token = getToken();
-    const res = await fetch(`${API}/v1/admin/shop-closed/resolve`, {
+    const res = await apiFetch('/v1/admin/shop-closed/resolve', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
         'Idempotency-Key': buildSupplierShopClosedResolveIdempotencyKey(attemptId, action),
       },
       body: JSON.stringify({ attempt_id: attemptId, action })
     });
-    if (res.ok) fetchExceptions();
+    const body = await res.json().catch(() => ({} as { queued?: boolean }));
+    if (body.queued) alert('Resolution queued — it will replay when back online');
+    else if (res.ok) fetchExceptions();
     else alert('Failed to resolve');
   };
 

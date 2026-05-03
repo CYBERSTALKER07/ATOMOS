@@ -3,9 +3,7 @@
 import VelocityChart from '@/components/VelocityChart';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { readTokenFromCookie as getToken } from '@/lib/auth';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+import { apiFetch } from '@/lib/auth';
 
 interface SkuVelocity {
   sku_id: string;
@@ -29,16 +27,11 @@ export default function SupplierDashboard() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) { setError('Unauthorized — supplier credentials required'); setLoading(false); return; }
-
-    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-
     Promise.all([
-      fetch(`${API}/v1/supplier/analytics/velocity`, { headers })
+      apiFetch('/v1/supplier/analytics/velocity')
         .then(res => { if (!res.ok) throw new Error(`Analytics fetch failed: ${res.status}`); return res.json(); })
         .then(json => setVelocityData(json.data || [])),
-      fetch(`${API}/v1/supplier/analytics/demand/today`, { headers })
+      apiFetch('/v1/supplier/analytics/demand/today')
         .then(res => res.ok ? res.json() : null)
         .then(json => { if (json) setDemand(json); }),
     ])

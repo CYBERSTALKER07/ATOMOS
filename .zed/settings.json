@@ -6,7 +6,7 @@
   },
   "context_servers": {
     "void-ast-engine": {
-      "command": "node",
+      "command": "/opt/homebrew/bin/node",
       "args": [
         "/Users/shakhzod/Desktop/V.O.I.D/.agents/extensions/ast-engine/mcp-server.mjs",
       ],

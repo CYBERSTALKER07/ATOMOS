@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { useToken } from '@/lib/auth';
+import { apiFetch, useToken } from '@/lib/auth';
 import { usePolling } from '@/lib/usePolling';
 import StatusBadge from '@/components/StatusBadge';
 import EmptyState from '@/components/EmptyState';
@@ -158,10 +158,7 @@ export default function DispatchPage() {
       try {
         const ts = result?.snapshot_timestamp || '';
         const q = ts ? `?after=${encodeURIComponent(ts)}` : '';
-        const res = await fetch(`${API}/v1/supplier/manifests/waiting-room${q}`, {
-          headers: { Authorization: `Bearer ${token}` },
-          signal,
-        });
+        const res = await apiFetch(`/v1/supplier/manifests/waiting-room${q}`, { signal });
         if (res.ok) {
           setWaitingRoom(await res.json());
         }
@@ -186,20 +183,28 @@ export default function DispatchPage() {
       if (excludedTruckIds.length > 0) {
         body.excluded_truck_ids = excludedTruckIds;
       }
-      const res = await fetch(`${API}/v1/supplier/manifests/auto-dispatch`, {
+      const res = await apiFetch('/v1/supplier/manifests/auto-dispatch', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildSupplierAutoDispatchIdempotencyKey(excludedTruckIds),
         },
         body: JSON.stringify(body),
       });
-      if (!res.ok) {
-        const err = await res.text();
-        throw new Error(err || 'Auto-dispatch failed');
+      const responseBody = await res.json().catch(() => ({} as {
+        queued?: boolean;
+        error?: string;
+        message?: string;
+        manifests?: TruckManifest[];
+        orphans?: OrphanOrder[];
+      }));
+      if (responseBody.queued) {
+        toast('Auto-dispatch queued — results will be available after reconnect', 'success');
+        return;
       }
-      const data: DispatchResult = await res.json();
+      if (!res.ok) {
+        throw new Error(responseBody.error || responseBody.message || 'Auto-dispatch failed');
+      }
+      const data = responseBody as DispatchResult;
       setResult(data);
       setExpandedManifest(null);
       toast(
@@ -220,29 +225,33 @@ export default function DispatchPage() {
     setConfirming(true);
     let ok = 0;
     let fail = 0;
+    let queued = 0;
     for (const m of result.manifests) {
       try {
-        const res = await fetch(`${API}/v1/fleet/dispatch`, {
+        const res = await apiFetch('/v1/fleet/dispatch', {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
             'Idempotency-Key': buildSupplierFleetDispatchIdempotencyKey(m.route_id, m.orders.map((o) => o.order_id)),
           },
           body: JSON.stringify({ order_ids: m.orders.map((o) => o.order_id), route_id: m.route_id }),
         });
-        if (res.ok) ok++;
+        const body = await res.json().catch(() => ({} as { queued?: boolean }));
+        if (body.queued) queued++;
+        else if (res.ok) ok++;
         else fail++;
       } catch {
         fail++;
       }
     }
     setConfirming(false);
-    if (fail === 0) {
+    if (fail === 0 && queued === 0) {
       toast(`Dispatched ${ok} truck(s) successfully`, 'success');
       setResult(null);
+    } else if (fail === 0) {
+      toast(`Dispatched ${ok} truck(s), queued ${queued} for replay`, 'success');
+      setResult(null);
     } else {
-      toast(`${ok} succeeded, ${fail} failed — check fleet status`, 'error');
+      toast(`${ok} succeeded, ${queued} queued, ${fail} failed — check fleet status`, 'error');
     }
   }, [token, result, toast]);
 
@@ -278,17 +287,30 @@ export default function DispatchPage() {
     setReassigning(true);
     try {
       // RouteId == DriverId in this codebase; vehicle is bound to the driver.
-      const res = await fetch(`${API}/v1/fleet/reassign`, {
+      const res = await apiFetch('/v1/fleet/reassign', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildSupplierFleetReassignIdempotencyKey(newDriverId, [reDispatchOrderId]),
         },
         body: JSON.stringify({ order_ids: [reDispatchOrderId], new_route_id: newDriverId }),
       });
-      if (!res.ok) throw new Error(await res.text() || `HTTP ${res.status}`);
-      const data: { conflicts?: Array<{ order_id: string; reason: string }> } = await res.json().catch(() => ({}));
+      const data: {
+        queued?: boolean;
+        error?: string;
+        message?: string;
+        conflicts?: Array<{ order_id: string; reason: string }>;
+      } = await res.json().catch(() => ({} as {
+        queued?: boolean;
+        error?: string;
+        message?: string;
+        conflicts?: Array<{ order_id: string; reason: string }>;
+      }));
+      if (data.queued) {
+        toast('Reassignment queued — will replay when back online', 'success');
+        setReDispatchOrderId(null);
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
       if (data.conflicts && data.conflicts.length > 0) {
         toast(data.conflicts.map(c => `${c.order_id.slice(0, 8)}: ${c.reason}`).join('; '), 'error');
       } else {
@@ -347,28 +369,42 @@ export default function DispatchPage() {
     }
     setManualDispatching(driverId);
     try {
-      const res = await fetch(`${API}/v1/supplier/manifests/manual-dispatch`, {
+      const res = await apiFetch('/v1/supplier/manifests/manual-dispatch', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildSupplierManualDispatchIdempotencyKey(driverId, [...orderIds]),
         },
         body: JSON.stringify({ driver_id: driverId, order_ids: [...orderIds] }),
       });
-      if (!res.ok) throw new Error(await res.text() || 'Manual dispatch failed');
-      const manifest: TruckManifest = await res.json();
+      const body = await res.json().catch(() => ({} as {
+        queued?: boolean;
+        error?: string;
+        message?: string;
+      }));
+      if (body.queued) {
+        toast('Manual dispatch queued — confirmation will resume after reconnect', 'success');
+        return;
+      }
+      if (!res.ok) throw new Error(body.error || body.message || 'Manual dispatch failed');
+      const manifest = body as TruckManifest;
 
-      const confirmRes = await fetch(`${API}/v1/fleet/dispatch`, {
+      const confirmRes = await apiFetch('/v1/fleet/dispatch', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildSupplierFleetDispatchIdempotencyKey(manifest.route_id, [...orderIds]),
         },
         body: JSON.stringify({ order_ids: [...orderIds], route_id: manifest.route_id }),
       });
-      if (!confirmRes.ok) throw new Error('Fleet dispatch confirmation failed');
+      const confirmBody = await confirmRes.json().catch(() => ({} as {
+        queued?: boolean;
+        error?: string;
+        message?: string;
+      }));
+      if (confirmBody.queued) {
+        toast('Fleet dispatch confirmation queued — will replay when back online', 'success');
+        return;
+      }
+      if (!confirmRes.ok) throw new Error(confirmBody.error || confirmBody.message || 'Fleet dispatch confirmation failed');
 
       setDispatchedDrivers((prev) => new Set([...prev, driverId]));
       const driverName = recommendations?.manifests.find((m) => m.driver_id === driverId)?.driver_name ?? driverId;

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { readTokenFromCookie as getToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import { usePagination } from '@/lib/usePagination';
 import PaginationControls from '@/components/PaginationControls';
 import Icon from '@/components/Icon';
@@ -33,10 +33,7 @@ interface CRMRetailerDetail extends CRMRetailer {
 }
 
 async function fetchRetailers(): Promise<CRMRetailer[]> {
-  const token = getToken();
-  if (!token) return [];
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/supplier/crm/retailers`, {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+  const res = await apiFetch('/v1/supplier/crm/retailers', {
     cache: 'no-store',
   });
   if (!res.ok) return [];
@@ -44,10 +41,7 @@ async function fetchRetailers(): Promise<CRMRetailer[]> {
 }
 
 async function fetchRetailerDetail(retailerId: string): Promise<CRMRetailerDetail | null> {
-  const token = getToken();
-  if (!token) return null;
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/supplier/crm/retailers/${encodeURIComponent(retailerId)}`, {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+  const res = await apiFetch(`/v1/supplier/crm/retailers/${encodeURIComponent(retailerId)}`, {
     cache: 'no-store',
   });
   if (!res.ok) return null;

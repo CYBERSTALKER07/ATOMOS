@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense } from "react";
-import { getAdminToken } from "@/lib/auth";
+import { apiFetch } from "@/lib/auth";
 import { usePolling } from "@/lib/usePolling";
 import { useTelemetry } from "@/hooks/useTelemetry";
 import type { TelemetryMessage } from "@/hooks/useTelemetry";
 import { isTauri } from "@/lib/bridge";
+import { buildSupplierFleetDispatchIdempotencyKey } from "@/app/supplier/_shared/idempotency";
 import { Card, Button, Chip, Skeleton } from "@heroui/react";
 import { BentoGrid, BentoCard, BentoSkeleton } from "@/components/BentoGrid";
 import CountUp from "@/components/CountUp";
@@ -141,16 +142,9 @@ export default function AdminDashboard() {
   const fetchOrders = useCallback(
     async (signal?: AbortSignal) => {
       try {
-        const token = await getAdminToken();
         const [ordersRes, driversRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/orders`, {
-            headers: { Authorization: `Bearer ${token}` },
-            signal,
-          }),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/supplier/fleet/drivers`, {
-            headers: { Authorization: `Bearer ${token}` },
-            signal,
-          }),
+          apiFetch("/v1/orders", { signal }),
+          apiFetch("/v1/supplier/fleet/drivers", { signal }),
         ]);
         if (ordersRes.ok) {
           const data = await ordersRes.json();
@@ -277,20 +271,30 @@ export default function AdminDashboard() {
     setDispatchMsg(null);
     setManifests([]);
     try {
-      const token = await getAdminToken();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/fleet/dispatch`, {
+      const payload = { order_ids: Array.from(selectedOrders), route_id: targetRoute };
+      const res = await apiFetch("/v1/fleet/dispatch", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ order_ids: Array.from(selectedOrders), route_id: targetRoute }),
+        headers: {
+          "Idempotency-Key": buildSupplierFleetDispatchIdempotencyKey(targetRoute, payload.order_ids),
+        },
+        body: JSON.stringify(payload),
       });
-      if (res.ok) {
-        const body = await res.json();
+      const body = await res.json().catch(() => ({} as {
+        queued?: boolean;
+        message?: string;
+        error?: string;
+        manifests?: TruckManifest[];
+      }));
+      if (body.queued) {
         setSelectedOrders(new Set());
-        setDispatchMsg({ ok: true, text: `${body.message}` });
+        setDispatchMsg({ ok: true, text: "Dispatch queued — will replay when back online" });
+      } else if (res.ok) {
+        setSelectedOrders(new Set());
+        setDispatchMsg({ ok: true, text: body.message || "Dispatch submitted" });
         setManifests(body.manifests ?? []);
         fetchOrders();
       } else {
-        setDispatchMsg({ ok: false, text: `${await res.text()}` });
+        setDispatchMsg({ ok: false, text: body.error || body.message || `Error ${res.status}` });
       }
     } catch (e: unknown) {
       setDispatchMsg({
