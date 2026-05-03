@@ -1,6 +1,8 @@
 package authroutes
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 
 	"backend-go/auth"
@@ -37,8 +39,12 @@ func Register(r chi.Router, deps Deps) {
 	log := deps.Log
 	authRL := deps.RateLimit
 	actorRL := deps.ActorRateLimit
+	idem := deps.Idempotency
 	if actorRL == nil {
 		actorRL = authRL
+	}
+	if idem == nil {
+		idem = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
 	// Legacy web retailer login now shares the auth limiter for brute-force
@@ -68,5 +74,5 @@ func Register(r chi.Router, deps Deps) {
 	r.HandleFunc("/v1/auth/factory/register",
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, actorRL(log(factory.HandleFactoryRegister(s)))))
 	r.HandleFunc("/v1/auth/warehouse/register",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, actorRL(log(warehouse.HandleWarehouseRegister(s)))))
+		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, actorRL(log(idem(warehouse.HandleWarehouseRegister(s))))))
 }

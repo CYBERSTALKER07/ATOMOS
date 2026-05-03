@@ -193,6 +193,29 @@ func TestRegisterRoutes_WarehouseActionUsesIdempotency(t *testing.T) {
 	}
 }
 
+func TestRegisterRoutes_WarehouseStaffActionUsesIdempotency(t *testing.T) {
+	token := supplierTestToken(t)
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "warehouse-staff-action"),
+	})
+
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/warehouse-staff/", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "warehouse-staff-action" {
+		t.Fatalf("idempotency guard header = %q, want warehouse-staff-action", got)
+	}
+}
+
 func supplierTestToken(t *testing.T) string {
 	t.Helper()
 

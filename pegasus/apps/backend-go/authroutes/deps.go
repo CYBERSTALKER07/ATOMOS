@@ -46,4 +46,6 @@ type Deps struct {
 	// ActorRateLimit is a per-authenticated-actor limiter used on token-refresh
 	// and role-gated auth management paths (typically APIRateLimit).
 	ActorRateLimit Middleware
+	// Idempotency protects replay-prone authenticated registration mutations.
+	Idempotency Middleware
 }

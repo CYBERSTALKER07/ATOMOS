@@ -88,7 +88,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/warehouse-staff",
 		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleWarehouseStaff(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/warehouse-staff/",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleWarehouseStaffToggle(d.Spanner)))))
+		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(supplier.HandleWarehouseStaffToggle(d.Spanner))))))
 	r.HandleFunc("/v1/supplier/warehouses",
 		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(supplier.HandleWarehouses(d.Spanner, d.Producer))))))
 	r.HandleFunc("/v1/supplier/warehouses/",

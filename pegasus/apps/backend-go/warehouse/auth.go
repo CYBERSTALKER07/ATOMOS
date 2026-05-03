@@ -3,17 +3,27 @@ package warehouse
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"backend-go/auth"
+	"backend-go/pkg/pin"
 
 	"cloud.google.com/go/spanner"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/iterator"
+)
+
+var (
+	errWarehouseRegisterWarehouseNotFound  = errors.New("warehouse not found")
+	errWarehouseRegisterWarehouseForbidden = errors.New("warehouse does not belong to your organization")
+	errWarehouseRegisterPhoneConflict      = errors.New("phone number already registered")
 )
 
 // HandleWarehouseLogin authenticates a warehouse staff member with phone + PIN.
@@ -159,51 +169,68 @@ func HandleWarehouseRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			req.Role = "WAREHOUSE_STAFF"
 		}
 
-		// Verify warehouse belongs to the supplier
-		whRow, err := spannerClient.Single().ReadRow(r.Context(), "Warehouses",
-			spanner.Key{req.WarehouseId}, []string{"SupplierId"})
-		if err != nil {
-			http.Error(w, `{"error":"warehouse not found"}`, http.StatusNotFound)
-			return
-		}
-		var warehouseSupplierId string
-		if err := whRow.Columns(&warehouseSupplierId); err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		if warehouseSupplierId != claims.ResolveSupplierID() {
-			http.Error(w, `{"error":"warehouse does not belong to your organization"}`, http.StatusForbidden)
-			return
-		}
-
-		// Check duplicate phone
-		dupStmt := spanner.Statement{
-			SQL:    `SELECT WorkerId FROM WarehouseStaff WHERE Phone = @phone LIMIT 1`,
-			Params: map[string]interface{}{"phone": req.Phone},
-		}
-		dupIter := spannerClient.Single().Query(r.Context(), dupStmt)
-		dupRow, dupErr := dupIter.Next()
-		dupIter.Stop()
-		if dupErr == nil && dupRow != nil {
-			http.Error(w, `{"error":"phone number already registered"}`, http.StatusConflict)
-			return
-		}
-
-		hash, err := bcrypt.GenerateFromPassword([]byte(req.PIN), bcrypt.DefaultCost)
-		if err != nil {
-			log.Printf("[WAREHOUSE REGISTER] bcrypt error: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
+		supplierID := claims.ResolveSupplierID()
 		workerId := uuid.New().String()
-		m := spanner.Insert("WarehouseStaff",
-			[]string{"WorkerId", "SupplierId", "WarehouseId", "Name", "Phone", "PinHash", "Role", "IsActive", "CreatedAt"},
-			[]interface{}{workerId, claims.ResolveSupplierID(), req.WarehouseId, req.Name, req.Phone, string(hash), req.Role, true, spanner.CommitTimestamp},
-		)
 		if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-			return txn.BufferWrite([]*spanner.Mutation{m})
+			warehouseRow, readErr := txn.ReadRow(ctx, "Warehouses", spanner.Key{req.WarehouseId}, []string{"SupplierId"})
+			if readErr != nil {
+				if errors.Is(readErr, spanner.ErrRowNotFound) {
+					return errWarehouseRegisterWarehouseNotFound
+				}
+				return fmt.Errorf("read warehouse %s: %w", req.WarehouseId, readErr)
+			}
+
+			var warehouseSupplierId string
+			if err := warehouseRow.Columns(&warehouseSupplierId); err != nil {
+				return fmt.Errorf("read warehouse %s supplier: %w", req.WarehouseId, err)
+			}
+			if warehouseSupplierId != supplierID {
+				return errWarehouseRegisterWarehouseForbidden
+			}
+
+			dupIter := txn.Query(ctx, spanner.Statement{
+				SQL:    `SELECT WorkerId FROM WarehouseStaff WHERE Phone = @phone LIMIT 1`,
+				Params: map[string]interface{}{"phone": req.Phone},
+			})
+			defer dupIter.Stop()
+
+			dupRow, dupErr := dupIter.Next()
+			switch dupErr {
+			case nil:
+				if dupRow != nil {
+					return errWarehouseRegisterPhoneConflict
+				}
+			case iterator.Done:
+			default:
+				return fmt.Errorf("query duplicate warehouse staff phone %s: %w", req.Phone, dupErr)
+			}
+
+			hash, pinErr := pin.RegisterExisting(ctx, txn, req.PIN, pin.EntityWarehouseStaff, workerId)
+			if pinErr != nil {
+				return fmt.Errorf("register warehouse staff pin: %w", pinErr)
+			}
+
+			return txn.BufferWrite([]*spanner.Mutation{
+				spanner.Insert("WarehouseStaff",
+					[]string{"WorkerId", "SupplierId", "WarehouseId", "Name", "Phone", "PinHash", "Role", "IsActive", "CreatedAt"},
+					[]interface{}{workerId, supplierID, req.WarehouseId, req.Name, req.Phone, hash, req.Role, true, spanner.CommitTimestamp},
+				),
+			})
 		}); err != nil {
+			switch {
+			case errors.Is(err, errWarehouseRegisterWarehouseNotFound):
+				http.Error(w, `{"error":"warehouse not found"}`, http.StatusNotFound)
+				return
+			case errors.Is(err, errWarehouseRegisterWarehouseForbidden):
+				http.Error(w, `{"error":"warehouse does not belong to your organization"}`, http.StatusForbidden)
+				return
+			case errors.Is(err, errWarehouseRegisterPhoneConflict):
+				http.Error(w, `{"error":"phone number already registered"}`, http.StatusConflict)
+				return
+			case strings.Contains(err.Error(), "PIN already in use"):
+				http.Error(w, `{"error":"pin already in use"}`, http.StatusConflict)
+				return
+			}
 			log.Printf("[WAREHOUSE REGISTER] spanner insert error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return

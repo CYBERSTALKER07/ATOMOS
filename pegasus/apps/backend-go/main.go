@@ -293,6 +293,7 @@ func main() {
 		Log:            loggingMiddleware,
 		RateLimit:      cache.RateLimitMiddleware(cache.AuthRateLimit()),
 		ActorRateLimit: cache.RateLimitMiddleware(cache.APIRateLimit()),
+		Idempotency:    idempotency.Guard,
 	})
 
 	// /v1/user/* — device-token + notification inbox (3 routes).

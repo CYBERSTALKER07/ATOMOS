@@ -64,3 +64,14 @@ export function buildSupplierWarehouseCoverageIdempotencyKey(
 ): string {
   return ['supplier-warehouse-coverage', warehouseId.trim(), stableSerialize(payload)].join(':');
 }
+
+export function buildSupplierWarehouseStaffCreateIdempotencyKey(payload: Record<string, unknown>): string {
+  return ['supplier-warehouse-staff-create', stableSerialize(payload)].join(':');
+}
+
+export function buildSupplierWarehouseStaffToggleIdempotencyKey(
+  workerId: string,
+  payload: Record<string, unknown>,
+): string {
+  return ['supplier-warehouse-staff-toggle', workerId.trim(), stableSerialize(payload)].join(':');
+}

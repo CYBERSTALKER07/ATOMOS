@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@heroui/react';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
+import { buildSupplierWarehouseStaffCreateIdempotencyKey, buildSupplierWarehouseStaffToggleIdempotencyKey } from '../_shared/idempotency';
 
 interface StaffMember {
   worker_id: string;
@@ -72,15 +73,19 @@ export default function WarehouseStaffPanel({
     setCreating(true);
     setCreateError('');
     try {
+      const payload = {
+        warehouse_id: warehouseId,
+        name: formName.trim(),
+        phone: formPhone.trim(),
+        pin: formPin,
+        role: formRole,
+      };
       const res = await apiFetch('/v1/auth/warehouse/register', {
         method: 'POST',
-        body: JSON.stringify({
-          warehouse_id: warehouseId,
-          name: formName.trim(),
-          phone: formPhone.trim(),
-          pin: formPin,
-          role: formRole,
-        }),
+        headers: {
+          'Idempotency-Key': buildSupplierWarehouseStaffCreateIdempotencyKey(payload),
+        },
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -101,12 +106,16 @@ export default function WarehouseStaffPanel({
   };
 
   const handleToggle = async (member: StaffMember) => {
+    const payload = {
+      warehouse_id: warehouseId,
+      is_active: !member.is_active,
+    };
     const res = await apiFetch(`/v1/supplier/warehouse-staff/${member.worker_id}`, {
       method: 'PATCH',
-      body: JSON.stringify({
-        warehouse_id: warehouseId,
-        is_active: !member.is_active,
-      }),
+      headers: {
+        'Idempotency-Key': buildSupplierWarehouseStaffToggleIdempotencyKey(member.worker_id, payload),
+      },
+      body: JSON.stringify(payload),
     });
     if (res.ok) fetchStaff();
   };
