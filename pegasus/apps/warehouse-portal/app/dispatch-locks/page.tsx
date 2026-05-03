@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useEffectEvent, useState } from 'react';
-import { apiFetch, connectWarehouseWS } from '@/lib/auth';
+import { apiFetch, subscribeWarehouseWS, type WarehouseSocketStatus } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import { useToast } from '@/components/Toast';
 import type { WarehouseDispatchLock, WarehouseLiveEvent } from '@pegasus/types';
@@ -11,6 +11,7 @@ export default function DispatchLocksPage() {
   const [locks, setLocks] = useState<WarehouseDispatchLock[]>([]);
   const [loading, setLoading] = useState(true);
   const [releasing, setReleasing] = useState<string | null>(null);
+  const [socketStatus, setSocketStatus] = useState<WarehouseSocketStatus>('connecting');
 
   const loadLocks = useEffectEvent(async () => {
     setLoading(true);
@@ -39,15 +40,16 @@ export default function DispatchLocksPage() {
   }, [loadLocks]);
 
   useEffect(() => {
-    const socket = connectWarehouseWS();
-    socket.onmessage = message => {
+    return subscribeWarehouseWS({
+      onStatusChange: setSocketStatus,
+      onMessage: payload => {
       try {
-        handleWarehouseLiveEvent(JSON.parse(message.data) as WarehouseLiveEvent);
+        handleWarehouseLiveEvent(JSON.parse(payload) as WarehouseLiveEvent);
       } catch {
         // Ignore unrelated frames.
       }
-    };
-    return () => socket.close();
+      },
+    });
   }, [handleWarehouseLiveEvent]);
 
   async function handleAcquire() {
@@ -114,6 +116,18 @@ export default function DispatchLocksPage() {
           </button>
         </div>
       </div>
+
+      {socketStatus !== 'idle' && socketStatus !== 'live' && (
+        <div className={`rounded-xl border px-4 py-3 text-sm ${socketStatus === 'offline'
+          ? 'border-[var(--danger)]/30 bg-[var(--danger)]/8 text-[var(--danger)]'
+          : 'border-[var(--warning)]/30 bg-[var(--warning)]/8 text-[var(--warning)]'}`}>
+          {socketStatus === 'offline'
+            ? 'Offline. Live dispatch-lock updates are paused until the network returns.'
+            : socketStatus === 'reconnecting'
+              ? 'Live dispatch-lock updates are reconnecting. Current lock state may be stale.'
+              : 'Connecting live dispatch-lock updates…'}
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-2">

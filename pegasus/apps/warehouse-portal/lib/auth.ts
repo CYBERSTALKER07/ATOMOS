@@ -99,3 +99,89 @@ export function connectWarehouseWS(): WebSocket {
   const token = readTokenFromCookie();
   return new WebSocket(`${wsBase}/ws/warehouse?token=${encodeURIComponent(token)}`);
 }
+
+export type WarehouseSocketStatus = 'idle' | 'connecting' | 'live' | 'reconnecting' | 'offline';
+
+export function subscribeWarehouseWS(options: {
+  onMessage: (payload: string) => void;
+  onStatusChange?: (status: WarehouseSocketStatus) => void;
+}): () => void {
+  let socket: WebSocket | null = null;
+  let reconnectTimer: number | null = null;
+  let reconnectAttempt = 0;
+  let disposed = false;
+
+  const clearReconnect = () => {
+    if (reconnectTimer !== null) {
+      window.clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+  };
+
+  const openSocket = (isReconnect: boolean) => {
+    if (disposed) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      options.onStatusChange?.('offline');
+      return;
+    }
+
+    options.onStatusChange?.(isReconnect ? 'reconnecting' : 'connecting');
+    socket = connectWarehouseWS();
+
+    socket.onopen = () => {
+      reconnectAttempt = 0;
+      options.onStatusChange?.('live');
+    };
+
+    socket.onmessage = event => {
+      options.onMessage(String(event.data));
+    };
+
+    socket.onerror = () => {
+      socket?.close();
+    };
+
+    socket.onclose = () => {
+      socket = null;
+      if (disposed) {
+        options.onStatusChange?.('idle');
+        return;
+      }
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        options.onStatusChange?.('offline');
+        return;
+      }
+      reconnectAttempt += 1;
+      options.onStatusChange?.('reconnecting');
+      reconnectTimer = window.setTimeout(() => {
+        openSocket(true);
+      }, Math.min(30_000, 1_000 * 2 ** (reconnectAttempt - 1)));
+    };
+  };
+
+  const handleOnline = () => {
+    if (disposed || socket) return;
+    openSocket(reconnectAttempt > 0);
+  };
+
+  const handleOffline = () => {
+    clearReconnect();
+    options.onStatusChange?.('offline');
+    socket?.close();
+    socket = null;
+  };
+
+  window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
+  openSocket(false);
+
+  return () => {
+    disposed = true;
+    clearReconnect();
+    window.removeEventListener('online', handleOnline);
+    window.removeEventListener('offline', handleOffline);
+    socket?.close();
+    socket = null;
+    options.onStatusChange?.('idle');
+  };
+}

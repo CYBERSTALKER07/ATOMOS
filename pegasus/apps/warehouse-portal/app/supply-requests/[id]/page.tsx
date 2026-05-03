@@ -2,20 +2,21 @@
 
 import { useEffect, useEffectEvent, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { apiFetch, connectWarehouseWS } from '@/lib/auth';
+import { apiFetch, subscribeWarehouseWS, type WarehouseSocketStatus } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import { useToast } from '@/components/Toast';
 import type { WarehouseLiveEvent, WarehouseSupplyRequestDetail } from '@pegasus/types';
 
 const ACTIONS: Record<string, { label: string; action: string; variant: string }[]> = {
   DRAFT: [
-    { label: 'Submit', action: 'submit', variant: 'button--primary' },
     { label: 'Cancel', action: 'cancel', variant: 'button--danger' },
   ],
   SUBMITTED: [
     { label: 'Cancel', action: 'cancel', variant: 'button--danger' },
   ],
-  ACKNOWLEDGED: [],
+  ACKNOWLEDGED: [
+    { label: 'Cancel', action: 'cancel', variant: 'button--danger' },
+  ],
   IN_PRODUCTION: [],
   READY: [],
   FULFILLED: [],
@@ -42,6 +43,7 @@ export default function SupplyRequestDetailPage() {
   const [detail, setDetail] = useState<WarehouseSupplyRequestDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const [socketStatus, setSocketStatus] = useState<WarehouseSocketStatus>('connecting');
 
   const id = params.id as string;
 
@@ -74,15 +76,16 @@ export default function SupplyRequestDetailPage() {
   }, [id, loadDetail]);
 
   useEffect(() => {
-    const socket = connectWarehouseWS();
-    socket.onmessage = message => {
+    return subscribeWarehouseWS({
+      onStatusChange: setSocketStatus,
+      onMessage: payload => {
       try {
-        handleWarehouseLiveEvent(JSON.parse(message.data) as WarehouseLiveEvent);
+        handleWarehouseLiveEvent(JSON.parse(payload) as WarehouseLiveEvent);
       } catch {
         // Ignore unrelated frames.
       }
-    };
-    return () => socket.close();
+      },
+    });
   }, [handleWarehouseLiveEvent]);
 
   async function handleAction(action: string) {
@@ -131,6 +134,18 @@ export default function SupplyRequestDetailPage() {
         </div>
         <span className={`status-chip ${chipClass(detail.state)}`}>{detail.state}</span>
       </div>
+
+      {socketStatus !== 'idle' && socketStatus !== 'live' && (
+        <div className={`rounded-xl border px-4 py-3 text-sm ${socketStatus === 'offline'
+          ? 'border-[var(--danger)]/30 bg-[var(--danger)]/8 text-[var(--danger)]'
+          : 'border-[var(--warning)]/30 bg-[var(--warning)]/8 text-[var(--warning)]'}`}>
+          {socketStatus === 'offline'
+            ? 'Offline. This supply request will not receive live state changes until the network returns.'
+            : socketStatus === 'reconnecting'
+              ? 'Live request updates are reconnecting. The current state may be stale.'
+              : 'Connecting live request updates…'}
+        </div>
+      )}
 
       {/* Metadata grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

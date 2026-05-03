@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useEffectEvent, useState } from 'react';
-import { apiFetch, connectWarehouseWS } from '@/lib/auth';
+import { apiFetch, subscribeWarehouseWS, type WarehouseSocketStatus } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -29,6 +29,7 @@ export default function SupplyRequestsPage() {
   const [requests, setRequests] = useState<WarehouseSupplyRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
+  const [socketStatus, setSocketStatus] = useState<WarehouseSocketStatus>('connecting');
 
   const loadRequests = useEffectEvent(async () => {
     setLoading(true);
@@ -57,15 +58,16 @@ export default function SupplyRequestsPage() {
   }, [loadRequests]);
 
   useEffect(() => {
-    const socket = connectWarehouseWS();
-    socket.onmessage = message => {
+    return subscribeWarehouseWS({
+      onStatusChange: setSocketStatus,
+      onMessage: payload => {
       try {
-        handleWarehouseLiveEvent(JSON.parse(message.data) as WarehouseLiveEvent);
+        handleWarehouseLiveEvent(JSON.parse(payload) as WarehouseLiveEvent);
       } catch {
         // Ignore unrelated frames.
       }
-    };
-    return () => socket.close();
+      },
+    });
   }, [handleWarehouseLiveEvent]);
 
   const filtered = filter === 'ALL' ? requests : requests.filter(r => r.state === filter);
@@ -113,6 +115,18 @@ export default function SupplyRequestsPage() {
           </button>
         ))}
       </div>
+
+      {socketStatus !== 'idle' && socketStatus !== 'live' && (
+        <div className={`rounded-xl border px-4 py-3 text-sm ${socketStatus === 'offline'
+          ? 'border-[var(--danger)]/30 bg-[var(--danger)]/8 text-[var(--danger)]'
+          : 'border-[var(--warning)]/30 bg-[var(--warning)]/8 text-[var(--warning)]'}`}>
+          {socketStatus === 'offline'
+            ? 'Offline. Live supply-request updates are paused until the network returns.'
+            : socketStatus === 'reconnecting'
+              ? 'Live supply-request updates are reconnecting. Current data may be stale.'
+              : 'Connecting live supply-request updates…'}
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-2">
