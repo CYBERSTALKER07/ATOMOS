@@ -1,14 +1,11 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import { usePolling } from '@/lib/usePolling';
 import EmptyState from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
 import Icon from '@/components/Icon';
-import { Button } from '@heroui/react';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 /* ─── Types ───────────────────────────────────────────────── */
 
@@ -52,19 +49,14 @@ function reasonBadge(reason: string) {
 /* ─── Page ────────────────────────────────────────────────── */
 
 export default function ManifestExceptionsPage() {
-  const token = useToken();
   const [exceptions, setExceptions] = useState<ManifestException[]>([]);
   const [loading, setLoading] = useState(true);
   const [escalatedOnly, setEscalatedOnly] = useState(false);
 
   const fetchExceptions = useCallback(async (signal?: AbortSignal) => {
-    if (!token) return;
     try {
       const qs = escalatedOnly ? '?escalated=true' : '';
-      const res = await fetch(`${API}/v1/supplier/manifest-exceptions${qs}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        signal,
-      });
+      const res = await apiFetch(`/v1/supplier/manifest-exceptions${qs}`, { signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setExceptions(data.exceptions || []);
@@ -73,7 +65,7 @@ export default function ManifestExceptionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, escalatedOnly]);
+  }, [escalatedOnly]);
 
   usePolling(fetchExceptions, 15000);
 

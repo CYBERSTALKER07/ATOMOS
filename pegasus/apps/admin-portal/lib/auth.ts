@@ -91,6 +91,10 @@ export async function getAdminToken(): Promise<string> {
  */
 let refreshInFlight: Promise<string | null> | null = null;
 
+type ApiFetchOptions = {
+  queueMutableOnNetworkError?: boolean;
+};
+
 async function tryRefreshToken(): Promise<string | null> {
   const oldToken = readTokenFromCookie();
   if (!oldToken) return null;
@@ -115,7 +119,7 @@ async function tryRefreshToken(): Promise<string | null> {
   }
 }
 
-export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+async function performApiFetch(path: string, init?: RequestInit, options?: ApiFetchOptions): Promise<Response> {
   // Prefer Firebase ID token if a Firebase session exists, fall back to legacy JWT
   let token = await getFirebaseIdToken();
   if (!token) {
@@ -134,7 +138,7 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   } catch (err) {
     // Network failure — queue mutable requests for offline replay
     const method = (init?.method || 'GET').toUpperCase();
-    if (MUTABLE_METHODS.has(method) && typeof window !== 'undefined') {
+    if ((options?.queueMutableOnNetworkError ?? true) && MUTABLE_METHODS.has(method) && typeof window !== 'undefined') {
       OfflineManager.enqueue({
         url: path,
         method,
@@ -204,4 +208,12 @@ export async function apiFetch(path: string, init?: RequestInit): Promise<Respon
   }
 
   return res;
+}
+
+export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
+  return performApiFetch(path, init, { queueMutableOnNetworkError: true });
+}
+
+export async function apiFetchNoQueue(path: string, init?: RequestInit): Promise<Response> {
+  return performApiFetch(path, init, { queueMutableOnNetworkError: false });
 }

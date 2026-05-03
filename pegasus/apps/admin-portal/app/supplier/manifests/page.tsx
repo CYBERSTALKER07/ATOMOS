@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import EmptyState from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
 import Icon from '@/components/Icon';
@@ -11,8 +11,6 @@ import {
   buildSupplierManifestInjectOrderIdempotencyKey,
   buildSupplierManifestSealIdempotencyKey,
 } from '../_shared/idempotency';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 /* ─── Types ───────────────────────────────────────────────── */
 
@@ -52,10 +50,6 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function formatAmount(amount: number): string {
-  return new Intl.NumberFormat('en-US').format(amount);
-}
-
 function shortId(id: string): string {
   return id.length > 12 ? id.slice(0, 12) + '…' : id;
 }
@@ -63,7 +57,6 @@ function shortId(id: string): string {
 /* ─── Main Page ───────────────────────────────────────────── */
 
 export default function ManifestsPage() {
-  const token = useToken();
   const { toast } = useToast();
 
   const [date, setDate] = useState(todayISO);
@@ -81,19 +74,12 @@ export default function ManifestsPage() {
   /* ─── Fetch ─────────────────────────────────────────────── */
 
   const fetchData = useCallback(async () => {
-    if (!token) return;
-      setLoading(true);
-      try {
-        const [linesRes, ordersRes, manifestsRes] = await Promise.all([
-        fetch(`${API}/v1/supplier/picking-manifests?date=${date}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API}/v1/supplier/picking-manifests/orders?date=${date}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API}/v1/supplier/manifests`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+    setLoading(true);
+    try {
+      const [linesRes, ordersRes, manifestsRes] = await Promise.all([
+        apiFetch(`/v1/supplier/picking-manifests?date=${date}`),
+        apiFetch(`/v1/supplier/picking-manifests/orders?date=${date}`),
+        apiFetch('/v1/supplier/manifests'),
       ]);
       if (linesRes.ok) {
         const j = await linesRes.json();
@@ -112,7 +98,7 @@ export default function ManifestsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, date, toast]);
+  }, [date, toast]);
 
   useEffect(() => {
     fetchData();
@@ -121,11 +107,10 @@ export default function ManifestsPage() {
   /* ─── CSV Export ────────────────────────────────────────── */
 
   const exportCSV = useCallback(async () => {
-    if (!token) return;
     setExporting(true);
     try {
-      const res = await fetch(`${API}/v1/supplier/picking-manifests?date=${date}&format=csv`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'text/csv' },
+      const res = await apiFetch(`/v1/supplier/picking-manifests?date=${date}&format=csv`, {
+        headers: { Accept: 'text/csv' },
       });
       if (!res.ok) throw new Error('CSV export failed');
       const blob = await res.blob();
@@ -141,33 +126,36 @@ export default function ManifestsPage() {
     } finally {
       setExporting(false);
     }
-  }, [token, date, toast]);
+  }, [date, toast]);
 
   /* ─── Computed ──────────────────────────────────────────── */
 
   const totalQty = lines.reduce((a, l) => a + l.total_qty, 0);
   const totalOrders = orders.length;
   const totalSKUs = lines.length;
-  const loadingManifests = manifests.filter(m => m.state === 'LOADING');
 
   /* ─── Inject Order into LOADING Manifest ────────────────── */
 
   const handleInjectOrder = useCallback(async () => {
-    if (!token || !injectModalManifest || !injectOrderId.trim()) return;
+    if (!injectModalManifest || !injectOrderId.trim()) return;
     setIsInjecting(true);
     try {
-      const res = await fetch(`${API}/v1/supplier/manifests/${injectModalManifest}/inject-order`, {
+      const res = await apiFetch(`/v1/supplier/manifests/${injectModalManifest}/inject-order`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildSupplierManifestInjectOrderIdempotencyKey(injectModalManifest, injectOrderId.trim()),
         },
         body: JSON.stringify({ order_id: injectOrderId.trim() }),
       });
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast('Manifest injection queued — it will replay when back online', 'success');
+        setInjectModalManifest(null);
+        setInjectOrderId('');
+        return;
+      }
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-        throw new Error(err.error || `HTTP ${res.status}`);
+        throw new Error(body.error || body.message || `HTTP ${res.status}`);
       }
       toast('Order injected into manifest', 'success');
       setInjectModalManifest(null);
@@ -178,30 +166,31 @@ export default function ManifestsPage() {
     } finally {
       setIsInjecting(false);
     }
-  }, [token, injectModalManifest, injectOrderId, toast, fetchData]);
+  }, [injectModalManifest, injectOrderId, toast, fetchData]);
 
   /* ─── Force-Seal LOADING Manifest ───────────────────────── */
 
   const handleForceSeal = useCallback(async (manifestId: string) => {
-    if (!token) return;
     const reason = prompt('Force-seal reason (audit trail):');
     if (!reason) return;
     setForceSealingId(manifestId);
     try {
-      const res = await fetch(
-        `${API}/v1/supplier/manifests/${manifestId}/seal?override=admin&reason=${encodeURIComponent(reason)}`,
+      const res = await apiFetch(
+        `/v1/supplier/manifests/${manifestId}/seal?override=admin&reason=${encodeURIComponent(reason)}`,
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
             'Idempotency-Key': buildSupplierManifestSealIdempotencyKey(manifestId, reason),
           },
         }
       );
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast('Manifest seal queued — it will replay when back online', 'success');
+        return;
+      }
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
-        throw new Error(err.error || `HTTP ${res.status}`);
+        throw new Error(body.error || body.message || `HTTP ${res.status}`);
       }
       toast('Manifest force-sealed', 'success');
       fetchData();
@@ -210,7 +199,7 @@ export default function ManifestsPage() {
     } finally {
       setForceSealingId(null);
     }
-  }, [token, toast, fetchData]);
+  }, [toast, fetchData]);
 
   /* ─── Render ────────────────────────────────────────────── */
 

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useToken } from '@/lib/auth';
-import { readTokenFromCookie } from '@/lib/auth';
+import { apiFetch, useToken } from '@/lib/auth';
 import { usePolling } from '@/lib/usePolling';
 import { useTelemetry } from '@/hooks/useTelemetry';
 import type { TelemetryMessage } from '@/hooks/useTelemetry';
@@ -26,8 +25,6 @@ import {
   buildSupplierFleetReassignIdempotencyKey,
   buildSupplierResolveCreditIdempotencyKey,
 } from '../_shared/idempotency';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 /* ─── Types ───────────────────────────────────────────────── */
 
@@ -176,9 +173,7 @@ export default function OrdersPage() {
       } else {
         params.set('bucket', 'scheduled');
       }
-      const res = await fetch(`${API}/v1/supplier/orders?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/v1/supplier/orders?${params}`);
       if (!res.ok) throw new Error('Failed to load orders');
       const json = await res.json();
       const normalized = normalizeOrderListResponse(json, pageSize);
@@ -209,9 +204,7 @@ export default function OrdersPage() {
       } else {
         params.set('bucket', 'scheduled');
       }
-      const res = await fetch(`${API}/v1/supplier/orders?${params}`, {
-        headers: { Authorization: `Bearer ${token}` }, signal,
-      });
+      const res = await apiFetch(`/v1/supplier/orders?${params}`, { signal });
       if (!res.ok) return;
       const json = await res.json();
       const normalized = normalizeOrderListResponse(json, pageSize);
@@ -239,9 +232,7 @@ export default function OrdersPage() {
   const fetchTrucks = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch(`${API}/v1/supplier/fleet/drivers`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch('/v1/supplier/fleet/drivers');
       if (!res.ok) return;
       const drivers = await res.json();
       const list: SupplierDriverOption[] = Array.isArray(drivers) ? drivers : [];
@@ -261,9 +252,7 @@ export default function OrdersPage() {
   const fetchCapacity = useCallback(async (routeId: string) => {
     if (!token || !routeId) { setTargetCapacity(null); return; }
     try {
-      const res = await fetch(`${API}/v1/fleet/capacity?route_id=${encodeURIComponent(routeId)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/v1/fleet/capacity?route_id=${encodeURIComponent(routeId)}`);
       if (!res.ok) { setTargetCapacity(null); return; }
       setTargetCapacity(await res.json());
     } catch { setTargetCapacity(null); }
@@ -274,21 +263,29 @@ export default function OrdersPage() {
   async function vetOrder(orderId: string, decision: 'APPROVED' | 'REJECTED', reason?: string) {
     setActionLoading(orderId);
     try {
-      const res = await fetch(`${API}/v1/supplier/orders/vet`, {
+      const res = await apiFetch('/v1/supplier/orders/vet', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildOrderVettingIdempotencyKey(orderId, decision, reason),
         },
         body: JSON.stringify({ order_id: orderId, decision, reason: reason || '' }),
       });
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({ error: 'Action failed' }));
-        toast(errJson.error || 'Action failed', 'error');
+      const result = await res.json().catch(() => ({} as {
+        queued?: boolean;
+        error?: string;
+        message?: string;
+        status?: string;
+      }));
+      if (result.queued) {
+        toast(`Order ${shortId(orderId)} queued for replay`, 'success');
+        setRejectingId(null);
+        setRejectReason('');
         return;
       }
-      const result = await res.json();
+      if (!res.ok) {
+        toast(result.error || result.message || 'Action failed', 'error');
+        return;
+      }
       toast(`Order ${shortId(orderId)} ${result.status}`, 'success');
       setRejectingId(null);
       setRejectReason('');
@@ -305,18 +302,20 @@ export default function OrdersPage() {
   async function approveCancel(orderId: string) {
     setActionLoading(orderId);
     try {
-      const res = await fetch(`${API}/v1/admin/orders/approve-cancel`, {
+      const res = await apiFetch('/v1/admin/orders/approve-cancel', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildSupplierApproveCancelIdempotencyKey(orderId),
         },
         body: JSON.stringify({ order_id: orderId }),
       });
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast(`Cancel approval queued — ${shortId(orderId)}`, 'success');
+        return;
+      }
       if (!res.ok) {
-        const errJson = await res.json().catch(() => ({ error: 'Action failed' }));
-        toast(errJson.error || 'Failed to approve cancel', 'error');
+        toast(body.error || body.message || 'Failed to approve cancel', 'error');
         return;
       }
       toast(`Order ${shortId(orderId)} cancelled`, 'success');
@@ -333,18 +332,20 @@ export default function OrdersPage() {
   async function resolveCreditDelivery(orderId: string, decision: 'APPROVE' | 'DENY') {
     setActionLoading(orderId);
     try {
-      const res = await fetch(`${API}/v1/admin/orders/resolve-credit`, {
+      const res = await apiFetch('/v1/admin/orders/resolve-credit', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildSupplierResolveCreditIdempotencyKey(orderId, decision),
         },
         body: JSON.stringify({ order_id: orderId, decision }),
       });
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast(`Credit resolution queued — ${shortId(orderId)}`, 'success');
+        return;
+      }
       if (!res.ok) {
-        const errJson = await res.json().catch(() => ({ error: 'Action failed' }));
-        toast(errJson.error || 'Failed to resolve credit', 'error');
+        toast(body.error || body.message || 'Failed to resolve credit', 'error');
         return;
       }
       toast(`Credit delivery ${decision === 'APPROVE' ? 'approved' : 'denied'} — ${shortId(orderId)}`, 'success');
@@ -370,16 +371,30 @@ export default function OrdersPage() {
     if (!targetTruck || reassignOrderIds.length === 0) return;
     setReassigning(true);
     try {
-      const res = await fetch(`${API}/v1/fleet/reassign`, {
+      const res = await apiFetch('/v1/fleet/reassign', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildSupplierFleetReassignIdempotencyKey(targetTruck, reassignOrderIds),
         },
         body: JSON.stringify({ order_ids: reassignOrderIds, new_route_id: targetTruck }),
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({} as {
+        queued?: boolean;
+        error?: string;
+        message?: string;
+        conflicts?: Array<{ order_id: string; reason: string }>;
+        reassigned?: number;
+        total?: number;
+      }));
+      if (json.queued) {
+        toast(`Reassignment queued for ${reassignOrderIds.length} order(s)`, 'success');
+        setReassignOpen(false);
+        setSelected(new Set());
+        return;
+      }
+      if (!res.ok) {
+        throw new Error(json.error || json.message || 'Reassign failed');
+      }
       if (json.conflicts?.length > 0) {
         const conflictMsgs = json.conflicts.map((c: { order_id: string; reason: string }) => `${shortId(c.order_id)}: ${c.reason}`);
         toast(`Reassigned ${json.reassigned}/${json.total}. Conflicts: ${conflictMsgs.join('; ')}`, json.reassigned > 0 ? 'success' : 'error');
@@ -421,18 +436,25 @@ export default function OrdersPage() {
   async function dispatchSelected() {
     setDispatching(true);
     try {
-      const token = readTokenFromCookie();
-      const res = await fetch(`${API}/v1/supplier/manifests/auto-dispatch`, {
+      const res = await apiFetch('/v1/supplier/manifests/auto-dispatch', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
           'Idempotency-Key': buildSupplierAutoDispatchIdempotencyKey(Array.from(selected)),
         },
         body: JSON.stringify({ order_ids: Array.from(selected) }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
+      const data = await res.json().catch(() => ({} as {
+        queued?: boolean;
+        error?: string;
+        message?: string;
+        manifests?: Array<unknown>;
+      }));
+      if (data.queued) {
+        toast(`Dispatch queued for ${selected.size} order(s)`, 'success');
+        setSelected(new Set());
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || data.message || 'Dispatch failed');
       toast(`Dispatched ${data.manifests?.length ?? 0} manifest(s)`, 'success');
       setSelected(new Set());
       fetchOrders();
@@ -932,9 +954,7 @@ function OrderDetailDrawer({
   useEffect(() => {
     if (!token || !order.order_id) return;
     setEventsLoading(true);
-    fetch(`${API}/v1/orders/${encodeURIComponent(order.order_id)}/events`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    apiFetch(`/v1/orders/${encodeURIComponent(order.order_id)}/events`)
       .then(res => res.ok ? res.json() : { events: [] })
       .then(json => setEvents(json.events || json.data || []))
       .catch(() => {})

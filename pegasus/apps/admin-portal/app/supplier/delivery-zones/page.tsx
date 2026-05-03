@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useToken } from '@/lib/auth';
+import { apiFetch, useToken } from '@/lib/auth';
 import EmptyState from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
 import Icon from '@/components/Icon';
 import { useToast } from '@/components/Toast';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 function buildDeliveryZoneCreateIdempotencyKey(payload: Record<string, unknown>): string {
   return ['supplier-delivery-zone-create', JSON.stringify(payload)].join(':');
@@ -56,9 +54,7 @@ export default function DeliveryZonesPage() {
     if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/v1/supplier/delivery-zones`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch('/v1/supplier/delivery-zones');
       if (res.ok) {
         const j = await res.json();
         setZones(j.zones || []);
@@ -88,16 +84,26 @@ export default function DeliveryZonesPage() {
         priority: parseInt(priority, 10) || 0,
         warehouse_id: warehouseId || undefined,
       };
-      const res = await fetch(`${API}/v1/supplier/delivery-zones`, {
+      const res = await apiFetch('/v1/supplier/delivery-zones', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildDeliveryZoneCreateIdempotencyKey(payload),
         },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast('Delivery zone creation queued — it will replay when back online', 'success');
+        setShowCreate(false);
+        setZoneName('');
+        setMinDist('0');
+        setMaxDist('');
+        setFee('');
+        setPriority('0');
+        setWarehouseId('');
+        return;
+      }
+      if (!res.ok) throw new Error(body.error || body.message || `HTTP ${res.status}`);
       toast('Delivery zone created', 'success');
       setShowCreate(false);
       setZoneName('');
@@ -119,14 +125,18 @@ export default function DeliveryZonesPage() {
   const handleDeactivate = useCallback(async (zoneId: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`${API}/v1/supplier/delivery-zones/${zoneId}`, {
+      const res = await apiFetch(`/v1/supplier/delivery-zones/${zoneId}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Idempotency-Key': buildDeliveryZoneDeactivateIdempotencyKey(zoneId),
         },
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast('Zone deactivation queued — it will replay when back online', 'success');
+        return;
+      }
+      if (!res.ok) throw new Error(body.error || body.message || `HTTP ${res.status}`);
       toast('Zone deactivated', 'success');
       fetchZones();
     } catch (e) {

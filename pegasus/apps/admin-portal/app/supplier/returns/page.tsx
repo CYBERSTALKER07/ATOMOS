@@ -2,14 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@heroui/react';
-import { useToken } from '@/lib/auth';
+import { apiFetch, useToken } from '@/lib/auth';
 import type { PaginationState } from '@/lib/usePagination';
 import PaginationControls from '@/components/PaginationControls';
 import EmptyState from '@/components/EmptyState';
 import { useToast } from '@/components/Toast';
 import { buildSupplierReturnResolveIdempotencyKey } from '../_shared/idempotency';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface ReturnItem {
   line_item_id: string;
@@ -48,9 +46,7 @@ export default function ReturnsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ limit: String(pageSize), offset: String(serverOffset) });
-      const res = await fetch(`${API}/v1/supplier/returns?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/v1/supplier/returns?${params}`);
       if (!res.ok) throw new Error('Failed to load returns');
       const json = await res.json();
       setItems(json.data || []);
@@ -60,7 +56,7 @@ export default function ReturnsPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, toast, pageSize, serverOffset]);
+  }, [toast, pageSize, serverOffset]);
 
   useEffect(() => {
     if (!token) return;
@@ -91,18 +87,22 @@ export default function ReturnsPage() {
   async function handleResolve(lineItemId: string) {
     setActionLoading(lineItemId);
     try {
-      const res = await fetch(`${API}/v1/supplier/returns/resolve`, {
+      const res = await apiFetch('/v1/supplier/returns/resolve', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildSupplierReturnResolveIdempotencyKey(lineItemId, resolution, notes),
         },
         body: JSON.stringify({ line_item_id: lineItemId, resolution, notes }),
       });
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast(`Return resolution queued: ${resolution.replace(/_/g, ' ')}`, 'success');
+        setResolvingId(null);
+        setNotes('');
+        return;
+      }
       if (!res.ok) {
-        const errJson = await res.json().catch(() => ({ error: 'Resolution failed' }));
-        toast(errJson.error || 'Resolution failed' , 'error');
+        toast(body.error || body.message || 'Resolution failed' , 'error');
         return;
       }
       toast(`Item resolved: ${resolution.replace(/_/g, ' ')}`, 'success');

@@ -2,15 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@heroui/react';
-import { useToken } from '@/lib/auth';
+import { apiFetch, useToken } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
 import EmptyState from '@/components/EmptyState';
 import {
   buildSupplierCountryOverrideDeleteIdempotencyKey,
   buildSupplierCountryOverrideSaveIdempotencyKey,
 } from '../_shared/idempotency';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -91,10 +89,9 @@ export default function CountryOverridesPage() {
     if (!token) return;
     setLoading(true);
     try {
-      const headers = { Authorization: `Bearer ${token}` };
       const [cfgRes, overrideRes] = await Promise.all([
-        fetch(`${API}/v1/admin/country-configs`, { headers }),
-        fetch(`${API}/v1/supplier/country-overrides`, { headers }),
+        apiFetch('/v1/admin/country-configs'),
+        apiFetch('/v1/supplier/country-overrides'),
       ]);
 
       if (cfgRes.ok) {
@@ -155,16 +152,19 @@ export default function CountryOverridesPage() {
         }
       });
 
-      const res = await fetch(`${API}/v1/supplier/country-overrides`, {
+      const res = await apiFetch('/v1/supplier/country-overrides', {
         method: 'PUT',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildSupplierCountryOverrideSaveIdempotencyKey(payload as unknown as Record<string, unknown>),
         },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(await res.text());
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast(`Override save queued for ${selectedCode}`, 'success');
+        return;
+      }
+      if (!res.ok) throw new Error(body.error || body.message || 'Save failed');
       toast(`Override saved for ${selectedCode}`, 'success');
       await load();
     } catch (e) {
@@ -179,14 +179,18 @@ export default function CountryOverridesPage() {
     if (!token || !selectedCode) return;
     setDeleting(true);
     try {
-      const res = await fetch(`${API}/v1/supplier/country-overrides/${selectedCode}`, {
+      const res = await apiFetch(`/v1/supplier/country-overrides/${selectedCode}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Idempotency-Key': buildSupplierCountryOverrideDeleteIdempotencyKey(selectedCode),
         },
       });
-      if (!res.ok) throw new Error(await res.text());
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast(`Override removal queued for ${selectedCode}`, 'success');
+        return;
+      }
+      if (!res.ok) throw new Error(body.error || body.message || 'Delete failed');
       toast(`Override for ${selectedCode} removed — platform defaults restored`, 'success');
       await load();
     } catch (e) {

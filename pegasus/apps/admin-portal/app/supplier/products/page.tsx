@@ -3,13 +3,12 @@
 import Image from 'next/image';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@heroui/react';
-import { useToken } from '@/lib/auth';
+import { apiFetch, useToken } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import EmptyState from '@/components/EmptyState';
 import Icon from '@/components/Icon';
+import { useToast } from '@/components/Toast';
 import { buildSupplierProductUpdateIdempotencyKey } from '../_shared/idempotency';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface Product {
   sku_id: string;
@@ -48,24 +47,23 @@ export default function MyProductsPage() {
 
   const token = useToken();
   const router = useRouter();
+  const { toast } = useToast();
 
   const fetchProducts = useCallback(() => {
     if (!token) return;
     setError('');
     setLoading(true);
 
-    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-
     Promise.all([
-      fetch(`${API}/v1/supplier/products`, { headers })
+      apiFetch('/v1/supplier/products')
         .then(r => { if (!r.ok) throw new Error(`Fetch failed: ${r.status}`); return r.json(); })
         .then(json => setProducts(Array.isArray(json) ? json : (json.data || []))),
-      fetch(`${API}/v1/supplier/profile`, { headers })
+      apiFetch('/v1/supplier/profile')
         .then(r => r.ok ? r.json() : null)
         .then(async profile => {
           if (!profile?.operating_categories?.length) return;
           try {
-            const catRes = await fetch(`${API}/v1/catalog/platform-categories`);
+            const catRes = await apiFetch('/v1/catalog/platform-categories');
             if (!catRes.ok) return;
             const catJson = await catRes.json();
             const allCats: { category_id: string; display_name: string }[] = catJson.data || [];
@@ -110,18 +108,23 @@ export default function MyProductsPage() {
     setToggling(p.sku_id);
     try {
       const payload = { is_active: !p.is_active };
-      const res = await fetch(`${API}/v1/supplier/products/${p.sku_id}`, {
+      const res = await apiFetch(`/v1/supplier/products/${p.sku_id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
           'Idempotency-Key': buildSupplierProductUpdateIdempotencyKey(p.sku_id, payload),
         },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error('Toggle failed');
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast(`Product status change queued — ${p.name}`, 'success');
+        return;
+      }
+      if (!res.ok) throw new Error(body.error || body.message || 'Toggle failed');
       fetchProducts();
-    } catch { /* silent */ }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Toggle failed', 'error');
+    }
     finally { setToggling(null); }
   };
 

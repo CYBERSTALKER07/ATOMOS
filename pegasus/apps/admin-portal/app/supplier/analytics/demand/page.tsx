@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { readTokenFromCookie as getToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import { usePagination } from '@/lib/usePagination';
 import PaginationControls from '@/components/PaginationControls';
 import {
@@ -15,8 +15,6 @@ import {
   CartesianGrid,
   Legend,
 } from 'recharts';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface TimeSeriesPoint {
   date: string;
@@ -56,12 +54,7 @@ export default function DemandAnalyticsPage() {
   const formatAmount = useCallback((v: number) => new Intl.NumberFormat('uz-UZ').format(v), []);
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) { setError('Unauthorized — supplier credentials required'); setLoading(false); return; }
-
-    fetch(`${API}/v1/supplier/analytics/demand/history`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    })
+    apiFetch('/v1/supplier/analytics/demand/history')
       .then(res => { if (!res.ok) throw new Error(`Demand history fetch failed: ${res.status}`); return res.json(); })
       .then(json => setData(json))
       .catch(e => setError(e.message))

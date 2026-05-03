@@ -5,10 +5,9 @@ import SupplierProductForm from '@/components/SupplierProductForm';
 import SupplierPromotionForm from '@/components/SupplierPromotionForm';
 import EmptyState from '@/components/EmptyState';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useToken } from '@/lib/auth';
+import { apiFetch, useToken } from '@/lib/auth';
+import { useToast } from '@/components/Toast';
 import { buildSupplierProductUpdateIdempotencyKey } from '../_shared/idempotency';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -56,24 +55,23 @@ export default function CatalogDashboard() {
   const editFileRef = useRef<HTMLInputElement>(null);
 
   const token = useToken();
+  const { toast } = useToast();
 
   const fetchCatalog = useCallback(() => {
     if (!token) return;
     setError('');
     setLoading(true);
 
-    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-
     Promise.all([
-      fetch(`${API}/v1/supplier/products`, { headers })
+      apiFetch('/v1/supplier/products')
         .then(r => { if (!r.ok) throw new Error(`Catalog fetch failed: ${r.status}`); return r.json(); })
         .then(json => setCatalog(Array.isArray(json) ? json : (json.data || []))),
-      fetch(`${API}/v1/supplier/profile`, { headers })
+      apiFetch('/v1/supplier/profile')
         .then(r => r.ok ? r.json() : null)
         .then(async profile => {
           if (!profile?.operating_categories?.length) return;
           try {
-            const catRes = await fetch(`${API}/v1/catalog/platform-categories`);
+            const catRes = await apiFetch('/v1/catalog/platform-categories');
             if (!catRes.ok) return;
             const catJson = await catRes.json();
             const allCats: { category_id: string; display_name: string }[] = catJson.data || [];
@@ -142,9 +140,7 @@ export default function CatalogDashboard() {
         }
 
         const ext = editFile.name.split('.').pop()?.toLowerCase() || 'jpg';
-        const ticketRes = await fetch(`${API}/v1/supplier/products/upload-ticket?ext=${ext}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const ticketRes = await apiFetch(`/v1/supplier/products/upload-ticket?ext=${ext}`);
         if (!ticketRes.ok) throw new Error('Upload ticket rejected');
         const { upload_url, image_url } = await ticketRes.json();
 
@@ -163,21 +159,26 @@ export default function CatalogDashboard() {
       const payload: Record<string, unknown> = { ...editForm };
       if (imageUrl !== undefined) payload.image_url = imageUrl;
 
-      const res = await fetch(`${API}/v1/supplier/products/${editProduct.sku_id}`, {
+      const res = await apiFetch(`/v1/supplier/products/${editProduct.sku_id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
           'Idempotency-Key': buildSupplierProductUpdateIdempotencyKey(editProduct.sku_id, payload),
         },
         body: JSON.stringify(payload),
       });
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        setEditProduct(null);
+        setEditStatus('');
+        toast(`Product update queued — ${editProduct.name}`, 'success');
+        return;
+      }
       if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || 'Update failed');
+        throw new Error(body.error || body.message || 'Update failed');
       }
 
       setEditProduct(null);
+      setEditStatus('');
       fetchCatalog();
     } catch (err: unknown) {
       setEditStatus(err instanceof Error ? err.message : String(err));
@@ -189,18 +190,23 @@ export default function CatalogDashboard() {
     setToggling(p.sku_id);
     try {
       const payload = { is_active: !p.is_active };
-      const res = await fetch(`${API}/v1/supplier/products/${p.sku_id}`, {
+      const res = await apiFetch(`/v1/supplier/products/${p.sku_id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
           'Idempotency-Key': buildSupplierProductUpdateIdempotencyKey(p.sku_id, payload),
         },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error('Toggle failed');
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast(`Product status change queued — ${p.name}`, 'success');
+        return;
+      }
+      if (!res.ok) throw new Error(body.error || body.message || 'Toggle failed');
       fetchCatalog();
-    } catch { /* silent — UI will stay stale */ }
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Toggle failed', 'error');
+    }
     finally { setToggling(null); }
   };
 

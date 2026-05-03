@@ -4,11 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@heroui/react';
-import { useToken } from '@/lib/auth';
+import { apiFetch, useToken } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import { buildSupplierProductUpdateIdempotencyKey } from '../../_shared/idempotency';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface Product {
   sku_id: string;
@@ -66,9 +64,7 @@ export default function ProductDetailPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API}/v1/supplier/products/${encodeURIComponent(skuId)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/v1/supplier/products/${encodeURIComponent(skuId)}`);
       if (!res.ok) throw new Error(res.status === 404 ? 'Product not found' : `HTTP ${res.status}`);
       const data: Product = await res.json();
       setProduct(data);
@@ -120,18 +116,21 @@ export default function ProductDetailPage() {
         return;
       }
 
-      const res = await fetch(`${API}/v1/supplier/products/${encodeURIComponent(skuId)}`, {
+      const res = await apiFetch(`/v1/supplier/products/${encodeURIComponent(skuId)}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
           'Idempotency-Key': buildSupplierProductUpdateIdempotencyKey(skuId, body),
         },
         body: JSON.stringify(body),
       });
+      const responseBody = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (responseBody.queued) {
+        setSaveMsg({ ok: true, text: 'Product update queued — it will replay when back online' });
+        setEditing(false);
+        return;
+      }
       if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || `HTTP ${res.status}`);
+        throw new Error(responseBody.error || responseBody.message || `HTTP ${res.status}`);
       }
       setSaveMsg({ ok: true, text: 'Product updated' });
       setEditing(false);
@@ -148,16 +147,23 @@ export default function ProductDetailPage() {
     setSaving(true);
     try {
       const payload = { is_active: !product.is_active };
-      const res = await fetch(`${API}/v1/supplier/products/${encodeURIComponent(skuId)}`, {
+      const res = await apiFetch(`/v1/supplier/products/${encodeURIComponent(skuId)}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
           'Idempotency-Key': buildSupplierProductUpdateIdempotencyKey(skuId, payload),
         },
         body: JSON.stringify(payload),
       });
-      if (res.ok) fetchProduct();
+      const responseBody = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (responseBody.queued) {
+        setSaveMsg({ ok: true, text: 'Status change queued — it will replay when back online' });
+        return;
+      }
+      if (res.ok) {
+        fetchProduct();
+      } else {
+        setSaveMsg({ ok: false, text: responseBody.error || responseBody.message || 'Toggle failed' });
+      }
     } finally {
       setSaving(false);
     }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { apiFetch, useToken } from '@/lib/auth';
+import { apiFetch, apiFetchNoQueue, useToken } from '@/lib/auth';
 import { usePolling } from '@/lib/usePolling';
 import StatusBadge from '@/components/StatusBadge';
 import EmptyState from '@/components/EmptyState';
@@ -15,8 +15,6 @@ import {
   buildSupplierFleetReassignIdempotencyKey,
   buildSupplierManualDispatchIdempotencyKey,
 } from '../_shared/idempotency';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 /* ─── Truck Color Palette for Manual Dispatch ─────────────── */
 
@@ -265,9 +263,8 @@ export default function DispatchPage() {
     setReDispatchVolume(0);
     setRecsLoading(true);
     try {
-      const res = await fetch(`${API}/v1/payloader/recommend-reassign`, {
+      const res = await apiFetchNoQueue('/v1/payloader/recommend-reassign', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_id: orderId }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -333,9 +330,8 @@ export default function DispatchPage() {
     try {
       const body: Record<string, unknown> = {};
       if (excludedTrucks.size > 0) body.excluded_truck_ids = [...excludedTrucks];
-      const res = await fetch(`${API}/v1/supplier/manifests/dispatch-recommend`, {
+      const res = await apiFetchNoQueue('/v1/supplier/manifests/dispatch-recommend', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(await res.text() || 'Failed to get recommendations');

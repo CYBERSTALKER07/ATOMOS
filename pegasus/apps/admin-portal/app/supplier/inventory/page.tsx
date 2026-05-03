@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@heroui/react';
-import { useToken } from '@/lib/auth';
+import { apiFetch, useToken } from '@/lib/auth';
 import type { PaginationState } from '@/lib/usePagination';
 import PaginationControls from '@/components/PaginationControls';
 import EmptyState from '@/components/EmptyState';
@@ -10,8 +10,6 @@ import { useToast } from '@/components/Toast';
 import { buildSupplierInventoryAdjustIdempotencyKey } from '../_shared/idempotency';
 
 export const dynamic = 'force-dynamic';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface InventoryItem {
   product_id: string;
@@ -67,9 +65,7 @@ export default function InventoryPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ limit: String(stockPageSize), offset: String(stockOffset) });
-      const res = await fetch(`${API}/v1/supplier/inventory?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/v1/supplier/inventory?${params}`);
       if (!res.ok) throw new Error('Failed to load inventory');
       const json = await res.json();
       setItems(json.data || []);
@@ -79,20 +75,18 @@ export default function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, stockPageSize, stockOffset, toast]);
+  }, [stockPageSize, stockOffset, toast]);
 
   const fetchAudit = useCallback(async () => {
     try {
       const params = new URLSearchParams({ limit: String(auditPageSize), offset: String(auditOffset) });
-      const res = await fetch(`${API}/v1/supplier/inventory/audit?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/v1/supplier/inventory/audit?${params}`);
       if (!res.ok) return;
       const json = await res.json();
       setAudit(json.data || []);
       setAuditHasMore(Boolean(json.has_more));
     } catch { /* silent */ }
-  }, [token, auditPageSize, auditOffset]);
+  }, [auditPageSize, auditOffset]);
 
   useEffect(() => {
     if (!token) return;
@@ -149,18 +143,22 @@ export default function InventoryPage() {
       return;
     }
     try {
-      const res = await fetch(`${API}/v1/supplier/inventory`, {
+      const res = await apiFetch('/v1/supplier/inventory', {
         method: 'PATCH',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildSupplierInventoryAdjustIdempotencyKey(productId, delta, adjustReason),
         },
         body: JSON.stringify({ product_id: productId, adjustment: delta, reason: adjustReason }),
       });
+      const body = await res.json().catch(() => ({} as { queued?: boolean; error?: string; message?: string }));
+      if (body.queued) {
+        toast(`Stock adjustment queued by ${delta > 0 ? '+' : ''}${delta}`, 'success');
+        setAdjusting(null);
+        setAdjustDelta('');
+        return;
+      }
       if (!res.ok) {
-        const errJson = await res.json().catch(() => ({ error: 'Adjustment failed' }));
-        toast(errJson.error || 'Adjustment failed' , 'error');
+        toast(body.error || body.message || 'Adjustment failed' , 'error');
         return;
       }
       toast(`Stock adjusted by ${delta > 0 ? '+' : ''}${delta}`, 'success');
