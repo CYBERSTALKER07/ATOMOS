@@ -56,6 +56,16 @@ final class APIClient: Sendable {
         return try await execute(request)
     }
 
+    // MARK: - PATCH
+    func patch<B: Encodable, T: Decodable>(_ path: String, body: B) async throws -> T {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try encoder.encode(body)
+        await attachToken(&request)
+        return try await execute(request)
+    }
+
     // MARK: - POST (no response body)
     func postVoid<B: Encodable>(_ path: String, body: B) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent(path))

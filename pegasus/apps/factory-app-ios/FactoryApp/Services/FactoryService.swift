@@ -38,6 +38,48 @@ enum FactoryService {
         try await api.post("v1/factory/dispatch", body: DispatchRequest(transferIds: transferIds))
     }
 
+    // MARK: - Supply Requests
+    static func supplyRequests() async throws -> [SupplyRequest] {
+        try await api.get("v1/factory/supply-requests")
+    }
+
+    static func transitionSupplyRequest(id: String, action: String) async throws -> SupplyRequestTransitionResponse {
+        try await api.patch(
+            "v1/factory/supply-requests/\(id)",
+            body: SupplyRequestTransitionRequest(action: action, transferOrderId: nil)
+        )
+    }
+
+    // MARK: - Payload Override / Manifests
+    static func loadingManifests() async throws -> ManifestListResponse {
+        try await api.get("v1/factory/manifests", query: ["state": "LOADING"])
+    }
+
+    static func rebalanceManifestTransfer(sourceManifestId: String, targetManifestId: String, transferId: String) async throws -> ManifestRebalanceResponse {
+        try await api.post(
+            "v1/factory/manifests/rebalance",
+            body: ManifestRebalanceRequest(
+                sourceManifestId: sourceManifestId,
+                targetManifestId: targetManifestId,
+                transferIds: [transferId]
+            )
+        )
+    }
+
+    static func cancelManifestTransfer(manifestId: String, transferId: String) async throws -> ManifestCancelTransferResponse {
+        try await api.post(
+            "v1/factory/manifests/cancel-transfer",
+            body: ManifestCancelTransferRequest(manifestId: manifestId, transferId: transferId)
+        )
+    }
+
+    static func cancelManifest(manifestId: String) async throws -> ManifestCancelResponse {
+        try await api.post(
+            "v1/factory/manifests/cancel",
+            body: ManifestCancelRequest(manifestId: manifestId)
+        )
+    }
+
     // MARK: - Fleet
     static func fleet() async throws -> VehicleListResponse {
         try await api.get("v1/factory/fleet")

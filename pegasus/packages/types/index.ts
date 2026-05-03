@@ -10,6 +10,7 @@ export * from './fleet';
 export * from './treasury';
 export * from './notifications';
 export * from './analytics';
+export * from './warehouse';
 export * from './ws-events';
 export * from './pricing';
 export * from './problem';

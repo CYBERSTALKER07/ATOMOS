@@ -2,6 +2,8 @@ import SwiftUI
 
 struct DashboardView: View {
     @Environment(TokenStore.self) private var tokenStore
+    let onOpenSupplyRequests: () -> Void
+    let onOpenPayloadOverride: () -> Void
     @State private var stats = DashboardStats.empty
     @State private var loading = true
     @State private var error: String?
@@ -25,7 +27,10 @@ struct DashboardView: View {
                 } else {
                     VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
                         DashboardHeroCard(stats: stats)
-                        DesktopOperationsCard()
+                        WorkflowLaunchCard(
+                            onOpenSupplyRequests: onOpenSupplyRequests,
+                            onOpenPayloadOverride: onOpenPayloadOverride
+                        )
                         Text("Operations at a glance")
                             .font(.headline)
                             .padding(.horizontal)
@@ -85,30 +90,37 @@ private struct DashboardMetric {
     let icon: String
 }
 
-private struct DesktopOperationsCard: View {
+private struct WorkflowLaunchCard: View {
+    let onOpenSupplyRequests: () -> Void
+    let onOpenPayloadOverride: () -> Void
+
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingMD) {
             Label {
                 VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                    Text("Desktop operations")
+                    Text("Operator workflows")
                         .font(.headline)
-                    Text("Use Factory Portal for the workflows that need side-by-side manifest tables and higher-consequence confirmations.")
+                    Text("Warehouse demand and live manifest overrides are available in native mobile flows.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             } icon: {
-                Image(systemName: "desktopcomputer")
+                Image(systemName: "iphone.gen3")
                     .font(.title3)
                     .foregroundStyle(.secondary)
             }
 
-            DesktopOperationRow(
+            WorkflowLaunchRow(
                 title: "Supply requests",
-                supporting: "Acknowledge, start production, mark ready, and fulfill warehouse demand on desktop."
+                supporting: "Review warehouse demand and advance requests through production states.",
+                actionLabel: "Open requests",
+                onTap: onOpenSupplyRequests
             )
-            DesktopOperationRow(
+            WorkflowLaunchRow(
                 title: "Payload override",
-                supporting: "Rebalance or cancel live loading manifests from the desktop control surface."
+                supporting: "Move transfers between loading manifests or release them back to approved stock.",
+                actionLabel: "Open override",
+                onTap: onOpenPayloadOverride
             )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -143,17 +155,24 @@ private struct KpiCard: View {
     }
 }
 
-private struct DesktopOperationRow: View {
+private struct WorkflowLaunchRow: View {
     let title: String
     let supporting: String
+    let actionLabel: String
+    let onTap: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-            Text(title)
-                .font(.subheadline.bold())
-            Text(supporting)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+        HStack(alignment: .center, spacing: LabTheme.spacingMD) {
+            VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                Text(title)
+                    .font(.subheadline.bold())
+                Text(supporting)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button(actionLabel, action: onTap)
+                .buttonStyle(.borderedProminent)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(LabTheme.spacingMD)

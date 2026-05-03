@@ -136,6 +136,191 @@ struct TransitionRequest: Encodable {
     }
 }
 
+// MARK: - Supply Requests
+struct SupplyRequest: Decodable, Identifiable {
+    let id: String
+    let warehouseId: String
+    let factoryId: String
+    let supplierId: String
+    let state: String
+    let priority: String
+    let requestedDeliveryDate: String?
+    let totalVolumeVU: Double
+    let notes: String
+    let transferOrderId: String
+    let createdBy: String
+    let createdAt: String
+    let updatedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id = "request_id"
+        case warehouseId = "warehouse_id"
+        case factoryId = "factory_id"
+        case supplierId = "supplier_id"
+        case state
+        case priority
+        case requestedDeliveryDate = "requested_delivery_date"
+        case totalVolumeVU = "total_volume_vu"
+        case notes
+        case transferOrderId = "transfer_order_id"
+        case createdBy = "created_by"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+}
+
+struct SupplyRequestTransitionRequest: Encodable {
+    let action: String
+    let transferOrderId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case action
+        case transferOrderId = "transfer_order_id"
+    }
+}
+
+struct SupplyRequestTransitionResponse: Decodable {
+    let requestId: String
+    let state: String
+
+    enum CodingKeys: String, CodingKey {
+        case requestId = "request_id"
+        case state
+    }
+}
+
+// MARK: - Manifests / Override
+struct Manifest: Decodable, Identifiable {
+    let id: String
+    let factoryId: String
+    let driverId: String
+    let driverName: String
+    let vehicleId: String
+    let vehicleLabel: String
+    let truckId: String
+    let truckPlate: String
+    let state: String
+    let status: String
+    let totalVolumeVU: Double
+    let maxVolumeVU: Double
+    let maxCapacityVU: Double
+    let stopCount: Int
+    let regionCode: String
+    let createdAt: String
+    let transfers: [ManifestTransfer]
+
+    enum CodingKeys: String, CodingKey {
+        case id = "manifest_id"
+        case factoryId = "factory_id"
+        case driverId = "driver_id"
+        case driverName = "driver_name"
+        case vehicleId = "vehicle_id"
+        case vehicleLabel = "vehicle_label"
+        case truckId = "truck_id"
+        case truckPlate = "truck_plate"
+        case state
+        case status
+        case totalVolumeVU = "total_volume_vu"
+        case maxVolumeVU = "max_volume_vu"
+        case maxCapacityVU = "max_capacity_vu"
+        case stopCount = "stop_count"
+        case regionCode = "region_code"
+        case createdAt = "created_at"
+        case transfers
+    }
+}
+
+struct ManifestTransfer: Decodable, Identifiable {
+    let id: String
+    let productName: String
+    let quantity: Int
+    let volumeVU: Double
+    let state: String
+
+    enum CodingKeys: String, CodingKey {
+        case id = "transfer_id"
+        case productName = "product_name"
+        case quantity
+        case volumeVU = "volume_vu"
+        case state
+    }
+}
+
+struct ManifestListResponse: Decodable {
+    let manifests: [Manifest]
+    let total: Int
+}
+
+struct ManifestRebalanceRequest: Encodable {
+    let sourceManifestId: String
+    let targetManifestId: String
+    let transferIds: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case sourceManifestId = "source_manifest_id"
+        case targetManifestId = "target_manifest_id"
+        case transferIds = "transfer_ids"
+    }
+}
+
+struct ManifestRebalanceResponse: Decodable {
+    let sourceManifestId: String
+    let targetManifestId: String
+    let transfersMoved: Int
+    let volumeMovedVU: Double
+    let reason: String
+
+    enum CodingKeys: String, CodingKey {
+        case sourceManifestId = "source_manifest_id"
+        case targetManifestId = "target_manifest_id"
+        case transfersMoved = "transfers_moved"
+        case volumeMovedVU = "volume_moved_vu"
+        case reason
+    }
+}
+
+struct ManifestCancelTransferRequest: Encodable {
+    let manifestId: String
+    let transferId: String
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+        case transferId = "transfer_id"
+    }
+}
+
+struct ManifestCancelTransferResponse: Decodable {
+    let manifestId: String
+    let transferId: String
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+        case transferId = "transfer_id"
+        case status
+    }
+}
+
+struct ManifestCancelRequest: Encodable {
+    let manifestId: String
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+    }
+}
+
+struct ManifestCancelResponse: Decodable {
+    let manifestId: String
+    let status: String
+    let transfersReleased: Int
+
+    enum CodingKeys: String, CodingKey {
+        case manifestId = "manifest_id"
+        case status
+        case transfersReleased = "transfers_released"
+    }
+}
+
 // MARK: - Vehicle
 struct Vehicle: Decodable, Identifiable {
     let id: String

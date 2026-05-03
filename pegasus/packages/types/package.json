@@ -12,6 +12,7 @@
     "./treasury": "./treasury.ts",
     "./notifications": "./notifications.ts",
     "./analytics": "./analytics.ts",
+    "./warehouse": "./warehouse.ts",
     "./ws": "./ws-events.ts"
   }
 }

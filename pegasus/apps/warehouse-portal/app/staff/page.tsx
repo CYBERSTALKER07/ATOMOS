@@ -1,54 +1,42 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { apiFetch, decodeJwtPayload, readTokenFromCookie } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import { useToast } from '@/components/Toast';
-
-interface StaffMember {
-  worker_id: string;
-  name: string;
-  phone: string;
-  role: string;
-  is_active: boolean;
-  created_at: string;
-}
+import type {
+  CreateWarehouseStaffRequest,
+  CreateWarehouseStaffResponse,
+  WarehouseStaffListResponse,
+  WarehouseStaffMember,
+  WarehouseStaffRole,
+} from '@pegasus/types/warehouse';
 
 export default function StaffPage() {
   const { toast } = useToast();
-  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [staff, setStaff] = useState<WarehouseStaffMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [createdStaff, setCreatedStaff] = useState<CreateWarehouseStaffResponse | null>(null);
 
   // Registration form state
   const [showForm, setShowForm] = useState(false);
   const [formName, setFormName] = useState('');
   const [formPhone, setFormPhone] = useState('');
-  const [formPin, setFormPin] = useState('');
-  const [formRole, setFormRole] = useState('WAREHOUSE_STAFF');
+  const [formRole, setFormRole] = useState<WarehouseStaffRole>('WAREHOUSE_STAFF');
   const [submitting, setSubmitting] = useState(false);
 
   async function loadStaff() {
     setLoading(true);
     try {
-      // Use claims to scope — staff list route would need to be a supplier endpoint
-      // For now, show current user info from token
-      const token = readTokenFromCookie();
-      if (token) {
-        const claims = decodeJwtPayload(token);
-        if (claims) {
-          // Placeholder: show current user
-          setStaff([{
-            worker_id: claims.user_id as string || '',
-            name: (claims.name as string) || 'Current User',
-            phone: '',
-            role: (claims.warehouse_role as string) || 'WAREHOUSE_STAFF',
-            is_active: true,
-            created_at: new Date().toISOString(),
-          }]);
-        }
+      const res = await apiFetch('/v1/warehouse/ops/staff');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to load staff');
       }
-    } catch {
-      toast('Failed to load staff', 'error');
+      const data = await res.json() as WarehouseStaffListResponse;
+      setStaff(Array.isArray(data.staff) ? data.staff : []);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Failed to load staff', 'error');
     } finally {
       setLoading(false);
     }
@@ -60,32 +48,29 @@ export default function StaffPage() {
     e.preventDefault();
     setSubmitting(true);
 
-    const token = readTokenFromCookie();
-    const claims = token ? decodeJwtPayload(token) : null;
-    const warehouseId = (claims?.warehouse_id as string) || '';
-
     try {
-      const res = await apiFetch('/v1/auth/warehouse/register', {
+      const body: CreateWarehouseStaffRequest = {
+        name: formName,
+        phone: formPhone,
+        role: formRole,
+      };
+      const res = await apiFetch('/v1/warehouse/ops/staff', {
         method: 'POST',
-        body: JSON.stringify({
-          warehouse_id: warehouseId,
-          name: formName,
-          phone: formPhone,
-          pin: formPin,
-          role: formRole,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (res.ok) {
-        toast('Staff member registered', 'success');
+        const data = await res.json() as CreateWarehouseStaffResponse;
+        setCreatedStaff(data);
+        toast('Staff member created', 'success');
         setShowForm(false);
         setFormName('');
         setFormPhone('');
-        setFormPin('');
+        setFormRole('WAREHOUSE_STAFF');
         loadStaff();
       } else {
         const data = await res.json().catch(() => ({}));
-        toast(data.error || 'Failed to register', 'error');
+        toast(data.error || 'Failed to create staff member', 'error');
       }
     } catch {
       toast('Network error', 'error');
@@ -103,21 +88,45 @@ export default function StaffPage() {
           className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold button--primary"
         >
           <Icon name="plus" size={16} />
-          Register Staff
+          Add Staff
         </button>
       </div>
+
+      {createdStaff && (
+        <div
+          className="rounded-xl border border-(--border) p-4"
+          style={{ background: 'var(--surface)' }}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold">One-time PIN generated</p>
+              <p className="mt-1 text-sm text-(--muted)">
+                Save this now for {createdStaff.name || 'the new staff member'}.
+              </p>
+              <p className="mt-3 font-mono text-lg tracking-[0.2em]">{createdStaff.pin}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCreatedStaff(null)}
+              className="px-3 py-1.5 rounded-lg text-xs button--secondary border border-(--border)"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Registration form */}
       {showForm && (
         <form
           onSubmit={handleRegister}
-          className="rounded-xl border border-[var(--border)] p-6 space-y-4"
+          className="rounded-xl border border-(--border) p-6 space-y-4"
           style={{ background: 'var(--surface)' }}
         >
-          <h2 className="text-sm font-semibold">Register New Staff Member</h2>
+          <h2 className="text-sm font-semibold">Create New Staff Member</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">Name</label>
+              <label className="block text-xs font-medium mb-1.5 text-(--muted)">Name</label>
               <input
                 type="text"
                 value={formName}
@@ -128,7 +137,7 @@ export default function StaffPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">Phone</label>
+              <label className="block text-xs font-medium mb-1.5 text-(--muted)">Phone</label>
               <input
                 type="tel"
                 value={formPhone}
@@ -139,26 +148,22 @@ export default function StaffPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">PIN (6+ digits)</label>
-              <input
-                type="password"
-                value={formPin}
-                onChange={e => setFormPin(e.target.value)}
-                required
-                minLength={6}
-                className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none"
+              <label className="block text-xs font-medium mb-1.5 text-(--muted)">PIN</label>
+              <div
+                className="w-full px-3 py-2.5 rounded-lg border text-sm text-(--muted)"
                 style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)' }}
-              />
+              >
+                Generated by server
+              </div>
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1.5 text-[var(--muted)]">Role</label>
+              <label className="block text-xs font-medium mb-1.5 text-(--muted)">Role</label>
               <select
                 value={formRole}
-                onChange={e => setFormRole(e.target.value)}
+                onChange={e => setFormRole(e.target.value as WarehouseStaffRole)}
                 className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none"
                 style={{ background: 'var(--field-background)', borderColor: 'var(--field-border)' }}
               >
-                <option value="WAREHOUSE_ADMIN">Warehouse Admin</option>
                 <option value="WAREHOUSE_STAFF">Warehouse Staff</option>
                 <option value="PAYLOADER">Payloader</option>
               </select>
@@ -170,12 +175,12 @@ export default function StaffPage() {
               disabled={submitting}
               className="px-4 py-2 rounded-lg text-sm font-semibold button--primary disabled:opacity-50"
             >
-              {submitting ? 'Registering...' : 'Register'}
+              {submitting ? 'Creating...' : 'Create'}
             </button>
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="px-4 py-2 rounded-lg text-sm button--secondary border border-[var(--border)]"
+              className="px-4 py-2 rounded-lg text-sm button--secondary border border-(--border)"
             >
               Cancel
             </button>
@@ -190,31 +195,31 @@ export default function StaffPage() {
           ))}
         </div>
       ) : staff.length === 0 ? (
-        <div className="text-center py-20 text-[var(--muted)]">
+        <div className="text-center py-20 text-(--muted)">
           <Icon name="staff" size={48} className="mx-auto mb-3 opacity-30" />
           <p className="text-sm">No staff members registered</p>
         </div>
       ) : (
-        <div className="border border-[var(--border)] rounded-xl overflow-hidden">
+        <div className="border border-(--border) rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[var(--border)]" style={{ background: 'var(--surface)' }}>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Name</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Phone</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Role</th>
-                <th className="text-left px-4 py-3 font-semibold text-[var(--muted)]">Status</th>
+              <tr className="border-b border-(--border)" style={{ background: 'var(--surface)' }}>
+                <th className="text-left px-4 py-3 font-semibold text-(--muted)">Name</th>
+                <th className="text-left px-4 py-3 font-semibold text-(--muted)">Phone</th>
+                <th className="text-left px-4 py-3 font-semibold text-(--muted)">Role</th>
+                <th className="text-left px-4 py-3 font-semibold text-(--muted)">Status</th>
               </tr>
             </thead>
             <tbody>
               {staff.map(s => (
-                <tr key={s.worker_id} className="border-b border-[var(--border)] last:border-b-0">
+                <tr key={s.worker_id} className="border-b border-(--border) last:border-b-0">
                   <td className="px-4 py-3">{s.name}</td>
-                  <td className="px-4 py-3 text-[var(--muted)]">{s.phone || '—'}</td>
+                  <td className="px-4 py-3 text-(--muted)">{s.phone || '—'}</td>
                   <td className="px-4 py-3">
                     <span className="status-chip status-chip--submitted">{s.role}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold ${s.is_active ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
+                    <span className={`text-xs font-semibold ${s.is_active ? 'text-(--success)' : 'text-(--danger)'}`}>
                       {s.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
