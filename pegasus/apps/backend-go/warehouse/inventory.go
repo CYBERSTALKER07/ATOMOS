@@ -21,6 +21,8 @@ import (
 
 type InventoryItem struct {
 	SkuID            string  `json:"sku_id"`
+	ProductID        string  `json:"product_id"`
+	SKU              string  `json:"sku"`
 	ProductName      string  `json:"product_name"`
 	Quantity         int64   `json:"quantity"`
 	ReorderThreshold int64   `json:"reorder_threshold"`
@@ -28,6 +30,40 @@ type InventoryItem struct {
 	CategoryID       string  `json:"category_id,omitempty"`
 	IsLowStock       bool    `json:"is_low_stock"`
 	LastUpdated      string  `json:"last_updated,omitempty"`
+}
+
+func inventorySearchTerm(r *http.Request) string {
+	if query := strings.TrimSpace(r.URL.Query().Get("q")); query != "" {
+		return query
+	}
+	return strings.TrimSpace(r.URL.Query().Get("search"))
+}
+
+func inventoryMutationSKU(skuID, productID string) string {
+	if value := strings.TrimSpace(skuID); value != "" {
+		return value
+	}
+	return strings.TrimSpace(productID)
+}
+
+func normalizeInventoryItemAliases(item *InventoryItem) {
+	if item == nil {
+		return
+	}
+	if item.ProductID == "" {
+		item.ProductID = item.SkuID
+	}
+	if item.SKU == "" {
+		item.SKU = item.SkuID
+	}
+}
+
+func inventoryResponsePayload(items []InventoryItem) map[string]interface{} {
+	return map[string]interface{}{
+		"inventory": items,
+		"items":     items,
+		"total":     len(items),
+	}
 }
 
 // HandleOpsInventory — GET/PATCH for /v1/warehouse/ops/inventory
@@ -63,7 +99,7 @@ func listOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.Cl
 	params := map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID}
 
 	// Search
-	if q := r.URL.Query().Get("q"); q != "" {
+	if q := inventorySearchTerm(r); q != "" {
 		sql += " AND LOWER(sp.Name) LIKE @search"
 		params["search"] = "%" + strings.ToLower(q) + "%"
 	}
@@ -96,6 +132,7 @@ func listOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.Cl
 			log.Printf("[WH INVENTORY] parse: %v", err)
 			continue
 		}
+		normalizeInventoryItemAliases(&item)
 		item.LastUpdated = updatedAt.Format(time.RFC3339)
 		item.IsLowStock = item.Quantity <= item.ReorderThreshold && item.ReorderThreshold > 0
 		items = append(items, item)
@@ -105,7 +142,7 @@ func listOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.Cl
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"inventory": items, "total": len(items)})
+	json.NewEncoder(w).Encode(inventoryResponsePayload(items))
 }
 
 func adjustOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.Client, rc *cache.Cache) {
@@ -121,6 +158,7 @@ func adjustOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.
 
 	var req struct {
 		SkuID            string `json:"sku_id"`
+		ProductID        string `json:"product_id"`
 		Quantity         *int64 `json:"quantity,omitempty"`
 		ReorderThreshold *int64 `json:"reorder_threshold,omitempty"`
 	}
@@ -128,13 +166,14 @@ func adjustOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.
 		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
 		return
 	}
-	if req.SkuID == "" {
-		http.Error(w, `{"error":"sku_id required"}`, http.StatusBadRequest)
+	skuID := inventoryMutationSKU(req.SkuID, req.ProductID)
+	if skuID == "" {
+		http.Error(w, `{"error":"sku_id or product_id required"}`, http.StatusBadRequest)
 		return
 	}
 
 	cols := []string{"ProductId", "SupplierId", "WarehouseId"}
-	vals := []interface{}{req.SkuID, ops.SupplierID, ops.WarehouseID}
+	vals := []interface{}{skuID, ops.SupplierID, ops.WarehouseID}
 	if req.Quantity != nil {
 		cols = append(cols, "Quantity")
 		vals = append(vals, *req.Quantity)
@@ -160,5 +199,5 @@ func adjustOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "updated", "sku_id": req.SkuID})
+	json.NewEncoder(w).Encode(map[string]string{"status": "updated", "sku_id": skuID, "product_id": skuID})
 }

@@ -96,6 +96,31 @@
         "PATCH accepts both /status and /state path aliases.",
         "PATCH accepts either status or state request keys for legacy compatibility."
       ]
+      },
+      {
+        "name": "Warehouse ops compatibility surface",
+        "path": "/v1/warehouse/ops/*",
+        "owner": "pegasus/apps/backend-go/warehouseroutes/routes.go",
+        "methods": [
+          "GET /v1/warehouse/ops/inventory",
+          "PATCH /v1/warehouse/ops/inventory",
+          "GET /v1/warehouse/ops/staff",
+          "POST /v1/warehouse/ops/staff",
+          "GET /v1/warehouse/ops/vehicles",
+          "POST /v1/warehouse/ops/vehicles",
+          "GET /v1/warehouse/ops/vehicles/{id}"
+        ],
+        "consumers": [
+          "warehouse-portal inventory/staff/vehicles pages",
+          "warehouse-app-ios WarehouseService",
+          "warehouse-app-android WarehouseApi"
+        ],
+        "notes": [
+          "Inventory accepts q and search filters and accepts sku_id or product_id for mutations.",
+          "Inventory responses expose both inventory and items collections plus sku_id and product_id aliases.",
+          "Staff create accepts an optional pin and returns the effective one-time pin for native client parity.",
+          "Vehicle responses expose both max_volume_vu and capacity_vu plus a derived availability status."
+        ]
     }
   ],
   "android": {

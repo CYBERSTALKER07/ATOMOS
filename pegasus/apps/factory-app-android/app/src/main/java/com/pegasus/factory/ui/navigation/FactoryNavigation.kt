@@ -18,7 +18,9 @@ import com.pegasus.factory.ui.screens.dashboard.DashboardScreen
 import com.pegasus.factory.ui.screens.fleet.FleetScreen
 import com.pegasus.factory.ui.screens.insights.InsightsScreen
 import com.pegasus.factory.ui.screens.loadingbay.LoadingBayScreen
+import com.pegasus.factory.ui.screens.override.PayloadOverrideScreen
 import com.pegasus.factory.ui.screens.staff.StaffScreen
+import com.pegasus.factory.ui.screens.supply.SupplyRequestsScreen
 import com.pegasus.factory.ui.screens.transfer.TransferDetailScreen
 import com.pegasus.factory.ui.screens.transfer.TransferListScreen
 
@@ -31,6 +33,8 @@ object FactoryRoutes {
     const val FLEET = "fleet"
     const val STAFF = "staff"
     const val INSIGHTS = "insights"
+    const val SUPPLY_REQUESTS = "supply_requests"
+    const val PAYLOAD_OVERRIDE = "payload_override"
 
     fun transferDetail(id: String) = "transfers/$id"
 }
@@ -128,6 +132,20 @@ fun FactoryNavigation(
 
         composable(FactoryRoutes.INSIGHTS) {
             InsightsScreen(
+                api = api,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(FactoryRoutes.SUPPLY_REQUESTS) {
+            SupplyRequestsScreen(
+                api = api,
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(FactoryRoutes.PAYLOAD_OVERRIDE) {
+            PayloadOverrideScreen(
                 api = api,
                 onBack = { navController.popBackStack() },
             )

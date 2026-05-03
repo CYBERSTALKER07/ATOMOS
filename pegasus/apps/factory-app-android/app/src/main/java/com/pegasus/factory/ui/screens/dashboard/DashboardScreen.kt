@@ -122,7 +122,7 @@ fun DashboardScreen(
                     )
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
-                    DesktopOperationsCard()
+                    WorkflowLaunchCard(onNavigate = onNavigate)
                 }
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Text(
@@ -144,7 +144,9 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun DesktopOperationsCard() {
+private fun WorkflowLaunchCard(
+    onNavigate: (String) -> Unit,
+) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.elevatedCardColors(
@@ -174,51 +176,66 @@ private fun DesktopOperationsCard() {
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
                     Text(
-                        text = "Desktop operations",
+                        text = "Operator workflows",
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
-                        text = "Use Factory Portal for the workflows that need multi-manifest tables and higher-consequence confirmations.",
+                        text = "Warehouse demand acknowledgements and live manifest overrides are available on mobile in streamlined native flows.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
-            DesktopOperationRow(
+            WorkflowLaunchRow(
                 title = "Supply requests",
-                supporting = "Acknowledge, start production, mark ready, and fulfill warehouse demand on desktop.",
+                supporting = "Review warehouse demand and advance requests through production states.",
+                actionLabel = "Open requests",
+                onClick = { onNavigate(FactoryRoutes.SUPPLY_REQUESTS) },
             )
-            DesktopOperationRow(
+            WorkflowLaunchRow(
                 title = "Payload override",
-                supporting = "Rebalance or cancel live loading manifests from the desktop control surface.",
+                supporting = "Move transfers between loading manifests or release them back to approved stock.",
+                actionLabel = "Open override",
+                onClick = { onNavigate(FactoryRoutes.PAYLOAD_OVERRIDE) },
             )
         }
     }
 }
 
 @Composable
-private fun DesktopOperationRow(
+private fun WorkflowLaunchRow(
     title: String,
     supporting: String,
+    actionLabel: String,
+    onClick: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
-        Column(
+        Row(
             modifier = Modifier.padding(LabSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+            horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Text(
-                text = supporting,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = supporting,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            FilledTonalButton(onClick = onClick) {
+                Text(actionLabel)
+            }
         }
     }
 }

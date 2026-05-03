@@ -39,8 +39,25 @@ type VehicleItem struct {
 	Label        string  `json:"label"`
 	LicensePlate string  `json:"license_plate"`
 	MaxVolumeVU  float64 `json:"max_volume_vu"`
+	CapacityVU   float64 `json:"capacity_vu"`
 	IsActive     bool    `json:"is_active"`
+	Status       string  `json:"status"`
 	CreatedAt    string  `json:"created_at"`
+}
+
+func vehicleAvailabilityStatus(isActive bool) string {
+	if isActive {
+		return "AVAILABLE"
+	}
+	return "INACTIVE"
+}
+
+func normalizeVehicleItemAliases(item *VehicleItem) {
+	if item == nil {
+		return
+	}
+	item.CapacityVU = item.MaxVolumeVU
+	item.Status = vehicleAvailabilityStatus(item.IsActive)
 }
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
@@ -125,6 +142,7 @@ func listOpsVehicles(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		}
 		v.CreatedAt = createdAt.Format(time.RFC3339)
 		v.ClassLabel = vehicleClassLabel(v.VehicleClass)
+		normalizeVehicleItemAliases(&v)
 		vehicles = append(vehicles, v)
 	}
 	if vehicles == nil {
@@ -197,8 +215,11 @@ func createOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Cl
 		"vehicle_id":    vehicleID,
 		"vehicle_class": req.VehicleClass,
 		"max_volume_vu": cap,
+		"capacity_vu":   cap,
 		"label":         req.Label,
 		"license_plate": req.LicensePlate,
+		"status":        vehicleAvailabilityStatus(true),
+		"is_active":     true,
 	})
 }
 
@@ -231,6 +252,7 @@ func getOpsVehicle(w http.ResponseWriter, r *http.Request, client *spanner.Clien
 	}
 	v.CreatedAt = createdAt.Format(time.RFC3339)
 	v.ClassLabel = vehicleClassLabel(v.VehicleClass)
+	normalizeVehicleItemAliases(&v)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)

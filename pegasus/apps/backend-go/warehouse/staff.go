@@ -36,6 +36,15 @@ type CreateStaffReq struct {
 	Role  string `json:"role"` // WAREHOUSE_STAFF | PAYLOADER
 }
 
+func normalizeWarehouseStaffRole(role string) string {
+	switch strings.TrimSpace(role) {
+	case "WAREHOUSE_STAFF", "PAYLOADER":
+		return role
+	default:
+		return "WAREHOUSE_STAFF"
+	}
+}
+
 // HandleOpsStaff — GET/POST for /v1/warehouse/ops/staff
 func HandleOpsStaff(spannerClient *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -152,19 +161,16 @@ func createOpsStaff(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
 		return
 	}
-	if req.Name == "" || req.Phone == "" || req.PIN == "" {
-		http.Error(w, `{"error":"name, phone, and pin required"}`, http.StatusBadRequest)
+	if req.Name == "" || req.Phone == "" {
+		http.Error(w, `{"error":"name and phone required"}`, http.StatusBadRequest)
 		return
 	}
-	if len(req.PIN) < 8 {
+	if req.PIN != "" && len(req.PIN) < 8 {
 		http.Error(w, `{"error":"pin must be at least 8 digits"}`, http.StatusBadRequest)
 		return
 	}
-	// Warehouse admins can only create sub-staff, not other admins
-	validRoles := map[string]bool{"WAREHOUSE_STAFF": true, "PAYLOADER": true}
-	if !validRoles[req.Role] {
-		req.Role = "WAREHOUSE_STAFF"
-	}
+	// Warehouse admins can only create sub-staff, not other admins.
+	req.Role = normalizeWarehouseStaffRole(req.Role)
 
 	// Check duplicate phone
 	dupStmt := spanner.Statement{
@@ -180,10 +186,23 @@ func createOpsStaff(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 	}
 
 	workerID := uuid.New().String()
+	var plaintextPIN string
 	_, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		bcryptHash, regErr := pin.RegisterExisting(ctx, txn, req.PIN, pin.EntityWarehouseStaff, workerID)
-		if regErr != nil {
-			return fmt.Errorf("register PIN: %w", regErr)
+		var bcryptHash string
+		if req.PIN == "" {
+			pinResult, genErr := pin.GenerateUnique(ctx, txn, pin.EntityWarehouseStaff, workerID)
+			if genErr != nil {
+				return fmt.Errorf("generate PIN: %w", genErr)
+			}
+			plaintextPIN = pinResult.Plaintext
+			bcryptHash = pinResult.BcryptHash
+		} else {
+			regHash, regErr := pin.RegisterExisting(ctx, txn, req.PIN, pin.EntityWarehouseStaff, workerID)
+			if regErr != nil {
+				return fmt.Errorf("register PIN: %w", regErr)
+			}
+			plaintextPIN = req.PIN
+			bcryptHash = regHash
 		}
 		return txn.BufferWrite([]*spanner.Mutation{
 			spanner.Insert("WarehouseStaff",
@@ -208,6 +227,7 @@ func createOpsStaff(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 		"worker_id": workerID,
 		"name":      req.Name,
 		"role":      req.Role,
+		"pin":       plaintextPIN,
 	})
 }
 

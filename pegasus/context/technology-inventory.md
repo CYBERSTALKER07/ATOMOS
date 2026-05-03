@@ -45,6 +45,10 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 - Legacy order detail compatibility handler: `pegasus/apps/backend-go/order/legacy_orders.go`
 	- Owns `GET /v1/orders/{id}`, `PATCH /v1/orders/{id}/status`, and `PATCH /v1/orders/{id}/state`
 	- Serves an additive superset detail payload for driver iOS, driver Android, and retailer desktop order detail consumers
+- Warehouse ops compatibility layer: `pegasus/apps/backend-go/warehouse/inventory.go`, `pegasus/apps/backend-go/warehouse/staff.go`, `pegasus/apps/backend-go/warehouse/vehicles.go`
+	- Keeps `GET/PATCH /v1/warehouse/ops/inventory`, `GET/POST /v1/warehouse/ops/staff`, and `GET/POST /v1/warehouse/ops/vehicles` additive across warehouse portal, warehouse iOS, and warehouse Android
+	- Inventory accepts `q` and `search`, accepts `sku_id` or `product_id` on mutation, and returns both `inventory` and `items` with `sku_id`/`product_id` aliases
+	- Staff create accepts an optional PIN and returns the effective one-time PIN; vehicle responses expose both `max_volume_vu` and `capacity_vu` plus a derived `status`
 
 ## Android Stack
 

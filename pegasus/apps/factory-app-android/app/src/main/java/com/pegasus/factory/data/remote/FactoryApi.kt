@@ -45,6 +45,39 @@ interface FactoryApi {
     @POST("v1/factory/dispatch")
     suspend fun dispatch(@Body body: DispatchRequest): Response<DispatchResponse>
 
+    // ── Supply Requests ──
+    @GET("v1/factory/supply-requests")
+    suspend fun getSupplyRequests(
+        @Query("state") state: String? = null,
+    ): Response<List<SupplyRequest>>
+
+    @PATCH("v1/factory/supply-requests/{id}")
+    suspend fun transitionSupplyRequest(
+        @Path("id") id: String,
+        @Body body: SupplyRequestTransitionRequest,
+    ): Response<SupplyRequestTransitionResponse>
+
+    // ── Payload Override / Manifests ──
+    @GET("v1/factory/manifests")
+    suspend fun getManifests(
+        @Query("state") state: String? = null,
+    ): Response<ManifestListResponse>
+
+    @POST("v1/factory/manifests/rebalance")
+    suspend fun rebalanceManifest(
+        @Body body: ManifestRebalanceRequest,
+    ): Response<ManifestRebalanceResponse>
+
+    @POST("v1/factory/manifests/cancel-transfer")
+    suspend fun cancelManifestTransfer(
+        @Body body: ManifestCancelTransferRequest,
+    ): Response<ManifestCancelTransferResponse>
+
+    @POST("v1/factory/manifests/cancel")
+    suspend fun cancelManifest(
+        @Body body: ManifestCancelRequest,
+    ): Response<ManifestCancelResponse>
+
     // ── Fleet ──
     @GET("v1/factory/fleet")
     suspend fun getFleet(): Response<VehicleListResponse>
