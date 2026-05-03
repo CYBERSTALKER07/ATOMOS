@@ -8,6 +8,7 @@ import { usePagination } from '@/lib/usePagination';
 import PaginationControls from '@/components/PaginationControls';
 import Icon from '@/components/Icon';
 import Drawer from '@/components/Drawer';
+import { buildSupplierOrgInviteIdempotencyKey } from '../_shared/idempotency';
 import { normalizeCollectionResponse } from '../_shared/referenceData';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -214,6 +215,16 @@ export default function StaffManagementPage() {
     try {
       const res = await apiFetch('/v1/supplier/org/members/invite', {
         method: 'POST',
+        headers: {
+          'Idempotency-Key': buildSupplierOrgInviteIdempotencyKey(
+            formName,
+            formEmail,
+            formPhone,
+            formRole,
+            formRole === 'NODE_ADMIN' ? formWarehouse : '',
+            isFactoryFormRole ? formFactory : '',
+          ),
+        },
         body: JSON.stringify({
           name: formName.trim(),
           email: formEmail.trim().toLowerCase(),

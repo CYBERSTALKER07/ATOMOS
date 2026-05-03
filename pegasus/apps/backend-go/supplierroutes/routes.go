@@ -33,6 +33,7 @@ type Deps struct {
 	DirectClient *payment.GlobalPayDirectClient
 	Producer     *kafkago.Writer
 	Log          Middleware
+	Idempotency  Middleware
 }
 
 // RegisterRoutes mounts the extracted supplier setup and warehouse-ops surfaces:
@@ -57,18 +58,19 @@ type Deps struct {
 //	GET /v1/supplier/warehouse-inflight-vu       — VU guardrail read
 func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
+	idem := d.Idempotency
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
 
 	r.HandleFunc("/v1/supplier/configure",
 		auth.RequireRole(supplierRole, log(supplier.HandleSupplierConfigure(d.Spanner))))
 	r.HandleFunc("/v1/supplier/billing/setup",
-		auth.RequireRole(supplierRole, log(supplier.HandleBillingSetup(d.Spanner))))
+		auth.RequireRole(supplierRole, log(idem(supplier.HandleBillingSetup(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/profile",
 		auth.RequireRole(supplierRole, log(supplierProfileHandler(d))))
 	r.HandleFunc("/v1/supplier/shift",
 		auth.RequireRole(supplierRole, log(supplier.HandleSupplierShift(d.Spanner))))
 	r.HandleFunc("/v1/supplier/payment-config",
-		auth.RequireRole(supplierRole, log(vault.HandlePaymentConfigs(d.Spanner))))
+		auth.RequireRole(supplierRole, log(idem(vault.HandlePaymentConfigs(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/gateway-onboarding",
 		auth.RequireRole(supplierRole, log(vault.HandleGatewayOnboarding(d.Spanner))))
 	r.HandleFunc("/v1/supplier/payment/recipient/register",
@@ -76,7 +78,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/org/members",
 		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleOrgMembers(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/org/members/invite",
-		auth.RequireRole(supplierRole, log(supplier.HandleOrgInvite(d.Spanner))))
+		auth.RequireRole(supplierRole, log(idem(supplier.HandleOrgInvite(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/org/members/",
 		auth.RequireRole(supplierRole, log(supplier.HandleOrgMemberAction(d.Spanner))))
 	r.HandleFunc("/v1/supplier/staff/payloader",

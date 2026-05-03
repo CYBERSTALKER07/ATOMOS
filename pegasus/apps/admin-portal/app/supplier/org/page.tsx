@@ -5,6 +5,7 @@ import { Button } from '@heroui/react';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import Drawer from '@/components/Drawer';
+import { buildSupplierOrgInviteIdempotencyKey } from '../_shared/idempotency';
 import { normalizeCollectionResponse } from '../_shared/referenceData';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
@@ -127,6 +128,16 @@ export default function OrgMembersPage() {
     try {
       const res = await apiFetch('/v1/supplier/org/members/invite', {
         method: 'POST',
+        headers: {
+          'Idempotency-Key': buildSupplierOrgInviteIdempotencyKey(
+            formName,
+            formEmail,
+            formPhone,
+            formRole,
+            formRole === 'NODE_ADMIN' ? formWarehouse : '',
+            isFactoryRole ? formFactory : '',
+          ),
+        },
         body: JSON.stringify({
           name: formName.trim(),
           email: formEmail.trim().toLowerCase(),

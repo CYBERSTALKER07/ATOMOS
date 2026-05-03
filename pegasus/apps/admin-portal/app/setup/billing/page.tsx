@@ -40,6 +40,26 @@ const GLOBAL_PAYNT_GATEWAYS = [
   },
 ];
 
+function trailingDigits(value: string): string {
+  const digitsOnly = value.replace(/\D/g, '');
+  return digitsOnly.slice(-4);
+}
+
+function buildBillingSetupIdempotencyKey(
+  bankName: string,
+  accountNumber: string,
+  cardNumber: string,
+  paymentGateway: string,
+): string {
+  return [
+    'supplier-billing-setup',
+    bankName.trim().toUpperCase(),
+    trailingDigits(accountNumber),
+    trailingDigits(cardNumber),
+    paymentGateway.trim().toUpperCase(),
+  ].join(':');
+}
+
 function InputField({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
     <div>
@@ -80,12 +100,18 @@ export default function BillingSetupPage() {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${decodeURIComponent(token)}`,
+          'Idempotency-Key': buildBillingSetupIdempotencyKey(
+            bankName,
+            accountNumber,
+            cardNumber,
+            global_payntGateway,
+          ),
         },
         body: JSON.stringify({
           bank_name: bankName,
           account_number: accountNumber,
           card_number: cardNumber,
-          global_paynt_gateway: global_payntGateway,
+          payment_gateway: global_payntGateway,
         }),
       });
 

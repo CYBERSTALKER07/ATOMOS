@@ -93,6 +93,14 @@ function getFieldLabel(cap: ProviderCapability, fieldName: ManualFieldName): str
     ?? fieldName;
 }
 
+function buildPaymentConfigSaveIdempotencyKey(gateway: GatewayName, merchantId: string, serviceId: string): string {
+  return ['supplier-payment-config-save', gateway.trim().toUpperCase(), merchantId.trim(), serviceId.trim()].join(':');
+}
+
+function buildPaymentConfigDeactivateIdempotencyKey(configId: string): string {
+  return ['supplier-payment-config-deactivate', configId.trim()].join(':');
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 
 export default function GlobalPayntConfigPage() {
@@ -160,6 +168,9 @@ export default function GlobalPayntConfigPage() {
     try {
       const res = await apiFetch('/v1/supplier/payment-config', {
         method: 'POST',
+        headers: {
+          'Idempotency-Key': buildPaymentConfigSaveIdempotencyKey(gateway, merchantId, serviceId),
+        },
         body: JSON.stringify({
           gateway_name: gateway,
           merchant_id: merchantId.trim(),
@@ -187,6 +198,9 @@ export default function GlobalPayntConfigPage() {
     try {
       const res = await apiFetch('/v1/supplier/payment-config', {
         method: 'DELETE',
+        headers: {
+          'Idempotency-Key': buildPaymentConfigDeactivateIdempotencyKey(configId),
+        },
         body: JSON.stringify({ config_id: configId }),
       });
       if (res.ok) {

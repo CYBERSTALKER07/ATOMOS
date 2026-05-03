@@ -448,6 +448,7 @@ func main() {
 		DirectClient: directClient,
 		Producer:     svc.Producer,
 		Log:          loggingMiddleware,
+		Idempotency:  idempotency.Guard,
 	})
 
 	// /v1/catalog/platform-categories moved to catalogroutes.
