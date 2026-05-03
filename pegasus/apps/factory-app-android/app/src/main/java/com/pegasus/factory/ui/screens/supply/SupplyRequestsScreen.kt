@@ -36,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,10 +45,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.pegasus.factory.data.model.SupplyRequest
 import com.pegasus.factory.data.model.SupplyRequestTransitionRequest
 import com.pegasus.factory.data.remote.FactoryApi
 import com.pegasus.factory.ui.theme.LabSpacing
+import java.text.DateFormat
+import java.util.Date
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 private data class RequestActionSpec(
@@ -87,24 +95,47 @@ fun SupplyRequestsScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var filter by remember { mutableStateOf("ALL") }
     var transitioningId by remember { mutableStateOf<String?>(null) }
+    var refreshing by remember { mutableStateOf(false) }
+    var staleMessage by remember { mutableStateOf<String?>(null) }
+    var lastSyncedAt by remember { mutableStateOf<Long?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    fun load() {
-        loading = true
-        error = null
+    fun load(background: Boolean = false) {
+        if (background) {
+            refreshing = true
+        } else if (requests.isEmpty()) {
+            loading = true
+            error = null
+        }
+
         scope.launch {
             try {
                 val resp = api.getSupplyRequests()
                 if (resp.isSuccessful && resp.body() != null) {
                     requests = resp.body()!!
+                    lastSyncedAt = System.currentTimeMillis()
+                    staleMessage = null
+                    error = null
                 } else {
-                    error = "Failed (${resp.code()})"
+                    val message = "Failed (${resp.code()})"
+                    if (requests.isEmpty()) {
+                        error = message
+                    } else {
+                        staleMessage = "Showing last synced queue. $message"
+                    }
                 }
             } catch (e: Exception) {
-                error = e.message ?: "Network error"
+                val message = e.message ?: "Network error"
+                if (requests.isEmpty()) {
+                    error = message
+                } else {
+                    staleMessage = "Showing last synced queue. $message"
+                }
             } finally {
                 loading = false
+                refreshing = false
             }
         }
     }
@@ -119,7 +150,7 @@ fun SupplyRequestsScreen(
                 )
                 if (resp.isSuccessful) {
                     snackbarHostState.showSnackbar("${requestLabel(request)} moved to ${resp.body()?.state ?: action}")
-                    load()
+                    load(background = true)
                 } else {
                     snackbarHostState.showSnackbar("Transition failed (${resp.code()})")
                 }
@@ -131,9 +162,35 @@ fun SupplyRequestsScreen(
         }
     }
 
-    LaunchedEffect(Unit) { load() }
+    LaunchedEffect(Unit) {
+        load()
+        while (isActive) {
+            delay(30_000)
+            if (transitioningId == null) {
+                load(background = true)
+            }
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                load(background = requests.isNotEmpty())
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     val filteredRequests = if (filter == "ALL") requests else requests.filter { it.state == filter }
+    val runtimeStatus = when {
+        refreshing -> "Refreshing live queue — last sync ${formatSyncTime(lastSyncedAt)}"
+        staleMessage != null -> staleMessage!!
+        lastSyncedAt != null -> "Live sync active — last sync ${formatSyncTime(lastSyncedAt)}"
+        else -> "Waiting for first sync"
+    }
 
     Scaffold(
         topBar = {
@@ -143,7 +200,7 @@ fun SupplyRequestsScreen(
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 },
                 actions = {
-                    IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") }
+                    IconButton(onClick = { load(background = requests.isNotEmpty()) }) { Icon(Icons.Default.Refresh, "Refresh") }
                 },
             )
         },
@@ -181,6 +238,8 @@ fun SupplyRequestsScreen(
                     SupplySummaryCard(
                         total = requests.size,
                         visible = filteredRequests.size,
+                        runtimeStatus = runtimeStatus,
+                        stale = staleMessage != null,
                     )
                 }
                 items(filteredRequests, key = { it.id }) { request ->
@@ -220,6 +279,8 @@ private fun FilterRow(
 private fun SupplySummaryCard(
     total: Int,
     visible: Int,
+    runtimeStatus: String,
+    stale: Boolean,
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -240,6 +301,17 @@ private fun SupplySummaryCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = if (stale) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainer,
+            ) {
+                Text(
+                    text = runtimeStatus,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (stale) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = LabSpacing.md, vertical = LabSpacing.sm),
+                )
+            }
         }
     }
 }
@@ -410,3 +482,8 @@ private fun formatDate(value: String?): String {
 
 private fun trimDecimal(value: Double): String =
     if (value % 1.0 == 0.0) value.toInt().toString() else String.format("%.1f", value)
+
+private fun formatSyncTime(value: Long?): String {
+    if (value == null) return "waiting"
+    return DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value))
+}

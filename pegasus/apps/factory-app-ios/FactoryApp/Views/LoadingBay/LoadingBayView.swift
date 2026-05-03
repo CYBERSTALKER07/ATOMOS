@@ -275,14 +275,34 @@ private struct CancelTransferCandidate: Identifiable {
 }
 
 struct PayloadOverrideView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var manifests: [Manifest] = []
     @State private var loading = true
     @State private var error: String?
     @State private var actingKey: String?
+    @State private var refreshing = false
+    @State private var staleMessage: String?
+    @State private var lastSyncedAt: Date?
     @State private var moveCandidate: MoveTransferCandidate?
     @State private var selectedTargetManifestID = ""
     @State private var cancelTransferCandidate: CancelTransferCandidate?
     @State private var cancelManifestCandidate: Manifest?
+
+    private var runtimeStatus: String {
+        if refreshing {
+            return "Refreshing live manifests — last sync \(overrideSyncText(lastSyncedAt))"
+        }
+
+        if let staleMessage {
+            return staleMessage
+        }
+
+        if lastSyncedAt != nil {
+            return "Live sync active — last sync \(overrideSyncText(lastSyncedAt))"
+        }
+
+        return "Waiting for first sync"
+    }
 
     var body: some View {
         NavigationStack {
@@ -296,7 +316,7 @@ struct PayloadOverrideView: View {
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { load() }
+                        Button("Retry") { Task { await load() } }
                     }
                 } else if manifests.isEmpty {
                     ContentUnavailableView(
@@ -307,7 +327,11 @@ struct PayloadOverrideView: View {
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
-                            OverrideSummaryCard(manifests: manifests)
+                            OverrideSummaryCard(
+                                manifests: manifests,
+                                runtimeStatus: runtimeStatus,
+                                stale: staleMessage != nil
+                            )
 
                             LazyVStack(spacing: LabTheme.spacingSM) {
                                 ForEach(Array(manifests.enumerated()), id: \.element.id) { index, manifest in
@@ -332,12 +356,25 @@ struct PayloadOverrideView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Refresh", systemImage: "arrow.clockwise") {
-                        load()
+                        Task { await load(background: !manifests.isEmpty) }
                     }
                     .labelStyle(.iconOnly)
                 }
             }
-            .task { load() }
+            .task { await load() }
+            .task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(30))
+                    if actingKey == nil {
+                        await load(background: true)
+                    }
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active {
+                    Task { await load(background: !manifests.isEmpty) }
+                }
+            }
             .sheet(item: $moveCandidate, onDismiss: { selectedTargetManifestID = "" }) { candidate in
                 MoveTransferSheet(
                     candidate: candidate,
@@ -382,19 +419,31 @@ struct PayloadOverrideView: View {
         }
     }
 
-    private func load() {
-        loading = true
-        error = nil
-
-        Task {
-            do {
-                manifests = try await FactoryService.loadingManifests().manifests.filter { $0.state == "LOADING" }
-            } catch {
-                self.error = error.localizedDescription
-            }
-
-            loading = false
+    @MainActor
+    private func load(background: Bool = false) async {
+        if background {
+            refreshing = true
+        } else if manifests.isEmpty {
+            loading = true
+            error = nil
         }
+
+        do {
+            manifests = try await FactoryService.loadingManifests().manifests.filter { $0.state == "LOADING" }
+            staleMessage = nil
+            error = nil
+            lastSyncedAt = Date()
+        } catch {
+            let message = error.localizedDescription
+            if manifests.isEmpty {
+                self.error = message
+            } else {
+                staleMessage = "Showing last synced manifests. \(message)"
+            }
+        }
+
+        loading = false
+        refreshing = false
     }
 
     @MainActor
@@ -410,7 +459,7 @@ struct PayloadOverrideView: View {
             )
             moveCandidate = nil
             selectedTargetManifestID = ""
-            manifests = try await FactoryService.loadingManifests().manifests.filter { $0.state == "LOADING" }
+            await load(background: true)
         } catch {
             self.error = error.localizedDescription
         }
@@ -428,7 +477,7 @@ struct PayloadOverrideView: View {
                 transferId: candidate.transfer.id
             )
             cancelTransferCandidate = nil
-            manifests = try await FactoryService.loadingManifests().manifests.filter { $0.state == "LOADING" }
+            await load(background: true)
         } catch {
             self.error = error.localizedDescription
         }
@@ -443,7 +492,7 @@ struct PayloadOverrideView: View {
         do {
             _ = try await FactoryService.cancelManifest(manifestId: manifest.id)
             cancelManifestCandidate = nil
-            manifests = try await FactoryService.loadingManifests().manifests.filter { $0.state == "LOADING" }
+            await load(background: true)
         } catch {
             self.error = error.localizedDescription
         }
@@ -454,6 +503,8 @@ struct PayloadOverrideView: View {
 
 private struct OverrideSummaryCard: View {
     let manifests: [Manifest]
+    let runtimeStatus: String
+    let stale: Bool
 
     var body: some View {
         let transferCount = manifests.reduce(into: 0) { $0 += $1.transfers.count }
@@ -464,6 +515,13 @@ private struct OverrideSummaryCard: View {
             Text("\(manifests.count) loading manifests, \(transferCount) transfers available for rebalance or release.")
                 .font(.body)
                 .foregroundStyle(.secondary)
+            Text(runtimeStatus)
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(stale ? Color.red : .secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, LabTheme.spacingMD)
+                .padding(.vertical, LabTheme.spacingSM)
+                .background(stale ? Color.red.opacity(0.1) : LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .labCard()
@@ -654,4 +712,9 @@ private struct MoveTransferSheet: View {
 
 private func overrideVolumeLabel(_ value: Double) -> String {
     value.rounded(.towardZero) == value ? "\(Int(value)) VU" : String(format: "%.1f VU", value)
+}
+
+private func overrideSyncText(_ value: Date?) -> String {
+    guard let value else { return "waiting" }
+    return value.formatted(date: .omitted, time: .shortened)
 }

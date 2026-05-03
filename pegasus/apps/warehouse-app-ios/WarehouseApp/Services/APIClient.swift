@@ -127,6 +127,18 @@ final class APIClient: Sendable {
         }
     }
 
+    // MARK: - DELETE
+    func delete<T: Decodable>(_ path: String, query: [String: String] = [:]) async throws -> T {
+        var components = URLComponents(url: baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
+        if !query.isEmpty {
+            components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+        }
+        var request = URLRequest(url: components.url!)
+        request.httpMethod = "DELETE"
+        await attachToken(&request)
+        return try await execute(request)
+    }
+
     // MARK: - Execute with 401 retry
     private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
         let (data, response) = try await dataForRequestWithFallback(request)

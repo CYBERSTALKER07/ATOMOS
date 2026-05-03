@@ -97,8 +97,29 @@ interface WarehouseApi {
         @Query("state") state: String? = null,
     ): Response<List<WarehouseSupplyRequest>>
 
+    @POST("v1/warehouse/supply-requests")
+    suspend fun createSupplyRequest(
+        @Body body: CreateWarehouseSupplyRequestRequest,
+    ): Response<CreateWarehouseSupplyRequestResponse>
+
+    @PATCH("v1/warehouse/supply-requests/{id}")
+    suspend fun transitionSupplyRequest(
+        @Path("id") id: String,
+        @Body body: WarehouseSupplyRequestTransitionRequest,
+    ): Response<WarehouseSupplyRequestTransitionResponse>
+
     @GET("v1/warehouse/dispatch-locks")
     suspend fun getDispatchLocks(): Response<List<WarehouseDispatchLock>>
+
+    @POST("v1/warehouse/dispatch-lock")
+    suspend fun createDispatchLock(
+        @Body body: CreateWarehouseDispatchLockRequest,
+    ): Response<CreateWarehouseDispatchLockResponse>
+
+    @DELETE("v1/warehouse/dispatch-lock")
+    suspend fun releaseDispatchLock(
+        @Query("lock_id") lockId: String,
+    ): Response<ReleaseWarehouseDispatchLockResponse>
 
     // ── Staff ──
     @GET("v1/warehouse/ops/staff")

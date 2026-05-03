@@ -644,6 +644,102 @@ struct WarehouseLiveEvent: Decodable {
     }
 }
 
+struct CreateWarehouseSupplyRequestItem: Encodable {
+    let productId: String
+    let requestedQuantity: Int
+    let recommendedQty: Int
+    let unitVolumeVu: Double
+
+    enum CodingKeys: String, CodingKey {
+        case productId = "product_id"
+        case requestedQuantity = "requested_quantity"
+        case recommendedQty = "recommended_qty"
+        case unitVolumeVu = "unit_volume_vu"
+    }
+}
+
+struct CreateWarehouseSupplyRequestRequest: Encodable {
+    let factoryId: String
+    let priority: String
+    let notes: String
+    let items: [CreateWarehouseSupplyRequestItem]
+    let useDemandForecast: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case factoryId = "factory_id"
+        case priority
+        case notes
+        case items
+        case useDemandForecast = "use_demand_forecast"
+    }
+}
+
+struct CreateWarehouseSupplyRequestResponse: Decodable {
+    let requestId: String
+    let state: String
+    let priority: String
+    let totalVolumeVu: Double
+    let itemsCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case requestId = "request_id"
+        case state
+        case priority
+        case totalVolumeVu = "total_volume_vu"
+        case itemsCount = "items_count"
+    }
+}
+
+struct WarehouseSupplyRequestTransitionRequest: Encodable {
+    let action: String
+    let transferOrderId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case action
+        case transferOrderId = "transfer_order_id"
+    }
+}
+
+struct WarehouseSupplyRequestTransitionResponse: Decodable {
+    let requestId: String
+    let state: String
+
+    enum CodingKeys: String, CodingKey {
+        case requestId = "request_id"
+        case state
+    }
+}
+
+struct CreateWarehouseDispatchLockRequest: Encodable {
+    let lockType: String
+
+    enum CodingKeys: String, CodingKey {
+        case lockType = "lock_type"
+    }
+}
+
+struct CreateWarehouseDispatchLockResponse: Decodable {
+    let lockId: String
+    let lockType: String
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case lockId = "lock_id"
+        case lockType = "lock_type"
+        case status
+    }
+}
+
+struct ReleaseWarehouseDispatchLockResponse: Decodable {
+    let lockId: String
+    let status: String
+
+    enum CodingKeys: String, CodingKey {
+        case lockId = "lock_id"
+        case status
+    }
+}
+
 // MARK: - Staff
 
 struct StaffMember: Decodable, Identifiable {

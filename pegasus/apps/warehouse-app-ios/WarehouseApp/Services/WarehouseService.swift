@@ -102,6 +102,37 @@ enum WarehouseService {
         try await api.get("v1/warehouse/dispatch-locks")
     }
 
+    static func createSupplyRequest(factoryId: String, priority: String, notes: String) async throws -> CreateWarehouseSupplyRequestResponse {
+        try await api.post(
+            "v1/warehouse/supply-requests",
+            body: CreateWarehouseSupplyRequestRequest(
+                factoryId: factoryId,
+                priority: priority,
+                notes: notes,
+                items: [],
+                useDemandForecast: true
+            )
+        )
+    }
+
+    static func cancelSupplyRequest(id: String) async throws -> WarehouseSupplyRequestTransitionResponse {
+        try await api.patch(
+            "v1/warehouse/supply-requests/\(id)",
+            body: WarehouseSupplyRequestTransitionRequest(action: "CANCEL", transferOrderId: nil)
+        )
+    }
+
+    static func acquireDispatchLock(lockType: String = "MANUAL_DISPATCH") async throws -> CreateWarehouseDispatchLockResponse {
+        try await api.post(
+            "v1/warehouse/dispatch-lock",
+            body: CreateWarehouseDispatchLockRequest(lockType: lockType)
+        )
+    }
+
+    static func releaseDispatchLock(lockId: String) async throws -> ReleaseWarehouseDispatchLockResponse {
+        try await api.delete("v1/warehouse/dispatch-lock", query: ["lock_id": lockId])
+    }
+
     // MARK: - Staff
     static func staff() async throws -> StaffListResponse {
         try await api.get("v1/warehouse/ops/staff")

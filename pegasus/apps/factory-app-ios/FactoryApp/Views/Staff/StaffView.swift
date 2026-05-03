@@ -114,14 +114,34 @@ private func requestActions(for state: String) -> [RequestActionSpec] {
 }
 
 struct SupplyRequestsView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var requests: [SupplyRequest] = []
     @State private var loading = true
     @State private var error: String?
     @State private var selectedFilter = "ALL"
     @State private var transitioningID: String?
+    @State private var refreshing = false
+    @State private var staleMessage: String?
+    @State private var lastSyncedAt: Date?
 
     private var filteredRequests: [SupplyRequest] {
         selectedFilter == "ALL" ? requests : requests.filter { $0.state == selectedFilter }
+    }
+
+    private var runtimeStatus: String {
+        if refreshing {
+            return "Refreshing live queue — last sync \(supplySyncText(lastSyncedAt))"
+        }
+
+        if let staleMessage {
+            return staleMessage
+        }
+
+        if lastSyncedAt != nil {
+            return "Live sync active — last sync \(supplySyncText(lastSyncedAt))"
+        }
+
+        return "Waiting for first sync"
     }
 
     var body: some View {
@@ -136,7 +156,7 @@ struct SupplyRequestsView: View {
                     } description: {
                         Text(error)
                     } actions: {
-                        Button("Retry") { load() }
+                        Button("Retry") { Task { await load() } }
                     }
                 } else if filteredRequests.isEmpty {
                     ContentUnavailableView(
@@ -147,7 +167,12 @@ struct SupplyRequestsView: View {
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: LabTheme.spacingLG) {
-                            SupplySummaryCard(total: requests.count, visible: filteredRequests.count)
+                            SupplySummaryCard(
+                                total: requests.count,
+                                visible: filteredRequests.count,
+                                runtimeStatus: runtimeStatus,
+                                stale: staleMessage != nil
+                            )
                             SupplyFilterRow(selectedFilter: $selectedFilter)
 
                             LazyVStack(spacing: LabTheme.spacingSM) {
@@ -172,28 +197,53 @@ struct SupplyRequestsView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Refresh", systemImage: "arrow.clockwise") {
-                        load()
+                        Task { await load(background: !requests.isEmpty) }
                     }
                     .labelStyle(.iconOnly)
                 }
             }
-            .task { load() }
+            .task { await load() }
+            .task {
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(30))
+                    if transitioningID == nil {
+                        await load(background: true)
+                    }
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active {
+                    Task { await load(background: !requests.isEmpty) }
+                }
+            }
         }
     }
 
-    private func load() {
-        loading = true
-        error = nil
-
-        Task {
-            do {
-                requests = try await FactoryService.supplyRequests()
-            } catch {
-                self.error = error.localizedDescription
-            }
-
-            loading = false
+    @MainActor
+    private func load(background: Bool = false) async {
+        if background {
+            refreshing = true
+        } else if requests.isEmpty {
+            loading = true
+            error = nil
         }
+
+        do {
+            requests = try await FactoryService.supplyRequests()
+            staleMessage = nil
+            error = nil
+            lastSyncedAt = Date()
+        } catch {
+            let message = error.localizedDescription
+            if requests.isEmpty {
+                self.error = message
+            } else {
+                staleMessage = "Showing last synced queue. \(message)"
+            }
+        }
+
+        loading = false
+        refreshing = false
     }
 
     @MainActor
@@ -202,7 +252,7 @@ struct SupplyRequestsView: View {
 
         do {
             _ = try await FactoryService.transitionSupplyRequest(id: request.id, action: action)
-            requests = try await FactoryService.supplyRequests()
+            await load(background: true)
         } catch {
             self.error = error.localizedDescription
         }
@@ -214,6 +264,8 @@ struct SupplyRequestsView: View {
 private struct SupplySummaryCard: View {
     let total: Int
     let visible: Int
+    let runtimeStatus: String
+    let stale: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
@@ -222,6 +274,13 @@ private struct SupplySummaryCard: View {
             Text("\(visible) requests in view, \(total) total across the factory queue.")
                 .font(.body)
                 .foregroundStyle(.secondary)
+            Text(runtimeStatus)
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(stale ? Color.red : .secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, LabTheme.spacingMD)
+                .padding(.vertical, LabTheme.spacingSM)
+                .background(stale ? Color.red.opacity(0.1) : LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .labCard()
@@ -373,4 +432,9 @@ private func supplyVolumeLabel(_ value: Double) -> String {
 private func supplyShortDate(_ value: String?) -> String {
     guard let value, !value.isEmpty else { return "Unscheduled" }
     return String(value.prefix { $0 != "T" })
+}
+
+private func supplySyncText(_ value: Date?) -> String {
+    guard let value else { return "waiting" }
+    return value.formatted(date: .omitted, time: .shortened)
 }

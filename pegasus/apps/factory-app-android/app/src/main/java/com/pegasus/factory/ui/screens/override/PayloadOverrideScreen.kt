@@ -38,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,7 +47,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.pegasus.factory.data.model.Manifest
 import com.pegasus.factory.data.model.ManifestCancelRequest
 import com.pegasus.factory.data.model.ManifestCancelTransferRequest
@@ -54,6 +58,10 @@ import com.pegasus.factory.data.model.ManifestRebalanceRequest
 import com.pegasus.factory.data.model.ManifestTransfer
 import com.pegasus.factory.data.remote.FactoryApi
 import com.pegasus.factory.ui.theme.LabSpacing
+import java.text.DateFormat
+import java.util.Date
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 private data class MoveTransferCandidate(
@@ -76,28 +84,50 @@ fun PayloadOverrideScreen(
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     var actingKey by remember { mutableStateOf<String?>(null) }
+    var refreshing by remember { mutableStateOf(false) }
+    var staleMessage by remember { mutableStateOf<String?>(null) }
+    var lastSyncedAt by remember { mutableStateOf<Long?>(null) }
     var moveCandidate by remember { mutableStateOf<MoveTransferCandidate?>(null) }
     var cancelTransferCandidate by remember { mutableStateOf<CancelTransferCandidate?>(null) }
     var cancelManifestCandidate by remember { mutableStateOf<Manifest?>(null) }
     var selectedTargetManifestId by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    fun load() {
-        loading = true
-        error = null
+    fun load(background: Boolean = false) {
+        if (background) {
+            refreshing = true
+        } else if (manifests.isEmpty()) {
+            loading = true
+            error = null
+        }
         scope.launch {
             try {
                 val resp = api.getManifests(state = "LOADING")
                 if (resp.isSuccessful && resp.body() != null) {
                     manifests = resp.body()!!.manifests.filter { it.state == "LOADING" }
+                    staleMessage = null
+                    error = null
+                    lastSyncedAt = System.currentTimeMillis()
                 } else {
-                    error = "Failed (${resp.code()})"
+                    val message = "Failed (${resp.code()})"
+                    if (manifests.isEmpty()) {
+                        error = message
+                    } else {
+                        staleMessage = "Showing last synced manifests. $message"
+                    }
                 }
             } catch (e: Exception) {
-                error = e.message ?: "Network error"
+                val message = e.message ?: "Network error"
+                if (manifests.isEmpty()) {
+                    error = message
+                } else {
+                    staleMessage = "Showing last synced manifests. $message"
+                }
             } finally {
                 loading = false
+                refreshing = false
             }
         }
     }
@@ -116,7 +146,7 @@ fun PayloadOverrideScreen(
                 if (resp.isSuccessful) {
                     snackbarHostState.showSnackbar("Moved ${candidate.transfer.transferId.take(8)}")
                     moveCandidate = null
-                    load()
+                    load(background = true)
                 } else {
                     snackbarHostState.showSnackbar("Move failed (${resp.code()})")
                 }
@@ -141,7 +171,7 @@ fun PayloadOverrideScreen(
                 if (resp.isSuccessful) {
                     snackbarHostState.showSnackbar("Released ${candidate.transfer.transferId.take(8)}")
                     cancelTransferCandidate = null
-                    load()
+                    load(background = true)
                 } else {
                     snackbarHostState.showSnackbar("Release failed (${resp.code()})")
                 }
@@ -161,7 +191,7 @@ fun PayloadOverrideScreen(
                 if (resp.isSuccessful) {
                     snackbarHostState.showSnackbar("Cancelled manifest ${manifest.id.take(8)}")
                     cancelManifestCandidate = null
-                    load()
+                    load(background = true)
                 } else {
                     snackbarHostState.showSnackbar("Cancel failed (${resp.code()})")
                 }
@@ -173,9 +203,36 @@ fun PayloadOverrideScreen(
         }
     }
 
-    LaunchedEffect(Unit) { load() }
+    LaunchedEffect(Unit) {
+        load()
+        while (isActive) {
+            delay(30_000)
+            if (actingKey == null) {
+                load(background = true)
+            }
+        }
+    }
     LaunchedEffect(moveCandidate?.sourceManifestId) {
         selectedTargetManifestId = ""
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                load(background = manifests.isNotEmpty())
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    val runtimeStatus = when {
+        refreshing -> "Refreshing live manifests — last sync ${formatOverrideSyncTime(lastSyncedAt)}"
+        staleMessage != null -> staleMessage!!
+        lastSyncedAt != null -> "Live sync active — last sync ${formatOverrideSyncTime(lastSyncedAt)}"
+        else -> "Waiting for first sync"
     }
 
     Scaffold(
@@ -186,7 +243,7 @@ fun PayloadOverrideScreen(
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
                 },
                 actions = {
-                    IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") }
+                    IconButton(onClick = { load(background = manifests.isNotEmpty()) }) { Icon(Icons.Default.Refresh, "Refresh") }
                 },
             )
         },
@@ -215,7 +272,11 @@ fun PayloadOverrideScreen(
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 item {
-                    OverrideSummaryCard(manifests = manifests)
+                    OverrideSummaryCard(
+                        manifests = manifests,
+                        runtimeStatus = runtimeStatus,
+                        stale = staleMessage != null,
+                    )
                 }
                 items(manifests, key = { it.id }) { manifest ->
                     OverrideManifestCard(
@@ -322,6 +383,8 @@ fun PayloadOverrideScreen(
 @Composable
 private fun OverrideSummaryCard(
     manifests: List<Manifest>,
+    runtimeStatus: String,
+    stale: Boolean,
 ) {
     val transferCount = manifests.sumOf { it.transfers.size }
     ElevatedCard(
@@ -343,6 +406,17 @@ private fun OverrideSummaryCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                color = if (stale) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainer,
+            ) {
+                Text(
+                    text = runtimeStatus,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (stale) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = LabSpacing.md, vertical = LabSpacing.sm),
+                )
+            }
         }
     }
 }
@@ -547,3 +621,8 @@ private fun OverrideStateTag(
 
 private fun trimDecimal(value: Double): String =
     if (value % 1.0 == 0.0) value.toInt().toString() else String.format("%.1f", value)
+
+private fun formatOverrideSyncTime(value: Long?): String {
+    if (value == null) return "waiting"
+    return DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(value))
+}

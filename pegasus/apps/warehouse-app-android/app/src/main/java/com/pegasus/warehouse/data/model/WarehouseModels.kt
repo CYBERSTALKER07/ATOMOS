@@ -306,6 +306,62 @@ data class WarehouseLiveEvent(
     val timestamp: String? = null,
 )
 
+@Serializable
+data class CreateWarehouseSupplyRequestItem(
+    @SerialName("product_id") val productId: String,
+    @SerialName("requested_quantity") val requestedQuantity: Int,
+    @SerialName("recommended_qty") val recommendedQty: Int,
+    @SerialName("unit_volume_vu") val unitVolumeVu: Double,
+)
+
+@Serializable
+data class CreateWarehouseSupplyRequestRequest(
+    @SerialName("factory_id") val factoryId: String,
+    val priority: String,
+    val notes: String,
+    val items: List<CreateWarehouseSupplyRequestItem> = emptyList(),
+    @SerialName("use_demand_forecast") val useDemandForecast: Boolean = true,
+)
+
+@Serializable
+data class CreateWarehouseSupplyRequestResponse(
+    @SerialName("request_id") val requestId: String,
+    val state: String = "",
+    val priority: String = "",
+    @SerialName("total_volume_vu") val totalVolumeVu: Double = 0.0,
+    @SerialName("items_count") val itemsCount: Int = 0,
+)
+
+@Serializable
+data class WarehouseSupplyRequestTransitionRequest(
+    val action: String,
+    @SerialName("transfer_order_id") val transferOrderId: String? = null,
+)
+
+@Serializable
+data class WarehouseSupplyRequestTransitionResponse(
+    @SerialName("request_id") val requestId: String,
+    val state: String = "",
+)
+
+@Serializable
+data class CreateWarehouseDispatchLockRequest(
+    @SerialName("lock_type") val lockType: String,
+)
+
+@Serializable
+data class CreateWarehouseDispatchLockResponse(
+    @SerialName("lock_id") val lockId: String,
+    @SerialName("lock_type") val lockType: String = "",
+    val status: String = "",
+)
+
+@Serializable
+data class ReleaseWarehouseDispatchLockResponse(
+    @SerialName("lock_id") val lockId: String,
+    val status: String = "",
+)
+
 // ── Staff ──
 @Serializable
 data class StaffMember(
