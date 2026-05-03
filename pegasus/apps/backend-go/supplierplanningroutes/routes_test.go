@@ -24,7 +24,7 @@ func TestRegisterRoutes_SupplyLanesUsesIdempotency(t *testing.T) {
 		Idempotency: markerMiddleware("X-Idempotency-Guard", "supply-lanes"),
 	})
 
-	req := httptest.NewRequest(http.MethodOptions, "/v1/supplier/supply-lanes", nil)
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/supply-lanes", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	rec := httptest.NewRecorder()
 
