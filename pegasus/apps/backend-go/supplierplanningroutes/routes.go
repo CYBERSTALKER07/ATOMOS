@@ -31,6 +31,7 @@ type Deps struct {
 	PredictivePush   *factory.PredictivePushService
 	IsDispatchLocked func(ctx context.Context, supplierID, warehouseID, factoryID string) bool
 	Log              Middleware
+	Idempotency      Middleware
 }
 
 // RegisterRoutes mounts the supplier planning and network surface:
@@ -55,6 +56,7 @@ type Deps struct {
 //	POST /v1/supplier/warehouses/apply-territory       — territory reassignment
 func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
+	idem := d.Idempotency
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
 
 	r.HandleFunc("/v1/supplier/delivery-zones/",
@@ -74,7 +76,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/retailers/locations",
 		auth.RequireRole(supplierRole, log(supplier.HandleRetailerLocations(d.Spanner))))
 	r.HandleFunc("/v1/supplier/supply-lanes",
-		auth.RequireRole(supplierRole, log(d.SupplyLanes.HandleSupplyLanes)))
+		auth.RequireRole(supplierRole, log(idem(d.SupplyLanes.HandleSupplyLanes))))
 	r.HandleFunc("/v1/supplier/supply-lanes/",
 		auth.RequireRole(supplierRole, log(d.SupplyLanes.HandleSupplyLaneAction)))
 	r.HandleFunc("/v1/supplier/network-mode",

@@ -60,6 +60,16 @@ const ESCALATION_COLORS: Record<string, string> = {
   FORCE_RECEIVED: 'var(--color-md-tertiary, #7d5260)',
 };
 
+function buildSupplyLaneCreateIdempotencyKey(
+  factoryId: string,
+  warehouseId: string,
+  transitTimeHours: string,
+  freightCostMinor: string,
+  priority: string,
+): string {
+  return ['supply-lane-create', factoryId.trim(), warehouseId.trim(), transitTimeHours.trim(), freightCostMinor.trim(), priority.trim()].join(':');
+}
+
 /* ── Page Component ────────────────────────────────────────────────────────── */
 
 export default function SupplyLanesPage() {
@@ -132,6 +142,15 @@ export default function SupplyLanesPage() {
     };
     const res = await apiFetch('/v1/supplier/supply-lanes', {
       method: 'POST',
+      headers: {
+        'Idempotency-Key': buildSupplyLaneCreateIdempotencyKey(
+          createForm.factory_id,
+          createForm.warehouse_id,
+          createForm.transit_time_hours,
+          createForm.freight_cost_minor,
+          createForm.priority,
+        ),
+      },
       body: JSON.stringify(body),
     });
     if (res.ok) {

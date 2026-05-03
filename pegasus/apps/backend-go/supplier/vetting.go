@@ -311,6 +311,7 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 		} else {
 			newState = "CANCELLED"
 		}
+		transitionAt := time.Now().UTC()
 
 		// Update state
 		if err := txn.BufferWrite([]*spanner.Mutation{
@@ -320,6 +321,16 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 			),
 		}); err != nil {
 			return err
+		}
+		if err := outbox.EmitJSON(txn, "Order", req.OrderID, internalKafka.EventOrderStatusChanged, internalKafka.TopicMain, internalKafka.OrderStatusChangedEvent{
+			OrderID:    req.OrderID,
+			RetailerID: retailerId,
+			SupplierID: supplierId,
+			OldState:   currentState,
+			NewState:   newState,
+			Timestamp:  transitionAt,
+		}, telemetry.TraceIDFromContext(ctx)); err != nil {
+			return fmt.Errorf("emit order status changed: %w", err)
 		}
 
 		// If rejected, release inventory locks
@@ -374,7 +385,7 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 				"amount":      amount,
 				"gateway":     gateway,
 				"reason":      req.Reason,
-				"timestamp":   time.Now().UnixMilli(),
+				"timestamp":   transitionAt.UnixMilli(),
 			}
 			return outbox.EmitJSON(txn, "Order", req.OrderID, ws.EventOrderRejectedBySupplier, internalKafka.TopicMain, event, telemetry.TraceIDFromContext(ctx))
 		}

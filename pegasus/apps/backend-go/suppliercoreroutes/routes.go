@@ -22,11 +22,12 @@ type Middleware func(http.HandlerFunc) http.HandlerFunc
 
 // Deps bundles collaborators needed to mount the supplier core routes.
 type Deps struct {
-	Spanner    *spanner.Client
-	ReadRouter proximity.ReadRouter
-	Order      *order.OrderService
-	Vetting    *supplier.OrderVettingService
-	Log        Middleware
+	Spanner     *spanner.Client
+	ReadRouter  proximity.ReadRouter
+	Order       *order.OrderService
+	Vetting     *supplier.OrderVettingService
+	Log         Middleware
+	Idempotency Middleware
 }
 
 // RegisterRoutes mounts the supplier core surface:
@@ -40,6 +41,7 @@ type Deps struct {
 func RegisterRoutes(r chi.Router, d Deps) {
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
 	log := d.Log
+	idem := d.Idempotency
 
 	r.HandleFunc("/v1/supplier/dashboard",
 		auth.RequireRole(supplierRole, log(dashboardHandler(d.Order))))
@@ -52,7 +54,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/orders",
 		auth.RequireRole(supplierRole, log(d.Vetting.HandleSupplierOrders)))
 	r.HandleFunc("/v1/supplier/orders/vet",
-		auth.RequireRole(supplierRole, log(d.Vetting.HandleVetOrder)))
+		auth.RequireRole(supplierRole, log(idem(d.Vetting.HandleVetOrder))))
 }
 
 func dashboardHandler(orderSvc *order.OrderService) http.HandlerFunc {

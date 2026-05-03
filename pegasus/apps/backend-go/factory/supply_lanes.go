@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -34,6 +35,13 @@ const (
 	emaDampenAlpha       = 0.2
 	propagationThreshold = 0.15 // 15% delta triggers event
 	minUpdateInterval    = 1 * time.Hour
+)
+
+var (
+	errSupplyLaneWarehouseNotFound  = errors.New("warehouse not found")
+	errSupplyLaneWarehouseForbidden = errors.New("warehouse does not belong to your organization")
+	errSupplyLaneFactoryNotFound    = errors.New("factory not found")
+	errSupplyLaneFactoryForbidden   = errors.New("factory does not belong to your organization")
 )
 
 // SupplyLaneResponse is the JSON shape for a SupplyLane.
@@ -196,68 +204,67 @@ func (s *SupplyLanesService) createSupplyLane(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	// Validate factory and warehouse belong to this supplier
-	if err := validateWarehousesBelongToSupplier(r.Context(), s.Spanner, []string{req.WarehouseId}, supplierID); err != nil {
-		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusForbidden)
-		return
-	}
-	fRow, fErr := s.Spanner.Single().ReadRow(r.Context(), "Factories", spanner.Key{req.FactoryId}, []string{"SupplierId"})
-	if fErr != nil {
-		http.Error(w, `{"error":"factory not found"}`, http.StatusNotFound)
-		return
-	}
-	var fOwner string
-	if cErr := fRow.Column(0, &fOwner); cErr != nil || fOwner != supplierID {
-		http.Error(w, `{"error":"factory does not belong to your organization"}`, http.StatusForbidden)
-		return
-	}
-
 	if req.TransitTimeHours <= 0 {
 		req.TransitTimeHours = 24
 	}
 
-	// ── Carbon Auto-Seeding: Haversine distance between factory & warehouse ──
-	var directDistanceKm float64
-	coordsStmt := spanner.Statement{
-		SQL: `SELECT f.Lat, f.Lng, w.Lat, w.Lng
-		      FROM Factories f, Warehouses w
-		      WHERE f.FactoryId = @factoryID AND w.WarehouseId = @warehouseID`,
-		Params: map[string]interface{}{
-			"factoryID":   req.FactoryId,
-			"warehouseID": req.WarehouseId,
-		},
-	}
-	coordsIter := s.Spanner.Single().Query(r.Context(), coordsStmt)
-	coordsRow, err := coordsIter.Next()
-	if err == nil {
-		var fLat, fLng, wLat, wLng spanner.NullFloat64
-		if err := coordsRow.Columns(&fLat, &fLng, &wLat, &wLng); err == nil {
-			if fLat.Valid && fLng.Valid && wLat.Valid && wLng.Valid {
-				directDistanceKm = proximity.HaversineKm(fLat.Float64, fLng.Float64, wLat.Float64, wLng.Float64)
-			}
-		}
-	}
-	coordsIter.Stop()
-
-	// If caller didn't provide carbon score, auto-seed from distance: 0.1 kg CO2/km
-	if req.CarbonScoreKg <= 0 && directDistanceKm > 0 {
-		req.CarbonScoreKg = directDistanceKm * 0.1
-	}
-
 	laneID := uuid.New().String()
-	_, err = s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	var directDistanceKm float64
+	carbonScoreKg := req.CarbonScoreKg
+	_, err := s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		warehouseRow, err := txn.ReadRow(ctx, "Warehouses", spanner.Key{req.WarehouseId}, []string{"SupplierId", "Lat", "Lng"})
+		if err != nil {
+			return errSupplyLaneWarehouseNotFound
+		}
+		var warehouseOwner string
+		var warehouseLat, warehouseLng spanner.NullFloat64
+		if err := warehouseRow.Columns(&warehouseOwner, &warehouseLat, &warehouseLng); err != nil {
+			return fmt.Errorf("read warehouse %s: %w", req.WarehouseId, err)
+		}
+		if warehouseOwner != supplierID {
+			return errSupplyLaneWarehouseForbidden
+		}
+
+		factoryRow, err := txn.ReadRow(ctx, "Factories", spanner.Key{req.FactoryId}, []string{"SupplierId", "Lat", "Lng"})
+		if err != nil {
+			return errSupplyLaneFactoryNotFound
+		}
+		var factoryOwner string
+		var factoryLat, factoryLng spanner.NullFloat64
+		if err := factoryRow.Columns(&factoryOwner, &factoryLat, &factoryLng); err != nil {
+			return fmt.Errorf("read factory %s: %w", req.FactoryId, err)
+		}
+		if factoryOwner != supplierID {
+			return errSupplyLaneFactoryForbidden
+		}
+
+		if factoryLat.Valid && factoryLng.Valid && warehouseLat.Valid && warehouseLng.Valid {
+			directDistanceKm = proximity.HaversineKm(factoryLat.Float64, factoryLng.Float64, warehouseLat.Float64, warehouseLng.Float64)
+		}
+		if carbonScoreKg <= 0 && directDistanceKm > 0 {
+			carbonScoreKg = directDistanceKm * 0.1
+		}
+
 		return txn.BufferWrite([]*spanner.Mutation{
 			spanner.Insert("SupplyLanes",
 				[]string{"LaneId", "SupplierId", "FactoryId", "WarehouseId", "TransitTimeHours",
 					"DampenedTransitHours", "FreightCostMinor", "CarbonScoreKg", "IsActive", "Priority",
 					"DirectDistanceKm", "ExternalEnrichmentEnabled", "CreatedAt"},
 				[]interface{}{laneID, supplierID, req.FactoryId, req.WarehouseId, req.TransitTimeHours,
-					req.TransitTimeHours, req.FreightCostMinor, req.CarbonScoreKg, true, req.Priority,
+					req.TransitTimeHours, req.FreightCostMinor, carbonScoreKg, true, req.Priority,
 					directDistanceKm, false, spanner.CommitTimestamp},
 			),
 		})
 	})
 	if err != nil {
+		switch {
+		case errors.Is(err, errSupplyLaneWarehouseNotFound), errors.Is(err, errSupplyLaneFactoryNotFound):
+			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusNotFound)
+			return
+		case errors.Is(err, errSupplyLaneWarehouseForbidden), errors.Is(err, errSupplyLaneFactoryForbidden):
+			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusForbidden)
+			return
+		}
 		log.Printf("[SUPPLY_LANES] Create error: %v", err)
 		http.Error(w, `{"error":"create_failed"}`, http.StatusInternalServerError)
 		return
@@ -270,9 +277,9 @@ func (s *SupplyLanesService) createSupplyLane(w http.ResponseWriter, r *http.Req
 		"factory_id":         req.FactoryId,
 		"warehouse_id":       req.WarehouseId,
 		"direct_distance_km": directDistanceKm,
-		"carbon_score_kg":    req.CarbonScoreKg,
+		"carbon_score_kg":    carbonScoreKg,
 		"carbon_source": func() string {
-			if directDistanceKm > 0 && req.CarbonScoreKg > 0 {
+			if directDistanceKm > 0 && carbonScoreKg > 0 {
 				return "ESTIMATED"
 			}
 			return "MANUAL"

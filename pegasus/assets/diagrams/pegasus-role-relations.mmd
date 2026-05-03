@@ -14,18 +14,18 @@ subgraph EXECUTION[Execution roles]
     RET[Retailer]
 end
 
-SUP <--> |catalog · pricing · orders · CRM · payments| RET
-SUP <--> |fleet · dispatch · telemetry · fulfillment pay| DRV
-SUP <--> |payloader staff · manifests · exceptions| PAY
-SUP <--> |factories · supply lanes · network mode| FAC
-SUP <--> |warehouses · coverage · inventory · ops| WH
+SUP <--> |catalog / pricing / orders / CRM / payments| RET
+SUP <--> |fleet / dispatch / telemetry / fulfillment pay| DRV
+SUP <--> |payloader staff / manifests / exceptions| PAY
+SUP <--> |factories / supply lanes / network mode| FAC
+SUP <--> |warehouses / coverage / inventory / ops| WH
 
-FAC <--> |supply requests · transfers · replenishment| WH
-FAC <--> |loading bay · rebalance · cancel transfer| PAY
-FAC <--> |factory fleet · dispatch engine · transfer runs| DRV
+FAC <--> |supply requests / transfers / replenishment| WH
+FAC <--> |loading bay / rebalance / cancel transfer| PAY
+FAC <--> |factory fleet / dispatch engine / transfer runs| DRV
 
-WH <--> |ops orders · dispatch preview · dispatch lock| DRV
-WH <--> |active fulfillment · CRM · demand feedback| RET
+WH <--> |ops orders / dispatch preview / dispatch lock| DRV
+WH <--> |active fulfillment / CRM / demand feedback| RET
 
-PAY <--> |truck loading · sealed manifest handoff| DRV
-DRV <--> |tracking · delivery · cash · shop closed| RET
+PAY <--> |truck loading / sealed manifest handoff| DRV
+DRV <--> |tracking / delivery / cash / shop closed| RET

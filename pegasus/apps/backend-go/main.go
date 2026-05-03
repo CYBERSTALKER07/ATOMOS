@@ -266,11 +266,12 @@ func main() {
 	})
 	vettingSvc := supplier.NewOrderVettingService(spannerClient, svc.Producer, retailerHub)
 	suppliercoreroutes.RegisterRoutes(r, suppliercoreroutes.Deps{
-		Spanner:    spannerClient,
-		ReadRouter: app.SpannerRouter,
-		Order:      svc,
-		Vetting:    vettingSvc,
-		Log:        loggingMiddleware,
+		Spanner:     spannerClient,
+		ReadRouter:  app.SpannerRouter,
+		Order:       svc,
+		Vetting:     vettingSvc,
+		Log:         loggingMiddleware,
+		Idempotency: idempotency.Guard,
 	})
 
 	// /v1/checkout/{b2b,unified} + /v1/payment/* moved to paymentroutes
@@ -3070,6 +3071,7 @@ func main() {
 		PredictivePush:   predictivePushSvc,
 		IsDispatchLocked: dispatchLockSvc.IsDispatchLocked,
 		Log:              loggingMiddleware,
+		Idempotency:      idempotency.Guard,
 	})
 
 	// ── Warehouse WebSocket Hub ──────────────────────────────────────────────

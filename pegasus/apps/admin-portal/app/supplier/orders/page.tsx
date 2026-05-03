@@ -87,6 +87,10 @@ function shortId(id: string): string {
   return id.slice(0, 12) + '…';
 }
 
+function buildOrderVettingIdempotencyKey(orderId: string, decision: 'APPROVED' | 'REJECTED', reason?: string): string {
+  return ['supplier-order-vet', orderId.trim(), decision.trim().toUpperCase(), (reason || '').trim()].join(':');
+}
+
 function normalizeOrderListResponse(payload: unknown, pageSize: number): { items: Order[]; hasMore: boolean } {
   if (Array.isArray(payload)) {
     return {
@@ -301,7 +305,11 @@ export default function OrdersPage() {
     try {
       const res = await fetch(`${API}/v1/supplier/orders/vet`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildOrderVettingIdempotencyKey(orderId, decision, reason),
+        },
         body: JSON.stringify({ order_id: orderId, decision, reason: reason || '' }),
       });
       if (!res.ok) {
