@@ -62,12 +62,14 @@ interface TruckOption {
   plate_number: string;
 }
 
-interface ActiveFleetRoute {
-  route_id?: string;
-  driver_id?: string;
-  driver_name?: string;
+interface SupplierDriverOption {
+  driver_id: string;
+  name: string;
   vehicle_class?: string;
-  plate_number?: string;
+  vehicle_type?: string;
+  license_plate?: string;
+  vehicle_id?: string;
+  is_active: boolean;
 }
 
 type Tab = 'active' | 'scheduled';
@@ -103,24 +105,6 @@ function normalizeOrderListResponse(payload: unknown, pageSize: number): { items
   }
 
   return { items: [], hasMore: false };
-}
-
-function normalizeActiveFleetResponse(payload: unknown): ActiveFleetRoute[] {
-  if (Array.isArray(payload)) {
-    return payload as ActiveFleetRoute[];
-  }
-
-  if (payload && typeof payload === 'object') {
-    const record = payload as { data?: ActiveFleetRoute[]; routes?: ActiveFleetRoute[] };
-    if (Array.isArray(record.data)) {
-      return record.data;
-    }
-    if (Array.isArray(record.routes)) {
-      return record.routes;
-    }
-  }
-
-  return [];
 }
 
 /* ─── Main Page ───────────────────────────────────────────── */
@@ -280,19 +264,22 @@ export default function OrdersPage() {
   const fetchTrucks = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch(`${API}/v1/fleet/active`, {
+      const res = await fetch(`${API}/v1/supplier/fleet/drivers`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return;
-      const routes = normalizeActiveFleetResponse(await res.json());
-      setTrucks(routes
-        .map((r) => ({
-          driver_id: r.driver_id || r.route_id || '',
-          driver_name: r.driver_name || r.driver_id || r.route_id || 'Unknown',
-          vehicle_class: r.vehicle_class || '',
-          plate_number: r.plate_number || '',
+      const drivers = await res.json();
+      const list: SupplierDriverOption[] = Array.isArray(drivers) ? drivers : [];
+      setTrucks(list
+        .filter((driver) => driver.is_active && Boolean(driver.driver_id))
+        .filter((driver) => Boolean(driver.vehicle_id || driver.vehicle_class || driver.vehicle_type || driver.license_plate))
+        .map((driver) => ({
+          driver_id: driver.driver_id,
+          driver_name: driver.name || driver.driver_id,
+          vehicle_class: driver.vehicle_class || driver.vehicle_type || '',
+          plate_number: driver.license_plate || '',
         }))
-        .filter((route): route is TruckOption => route.driver_id.length > 0));
+        .filter((driver): driver is TruckOption => driver.driver_id.length > 0));
     } catch { /* noop */ }
   }, [token]);
 
