@@ -101,14 +101,16 @@
       ]
     },
     {
-      "name": "Retailer core surface",
-      "path": "/v1/{retailer/analytics/*,orders/request-cancel,retailer/shop-closed-response,retailer/family-members*,retailer/orders/{confirm-ai,reject-ai},orders/{edit-preorder,confirm-preorder},retailer/cart/sync,retailer/suppliers*,retailer/profile,retailers/{retailerID}/orders,retailer/tracking}",
+      "name": "Retailer role-row surface",
+      "path": "/v1/{retailer/analytics/*,orders/request-cancel,order/{cash-checkout,card-checkout},retailer/shop-closed-response,retailer/family-members*,retailer/orders/{confirm-ai,reject-ai},orders/{edit-preorder,confirm-preorder},retailer/cart/sync,retailer/suppliers*,retailer/profile,retailers/{retailerID}/orders,retailer/{tracking,cards,pending-payments,active-fulfillment},retailer/card/{initiate,confirm,deactivate,default},retailer/settings/auto-order*,ws/retailer}",
       "owner": "pegasus/apps/backend-go/retailerroutes/routes.go",
       "delegatedFrom": "pegasus/apps/backend-go/main.go",
       "methods": [
         "GET /v1/retailer/analytics/expenses",
         "GET /v1/retailer/analytics/detailed",
         "POST /v1/orders/request-cancel",
+        "POST /v1/order/cash-checkout",
+        "POST /v1/order/card-checkout",
         "POST /v1/retailer/shop-closed-response",
         "GET /v1/retailer/family-members",
         "POST /v1/retailer/family-members",
@@ -124,16 +126,30 @@
         "GET /v1/retailer/profile",
         "PUT /v1/retailer/profile",
         "GET /v1/retailers/{retailerID}/orders",
-        "GET /v1/retailer/tracking"
+        "GET /v1/retailer/tracking",
+        "POST /v1/retailer/card/initiate",
+        "POST /v1/retailer/card/confirm",
+        "GET /v1/retailer/cards",
+        "POST /v1/retailer/card/deactivate",
+        "POST /v1/retailer/card/default",
+        "GET /v1/retailer/pending-payments",
+        "GET /v1/retailer/active-fulfillment",
+        "PATCH /v1/retailer/settings/auto-order/global",
+        "PATCH /v1/retailer/settings/auto-order/supplier/{supplierID}",
+        "PATCH /v1/retailer/settings/auto-order/product/{productID}",
+        "PATCH /v1/retailer/settings/auto-order/variant/{skuID}",
+        "PATCH /v1/retailer/settings/auto-order/category/{categoryID}",
+        "GET /v1/retailer/settings/auto-order",
+        "GET /v1/ws/retailer"
       ],
       "consumers": [
-        "retailer-app-desktop suppliers, analytics, and tracking pages",
-        "retailer-app-ios retailer order and tracking flows",
-        "retailer-app-android retailer order and tracking flows"
+        "retailer-app-desktop suppliers, analytics, tracking, payment, and saved-card pages",
+        "retailer-app-ios retailer order fulfillment tracking settings and realtime flows",
+        "retailer-app-android retailer order fulfillment tracking settings and realtime flows"
       ],
       "notes": [
-        "Route composition moved out of main.go into retailerroutes while preserving existing analytics, auth, order, and supplier handlers.",
-        "This extracted surface centralizes the shared retailer contract before payment, settings, and websocket families are migrated."
+        "Route composition moved out of main.go into retailerroutes while preserving existing analytics, auth, order, payment, settings, supplier, and websocket handlers.",
+        "This extracted surface centralizes the shared retailer contract across desktop, iOS, and Android."
       ]
     },
     {
@@ -442,6 +458,7 @@
       "notes": [
         "Route composition moved out of main.go into supplierplanningroutes while preserving existing supplier, factory, and proximity handlers.",
         "Supplier factory create/list/detail/profile payloads now persist and return additive h3_index and product_types metadata for the supplier planning consumers.",
+        "Supply-lane mutate actions now resolve organisation supplier scope via claims.ResolveSupplierID() and honor PATCH for plain lane updates so planning clients stop hitting success-shaped no-ops.",
         "Replenishment cron startup remains in main.go; only the supplier-facing HTTP planning surface moved into the composer."
       ]
     },

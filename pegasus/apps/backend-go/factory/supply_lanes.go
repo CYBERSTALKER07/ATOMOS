@@ -56,6 +56,12 @@ type SupplyLanesService struct {
 	Producer *kafkago.Writer
 }
 
+type supplyLaneAction struct {
+	laneID          string
+	supplierID      string
+	isTransitUpdate bool
+}
+
 // HandleSupplyLanes handles GET (list) and POST (create) for /v1/supplier/supply-lanes.
 // POST (create) is a SOVEREIGN ACTION requiring GLOBAL_ADMIN.
 func (s *SupplyLanesService) HandleSupplyLanes(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +84,7 @@ func (s *SupplyLanesService) HandleSupplyLanes(w http.ResponseWriter, r *http.Re
 	}
 }
 
-// HandleSupplyLaneAction handles PUT (update), DELETE (deactivate), and
+// HandleSupplyLaneAction handles PATCH/PUT (update), DELETE (deactivate), and
 // PUT with /transit suffix (dampened transit update) for /v1/supplier/supply-lanes/{id}.
 // DELETE (deactivate) is a SOVEREIGN ACTION requiring GLOBAL_ADMIN.
 func (s *SupplyLanesService) HandleSupplyLaneAction(w http.ResponseWriter, r *http.Request) {
@@ -88,30 +94,39 @@ func (s *SupplyLanesService) HandleSupplyLaneAction(w http.ResponseWriter, r *ht
 		return
 	}
 
-	// Extract lane ID from path: /v1/supplier/supply-lanes/{id}[/transit]
-	path := r.URL.Path
-	parts := strings.Split(strings.TrimPrefix(path, "/v1/supplier/supply-lanes/"), "/")
-	laneID := parts[0]
-	isTransitUpdate := len(parts) > 1 && parts[1] == "transit"
-
-	if laneID == "" {
+	action, err := resolveSupplyLaneAction(r, claims)
+	if err != nil {
 		http.Error(w, `{"error":"lane_id required"}`, http.StatusBadRequest)
 		return
 	}
 
 	switch {
-	case r.Method == http.MethodPut && isTransitUpdate:
-		s.updateTransitTime(w, r, claims.UserID, laneID)
-	case r.Method == http.MethodPut:
-		s.updateSupplyLane(w, r, claims.UserID, laneID)
+	case r.Method == http.MethodPut && action.isTransitUpdate:
+		s.updateTransitTime(w, r, action.supplierID, action.laneID)
+	case r.Method == http.MethodPut || r.Method == http.MethodPatch:
+		s.updateSupplyLane(w, r, action.supplierID, action.laneID)
 	case r.Method == http.MethodDelete:
 		if err := auth.RequireGlobalAdmin(w, claims); err != nil {
 			return
 		}
-		s.deactivateSupplyLane(w, r, claims.UserID, laneID)
+		s.deactivateSupplyLane(w, r, action.supplierID, action.laneID)
 	default:
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func resolveSupplyLaneAction(r *http.Request, claims *auth.PegasusClaims) (supplyLaneAction, error) {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/v1/supplier/supply-lanes/"), "/")
+	laneID := parts[0]
+	if laneID == "" {
+		return supplyLaneAction{}, fmt.Errorf("lane_id required")
+	}
+
+	return supplyLaneAction{
+		laneID:          laneID,
+		supplierID:      claims.ResolveSupplierID(),
+		isTransitUpdate: len(parts) > 1 && parts[1] == "transit",
+	}, nil
 }
 
 func (s *SupplyLanesService) listSupplyLanes(w http.ResponseWriter, r *http.Request, supplierID string) {

@@ -140,24 +140,6 @@ func enableCORS(next http.Handler) http.Handler {
 	})
 }
 
-func requestBaseURL(r *http.Request) string {
-	scheme := "http"
-	if r.TLS != nil {
-		scheme = "https"
-	}
-	if forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")); forwarded != "" {
-		scheme = strings.TrimSpace(strings.Split(forwarded, ",")[0])
-	}
-	host := strings.TrimSpace(r.Header.Get("X-Forwarded-Host"))
-	if host == "" {
-		host = r.Host
-	}
-	if host == "" {
-		return ""
-	}
-	return fmt.Sprintf("%s://%s", scheme, host)
-}
-
 func minInt(a, b int) int {
 	if a < b {
 		return a
@@ -338,6 +320,12 @@ func main() {
 		Cache:          app.Cache,
 		CacheFlight:    app.CacheFlight,
 		Order:          svc,
+		SessionSvc:     sessionSvc,
+		CardTokenSvc:   cardTokenSvc,
+		CardsClient:    cardsClient,
+		Empathy:        app.Empathy,
+		RetailerHub:    retailerHub,
+		DriverHub:      driverHub,
 		ShopClosedDeps: &shopClosedDeps,
 		Log:            loggingMiddleware,
 	})
@@ -656,235 +644,9 @@ func main() {
 		})
 	}))))
 
-	// POST /v1/order/cash-checkout — Retailer selects cash payment after offload
-	http.HandleFunc("/v1/order/cash-checkout", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		var req struct {
-			OrderID string `json:"order_id"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" {
-			http.Error(w, "order_id required", http.StatusBadRequest)
-			return
-		}
+	// /v1/order/{cash-checkout,card-checkout} moved to retailerroutes.
 
-		resp, err := svc.CashCheckout(r.Context(), req.OrderID)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusConflict)
-			return
-		}
-
-		// Push CASH_COLLECTION_REQUIRED to the driver via WebSocket
-		driverHub.PushToDriver(resp.DriverID, map[string]interface{}{
-			"type":     ws.EventCashCollectionRequired,
-			"order_id": resp.OrderID,
-			"amount":   resp.Amount,
-			"message":  resp.Message,
-		})
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
-	})))
-
-	// POST /v1/order/card-checkout — Retailer selects a hosted card gateway after offload
-	http.HandleFunc("/v1/order/card-checkout", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		var req struct {
-			OrderID string `json:"order_id"`
-			Gateway string `json:"gateway"` // "GLOBAL_PAY", "CASH", or "GLOBAL_PAY"
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" || req.Gateway == "" {
-			http.Error(w, "order_id and gateway required", http.StatusBadRequest)
-			return
-		}
-
-		resp, err := svc.CardCheckout(r.Context(), req.OrderID, req.Gateway, requestBaseURL(r))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusConflict)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
-	})))
-
-	// ── RETAILER CARD MANAGEMENT ──────────────────────────────────────────────
-
-	// POST /v1/retailer/card/initiate — Start card tokenization (OTP flow)
-	http.HandleFunc("/v1/retailer/card/initiate", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		if cardsClient == nil {
-			http.Error(w, "card tokenization not configured", http.StatusServiceUnavailable)
-			return
-		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
-		if !ok || claims.UserID == "" {
-			http.Error(w, "retailer identity missing from token", http.StatusUnauthorized)
-			return
-		}
-
-		var req struct {
-			Gateway string `json:"gateway"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Gateway == "" {
-			req.Gateway = "GLOBAL_PAY"
-		}
-
-		phone, phoneErr := svc.LookupRetailerPhone(r.Context(), claims.UserID)
-		if phoneErr != nil || phone == "" {
-			http.Error(w, "retailer phone number required for card tokenization", http.StatusBadRequest)
-			return
-		}
-
-		creds, credErr := payment.ResolveGlobalPayCredentials("", "", "")
-		if credErr != nil {
-			http.Error(w, "payment gateway credentials not configured", http.StatusServiceUnavailable)
-			return
-		}
-		result, err := cardsClient.InitiateCardSave(r.Context(), creds, phone)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadGateway)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(result)
-	})))
-
-	// POST /v1/retailer/card/confirm — Confirm OTP and save card token
-	http.HandleFunc("/v1/retailer/card/confirm", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		if cardsClient == nil {
-			http.Error(w, "card tokenization not configured", http.StatusServiceUnavailable)
-			return
-		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
-		if !ok || claims.UserID == "" {
-			http.Error(w, "retailer identity missing from token", http.StatusUnauthorized)
-			return
-		}
-		var req struct {
-			CardToken string `json:"card_token"`
-			OTPCode   string `json:"otp_code"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.CardToken == "" || req.OTPCode == "" {
-			http.Error(w, "card_token and otp_code required", http.StatusBadRequest)
-			return
-		}
-
-		creds, credErr := payment.ResolveGlobalPayCredentials("", "", "")
-		if credErr != nil {
-			http.Error(w, "payment gateway credentials not configured", http.StatusServiceUnavailable)
-			return
-		}
-		result, err := cardsClient.ConfirmCardOTP(r.Context(), creds, req.CardToken, req.OTPCode)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadGateway)
-			return
-		}
-		if !result.Confirmed {
-			http.Error(w, "OTP confirmation failed", http.StatusUnprocessableEntity)
-			return
-		}
-
-		tokenID, saveErr := cardTokenSvc.SaveCard(r.Context(), claims.UserID, "GLOBAL_PAY", req.CardToken, result.CardLast4, result.CardType)
-		if saveErr != nil {
-			http.Error(w, "card confirmed but failed to save: "+saveErr.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"token_id":   tokenID,
-			"card_last4": result.CardLast4,
-			"card_type":  result.CardType,
-			"confirmed":  true,
-		})
-	})))
-
-	// GET /v1/retailer/cards — List saved cards
-	http.HandleFunc("/v1/retailer/cards", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
-		if !ok || claims.UserID == "" {
-			http.Error(w, "retailer identity missing from token", http.StatusUnauthorized)
-			return
-		}
-		cards, err := cardTokenSvc.ListCards(r.Context(), claims.UserID)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if cards == nil {
-			cards = []payment.RetailerCardToken{}
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"cards": cards})
-	})))
-
-	// DELETE /v1/retailer/card — Deactivate a saved card
-	http.HandleFunc("/v1/retailer/card/deactivate", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
-		if !ok || claims.UserID == "" {
-			http.Error(w, "retailer identity missing from token", http.StatusUnauthorized)
-			return
-		}
-		var req struct {
-			TokenID string `json:"token_id"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.TokenID == "" {
-			http.Error(w, "token_id required", http.StatusBadRequest)
-			return
-		}
-		if err := cardTokenSvc.DeactivateCard(r.Context(), req.TokenID, claims.UserID); err != nil {
-			http.Error(w, err.Error(), http.StatusConflict)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "deactivated"})
-	})))
-
-	// POST /v1/retailer/card/default — Set default card
-	http.HandleFunc("/v1/retailer/card/default", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
-		if !ok || claims.UserID == "" {
-			http.Error(w, "retailer identity missing from token", http.StatusUnauthorized)
-			return
-		}
-		var req struct {
-			TokenID string `json:"token_id"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.TokenID == "" {
-			http.Error(w, "token_id required", http.StatusBadRequest)
-			return
-		}
-		if err := cardTokenSvc.SetDefaultCard(r.Context(), req.TokenID, claims.UserID); err != nil {
-			http.Error(w, err.Error(), http.StatusConflict)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "default_set"})
-	})))
+	// /v1/retailer/card/* moved to retailerroutes.
 
 	// POST /v1/order/collect-cash — Driver confirms geofenced cash collection
 	http.HandleFunc("/v1/order/collect-cash", auth.RequireRole([]string{"DRIVER"}, loggingMiddleware(idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
@@ -940,65 +702,7 @@ func main() {
 		json.NewEncoder(w).Encode(resp)
 	}))))
 
-	// GET /v1/retailer/pending-payments — Returns all active payment sessions for the retailer
-	http.HandleFunc("/v1/retailer/pending-payments", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
-		if !ok || claims.UserID == "" {
-			http.Error(w, "retailer identity missing from token", http.StatusUnauthorized)
-			return
-		}
-
-		sessions, err := sessionSvc.GetPendingSessionsByRetailer(r.Context(), claims.UserID)
-		if err != nil {
-			http.Error(w, "failed to retrieve pending payments", http.StatusInternalServerError)
-			return
-		}
-		if sessions == nil {
-			sessions = []payment.PaymentSession{}
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"pending_payments": sessions,
-			"count":            len(sessions),
-		})
-	})))
-
-	// GET /v1/retailer/active-fulfillment — Incoming deliveries visible to the retailer
-	// Returns orders in IN_TRANSIT / ARRIVED / AWAITING_PAYMENT with supplier name and adjusted amount.
-	http.HandleFunc("/v1/retailer/active-fulfillment", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
-		if !ok || claims.UserID == "" {
-			http.Error(w, "retailer identity missing from token", http.StatusUnauthorized)
-			return
-		}
-
-		items, err := svc.ActiveFulfillments(r.Context(), claims.UserID)
-		if err != nil {
-			log.Printf("[ACTIVE FULFILLMENT] Query failed for retailer %s: %v", claims.UserID, err)
-			http.Error(w, "failed to retrieve active fulfillments", http.StatusInternalServerError)
-			return
-		}
-		if items == nil {
-			items = []order.ActiveFulfillmentItem{}
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"fulfillments": items,
-			"count":        len(items),
-		})
-	})))
+	// /v1/retailer/pending-payments and /v1/retailer/active-fulfillment moved to retailerroutes.
 
 	http.HandleFunc("/v1/routes", auth.RequireRole([]string{"ADMIN", "SUPPLIER", "PAYLOADER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -3025,22 +2729,7 @@ func main() {
 		),
 	)
 
-	// ── Empathy Engine: Hierarchical Auto-Order Settings (PATCH) ──
-	empathySvc := &settings.EmpathyService{Client: spannerClient, Cache: app.Cache}
-	http.HandleFunc("/v1/retailer/settings/auto-order/global",
-		auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(empathySvc.HandlePatchGlobal)))
-	http.HandleFunc("/v1/retailer/settings/auto-order/supplier/",
-		auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(empathySvc.HandlePatchSupplier)))
-	http.HandleFunc("/v1/retailer/settings/auto-order/product/",
-		auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(empathySvc.HandlePatchProduct)))
-	http.HandleFunc("/v1/retailer/settings/auto-order/variant/",
-		auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(empathySvc.HandlePatchVariant)))
-	http.HandleFunc("/v1/retailer/settings/auto-order/category/",
-		auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(empathySvc.HandlePatchCategory)))
-
-	// GET /v1/retailer/settings/auto-order — Full hierarchy settings for retailer
-	http.HandleFunc("/v1/retailer/settings/auto-order",
-		auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(empathySvc.HandleGetAutoOrderSettings)))
+	// /v1/retailer/settings/auto-order* moved to retailerroutes.
 
 	// GET /v1/orders/line-items/history — SKU purchase history for AI Worker
 	http.HandleFunc("/v1/orders/line-items/history",
@@ -3118,8 +2807,6 @@ func main() {
 	StartScheduledOrderPromoter(spannerClient)
 
 	// Phase 3: Boot the Retailer WebSocket Hub + DRIVER_APPROACHING Kafka consumer
-	http.HandleFunc("/v1/ws/retailer",
-		auth.RequireRole([]string{"RETAILER"}, retailerHub.HandleConnection))
 	internalKafka.StartApproachConsumer(ctx, retailerHub, fcmClient, spannerClient, cfg.KafkaBrokerAddress)
 	fmt.Println("[BOOT] Retailer WebSocket Hub + Approach Consumer: ONLINE")
 

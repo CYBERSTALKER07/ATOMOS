@@ -16,8 +16,11 @@ import (
 	"backend-go/auth"
 	"backend-go/cache"
 	"backend-go/order"
+	"backend-go/payment"
 	"backend-go/proximity"
+	"backend-go/settings"
 	"backend-go/supplier"
+	"backend-go/ws"
 )
 
 // Middleware is the handler-wrap contract supplied by the caller.
@@ -30,6 +33,12 @@ type Deps struct {
 	Cache          *cache.Cache
 	CacheFlight    *singleflight.Group
 	Order          *order.OrderService
+	SessionSvc     *payment.SessionService
+	CardTokenSvc   *payment.CardTokenService
+	CardsClient    *payment.GlobalPayCardsClient
+	Empathy        *settings.EmpathyService
+	RetailerHub    *ws.RetailerHub
+	DriverHub      *ws.DriverHub
 	ShopClosedDeps *order.ShopClosedDeps
 	Log            Middleware
 }
@@ -39,6 +48,7 @@ type Deps struct {
 //	GET /v1/retailer/analytics/expenses        — retailer expense analytics
 //	GET /v1/retailer/analytics/detailed        — retailer detailed analytics
 //	POST /v1/orders/request-cancel             — retailer cancellation request
+//	POST /v1/order/{cash-checkout,card-checkout} — retailer payment method selection
 //	POST /v1/retailer/shop-closed-response     — retailer response to shop-closed prompt
 //	GET/POST /v1/retailer/family-members       — retailer family-member list/create
 //	DELETE /v1/retailer/family-members/{id}    — retailer family-member delete
@@ -52,6 +62,13 @@ type Deps struct {
 //	GET/PUT /v1/retailer/profile               — retailer profile
 //	GET /v1/retailers/{retailerID}/orders      — retailer/mobile order list
 //	GET /v1/retailer/tracking                  — retailer live tracking surface
+//	POST /v1/retailer/card/{initiate,confirm}  — retailer card tokenization lifecycle
+//	GET /v1/retailer/cards                     — retailer saved-card list
+//	POST /v1/retailer/card/{deactivate,default} — retailer saved-card mutations
+//	GET /v1/retailer/pending-payments          — retailer pending payment sessions
+//	GET /v1/retailer/active-fulfillment        — retailer inbound fulfillment view
+//	PATCH /v1/retailer/settings/auto-order*    — retailer empathy settings hierarchy
+//	GET /v1/ws/retailer                        — retailer realtime socket
 func RegisterRoutes(r chi.Router, d Deps) {
 	retailerRole := []string{"RETAILER"}
 	log := d.Log
@@ -62,6 +79,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(retailerRole, log(analytics.HandleRetailerDetailedAnalytics(d.Spanner, d.ReadRouter))))
 	r.HandleFunc("/v1/orders/request-cancel",
 		auth.RequireRole(retailerRole, log(order.HandleRequestCancel(d.Order))))
+	r.HandleFunc("/v1/order/cash-checkout",
+		auth.RequireRole(retailerRole, log(handleRetailerCashCheckout(d))))
+	r.HandleFunc("/v1/order/card-checkout",
+		auth.RequireRole(retailerRole, log(handleRetailerCardCheckout(d))))
 	r.HandleFunc("/v1/retailer/shop-closed-response",
 		auth.RequireRole(retailerRole, log(d.Order.HandleShopClosedResponse(d.ShopClosedDeps))))
 	r.HandleFunc("/v1/retailer/family-members",
@@ -88,6 +109,34 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole([]string{"ADMIN", "RETAILER"}, log(handleRetailerOrders(d))))
 	r.HandleFunc("/v1/retailer/tracking",
 		auth.RequireRole(retailerRole, log(handleRetailerTracking(d))))
+	r.HandleFunc("/v1/retailer/card/initiate",
+		auth.RequireRole(retailerRole, log(handleRetailerCardInitiate(d))))
+	r.HandleFunc("/v1/retailer/card/confirm",
+		auth.RequireRole(retailerRole, log(handleRetailerCardConfirm(d))))
+	r.HandleFunc("/v1/retailer/cards",
+		auth.RequireRole(retailerRole, log(handleRetailerCards(d))))
+	r.HandleFunc("/v1/retailer/card/deactivate",
+		auth.RequireRole(retailerRole, log(handleRetailerCardDeactivate(d))))
+	r.HandleFunc("/v1/retailer/card/default",
+		auth.RequireRole(retailerRole, log(handleRetailerCardDefault(d))))
+	r.HandleFunc("/v1/retailer/pending-payments",
+		auth.RequireRole(retailerRole, log(handleRetailerPendingPayments(d))))
+	r.HandleFunc("/v1/retailer/active-fulfillment",
+		auth.RequireRole(retailerRole, log(handleRetailerActiveFulfillment(d))))
+	r.HandleFunc("/v1/retailer/settings/auto-order/global",
+		auth.RequireRole(retailerRole, log(d.Empathy.HandlePatchGlobal)))
+	r.HandleFunc("/v1/retailer/settings/auto-order/supplier/*",
+		auth.RequireRole(retailerRole, log(d.Empathy.HandlePatchSupplier)))
+	r.HandleFunc("/v1/retailer/settings/auto-order/product/*",
+		auth.RequireRole(retailerRole, log(d.Empathy.HandlePatchProduct)))
+	r.HandleFunc("/v1/retailer/settings/auto-order/variant/*",
+		auth.RequireRole(retailerRole, log(d.Empathy.HandlePatchVariant)))
+	r.HandleFunc("/v1/retailer/settings/auto-order/category/*",
+		auth.RequireRole(retailerRole, log(d.Empathy.HandlePatchCategory)))
+	r.HandleFunc("/v1/retailer/settings/auto-order",
+		auth.RequireRole(retailerRole, log(d.Empathy.HandleGetAutoOrderSettings)))
+	r.HandleFunc("/v1/ws/retailer",
+		auth.RequireRole(retailerRole, d.RetailerHub.HandleConnection))
 }
 
 func familyMembersHandler(d Deps) http.HandlerFunc {
