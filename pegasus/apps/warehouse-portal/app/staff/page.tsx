@@ -10,7 +10,7 @@ import type {
   WarehouseStaffListResponse,
   WarehouseStaffMember,
   WarehouseStaffRole,
-} from '@pegasus/types/warehouse';
+} from '@pegasus/types';
 
 export default function StaffPage() {
   const { toast } = useToast();

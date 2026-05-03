@@ -4048,7 +4048,7 @@ func main() {
 	// /v1/warehouse/{demand/forecast,supply-requests,supply-requests/} moved to
 	// warehouseroutes. supplyReqSvc is kept here because factoryroutes below
 	// also consumes it (shared supply-request surface).
-	supplyReqSvc := &warehouse.SupplyRequestService{Spanner: spannerClient, Producer: svc.Producer}
+	supplyReqSvc := &warehouse.SupplyRequestService{Spanner: spannerClient, Producer: svc.Producer, WarehouseHub: app.WarehouseHub}
 
 	// /v1/factory/* — 17 routes (analytics, profile, transfers, manifests,
 	// fleet/drivers, fleet/vehicles, staff, dispatch, supply-requests,
@@ -4069,7 +4069,7 @@ func main() {
 
 	// dispatchLockSvc kept in main.go — proximity.HandleApplyTerritory below
 	// also consumes IsDispatchLocked for territory re-assignment safety.
-	dispatchLockSvc := &warehouse.DispatchLockService{Spanner: spannerClient}
+	dispatchLockSvc := &warehouse.DispatchLockService{Spanner: spannerClient, WarehouseHub: app.WarehouseHub}
 
 	// /v1/warehouse/* — 28 endpoints spanning transfer acceptance, replenishment
 	// insights, demand forecast, supply-request CRUD + state machine, the

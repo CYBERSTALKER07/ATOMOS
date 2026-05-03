@@ -152,19 +152,29 @@ func (h *WarehouseHub) subscribeRelay(warehouseID string) {
 
 // BroadcastSupplyRequestUpdate pushes a supply request state change to the warehouse.
 func (h *WarehouseHub) BroadcastSupplyRequestUpdate(warehouseID, requestID, state string) {
+	if warehouseID == "" {
+		return
+	}
 	h.PushToWarehouse(warehouseID, map[string]interface{}{
-		"type":       EventSupplyRequestUpdate,
-		"request_id": requestID,
-		"state":      state,
+		"type":         EventSupplyRequestUpdate,
+		"warehouse_id": warehouseID,
+		"request_id":   requestID,
+		"state":        state,
+		"timestamp":    time.Now().UTC().Format(time.RFC3339),
 	})
 }
 
 // BroadcastDispatchLockChange pushes a dispatch lock state change to the warehouse.
 func (h *WarehouseHub) BroadcastDispatchLockChange(warehouseID, lockID, action string) {
+	if warehouseID == "" {
+		return
+	}
 	h.PushToWarehouse(warehouseID, map[string]interface{}{
-		"type":    EventDispatchLockChange,
-		"lock_id": lockID,
-		"action":  action, // ACQUIRED | RELEASED
+		"type":         EventDispatchLockChange,
+		"warehouse_id": warehouseID,
+		"lock_id":      lockID,
+		"action":       action, // ACQUIRED | RELEASED
+		"timestamp":    time.Now().UTC().Format(time.RFC3339),
 	})
 }
 

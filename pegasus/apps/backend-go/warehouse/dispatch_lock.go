@@ -12,6 +12,7 @@ import (
 	internalKafka "backend-go/kafka"
 	"backend-go/outbox"
 	"backend-go/telemetry"
+	warehousews "backend-go/ws"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -21,7 +22,8 @@ import (
 // DispatchLockService manages dispatch locks for supplier/warehouse/factory scopes.
 // When a lock is active, new orders insert normally but are hidden from the active dispatch batch.
 type DispatchLockService struct {
-	Spanner *spanner.Client
+	Spanner      *spanner.Client
+	WarehouseHub *warehousews.WarehouseHub
 }
 
 type DispatchLockResponse struct {
@@ -150,6 +152,9 @@ func (d *DispatchLockService) HandleAcquireDispatchLock(w http.ResponseWriter, r
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	if d.WarehouseHub != nil && warehouseID != "" {
+		d.WarehouseHub.BroadcastDispatchLockChange(warehouseID, lockID, "ACQUIRED")
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -241,6 +246,9 @@ func (d *DispatchLockService) HandleReleaseDispatchLock(w http.ResponseWriter, r
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 		return
+	}
+	if d.WarehouseHub != nil && releasedPayload.WarehouseID != "" {
+		d.WarehouseHub.BroadcastDispatchLockChange(releasedPayload.WarehouseID, lockID, "RELEASED")
 	}
 
 	w.Header().Set("Content-Type", "application/json")

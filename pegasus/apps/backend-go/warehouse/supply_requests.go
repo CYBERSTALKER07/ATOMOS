@@ -13,6 +13,7 @@ import (
 	internalKafka "backend-go/kafka"
 	"backend-go/outbox"
 	"backend-go/telemetry"
+	warehousews "backend-go/ws"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -46,8 +47,9 @@ func isValidSupplyTransition(from, to string) bool {
 
 // SupplyRequestService handles supply request CRUD and state transitions.
 type SupplyRequestService struct {
-	Spanner  *spanner.Client
-	Producer *kafka.Writer
+	Spanner      *spanner.Client
+	Producer     *kafka.Writer
+	WarehouseHub *warehousews.WarehouseHub
 }
 
 // ── Request/Response Shapes ───────────────────────────────────────────────────
@@ -253,6 +255,9 @@ func (s *SupplyRequestService) HandleCreateSupplyRequest(w http.ResponseWriter, 
 		log.Printf("[SUPPLY REQUEST] spanner insert error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
+	}
+	if s.WarehouseHub != nil {
+		s.WarehouseHub.BroadcastSupplyRequestUpdate(warehouseID, requestID, "SUBMITTED")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -568,6 +573,9 @@ func (s *SupplyRequestService) HandleSupplyRequestTransition(w http.ResponseWrit
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 		return
+	}
+	if s.WarehouseHub != nil && warehouseID != "" {
+		s.WarehouseHub.BroadcastSupplyRequestUpdate(warehouseID, requestID, newState)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
