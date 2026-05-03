@@ -1,4 +1,4 @@
-%%{init: {'theme':'base','flowchart': {'nodeSpacing': 42, 'rankSpacing': 92, 'curve': 'linear', 'htmlLabels': true}}}%%
+%%{init: {'theme':'base','flowchart': {'nodeSpacing': 40, 'rankSpacing': 64, 'curve': 'linear', 'htmlLabels': true}}}%%
 flowchart LR
     classDef role fill:#f8fafc,stroke:#334155,color:#0f172a,stroke-width:1.4px;
     classDef system fill:#dbeafe,stroke:#1d4ed8,color:#0f172a,stroke-width:1.3px;
@@ -8,58 +8,33 @@ flowchart LR
 
     START([Demand and fulfillment<br/>loop starts]):::outcome
 
-    subgraph PHASE1[Demand and Planning]
+    PH1[Demand and Planning<br/>Supplier / Admin configures pricing, catalog, zones, factories, warehouses<br/>Retailer browses suppliers, builds cart, and places order<br/>Warehouse Admin watches stock and raises supply request]:::role
+
+    PH2[Fulfillment Execution<br/>Factory Admin accepts request, produces stock, and plans transfer<br/>Payload / Payloader loads truck, injects changes, seals or flags manifest<br/>Driver executes route and Retailer confirms goods and payment]:::role
+
+    CORE[Platform Backbone<br/>APIs, Spanner, Redis, Kafka, AI, notifications keep the flow consistent]:::system
+
+    LIVE[Realtime Hubs<br/>retailer, driver, payload, warehouse, fleet updates stay live across surfaces]:::realtime
+
+    OPS[Control and Feedback<br/>Supplier / Admin reviews dashboard, CRM, analytics, finance<br/>Warehouse Admin receives transfer or records shortage and exceptions]:::role
+
+    EX[Exception Paths<br/>Stockout or forecast breach<br/>Manifest mismatch or loading exception<br/>Payment issue or shop-closed stop<br/>Supplier / Admin applies overrides, returns, and manual resolution]:::warning
+
+    END([Loop closes:<br/>analytics, replenishment,<br/>next order cycle]):::outcome
+
+    subgraph COL1[ ]
         direction TB
-        S1[Supplier / Admin<br/>configure pricing, catalog,<br/>zones, factories, warehouses]:::role
-        R1[Retailer<br/>browse suppliers,<br/>build cart, place order]:::role
-        W1[Warehouse Admin<br/>watch stock and forecast,<br/>raise supply request]:::role
-        S1 --> R1 --> W1
+        START --> PH1 --> PH2 --> EX
     end
 
-    subgraph PHASE2[Fulfillment Execution]
+    subgraph COL2[ ]
         direction TB
-        F1[Factory Admin<br/>accept request, produce,<br/>plan transfer and manifest]:::role
-        P1[Payload / Payloader<br/>load truck, inject changes,<br/>seal or flag manifest]:::role
-        D1[Driver<br/>receive route, drive stops,<br/>offload and verify payment]:::role
-        R2[Retailer<br/>receive goods,<br/>confirm payment]:::role
-        F1 --> P1 --> D1 --> R2
+        CORE --> LIVE --> OPS --> END
     end
 
-    subgraph PHASE3[Control and Feedback]
-        direction TB
-        B1[Platform Backbone<br/>APIs, Spanner, Redis,<br/>Kafka, AI, notifications]:::system
-        B2[Realtime Hubs<br/>retailer, driver, payload,<br/>warehouse, fleet]:::realtime
-        S2[Supplier / Admin<br/>review dashboard, CRM,<br/>analytics, finance]:::role
-        W2[Warehouse Admin<br/>receive transfer or record<br/>shortage and exceptions]:::role
-        B1 --> B2 --> S2 --> W2
-    end
-
-    subgraph EXCEPTIONS[High-Risk Branches]
-        direction TB
-        EX1{{Stockout or<br/>forecast breach}}:::warning
-        EX2{{Manifest mismatch<br/>or loading exception}}:::warning
-        EX3{{Payment issue or<br/>shop-closed stop}}:::warning
-        S3[Supplier / Admin<br/>approve overrides, returns,<br/>manual resolution]:::role
-    end
-
-    START --> S1
-    W1 -->|request submitted| F1
-    R2 --> END([Loop closes:<br/>analytics, CRM,<br/>replenishment, next order]):::outcome
-
-    R1 -->|order demand| B1
-    W1 -->|warehouse depletion| B1
-    P1 -->|sealed manifest| B1
-    D1 -->|delivery and payment state| B1
-    R2 -->|demand signal and payment feedback| B1
-
-    S2 --> W1
-    S2 --> S1
-    B2 --> R2
-    B2 --> W2
-
-    W1 --> EX1 --> S3
-    P1 --> EX2 --> S3
-    D1 --> EX3 --> S3
-    S3 --> W2
-    S3 --> S1
-    S3 --> B1
+    EX --> OPS
+    EX --> OPS
+    OPS -->|replenishment and demand loop| PH1
+    PH2 -->|sealed manifest, delivery, payment state| CORE
+    PH1 -->|order demand and warehouse depletion| CORE
+    LIVE -->|field updates| PH2

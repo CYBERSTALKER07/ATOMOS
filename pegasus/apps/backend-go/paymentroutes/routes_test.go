@@ -11,6 +11,7 @@ import (
 func TestRegisterRoutes_ChargebackUsesPriorityAndIdempotency(t *testing.T) {
 	r := chi.NewRouter()
 	RegisterRoutes(r, Deps{
+		Checkout:      stubCheckout{},
 		Log:           passthroughMiddleware,
 		PriorityGuard: markerMiddleware("X-Priority-Guard", "chargeback"),
 		Idempotency:   markerMiddleware("X-Idempotency-Guard", "chargeback"),
@@ -35,6 +36,7 @@ func TestRegisterRoutes_ChargebackUsesPriorityAndIdempotency(t *testing.T) {
 func TestRegisterRoutes_ReversalUsesPriorityAndIdempotency(t *testing.T) {
 	r := chi.NewRouter()
 	RegisterRoutes(r, Deps{
+		Checkout:      stubCheckout{},
 		Log:           passthroughMiddleware,
 		PriorityGuard: markerMiddleware("X-Priority-Guard", "reversal"),
 		Idempotency:   markerMiddleware("X-Idempotency-Guard", "reversal"),
@@ -69,4 +71,14 @@ func markerMiddleware(name, value string) Middleware {
 			next(w, r)
 		}
 	}
+}
+
+type stubCheckout struct{}
+
+func (stubCheckout) HandleB2BCheckout(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "not implemented", http.StatusNotImplemented)
+}
+
+func (stubCheckout) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "not implemented", http.StatusNotImplemented)
 }

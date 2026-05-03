@@ -28,6 +28,7 @@ const (
 	SessionPending       = "PENDING"
 	SessionAuthorized    = "AUTHORIZED"
 	SessionSettled       = "SETTLED"
+	SessionReversed      = "REVERSED"
 	SessionFailed        = "FAILED"
 	SessionExpired       = "EXPIRED"
 	SessionCancelled     = "CANCELLED"
