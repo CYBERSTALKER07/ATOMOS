@@ -37,6 +37,11 @@ struct DriversView: View {
                                 Text(assignedVehicleLabel(for: driver))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                if let reason = assignedVehicleReason(for: driver), !reason.isEmpty {
+                                    Text(reason)
+                                        .font(.caption)
+                                        .foregroundStyle(.orange)
+                                }
                             }
                             Spacer()
                             VStack(alignment: .trailing, spacing: LabTheme.spacingXS) {
@@ -136,6 +141,30 @@ struct DriversView: View {
             return "Unassigned"
         }
         return vehicleLabel(for: vehicle)
+    }
+
+    private func assignedVehicleReason(for driver: Driver) -> String? {
+        guard driver.vehicleId != nil else {
+            return nil
+        }
+
+        if driver.vehicleIsActive == false {
+            if let reason = driver.vehicleUnavailableReason, !reason.isEmpty {
+                return "Vehicle unavailable: \(vehicleUnavailableReasonLabel(reason))"
+            }
+            return "Vehicle unavailable"
+        }
+
+        guard let vehicleId = driver.vehicleId,
+              let vehicle = vehicles.first(where: { $0.vehicleId == vehicleId }),
+              !vehicle.isActive else {
+            return nil
+        }
+
+        if let reason = vehicle.unavailableReason, !reason.isEmpty {
+            return "Vehicle unavailable: \(vehicleUnavailableReasonLabel(reason))"
+        }
+        return "Vehicle unavailable"
     }
 
     private func assignableVehicles(for driver: Driver) -> [Vehicle] {

@@ -40,6 +40,8 @@ export interface WarehouseFleetDriver {
   vehicle_id?: string;
   vehicle_class?: string;
   max_volume_vu?: number;
+  vehicle_is_active?: boolean;
+  vehicle_unavailable_reason?: WarehouseVehicleUnavailableReason;
 }
 
 export interface WarehouseFleetDriverListResponse {
@@ -97,6 +99,39 @@ export interface WarehouseVehicleMutationResponse {
   status: string;
   vehicle_id: string;
   unavailable_reason?: WarehouseVehicleUnavailableReason;
+}
+
+export interface WarehouseDispatchOrder {
+  order_id: string;
+  retailer_name: string;
+  total_uzs: number;
+  item_count: number;
+  created_at?: string;
+}
+
+export interface WarehouseDispatchDriver {
+  driver_id: string;
+  name: string;
+  phone?: string;
+  truck_status: string;
+  vehicle_id?: string;
+  vehicle_class?: string;
+  max_volume_vu?: number;
+  vehicle_label?: string;
+}
+
+export interface WarehouseUnavailableDispatchDriver extends WarehouseDispatchDriver {
+  unavailable_reason?: WarehouseVehicleUnavailableReason;
+}
+
+export interface WarehouseDispatchPreview {
+  orders?: WarehouseDispatchOrder[];
+  undispatched_orders: WarehouseDispatchOrder[];
+  drivers?: WarehouseDispatchDriver[];
+  available_drivers: WarehouseDispatchDriver[];
+  unavailable_drivers?: WarehouseUnavailableDispatchDriver[];
+  pending_count?: number;
+  available_driver_count?: number;
 }
 
 export interface WarehouseSupplyRequest {

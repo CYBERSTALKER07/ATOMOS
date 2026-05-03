@@ -117,6 +117,8 @@ struct Driver: Decodable, Identifiable {
     let isActive: Bool
     let vehicleId: String?
     let vehicleClass: String?
+    let vehicleIsActive: Bool
+    let vehicleUnavailableReason: String?
 
     enum CodingKeys: String, CodingKey {
         case driverId = "driver_id"
@@ -125,6 +127,8 @@ struct Driver: Decodable, Identifiable {
         case isActive = "is_active"
         case vehicleId = "vehicle_id"
         case vehicleClass = "vehicle_class"
+        case vehicleIsActive = "vehicle_is_active"
+        case vehicleUnavailableReason = "vehicle_unavailable_reason"
     }
 
     init(from decoder: Decoder) throws {
@@ -136,6 +140,8 @@ struct Driver: Decodable, Identifiable {
         isActive = try c.decodeIfPresent(Bool.self, forKey: .isActive) ?? true
         vehicleId = try c.decodeIfPresent(String.self, forKey: .vehicleId)
         vehicleClass = try c.decodeIfPresent(String.self, forKey: .vehicleClass)
+        vehicleIsActive = try c.decodeIfPresent(Bool.self, forKey: .vehicleIsActive) ?? false
+        vehicleUnavailableReason = try c.decodeIfPresent(String.self, forKey: .vehicleUnavailableReason)
     }
 }
 
@@ -579,10 +585,19 @@ struct InvoiceListResponse: Decodable {
 struct DispatchPreview: Decodable {
     let undispatchedOrders: [DispatchOrder]
     let availableDrivers: [AvailableDriver]
+    let unavailableDrivers: [AvailableDriver]
 
     enum CodingKeys: String, CodingKey {
         case undispatchedOrders = "undispatched_orders"
         case availableDrivers = "available_drivers"
+        case unavailableDrivers = "unavailable_drivers"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        undispatchedOrders = try c.decodeIfPresent([DispatchOrder].self, forKey: .undispatchedOrders) ?? []
+        availableDrivers = try c.decodeIfPresent([AvailableDriver].self, forKey: .availableDrivers) ?? []
+        unavailableDrivers = try c.decodeIfPresent([AvailableDriver].self, forKey: .unavailableDrivers) ?? []
     }
 }
 
@@ -613,19 +628,28 @@ struct AvailableDriver: Decodable, Identifiable {
     var id: String { driverId }
     let driverId: String
     let name: String
+    let phone: String
     let vehicleLabel: String
+    let truckStatus: String
+    let unavailableReason: String?
 
     enum CodingKeys: String, CodingKey {
         case driverId = "driver_id"
         case name
+        case phone
         case vehicleLabel = "vehicle_label"
+        case truckStatus = "truck_status"
+        case unavailableReason = "unavailable_reason"
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         driverId = try c.decode(String.self, forKey: .driverId)
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        phone = try c.decodeIfPresent(String.self, forKey: .phone) ?? ""
         vehicleLabel = try c.decodeIfPresent(String.self, forKey: .vehicleLabel) ?? ""
+        truckStatus = try c.decodeIfPresent(String.self, forKey: .truckStatus) ?? ""
+        unavailableReason = try c.decodeIfPresent(String.self, forKey: .unavailableReason)
     }
 }
 

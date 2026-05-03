@@ -352,6 +352,25 @@ type ValidateCoverageResponse struct {
 	RetailerCount int                `json:"retailer_count"`
 }
 
+// ComputePolygonCoverage returns the H3 cells whose centers fall inside the polygon.
+// Invalid resolutions fall back to the canonical supplier coverage resolution.
+func ComputePolygonCoverage(polygon [][2]float64, resolution int) []string {
+	edgeKm := H3Res7EdgeKm
+	if resolution != 7 && resolution != 8 {
+		resolution = H3Resolution
+	}
+	if resolution == 8 {
+		edgeKm = H3Res7EdgeKm / 2.6457 // res8 ≈ 0.46 km edge
+	}
+	return computePolygonCoverage(polygon, edgeKm, resolution)
+}
+
+// FindCoverageConflicts returns same-supplier warehouses whose H3 coverage overlaps
+// the provided cells. excludeWH omits the current warehouse during edit flows.
+func FindCoverageConflicts(ctx context.Context, client *spanner.Client, supplierID, excludeWH string, hexes []string) ([]CoverageConflict, error) {
+	return findCoverageConflicts(ctx, client, supplierID, excludeWH, hexes)
+}
+
 func HandleValidateCoverage(spannerClient *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -391,11 +410,7 @@ func HandleValidateCoverage(spannerClient *spanner.Client) http.HandlerFunc {
 		ctx := r.Context()
 
 		// 1. Compute grid cells covering the polygon
-		edgeKm := H3Res7EdgeKm
-		if req.H3Resolution == 8 {
-			edgeKm = H3Res7EdgeKm / 2.6457 // res8 ≈ 0.46 km edge
-		}
-		hexes := computePolygonCoverage(req.Polygon, edgeKm, req.H3Resolution)
+		hexes := ComputePolygonCoverage(req.Polygon, req.H3Resolution)
 
 		if len(hexes) == 0 {
 			w.Header().Set("Content-Type", "application/json")
@@ -407,7 +422,7 @@ func HandleValidateCoverage(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		// 2. Query existing warehouse H3 indexes for overlap detection
-		conflicts, err := findCoverageConflicts(ctx, spannerClient, supplierID, req.WarehouseID, hexes)
+		conflicts, err := FindCoverageConflicts(ctx, spannerClient, supplierID, req.WarehouseID, hexes)
 		if err != nil {
 			log.Printf("[VALIDATE-COVERAGE] conflict query error for supplier=%s: %v", supplierID, err)
 			conflicts = []CoverageConflict{}

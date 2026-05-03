@@ -12,8 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.pegasus.warehouse.data.model.AssignVehicleRequest
 import com.pegasus.warehouse.data.model.CreateDriverRequest
 import com.pegasus.warehouse.data.model.Driver
+import com.pegasus.warehouse.data.model.Vehicle
 import com.pegasus.warehouse.data.remote.WarehouseApi
 import com.pegasus.warehouse.ui.theme.LabSpacing
 import kotlinx.coroutines.launch
@@ -96,6 +98,13 @@ fun DriversScreen(
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                assignedVehicleReason(driver, vehicles)?.let { reason ->
+                                    Text(
+                                        reason,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.tertiary,
+                                    )
+                                }
                             }
                             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(LabSpacing.sm)) {
                                 AssistChip(
@@ -208,6 +217,22 @@ private fun assignedVehicleLabel(driver: Driver, vehicles: List<Vehicle>): Strin
     val vehicleId = driver.vehicleId ?: return "Unassigned"
     val vehicle = vehicles.firstOrNull { it.vehicleId == vehicleId } ?: return "Assigned vehicle unavailable"
     return vehicleLabel(vehicle)
+}
+
+private fun assignedVehicleReason(driver: Driver, vehicles: List<Vehicle>): String? {
+    val vehicleId = driver.vehicleId ?: return null
+    if (!driver.vehicleIsActive) {
+        return driver.vehicleUnavailableReason?.takeIf { it.isNotBlank() }
+            ?.let { "Vehicle unavailable: ${vehicleUnavailableReasonLabel(it)}" }
+            ?: "Vehicle unavailable"
+    }
+    val vehicle = vehicles.firstOrNull { it.vehicleId == vehicleId } ?: return null
+    if (!vehicle.isActive) {
+        return vehicle.unavailableReason?.takeIf { it.isNotBlank() }
+            ?.let { "Vehicle unavailable: ${vehicleUnavailableReasonLabel(it)}" }
+            ?: "Vehicle unavailable"
+    }
+    return null
 }
 
 private fun vehicleLabel(vehicle: Vehicle): String {

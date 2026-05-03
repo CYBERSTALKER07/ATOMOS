@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"backend-go/auth"
@@ -26,20 +27,35 @@ import (
 type DispatchableOrder struct {
 	OrderID       string  `json:"order_id"`
 	RetailerName  string  `json:"retailer_name"`
-	TotalAmount   int64   `json:"total_amount"`
+	TotalUZS      int64   `json:"total_uzs"`
 	TotalVolumeVU float64 `json:"total_volume_vu,omitempty"`
 	RetailerLat   float64 `json:"retailer_lat"`
 	RetailerLng   float64 `json:"retailer_lng"`
 	ItemCount     int64   `json:"item_count"`
+	CreatedAt     string  `json:"created_at,omitempty"`
 }
 
 type DispatchableDriver struct {
 	DriverID     string  `json:"driver_id"`
 	Name         string  `json:"name"`
+	Phone        string  `json:"phone,omitempty"`
 	TruckStatus  string  `json:"truck_status"`
 	VehicleID    string  `json:"vehicle_id,omitempty"`
 	VehicleClass string  `json:"vehicle_class,omitempty"`
 	MaxVolumeVU  float64 `json:"max_volume_vu,omitempty"`
+	VehicleLabel string  `json:"vehicle_label,omitempty"`
+}
+
+type UnavailableDispatchDriver struct {
+	DriverID          string  `json:"driver_id"`
+	Name              string  `json:"name"`
+	Phone             string  `json:"phone,omitempty"`
+	TruckStatus       string  `json:"truck_status"`
+	VehicleID         string  `json:"vehicle_id,omitempty"`
+	VehicleClass      string  `json:"vehicle_class,omitempty"`
+	MaxVolumeVU       float64 `json:"max_volume_vu,omitempty"`
+	VehicleLabel      string  `json:"vehicle_label,omitempty"`
+	UnavailableReason string  `json:"unavailable_reason,omitempty"`
 }
 
 // HandleOpsDispatchPreview — GET for /v1/warehouse/ops/dispatch/preview
@@ -66,7 +82,7 @@ func HandleOpsDispatchPreview(spannerClient *spanner.Client, optimizer *optimize
 		orderStmt := spanner.Statement{
 			SQL: `SELECT o.OrderId, COALESCE(rt.StoreName, ''), COALESCE(o.TotalAmount, 0),
 			             COALESCE(rt.Latitude, 0), COALESCE(rt.Longitude, 0),
-			             (SELECT COUNT(*) FROM OrderLineItems li WHERE li.OrderId = o.OrderId)
+			             (SELECT COUNT(*) FROM OrderLineItems li WHERE li.OrderId = o.OrderId), o.CreatedAt
 			      FROM Orders o
 			      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
 			      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
@@ -89,8 +105,10 @@ func HandleOpsDispatchPreview(spannerClient *spanner.Client, optimizer *optimize
 				break
 			}
 			var o DispatchableOrder
-			if err := row.Columns(&o.OrderID, &o.RetailerName, &o.TotalAmount,
-				&o.RetailerLat, &o.RetailerLng, &o.ItemCount); err == nil {
+			var createdAt time.Time
+			if err := row.Columns(&o.OrderID, &o.RetailerName, &o.TotalUZS,
+				&o.RetailerLat, &o.RetailerLng, &o.ItemCount, &createdAt); err == nil {
+				o.CreatedAt = createdAt.Format(time.RFC3339)
 				orders = append(orders, o)
 			}
 		}
@@ -100,9 +118,9 @@ func HandleOpsDispatchPreview(spannerClient *spanner.Client, optimizer *optimize
 
 		// Available drivers
 		driverStmt := spanner.Statement{
-			SQL: `SELECT d.DriverId, d.Name, COALESCE(d.TruckStatus, 'IDLE'),
+			SQL: `SELECT d.DriverId, d.Name, COALESCE(d.Phone, ''), COALESCE(d.TruckStatus, 'IDLE'),
 			             COALESCE(d.VehicleId, ''), COALESCE(v.VehicleClass, ''),
-			             COALESCE(v.MaxVolumeVU, 0)
+			             COALESCE(v.MaxVolumeVU, 0), COALESCE(v.Label, ''), COALESCE(v.LicensePlate, '')
 			      FROM Drivers d
 			      LEFT JOIN Vehicles v ON d.VehicleId = v.VehicleId
 			      WHERE d.SupplierId = @sid AND (d.WarehouseId = @whId OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = @whId))
@@ -127,13 +145,55 @@ func HandleOpsDispatchPreview(spannerClient *spanner.Client, optimizer *optimize
 				break
 			}
 			var d DispatchableDriver
-			if err := row.Columns(&d.DriverID, &d.Name, &d.TruckStatus,
-				&d.VehicleID, &d.VehicleClass, &d.MaxVolumeVU); err == nil {
+			var label string
+			var licensePlate string
+			if err := row.Columns(&d.DriverID, &d.Name, &d.Phone, &d.TruckStatus,
+				&d.VehicleID, &d.VehicleClass, &d.MaxVolumeVU, &label, &licensePlate); err == nil {
+				d.VehicleLabel = warehouseVehicleDisplayLabel(label, licensePlate, d.VehicleClass)
 				drivers = append(drivers, d)
 			}
 		}
 		if drivers == nil {
 			drivers = []DispatchableDriver{}
+		}
+
+		unavailableDriverStmt := spanner.Statement{
+			SQL: `SELECT d.DriverId, d.Name, COALESCE(d.Phone, ''), COALESCE(d.TruckStatus, 'IDLE'),
+			             COALESCE(d.VehicleId, ''), COALESCE(v.VehicleClass, ''),
+			             COALESCE(v.MaxVolumeVU, 0), COALESCE(v.Label, ''), COALESCE(v.LicensePlate, ''), COALESCE(v.UnavailableReason, '')
+			      FROM Drivers d
+			      LEFT JOIN Vehicles v ON d.VehicleId = v.VehicleId
+			      WHERE d.SupplierId = @sid AND (d.WarehouseId = @whId OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = @whId))
+			        AND d.IsActive = true AND d.IsOffline = false
+			        AND COALESCE(d.VehicleId, '') != ''
+			        AND COALESCE(v.IsActive, false) = false
+			      ORDER BY d.Name`,
+			Params: map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID},
+		}
+		uIter := spannerx.StaleQuery(ctx, spannerClient, unavailableDriverStmt)
+		defer uIter.Stop()
+
+		var unavailableDrivers []UnavailableDispatchDriver
+		for {
+			row, err := uIter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				log.Printf("[WH DISPATCH] unavailable drivers query error: %v", err)
+				break
+			}
+			var d UnavailableDispatchDriver
+			var label string
+			var licensePlate string
+			if err := row.Columns(&d.DriverID, &d.Name, &d.Phone, &d.TruckStatus,
+				&d.VehicleID, &d.VehicleClass, &d.MaxVolumeVU, &label, &licensePlate, &d.UnavailableReason); err == nil {
+				d.VehicleLabel = warehouseVehicleDisplayLabel(label, licensePlate, d.VehicleClass)
+				unavailableDrivers = append(unavailableDrivers, d)
+			}
+		}
+		if unavailableDrivers == nil {
+			unavailableDrivers = []UnavailableDispatchDriver{}
 		}
 
 		// ── Phase 2 Optimizer (SHADOW MODE) ─────────────────────────────
@@ -146,7 +206,7 @@ func HandleOpsDispatchPreview(spannerClient *spanner.Client, optimizer *optimize
 				shadowOrders[i] = dispatch.DispatchableOrder{
 					OrderID:      o.OrderID,
 					RetailerName: o.RetailerName,
-					Amount:       o.TotalAmount,
+					Amount:       o.TotalUZS,
 					Lat:          o.RetailerLat,
 					Lng:          o.RetailerLng,
 					VolumeVU:     o.TotalVolumeVU,
@@ -213,10 +273,26 @@ func HandleOpsDispatchPreview(spannerClient *spanner.Client, optimizer *optimize
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"orders":            orders,
-			"drivers":           drivers,
-			"pending_count":     len(orders),
-			"available_drivers": len(drivers),
+			"orders":                 orders,
+			"undispatched_orders":    orders,
+			"drivers":                drivers,
+			"available_drivers":      drivers,
+			"unavailable_drivers":    unavailableDrivers,
+			"pending_count":          len(orders),
+			"available_driver_count": len(drivers),
 		})
 	}
+}
+
+func warehouseVehicleDisplayLabel(label, licensePlate, vehicleClass string) string {
+	parts := make([]string, 0, 2)
+	if trimmed := strings.TrimSpace(label); trimmed != "" {
+		parts = append(parts, trimmed)
+	} else if trimmedPlate := strings.TrimSpace(licensePlate); trimmedPlate != "" {
+		parts = append(parts, trimmedPlate)
+	}
+	if trimmedClass := strings.TrimSpace(vehicleClass); trimmedClass != "" {
+		parts = append(parts, trimmedClass)
+	}
+	return strings.Join(parts, " · ")
 }

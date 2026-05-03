@@ -3,6 +3,7 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -65,6 +66,11 @@ type WarehouseResponse struct {
 	StaffCount  int64 `json:"staff_count"`
 }
 
+type WarehouseCoverageRequest struct {
+	Polygon      [][2]float64 `json:"polygon"`
+	H3Resolution int          `json:"h3_resolution"`
+}
+
 // ── Handlers ──────────────────────────────────────────────────────────────
 
 // HandleWarehouses routes GET (list) and POST (create) for /v1/supplier/warehouses
@@ -85,20 +91,28 @@ func HandleWarehouses(spannerClient *spanner.Client, producer ...*kafkago.Writer
 	}
 }
 
-// HandleWarehouseByID routes GET, PUT, DELETE for /v1/supplier/warehouses/{id}
+// HandleWarehouseByID routes warehouse detail mutations plus polygon coverage
+// saves for /v1/supplier/warehouses/{id} and /v1/supplier/warehouses/{id}/coverage.
 func HandleWarehouseByID(spannerClient *spanner.Client, producer ...*kafkago.Writer) http.HandlerFunc {
 	var kafkaProducer *kafkago.Writer
 	if len(producer) > 0 {
 		kafkaProducer = producer[0]
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Extract warehouse ID from path: /v1/supplier/warehouses/{id}
-		path := strings.TrimPrefix(r.URL.Path, "/v1/supplier/warehouses/")
-		if path == "" || strings.Contains(path, "/") {
+		if warehouseID, ok := warehouseCoverageTarget(r.URL.Path); ok {
+			if r.Method != http.MethodPost {
+				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+				return
+			}
+			saveWarehouseCoverage(w, r, spannerClient, warehouseID)
+			return
+		}
+
+		warehouseID, ok := warehouseDetailTarget(r.URL.Path)
+		if !ok {
 			http.Error(w, "warehouse_id required in path", http.StatusBadRequest)
 			return
 		}
-		warehouseID := path
 
 		switch r.Method {
 		case http.MethodGet:
@@ -111,6 +125,30 @@ func HandleWarehouseByID(spannerClient *spanner.Client, producer ...*kafkago.Wri
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
 	}
+}
+
+func warehouseDetailTarget(path string) (string, bool) {
+	parts := warehousePathParts(path)
+	if len(parts) != 1 || parts[0] == "" {
+		return "", false
+	}
+	return parts[0], true
+}
+
+func warehouseCoverageTarget(path string) (string, bool) {
+	parts := warehousePathParts(path)
+	if len(parts) != 2 || parts[0] == "" || parts[1] != "coverage" {
+		return "", false
+	}
+	return parts[0], true
+}
+
+func warehousePathParts(path string) []string {
+	trimmed := strings.Trim(strings.TrimPrefix(path, "/v1/supplier/warehouses/"), "/")
+	if trimmed == "" {
+		return nil
+	}
+	return strings.Split(trimmed, "/")
 }
 
 // ── List Warehouses ───────────────────────────────────────────────────────
@@ -645,6 +683,149 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "updated", "warehouse_id": warehouseID})
+}
+
+func saveWarehouseCoverage(w http.ResponseWriter, r *http.Request, client *spanner.Client, warehouseID string) {
+	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
+	if !ok || claims.UserID == "" {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	supplierID := claims.ResolveSupplierID()
+
+	var req WarehouseCoverageRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+	if len(req.Polygon) < 3 {
+		http.Error(w, `{"error":"polygon must have at least 3 points"}`, http.StatusBadRequest)
+		return
+	}
+	for _, pt := range req.Polygon {
+		if pt[0] < -90 || pt[0] > 90 || pt[1] < -180 || pt[1] > 180 {
+			http.Error(w, `{"error":"coordinates out of range"}`, http.StatusBadRequest)
+			return
+		}
+	}
+
+	hexes := proximity.ComputePolygonCoverage(req.Polygon, req.H3Resolution)
+	if len(hexes) == 0 {
+		http.Error(w, `{"error":"polygon does not produce any coverage cells"}`, http.StatusBadRequest)
+		return
+	}
+
+	conflicts, err := proximity.FindCoverageConflicts(r.Context(), client, supplierID, warehouseID, hexes)
+	if err != nil {
+		log.Printf("[WAREHOUSE] Coverage conflict check failed for %s: %v", warehouseID, err)
+		http.Error(w, "Failed to validate warehouse coverage", http.StatusInternalServerError)
+		return
+	}
+	if len(conflicts) > 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":     "coverage overlaps existing warehouse zones",
+			"conflicts": conflicts,
+		})
+		return
+	}
+
+	var oldCacheEntry cache.WarehouseGeoEntry
+	var newCacheEntry cache.WarehouseGeoEntry
+	_, err = client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, err := txn.ReadRow(ctx, "Warehouses", spanner.Key{warehouseID},
+			[]string{"SupplierId", "Name", "Lat", "Lng", "CoverageRadiusKm", "H3Indexes"})
+		if err != nil {
+			return fmt.Errorf("read warehouse: %w", err)
+		}
+
+		var existingSupplierID string
+		var existingName string
+		var existingLat spanner.NullFloat64
+		var existingLng spanner.NullFloat64
+		var existingRadius float64
+		var existingH3Cells []string
+		if err := row.Columns(&existingSupplierID, &existingName, &existingLat, &existingLng, &existingRadius, &existingH3Cells); err != nil {
+			return fmt.Errorf("scan warehouse: %w", err)
+		}
+		if existingSupplierID != supplierID {
+			return fmt.Errorf("ownership mismatch")
+		}
+
+		oldCacheEntry = cache.WarehouseGeoEntry{
+			WarehouseId: warehouseID,
+			SupplierId:  existingSupplierID,
+			Name:        existingName,
+			Lat:         existingLat.Float64,
+			Lng:         existingLng.Float64,
+			RadiusKm:    existingRadius,
+			H3Cells:     existingH3Cells,
+		}
+		newCacheEntry = cache.WarehouseGeoEntry{
+			WarehouseId: warehouseID,
+			SupplierId:  existingSupplierID,
+			Name:        existingName,
+			Lat:         existingLat.Float64,
+			Lng:         existingLng.Float64,
+			RadiusKm:    existingRadius,
+			H3Cells:     hexes,
+		}
+
+		m := spanner.Update("Warehouses",
+			[]string{"WarehouseId", "H3Indexes"},
+			[]interface{}{warehouseID, hexes},
+		)
+		if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
+			return fmt.Errorf("buffer coverage update: %w", err)
+		}
+
+		traceID := telemetry.TraceIDFromContext(ctx)
+		event := kafka.WarehouseSpatialUpdatedEvent{
+			WarehouseId:    warehouseID,
+			SupplierId:     supplierID,
+			CoverageRadius: existingRadius,
+			Timestamp:      time.Now().UTC(),
+		}
+		if err := outbox.EmitJSON(txn, "Warehouse", warehouseID,
+			kafka.EventWarehouseSpatialUpdated, kafka.TopicMain, event, traceID); err != nil {
+			return fmt.Errorf("emit warehouse spatial update: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), "ownership mismatch") || errors.Is(err, spanner.ErrRowNotFound) {
+			http.Error(w, "Warehouse not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("[WAREHOUSE] Coverage update failed for %s: %v", warehouseID, err)
+		http.Error(w, "Failed to update warehouse coverage", http.StatusInternalServerError)
+		return
+	}
+
+	workers.EventPool.Submit(func() {
+		if err := cache.RemoveWarehouse(context.Background(), oldCacheEntry); err != nil {
+			log.Printf("[WAREHOUSE] Cache remove failed for %s: %v", oldCacheEntry.WarehouseId, err)
+		}
+		if err := cache.IndexWarehouse(context.Background(), newCacheEntry); err != nil {
+			log.Printf("[WAREHOUSE] Cache index failed for %s: %v", newCacheEntry.WarehouseId, err)
+		}
+	})
+
+	capturedSupplier := supplierID
+	workers.EventPool.Submit(func() {
+		if err := proximity.VerifyCoverageConsistency(context.Background(), client, capturedSupplier); err != nil {
+			log.Printf("[WAREHOUSE] Coverage audit failed post-update for supplier %s: %v", capturedSupplier, err)
+		}
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":       "updated",
+		"warehouse_id": warehouseID,
+		"h3_count":     len(hexes),
+	})
 }
 
 // ── Deactivate Warehouse ──────────────────────────────────────────────────

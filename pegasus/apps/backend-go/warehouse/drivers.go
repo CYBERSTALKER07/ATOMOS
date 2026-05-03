@@ -35,18 +35,20 @@ type CreateDriverReq struct {
 }
 
 type DriverItem struct {
-	DriverID     string  `json:"driver_id"`
-	Name         string  `json:"name"`
-	Phone        string  `json:"phone"`
-	DriverType   string  `json:"driver_type"`
-	VehicleType  string  `json:"vehicle_type"`
-	LicensePlate string  `json:"license_plate"`
-	IsActive     bool    `json:"is_active"`
-	TruckStatus  string  `json:"truck_status"`
-	CreatedAt    string  `json:"created_at"`
-	VehicleId    string  `json:"vehicle_id,omitempty"`
-	VehicleClass string  `json:"vehicle_class,omitempty"`
-	MaxVolumeVU  float64 `json:"max_volume_vu,omitempty"`
+	DriverID                 string  `json:"driver_id"`
+	Name                     string  `json:"name"`
+	Phone                    string  `json:"phone"`
+	DriverType               string  `json:"driver_type"`
+	VehicleType              string  `json:"vehicle_type"`
+	LicensePlate             string  `json:"license_plate"`
+	IsActive                 bool    `json:"is_active"`
+	TruckStatus              string  `json:"truck_status"`
+	CreatedAt                string  `json:"created_at"`
+	VehicleId                string  `json:"vehicle_id,omitempty"`
+	VehicleClass             string  `json:"vehicle_class,omitempty"`
+	MaxVolumeVU              float64 `json:"max_volume_vu,omitempty"`
+	VehicleIsActive          bool    `json:"vehicle_is_active,omitempty"`
+	VehicleUnavailableReason string  `json:"vehicle_unavailable_reason,omitempty"`
 }
 
 const (
@@ -157,7 +159,7 @@ func HandleOpsDriverDetail(spannerClient *spanner.Client) http.HandlerFunc {
 			             COALESCE(d.IsActive, true), COALESCE(d.TruckStatus, 'IDLE'),
 			             d.CreatedAt,
 			             COALESCE(d.VehicleId, ''), COALESCE(v.VehicleClass, ''),
-			             COALESCE(v.MaxVolumeVU, 0)
+			             COALESCE(v.MaxVolumeVU, 0), COALESCE(v.IsActive, false), COALESCE(v.UnavailableReason, '')
 			      FROM Drivers d LEFT JOIN Vehicles v ON d.VehicleId = v.VehicleId
 			      WHERE d.DriverId = @driverId AND d.SupplierId = @sid AND (d.WarehouseId = @whId OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = @whId))`,
 			Params: map[string]interface{}{
@@ -184,7 +186,7 @@ func HandleOpsDriverDetail(spannerClient *spanner.Client) http.HandlerFunc {
 		var createdAt time.Time
 		if err := row.Columns(&d.DriverID, &d.Name, &d.Phone, &d.DriverType,
 			&d.VehicleType, &d.LicensePlate, &d.IsActive, &d.TruckStatus,
-			&createdAt, &d.VehicleId, &d.VehicleClass, &d.MaxVolumeVU); err != nil {
+			&createdAt, &d.VehicleId, &d.VehicleClass, &d.MaxVolumeVU, &d.VehicleIsActive, &d.VehicleUnavailableReason); err != nil {
 			log.Printf("[WH FLEET] driver detail parse: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
@@ -209,7 +211,7 @@ func listOpsDrivers(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 		             COALESCE(d.IsActive, true), COALESCE(d.TruckStatus, 'IDLE'),
 		             d.CreatedAt,
 		             COALESCE(d.VehicleId, ''), COALESCE(v.VehicleClass, ''),
-		             COALESCE(v.MaxVolumeVU, 0)
+		             COALESCE(v.MaxVolumeVU, 0), COALESCE(v.IsActive, false), COALESCE(v.UnavailableReason, '')
 		      FROM Drivers d LEFT JOIN Vehicles v ON d.VehicleId = v.VehicleId
 		      WHERE d.SupplierId = @sid AND (d.WarehouseId = @whId OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = @whId))
 		      ORDER BY d.CreatedAt DESC`,
@@ -246,7 +248,7 @@ func listOpsDrivers(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 		var createdAt time.Time
 		if err := row.Columns(&d.DriverID, &d.Name, &d.Phone, &d.DriverType,
 			&d.VehicleType, &d.LicensePlate, &d.IsActive, &d.TruckStatus,
-			&createdAt, &d.VehicleId, &d.VehicleClass, &d.MaxVolumeVU); err != nil {
+			&createdAt, &d.VehicleId, &d.VehicleClass, &d.MaxVolumeVU, &d.VehicleIsActive, &d.VehicleUnavailableReason); err != nil {
 			log.Printf("[WH FLEET] parse error: %v", err)
 			continue
 		}

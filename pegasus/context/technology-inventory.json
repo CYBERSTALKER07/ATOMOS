@@ -154,6 +154,180 @@
       ]
     },
     {
+      "name": "Supplier warehouse-ops surface",
+      "path": "/v1/supplier/{org/members*,staff/payloader*,warehouse-staff*,warehouses*,warehouse-inflight-vu}",
+      "owner": "pegasus/apps/backend-go/supplierroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/supplier/org/members",
+        "POST /v1/supplier/org/members/invite",
+        "PUT /v1/supplier/org/members/{id}",
+        "DELETE /v1/supplier/org/members/{id}",
+        "GET /v1/supplier/staff/payloader",
+        "POST /v1/supplier/staff/payloader",
+        "POST /v1/supplier/staff/payloader/{id}/rotate-pin",
+        "GET /v1/supplier/warehouse-staff",
+        "PATCH /v1/supplier/warehouse-staff/{id}",
+        "GET /v1/supplier/warehouses",
+        "POST /v1/supplier/warehouses",
+        "GET /v1/supplier/warehouses/{id}",
+        "PUT /v1/supplier/warehouses/{id}",
+        "DELETE /v1/supplier/warehouses/{id}",
+        "POST /v1/supplier/warehouses/{id}/coverage",
+        "GET /v1/supplier/warehouse-inflight-vu"
+      ],
+      "consumers": [
+        "admin-portal supplier org page",
+        "admin-portal supplier staff page",
+        "admin-portal supplier warehouses page",
+        "admin-portal warehouse staff panel",
+        "admin-portal warehouse coverage editor",
+        "admin-portal factory network map"
+      ],
+      "notes": [
+        "Route composition moved out of main.go into supplierroutes while preserving the existing supplier handlers.",
+        "POST /v1/supplier/warehouses/{id}/coverage now persists polygon-derived H3 cells through the warehouse spatial outbox and cache refresh path instead of failing as an unwired portal mutation."
+      ]
+    },
+    {
+      "name": "Supplier catalog-pricing surface",
+      "path": "/v1/supplier/{products*,products/upload-ticket,pricing/rules*,pricing/retailer-overrides*}",
+      "owner": "pegasus/apps/backend-go/suppliercatalogroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/supplier/products/upload-ticket",
+        "GET /v1/supplier/products",
+        "POST /v1/supplier/products",
+        "GET /v1/supplier/products/{sku_id}",
+        "PUT /v1/supplier/products/{sku_id}",
+        "DELETE /v1/supplier/products/{sku_id}",
+        "GET /v1/supplier/pricing/rules",
+        "POST /v1/supplier/pricing/rules",
+        "DELETE /v1/supplier/pricing/rules/{tier_id}",
+        "GET /v1/supplier/pricing/retailer-overrides",
+        "POST /v1/supplier/pricing/retailer-overrides",
+        "DELETE /v1/supplier/pricing/retailer-overrides/{id}"
+      ],
+      "consumers": [
+        "admin-portal supplier product form",
+        "admin-portal supplier promotion form",
+        "admin-portal supplier products page",
+        "admin-portal supplier product detail page",
+        "admin-portal supplier catalog page",
+        "admin-portal supplier pricing page",
+        "admin-portal supplier retailer-overrides page"
+      ],
+      "notes": [
+        "Route composition moved out of main.go into suppliercatalogroutes while preserving the existing supplier handlers and pricing services.",
+        "GET /v1/supplier/pricing/rules remains owned by PricingService.HandleUpsertPricingRule so the supplier pricing page keeps its current list-plus-upsert contract."
+      ]
+    },
+    {
+      "name": "Supplier logistics surface",
+      "path": "/v1/supplier/{picking-manifests*,manifests*,manifest-exceptions,fleet-volumetrics,dispatch-queue,dispatch-preview}",
+      "owner": "pegasus/apps/backend-go/supplierlogisticsroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/supplier/picking-manifests",
+        "GET /v1/supplier/picking-manifests/orders",
+        "GET /v1/supplier/manifests",
+        "GET /v1/supplier/manifests/{id}",
+        "POST /v1/supplier/manifests/{id}/start-loading",
+        "POST /v1/supplier/manifests/{id}/seal",
+        "POST /v1/supplier/manifests/{id}/inject-order",
+        "POST /v1/payload/manifest-exception",
+        "GET /v1/supplier/manifest-exceptions",
+        "POST /v1/supplier/manifests/auto-dispatch",
+        "POST /v1/supplier/manifests/dispatch-recommend",
+        "POST /v1/supplier/manifests/manual-dispatch",
+        "GET /v1/supplier/manifests/waiting-room",
+        "GET /v1/supplier/fleet-volumetrics",
+        "POST /v1/supplier/dispatch-queue",
+        "GET /v1/supplier/dispatch-preview"
+      ],
+      "consumers": [
+        "admin-portal supplier manifests page",
+        "admin-portal supplier manifest-exceptions page",
+        "admin-portal supplier dispatch page",
+        "admin-portal supplier orders page",
+        "payload manifest exception flow"
+      ],
+      "notes": [
+        "Route composition moved out of main.go into supplierlogisticsroutes while preserving the existing manifest service and supplier dispatch handlers.",
+        "Manifest path dispatch is explicitly tested so detail and action suffixes stay aligned with the old inline main.go behavior."
+      ]
+    },
+    {
+      "name": "Supplier insights surface",
+      "path": "/v1/supplier/{country-overrides*,analytics/*,financials,crm/retailers*}",
+      "owner": "pegasus/apps/backend-go/supplierinsightsroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/supplier/country-overrides",
+        "PUT /v1/supplier/country-overrides",
+        "GET /v1/supplier/country-overrides/{code}",
+        "DELETE /v1/supplier/country-overrides/{code}",
+        "GET /v1/supplier/analytics/velocity",
+        "GET /v1/supplier/analytics/demand/today",
+        "GET /v1/supplier/analytics/demand/history",
+        "GET /v1/supplier/analytics/transit-heatmap",
+        "GET /v1/supplier/analytics/throughput",
+        "GET /v1/supplier/analytics/load-distribution",
+        "GET /v1/supplier/analytics/node-efficiency",
+        "GET /v1/supplier/analytics/sla-health",
+        "GET /v1/supplier/analytics/revenue",
+        "GET /v1/supplier/analytics/top-retailers",
+        "GET /v1/supplier/financials",
+        "GET /v1/supplier/crm/retailers",
+        "GET /v1/supplier/crm/retailers/{id}"
+      ],
+      "consumers": [
+        "admin-portal supplier country-overrides page",
+        "admin-portal supplier analytics page",
+        "admin-portal supplier analytics demand page",
+        "admin-portal supplier dashboard page",
+        "admin-portal supplier analytics hooks",
+        "admin-portal supplier CRM page"
+      ],
+      "notes": [
+        "Route composition moved out of main.go into supplierinsightsroutes while preserving the existing countrycfg, analytics, and supplier handlers.",
+        "Warehouse-scoped analytics routes keep their RequireWarehouseScope middleware inside the extracted composer."
+      ]
+    },
+    {
+      "name": "Supplier operations surface",
+      "path": "/v1/supplier/{fleet/*,fulfillment/pay,returns*,quarantine-stock} + /v1/inventory/reconcile-returns",
+      "owner": "pegasus/apps/backend-go/supplieroperationsroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/supplier/fleet/drivers",
+        "POST /v1/supplier/fleet/drivers",
+        "GET /v1/supplier/fleet/drivers/{id}",
+        "PATCH /v1/supplier/fleet/drivers/{id}/assign-vehicle",
+        "POST /v1/supplier/fleet/drivers/{id}/rotate-pin",
+        "GET /v1/supplier/fleet/vehicles",
+        "POST /v1/supplier/fleet/vehicles",
+        "GET /v1/supplier/fleet/vehicles/{id}",
+        "PATCH /v1/supplier/fleet/vehicles/{id}",
+        "DELETE /v1/supplier/fleet/vehicles/{id}",
+        "POST /v1/supplier/fulfillment/pay",
+        "GET /v1/supplier/returns",
+        "POST /v1/supplier/returns/resolve",
+        "GET /v1/supplier/quarantine-stock",
+        "POST /v1/inventory/reconcile-returns"
+      ],
+      "consumers": [
+        "admin-portal supplier fleet page",
+        "admin-portal homepage supplier driver fetch",
+        "admin-portal supplier returns page",
+        "admin-portal supplier depot reconciliation page"
+      ],
+      "notes": [
+        "Route composition moved out of main.go into supplieroperationsroutes while preserving the existing supplier fleet, returns, reconcile, and order handlers.",
+        "POST /v1/supplier/fulfillment/pay keeps the previous error mapping semantics while moving out of main.go."
+      ]
+    },
+    {
         "name": "Warehouse ops compatibility surface",
         "path": "/v1/warehouse/ops/*",
         "owner": "pegasus/apps/backend-go/warehouseroutes/routes.go",
@@ -182,7 +356,8 @@
           "Vehicle responses expose both max_volume_vu and capacity_vu plus a derived availability status.",
           "Vehicle availability is schema-backed with Vehicles.UnavailableReason and travels across the warehouse portal, iOS, and Android fleet clients.",
           "Warehouse fleet controls now share driver assign/reset and vehicle activate/deactivate mutations across portal, iOS, and Android.",
-          "Warehouse dispatch preview excludes inactive vehicles from the available-driver list so vehicle availability mutations affect dispatch eligibility immediately."
+          "Warehouse dispatch preview excludes inactive vehicles from the available-driver list so vehicle availability mutations affect dispatch eligibility immediately.",
+          "Driver list payloads now carry assigned vehicle availability metadata, and dispatch preview publishes both available_drivers and unavailable_drivers so warehouse clients can explain blocked drivers."
         ]
       },
       {

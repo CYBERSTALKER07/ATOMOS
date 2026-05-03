@@ -23,7 +23,6 @@ import (
 	"backend-go/bootstrap"
 	"backend-go/cache"
 	"backend-go/catalogroutes"
-	"backend-go/countrycfg"
 	"backend-go/deliveryroutes"
 	"backend-go/driverroutes"
 	"backend-go/factory"
@@ -43,6 +42,10 @@ import (
 	"backend-go/settings"
 	"backend-go/simulation"
 	"backend-go/supplier"
+	"backend-go/suppliercatalogroutes"
+	"backend-go/supplierinsightsroutes"
+	"backend-go/supplierlogisticsroutes"
+	"backend-go/supplieroperationsroutes"
 	"backend-go/supplierroutes"
 	"backend-go/sync"
 	"backend-go/telemetry"
@@ -259,60 +262,13 @@ func main() {
 
 	// ── Vector G: B2B Dynamic Pricing Engine ──────────────────────────────────
 	// (supplierPricingSvc is constructed in bootstrap and aliased above.)
-
-	// POST /v1/supplier/products/upload-ticket - Generates Signed URL for GCS direct upload
-	http.HandleFunc("/v1/supplier/products/upload-ticket",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != http.MethodGet {
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-				return
-			}
-			supplier.HandleGetUploadTicket(w, r)
-		})))
-
-	// GET+POST /v1/supplier/products - List or create supplier products
-	http.HandleFunc("/v1/supplier/products",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				supplier.HandleListSupplierProducts(spannerClient)(w, r)
-			case http.MethodPost:
-				supplier.HandleCreateProduct(spannerClient)(w, r)
-			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			}
-		})))
-
-	// GET/PUT/DELETE /v1/supplier/products/{sku_id} — Read, update, or deactivate a product
-	http.HandleFunc("/v1/supplier/products/",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			switch r.Method {
-			case http.MethodGet:
-				supplier.HandleGetProduct(spannerClient)(w, r)
-			case http.MethodPut:
-				supplier.HandleUpdateProduct(spannerClient)(w, r)
-			case http.MethodDelete:
-				supplier.HandleDeactivateProduct(spannerClient)(w, r)
-			default:
-				http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			}
-		})))
-
-	// POST /v1/supplier/pricing/rules — Manufacturer locks a discount bracket.
-	// Legacy admin portal surface; accepts SUPPLIER or ADMIN JWT.
-	http.HandleFunc("/v1/supplier/pricing/rules",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplierPricingSvc.HandleUpsertPricingRule)))
-
-	// DELETE /v1/supplier/pricing/rules/{tier_id} — Deactivate a pricing rule
-	http.HandleFunc("/v1/supplier/pricing/rules/",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplierPricingSvc.HandlePricingRuleAction)))
-
-	// ── Per-Retailer Pricing Overrides ──────────────────────────────────────
 	retailerPricingSvc := supplier.NewRetailerPricingService(spannerClient, app.SpannerRouter, svc.Producer, app.Cache)
-	http.HandleFunc("/v1/supplier/pricing/retailer-overrides",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(retailerPricingSvc.HandleRetailerPricingOverrides))))
-	http.HandleFunc("/v1/supplier/pricing/retailer-overrides/",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(retailerPricingSvc.HandleRetailerPricingOverrideAction))))
+	suppliercatalogroutes.RegisterRoutes(r, suppliercatalogroutes.Deps{
+		Spanner:         spannerClient,
+		Pricing:         supplierPricingSvc,
+		RetailerPricing: retailerPricingSvc,
+		Log:             loggingMiddleware,
+	})
 
 	// ── LEO: LOGISTICS EXECUTION ORCHESTRATOR — Manifest Loading Gate ─────
 
@@ -322,32 +278,6 @@ func main() {
 		MapsAPIKey:    cfg.GoogleMapsAPIKey,
 		DepotLocation: cfg.DepotLocation,
 	}
-
-	// GET /v1/supplier/manifests — List manifests (filterable by ?state=DRAFT|LOADING|SEALED|...)
-	// GET /v1/supplier/manifests/{id} — Manifest detail with orders
-	http.HandleFunc("/v1/supplier/manifests/",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			// Determine if this is a detail or action route
-			id := supplier.ExtractPathParam(r.URL.Path, "manifests")
-			switch {
-			case id != "" && strings.HasSuffix(r.URL.Path, "/start-loading"):
-				idempotency.Guard(manifestSvc.HandleStartLoading())(w, r)
-			case id != "" && strings.HasSuffix(r.URL.Path, "/seal"):
-				idempotency.Guard(manifestSvc.HandleSealManifest())(w, r)
-			case id != "" && strings.HasSuffix(r.URL.Path, "/inject-order"):
-				idempotency.Guard(manifestSvc.HandleInjectOrder())(w, r)
-			case id != "":
-				manifestSvc.HandleManifestDetail()(w, r)
-			default:
-				manifestSvc.HandleListManifests()(w, r)
-			}
-		})))
-
-	// GET /v1/supplier/manifests — List manifests (root path, no trailing slash)
-	http.HandleFunc("/v1/supplier/manifests",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			manifestSvc.HandleListManifests()(w, r)
-		})))
 
 	// /v1/driver/* — 7 routes (earnings, history, availability, pending-collections,
 	// profile, manifest-gate, manifest). Ownership lives in backend-go/driverroutes.
@@ -360,17 +290,14 @@ func main() {
 		Log:         loggingMiddleware,
 	})
 
-	// POST /v1/payload/manifest-exception — Payloader removes order from manifest (OVERFLOW/DAMAGED/MANUAL)
-	http.HandleFunc("/v1/payload/manifest-exception",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN", "PAYLOAD"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			idempotency.Guard(manifestSvc.HandleManifestException())(w, r)
-		})))
-
-	// GET /v1/supplier/manifest-exceptions — List exceptions (DLQ escalations with ?escalated=true)
-	http.HandleFunc("/v1/supplier/manifest-exceptions",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			manifestSvc.HandleListExceptions()(w, r)
-		})))
+	supplierlogisticsroutes.RegisterRoutes(r, supplierlogisticsroutes.Deps{
+		Spanner:     spannerClient,
+		ReadRouter:  app.SpannerRouter,
+		ManifestSvc: manifestSvc,
+		Optimizer:   app.OptimizerClient,
+		Counters:    app.DispatchOptimizer,
+		Log:         loggingMiddleware,
+	})
 
 	// ── Phase VII: Delivery Zones CRUD ────────────────────────────────────
 	// GET/POST /v1/supplier/delivery-zones — List or create delivery fee zones
@@ -416,35 +343,12 @@ func main() {
 
 	// /v1/admin/{reconciliation,audit-log,country-configs,country-configs/} moved to adminroutes.
 
-	// GET/PUT /v1/supplier/country-overrides - Supplier-specific country config overrides
-	// GET  list all overrides for this supplier (with effective merged values)
-	// PUT  upsert an override for a specific country
-	http.HandleFunc("/v1/supplier/country-overrides", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(countrycfg.HandleSupplierCountryOverrides(countryCfgSvc))))
-	// GET single override + effective config / DELETE to revert to platform defaults
-	http.HandleFunc("/v1/supplier/country-overrides/", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(countrycfg.HandleSupplierCountryOverrideByCode(countryCfgSvc))))
-
-	// GET /v1/supplier/analytics/velocity - Real-time sales data Oracle for Suppliers
-	http.HandleFunc("/v1/supplier/analytics/velocity", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(analytics.HandleGetVelocity(spannerClient, app.SpannerRouter))))
-
-	// GET /v1/supplier/analytics/demand/today — AI Future Demand (next 24h) summary
-	http.HandleFunc("/v1/supplier/analytics/demand/today", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(analytics.HandleDemandToday(spannerClient, app.SpannerRouter))))
-
-	// GET /v1/supplier/analytics/demand/history — Predicted vs Actual time-series + upcoming detail
-	http.HandleFunc("/v1/supplier/analytics/demand/history", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(analytics.HandleDemandHistory(spannerClient, app.SpannerRouter))))
-
-	// ── Intelligence Vector Analytics (Phase 6) ─────────────────────────────
-	http.HandleFunc("/v1/supplier/analytics/transit-heatmap", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleTransitHeatmap(spannerClient, app.SpannerRouter)))))
-	http.HandleFunc("/v1/supplier/analytics/throughput", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleThroughput(spannerClient, app.SpannerRouter)))))
-	http.HandleFunc("/v1/supplier/analytics/load-distribution", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleLoadDistribution(spannerClient, app.SpannerRouter)))))
-	http.HandleFunc("/v1/supplier/analytics/node-efficiency", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleNodeEfficiency(spannerClient, app.SpannerRouter)))))
-	http.HandleFunc("/v1/supplier/analytics/sla-health", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleSLAHealth(spannerClient, app.SpannerRouter)))))
-
-	// ── Advanced Revenue + CRM Analytics ──
-	http.HandleFunc("/v1/supplier/analytics/revenue", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleRevenue(spannerClient, app.SpannerRouter)))))
-	http.HandleFunc("/v1/supplier/analytics/top-retailers", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(analytics.HandleTopRetailers(spannerClient, app.SpannerRouter)))))
-
-	// GET /v1/supplier/financials — Supplier-wide financials: revenue, fees, net payout, cash
-	http.HandleFunc("/v1/supplier/financials", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(analytics.HandleSupplierFinancials(spannerClient, app.SpannerRouter))))
+	supplierinsightsroutes.RegisterRoutes(r, supplierinsightsroutes.Deps{
+		Spanner:    spannerClient,
+		ReadRouter: app.SpannerRouter,
+		CountryCfg: countryCfgSvc,
+		Log:        loggingMiddleware,
+	})
 
 	// ── Retailer Expense Analytics (Phase 1: Insights Dashboard) ──
 	http.HandleFunc("/v1/retailer/analytics/expenses", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(analytics.HandleGetRetailerExpenses(spannerClient, app.SpannerRouter))))
@@ -452,56 +356,12 @@ func main() {
 	// ── Retailer Detailed Analytics (Advanced Analytics) ──
 	http.HandleFunc("/v1/retailer/analytics/detailed", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(analytics.HandleRetailerDetailedAnalytics(spannerClient, app.SpannerRouter))))
 
-	// ── Supplier CRM: Retailer Intelligence ──
-	http.HandleFunc("/v1/supplier/crm/retailers", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleCRMRetailers(spannerClient))))
-	http.HandleFunc("/v1/supplier/crm/retailers/", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleCRMRetailerDetail(spannerClient))))
-
-	// ── Supplier Fleet Provisioning (Phase 10: Driver Badging) ──────────────
-	http.HandleFunc("/v1/supplier/fleet/drivers", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleFleetDrivers(spannerClient)))))
-	http.HandleFunc("/v1/supplier/fleet/drivers/", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleFleetDriverDetail(spannerClient)))))
-
-	// ── Supplier Fleet Vehicles (Phase 6: Volumetric Units) ─────────────────
-	http.HandleFunc("/v1/supplier/fleet/vehicles", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleVehicles(spannerClient)))))
-	http.HandleFunc("/v1/supplier/fleet/vehicles/", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleVehicleDetail(spannerClient)))))
-
-	// POST /v1/supplier/fulfillment/pay — Trigger per-supplier staggered payment
-	// after driver arrival + order amendment.
-	// Charges ONLY this supplier's adjusted line-item total (never the full multi-supplier cart).
-	// Role: SUPPLIER or DRIVER (driver triggers at delivery, supplier can trigger from portal).
-	http.HandleFunc("/v1/supplier/fulfillment/pay", auth.RequireRole([]string{"SUPPLIER", "DRIVER", "ADMIN"}, loggingMiddleware(idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		var req struct {
-			OrderID string `json:"order_id"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" {
-			http.Error(w, `{"error":"order_id required"}`, http.StatusBadRequest)
-			return
-		}
-		result, err := svc.TriggerSupplierFulfillmentPayment(r.Context(), req.OrderID)
-		if err != nil {
-			errMsg := err.Error()
-			switch {
-			case strings.Contains(errMsg, "GEOFENCE_VIOLATION"):
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusForbidden)
-				json.NewEncoder(w).Encode(map[string]string{"error": errMsg})
-			case strings.Contains(errMsg, "state conflict"):
-				http.Error(w, errMsg, http.StatusConflict)
-			case strings.Contains(errMsg, "not found"):
-				http.Error(w, errMsg, http.StatusNotFound)
-			case strings.Contains(errMsg, "credentials unavailable"):
-				http.Error(w, errMsg, http.StatusServiceUnavailable)
-			default:
-				http.Error(w, errMsg, http.StatusBadGateway)
-			}
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(result)
-	}))))
+	supplieroperationsroutes.RegisterRoutes(r, supplieroperationsroutes.Deps{
+		Spanner:  spannerClient,
+		Order:    svc,
+		Producer: svc.Producer,
+		Log:      loggingMiddleware,
+	})
 
 	// ── Phase 5-6: System Health + Driver + Retailer + Supplier API Gap Closure ──
 
@@ -648,6 +508,7 @@ func main() {
 		Cache:        app.Cache,
 		CacheFlight:  app.CacheFlight,
 		DirectClient: directClient,
+		Producer:     svc.Producer,
 		Log:          loggingMiddleware,
 	})
 
@@ -657,24 +518,8 @@ func main() {
 
 	// /v1/admin/{nuke,config,empathy/adoption} moved to adminroutes.
 
-	// ── Organization Members (SupplierUsers — Sub-Accounts) ─────────────────
-	http.HandleFunc("/v1/supplier/org/members", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleOrgMembers(spannerClient)))))
-	http.HandleFunc("/v1/supplier/org/members/invite", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleOrgInvite(spannerClient))))
-	http.HandleFunc("/v1/supplier/org/members/", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleOrgMemberAction(spannerClient))))
-
-	// ── Warehouse Staff (Payloader) Provisioning ────────────────────────────
-	http.HandleFunc("/v1/supplier/staff/payloader", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleStaffPayloaders(spannerClient)))))
-	http.HandleFunc("/v1/supplier/staff/payloader/", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandlePayloaderDetail(spannerClient)))))
-
-	// ── Warehouse Staff Management (Supplier-scoped) ────────────────────────
-	http.HandleFunc("/v1/supplier/warehouse-staff", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleWarehouseStaff(spannerClient)))))
-	http.HandleFunc("/v1/supplier/warehouse-staff/", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleWarehouseStaffToggle(spannerClient)))))
-
-	// ── Warehouse Management (1:N Supplier→Warehouse) ───────────────────────
-	http.HandleFunc("/v1/supplier/warehouses", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleWarehouses(spannerClient, svc.Producer)))))
-	http.HandleFunc("/v1/supplier/warehouses/", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleWarehouseByID(spannerClient, svc.Producer)))))
-	// GET /v1/supplier/warehouse-inflight-vu?warehouse_id=X — VU utilization for capacity guardrails
-	http.HandleFunc("/v1/supplier/warehouse-inflight-vu", auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleWarehouseInflightVU(spannerClient)))))
+	// /v1/supplier/{org/members,staff/payloader,warehouse-staff,warehouses,
+	// warehouse-inflight-vu} moved to supplierroutes.
 
 	// /v1/supplier/{serving-warehouse,geo-report,zone-preview,
 	// warehouses/validate-coverage,warehouse-loads} moved to proximityroutes.
@@ -3811,33 +3656,6 @@ func main() {
 	http.HandleFunc("/v1/supplier/orders/vet",
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(vettingSvc.HandleVetOrder)))
 
-	// WAREHOUSE PICKING MANIFESTS: changed endpoint to /v1/supplier/picking-manifests
-	// to avoid duplicate registration conflict with SupplierTruckManifests
-	http.HandleFunc("/v1/supplier/picking-manifests",
-		auth.RequireRole([]string{"SUPPLIER", "PAYLOADER", "ADMIN"}, loggingMiddleware(supplier.HandleManifests(spannerClient))))
-	http.HandleFunc("/v1/supplier/picking-manifests/orders",
-		auth.RequireRole([]string{"SUPPLIER", "PAYLOADER", "ADMIN"}, loggingMiddleware(supplier.HandleManifestOrders(spannerClient))))
-
-	// POST /v1/supplier/manifests/auto-dispatch — Auto-Dispatch Engine: geo-cluster + bin-pack
-	http.HandleFunc("/v1/supplier/manifests/auto-dispatch",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleAutoDispatch(spannerClient, app.SpannerRouter, manifestSvc, app.OptimizerClient, app.DispatchOptimizer))))
-
-	// POST /v1/supplier/manifests/dispatch-recommend — Dry-run dispatch: returns recommended truck groupings without mutations
-	http.HandleFunc("/v1/supplier/manifests/dispatch-recommend",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleDispatchRecommend(spannerClient, app.SpannerRouter))))
-
-	// POST /v1/supplier/manifests/manual-dispatch — Create a single manifest for admin-chosen driver+orders
-	http.HandleFunc("/v1/supplier/manifests/manual-dispatch",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleManualDispatch(spannerClient, app.SpannerRouter, manifestSvc))))
-
-	// ── Fleet Bridge: Volumetrics + Dispatch Queue + H3 Route Preview ───────
-	// GET /v1/supplier/fleet-volumetrics — Fleet capacity vs. warehouse backlog
-	http.HandleFunc("/v1/supplier/fleet-volumetrics",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleFleetVolumetrics(spannerClient)))))
-	// POST /v1/supplier/dispatch-queue — Move READY_FOR_DISPATCH orders into manifests
-	http.HandleFunc("/v1/supplier/dispatch-queue",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleDispatchQueue(spannerClient, app.SpannerRouter, manifestSvc, app.OptimizerClient, app.DispatchOptimizer)))))
-
 	// ── Stealth Simulation Harness (/v1/internal/sim/) ────────────────────
 	// Gated by SIMULATION_ENABLED=true at boot. ADMIN-only.
 	if app.Simulation != nil {
@@ -3848,28 +3666,6 @@ func main() {
 		http.HandleFunc("/v1/internal/sim/status",
 			auth.RequireRole([]string{"ADMIN"}, loggingMiddleware(simulation.HandleStatus(app.Simulation))))
 	}
-
-	// GET /v1/supplier/dispatch-preview — H3-clustered order groups for planning
-	http.HandleFunc("/v1/supplier/dispatch-preview",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(auth.RequireWarehouseScope(supplier.HandleH3RoutePreview(spannerClient, app.SpannerRouter)))))
-
-	// GET /v1/supplier/manifests/waiting-room — Orders created after dispatch snapshot
-	http.HandleFunc("/v1/supplier/manifests/waiting-room",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(supplier.HandleWaitingRoom(spannerClient))))
-
-	// Dispute & Returns Queue — REJECTED_DAMAGED line items
-	returnsSvc := supplier.NewReturnsService(spannerClient, svc.Producer)
-	http.HandleFunc("/v1/supplier/returns",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(returnsSvc.HandleReturns)))
-	http.HandleFunc("/v1/supplier/returns/resolve",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(returnsSvc.HandleResolveReturn)))
-
-	// Depot Reconciliation — QUARANTINE reverse-logistics (vehicle-scoped bulk resolution)
-	reconcileSvc := supplier.NewReconcileService(spannerClient, svc.Producer)
-	http.HandleFunc("/v1/supplier/quarantine-stock",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(reconcileSvc.HandleQuarantineStock)))
-	http.HandleFunc("/v1/inventory/reconcile-returns",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, loggingMiddleware(reconcileSvc.HandleReconcile)))
 
 	// /v1/fleet/route/{id}/complete moved to fleetroutes.
 

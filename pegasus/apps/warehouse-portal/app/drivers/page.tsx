@@ -7,9 +7,22 @@ import type {
   WarehouseFleetDriverListResponse,
   WarehouseFleetVehicle,
   WarehouseFleetVehicleListResponse,
+  WarehouseVehicleUnavailableReason,
 } from '@pegasus/types';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
+
+function formatUnavailableReason(reason?: string) {
+  if (!reason) {
+    return '';
+  }
+
+  return reason
+    .toLowerCase()
+    .split('_')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
 
 export default function DriversPage() {
   const [drivers, setDrivers] = useState<WarehouseFleetDriver[]>([]);
@@ -98,6 +111,24 @@ export default function DriversPage() {
       return 'Assigned vehicle unavailable';
     }
     return [vehicle.label || vehicle.license_plate, vehicle.vehicle_class].filter(Boolean).join(' · ');
+  }
+
+  function assignedVehicleReason(driver: WarehouseFleetDriver) {
+    if (!driver.vehicle_id) {
+      return '';
+    }
+
+    const directReason = driver.vehicle_unavailable_reason as WarehouseVehicleUnavailableReason | undefined;
+    if (directReason && driver.vehicle_is_active === false) {
+      return `Vehicle unavailable: ${formatUnavailableReason(directReason)}`;
+    }
+
+    const vehicle = vehicles.find(item => item.vehicle_id === driver.vehicle_id);
+    if (vehicle && !vehicle.is_active && vehicle.unavailable_reason) {
+      return `Vehicle unavailable: ${formatUnavailableReason(vehicle.unavailable_reason)}`;
+    }
+
+    return '';
   }
 
   function vehicleOptionLabel(vehicle: WarehouseFleetVehicle) {
@@ -207,6 +238,9 @@ export default function DriversPage() {
                         ))}
                     </select>
                     <p className="mt-1 text-xs text-(--muted)">{assignedVehicleLabel(d)}</p>
+                    {assignedVehicleReason(d) && (
+                      <p className="mt-1 text-xs" style={{ color: 'var(--warning)' }}>{assignedVehicleReason(d)}</p>
+                    )}
                   </td>
                   <td className="py-2.5 px-3">
                     <span className={`status-chip ${['IN_TRANSIT', 'RETURNING'].includes(d.truck_status) ? 'status-chip--active' : 'status-chip--stable'}`}>

@@ -34,7 +34,7 @@ struct DispatchView: View {
                     VStack(spacing: 0) {
                         Picker("View", selection: $selectedSegment) {
                             Text("Orders (\(preview.undispatchedOrders.count))").tag(0)
-                            Text("Drivers (\(preview.availableDrivers.count))").tag(1)
+                            Text("Drivers (\(preview.availableDrivers.count + preview.unavailableDrivers.count))").tag(1)
                             Text("Supply (\(supplyRequests.count))").tag(2)
                             Text("Locks (\(dispatchLocks.count))").tag(3)
                         }
@@ -69,17 +69,55 @@ struct DispatchView: View {
                                 .listStyle(.insetGrouped)
                             }
                         } else if selectedSegment == 1 {
-                            if preview.availableDrivers.isEmpty {
+                            if preview.availableDrivers.isEmpty && preview.unavailableDrivers.isEmpty {
                                 ContentUnavailableView("No Drivers", systemImage: "person.badge.key", description: Text("No available drivers"))
                             } else {
-                                List(preview.availableDrivers) { driver in
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
-                                            Text(driver.name)
-                                                .font(.headline)
-                                            Text(driver.vehicleLabel.isEmpty ? "No vehicle" : driver.vehicleLabel)
-                                                .font(.subheadline)
-                                                .foregroundStyle(.secondary)
+                                List {
+                                    if !preview.availableDrivers.isEmpty {
+                                        Section("Available") {
+                                            ForEach(preview.availableDrivers) { driver in
+                                                HStack {
+                                                    VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                                        Text(driver.name)
+                                                            .font(.headline)
+                                                        Text(driver.vehicleLabel.isEmpty ? (driver.phone.isEmpty ? "Assigned vehicle" : driver.phone) : driver.vehicleLabel)
+                                                            .font(.subheadline)
+                                                            .foregroundStyle(.secondary)
+                                                    }
+                                                    Spacer()
+                                                    Text(driver.truckStatus.isEmpty ? "IDLE" : driver.truckStatus)
+                                                        .font(.caption.bold())
+                                                        .padding(.horizontal, LabTheme.spacingSM)
+                                                        .padding(.vertical, LabTheme.spacingXS)
+                                                        .background(.quaternary, in: Capsule())
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if !preview.unavailableDrivers.isEmpty {
+                                        Section("Vehicle Unavailable") {
+                                            ForEach(preview.unavailableDrivers) { driver in
+                                                HStack(alignment: .top) {
+                                                    VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
+                                                        Text(driver.name)
+                                                            .font(.headline)
+                                                        Text(driver.vehicleLabel.isEmpty ? (driver.phone.isEmpty ? "Assigned vehicle unavailable" : driver.phone) : driver.vehicleLabel)
+                                                            .font(.subheadline)
+                                                            .foregroundStyle(.secondary)
+                                                        if let reason = driver.unavailableReason, !reason.isEmpty {
+                                                            Text(vehicleUnavailableReasonLabel(reason))
+                                                                .font(.caption)
+                                                                .foregroundStyle(.orange)
+                                                        }
+                                                    }
+                                                    Spacer()
+                                                    Text(driver.truckStatus.isEmpty ? "IDLE" : driver.truckStatus)
+                                                        .font(.caption.bold())
+                                                        .padding(.horizontal, LabTheme.spacingSM)
+                                                        .padding(.vertical, LabTheme.spacingXS)
+                                                        .background(.quaternary, in: Capsule())
+                                                }
+                                            }
                                         }
                                     }
                                 }

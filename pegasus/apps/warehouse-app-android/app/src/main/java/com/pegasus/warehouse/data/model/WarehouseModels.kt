@@ -67,6 +67,8 @@ data class Driver(
     @SerialName("is_active") val isActive: Boolean = true,
     @SerialName("vehicle_id") val vehicleId: String? = null,
     @SerialName("vehicle_class") val vehicleClass: String = "",
+    @SerialName("vehicle_is_active") val vehicleIsActive: Boolean = false,
+    @SerialName("vehicle_unavailable_reason") val vehicleUnavailableReason: String? = null,
 )
 
 @Serializable
@@ -277,6 +279,7 @@ data class InvoiceListResponse(
 data class DispatchPreview(
     @SerialName("undispatched_orders") val undispatchedOrders: List<DispatchOrder> = emptyList(),
     @SerialName("available_drivers") val availableDrivers: List<AvailableDriver> = emptyList(),
+    @SerialName("unavailable_drivers") val unavailableDrivers: List<AvailableDriver> = emptyList(),
 )
 
 @Serializable
@@ -295,6 +298,7 @@ data class AvailableDriver(
     val phone: String = "",
     @SerialName("vehicle_label") val vehicleLabel: String = "",
     @SerialName("truck_status") val truckStatus: String = "",
+    @SerialName("unavailable_reason") val unavailableReason: String? = null,
 )
 
 // ── Warehouse Realtime ──

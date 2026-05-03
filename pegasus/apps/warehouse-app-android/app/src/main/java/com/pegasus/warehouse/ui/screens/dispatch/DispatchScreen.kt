@@ -259,7 +259,7 @@ fun DispatchScreen(
             preview != null -> Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
                 TabRow(selectedTabIndex = tab) {
                     Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Orders (${preview!!.undispatchedOrders.size})") })
-                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Drivers (${preview!!.availableDrivers.size})") })
+                    Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("Drivers (${preview!!.availableDrivers.size + preview!!.unavailableDrivers.size})") })
                     Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Supply (${supplyRequests.size})") })
                     Tab(selected = tab == 3, onClick = { tab = 3 }, text = { Text("Locks (${dispatchLocks.size})") })
                 }
@@ -292,23 +292,64 @@ fun DispatchScreen(
                         }
                     }
                     1 -> {
-                        if (preview!!.availableDrivers.isEmpty()) {
+                        if (preview!!.availableDrivers.isEmpty() && preview!!.unavailableDrivers.isEmpty()) {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("No available drivers", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         } else {
                             LazyColumn(contentPadding = PaddingValues(LabSpacing.lg), verticalArrangement = Arrangement.spacedBy(LabSpacing.md)) {
+                                if (preview!!.availableDrivers.isNotEmpty()) {
+                                    item {
+                                        Text(
+                                            "Available",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
                                 items(preview!!.availableDrivers, key = { it.driverId }) { d ->
                                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                                         Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(d.name, style = MaterialTheme.typography.titleSmall)
                                                 Text(
-                                                    d.vehicleLabel.ifBlank { d.truckStatus.ifBlank { "No vehicle" } },
+                                                    d.vehicleLabel.ifBlank { d.phone.ifBlank { d.truckStatus.ifBlank { "No vehicle" } } },
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 )
                                             }
+                                            AssistChip(onClick = {}, label = { Text(d.truckStatus.ifBlank { "IDLE" }) })
+                                        }
+                                    }
+                                }
+                                if (preview!!.unavailableDrivers.isNotEmpty()) {
+                                    item {
+                                        Text(
+                                            "Vehicle Unavailable",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                                items(preview!!.unavailableDrivers, key = { "unavailable-${it.driverId}" }) { d ->
+                                    ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                                        Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                                                Text(d.name, style = MaterialTheme.typography.titleSmall)
+                                                Text(
+                                                    d.vehicleLabel.ifBlank { d.phone.ifBlank { "Assigned vehicle unavailable" } },
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                                if (!d.unavailableReason.isNullOrBlank()) {
+                                                    Text(
+                                                        vehicleUnavailableReasonLabel(d.unavailableReason),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.tertiary,
+                                                    )
+                                                }
+                                            }
+                                            AssistChip(onClick = {}, label = { Text(d.truckStatus.ifBlank { "IDLE" }) })
                                         }
                                     }
                                 }
