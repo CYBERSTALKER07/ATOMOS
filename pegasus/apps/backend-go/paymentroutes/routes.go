@@ -57,9 +57,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		guard(auth.RequireRole(retailer, log(idem(d.Checkout.HandleUnifiedCheckout)))))
 
 	r.HandleFunc("/v1/payment/chargeback",
-		auth.RequireRole(adminSupplier, log(handleChargeback(d.Chargeback))))
+		guard(auth.RequireRole(adminSupplier, log(idem(handleChargeback(d.Chargeback))))))
 	r.HandleFunc("/v1/payment/chargeback/reversal",
-		auth.RequireRole(adminSupplier, log(handleReversal(d.Chargeback))))
+		guard(auth.RequireRole(adminSupplier, log(idem(handleReversal(d.Chargeback))))))
 	r.HandleFunc("/v1/payment/global_pay/initiate",
 		auth.RequireRole(retailer, log(handleGlobalPayInitiate(d.Spanner))))
 }

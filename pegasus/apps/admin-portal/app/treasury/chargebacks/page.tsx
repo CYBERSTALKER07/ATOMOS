@@ -23,6 +23,14 @@ interface ReconciliationResponse {
   data: ReconciliationRecord[];
 }
 
+function buildChargebackIdempotencyKey(orderId: string, retailerId: string, gateway: string, amountUZS: number): string {
+  return ['chargeback', orderId.trim(), retailerId.trim(), gateway.trim().toUpperCase(), String(amountUZS)].join(':');
+}
+
+function buildReversalIdempotencyKey(sessionId: string): string {
+  return ['chargeback-reversal', sessionId.trim()].join(':');
+}
+
 export default function ChargebacksPage() {
   const token = useToken();
   const { toast } = useToast();
@@ -59,19 +67,24 @@ export default function ChargebacksPage() {
 
   const createChargeback = useCallback(async () => {
     if (!token) return;
-    if (!orderId || !retailerId || Number(amount) <= 0) {
+    const amountUZS = Number(amount);
+    if (!orderId || !retailerId || amountUZS <= 0) {
       toast('order_id, retailer_id and amount are required', 'error');
       return;
     }
     try {
       const res = await fetch(`${API}/v1/payment/chargeback`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildChargebackIdempotencyKey(orderId, retailerId, gateway, amountUZS),
+        },
         body: JSON.stringify({
           order_id: orderId,
           retailer_id: retailerId,
           gateway,
-          amount_uzs: Number(amount),
+          amount_uzs: amountUZS,
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -90,7 +103,11 @@ export default function ChargebacksPage() {
     try {
       const res = await fetch(`${API}/v1/payment/chargeback/reversal`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildReversalIdempotencyKey(sessionId),
+        },
         body: JSON.stringify({ session_id: sessionId }),
       });
       if (!res.ok) throw new Error(await res.text());

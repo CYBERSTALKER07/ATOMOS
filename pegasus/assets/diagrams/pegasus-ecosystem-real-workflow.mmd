@@ -1,114 +1,65 @@
-%%{init: {'theme':'base','flowchart': {'nodeSpacing': 42, 'rankSpacing': 78, 'curve': 'linear', 'htmlLabels': true}}}%%
+%%{init: {'theme':'base','flowchart': {'nodeSpacing': 42, 'rankSpacing': 92, 'curve': 'linear', 'htmlLabels': true}}}%%
 flowchart LR
     classDef role fill:#f8fafc,stroke:#334155,color:#0f172a,stroke-width:1.4px;
-    classDef action fill:#ffffff,stroke:#64748b,color:#0f172a,stroke-width:1.2px;
     classDef system fill:#dbeafe,stroke:#1d4ed8,color:#0f172a,stroke-width:1.3px;
     classDef realtime fill:#fee2e2,stroke:#dc2626,color:#0f172a,stroke-width:1.3px;
     classDef outcome fill:#dcfce7,stroke:#15803d,color:#0f172a,stroke-width:1.3px;
     classDef warning fill:#ffedd5,stroke:#ea580c,color:#0f172a,stroke-width:1.3px;
 
-    START([Demand and fulfillment loop starts]):::outcome
+    START([Demand and fulfillment<br/>loop starts]):::outcome
 
-    subgraph RETAILER[Retailer]
+    subgraph PHASE1[Demand and Planning]
         direction TB
-        R1[Browse catalog and suppliers]:::role
-        R2[Build cart or auto-order request]:::role
-        R3[Place preorder or live order]:::role
-        R4[Track fulfillment and receive goods]:::role
-        R5[Confirm payment and feed demand back]:::role
+        S1[Supplier / Admin<br/>configure pricing, catalog,<br/>zones, factories, warehouses]:::role
+        R1[Retailer<br/>browse suppliers,<br/>build cart, place order]:::role
+        W1[Warehouse Admin<br/>watch stock and forecast,<br/>raise supply request]:::role
+        S1 --> R1 --> W1
     end
 
-    subgraph SUPPLIER[Supplier / Admin]
+    subgraph PHASE2[Fulfillment Execution]
         direction TB
-        S1[Configure pricing, catalog, zones, factories, warehouses]:::role
-        S2[Review dashboard, inventory, dispatch, CRM, analytics]:::role
-        S3[Approve exceptions, overrides, returns, finance events]:::role
+        F1[Factory Admin<br/>accept request, produce,<br/>plan transfer and manifest]:::role
+        P1[Payload / Payloader<br/>load truck, inject changes,<br/>seal or flag manifest]:::role
+        D1[Driver<br/>receive route, drive stops,<br/>offload and verify payment]:::role
+        R2[Retailer<br/>receive goods,<br/>confirm payment]:::role
+        F1 --> P1 --> D1 --> R2
     end
 
-    subgraph WAREHOUSE[Warehouse Admin]
+    subgraph PHASE3[Control and Feedback]
         direction TB
-        W1[Monitor stock, demand forecast, ops dashboard]:::role
-        W2[Create supply request to factory]:::role
-        W3[Receive transfer or mark shortages and exceptions]:::role
+        B1[Platform Backbone<br/>APIs, Spanner, Redis,<br/>Kafka, AI, notifications]:::system
+        B2[Realtime Hubs<br/>retailer, driver, payload,<br/>warehouse, fleet]:::realtime
+        S2[Supplier / Admin<br/>review dashboard, CRM,<br/>analytics, finance]:::role
+        W2[Warehouse Admin<br/>receive transfer or record<br/>shortage and exceptions]:::role
+        B1 --> B2 --> S2 --> W2
     end
 
-    subgraph FACTORY[Factory Admin]
+    subgraph EXCEPTIONS[High-Risk Branches]
         direction TB
-        F1[Acknowledge supply request]:::role
-        F2[Move request into production]:::role
-        F3[Create transfer and manifest plan]:::role
-        F4[Dispatch ready manifest to loading bay]:::role
-    end
-
-    subgraph PAYLOAD[Payload / Payloader]
-        direction TB
-        P1[See assigned trucks and manifest queue]:::role
-        P2[Start loading and inject late order changes]:::role
-        P3[Seal manifest or raise manifest exception]:::role
-    end
-
-    subgraph DRIVER[Driver]
-        direction TB
-        D1[Receive manifest, gate checks, route sequence]:::role
-        D2[Drive with telemetry and stop progression]:::role
-        D3[Scan, offload, collect cash or verify payment]:::role
-        D4[Complete delivery or escalate shop-closed and correction flows]:::role
-    end
-
-    subgraph PLATFORM[Platform Backbone]
-        direction TB
-        B1[Chi handlers + role scoped APIs]:::system
-        B2[Spanner read write transactions]:::system
-        B3[Outbox events to Kafka]:::system
-        B4[Redis cache invalidation and fan-out]:::system
-        B5[Realtime sockets for retailer, driver, payloader, warehouse, fleet]:::realtime
-        B6[Analytics, reconciler, AI, notifications]:::system
+        EX1{{Stockout or<br/>forecast breach}}:::warning
+        EX2{{Manifest mismatch<br/>or loading exception}}:::warning
+        EX3{{Payment issue or<br/>shop-closed stop}}:::warning
+        S3[Supplier / Admin<br/>approve overrides, returns,<br/>manual resolution]:::role
     end
 
     START --> S1
-    S1 --> R1
-    R1 --> R2 --> R3
-    R3 --> B1
-    S2 --> B1
-    B1 --> B2
-    B2 --> B3
-    B2 --> B4
-    B3 --> B6
-    B4 --> B5
+    W1 -->|request submitted| F1
+    R2 --> END([Loop closes:<br/>analytics, CRM,<br/>replenishment, next order]):::outcome
 
-    R3 -->|supplier order demand and warehouse depletion| W1
-    W1 --> W2
-    W2 --> B1
-    W2 -->|request submitted| F1
-    F1 --> F2 --> F3 --> F4
-    F4 --> P1 --> P2 --> P3 --> D1
-    D1 --> D2 --> D3 --> D4 --> R4 --> R5
+    R1 -->|order demand| B1
+    W1 -->|warehouse depletion| B1
+    P1 -->|sealed manifest| B1
+    D1 -->|delivery and payment state| B1
+    R2 -->|demand signal and payment feedback| B1
 
-    W3 --> S2
-    R5 -->|demand signal, payment status, retailer behavior| B6
-    B6 --> S2
-    B6 --> W1
-    B5 --> R4
-    B5 --> D2
-    B5 --> P1
-    B5 --> W1
+    S2 --> W1
+    S2 --> S1
+    B2 --> R2
+    B2 --> W2
 
-    P3 -->|sealed manifest ready| B1
-    D3 -->|payment settled or pending collection| B1
-    D4 -->|completion, exception, correction, shop-closed| S3
+    W1 --> EX1 --> S3
+    P1 --> EX2 --> S3
+    D1 --> EX3 --> S3
+    S3 --> W2
+    S3 --> S1
     S3 --> B1
-
-    B6 -->|recommendations, alerts, financial events| S3
-    S3 -->|manual override, admin resolution, returns, finance ops| W3
-    S3 -->|re-plan network, pricing, supply lanes| S1
-
-    R5 --> END([Loop closes: analytics, CRM, replenishment, next order]):::outcome
-    END --> S2
-
-    EX1{{Stockout or forecast breach}}:::warning
-    EX2{{Manifest exception or loading mismatch}}:::warning
-    EX3{{Payment issue or shop-closed stop}}:::warning
-
-    W1 --> EX1 --> W2
-    P2 --> EX2 --> S3
-    D3 --> EX3 --> S3
