@@ -59,14 +59,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierOrPayload, log(supplier.HandleManifests(d.Spanner))))
 	r.HandleFunc("/v1/supplier/picking-manifests/orders",
 		auth.RequireRole(supplierOrPayload, log(supplier.HandleManifestOrders(d.Spanner))))
-	r.HandleFunc("/v1/supplier/manifests",
-		auth.RequireRole(supplierOrPayload, log(manifestRootHandler(d.ManifestSvc))))
-	r.HandleFunc("/v1/supplier/manifests/",
-		auth.RequireRole(supplierOrPayload, log(manifestPathHandler(d.ManifestSvc))))
 	r.HandleFunc("/v1/payload/manifest-exception",
 		auth.RequireRole(supplierOrPayloadException, log(idempotency.Guard(d.ManifestSvc.HandleManifestException()))))
 	r.HandleFunc("/v1/supplier/manifest-exceptions",
 		auth.RequireRole(supplierRole, log(d.ManifestSvc.HandleListExceptions())))
+	r.HandleFunc("/v1/supplier/manifests",
+		auth.RequireRole(supplierOrPayload, log(manifestRootHandler(d.ManifestSvc))))
 	r.HandleFunc("/v1/supplier/manifests/auto-dispatch",
 		auth.RequireRole(supplierRole, log(supplier.HandleAutoDispatch(d.Spanner, d.ReadRouter, d.ManifestSvc, d.Optimizer, d.Counters))))
 	r.HandleFunc("/v1/supplier/manifests/dispatch-recommend",
@@ -75,6 +73,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierRole, log(supplier.HandleManualDispatch(d.Spanner, d.ReadRouter, d.ManifestSvc))))
 	r.HandleFunc("/v1/supplier/manifests/waiting-room",
 		auth.RequireRole(supplierRole, log(supplier.HandleWaitingRoom(d.Spanner))))
+	r.HandleFunc("/v1/supplier/manifests/*",
+		auth.RequireRole(supplierOrPayload, log(manifestPathHandler(d.ManifestSvc))))
 	r.HandleFunc("/v1/supplier/fleet-volumetrics",
 		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleFleetVolumetrics(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/dispatch-queue",

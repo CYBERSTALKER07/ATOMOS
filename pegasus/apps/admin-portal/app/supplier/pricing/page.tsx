@@ -23,7 +23,24 @@ type ProductSku = {
   name: string;
 };
 
+type ProductSkuApiRecord = Partial<{
+  sku_id: string;
+  name: string;
+}>;
+
 const RETAILER_TIERS = ["ALL", "BRONZE", "SILVER", "GOLD"] as const;
+
+function normalizeProductSku(input: unknown): ProductSku | null {
+  if (!input || typeof input !== "object") return null;
+
+  const raw = input as ProductSkuApiRecord;
+  if (typeof raw.sku_id !== "string" || raw.sku_id.length === 0) return null;
+
+  return {
+    sku_id: raw.sku_id,
+    name: typeof raw.name === "string" ? raw.name : raw.sku_id,
+  };
+}
 
 export default function SupplierPricingPage() {
   const [rules, setRules] = useState<PricingRule[]>([]);
@@ -55,7 +72,14 @@ export default function SupplierPricingPage() {
       }
       if (productsRes.ok) {
         const pData = await productsRes.json();
-        setProducts((pData.data || []).map((p: { sku_id: string; name: string }) => ({ sku_id: p.sku_id, name: p.name })));
+        const items = Array.isArray(pData)
+          ? pData
+          : Array.isArray(pData?.data)
+            ? pData.data
+            : Array.isArray(pData?.products)
+              ? pData.products
+              : [];
+        setProducts(items.map(normalizeProductSku).filter((product: ProductSku | null): product is ProductSku => product !== null));
       }
     } catch {} finally {
       setLoadingRules(false);

@@ -30,6 +30,12 @@ interface Product {
   base_price: number;
 }
 
+type ProductApiRecord = Partial<{
+  sku_id: string;
+  name: string;
+  base_price: number;
+}>;
+
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
 
 const fieldStyle = {
@@ -41,6 +47,19 @@ const fieldStyle = {
 
 function formatPrice(uzs: number): string {
   return new Intl.NumberFormat('en-US').format(uzs);
+}
+
+function normalizeProduct(input: unknown): Product | null {
+  if (!input || typeof input !== 'object') return null;
+
+  const raw = input as ProductApiRecord;
+  if (typeof raw.sku_id !== 'string' || raw.sku_id.length === 0) return null;
+
+  return {
+    sku_id: raw.sku_id,
+    name: typeof raw.name === 'string' ? raw.name : raw.sku_id,
+    base_price: typeof raw.base_price === 'number' ? raw.base_price : 0,
+  };
 }
 
 /* ── Page ─────────────────────────────────────────────────────────────────── */
@@ -92,7 +111,14 @@ export default function RetailerPricingOverridesPage() {
       const res = await apiFetch('/v1/supplier/products');
       if (!res.ok) return;
       const data = await res.json();
-      setProducts(data.products || []);
+      const items = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data?.products)
+            ? data.products
+            : [];
+      setProducts(items.map(normalizeProduct).filter((product: Product | null): product is Product => product !== null));
     } catch { /* non-critical */ }
   }, []);
 

@@ -16,13 +16,14 @@ type routeGroup struct {
 	Roles []string
 }
 
-// All distinct role groups registered in main.go RequireRole() calls.
+// All distinct role groups registered in main.go and extracted route-package RequireRole() calls.
 var routeGroups = []routeGroup{
 	{"DRIVER-only", []string{"DRIVER"}},
 	{"RETAILER-only", []string{"RETAILER"}},
 	{"PAYLOADER-only", []string{"PAYLOADER"}},
 	{"ADMIN-only", []string{"ADMIN"}},
 	{"SUPPLIER+ADMIN", []string{"SUPPLIER", "ADMIN"}},
+	{"SUPPLIER+ADMIN+PAYLOADER", []string{"SUPPLIER", "ADMIN", "PAYLOADER"}},
 	{"RETAILER+DRIVER", []string{"RETAILER", "DRIVER"}},
 	{"SUPPLIER+DRIVER+ADMIN", []string{"SUPPLIER", "DRIVER", "ADMIN"}},
 	{"DRIVER+ADMIN+SUPPLIER", []string{"DRIVER", "ADMIN", "SUPPLIER"}},
@@ -151,6 +152,42 @@ func TestRoleMatrix_WSQueryParamAuth(t *testing.T) {
 
 			if w.Code != http.StatusOK {
 				t.Errorf("WS query param for %s: got %d, want 200", role, w.Code)
+			}
+		})
+	}
+}
+
+func TestRoleMatrix_WSPayloaderQueryParamAuth(t *testing.T) {
+	tests := []struct {
+		name       string
+		role       string
+		wantStatus int
+	}{
+		{name: "payloader accepted", role: "PAYLOADER", wantStatus: http.StatusOK},
+		{name: "supplier accepted", role: "SUPPLIER", wantStatus: http.StatusOK},
+		{name: "admin accepted", role: "ADMIN", wantStatus: http.StatusOK},
+		{name: "driver rejected", role: "DRIVER", wantStatus: http.StatusForbidden},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tok, err := GenerateTestToken("ws-payloader-user", test.role)
+			if err != nil {
+				t.Fatalf("GenerateTestToken: %v", err)
+			}
+
+			handler := RequireRole([]string{"SUPPLIER", "ADMIN", "PAYLOADER"}, func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+			})
+
+			req := httptest.NewRequest(http.MethodGet, "/v1/ws/payloader?token="+tok, nil)
+			req.Header.Set("Connection", "Upgrade")
+			req.Header.Set("Upgrade", "websocket")
+			w := httptest.NewRecorder()
+			handler(w, req)
+
+			if w.Code != test.wantStatus {
+				t.Fatalf("status = %d, want %d", w.Code, test.wantStatus)
 			}
 		})
 	}

@@ -27,6 +27,47 @@ interface Factory {
   created_at: string;
 }
 
+type FactoryApiRecord = Partial<{
+  id: string;
+  factory_id: string;
+  supplier_id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  h3_index: string;
+  product_types: string[];
+  lead_time_days: number;
+  production_capacity_vu: number;
+  is_active: boolean;
+  created_at: string;
+}>;
+
+function normalizeFactory(input: unknown): Factory | null {
+  if (!input || typeof input !== 'object') return null;
+
+  const raw = input as FactoryApiRecord;
+  const id = typeof raw.id === 'string' ? raw.id : typeof raw.factory_id === 'string' ? raw.factory_id : '';
+  if (!id) return null;
+
+  return {
+    id,
+    supplier_id: typeof raw.supplier_id === 'string' ? raw.supplier_id : '',
+    name: typeof raw.name === 'string' ? raw.name : '',
+    address: typeof raw.address === 'string' ? raw.address : '',
+    lat: typeof raw.lat === 'number' ? raw.lat : 0,
+    lng: typeof raw.lng === 'number' ? raw.lng : 0,
+    h3_index: typeof raw.h3_index === 'string' ? raw.h3_index : '',
+    product_types: Array.isArray(raw.product_types)
+      ? raw.product_types.filter((value): value is string => typeof value === 'string')
+      : [],
+    lead_time_days: typeof raw.lead_time_days === 'number' ? raw.lead_time_days : 0,
+    production_capacity_vu: typeof raw.production_capacity_vu === 'number' ? raw.production_capacity_vu : 0,
+    is_active: typeof raw.is_active === 'boolean' ? raw.is_active : true,
+    created_at: typeof raw.created_at === 'string' ? raw.created_at : '',
+  };
+}
+
 export default function FactoriesPage() {
   const [factories, setFactories] = useState<Factory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,8 +87,17 @@ export default function FactoriesPage() {
       const res = await apiFetch('/v1/supplier/factories');
       if (!res.ok) throw new Error('Failed to load');
       const data = await res.json();
-      setFactories(data.factories ?? []);
+      const items = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data?.factories)
+            ? data.factories
+            : [];
+      setFactories(items.map(normalizeFactory).filter((factory: Factory | null): factory is Factory => factory !== null));
+      setError('');
     } catch {
+      setFactories([]);
       setError('Failed to load factories');
     } finally {
       setLoading(false);
