@@ -17,6 +17,25 @@ type DriverPin = {
   last_seen?: string;
 };
 
+type DriverSnapshot = {
+  driver_id: string;
+  name: string;
+  truck_status?: string;
+  route_id?: string;
+  current_location?: string;
+  is_active?: boolean;
+};
+
+function parseCurrentLocation(value: string | undefined): { lat: number; lng: number } | null {
+  if (!value) return null;
+  const parts = value.split(',').map((part) => part.trim());
+  if (parts.length !== 2) return null;
+  const lat = Number(parts[0]);
+  const lng = Number(parts[1]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
 // ── Fleet Map Cell — The Anchor (2×2) ───────────────────────────────────────
 // Most vital live component. Shows real-time GPS positions of all active fleet
 // members using MapLibre GL. Falls back to a canvas dot-grid when MapLibre
@@ -35,17 +54,28 @@ export default function FleetMapCell() {
   const fetchFleet = useCallback(async (signal?: AbortSignal) => {
     try {
       const token = await getAdminToken();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/fleet/active`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/supplier/fleet/drivers`, {
         headers: { Authorization: `Bearer ${token}` },
         signal,
       });
       if (res.ok) {
         const data = await res.json();
-        // Fleet endpoint may return { drivers: [...] } or [...]
-        const list: DriverPin[] = Array.isArray(data)
-          ? data
-          : data?.drivers ?? data?.fleet ?? [];
-        setPins(list.filter((d: DriverPin) => d.lat && d.lng));
+        const list: DriverSnapshot[] = Array.isArray(data) ? data : [];
+        const nextPins = list
+          .filter((driver) => driver.is_active !== false)
+          .flatMap((driver) => {
+            const location = parseCurrentLocation(driver.current_location);
+            if (!location) return [];
+            return [{
+              driver_id: driver.driver_id,
+              name: driver.name || driver.driver_id,
+              lat: location.lat,
+              lng: location.lng,
+              route_id: driver.route_id,
+              truck_status: driver.truck_status,
+            }];
+          });
+        setPins(nextPins);
         setIsLive(true);
         setError(null);
       }

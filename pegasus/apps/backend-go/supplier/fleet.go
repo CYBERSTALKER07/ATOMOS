@@ -114,6 +114,7 @@ type DriverListItem struct {
 	OfflineReason     string  `json:"offline_reason,omitempty"`
 	OfflineReasonNote string  `json:"offline_reason_note,omitempty"`
 	OfflineAt         *string `json:"offline_at,omitempty"`
+	CurrentLocation   string  `json:"current_location,omitempty"`
 }
 
 type DriverDetail struct {
@@ -499,7 +500,8 @@ func listDrivers(w http.ResponseWriter, r *http.Request, spannerClient *spanner.
 		             COALESCE(d.IsActive, true), COALESCE(d.TruckStatus, 'AVAILABLE'), d.CreatedAt,
 		             COALESCE(d.VehicleId, ''), COALESCE(v.VehicleClass, ''), COALESCE(v.MaxVolumeVU, 0),
 		             d.EstimatedReturnAt, d.ReturnDurationSec,
-		             COALESCE(d.OfflineReason, ''), COALESCE(d.OfflineReasonNote, ''), d.OfflineAt
+		             COALESCE(d.OfflineReason, ''), COALESCE(d.OfflineReasonNote, ''), d.OfflineAt,
+		             COALESCE(d.CurrentLocation, '')
 		      FROM Drivers d
 		      LEFT JOIN Vehicles v ON d.VehicleId = v.VehicleId
 		      WHERE d.SupplierId = @supplierId
@@ -533,7 +535,7 @@ func listDrivers(w http.ResponseWriter, r *http.Request, spannerClient *spanner.
 		if err := row.Columns(&d.DriverID, &d.Name, &d.Phone, &d.DriverType,
 			&d.VehicleType, &d.LicensePlate, &d.IsActive, &d.TruckStatus, &createdAt,
 			&d.VehicleId, &d.VehicleClass, &d.MaxVolumeVU, &estReturnAt, &returnDurSec,
-			&d.OfflineReason, &d.OfflineReasonNote, &offlineAt); err != nil {
+			&d.OfflineReason, &d.OfflineReasonNote, &offlineAt, &d.CurrentLocation); err != nil {
 			log.Printf("[FLEET] list drivers parse error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
