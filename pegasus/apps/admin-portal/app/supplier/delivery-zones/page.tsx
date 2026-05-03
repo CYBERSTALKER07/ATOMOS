@@ -9,6 +9,14 @@ import { useToast } from '@/components/Toast';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
+function buildDeliveryZoneCreateIdempotencyKey(payload: Record<string, unknown>): string {
+  return ['supplier-delivery-zone-create', JSON.stringify(payload)].join(':');
+}
+
+function buildDeliveryZoneDeactivateIdempotencyKey(zoneId: string): string {
+  return ['supplier-delivery-zone-deactivate', zoneId.trim()].join(':');
+}
+
 /* ─── Types ───────────────────────────────────────────────── */
 
 interface DeliveryZone {
@@ -72,17 +80,22 @@ export default function DeliveryZonesPage() {
     if (!token || !zoneName || !maxDist || !fee) return;
     setCreating(true);
     try {
+      const payload = {
+        zone_name: zoneName,
+        min_distance_km: parseFloat(minDist) || 0,
+        max_distance_km: parseFloat(maxDist),
+        fee_minor: parseInt(fee, 10),
+        priority: parseInt(priority, 10) || 0,
+        warehouse_id: warehouseId || undefined,
+      };
       const res = await fetch(`${API}/v1/supplier/delivery-zones`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          zone_name: zoneName,
-          min_distance_km: parseFloat(minDist) || 0,
-          max_distance_km: parseFloat(maxDist),
-          fee_minor: parseInt(fee, 10),
-          priority: parseInt(priority, 10) || 0,
-          warehouse_id: warehouseId || undefined,
-        }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildDeliveryZoneCreateIdempotencyKey(payload),
+        },
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       toast('Delivery zone created', 'success');
@@ -108,7 +121,10 @@ export default function DeliveryZonesPage() {
     try {
       const res = await fetch(`${API}/v1/supplier/delivery-zones/${zoneId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Idempotency-Key': buildDeliveryZoneDeactivateIdempotencyKey(zoneId),
+        },
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       toast('Zone deactivated', 'success');

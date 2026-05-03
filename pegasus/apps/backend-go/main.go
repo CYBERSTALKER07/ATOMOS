@@ -234,6 +234,7 @@ func main() {
 		Pricing:         supplierPricingSvc,
 		RetailerPricing: retailerPricingSvc,
 		Log:             loggingMiddleware,
+		Idempotency:     idempotency.Guard,
 	})
 
 	// ── LEO: LOGISTICS EXECUTION ORCHESTRATOR — Manifest Loading Gate ─────
@@ -263,6 +264,7 @@ func main() {
 		Optimizer:   app.OptimizerClient,
 		Counters:    app.DispatchOptimizer,
 		Log:         loggingMiddleware,
+		Idempotency: idempotency.Guard,
 	})
 	vettingSvc := supplier.NewOrderVettingService(spannerClient, svc.Producer, retailerHub)
 	suppliercoreroutes.RegisterRoutes(r, suppliercoreroutes.Deps{
@@ -311,10 +313,11 @@ func main() {
 	// /v1/admin/{reconciliation,audit-log,country-configs,country-configs/} moved to adminroutes.
 
 	supplierinsightsroutes.RegisterRoutes(r, supplierinsightsroutes.Deps{
-		Spanner:    spannerClient,
-		ReadRouter: app.SpannerRouter,
-		CountryCfg: countryCfgSvc,
-		Log:        loggingMiddleware,
+		Spanner:     spannerClient,
+		ReadRouter:  app.SpannerRouter,
+		CountryCfg:  countryCfgSvc,
+		Log:         loggingMiddleware,
+		Idempotency: idempotency.Guard,
 	})
 	retailerroutes.RegisterRoutes(r, retailerroutes.Deps{
 		Spanner:        spannerClient,
@@ -333,10 +336,11 @@ func main() {
 	})
 
 	supplieroperationsroutes.RegisterRoutes(r, supplieroperationsroutes.Deps{
-		Spanner:  spannerClient,
-		Order:    svc,
-		Producer: svc.Producer,
-		Log:      loggingMiddleware,
+		Spanner:     spannerClient,
+		Order:       svc,
+		Producer:    svc.Producer,
+		Log:         loggingMiddleware,
+		Idempotency: idempotency.Guard,
 	})
 
 	// ── Phase 5-6: System Health + Driver + Retailer + Supplier API Gap Closure ──
@@ -2728,7 +2732,7 @@ func main() {
 	// Clears ReturnClearedAt on rejected OrderLineItems, releasing locked VU from capacity.
 	http.HandleFunc("/v1/vehicle/",
 		auth.RequireRole([]string{"ADMIN", "SUPPLIER"},
-			loggingMiddleware(svc.HandleClearReturns),
+			loggingMiddleware(idempotency.Guard(svc.HandleClearReturns)),
 		),
 	)
 

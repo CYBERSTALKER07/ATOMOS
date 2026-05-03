@@ -5,6 +5,10 @@ import { Button } from '@heroui/react';
 import { getAdminToken } from "@/lib/auth";
 import EmptyState from '@/components/EmptyState';
 import { useToast } from '@/components/Toast';
+import {
+  buildSupplierPricingRuleDeleteIdempotencyKey,
+  buildSupplierPricingRuleUpsertIdempotencyKey,
+} from '../_shared/idempotency';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -94,7 +98,10 @@ export default function SupplierPricingPage() {
       const token = await getAdminToken();
       const res = await fetch(`${API}/v1/supplier/pricing/rules/${tierId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Idempotency-Key': buildSupplierPricingRuleDeleteIdempotencyKey(tierId),
+        },
       });
       if (!res.ok) {
         const msg = await res.text();
@@ -116,6 +123,11 @@ export default function SupplierPricingPage() {
     setSubmitting(true);
 
     const tierId = form.tier_id || crypto.randomUUID();
+    const payload = {
+      ...form,
+      tier_id: tierId,
+      valid_until: form.valid_until ? new Date(form.valid_until).toISOString() : undefined,
+    };
 
     try {
       const token = await getAdminToken();
@@ -125,12 +137,9 @@ export default function SupplierPricingPage() {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token.trim()}`,
+          'Idempotency-Key': buildSupplierPricingRuleUpsertIdempotencyKey(payload as Record<string, unknown>),
         },
-        body: JSON.stringify({
-          ...form,
-          tier_id: tierId,
-          valid_until: form.valid_until ? new Date(form.valid_until).toISOString() : undefined,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {

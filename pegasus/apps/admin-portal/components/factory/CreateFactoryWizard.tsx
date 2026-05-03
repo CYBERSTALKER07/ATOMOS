@@ -5,6 +5,7 @@ import MapGL, { Marker, NavigationControl, type MapRef } from 'react-map-gl/mapl
 import type { MapLayerMouseEvent } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { apiFetch } from '@/lib/auth';
+import { buildSupplierFactoryCreateIdempotencyKey } from '@/app/supplier/_shared/idempotency';
 import Icon from '@/components/Icon';
 import WarehouseAssignmentPanel from './WarehouseAssignmentPanel';
 
@@ -126,6 +127,9 @@ export default function CreateFactoryWizard({ onCreated, onCancel }: CreateFacto
       };
       const res = await apiFetch('/v1/supplier/factories', {
         method: 'POST',
+        headers: {
+          'Idempotency-Key': buildSupplierFactoryCreateIdempotencyKey(body),
+        },
         body: JSON.stringify(body),
       });
       if (!res.ok) {

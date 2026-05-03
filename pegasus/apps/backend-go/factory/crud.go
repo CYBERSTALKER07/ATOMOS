@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -23,20 +24,31 @@ import (
 	"google.golang.org/api/iterator"
 )
 
+var (
+	errFactoryWarehouseNotFound  = errors.New("warehouse not found")
+	errFactoryWarehouseForbidden = errors.New("warehouse does not belong to your organization")
+)
+
 // validateWarehousesBelongToSupplier checks that every warehouse ID in the list
 // belongs to the given supplier. Returns the first offending ID on failure.
-func validateWarehousesBelongToSupplier(ctx context.Context, client *spanner.Client, whIDs []string, supplierID string) error {
+func validateWarehousesBelongToSupplier(
+	ctx context.Context,
+	readWarehouseOwner func(context.Context, string) (string, error),
+	whIDs []string,
+	supplierID string,
+) error {
 	for _, id := range whIDs {
 		if id == "" {
 			continue
 		}
-		row, err := client.Single().ReadRow(ctx, "Warehouses", spanner.Key{id}, []string{"SupplierId"})
-		if err != nil {
-			return fmt.Errorf("warehouse %s not found", id)
-		}
-		var owner string
-		if err := row.Column(0, &owner); err != nil || owner != supplierID {
-			return fmt.Errorf("warehouse %s does not belong to your organization", id)
+		owner, err := readWarehouseOwner(ctx, id)
+		switch {
+		case errors.Is(err, spanner.ErrRowNotFound):
+			return fmt.Errorf("warehouse %s: %w", id, errFactoryWarehouseNotFound)
+		case err != nil:
+			return fmt.Errorf("read warehouse %s: %w", id, err)
+		case owner != supplierID:
+			return fmt.Errorf("warehouse %s: %w", id, errFactoryWarehouseForbidden)
 		}
 	}
 	return nil
@@ -306,49 +318,58 @@ func createFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 		req.LeadTimeDays = 2
 	}
 	req.ProductTypes = normalizeFactoryProductTypes(req.ProductTypes)
+	supplierID := claims.ResolveSupplierID()
+	warehouseIDs := make([]string, 0, len(req.WarehouseIDs))
+	for _, warehouseID := range req.WarehouseIDs {
+		trimmed := strings.TrimSpace(warehouseID)
+		if trimmed == "" {
+			continue
+		}
+		warehouseIDs = append(warehouseIDs, trimmed)
+	}
 
 	factoryId := uuid.New().String()
 	h3Index := ""
 	if req.Lat != 0 || req.Lng != 0 {
 		h3Index = proximity.LookupCell(req.Lat, req.Lng)
 	}
-
-	// Build mutations: factory INSERT + optional warehouse assignments
-	mutations := []*spanner.Mutation{
-		spanner.Insert("Factories",
-			[]string{"FactoryId", "SupplierId", "Name", "Address", "Lat", "Lng",
-				"H3Index", "RegionCode", "LeadTimeDays", "ProductionCapacityVU", "ProductTypes", "IsActive", "CreatedAt"},
-			[]interface{}{factoryId, claims.ResolveSupplierID(), req.Name, req.Address, req.Lat, req.Lng,
-				h3Index, req.RegionCode, req.LeadTimeDays, req.ProductionCapacityVU, req.ProductTypes, true, spanner.CommitTimestamp},
-		),
-	}
-
-	// Assign PrimaryFactoryId on selected warehouses (if provided)
-	assignedCount := 0
-	if len(req.WarehouseIDs) > 0 {
-		if err := validateWarehousesBelongToSupplier(r.Context(), spannerClient, req.WarehouseIDs, claims.ResolveSupplierID()); err != nil {
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusForbidden)
-			return
-		}
-	}
-	for _, whID := range req.WarehouseIDs {
-		if whID == "" {
-			continue
-		}
-		mutations = append(mutations, spanner.Update("Warehouses",
-			[]string{"WarehouseId", "PrimaryFactoryId", "UpdatedAt"},
-			[]interface{}{whID, factoryId, spanner.CommitTimestamp},
-		))
-		assignedCount++
-	}
+	assignedCount := len(warehouseIDs)
 
 	if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if err := validateWarehousesBelongToSupplier(ctx, func(ctx context.Context, warehouseID string) (string, error) {
+			row, err := txn.ReadRow(ctx, "Warehouses", spanner.Key{warehouseID}, []string{"SupplierId"})
+			if err != nil {
+				return "", err
+			}
+			var owner string
+			if err := row.Column(0, &owner); err != nil {
+				return "", err
+			}
+			return owner, nil
+		}, warehouseIDs, supplierID); err != nil {
+			return err
+		}
+
+		mutations := []*spanner.Mutation{
+			spanner.Insert("Factories",
+				[]string{"FactoryId", "SupplierId", "Name", "Address", "Lat", "Lng",
+					"H3Index", "RegionCode", "LeadTimeDays", "ProductionCapacityVU", "ProductTypes", "IsActive", "CreatedAt"},
+				[]interface{}{factoryId, supplierID, req.Name, req.Address, req.Lat, req.Lng,
+					h3Index, req.RegionCode, req.LeadTimeDays, req.ProductionCapacityVU, req.ProductTypes, true, spanner.CommitTimestamp},
+			),
+		}
+		for _, whID := range warehouseIDs {
+			mutations = append(mutations, spanner.Update("Warehouses",
+				[]string{"WarehouseId", "PrimaryFactoryId", "UpdatedAt"},
+				[]interface{}{whID, factoryId, spanner.CommitTimestamp},
+			))
+		}
 		if err := txn.BufferWrite(mutations); err != nil {
 			return err
 		}
 		event := internalKafka.FactoryCreatedEvent{
 			FactoryId:            factoryId,
-			SupplierId:           claims.ResolveSupplierID(),
+			SupplierId:           supplierID,
 			Name:                 req.Name,
 			Lat:                  req.Lat,
 			Lng:                  req.Lng,
@@ -364,17 +385,23 @@ func createFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 			internalKafka.EventFactoryCreated, internalKafka.TopicMain, event,
 			telemetry.TraceIDFromContext(ctx))
 	}); err != nil {
+		switch {
+		case errors.Is(err, errFactoryWarehouseNotFound):
+			http.Error(w, `{"error":"warehouse not found"}`, http.StatusNotFound)
+			return
+		case errors.Is(err, errFactoryWarehouseForbidden):
+			http.Error(w, `{"error":"warehouse does not belong to your organization"}`, http.StatusForbidden)
+			return
+		}
 		log.Printf("[FACTORY] create error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
 	if rc != nil {
-		keys := []string{cache.FactoryProfile(factoryId), cache.SupplierProfile(claims.ResolveSupplierID())}
-		for _, whID := range req.WarehouseIDs {
-			if whID != "" {
-				keys = append(keys, cache.PrefixWarehouseDetail+whID)
-			}
+		keys := []string{cache.FactoryProfile(factoryId), cache.SupplierProfile(supplierID)}
+		for _, whID := range warehouseIDs {
+			keys = append(keys, cache.PrefixWarehouseDetail+whID)
 		}
 		rc.Invalidate(r.Context(), keys...)
 	}
@@ -383,7 +410,7 @@ func createFactory(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"factory_id":        factoryId,
-		"supplier_id":       claims.ResolveSupplierID(),
+		"supplier_id":       supplierID,
 		"name":              req.Name,
 		"h3_index":          h3Index,
 		"product_types":     req.ProductTypes,
@@ -648,8 +675,25 @@ func HandleFactoryWarehouseAssignment(spannerClient *spanner.Client, rc *cache.C
 		}
 
 		// Validate all warehouse IDs belong to this supplier
-		if err := validateWarehousesBelongToSupplier(r.Context(), spannerClient, req.WarehouseIDs, claims.ResolveSupplierID()); err != nil {
-			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusForbidden)
+		if err := validateWarehousesBelongToSupplier(r.Context(), func(ctx context.Context, warehouseID string) (string, error) {
+			row, err := spannerClient.Single().ReadRow(ctx, "Warehouses", spanner.Key{warehouseID}, []string{"SupplierId"})
+			if err != nil {
+				return "", err
+			}
+			var owner string
+			if err := row.Column(0, &owner); err != nil {
+				return "", err
+			}
+			return owner, nil
+		}, req.WarehouseIDs, claims.ResolveSupplierID()); err != nil {
+			status := http.StatusInternalServerError
+			switch {
+			case errors.Is(err, errFactoryWarehouseNotFound):
+				status = http.StatusNotFound
+			case errors.Is(err, errFactoryWarehouseForbidden):
+				status = http.StatusForbidden
+			}
+			http.Error(w, `{"error":"`+err.Error()+`"}`, status)
 			return
 		}
 

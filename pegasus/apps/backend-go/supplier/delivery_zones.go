@@ -5,6 +5,7 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,6 +15,11 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
+)
+
+var (
+	errDeliveryZoneWarehouseNotFound  = errors.New("warehouse not found")
+	errDeliveryZoneWarehouseForbidden = errors.New("warehouse does not belong to your organization")
 )
 
 // DeliveryZone represents a distance-based fee band for a supplier.
@@ -138,21 +144,28 @@ func createDeliveryZone(w http.ResponseWriter, r *http.Request, client *spanner.
 	zoneID := uuid.New().String()
 	var whID spanner.NullString
 	if req.WarehouseId != "" {
-		// Validate warehouse belongs to this supplier before writing
-		whRow, lookupErr := client.Single().ReadRow(r.Context(), "Warehouses", spanner.Key{req.WarehouseId}, []string{"SupplierId"})
-		if lookupErr != nil {
-			http.Error(w, `{"error":"warehouse not found"}`, http.StatusNotFound)
-			return
-		}
-		var whOwner string
-		if cErr := whRow.Column(0, &whOwner); cErr != nil || whOwner != supplierID {
-			http.Error(w, `{"error":"warehouse does not belong to your organization"}`, http.StatusForbidden)
-			return
-		}
 		whID = spanner.NullString{StringVal: req.WarehouseId, Valid: true}
 	}
 
 	_, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if whID.Valid {
+			whRow, lookupErr := txn.ReadRow(ctx, "Warehouses", spanner.Key{req.WarehouseId}, []string{"SupplierId"})
+			switch {
+			case errors.Is(lookupErr, spanner.ErrRowNotFound):
+				return errDeliveryZoneWarehouseNotFound
+			case lookupErr != nil:
+				return fmt.Errorf("read warehouse %s: %w", req.WarehouseId, lookupErr)
+			}
+
+			var whOwner string
+			if err := whRow.Column(0, &whOwner); err != nil {
+				return fmt.Errorf("read warehouse %s owner: %w", req.WarehouseId, err)
+			}
+			if whOwner != supplierID {
+				return errDeliveryZoneWarehouseForbidden
+			}
+		}
+
 		return txn.BufferWrite([]*spanner.Mutation{
 			spanner.Insert("DeliveryZones",
 				[]string{"ZoneId", "SupplierId", "WarehouseId", "ZoneName",
@@ -164,6 +177,14 @@ func createDeliveryZone(w http.ResponseWriter, r *http.Request, client *spanner.
 		})
 	})
 	if err != nil {
+		switch {
+		case errors.Is(err, errDeliveryZoneWarehouseNotFound):
+			http.Error(w, `{"error":"warehouse not found"}`, http.StatusNotFound)
+			return
+		case errors.Is(err, errDeliveryZoneWarehouseForbidden):
+			http.Error(w, `{"error":"warehouse does not belong to your organization"}`, http.StatusForbidden)
+			return
+		}
 		log.Printf("[ZONES] create error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return

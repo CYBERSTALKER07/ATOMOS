@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import Drawer from '@/components/Drawer';
 import StatsCard from '@/components/StatsCard';
+import { buildSupplierFactoryWarehouseAssignmentIdempotencyKey } from '../_shared/idempotency';
 import CreateFactoryWizard from '@/components/factory/CreateFactoryWizard';
 import WarehouseAssignmentPanel from '@/components/factory/WarehouseAssignmentPanel';
 
@@ -110,9 +111,13 @@ export default function FactoriesPage() {
     if (!selected) return;
     setSavingAssignment(true);
     try {
+      const payload = { warehouse_ids: editWarehouses };
       const res = await apiFetch(`/v1/supplier/factories/${selected.id}/warehouses`, {
         method: 'PUT',
-        body: JSON.stringify({ warehouse_ids: editWarehouses }),
+        headers: {
+          'Idempotency-Key': buildSupplierFactoryWarehouseAssignmentIdempotencyKey(selected.id, editWarehouses),
+        },
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('Failed to update');
       setEditingAssignment(false);

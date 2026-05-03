@@ -7,6 +7,7 @@ import type { PaginationState } from '@/lib/usePagination';
 import PaginationControls from '@/components/PaginationControls';
 import EmptyState from '@/components/EmptyState';
 import { useToast } from '@/components/Toast';
+import { buildSupplierReturnResolveIdempotencyKey } from '../_shared/idempotency';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -92,7 +93,11 @@ export default function ReturnsPage() {
     try {
       const res = await fetch(`${API}/v1/supplier/returns/resolve`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierReturnResolveIdempotencyKey(lineItemId, resolution, notes),
+        },
         body: JSON.stringify({ line_item_id: lineItemId, resolution, notes }),
       });
       if (!res.ok) {

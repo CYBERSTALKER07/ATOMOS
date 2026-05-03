@@ -70,6 +70,22 @@ function buildSupplyLaneCreateIdempotencyKey(
   return ['supply-lane-create', factoryId.trim(), warehouseId.trim(), transitTimeHours.trim(), freightCostMinor.trim(), priority.trim()].join(':');
 }
 
+function buildNetworkModeIdempotencyKey(mode: string, reason: string): string {
+  return ['supplier-network-mode', mode.trim(), reason.trim()].join(':');
+}
+
+function buildKillSwitchIdempotencyKey(reason: string): string {
+  return ['supplier-kill-switch', reason.trim()].join(':');
+}
+
+function buildPullMatrixIdempotencyKey(): string {
+  return 'supplier-pull-matrix:manual';
+}
+
+function buildSupplyLaneDeactivateIdempotencyKey(laneId: string): string {
+  return ['supply-lane-deactivate', laneId.trim()].join(':');
+}
+
 /* ── Page Component ────────────────────────────────────────────────────────── */
 
 export default function SupplyLanesPage() {
@@ -104,6 +120,9 @@ export default function SupplyLanesPage() {
     try {
       const res = await apiFetch('/v1/supplier/network-mode', {
         method: 'PUT',
+        headers: {
+          'Idempotency-Key': buildNetworkModeIdempotencyKey(newMode, 'Admin portal mode change'),
+        },
         body: JSON.stringify({ mode: newMode, reason: 'Admin portal mode change' }),
       });
       if (res.ok) fetchData();
@@ -117,16 +136,26 @@ export default function SupplyLanesPage() {
     if (!confirm('This will cancel ALL automated transfers and set mode to MANUAL_ONLY. Continue?')) return;
     const reason = prompt('Enter reason for kill switch activation:');
     if (!reason) return;
+    const normalizedReason = reason.trim();
+    if (!normalizedReason) return;
     await apiFetch('/v1/supplier/replenishment/kill-switch', {
       method: 'POST',
-      body: JSON.stringify({ reason }),
+      headers: {
+        'Idempotency-Key': buildKillSwitchIdempotencyKey(normalizedReason),
+      },
+      body: JSON.stringify({ reason: normalizedReason }),
     });
     fetchData();
   };
 
   /* ── Pull Matrix Manual Trigger ── */
   const triggerPullMatrix = async () => {
-    await apiFetch('/v1/supplier/replenishment/pull-matrix', { method: 'POST' });
+    await apiFetch('/v1/supplier/replenishment/pull-matrix', {
+      method: 'POST',
+      headers: {
+        'Idempotency-Key': buildPullMatrixIdempotencyKey(),
+      },
+    });
     fetchData();
   };
 
@@ -162,7 +191,12 @@ export default function SupplyLanesPage() {
 
   /* ── Deactivate Lane ── */
   const deactivateLane = async (laneId: string) => {
-    await apiFetch(`/v1/supplier/supply-lanes/${laneId}`, { method: 'DELETE' });
+    await apiFetch(`/v1/supplier/supply-lanes/${laneId}`, {
+      method: 'DELETE',
+      headers: {
+        'Idempotency-Key': buildSupplyLaneDeactivateIdempotencyKey(laneId),
+      },
+    });
     fetchData();
   };
 

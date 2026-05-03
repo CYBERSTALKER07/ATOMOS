@@ -9,6 +9,10 @@ import { Skeleton } from '@/components/Skeleton';
 import Icon from '@/components/Icon';
 import { useToast } from '@/components/Toast';
 import { Button } from '@heroui/react';
+import {
+  buildSupplierAutoDispatchIdempotencyKey,
+  buildSupplierManualDispatchIdempotencyKey,
+} from '../_shared/idempotency';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -176,12 +180,17 @@ export default function DispatchPage() {
     setDispatching(true);
     try {
       const body: Record<string, unknown> = {};
-      if (excludedTrucks.size > 0) {
-        body.excluded_truck_ids = [...excludedTrucks];
+      const excludedTruckIds = [...excludedTrucks];
+      if (excludedTruckIds.length > 0) {
+        body.excluded_truck_ids = excludedTruckIds;
       }
       const res = await fetch(`${API}/v1/supplier/manifests/auto-dispatch`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierAutoDispatchIdempotencyKey(excludedTruckIds),
+        },
         body: JSON.stringify(body),
       });
       if (!res.ok) {
@@ -330,7 +339,11 @@ export default function DispatchPage() {
     try {
       const res = await fetch(`${API}/v1/supplier/manifests/manual-dispatch`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierManualDispatchIdempotencyKey(driverId, [...orderIds]),
+        },
         body: JSON.stringify({ driver_id: driverId, order_ids: [...orderIds] }),
       });
       if (!res.ok) throw new Error(await res.text() || 'Manual dispatch failed');

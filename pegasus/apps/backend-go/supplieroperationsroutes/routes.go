@@ -24,10 +24,11 @@ type Middleware func(http.HandlerFunc) http.HandlerFunc
 
 // Deps bundles the collaborators required to mount supplier operations routes.
 type Deps struct {
-	Spanner  *spanner.Client
-	Order    *order.OrderService
-	Producer *kafkago.Writer
-	Log      Middleware
+	Spanner     *spanner.Client
+	Order       *order.OrderService
+	Producer    *kafkago.Writer
+	Log         Middleware
+	Idempotency Middleware
 }
 
 // RegisterRoutes mounts the supplier operations surface:
@@ -43,29 +44,50 @@ type Deps struct {
 //	POST /v1/inventory/reconcile-returns           — reverse-logistics reconciliation
 func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
+	idem := d.Idempotency
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
 
 	returnsSvc := supplier.NewReturnsService(d.Spanner, d.Producer)
 	reconcileSvc := supplier.NewReconcileService(d.Spanner, d.Producer)
 
 	r.HandleFunc("/v1/supplier/fleet/drivers",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleFleetDrivers(d.Spanner)))))
+		auth.RequireRole(supplierRole, log(withMethodIdempotency(auth.RequireWarehouseScope(supplier.HandleFleetDrivers(d.Spanner)), idem, http.MethodPost))))
 	r.HandleFunc("/v1/supplier/fleet/drivers/",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleFleetDriverDetail(d.Spanner)))))
+		auth.RequireRole(supplierRole, log(withMethodIdempotency(auth.RequireWarehouseScope(supplier.HandleFleetDriverDetail(d.Spanner)), idem, http.MethodPatch, http.MethodPost))))
 	r.HandleFunc("/v1/supplier/fleet/vehicles",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleVehicles(d.Spanner)))))
+		auth.RequireRole(supplierRole, log(withMethodIdempotency(auth.RequireWarehouseScope(supplier.HandleVehicles(d.Spanner)), idem, http.MethodPost))))
 	r.HandleFunc("/v1/supplier/fleet/vehicles/",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleVehicleDetail(d.Spanner)))))
+		auth.RequireRole(supplierRole, log(withMethodIdempotency(auth.RequireWarehouseScope(supplier.HandleVehicleDetail(d.Spanner)), idem, http.MethodPatch, http.MethodDelete))))
 	r.HandleFunc("/v1/supplier/fulfillment/pay",
 		auth.RequireRole([]string{"SUPPLIER", "DRIVER", "ADMIN"}, log(idempotency.Guard(fulfillmentPayHandler(d.Order)))))
 	r.HandleFunc("/v1/supplier/returns",
 		auth.RequireRole(supplierRole, log(returnsSvc.HandleReturns)))
 	r.HandleFunc("/v1/supplier/returns/resolve",
-		auth.RequireRole(supplierRole, log(returnsSvc.HandleResolveReturn)))
+		auth.RequireRole(supplierRole, log(idem(returnsSvc.HandleResolveReturn))))
 	r.HandleFunc("/v1/supplier/quarantine-stock",
 		auth.RequireRole(supplierRole, log(reconcileSvc.HandleQuarantineStock)))
 	r.HandleFunc("/v1/inventory/reconcile-returns",
 		auth.RequireRole(supplierRole, log(reconcileSvc.HandleReconcile)))
+}
+
+func withMethodIdempotency(next http.HandlerFunc, middleware Middleware, methods ...string) http.HandlerFunc {
+	if middleware == nil || len(methods) == 0 {
+		return next
+	}
+
+	allowed := make(map[string]struct{}, len(methods))
+	for _, method := range methods {
+		allowed[method] = struct{}{}
+	}
+
+	guarded := middleware(next)
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := allowed[r.Method]; ok {
+			guarded(w, r)
+			return
+		}
+		next(w, r)
+	}
 }
 
 func fulfillmentPayHandler(orderSvc *order.OrderService) http.HandlerFunc {

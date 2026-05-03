@@ -3,6 +3,7 @@ package supplierlogisticsroutes
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"backend-go/auth"
@@ -114,5 +115,107 @@ func TestRegisterRoutes_PayloadRoleAccess(t *testing.T) {
 				t.Fatalf("status = %d, want %d", response.Code, test.wantStatus)
 			}
 		})
+	}
+}
+
+func TestRegisterRoutes_AutoDispatchUsesIdempotency(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
+	if err != nil {
+		t.Fatalf("GenerateSupplierToken() error = %v", err)
+	}
+
+	router := chi.NewRouter()
+	RegisterRoutes(router, Deps{
+		Spanner:     &spanner.Client{},
+		ManifestSvc: &supplier.ManifestService{},
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "auto-dispatch"),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/v1/supplier/manifests/auto-dispatch", strings.NewReader("{"))
+	request.Header.Set("Authorization", "Bearer "+token)
+	response := httptest.NewRecorder()
+
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusBadRequest)
+	}
+	if got := response.Header().Get("X-Idempotency-Guard"); got != "auto-dispatch" {
+		t.Fatalf("idempotency guard header = %q, want auto-dispatch", got)
+	}
+}
+
+func TestRegisterRoutes_ManualDispatchUsesIdempotency(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
+	if err != nil {
+		t.Fatalf("GenerateSupplierToken() error = %v", err)
+	}
+
+	router := chi.NewRouter()
+	RegisterRoutes(router, Deps{
+		Spanner:     &spanner.Client{},
+		ManifestSvc: &supplier.ManifestService{},
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "manual-dispatch"),
+	})
+
+	request := httptest.NewRequest(http.MethodPost, "/v1/supplier/manifests/manual-dispatch", strings.NewReader("{"))
+	request.Header.Set("Authorization", "Bearer "+token)
+	response := httptest.NewRecorder()
+
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusBadRequest)
+	}
+	if got := response.Header().Get("X-Idempotency-Guard"); got != "manual-dispatch" {
+		t.Fatalf("idempotency guard header = %q, want manual-dispatch", got)
+	}
+}
+
+func TestRegisterRoutes_ManifestSealUsesIdempotency(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	token, err := auth.GenerateTestToken("payload-route-user", "PAYLOADER")
+	if err != nil {
+		t.Fatalf("GenerateTestToken: %v", err)
+	}
+
+	router := chi.NewRouter()
+	RegisterRoutes(router, Deps{
+		Spanner:     &spanner.Client{},
+		ManifestSvc: &supplier.ManifestService{},
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "manifest-seal"),
+	})
+
+	request := httptest.NewRequest(http.MethodGet, "/v1/supplier/manifests/manifest-1/seal", nil)
+	request.Header.Set("Authorization", "Bearer "+token)
+	response := httptest.NewRecorder()
+
+	router.ServeHTTP(response, request)
+
+	if response.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusMethodNotAllowed)
+	}
+	if got := response.Header().Get("X-Idempotency-Guard"); got != "manifest-seal" {
+		t.Fatalf("idempotency guard header = %q, want manifest-seal", got)
+	}
+}
+
+func passthroughMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		next(w, r)
+	}
+}
+
+func markerMiddleware(name, value string) Middleware {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set(name, value)
+			next(w, r)
+		}
 	}
 }

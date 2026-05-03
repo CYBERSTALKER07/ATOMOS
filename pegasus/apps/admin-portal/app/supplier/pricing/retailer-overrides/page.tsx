@@ -7,6 +7,10 @@ import StatsCard from '@/components/StatsCard';
 import Drawer from '@/components/Drawer';
 import Icon from '@/components/Icon';
 import EmptyState from '@/components/EmptyState';
+import {
+  buildSupplierRetailerOverrideCreateIdempotencyKey,
+  buildSupplierRetailerOverrideDeleteIdempotencyKey,
+} from '../../_shared/idempotency';
 
 /* ── Types ────────────────────────────────────────────────────────────────── */
 
@@ -141,15 +145,19 @@ export default function RetailerPricingOverridesPage() {
 
     setSubmitting(true);
     try {
+      const payload = {
+        retailer_id: form.retailer_id,
+        sku_id: form.sku_id,
+        price,
+        notes: form.notes || undefined,
+        expires_at: form.expires_at || undefined,
+      };
       const res = await apiFetch('/v1/supplier/pricing/retailer-overrides', {
         method: 'POST',
-        body: JSON.stringify({
-          retailer_id: form.retailer_id,
-          sku_id: form.sku_id,
-          price,
-          notes: form.notes || undefined,
-          expires_at: form.expires_at || undefined,
-        }),
+        headers: {
+          'Idempotency-Key': buildSupplierRetailerOverrideCreateIdempotencyKey(payload),
+        },
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -169,7 +177,12 @@ export default function RetailerPricingOverridesPage() {
 
   const handleDeactivate = async (id: string) => {
     if (!confirm('Deactivate this price override?')) return;
-    const res = await apiFetch(`/v1/supplier/pricing/retailer-overrides/${id}`, { method: 'DELETE' });
+    const res = await apiFetch(`/v1/supplier/pricing/retailer-overrides/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Idempotency-Key': buildSupplierRetailerOverrideDeleteIdempotencyKey(id),
+      },
+    });
     if (res.ok) {
       setDrawerOpen(false);
       fetchOverrides();

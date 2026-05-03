@@ -7,6 +7,10 @@ import { Skeleton } from '@/components/Skeleton';
 import Icon from '@/components/Icon';
 import { useToast } from '@/components/Toast';
 import { Button } from '@heroui/react';
+import {
+  buildSupplierManifestInjectOrderIdempotencyKey,
+  buildSupplierManifestSealIdempotencyKey,
+} from '../_shared/idempotency';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -154,7 +158,11 @@ export default function ManifestsPage() {
     try {
       const res = await fetch(`${API}/v1/supplier/manifests/${injectModalManifest}/inject-order`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierManifestInjectOrderIdempotencyKey(injectModalManifest, injectOrderId.trim()),
+        },
         body: JSON.stringify({ order_id: injectOrderId.trim() }),
       });
       if (!res.ok) {
@@ -184,7 +192,11 @@ export default function ManifestsPage() {
         `${API}/v1/supplier/manifests/${manifestId}/seal?override=admin&reason=${encodeURIComponent(reason)}`,
         {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Idempotency-Key': buildSupplierManifestSealIdempotencyKey(manifestId, reason),
+          },
         }
       );
       if (!res.ok) {

@@ -60,13 +60,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
 
 	r.HandleFunc("/v1/supplier/delivery-zones/",
-		auth.RequireRole(supplierRole, log(supplier.HandleDeliveryZoneAction(d.Spanner))))
+		auth.RequireRole(supplierRole, log(idem(supplier.HandleDeliveryZoneAction(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/delivery-zones",
-		auth.RequireRole(supplierRole, log(supplier.HandleDeliveryZones(d.Spanner))))
+		auth.RequireRole(supplierRole, log(idem(supplier.HandleDeliveryZones(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/factories",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(factory.HandleSupplierFactories(d.Spanner, d.Cache)))))
+		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(factory.HandleSupplierFactories(d.Spanner, d.Cache))))))
 	r.HandleFunc("/v1/supplier/factories/",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(factory.HandleSupplierFactoryDetail(d.Spanner, d.Cache)))))
+		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(factory.HandleSupplierFactoryDetail(d.Spanner, d.Cache))))))
 	r.HandleFunc("/v1/supplier/factories/recommend-warehouses",
 		auth.RequireRole(supplierRole, log(factory.HandleRecommendWarehouses(d.Spanner))))
 	r.HandleFunc("/v1/supplier/factories/optimal-assignments",
@@ -78,17 +78,17 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/supply-lanes",
 		auth.RequireRole(supplierRole, log(idem(d.SupplyLanes.HandleSupplyLanes))))
 	r.HandleFunc("/v1/supplier/supply-lanes/",
-		auth.RequireRole(supplierRole, log(d.SupplyLanes.HandleSupplyLaneAction)))
+		auth.RequireRole(supplierRole, log(idem(d.SupplyLanes.HandleSupplyLaneAction))))
 	r.HandleFunc("/v1/supplier/network-mode",
-		auth.RequireRole(supplierRole, log(networkModeHandler(d.NetworkOptimizer))))
+		auth.RequireRole(supplierRole, log(idem(networkModeHandler(d.NetworkOptimizer)))))
 	r.HandleFunc("/v1/supplier/network-analytics",
 		auth.RequireRole(supplierRole, log(d.NetworkOptimizer.HandleNetworkAnalytics)))
 	r.HandleFunc("/v1/supplier/replenishment/kill-switch",
-		auth.RequireRole(supplierRole, log(d.KillSwitch.HandleKillSwitch)))
+		auth.RequireRole(supplierRole, log(idem(d.KillSwitch.HandleKillSwitch))))
 	r.HandleFunc("/v1/supplier/replenishment/audit",
 		auth.RequireRole(supplierRole, log(d.KillSwitch.HandleListKillSwitchAudit)))
 	r.HandleFunc("/v1/supplier/replenishment/pull-matrix",
-		auth.RequireRole(supplierRole, log(d.PullMatrix.HandleManualPullMatrix)))
+		auth.RequireRole(supplierRole, log(idem(d.PullMatrix.HandleManualPullMatrix))))
 	r.HandleFunc("/v1/supplier/replenishment/predictive-push",
 		auth.RequireRole(supplierRole, log(d.PredictivePush.HandleManualPredictivePush)))
 	r.HandleFunc("/v1/supplier/warehouses/territory-preview",

@@ -22,6 +22,7 @@ type Deps struct {
 	Pricing         *supplier.PricingService
 	RetailerPricing *supplier.RetailerPricingService
 	Log             Middleware
+	Idempotency     Middleware
 }
 
 // RegisterRoutes mounts the supplier catalog and pricing surface:
@@ -35,6 +36,7 @@ type Deps struct {
 //	DELETE /v1/supplier/pricing/retailer-overrides/{id}  — retailer override deactivate
 func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
+	idem := d.Idempotency
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
 
 	r.HandleFunc("/v1/supplier/products/upload-ticket",
@@ -44,13 +46,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/products/",
 		auth.RequireRole(supplierRole, log(supplierProductDetailHandler(d.Spanner))))
 	r.HandleFunc("/v1/supplier/pricing/rules",
-		auth.RequireRole(supplierRole, log(d.Pricing.HandleUpsertPricingRule)))
+		auth.RequireRole(supplierRole, log(idem(d.Pricing.HandleUpsertPricingRule))))
 	r.HandleFunc("/v1/supplier/pricing/rules/",
-		auth.RequireRole(supplierRole, log(d.Pricing.HandlePricingRuleAction)))
+		auth.RequireRole(supplierRole, log(idem(d.Pricing.HandlePricingRuleAction))))
 	r.HandleFunc("/v1/supplier/pricing/retailer-overrides",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrides))))
+		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrides)))))
 	r.HandleFunc("/v1/supplier/pricing/retailer-overrides/",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrideAction))))
+		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrideAction)))))
 }
 
 func supplierUploadTicketHandler() http.HandlerFunc {

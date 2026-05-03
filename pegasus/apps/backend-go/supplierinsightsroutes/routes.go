@@ -22,10 +22,11 @@ type Middleware func(http.HandlerFunc) http.HandlerFunc
 
 // Deps bundles the collaborators required to mount supplier insight routes.
 type Deps struct {
-	Spanner    *spanner.Client
-	ReadRouter proximity.ReadRouter
-	CountryCfg *countrycfg.Service
-	Log        Middleware
+	Spanner     *spanner.Client
+	ReadRouter  proximity.ReadRouter
+	CountryCfg  *countrycfg.Service
+	Log         Middleware
+	Idempotency Middleware
 }
 
 // RegisterRoutes mounts the supplier insights surface:
@@ -41,12 +42,13 @@ type Deps struct {
 //	GET /v1/supplier/crm/retailers/{id}                    — CRM retailer detail
 func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
+	idem := d.Idempotency
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
 
 	r.HandleFunc("/v1/supplier/country-overrides",
-		auth.RequireRole(supplierRole, log(countrycfg.HandleSupplierCountryOverrides(d.CountryCfg))))
+		auth.RequireRole(supplierRole, log(idem(countrycfg.HandleSupplierCountryOverrides(d.CountryCfg)))))
 	r.HandleFunc("/v1/supplier/country-overrides/",
-		auth.RequireRole(supplierRole, log(countrycfg.HandleSupplierCountryOverrideByCode(d.CountryCfg))))
+		auth.RequireRole(supplierRole, log(idem(countrycfg.HandleSupplierCountryOverrideByCode(d.CountryCfg)))))
 	r.HandleFunc("/v1/supplier/analytics/velocity",
 		auth.RequireRole(supplierRole, log(analytics.HandleGetVelocity(d.Spanner, d.ReadRouter))))
 	r.HandleFunc("/v1/supplier/analytics/demand/today",

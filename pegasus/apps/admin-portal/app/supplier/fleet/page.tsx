@@ -9,6 +9,13 @@ import PaginationControls from '@/components/PaginationControls';
 import Icon from '@/components/Icon';
 import Drawer from '@/components/Drawer';
 import { useToast } from '@/components/Toast';
+import {
+  buildSupplierFleetClearReturnsIdempotencyKey,
+  buildSupplierFleetDriverAssignIdempotencyKey,
+  buildSupplierFleetDriverCreateIdempotencyKey,
+  buildSupplierFleetVehicleCreateIdempotencyKey,
+  buildSupplierFleetVehicleDeactivateIdempotencyKey,
+} from '../_shared/idempotency';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -199,20 +206,22 @@ export default function FleetPage() {
     setSubmitting(true);
     try {
       const selectedVehicle = vehicles.find(v => v.vehicle_id === formVehicleId);
+      const payload = {
+        name: formName.trim(),
+        phone: formPhone.trim(),
+        driver_type: formType,
+        vehicle_type: selectedVehicle?.class_label || '',
+        license_plate: formPlate.trim(),
+        vehicle_id: formVehicleId || undefined,
+      };
       const res = await fetch(`${API}/v1/supplier/fleet/drivers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${getToken()}`,
+          'Idempotency-Key': buildSupplierFleetDriverCreateIdempotencyKey(payload),
         },
-        body: JSON.stringify({
-          name: formName.trim(),
-          phone: formPhone.trim(),
-          driver_type: formType,
-          vehicle_type: selectedVehicle?.class_label || '',
-          license_plate: formPlate.trim(),
-          vehicle_id: formVehicleId || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const errBody = await res.text();
@@ -251,6 +260,7 @@ export default function FleetPage() {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${getToken()}`,
+          'Idempotency-Key': buildSupplierFleetDriverAssignIdempotencyKey(driverId, vehicleId),
         },
         body: JSON.stringify({ vehicle_id: vehicleId }),
       });
@@ -294,6 +304,7 @@ export default function FleetPage() {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${getToken()}`,
+          'Idempotency-Key': buildSupplierFleetVehicleCreateIdempotencyKey(body),
         },
         body: JSON.stringify(body),
       });
@@ -320,13 +331,22 @@ export default function FleetPage() {
 
   async function handleDeactivateVehicle(vehicleId: string) {
     try {
-      await fetch(`${API}/v1/supplier/fleet/vehicles/${vehicleId}`, {
+      const res = await fetch(`${API}/v1/supplier/fleet/vehicles/${vehicleId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${getToken()}` },
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+          'Idempotency-Key': buildSupplierFleetVehicleDeactivateIdempotencyKey(vehicleId),
+        },
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: 'Deactivate vehicle failed' }));
+        toast(body.error || 'Failed to deactivate vehicle', 'error');
+        return;
+      }
       fetchVehicles();
     } catch (e) {
       console.error('Deactivate vehicle error:', e);
+      toast('Network error deactivating vehicle', 'error');
     }
   }
 
@@ -334,7 +354,10 @@ export default function FleetPage() {
     try {
       const res = await fetch(`${API}/v1/vehicle/${vehicleId}/clear-returns`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${getToken()}` },
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+          'Idempotency-Key': buildSupplierFleetClearReturnsIdempotencyKey(vehicleId),
+        },
       });
       if (res.ok) {
         toast('Returns cleared — depot receipt confirmed', 'success');

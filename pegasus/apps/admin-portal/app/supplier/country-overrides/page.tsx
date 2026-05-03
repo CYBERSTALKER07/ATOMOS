@@ -5,6 +5,10 @@ import { Button } from '@heroui/react';
 import { useToken } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
 import EmptyState from '@/components/EmptyState';
+import {
+  buildSupplierCountryOverrideDeleteIdempotencyKey,
+  buildSupplierCountryOverrideSaveIdempotencyKey,
+} from '../_shared/idempotency';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -156,6 +160,7 @@ export default function CountryOverridesPage() {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'Idempotency-Key': buildSupplierCountryOverrideSaveIdempotencyKey(payload as unknown as Record<string, unknown>),
         },
         body: JSON.stringify(payload),
       });
@@ -176,7 +181,10 @@ export default function CountryOverridesPage() {
     try {
       const res = await fetch(`${API}/v1/supplier/country-overrides/${selectedCode}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Idempotency-Key': buildSupplierCountryOverrideDeleteIdempotencyKey(selectedCode),
+        },
       });
       if (!res.ok) throw new Error(await res.text());
       toast(`Override for ${selectedCode} removed — platform defaults restored`, 'success');

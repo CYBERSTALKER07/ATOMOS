@@ -29,6 +29,7 @@ type Deps struct {
 	Optimizer   *optimizerclient.Client
 	Counters    *plan.SourceCounters
 	Log         Middleware
+	Idempotency Middleware
 }
 
 // RegisterRoutes mounts the supplier logistics surface:
@@ -51,6 +52,10 @@ type Deps struct {
 //	GET /v1/supplier/dispatch-preview                  — H3 dispatch preview
 func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
+	idem := d.Idempotency
+	if idem == nil {
+		idem = idempotency.Guard
+	}
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
 	supplierOrPayload := []string{"SUPPLIER", "PAYLOADER", "ADMIN"}
 	supplierOrPayloadException := []string{"SUPPLIER", "ADMIN", "PAYLOADER"}
@@ -60,25 +65,25 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/picking-manifests/orders",
 		auth.RequireRole(supplierOrPayload, log(supplier.HandleManifestOrders(d.Spanner))))
 	r.HandleFunc("/v1/payload/manifest-exception",
-		auth.RequireRole(supplierOrPayloadException, log(idempotency.Guard(d.ManifestSvc.HandleManifestException()))))
+		auth.RequireRole(supplierOrPayloadException, log(idem(d.ManifestSvc.HandleManifestException()))))
 	r.HandleFunc("/v1/supplier/manifest-exceptions",
 		auth.RequireRole(supplierRole, log(d.ManifestSvc.HandleListExceptions())))
 	r.HandleFunc("/v1/supplier/manifests",
 		auth.RequireRole(supplierOrPayload, log(manifestRootHandler(d.ManifestSvc))))
 	r.HandleFunc("/v1/supplier/manifests/auto-dispatch",
-		auth.RequireRole(supplierRole, log(supplier.HandleAutoDispatch(d.Spanner, d.ReadRouter, d.ManifestSvc, d.Optimizer, d.Counters))))
+		auth.RequireRole(supplierRole, log(idem(supplier.HandleAutoDispatch(d.Spanner, d.ReadRouter, d.ManifestSvc, d.Optimizer, d.Counters)))))
 	r.HandleFunc("/v1/supplier/manifests/dispatch-recommend",
 		auth.RequireRole(supplierRole, log(supplier.HandleDispatchRecommend(d.Spanner, d.ReadRouter))))
 	r.HandleFunc("/v1/supplier/manifests/manual-dispatch",
-		auth.RequireRole(supplierRole, log(supplier.HandleManualDispatch(d.Spanner, d.ReadRouter, d.ManifestSvc))))
+		auth.RequireRole(supplierRole, log(idem(supplier.HandleManualDispatch(d.Spanner, d.ReadRouter, d.ManifestSvc)))))
 	r.HandleFunc("/v1/supplier/manifests/waiting-room",
 		auth.RequireRole(supplierRole, log(supplier.HandleWaitingRoom(d.Spanner))))
 	r.HandleFunc("/v1/supplier/manifests/*",
-		auth.RequireRole(supplierOrPayload, log(manifestPathHandler(d.ManifestSvc))))
+		auth.RequireRole(supplierOrPayload, log(manifestPathHandler(d.ManifestSvc, idem))))
 	r.HandleFunc("/v1/supplier/fleet-volumetrics",
 		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleFleetVolumetrics(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/dispatch-queue",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleDispatchQueue(d.Spanner, d.ReadRouter, d.ManifestSvc, d.Optimizer, d.Counters)))))
+		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(supplier.HandleDispatchQueue(d.Spanner, d.ReadRouter, d.ManifestSvc, d.Optimizer, d.Counters))))))
 	r.HandleFunc("/v1/supplier/dispatch-preview",
 		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleH3RoutePreview(d.Spanner, d.ReadRouter)))))
 }
@@ -91,10 +96,13 @@ func manifestRootHandler(manifestSvc *supplier.ManifestService) http.HandlerFunc
 	}
 }
 
-func manifestPathHandler(manifestSvc *supplier.ManifestService) http.HandlerFunc {
-	startLoading := idempotency.Guard(manifestSvc.HandleStartLoading())
-	sealManifest := idempotency.Guard(manifestSvc.HandleSealManifest())
-	injectOrder := idempotency.Guard(manifestSvc.HandleInjectOrder())
+func manifestPathHandler(manifestSvc *supplier.ManifestService, idem Middleware) http.HandlerFunc {
+	if idem == nil {
+		idem = idempotency.Guard
+	}
+	startLoading := idem(manifestSvc.HandleStartLoading())
+	sealManifest := idem(manifestSvc.HandleSealManifest())
+	injectOrder := idem(manifestSvc.HandleInjectOrder())
 	manifestDetail := manifestSvc.HandleManifestDetail()
 	listManifests := manifestSvc.HandleListManifests()
 
