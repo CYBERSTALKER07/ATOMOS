@@ -64,7 +64,7 @@ export default function ChargebacksPage() {
       return;
     }
     try {
-      const res = await fetch(`${API}/v1/global_paynt/chargeback`, {
+      const res = await fetch(`${API}/v1/payment/chargeback`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -88,7 +88,7 @@ export default function ChargebacksPage() {
       return;
     }
     try {
-      const res = await fetch(`${API}/v1/global_paynt/chargeback/reversal`, {
+      const res = await fetch(`${API}/v1/payment/chargeback/reversal`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId }),
@@ -118,7 +118,6 @@ export default function ChargebacksPage() {
             <input className="md-input-outlined px-3 py-2" placeholder="Retailer ID" value={retailerId} onChange={(e) => setRetailerId(e.target.value)} />
             <select className="md-input-outlined px-3 py-2" value={gateway} onChange={(e) => setGateway(e.target.value)}>
               <option value="CASH">CASH</option>
-              <option value="GLOBAL_PAY">GLOBAL_PAY</option>
               <option value="GLOBAL_PAY">GLOBAL_PAY</option>
             </select>
             <input className="md-input-outlined px-3 py-2" placeholder="Amount UZS" type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} />

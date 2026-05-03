@@ -16,6 +16,16 @@ interface BackendNotification {
   created_at: string;
 }
 
+interface RealtimeNotificationFrame {
+  id?: string;
+  type?: string;
+  title?: string;
+  body?: string;
+  payload?: string;
+  channel?: string;
+  created_at?: string;
+}
+
 function normalizeNotification(item: BackendNotification): Notification {
   return {
     id: item.notification_id,
@@ -85,28 +95,40 @@ export function useNotifications() {
 
   // ── Mark single notification read ──
   const markRead = useCallback(async (notificationId: string) => {
-    await apiFetch('/v1/user/notifications/read', {
-      method: 'POST',
-      body: JSON.stringify({ notification_ids: [notificationId] }),
-    });
-    setState(s => ({
-      ...s,
-      items: s.items.map(n => n.id === notificationId ? { ...n, read_at: new Date().toISOString() } : n),
-      unreadCount: Math.max(0, s.unreadCount - 1),
-    }));
+    try {
+      const res = await apiFetch('/v1/user/notifications/read', {
+        method: 'POST',
+        body: JSON.stringify({ notification_ids: [notificationId] }),
+      });
+      if (!res.ok) return;
+
+      setState(s => ({
+        ...s,
+        items: s.items.map(n => n.id === notificationId ? { ...n, read_at: new Date().toISOString() } : n),
+        unreadCount: Math.max(0, s.unreadCount - 1),
+      }));
+    } catch {
+      // Preserve the current unread state when the backend write fails.
+    }
   }, []);
 
   // ── Mark all read ──
   const markAllRead = useCallback(async () => {
-    await apiFetch('/v1/user/notifications/read', {
-      method: 'POST',
-      body: JSON.stringify({ mark_all: true }),
-    });
-    setState(s => ({
-      ...s,
-      items: s.items.map(n => ({ ...n, read_at: n.read_at || new Date().toISOString() })),
-      unreadCount: 0,
-    }));
+    try {
+      const res = await apiFetch('/v1/user/notifications/read', {
+        method: 'POST',
+        body: JSON.stringify({ mark_all: true }),
+      });
+      if (!res.ok) return;
+
+      setState(s => ({
+        ...s,
+        items: s.items.map(n => ({ ...n, read_at: n.read_at || new Date().toISOString() })),
+        unreadCount: 0,
+      }));
+    } catch {
+      // Preserve the current unread state when the backend write fails.
+    }
   }, []);
 
   // ── WebSocket for real-time notifications ──
@@ -123,7 +145,7 @@ export function useNotifications() {
     ws.onmessage = (event) => {
       if (disposedRef.current) return;
       try {
-        const msg = JSON.parse(event.data);
+        const msg = JSON.parse(event.data) as RealtimeNotificationFrame;
         if (msg.type && msg.title) {
           const notif: Notification = {
             id: msg.id || crypto.randomUUID(),
@@ -131,9 +153,9 @@ export function useNotifications() {
             title: msg.title,
             body: msg.body || '',
             payload: msg.payload || '',
-            channel: 'WS',
+            channel: msg.channel || 'WS',
             read_at: null,
-            created_at: new Date().toISOString(),
+            created_at: msg.created_at || new Date().toISOString(),
           };
           setState(s => ({
             items: [notif, ...s.items].slice(0, 100),

@@ -32,6 +32,34 @@ type NotificationDeps struct {
 	SpannerClient *spanner.Client
 }
 
+type notificationWSFrame struct {
+	ID          string            `json:"id"`
+	Type        string            `json:"type"`
+	Title       string            `json:"title"`
+	Body        string            `json:"body"`
+	Payload     string            `json:"payload,omitempty"`
+	Channel     string            `json:"channel"`
+	CreatedAt   string            `json:"created_at"`
+	TitleKey    string            `json:"title_key,omitempty"`
+	BodyKey     string            `json:"body_key,omitempty"`
+	MessageArgs map[string]string `json:"message_args,omitempty"`
+}
+
+func newNotificationWSFrame(notificationID, eventType string, notif notifications.FormattedNotification, payload string, createdAt time.Time) notificationWSFrame {
+	return notificationWSFrame{
+		ID:          notificationID,
+		Type:        eventType,
+		Title:       notif.Title,
+		Body:        notif.Body,
+		Payload:     payload,
+		Channel:     "PUSH",
+		CreatedAt:   createdAt.Format(time.RFC3339),
+		TitleKey:    notif.TitleKey,
+		BodyKey:     notif.BodyKey,
+		MessageArgs: notif.MessageArgs,
+	}
+}
+
 // StartNotificationDispatcher boots the partition-parallel Kafka consumer that
 // dispatches notifications for all event types emitted by the order and payment
 // services. Returns immediately; the pool runs until ctx is cancelled.
@@ -2094,6 +2122,7 @@ func dispatchToRecipient(deps NotificationDeps, recipientID, role, eventType str
 	}
 
 	ctx := context.Background()
+	createdAt := time.Now().UTC()
 	payloadData := map[string]interface{}{"event_type": eventType}
 	if notif.TitleKey != "" {
 		payloadData["title_key"] = notif.TitleKey
@@ -2107,29 +2136,16 @@ func dispatchToRecipient(deps NotificationDeps, recipientID, role, eventType str
 	payloadJSON, _ := json.Marshal(payloadData)
 
 	// 1. Persistent inbox
-	if err := notifications.InsertNotification(ctx, deps.SpannerClient,
+	notificationID, err := notifications.InsertNotification(ctx, deps.SpannerClient,
 		recipientID, role, eventType, notif.Title, notif.Body, string(payloadJSON), "PUSH",
-	); err != nil {
+	)
+	if err != nil {
 		slog.Error("notification_dispatcher.inbox_insert", "role", role, "recipient_id", recipientID, "err", err)
 	}
 
 	// 2. WebSocket push
 	wsDelivered := false
-	wsPayload := map[string]interface{}{
-		"type":    eventType,
-		"title":   notif.Title,
-		"body":    notif.Body,
-		"channel": "PUSH",
-	}
-	if notif.TitleKey != "" {
-		wsPayload["title_key"] = notif.TitleKey
-	}
-	if notif.BodyKey != "" {
-		wsPayload["body_key"] = notif.BodyKey
-	}
-	if len(notif.MessageArgs) > 0 {
-		wsPayload["message_args"] = notif.MessageArgs
-	}
+	wsPayload := newNotificationWSFrame(notificationID, eventType, notif, string(payloadJSON), createdAt)
 
 	switch role {
 	case "RETAILER":

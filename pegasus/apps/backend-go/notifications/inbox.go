@@ -326,7 +326,7 @@ func HandleMarkNotificationRead(client *spanner.Client) http.HandlerFunc {
 // ── Send Notification Helper ────────────────────────────────────────────────
 // Writes a notification record to Spanner. Used by other backend services.
 
-func InsertNotification(ctx context.Context, client *spanner.Client, recipientID, recipientRole, notifType, title, body, payload, channel string) error {
+func InsertNotification(ctx context.Context, client *spanner.Client, recipientID, recipientRole, notifType, title, body, payload, channel string) (string, error) {
 	nid := newNotificationID()
 	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return txn.BufferWrite([]*spanner.Mutation{
@@ -341,7 +341,7 @@ func InsertNotification(ctx context.Context, client *spanner.Client, recipientID
 	} else {
 		InvalidateNotificationInboxCache(ctx, recipientID)
 	}
-	return err
+	return nid, err
 }
 
 // InsertNotificationWithCorrelation writes a notification with CorrelationId
