@@ -327,6 +327,7 @@
       ],
       "notes": [
         "Route composition moved out of main.go into supplierinsightsroutes while preserving the existing countrycfg, analytics, and supplier handlers.",
+        "Supplier CRM list/detail payloads now include additive retailer email for the supplier portal contact drawer consumer.",
         "Warehouse-scoped analytics routes keep their RequireWarehouseScope middleware inside the extracted composer."
       ]
     },
@@ -430,6 +431,7 @@
       ],
       "notes": [
         "Route composition moved out of main.go into suppliercoreroutes while preserving existing order, analytics, and supplier handlers.",
+        "Supplier inventory now honors the mounted root PATCH /v1/supplier/inventory contract and returns additive sku_id/product_name aliases on inventory and audit rows for the supplier portal consumer.",
         "This extraction removes the final inline /v1/supplier/* registrations from backend-go/main.go."
       ]
     },

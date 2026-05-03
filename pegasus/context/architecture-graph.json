@@ -397,7 +397,8 @@
       ],
       "notes": [
         "Route composition moved out of main.go into supplierinsightsroutes while preserving the existing countrycfg, analytics, and supplier handlers.",
-        "The extracted composer keeps the warehouse-scoped analytics middleware for transit, throughput, load-distribution, node-efficiency, SLA, revenue, and top-retailers."
+        "The extracted composer keeps the warehouse-scoped analytics middleware for transit, throughput, load-distribution, node-efficiency, SLA, revenue, and top-retailers.",
+        "Supplier CRM list/detail payloads now include additive retailer email for the admin-portal contact drawer consumer."
       ]
     },
     {

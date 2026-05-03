@@ -72,6 +72,7 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 - Supplier insights route composition: `pegasus/apps/backend-go/supplierinsightsroutes/routes.go`
 	- Owns `GET/PUT /v1/supplier/country-overrides`, `GET/DELETE /v1/supplier/country-overrides/{code}`, `GET /v1/supplier/analytics/{velocity,demand/today,demand/history,transit-heatmap,throughput,load-distribution,node-efficiency,sla-health,revenue,top-retailers}`, `GET /v1/supplier/financials`, and `GET /v1/supplier/crm/retailers*`
 	- Current portal consumers span `app/supplier/country-overrides/page.tsx`, `app/supplier/analytics/page.tsx`, `app/supplier/analytics/demand/page.tsx`, `app/supplier/dashboard/page.tsx`, `hooks/useAnalytics.ts`, `hooks/useAdvancedAnalytics.ts`, and `app/supplier/crm/page.tsx`
+	- Supplier CRM list/detail payloads now include additive retailer `email` for the supplier portal contact drawer
 	- Groups supplier read-side settings, analytics, financials, and CRM under one extracted contract while preserving the existing handler ownership in `countrycfg`, `analytics`, and `supplier`
 - Supplier operations route composition: `pegasus/apps/backend-go/supplieroperationsroutes/routes.go`
 	- Owns `GET/POST /v1/supplier/fleet/drivers`, `GET/PATCH/POST /v1/supplier/fleet/drivers/{id}`, `GET/POST /v1/supplier/fleet/vehicles`, `GET/PATCH/DELETE /v1/supplier/fleet/vehicles/{id}`, `POST /v1/supplier/fulfillment/pay`, `GET /v1/supplier/returns`, `POST /v1/supplier/returns/resolve`, `GET /v1/supplier/quarantine-stock`, and `POST /v1/inventory/reconcile-returns`
@@ -178,4 +179,5 @@ If any feature, dependency, service, or runtime changes, update all of:
 - Supplier core route composition: `pegasus/apps/backend-go/suppliercoreroutes/routes.go`
 	- Owns `GET /v1/supplier/dashboard`, `GET /v1/supplier/earnings`, `GET/PATCH /v1/supplier/inventory`, `GET /v1/supplier/inventory/audit`, `GET /v1/supplier/orders`, and `POST /v1/supplier/orders/vet`
 	- Supports the supplier core portal loop: dashboard metrics, earnings analytics, inventory management, and supplier-side order approval
+	- Supplier inventory now honors the mounted root `PATCH /v1/supplier/inventory` contract and returns additive `sku_id`/`product_name` aliases on inventory and audit rows for the supplier portal
 	- Removes the final inline `/v1/supplier/*` registrations from `backend-go/main.go`

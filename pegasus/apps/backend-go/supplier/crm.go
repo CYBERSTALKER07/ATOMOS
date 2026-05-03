@@ -21,7 +21,7 @@ type CRMRetailer struct {
 	RetailerName  string `json:"retailer_name"`
 	Phone         string `json:"phone,omitempty"`
 	Email         string `json:"email,omitempty"`
-	Lifetime   int64  `json:"lifetime"`
+	Lifetime      int64  `json:"lifetime"`
 	OrderCount    int64  `json:"order_count"`
 	LastOrderDate string `json:"last_order_date,omitempty"`
 	Status        string `json:"status"`
@@ -35,7 +35,7 @@ type CRMRetailerDetail struct {
 type CRMOrder struct {
 	OrderID   string `json:"order_id"`
 	State     string `json:"state"`
-	Amount int64  `json:"amount"`
+	Amount    int64  `json:"amount"`
 	ItemCount int64  `json:"item_count"`
 	CreatedAt string `json:"created_at"`
 }
@@ -62,6 +62,7 @@ func HandleCRMRetailers(client *spanner.Client) http.HandlerFunc {
 					o.RetailerId as retailer_id,
 					COALESCE(rt.Name, o.RetailerId) as retailer_name,
 					COALESCE(rt.Phone, '') as phone,
+					COALESCE(rt.Email, '') as email,
 					COALESCE(CAST(SUM(o.Amount) AS INT64), 0) as lifetime,
 					COUNT(DISTINCT o.OrderId) as order_count,
 					MAX(FORMAT_TIMESTAMP('%Y-%m-%d', o.CreatedAt)) as last_order_date,
@@ -80,7 +81,7 @@ func HandleCRMRetailers(client *spanner.Client) http.HandlerFunc {
 			params["warehouseId"] = whID
 		}
 
-		sql += ` GROUP BY o.RetailerId, rt.Name, rt.Phone
+		sql += ` GROUP BY o.RetailerId, rt.Name, rt.Phone, rt.Email
 				ORDER BY lifetime DESC`
 
 		stmt := spanner.Statement{
@@ -103,7 +104,7 @@ func HandleCRMRetailers(client *spanner.Client) http.HandlerFunc {
 				return
 			}
 			var cr CRMRetailer
-			if err := row.Columns(&cr.RetailerID, &cr.RetailerName, &cr.Phone, &cr.Lifetime, &cr.OrderCount, &cr.LastOrderDate, &cr.Status); err != nil {
+			if err := row.Columns(&cr.RetailerID, &cr.RetailerName, &cr.Phone, &cr.Email, &cr.Lifetime, &cr.OrderCount, &cr.LastOrderDate, &cr.Status); err != nil {
 				log.Printf("[CRM] scan error: %v", err)
 				continue
 			}
@@ -151,6 +152,7 @@ func HandleCRMRetailerDetail(client *spanner.Client) http.HandlerFunc {
 					o.RetailerId,
 					COALESCE(rt.Name, o.RetailerId) as retailer_name,
 					COALESCE(rt.Phone, '') as phone,
+					COALESCE(rt.Email, '') as email,
 					COALESCE(CAST(SUM(o.Amount) AS INT64), 0) as lifetime,
 					COUNT(DISTINCT o.OrderId) as order_count,
 					MAX(FORMAT_TIMESTAMP('%Y-%m-%d', o.CreatedAt)) as last_order_date,
@@ -170,7 +172,7 @@ func HandleCRMRetailerDetail(client *spanner.Client) http.HandlerFunc {
 			summaryParams["warehouseId"] = whID
 		}
 
-		summarySql += ` GROUP BY o.RetailerId, rt.Name, rt.Phone`
+		summarySql += ` GROUP BY o.RetailerId, rt.Name, rt.Phone, rt.Email`
 
 		summaryStmt := spanner.Statement{
 			SQL:    summarySql,
@@ -186,7 +188,7 @@ func HandleCRMRetailerDetail(client *spanner.Client) http.HandlerFunc {
 			http.Error(w, `{"error":"retailer_not_found"}`, http.StatusNotFound)
 			return
 		}
-		if err := row.Columns(&detail.RetailerID, &detail.RetailerName, &detail.Phone, &detail.Lifetime, &detail.OrderCount, &detail.LastOrderDate, &detail.Status); err != nil {
+		if err := row.Columns(&detail.RetailerID, &detail.RetailerName, &detail.Phone, &detail.Email, &detail.Lifetime, &detail.OrderCount, &detail.LastOrderDate, &detail.Status); err != nil {
 			http.Error(w, `{"error":"parse_failed"}`, http.StatusInternalServerError)
 			return
 		}

@@ -37,6 +37,7 @@ import (
 	"backend-go/paymentroutes"
 	"backend-go/proximityroutes"
 	"backend-go/replenishment"
+	"backend-go/retailerroutes"
 	"backend-go/routing"
 	"backend-go/settings"
 	"backend-go/simulation"
@@ -331,12 +332,15 @@ func main() {
 		CountryCfg: countryCfgSvc,
 		Log:        loggingMiddleware,
 	})
-
-	// ── Retailer Expense Analytics (Phase 1: Insights Dashboard) ──
-	http.HandleFunc("/v1/retailer/analytics/expenses", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(analytics.HandleGetRetailerExpenses(spannerClient, app.SpannerRouter))))
-
-	// ── Retailer Detailed Analytics (Advanced Analytics) ──
-	http.HandleFunc("/v1/retailer/analytics/detailed", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(analytics.HandleRetailerDetailedAnalytics(spannerClient, app.SpannerRouter))))
+	retailerroutes.RegisterRoutes(r, retailerroutes.Deps{
+		Spanner:        spannerClient,
+		ReadRouter:     app.SpannerRouter,
+		Cache:          app.Cache,
+		CacheFlight:    app.CacheFlight,
+		Order:          svc,
+		ShopClosedDeps: &shopClosedDeps,
+		Log:            loggingMiddleware,
+	})
 
 	supplieroperationsroutes.RegisterRoutes(r, supplieroperationsroutes.Deps{
 		Spanner:  spannerClient,
@@ -397,8 +401,7 @@ func main() {
 
 	// /v1/delivery/confirm-payment-bypass moved to deliveryroutes.
 
-	// Edge 7: POST /v1/orders/request-cancel — Retailer requests cancellation
-	http.HandleFunc("/v1/orders/request-cancel", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(order.HandleRequestCancel(svc))))
+	// /v1/orders/request-cancel moved to retailerroutes.
 
 	// /v1/admin/orders/approve-cancel moved to adminroutes.
 
@@ -406,8 +409,7 @@ func main() {
 
 	// /v1/delivery/shop-closed moved to deliveryroutes.
 
-	// P0: POST /v1/retailer/shop-closed-response — Retailer responds to shop-closed alert
-	http.HandleFunc("/v1/retailer/shop-closed-response", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(svc.HandleShopClosedResponse(&shopClosedDeps))))
+	// /v1/retailer/shop-closed-response moved to retailerroutes.
 
 	// /v1/admin/shop-closed/resolve moved to adminroutes.
 
@@ -425,30 +427,7 @@ func main() {
 
 	// /v1/admin/negotiate/resolve moved to adminroutes.
 
-	// Edge 29: GET /v1/retailer/family-members — List family sub-profiles
-	http.HandleFunc("/v1/retailer/family-members", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
-			auth.HandleListFamilyMembers(spannerClient)(w, r)
-		} else if r.Method == http.MethodPost {
-			func(w http.ResponseWriter, r *http.Request) {
-				invalidate := func(ctx context.Context, keys ...string) {
-					if app.Cache != nil {
-						app.Cache.Invalidate(ctx, keys...)
-					}
-				}
-				auth.HandleCreateFamilyMember(spannerClient, invalidate)(w, r)
-			}(w, r)
-		} else {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-	})))
-
-	// Edge 29: DELETE /v1/retailer/family-members/{id} — Remove family sub-profile
-	http.HandleFunc("/v1/retailer/family-members/", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(auth.HandleDeleteFamilyMember(spannerClient, func(ctx context.Context, keys ...string) {
-		if app.Cache != nil {
-			app.Cache.Invalidate(ctx, keys...)
-		}
-	}))))
+	// /v1/retailer/family-members* moved to retailerroutes.
 
 	// /v1/delivery/credit-delivery moved to deliveryroutes.
 
@@ -456,20 +435,11 @@ func main() {
 
 	// /v1/delivery/missing-items moved to deliveryroutes.
 
-	// Edge 34: POST /v1/retailer/orders/confirm-ai — Retailer confirms AI-suggested order
-	http.HandleFunc("/v1/retailer/orders/confirm-ai", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(order.HandleConfirmAiOrder(svc))))
-
-	// Edge 34: POST /v1/retailer/orders/reject-ai — Retailer rejects AI-suggested order
-	http.HandleFunc("/v1/retailer/orders/reject-ai", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(order.HandleRejectAiOrder(svc))))
-
-	// Preorder lifecycle: edit and confirm
-	http.HandleFunc("/v1/orders/edit-preorder", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(order.HandleEditPreorder(svc))))
-	http.HandleFunc("/v1/orders/confirm-preorder", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(order.HandleConfirmPreorder(svc))))
+	// Retailer AI-review and preorder lifecycle actions moved to retailerroutes.
 
 	// /v1/delivery/split-payment moved to deliveryroutes.
 
-	// GET/POST /v1/retailer/cart/sync — Server-side cart persistence
-	http.HandleFunc("/v1/retailer/cart/sync", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(order.HandleCartSync(spannerClient))))
+	// /v1/retailer/cart/sync moved to retailerroutes.
 
 	// /v1/user/notifications{,/read} moved to userroutes.
 
@@ -3656,11 +3626,8 @@ func main() {
 	// /v1/catalog/suppliers/search registered below this line in the original
 	// file). Ownership lives in backend-go/catalogroutes/routes.go.
 	catalogroutes.RegisterRoutes(r, catalogroutes.Deps{Spanner: spannerClient, Log: loggingMiddleware})
-	http.HandleFunc("/v1/retailer/suppliers", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(supplier.HandleRetailerSuppliers(spannerClient))))
-	http.HandleFunc("/v1/retailer/suppliers/", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(supplier.HandleRetailerSuppliers(spannerClient))))
 
-	// GET/PUT /v1/retailer/profile — Retailer profile management
-	http.HandleFunc("/v1/retailer/profile", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(supplier.HandleRetailerProfile(spannerClient, app.Cache, app.CacheFlight))))
+	// /v1/retailer/{suppliers,profile} moved to retailerroutes.
 
 	// /v1/catalog/suppliers/search + /v1/ai/predictions{,/correct} were moved to
 	// backend-go/catalogroutes and backend-go/airoutes respectively.
