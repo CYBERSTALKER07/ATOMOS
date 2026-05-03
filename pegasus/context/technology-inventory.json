@@ -289,7 +289,8 @@
         "The payload terminal, payload iOS, and payload Android clients share payloader auth, truck or order reads, manifest lifecycle mutations, inbox routes, and the payloader websocket as one role-row contract.",
         "Shared supplier manifest routes and /v1/ws/payloader now admit PAYLOADER alongside SUPPLIER and ADMIN where payload clients already depend on those paths.",
         "SupplierTruckManifests remains the payload-facing manifest lifecycle source, so payload clients stay aligned on DRAFT, LOADING, SEALED, DISPATCHED, and COMPLETED states.",
-        "The payloader websocket now emits typed PAYLOAD_SYNC frames with channel SYNC so payload clients can refresh active manifest state without rendering blank notifications."
+        "The payloader websocket now emits typed PAYLOAD_SYNC frames with channel SYNC so payload clients can refresh active manifest state without rendering blank notifications.",
+        "PAYLOAD_SYNC is emitted atomically on draft creation plus the supplier manifest start-loading, inject-order, seal, and manifest-exception mutation paths so other payload surfaces stay coherent after cross-device or supplier-portal changes."
       ]
     },
     {

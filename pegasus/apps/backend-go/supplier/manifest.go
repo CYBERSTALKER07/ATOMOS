@@ -46,6 +46,20 @@ type ManifestService struct {
 	DepotLocation string // fallback "lat,lng" when warehouse depot is unresolved
 }
 
+func emitPayloadSyncEvent(txn *spanner.ReadWriteTransaction, supplierID, warehouseID, manifestID, reason, traceID string, timestamp time.Time) error {
+	if supplierID == "" || manifestID == "" {
+		return nil
+	}
+	return outbox.EmitJSON(txn, "Manifest", manifestID, kafkaEvents.EventPayloadSync, kafkaEvents.TopicMain,
+		kafkaEvents.PayloadSyncEvent{
+			SupplierID:  supplierID,
+			WarehouseID: warehouseID,
+			ManifestID:  manifestID,
+			Reason:      reason,
+			Timestamp:   timestamp,
+		}, traceID)
+}
+
 // ── CreateDraftManifest ─────────────────────────────────────────────────────
 // Called internally by the auto-dispatcher after bin-packing.
 // Creates a DRAFT manifest + ManifestOrders rows. Orders stay PENDING.
@@ -247,14 +261,20 @@ func (s *ManifestService) HandleStartLoading() http.HandlerFunc {
 				return err
 			}
 
+			traceID := telemetry.TraceIDFromContext(ctx)
+
 			// MANIFEST_LOADING_STARTED — atomic with the DRAFT→LOADING transition.
-			return outbox.EmitJSON(txn, "Manifest", manifestID, kafkaEvents.EventManifestLoadingStarted, kafkaEvents.TopicMain,
+			if err := outbox.EmitJSON(txn, "Manifest", manifestID, kafkaEvents.EventManifestLoadingStarted, kafkaEvents.TopicMain,
 				kafkaEvents.ManifestLifecycleEvent{
 					ManifestID: manifestID,
 					SupplierId: supplierID,
 					State:      "LOADING",
 					Timestamp:  now,
-				}, telemetry.TraceIDFromContext(ctx))
+				}, traceID); err != nil {
+				return err
+			}
+
+			return emitPayloadSyncEvent(txn, supplierID, "", manifestID, kafkaEvents.EventManifestLoadingStarted, traceID, now)
 		})
 
 		if err != nil {
@@ -385,8 +405,10 @@ func (s *ManifestService) HandleInjectOrder() http.HandlerFunc {
 				return err
 			}
 
+			traceID := telemetry.TraceIDFromContext(ctx)
+
 			// MANIFEST_ORDER_INJECTED — atomic with the inject mutations.
-			return outbox.EmitJSON(txn, "Manifest", manifestID, kafkaEvents.EventManifestOrderInjected, kafkaEvents.TopicMain,
+			if err := outbox.EmitJSON(txn, "Manifest", manifestID, kafkaEvents.EventManifestOrderInjected, kafkaEvents.TopicMain,
 				kafkaEvents.ManifestOrderInjectedEvent{
 					ManifestID:       manifestID,
 					OrderID:          req.OrderID,
@@ -394,7 +416,11 @@ func (s *ManifestService) HandleInjectOrder() http.HandlerFunc {
 					NewTotalVolumeVU: newTotalVol,
 					InjectedBy:       claims.ResolveSupplierID(),
 					Timestamp:        time.Now().UTC(),
-				}, telemetry.TraceIDFromContext(ctx))
+				}, traceID); err != nil {
+				return err
+			}
+
+			return emitPayloadSyncEvent(txn, supplierID, "", manifestID, kafkaEvents.EventManifestOrderInjected, traceID, time.Now().UTC())
 		})
 
 		if err != nil {
@@ -619,6 +645,8 @@ func (s *ManifestService) HandleSealManifest() http.HandlerFunc {
 
 			now := time.Now().UTC()
 
+			traceID := telemetry.TraceIDFromContext(ctx)
+
 			// MANIFEST_SEALED — always emitted via outbox, atomic with the seal commit.
 			if err := outbox.EmitJSON(txn, "Manifest", manifestID, kafkaEvents.EventManifestSealed, kafkaEvents.TopicMain,
 				kafkaEvents.ManifestLifecycleEvent{
@@ -632,7 +660,11 @@ func (s *ManifestService) HandleSealManifest() http.HandlerFunc {
 					MaxVolumeVU: maxVol,
 					SealedBy:    sealedBy,
 					Timestamp:   now,
-				}, telemetry.TraceIDFromContext(ctx)); err != nil {
+				}, traceID); err != nil {
+				return err
+			}
+
+			if err := emitPayloadSyncEvent(txn, supplierID, warehouseID.StringVal, manifestID, kafkaEvents.EventManifestSealed, traceID, now); err != nil {
 				return err
 			}
 
@@ -1169,6 +1201,8 @@ func (s *ManifestService) HandleManifestException() http.HandlerFunc {
 
 			now := time.Now().UTC()
 
+			traceID := telemetry.TraceIDFromContext(ctx)
+
 			// MANIFEST_ORDER_EXCEPTION — atomic with the exception mutations.
 			if err := outbox.EmitJSON(txn, "Manifest", req.ManifestID, kafkaEvents.EventManifestOrderException, kafkaEvents.TopicMain,
 				kafkaEvents.ManifestOrderExceptionEvent{
@@ -1181,7 +1215,11 @@ func (s *ManifestService) HandleManifestException() http.HandlerFunc {
 					Escalated:    escalated,
 					Metadata:     req.Metadata,
 					Timestamp:    now,
-				}, telemetry.TraceIDFromContext(ctx)); err != nil {
+				}, traceID); err != nil {
+				return err
+			}
+
+			if err := emitPayloadSyncEvent(txn, supplierID, "", req.ManifestID, kafkaEvents.EventManifestOrderException, traceID, now); err != nil {
 				return err
 			}
 

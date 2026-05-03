@@ -1054,12 +1054,13 @@ type ManifestOrderReassignedEvent struct {
 }
 
 // PayloadSyncEvent is the UI-refresh signal pushed to PayloaderHub when a
-// manifest mutates externally. Best-effort UX hint; not a state-of-record event.
+// payload-visible manifest mutates. Reason is the upstream mutation source
+// (for example MANIFEST_SEALED or MANIFEST_ORDER_EXCEPTION), not a user-facing string.
 type PayloadSyncEvent struct {
 	SupplierID  string    `json:"supplier_id"`
 	WarehouseID string    `json:"warehouse_id,omitempty"`
 	ManifestID  string    `json:"manifest_id"`
-	Reason      string    `json:"reason"` // REBALANCED | CANCELLED | ORDER_REASSIGNED | LOAD_CONFIRMED
+	Reason      string    `json:"reason"`
 	Timestamp   time.Time `json:"timestamp"`
 }
 

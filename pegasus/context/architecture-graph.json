@@ -358,7 +358,8 @@
         "Payload terminal, payload iOS, and payload Android all depend on one payloader auth, manifest lifecycle, inbox, and websocket contract.",
         "Shared supplier manifest routes and the payloader websocket now admit PAYLOADER alongside SUPPLIER and ADMIN on the paths the payload clients already consume.",
         "SupplierTruckManifests remains the payload-facing manifest lifecycle source, keeping payload clients aligned on DRAFT, LOADING, SEALED, DISPATCHED, and COMPLETED states.",
-        "The payloader websocket now emits typed PAYLOAD_SYNC frames with channel SYNC so payload clients can refresh active manifest state without rendering blank notifications."
+        "The payloader websocket now emits typed PAYLOAD_SYNC frames with channel SYNC so payload clients can refresh active manifest state without rendering blank notifications.",
+        "PAYLOAD_SYNC is emitted atomically on draft creation plus the supplier manifest start-loading, inject-order, seal, and manifest-exception mutation paths so other payload surfaces stay coherent after cross-device or supplier-portal changes."
       ]
     },
     {
@@ -497,7 +498,8 @@
       ],
       "notes": [
         "Route composition moved out of main.go into suppliercoreroutes while preserving the existing order, analytics, and supplier handlers.",
-        "After this extraction, backend-go/main.go no longer registers any /v1/supplier/* routes inline."
+        "After this extraction, backend-go/main.go no longer registers any /v1/supplier/* routes inline.",
+        "Supplier inventory now honors the mounted root PATCH /v1/supplier/inventory contract and returns additive sku_id/product_name aliases on inventory and audit rows for the admin-portal consumer."
       ]
     },
     {

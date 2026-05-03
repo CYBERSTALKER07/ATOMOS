@@ -119,6 +119,20 @@ func PersistDraftManifests(ctx context.Context, sc *spanner.Client, in PersistIn
 			); err != nil {
 				return fmt.Errorf("emit MANIFEST_DRAFT_CREATED %s: %w", manifestID, err)
 			}
+			if err := outbox.EmitJSON(
+				txn, "Manifest", manifestID,
+				internalKafka.EventPayloadSync, internalKafka.TopicMain,
+				internalKafka.PayloadSyncEvent{
+					SupplierID:  in.SupplierID,
+					WarehouseID: in.WarehouseID,
+					ManifestID:  manifestID,
+					Reason:      internalKafka.EventManifestDraftCreated,
+					Timestamp:   now,
+				},
+				telemetry.TraceIDFromContext(ctx),
+			); err != nil {
+				return fmt.Errorf("emit PAYLOAD_SYNC %s: %w", manifestID, err)
+			}
 		}
 		return nil
 	})

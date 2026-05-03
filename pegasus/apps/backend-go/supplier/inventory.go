@@ -27,6 +27,8 @@ type InventoryAdjustRequest struct {
 
 type InventoryItem struct {
 	ProductID         string `json:"product_id"`
+	SkuID             string `json:"sku_id"`
+	ProductName       string `json:"product_name"`
 	SkuName           string `json:"sku_name"`
 	SupplierId        string `json:"supplier_id"`
 	QuantityAvailable int64  `json:"quantity_available"`
@@ -36,6 +38,8 @@ type InventoryItem struct {
 type AuditEntry struct {
 	AuditID     string `json:"audit_id"`
 	ProductID   string `json:"product_id"`
+	SkuID       string `json:"sku_id"`
+	ProductName string `json:"product_name"`
 	SkuName     string `json:"sku_name"`
 	SupplierId  string `json:"supplier_id"`
 	AdjustedBy  string `json:"adjusted_by"`
@@ -53,10 +57,45 @@ var validReasons = map[string]bool{
 	"RETURN_TO_STOCK":    true,
 }
 
+func inventoryMutationSKU(pathSKU, bodySKU, productID string) string {
+	if value := strings.TrimSpace(pathSKU); value != "" {
+		return value
+	}
+	if value := strings.TrimSpace(bodySKU); value != "" {
+		return value
+	}
+	return strings.TrimSpace(productID)
+}
+
+func normalizeInventoryItemAliases(item *InventoryItem) {
+	if item == nil {
+		return
+	}
+	if item.SkuID == "" {
+		item.SkuID = item.ProductID
+	}
+	if item.ProductName == "" {
+		item.ProductName = item.SkuName
+	}
+}
+
+func normalizeInventoryAuditAliases(entry *AuditEntry) {
+	if entry == nil {
+		return
+	}
+	if entry.SkuID == "" {
+		entry.SkuID = entry.ProductID
+	}
+	if entry.ProductName == "" {
+		entry.ProductName = entry.SkuName
+	}
+}
+
 // HandleInventory supports:
 //
 //	GET  /v1/supplier/inventory          → list all inventory for this supplier
-//	PATCH /v1/supplier/inventory/{sku}   → adjust stock for a specific SKU
+//	PATCH /v1/supplier/inventory         → adjust stock for a specific SKU
+//	PATCH /v1/supplier/inventory/{sku}   → legacy path alias for stock adjustment
 func HandleInventory(client *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
@@ -73,10 +112,6 @@ func HandleInventory(client *spanner.Client) http.HandlerFunc {
 		case http.MethodGet:
 			handleListInventory(w, r, client, supplierId)
 		case http.MethodPatch:
-			if skuId == "" {
-				http.Error(w, `{"error":"sku_id required in path"}`, http.StatusBadRequest)
-				return
-			}
 			handleAdjustInventory(w, r, client, supplierId, skuId)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -141,6 +176,7 @@ func handleListInventory(w http.ResponseWriter, r *http.Request, client *spanner
 		if updatedAt.Valid {
 			item.UpdatedAt = updatedAt.Time.Format(time.RFC3339)
 		}
+		normalizeInventoryItemAliases(&item)
 		items = append(items, item)
 	}
 	if items == nil {
@@ -162,9 +198,18 @@ func handleListInventory(w http.ResponseWriter, r *http.Request, client *spanner
 }
 
 func handleAdjustInventory(w http.ResponseWriter, r *http.Request, client *spanner.Client, supplierId string, skuId string) {
-	var req InventoryAdjustRequest
+	var req struct {
+		InventoryAdjustRequest
+		SkuID     string `json:"sku_id"`
+		ProductID string `json:"product_id"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid JSON body"}`, http.StatusBadRequest)
+		return
+	}
+	targetSKU := inventoryMutationSKU(skuId, req.SkuID, req.ProductID)
+	if targetSKU == "" {
+		http.Error(w, `{"error":"sku_id or product_id required"}`, http.StatusBadRequest)
 		return
 	}
 
@@ -184,9 +229,9 @@ func handleAdjustInventory(w http.ResponseWriter, r *http.Request, client *spann
 
 	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// Verify this SKU belongs to this supplier (check product ownership)
-		prodRow, prodErr := txn.ReadRow(ctx, "SupplierProducts", spanner.Key{skuId}, []string{"SupplierId"})
+		prodRow, prodErr := txn.ReadRow(ctx, "SupplierProducts", spanner.Key{targetSKU}, []string{"SupplierId"})
 		if prodErr != nil {
-			return fmt.Errorf("SKU %s not found", skuId)
+			return fmt.Errorf("SKU %s not found", targetSKU)
 		}
 		var ownerSid string
 		if err := prodRow.Columns(&ownerSid); err != nil {
@@ -197,7 +242,7 @@ func handleAdjustInventory(w http.ResponseWriter, r *http.Request, client *spann
 		}
 
 		// Read existing inventory (may not exist for legacy products)
-		invRow, invErr := txn.ReadRow(ctx, "SupplierInventory", spanner.Key{skuId}, []string{"QuantityAvailable"})
+		invRow, invErr := txn.ReadRow(ctx, "SupplierInventory", spanner.Key{targetSKU}, []string{"QuantityAvailable"})
 		if invErr == nil {
 			if err := invRow.Columns(&previousQty); err != nil {
 				return err
@@ -214,7 +259,7 @@ func handleAdjustInventory(w http.ResponseWriter, r *http.Request, client *spann
 		txn.BufferWrite([]*spanner.Mutation{
 			spanner.InsertOrUpdate("SupplierInventory",
 				[]string{"ProductId", "SupplierId", "QuantityAvailable", "UpdatedAt"},
-				[]interface{}{skuId, supplierId, newQty, spanner.CommitTimestamp},
+				[]interface{}{targetSKU, supplierId, newQty, spanner.CommitTimestamp},
 			),
 		})
 
@@ -223,7 +268,7 @@ func handleAdjustInventory(w http.ResponseWriter, r *http.Request, client *spann
 		txn.BufferWrite([]*spanner.Mutation{
 			spanner.Insert("InventoryAuditLog",
 				[]string{"AuditId", "ProductId", "SupplierId", "AdjustedBy", "PreviousQty", "NewQty", "Delta", "Reason", "AdjustedAt"},
-				[]interface{}{auditId, skuId, supplierId, supplierId, previousQty, newQty, req.Adjustment, req.Reason, spanner.CommitTimestamp},
+				[]interface{}{auditId, targetSKU, supplierId, supplierId, previousQty, newQty, req.Adjustment, req.Reason, spanner.CommitTimestamp},
 			),
 		})
 
@@ -247,7 +292,8 @@ func handleAdjustInventory(w http.ResponseWriter, r *http.Request, client *spann
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":       "STOCK_ADJUSTED",
-		"sku_id":       skuId,
+		"sku_id":       targetSKU,
+		"product_id":   targetSKU,
 		"previous_qty": previousQty,
 		"new_qty":      newQty,
 		"delta":        req.Adjustment,
@@ -322,6 +368,7 @@ func HandleInventoryAuditLog(client *spanner.Client) http.HandlerFunc {
 			if adjustedAt.Valid {
 				e.AdjustedAt = adjustedAt.Time.Format(time.RFC3339)
 			}
+			normalizeInventoryAuditAliases(&e)
 			entries = append(entries, e)
 		}
 		if entries == nil {
