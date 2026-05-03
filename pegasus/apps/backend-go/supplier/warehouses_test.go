@@ -45,3 +45,15 @@ func TestWarehouseCoverageTarget(t *testing.T) {
 		})
 	}
 }
+
+func TestApplyWarehouseDerivedStats(t *testing.T) {
+	warehouse := WarehouseResponse{
+		H3Indexes: []string{"a", "b", "c"},
+	}
+
+	applyWarehouseDerivedStats(&warehouse)
+
+	if warehouse.HexCount != 3 {
+		t.Fatalf("applyWarehouseDerivedStats() hex_count = %d, want 3", warehouse.HexCount)
+	}
+}

@@ -63,7 +63,15 @@ type WarehouseResponse struct {
 	CreatedAt        string   `json:"created_at"`
 	// Aggregated stats
 	DriverCount int64 `json:"driver_count"`
+	OrderCount  int64 `json:"order_count"`
 	StaffCount  int64 `json:"staff_count"`
+	HexCount    int64 `json:"hex_count"`
+}
+
+type warehouseAggregateStats struct {
+	DriverCount int64
+	OrderCount  int64
+	StaffCount  int64
 }
 
 type WarehouseCoverageRequest struct {
@@ -165,6 +173,9 @@ func listWarehouses(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 		SQL: `SELECT w.WarehouseId, w.Name, w.Address, w.Lat, w.Lng, w.H3Indexes,
 		             w.CoverageRadiusKm, w.IsActive, w.IsDefault, w.IsOnShift, w.CreatedAt,
 		             (SELECT COUNT(*) FROM Drivers d WHERE d.WarehouseId = w.WarehouseId OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = w.WarehouseId)) AS DriverCount,
+		             (SELECT COUNT(*) FROM Orders o
+		               WHERE o.WarehouseId = w.WarehouseId
+		                 AND o.State NOT IN ('COMPLETED', 'CANCELLED', 'REJECTED', 'RETURNED')) AS OrderCount,
 		             (SELECT COUNT(*) FROM WarehouseStaff ws WHERE ws.WarehouseId = w.WarehouseId) AS StaffCount
 		      FROM Warehouses w
 		      WHERE w.SupplierId = @supplierId
@@ -199,7 +210,7 @@ func listWarehouses(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 
 		if err := row.Columns(&wh.WarehouseId, &wh.Name, &wh.Address, &lat, &lng,
 			&h3Indexes, &wh.CoverageRadiusKm, &wh.IsActive, &wh.IsDefault, &wh.IsOnShift,
-			&createdAt, &wh.DriverCount, &wh.StaffCount); err != nil {
+			&createdAt, &wh.DriverCount, &wh.OrderCount, &wh.StaffCount); err != nil {
 			log.Printf("[WAREHOUSE] Row parse error: %v", err)
 			continue
 		}
@@ -215,6 +226,7 @@ func listWarehouses(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 		if createdAt.Valid {
 			wh.CreatedAt = createdAt.Time.Format("2006-01-02T15:04:05Z")
 		}
+		applyWarehouseDerivedStats(&wh)
 		warehouses = append(warehouses, wh)
 	}
 
@@ -283,6 +295,16 @@ func getWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Client
 	if createdAt.Valid {
 		wh.CreatedAt = createdAt.Time.Format("2006-01-02T15:04:05Z")
 	}
+	stats, statsErr := loadWarehouseAggregateStats(r.Context(), client, warehouseID)
+	if statsErr != nil {
+		log.Printf("[WAREHOUSE] Stats query error for %s: %v", warehouseID, statsErr)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	wh.DriverCount = stats.DriverCount
+	wh.OrderCount = stats.OrderCount
+	wh.StaffCount = stats.StaffCount
+	applyWarehouseDerivedStats(&wh)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(wh)
@@ -393,7 +415,39 @@ func createWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		IsActive:         true,
 		IsDefault:        false,
 		IsOnShift:        true,
+		HexCount:         int64(len(h3Cells)),
 	})
+}
+
+func loadWarehouseAggregateStats(ctx context.Context, client *spanner.Client, warehouseID string) (warehouseAggregateStats, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT
+		        (SELECT COUNT(*) FROM Drivers d WHERE d.WarehouseId = @wid OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = @wid)) AS DriverCount,
+		        (SELECT COUNT(*) FROM Orders o
+		          WHERE o.WarehouseId = @wid
+		            AND o.State NOT IN ('COMPLETED', 'CANCELLED', 'REJECTED', 'RETURNED')) AS OrderCount,
+		        (SELECT COUNT(*) FROM WarehouseStaff ws WHERE ws.WarehouseId = @wid) AS StaffCount`,
+		Params: map[string]interface{}{"wid": warehouseID},
+	}
+
+	iter := client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err != nil {
+		return warehouseAggregateStats{}, err
+	}
+
+	var stats warehouseAggregateStats
+	if err := row.Columns(&stats.DriverCount, &stats.OrderCount, &stats.StaffCount); err != nil {
+		return warehouseAggregateStats{}, err
+	}
+
+	return stats, nil
+}
+
+func applyWarehouseDerivedStats(wh *WarehouseResponse) {
+	wh.HexCount = int64(len(wh.H3Indexes))
 }
 
 // ── Update Warehouse ──────────────────────────────────────────────────────

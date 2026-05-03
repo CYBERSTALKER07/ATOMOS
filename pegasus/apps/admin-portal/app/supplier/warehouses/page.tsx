@@ -35,6 +35,43 @@ interface WarehouseDetail extends WarehouseItem {
   updated_at?: string;
 }
 
+type WarehouseApiPayload = Partial<WarehouseDetail> & {
+  warehouse_id: string;
+  name: string;
+};
+
+function normalizeWarehouseItem(payload: WarehouseApiPayload): WarehouseItem {
+  const h3Indexes = Array.isArray(payload.h3_indexes) ? payload.h3_indexes : [];
+
+  return {
+    warehouse_id: payload.warehouse_id,
+    name: payload.name,
+    address: payload.address,
+    lat: typeof payload.lat === 'number' ? payload.lat : 0,
+    lng: typeof payload.lng === 'number' ? payload.lng : 0,
+    coverage_radius_km: typeof payload.coverage_radius_km === 'number' ? payload.coverage_radius_km : 0,
+    hex_count: typeof payload.hex_count === 'number' ? payload.hex_count : h3Indexes.length,
+    is_active: payload.is_active ?? false,
+    is_default: payload.is_default ?? false,
+    is_on_shift: payload.is_on_shift ?? false,
+    driver_count: typeof payload.driver_count === 'number' ? payload.driver_count : 0,
+    order_count: typeof payload.order_count === 'number' ? payload.order_count : 0,
+  };
+}
+
+function normalizeWarehouseDetail(payload: WarehouseApiPayload): WarehouseDetail {
+  const normalized = normalizeWarehouseItem(payload);
+
+  return {
+    ...normalized,
+    h3_indexes: Array.isArray(payload.h3_indexes) ? payload.h3_indexes : [],
+    primary_factory_id: payload.primary_factory_id,
+    secondary_factory_id: payload.secondary_factory_id,
+    created_at: payload.created_at || '',
+    updated_at: payload.updated_at,
+  };
+}
+
 export default function WarehousesPage() {
   const [warehouses, setWarehouses] = useState<WarehouseItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +89,7 @@ export default function WarehousesPage() {
       const res = await apiFetch('/v1/supplier/warehouses');
       if (!res.ok) throw new Error('Failed to fetch warehouses');
       const data = await res.json();
-      setWarehouses(data.warehouses || []);
+      setWarehouses(Array.isArray(data.warehouses) ? data.warehouses.map(normalizeWarehouseItem) : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -71,8 +108,8 @@ export default function WarehousesPage() {
     try {
       const res = await apiFetch(`/v1/supplier/warehouses/${wh.warehouse_id}`);
       if (!res.ok) throw new Error('Failed to load detail');
-      const data: WarehouseDetail = await res.json();
-      setSelectedWarehouse(data);
+      const data: WarehouseApiPayload = await res.json();
+      setSelectedWarehouse(normalizeWarehouseDetail(data));
     } catch {
       setSelectedWarehouse({ ...wh, h3_indexes: [], created_at: '' });
     } finally {
