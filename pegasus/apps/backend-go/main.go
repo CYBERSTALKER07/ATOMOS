@@ -2724,7 +2724,7 @@ func main() {
 	// POST /v1/vehicle/{vehicleId}/clear-returns — Supplier confirms return receipt at depot.
 	// Clears ReturnClearedAt on rejected OrderLineItems, releasing locked VU from capacity.
 	http.HandleFunc("/v1/vehicle/",
-		auth.RequireRole([]string{"ADMIN"},
+		auth.RequireRole([]string{"ADMIN", "SUPPLIER"},
 			loggingMiddleware(svc.HandleClearReturns),
 		),
 	)

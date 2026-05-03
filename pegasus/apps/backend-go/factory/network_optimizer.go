@@ -259,21 +259,28 @@ func (s *NetworkOptimizerService) HandleNetworkAnalytics(w http.ResponseWriter, 
 
 	mode, _ := s.GetNetworkMode(r.Context(), supplierID)
 
-	// Get supply lane summary
+	// Get supply lane summary. Keep this payload aligned with the supplier
+	// supply-lane table contract because the portal renders and mutates rows
+	// directly from this analytics response.
 	stmt := spanner.Statement{
-		SQL: `SELECT FactoryId, WarehouseId, DampenedTransitHours, FreightCostMinor,
-		             CarbonScoreKg, IsActive, Priority
+		SQL: `SELECT LaneId, SupplierId, FactoryId, WarehouseId, TransitTimeHours,
+		             DampenedTransitHours, FreightCostMinor, CarbonScoreKg, DirectDistanceKm,
+		             IsActive, Priority
 		      FROM SupplyLanes WHERE SupplierId = @supplierID
 		      ORDER BY Priority DESC`,
 		Params: map[string]interface{}{"supplierID": supplierID},
 	}
 
 	type laneAnalytic struct {
+		LaneId           string  `json:"lane_id"`
+		SupplierId       string  `json:"supplier_id"`
 		FactoryId        string  `json:"factory_id"`
 		WarehouseId      string  `json:"warehouse_id"`
+		TransitTimeHours float64 `json:"transit_time_hours"`
 		TransitHours     float64 `json:"dampened_transit_hours"`
 		FreightCostMinor int64   `json:"freight_cost_minor"`
 		CarbonScoreKg    float64 `json:"carbon_score_kg"`
+		DirectDistanceKm float64 `json:"direct_distance_km"`
 		IsActive         bool    `json:"is_active"`
 		Priority         int64   `json:"priority"`
 	}
@@ -290,8 +297,9 @@ func (s *NetworkOptimizerService) HandleNetworkAnalytics(w http.ResponseWriter, 
 			break
 		}
 		var la laneAnalytic
-		if err := row.Columns(&la.FactoryId, &la.WarehouseId, &la.TransitHours,
-			&la.FreightCostMinor, &la.CarbonScoreKg, &la.IsActive, &la.Priority); err != nil {
+		if err := row.Columns(&la.LaneId, &la.SupplierId, &la.FactoryId, &la.WarehouseId,
+			&la.TransitTimeHours, &la.TransitHours, &la.FreightCostMinor, &la.CarbonScoreKg,
+			&la.DirectDistanceKm, &la.IsActive, &la.Priority); err != nil {
 			continue
 		}
 		lanes = append(lanes, la)

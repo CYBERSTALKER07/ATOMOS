@@ -46,6 +46,7 @@ type SupplyLaneResponse struct {
 	DampenedTransitHours float64 `json:"dampened_transit_hours"`
 	FreightCostMinor     int64   `json:"freight_cost_minor"`
 	CarbonScoreKg        float64 `json:"carbon_score_kg"`
+	DirectDistanceKm     float64 `json:"direct_distance_km"`
 	IsActive             bool    `json:"is_active"`
 	Priority             int64   `json:"priority"`
 }
@@ -134,7 +135,7 @@ func (s *SupplyLanesService) listSupplyLanes(w http.ResponseWriter, r *http.Requ
 	factoryFilter := r.URL.Query().Get("factory_id")
 
 	sql := `SELECT LaneId, SupplierId, FactoryId, WarehouseId, TransitTimeHours,
-	               DampenedTransitHours, FreightCostMinor, CarbonScoreKg, IsActive, Priority
+	               DampenedTransitHours, FreightCostMinor, CarbonScoreKg, DirectDistanceKm, IsActive, Priority
 	        FROM SupplyLanes
 	        WHERE SupplierId = @supplierID`
 	params := map[string]interface{}{"supplierID": supplierID}
@@ -167,7 +168,7 @@ func (s *SupplyLanesService) listSupplyLanes(w http.ResponseWriter, r *http.Requ
 		var lane SupplyLaneResponse
 		if err := row.Columns(&lane.LaneId, &lane.SupplierId, &lane.FactoryId, &lane.WarehouseId,
 			&lane.TransitTimeHours, &lane.DampenedTransitHours, &lane.FreightCostMinor,
-			&lane.CarbonScoreKg, &lane.IsActive, &lane.Priority); err != nil {
+			&lane.CarbonScoreKg, &lane.DirectDistanceKm, &lane.IsActive, &lane.Priority); err != nil {
 			continue
 		}
 		lanes = append(lanes, lane)
