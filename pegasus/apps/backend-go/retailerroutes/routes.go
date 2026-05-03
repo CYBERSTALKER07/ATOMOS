@@ -50,6 +50,8 @@ type Deps struct {
 //	GET /v1/retailer/suppliers                 — retailer supplier favorites list
 //	POST /v1/retailer/suppliers/{id}/{action}  — retailer supplier favorite add/remove
 //	GET/PUT /v1/retailer/profile               — retailer profile
+//	GET /v1/retailers/{retailerID}/orders      — retailer/mobile order list
+//	GET /v1/retailer/tracking                  — retailer live tracking surface
 func RegisterRoutes(r chi.Router, d Deps) {
 	retailerRole := []string{"RETAILER"}
 	log := d.Log
@@ -82,6 +84,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(retailerRole, log(supplier.HandleRetailerSuppliers(d.Spanner))))
 	r.HandleFunc("/v1/retailer/profile",
 		auth.RequireRole(retailerRole, log(supplier.HandleRetailerProfile(d.Spanner, d.Cache, d.CacheFlight))))
+	r.HandleFunc("/v1/retailers/{retailerID}/orders",
+		auth.RequireRole([]string{"ADMIN", "RETAILER"}, log(handleRetailerOrders(d))))
+	r.HandleFunc("/v1/retailer/tracking",
+		auth.RequireRole(retailerRole, log(handleRetailerTracking(d))))
 }
 
 func familyMembersHandler(d Deps) http.HandlerFunc {

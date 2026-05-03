@@ -563,45 +563,6 @@ private struct OrderChecklistSection: View {
         }
     }
 }
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.blue)
-                        .disabled(!viewModel.canSealOrder(selected.orderId) || viewModel.sealingOrderId == selected.orderId)
-
-                        HStack(spacing: 8) {
-                            Button(role: .destructive) {
-                                onShowException(selected.orderId)
-                            } label: {
-                                HStack {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                    if viewModel.exceptionLoadingOrderId == selected.orderId {
-                                        ProgressView().controlSize(.small)
-                                    } else {
-                                        Text("Remove").font(.subheadline.weight(.medium))
-                                    }
-                                }
-                                .frame(maxWidth: .infinity, minHeight: 40)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(viewModel.exceptionLoadingOrderId == selected.orderId)
-
-                            Button {
-                                onShowReDispatch(selected.orderId)
-                            } label: {
-                                HStack {
-                                    Image(systemName: "arrow.left.arrow.right")
-                                    Text("Re-Dispatch").font(.subheadline.weight(.medium))
-                                }
-                                .frame(maxWidth: .infinity, minHeight: 40)
-                            }
-                            .buttonStyle(.bordered)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 private struct OrderChip: View {
     let order: LiveOrder
@@ -936,7 +897,6 @@ private struct StateBadge: View {
         }
     }
 }
-}
 
 // MARK: - Phase 5 sheets
 
@@ -1112,10 +1072,6 @@ private struct ExceptionReasonSheet: View {
                 Spacer()
             }
             .padding(24)
-        }
-    }
-}
-            }
         }
     }
 }
