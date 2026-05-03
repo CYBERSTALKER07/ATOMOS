@@ -327,6 +327,40 @@
       ]
     },
     {
+      "id": "payload_loading_surface",
+      "path": "/v1/{auth/payloader/login,payloader/*,supplier/manifests*,payload/*,user/notifications,ws/payloader}",
+      "owner": "pegasus/apps/backend-go/payloaderroutes/routes.go + pegasus/apps/backend-go/supplierlogisticsroutes/routes.go + pegasus/apps/backend-go/main.go + pegasus/apps/backend-go/ws/payloader_hub.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "POST /v1/auth/payloader/login",
+        "GET /v1/payloader/trucks",
+        "GET /v1/payloader/orders",
+        "POST /v1/payloader/recommend-reassign",
+        "GET /v1/supplier/manifests",
+        "GET /v1/supplier/manifests/{id}",
+        "POST /v1/supplier/manifests/{id}/start-loading",
+        "POST /v1/supplier/manifests/{id}/seal",
+        "POST /v1/supplier/manifests/{id}/inject-order",
+        "POST /v1/payload/manifest-exception",
+        "POST /v1/payload/seal",
+        "GET /v1/user/notifications",
+        "POST /v1/user/notifications/read",
+        "GET /v1/ws/payloader"
+      ],
+      "consumers": [
+        "pegasus/apps/payload-terminal/App.tsx",
+        "pegasus/apps/payload-app-ios/payload-app-ios/Services/APIClient.swift",
+        "pegasus/apps/payload-app-ios/payload-app-ios/Services/WebSocketClient.swift",
+        "pegasus/apps/payload-app-android/app/src/main/java/com/pegasus/payload/data/remote/PayloadApi.kt",
+        "pegasus/apps/payload-app-android/app/src/main/java/com/pegasus/payload/services/PayloadWebSocket.kt"
+      ],
+      "notes": [
+        "Payload terminal, payload iOS, and payload Android all depend on one payloader auth, manifest lifecycle, inbox, and websocket contract.",
+        "Shared supplier manifest routes and the payloader websocket now admit PAYLOADER alongside SUPPLIER and ADMIN on the paths the payload clients already consume.",
+        "SupplierTruckManifests remains the payload-facing manifest lifecycle source, keeping payload clients aligned on DRAFT, LOADING, SEALED, DISPATCHED, and COMPLETED states."
+      ]
+    },
+    {
       "id": "supplier_insights_surface",
       "path": "/v1/supplier/{country-overrides*,analytics/*,financials,crm/retailers*}",
       "owner": "pegasus/apps/backend-go/supplierinsightsroutes/routes.go",

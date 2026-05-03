@@ -258,6 +258,40 @@
       ]
     },
     {
+      "name": "Payload loading role-row surface",
+      "path": "/v1/{auth/payloader/login,payloader/*,supplier/manifests*,payload/*,user/notifications,ws/payloader}",
+      "owner": "pegasus/apps/backend-go/payloaderroutes/routes.go + pegasus/apps/backend-go/supplierlogisticsroutes/routes.go + pegasus/apps/backend-go/main.go + pegasus/apps/backend-go/ws/payloader_hub.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "POST /v1/auth/payloader/login",
+        "GET /v1/payloader/trucks",
+        "GET /v1/payloader/orders",
+        "POST /v1/payloader/recommend-reassign",
+        "GET /v1/supplier/manifests",
+        "GET /v1/supplier/manifests/{id}",
+        "POST /v1/supplier/manifests/{id}/start-loading",
+        "POST /v1/supplier/manifests/{id}/seal",
+        "POST /v1/supplier/manifests/{id}/inject-order",
+        "POST /v1/payload/manifest-exception",
+        "POST /v1/payload/seal",
+        "GET /v1/user/notifications",
+        "POST /v1/user/notifications/read",
+        "GET /v1/ws/payloader"
+      ],
+      "consumers": [
+        "payload-terminal App.tsx",
+        "payload-app-ios APIClient.swift",
+        "payload-app-ios WebSocketClient.swift",
+        "payload-app-android PayloadApi.kt",
+        "payload-app-android PayloadWebSocket.kt"
+      ],
+      "notes": [
+        "The payload terminal, payload iOS, and payload Android clients share payloader auth, truck or order reads, manifest lifecycle mutations, inbox routes, and the payloader websocket as one role-row contract.",
+        "Shared supplier manifest routes and /v1/ws/payloader now admit PAYLOADER alongside SUPPLIER and ADMIN where payload clients already depend on those paths.",
+        "SupplierTruckManifests remains the payload-facing manifest lifecycle source, so payload clients stay aligned on DRAFT, LOADING, SEALED, DISPATCHED, and COMPLETED states."
+      ]
+    },
+    {
       "name": "Supplier insights surface",
       "path": "/v1/supplier/{country-overrides*,analytics/*,financials,crm/retailers*}",
       "owner": "pegasus/apps/backend-go/supplierinsightsroutes/routes.go",

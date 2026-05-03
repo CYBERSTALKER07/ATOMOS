@@ -8,7 +8,7 @@ The primary protocol is **End-to-End Coherence**: A role is a product, not an ap
 - **SUPPLIER (`role=ADMIN`)**: Operates the Admin Portal. There is no separate "platform admin" - the Admin Portal IS the Supplier Portal.
 - **DRIVER (`role=DRIVER`)**: Route execution, geofenced actions, delivery verification. Scoped to a Home Node (Warehouse or Factory).
 - **RETAILER (`role=RETAILER`)**: Order receipt, payment, demand feedback. Self-registered outside supplier scopes.
-- **PAYLOAD (`role=PAYLOAD`)**: Loading, offloading, manifest confirmation via Terminal (Expo) / iOS / Android.
+- **PAYLOAD (`role=PAYLOADER`)**: Loading, offloading, and manifest confirmation via the Expo terminal plus payload iOS and payload Android clients.
 - **FACTORY/WAREHOUSE ADMIN**: Node-scoped administration for logistics generation and supply caching.
 
 ## The V.O.I.D. Entity Lifecycle
