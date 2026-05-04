@@ -20,6 +20,18 @@ func TestNotificationRecipientID_UsesSupplierScopeForSupplier(t *testing.T) {
 	}
 }
 
+func TestNotificationRecipientID_UsesSupplierScopeForAdminPortal(t *testing.T) {
+	claims := &auth.PegasusClaims{
+		UserID:     "supplier-user-1",
+		SupplierID: "supplier-1",
+		Role:       "ADMIN",
+	}
+
+	if got := notificationRecipientID(claims); got != "supplier-1" {
+		t.Fatalf("recipientID = %q, want %q", got, "supplier-1")
+	}
+}
+
 func TestNotificationRecipientID_UsesSupplierScopeForPayloader(t *testing.T) {
 	claims := &auth.PegasusClaims{
 		UserID:     "worker-1",

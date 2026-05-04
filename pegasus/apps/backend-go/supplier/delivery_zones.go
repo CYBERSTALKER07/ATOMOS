@@ -123,7 +123,9 @@ func listDeliveryZones(w http.ResponseWriter, r *http.Request, client *spanner.C
 		if err := row.Columns(&z.ZoneId, &z.SupplierId, &z.WarehouseId,
 			&z.ZoneName, &z.MinDistanceKm, &z.MaxDistanceKm,
 			&z.FeeMinor, &z.Priority, &z.IsActive); err != nil {
-			continue
+			log.Printf("[ZONES] list parse error: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
 		zones = append(zones, z)
 	}

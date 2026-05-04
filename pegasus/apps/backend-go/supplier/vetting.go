@@ -188,7 +188,8 @@ func (s *OrderVettingService) HandleSupplierOrders(w http.ResponseWriter, r *htt
 		}
 		if err != nil {
 			log.Printf("[VETTING] Query error: %v", err)
-			break
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
 		var o EnrichedOrder
 		var createdAt spanner.NullTime
@@ -198,7 +199,8 @@ func (s *OrderVettingService) HandleSupplierOrders(w http.ResponseWriter, r *htt
 		var paymentStatus spanner.NullString
 		if err := row.Columns(&o.OrderID, &o.RetailerID, &o.RetailerName, &o.SupplierId, &o.Amount, &o.State, &o.OrderSource, &createdAt, &o.ItemCount, &routeId, &deliveryDate, &paymentGateway, &paymentStatus); err != nil {
 			log.Printf("[VETTING] Row parse error: %v", err)
-			continue
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
 		if createdAt.Valid {
 			o.CreatedAt = createdAt.Time.Format(time.RFC3339)
@@ -345,13 +347,16 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 			skuQtyMap := make(map[string]int64)
 			for {
 				lineRow, err := lineIter.Next()
-				if err != nil {
+				if err == iterator.Done {
 					break
+				}
+				if err != nil {
+					return fmt.Errorf("list order line items for rejected order %s: %w", req.OrderID, err)
 				}
 				var skuId string
 				var qty int64
 				if err := lineRow.Columns(&skuId, &qty); err != nil {
-					continue
+					return fmt.Errorf("parse order line item for rejected order %s: %w", req.OrderID, err)
 				}
 				skuQtyMap[skuId] += qty
 			}
@@ -359,11 +364,11 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 			for skuId, qty := range skuQtyMap {
 				invRow, err := txn.ReadRow(ctx, "SupplierInventory", spanner.Key{skuId}, []string{"QuantityAvailable"})
 				if err != nil {
-					continue
+					return fmt.Errorf("read supplier inventory for rejected order %s sku %s: %w", req.OrderID, skuId, err)
 				}
 				var currentQty int64
 				if err := invRow.Columns(&currentQty); err != nil {
-					return err
+					return fmt.Errorf("parse supplier inventory for rejected order %s sku %s: %w", req.OrderID, skuId, err)
 				}
 				auditEntry := newReturnRestockAuditEntry(skuId, supplierId, adjustedBy, currentQty, qty)
 				if err := txn.BufferWrite([]*spanner.Mutation{
@@ -373,7 +378,7 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 					),
 					auditEntry.Mutation(),
 				}); err != nil {
-					return err
+					return fmt.Errorf("buffer rejected-order inventory release for %s sku %s: %w", req.OrderID, skuId, err)
 				}
 			}
 

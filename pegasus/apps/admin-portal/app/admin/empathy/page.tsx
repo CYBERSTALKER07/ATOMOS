@@ -1,11 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { getAdminToken } from "@/lib/auth";
+import { apiFetch } from "@/lib/auth";
 import { usePolling } from "@/lib/usePolling";
 import { useLocale } from "@/hooks/useLocale";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 interface EmpathyAdoption {
   total_retailers: number;
@@ -39,10 +37,7 @@ export default function EmpathyDashboard() {
 
   usePolling(async (signal) => {
     try {
-      const token = await getAdminToken();
-      const res = await fetch(`${API}/v1/admin/empathy/adoption`, {
-        headers: { Authorization: `Bearer ${token}` }, signal,
-      });
+      const res = await apiFetch('/v1/admin/empathy/adoption', { signal });
       if (!res.ok) throw new Error(t("supplier_portal.admin.empathy.error.telemetry_disconnected"));
       const json = await res.json();
       setData(json);

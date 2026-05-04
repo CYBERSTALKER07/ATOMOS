@@ -78,7 +78,7 @@ func TestRegisterRoutes_FleetDriverAssignUsesIdempotency(t *testing.T) {
 		Idempotency: markerMiddleware("X-Idempotency-Guard", "fleet-driver-assign"),
 	})
 
-	req := httptest.NewRequest(http.MethodPatch, "/v1/supplier/fleet/drivers/", strings.NewReader("{"))
+	req := httptest.NewRequest(http.MethodPatch, "/v1/supplier/fleet/drivers/driver-1", strings.NewReader("{"))
 	req.Header.Set("Authorization", "Bearer "+token)
 	rec := httptest.NewRecorder()
 

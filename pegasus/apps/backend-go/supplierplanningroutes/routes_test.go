@@ -78,14 +78,14 @@ func TestRegisterRoutes_DeliveryZoneActionUsesIdempotency(t *testing.T) {
 		Idempotency: markerMiddleware("X-Idempotency-Guard", "delivery-zone-action"),
 	})
 
-	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/delivery-zones/", nil)
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/delivery-zones/zone-1", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	rec := httptest.NewRecorder()
 
 	r.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
 	}
 	if got := rec.Header().Get("X-Idempotency-Guard"); got != "delivery-zone-action" {
 		t.Fatalf("idempotency guard header = %q, want delivery-zone-action", got)
@@ -106,14 +106,14 @@ func TestRegisterRoutes_SupplyLaneActionUsesIdempotency(t *testing.T) {
 		Idempotency: markerMiddleware("X-Idempotency-Guard", "supply-lane-action"),
 	})
 
-	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/supply-lanes/", nil)
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/supply-lanes/lane-1", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	rec := httptest.NewRecorder()
 
 	r.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
 	}
 	if got := rec.Header().Get("X-Idempotency-Guard"); got != "supply-lane-action" {
 		t.Fatalf("idempotency guard header = %q, want supply-lane-action", got)
@@ -254,6 +254,60 @@ func TestRegisterRoutes_PullMatrixUsesIdempotency(t *testing.T) {
 	}
 	if got := rec.Header().Get("X-Idempotency-Guard"); got != "pull-matrix" {
 		t.Fatalf("idempotency guard header = %q, want pull-matrix", got)
+	}
+}
+
+func TestRegisterRoutes_PredictivePushUsesIdempotency(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
+	if err != nil {
+		t.Fatalf("GenerateSupplierToken() error = %v", err)
+	}
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "predictive-push"),
+	})
+
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/replenishment/predictive-push", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "predictive-push" {
+		t.Fatalf("idempotency guard header = %q, want predictive-push", got)
+	}
+}
+
+func TestRegisterRoutes_ApplyTerritoryUsesIdempotency(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
+	if err != nil {
+		t.Fatalf("GenerateSupplierToken() error = %v", err)
+	}
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "apply-territory"),
+	})
+
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/warehouses/apply-territory", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "apply-territory" {
+		t.Fatalf("idempotency guard header = %q, want apply-territory", got)
 	}
 }
 

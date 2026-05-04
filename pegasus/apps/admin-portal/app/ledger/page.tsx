@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getAdminToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import { usePolling } from '@/lib/usePolling';
 
 type LedgerEntry = {
@@ -33,15 +33,9 @@ export default function LedgerPage() {
 
     usePolling(async (signal) => {
         try {
-            const token = await getAdminToken();
-
             const [ordersRes, treasuryRes] = await Promise.all([
-                fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/orders?limit=${pageSize + 1}&offset=${offset}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }, signal,
-                }),
-                fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/treasury/ledger`, {
-                    headers: { 'Authorization': `Bearer ${token}` }, signal,
-                }),
+                apiFetch(`/v1/orders?limit=${pageSize + 1}&offset=${offset}`, { signal }),
+                apiFetch('/v1/treasury/ledger', { signal }),
             ]);
 
             if (!ordersRes.ok) throw new Error("HTTP " + ordersRes.status);

@@ -47,7 +47,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	r.HandleFunc("/v1/supplier/country-overrides",
 		auth.RequireRole(supplierRole, log(idem(countrycfg.HandleSupplierCountryOverrides(d.CountryCfg)))))
-	r.HandleFunc("/v1/supplier/country-overrides/",
+	r.HandleFunc("/v1/supplier/country-overrides/*",
 		auth.RequireRole(supplierRole, log(idem(countrycfg.HandleSupplierCountryOverrideByCode(d.CountryCfg)))))
 	r.HandleFunc("/v1/supplier/analytics/velocity",
 		auth.RequireRole(supplierRole, log(analytics.HandleGetVelocity(d.Spanner, d.ReadRouter))))
@@ -73,6 +73,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierRole, log(analytics.HandleSupplierFinancials(d.Spanner, d.ReadRouter))))
 	r.HandleFunc("/v1/supplier/crm/retailers",
 		auth.RequireRole(supplierRole, log(supplier.HandleCRMRetailers(d.Spanner))))
-	r.HandleFunc("/v1/supplier/crm/retailers/",
+	r.HandleFunc("/v1/supplier/crm/retailers/*",
 		auth.RequireRole(supplierRole, log(supplier.HandleCRMRetailerDetail(d.Spanner))))
 }

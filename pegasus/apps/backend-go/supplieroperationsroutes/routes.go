@@ -52,11 +52,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	r.HandleFunc("/v1/supplier/fleet/drivers",
 		auth.RequireRole(supplierRole, log(withMethodIdempotency(auth.RequireWarehouseScope(supplier.HandleFleetDrivers(d.Spanner)), idem, http.MethodPost))))
-	r.HandleFunc("/v1/supplier/fleet/drivers/",
+	r.HandleFunc("/v1/supplier/fleet/drivers/*",
 		auth.RequireRole(supplierRole, log(withMethodIdempotency(auth.RequireWarehouseScope(supplier.HandleFleetDriverDetail(d.Spanner)), idem, http.MethodPatch, http.MethodPost))))
 	r.HandleFunc("/v1/supplier/fleet/vehicles",
 		auth.RequireRole(supplierRole, log(withMethodIdempotency(auth.RequireWarehouseScope(supplier.HandleVehicles(d.Spanner)), idem, http.MethodPost))))
-	r.HandleFunc("/v1/supplier/fleet/vehicles/",
+	r.HandleFunc("/v1/supplier/fleet/vehicles/*",
 		auth.RequireRole(supplierRole, log(withMethodIdempotency(auth.RequireWarehouseScope(supplier.HandleVehicleDetail(d.Spanner)), idem, http.MethodPatch, http.MethodDelete))))
 	r.HandleFunc("/v1/supplier/fulfillment/pay",
 		auth.RequireRole([]string{"SUPPLIER", "DRIVER", "ADMIN"}, log(idempotency.Guard(fulfillmentPayHandler(d.Order)))))

@@ -127,7 +127,8 @@ func (s *ReconcileService) HandleQuarantineStock(w http.ResponseWriter, r *http.
 		}
 		if err != nil {
 			log.Printf("[QUARANTINE STOCK] Query error: %v", err)
-			break
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
 
 		var vehicleID, vehicleClass, driverName, routeID, orderID, retailerName string
@@ -139,7 +140,8 @@ func (s *ReconcileService) HandleQuarantineStock(w http.ResponseWriter, r *http.
 			&lineItemID, &skuID, &productName, &quantity, &unitPrice,
 		); err != nil {
 			log.Printf("[QUARANTINE STOCK] Row parse error: %v", err)
-			continue
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
 
 		vehicleKey := vehicleID

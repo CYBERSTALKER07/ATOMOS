@@ -2,11 +2,9 @@
 
 import { useCallback, useState } from 'react';
 import { Button } from '@heroui/react';
-import { useToken } from '@/lib/auth';
+import { apiFetch, apiFetchNoQueue } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
 import EmptyState from '@/components/EmptyState';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface RefundRecord {
   refund_id: string;
@@ -25,7 +23,6 @@ function buildRefundIdempotencyKey(orderId: string, reason: string, amountUZS: n
 }
 
 export default function RefundsPage() {
-  const token = useToken();
   const { toast } = useToast();
 
   const [orderId, setOrderId] = useState('');
@@ -36,12 +33,10 @@ export default function RefundsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const loadRefunds = useCallback(async () => {
-    if (!token || !orderId.trim()) return;
+    if (!orderId.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/v1/order/refunds?order_id=${encodeURIComponent(orderId.trim())}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/v1/order/refunds?order_id=${encodeURIComponent(orderId.trim())}`);
       if (!res.ok) {
         throw new Error(await res.text());
       }
@@ -52,10 +47,9 @@ export default function RefundsPage() {
     } finally {
       setLoading(false);
     }
-  }, [orderId, token, toast]);
+  }, [orderId, toast]);
 
   const initiateRefund = useCallback(async () => {
-    if (!token) return;
     if (!orderId.trim()) {
       toast('Order ID is required', 'error');
       return;
@@ -63,11 +57,9 @@ export default function RefundsPage() {
     setSubmitting(true);
     try {
       const parsedAmount = Number(amountUZS || '0');
-      const res = await fetch(`${API}/v1/order/refund`, {
+      const res = await apiFetchNoQueue('/v1/order/refund', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildRefundIdempotencyKey(orderId, reason, Number.isFinite(parsedAmount) ? parsedAmount : 0),
         },
         body: JSON.stringify({
@@ -86,7 +78,7 @@ export default function RefundsPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [amountUZS, loadRefunds, orderId, reason, token, toast]);
+  }, [amountUZS, loadRefunds, orderId, reason, toast]);
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto px-4 py-6">

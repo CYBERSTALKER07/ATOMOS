@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useToken } from '@/lib/auth';
+import { apiFetch, apiFetchNoQueue } from '@/lib/auth';
 import { usePagination } from '@/lib/usePagination';
 import PaginationControls from '@/components/PaginationControls';
 import EmptyState from '@/components/EmptyState';
@@ -9,8 +9,6 @@ import { Skeleton } from '@/components/Skeleton';
 import Icon from '@/components/Icon';
 import { useToast } from '@/components/Toast';
 import { Button } from '@heroui/react';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 /* ─── Types ───────────────────────────────────────────────── */
 
@@ -70,7 +68,6 @@ function todayISO(): string {
 /* ─── Main Page ───────────────────────────────────────────── */
 
 export default function SettlementPage() {
-  const token = useToken();
   const { toast } = useToast();
 
   const [from, setFrom] = useState(thirtyDaysAgo);
@@ -87,14 +84,11 @@ export default function SettlementPage() {
   /* ─── Fetch ─────────────────────────────────────────────── */
 
   const fetchReport = useCallback(async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const params = new URLSearchParams({ from, to });
       if (statusFilter) params.set('status', statusFilter);
-      const res = await fetch(`${API}/v1/supplier/settlement-report?${params}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/v1/supplier/settlement-report?${params}`);
       if (!res.ok) throw new Error('Failed to load settlement report');
       setReport(await res.json());
       setSelectedInvoiceIds([]);
@@ -103,7 +97,7 @@ export default function SettlementPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, from, to, statusFilter, toast]);
+  }, [from, to, statusFilter, toast]);
 
   const toggleInvoiceSelection = useCallback((invoiceId: string) => {
     setSelectedInvoiceIds((prev) =>
@@ -112,17 +106,15 @@ export default function SettlementPage() {
   }, []);
 
   const batchSettleSelected = useCallback(async () => {
-    if (!token || selectedInvoiceIds.length === 0) return;
+    if (selectedInvoiceIds.length === 0) return;
     const reference = window.prompt('Settlement reference (bank batch ID):', 'MANUAL-BATCH');
     if (!reference) return;
 
     setSettling(true);
     try {
-      const res = await fetch(`${API}/v1/treasury/batch-settle`, {
+      const res = await apiFetchNoQueue('/v1/treasury/batch-settle', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildBatchSettlementIdempotencyKey(selectedInvoiceIds, reference),
         },
         body: JSON.stringify({ invoice_ids: selectedInvoiceIds, reference }),
@@ -135,20 +127,17 @@ export default function SettlementPage() {
     } finally {
       setSettling(false);
     }
-  }, [fetchReport, selectedInvoiceIds, token, toast]);
+  }, [fetchReport, selectedInvoiceIds, toast]);
 
   const overrideInvoiceStatus = useCallback(async (invoiceId: string, nextStatus: string) => {
-    if (!token) return;
     const reason = window.prompt(`Reason for setting ${invoiceId} to ${nextStatus}:`, 'Manual override');
     if (!reason) return;
 
     setOverridingInvoiceId(invoiceId);
     try {
-      const res = await fetch(`${API}/v1/treasury/invoice/status`, {
+      const res = await apiFetchNoQueue('/v1/treasury/invoice/status', {
         method: 'PATCH',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildInvoiceStatusOverrideIdempotencyKey(invoiceId, nextStatus, reason),
         },
         body: JSON.stringify({ invoice_id: invoiceId, status: nextStatus, reason }),
@@ -161,7 +150,7 @@ export default function SettlementPage() {
     } finally {
       setOverridingInvoiceId(null);
     }
-  }, [fetchReport, token, toast]);
+  }, [fetchReport, toast]);
 
   useEffect(() => {
     fetchReport();

@@ -223,6 +223,7 @@ func HandleUpdateProduct(client *spanner.Client) http.HandlerFunc {
 			}
 			return
 		}
+		invalidateCatalogCaches(ctx)
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
@@ -290,6 +291,7 @@ func HandleDeactivateProduct(client *spanner.Client) http.HandlerFunc {
 			}
 			return
 		}
+		invalidateCatalogCaches(ctx)
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{

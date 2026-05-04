@@ -132,38 +132,13 @@ func computeETag(data []byte) string {
 
 // Invalidate removes a specific cache key. Call on write operations.
 func Invalidate(ctx context.Context, keys ...string) {
-	if Client == nil || len(keys) == 0 {
-		return
-	}
-	delCtx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
-	defer cancel()
-	if err := Client.Del(delCtx, keys...).Err(); err != nil {
-		log.Printf("[CACHE] Invalidation failed for %v: %v", keys, err)
-	}
+	(&Cache{}).Invalidate(ctx, keys...)
 }
 
 // InvalidatePrefix removes all keys matching a prefix pattern. Use sparingly.
 func InvalidatePrefix(ctx context.Context, prefix string) {
-	if Client == nil || prefix == "" {
-		return
-	}
-	scanCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-
-	var cursor uint64
-	for {
-		keys, nextCursor, err := Client.Scan(scanCtx, cursor, prefix+"*", 100).Result()
-		if err != nil {
-			log.Printf("[CACHE] Scan failed for prefix %s: %v", prefix, err)
-			return
-		}
-		if len(keys) > 0 {
-			Client.Del(scanCtx, keys...)
-		}
-		cursor = nextCursor
-		if cursor == 0 {
-			break
-		}
+	if err := (&Cache{}).InvalidatePrefix(ctx, prefix); err != nil {
+		log.Printf("[CACHE] Prefix invalidation failed for %s: %v", prefix, err)
 	}
 }
 

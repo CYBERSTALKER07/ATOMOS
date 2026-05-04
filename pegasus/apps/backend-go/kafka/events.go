@@ -587,9 +587,8 @@ type PreOrderCancelledEvent struct {
 }
 
 // ── PHASE V: LEO — LOADING GATE EVENTS ──────────────────────────────────────
-// All 10 producers wired. Two consumers wired (MANIFEST_DISPATCHED,
-// MANIFEST_COMPLETED in notification_dispatcher.go); the remaining lifecycle
-// events still have no consumers — wire them as product surfaces require.
+// All 10 producers are wired, and notification_dispatcher.go consumes the
+// operator-visible lifecycle events for supplier fan-out.
 
 const (
 	// MANIFEST_DRAFT_CREATED — auto-dispatcher created a DRAFT manifest (planning phase, not yet loading)

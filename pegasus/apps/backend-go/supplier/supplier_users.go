@@ -3,6 +3,7 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -41,6 +42,42 @@ type OrgMember struct {
 	AssignedFactoryId   string `json:"assigned_factory_id"`
 	IsActive            bool   `json:"is_active"`
 	CreatedAt           string `json:"created_at"`
+}
+
+func querySingleString(ctx context.Context, client *spanner.Client, stmt spanner.Statement) (string, bool, error) {
+	iter := client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	var value string
+	if err := row.Columns(&value); err != nil {
+		return "", false, err
+	}
+	return value, true, nil
+}
+
+func querySingleBool(ctx context.Context, client *spanner.Client, stmt spanner.Statement) (bool, bool, error) {
+	iter := client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return false, false, nil
+	}
+	if err != nil {
+		return false, false, err
+	}
+	var value bool
+	if err := row.Columns(&value); err != nil {
+		return false, false, err
+	}
+	return value, true, nil
 }
 
 // ── Route Handlers ────────────────────────────────────────────────────────────
@@ -140,7 +177,8 @@ func listOrgMembers(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 		if err := row.Columns(&m.UserId, &m.SupplierId, &m.Name, &m.Email, &m.Phone,
 			&m.SupplierRole, &m.AssignedWarehouseId, &m.AssignedFactoryId, &m.IsActive, &createdAt); err != nil {
 			log.Printf("[ORG] parse error: %v", err)
-			continue
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
 		m.CreatedAt = createdAt.Format(time.RFC3339)
 		members = append(members, m)
@@ -214,12 +252,16 @@ func inviteOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 
 	// Validate warehouse belongs to this supplier
 	if req.AssignedWarehouseId != "" {
-		var whSupplierId string
-		_ = client.Single().Query(ctx, spanner.Statement{
+		whSupplierId, found, err := querySingleString(ctx, client, spanner.Statement{
 			SQL:    "SELECT SupplierId FROM Warehouses WHERE WarehouseId = @wid",
 			Params: map[string]interface{}{"wid": req.AssignedWarehouseId},
-		}).Do(func(row *spanner.Row) error { return row.Columns(&whSupplierId) })
-		if whSupplierId != supplierID {
+		})
+		if err != nil {
+			log.Printf("[ORG] warehouse ownership lookup failed for %s: %v", req.AssignedWarehouseId, err)
+			http.Error(w, `{"error":"warehouse lookup failed"}`, http.StatusInternalServerError)
+			return
+		}
+		if !found || whSupplierId != supplierID {
 			http.Error(w, `{"error":"warehouse does not belong to your organization"}`, http.StatusBadRequest)
 			return
 		}
@@ -227,12 +269,16 @@ func inviteOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 
 	// Validate factory belongs to this supplier
 	if req.AssignedFactoryId != "" {
-		var facSupplierId string
-		_ = client.Single().Query(ctx, spanner.Statement{
+		facSupplierId, found, err := querySingleString(ctx, client, spanner.Statement{
 			SQL:    "SELECT SupplierId FROM Factories WHERE FactoryId = @fid",
 			Params: map[string]interface{}{"fid": req.AssignedFactoryId},
-		}).Do(func(row *spanner.Row) error { return row.Columns(&facSupplierId) })
-		if facSupplierId != supplierID {
+		})
+		if err != nil {
+			log.Printf("[ORG] factory ownership lookup failed for %s: %v", req.AssignedFactoryId, err)
+			http.Error(w, `{"error":"factory lookup failed"}`, http.StatusInternalServerError)
+			return
+		}
+		if !found || facSupplierId != supplierID {
 			http.Error(w, `{"error":"factory does not belong to your organization"}`, http.StatusBadRequest)
 			return
 		}
@@ -240,22 +286,30 @@ func inviteOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 
 	// Check uniqueness (email or phone across SupplierUsers)
 	if req.Email != "" {
-		var existingID string
-		_ = client.Single().Query(ctx, spanner.Statement{
+		existingID, _, err := querySingleString(ctx, client, spanner.Statement{
 			SQL:    "SELECT UserId FROM SupplierUsers WHERE Email = @email LIMIT 1",
 			Params: map[string]interface{}{"email": req.Email},
-		}).Do(func(row *spanner.Row) error { return row.Columns(&existingID) })
+		})
+		if err != nil {
+			log.Printf("[ORG] email uniqueness lookup failed for %s: %v", req.Email, err)
+			http.Error(w, `{"error":"email lookup failed"}`, http.StatusInternalServerError)
+			return
+		}
 		if existingID != "" {
 			http.Error(w, `{"error":"email already registered"}`, http.StatusConflict)
 			return
 		}
 	}
 	if req.Phone != "" {
-		var existingID string
-		_ = client.Single().Query(ctx, spanner.Statement{
+		existingID, _, err := querySingleString(ctx, client, spanner.Statement{
 			SQL:    "SELECT UserId FROM SupplierUsers WHERE Phone = @phone LIMIT 1",
 			Params: map[string]interface{}{"phone": req.Phone},
-		}).Do(func(row *spanner.Row) error { return row.Columns(&existingID) })
+		})
+		if err != nil {
+			log.Printf("[ORG] phone uniqueness lookup failed for %s: %v", req.Phone, err)
+			http.Error(w, `{"error":"phone lookup failed"}`, http.StatusInternalServerError)
+			return
+		}
 		if existingID != "" {
 			http.Error(w, `{"error":"phone already registered"}`, http.StatusConflict)
 			return
@@ -305,13 +359,15 @@ func inviteOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 			"factory_id":    req.AssignedFactoryId,
 		})
 		if fbErr == nil && fbUid != "" {
-			_, _ = client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			if _, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 				return txn.BufferWrite([]*spanner.Mutation{
 					spanner.Update("SupplierUsers",
 						[]string{"UserId", "FirebaseUid"},
 						[]interface{}{userID, fbUid}),
 				})
-			})
+			}); err != nil {
+				log.Printf("[ORG] firebase UID mirror failed for %s: %v", userID, err)
+			}
 		}
 	}
 
@@ -439,12 +495,16 @@ func updateOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 	}
 	if req.AssignedWarehouseId != nil {
 		if *req.AssignedWarehouseId != "" {
-			var whSid string
-			_ = client.Single().Query(r.Context(), spanner.Statement{
+			whSid, found, err := querySingleString(r.Context(), client, spanner.Statement{
 				SQL:    "SELECT SupplierId FROM Warehouses WHERE WarehouseId = @wid",
 				Params: map[string]interface{}{"wid": *req.AssignedWarehouseId},
-			}).Do(func(row *spanner.Row) error { return row.Columns(&whSid) })
-			if whSid != supplierID {
+			})
+			if err != nil {
+				log.Printf("[ORG] warehouse ownership lookup failed for %s: %v", *req.AssignedWarehouseId, err)
+				http.Error(w, `{"error":"warehouse lookup failed"}`, http.StatusInternalServerError)
+				return
+			}
+			if !found || whSid != supplierID {
 				http.Error(w, `{"error":"warehouse does not belong to your organization"}`, http.StatusBadRequest)
 				return
 			}
@@ -454,12 +514,16 @@ func updateOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 	}
 	if req.AssignedFactoryId != nil {
 		if *req.AssignedFactoryId != "" {
-			var facSid string
-			_ = client.Single().Query(r.Context(), spanner.Statement{
+			facSid, found, err := querySingleString(r.Context(), client, spanner.Statement{
 				SQL:    "SELECT SupplierId FROM Factories WHERE FactoryId = @fid",
 				Params: map[string]interface{}{"fid": *req.AssignedFactoryId},
-			}).Do(func(row *spanner.Row) error { return row.Columns(&facSid) })
-			if facSid != supplierID {
+			})
+			if err != nil {
+				log.Printf("[ORG] factory ownership lookup failed for %s: %v", *req.AssignedFactoryId, err)
+				http.Error(w, `{"error":"factory lookup failed"}`, http.StatusInternalServerError)
+				return
+			}
+			if !found || facSid != supplierID {
 				http.Error(w, `{"error":"factory does not belong to your organization"}`, http.StatusBadRequest)
 				return
 			}
@@ -502,8 +566,17 @@ func updateOrgMember(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		Params: map[string]interface{}{"uid": targetUserID},
 	})
 	readRow, readErr := readIter.Next()
-	if readErr == nil {
-		_ = readRow.Columns(&updatedRole, &updatedWarehouse, &updatedFactory, &updatedActive, &updatedName)
+	if readErr != nil {
+		readIter.Stop()
+		log.Printf("[ORG] readback failed for %s: %v", targetUserID, readErr)
+		http.Error(w, `{"error":"readback_failed"}`, http.StatusInternalServerError)
+		return
+	}
+	if err := readRow.Columns(&updatedRole, &updatedWarehouse, &updatedFactory, &updatedActive, &updatedName); err != nil {
+		readIter.Stop()
+		log.Printf("[ORG] readback parse failed for %s: %v", targetUserID, err)
+		http.Error(w, `{"error":"readback_failed"}`, http.StatusInternalServerError)
+		return
 	}
 	readIter.Stop()
 
@@ -546,12 +619,16 @@ func deactivateOrgMember(w http.ResponseWriter, r *http.Request, client *spanner
 		return
 	}
 
-	var targetSid string
-	_ = client.Single().Query(r.Context(), spanner.Statement{
+	targetSid, found, err := querySingleString(r.Context(), client, spanner.Statement{
 		SQL:    "SELECT SupplierId FROM SupplierUsers WHERE UserId = @uid",
 		Params: map[string]interface{}{"uid": targetUserID},
-	}).Do(func(row *spanner.Row) error { return row.Columns(&targetSid) })
-	if targetSid != supplierID {
+	})
+	if err != nil {
+		log.Printf("[ORG] deactivate ownership lookup failed for %s: %v", targetUserID, err)
+		http.Error(w, `{"error":"user lookup failed"}`, http.StatusInternalServerError)
+		return
+	}
+	if !found || targetSid != supplierID {
 		http.Error(w, `{"error":"user not found in your organization"}`, http.StatusNotFound)
 		return
 	}
@@ -579,21 +656,25 @@ func deactivateOrgMember(w http.ResponseWriter, r *http.Request, client *spanner
 // For SupplierUsers (sub-accounts), UserID != SupplierId — we look it up.
 // For root Suppliers table users, UserID == SupplierId.
 func resolveSupplierID(ctx context.Context, client *spanner.Client, claims *auth.PegasusClaims) (string, error) {
-	var sid string
-	_ = client.Single().Query(ctx, spanner.Statement{
+	sid, _, err := querySingleString(ctx, client, spanner.Statement{
 		SQL:    "SELECT SupplierId FROM SupplierUsers WHERE UserId = @uid LIMIT 1",
 		Params: map[string]interface{}{"uid": claims.UserID},
-	}).Do(func(row *spanner.Row) error { return row.Columns(&sid) })
+	})
+	if err != nil {
+		return "", fmt.Errorf("resolve supplier user %s: %w", claims.UserID, err)
+	}
 	if sid != "" {
 		return sid, nil
 	}
 
 	// Fallback: root supplier — UserID IS the SupplierId
-	var exists bool
-	_ = client.Single().Query(ctx, spanner.Statement{
+	exists, _, err := querySingleBool(ctx, client, spanner.Statement{
 		SQL:    "SELECT true FROM Suppliers WHERE SupplierId = @sid LIMIT 1",
 		Params: map[string]interface{}{"sid": claims.ResolveSupplierID()},
-	}).Do(func(row *spanner.Row) error { return row.Columns(&exists) })
+	})
+	if err != nil {
+		return "", fmt.Errorf("resolve root supplier %s: %w", claims.ResolveSupplierID(), err)
+	}
 	if exists {
 		return claims.ResolveSupplierID(), nil
 	}
@@ -604,20 +685,37 @@ func resolveSupplierID(ctx context.Context, client *spanner.Client, claims *auth
 // ensureRootMirrored auto-creates a SupplierUsers row for the root Suppliers
 // registrant as GLOBAL_ADMIN if they don't already exist in SupplierUsers.
 func ensureRootMirrored(ctx context.Context, client *spanner.Client, claims *auth.PegasusClaims, supplierID string) {
-	var existingUID string
-	_ = client.Single().Query(ctx, spanner.Statement{
+	existingUID, _, err := querySingleString(ctx, client, spanner.Statement{
 		SQL:    `SELECT UserId FROM SupplierUsers WHERE SupplierId = @sid AND UserId = @sid LIMIT 1`,
 		Params: map[string]interface{}{"sid": supplierID},
-	}).Do(func(row *spanner.Row) error { return row.Columns(&existingUID) })
+	})
+	if err != nil {
+		log.Printf("[ORG] root mirror lookup failed for supplier %s: %v", supplierID, err)
+		return
+	}
 	if existingUID != "" {
 		return
 	}
 
 	var name, email, phone, pwHash string
-	_ = client.Single().Query(ctx, spanner.Statement{
+	iter := client.Single().Query(ctx, spanner.Statement{
 		SQL:    "SELECT Name, COALESCE(Email, ''), COALESCE(Phone, ''), COALESCE(PasswordHash, '') FROM Suppliers WHERE SupplierId = @sid",
 		Params: map[string]interface{}{"sid": supplierID},
-	}).Do(func(row *spanner.Row) error { return row.Columns(&name, &email, &phone, &pwHash) })
+	})
+	row, err := iter.Next()
+	if err != nil {
+		iter.Stop()
+		if err != iterator.Done {
+			log.Printf("[ORG] root supplier lookup failed for supplier %s: %v", supplierID, err)
+		}
+		return
+	}
+	if err := row.Columns(&name, &email, &phone, &pwHash); err != nil {
+		iter.Stop()
+		log.Printf("[ORG] root supplier parse failed for supplier %s: %v", supplierID, err)
+		return
+	}
+	iter.Stop()
 	if name == "" {
 		return
 	}

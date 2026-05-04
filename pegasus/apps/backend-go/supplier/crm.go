@@ -106,7 +106,8 @@ func HandleCRMRetailers(client *spanner.Client) http.HandlerFunc {
 			var cr CRMRetailer
 			if err := row.Columns(&cr.RetailerID, &cr.RetailerName, &cr.Phone, &cr.Email, &cr.Lifetime, &cr.OrderCount, &cr.LastOrderDate, &cr.Status); err != nil {
 				log.Printf("[CRM] scan error: %v", err)
-				continue
+				http.Error(w, `{"error":"parse_failed"}`, http.StatusInternalServerError)
+				return
 			}
 			retailers = append(retailers, cr)
 		}
@@ -230,11 +231,15 @@ func HandleCRMRetailerDetail(client *spanner.Client) http.HandlerFunc {
 				break
 			}
 			if err != nil {
-				break
+				log.Printf("[CRM] retailer detail orders query error for %s/%s: %v", supplierID, retailerID, err)
+				http.Error(w, `{"error":"query_failed"}`, http.StatusInternalServerError)
+				return
 			}
 			var co CRMOrder
 			if err := oRow.Columns(&co.OrderID, &co.State, &co.Amount, &co.ItemCount, &co.CreatedAt); err != nil {
-				continue
+				log.Printf("[CRM] retailer detail orders parse error for %s/%s: %v", supplierID, retailerID, err)
+				http.Error(w, `{"error":"parse_failed"}`, http.StatusInternalServerError)
+				return
 			}
 			detail.Orders = append(detail.Orders, co)
 		}

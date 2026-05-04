@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch, readTokenFromCookie } from './auth';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const SUPPLIER_NOTIFICATIONS_WS_PATH = '/v1/ws/payloader';
 
 interface BackendNotification {
   notification_id: string;
@@ -59,7 +60,7 @@ interface NotificationsState {
 /**
  * Hook for managing notifications:
  * - Fetches persistent inbox from GET /v1/user/notifications
- * - Connects to /v1/ws/payloader for real-time push
+ * - Connects to the legacy supplier notification WebSocket path for real-time push
  * - Exposes markRead + markAllRead
  */
 export function useNotifications() {
@@ -139,7 +140,9 @@ export function useNotifications() {
 
     clearTimeout(reconnectTimer.current);
     const wsBase = API.replace(/^http/, 'ws');
-    const ws = new WebSocket(`${wsBase}/v1/ws/payloader?token=${encodeURIComponent(token)}`);
+    const url = new URL(SUPPLIER_NOTIFICATIONS_WS_PATH, wsBase);
+    url.searchParams.set('token', token);
+    const ws = new WebSocket(url.toString());
     wsRef.current = ws;
 
     ws.onopen = () => {

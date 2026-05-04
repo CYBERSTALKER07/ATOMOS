@@ -43,15 +43,15 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierRole, log(supplierUploadTicketHandler())))
 	r.HandleFunc("/v1/supplier/products",
 		auth.RequireRole(supplierRole, log(withMethodIdempotency(supplierProductsHandler(d.Spanner), idem, http.MethodPost))))
-	r.HandleFunc("/v1/supplier/products/",
+	r.HandleFunc("/v1/supplier/products/*",
 		auth.RequireRole(supplierRole, log(withMethodIdempotency(supplierProductDetailHandler(d.Spanner), idem, http.MethodPut, http.MethodDelete))))
 	r.HandleFunc("/v1/supplier/pricing/rules",
 		auth.RequireRole(supplierRole, log(idem(d.Pricing.HandleUpsertPricingRule))))
-	r.HandleFunc("/v1/supplier/pricing/rules/",
+	r.HandleFunc("/v1/supplier/pricing/rules/*",
 		auth.RequireRole(supplierRole, log(idem(d.Pricing.HandlePricingRuleAction))))
 	r.HandleFunc("/v1/supplier/pricing/retailer-overrides",
 		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrides)))))
-	r.HandleFunc("/v1/supplier/pricing/retailer-overrides/",
+	r.HandleFunc("/v1/supplier/pricing/retailer-overrides/*",
 		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrideAction)))))
 }
 

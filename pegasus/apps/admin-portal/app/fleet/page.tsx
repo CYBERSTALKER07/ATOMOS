@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import dynamic from "next/dynamic";
 import type { MarkerProps, SourceProps, LayerProps, NavigationControlProps } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { getAdminToken, readTokenFromCookie } from "@/lib/auth";
+import { apiFetch, getAdminToken, readTokenFromCookie } from "@/lib/auth";
 import { usePolling } from "@/lib/usePolling";
 import { extractDriverPositions, useTelemetry } from "@/hooks/useTelemetry";
 import type { TelemetryMessage } from "@/hooks/useTelemetry";
@@ -133,14 +133,9 @@ export default function FleetPage() {
     // ── Fetch fleet metadata + active missions ─────────────────────────────
     const fetchFleetData = useCallback(async (signal?: AbortSignal) => {
         try {
-            const token = await getAdminToken();
             const [missionRes, driverRes] = await Promise.all([
-                fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/fleet/active`, {
-                    headers: { Authorization: `Bearer ${token}` }, signal,
-                }),
-                fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/supplier/fleet/drivers`, {
-                    headers: { Authorization: `Bearer ${token}` }, signal,
-                }),
+                apiFetch('/v1/fleet/active', { signal }),
+                apiFetch('/v1/supplier/fleet/drivers', { signal }),
             ]);
 
             if (missionRes.ok) {

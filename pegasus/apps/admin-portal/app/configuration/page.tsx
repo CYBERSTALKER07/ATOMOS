@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from '@heroui/react';
 import Link from 'next/link';
-import { getAdminToken } from "@/lib/auth";
+import { apiFetch, apiFetchNoQueue } from "@/lib/auth";
 import { useToast } from '@/components/Toast';
 import { useLocale } from '@/hooks/useLocale';
 
@@ -26,18 +26,13 @@ export default function ConfigurationPage() {
     useEffect(() => {
         (async () => {
             try {
-                const token = await getAdminToken();
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/admin/config`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+                const res = await apiFetch('/v1/admin/config');
                 if (res.ok) {
                     const data: ConfigMap = await res.json();
                     setConfig(data);
                 }
 
-                const feeRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/admin/config/platform-fee`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+                const feeRes = await apiFetch('/v1/admin/config/platform-fee');
                 if (feeRes.ok) {
                     const feeData = await feeRes.json() as { platform_fee_percent?: number };
                     setPlatformFeePercent(feeData.platform_fee_percent ?? 5);
@@ -57,14 +52,12 @@ export default function ConfigurationPage() {
     const savePhysics = async () => {
         setIsSavingPhysics(true);
         try {
-            const token = await getAdminToken();
             const entries = Object.entries(CONFIG_KEYS).map(([key]) => ({
                 key,
                 value: config[key] ?? CONFIG_KEYS[key as keyof typeof CONFIG_KEYS].default,
             }));
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/admin/config`, {
+            const res = await apiFetchNoQueue('/v1/admin/config', {
                 method: "PUT",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
                 body: JSON.stringify(entries),
             });
             if (res.ok) {
@@ -88,10 +81,8 @@ export default function ConfigurationPage() {
     const savePlatformFee = async () => {
         setIsSavingPlatformFee(true);
         try {
-            const token = await getAdminToken();
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/admin/config/platform-fee`, {
+            const res = await apiFetchNoQueue('/v1/admin/config/platform-fee', {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                 body: JSON.stringify({ fee_percent: platformFeePercent }),
             });
             if (!res.ok) {

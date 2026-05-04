@@ -45,7 +45,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			log(cache.CacheHandler(cache.PrefixCacheCategories, 5*time.Minute,
 				supplier.HandleListCategories(s)))))
 
-	r.HandleFunc("/v1/catalog/categories/",
+	r.HandleFunc("/v1/catalog/categories/*",
 		auth.RequireRole(retailer,
 			log(cache.CacheHandler(cache.PrefixCategorySuppliers, cache.TTLCategorySuppliers,
 				supplier.HandleListCategorySuppliers(s)))))

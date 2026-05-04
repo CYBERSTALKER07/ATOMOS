@@ -103,12 +103,14 @@ func HandleManifests(client *spanner.Client) http.HandlerFunc {
 			}
 			if err != nil {
 				log.Printf("[MANIFESTS] Query error: %v", err)
-				break
+				http.Error(w, `{"error":"query_failed"}`, http.StatusInternalServerError)
+				return
 			}
 			var l ManifestLine
 			if err := row.Columns(&l.SkuID, &l.ProductName, &l.TotalQty, &l.OrderCount); err != nil {
 				log.Printf("[MANIFESTS] Row parse error: %v", err)
-				continue
+				http.Error(w, `{"error":"parse_failed"}`, http.StatusInternalServerError)
+				return
 			}
 			lines = append(lines, l)
 		}
@@ -209,12 +211,16 @@ func HandleManifestOrders(client *spanner.Client) http.HandlerFunc {
 				break
 			}
 			if err != nil {
-				break
+				log.Printf("[MANIFESTS] orders query error: %v", err)
+				http.Error(w, `{"error":"query_failed"}`, http.StatusInternalServerError)
+				return
 			}
 			var o ManifestOrder
 			var createdAt spanner.NullTime
 			if err := row.Columns(&o.OrderID, &o.RetailerName, &o.State, &createdAt, &o.ItemCount); err != nil {
-				continue
+				log.Printf("[MANIFESTS] orders parse error: %v", err)
+				http.Error(w, `{"error":"parse_failed"}`, http.StatusInternalServerError)
+				return
 			}
 			if createdAt.Valid {
 				o.CreatedAt = createdAt.Time.Format(time.RFC3339)

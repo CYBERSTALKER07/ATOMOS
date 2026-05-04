@@ -3,6 +3,7 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -80,6 +81,8 @@ type UpdateVehicleRequest struct {
 	LicensePlate *string `json:"license_plate,omitempty"`
 	IsActive     *bool   `json:"is_active,omitempty"`
 }
+
+var errScopedVehicleNotFound = errors.New("vehicle not found")
 
 // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -292,11 +295,15 @@ func listVehicles(w http.ResponseWriter, r *http.Request, spannerClient *spanner
 			break
 		}
 		if err != nil {
-			break // non-fatal
+			log.Printf("[VEHICLES] assignment query error for supplier %s: %v", supplierID, err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
 		var a assignment
 		if err := row.Columns(&a.VehicleID, &a.DriverID, &a.DriverName); err != nil {
-			break
+			log.Printf("[VEHICLES] assignment parse error for supplier %s: %v", supplierID, err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
 		assignMap[a.VehicleID] = a
 	}
@@ -329,12 +336,13 @@ func getVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanner.C
 	supplierID := claims.ResolveSupplierID()
 
 	stmt := spanner.Statement{
-		SQL: `SELECT VehicleId, VehicleClass, COALESCE(Label, ''), COALESCE(LicensePlate, ''),
+		SQL: `SELECT v.VehicleId, v.VehicleClass, COALESCE(v.Label, ''), COALESCE(v.LicensePlate, ''),
 		             MaxVolumeVU, IsActive, CreatedAt, LengthCM, WidthCM, HeightCM
-		      FROM Vehicles
-		      WHERE VehicleId = @vehicleId AND SupplierId = @supplierId`,
+		      FROM Vehicles v
+		      WHERE v.VehicleId = @vehicleId AND v.SupplierId = @supplierId`,
 		Params: map[string]interface{}{"vehicleId": vehicleID, "supplierId": supplierID},
 	}
+	stmt = auth.AppendWarehouseFilterStmt(r.Context(), stmt, "v")
 
 	iter := spannerClient.Single().Query(r.Context(), stmt)
 	defer iter.Stop()
@@ -364,6 +372,28 @@ func getVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanner.C
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)
+}
+
+func ensureVehicleMutationScope(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID, vehicleID string) error {
+	stmt := spanner.Statement{
+		SQL: `SELECT v.VehicleId
+		      FROM Vehicles v
+		      WHERE v.VehicleId = @vehicleId AND v.SupplierId = @supplierId`,
+		Params: map[string]interface{}{"vehicleId": vehicleID, "supplierId": supplierID},
+	}
+	stmt = auth.AppendWarehouseFilterStmt(ctx, stmt, "v")
+
+	iter := txn.Query(ctx, stmt)
+	defer iter.Stop()
+
+	_, err := iter.Next()
+	if err == iterator.Done {
+		return errScopedVehicleNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("read vehicle %s in scope: %w", vehicleID, err)
+	}
+	return nil
 }
 
 func updateVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanner.Client, vehicleID string) {
@@ -405,11 +435,21 @@ func updateVehicle(w http.ResponseWriter, r *http.Request, spannerClient *spanne
 	}
 
 	_, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{
+		if err := ensureVehicleMutationScope(ctx, txn, supplierID, vehicleID); err != nil {
+			return err
+		}
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.Update("Vehicles", cols, vals),
-		})
+		}); err != nil {
+			return fmt.Errorf("buffer vehicle %s update: %w", vehicleID, err)
+		}
+		return nil
 	})
 	if err != nil {
+		if errors.Is(err, errScopedVehicleNotFound) {
+			http.Error(w, `{"error":"vehicle not found"}`, http.StatusNotFound)
+			return
+		}
 		log.Printf("[VEHICLES] update failed: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -433,14 +473,24 @@ func deactivateVehicle(w http.ResponseWriter, r *http.Request, spannerClient *sp
 	defer cancel()
 
 	_, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{
+		if err := ensureVehicleMutationScope(ctx, txn, supplierID, vehicleID); err != nil {
+			return err
+		}
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.Update("Vehicles",
 				[]string{"VehicleId", "SupplierId", "IsActive"},
 				[]interface{}{vehicleID, supplierID, false},
 			),
-		})
+		}); err != nil {
+			return fmt.Errorf("buffer vehicle %s deactivation: %w", vehicleID, err)
+		}
+		return nil
 	})
 	if err != nil {
+		if errors.Is(err, errScopedVehicleNotFound) {
+			http.Error(w, `{"error":"vehicle not found"}`, http.StatusNotFound)
+			return
+		}
 		log.Printf("[VEHICLES] deactivate failed: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return

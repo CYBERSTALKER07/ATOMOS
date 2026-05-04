@@ -215,12 +215,18 @@ func HandlePayloaderLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		var firebaseToken string
 		if auth.FirebaseAuthClient != nil {
 			var fbUid string
-			_ = spannerClient.Single().Query(r.Context(), spanner.Statement{
+			if err := spannerClient.Single().Query(r.Context(), spanner.Statement{
 				SQL:    "SELECT COALESCE(FirebaseUid, '') FROM WarehouseStaff WHERE WorkerId = @id",
 				Params: map[string]interface{}{"id": workerID},
-			}).Do(func(row *spanner.Row) error { return row.Columns(&fbUid) })
+			}).Do(func(row *spanner.Row) error { return row.Columns(&fbUid) }); err != nil {
+				log.Printf("[PAYLOADER AUTH] firebase UID lookup failed for worker %s: %v", workerID, err)
+			}
 			if fbUid != "" {
-				firebaseToken, _ = auth.MintCustomToken(r.Context(), fbUid, map[string]interface{}{"role": "PAYLOADER", "worker_id": workerID, "supplier_id": supplierID})
+				if token, err := auth.MintCustomToken(r.Context(), fbUid, map[string]interface{}{"role": "PAYLOADER", "worker_id": workerID, "supplier_id": supplierID}); err != nil {
+					log.Printf("[PAYLOADER AUTH] firebase token mint failed for worker %s: %v", workerID, err)
+				} else {
+					firebaseToken = token
+				}
 			}
 		}
 
@@ -283,7 +289,8 @@ func listPayloaders(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 		var createdAt time.Time
 		if err := row.Columns(&p.WorkerID, &p.Name, &p.Phone, &p.IsActive, &createdAt); err != nil {
 			log.Printf("[STAFF] list parse error: %v", err)
-			continue
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
 		p.CreatedAt = createdAt.Format(time.RFC3339)
 		workers = append(workers, p)
@@ -344,11 +351,13 @@ func createPayloader(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		"supplier_id": supplierID,
 	})
 	if fbErr == nil && fbUid != "" {
-		_, _ = client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if _, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			return txn.BufferWrite([]*spanner.Mutation{
 				spanner.Update("WarehouseStaff", []string{"WorkerId", "FirebaseUid"}, []interface{}{workerID, fbUid}),
 			})
-		})
+		}); err != nil {
+			log.Printf("[STAFF] firebase UID mirror failed for %s: %v", workerID, err)
+		}
 	}
 
 	log.Printf("[STAFF] Provisioned payloader %s (%s) for supplier %s", workerID, req.Name, supplierID)
@@ -440,7 +449,8 @@ func HandlePayloaderTrucks(spannerClient *spanner.Client) http.HandlerFunc {
 			var t truckItem
 			if err := vRow.Columns(&t.ID, &t.Label, &t.LicensePlate, &t.VehicleClass); err != nil {
 				log.Printf("[PAYLOADER TRUCKS] parse vehicle error: %v", err)
-				continue
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
 			}
 			trucks = append(trucks, t)
 		}
@@ -555,7 +565,8 @@ func HandlePayloaderOrders(spannerClient *spanner.Client) http.HandlerFunc {
 			var gateway, routeID spanner.NullString
 			if err := oRow.Columns(&o.OrderID, &o.RetailerID, &amount, &gateway, &o.State, &routeID); err != nil {
 				log.Printf("[PAYLOADER ORDERS] parse error: %v", err)
-				continue
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
 			}
 			o.Amount = amount.Int64
 			o.PaymentGateway = gateway.StringVal
@@ -584,12 +595,16 @@ func HandlePayloaderOrders(spannerClient *spanner.Client) http.HandlerFunc {
 					break
 				}
 				if err != nil {
-					break
+					log.Printf("[PAYLOADER ORDERS] line items query error: %v", err)
+					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+					return
 				}
 				var ordID string
 				var li lineItem
 				if err := liRow.Columns(&ordID, &li.LineItemID, &li.SkuID, &li.SkuName, &li.Quantity, &li.UnitPrice, &li.Status); err != nil {
-					continue
+					log.Printf("[PAYLOADER ORDERS] line items parse error: %v", err)
+					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+					return
 				}
 				itemMap[ordID] = append(itemMap[ordID], li)
 			}

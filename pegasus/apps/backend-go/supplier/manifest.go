@@ -3,6 +3,7 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -223,7 +224,7 @@ func (s *ManifestService) HandleStartLoading() http.HandlerFunc {
 				return err
 			}
 			if state != "DRAFT" {
-				return fmt.Errorf("INVALID_STATE: manifest is %s, expected DRAFT", state)
+				return newManifestInvalidState("INVALID_STATE: manifest is %s, expected DRAFT", state)
 			}
 
 			// Transition manifest DRAFT → LOADING
@@ -350,7 +351,7 @@ func (s *ManifestService) HandleInjectOrder() http.HandlerFunc {
 				return err
 			}
 			if state != "LOADING" {
-				return fmt.Errorf("INVALID_STATE: manifest is %s, expected LOADING for injection", state)
+				return newManifestInvalidState("INVALID_STATE: manifest is %s, expected LOADING for injection", state)
 			}
 
 			// 2. Verify order is PENDING with no manifest assignment
@@ -368,18 +369,18 @@ func (s *ManifestService) HandleInjectOrder() http.HandlerFunc {
 				return err
 			}
 			if orderState != "PENDING" {
-				return fmt.Errorf("INVALID_STATE: order is %s, expected PENDING for injection", orderState)
+				return newManifestInvalidState("INVALID_STATE: order is %s, expected PENDING for injection", orderState)
 			}
 			if orderManifest.Valid && orderManifest.StringVal != "" {
-				return fmt.Errorf("INVALID_STATE: order already assigned to manifest %s", orderManifest.StringVal)
+				return newManifestInvalidState("INVALID_STATE: order already assigned to manifest %s", orderManifest.StringVal)
 			}
 			if orderSupplier != supplierID {
-				return fmt.Errorf("INVALID_STATE: order belongs to different supplier")
+				return newManifestInvalidState("INVALID_STATE: order belongs to different supplier")
 			}
 
 			// 3. Volumetric guard: ensure order fits
 			if totalVol+orderVol > maxVol {
-				return fmt.Errorf("VOLUME_CONFLICT: injection would exceed capacity (%.1f + %.1f > %.1f VU)",
+				return newManifestVolumeConflict("VOLUME_CONFLICT: injection would exceed capacity (%.1f + %.1f > %.1f VU)",
 					totalVol, orderVol, maxVol)
 			}
 
@@ -552,7 +553,7 @@ func (s *ManifestService) HandleSealManifest() http.HandlerFunc {
 				return err
 			}
 			if state != "LOADING" {
-				return fmt.Errorf("INVALID_STATE: manifest is %s, expected LOADING", state)
+				return newManifestInvalidState("INVALID_STATE: manifest is %s, expected LOADING", state)
 			}
 
 			// Calculate actual volume from ASSIGNED orders only
@@ -586,7 +587,7 @@ func (s *ManifestService) HandleSealManifest() http.HandlerFunc {
 			// Volumetric validation: reject seal if volume exceeds capacity.
 			// Phase C: Admin force-seal bypasses this check — audit event emitted instead.
 			if actualVolume > maxVol && !forceOverride {
-				return fmt.Errorf("VOLUME_CONFLICT: actual %.1f VU exceeds max %.1f VU (Tetris Buffer applied)", actualVolume, maxVol)
+				return newManifestVolumeConflict("VOLUME_CONFLICT: actual %.1f VU exceeds max %.1f VU (Tetris Buffer applied)", actualVolume, maxVol)
 			}
 
 			// Transition LOADING → SEALED
@@ -726,7 +727,7 @@ func (s *ManifestService) HandleSealManifest() http.HandlerFunc {
 				result.totalVolume, result.maxVolume, overrideReason)
 
 			overrideID := uuid.New().String()
-			_, _ = s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			if _, err := s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 				return txn.BufferWrite([]*spanner.Mutation{
 					spanner.Insert("SupplierOverrides",
 						[]string{"SupplierId", "OverrideId", "OverrideType", "Timestamp", "Reason"},
@@ -734,7 +735,9 @@ func (s *ManifestService) HandleSealManifest() http.HandlerFunc {
 							fmt.Sprintf("manifest=%s volume=%.1f/%.1f reason=%s", manifestID, result.totalVolume, result.maxVolume, overrideReason)},
 					),
 				})
-			})
+			}); err != nil {
+				log.Printf("[LEO] force-seal override audit write failed for manifest %s override %s: %v", manifestID, overrideID, err)
+			}
 		}
 
 		// MANIFEST_SEALED is now emitted via outbox INSIDE the seal txn above
@@ -892,7 +895,9 @@ func (s *ManifestService) HandleListManifests() http.HandlerFunc {
 			if err := row.Columns(&m.ManifestID, &m.SupplierID, &m.WarehouseID, &m.RouteID,
 				&m.TruckID, &m.DriverID, &m.State, &m.TotalVolume, &m.MaxVolume, &m.StopCount,
 				&m.RegionCode, &sealedAt, &dispatchAt, &m.CreatedAt); err != nil {
-				continue
+				log.Printf("[LEO] list manifests parse error: %v", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
 			}
 			if sealedAt.Valid {
 				m.SealedAt = sealedAt.Time.Format(time.RFC3339)
@@ -971,12 +976,16 @@ func (s *ManifestService) HandleManifestDetail() http.HandlerFunc {
 				break
 			}
 			if err != nil {
-				break
+				log.Printf("[MANIFEST] detail orders query error for %s: %v", manifestID, err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
 			}
 			var mo moRow
 			var removedReason spanner.NullString
 			if err := oRow.Columns(&mo.OrderID, &mo.SequenceIndex, &mo.LoadingOrder, &mo.VolumeVU, &mo.State, &removedReason); err != nil {
-				continue
+				log.Printf("[MANIFEST] detail orders parse error for %s: %v", manifestID, err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
 			}
 			if removedReason.Valid {
 				mo.RemovedReason = removedReason.StringVal
@@ -1126,7 +1135,7 @@ func (s *ManifestService) HandleManifestException() http.HandlerFunc {
 				return err
 			}
 			if state != "LOADING" {
-				return fmt.Errorf("INVALID_STATE: manifest is %s, expected LOADING", state)
+				return newManifestInvalidState("INVALID_STATE: manifest is %s, expected LOADING", state)
 			}
 
 			// Read order's current OverflowCount
@@ -1325,7 +1334,9 @@ func (s *ManifestService) HandleListExceptions() http.HandlerFunc {
 			var meta spanner.NullString
 			if err := row.Columns(&ex.ExceptionID, &ex.OrderID, &ex.ManifestID,
 				&ex.Reason, &ex.Attempts, &ex.CreatedAt, &meta); err != nil {
-				continue
+				log.Printf("[LEO] list exceptions parse error: %v", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
 			}
 			if meta.Valid {
 				ex.Metadata = meta.StringVal
@@ -1345,12 +1356,38 @@ func (s *ManifestService) HandleListExceptions() http.HandlerFunc {
 
 // nullStr is defined in fleet.go — reused here via package scope.
 
+type errManifestInvalidState struct {
+	message string
+}
+
+func (e errManifestInvalidState) Error() string {
+	return e.message
+}
+
+type errManifestVolumeConflict struct {
+	message string
+}
+
+func (e errManifestVolumeConflict) Error() string {
+	return e.message
+}
+
+func newManifestInvalidState(format string, args ...interface{}) error {
+	return errManifestInvalidState{message: fmt.Sprintf(format, args...)}
+}
+
+func newManifestVolumeConflict(format string, args ...interface{}) error {
+	return errManifestVolumeConflict{message: fmt.Sprintf(format, args...)}
+}
+
 func isInvalidState(err error) bool {
-	return err != nil && len(err.Error()) > 14 && err.Error()[:14] == "INVALID_STATE:"
+	var invalidState errManifestInvalidState
+	return errors.As(err, &invalidState)
 }
 
 func isVolumeConflict(err error) bool {
-	return err != nil && len(err.Error()) > 16 && err.Error()[:16] == "VOLUME_CONFLICT:"
+	var volumeConflict errManifestVolumeConflict
+	return errors.As(err, &volumeConflict)
 }
 
 // ExtractPathParam extracts value after /segment/ from URL path.

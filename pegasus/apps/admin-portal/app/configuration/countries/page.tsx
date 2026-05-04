@@ -2,11 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@heroui/react';
-import { useToken } from '@/lib/auth';
+import { apiFetch, apiFetchNoQueue } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
 import { useLocale } from '@/hooks/useLocale';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface CountryConfig {
   country_code: string;
@@ -24,7 +22,6 @@ interface ApiResponse {
 }
 
 export default function CountryConfigsPage() {
-  const token = useToken();
   const { toast } = useToast();
   const { t } = useLocale();
 
@@ -37,12 +34,9 @@ export default function CountryConfigsPage() {
   const selected = useMemo(() => rows.find((r) => r.country_code === selectedCode) || null, [rows, selectedCode]);
 
   const load = useCallback(async () => {
-    if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/v1/admin/country-configs`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch('/v1/admin/country-configs');
       if (!res.ok) throw new Error(t('supplier_portal.configuration.countries.error.load_failed'));
       const payload = (await res.json()) as ApiResponse;
       const data = payload.data || [];
@@ -56,7 +50,7 @@ export default function CountryConfigsPage() {
     } finally {
       setLoading(false);
     }
-  }, [t, token, toast]);
+  }, [t, toast]);
 
   useEffect(() => {
     load();
@@ -69,12 +63,11 @@ export default function CountryConfigsPage() {
   }, [selected]);
 
   const save = useCallback(async () => {
-    if (!token || !draft) return;
+    if (!draft) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API}/v1/admin/country-configs`, {
+      const res = await apiFetchNoQueue('/v1/admin/country-configs', {
         method: 'PUT',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(draft),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -85,7 +78,7 @@ export default function CountryConfigsPage() {
     } finally {
       setSaving(false);
     }
-  }, [draft, load, t, token, toast]);
+  }, [draft, load, t, toast]);
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto px-4 py-6">

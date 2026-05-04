@@ -109,7 +109,7 @@ func notificationRecipientID(claims *auth.PegasusClaims) string {
 		return ""
 	}
 	switch claims.Role {
-	case "SUPPLIER", "PAYLOADER":
+	case "ADMIN", "SUPPLIER", "PAYLOADER":
 		return claims.ResolveSupplierID()
 	default:
 		return claims.UserID

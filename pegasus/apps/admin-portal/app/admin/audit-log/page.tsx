@@ -1,12 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
 import { useLocale } from '@/hooks/useLocale';
 import { Button } from '@heroui/react';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface AuditLogRow {
   log_id: string;
@@ -26,7 +24,6 @@ interface AuditLogResponse {
 }
 
 export default function AuditLogPage() {
-  const token = useToken();
   const { toast } = useToast();
   const { locale, t } = useLocale();
 
@@ -47,13 +44,10 @@ export default function AuditLogPage() {
   }, [action, limit, offset, resourceType]);
 
   const load = useCallback(async () => {
-    if (!token) return;
     const loadFailedMessage = t('supplier_portal.admin.audit_log.error.load_failed');
     setLoading(true);
     try {
-      const res = await fetch(`${API}/v1/admin/audit-log?${query}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/v1/admin/audit-log?${query}`);
       if (!res.ok) throw new Error(loadFailedMessage);
       const payload = (await res.json()) as AuditLogResponse;
       setRows(payload.data || []);
@@ -62,7 +56,7 @@ export default function AuditLogPage() {
     } finally {
       setLoading(false);
     }
-  }, [query, t, token, toast]);
+  }, [query, t, toast]);
 
   useEffect(() => {
     load();

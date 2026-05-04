@@ -68,6 +68,28 @@ type WarehouseResponse struct {
 	HexCount    int64 `json:"hex_count"`
 }
 
+var (
+	errWarehouseAccessDenied       = errors.New("warehouse access denied")
+	errWarehouseDefaultDeactivate  = errors.New("warehouse default deactivate")
+	errWarehouseCapacityConstraint = errors.New("warehouse capacity constraint")
+)
+
+type errWarehouseCapacityViolation struct {
+	inflightVU float64
+}
+
+func (e errWarehouseCapacityViolation) Error() string {
+	return fmt.Sprintf("%s:%.1f", errWarehouseCapacityConstraint.Error(), e.inflightVU)
+}
+
+type errWarehouseActiveOrders struct {
+	count int64
+}
+
+func (e errWarehouseActiveOrders) Error() string {
+	return fmt.Sprintf("warehouse has active orders: %d", e.count)
+}
+
 type warehouseAggregateStats struct {
 	DriverCount int64
 	OrderCount  int64
@@ -212,7 +234,8 @@ func listWarehouses(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 			&h3Indexes, &wh.CoverageRadiusKm, &wh.IsActive, &wh.IsDefault, &wh.IsOnShift,
 			&createdAt, &wh.DriverCount, &wh.OrderCount, &wh.StaffCount); err != nil {
 			log.Printf("[WAREHOUSE] Row parse error: %v", err)
-			continue
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
 		}
 
 		wh.SupplierId = supplierID
@@ -379,7 +402,7 @@ func createWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 
 	// Index in Redis cache
 	workers.EventPool.Submit(func() {
-		_ = cache.IndexWarehouse(r.Context(), cache.WarehouseGeoEntry{
+		if err := cache.IndexWarehouse(context.Background(), cache.WarehouseGeoEntry{
 			WarehouseId: warehouseID,
 			SupplierId:  supplierID,
 			Name:        req.Name,
@@ -387,7 +410,9 @@ func createWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 			Lng:         req.Lng,
 			RadiusKm:    req.CoverageRadiusKm,
 			H3Cells:     h3Cells,
-		})
+		}); err != nil {
+			log.Printf("[WAREHOUSE] Cache index failed for created warehouse %s: %v", warehouseID, err)
+		}
 	})
 
 	// Background coverage consistency check — detect orphaned retailers
@@ -492,10 +517,10 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		var curActive bool
 		var curOnShift spanner.NullBool
 		if err := row.Columns(&existingSupplierId, &existingName, &existingLat, &existingLng, &existingRadius, &existingH3Cells, &curActive, &curOnShift); err != nil {
-			return err
+			return fmt.Errorf("scan warehouse %s: %w", warehouseID, err)
 		}
 		if existingSupplierId != supplierID {
-			return fmt.Errorf("ownership mismatch")
+			return errWarehouseAccessDenied
 		}
 
 		oldIsActive = curActive
@@ -566,7 +591,7 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 				return fmt.Errorf("vu scan: %w", err)
 			}
 			if float64(*req.MaxCapacity) < inflightVU {
-				return fmt.Errorf("VU_CAPACITY_VIOLATION:%.1f", inflightVU)
+				return errWarehouseCapacityViolation{inflightVU: inflightVU}
 			}
 			cols = append(cols, "MaxCapacityThreshold")
 			vals = append(vals, *req.MaxCapacity)
@@ -630,7 +655,7 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 
 		m := spanner.Update("Warehouses", cols, vals)
 		if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
-			return err
+			return fmt.Errorf("buffer warehouse %s update: %w", warehouseID, err)
 		}
 
 		traceID := telemetry.TraceIDFromContext(ctx)
@@ -684,23 +709,18 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 	})
 
 	if err != nil {
-		if strings.Contains(err.Error(), "ownership mismatch") {
+		if errors.Is(err, errWarehouseAccessDenied) {
 			http.Error(w, "Warehouse not found", http.StatusNotFound)
 			return
 		}
-		if strings.Contains(err.Error(), "VU_CAPACITY_VIOLATION") {
-			// Extract the inflight VU value from "VU_CAPACITY_VIOLATION:123.4"
-			parts := strings.SplitN(err.Error(), "VU_CAPACITY_VIOLATION:", 2)
-			inflightStr := "0"
-			if len(parts) == 2 {
-				inflightStr = parts[1]
-			}
+		var capacityViolation errWarehouseCapacityViolation
+		if errors.As(err, &capacityViolation) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnprocessableEntity)
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"error":       "New capacity is below current inflight volumetric load",
 				"code":        "VU_CAPACITY_VIOLATION",
-				"inflight_vu": inflightStr,
+				"inflight_vu": fmt.Sprintf("%.1f", capacityViolation.inflightVU),
 			})
 			return
 		}
@@ -804,7 +824,7 @@ func saveWarehouseCoverage(w http.ResponseWriter, r *http.Request, client *spann
 			return fmt.Errorf("scan warehouse: %w", err)
 		}
 		if existingSupplierID != supplierID {
-			return fmt.Errorf("ownership mismatch")
+			return errWarehouseAccessDenied
 		}
 
 		oldCacheEntry = cache.WarehouseGeoEntry{
@@ -849,7 +869,7 @@ func saveWarehouseCoverage(w http.ResponseWriter, r *http.Request, client *spann
 		return nil
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), "ownership mismatch") || errors.Is(err, spanner.ErrRowNotFound) {
+		if errors.Is(err, errWarehouseAccessDenied) || errors.Is(err, spanner.ErrRowNotFound) {
 			http.Error(w, "Warehouse not found", http.StatusNotFound)
 			return
 		}
@@ -911,10 +931,10 @@ func deactivateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner
 			return err
 		}
 		if existingSupplierId != supplierID {
-			return fmt.Errorf("ownership mismatch")
+			return errWarehouseAccessDenied
 		}
 		if isDefault {
-			return fmt.Errorf("cannot_deactivate_default")
+			return errWarehouseDefaultDeactivate
 		}
 
 		// Check for active orders at this warehouse
@@ -934,7 +954,7 @@ func deactivateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner
 			return err
 		}
 		if activeOrders > 0 {
-			return fmt.Errorf("has_active_orders:%d", activeOrders)
+			return errWarehouseActiveOrders{count: activeOrders}
 		}
 
 		m := spanner.Update("Warehouses",
@@ -958,13 +978,13 @@ func deactivateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner
 	})
 
 	if err != nil {
-		errStr := err.Error()
+		var activeOrders errWarehouseActiveOrders
 		switch {
-		case strings.Contains(errStr, "ownership mismatch"):
+		case errors.Is(err, errWarehouseAccessDenied):
 			http.Error(w, "Warehouse not found", http.StatusNotFound)
-		case strings.Contains(errStr, "cannot_deactivate_default"):
+		case errors.Is(err, errWarehouseDefaultDeactivate):
 			http.Error(w, `{"error":"Cannot deactivate the default warehouse"}`, http.StatusConflict)
-		case strings.Contains(errStr, "has_active_orders"):
+		case errors.As(err, &activeOrders):
 			http.Error(w, `{"error":"Warehouse has active orders — reassign or complete them first"}`, http.StatusConflict)
 		default:
 			log.Printf("[WAREHOUSE] Deactivate failed for %s: %v", warehouseID, err)

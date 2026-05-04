@@ -69,7 +69,8 @@ func HandleRetailerLocations(client *spanner.Client) http.HandlerFunc {
 			var rl RetailerLocation
 			if err := row.Columns(&rl.ID, &rl.Name, &rl.ShopName, &rl.Lat, &rl.Lng); err != nil {
 				log.Printf("[RETAILER-LOCATIONS] parse error: %v", err)
-				continue
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
 			}
 			// Skip zero-coordinate entries
 			if rl.Lat == 0 && rl.Lng == 0 {

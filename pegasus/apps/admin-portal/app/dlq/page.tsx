@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { Button } from '@heroui/react';
-import { getAdminToken } from '@/lib/auth';
+import { apiFetch, apiFetchNoQueue } from '@/lib/auth';
 import { usePolling } from '@/lib/usePolling';
 import Dialog from '@/components/Dialog';
 import EmptyState from '@/components/EmptyState';
@@ -47,10 +47,7 @@ export default function DLQPage() {
 
   const fetchDLQ = useCallback(async (signal?: AbortSignal) => {
     try {
-      const token = await getAdminToken();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/admin/dlq?limit=${pageSize + 1}&offset=${offset}`, {
-        headers: { Authorization: `Bearer ${token}` }, signal,
-      });
+      const res = await apiFetch(`/v1/admin/dlq?limit=${pageSize + 1}&offset=${offset}`, { signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: DLQMessage[] = await res.json();
       const rows = data ?? [];
@@ -73,10 +70,8 @@ export default function DLQPage() {
   const replayMessage = async (offset: number) => {
     setReplayingOffset(offset);
     try {
-      const token2 = await getAdminToken();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/admin/dlq/replay`, {
+      const res = await apiFetchNoQueue('/v1/admin/dlq/replay', {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token2}` },
         body: JSON.stringify({ offset }),
       });
       if (!res.ok) {

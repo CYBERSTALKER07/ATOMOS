@@ -6,6 +6,7 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,6 +16,13 @@ import (
 	"backend-go/auth"
 
 	"cloud.google.com/go/spanner"
+	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
+)
+
+var (
+	errPricingRuleNotFound     = errors.New("pricing rule not found")
+	errPricingRuleAccessDenied = errors.New("pricing rule access denied")
 )
 
 // ── Domain Types ──────────────────────────────────────────────────────────────
@@ -134,15 +142,22 @@ func (s *PricingService) listPricingRules(w http.ResponseWriter, r *http.Request
 	var rules []RuleRow
 	for {
 		row, err := iter.Next()
-		if err != nil {
+		if err == iterator.Done {
 			break
+		}
+		if err != nil {
+			log.Printf("[SUPPLIER PRICING] list query error for %s: %v", supplierId, err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
 		var tierId, skuId, target string
 		var minPallets, discountPct int64
 		var validUntil spanner.NullTime
 		var isActive bool
 		if err := row.Columns(&tierId, &skuId, &minPallets, &discountPct, &target, &validUntil, &isActive); err != nil {
-			continue
+			log.Printf("[SUPPLIER PRICING] list parse error for %s: %v", supplierId, err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
 		r := RuleRow{
 			TierId: tierId, SkuId: skuId, MinPallets: minPallets,
@@ -254,30 +269,34 @@ func (s *PricingService) deactivatePricingRule(w http.ResponseWriter, r *http.Re
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "PricingTiers", spanner.Key{tierId}, []string{"SupplierId"})
 		if err != nil {
-			return fmt.Errorf("pricing rule not found")
+			if spanner.ErrCode(err) == codes.NotFound {
+				return errPricingRuleNotFound
+			}
+			return fmt.Errorf("read pricing rule %s: %w", tierId, err)
 		}
 		var ownerSid string
 		if err := row.Columns(&ownerSid); err != nil {
-			return err
+			return fmt.Errorf("parse pricing rule %s owner: %w", tierId, err)
 		}
 		if ownerSid != supplierId {
-			return fmt.Errorf("access denied")
+			return errPricingRuleAccessDenied
 		}
 
-		txn.BufferWrite([]*spanner.Mutation{
+		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.Update("PricingTiers",
 				[]string{"TierId", "SupplierId", "IsActive"},
 				[]interface{}{tierId, supplierId, false},
 			),
-		})
+		}); err != nil {
+			return fmt.Errorf("buffer pricing rule %s deactivate: %w", tierId, err)
+		}
 		return nil
 	})
 
 	if err != nil {
-		errMsg := err.Error()
-		if strings.Contains(errMsg, "not found") {
+		if errors.Is(err, errPricingRuleNotFound) {
 			http.Error(w, `{"error":"pricing rule not found"}`, http.StatusNotFound)
-		} else if strings.Contains(errMsg, "access denied") {
+		} else if errors.Is(err, errPricingRuleAccessDenied) {
 			http.Error(w, `{"error":"access denied"}`, http.StatusForbidden)
 		} else {
 			log.Printf("[SUPPLIER PRICING] deactivate error for %s/%s: %v", supplierId, tierId, err)

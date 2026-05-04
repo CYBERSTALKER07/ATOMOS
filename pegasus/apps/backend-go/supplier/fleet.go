@@ -329,12 +329,18 @@ func HandleDriverLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		var firebaseToken string
 		if auth.FirebaseAuthClient != nil {
 			var fbUid string
-			_ = spannerClient.Single().Query(r.Context(), spanner.Statement{
+			if err := spannerClient.Single().Query(r.Context(), spanner.Statement{
 				SQL:    "SELECT COALESCE(FirebaseUid, '') FROM Drivers WHERE DriverId = @id",
 				Params: map[string]interface{}{"id": driverID},
-			}).Do(func(row *spanner.Row) error { return row.Columns(&fbUid) })
+			}).Do(func(row *spanner.Row) error { return row.Columns(&fbUid) }); err != nil {
+				log.Printf("[DRIVER AUTH] firebase UID lookup failed for driver %s: %v", driverID, err)
+			}
 			if fbUid != "" {
-				firebaseToken, _ = auth.MintCustomToken(r.Context(), fbUid, map[string]interface{}{"role": "DRIVER", "driver_id": driverID, "supplier_id": supplierID})
+				if token, err := auth.MintCustomToken(r.Context(), fbUid, map[string]interface{}{"role": "DRIVER", "driver_id": driverID, "supplier_id": supplierID}); err != nil {
+					log.Printf("[DRIVER AUTH] firebase token mint failed for driver %s: %v", driverID, err)
+				} else {
+					firebaseToken = token
+				}
 			}
 		}
 
@@ -465,11 +471,13 @@ func createDriver(w http.ResponseWriter, r *http.Request, spannerClient *spanner
 		"supplier_id": supplierID,
 	})
 	if fbErr == nil && fbUid != "" {
-		_, _ = spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			return txn.BufferWrite([]*spanner.Mutation{
 				spanner.Update("Drivers", []string{"DriverId", "FirebaseUid"}, []interface{}{driverID, fbUid}),
 			})
-		})
+		}); err != nil {
+			log.Printf("[FLEET] firebase UID mirror failed for driver %s: %v", driverID, err)
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

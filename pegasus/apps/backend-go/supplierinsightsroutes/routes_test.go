@@ -50,14 +50,14 @@ func TestRegisterRoutes_CountryOverrideActionUsesIdempotency(t *testing.T) {
 		Idempotency: markerMiddleware("X-Idempotency-Guard", "country-override-action"),
 	})
 
-	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/country-overrides/", nil)
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/country-overrides/UZ", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	rec := httptest.NewRecorder()
 
 	r.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
 	}
 	if got := rec.Header().Get("X-Idempotency-Guard"); got != "country-override-action" {
 		t.Fatalf("idempotency guard header = %q, want country-override-action", got)

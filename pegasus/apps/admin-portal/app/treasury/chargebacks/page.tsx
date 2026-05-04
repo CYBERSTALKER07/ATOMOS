@@ -2,11 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@heroui/react';
-import { useToken } from '@/lib/auth';
+import { apiFetch, apiFetchNoQueue } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
 import EmptyState from '@/components/EmptyState';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 interface ReconciliationRecord {
   order_id: string;
@@ -32,7 +30,6 @@ function buildReversalIdempotencyKey(sessionId: string): string {
 }
 
 export default function ChargebacksPage() {
-  const token = useToken();
   const { toast } = useToast();
 
   const [rows, setRows] = useState<ReconciliationRecord[]>([]);
@@ -45,12 +42,9 @@ export default function ChargebacksPage() {
   const [sessionId, setSessionId] = useState('');
 
   const load = useCallback(async () => {
-    if (!token) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/v1/admin/reconciliation`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch('/v1/admin/reconciliation');
       if (!res.ok) throw new Error('Failed to load reconciliation queue');
       const payload = (await res.json()) as ReconciliationResponse;
       setRows((payload.data || []).filter((r) => r.status === 'CHARGEBACK' || r.status === 'REVERSAL'));
@@ -59,25 +53,22 @@ export default function ChargebacksPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, toast]);
+  }, [toast]);
 
   useEffect(() => {
     load();
   }, [load]);
 
   const createChargeback = useCallback(async () => {
-    if (!token) return;
     const amountUZS = Number(amount);
     if (!orderId || !retailerId || amountUZS <= 0) {
       toast('order_id, retailer_id and amount are required', 'error');
       return;
     }
     try {
-      const res = await fetch(`${API}/v1/payment/chargeback`, {
+      const res = await apiFetchNoQueue('/v1/payment/chargeback', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildChargebackIdempotencyKey(orderId, retailerId, gateway, amountUZS),
         },
         body: JSON.stringify({
@@ -93,19 +84,17 @@ export default function ChargebacksPage() {
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Failed to record chargeback', 'error');
     }
-  }, [amount, gateway, load, orderId, retailerId, token, toast]);
+  }, [amount, gateway, load, orderId, retailerId, toast]);
 
   const createReversal = useCallback(async () => {
-    if (!token || !sessionId) {
+    if (!sessionId) {
       toast('session_id is required', 'error');
       return;
     }
     try {
-      const res = await fetch(`${API}/v1/payment/chargeback/reversal`, {
+      const res = await apiFetchNoQueue('/v1/payment/chargeback/reversal', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
           'Idempotency-Key': buildReversalIdempotencyKey(sessionId),
         },
         body: JSON.stringify({ session_id: sessionId }),
@@ -116,7 +105,7 @@ export default function ChargebacksPage() {
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Failed to record reversal', 'error');
     }
-  }, [load, sessionId, token, toast]);
+  }, [load, sessionId, toast]);
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto px-4 py-6">

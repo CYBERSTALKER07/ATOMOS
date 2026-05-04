@@ -3,7 +3,9 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"math"
@@ -548,7 +550,7 @@ func HandleAutoDispatch(client *spanner.Client, readRouter proximity.ReadRouter,
 		supplierID := claims.ResolveSupplierID()
 
 		var req AutoDispatchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
 			http.Error(w, `{"error":"invalid JSON body"}`, http.StatusBadRequest)
 			return
 		}
@@ -559,7 +561,7 @@ func HandleAutoDispatch(client *spanner.Client, readRouter proximity.ReadRouter,
 		result, err := runAutoDispatch(ctx, client, readRouter, supplierID, req.OrderIDs, req.ExcludedTruckIds, manifestSvc, optimizer, counters, false)
 		if err != nil {
 			log.Printf("[AUTO-DISPATCH] error for supplier %s: %v", supplierID, err)
-			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+			http.Error(w, `{"error":"auto-dispatch failed"}`, http.StatusInternalServerError)
 			return
 		}
 
@@ -586,7 +588,7 @@ func HandleDispatchRecommend(client *spanner.Client, readRouter proximity.ReadRo
 		supplierID := claims.ResolveSupplierID()
 
 		var req AutoDispatchRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
 			http.Error(w, `{"error":"invalid JSON body"}`, http.StatusBadRequest)
 			return
 		}
@@ -597,7 +599,7 @@ func HandleDispatchRecommend(client *spanner.Client, readRouter proximity.ReadRo
 		result, err := runAutoDispatch(ctx, client, readRouter, supplierID, req.OrderIDs, req.ExcludedTruckIds, nil, nil, nil, true)
 		if err != nil {
 			log.Printf("[DISPATCH-RECOMMEND] error for supplier %s: %v", supplierID, err)
-			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+			http.Error(w, `{"error":"dispatch recommendation failed"}`, http.StatusInternalServerError)
 			return
 		}
 
@@ -646,14 +648,16 @@ func HandleManualDispatch(client *spanner.Client, readRouter proximity.ReadRoute
 		// Fetch driver info
 		driver, err := fetchDriverByID(ctx, client, supplierID, req.DriverID)
 		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error":"driver lookup: %s"}`, err.Error()), http.StatusBadRequest)
+			log.Printf("[MANUAL-DISPATCH] driver lookup failed for supplier %s driver %s: %v", supplierID, req.DriverID, err)
+			http.Error(w, `{"error":"driver lookup failed"}`, http.StatusBadRequest)
 			return
 		}
 
 		// Fetch order data
 		orders, err := fetchDispatchableOrders(ctx, client, readRouter, supplierID, req.OrderIDs)
 		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error":"fetch orders: %s"}`, err.Error()), http.StatusInternalServerError)
+			log.Printf("[MANUAL-DISPATCH] fetch orders failed for supplier %s: %v", supplierID, err)
+			http.Error(w, `{"error":"fetch orders failed"}`, http.StatusInternalServerError)
 			return
 		}
 		if len(orders) == 0 {
@@ -755,7 +759,7 @@ func HandleManualDispatch(client *spanner.Client, readRouter proximity.ReadRoute
 			)
 			if err != nil {
 				log.Printf("[MANUAL-DISPATCH] LEO DRAFT creation failed for route %s: %v", routeID, err)
-				http.Error(w, fmt.Sprintf(`{"error":"manifest creation: %s"}`, err.Error()), http.StatusInternalServerError)
+				http.Error(w, `{"error":"manifest creation failed"}`, http.StatusInternalServerError)
 				return
 			}
 			manifest.ManifestID = mID
@@ -1669,7 +1673,8 @@ func HandleWaitingRoom(client *spanner.Client) http.HandlerFunc {
 			var createdAt spanner.NullTime
 			if err := row.Columns(&orderID, &retailerName, &amount, &createdAt); err != nil {
 				log.Printf("[WAITING_ROOM] row parse error: %v", err)
-				continue
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
 			}
 
 			ca := ""

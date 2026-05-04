@@ -3,6 +3,7 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -20,6 +21,12 @@ import (
 	"github.com/google/uuid"
 	kafkago "github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
+)
+
+var (
+	errRetailerPriceOverrideNotFound     = errors.New("retailer price override not found")
+	errRetailerPriceOverrideAccessDenied = errors.New("retailer price override access denied")
 )
 
 // ── Per-Retailer Pricing Override DTOs ────────────────────────────────────────
@@ -159,7 +166,8 @@ func (s *RetailerPricingService) listOverrides(w http.ResponseWriter, r *http.Re
 		if err := row.Columns(&o.OverrideId, &o.SupplierId, &o.RetailerId, &o.SkuId,
 			&o.Price, &o.SetBy, &o.SetByRole, &o.IsActive, &notes, &expiresAt, &createdAt); err != nil {
 			log.Printf("[RETAILER_PRICING] Row parse: %v", err)
-			continue
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
 		}
 		if notes.Valid {
 			o.Notes = notes.StringVal
@@ -282,7 +290,7 @@ func (s *RetailerPricingService) createOverride(w http.ResponseWriter, r *http.R
 			}
 			var oldID string
 			if err := row.Columns(&oldID); err != nil {
-				continue
+				return fmt.Errorf("parse existing retailer price override: %w", err)
 			}
 			mutations = append(mutations, spanner.Update("RetailerPricingOverrides",
 				[]string{"OverrideId", "IsActive", "UpdatedAt"},
@@ -360,7 +368,10 @@ func (s *RetailerPricingService) deactivateOverride(w http.ResponseWriter, r *ht
 		row, err := txn.ReadRow(ctx, "RetailerPricingOverrides", spanner.Key{overrideID},
 			[]string{"SupplierId", "WarehouseId", "RetailerId", "SkuId", "OverridePrice"})
 		if err != nil {
-			return fmt.Errorf("override not found")
+			if spanner.ErrCode(err) == codes.NotFound {
+				return errRetailerPriceOverrideNotFound
+			}
+			return fmt.Errorf("read retailer price override %s: %w", overrideID, err)
 		}
 
 		var ownerSid string
@@ -368,10 +379,10 @@ func (s *RetailerPricingService) deactivateOverride(w http.ResponseWriter, r *ht
 		var retailerID, skuID string
 		var price int64
 		if err := row.Columns(&ownerSid, &warehouseID, &retailerID, &skuID, &price); err != nil {
-			return err
+			return fmt.Errorf("parse retailer price override %s: %w", overrideID, err)
 		}
 		if ownerSid != supplierID {
-			return fmt.Errorf("access denied")
+			return errRetailerPriceOverrideAccessDenied
 		}
 
 		invalidateRetailerID = retailerID
@@ -380,7 +391,7 @@ func (s *RetailerPricingService) deactivateOverride(w http.ResponseWriter, r *ht
 		scope := auth.GetWarehouseScope(ctx)
 		if scope != nil && scope.IsNodeAdmin {
 			if !warehouseID.Valid || warehouseID.StringVal != scope.WarehouseID {
-				return fmt.Errorf("access denied: warehouse scope violation")
+				return errRetailerPriceOverrideAccessDenied
 			}
 		}
 
@@ -390,7 +401,7 @@ func (s *RetailerPricingService) deactivateOverride(w http.ResponseWriter, r *ht
 				[]interface{}{overrideID, false, spanner.CommitTimestamp},
 			),
 		}); err != nil {
-			return err
+			return fmt.Errorf("buffer retailer price override %s deactivate: %w", overrideID, err)
 		}
 
 		event := kafka.RetailerPriceOverrideEvent{
@@ -408,12 +419,11 @@ func (s *RetailerPricingService) deactivateOverride(w http.ResponseWriter, r *ht
 	})
 
 	if err != nil {
-		errStr := err.Error()
-		if strings.Contains(errStr, "access denied") {
+		if errors.Is(err, errRetailerPriceOverrideAccessDenied) {
 			http.Error(w, `{"error":"Access denied"}`, http.StatusForbidden)
 			return
 		}
-		if strings.Contains(errStr, "not found") {
+		if errors.Is(err, errRetailerPriceOverrideNotFound) {
 			http.Error(w, `{"error":"Override not found"}`, http.StatusNotFound)
 			return
 		}

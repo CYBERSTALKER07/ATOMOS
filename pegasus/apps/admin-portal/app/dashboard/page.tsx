@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { readTokenFromCookie } from "@/lib/auth";
+import { apiFetch } from "@/lib/auth";
 import { usePolling } from "@/lib/usePolling";
 import StatsCard from "@/components/StatsCard";
 
@@ -21,12 +21,7 @@ export default function SupplierDashboard() {
 
   usePolling(async (signal) => {
     try {
-      const token = readTokenFromCookie();
-      if (!token) { setIsLive(false); return; }
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/v1/supplier/dashboard`,
-        { headers: { Authorization: `Bearer ${token.trim()}` }, signal },
-      );
+      const response = await apiFetch('/v1/supplier/dashboard', { signal });
       if (!response.ok) throw new Error("Matrix disconnected");
 
       const data = await response.json();

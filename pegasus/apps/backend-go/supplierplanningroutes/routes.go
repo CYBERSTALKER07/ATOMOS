@@ -59,13 +59,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	idem := d.Idempotency
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
 
-	r.HandleFunc("/v1/supplier/delivery-zones/",
+	r.HandleFunc("/v1/supplier/delivery-zones/*",
 		auth.RequireRole(supplierRole, log(idem(supplier.HandleDeliveryZoneAction(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/delivery-zones",
 		auth.RequireRole(supplierRole, log(idem(supplier.HandleDeliveryZones(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/factories",
 		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(factory.HandleSupplierFactories(d.Spanner, d.Cache))))))
-	r.HandleFunc("/v1/supplier/factories/",
+	r.HandleFunc("/v1/supplier/factories/*",
 		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(factory.HandleSupplierFactoryDetail(d.Spanner, d.Cache))))))
 	r.HandleFunc("/v1/supplier/factories/recommend-warehouses",
 		auth.RequireRole(supplierRole, log(factory.HandleRecommendWarehouses(d.Spanner))))
@@ -77,7 +77,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierRole, log(supplier.HandleRetailerLocations(d.Spanner))))
 	r.HandleFunc("/v1/supplier/supply-lanes",
 		auth.RequireRole(supplierRole, log(idem(d.SupplyLanes.HandleSupplyLanes))))
-	r.HandleFunc("/v1/supplier/supply-lanes/",
+	r.HandleFunc("/v1/supplier/supply-lanes/*",
 		auth.RequireRole(supplierRole, log(idem(d.SupplyLanes.HandleSupplyLaneAction))))
 	r.HandleFunc("/v1/supplier/network-mode",
 		auth.RequireRole(supplierRole, log(idem(networkModeHandler(d.NetworkOptimizer)))))
@@ -90,11 +90,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/replenishment/pull-matrix",
 		auth.RequireRole(supplierRole, log(idem(d.PullMatrix.HandleManualPullMatrix))))
 	r.HandleFunc("/v1/supplier/replenishment/predictive-push",
-		auth.RequireRole(supplierRole, log(d.PredictivePush.HandleManualPredictivePush)))
+		auth.RequireRole(supplierRole, log(idem(d.PredictivePush.HandleManualPredictivePush))))
 	r.HandleFunc("/v1/supplier/warehouses/territory-preview",
 		auth.RequireRole(supplierRole, log(proximity.HandlePreviewTerritories(d.Spanner))))
 	r.HandleFunc("/v1/supplier/warehouses/apply-territory",
-		auth.RequireRole(supplierRole, log(proximity.HandleApplyTerritory(d.Spanner, d.IsDispatchLocked))))
+		auth.RequireRole(supplierRole, log(idem(proximity.HandleApplyTerritory(d.Spanner, d.IsDispatchLocked)))))
 }
 
 func networkModeHandler(service *factory.NetworkOptimizerService) http.HandlerFunc {

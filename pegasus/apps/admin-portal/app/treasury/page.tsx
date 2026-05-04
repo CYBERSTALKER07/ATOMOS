@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { getAdminToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import { usePolling } from '@/lib/usePolling';
 import Link from 'next/link';
 
@@ -19,10 +19,7 @@ export default function TreasuryDashboard() {
 
     usePolling(async (signal) => {
         try {
-            const token = await getAdminToken();
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/treasury/ledger`, {
-                headers: { Authorization: `Bearer ${token}` }, signal,
-            });
+            const res = await apiFetch('/v1/treasury/ledger', { signal });
             if (!res.ok) throw new Error("Vault disconnected");
             const json = await res.json();
             setData(json);

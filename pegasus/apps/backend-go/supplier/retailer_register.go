@@ -167,12 +167,18 @@ func HandleRetailerRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			"retailer_id": retailerId,
 		})
 		if fbErr == nil && fbUid != "" {
-			_, _ = spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 				return txn.BufferWrite([]*spanner.Mutation{
 					spanner.Update("Retailers", []string{"RetailerId", "FirebaseUid"}, []interface{}{retailerId, fbUid}),
 				})
-			})
-			firebaseToken, _ = auth.MintCustomToken(ctx, fbUid, map[string]interface{}{"role": "RETAILER", "retailer_id": retailerId})
+			}); err != nil {
+				log.Printf("[RETAILER REGISTER] firebase UID mirror failed for %s: %v", retailerId, err)
+			}
+			if token, err := auth.MintCustomToken(ctx, fbUid, map[string]interface{}{"role": "RETAILER", "retailer_id": retailerId}); err != nil {
+				log.Printf("[RETAILER REGISTER] firebase token mint failed for %s: %v", retailerId, err)
+			} else {
+				firebaseToken = token
+			}
 		}
 
 		resp := map[string]interface{}{

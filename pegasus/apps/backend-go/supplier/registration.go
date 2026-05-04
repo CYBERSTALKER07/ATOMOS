@@ -200,17 +200,24 @@ func HandleSupplierRegister(spannerClient *spanner.Client) http.HandlerFunc {
 		})
 		if fbErr == nil && fbUid != "" {
 			// Store Firebase UID on both tables
-			_, _ = spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 				return txn.BufferWrite([]*spanner.Mutation{
 					spanner.Update("Suppliers", []string{"SupplierId", "FirebaseUid"}, []interface{}{supplierId, fbUid}),
 					spanner.Update("SupplierUsers", []string{"UserId", "FirebaseUid"}, []interface{}{mirrorID, fbUid}),
 				})
-			})
-			firebaseToken, _ = auth.MintCustomToken(ctx, fbUid, map[string]interface{}{
+			}); err != nil {
+				log.Printf("[SUPPLIER REGISTER] firebase UID mirror failed for %s: %v", supplierId, err)
+			}
+			token, err := auth.MintCustomToken(ctx, fbUid, map[string]interface{}{
 				"role":          "SUPPLIER",
 				"supplier_id":   supplierId,
 				"supplier_role": "GLOBAL_ADMIN",
 			})
+			if err != nil {
+				log.Printf("[SUPPLIER REGISTER] firebase token mint failed for %s: %v", supplierId, err)
+			} else {
+				firebaseToken = token
+			}
 		}
 
 		resp := map[string]interface{}{

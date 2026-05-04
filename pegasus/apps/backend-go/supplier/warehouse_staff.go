@@ -93,7 +93,8 @@ func HandleWarehouseStaff(spannerClient *spanner.Client) http.HandlerFunc {
 			var ts spanner.NullTime
 			if err := row.Columns(&item.WorkerID, &item.Name, &item.Phone, &roleNull, &item.IsActive, &ts); err != nil {
 				log.Printf("[WAREHOUSE STAFF] parse error: %v", err)
-				continue
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
 			}
 			if roleNull.Valid {
 				item.Role = roleNull.StringVal

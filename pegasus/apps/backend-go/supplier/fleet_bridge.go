@@ -3,7 +3,9 @@ package supplier
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -99,7 +101,8 @@ func HandleFleetVolumetrics(client *spanner.Client) http.HandlerFunc {
 			var fleetCap float64
 			if err := row.Columns(&wid, &totalTrucks, &readyTrucks, &fleetCap); err != nil {
 				log.Printf("[FLEET-VOL] fleet row: %v", err)
-				continue
+				http.Error(w, "Fleet query failed", http.StatusInternalServerError)
+				return
 			}
 			fleetMap[wid] = &FleetVolumetricsSummary{
 				WarehouseID:   wid,
@@ -153,7 +156,8 @@ func HandleFleetVolumetrics(client *spanner.Client) http.HandlerFunc {
 			var backlogVU float64
 			if err := row.Columns(&wid, &pendingCount, &backlogVU); err != nil {
 				log.Printf("[FLEET-VOL] backlog row: %v", err)
-				continue
+				http.Error(w, "Backlog query failed", http.StatusInternalServerError)
+				return
 			}
 			if _, ok := fleetMap[wid]; !ok {
 				fleetMap[wid] = &FleetVolumetricsSummary{WarehouseID: wid}
@@ -169,12 +173,18 @@ func HandleFleetVolumetrics(client *spanner.Client) http.HandlerFunc {
 				continue
 			}
 			row, err := client.Single().ReadRow(ctx, "Warehouses", spanner.Key{wid}, []string{"Name"})
-			if err == nil {
-				var name string
-				if row.Columns(&name) == nil {
-					summary.WarehouseName = name
-				}
+			if err != nil {
+				log.Printf("[FLEET-VOL] warehouse name lookup failed for %s: %v", wid, err)
+				http.Error(w, "Warehouse lookup failed", http.StatusInternalServerError)
+				return
 			}
+			var name string
+			if err := row.Columns(&name); err != nil {
+				log.Printf("[FLEET-VOL] warehouse name parse failed for %s: %v", wid, err)
+				http.Error(w, "Warehouse lookup failed", http.StatusInternalServerError)
+				return
+			}
+			summary.WarehouseName = name
 		}
 
 		// 4) Compute utilization
@@ -229,7 +239,7 @@ func HandleDispatchQueue(client *spanner.Client, readRouter proximity.ReadRouter
 		supplierID := claims.ResolveSupplierID()
 
 		var req DispatchQueueRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err.Error() != "EOF" {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil && !errors.Is(err, io.EOF) {
 			http.Error(w, `{"error":"invalid JSON body"}`, http.StatusBadRequest)
 			return
 		}
@@ -244,7 +254,7 @@ func HandleDispatchQueue(client *spanner.Client, readRouter proximity.ReadRouter
 			fetched, err := fetchReadyOrders(ctx, client, supplierID, req.WarehouseID)
 			if err != nil {
 				log.Printf("[DISPATCH-Q] fetch ready orders: %v", err)
-				http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+				http.Error(w, `{"error":"failed to fetch ready orders"}`, http.StatusInternalServerError)
 				return
 			}
 			orderIDs = fetched
@@ -264,7 +274,7 @@ func HandleDispatchQueue(client *spanner.Client, readRouter proximity.ReadRouter
 		result, err := runAutoDispatch(ctx, client, readRouter, supplierID, orderIDs, excludedTrucks, manifestSvc, optimizer, counters, false)
 		if err != nil {
 			log.Printf("[DISPATCH-Q] auto-dispatch: %v", err)
-			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+			http.Error(w, `{"error":"auto-dispatch failed"}`, http.StatusInternalServerError)
 			return
 		}
 
@@ -309,7 +319,7 @@ func fetchReadyOrders(ctx context.Context, client *spanner.Client, supplierID, w
 		}
 		var id string
 		if err := row.Columns(&id); err != nil {
-			continue
+			return nil, fmt.Errorf("scan ready order id: %w", err)
 		}
 		ids = append(ids, id)
 	}

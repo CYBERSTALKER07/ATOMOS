@@ -114,14 +114,16 @@ func (s *ReturnsService) HandleReturns(w http.ResponseWriter, r *http.Request) {
 		}
 		if err != nil {
 			log.Printf("[RETURNS] Query error: %v", err)
-			break
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
 		var item ReturnItem
 		var createdAt spanner.NullTime
 		if err := row.Columns(&item.LineItemID, &item.OrderID, &item.SkuID, &item.ProductName,
 			&item.Quantity, &item.UnitPrice, &item.Status, &item.RetailerName, &createdAt); err != nil {
 			log.Printf("[RETURNS] Row parse error: %v", err)
-			continue
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
 		if createdAt.Valid {
 			item.CreatedAt = createdAt.Time.Format(time.RFC3339)

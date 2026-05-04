@@ -54,7 +54,7 @@ func TestRegisterRoutes_PricingRuleActionUsesIdempotency(t *testing.T) {
 		Idempotency: markerMiddleware("X-Idempotency-Guard", "pricing-rule-action"),
 	})
 
-	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/pricing/rules/", nil)
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/pricing/rules/tier-1", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	rec := httptest.NewRecorder()
 
@@ -110,7 +110,7 @@ func TestRegisterRoutes_RetailerOverrideActionUsesIdempotency(t *testing.T) {
 		Idempotency:     markerMiddleware("X-Idempotency-Guard", "retailer-override-action"),
 	})
 
-	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/pricing/retailer-overrides/", nil)
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/pricing/retailer-overrides/override-1", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 	rec := httptest.NewRecorder()
 
@@ -164,7 +164,7 @@ func TestRegisterRoutes_ProductDetailUpdateUsesIdempotency(t *testing.T) {
 		Idempotency: markerMiddleware("X-Idempotency-Guard", "product-detail"),
 	})
 
-	req := httptest.NewRequest(http.MethodPut, "/v1/supplier/products/", strings.NewReader("{"))
+	req := httptest.NewRequest(http.MethodPut, "/v1/supplier/products/sku-1", strings.NewReader("{"))
 	req.Header.Set("Authorization", "Bearer "+token)
 	rec := httptest.NewRecorder()
 

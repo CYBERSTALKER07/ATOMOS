@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/cache"
 	"backend-go/spannerx"
 	"backend-go/storage"
 
@@ -19,6 +20,12 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 )
+
+func invalidateCatalogCaches(ctx context.Context) {
+	cache.InvalidatePrefix(ctx, cache.PrefixCacheProducts)
+	cache.InvalidatePrefix(ctx, cache.PrefixCatalogSearch)
+	cache.InvalidatePrefix(ctx, cache.PrefixCategorySuppliers)
+}
 
 // HandleGetUploadTicket grants Next.js the right to upload an image
 func HandleGetUploadTicket(w http.ResponseWriter, r *http.Request) {
@@ -233,6 +240,7 @@ func HandleCreateProduct(client *spanner.Client) http.HandlerFunc {
 			http.Error(w, "Ledger write fault", http.StatusInternalServerError)
 			return
 		}
+		invalidateCatalogCaches(ctx)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
@@ -325,12 +333,14 @@ func HandleSupplierLogin(spannerClient *spanner.Client) http.HandlerFunc {
 				var firebaseToken string
 				if auth.FirebaseAuthClient != nil {
 					var fbUid string
-					_ = spannerClient.Single().Query(ctx, spanner.Statement{
+					if err := spannerClient.Single().Query(ctx, spanner.Statement{
 						SQL:    "SELECT COALESCE(FirebaseUid, '') FROM SupplierUsers WHERE UserId = @id",
 						Params: map[string]interface{}{"id": userID},
-					}).Do(func(row *spanner.Row) error { return row.Columns(&fbUid) })
+					}).Do(func(row *spanner.Row) error { return row.Columns(&fbUid) }); err != nil {
+						log.Printf("[SUPPLIER AUTH] firebase UID lookup failed for user %s: %v", userID, err)
+					}
 					if fbUid != "" {
-						firebaseToken, _ = auth.MintCustomToken(ctx, fbUid, map[string]interface{}{
+						token, err := auth.MintCustomToken(ctx, fbUid, map[string]interface{}{
 							"role":          "SUPPLIER",
 							"supplier_id":   supplierID,
 							"supplier_role": supplierRole,
@@ -338,6 +348,11 @@ func HandleSupplierLogin(spannerClient *spanner.Client) http.HandlerFunc {
 							"factory_id":    factoryID,
 							"factory_role":  factoryRole,
 						})
+						if err != nil {
+							log.Printf("[SUPPLIER AUTH] firebase token mint failed for user %s: %v", userID, err)
+						} else {
+							firebaseToken = token
+						}
 					}
 				}
 
@@ -424,16 +439,23 @@ func HandleSupplierLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		var firebaseToken string
 		if auth.FirebaseAuthClient != nil {
 			var fbUid string
-			_ = spannerClient.Single().Query(ctx, spanner.Statement{
+			if err := spannerClient.Single().Query(ctx, spanner.Statement{
 				SQL:    "SELECT COALESCE(FirebaseUid, '') FROM Suppliers WHERE SupplierId = @id",
 				Params: map[string]interface{}{"id": supplierID},
-			}).Do(func(row *spanner.Row) error { return row.Columns(&fbUid) })
+			}).Do(func(row *spanner.Row) error { return row.Columns(&fbUid) }); err != nil {
+				log.Printf("[SUPPLIER AUTH] firebase UID lookup failed for supplier %s: %v", supplierID, err)
+			}
 			if fbUid != "" {
-				firebaseToken, _ = auth.MintCustomToken(ctx, fbUid, map[string]interface{}{
+				token, err := auth.MintCustomToken(ctx, fbUid, map[string]interface{}{
 					"role":          "SUPPLIER",
 					"supplier_id":   supplierID,
 					"supplier_role": "GLOBAL_ADMIN",
 				})
+				if err != nil {
+					log.Printf("[SUPPLIER AUTH] firebase token mint failed for supplier %s: %v", supplierID, err)
+				} else {
+					firebaseToken = token
+				}
 			}
 		}
 
@@ -620,12 +642,18 @@ func HandleRetailerLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		if auth.FirebaseAuthClient != nil {
 			// Retailer uses phone-based Firebase identity — look up by phone via Spanner FirebaseUid
 			var fbUid string
-			_ = spannerClient.Single().Query(r.Context(), spanner.Statement{
+			if err := spannerClient.Single().Query(r.Context(), spanner.Statement{
 				SQL:    "SELECT COALESCE(FirebaseUid, '') FROM Retailers WHERE RetailerId = @id",
 				Params: map[string]interface{}{"id": retailerID},
-			}).Do(func(row *spanner.Row) error { return row.Columns(&fbUid) })
+			}).Do(func(row *spanner.Row) error { return row.Columns(&fbUid) }); err != nil {
+				log.Printf("[RETAILER AUTH] firebase UID lookup failed for retailer %s: %v", retailerID, err)
+			}
 			if fbUid != "" {
-				firebaseToken, _ = auth.MintCustomToken(r.Context(), fbUid, map[string]interface{}{"role": "RETAILER", "retailer_id": retailerID})
+				if token, err := auth.MintCustomToken(r.Context(), fbUid, map[string]interface{}{"role": "RETAILER", "retailer_id": retailerID}); err != nil {
+					log.Printf("[RETAILER AUTH] firebase token mint failed for retailer %s: %v", retailerID, err)
+				} else {
+					firebaseToken = token
+				}
 			}
 		}
 

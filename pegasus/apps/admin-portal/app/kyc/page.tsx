@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Button } from '@heroui/react';
-import { getAdminToken } from '@/lib/auth';
+import { apiFetch, apiFetchNoQueue } from '@/lib/auth';
 import Dialog from '@/components/Dialog';
 import EmptyState from '@/components/EmptyState';
 import { useToast } from '@/components/Toast';
@@ -22,16 +22,11 @@ export default function KYCTerminal() {
     const [pendingAction, setPendingAction] = useState<{ id: string; action: 'approve' | 'reject'; shopName: string } | null>(null);
     const { toast } = useToast();
 
-    // In a real app this token would be managed by your auth provider (e.g. NextAuth/Clerk)
-    // For the pen-test we use the endpoint we created to mint an Admin token.
-    const fetchPendingQueue = async () => {
+    const fetchPendingQueue = useCallback(async () => {
         try {
             setIsLoading(true);
-            const tokenStr = await getAdminToken();
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/admin/retailer/pending`, {
-                headers: { "Authorization": `Bearer ${tokenStr}` }
-            });
+            const res = await apiFetch('/v1/admin/retailer/pending');
 
             if (!res.ok) throw new Error("Failed to fetch pending retailers");
             const data = await res.json();
@@ -45,22 +40,16 @@ export default function KYCTerminal() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [toast]);
 
     useEffect(() => {
         fetchPendingQueue();
-    }, []);
+    }, [fetchPendingQueue]);
 
     const executeDecision = async (id: string, action: 'approve' | 'reject') => {
         try {
-            const tokenStr = await getAdminToken();
-
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/admin/retailer/${action}`, {
+            const res = await apiFetchNoQueue(`/v1/admin/retailer/${action}`, {
                 method: 'POST',
-                headers: {
-                    "Authorization": `Bearer ${tokenStr}`,
-                    "Content-Type": "application/json"
-                },
                 body: JSON.stringify({ retailer_id: id })
             });
 

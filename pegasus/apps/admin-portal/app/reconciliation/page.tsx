@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getAdminToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import { usePolling } from '@/lib/usePolling';
 
 type ReconciliationRecord = {
@@ -26,12 +26,8 @@ export default function ReconciliationPage() {
   const canNext = hasMore;
 
   usePolling(async (signal) => {
-    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
     try {
-      const token = await getAdminToken();
-      const res = await fetch(`${API}/v1/admin/reconciliation?limit=${pageSize + 1}&offset=${offset}`, {
-        headers: { Authorization: `Bearer ${token}` }, signal,
-      });
+      const res = await apiFetch(`/v1/admin/reconciliation?limit=${pageSize + 1}&offset=${offset}`, { signal });
       if (!res.ok) throw new Error("HTTP " + res.status);
       const data = await res.json();
       const rows: ReconciliationRecord[] = data.data || [];

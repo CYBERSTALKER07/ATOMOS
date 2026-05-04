@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { Button } from '@heroui/react';
-import { getAdminToken } from '@/lib/auth';
+import { apiFetch } from '@/lib/auth';
 import { usePolling } from '@/lib/usePolling';
 import Icon from '@/components/Icon';
 import EmptyState from '@/components/EmptyState';
@@ -38,10 +38,7 @@ export default function CashHoldingsPage() {
 
   const fetchHoldings = useCallback(async (signal?: AbortSignal) => {
     try {
-      const token = await getAdminToken();
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/treasury/cash-holdings`, {
-        headers: { Authorization: `Bearer ${token}` }, signal,
-      });
+      const res = await apiFetch('/v1/treasury/cash-holdings', { signal });
       if (!res.ok) throw new Error('Failed to fetch cash holdings');
       const json: CashHoldingsData = await res.json();
       setData(json);
