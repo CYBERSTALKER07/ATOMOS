@@ -79,7 +79,10 @@ export default function PaymentModal() {
     try {
       const res = await apiFetch("/v1/order/cash-checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": `retailer-cash-checkout:${event.order_id}`,
+        },
         body: JSON.stringify({ order_id: event.order_id }),
       });
       if (!res.ok) {
@@ -102,7 +105,10 @@ export default function PaymentModal() {
       try {
         const res = await apiFetch("/v1/order/card-checkout", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": `retailer-card-checkout:${event.order_id}:${gateway}`,
+          },
           body: JSON.stringify({ order_id: event.order_id, gateway }),
         });
         if (!res.ok) {

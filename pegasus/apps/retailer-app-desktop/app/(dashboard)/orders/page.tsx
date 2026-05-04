@@ -98,6 +98,7 @@ export default function OrdersPage() {
     try {
       const res = await apiFetch(`/v1/orders/${order.order_id}/status`, {
         method: 'PATCH',
+        headers: { "Idempotency-Key": `retailer-verify:${order.order_id}:${order.version ?? 0}` },
         body: JSON.stringify({ status: 'COMPLETED' }),
       });
       if (!res.ok) {

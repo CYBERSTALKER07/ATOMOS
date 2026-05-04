@@ -109,6 +109,7 @@ export default function InsightsPage() {
     try {
       const res = await apiFetch(`/v1/ai/predictions/correct?prediction_id=${encodeURIComponent(predictionId)}`, {
         method: "PATCH",
+        headers: { "Idempotency-Key": `retailer-prediction-correct:${predictionId}:dismissed` },
         body: JSON.stringify({ status: "DISMISSED" }),
       });
       if (res.ok) refreshPred();
@@ -120,6 +121,7 @@ export default function InsightsPage() {
     try {
       await apiFetch(`/v1/ai/predictions/correct?prediction_id=${encodeURIComponent(predictionId)}`, {
         method: "PATCH",
+        headers: { "Idempotency-Key": `retailer-prediction-correct:${predictionId}:waiting:${newQty}` },
         body: JSON.stringify({ amount: null, status: "WAITING" }),
       });
       refreshPred();

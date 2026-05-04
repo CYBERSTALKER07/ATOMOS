@@ -56,10 +56,15 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
         quantity: item.quantity,
         unit_price: item.price,
       }));
+      const cartKey = lineItems
+        .map((item) => `${item.sku_id}:${item.quantity}:${item.unit_price}`)
+        .sort()
+        .join('|');
 
       // 1. Fan-out Cart via unified checkout
       const cartRes = await apiFetch('/v1/checkout/unified', {
         method: 'POST',
+        headers: { 'Idempotency-Key': `retailer-checkout:${method}:${cartKey}` },
         body: JSON.stringify({
           retailer_id: profile.id,
           payment_gateway: gatewayMap[method] || 'GLOBAL_PAY',
@@ -85,6 +90,7 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
         for (const so of supplierOrders) {
           const payRes = await apiFetch('/v1/order/card-checkout', {
             method: 'POST',
+            headers: { 'Idempotency-Key': `retailer-card-checkout:${so.order_id}:${gatewayMap[method]}` },
             body: JSON.stringify({
               order_id: so.order_id,
               gateway: gatewayMap[method],
@@ -102,6 +108,7 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
         for (const so of supplierOrders) {
           const payRes = await apiFetch('/v1/order/cash-checkout', {
             method: 'POST',
+            headers: { 'Idempotency-Key': `retailer-cash-checkout:${so.order_id}` },
             body: JSON.stringify({ order_id: so.order_id }),
           });
           if (!payRes.ok) throw new Error(`Cash checkout failed for order ${so.order_id}`);

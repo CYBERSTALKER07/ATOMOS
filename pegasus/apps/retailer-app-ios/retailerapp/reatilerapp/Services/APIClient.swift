@@ -152,8 +152,8 @@ final class APIClient {
         try await request(method: "POST", path: path, body: body, headers: headers)
     }
 
-    func patch<T: Decodable>(path: String, body: (any Encodable)? = nil) async throws -> T {
-        try await request(method: "PATCH", path: path, body: body)
+    func patch<T: Decodable>(path: String, body: (any Encodable)? = nil, headers: [String: String] = [:]) async throws -> T {
+        try await request(method: "PATCH", path: path, body: body, headers: headers)
     }
 
     // MARK: - Tracking

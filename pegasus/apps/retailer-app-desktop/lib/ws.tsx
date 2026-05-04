@@ -31,9 +31,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    let reconnectTimer: NodeJS.Timeout;
+    let reconnectTimer: NodeJS.Timeout | null = null;
+    let disposed = false;
     
     function connect() {
+      if (disposed) return;
       const token = readToken();
       if (!token) return;
 
@@ -62,7 +64,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       ws.onclose = () => {
         setIsConnected(false);
         wsRef.current = null;
-        reconnectTimer = setTimeout(connect, 3000);
+        if (!disposed) {
+          reconnectTimer = setTimeout(connect, 3000);
+        }
       };
 
       ws.onerror = (err) => {
@@ -76,10 +80,14 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     connect();
 
     return () => {
-      clearTimeout(reconnectTimer);
+      disposed = true;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
       if (wsRef.current) {
         wsRef.current.close();
       }
+      wsRef.current = null;
     };
   }, [WS_URL]);
 

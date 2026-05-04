@@ -51,7 +51,7 @@ class MySuppliersViewModel @Inject constructor(
     fun addSupplier(supplierId: String) {
         viewModelScope.launch {
             try {
-                api.addSupplier(supplierId)
+                api.addSupplier(supplierId, "retailer-supplier-add:$supplierId")
                 refresh()
             } catch (_: Exception) {}
         }
@@ -60,7 +60,7 @@ class MySuppliersViewModel @Inject constructor(
     fun removeSupplier(supplierId: String) {
         viewModelScope.launch {
             try {
-                api.removeSupplier(supplierId)
+                api.removeSupplier(supplierId, "retailer-supplier-remove:$supplierId")
                 refresh()
             } catch (_: Exception) {}
         }

@@ -296,7 +296,8 @@ struct DeliveryPaymentSheetView: View {
             let body = ["order_id": event.orderId]
             let _: [String: DiscardableCodable] = try await api.post(
                 path: "/v1/order/cash-checkout",
-                body: body
+                body: body,
+                headers: ["Idempotency-Key": "retailer-cash-checkout:\(event.orderId)"]
             )
             phase = .cashPending
         } catch {
@@ -310,7 +311,8 @@ struct DeliveryPaymentSheetView: View {
             let body = ["order_id": event.orderId, "gateway": gateway]
             let resp: CardCheckoutResponse = try await api.post(
                 path: "/v1/order/card-checkout",
-                body: body
+                body: body,
+                headers: ["Idempotency-Key": "retailer-card-checkout:\(event.orderId):\(gateway)"]
             )
             if let url = URL(string: resp.paymentUrl), !resp.paymentUrl.isEmpty {
                 await MainActor.run {

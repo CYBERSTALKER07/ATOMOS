@@ -70,7 +70,7 @@ func TestNewNotificationWSFrame(t *testing.T) {
 			"Status changed.",
 			"notification.order_status_changed.title",
 			"notification.order_status_changed.body",
-			map[string]string{"order_id": "ord-1"},
+			map[string]string{"order_id": "ord-1", "old_state": "PENDING", "new_state": "IN_TRANSIT"},
 		),
 		`{"event_type":"ORDER_STATUS_CHANGED"}`,
 		ts,
@@ -91,6 +91,15 @@ func TestNewNotificationWSFrame(t *testing.T) {
 	if frame.MessageArgs["order_id"] != "ord-1" {
 		t.Fatalf("message_args order_id = %q, want ord-1", frame.MessageArgs["order_id"])
 	}
+	if frame.OrderID != "ord-1" {
+		t.Fatalf("order_id = %q, want ord-1", frame.OrderID)
+	}
+	if frame.State != "IN_TRANSIT" {
+		t.Fatalf("state = %q, want IN_TRANSIT", frame.State)
+	}
+	if frame.OldState != "PENDING" {
+		t.Fatalf("old_state = %q, want PENDING", frame.OldState)
+	}
 
 	data, err := json.Marshal(frame)
 	if err != nil {
@@ -110,5 +119,11 @@ func TestNewNotificationWSFrame(t *testing.T) {
 	}
 	if raw["payload"] != `{"event_type":"ORDER_STATUS_CHANGED"}` {
 		t.Fatalf("json payload = %#v, want event payload", raw["payload"])
+	}
+	if raw["order_id"] != "ord-1" {
+		t.Fatalf("json order_id = %#v, want ord-1", raw["order_id"])
+	}
+	if raw["state"] != "IN_TRANSIT" {
+		t.Fatalf("json state = %#v, want IN_TRANSIT", raw["state"])
 	}
 }

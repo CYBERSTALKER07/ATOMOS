@@ -64,7 +64,10 @@ export default function ProcurementPage() {
   const addSupplier = useCallback(async (supplierId: string) => {
     setAddingId(supplierId);
     try {
-      const res = await apiFetch(`/v1/retailer/suppliers/${supplierId}/add`, { method: "POST" });
+      const res = await apiFetch(`/v1/retailer/suppliers/${supplierId}/add`, {
+        method: "POST",
+        headers: { "Idempotency-Key": `retailer-supplier-add:${supplierId}` },
+      });
       if (res.ok) {
         mutate();
         setSearchResults((prev) => prev.filter((s) => s.id !== supplierId));
@@ -75,7 +78,10 @@ export default function ProcurementPage() {
   const removeSupplier = useCallback(async (supplierId: string) => {
     setRemovingId(supplierId);
     try {
-      const res = await apiFetch(`/v1/retailer/suppliers/${supplierId}/remove`, { method: "POST" });
+      const res = await apiFetch(`/v1/retailer/suppliers/${supplierId}/remove`, {
+        method: "POST",
+        headers: { "Idempotency-Key": `retailer-supplier-remove:${supplierId}` },
+      });
       if (res.ok) { mutate(); }
     } catch { /* swallow */ } finally { setRemovingId(null); }
   }, [mutate]);

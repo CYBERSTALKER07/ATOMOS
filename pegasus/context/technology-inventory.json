@@ -77,11 +77,13 @@
   },
   "runtimeContracts": [
     {
-      "name": "Legacy order detail compatibility surface",
-      "path": "/v1/orders/{id}",
-      "owner": "pegasus/apps/backend-go/order/legacy_orders.go",
+      "name": "Shared order compatibility surface",
+      "path": "/v1/{orders,orders/{id},order/refunds}",
+      "owner": "pegasus/apps/backend-go/orderroutes/routes.go",
       "delegatedFrom": "pegasus/apps/backend-go/main.go",
       "methods": [
+        "GET /v1/orders",
+        "GET /v1/order/refunds",
         "GET /v1/orders/{id}",
         "GET /v1/orders/{id}/events",
         "PATCH /v1/orders/{id}/status",
@@ -102,13 +104,15 @@
     },
     {
       "name": "Retailer role-row surface",
-      "path": "/v1/{retailer/analytics/*,orders/request-cancel,order/{cash-checkout,card-checkout},retailer/shop-closed-response,retailer/family-members*,retailer/orders/{confirm-ai,reject-ai},orders/{edit-preorder,confirm-preorder},retailer/cart/sync,retailer/suppliers*,retailer/profile,retailers/{retailerID}/orders,retailer/{tracking,cards,pending-payments,active-fulfillment},retailer/card/{initiate,confirm,deactivate,default},retailer/settings/auto-order*,ws/retailer}",
+      "path": "/v1/{retailer/analytics/*,orders/request-cancel,order/{create,cancel,cash-checkout,card-checkout},retailer/shop-closed-response,retailer/family-members*,retailer/orders/{confirm-ai,reject-ai},orders/{edit-preorder,confirm-preorder},retailer/cart/sync,retailer/suppliers*,retailer/profile,retailers/{retailerID}/orders,retailer/{tracking,cards,pending-payments,active-fulfillment},retailer/card/{initiate,confirm,deactivate,default},retailer/settings/auto-order*,ws/retailer}",
       "owner": "pegasus/apps/backend-go/retailerroutes/routes.go",
       "delegatedFrom": "pegasus/apps/backend-go/main.go",
       "methods": [
         "GET /v1/retailer/analytics/expenses",
         "GET /v1/retailer/analytics/detailed",
         "POST /v1/orders/request-cancel",
+        "POST /v1/order/create",
+        "POST /v1/order/cancel",
         "POST /v1/order/cash-checkout",
         "POST /v1/order/card-checkout",
         "POST /v1/retailer/shop-closed-response",
@@ -148,7 +152,7 @@
         "retailer-app-android retailer order fulfillment tracking settings and realtime flows"
       ],
       "notes": [
-        "Route composition moved out of main.go into retailerroutes while preserving existing analytics, auth, order, payment, settings, supplier, and websocket handlers.",
+        "Retailer role-row composition now includes idempotency-guarded legacy procurement create and cancel mutations while shared order list/detail/refund compatibility reads live in orderroutes.",
         "This extracted surface centralizes the shared retailer contract across desktop, iOS, and Android."
       ]
     },

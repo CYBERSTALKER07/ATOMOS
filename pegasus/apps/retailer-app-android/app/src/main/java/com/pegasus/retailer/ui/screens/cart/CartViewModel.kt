@@ -80,7 +80,7 @@ class CartViewModel @Inject constructor(
         for (order in pending) {
             try {
                 val request = Json.decodeFromString<UnifiedCheckoutRequest>(order.payloadJson)
-                api.unifiedCheckout(request)
+                api.unifiedCheckout(request, "retailer-checkout-pending:${order.id}:${order.createdAt}")
                 pendingOrderDao.deleteById(order.id)
             } catch (_: Exception) {
                 pendingOrderDao.incrementRetry(order.id)
@@ -162,7 +162,7 @@ class CartViewModel @Inject constructor(
                     paymentGateway = state.selectedPaymentGateway,
                     items = lineItems,
                 )
-                val response = api.unifiedCheckout(request)
+                val response = api.unifiedCheckout(request, checkoutIdempotencyKey(request))
                 val invoiceId = response.invoiceId
                 val firstOrderId = response.supplierOrders.firstOrNull()?.orderId
                 _uiState.update { it.copy(lastOrderId = firstOrderId ?: invoiceId) }
@@ -223,6 +223,13 @@ class CartViewModel @Inject constructor(
 
     fun clearCheckoutError() {
         _uiState.update { it.copy(checkoutError = null) }
+    }
+
+    private fun checkoutIdempotencyKey(request: UnifiedCheckoutRequest): String {
+        val itemKey = request.items
+            .sortedBy { it.skuId }
+            .joinToString("|") { "${it.skuId}:${it.quantity}:${it.unitPrice}" }
+        return "retailer-checkout:${request.paymentGateway}:$itemKey"
     }
 
     override fun onCleared() {

@@ -37,6 +37,10 @@ type notificationWSFrame struct {
 	Type        string            `json:"type"`
 	Title       string            `json:"title"`
 	Body        string            `json:"body"`
+	OrderID     string            `json:"order_id,omitempty"`
+	State       string            `json:"state,omitempty"`
+	NewState    string            `json:"new_state,omitempty"`
+	OldState    string            `json:"old_state,omitempty"`
 	Payload     string            `json:"payload,omitempty"`
 	Channel     string            `json:"channel"`
 	CreatedAt   string            `json:"created_at"`
@@ -46,7 +50,7 @@ type notificationWSFrame struct {
 }
 
 func newNotificationWSFrame(notificationID, eventType string, notif notifications.FormattedNotification, payload string, createdAt time.Time) notificationWSFrame {
-	return notificationWSFrame{
+	frame := notificationWSFrame{
 		ID:          notificationID,
 		Type:        eventType,
 		Title:       notif.Title,
@@ -58,6 +62,14 @@ func newNotificationWSFrame(notificationID, eventType string, notif notification
 		BodyKey:     notif.BodyKey,
 		MessageArgs: notif.MessageArgs,
 	}
+	frame.OrderID = notif.MessageArgs["order_id"]
+	frame.NewState = notif.MessageArgs["new_state"]
+	frame.OldState = notif.MessageArgs["old_state"]
+	frame.State = frame.NewState
+	if frame.State == "" {
+		frame.State = notif.MessageArgs["state"]
+	}
+	return frame
 }
 
 // StartNotificationDispatcher boots the partition-parallel Kafka consumer that

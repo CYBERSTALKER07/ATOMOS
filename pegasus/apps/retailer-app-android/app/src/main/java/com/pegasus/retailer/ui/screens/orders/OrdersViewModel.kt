@@ -123,6 +123,7 @@ class OrdersViewModel @Inject constructor(
                 api.correctPrediction(
                     predictionId = predictionId,
                     body = mapOf("amount" to amount),
+                    idempotencyKey = "retailer-prediction-correct:$predictionId:amount:$amount",
                 )
                 refresh()
             } catch (_: Exception) {}
@@ -135,6 +136,7 @@ class OrdersViewModel @Inject constructor(
                 api.correctPrediction(
                     predictionId = predictionId,
                     body = mapOf("status" to "REJECTED"),
+                    idempotencyKey = "retailer-prediction-correct:$predictionId:rejected",
                 )
                 refresh()
             } catch (_: Exception) {}

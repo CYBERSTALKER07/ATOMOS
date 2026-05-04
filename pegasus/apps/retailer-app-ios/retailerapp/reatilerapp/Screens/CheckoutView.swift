@@ -360,7 +360,11 @@ struct CheckoutView: View {
         let gateway = gatewayCode(for: selectedPayment)
         let payload = cart.buildCheckoutPayload(retailerId: rid, paymentGateway: gateway)
         do {
-            let _: CheckoutResponse = try await api.post(path: "/v1/checkout/unified", body: payload)
+            let _: CheckoutResponse = try await api.post(
+                path: "/v1/checkout/unified",
+                body: payload,
+                headers: ["Idempotency-Key": checkoutIdempotencyKey(payload: payload, gateway: gateway)]
+            )
             cart.clear()
             Haptics.success()
             withAnimation(AnimationConstants.fluid) { showSuccess = true }
@@ -403,6 +407,14 @@ struct CheckoutView: View {
             showError = true
         }
         isSubmitting = false
+    }
+
+    private func checkoutIdempotencyKey(payload: UnifiedCheckoutPayload, gateway: String) -> String {
+        let itemKey = payload.items
+            .map { "\($0.skuId):\($0.quantity):\($0.unitPriceUzs)" }
+            .sorted()
+            .joined(separator: "|")
+        return "retailer-checkout:\(gateway):\(itemKey)"
     }
 }
 

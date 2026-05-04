@@ -80,10 +80,16 @@ interface PegasusApi {
     suspend fun getMySuppliers(): List<Supplier>
 
     @POST("/v1/retailer/suppliers/{id}/add")
-    suspend fun addSupplier(@Path("id") supplierId: String): ApiResponse
+    suspend fun addSupplier(
+        @Path("id") supplierId: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): ApiResponse
 
     @POST("/v1/retailer/suppliers/{id}/remove")
-    suspend fun removeSupplier(@Path("id") supplierId: String): ApiResponse
+    suspend fun removeSupplier(
+        @Path("id") supplierId: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): ApiResponse
 
     // ── AI / Predictions ──
     @POST("/v1/ai/preorder")
@@ -96,6 +102,7 @@ interface PegasusApi {
     suspend fun correctPrediction(
         @Query("prediction_id") predictionId: String,
         @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): ApiResponse
 
     // ── Retailer Profile ──
@@ -114,14 +121,23 @@ interface PegasusApi {
 
     // ── Checkout ──
     @POST("/v1/checkout/unified")
-    suspend fun unifiedCheckout(@Body body: UnifiedCheckoutRequest): UnifiedCheckoutResponse
+    suspend fun unifiedCheckout(
+        @Body body: UnifiedCheckoutRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): UnifiedCheckoutResponse
 
     // ── Post-Offload Payment ──
     @POST("/v1/order/cash-checkout")
-    suspend fun cashCheckout(@Body body: CashCheckoutRequest): CashCheckoutResponse
+    suspend fun cashCheckout(
+        @Body body: CashCheckoutRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): CashCheckoutResponse
 
     @POST("/v1/order/card-checkout")
-    suspend fun cardCheckout(@Body body: CardCheckoutRequest): CardCheckoutResponse
+    suspend fun cardCheckout(
+        @Body body: CardCheckoutRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): CardCheckoutResponse
 
     // ── Empathy Engine Settings ──
     // ── Active Fulfillment ──

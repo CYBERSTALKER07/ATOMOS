@@ -457,7 +457,11 @@ struct OrdersView: View {
                 continue
             }
             do {
-                let _: CheckoutResponse = try await api.post(path: "/v1/checkout/unified", body: payload)
+                let _: CheckoutResponse = try await api.post(
+                    path: "/v1/checkout/unified",
+                    body: payload,
+                    headers: ["Idempotency-Key": "retailer-checkout-pending:\(Int64(order.createdAt.timeIntervalSince1970 * 1000))"]
+                )
                 modelContext.delete(order)
             } catch {
                 order.retryCount += 1
@@ -492,7 +496,11 @@ struct OrdersView: View {
                 let quantity: Int
                 enum CodingKeys: String, CodingKey { case productId = "product_id"; case quantity }
             }
-            let _: Order = try await api.post(path: "/v1/ai/preorder", body: PreorderBody(productId: forecast.productId, quantity: forecast.predictedQuantity))
+            let _: Order = try await api.post(
+                path: "/v1/ai/preorder",
+                body: PreorderBody(productId: forecast.productId, quantity: forecast.predictedQuantity),
+                headers: ["Idempotency-Key": "retailer-ai-preorder:\(forecast.id):\(forecast.predictedQuantity)"]
+            )
             Haptics.success()
         } catch {
             Haptics.error()

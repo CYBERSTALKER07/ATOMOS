@@ -396,7 +396,12 @@ struct SupplierProductsView: View {
         isTogglingMySupplier = true
         do {
             let path = isMySupplier ? "/v1/retailer/suppliers/\(supplier.id)/add" : "/v1/retailer/suppliers/\(supplier.id)/remove"
-            let _: [String: Bool] = try await api.post(path: path, body: ["supplier_id": supplier.id])
+            let action = isMySupplier ? "add" : "remove"
+            let _: [String: Bool] = try await api.post(
+                path: path,
+                body: ["supplier_id": supplier.id],
+                headers: ["Idempotency-Key": "retailer-supplier-\(action):\(supplier.id)"]
+            )
         } catch {
             withAnimation(AnimationConstants.express) { isMySupplier.toggle() }
         }

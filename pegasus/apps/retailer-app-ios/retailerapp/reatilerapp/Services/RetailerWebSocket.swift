@@ -94,6 +94,8 @@ final class RetailerWebSocket {
     private var session: URLSession?
     private var retailerId: String?
     private var eventContinuation: AsyncStream<RetailerWSEvent>.Continuation?
+    private var shouldReconnect = false
+    private var reconnectWorkItem: DispatchWorkItem?
     
     // Backoff tracking
     private var reconnectAttempts = 0
@@ -118,6 +120,9 @@ final class RetailerWebSocket {
     func connect(retailerId: String) {
         guard task == nil else { return }
         self.retailerId = retailerId
+        shouldReconnect = true
+        reconnectWorkItem?.cancel()
+        reconnectWorkItem = nil
 
         let api = APIClient.shared
         let base = api.baseURL
@@ -150,6 +155,9 @@ final class RetailerWebSocket {
     // MARK: - Disconnect
 
     func disconnect() {
+        shouldReconnect = false
+        reconnectWorkItem?.cancel()
+        reconnectWorkItem = nil
         task?.cancel(with: .goingAway, reason: nil)
         task = nil
         session?.invalidateAndCancel()
@@ -244,7 +252,7 @@ final class RetailerWebSocket {
     // MARK: - Reconnect
 
     private func scheduleReconnect() {
-        guard let retailerId else { return }
+        guard shouldReconnect, let retailerId else { return }
         task = nil
         session?.invalidateAndCancel()
         session = nil
@@ -262,9 +270,11 @@ final class RetailerWebSocket {
         
         print("WebSocket disconnected. Scheduled reconnect in \(String(format: "%.2f", finalDelay)) seconds")
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + finalDelay) { [weak self] in
-            // Connect will bypass guard if task == nil, which it is
-            self?.connect(retailerId: retailerId)
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self, self.shouldReconnect else { return }
+            self.connect(retailerId: retailerId)
         }
+        reconnectWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + finalDelay, execute: workItem)
     }
 }

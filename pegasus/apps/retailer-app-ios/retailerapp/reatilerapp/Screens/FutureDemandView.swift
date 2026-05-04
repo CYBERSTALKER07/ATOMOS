@@ -236,7 +236,8 @@ struct FutureDemandView: View {
             let body: [String: Int64] = ["amount": amount]
             let _: [String: String] = try await api.patch(
                 path: "/v1/ai/predictions/correct?prediction_id=\(forecast.id)",
-                body: body
+                body: body,
+                headers: ["Idempotency-Key": "retailer-prediction-correct:\(forecast.id):amount:\(amount)"]
             )
             Haptics.success()
             await loadForecasts()
@@ -250,7 +251,8 @@ struct FutureDemandView: View {
             let body: [String: String] = ["status": "REJECTED"]
             let _: [String: String] = try await api.patch(
                 path: "/v1/ai/predictions/correct?prediction_id=\(forecast.id)",
-                body: body
+                body: body,
+                headers: ["Idempotency-Key": "retailer-prediction-correct:\(forecast.id):rejected"]
             )
             Haptics.success()
             await loadForecasts()
