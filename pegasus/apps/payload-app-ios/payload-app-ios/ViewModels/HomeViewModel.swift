@@ -16,6 +16,10 @@ import Observation
 @MainActor
 @Observable
 final class HomeViewModel {
+    private func deterministicQueueActionId(action: String, entityId: String) -> String {
+        "payload-\(action)-\(entityId)"
+    }
+
     // Sidebar
     private(set) var trucks: [Truck] = []
     private(set) var selectedTruckId: String?
@@ -327,7 +331,7 @@ final class HomeViewModel {
         if !online {
             let body = (try? JSONEncoder().encode(InjectOrderRequest(orderId: trimmed))).flatMap { String(data: $0, encoding: .utf8) } ?? ""
             let action = QueuedAction(
-                id: UUID().uuidString,
+                id: deterministicQueueActionId(action: "inject-order", entityId: "\(manifestId)-\(trimmed)"),
                 endpoint: "/v1/supplier/manifests/\(manifestId)/inject-order",
                 method: "POST",
                 body: body,

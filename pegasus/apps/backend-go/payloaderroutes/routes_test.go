@@ -2,6 +2,7 @@ package payloaderroutes
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"cloud.google.com/go/spanner"
@@ -22,6 +23,7 @@ func TestRegisterRoutes_RegistersPayloaderEndpoints(t *testing.T) {
 		http.MethodGet + " /v1/payloader/trucks":              false,
 		http.MethodGet + " /v1/payloader/orders":              false,
 		http.MethodPost + " /v1/payloader/recommend-reassign": false,
+		http.MethodPost + " /v1/payload/seal":                 false,
 	}
 
 	if err := chi.Walk(r, func(method string, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
@@ -38,5 +40,36 @@ func TestRegisterRoutes_RegistersPayloaderEndpoints(t *testing.T) {
 		if !seen {
 			t.Fatalf("missing expected route: %s", key)
 		}
+	}
+}
+
+func TestRegisterRoutes_NilPayloaderHubDoesNotMountPayloaderWebSocket(t *testing.T) {
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:          func(next http.HandlerFunc) http.HandlerFunc { return next },
+		PayloaderHub: nil,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/ws/payloader", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusNotFound)
+	}
+}
+
+func TestRegisterRoutes_PayloadSealMounted(t *testing.T) {
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log: func(next http.HandlerFunc) http.HandlerFunc { return next },
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payload/seal", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusUnauthorized)
 	}
 }

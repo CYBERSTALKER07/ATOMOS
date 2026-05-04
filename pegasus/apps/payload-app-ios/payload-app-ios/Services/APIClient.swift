@@ -87,7 +87,11 @@ final class APIClient: @unchecked Sendable {
         return try await get("v1/payloader/orders\(q)")
     }
     func recommendReassign(orderId: String) async throws -> RecommendReassignResponse {
-        try await post("v1/payloader/recommend-reassign", body: RecommendReassignRequest(orderId: orderId))
+        try await post(
+            "v1/payloader/recommend-reassign",
+            body: RecommendReassignRequest(orderId: orderId),
+            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "recommend-reassign", entityId: orderId)]
+        )
     }
 
     // MARK: - Manifest lifecycle
@@ -103,33 +107,59 @@ final class APIClient: @unchecked Sendable {
         try await get("v1/supplier/manifests/\(manifestId)")
     }
     func startLoading(manifestId: String) async throws -> StatusResponse {
-        try await post("v1/supplier/manifests/\(manifestId)/start-loading", body: EmptyBody())
+        try await post(
+            "v1/supplier/manifests/\(manifestId)/start-loading",
+            body: EmptyBody(),
+            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "start-loading", entityId: manifestId)]
+        )
     }
     func sealManifest(manifestId: String) async throws -> SealManifestResponse {
-        try await post("v1/supplier/manifests/\(manifestId)/seal", body: EmptyBody())
+        try await post(
+            "v1/supplier/manifests/\(manifestId)/seal",
+            body: EmptyBody(),
+            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "seal-manifest", entityId: manifestId)]
+        )
     }
     func injectOrder(manifestId: String, orderId: String) async throws -> StatusResponse {
-        try await post("v1/supplier/manifests/\(manifestId)/inject-order", body: InjectOrderRequest(orderId: orderId))
+        try await post(
+            "v1/supplier/manifests/\(manifestId)/inject-order",
+            body: InjectOrderRequest(orderId: orderId),
+            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "inject-order", entityId: "\(manifestId)-\(orderId)")]
+        )
     }
 
     // MARK: - Per-order seal / exception
     /// Backend wants {order_id, terminal_id, manifest_cleared}. Per Expo,
     /// terminal_id is the active vehicle/truck id.
     func sealOrder(orderId: String, terminalId: String) async throws -> SealOrderResponse {
-        try await post("v1/payload/seal",
-                       body: SealOrderRequest(orderId: orderId, terminalId: terminalId, manifestCleared: true))
+        try await post(
+            "v1/payload/seal",
+            body: SealOrderRequest(orderId: orderId, terminalId: terminalId, manifestCleared: true),
+            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "payload-seal", entityId: orderId)]
+        )
     }
     func manifestException(manifestId: String, orderId: String, reason: String, metadata: String = "") async throws -> ManifestExceptionResponse {
-        try await post("v1/payload/manifest-exception",
-                       body: ManifestExceptionRequest(manifestId: manifestId, orderId: orderId, reason: reason, metadata: metadata))
+        try await post(
+            "v1/payload/manifest-exception",
+            body: ManifestExceptionRequest(manifestId: manifestId, orderId: orderId, reason: reason, metadata: metadata),
+            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "manifest-exception", entityId: "\(manifestId)-\(orderId)")]
+        )
     }
     func reportMissingItems(orderId: String, items: [MissingItemEntry]) async throws -> StatusResponse {
-        try await post("v1/delivery/missing-items", body: MissingItemsRequest(orderId: orderId, missingItems: items))
+        try await post(
+            "v1/delivery/missing-items",
+            body: MissingItemsRequest(orderId: orderId, missingItems: items),
+            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "missing-items", entityId: orderId)]
+        )
     }
 
     // MARK: - Fleet reassign
     func fleetReassign(orderIds: [String], newRouteId: String) async throws -> FleetReassignResponse {
-        try await post("v1/fleet/reassign", body: FleetReassignRequest(orderIds: orderIds, newRouteId: newRouteId))
+        try await post(
+            "v1/fleet/reassign",
+            body: FleetReassignRequest(orderIds: orderIds, newRouteId: newRouteId),
+            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "fleet-reassign", entityId: orderIds.sorted().joined(separator: ","))]
+        )
     }
 
     // MARK: - Notifications
@@ -153,9 +183,12 @@ final class APIClient: @unchecked Sendable {
     // MARK: - Raw replay (offline queue)
     /// Replay a queued action with arbitrary endpoint/method/body. Returns
     /// (statusCode, raw bytes) so the caller can decide retention vs drop.
-    func rawRequest(endpoint: String, method: String, body: String) async throws -> (Int, Data) {
+    func rawRequest(endpoint: String, method: String, body: String, idempotencyKey: String? = nil) async throws -> (Int, Data) {
         let path = endpoint.hasPrefix("/") ? String(endpoint.dropFirst()) : endpoint
         var req = try buildRequest(path: path, method: method)
+        if let idempotencyKey, !idempotencyKey.isEmpty {
+            req.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
+        }
         if !body.isEmpty { req.httpBody = body.data(using: .utf8) }
         let (data, response) = try await dataForRequestWithFallback(req)
         guard let http = response as? HTTPURLResponse else { throw APIError.networkError }
@@ -171,10 +204,22 @@ final class APIClient: @unchecked Sendable {
         return try await execute(req)
     }
 
-    private func post<B: Encodable, T: Decodable>(_ path: String, body: B, authenticated: Bool = true) async throws -> T {
+    private func post<B: Encodable, T: Decodable>(
+        _ path: String,
+        body: B,
+        authenticated: Bool = true,
+        headers: [String: String] = [:]
+    ) async throws -> T {
         var req = try buildRequest(path: path, method: "POST", authenticated: authenticated)
+        for (name, value) in headers {
+            req.setValue(value, forHTTPHeaderField: name)
+        }
         req.httpBody = try encoder.encode(body)
         return try await execute(req)
+    }
+
+    private func deterministicIdempotencyKey(action: String, entityId: String) -> String {
+        "payload-\(action)-\(entityId)"
     }
 
     private func buildRequest(path: String, method: String, authenticated: Bool = true) throws -> URLRequest {

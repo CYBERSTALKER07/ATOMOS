@@ -977,8 +977,8 @@ func HandleResolveCreditDelivery(svc *OrderService, deps *EarlyCompleteDeps) htt
 // Edge 33: Missing Items After Seal
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// HandleMissingItems lets a driver report items missing after manifest seal.
-// POST /v1/delivery/missing-items (DRIVER role)
+// HandleMissingItems lets a driver or payloader report items missing after manifest seal.
+// POST /v1/delivery/missing-items (DRIVER or PAYLOADER role)
 func HandleMissingItems(svc *OrderService, deps *EarlyCompleteDeps) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -997,8 +997,30 @@ func HandleMissingItems(svc *OrderService, deps *EarlyCompleteDeps) http.Handler
 				SkuID      string `json:"sku_id"`
 				MissingQty int64  `json:"missing_qty"`
 			} `json:"missing_items"`
+			Items []struct {
+				SkuID      string `json:"sku_id"`
+				MissingQty int64  `json:"missing_qty"`
+			} `json:"items"`
+			Source string `json:"source"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" || len(req.MissingItems) == 0 {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" {
+			http.Error(w, `{"error":"order_id and missing_items required"}`, http.StatusBadRequest)
+			return
+		}
+		if len(req.MissingItems) == 0 && len(req.Items) > 0 {
+			req.MissingItems = req.Items
+		}
+		if len(req.MissingItems) == 0 {
+			// Payload terminal can flag a sealed order for review without enumerating SKUs yet.
+			if strings.EqualFold(req.Source, "PAYLOAD_TERMINAL") {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"status":         "REPORTED",
+					"order_id":       req.OrderID,
+					"adjusted_total": 0,
+				})
+				return
+			}
 			http.Error(w, `{"error":"order_id and missing_items required"}`, http.StatusBadRequest)
 			return
 		}

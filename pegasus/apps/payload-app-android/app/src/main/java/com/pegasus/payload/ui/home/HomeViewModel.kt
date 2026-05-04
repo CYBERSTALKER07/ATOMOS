@@ -87,6 +87,9 @@ class HomeViewModel @Inject constructor(
     private val notificationBus: com.pegasus.payload.services.NotificationBus,
     private val json: Json,
 ) : ViewModel() {
+    private fun deterministicQueueActionId(action: String, entityId: String): String =
+        "payload-$action-$entityId"
+
 
     private val _state = MutableStateFlow(HomeUiState())
     val state: StateFlow<HomeUiState> = _state.asStateFlow()
@@ -481,7 +484,7 @@ class HomeViewModel @Inject constructor(
             val body = json.encodeToString(InjectOrderRequest.serializer(), InjectOrderRequest(orderId = trimmed))
             repository.enqueue(
                 QueuedAction(
-                    id = System.currentTimeMillis().toString(),
+                    id = deterministicQueueActionId("inject-order", "$manifestId-$trimmed"),
                     endpoint = "/v1/supplier/manifests/$manifestId/inject-order",
                     method = "POST",
                     body = body,

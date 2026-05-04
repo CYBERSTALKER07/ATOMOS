@@ -24,6 +24,7 @@ import com.pegasus.payload.data.model.Truck
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -51,7 +52,10 @@ interface PayloadApi {
     ): List<LiveOrder>
 
     @POST("v1/payloader/recommend-reassign")
-    suspend fun recommendReassign(@Body req: RecommendReassignRequest): RecommendReassignResponse
+    suspend fun recommendReassign(
+        @Body req: RecommendReassignRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): RecommendReassignResponse
 
     // ── Manifest lifecycle ───────────────────────────────────────────────────
     @GET("v1/supplier/manifests")
@@ -64,30 +68,49 @@ interface PayloadApi {
     suspend fun manifestDetail(@Path("id") manifestId: String): Manifest
 
     @POST("v1/supplier/manifests/{id}/start-loading")
-    suspend fun startLoading(@Path("id") manifestId: String): StatusResponse
+    suspend fun startLoading(
+        @Path("id") manifestId: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): StatusResponse
 
     @POST("v1/supplier/manifests/{id}/seal")
-    suspend fun sealManifest(@Path("id") manifestId: String): SealManifestResponse
+    suspend fun sealManifest(
+        @Path("id") manifestId: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): SealManifestResponse
 
     @POST("v1/supplier/manifests/{id}/inject-order")
     suspend fun injectOrder(
         @Path("id") manifestId: String,
         @Body req: InjectOrderRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): StatusResponse
 
     // ── Per-order seal / exception ───────────────────────────────────────────
     @POST("v1/payload/seal")
-    suspend fun sealOrder(@Body req: SealOrderRequest): SealOrderResponse
+    suspend fun sealOrder(
+        @Body req: SealOrderRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): SealOrderResponse
 
     @POST("v1/payload/manifest-exception")
-    suspend fun manifestException(@Body req: ManifestExceptionRequest): ManifestExceptionResponse
+    suspend fun manifestException(
+        @Body req: ManifestExceptionRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): ManifestExceptionResponse
 
     @POST("v1/delivery/missing-items")
-    suspend fun missingItems(@Body req: MissingItemsRequest): StatusResponse
+    suspend fun missingItems(
+        @Body req: MissingItemsRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): StatusResponse
 
     // ── Fleet reassign ───────────────────────────────────────────────────────
     @POST("v1/fleet/reassign")
-    suspend fun fleetReassign(@Body req: FleetReassignRequest): FleetReassignResponse
+    suspend fun fleetReassign(
+        @Body req: FleetReassignRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): FleetReassignResponse
 
     // ── Notifications ────────────────────────────────────────────────────────
     @GET("v1/user/notifications")

@@ -385,6 +385,8 @@ export default function App() {
       ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
       : { 'Content-Type': 'application/json', 'X-Trace-Id': traceId };
   };
+  const buildPayloadIdempotencyKey = (action: string, entityId: string) =>
+    `payload-${action}-${entityId}`;
   const authHeaders = getAuthHeaders();
 
   const clearToastTimer = useCallback(() => {
@@ -613,7 +615,10 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/v1/payloader/recommend-reassign`, {
         method: 'POST',
-        headers: authHeaders as HeadersInit,
+        headers: {
+          ...(authHeaders as Record<string, string>),
+          'Idempotency-Key': buildPayloadIdempotencyKey('recommend-reassign', orderId),
+        } as HeadersInit,
         body: JSON.stringify({ order_id: orderId }),
       });
       if (!res.ok) throw new Error(await extractProblemMessage(res, locale));
@@ -635,7 +640,10 @@ export default function App() {
       // RouteId == DriverId in this codebase; vehicle is bound to the driver.
       const res = await fetch(`${API_BASE}/v1/fleet/reassign`, {
         method: 'POST',
-        headers: authHeaders as HeadersInit,
+        headers: {
+          ...(authHeaders as Record<string, string>),
+          'Idempotency-Key': buildPayloadIdempotencyKey('fleet-reassign', reDispatchOrderId),
+        } as HeadersInit,
         body: JSON.stringify({
           order_ids: [reDispatchOrderId],
           new_route_id: newDriverId,
@@ -772,7 +780,11 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/v1/supplier/manifests/${manifestId}/start-loading`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildPayloadIdempotencyKey('start-loading', manifestId),
+        },
       });
       if (!res.ok) throw new Error(await extractProblemMessage(res, locale));
       setManifestState('LOADING');
@@ -791,7 +803,11 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/v1/payload/manifest-exception`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildPayloadIdempotencyKey('manifest-exception', `${manifestId}-${orderId}`),
+        },
         body: JSON.stringify({ manifest_id: manifestId, order_id: orderId, reason }),
       });
       if (!res.ok) throw new Error(await extractProblemMessage(res, locale));
@@ -821,7 +837,11 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/v1/supplier/manifests/${manifestId}/seal`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildPayloadIdempotencyKey('seal-manifest', manifestId),
+        },
       });
       if (!res.ok) {
         throw new Error(await extractProblemMessage(res, locale));
@@ -850,7 +870,11 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/v1/supplier/manifests/${manifestId}/inject-order`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': buildPayloadIdempotencyKey('inject-order', `${manifestId}-${injectOrderId.trim()}`),
+        },
         body: JSON.stringify({ order_id: injectOrderId.trim() }),
       });
       if (!res.ok) {
@@ -872,7 +896,7 @@ export default function App() {
       if (!isOnline) {
         // Offline: queue the action
         const action: QueuedAction = {
-          id: Date.now().toString(),
+          id: buildPayloadIdempotencyKey('inject-order', `${manifestId}-${injectOrderId.trim()}`),
           endpoint: `/v1/supplier/manifests/${manifestId}/inject-order`,
           method: 'POST',
           body: JSON.stringify({ order_id: injectOrderId.trim() }),
@@ -900,12 +924,18 @@ export default function App() {
       try {
         const res = await fetch(`${API_BASE}${action.endpoint}`, {
           method: action.method,
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Idempotency-Key': action.id,
+          },
           body: action.body,
         });
-        if (!res.ok) {
-          remaining.push(action); // keep for retry
+        if (res.ok || res.status === 409) continue;
+        if (res.status === 408 || res.status === 429 || res.status >= 500) {
+          remaining.push(action); // retryable
         }
+        // Non-retryable 4xx are dropped so poison-pill entries cannot block queue drain.
       } catch {
         remaining.push(action);
       }
@@ -938,7 +968,10 @@ export default function App() {
     try {
       const res = await fetch(`${API_BASE}/v1/payload/seal`, {
         method: 'POST',
-        headers: authHeaders as HeadersInit,
+        headers: {
+          ...(authHeaders as Record<string, string>),
+          'Idempotency-Key': buildPayloadIdempotencyKey('payload-seal', selectedOrderId),
+        } as HeadersInit,
         body: JSON.stringify({
           order_id: selectedOrderId,
           terminal_id: activeTruck || 'WH-UNKNOWN',
@@ -1029,7 +1062,10 @@ export default function App() {
                     try {
                       await fetch(`${API_BASE}/v1/delivery/missing-items`, {
                         method: 'POST',
-                        headers: authHeaders as HeadersInit,
+                        headers: {
+                          ...(authHeaders as Record<string, string>),
+                          'Idempotency-Key': buildPayloadIdempotencyKey('missing-items', postSealOrderId ?? 'unknown-order'),
+                        } as HeadersInit,
                         body: JSON.stringify({ order_id: postSealOrderId, items: [], source: 'PAYLOAD_TERMINAL' }),
                       });
                       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);

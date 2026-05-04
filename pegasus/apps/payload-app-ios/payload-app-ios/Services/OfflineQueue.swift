@@ -52,7 +52,8 @@ final class OfflineQueue {
             do {
                 let (status, _) = try await api.rawRequest(endpoint: action.endpoint,
                                                             method: action.method,
-                                                            body: action.body)
+                                                            body: action.body,
+                                                            idempotencyKey: action.id)
                 if (200...299).contains(status) || status == 409 {
                     sent += 1
                 } else if status == 408 || status == 429 || status >= 500 {

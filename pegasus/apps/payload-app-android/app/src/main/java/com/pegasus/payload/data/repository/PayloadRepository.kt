@@ -42,6 +42,9 @@ class PayloadRepository @Inject constructor(
     private val json: Json,
     private val okHttp: OkHttpClient,
 ) {
+    private fun deterministicIdempotencyKey(action: String, entityId: String): String =
+        "payload-$action-$entityId"
+
     suspend fun loadTrucks(): List<Truck> = api.trucks()
 
     /** Draft OR currently-loading manifest for the selected truck, or null. */
@@ -59,13 +62,22 @@ class PayloadRepository @Inject constructor(
         api.orders(vehicleId = vehicleId, state = state)
 
     suspend fun startLoading(manifestId: String): StatusResponse =
-        api.startLoading(manifestId)
+        api.startLoading(
+            manifestId = manifestId,
+            idempotencyKey = deterministicIdempotencyKey("start-loading", manifestId),
+        )
 
     suspend fun sealOrder(orderId: String, terminalId: String): SealOrderResponse =
-        api.sealOrder(SealOrderRequest(orderId = orderId, terminalId = terminalId, manifestCleared = true))
+        api.sealOrder(
+            req = SealOrderRequest(orderId = orderId, terminalId = terminalId, manifestCleared = true),
+            idempotencyKey = deterministicIdempotencyKey("payload-seal", orderId),
+        )
 
     suspend fun sealManifest(manifestId: String): SealManifestResponse =
-        api.sealManifest(manifestId)
+        api.sealManifest(
+            manifestId = manifestId,
+            idempotencyKey = deterministicIdempotencyKey("seal-manifest", manifestId),
+        )
 
     // ── Phase 5 ──────────────────────────────────────────────────────────────
 
@@ -76,21 +88,32 @@ class PayloadRepository @Inject constructor(
         reason: String,
         metadata: String = "",
     ): ManifestExceptionResponse = api.manifestException(
-        ManifestExceptionRequest(manifestId = manifestId, orderId = orderId, reason = reason, metadata = metadata)
+        req = ManifestExceptionRequest(manifestId = manifestId, orderId = orderId, reason = reason, metadata = metadata),
+        idempotencyKey = deterministicIdempotencyKey("manifest-exception", "$manifestId-$orderId"),
     )
 
     suspend fun injectOrder(manifestId: String, orderId: String): StatusResponse =
-        api.injectOrder(manifestId, InjectOrderRequest(orderId = orderId))
+        api.injectOrder(
+            manifestId = manifestId,
+            req = InjectOrderRequest(orderId = orderId),
+            idempotencyKey = deterministicIdempotencyKey("inject-order", "$manifestId-$orderId"),
+        )
 
     suspend fun recommendReassign(orderId: String): RecommendReassignResponse =
-        api.recommendReassign(RecommendReassignRequest(orderId = orderId))
+        api.recommendReassign(
+            req = RecommendReassignRequest(orderId = orderId),
+            idempotencyKey = deterministicIdempotencyKey("recommend-reassign", orderId),
+        )
 
     /**
      * Move an order to a new route. In this codebase RouteId == DriverId, so
      * pass the recommended driver_id as [newRouteId].
      */
     suspend fun fleetReassign(orderIds: List<String>, newRouteId: String): FleetReassignResponse =
-        api.fleetReassign(FleetReassignRequest(orderIds = orderIds, newRouteId = newRouteId))
+        api.fleetReassign(
+            req = FleetReassignRequest(orderIds = orderIds, newRouteId = newRouteId),
+            idempotencyKey = deterministicIdempotencyKey("fleet-reassign", orderIds.sorted().joinToString(",")),
+        )
 
     // ── Phase 6: notifications ───────────────────────────────────────────────
 
@@ -146,15 +169,28 @@ class PayloadRepository @Inject constructor(
                 .url("${baseUrl.trimEnd('/')}${action.endpoint}")
                 .header("Authorization", "Bearer $token")
                 .header("Content-Type", "application/json")
+                .header("Idempotency-Key", action.id)
                 .method(action.method, action.body.toRequestBody("application/json".toMediaType()))
                 .build()
-            val ok = runCatching { okHttp.newCall(req).execute().use { it.isSuccessful } }
-                .getOrDefault(false)
-            if (ok) sent++ else remaining.add(action)
+            val outcome = runCatching {
+                okHttp.newCall(req).execute().use { response ->
+                    val status = response.code
+                    when {
+                        response.isSuccessful || status == 409 -> QueueReplayOutcome.Sent
+                        status == 408 || status == 429 || status >= 500 -> QueueReplayOutcome.Retry
+                        else -> QueueReplayOutcome.Drop
+                    }
+                }
+            }.getOrElse { QueueReplayOutcome.Retry }
+            when (outcome) {
+                QueueReplayOutcome.Sent,
+                QueueReplayOutcome.Drop -> sent++
+                QueueReplayOutcome.Retry -> remaining.add(action)
+            }
         }
         writeQueue(remaining)
         return sent to remaining.size
     }
+
+    private enum class QueueReplayOutcome { Sent, Retry, Drop }
 }
-
-

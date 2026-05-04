@@ -480,9 +480,16 @@ func main() {
 
 	// /v1/auth/payloader/login → authroutes package.
 
-	// /v1/payloader/* — 3 routes (trucks, orders, recommend-reassign).
+	// /v1/payloader/* core plus /v1/payload/seal and /v1/ws/payloader.
 	// Ownership lives in backend-go/payloaderroutes.
-	payloaderroutes.RegisterRoutes(r, payloaderroutes.Deps{Spanner: spannerClient, ReadRouter: app.SpannerRouter, Log: loggingMiddleware})
+	payloaderroutes.RegisterRoutes(r, payloaderroutes.Deps{
+		Spanner:      spannerClient,
+		ReadRouter:   app.SpannerRouter,
+		Order:        svc,
+		RetailerHub:  retailerHub,
+		PayloaderHub: payloaderHub,
+		Log:          loggingMiddleware,
+	})
 
 	// /v1/delivery/* — 9 routes (arrive, confirm-payment-bypass, sms-complete,
 	// shop-closed, bypass-offload, negotiate, credit-delivery, missing-items,
@@ -731,55 +738,7 @@ func main() {
 		json.NewEncoder(w).Encode(routes)
 	})))
 
-	http.HandleFunc("/v1/payload/seal", auth.RequireRole([]string{"ADMIN", "SUPPLIER", "PAYLOADER"}, loggingMiddleware(idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var req order.PayloadSealRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
-			return
-		}
-
-		retailerID, err := svc.SealPayload(r.Context(), req)
-		if err != nil {
-			log.Printf("Payload Seal Hash Failure for order %s: %v", req.OrderID, err)
-
-			// Distinguish between bad requests/conflicts vs internal errors
-			if strings.Contains(err.Error(), "bad request") {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			if strings.Contains(err.Error(), "conflict") {
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			}
-
-			http.Error(w, "Internal Server Error during Payload Seal", http.StatusInternalServerError)
-			return
-		}
-
-		// Push ORDER_STATUS_CHANGED (DISPATCHED) to retailer via WebSocket
-		if retailerID != "" {
-			go retailerHub.PushToRetailer(retailerID, map[string]interface{}{
-				"type":      ws.EventOrderStatusChanged,
-				"order_id":  req.OrderID,
-				"state":     "DISPATCHED",
-				"timestamp": time.Now().UTC().Format(time.RFC3339),
-			})
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		dispatchCode := order.GenerateSecureToken()
-		json.NewEncoder(w).Encode(map[string]string{
-			"status":        "PAYLOAD_SEALED_AND_DISPATCHED",
-			"dispatch_code": dispatchCode,
-			"order_id":      req.OrderID,
-		})
-	}))))
+	// /v1/payload/seal moved to payloaderroutes.
 
 	http.HandleFunc("/v1/prediction/create", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -2759,9 +2718,7 @@ func main() {
 	// Phase 3b: Driver WebSocket Hub route now mounts via driverroutes.
 	fmt.Println("[BOOT] Driver WebSocket Hub: ONLINE")
 
-	// Phase 3c: Boot the Payloader WebSocket Hub (receives PAYLOAD_READY_TO_SEAL pushes)
-	http.HandleFunc("/v1/ws/payloader",
-		auth.RequireRole([]string{"SUPPLIER", "ADMIN", "PAYLOADER"}, payloaderHub.HandleConnection))
+	// Phase 3c: Payloader WebSocket Hub route now mounts via payloaderroutes.
 	fmt.Println("[BOOT] Payloader WebSocket Hub: ONLINE")
 
 	// Boot the Notification Dispatcher Consumer (inbox + WS + Telegram for all event types)

@@ -63,12 +63,13 @@ type Deps struct {
 //	POST /v1/delivery/bypass-offload          — driver uses bypass token for offload
 //	POST /v1/delivery/negotiate               — driver proposes quantity negotiation
 //	POST /v1/delivery/credit-delivery         — delivered on credit
-//	POST /v1/delivery/missing-items           — missing items after seal
+//	POST /v1/delivery/missing-items           — missing items after seal (driver or payloader)
 //	POST /v1/delivery/split-payment           — partial cash + credit
 func RegisterRoutes(r chi.Router, d Deps) {
 	svc := d.Order
 	log := d.Log
 	driver := []string{"DRIVER"}
+	driverOrPayloader := []string{"DRIVER", "PAYLOADER"}
 
 	// Arrival orchestration lives inline — it spans three collaborators.
 	r.HandleFunc("/v1/delivery/arrive",
@@ -100,7 +101,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	// Edge 33: Driver reports missing items after seal
 	r.HandleFunc("/v1/delivery/missing-items",
-		auth.RequireRole(driver, log(order.HandleMissingItems(svc, d.EarlyCompleteDeps))))
+		auth.RequireRole(driverOrPayloader, log(order.HandleMissingItems(svc, d.EarlyCompleteDeps))))
 
 	// Edge 35: Driver creates split payment
 	r.HandleFunc("/v1/delivery/split-payment",

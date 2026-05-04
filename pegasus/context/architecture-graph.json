@@ -420,7 +420,7 @@
     {
       "id": "payload_loading_surface",
       "path": "/v1/{auth/payloader/login,payloader/*,supplier/manifests*,payload/*,user/notifications,ws/payloader}",
-      "owner": "pegasus/apps/backend-go/payloaderroutes/routes.go + pegasus/apps/backend-go/supplierlogisticsroutes/routes.go + pegasus/apps/backend-go/main.go + pegasus/apps/backend-go/ws/payloader_hub.go",
+      "owner": "pegasus/apps/backend-go/authroutes/routes.go + pegasus/apps/backend-go/payloaderroutes/routes.go + pegasus/apps/backend-go/supplierlogisticsroutes/routes.go + pegasus/apps/backend-go/fleetroutes/routes.go + pegasus/apps/backend-go/userroutes/routes.go + pegasus/apps/backend-go/ws/payloader_hub.go",
       "delegatedFrom": "pegasus/apps/backend-go/main.go",
       "methods": [
         "POST /v1/auth/payloader/login",
@@ -434,6 +434,8 @@
         "POST /v1/supplier/manifests/{id}/inject-order",
         "POST /v1/payload/manifest-exception",
         "POST /v1/payload/seal",
+        "POST /v1/delivery/missing-items",
+        "POST /v1/fleet/reassign",
         "GET /v1/user/notifications",
         "POST /v1/user/notifications/read",
         "GET /v1/ws/payloader"
