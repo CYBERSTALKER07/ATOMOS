@@ -246,7 +246,15 @@ struct ProcurementView: View {
                 ProcurementOrderRequest.Item(productId: $0.productId, quantity: quantities[$0.id] ?? $0.predictedQuantity)
             }
             let body = ProcurementOrderRequest(retailerId: rid, items: orderItems)
-            let _: ProcurementOrderResponse = try await api.post(path: "/v1/order/create", body: body)
+            let idempotencyKey = "retailer-procurement:" + orderItems
+                .map { "\($0.productId):\($0.quantity)" }
+                .sorted()
+                .joined(separator: "|")
+            let _: ProcurementOrderResponse = try await api.post(
+                path: "/v1/order/create",
+                body: body,
+                headers: ["Idempotency-Key": idempotencyKey]
+            )
             isSubmitting = false
             showSuccess = true
         } catch {

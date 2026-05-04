@@ -14,6 +14,8 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
@@ -49,6 +51,8 @@ class RetailerWebSocket @Inject constructor(
 ) {
     private var socket: WebSocket? = null
     private var client: OkHttpClient? = null
+    private val reconnectExecutor = Executors.newSingleThreadScheduledExecutor()
+    private var reconnectTask: ScheduledFuture<*>? = null
     private val intentionalClose = AtomicBoolean(false)
     private val reconnectAttempt = AtomicInteger(0)
 
@@ -63,6 +67,8 @@ class RetailerWebSocket @Inject constructor(
 
     fun connect() {
         if (socket != null) return
+        reconnectTask?.cancel(false)
+        reconnectTask = null
         intentionalClose.set(false)
         val token = tokenManager.getToken() ?: return
 
@@ -99,8 +105,8 @@ class RetailerWebSocket @Inject constructor(
                 val attempt = reconnectAttempt.getAndIncrement()
                 if (attempt >= MAX_RECONNECT_ATTEMPTS) return
                 val delay = (BASE_DELAY_MS * (1L shl attempt.coerceAtMost(5))).coerceAtMost(MAX_DELAY_MS)
-                Thread.sleep(delay)
-                connect()
+                reconnectTask?.cancel(false)
+                reconnectTask = reconnectExecutor.schedule({ connect() }, delay, TimeUnit.MILLISECONDS)
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
@@ -111,6 +117,8 @@ class RetailerWebSocket @Inject constructor(
 
     fun disconnect() {
         intentionalClose.set(true)
+        reconnectTask?.cancel(false)
+        reconnectTask = null
         socket?.close(1000, "App closing")
         socket = null
         client?.dispatcher?.executorService?.shutdown()

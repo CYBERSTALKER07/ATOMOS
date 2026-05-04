@@ -11,11 +11,13 @@ final class APIClient {
     private let encoder: JSONEncoder
 
     #if DEBUG
-    // Simulator: localhost. Physical device: set PEGASUS_DEV_HOST
-    // scheme env variable to the Mac's LAN IP (e.g. 192.168.1.42)
+    // Simulator: localhost. Physical device: set LAB_DEV_HOST
+    // scheme env variable to the Mac's LAN IP (e.g. 192.168.1.42).
+    // PEGASUS_DEV_HOST remains as a legacy fallback for existing schemes.
     // for backend reachability over Wi-Fi.
     var baseURL: String = {
-        let raw = (ProcessInfo.processInfo.environment["PEGASUS_DEV_HOST"] ?? "")
+        let env = ProcessInfo.processInfo.environment
+        let raw = (env["LAB_DEV_HOST"] ?? env["PEGASUS_DEV_HOST"] ?? "")
             .trimmingCharacters(in: .whitespaces)
         if raw.isEmpty { return "http://localhost:8080" }
         if raw.hasPrefix("http://") || raw.hasPrefix("https://") { return raw }
@@ -57,6 +59,7 @@ final class APIClient {
         method: String = "GET",
         path: String,
         body: (any Encodable)? = nil,
+        headers: [String: String] = [:],
         isRetry: Bool = false
     ) async throws -> T {
         guard let url = URL(string: "\(baseURL)\(path)") else {
@@ -72,6 +75,10 @@ final class APIClient {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
 
+        headers.forEach { key, value in
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+
         if let body {
             request.httpBody = try encoder.encode(AnyEncodable(body))
         }
@@ -84,7 +91,7 @@ final class APIClient {
 
         if http.statusCode == 401 && !isRetry && !isRefreshing {
             if let _ = await attemptTokenRefresh() {
-                return try await self.request(method: method, path: path, body: body, isRetry: true)
+                return try await self.request(method: method, path: path, body: body, headers: headers, isRetry: true)
             }
             throw APIError.serverError(statusCode: 401, message: "Unauthorized")
         }
@@ -141,8 +148,8 @@ final class APIClient {
         try await request(method: "GET", path: path)
     }
 
-    func post<T: Decodable>(path: String, body: (any Encodable)? = nil) async throws -> T {
-        try await request(method: "POST", path: path, body: body)
+    func post<T: Decodable>(path: String, body: (any Encodable)? = nil, headers: [String: String] = [:]) async throws -> T {
+        try await request(method: "POST", path: path, body: body, headers: headers)
     }
 
     func patch<T: Decodable>(path: String, body: (any Encodable)? = nil) async throws -> T {

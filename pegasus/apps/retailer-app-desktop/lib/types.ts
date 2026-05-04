@@ -29,6 +29,19 @@ export interface Order {
   items?: LineItem[];
 }
 
+export interface ProcurementOrderResponse {
+  status: "PROCUREMENT_AUTHORIZED";
+  order_id: string;
+  retailer_id: string;
+  supplier_id?: string;
+  state: string;
+  amount: number;
+  total: number;
+  currency: string;
+  order_source: "PROCUREMENT";
+  created_at: string;
+}
+
 /* ── Catalog ── */
 export interface Variant {
   id: string;

@@ -91,7 +91,10 @@ class OrdersViewModel @Inject constructor(
         if (!cancellingIds.add(orderId)) return
         viewModelScope.launch {
             try {
-                api.cancelOrder(mapOf("order_id" to orderId, "retailer_id" to retailerId))
+                api.cancelOrder(
+                    body = mapOf("order_id" to orderId, "retailer_id" to retailerId),
+                    idempotencyKey = "retailer-cancel:$orderId",
+                )
                 refresh()
             } catch (_: Exception) {
             } finally {

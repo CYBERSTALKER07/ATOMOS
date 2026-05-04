@@ -14,6 +14,13 @@ import type {
   ProductOverride, VariantOverride, RetailerProfile,
 } from "../../../lib/types";
 
+function getBrowserStorage(): Storage | null {
+  if (typeof window === "undefined" || typeof window.localStorage?.getItem !== "function") {
+    return null;
+  }
+  return window.localStorage;
+}
+
 /* ── Toggle Switch ── */
 function Toggle({
   on,
@@ -170,10 +177,7 @@ export default function SettingsPage() {
   const [savingGlobal, setSavingGlobal] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [notifOn, setNotifOn] = useState(() => {
-    if (typeof localStorage !== 'undefined') {
-      return localStorage.getItem('retailer_notif') !== 'false';
-    }
-    return true;
+    return getBrowserStorage()?.getItem("retailer_notif") !== "false";
   });
 
   /* ── Profile Editing ── */
@@ -187,9 +191,10 @@ export default function SettingsPage() {
   // Load profile from localStorage (set at login) + attempt API fetch
   useEffect(() => {
     // Seed from localStorage first for instant display
-    if (typeof localStorage !== 'undefined') {
+    const storage = getBrowserStorage();
+    if (storage) {
       try {
-        const p: RetailerProfile = JSON.parse(localStorage.getItem('retailer_profile') || '{}');
+        const p: RetailerProfile = JSON.parse(storage.getItem('retailer_profile') || '{}');
         if (p.name) setProfileName(p.name);
         if (p.company) setProfileCompany(p.company);
         if (p.email) setProfileEmail(p.email);
@@ -216,10 +221,11 @@ export default function SettingsPage() {
       if (res.ok) {
         setProfileEditing(false);
         // Update localStorage cache so avatar/shell pick up changes
-        if (typeof localStorage !== 'undefined') {
+        const storage = getBrowserStorage();
+        if (storage) {
           try {
-            const existing = JSON.parse(localStorage.getItem('retailer_profile') || '{}');
-            localStorage.setItem('retailer_profile', JSON.stringify({
+            const existing = JSON.parse(storage.getItem('retailer_profile') || '{}');
+            storage.setItem('retailer_profile', JSON.stringify({
               ...existing,
               name: profileName,
               company: profileCompany,
@@ -362,7 +368,7 @@ export default function SettingsPage() {
               <Toggle on={notifOn} onToggle={() => {
                 const next = !notifOn;
                 setNotifOn(next);
-                if (typeof localStorage !== 'undefined') localStorage.setItem('retailer_notif', String(next));
+                getBrowserStorage()?.setItem("retailer_notif", String(next));
               }} />
             </div>
             <div className="flex items-center justify-between py-3">

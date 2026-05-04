@@ -73,6 +73,9 @@ export default function OrdersPage() {
     try {
       const res = await apiFetch('/v1/order/cancel', {
         method: 'POST',
+        headers: {
+          "Idempotency-Key": `retailer-cancel:${order.order_id}:${order.version ?? 0}`,
+        },
         body: JSON.stringify({
           order_id: order.order_id,
           retailer_id: profile.id,

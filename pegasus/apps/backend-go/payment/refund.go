@@ -13,6 +13,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"google.golang.org/api/iterator"
 )
 
 // Refund status constants matching the Refunds table CHECK constraint.
@@ -232,13 +233,16 @@ func (rs *RefundService) GetRefundsByOrder(ctx context.Context, orderID string) 
 	var results []RefundResult
 	for {
 		row, err := iter.Next()
-		if err != nil {
+		if err == iterator.Done {
 			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("query refunds for order %s: %w", orderID, err)
 		}
 		var r RefundResult
 		var providerRef spanner.NullString
 		if err := row.Columns(&r.RefundID, &r.Status, &r.AmountUZS, &r.Gateway, &providerRef); err != nil {
-			continue
+			return nil, fmt.Errorf("parse refund for order %s: %w", orderID, err)
 		}
 		r.ProviderRefundID = providerRef.StringVal
 		results = append(results, r)

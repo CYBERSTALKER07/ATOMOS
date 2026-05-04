@@ -15,6 +15,7 @@ import (
 	"backend-go/analytics"
 	"backend-go/auth"
 	"backend-go/cache"
+	"backend-go/idempotency"
 	"backend-go/order"
 	"backend-go/payment"
 	"backend-go/proximity"
@@ -79,6 +80,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(retailerRole, log(analytics.HandleRetailerDetailedAnalytics(d.Spanner, d.ReadRouter))))
 	r.HandleFunc("/v1/orders/request-cancel",
 		auth.RequireRole(retailerRole, log(order.HandleRequestCancel(d.Order))))
+	r.HandleFunc("/v1/order/cancel",
+		auth.RequireRole(retailerRole, log(idempotency.Guard(order.HandleCancelOrder(d.Order)))))
+	r.HandleFunc("/v1/order/create",
+		auth.RequireRole(retailerRole, log(idempotency.Guard(order.HandleCreateProcurementOrder(d.Order)))))
 	r.HandleFunc("/v1/order/cash-checkout",
 		auth.RequireRole(retailerRole, log(handleRetailerCashCheckout(d))))
 	r.HandleFunc("/v1/order/card-checkout",

@@ -76,6 +76,12 @@ export default function InsightsPage() {
         .map((p) => ({ product_id: p.id, quantity: quantities[p.id] ?? p.predictedQuantity }));
       const res = await apiFetch("/v1/order/create", {
         method: "POST",
+        headers: {
+          "Idempotency-Key": `retailer-procurement:${items
+            .map((item) => `${item.product_id}:${item.quantity}`)
+            .sort()
+            .join("|")}`,
+        },
         body: JSON.stringify({ items }),
       });
       if (!res.ok) throw new Error("Order creation failed");

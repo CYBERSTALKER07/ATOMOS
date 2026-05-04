@@ -358,6 +358,20 @@ data class Order(
     val isAiGenerated: Boolean get() = orderSource == "AI_PREDICTED"
 }
 
+@Serializable
+data class ProcurementOrderResponse(
+    @SerialName("status") val status: String,
+    @SerialName("order_id") val orderId: String,
+    @SerialName("retailer_id") val retailerId: String = "",
+    @SerialName("supplier_id") val supplierId: String = "",
+    @SerialName("state") val state: OrderStatus = OrderStatus.PENDING,
+    @SerialName("amount") val amount: Long = 0,
+    @SerialName("total") val total: Long = 0,
+    @SerialName("currency") val currency: String = "UZS",
+    @SerialName("order_source") val orderSource: String = "PROCUREMENT",
+    @SerialName("created_at") val createdAt: String? = null,
+)
+
 // ── AI Demand Forecast (iOS: DemandForecast) ──
 
 @Serializable

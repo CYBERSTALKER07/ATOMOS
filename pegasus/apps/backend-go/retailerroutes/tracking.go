@@ -3,6 +3,7 @@ package retailerroutes
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -139,11 +140,26 @@ func handleRetailerTracking(d Deps) http.HandlerFunc {
 			return
 		}
 
-		supplierNames := loadNameMap(r, d.Spanner, "Suppliers", "SupplierId", "Name", "sids", supplierIDs)
-		warehouseNames := loadNameMap(r, d.Spanner, "Warehouses", "WarehouseId", "Name", "wids", warehouseIDs)
+		supplierNames, err := loadNameMap(r, d.Spanner, "Suppliers", "SupplierId", "Name", "sids", supplierIDs)
+		if err != nil {
+			log.Printf("[TRACKING] Failed to query supplier names for retailer %s: %v", claims.UserID, err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		warehouseNames, err := loadNameMap(r, d.Spanner, "Warehouses", "WarehouseId", "Name", "wids", warehouseIDs)
+		if err != nil {
+			log.Printf("[TRACKING] Failed to query warehouse names for retailer %s: %v", claims.UserID, err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 		driverPositions := loadDriverPositions(r, driverIDs)
 		approachingSet := loadApproachingOrders(r, orderIDs)
-		orderItems := loadTrackingItems(r, d.Spanner, orderIDs)
+		orderItems, err := loadTrackingItems(r, d.Spanner, orderIDs)
+		if err != nil {
+			log.Printf("[TRACKING] Failed to query tracking order items for retailer %s: %v", claims.UserID, err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(map[string]interface{}{
@@ -231,8 +247,7 @@ func loadTrackingRows(r *http.Request, client *spanner.Client, retailerID string
 
 		current, err := decodeTrackingRow(row)
 		if err != nil {
-			log.Printf("[TRACKING] Column parse failed: %v", err)
-			continue
+			return nil, nil, nil, nil, nil, fmt.Errorf("decode tracking row: %w", err)
 		}
 		rows = append(rows, current)
 		orderIDs = append(orderIDs, current.OrderID)
@@ -272,10 +287,10 @@ func decodeTrackingRow(row *spanner.Row) (trackingRow, error) {
 	}, nil
 }
 
-func loadNameMap(r *http.Request, client *spanner.Client, table string, idColumn string, nameColumn string, paramName string, ids []string) map[string]string {
+func loadNameMap(r *http.Request, client *spanner.Client, table string, idColumn string, nameColumn string, paramName string, ids []string) (map[string]string, error) {
 	names := map[string]string{}
 	if len(ids) == 0 {
-		return names
+		return names, nil
 	}
 
 	stmt := spanner.Statement{
@@ -288,15 +303,16 @@ func loadNameMap(r *http.Request, client *spanner.Client, table string, idColumn
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
-			return names
+			return names, nil
 		}
 		if err != nil {
-			return names
+			return nil, fmt.Errorf("query %s names: %w", table, err)
 		}
 		var id, name string
-		if err := row.Columns(&id, &name); err == nil {
-			names[id] = name
+		if err := row.Columns(&id, &name); err != nil {
+			return nil, fmt.Errorf("decode %s name row: %w", table, err)
 		}
+		names[id] = name
 	}
 }
 
@@ -337,10 +353,10 @@ func loadApproachingOrders(r *http.Request, orderIDs []string) map[string]bool {
 	return approaching
 }
 
-func loadTrackingItems(r *http.Request, client *spanner.Client, orderIDs []string) map[string][]trackingItem {
+func loadTrackingItems(r *http.Request, client *spanner.Client, orderIDs []string) (map[string][]trackingItem, error) {
 	itemsByOrder := map[string][]trackingItem{}
 	if len(orderIDs) == 0 {
-		return itemsByOrder
+		return itemsByOrder, nil
 	}
 
 	stmt := spanner.Statement{
@@ -356,22 +372,23 @@ func loadTrackingItems(r *http.Request, client *spanner.Client, orderIDs []strin
 	for {
 		row, err := iter.Next()
 		if err == iterator.Done {
-			return itemsByOrder
+			return itemsByOrder, nil
 		}
 		if err != nil {
-			return itemsByOrder
+			return nil, fmt.Errorf("query tracking items: %w", err)
 		}
 		var orderID, skuID, skuName string
 		var quantity, unitPrice int64
-		if err := row.Columns(&orderID, &skuID, &skuName, &quantity, &unitPrice); err == nil {
-			itemsByOrder[orderID] = append(itemsByOrder[orderID], trackingItem{
-				ProductID:   skuID,
-				ProductName: skuName,
-				Quantity:    quantity,
-				UnitPrice:   unitPrice,
-				LineTotal:   quantity * unitPrice,
-			})
+		if err := row.Columns(&orderID, &skuID, &skuName, &quantity, &unitPrice); err != nil {
+			return nil, fmt.Errorf("decode tracking item row: %w", err)
 		}
+		itemsByOrder[orderID] = append(itemsByOrder[orderID], trackingItem{
+			ProductID:   skuID,
+			ProductName: skuName,
+			Quantity:    quantity,
+			UnitPrice:   unitPrice,
+			LineTotal:   quantity * unitPrice,
+		})
 	}
 }
 

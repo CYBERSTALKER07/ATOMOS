@@ -170,6 +170,20 @@ export interface Order {
   items?: OrderLineItem[];  // Lazy-loaded via Idx_OrderItems_ByOrder
 }
 
+// Legacy procurement create response from POST /v1/order/create.
+export interface ProcurementOrderResponse {
+  status: 'PROCUREMENT_AUTHORIZED';
+  order_id: string;
+  retailer_id: string;
+  supplier_id?: string;
+  state: OrderState;
+  amount: number;
+  total: number;
+  currency: string;
+  order_source: 'PROCUREMENT';
+  created_at: string;
+}
+
 // ─── Active Mission (Fleet Radar) ───────────────────────────────────────────
 // Returned by GET /v1/fleet/active — lightweight projection for the map view.
 export interface ActiveMission {

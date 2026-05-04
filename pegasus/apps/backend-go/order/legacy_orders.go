@@ -11,14 +11,20 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/cache"
 	apperrors "backend-go/errors"
+	kafkaEvents "backend-go/kafka"
+	"backend-go/outbox"
 	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 )
 
-var errLegacyOrderForbidden = errors.New("order outside caller scope")
+var (
+	errLegacyOrderForbidden    = errors.New("order outside caller scope")
+	errLegacyOrderInvalidState = errors.New("invalid order state")
+)
 
 type legacyOrderItemResponse struct {
 	LineItemID  string `json:"line_item_id"`
@@ -76,6 +82,16 @@ type legacyOrderEventResponse struct {
 type legacyOrderScope struct {
 	clause string
 	params map[string]interface{}
+}
+
+type legacyOrderStatePatch struct {
+	OrderID     string
+	RetailerID  string
+	SupplierID  string
+	WarehouseID string
+	OldState    string
+	NewState    string
+	Version     int64
 }
 
 // HandleLegacyOrdersPath serves the legacy /v1/orders/* surface used by the
@@ -179,6 +195,12 @@ func (s *OrderService) handleLegacyOrderEvents(w http.ResponseWriter, r *http.Re
 }
 
 func (s *OrderService) handleLegacyOrderStatusPatch(w http.ResponseWriter, r *http.Request) {
+	claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
+	if claims == nil {
+		apperrors.Unauthorized(w, r, "authentication required")
+		return
+	}
+
 	orderID, ok := legacyOrderPatchTarget(r.URL.Path)
 	if !ok {
 		apperrors.NotFound(w, r, "order status endpoint not found")
@@ -202,18 +224,20 @@ func (s *OrderService) handleLegacyOrderStatusPatch(w http.ResponseWriter, r *ht
 		return
 	}
 
-	_, err := s.Client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		stmt := spanner.Statement{
-			SQL: `UPDATE Orders SET State = @state WHERE OrderId = @orderId`,
-			Params: map[string]interface{}{
-				"state":   status,
-				"orderId": orderID,
-			},
-		}
-		_, err := txn.Update(ctx, stmt)
-		return err
-	})
+	err := s.PatchLegacyOrderState(r.Context(), claims, orderID, status)
 	if err != nil {
+		if errors.Is(err, errLegacyOrderForbidden) {
+			apperrors.Forbidden(w, r, "order is outside caller scope")
+			return
+		}
+		if errors.Is(err, errLegacyOrderInvalidState) {
+			apperrors.BadRequest(w, r, "invalid order state")
+			return
+		}
+		if errors.Is(err, spanner.ErrRowNotFound) {
+			apperrors.NotFound(w, r, fmt.Sprintf("order %s not found", orderID))
+			return
+		}
 		slog.ErrorContext(r.Context(), "legacy_orders.patch_failed",
 			"trace_id", telemetry.TraceIDFromContext(r.Context()),
 			"order_id", orderID,
@@ -223,9 +247,80 @@ func (s *OrderService) handleLegacyOrderStatusPatch(w http.ResponseWriter, r *ht
 		return
 	}
 
+	orderDetail, err := s.GetLegacyOrderDetail(r.Context(), claims, orderID)
+	if err != nil {
+		slog.ErrorContext(r.Context(), "legacy_orders.patch_reload_failed",
+			"trace_id", telemetry.TraceIDFromContext(r.Context()),
+			"order_id", orderID,
+			"status", status,
+			"error", err.Error())
+		apperrors.InternalError(w, r, "failed to reload patched order")
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(fmt.Sprintf(`{"status":"SUCCESS","message":"Order %s patched to %s"}`, orderID, status)))
+	_ = json.NewEncoder(w).Encode(orderDetail)
+}
+
+// PatchLegacyOrderState updates the legacy order state endpoint with role scope,
+// version bumping, outbox emission, and post-commit cache invalidation.
+func (s *OrderService) PatchLegacyOrderState(ctx context.Context, claims *auth.PegasusClaims, orderID string, newState string) error {
+	if !isLegacyOrderState(newState) {
+		return errLegacyOrderInvalidState
+	}
+	scope, err := legacyOrderScopeForClaims(claims)
+	if err != nil {
+		return err
+	}
+
+	var patched legacyOrderStatePatch
+	_, err = s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		current, err := readLegacyOrderStateForPatch(ctx, txn, orderID, scope)
+		if err != nil {
+			return err
+		}
+		current.NewState = newState
+		if current.OldState == newState {
+			patched = current
+			return nil
+		}
+
+		rowCount, err := txn.Update(ctx, spanner.Statement{
+			SQL: `UPDATE Orders SET State = @state, Version = @newVersion WHERE OrderId = @orderId AND Version = @version`,
+			Params: map[string]interface{}{
+				"state":      newState,
+				"newVersion": current.Version + 1,
+				"orderId":    orderID,
+				"version":    current.Version,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("update legacy order state: %w", err)
+		}
+		if rowCount == 0 {
+			return &ErrVersionConflict{OrderID: orderID, ExpectedVersion: current.Version, ActualVersion: -1}
+		}
+
+		event := kafkaEvents.OrderStatusChangedEvent{
+			OrderID:     orderID,
+			RetailerID:  current.RetailerID,
+			SupplierID:  current.SupplierID,
+			WarehouseId: current.WarehouseID,
+			OldState:    current.OldState,
+			NewState:    newState,
+			Timestamp:   time.Now().UTC(),
+		}
+		if err := outbox.EmitJSON(txn, "Order", orderID, kafkaEvents.EventOrderStatusChanged, kafkaEvents.TopicMain, event, telemetry.TraceIDFromContext(ctx)); err != nil {
+			return fmt.Errorf("emit legacy order status changed: %w", err)
+		}
+		patched = current
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	s.invalidateLegacyOrderStateCaches(ctx, patched)
+	return nil
 }
 
 // GetLegacyOrderDetail returns a superset payload compatible with the native
@@ -454,6 +549,65 @@ func (s *OrderService) fetchLegacyOrderEvents(ctx context.Context, orderID strin
 			Metadata:  metadata,
 			CreatedAt: createdAt.Format(time.RFC3339),
 		})
+	}
+}
+
+func readLegacyOrderStateForPatch(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string, scope legacyOrderScope) (legacyOrderStatePatch, error) {
+	params := map[string]interface{}{"orderId": orderID}
+	for key, value := range scope.params {
+		params[key] = value
+	}
+	iter := txn.Query(ctx, spanner.Statement{
+		SQL: `SELECT o.OrderId,
+		             o.RetailerId,
+		             COALESCE(o.SupplierId, '') AS SupplierId,
+		             COALESCE(o.WarehouseId, '') AS WarehouseId,
+		             o.State,
+		             COALESCE(o.Version, 0) AS Version
+		      FROM Orders o
+		      WHERE o.OrderId = @orderId AND ` + scope.clause,
+		Params: params,
+	})
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err != nil {
+		if err == iterator.Done {
+			return legacyOrderStatePatch{}, spanner.ErrRowNotFound
+		}
+		return legacyOrderStatePatch{}, fmt.Errorf("query legacy order state %s: %w", orderID, err)
+	}
+
+	var patch legacyOrderStatePatch
+	if err := row.Columns(&patch.OrderID, &patch.RetailerID, &patch.SupplierID, &patch.WarehouseID, &patch.OldState, &patch.Version); err != nil {
+		return legacyOrderStatePatch{}, fmt.Errorf("scan legacy order state %s: %w", orderID, err)
+	}
+	return patch, nil
+}
+
+func (s *OrderService) invalidateLegacyOrderStateCaches(ctx context.Context, patch legacyOrderStatePatch) {
+	if patch.RetailerID == "" {
+		return
+	}
+	if s.Cache != nil {
+		s.Cache.Invalidate(ctx, cache.PrefixActiveOrders+patch.RetailerID, cache.PrefixDeliveryToken+patch.OrderID)
+		return
+	}
+	if patch.NewState == "COMPLETED" || patch.NewState == "CANCELLED" {
+		s.InvalidateDeliveryToken(ctx, patch.OrderID)
+	}
+}
+
+func isLegacyOrderState(state string) bool {
+	switch state {
+	case "PENDING", "PENDING_REVIEW", "LOADED", "DISPATCHED", "IN_TRANSIT",
+		"ARRIVING", "ARRIVED", "ARRIVED_SHOP_CLOSED", "AWAITING_GLOBAL_PAYNT",
+		"PENDING_CASH_COLLECTION", "COMPLETED", "CANCELLED", "CANCEL_REQUESTED",
+		"NO_CAPACITY", "DELIVERED_ON_CREDIT", "SCHEDULED", "AUTO_ACCEPTED",
+		"QUARANTINE", "STALE_AUDIT", "REFUNDED":
+		return true
+	default:
+		return false
 	}
 }
 

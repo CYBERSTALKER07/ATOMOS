@@ -13,6 +13,7 @@ import com.pegasus.retailer.data.model.LoginRequest
 import com.pegasus.retailer.data.model.Order
 import com.pegasus.retailer.data.model.Product
 import com.pegasus.retailer.data.model.ProductCategory
+import com.pegasus.retailer.data.model.ProcurementOrderResponse
 import com.pegasus.retailer.data.model.RegisterRequest
 import com.pegasus.retailer.data.model.RetailerAnalytics
 import com.pegasus.retailer.data.model.RetailerDetailedAnalytics
@@ -26,6 +27,7 @@ import com.pegasus.retailer.ui.screens.notifications.NotificationsResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Header
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -52,10 +54,13 @@ interface PegasusApi {
     suspend fun getOrders(@Path("id") retailerId: String): List<Order>
 
     @POST("/v1/order/create")
-    suspend fun createOrder(@Body body: Map<String, @JvmSuppressWildcards Any>): Order
+    suspend fun createOrder(@Body body: Map<String, @JvmSuppressWildcards Any>): ProcurementOrderResponse
 
     @POST("/v1/order/cancel")
-    suspend fun cancelOrder(@Body body: Map<String, String>): ApiResponse
+    suspend fun cancelOrder(
+        @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): ApiResponse
 
     // ── Catalog ──
     @GET("/v1/catalog/categories")

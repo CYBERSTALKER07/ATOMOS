@@ -361,10 +361,14 @@ struct DashboardView: View {
     private func cancelOrder(_ orderId: String) async {
         let retailerId = AuthManager.shared.currentUser?.id ?? ""
         do {
-            let _: [String: String] = try await api.post(path: "/v1/order/cancel", body: [
-                "order_id": orderId,
-                "retailer_id": retailerId,
-            ])
+            let _: [String: String] = try await api.post(
+                path: "/v1/order/cancel",
+                body: [
+                    "order_id": orderId,
+                    "retailer_id": retailerId,
+                ],
+                headers: ["Idempotency-Key": "retailer-cancel:\(orderId)"]
+            )
             withAnimation(AnimationConstants.fluid) {
                 activeOrders.removeAll { $0.id == orderId }
             }

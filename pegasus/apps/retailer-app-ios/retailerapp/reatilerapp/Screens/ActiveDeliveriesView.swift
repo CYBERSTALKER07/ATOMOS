@@ -495,10 +495,14 @@ struct OrderDetailSheet: View {
         defer { isCancelling = false }
         let retailerId = AuthManager.shared.currentUser?.id ?? ""
         do {
-            let _: [String: String] = try await api.post(path: "/v1/order/cancel", body: [
-                "order_id": order.id,
-                "retailer_id": retailerId,
-            ])
+            let _: [String: String] = try await api.post(
+                path: "/v1/order/cancel",
+                body: [
+                    "order_id": order.id,
+                    "retailer_id": retailerId,
+                ],
+                headers: ["Idempotency-Key": "retailer-cancel:\(order.id)"]
+            )
             onCancelled?()
             dismiss()
         } catch {

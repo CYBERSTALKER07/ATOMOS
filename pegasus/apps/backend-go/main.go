@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -32,6 +31,7 @@ import (
 	"backend-go/idempotency"
 	"backend-go/notifications"
 	"backend-go/order"
+	"backend-go/orderroutes"
 	"backend-go/payloaderroutes"
 	"backend-go/payment"
 	"backend-go/paymentroutes"
@@ -1031,6 +1031,12 @@ func main() {
 	// ── Refund Endpoint (Phase 3.1) ──
 	refundSvc := payment.NewRefundService(spannerClient, platformCfg.PlatformFeeBasisPoints())
 	chargebackSvc := payment.NewChargebackService(spannerClient)
+	orderroutes.RegisterRoutes(r, orderroutes.Deps{
+		Spanner: spannerClient,
+		Order:   svc,
+		Refund:  refundSvc,
+		Log:     loggingMiddleware,
+	})
 	http.HandleFunc("/v1/order/refund", auth.RequireRole([]string{"ADMIN", "SUPPLIER"}, loggingMiddleware(idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -1060,26 +1066,6 @@ func main() {
 		json.NewEncoder(w).Encode(result)
 	}))))
 
-	// GET /v1/order/{id}/refunds — List refunds for an order
-	http.HandleFunc("/v1/order/refunds", auth.RequireRole([]string{"ADMIN", "SUPPLIER", "RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		orderID := r.URL.Query().Get("order_id")
-		if orderID == "" {
-			http.Error(w, `{"error":"order_id query param required"}`, http.StatusBadRequest)
-			return
-		}
-		refunds, err := refundSvc.GetRefundsByOrder(r.Context(), orderID)
-		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(refunds)
-	})))
-
 	// /v1/checkout/* + /v1/payment/* — 5 routes (b2b, unified, chargeback,
 	// chargeback/reversal, global_pay/initiate). Ownership lives in backend-go/paymentroutes.
 	paymentroutes.RegisterRoutes(r, paymentroutes.Deps{
@@ -1097,58 +1083,7 @@ func main() {
 
 	// /v1/fleet/{trucks,driver/depart,driver/return-complete,route/reorder,orders} moved to fleetroutes.
 
-	// GET /v1/orders — List orders with optional filters.
-	// POST /v1/orders is REMOVED — use POST /v1/order/create (OrderService.CreateOrder) instead.
-	http.HandleFunc("/v1/orders", auth.RequireRole([]string{"ADMIN", "RETAILER", "SUPPLIER", "PAYLOADER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method Not Allowed — use POST /v1/order/create", http.StatusMethodNotAllowed)
-			return
-		}
-
-		routeId := r.URL.Query().Get("route_id")
-		stateFilter := r.URL.Query().Get("state")
-		retailerId := r.URL.Query().Get("retailer_id")
-
-		claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
-		if claims != nil && claims.Role == "RETAILER" {
-			retailerId = claims.UserID
-		}
-
-		limit := 100
-		if raw := r.URL.Query().Get("limit"); raw != "" {
-			parsed, parseErr := strconv.Atoi(raw)
-			if parseErr != nil {
-				http.Error(w, "Invalid limit", http.StatusBadRequest)
-				return
-			}
-			limit = parsed
-		}
-		offset := int64(0)
-		if raw := r.URL.Query().Get("offset"); raw != "" {
-			parsed, parseErr := strconv.ParseInt(raw, 10, 64)
-			if parseErr != nil {
-				http.Error(w, "Invalid offset", http.StatusBadRequest)
-				return
-			}
-			offset = parsed
-		}
-
-		orders, err := svc.ListOrdersPaginated(r.Context(), routeId, stateFilter, retailerId, limit, offset)
-		if err != nil {
-			log.Printf("Failed to list orders: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(orders); err != nil {
-			log.Printf("Failed to write orders response: %v", err)
-		}
-	})))
-
-	http.HandleFunc("/v1/orders/", auth.RequireRole([]string{"ADMIN", "DRIVER", "RETAILER", "SUPPLIER"}, loggingMiddleware(order.HandleLegacyOrdersPath(svc))))
-
-	// Legacy /v1/orders/{id}/items and /v1/order-items/ removed — use OrderLineItems via OrderService.
+	// /v1/orders and /v1/order/refunds moved to orderroutes.
 
 	http.HandleFunc("/v1/products", auth.RequireRole([]string{"RETAILER", "ADMIN"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

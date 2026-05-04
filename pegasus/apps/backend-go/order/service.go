@@ -508,10 +508,15 @@ func (s *OrderService) CreateOrder(ctx context.Context, req CreateOrderRequest) 
 }
 
 func (s *OrderService) ListOrders(ctx context.Context, routeId string, state string, retailerId string) ([]Order, error) {
-	return s.ListOrdersPaginated(ctx, routeId, state, retailerId, 100, 0)
+	return s.ListOrdersPaginatedScoped(ctx, routeId, state, retailerId, "", 100, 0)
 }
 
 func (s *OrderService) ListOrdersPaginated(ctx context.Context, routeId string, state string, retailerId string, limit int, offset int64) ([]Order, error) {
+	return s.ListOrdersPaginatedScoped(ctx, routeId, state, retailerId, "", limit, offset)
+}
+
+// ListOrdersPaginatedScoped returns orders with optional role-derived supplier scope.
+func (s *OrderService) ListOrdersPaginatedScoped(ctx context.Context, routeId string, state string, retailerId string, supplierID string, limit int, offset int64) ([]Order, error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -544,6 +549,10 @@ func (s *OrderService) ListOrdersPaginated(ctx context.Context, routeId string, 
 	if retailerId != "" {
 		sql += " AND RetailerId = @retailerId"
 		params["retailerId"] = retailerId
+	}
+	if supplierID != "" {
+		sql += " AND o.SupplierId = @supplierId"
+		params["supplierId"] = supplierID
 	}
 	sql += " ORDER BY CreatedAt DESC LIMIT @limit OFFSET @offset"
 
@@ -1226,6 +1235,11 @@ func (s *OrderService) CancelOrder(ctx context.Context, req CancelOrderRequest) 
 	})
 
 	if err == nil {
+		if s.Cache != nil {
+			s.Cache.Invalidate(ctx, cache.PrefixActiveOrders+req.RetailerID, cache.PrefixDeliveryToken+req.OrderID)
+		} else {
+			s.InvalidateDeliveryToken(ctx, req.OrderID)
+		}
 		// Void the GP authorization hold if the order was AUTHORIZED at checkout.
 		if wasAuthorized && orderGateway == "GLOBAL_PAY" && s.DirectClient != nil {
 			go s.voidAuthorizationForOrder(context.Background(), cancelledOrderID)
