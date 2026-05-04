@@ -26,6 +26,8 @@ import (
 	"config" // local map
 )
 
+const canonicalSchemaPath = "schema/spanner.ddl"
+
 func main() {
 	log.Println("Initializing Pegasus Seed Script...")
 
@@ -76,332 +78,13 @@ func main() {
 	if err != nil {
 		log.Printf("Instance not found, creating it...")
 		req := &instancepb.CreateInstanceRequest{
-			Parent:     parentName,
+			ddlStatements, err := loadDDLStatements(canonicalSchemaPath)
+			if err != nil {
+				log.Fatalf("Failed to load canonical schema %s: %v", canonicalSchemaPath, err)
+			}
+
+			// 4. Create Database and apply canonical DDL
 			InstanceId: cfg.SpannerInstance,
-			Instance: &instancepb.Instance{
-				Config:      fmt.Sprintf("%s/instanceConfigs/emulator-config", parentName),
-				DisplayName: "Pegasus Emulator",
-				NodeCount:   1,
-			},
-		}
-		op, err := instanceAdmin.CreateInstance(ctx, req)
-		if err != nil {
-			log.Fatalf("Failed to trigger instance creation: %v", err)
-		}
-		if _, err := op.Wait(ctx); err != nil {
-			log.Fatalf("Failed to create instance: %v", err)
-		}
-		log.Println("Instance created successfully.")
-	}
-
-	// 4. Create Database and apply DDL
-	dbName := fmt.Sprintf("%s/databases/%s", instanceName, cfg.SpannerDatabase)
-
-	ddlStatements := []string{
-		`CREATE TABLE Retailers (
-			RetailerId STRING(36) NOT NULL,
-			Name STRING(MAX) NOT NULL,
-			Phone STRING(MAX),
-			ShopName STRING(MAX),
-			ShopLocation STRING(MAX),
-			TaxIdentificationNumber STRING(MAX),
-			Status STRING(20),
-			PasswordHash STRING(MAX),
-			FcmToken STRING(MAX),
-			TelegramChatId STRING(MAX),
-			CreatedAt TIMESTAMP OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (RetailerId)`,
-
-		`CREATE TABLE Drivers (
-			DriverId STRING(36) NOT NULL,
-			Name STRING(MAX) NOT NULL,
-			CurrentLocation STRING(MAX),
-			CreatedAt TIMESTAMP OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (DriverId)`,
-
-		`CREATE TABLE Vehicles (
-			VehicleId     STRING(36)  NOT NULL,
-			SupplierId    STRING(36)  NOT NULL,
-			VehicleClass  STRING(10)  NOT NULL,
-			Label         STRING(100),
-			LicensePlate  STRING(30),
-			MaxVolumeVU   FLOAT64     NOT NULL,
-			LengthCM      FLOAT64,
-			WidthCM       FLOAT64,
-			HeightCM      FLOAT64,
-			IsActive      BOOL        NOT NULL DEFAULT (true),
-			UnavailableReason STRING(64),
-			CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (VehicleId)`,
-		`CREATE INDEX Idx_Vehicles_BySupplier ON Vehicles(SupplierId)`,
-
-		`CREATE TABLE Orders (
-			OrderId        STRING(36)  NOT NULL,
-			RetailerId     STRING(36)  NOT NULL,
-			DriverId       STRING(36),
-			SupplierId     STRING(36),
-			InvoiceId      STRING(36),
-			State          STRING(30)  NOT NULL,
-			TotalAmount    NUMERIC,
-			Amount      INT64,
-			PaymentGateway STRING(MAX),
-			ShopLocation   STRING(MAX),
-			RouteId        STRING(MAX),
-			OrderSource    STRING(MAX),
-			DeliveryToken  STRING(MAX),
-			AutoConfirmAt  TIMESTAMP OPTIONS (allow_commit_timestamp=true),
-			DeliverBefore  TIMESTAMP OPTIONS (allow_commit_timestamp=true),
-			RequestedDeliveryDate TIMESTAMP OPTIONS (allow_commit_timestamp=true),
-			ScheduleShard  INT64       NOT NULL DEFAULT (0),
-			QRValidatedAt  TIMESTAMP,
-			Version        INT64       NOT NULL DEFAULT (1),
-			LockedUntil    TIMESTAMP,
-			CreatedAt      TIMESTAMP OPTIONS (allow_commit_timestamp=true),
-			PaymentStatus   STRING(30)  NOT NULL DEFAULT ('PENDING'),
-			CONSTRAINT CHK_Order_State CHECK (State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'IN_TRANSIT', 'ARRIVING', 'ARRIVED', 'AWAITING_PAYMENT', 'PENDING_CASH_COLLECTION', 'COMPLETED', 'CANCELLED', 'SCHEDULED', 'BACKORDERED', 'QUARANTINE')),
-			CONSTRAINT CHK_PaymentStatus CHECK (PaymentStatus IN ('PENDING', 'PENDING_CASH_COLLECTION', 'AWAITING_GATEWAY_WEBHOOK', 'PAID', 'FAILED'))
-		) PRIMARY KEY (OrderId)`,
-
-		`CREATE INDEX IDX_Orders_RetailerId ON Orders(RetailerId)`,
-		`CREATE INDEX IDX_Orders_DriverId   ON Orders(DriverId)`,
-		`CREATE INDEX Idx_Orders_InvoiceId ON Orders(InvoiceId)`,
-		`CREATE INDEX Idx_Orders_SupplierId ON Orders(SupplierId)`,
-		`CREATE INDEX Idx_Orders_ByScheduleShardStateDate ON Orders(ScheduleShard, State, RequestedDeliveryDate DESC)`,
-
-		`CREATE TABLE MasterInvoices (
-			InvoiceId           STRING(36)  NOT NULL,
-			RetailerId          STRING(36)  NOT NULL,
-			Total            INT64       NOT NULL,
-			State               STRING(20)  NOT NULL,
-			OrderId             STRING(36),
-			GlobalPayTransactionId  STRING(64),
-			PaymentMode         STRING(20),
-			CollectorDriverId   STRING(36),
-			CollectedAt         TIMESTAMP,
-			CollectionLat       FLOAT64,
-			CollectionLng       FLOAT64,
-			GeofenceDistanceM   FLOAT64,
-			CustodyStatus       STRING(20),
-			CreatedAt           TIMESTAMP   OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (InvoiceId)`,
-		`CREATE INDEX Idx_MasterInvoice_Retailer ON MasterInvoices(RetailerId)`,
-		`CREATE INDEX Idx_MasterInvoice_OrderId ON MasterInvoices(OrderId)`,
-		`CREATE INDEX Idx_MasterInvoice_GlobalPayTxn ON MasterInvoices(GlobalPayTransactionId)`,
-
-		`CREATE TABLE Products (
-			ProductId   STRING(36)  NOT NULL,
-			Name        STRING(255) NOT NULL,
-			Size        STRING(50),
-			PackQuantity INT64,
-			Price       NUMERIC,
-			ImageUrl    STRING(MAX)
-		) PRIMARY KEY (ProductId)`,
-
-		// ── Standalone line-items table (Phase 4 analytics-safe) ──────────────
-		// ARCHITECTURAL DECISION: Decoupled from Orders parent.
-		// Distributed PK (LineItemId) eliminates write hotspots.
-		// ByOrder index   → driver app O(1) order lookup.
-		// BySku   index   → analytics engine O(1) SKU aggregation.
-		`CREATE TABLE OrderLineItems (
-			LineItemId    STRING(36)  NOT NULL,
-			OrderId       STRING(36)  NOT NULL,
-			SkuId         STRING(50)  NOT NULL,
-			Quantity      INT64       NOT NULL,
-			UnitPrice  INT64       NOT NULL,
-			Status        STRING(20)  NOT NULL
-		) PRIMARY KEY (LineItemId)`,
-
-		// Driver App — fetch all items for a given order in O(1)
-		`CREATE INDEX Idx_OrderItems_ByOrder ON OrderLineItems(OrderId)`,
-
-		// Analytics Engine — aggregate SKU volume across all orders with zero hotspot
-		`CREATE INDEX Idx_OrderItems_BySku ON OrderLineItems(SkuId)`,
-
-		`CREATE TABLE LedgerEntries (
-			TransactionId STRING(100) NOT NULL,
-			OrderId STRING(36) NOT NULL,
-			AccountId STRING(MAX) NOT NULL,
-			Amount INT64 NOT NULL,
-			EntryType STRING(20) NOT NULL,
-			CreatedAt TIMESTAMP OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (TransactionId)`,
-
-		// ── B2B Dynamic Pricing Engine (Vector G) ─────────────────────────────
-		// MULTI-TENANT: Each row is owned by exactly one SupplierId.
-		// Nestle rows are invisible to Coca-Cola — the API enforces this via JWT.
-		// TargetRetailerTier enables "GOLD gets 15%, SILVER gets 8%" logic.
-		// ValidUntil allows time-bound campaign discounts; NULL = no expiry.
-		// IsActive lets suppliers soft-disable a tier without deleting history.
-		`CREATE TABLE PricingTiers (
-			TierId              STRING(36)  NOT NULL,
-			SupplierId          STRING(36)  NOT NULL,
-			SkuId               STRING(50)  NOT NULL,
-			MinPallets          INT64       NOT NULL,
-			DiscountPct         INT64       NOT NULL,
-			TargetRetailerTier  STRING(20),
-			ValidUntil          TIMESTAMP,
-			IsActive            BOOL        NOT NULL
-		) PRIMARY KEY (TierId)`,
-
-		// Fast supplier-scoped lookup: POST /v1/supplier/pricing/rules → list own tiers
-		`CREATE INDEX Idx_PricingTiers_BySupplier ON PricingTiers(SupplierId)`,
-
-		// Checkout engine path: cart/pricing.go queries by SkuId for active tiers
-		`CREATE INDEX Idx_PricingTiers_BySkuActive ON PricingTiers(SkuId, IsActive)`,
-
-		// ── Vector H: Field General Route Optimizer ────────────────────────────
-		// SequenceIndex is written by the 04:00 AM TSP cron job (routing/optimizer.go).
-		// Value 0 = first drop, 1 = second drop, etc. NULL = not yet sequenced.
-		// The driver app enforces strict ascending delivery; skipping is a hard block.
-		`ALTER TABLE Orders ADD COLUMN SequenceIndex INT64`,
-
-		// Filtered index: the driver app fetches only LOADED orders in depot sequence.
-		// Filtering by State='LOADED' keeps the index small — completed rows are excluded.
-		`CREATE INDEX Idx_Orders_ByDriverAndSequence ON Orders(DriverId, SequenceIndex)`,
-
-		// ── Financial Reconciliation (Phase 5) ────────────────────────────────
-		`CREATE TABLE LedgerAnomalies (
-			OrderId STRING(36) NOT NULL,
-			RetailerId STRING(36) NOT NULL,
-			SpannerUzs INT64 NOT NULL,
-			GatewayUzs INT64 NOT NULL,
-			GatewayProvider STRING(20) NOT NULL,
-			Status STRING(20) NOT NULL,
-			DetectedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (OrderId)`,
-
-		`CREATE INDEX Idx_Anomalies_ByStatus ON LedgerAnomalies(Status)`,
-
-		// ── SUPPLIER CATALOG ──────────────────────────────────────────────────
-		`CREATE TABLE Suppliers (
-			SupplierId          STRING(36)  NOT NULL,
-			Name                STRING(255) NOT NULL,
-			LogoUrl             STRING(MAX),
-			Category            STRING(100),
-			Phone               STRING(20),
-			Email               STRING(MAX),
-			PasswordHash        STRING(MAX),
-			TaxId               STRING(MAX),
-			ContactPerson       STRING(MAX),
-			CompanyRegNumber    STRING(MAX),
-			BillingAddress      STRING(MAX),
-			IsConfigured        BOOL,
-			OperatingCategories ARRAY<STRING(MAX)>,
-			WarehouseLocation   STRING(MAX),
-			WarehouseLat        FLOAT64,
-			WarehouseLng        FLOAT64,
-			BankName            STRING(MAX),
-			AccountNumber       STRING(MAX),
-			CardNumber          STRING(MAX),
-			PaymentGateway      STRING(20),
-			CreatedAt           TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (SupplierId)`,
-		`CREATE INDEX Idx_Suppliers_ByPhone ON Suppliers(Phone)`,
-
-		`CREATE TABLE SupplierProducts (
-			SkuId         STRING(50)  NOT NULL,
-			SupplierId    STRING(36)  NOT NULL,
-			Name          STRING(255) NOT NULL,
-			Description   STRING(MAX),
-			ImageUrl      STRING(MAX),
-			SellByBlock   BOOL        NOT NULL,
-			UnitsPerBlock INT64       NOT NULL,
-			BasePrice  INT64       NOT NULL,
-			IsActive      BOOL        NOT NULL,
-			CategoryId    STRING(36),
-			CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (SkuId)`,
-		`CREATE INDEX Idx_Products_BySupplier ON SupplierProducts(SupplierId)`,
-
-		`CREATE TABLE Categories (
-			CategoryId STRING(36)  NOT NULL,
-			Name       STRING(255) NOT NULL,
-			Icon       STRING(100),
-			SortOrder  INT64       NOT NULL,
-			CreatedAt  TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (CategoryId)`,
-
-		`CREATE TABLE RetailerSuppliers (
-			RetailerId STRING(36) NOT NULL,
-			SupplierId STRING(36) NOT NULL,
-			AddedAt    TIMESTAMP  NOT NULL OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (RetailerId, SupplierId)`,
-		`CREATE INDEX Idx_RetailerSuppliers_ByRetailer ON RetailerSuppliers(RetailerId)`,
-
-		`CREATE TABLE RetailerGlobalSettings (
-			RetailerId             STRING(36) NOT NULL,
-			GlobalAutoOrderEnabled BOOL       NOT NULL,
-			UpdatedAt              TIMESTAMP  OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (RetailerId)`,
-
-		`CREATE TABLE RetailerSupplierSettings (
-			RetailerId         STRING(36) NOT NULL,
-			SupplierId         STRING(36) NOT NULL,
-			AutoOrderEnabled   BOOL       NOT NULL,
-			AnalyticsStartDate TIMESTAMP,
-			UpdatedAt          TIMESTAMP  OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (RetailerId, SupplierId),
-		  INTERLEAVE IN PARENT RetailerGlobalSettings ON DELETE CASCADE`,
-
-		`CREATE TABLE RetailerProductSettings (
-			RetailerId         STRING(36) NOT NULL,
-			ProductId          STRING(36) NOT NULL,
-			AutoOrderEnabled   BOOL       NOT NULL,
-			AnalyticsStartDate TIMESTAMP,
-			UpdatedAt          TIMESTAMP  OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (RetailerId, ProductId),
-		  INTERLEAVE IN PARENT RetailerGlobalSettings ON DELETE CASCADE`,
-
-		`CREATE TABLE RetailerCategorySettings (
-			RetailerId         STRING(36) NOT NULL,
-			CategoryId         STRING(50) NOT NULL,
-			AutoOrderEnabled   BOOL       NOT NULL,
-			AnalyticsStartDate TIMESTAMP,
-			UpdatedAt          TIMESTAMP  OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (RetailerId, CategoryId)`,
-		`CREATE INDEX Idx_RetailerCategorySettings_ByRetailer ON RetailerCategorySettings(RetailerId)`,
-
-		`CREATE TABLE AIPredictions (
-			PredictionId        STRING(36) NOT NULL,
-			RetailerId          STRING(36) NOT NULL,
-			PredictedAmount  INT64      NOT NULL,
-			TriggerDate         TIMESTAMP,
-			TriggerShard        INT64      NOT NULL DEFAULT (0),
-			Status              STRING(20) NOT NULL,
-			CreatedAt           TIMESTAMP  OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (PredictionId)`,
-		`CREATE INDEX Idx_AIPredictions_ByRetailer ON AIPredictions(RetailerId)`,
-		`CREATE INDEX Idx_AIPredictions_ByTriggerShardStatusDate ON AIPredictions(TriggerShard, Status, TriggerDate DESC)`,
-		`CREATE TABLE AIPredictionItems (
-			PredictionId      STRING(36) NOT NULL,
-			PredictionItemId  STRING(36) NOT NULL,
-			SkuId             STRING(50) NOT NULL,
-			PredictedQuantity INT64      NOT NULL,
-			UnitPrice      INT64      NOT NULL,
-			CreatedAt         TIMESTAMP  OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (PredictionId, PredictionItemId),
-		  INTERLEAVE IN PARENT AIPredictions ON DELETE CASCADE`,
-		`CREATE INDEX Idx_PredictionItems_BySku ON AIPredictionItems(SkuId)`,
-
-		`CREATE TABLE SupplierInventory (
-			ProductId         STRING(36) NOT NULL,
-			SupplierId        STRING(36) NOT NULL,
-			QuantityAvailable INT64      NOT NULL,
-			UpdatedAt         TIMESTAMP  OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (ProductId)`,
-		`CREATE INDEX Idx_Inventory_BySupplier ON SupplierInventory(SupplierId)`,
-
-		`CREATE TABLE InventoryAuditLog (
-			AuditId     STRING(36)  NOT NULL,
-			ProductId   STRING(36)  NOT NULL,
-			SupplierId  STRING(36)  NOT NULL,
-			AdjustedBy  STRING(36)  NOT NULL,
-			PreviousQty INT64       NOT NULL,
-			NewQty      INT64       NOT NULL,
-			Delta       INT64       NOT NULL,
-			Reason      STRING(50)  NOT NULL,
-			AdjustedAt  TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (AuditId)`,
 		`CREATE INDEX Idx_AuditLog_BySupplier ON InventoryAuditLog(SupplierId)`,
 		`CREATE INDEX Idx_AuditLog_ByProduct  ON InventoryAuditLog(ProductId)`,
 
@@ -862,23 +545,27 @@ func main() {
 	})
 
 	if err != nil {
-		log.Println("Database not found, creating schema...")
+		log.Println("Database not found, creating database...")
 		req := &databasepb.CreateDatabaseRequest{
 			Parent:          instanceName,
 			CreateStatement: fmt.Sprintf("CREATE DATABASE `%s`", cfg.SpannerDatabase),
-			ExtraStatements: ddlStatements,
 		}
 		op, err := databaseAdmin.CreateDatabase(ctx, req)
 		if err != nil {
 			log.Fatalf("Failed to trigger database creation: %v", err)
 		}
 		if _, err := op.Wait(ctx); err != nil {
-			log.Fatalf("Failed to create database and apply DDL: %v", err)
+			log.Fatalf("Failed to create database: %v", err)
 		}
-		log.Println("Database schema successfully generated.")
+		log.Println("Database created.")
 	} else {
-		log.Println("Database already exists. Skipping DDL...")
+		log.Println("Database already exists. Converging canonical schema...")
 	}
+
+	if err := applyDDLStatements(ctx, databaseAdmin, dbName, ddlStatements); err != nil {
+		log.Fatalf("Failed to apply canonical schema: %v", err)
+	}
+	log.Println("Canonical schema is applied.")
 
 	// 5. Insert Seed Data
 	log.Println("Inserting Seed Data...")
@@ -896,6 +583,51 @@ func main() {
 	setupKafkaTopic(cfg.KafkaBrokerAddress, "orders.dispatched")
 
 	log.Println("Setup and Seed Script execution complete. Environment is READY.")
+}
+
+func loadDDLStatements(path string) ([]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var cleaned strings.Builder
+	for _, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "--") {
+			continue
+		}
+		cleaned.WriteString(line)
+		cleaned.WriteString("\n")
+	}
+
+	parts := strings.Split(cleaned.String(), ";")
+	statements := make([]string, 0, len(parts))
+	for _, part := range parts {
+		stmt := strings.TrimSpace(part)
+		if stmt == "" {
+			continue
+		}
+		statements = append(statements, stmt)
+	}
+
+	return statements, nil
+}
+
+func applyDDLStatements(ctx context.Context, admin *database.DatabaseAdminClient, dbName string, statements []string) error {
+	for _, stmt := range statements {
+		op, err := admin.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
+			Database:   dbName,
+			Statements: []string{stmt},
+		})
+		if err != nil {
+			continue
+		}
+		if err := op.Wait(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func setupSeedData(ctx context.Context, client *spanner.Client) {

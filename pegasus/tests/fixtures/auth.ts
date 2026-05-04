@@ -7,47 +7,51 @@
  */
 import { test as base, type Page, type BrowserContext, type APIRequestContext } from '@playwright/test';
 
-const API = process.env.API_BASE_URL || 'http://localhost:8080';
+const env = (globalThis as typeof globalThis & {
+  process?: { env?: Record<string, string | undefined> };
+}).process?.env ?? {};
+
+const API = env.API_BASE_URL || 'http://localhost:8080';
 
 /* ── Credential types per role ── */
 export interface SupplierCredentials { email: string; password: string }
 export interface RetailerCredentials { phone_number: string; password: string }
 export interface FactoryCredentials { phone: string; password: string }
 export interface WarehouseCredentials { phone: string; pin: string }
-export interface DriverCredentials { phone: string; password: string }
-export interface PayloaderCredentials { phone: string; password: string }
+export interface DriverCredentials { phone: string; pin: string }
+export interface PayloaderCredentials { phone: string; pin: string }
 
 /* ── Default test credentials (override via env) ── */
 const SUPPLIER_CREDS: SupplierCredentials = {
-  email: process.env.TEST_SUPPLIER_EMAIL || 'test-supplier@pegasus.test',
-  password: process.env.TEST_SUPPLIER_PASSWORD || 'TestPass123!',
+  email: env.TEST_SUPPLIER_EMAIL || 'info@pegasusbeverages.uz',
+  password: env.TEST_SUPPLIER_PASSWORD || 'password123',
 };
 const RETAILER_CREDS: RetailerCredentials = {
-  phone_number: process.env.TEST_RETAILER_PHONE || '+998901234567',
-  password: process.env.TEST_RETAILER_PASSWORD || 'TestPass123!',
+  phone_number: env.TEST_RETAILER_PHONE || '+998901234567',
+  password: env.TEST_RETAILER_PASSWORD || 'password123',
 };
 const FACTORY_CREDS: FactoryCredentials = {
-  phone: process.env.TEST_FACTORY_PHONE || '+998901234568',
-  password: process.env.TEST_FACTORY_PASSWORD || 'TestPass123!',
+  phone: env.TEST_FACTORY_PHONE || '+998901234568',
+  password: env.TEST_FACTORY_PASSWORD || 'TestPass123!',
 };
 const WAREHOUSE_CREDS: WarehouseCredentials = {
-  phone: process.env.TEST_WAREHOUSE_PHONE || '+998901234569',
-  pin: process.env.TEST_WAREHOUSE_PIN || '123456',
+  phone: env.TEST_WAREHOUSE_PHONE || '+998901234569',
+  pin: env.TEST_WAREHOUSE_PIN || '123456',
 };
 const DRIVER_CREDS: DriverCredentials = {
-  phone: process.env.TEST_DRIVER_PHONE || '+998901234570',
-  password: process.env.TEST_DRIVER_PASSWORD || 'TestPass123!',
+  phone: env.TEST_DRIVER_PHONE || '+998909876543',
+  pin: env.TEST_DRIVER_PIN || '123456',
 };
 const PAYLOADER_CREDS: PayloaderCredentials = {
-  phone: process.env.TEST_PAYLOADER_PHONE || '+998901234571',
-  password: process.env.TEST_PAYLOADER_PASSWORD || 'TestPass123!',
+  phone: env.TEST_PAYLOADER_PHONE || '+998905551234',
+  pin: env.TEST_PAYLOADER_PIN || '654321',
 };
 
 /* ── Login helpers (API-level, returns JWT) ── */
 async function loginViaAPI(
   request: APIRequestContext,
   endpoint: string,
-  body: Record<string, string>,
+  body: object,
 ): Promise<{ token: string; [key: string]: unknown }> {
   const res = await request.post(`${API}${endpoint}`, { data: body });
   if (!res.ok()) {

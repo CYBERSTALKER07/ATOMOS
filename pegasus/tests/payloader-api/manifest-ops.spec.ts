@@ -23,8 +23,8 @@ test.describe('Payloader API — Manifest Ops', () => {
   test('POST /v1/auth/payloader/login returns JWT', async ({ request }) => {
     const res = await request.post(`${API}/v1/auth/payloader/login`, {
       data: {
-        phone: process.env.TEST_PAYLOADER_PHONE || '+998901234571',
-        password: process.env.TEST_PAYLOADER_PASSWORD || 'TestPass123!',
+        phone: process.env.TEST_PAYLOADER_PHONE || '+998905551234',
+        pin: process.env.TEST_PAYLOADER_PIN || '654321',
       },
     });
 

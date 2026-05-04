@@ -28,8 +28,8 @@ test.describe('Driver API — Delivery Flow', () => {
   test('POST /v1/auth/driver/login returns JWT', async ({ request }) => {
     const res = await request.post(`${API}/v1/auth/driver/login`, {
       data: {
-        phone: process.env.TEST_DRIVER_PHONE || '+998901234570',
-        password: process.env.TEST_DRIVER_PASSWORD || 'TestPass123!',
+        phone: process.env.TEST_DRIVER_PHONE || '+998909876543',
+        pin: process.env.TEST_DRIVER_PIN || '123456',
       },
     });
 
