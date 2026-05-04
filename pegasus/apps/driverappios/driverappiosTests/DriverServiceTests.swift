@@ -128,7 +128,7 @@ struct DriverServiceTests {
     }
 
     @Test func fleetManifestEndpoint() {
-        let path = "v1/fleet/manifest"
+        let path = "v1/driver/manifest"
         #expect(path.hasPrefix("v1/fleet"))
     }
 

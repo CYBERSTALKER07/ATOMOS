@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import java.util.UUID
 import javax.inject.Inject
 
 data class CashCollectionUiState(
@@ -72,7 +71,7 @@ class CashCollectionViewModel @Inject constructor(
                         latitude = location.latitude,
                         longitude = location.longitude
                     ),
-                    idempotencyKey = UUID.randomUUID().toString()
+                    idempotencyKey = "driver-collect-cash-$orderId"
                 )
                 _state.update {
                     it.copy(isCompleting = false, completed = true, distanceM = resp.distanceM)

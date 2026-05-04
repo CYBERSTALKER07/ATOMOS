@@ -246,12 +246,13 @@ func main() {
 		DepotLocation: cfg.DepotLocation,
 	}
 
-	// /v1/driver/* — 7 routes (earnings, history, availability, pending-collections,
-	// profile, manifest-gate, manifest). Ownership lives in backend-go/driverroutes.
+	// /v1/driver/* + /v1/fleet/manifest + /v1/ws/driver — driver role-row routes.
+	// Ownership lives in backend-go/driverroutes.
 	driverroutes.RegisterRoutes(r, driverroutes.Deps{
 		Spanner:     spannerClient,
 		Order:       svc,
 		ManifestSvc: manifestSvc,
+		DriverHub:   driverHub,
 		Cache:       app.Cache,
 		CacheFlight: app.CacheFlight,
 		Log:         loggingMiddleware,
@@ -2755,9 +2756,7 @@ func main() {
 	internalKafka.StartApproachConsumer(ctx, retailerHub, fcmClient, spannerClient, cfg.KafkaBrokerAddress)
 	fmt.Println("[BOOT] Retailer WebSocket Hub + Approach Consumer: ONLINE")
 
-	// Phase 3b: Boot the Driver WebSocket Hub (receives PAYMENT_SETTLED pushes)
-	http.HandleFunc("/v1/ws/driver",
-		auth.RequireRole([]string{"DRIVER"}, driverHub.HandleConnection))
+	// Phase 3b: Driver WebSocket Hub route now mounts via driverroutes.
 	fmt.Println("[BOOT] Driver WebSocket Hub: ONLINE")
 
 	// Phase 3c: Boot the Payloader WebSocket Hub (receives PAYLOAD_READY_TO_SEAL pushes)

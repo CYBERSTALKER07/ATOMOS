@@ -26,6 +26,8 @@ struct ShopClosedWaitingView: View {
     @State private var countdown: Int = 180
     @State private var webSocketTask: URLSessionWebSocketTask?
     @State private var timer: Timer?
+    @State private var shouldReconnect = false
+    @State private var reconnectWorkItem: DispatchWorkItem?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -153,11 +155,16 @@ struct ShopClosedWaitingView: View {
         .background(LabTheme.bg)
         .task {
             await reportShopClosed()
+            shouldReconnect = true
             connectWebSocket()
             startCountdown()
         }
         .onDisappear {
+            shouldReconnect = false
+            reconnectWorkItem?.cancel()
+            reconnectWorkItem = nil
             webSocketTask?.cancel(with: .goingAway, reason: nil)
+            webSocketTask = nil
             timer?.invalidate()
         }
     }
@@ -259,6 +266,7 @@ struct ShopClosedWaitingView: View {
     // MARK: - WebSocket
 
     private func connectWebSocket() {
+        guard shouldReconnect else { return }
         let baseURL = APIClient.shared.apiBaseURL
         let wsURL = baseURL
             .replacingOccurrences(of: "https://", with: "wss://")
@@ -285,9 +293,11 @@ struct ShopClosedWaitingView: View {
                 }
                 listenForMessages()
             case .failure:
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    connectWebSocket()
-                }
+                guard shouldReconnect else { return }
+                reconnectWorkItem?.cancel()
+                let work = DispatchWorkItem { connectWebSocket() }
+                reconnectWorkItem = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: work)
             }
         }
     }

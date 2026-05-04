@@ -126,7 +126,10 @@ class OffloadReviewViewModel @Inject constructor(
                 }
 
                 // Now confirm offload
-                val response = api.confirmOffload(ConfirmOffloadRequest(orderId = orderId))
+                val response = api.confirmOffload(
+                    request = ConfirmOffloadRequest(orderId = orderId),
+                    idempotencyKey = "driver-confirm-offload-$orderId"
+                )
                 _state.update { it.copy(isSubmitting = false, offloadResult = response) }
             } catch (e: Exception) {
                 _state.update { it.copy(isSubmitting = false, error = e.message ?: "Offload failed") }

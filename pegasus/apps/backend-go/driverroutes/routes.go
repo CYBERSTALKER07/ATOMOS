@@ -17,6 +17,7 @@ import (
 	"backend-go/fleet"
 	"backend-go/order"
 	"backend-go/supplier"
+	"backend-go/ws"
 )
 
 // Middleware is the handler-wrap contract supplied by the caller.
@@ -28,6 +29,7 @@ type Deps struct {
 	Spanner     *spanner.Client
 	Order       *order.OrderService
 	ManifestSvc *supplier.ManifestService
+	DriverHub   *ws.DriverHub
 	Cache       *cache.Cache
 	CacheFlight *singleflight.Group
 	Log         Middleware
@@ -42,6 +44,8 @@ type Deps struct {
 //	GET  /v1/driver/profile             — driver profile + vehicle assignment
 //	GET  /v1/driver/manifest-gate       — Ghost Stop Prevention gate check
 //	GET  /v1/driver/manifest            — Hash Manifest Protocol (token hashes)
+//	GET  /v1/fleet/manifest             — legacy alias for hash manifest
+//	GET  /v1/ws/driver                  — driver realtime websocket
 func RegisterRoutes(r chi.Router, d Deps) {
 	s := d.Spanner
 	log := d.Log
@@ -68,4 +72,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	// offline drop verification. DRIVER role only — raw tokens never transmitted.
 	r.HandleFunc("/v1/driver/manifest",
 		auth.RequireRole(driver, log(crypto.GetDriverManifestHandler(s))))
+	// Legacy mobile alias preserved for backward compatibility.
+	r.HandleFunc("/v1/fleet/manifest",
+		auth.RequireRole(driver, log(crypto.GetDriverManifestHandler(s))))
+	if d.DriverHub != nil {
+		r.HandleFunc("/v1/ws/driver",
+			auth.RequireRole(driver, d.DriverHub.HandleConnection))
+	}
 }

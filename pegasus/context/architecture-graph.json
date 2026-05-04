@@ -230,6 +230,35 @@
       ]
     },
     {
+      "id": "driver_role_row_surface",
+      "path": "/v1/{driver/{earnings,history,availability,pending-collections,profile,manifest-gate,manifest},fleet/manifest,ws/driver}",
+      "owner": "pegasus/apps/backend-go/driverroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/driver/earnings",
+        "GET /v1/driver/history",
+        "GET /v1/driver/availability",
+        "GET /v1/driver/pending-collections",
+        "GET /v1/driver/profile",
+        "GET /v1/driver/manifest-gate",
+        "GET /v1/driver/manifest",
+        "GET /v1/fleet/manifest",
+        "GET /v1/ws/driver"
+      ],
+      "consumers": [
+        "pegasus/apps/driver-app-android/app/src/main/java/com/pegasus/driver/data/remote/DriverApi.kt",
+        "pegasus/apps/driver-app-android/app/src/main/java/com/pegasus/driver/data/remote/DriverWebSocket.kt",
+        "pegasus/apps/driverappios/driverappios/Services/APIClient.swift",
+        "pegasus/apps/driverappios/driverappios/Views/PaymentWaitingView.swift",
+        "pegasus/apps/driverappios/driverappios/Views/ShopClosedWaitingView.swift"
+      ],
+      "notes": [
+        "driverroutes now owns the driver websocket mount previously registered inline in main.go.",
+        "Legacy GET /v1/fleet/manifest is preserved as compatibility alias while mobile clients migrate to GET /v1/driver/manifest.",
+        "High-consequence driver mutations (/v1/order/deliver, /v1/order/confirm-offload, /v1/order/complete, /v1/order/collect-cash, /v1/delivery/arrive) now send deterministic Idempotency-Key headers from both Android and iOS clients for replay-safe retries."
+      ]
+    },
+    {
       "id": "supplier_geo_planning_surface",
       "path": "/v1/supplier/{serving-warehouse,geo-report,dispatch-audits,zone-preview,warehouses/validate-coverage,warehouse-loads}",
       "owner": "pegasus/apps/backend-go/proximityroutes/routes.go",

@@ -88,7 +88,7 @@ final class APIClient: @unchecked Sendable {
     }
 
     func getManifest(date: String) async throws -> RouteManifest {
-        try await get("v1/fleet/manifest?date=\(date)")
+        try await get("v1/driver/manifest?date=\(date)")
     }
 
     // MARK: - Orders
@@ -104,7 +104,11 @@ final class APIClient: @unchecked Sendable {
             latitude: latitude,
             longitude: longitude
         )
-        return try await post("v1/order/deliver", body: body)
+        return try await post(
+            "v1/order/deliver",
+            body: body,
+            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "submit-delivery", orderId: orderId)]
+        )
     }
 
     func amendOrder(request: AmendOrderRequest) async throws -> AmendOrderResponse {
@@ -118,18 +122,30 @@ final class APIClient: @unchecked Sendable {
 
     func confirmOffload(orderId: String) async throws -> ConfirmOffloadResponse {
         let body = ["order_id": orderId]
-        return try await post("v1/order/confirm-offload", body: body)
+        return try await post(
+            "v1/order/confirm-offload",
+            body: body,
+            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "confirm-offload", orderId: orderId)]
+        )
     }
 
     func completeOrder(orderId: String) async throws {
         struct Resp: Decodable { let status: String }
         let body = ["order_id": orderId]
-        let _: Resp = try await post("v1/order/complete", body: body)
+        let _: Resp = try await post(
+            "v1/order/complete",
+            body: body,
+            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "complete-order", orderId: orderId)]
+        )
     }
 
     func collectCash(orderId: String, latitude: Double, longitude: Double) async throws -> CollectCashResponse {
         let body = CollectCashRequest(orderId: orderId, latitude: latitude, longitude: longitude)
-        return try await post("v1/order/collect-cash", body: body)
+        return try await post(
+            "v1/order/collect-cash",
+            body: body,
+            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "collect-cash", orderId: orderId)]
+        )
     }
 
     func transitionState(orderId: String, newState: String) async throws -> Order {
@@ -141,7 +157,11 @@ final class APIClient: @unchecked Sendable {
     func markArrived(orderId: String) async throws {
         struct Resp: Decodable { let status: String; let orderId: String }
         let body = ["order_id": orderId]
-        let _: Resp = try await post("v1/delivery/arrive", body: body)
+        let _: Resp = try await post(
+            "v1/delivery/arrive",
+            body: body,
+            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "mark-arrived", orderId: orderId)]
+        )
     }
 
     // MARK: - Shop Closed
@@ -245,16 +265,35 @@ final class APIClient: @unchecked Sendable {
         return try await execute(request)
     }
 
-    func post<B: Encodable, T: Decodable>(_ path: String, body: B, authenticated: Bool = true) async throws -> T {
+    func post<B: Encodable, T: Decodable>(
+        _ path: String,
+        body: B,
+        authenticated: Bool = true,
+        headers: [String: String] = [:]
+    ) async throws -> T {
         var request = try buildRequest(path: path, method: "POST", authenticated: authenticated)
+        for (name, value) in headers {
+            request.setValue(value, forHTTPHeaderField: name)
+        }
         request.httpBody = try JSONEncoder().encode(body)
         return try await execute(request)
     }
 
-    private func patch<B: Encodable, T: Decodable>(_ path: String, body: B) async throws -> T {
+    private func patch<B: Encodable, T: Decodable>(
+        _ path: String,
+        body: B,
+        headers: [String: String] = [:]
+    ) async throws -> T {
         var request = try buildRequest(path: path, method: "PATCH")
+        for (name, value) in headers {
+            request.setValue(value, forHTTPHeaderField: name)
+        }
         request.httpBody = try JSONEncoder().encode(body)
         return try await execute(request)
+    }
+
+    private func deterministicIdempotencyKey(action: String, orderId: String) -> String {
+        "driver-\(action)-\(orderId)"
     }
 
     private func buildRequest(path: String, method: String, authenticated: Bool = true) throws -> URLRequest {

@@ -61,7 +61,10 @@ class PaymentWaitingViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isCompleting = true, error = null) }
             try {
-                api.completeOrder(CompleteOrderRequest(orderId = orderId))
+                api.completeOrder(
+                    request = CompleteOrderRequest(orderId = orderId),
+                    idempotencyKey = "driver-complete-order-$orderId"
+                )
                 _state.update { it.copy(isCompleting = false, completed = true) }
             } catch (e: Exception) {
                 _state.update { it.copy(isCompleting = false, error = e.message ?: "Failed to complete order") }

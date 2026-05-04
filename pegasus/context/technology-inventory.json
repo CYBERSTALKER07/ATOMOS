@@ -158,6 +158,32 @@
       ]
     },
     {
+      "name": "Driver role-row surface",
+      "path": "/v1/{driver/{earnings,history,availability,pending-collections,profile,manifest-gate,manifest},fleet/manifest,ws/driver}",
+      "owner": "pegasus/apps/backend-go/driverroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/driver/earnings",
+        "GET /v1/driver/history",
+        "GET /v1/driver/availability",
+        "GET /v1/driver/pending-collections",
+        "GET /v1/driver/profile",
+        "GET /v1/driver/manifest-gate",
+        "GET /v1/driver/manifest",
+        "GET /v1/fleet/manifest",
+        "GET /v1/ws/driver"
+      ],
+      "consumers": [
+        "driver-app-android DriverApi and DriverWebSocket",
+        "driverappios APIClient and driver wait-state websocket views"
+      ],
+      "notes": [
+        "driverroutes now owns the driver websocket route mount that was previously inline in main.go.",
+        "Legacy GET /v1/fleet/manifest remains additive for compatibility while clients use GET /v1/driver/manifest.",
+        "High-consequence driver mutations (/v1/order/deliver, /v1/order/confirm-offload, /v1/order/complete, /v1/order/collect-cash, /v1/delivery/arrive) now send deterministic Idempotency-Key headers from both Android and iOS clients for replay-safe retries."
+      ]
+    },
+    {
       "name": "Supplier geo-planning surface",
       "path": "/v1/supplier/{serving-warehouse,geo-report,dispatch-audits,zone-preview,warehouses/validate-coverage,warehouse-loads}",
       "owner": "pegasus/apps/backend-go/proximityroutes/routes.go",

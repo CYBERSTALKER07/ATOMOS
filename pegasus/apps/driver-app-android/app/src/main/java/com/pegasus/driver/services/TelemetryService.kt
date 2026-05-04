@@ -208,7 +208,10 @@ class TelemetryService : Service() {
                     if (dist <= 100.0) {
                         arrivedIds.add(order.id)
                         try {
-                            api.markArrived(mapOf("order_id" to order.id))
+                            api.markArrived(
+                                body = mapOf("order_id" to order.id),
+                                idempotencyKey = "driver-mark-arrived-${order.id}"
+                            )
                             orderDao.updateState(order.id, OrderState.ARRIVED.name, System.currentTimeMillis().toString())
                             Log.d(TAG, "Auto-ARRIVED: ${order.id} (${dist.toInt()}m)")
                         } catch (e: Exception) {

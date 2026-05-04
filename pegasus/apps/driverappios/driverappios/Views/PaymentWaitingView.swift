@@ -20,6 +20,8 @@ struct PaymentWaitingView: View {
     @State private var isCompleting = false
     @State private var errorMessage: String?
     @State private var webSocketTask: URLSessionWebSocketTask?
+    @State private var shouldReconnect = false
+    @State private var reconnectWorkItem: DispatchWorkItem?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -90,16 +92,22 @@ struct PaymentWaitingView: View {
         }
         .background(LabTheme.bg)
         .task {
+            shouldReconnect = true
             connectWebSocket()
         }
         .onDisappear {
+            shouldReconnect = false
+            reconnectWorkItem?.cancel()
+            reconnectWorkItem = nil
             webSocketTask?.cancel(with: .goingAway, reason: nil)
+            webSocketTask = nil
         }
     }
 
     // MARK: - WebSocket
 
     private func connectWebSocket() {
+        guard shouldReconnect else { return }
         let baseURL = APIClient.shared.apiBaseURL
         let wsURL = baseURL
             .replacingOccurrences(of: "https://", with: "wss://")
@@ -126,10 +134,11 @@ struct PaymentWaitingView: View {
                 }
                 listenForMessages()
             case .failure:
-                // Reconnect after delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    connectWebSocket()
-                }
+                guard shouldReconnect else { return }
+                reconnectWorkItem?.cancel()
+                let work = DispatchWorkItem { connectWebSocket() }
+                reconnectWorkItem = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: work)
             }
         }
     }

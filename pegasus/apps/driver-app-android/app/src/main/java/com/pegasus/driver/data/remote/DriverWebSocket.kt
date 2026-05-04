@@ -12,6 +12,11 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -33,23 +38,28 @@ class DriverWebSocket @Inject constructor(
 ) {
     companion object {
         private const val TAG = "DriverWebSocket"
-        private const val RECONNECT_DELAY_MS = 3000L
+        private const val BASE_RECONNECT_DELAY_MS = 2_000L
+        private const val MAX_RECONNECT_DELAY_MS = 60_000L
         private const val MAX_RECONNECT_ATTEMPTS = 10
     }
 
     private var socket: WebSocket? = null
+    private val reconnectExecutor = Executors.newSingleThreadScheduledExecutor()
+    private var reconnectTask: ScheduledFuture<*>? = null
+    private val intentionalClose = AtomicBoolean(false)
+    private val reconnectAttempt = AtomicInteger(0)
     private val _messages = MutableSharedFlow<DriverWSMessage>(extraBufferCapacity = 16)
     val messages: SharedFlow<DriverWSMessage> = _messages.asSharedFlow()
 
     private var currentBaseUrl: String? = null
     private var currentToken: String? = null
-    private var reconnectAttempts = 0
-    private var shouldReconnect = true
 
     fun connect(baseUrl: String, driverId: String, token: String) {
-        disconnect()
-        shouldReconnect = true
-        reconnectAttempts = 0
+        if (socket != null) return
+        reconnectTask?.cancel(false)
+        reconnectTask = null
+        intentionalClose.set(false)
+        reconnectAttempt.set(0)
         currentBaseUrl = baseUrl
         currentToken = token
 
@@ -70,7 +80,7 @@ class DriverWebSocket @Inject constructor(
         socket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 Log.d(TAG, "Connected")
-                reconnectAttempts = 0
+                reconnectAttempt.set(0)
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -84,37 +94,43 @@ class DriverWebSocket @Inject constructor(
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.e(TAG, "Connection failed", t)
+                socket = null
                 scheduleReconnect()
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 Log.d(TAG, "Closed: $reason")
+                socket = null
                 if (code != 1000) scheduleReconnect()
             }
         })
     }
 
     private fun scheduleReconnect() {
-        if (!shouldReconnect) return
-        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        if (intentionalClose.get()) return
+        val attempt = reconnectAttempt.getAndIncrement()
+        if (attempt >= MAX_RECONNECT_ATTEMPTS) {
             Log.e(TAG, "Max reconnect attempts reached ($MAX_RECONNECT_ATTEMPTS)")
             return
         }
-        reconnectAttempts++
-        val delay = RECONNECT_DELAY_MS * reconnectAttempts
-        Log.d(TAG, "Reconnecting in ${delay}ms (attempt $reconnectAttempts)")
-        Thread {
-            try {
-                Thread.sleep(delay)
-                val url = currentBaseUrl ?: return@Thread
-                val tok = currentToken ?: return@Thread
-                if (shouldReconnect) connectInternal(url, tok)
-            } catch (_: InterruptedException) {}
-        }.start()
+        val delay = (BASE_RECONNECT_DELAY_MS * (1L shl attempt.coerceAtMost(5))).coerceAtMost(MAX_RECONNECT_DELAY_MS)
+        Log.d(TAG, "Reconnecting in ${delay}ms (attempt ${attempt + 1})")
+        reconnectTask?.cancel(false)
+        reconnectTask = reconnectExecutor.schedule(
+            {
+                val url = currentBaseUrl ?: return@schedule
+                val tok = currentToken ?: return@schedule
+                if (!intentionalClose.get()) connectInternal(url, tok)
+            },
+            delay,
+            TimeUnit.MILLISECONDS
+        )
     }
 
     fun disconnect() {
-        shouldReconnect = false
+        intentionalClose.set(true)
+        reconnectTask?.cancel(false)
+        reconnectTask = null
         socket?.close(1000, "Driver disconnected")
         socket = null
     }

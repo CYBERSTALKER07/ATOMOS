@@ -39,8 +39,8 @@ interface DriverApi {
     @GET("v1/driver/profile")
     suspend fun getProfile(): DriverProfileResponse
 
-    // Fleet manifest
-    @GET("v1/fleet/manifest")
+    // Driver hash manifest
+    @GET("v1/driver/manifest")
     suspend fun getManifest(@Query("date") date: String): RouteManifest
 
     // Order details
@@ -68,11 +68,17 @@ interface DriverApi {
 
     // Confirm offload — ARRIVED → AWAITING_PAYMENT, triggers retailer payment
     @POST("v1/order/confirm-offload")
-    suspend fun confirmOffload(@Body request: ConfirmOffloadRequest): ConfirmOffloadResponse
+    suspend fun confirmOffload(
+        @Body request: ConfirmOffloadRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null
+    ): ConfirmOffloadResponse
 
     // Complete order — AWAITING_PAYMENT → COMPLETED after payment settled
     @POST("v1/order/complete")
-    suspend fun completeOrder(@Body request: CompleteOrderRequest): Order
+    suspend fun completeOrder(
+        @Body request: CompleteOrderRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null
+    ): Order
 
     // Collect cash — PENDING_CASH_COLLECTION → COMPLETED with geofence validation
     @POST("v1/order/collect-cash")
@@ -90,7 +96,10 @@ interface DriverApi {
 
     // Mark arrived — driver enters 100m geofence (IN_TRANSIT → ARRIVED)
     @POST("v1/delivery/arrive")
-    suspend fun markArrived(@Body body: Map<String, String>): Map<String, String>
+    suspend fun markArrived(
+        @Body body: Map<String, String>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null
+    ): Map<String, String>
 
     // Driver depart — starts route, transitions truck to IN_TRANSIT, triggers live ETA
     @POST("v1/fleet/driver/depart")
