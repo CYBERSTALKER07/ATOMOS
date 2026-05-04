@@ -43,7 +43,7 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 ## Runtime Contract Surfaces
 
 - Shared order compatibility route composition: `pegasus/apps/backend-go/orderroutes/routes.go`
-	- Owns `GET /v1/orders`, `GET /v1/order/refunds`, `GET /v1/orders/{id}`, `GET /v1/orders/{id}/events`, `PATCH /v1/orders/{id}/status`, and `PATCH /v1/orders/{id}/state`
+	- Owns `GET /v1/orders`, `GET /v1/orders/line-items/history`, `GET /v1/order/refunds`, `GET /v1/orders/{id}`, `GET /v1/orders/{id}/events`, `PATCH /v1/orders/{id}/status`, and `PATCH /v1/orders/{id}/state`
 	- Serves an additive superset detail payload for driver iOS, driver Android, and retailer desktop order detail consumers, plus the supplier portal order timeline feed
 - Retailer role-row route composition: `pegasus/apps/backend-go/retailerroutes/routes.go`
 	- Owns `GET /v1/retailer/analytics/{expenses,detailed}`, `POST /v1/{orders/request-cancel,order/cash-checkout,order/card-checkout,retailer/shop-closed-response}`, `GET/POST/DELETE /v1/retailer/family-members*`, `POST /v1/retailer/orders/{confirm-ai,reject-ai}`, `POST /v1/orders/{edit-preorder,confirm-preorder}`, `GET/POST /v1/retailer/cart/sync`, `GET/POST /v1/retailer/suppliers*`, `GET/PUT /v1/retailer/profile`, `GET /v1/retailers/{retailerID}/orders`, `GET /v1/retailer/{tracking,cards,pending-payments,active-fulfillment}`, `POST /v1/retailer/card/{initiate,confirm,deactivate,default}`, `PATCH|GET /v1/retailer/settings/auto-order*`, and `GET /v1/ws/retailer`
@@ -72,6 +72,10 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 	- Shared supplier manifest routes and `/v1/ws/payloader` now admit `PAYLOADER`, keeping Expo, iOS, and Android payload clients aligned with the `SupplierTruckManifests` lifecycle contract
 	- The payloader websocket now distinguishes `PUSH` notification frames from `PAYLOAD_SYNC` refresh frames so payload clients silently reload active manifest data on external overrides instead of surfacing empty notifications
 	- `PAYLOAD_SYNC` is emitted atomically on draft creation plus the supplier manifest `start-loading`, `inject-order`, `seal`, and `manifest-exception` mutation paths so other payload surfaces stay coherent after cross-device or supplier-portal changes
+- Simulation harness route composition: `pegasus/apps/backend-go/simroutes/routes.go`
+	- Owns `POST /v1/internal/sim/start`, `POST /v1/internal/sim/stop`, and `GET /v1/internal/sim/status`
+	- Handler ownership remains in `pegasus/apps/backend-go/simulation/handler.go`; the extracted composer keeps behavior identical while removing this ADMIN-only cluster from `main.go`
+	- Route registration now flows through `chi.Router` with no new `http.DefaultServeMux` mounts; endpoint exposure remains gated by `app.Simulation` (armed only when `SIMULATION_ENABLED=true`)
 - Supplier insights route composition: `pegasus/apps/backend-go/supplierinsightsroutes/routes.go`
 	- Owns `GET/PUT /v1/supplier/country-overrides`, `GET/DELETE /v1/supplier/country-overrides/{code}`, `GET /v1/supplier/analytics/{velocity,demand/today,demand/history,transit-heatmap,throughput,load-distribution,node-efficiency,sla-health,revenue,top-retailers}`, `GET /v1/supplier/financials`, and `GET /v1/supplier/crm/retailers*`
 	- Current portal consumers span `app/supplier/country-overrides/page.tsx`, `app/supplier/analytics/page.tsx`, `app/supplier/analytics/demand/page.tsx`, `app/supplier/dashboard/page.tsx`, `hooks/useAnalytics.ts`, `hooks/useAdvancedAnalytics.ts`, and `app/supplier/crm/page.tsx`

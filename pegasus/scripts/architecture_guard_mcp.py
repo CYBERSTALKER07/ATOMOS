@@ -15,6 +15,16 @@ ARCH_TRIGGER_PATTERNS = [
     "pegasus/apps/ai-worker/**/*.go",
 ]
 
+ROUTE_TRIGGER_PATTERNS = [
+    "pegasus/apps/backend-go/*routes/**",
+    "pegasus/apps/backend-go/**/*routes*.go",
+]
+
+ROUTE_DOC_SYNC_PATTERNS = [
+    "pegasus/context/architecture.md",
+    "pegasus/context/architecture-graph.json",
+]
+
 CONTEXT_SYNC_PATTERNS = [
     ".github/ACT.md",
     ".github/copilot-instructions.md",
@@ -60,6 +70,8 @@ def main() -> int:
         print("architecture-guard-mcp: no architecture trigger changes detected; passing.")
         return 0
 
+    route_changes = [path for path in files if match_any(path, ROUTE_TRIGGER_PATTERNS)]
+    route_doc_sync_changes = [path for path in files if match_any(path, ROUTE_DOC_SYNC_PATTERNS)]
     context_sync_changes = [path for path in files if match_any(path, CONTEXT_SYNC_PATTERNS)]
     codebase_focus_changes = sorted(set(trigger_changes))
     missing_mcp_files = [
@@ -89,7 +101,13 @@ def main() -> int:
             "Architecture context sync missing. Update ACT/instructions/architecture/inventory sync-set files."
         )
 
-    if context_sync_changes and len(codebase_focus_changes) < len(context_sync_changes):
+    if route_changes and not route_doc_sync_changes:
+        failures.append(
+            "Route changes detected without route docs sync. Update pegasus/context/architecture.md "
+            "or pegasus/context/architecture-graph.json."
+        )
+
+    if context_sync_changes and not codebase_focus_changes:
         failures.append(
             "Codebase-first MCP policy violated. Architecture-triggered diffs must rely primarily on "
             "real codebase surfaces; context docs are secondary verification. "
@@ -109,6 +127,11 @@ def main() -> int:
         "architecture-guard-mcp: context summary "
         f"(codebase_focus={len(codebase_focus_changes)}, context_sync={len(context_sync_changes)})"
     )
+    if route_changes:
+        print(
+            "architecture-guard-mcp: route summary "
+            f"(route_changes={len(route_changes)}, route_doc_sync={len(route_doc_sync_changes)})"
+        )
 
     if out.strip():
         print(out.strip())

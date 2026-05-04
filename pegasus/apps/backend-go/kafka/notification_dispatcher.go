@@ -1810,13 +1810,7 @@ func handleFulfillmentPaid(deps NotificationDeps, data []byte) {
 }
 
 func handleOrderCreated(deps NotificationDeps, data []byte) {
-	var event struct {
-		OrderID    string `json:"order_id"`
-		SupplierID string `json:"supplier_id"`
-		RetailerID string `json:"retailer_id"`
-		Total      int64  `json:"total"`
-		Currency   string `json:"currency"`
-	}
+	var event OrderCreatedEvent
 	if err := json.Unmarshal(data, &event); err != nil {
 		slog.Error("notification_dispatcher.unmarshal", "event", "ORDER_CREATED", "err", err)
 		return
@@ -1848,13 +1842,7 @@ func handleOrderCreated(deps NotificationDeps, data []byte) {
 }
 
 func handleUnifiedCheckoutCompleted(deps NotificationDeps, data []byte) {
-	var event struct {
-		InvoiceID  string `json:"invoice_id"`
-		RetailerID string `json:"retailer_id"`
-		Total      int64  `json:"total"`
-		Currency   string `json:"currency"`
-		OrderCount int    `json:"order_count"`
-	}
+	var event UnifiedCheckoutCompletedEvent
 	if err := json.Unmarshal(data, &event); err != nil {
 		slog.Error("notification_dispatcher.unmarshal", "event", "UNIFIED_CHECKOUT_COMPLETED", "err", err)
 		return
@@ -1873,21 +1861,19 @@ func handleUnifiedCheckoutCompleted(deps NotificationDeps, data []byte) {
 }
 
 func handleStockBackordered(deps NotificationDeps, data []byte) {
-	var event struct {
-		BackOrderID string `json:"backorder_id"`
-		SupplierID  string `json:"supplier_id"`
-		RetailerID  string `json:"retailer_id"`
-		Total       int64  `json:"total"`
-		Currency    string `json:"currency"`
-	}
+	var event StockBackorderedEvent
 	if err := json.Unmarshal(data, &event); err != nil {
 		slog.Error("notification_dispatcher.unmarshal", "event", "STOCK_BACKORDERED", "err", err)
 		return
 	}
-	if event.BackOrderID == "" {
+	backOrderID := event.BackOrderID
+	if backOrderID == "" {
+		backOrderID = event.BackOrderLegacyID
+	}
+	if backOrderID == "" {
 		return
 	}
-	orderRef := event.BackOrderID[:min(8, len(event.BackOrderID))]
+	orderRef := backOrderID[:min(8, len(backOrderID))]
 	if event.RetailerID != "" {
 		dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventStockBackordered,
 			notifications.NewFormattedNotification(

@@ -62,15 +62,6 @@ type procurementProduct struct {
 	Price      int64
 }
 
-type procurementOrderEvent struct {
-	OrderID    string    `json:"order_id"`
-	SupplierID string    `json:"supplier_id"`
-	RetailerID string    `json:"retailer_id"`
-	Total      int64     `json:"total"`
-	Currency   string    `json:"currency"`
-	Timestamp  time.Time `json:"timestamp"`
-}
-
 type procurementMutationInput struct {
 	OrderID    string
 	Request    ProcurementOrderRequest
@@ -152,7 +143,7 @@ func (s *OrderService) CreateProcurementOrder(ctx context.Context, req Procureme
 		if err := txn.BufferWrite(mutations); err != nil {
 			return fmt.Errorf("buffer procurement order writes: %w", err)
 		}
-		event := procurementOrderEvent{
+		event := kafkaEvents.OrderCreatedEvent{
 			OrderID:    orderID,
 			SupplierID: supplierID,
 			RetailerID: req.RetailerID,

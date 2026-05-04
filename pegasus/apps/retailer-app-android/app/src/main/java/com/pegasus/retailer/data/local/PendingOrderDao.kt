@@ -15,6 +15,6 @@ interface PendingOrderDao {
     @Query("DELETE FROM pending_orders WHERE id = :id")
     suspend fun deleteById(id: Long): Int
 
-    @Query("UPDATE pending_orders SET retryCount = retryCount + 1 WHERE id = :id")
-    suspend fun incrementRetry(id: Long): Int
+    @Query("UPDATE pending_orders SET retryCount = retryCount + 1, lastError = :lastError WHERE id = :id")
+    suspend fun incrementRetry(id: Long, lastError: String): Int
 }

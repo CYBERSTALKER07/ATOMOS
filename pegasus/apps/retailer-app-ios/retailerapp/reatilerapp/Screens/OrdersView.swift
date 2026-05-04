@@ -457,17 +457,30 @@ struct OrdersView: View {
                 continue
             }
             do {
+                guard order.endpoint == "/v1/checkout/unified", order.method == "POST" else {
+                    order.lastError = "Unsupported pending mutation \(order.method) \(order.endpoint)"
+                    order.retryCount += 1
+                    continue
+                }
                 let _: CheckoutResponse = try await api.post(
-                    path: "/v1/checkout/unified",
+                    path: order.endpoint,
                     body: payload,
-                    headers: ["Idempotency-Key": "retailer-checkout-pending:\(Int64(order.createdAt.timeIntervalSince1970 * 1000))"]
+                    headers: ["Idempotency-Key": pendingOrderIdempotencyKey(order)]
                 )
                 modelContext.delete(order)
             } catch {
+                order.lastError = error.localizedDescription
                 order.retryCount += 1
             }
         }
         try? modelContext.save()
+    }
+
+    private func pendingOrderIdempotencyKey(_ order: PendingOrder) -> String {
+        if !order.idempotencyKey.isEmpty {
+            return order.idempotencyKey
+        }
+        return "retailer-checkout-pending:\(Int64(order.createdAt.timeIntervalSince1970 * 1000))"
     }
 
     private func loadData() async {

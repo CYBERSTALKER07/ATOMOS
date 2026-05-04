@@ -310,6 +310,9 @@ func (ws *WebhookService) settleInvoice(ctx context.Context, invoiceID string, e
 
 		return emitInvoiceSettledOutbox(ctx, txn, invoiceID, gateway, total, retailerID)
 	})
+	if err == nil && retailerID != "" {
+		cache.Invalidate(ctx, cache.PrefixActiveOrders+retailerID)
+	}
 
 	return retailerID, err
 }

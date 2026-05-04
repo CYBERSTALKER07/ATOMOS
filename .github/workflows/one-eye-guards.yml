@@ -40,6 +40,13 @@ on:
       - 'pegasus/tests/**'
       - 'pegasus/playwright.config.ts'
       - 'pegasus/context/design-system.md'
+      - '.github/ACT.md'
+      - '.github/copilot-instructions.md'
+      - '.github/gemini-instructions.md'
+      - 'pegasus/context/architecture.md'
+      - 'pegasus/context/architecture-graph.json'
+      - 'pegasus/context/technology-inventory.md'
+      - 'pegasus/context/technology-inventory.json'
 
 permissions:
   contents: read
@@ -96,6 +103,13 @@ jobs:
               - 'pegasus/tests/**'
               - 'pegasus/playwright.config.ts'
               - 'pegasus/context/design-system.md'
+              - '.github/ACT.md'
+              - '.github/copilot-instructions.md'
+              - '.github/gemini-instructions.md'
+              - 'pegasus/context/architecture.md'
+              - 'pegasus/context/architecture-graph.json'
+              - 'pegasus/context/technology-inventory.md'
+              - 'pegasus/context/technology-inventory.json'
 
       - name: Skip one-eye guard suite (no relevant path changes)
         if: steps.one_eye_paths.outputs.relevant != 'true'

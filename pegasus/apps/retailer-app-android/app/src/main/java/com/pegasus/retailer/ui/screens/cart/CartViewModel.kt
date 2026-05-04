@@ -80,10 +80,10 @@ class CartViewModel @Inject constructor(
         for (order in pending) {
             try {
                 val request = Json.decodeFromString<UnifiedCheckoutRequest>(order.payloadJson)
-                api.unifiedCheckout(request, "retailer-checkout-pending:${order.id}:${order.createdAt}")
+                api.unifiedCheckout(request, order.idempotencyKey)
                 pendingOrderDao.deleteById(order.id)
-            } catch (_: Exception) {
-                pendingOrderDao.incrementRetry(order.id)
+            } catch (e: Exception) {
+                pendingOrderDao.incrementRetry(order.id, e.message ?: e::class.java.simpleName)
             }
         }
     }

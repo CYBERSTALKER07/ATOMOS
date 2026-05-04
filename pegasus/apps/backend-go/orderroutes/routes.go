@@ -13,6 +13,7 @@ import (
 	"backend-go/auth"
 	"backend-go/order"
 	"backend-go/payment"
+	"backend-go/proximity"
 	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
@@ -24,10 +25,11 @@ type Middleware func(http.HandlerFunc) http.HandlerFunc
 
 // Deps contains only collaborators needed by the shared order routes.
 type Deps struct {
-	Spanner *spanner.Client
-	Order   *order.OrderService
-	Refund  *payment.RefundService
-	Log     Middleware
+	Spanner    *spanner.Client
+	ReadRouter proximity.ReadRouter
+	Order      *order.OrderService
+	Refund     *payment.RefundService
+	Log        Middleware
 }
 
 // RegisterRoutes mounts the extracted legacy-compatible order surface.
@@ -38,6 +40,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole([]string{"ADMIN", "RETAILER", "SUPPLIER", "PAYLOADER"}, d.Log(handleOrdersList(d))))
 	r.HandleFunc("/v1/orders/",
 		auth.RequireRole([]string{"ADMIN", "DRIVER", "RETAILER", "SUPPLIER"}, d.Log(order.HandleLegacyOrdersPath(d.Order))))
+	r.HandleFunc("/v1/orders/line-items/history",
+		auth.RequireRole([]string{"RETAILER", "ADMIN"}, d.Log(order.HandleLineItemHistory(d.Spanner, d.ReadRouter))))
 }
 
 func handleOrdersList(d Deps) http.HandlerFunc {

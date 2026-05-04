@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"backend-go/cache"
 	"backend-go/ws"
 
 	"cloud.google.com/go/spanner"
@@ -264,6 +265,9 @@ func (r *GlobalPayReconciler) settleInvoice(ctx context.Context, invoiceID strin
 
 		return emitInvoiceSettledOutbox(ctx, txn, invoiceID, "GLOBAL_PAY", total, retailerID)
 	})
+	if err == nil && retailerID != "" {
+		cache.Invalidate(ctx, cache.PrefixActiveOrders+retailerID)
+	}
 
 	return retailerID, err
 }

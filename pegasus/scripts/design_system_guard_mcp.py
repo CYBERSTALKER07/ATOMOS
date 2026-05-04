@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
-from guard_utils import changed_files, ensure_git_repo, match_any, run_cmd
+from guard_utils import added_lines_for_file, changed_files, ensure_git_repo, match_any, run_cmd
 
 
 UI_TRIGGER_PATTERNS = [
@@ -36,6 +37,27 @@ MCP_REQUIRED_FILES = [
     ".agents/extensions/ast-engine/engine.mjs",
     ".agents/extensions/ast-engine/mcp-server.mjs",
 ]
+
+FRONTEND_SCAN_PATTERNS = [
+    "pegasus/apps/admin-portal/**/*.ts",
+    "pegasus/apps/admin-portal/**/*.tsx",
+    "pegasus/apps/factory-portal/**/*.ts",
+    "pegasus/apps/factory-portal/**/*.tsx",
+    "pegasus/apps/warehouse-portal/**/*.ts",
+    "pegasus/apps/warehouse-portal/**/*.tsx",
+    "pegasus/apps/retailer-app-desktop/**/*.ts",
+    "pegasus/apps/retailer-app-desktop/**/*.tsx",
+]
+
+RAW_FETCH_ALLOWLIST_PATTERNS = [
+    "pegasus/packages/api-client/**",
+    "pegasus/apps/*/lib/auth.ts",
+    "pegasus/apps/*/app/auth/login/**",
+    "pegasus/apps/*/app/**/bootstrap/**",
+    "pegasus/apps/*/app/bootstrap/**",
+]
+
+RAW_FETCH_RE = re.compile(r"\bfetch\s*\(")
 
 
 def main() -> int:
@@ -97,6 +119,28 @@ def main() -> int:
             "Design token source changed without design-system context sync. Update pegasus/context/design-system.md."
         )
 
+    raw_fetch_violations: list[tuple[str, int, str]] = []
+    frontend_scan_targets = [path for path in files if match_any(path, FRONTEND_SCAN_PATTERNS)]
+    for file_path in frontend_scan_targets:
+        if match_any(file_path, RAW_FETCH_ALLOWLIST_PATTERNS):
+            continue
+
+        for line_no, line in added_lines_for_file(
+            repo_root, file_path, args.base_sha, args.head_sha
+        ):
+            stripped = line.strip()
+            if not stripped or stripped.startswith("//") or stripped.startswith("*"):
+                continue
+
+            if RAW_FETCH_RE.search(stripped):
+                raw_fetch_violations.append((file_path, line_no, stripped))
+
+    if raw_fetch_violations:
+        failures.append(
+            "New raw fetch() usage detected outside shared API helper. "
+            "Use packages/api-client or auth/bootstrap allowlisted surfaces."
+        )
+
     if design_sync_changes and len(codebase_focus_changes) < len(design_sync_changes):
         failures.append(
             "Codebase-first MCP policy violated. Design-triggered diffs must rely primarily on "
@@ -120,6 +164,11 @@ def main() -> int:
 
     if out.strip():
         print(out.strip())
+
+    if raw_fetch_violations:
+        print("design-system-guard-mcp: raw fetch violations:", file=sys.stderr)
+        for file_path, line_no, text in raw_fetch_violations:
+            print(f"  - {file_path}:{line_no} :: {text}", file=sys.stderr)
 
     if not failures:
         print(

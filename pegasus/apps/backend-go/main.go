@@ -40,7 +40,7 @@ import (
 	"backend-go/retailerroutes"
 	"backend-go/routing"
 	"backend-go/settings"
-	"backend-go/simulation"
+	"backend-go/simroutes"
 	"backend-go/supplier"
 	"backend-go/suppliercatalogroutes"
 	"backend-go/suppliercoreroutes"
@@ -1032,10 +1032,11 @@ func main() {
 	refundSvc := payment.NewRefundService(spannerClient, platformCfg.PlatformFeeBasisPoints())
 	chargebackSvc := payment.NewChargebackService(spannerClient)
 	orderroutes.RegisterRoutes(r, orderroutes.Deps{
-		Spanner: spannerClient,
-		Order:   svc,
-		Refund:  refundSvc,
-		Log:     loggingMiddleware,
+		Spanner:    spannerClient,
+		ReadRouter: app.SpannerRouter,
+		Order:      svc,
+		Refund:     refundSvc,
+		Log:        loggingMiddleware,
 	})
 	http.HandleFunc("/v1/order/refund", auth.RequireRole([]string{"ADMIN", "SUPPLIER"}, loggingMiddleware(idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -2677,9 +2678,7 @@ func main() {
 
 	// /v1/retailer/settings/auto-order* moved to retailerroutes.
 
-	// GET /v1/orders/line-items/history — SKU purchase history for AI Worker
-	http.HandleFunc("/v1/orders/line-items/history",
-		auth.RequireRole([]string{"RETAILER", "ADMIN"}, loggingMiddleware(order.HandleLineItemHistory(spannerClient, app.SpannerRouter))))
+	// /v1/orders/line-items/history moved to orderroutes.
 
 	// Initialize the Communication Spine: FCM (primary) + Telegram (fallback)
 	// FCM boots as graceful no-op if firebase credentials are absent (local dev).
@@ -2867,14 +2866,10 @@ func main() {
 
 	// ── Stealth Simulation Harness (/v1/internal/sim/) ────────────────────
 	// Gated by SIMULATION_ENABLED=true at boot. ADMIN-only.
-	if app.Simulation != nil {
-		http.HandleFunc("/v1/internal/sim/start",
-			auth.RequireRole([]string{"ADMIN"}, loggingMiddleware(simulation.HandleStart(app.Simulation))))
-		http.HandleFunc("/v1/internal/sim/stop",
-			auth.RequireRole([]string{"ADMIN"}, loggingMiddleware(simulation.HandleStop(app.Simulation))))
-		http.HandleFunc("/v1/internal/sim/status",
-			auth.RequireRole([]string{"ADMIN"}, loggingMiddleware(simulation.HandleStatus(app.Simulation))))
-	}
+	simroutes.RegisterRoutes(r, simroutes.Deps{
+		Engine: app.Simulation,
+		Log:    loggingMiddleware,
+	})
 
 	// /v1/fleet/route/{id}/complete moved to fleetroutes.
 

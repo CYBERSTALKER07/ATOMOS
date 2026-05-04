@@ -37,6 +37,12 @@ RULES = [
     ("insecure_tls", re.compile(r"\bInsecureSkipVerify\s*:\s*true\b")),
 ]
 
+WRITE_MESSAGES_RE = re.compile(r"\bWriteMessages\s*\(")
+WRITE_MESSAGES_ALLOWLIST = [
+    "pegasus/apps/backend-go/outbox/**",
+    "pegasus/apps/backend-go/telemetry/**",
+]
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -97,6 +103,18 @@ def main() -> int:
                 violations.append(
                     {
                         "kind": "http_client_without_timeout",
+                        "file": file_path,
+                        "line": line_no,
+                        "text": stripped,
+                    }
+                )
+
+            if WRITE_MESSAGES_RE.search(stripped) and not match_any(
+                file_path, WRITE_MESSAGES_ALLOWLIST
+            ):
+                violations.append(
+                    {
+                        "kind": "direct_kafka_write_outside_outbox_or_telemetry",
                         "file": file_path,
                         "line": line_no,
                         "text": stripped,

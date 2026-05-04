@@ -359,11 +359,12 @@ struct CheckoutView: View {
         let rid = AuthManager.shared.currentUser?.id ?? ""
         let gateway = gatewayCode(for: selectedPayment)
         let payload = cart.buildCheckoutPayload(retailerId: rid, paymentGateway: gateway)
+        let idempotencyKey = checkoutIdempotencyKey(payload: payload, gateway: gateway)
         do {
             let _: CheckoutResponse = try await api.post(
                 path: "/v1/checkout/unified",
                 body: payload,
-                headers: ["Idempotency-Key": checkoutIdempotencyKey(payload: payload, gateway: gateway)]
+                headers: ["Idempotency-Key": idempotencyKey]
             )
             cart.clear()
             Haptics.success()
@@ -387,7 +388,10 @@ struct CheckoutView: View {
             } else {
                 // Queue for offline retry
                 if let data = try? JSONEncoder().encode(payload) {
-                    let pending = PendingOrder(payloadJson: String(data: data, encoding: .utf8) ?? "")
+                    let pending = PendingOrder(
+                        payloadJson: String(data: data, encoding: .utf8) ?? "",
+                        idempotencyKey: idempotencyKey
+                    )
                     modelContext.insert(pending)
                     try? modelContext.save()
                 }
@@ -398,7 +402,10 @@ struct CheckoutView: View {
         } catch {
             // Queue for offline retry
             if let data = try? JSONEncoder().encode(payload) {
-                let pending = PendingOrder(payloadJson: String(data: data, encoding: .utf8) ?? "")
+                let pending = PendingOrder(
+                    payloadJson: String(data: data, encoding: .utf8) ?? "",
+                    idempotencyKey: idempotencyKey
+                )
                 modelContext.insert(pending)
                 try? modelContext.save()
             }

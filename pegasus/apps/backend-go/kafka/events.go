@@ -1,6 +1,10 @@
 package kafka
 
-import "time"
+import (
+	"time"
+
+	"backend-go/cart"
+)
 
 // ─── Kafka Event Type Constants ───────────────────────────────────────────────
 // Event keys are consumed from both Pegasus and legacy logistics topics during
@@ -576,6 +580,48 @@ type PreOrderEditedEvent struct {
 	EditedBy  string    `json:"edited_by"`
 	NewDate   string    `json:"new_date,omitempty"`
 	Timestamp time.Time `json:"timestamp"`
+}
+
+// OrderCreatedEvent is emitted for procurement and unified-checkout order creation.
+// The payload is additive so both legacy procurement and unified checkout producers
+// can publish one canonical wire contract.
+type OrderCreatedEvent struct {
+	InvoiceID     string               `json:"invoice_id,omitempty"`
+	OrderID       string               `json:"order_id"`
+	SupplierID    string               `json:"supplier_id,omitempty"`
+	RetailerID    string               `json:"retailer_id,omitempty"`
+	WarehouseID   string               `json:"warehouse_id,omitempty"`
+	WarehouseName string               `json:"warehouse_name,omitempty"`
+	Total         int64                `json:"total"`
+	Currency      string               `json:"currency"`
+	Items         []cart.OrderLineItem `json:"items,omitempty"`
+	Timestamp     time.Time            `json:"timestamp"`
+}
+
+// UnifiedCheckoutCompletedEvent is emitted once per completed unified checkout invoice.
+type UnifiedCheckoutCompletedEvent struct {
+	InvoiceID  string    `json:"invoice_id"`
+	RetailerID string    `json:"retailer_id"`
+	Total      int64     `json:"total"`
+	Currency   string    `json:"currency"`
+	OrderCount int       `json:"order_count"`
+	Timestamp  time.Time `json:"timestamp"`
+}
+
+// StockBackorderedEvent is emitted when checkout shortfall creates BACKORDERED orders.
+// backorder_id is emitted additively for compatibility with legacy consumers.
+type StockBackorderedEvent struct {
+	InvoiceID         string               `json:"invoice_id"`
+	BackOrderID       string               `json:"backorder_order_id"`
+	BackOrderLegacyID string               `json:"backorder_id,omitempty"`
+	SupplierID        string               `json:"supplier_id"`
+	RetailerID        string               `json:"retailer_id"`
+	WarehouseID       string               `json:"warehouse_id,omitempty"`
+	WarehouseName     string               `json:"warehouse_name,omitempty"`
+	Items             []cart.OrderLineItem `json:"items"`
+	Total             int64                `json:"total"`
+	Currency          string               `json:"currency"`
+	Timestamp         time.Time            `json:"timestamp"`
 }
 
 // PreOrderCancelledEvent is emitted when a retailer cancels a scheduled preorder.

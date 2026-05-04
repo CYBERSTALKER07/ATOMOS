@@ -1,5 +1,5 @@
 {
-  "version": "2026-05-03",
+  "version": "2026-05-04",
   "generatedFrom": {
     "manifests": [
       "pegasus/package.json",
@@ -83,6 +83,7 @@
       "delegatedFrom": "pegasus/apps/backend-go/main.go",
       "methods": [
         "GET /v1/orders",
+        "GET /v1/orders/line-items/history",
         "GET /v1/order/refunds",
         "GET /v1/orders/{id}",
         "GET /v1/orders/{id}/events",
@@ -349,6 +350,25 @@
         "SupplierTruckManifests remains the payload-facing manifest lifecycle source, so payload clients stay aligned on DRAFT, LOADING, SEALED, DISPATCHED, and COMPLETED states.",
         "The payloader websocket now emits typed PAYLOAD_SYNC frames with channel SYNC so payload clients can refresh active manifest state without rendering blank notifications.",
         "PAYLOAD_SYNC is emitted atomically on draft creation plus the supplier manifest start-loading, inject-order, seal, and manifest-exception mutation paths so other payload surfaces stay coherent after cross-device or supplier-portal changes."
+      ]
+    },
+    {
+      "name": "Simulation harness surface",
+      "path": "/v1/internal/sim/{start,stop,status}",
+      "owner": "pegasus/apps/backend-go/simroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "POST /v1/internal/sim/start",
+        "POST /v1/internal/sim/stop",
+        "GET /v1/internal/sim/status"
+      ],
+      "consumers": [
+        "internal ADMIN operators and diagnostics tooling"
+      ],
+      "notes": [
+        "Route composition moved out of main.go into simroutes while preserving simulation handler ownership in backend-go/simulation/handler.go.",
+        "The extracted composer registers on chi.Router and does not add new DefaultServeMux paths.",
+        "Endpoint exposure remains boot-gated by app.Simulation, which is only armed when SIMULATION_ENABLED=true."
       ]
     },
     {

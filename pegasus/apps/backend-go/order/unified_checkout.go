@@ -3,8 +3,8 @@
 // POST /v1/checkout/unified
 //
 // The retailer sees ONE cart. The backend shatters it into isolated supplier
-// fragments inside a single ACID Spanner transaction, then emits per-supplier
-// Kafka events AFTER the transaction commits — zero ghost orders in the stream.
+// fragments inside a single ACID Spanner transaction, writes durable outbox
+// events in the same transaction, then the relay publishes to Kafka after commit.
 package order
 
 import (
@@ -64,37 +64,6 @@ type UnifiedCheckoutResponse struct {
 	BackorderedItemCount int                   `json:"backordered_item_count,omitempty"`
 }
 
-// StockBackorderedEvent is emitted when partial stock forces a BACKORDERED supplement order.
-type StockBackorderedEvent struct {
-	InvoiceID     string               `json:"invoice_id"`
-	BackOrderID   string               `json:"backorder_order_id"`
-	SupplierID    string               `json:"supplier_id"`
-	RetailerID    string               `json:"retailer_id"`
-	WarehouseID   string               `json:"warehouse_id,omitempty"`
-	WarehouseName string               `json:"warehouse_name,omitempty"`
-	Items         []cart.OrderLineItem `json:"items"`
-	Total         int64                `json:"total"`
-	Currency      string               `json:"currency"`
-	Timestamp     time.Time            `json:"timestamp"`
-}
-
-// ─── Kafka Event (emitted AFTER commit) ───────────────────────────────────────
-
-// SupplierOrderCreatedEvent is fired once per supplier order after the Spanner
-// transaction commits. Kafka consumers keyed by SupplierID see only their slice.
-type SupplierOrderCreatedEvent struct {
-	InvoiceID     string               `json:"invoice_id"`
-	OrderID       string               `json:"order_id"`
-	SupplierID    string               `json:"supplier_id"`
-	RetailerID    string               `json:"retailer_id"`
-	WarehouseID   string               `json:"warehouse_id,omitempty"`
-	WarehouseName string               `json:"warehouse_name,omitempty"`
-	Total         int64                `json:"total"`
-	Currency      string               `json:"currency"`
-	Items         []cart.OrderLineItem `json:"items"`
-	Timestamp     time.Time            `json:"timestamp"`
-}
-
 // ─── Internal: supplier metadata resolved from Spanner ────────────────────────
 
 type supplierMeta struct {
@@ -114,7 +83,8 @@ type supplierMeta struct {
 //  5. Single Spanner ReadWriteTransaction:
 //     a. INSERT MasterInvoice
 //     b. For each supplier group: INSERT Order + INSERT N OrderLineItems
-//  6. AFTER commit: emit per-supplier Kafka ORDER_CREATED events.
+//  6. Inside transaction: write per-supplier outbox ORDER_CREATED events.
+//  7. Outbox relay publishes committed events to Kafka.
 func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		apierrors.MethodNotAllowed(w, r)
@@ -472,19 +442,30 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		}
 		now := time.Now().UTC()
 		for _, plan := range processedPlans {
-			event := SupplierOrderCreatedEvent{InvoiceID: invoiceID, OrderID: plan.OrderID, SupplierID: plan.SupplierID, RetailerID: req.RetailerID, WarehouseID: plan.WarehouseID, WarehouseName: plan.WarehouseName, Total: processedTotals[plan.OrderID], Currency: "UZS", Items: plan.Items, Timestamp: now}
+			event := kafkaEvents.OrderCreatedEvent{
+				InvoiceID:     invoiceID,
+				OrderID:       plan.OrderID,
+				SupplierID:    plan.SupplierID,
+				RetailerID:    req.RetailerID,
+				WarehouseID:   plan.WarehouseID,
+				WarehouseName: plan.WarehouseName,
+				Total:         processedTotals[plan.OrderID],
+				Currency:      "UZS",
+				Items:         plan.Items,
+				Timestamp:     now,
+			}
 			if err := outbox.EmitJSON(txn, "Order", plan.OrderID, string(kafkaEvents.EventOrderCreated), kafkaEvents.TopicMain, event, telemetry.TraceIDFromContext(ctx)); err != nil {
 				return err
 			}
 		}
-		return outbox.EmitJSON(txn, "Invoice", invoiceID, string(kafkaEvents.EventUnifiedCheckoutCompleted), kafkaEvents.TopicMain, struct {
-			InvoiceID  string    `json:"invoice_id"`
-			RetailerID string    `json:"retailer_id"`
-			Total      int64     `json:"total"`
-			Currency   string    `json:"currency"`
-			OrderCount int       `json:"order_count"`
-			Timestamp  time.Time `json:"timestamp"`
-		}{InvoiceID: invoiceID, RetailerID: req.RetailerID, Total: effectiveGrandTotal, Currency: "UZS", OrderCount: len(processedPlans), Timestamp: now}, telemetry.TraceIDFromContext(ctx))
+		return outbox.EmitJSON(txn, "Invoice", invoiceID, string(kafkaEvents.EventUnifiedCheckoutCompleted), kafkaEvents.TopicMain, kafkaEvents.UnifiedCheckoutCompletedEvent{
+			InvoiceID:  invoiceID,
+			RetailerID: req.RetailerID,
+			Total:      effectiveGrandTotal,
+			Currency:   "UZS",
+			OrderCount: len(processedPlans),
+			Timestamp:  now,
+		}, telemetry.TraceIDFromContext(ctx))
 	})
 
 	if err != nil {
@@ -585,7 +566,19 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			}
 			now := time.Now().UTC()
 			for _, bp := range backordersBySup {
-				event := StockBackorderedEvent{InvoiceID: invoiceID, BackOrderID: bp.OrderID, SupplierID: bp.SupplierID, RetailerID: req.RetailerID, WarehouseID: bp.WarehouseID, WarehouseName: bp.WarehouseName, Items: bp.Items, Total: bp.Total, Currency: "UZS", Timestamp: now}
+				event := kafkaEvents.StockBackorderedEvent{
+					InvoiceID:         invoiceID,
+					BackOrderID:       bp.OrderID,
+					BackOrderLegacyID: bp.OrderID,
+					SupplierID:        bp.SupplierID,
+					RetailerID:        req.RetailerID,
+					WarehouseID:       bp.WarehouseID,
+					WarehouseName:     bp.WarehouseName,
+					Items:             bp.Items,
+					Total:             bp.Total,
+					Currency:          "UZS",
+					Timestamp:         now,
+				}
 				if err := outbox.EmitJSON(txn, "Order", bp.OrderID, string(kafkaEvents.EventStockBackordered), kafkaEvents.TopicMain, event, telemetry.TraceIDFromContext(ctx)); err != nil {
 					return err
 				}
