@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasus.warehouse.data.model.InventoryAdjustRequest
 import com.pegasus.warehouse.data.model.InventoryItem
 import com.pegasus.warehouse.data.remote.WarehouseApi
-import com.pegasus.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,7 +57,7 @@ fun InventoryScreen(
                         onClick = { lowOnly = !lowOnly },
                         label = { Text("Low") },
                         leadingIcon = if (lowOnly) {{ Icon(Icons.Default.Warning, null, modifier = Modifier.size(16.dp)) }} else null,
-                        modifier = Modifier.padding(end = LabSpacing.sm),
+                        modifier = Modifier.padding(end = PegasusSpacing.sm),
                     )
                     IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") }
                 },
@@ -70,7 +70,7 @@ fun InventoryScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
@@ -78,14 +78,14 @@ fun InventoryScreen(
                 Text("No inventory items", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             else -> LazyColumn(
-                contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 items(items, key = { it.productId }) { item ->
                     val isLow = item.quantity <= item.reorderThreshold
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(item.productName, style = MaterialTheme.typography.titleSmall)
                                 Text(
@@ -101,7 +101,7 @@ fun InventoryScreen(
                                     colors = AssistChipDefaults.assistChipColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                                 )
                             }
-                            Spacer(Modifier.width(LabSpacing.sm))
+                            Spacer(Modifier.width(PegasusSpacing.sm))
                             TextButton(onClick = { adjustItem = item }) { Text("Adjust") }
                         }
                     }
@@ -138,7 +138,7 @@ private fun AdjustDialog(
         text = {
             Column {
                 OutlinedTextField(value = qty, onValueChange = { qty = it }, label = { Text("New Quantity") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                if (error != null) { Spacer(Modifier.height(LabSpacing.sm)); Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                if (error != null) { Spacer(Modifier.height(PegasusSpacing.sm)); Text(error!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
         },
         confirmButton = {

@@ -14,7 +14,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.pegasus.retailer.data.local.TokenManager
 import com.pegasus.retailer.ui.navigation.RetailerNavigation
 import com.pegasus.retailer.ui.screens.auth.AuthScreen
-import com.pegasus.retailer.ui.theme.LabRetailerTheme
+import com.pegasus.retailer.ui.theme.PegasusRetailerTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
-            LabRetailerTheme {
+            PegasusRetailerTheme {
                 var isAuthenticated by rememberSaveable {
                     mutableStateOf(tokenManager.getToken() != null)
                 }

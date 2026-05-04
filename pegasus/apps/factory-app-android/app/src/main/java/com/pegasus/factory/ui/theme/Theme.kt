@@ -89,7 +89,7 @@ val FactoryShapes = Shapes(
 )
 
 @Composable
-fun LabFactoryTheme(
+fun PegasusFactoryTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
@@ -117,7 +117,7 @@ fun LabFactoryTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = LabTypography,
+        typography = PegasusTypography,
         shapes = FactoryShapes,
         content = content
     )

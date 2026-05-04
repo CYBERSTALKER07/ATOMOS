@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 /**
  * B&W Navigation Bar — 5 tabs. Insights moved to sidebar.
  */
-enum class LabTab(
+enum class PegasusTab(
     val label: String,
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector,
@@ -43,9 +43,9 @@ enum class LabTab(
 }
 
 @Composable
-fun LabBottomBar(
-    currentTab: LabTab,
-    onTabSelected: (LabTab) -> Unit,
+fun PegasusBottomBar(
+    currentTab: PegasusTab,
+    onTabSelected: (PegasusTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     NavigationBar(
@@ -54,7 +54,7 @@ fun LabBottomBar(
         tonalElevation = 0.dp,
         windowInsets = WindowInsets(0, 0, 0, 0),
     ) {
-        LabTab.entries.forEach { tab ->
+        PegasusTab.entries.forEach { tab ->
             val selected = tab == currentTab
             NavigationBarItem(
                 selected = selected,

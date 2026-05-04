@@ -248,7 +248,7 @@ val BlobShape: Shape = GenericShape { size, _ ->
 }
 
 // ── M3 Shape Scale (MDC 1.14 spec) ──
-val LabShapes = Shapes(
+val PegasusShapes = Shapes(
     extraSmall = RoundedCornerShape(4.dp),   // Corner.ExtraSmall
     small = RoundedCornerShape(8.dp),        // Corner.Small
     medium = RoundedCornerShape(12.dp),      // Corner.Medium

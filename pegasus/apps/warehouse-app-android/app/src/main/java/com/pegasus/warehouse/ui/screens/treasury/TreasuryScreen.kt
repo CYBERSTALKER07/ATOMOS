@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasus.warehouse.data.model.Invoice
 import com.pegasus.warehouse.data.model.TreasuryOverview
 import com.pegasus.warehouse.data.remote.WarehouseApi
-import com.pegasus.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -63,7 +63,7 @@ fun TreasuryScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
@@ -74,15 +74,15 @@ fun TreasuryScreen(
                 }
                 when (tab) {
                     0 -> overview?.let { o ->
-                        LazyColumn(contentPadding = PaddingValues(LabSpacing.lg), verticalArrangement = Arrangement.spacedBy(LabSpacing.md)) {
+                        LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                             item {
-                                Row(horizontalArrangement = Arrangement.spacedBy(LabSpacing.md), modifier = Modifier.fillMaxWidth()) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
                                     KpiCard("Outstanding", "${fmt.format(o.totalOutstanding)} UZS", Modifier.weight(1f))
                                     KpiCard("Invoiced", "${fmt.format(o.totalInvoiced)} UZS", Modifier.weight(1f))
                                 }
                             }
                             item {
-                                Row(horizontalArrangement = Arrangement.spacedBy(LabSpacing.md), modifier = Modifier.fillMaxWidth()) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
                                     KpiCard("Paid", "${fmt.format(o.totalPaid)} UZS", Modifier.weight(1f))
                                     Spacer(Modifier.weight(1f))
                                 }
@@ -95,10 +95,10 @@ fun TreasuryScreen(
                                 Text("No invoices", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         } else {
-                            LazyColumn(contentPadding = PaddingValues(LabSpacing.lg), verticalArrangement = Arrangement.spacedBy(LabSpacing.md)) {
+                            LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                                 items(invoices, key = { it.invoiceId }) { inv ->
                                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                        Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(inv.retailerName, style = MaterialTheme.typography.titleSmall)
                                                 Text("${fmt.format(inv.amountUzs)} UZS · ${inv.dueDate}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -119,7 +119,7 @@ fun TreasuryScreen(
 @Composable
 private fun KpiCard(label: String, value: String, modifier: Modifier = Modifier) {
     ElevatedCard(modifier = modifier) {
-        Column(modifier = Modifier.padding(LabSpacing.md)) {
+        Column(modifier = Modifier.padding(PegasusSpacing.md)) {
             Text(value, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(2.dp))
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -57,7 +57,7 @@ import com.pegasus.factory.data.model.ManifestCancelTransferRequest
 import com.pegasus.factory.data.model.ManifestRebalanceRequest
 import com.pegasus.factory.data.model.ManifestTransfer
 import com.pegasus.factory.data.remote.FactoryApi
-import com.pegasus.factory.ui.theme.LabSpacing
+import com.pegasus.factory.ui.theme.PegasusSpacing
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.delay
@@ -256,7 +256,7 @@ fun PayloadOverrideScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
@@ -267,8 +267,8 @@ fun PayloadOverrideScreen(
                 )
             }
             else -> LazyColumn(
-                contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 item {
@@ -298,16 +298,16 @@ fun PayloadOverrideScreen(
             onDismissRequest = { moveCandidate = null },
             title = { Text("Move transfer") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.sm)) {
+                Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                     Text("Select the loading manifest that should receive transfer ${candidate.transfer.transferId.take(8)}.")
                     targetOptions.forEach { manifest ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { selectedTargetManifestId = manifest.id }
-                                .padding(vertical = LabSpacing.xs),
+                                .padding(vertical = PegasusSpacing.xs),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                            horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                         ) {
                             RadioButton(
                                 selected = selectedTargetManifestId == manifest.id,
@@ -394,8 +394,8 @@ private fun OverrideSummaryCard(
         ),
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
         ) {
             Text(
                 text = "Live manifest override",
@@ -414,7 +414,7 @@ private fun OverrideSummaryCard(
                     text = runtimeStatus,
                     style = MaterialTheme.typography.labelMedium,
                     color = if (stale) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = LabSpacing.md, vertical = LabSpacing.sm),
+                    modifier = Modifier.padding(horizontal = PegasusSpacing.md, vertical = PegasusSpacing.sm),
                 )
             }
         }
@@ -432,17 +432,17 @@ private fun OverrideManifestCard(
 ) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.padding(LabSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
                 ) {
                     Text(
                         text = manifest.truckPlate.ifBlank { manifest.truckId.take(8) },
@@ -462,7 +462,7 @@ private fun OverrideManifestCard(
                 }
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.sm)) {
+            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                 LinearProgressIndicator(
                     progress = {
                         val capacity = manifest.maxCapacityVU.takeIf { it > 0 } ?: 1.0
@@ -472,7 +472,7 @@ private fun OverrideManifestCard(
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                 ) {
                     OverrideMetric("Volume", "${trimDecimal(manifest.totalVolumeVU)} VU", Modifier.weight(1f))
                     OverrideMetric("Capacity", "${trimDecimal(manifest.maxCapacityVU)} VU", Modifier.weight(1f))
@@ -488,7 +488,7 @@ private fun OverrideManifestCard(
                 ) {
                     Text(
                         text = "No transfers are assigned to this manifest.",
-                        modifier = Modifier.padding(LabSpacing.lg),
+                        modifier = Modifier.padding(PegasusSpacing.lg),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -521,17 +521,17 @@ private fun OverrideTransferRow(
         color = MaterialTheme.colorScheme.surfaceContainerLowest,
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+            modifier = Modifier.padding(PegasusSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
                 ) {
                     Text(
                         text = transfer.productName.ifBlank { "Transfer ${transfer.transferId.take(8)}" },
@@ -548,7 +548,7 @@ private fun OverrideTransferRow(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
                 OverrideMetric("Qty", transfer.quantity.toString(), Modifier.weight(1f))
                 OverrideMetric("Volume", "${trimDecimal(transfer.volumeVU)} VU", Modifier.weight(1f))
@@ -556,7 +556,7 @@ private fun OverrideTransferRow(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
                 FilledTonalButton(
                     onClick = onMove,
@@ -589,8 +589,8 @@ private fun OverrideMetric(
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+            modifier = Modifier.padding(PegasusSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
         ) {
             Text(value, style = MaterialTheme.typography.titleSmall)
             Text(
@@ -614,7 +614,7 @@ private fun OverrideStateTag(
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = LabSpacing.sm, vertical = LabSpacing.xs),
+            modifier = Modifier.padding(horizontal = PegasusSpacing.sm, vertical = PegasusSpacing.xs),
         )
     }
 }

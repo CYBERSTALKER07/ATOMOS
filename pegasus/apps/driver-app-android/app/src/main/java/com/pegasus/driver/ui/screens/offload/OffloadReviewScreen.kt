@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasus.driver.data.model.ConfirmOffloadResponse
 import com.pegasus.driver.data.model.RejectionReason
-import com.pegasus.driver.ui.theme.LocalLabColors
+import com.pegasus.driver.ui.theme.LocalPegasusColors
 import com.pegasus.driver.ui.theme.StatusGreen
 import com.pegasus.driver.ui.theme.StatusOrange
 import com.pegasus.driver.ui.theme.StatusRed
@@ -65,7 +65,7 @@ fun OffloadReviewScreen(
     viewModel: OffloadReviewViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
 
     // If offload confirmed, route to next screen
     state.offloadResult?.let { result ->

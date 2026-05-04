@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasus.factory.data.model.DashboardStats
 import com.pegasus.factory.data.remote.FactoryApi
 import com.pegasus.factory.ui.navigation.FactoryRoutes
-import com.pegasus.factory.ui.theme.LabSpacing
+import com.pegasus.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -89,7 +89,7 @@ fun DashboardScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                         Text("Factory dashboard")
                         Text(
                             text = "Dispatch, loading, fleet, and staffing status",
@@ -116,15 +116,15 @@ fun DashboardScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
             else -> LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 168.dp),
-                contentPadding = PaddingValues(LabSpacing.lg),
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
@@ -166,11 +166,11 @@ private fun WorkflowLaunchCard(
         ),
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Surface(
@@ -182,11 +182,11 @@ private fun WorkflowLaunchCard(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onTertiaryContainer,
                         modifier = Modifier
-                            .padding(LabSpacing.sm)
+                            .padding(PegasusSpacing.sm)
                             .size(20.dp),
                     )
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                     Text(
                         text = "Operator workflows",
                         style = MaterialTheme.typography.titleMedium,
@@ -227,13 +227,13 @@ private fun WorkflowLaunchRow(
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Row(
-            modifier = Modifier.padding(LabSpacing.md),
-            horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
+            modifier = Modifier.padding(PegasusSpacing.md),
+            horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
             ) {
                 Text(
                     text = title,
@@ -264,10 +264,10 @@ private fun DashboardHeroCard(
         ),
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.lg),
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.lg),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                 Text(
                     text = "Outbound floor status",
                     style = MaterialTheme.typography.titleLarge,
@@ -280,7 +280,7 @@ private fun DashboardHeroCard(
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
                 OverviewMetric(
                     label = "Queued",
@@ -300,14 +300,14 @@ private fun DashboardHeroCard(
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
                 FilledTonalButton(
                     onClick = { onNavigate(FactoryRoutes.LOADING_BAY) },
                     modifier = Modifier.weight(1f),
                 ) {
                     Icon(Icons.Default.LocalShipping, contentDescription = null)
-                    Spacer(Modifier.width(LabSpacing.sm))
+                    Spacer(Modifier.width(PegasusSpacing.sm))
                     Text("Open bay")
                 }
                 OutlinedButton(
@@ -315,7 +315,7 @@ private fun DashboardHeroCard(
                     modifier = Modifier.weight(1f),
                 ) {
                     Icon(Icons.AutoMirrored.Filled.List, contentDescription = null)
-                    Spacer(Modifier.width(LabSpacing.sm))
+                    Spacer(Modifier.width(PegasusSpacing.sm))
                     Text("View transfers")
                 }
             }
@@ -335,8 +335,8 @@ private fun OverviewMetric(
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+            modifier = Modifier.padding(PegasusSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
         ) {
             Text(
                 text = value,
@@ -362,8 +362,8 @@ private fun KpiMetricCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             Surface(
                 shape = MaterialTheme.shapes.small,
@@ -374,11 +374,11 @@ private fun KpiMetricCard(
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier
-                        .padding(LabSpacing.sm)
+                        .padding(PegasusSpacing.sm)
                         .size(24.dp),
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                 Text(
                     text = card.value(stats),
                     style = MaterialTheme.typography.headlineSmall,

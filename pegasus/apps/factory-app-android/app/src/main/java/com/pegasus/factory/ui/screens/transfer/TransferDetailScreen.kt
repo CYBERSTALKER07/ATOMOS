@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasus.factory.data.model.Transfer
 import com.pegasus.factory.data.model.TransitionRequest
 import com.pegasus.factory.data.remote.FactoryApi
-import com.pegasus.factory.ui.theme.LabSpacing
+import com.pegasus.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -92,13 +92,13 @@ fun TransferDetailScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
             transfer != null -> LazyColumn(
-                contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 item {
@@ -106,7 +106,7 @@ fun TransferDetailScreen(
                 }
                 item {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         SummaryCard("Items", "${transfer!!.totalItems}", Modifier.weight(1f))
@@ -118,7 +118,7 @@ fun TransferDetailScreen(
                     val state = transfer!!.state
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                     ) {
                         if (state == "APPROVED") {
                             Button(
@@ -126,7 +126,7 @@ fun TransferDetailScreen(
                                 enabled = !transitioning,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(LabSpacing.xxxl),
+                                    .height(PegasusSpacing.xxxl),
                             ) { Text("Start loading") }
                         }
                         if (state == "LOADING") {
@@ -135,7 +135,7 @@ fun TransferDetailScreen(
                                 enabled = !transitioning,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(LabSpacing.xxxl),
+                                    .height(PegasusSpacing.xxxl),
                             ) { Text("Mark dispatched") }
                         }
                         if (state != "APPROVED" && state != "LOADING") {
@@ -148,7 +148,7 @@ fun TransferDetailScreen(
                                     text = "No manual transition is available for the current state.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(LabSpacing.lg),
+                                    modifier = Modifier.padding(PegasusSpacing.lg),
                                 )
                             }
                         }
@@ -157,17 +157,17 @@ fun TransferDetailScreen(
 
                 item {
                     HorizontalDivider()
-                    Spacer(Modifier.height(LabSpacing.sm))
+                    Spacer(Modifier.height(PegasusSpacing.sm))
                     Text("Items", style = MaterialTheme.typography.titleMedium)
                 }
 
                 items(transfer!!.items) { item ->
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                         Column(
-                            modifier = Modifier.padding(LabSpacing.lg),
-                            verticalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                            modifier = Modifier.padding(PegasusSpacing.lg),
+                            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                         ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                                 Text(
                                     text = item.productName.ifBlank { item.productId.take(8) },
                                     style = MaterialTheme.typography.titleMedium,
@@ -180,7 +180,7 @@ fun TransferDetailScreen(
                             }
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                             ) {
                                 SummaryCard("Qty", "${item.quantity}", Modifier.weight(1f))
                                 SummaryCard("Available", "${item.quantityAvailable}", Modifier.weight(1f))
@@ -192,11 +192,11 @@ fun TransferDetailScreen(
 
                 if (transfer!!.notes.isNotBlank()) {
                     item {
-                        Spacer(Modifier.height(LabSpacing.sm))
+                        Spacer(Modifier.height(PegasusSpacing.sm))
                         HorizontalDivider()
-                        Spacer(Modifier.height(LabSpacing.sm))
+                        Spacer(Modifier.height(PegasusSpacing.sm))
                         Text("Notes", style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(LabSpacing.xs))
+                        Spacer(Modifier.height(PegasusSpacing.xs))
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.medium,
@@ -206,7 +206,7 @@ fun TransferDetailScreen(
                                 text = transfer!!.notes,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(LabSpacing.lg),
+                                modifier = Modifier.padding(PegasusSpacing.lg),
                             )
                         }
                     }
@@ -225,10 +225,10 @@ private fun TransferOverviewCard(transfer: Transfer) {
         ),
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                 Text(
                     text = transfer.warehouseName.ifBlank { transfer.warehouseId.take(8) },
                     style = MaterialTheme.typography.titleLarge,
@@ -240,7 +240,7 @@ private fun TransferOverviewCard(transfer: Transfer) {
                 )
             }
             Row(
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
                 DetailTag(
                     text = transfer.state,
@@ -271,7 +271,7 @@ private fun DetailTag(
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = LabSpacing.sm, vertical = LabSpacing.xs),
+            modifier = Modifier.padding(horizontal = PegasusSpacing.sm, vertical = PegasusSpacing.xs),
         )
     }
 }
@@ -284,8 +284,8 @@ private fun SummaryCard(label: String, value: String, modifier: Modifier = Modif
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+            modifier = Modifier.padding(PegasusSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
         ) {
             Text(value, style = MaterialTheme.typography.titleMedium)
             Text(

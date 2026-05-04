@@ -66,7 +66,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.pegasus.driver.data.model.Order
 import com.pegasus.driver.data.model.OrderState
 import com.pegasus.driver.ui.screens.manifest.ManifestViewModel
-import com.pegasus.driver.ui.theme.LocalLabColors
+import com.pegasus.driver.ui.theme.LocalPegasusColors
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -91,7 +91,7 @@ private fun locationFlow(context: android.content.Context): Flow<Location> = cal
 
 @Composable
 fun MapScreen(viewModel: ManifestViewModel) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     val context = LocalContext.current
     val uiState by viewModel.state.collectAsState()
 

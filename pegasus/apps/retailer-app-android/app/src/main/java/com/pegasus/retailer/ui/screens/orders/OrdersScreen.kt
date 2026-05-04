@@ -69,7 +69,7 @@ import com.pegasus.retailer.data.model.DemandForecast
 import com.pegasus.retailer.data.model.Order
 import com.pegasus.retailer.data.model.OrderStatus
 import com.pegasus.retailer.ui.components.CountdownTimer
-import com.pegasus.retailer.ui.components.LabEmptyState
+import com.pegasus.retailer.ui.components.PegasusEmptyState
 import com.pegasus.retailer.ui.components.ShimmerOrderList
 import com.pegasus.retailer.ui.components.OrderDetailSheet
 import com.pegasus.retailer.ui.components.OrderStatusBadge
@@ -252,7 +252,7 @@ private fun ActiveOrdersList(
         return
     }
     if (orders.isEmpty()) {
-        LabEmptyState(icon = Icons.Rounded.Inventory2, title = "No Active Orders", message = "Orders being prepared or en route will appear here")
+        PegasusEmptyState(icon = Icons.Rounded.Inventory2, title = "No Active Orders", message = "Orders being prepared or en route will appear here")
         return
     }
     LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -283,7 +283,7 @@ private fun OrderedList(
         return
     }
     if (orders.isEmpty()) {
-        LabEmptyState(icon = Icons.Rounded.Receipt, title = "No Pending Orders", message = "Orders awaiting dispatch will appear here")
+        PegasusEmptyState(icon = Icons.Rounded.Receipt, title = "No Pending Orders", message = "Orders awaiting dispatch will appear here")
         return
     }
     LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -315,7 +315,7 @@ private fun AiPlannedList(
         return
     }
     if (predictions.isEmpty()) {
-        LabEmptyState(icon = Icons.Rounded.AutoAwesome, title = "No AI Predictions", message = "AI-predicted orders based on your history will appear here")
+        PegasusEmptyState(icon = Icons.Rounded.AutoAwesome, title = "No AI Predictions", message = "AI-predicted orders based on your history will appear here")
         return
     }
     LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

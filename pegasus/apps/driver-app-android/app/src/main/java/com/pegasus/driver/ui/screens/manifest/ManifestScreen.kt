@@ -49,11 +49,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasus.driver.data.model.Order
 import com.pegasus.driver.data.model.OrderState
-import com.pegasus.driver.ui.components.LabCard
+import com.pegasus.driver.ui.components.PegasusCard
 import com.pegasus.driver.ui.components.StateBadge
 import com.pegasus.driver.ui.components.StaggeredAppear
-import com.pegasus.driver.ui.theme.LabSpacing
-import com.pegasus.driver.ui.theme.LocalLabColors
+import com.pegasus.driver.ui.theme.PegasusSpacing
+import com.pegasus.driver.ui.theme.LocalPegasusColors
 import com.pegasus.driver.ui.theme.formattedAmount
 import com.pegasus.driver.ui.theme.pressable
 import androidx.compose.material3.MaterialTheme
@@ -69,7 +69,7 @@ fun ManifestScreen(
     onRequestEarlyComplete: (reason: String, note: String) -> Unit = { _, _ -> }
 ) {
     val state by viewModel.state.collectAsState()
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     var loadingMode by remember { mutableStateOf(false) }
     var showEarlyCompleteDialog by remember { mutableStateOf(false) }
 
@@ -119,7 +119,7 @@ fun ManifestScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = LabSpacing.s16, vertical = 8.dp)
+                                    .padding(horizontal = PegasusSpacing.s16, vertical = 8.dp)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(MaterialTheme.colorScheme.errorContainer)
                                     .padding(16.dp)
@@ -295,8 +295,8 @@ private fun ManifestHeader(
     val typography = MaterialTheme.typography
     Column(
         modifier = Modifier
-            .padding(horizontal = LabSpacing.s20)
-            .padding(top = 60.dp, bottom = LabSpacing.s20)
+            .padding(horizontal = PegasusSpacing.s20)
+            .padding(top = 60.dp, bottom = PegasusSpacing.s20)
     ) {
         Text(
             text = if (loadingMode) "LOADING SEQUENCE" else "UPCOMING",
@@ -358,17 +358,17 @@ private fun ManifestHeader(
 
 @Composable
 private fun RideCard(order: Order, loadSeqLabel: String? = null, onClick: () -> Unit) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     val isDark = isSystemInDarkTheme()
     val colorScheme = MaterialTheme.colorScheme
 
-    LabCard(
+    PegasusCard(
         modifier = Modifier
-            .padding(horizontal = LabSpacing.s16, vertical = 7.dp)
+            .padding(horizontal = PegasusSpacing.s16, vertical = 7.dp)
             .pressable(onClick = onClick)
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.s20),
+            modifier = Modifier.padding(PegasusSpacing.s20),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Loading sequence badge

@@ -17,26 +17,26 @@ import androidx.compose.ui.unit.sp
  * Pixel influence: tight letter spacing, medium weight body text.
  */
 
-val LabFontFamily = FontFamily.Default
+val PegasusFontFamily = FontFamily.Default
 
-val LabTypography = Typography(
+val PegasusTypography = Typography(
     // ── Display: OneUI large header (collapsing toolbar title) ──
     displayLarge = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 57.sp,
         lineHeight = 64.sp,
         letterSpacing = (-0.25).sp,
     ),
     displayMedium = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 45.sp,
         lineHeight = 52.sp,
         letterSpacing = 0.sp,
     ),
     displaySmall = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 36.sp,
         lineHeight = 44.sp,
@@ -45,21 +45,21 @@ val LabTypography = Typography(
 
     // ── Headline: Section headers (OneUI screen titles) ──
     headlineLarge = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 32.sp,
         lineHeight = 40.sp,
         letterSpacing = 0.sp,
     ),
     headlineMedium = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 28.sp,
         lineHeight = 36.sp,
         letterSpacing = 0.sp,
     ),
     headlineSmall = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 24.sp,
         lineHeight = 32.sp,
@@ -68,21 +68,21 @@ val LabTypography = Typography(
 
     // ── Title: Card/list item headers ──
     titleLarge = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 22.sp,
         lineHeight = 28.sp,
         letterSpacing = 0.sp,
     ),
     titleMedium = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 16.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.15.sp,
     ),
     titleSmall = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp,
@@ -91,21 +91,21 @@ val LabTypography = Typography(
 
     // ── Body: Content text (Pixel-tight spacing) ──
     bodyLarge = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp,
         letterSpacing = 0.5.sp,
     ),
     bodyMedium = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.25.sp,
     ),
     bodySmall = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 16.sp,
@@ -114,21 +114,21 @@ val LabTypography = Typography(
 
     // ── Label: Buttons, chips, badges ──
     labelLarge = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.1.sp,
     ),
     labelMedium = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
         lineHeight = 16.sp,
         letterSpacing = 0.5.sp,
     ),
     labelSmall = TextStyle(
-        fontFamily = LabFontFamily,
+        fontFamily = PegasusFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 11.sp,
         lineHeight = 16.sp,

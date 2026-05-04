@@ -1,7 +1,7 @@
 <resources>
-    <style name="Theme.LabRetailer" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.PegasusRetailer" parent="android:Theme.Material.Light.NoActionBar" />
 
-    <style name="Theme.LabRetailer.Splash" parent="Theme.LabRetailer">
+    <style name="Theme.PegasusRetailer.Splash" parent="Theme.PegasusRetailer">
         <item name="android:windowSplashScreenBackground">#FFFFFF</item>
         <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_branding</item>
     </style>

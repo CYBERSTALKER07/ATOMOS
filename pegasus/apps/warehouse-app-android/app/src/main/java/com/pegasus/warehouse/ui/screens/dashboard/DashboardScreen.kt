@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasus.warehouse.data.model.DashboardData
 import com.pegasus.warehouse.data.remote.WarehouseApi
 import com.pegasus.warehouse.ui.navigation.WarehouseRoutes
-import com.pegasus.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 private data class KpiCard(
@@ -93,15 +93,15 @@ fun DashboardScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
             else -> LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 160.dp),
-                contentPadding = PaddingValues(LabSpacing.lg),
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 items(kpiCards.size) { index ->
@@ -111,19 +111,19 @@ fun DashboardScreen(
                             .fillMaxWidth()
                             .clickable { onNavigate(card.route) },
                     ) {
-                        Column(modifier = Modifier.padding(LabSpacing.lg)) {
+                        Column(modifier = Modifier.padding(PegasusSpacing.lg)) {
                             Icon(
                                 imageVector = card.icon,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(24.dp),
                             )
-                            Spacer(Modifier.height(LabSpacing.md))
+                            Spacer(Modifier.height(PegasusSpacing.md))
                             Text(
                                 text = card.value(data),
                                 style = MaterialTheme.typography.headlineMedium,
                             )
-                            Spacer(Modifier.height(LabSpacing.xs))
+                            Spacer(Modifier.height(PegasusSpacing.xs))
                             Text(
                                 text = card.label,
                                 style = MaterialTheme.typography.bodySmall,

@@ -18,7 +18,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class LabFirebaseMessagingService : FirebaseMessagingService() {
+class PegasusFirebaseMessagingService : FirebaseMessagingService() {
 
     @Inject lateinit var api: PegasusApi
     @Inject lateinit var tokenManager: TokenManager

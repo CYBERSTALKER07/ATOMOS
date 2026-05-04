@@ -29,8 +29,8 @@ import com.pegasus.retailer.ui.components.modifiers.bounceCash
 fun PegasusNavigationRail(
     isExpanded: Boolean,
     onToggleExpanded: () -> Unit,
-    currentTab: LabTab,
-    onTabSelected: (LabTab) -> Unit,
+    currentTab: PegasusTab,
+    onTabSelected: (PegasusTab) -> Unit,
     onSidebarNavigate: (SidebarDestination) -> Unit,
     userName: String,
     companyName: String,
@@ -71,8 +71,8 @@ fun PegasusNavigationRail(
 @Composable
 private fun ExpandedDrawer(
     onToggleExpanded: () -> Unit,
-    currentTab: LabTab,
-    onTabSelected: (LabTab) -> Unit,
+    currentTab: PegasusTab,
+    onTabSelected: (PegasusTab) -> Unit,
     onSidebarNavigate: (SidebarDestination) -> Unit,
     userName: String,
     companyName: String,
@@ -114,7 +114,7 @@ private fun ExpandedDrawer(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 12.dp)
         ) {
-            LabTab.entries.forEach { tab ->
+            PegasusTab.entries.forEach { tab ->
                 val selected = currentTab == tab
                 NavigationDrawerItem(
                     label = { Text(tab.label) },
@@ -194,8 +194,8 @@ private fun ExpandedDrawer(
 @Composable
 private fun CollapsedRail(
     onToggleExpanded: () -> Unit,
-    currentTab: LabTab,
-    onTabSelected: (LabTab) -> Unit,
+    currentTab: PegasusTab,
+    onTabSelected: (PegasusTab) -> Unit,
     onSidebarNavigate: (SidebarDestination) -> Unit,
     userName: String,
     modifier: Modifier = Modifier
@@ -224,7 +224,7 @@ private fun CollapsedRail(
                 .padding(top = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            LabTab.entries.forEach { tab ->
+            PegasusTab.entries.forEach { tab ->
                 val selected = currentTab == tab
                 NavigationRailItem(
                     selected = selected,

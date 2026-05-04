@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasus.factory.data.model.DispatchRequest
 import com.pegasus.factory.data.model.Transfer
 import com.pegasus.factory.data.remote.FactoryApi
-import com.pegasus.factory.ui.theme.LabSpacing
+import com.pegasus.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -106,13 +106,13 @@ fun LoadingBayScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
             else -> LazyColumn(
-                contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 item {
@@ -155,13 +155,13 @@ fun LoadingBayScreen(
 private fun BayHeader(title: String, count: Int) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(top = LabSpacing.sm),
+        modifier = Modifier.padding(top = PegasusSpacing.sm),
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
         )
-        Spacer(Modifier.width(LabSpacing.sm))
+        Spacer(Modifier.width(PegasusSpacing.sm))
         Badge { Text("$count") }
     }
 }
@@ -173,14 +173,14 @@ private fun TransferCard(transfer: Transfer, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             Row(
                 verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                     Text(
                         text = transfer.warehouseName.ifBlank { transfer.warehouseId.take(8) },
                         style = MaterialTheme.typography.titleMedium,
@@ -193,7 +193,7 @@ private fun TransferCard(transfer: Transfer, onClick: () -> Unit) {
                 }
                 Column(
                     horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
                 ) {
                     MetaPill(
                         text = transfer.state,
@@ -209,7 +209,7 @@ private fun TransferCard(transfer: Transfer, onClick: () -> Unit) {
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
                 BayMetric(
                     label = "Items",
@@ -239,8 +239,8 @@ private fun BayOverviewCard(
         ),
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             Text(
                 text = "Loading bay flow",
@@ -253,7 +253,7 @@ private fun BayOverviewCard(
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
                 BayMetric("Ready", readyCount.toString(), Modifier.weight(1f))
                 BayMetric("Loading", loadingCount.toString(), Modifier.weight(1f))
@@ -275,8 +275,8 @@ private fun BayMetric(
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+            modifier = Modifier.padding(PegasusSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
         ) {
             Text(value, style = MaterialTheme.typography.titleLarge)
             Text(
@@ -299,7 +299,7 @@ private fun EmptyBayState(message: String) {
             text = message,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(LabSpacing.lg),
+            modifier = Modifier.padding(PegasusSpacing.lg),
         )
     }
 }
@@ -318,7 +318,7 @@ private fun MetaPill(
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = LabSpacing.sm, vertical = LabSpacing.xs),
+            modifier = Modifier.padding(horizontal = PegasusSpacing.sm, vertical = PegasusSpacing.xs),
         )
     }
 }

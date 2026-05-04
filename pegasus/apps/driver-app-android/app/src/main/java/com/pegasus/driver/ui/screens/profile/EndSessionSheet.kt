@@ -38,9 +38,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pegasus.driver.ui.components.LabCard
-import com.pegasus.driver.ui.theme.LabSpacing
-import com.pegasus.driver.ui.theme.LocalLabColors
+import com.pegasus.driver.ui.components.PegasusCard
+import com.pegasus.driver.ui.theme.PegasusSpacing
+import com.pegasus.driver.ui.theme.LocalPegasusColors
 import com.pegasus.driver.ui.theme.pressable
 
 enum class OfflineReason(val code: String, val label: String, val icon: ImageVector) {
@@ -60,7 +60,7 @@ fun EndSessionSheet(
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     var selectedReason by remember { mutableStateOf<OfflineReason?>(null) }
     var note by remember { mutableStateOf("") }
 
@@ -88,7 +88,7 @@ fun EndSessionSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = LabSpacing.s20)
+                .padding(horizontal = PegasusSpacing.s20)
                 .padding(bottom = 32.dp)
         ) {
             // Title
@@ -106,13 +106,13 @@ fun EndSessionSheet(
 
             // Active orders warning
             if (hasActiveOrders) {
-                Spacer(modifier = Modifier.height(LabSpacing.s16))
+                Spacer(modifier = Modifier.height(PegasusSpacing.s16))
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(lab.destructive.copy(alpha = 0.08f))
-                        .padding(LabSpacing.s12),
+                        .padding(PegasusSpacing.s12),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -130,7 +130,7 @@ fun EndSessionSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(LabSpacing.s20))
+            Spacer(modifier = Modifier.height(PegasusSpacing.s20))
 
             // Reason selection
             Text(
@@ -141,7 +141,7 @@ fun EndSessionSheet(
                 ),
                 color = lab.fgTertiary
             )
-            Spacer(modifier = Modifier.height(LabSpacing.s8))
+            Spacer(modifier = Modifier.height(PegasusSpacing.s8))
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OfflineReason.entries.forEach { reason ->
@@ -158,7 +158,7 @@ fun EndSessionSheet(
                 visible = selectedReason == OfflineReason.OTHER || selectedReason == OfflineReason.TRUCK_DAMAGED
             ) {
                 Column {
-                    Spacer(modifier = Modifier.height(LabSpacing.s16))
+                    Spacer(modifier = Modifier.height(PegasusSpacing.s16))
                     OutlinedTextField(
                         value = note,
                         onValueChange = { note = it },
@@ -177,7 +177,7 @@ fun EndSessionSheet(
 
             // Error
             if (error != null) {
-                Spacer(modifier = Modifier.height(LabSpacing.s8))
+                Spacer(modifier = Modifier.height(PegasusSpacing.s8))
                 Text(
                     text = error,
                     style = MaterialTheme.typography.bodySmall,
@@ -185,7 +185,7 @@ fun EndSessionSheet(
                 )
             }
 
-            Spacer(modifier = Modifier.height(LabSpacing.s24))
+            Spacer(modifier = Modifier.height(PegasusSpacing.s24))
 
             // Confirm button
             val canConfirm = selectedReason != null &&
@@ -193,7 +193,7 @@ fun EndSessionSheet(
                 !isEnding &&
                 (selectedReason != OfflineReason.OTHER || note.isNotBlank())
 
-            LabCard(
+            PegasusCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .pressable(enabled = canConfirm) {
@@ -247,7 +247,7 @@ private fun ReasonOption(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
 
     Row(
         modifier = Modifier
@@ -259,7 +259,7 @@ private fun ReasonOption(
             )
             .background(if (isSelected) lab.fg.copy(alpha = 0.04f) else lab.bg)
             .pressable(onClick = onClick)
-            .padding(LabSpacing.s16),
+            .padding(PegasusSpacing.s16),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {

@@ -68,7 +68,7 @@ fun InsightsScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
@@ -76,8 +76,8 @@ fun InsightsScreen(
                 Text("No insights", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             else -> LazyColumn(
-                contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 items(insights, key = { it.id }) { insight ->
@@ -98,7 +98,7 @@ private fun InsightCard(insight: Insight) {
     }
 
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(LabSpacing.lg)) {
+        Column(modifier = Modifier.padding(PegasusSpacing.lg)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -123,7 +123,7 @@ private fun InsightCard(insight: Insight) {
                 )
             }
 
-            Spacer(Modifier.height(LabSpacing.md))
+            Spacer(Modifier.height(PegasusSpacing.md))
 
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,

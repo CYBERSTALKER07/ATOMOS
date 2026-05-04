@@ -23,7 +23,7 @@ import com.pegasus.warehouse.data.model.WarehouseSupplyRequestTransitionRequest
 import com.pegasus.warehouse.data.remote.WarehouseApi
 import com.pegasus.warehouse.data.remote.WarehouseRealtimeClient
 import com.pegasus.warehouse.data.remote.WarehouseRealtimeStatus
-import com.pegasus.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.ui.theme.PegasusSpacing
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -266,7 +266,7 @@ fun DispatchScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
@@ -287,10 +287,10 @@ fun DispatchScreen(
                                 Text("All orders dispatched", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         } else {
-                            LazyColumn(contentPadding = PaddingValues(LabSpacing.lg), verticalArrangement = Arrangement.spacedBy(LabSpacing.md)) {
+                            LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                                 items(preview!!.undispatchedOrders, key = { it.orderId }) { o ->
                                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                        Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(o.retailerName.ifBlank { o.orderId.take(8) }, style = MaterialTheme.typography.titleSmall)
                                                 Text(
@@ -311,7 +311,7 @@ fun DispatchScreen(
                                 Text("No available drivers", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         } else {
-                            LazyColumn(contentPadding = PaddingValues(LabSpacing.lg), verticalArrangement = Arrangement.spacedBy(LabSpacing.md)) {
+                            LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                                 if (preview!!.availableDrivers.isNotEmpty()) {
                                     item {
                                         Text(
@@ -323,7 +323,7 @@ fun DispatchScreen(
                                 }
                                 items(preview!!.availableDrivers, key = { it.driverId }) { d ->
                                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                        Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(d.name, style = MaterialTheme.typography.titleSmall)
                                                 Text(
@@ -347,8 +347,8 @@ fun DispatchScreen(
                                 }
                                 items(preview!!.unavailableDrivers, key = { "unavailable-${it.driverId}" }) { d ->
                                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                        Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                                                 Text(d.name, style = MaterialTheme.typography.titleSmall)
                                                 Text(
                                                     d.vehicleLabel.ifBlank { d.phone.ifBlank { "Assigned vehicle unavailable" } },
@@ -376,11 +376,11 @@ fun DispatchScreen(
                                 Text("No active supply requests", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         } else {
-                            LazyColumn(contentPadding = PaddingValues(LabSpacing.lg), verticalArrangement = Arrangement.spacedBy(LabSpacing.md)) {
+                            LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                                 items(supplyRequests, key = { it.requestId }) { request ->
                                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                        Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                                                 Text(request.requestId.take(8), style = MaterialTheme.typography.titleSmall)
                                                 Text(
                                                     "${request.state} · ${request.priority} · ${request.totalVolumeVu.toInt()} VU",
@@ -390,7 +390,7 @@ fun DispatchScreen(
                                                     overflow = TextOverflow.Ellipsis,
                                                 )
                                             }
-                                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(LabSpacing.sm)) {
+                                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                                                 SuggestionChip(onClick = {}, label = { Text(request.state) })
                                                 if (request.state in setOf("DRAFT", "SUBMITTED", "ACKNOWLEDGED")) {
                                                     TextButton(onClick = { requestPendingCancellation = request }) {
@@ -410,11 +410,11 @@ fun DispatchScreen(
                                 Text("Dispatch is currently unlocked", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         } else {
-                            LazyColumn(contentPadding = PaddingValues(LabSpacing.lg), verticalArrangement = Arrangement.spacedBy(LabSpacing.md)) {
+                            LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                                 items(dispatchLocks, key = { it.lockId }) { lock ->
                                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                                        Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
-                                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                                                 Text(lock.lockType, style = MaterialTheme.typography.titleSmall)
                                                 Text(
                                                     lock.lockedBy.ifBlank { lock.lockId.take(8) },
@@ -424,7 +424,7 @@ fun DispatchScreen(
                                                     overflow = TextOverflow.Ellipsis,
                                                 )
                                             }
-                                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(LabSpacing.sm)) {
+                                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                                                 SuggestionChip(
                                                     onClick = {},
                                                     label = { Text(lock.warehouseId.ifBlank { "Global" }.take(8)) },
@@ -516,13 +516,13 @@ private fun RealtimeStatusBanner(status: WarehouseRealtimeStatus) {
         Surface(
             color = config.second,
             contentColor = config.third,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = LabSpacing.lg, vertical = LabSpacing.sm),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.sm),
             shape = MaterialTheme.shapes.medium,
         ) {
             Text(
                 text = config.first,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(horizontal = LabSpacing.lg, vertical = LabSpacing.md),
+                modifier = Modifier.padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.md),
             )
         }
     }
@@ -548,7 +548,7 @@ private fun CreateSupplyRequestDialog(
         onDismissRequest = onDismiss,
         title = { Text("New Supply Request") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.md)) {
+            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                 OutlinedTextField(
                     value = factoryId,
                     onValueChange = { factoryId = it },
@@ -557,7 +557,7 @@ private fun CreateSupplyRequestDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Text("Priority", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                     listOf("NORMAL", "URGENT", "CRITICAL").forEach { option ->
                         FilterChip(
                             selected = priority == option,

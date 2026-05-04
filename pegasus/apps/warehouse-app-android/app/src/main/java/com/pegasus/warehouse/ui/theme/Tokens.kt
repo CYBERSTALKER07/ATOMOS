@@ -2,7 +2,7 @@ package com.pegasus.warehouse.ui.theme
 
 import androidx.compose.ui.unit.dp
 
-object LabSpacing {
+object PegasusSpacing {
     val xs = 4.dp
     val sm = 8.dp
     val md = 12.dp
@@ -12,7 +12,7 @@ object LabSpacing {
     val xxxl = 48.dp
 }
 
-object LabRadius {
+object PegasusRadius {
     val xs = 4.dp
     val sm = 8.dp
     val md = 12.dp

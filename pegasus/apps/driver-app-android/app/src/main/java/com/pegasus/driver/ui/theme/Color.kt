@@ -105,7 +105,7 @@ val DarkSurfaceContainer = Neutral12
 val DarkSurfaceContainerHigh = Neutral17
 val DarkSurfaceContainerHighest = Neutral22
 
-// ── Legacy LabColors bridge values (mapped from M3 roles) ──
+// ── Legacy PegasusColors bridge values (mapped from M3 roles) ──
 val LightFg = LightOnSurface
 val LightFgSecondary = Neutral40
 val LightFgTertiary = Neutral60

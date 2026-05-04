@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasus.warehouse.data.model.CreateStaffRequest
 import com.pegasus.warehouse.data.model.StaffMember
 import com.pegasus.warehouse.data.remote.WarehouseApi
-import com.pegasus.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,7 +62,7 @@ fun StaffScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
@@ -70,13 +70,13 @@ fun StaffScreen(
                 Text("No staff members", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             else -> LazyColumn(
-                contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 items(staff, key = { it.workerId }) { s ->
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(s.name, style = MaterialTheme.typography.titleSmall)
                                 Text(
@@ -113,7 +113,7 @@ fun StaffScreen(
             text = {
                 Column {
                     Text("One-time PIN — save it now:")
-                    Spacer(Modifier.height(LabSpacing.md))
+                    Spacer(Modifier.height(PegasusSpacing.md))
                     Text(createdPin!!, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
                 }
             },
@@ -139,7 +139,7 @@ private fun CreateStaffDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Staff") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.md)) {
+            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Phone") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = role, onValueChange = { role = it }, label = { Text("Role") }, singleLine = true, modifier = Modifier.fillMaxWidth())

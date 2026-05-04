@@ -89,7 +89,7 @@ import com.pegasus.retailer.data.model.RetailerDayExpense
 import com.pegasus.retailer.data.model.OrderStateCount
 import com.pegasus.retailer.data.model.CategorySpend
 import com.pegasus.retailer.data.model.DayOfWeekPattern
-import com.pegasus.retailer.ui.components.LabEmptyState
+import com.pegasus.retailer.ui.components.PegasusEmptyState
 import com.pegasus.retailer.ui.theme.SquircleShape
 import java.text.NumberFormat
 import java.util.Locale
@@ -116,7 +116,7 @@ fun AnalyticsScreen(
     ) {
         val analytics = uiState.analytics
         if (analytics == null && !uiState.isLoading) {
-            LabEmptyState(
+            PegasusEmptyState(
                 icon = Icons.Rounded.Insights,
                 title = "No Analytics Data",
                 message = "Complete a few orders and your expense insights will appear here",

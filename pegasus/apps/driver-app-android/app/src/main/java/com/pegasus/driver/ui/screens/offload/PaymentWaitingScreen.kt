@@ -39,7 +39,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.pegasus.driver.ui.theme.LocalLabColors
+import com.pegasus.driver.ui.theme.LocalPegasusColors
 import com.pegasus.driver.ui.theme.MotionTokens
 import com.pegasus.driver.ui.theme.StatusGreen
 import com.pegasus.driver.ui.theme.StatusRed
@@ -51,7 +51,7 @@ fun PaymentWaitingScreen(
     viewModel: PaymentWaitingViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
 
     if (state.completed) {
         onComplete()

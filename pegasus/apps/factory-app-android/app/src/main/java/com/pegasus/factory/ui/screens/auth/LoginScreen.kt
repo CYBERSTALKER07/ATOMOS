@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.pegasus.factory.data.model.LoginRequest
 import com.pegasus.factory.data.remote.FactoryApi
 import com.pegasus.factory.data.remote.TokenHolder
-import com.pegasus.factory.ui.theme.LabSpacing
+import com.pegasus.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,7 +43,7 @@ fun LoginScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = LabSpacing.xl),
+                .padding(horizontal = PegasusSpacing.xl),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -53,7 +53,7 @@ fun LoginScreen(
                 color = MaterialTheme.colorScheme.onSurface,
             )
 
-            Spacer(Modifier.height(LabSpacing.sm))
+            Spacer(Modifier.height(PegasusSpacing.sm))
 
             Text(
                 text = "Sign in to manage factory operations",
@@ -61,7 +61,7 @@ fun LoginScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            Spacer(Modifier.height(LabSpacing.xxl))
+            Spacer(Modifier.height(PegasusSpacing.xxl))
 
             OutlinedTextField(
                 value = phone,
@@ -79,7 +79,7 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Spacer(Modifier.height(LabSpacing.lg))
+            Spacer(Modifier.height(PegasusSpacing.lg))
 
             OutlinedTextField(
                 value = password,
@@ -106,7 +106,7 @@ fun LoginScreen(
             )
 
             if (error != null) {
-                Spacer(Modifier.height(LabSpacing.sm))
+                Spacer(Modifier.height(PegasusSpacing.sm))
                 Text(
                     text = error!!,
                     style = MaterialTheme.typography.bodySmall,
@@ -114,7 +114,7 @@ fun LoginScreen(
                 )
             }
 
-            Spacer(Modifier.height(LabSpacing.xl))
+            Spacer(Modifier.height(PegasusSpacing.xl))
 
             Button(
                 onClick = {

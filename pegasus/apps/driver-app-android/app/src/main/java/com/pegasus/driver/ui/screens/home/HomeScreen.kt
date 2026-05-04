@@ -56,7 +56,7 @@ import com.pegasus.driver.data.model.Order
 import com.pegasus.driver.data.model.OrderState
 import com.pegasus.driver.data.remote.TokenHolder
 import com.pegasus.driver.services.TelemetryService
-import com.pegasus.driver.ui.components.LabCard
+import com.pegasus.driver.ui.components.PegasusCard
 import com.pegasus.driver.ui.components.StaggeredAppear
 import com.pegasus.driver.ui.components.StatusPill
 import androidx.compose.material.icons.outlined.Notifications
@@ -65,8 +65,8 @@ import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import com.pegasus.driver.ui.screens.manifest.ManifestViewModel
-import com.pegasus.driver.ui.theme.LabSpacing
-import com.pegasus.driver.ui.theme.LocalLabColors
+import com.pegasus.driver.ui.theme.PegasusSpacing
+import com.pegasus.driver.ui.theme.LocalPegasusColors
 import com.pegasus.driver.ui.theme.MotionTokens
 import com.pegasus.driver.ui.theme.formattedAmount
 import com.pegasus.driver.ui.theme.pressable
@@ -82,7 +82,7 @@ fun HomeScreen(
     onNotificationsClick: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
 
     if (state.isLoading) {
         HomeShimmer(lab = lab)
@@ -94,7 +94,7 @@ fun HomeScreen(
             .fillMaxSize()
             .background(lab.bg)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = LabSpacing.s16)
+            .padding(horizontal = PegasusSpacing.s16)
             .padding(bottom = 100.dp)
     ) {
         // MARK: - Greeting + Notification Bell
@@ -117,7 +117,7 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(LabSpacing.s20))
+        Spacer(modifier = Modifier.height(PegasusSpacing.s20))
 
         // MARK: - Status Chips
         StaggeredAppear(index = 1) {
@@ -129,7 +129,7 @@ fun HomeScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(LabSpacing.s20))
+        Spacer(modifier = Modifier.height(PegasusSpacing.s20))
 
         // MARK: - Vehicle Info Card
         val vehicle = TokenHolder.vehicleType
@@ -145,7 +145,7 @@ fun HomeScreen(
                     maxVolumeVU = vu
                 )
             }
-            Spacer(modifier = Modifier.height(LabSpacing.s20))
+            Spacer(modifier = Modifier.height(PegasusSpacing.s20))
         }
 
         // MARK: - Transit Control
@@ -163,14 +163,14 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(LabSpacing.s20))
+        Spacer(modifier = Modifier.height(PegasusSpacing.s20))
 
         // MARK: - Today Summary
         StaggeredAppear(index = 4) {
             TodaySummaryCard(orders = state.orders)
         }
 
-        Spacer(modifier = Modifier.height(LabSpacing.s20))
+        Spacer(modifier = Modifier.height(PegasusSpacing.s20))
 
         // MARK: - Open Map CTA
         StaggeredAppear(index = 5) {
@@ -182,7 +182,7 @@ fun HomeScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(LabSpacing.s20))
+        Spacer(modifier = Modifier.height(PegasusSpacing.s20))
 
         // MARK: - Quick Actions
         StaggeredAppear(index = 6) {
@@ -192,7 +192,7 @@ fun HomeScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(LabSpacing.s20))
+        Spacer(modifier = Modifier.height(PegasusSpacing.s20))
 
         // MARK: - Recent Activity
         StaggeredAppear(index = 7) {
@@ -214,8 +214,8 @@ private fun GreetingSection() {
     Column(
         modifier = Modifier.padding(
             top = 60.dp,
-            start = LabSpacing.s4,
-            end = LabSpacing.s4
+            start = PegasusSpacing.s4,
+            end = PegasusSpacing.s4
         )
     ) {
         Text(
@@ -250,7 +250,7 @@ private fun greetingText(): String {
 
 @Composable
 private fun StatusChips(hasActiveRoute: Boolean, isReturning: Boolean) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     val plate = TokenHolder.licensePlate ?: "—"
 
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -321,12 +321,12 @@ private fun VehicleInfoCard(
     vehicleClass: String,
     maxVolumeVU: Double
 ) {
-    val lab = LocalLabColors.current
-    LabCard {
+    val lab = LocalPegasusColors.current
+    PegasusCard {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(LabSpacing.s16),
+                .padding(PegasusSpacing.s16),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -379,15 +379,15 @@ private fun TransitControlCard(
     orders: List<Order>,
     onDepart: () -> Unit
 ) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     val context = LocalContext.current
     val loadedOrders = orders.filter { it.state == OrderState.LOADED }
     val inTransitOrders = orders.filter {
         it.state == OrderState.IN_TRANSIT || it.state == OrderState.ARRIVING
     }
 
-    LabCard {
-        Column(modifier = Modifier.padding(LabSpacing.s20)) {
+    PegasusCard {
+        Column(modifier = Modifier.padding(PegasusSpacing.s20)) {
             when {
                 inTransitOrders.isNotEmpty() -> {
                     // Active transit
@@ -447,7 +447,7 @@ private fun TransitControlCard(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(LabSpacing.s48),
+                            .height(PegasusSpacing.s48),
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -499,15 +499,15 @@ private fun ReturningToWarehouseCard(
     onNavigate: () -> Unit,
     onArrived: () -> Unit
 ) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     val context = LocalContext.current
     // Dynamic warehouse coords from backend (fallback to Tashkent depot)
     val depotLat = TokenHolder.warehouseLat.takeIf { it != 0.0 } ?: 41.2995
     val depotLng = TokenHolder.warehouseLng.takeIf { it != 0.0 } ?: 69.2401
     val warehouseLabel = TokenHolder.warehouseName ?: "Warehouse"
 
-    LabCard {
-        Column(modifier = Modifier.padding(LabSpacing.s20)) {
+    PegasusCard {
+        Column(modifier = Modifier.padding(PegasusSpacing.s20)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -562,7 +562,7 @@ private fun ReturningToWarehouseCard(
                 onClick = onArrived,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(LabSpacing.s48),
+                    .height(PegasusSpacing.s48),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -589,7 +589,7 @@ private fun ReturningToWarehouseCard(
 
 @Composable
 private fun TodaySummaryCard(orders: List<Order>) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     val pending = orders.count {
         it.state != OrderState.COMPLETED && it.state != OrderState.CANCELLED
     }
@@ -604,8 +604,8 @@ private fun TodaySummaryCard(orders: List<Order>) {
             .uppercase()
     }
 
-    LabCard {
-        Column(modifier = Modifier.padding(LabSpacing.s20)) {
+    PegasusCard {
+        Column(modifier = Modifier.padding(PegasusSpacing.s20)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -660,7 +660,7 @@ private fun SummaryTile(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     modifier: Modifier = Modifier
 ) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -691,7 +691,7 @@ private fun SummaryTile(
 
 @Composable
 private fun VerticalDivider() {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     Box(
         modifier = Modifier
             .width(0.5.dp)
@@ -704,12 +704,12 @@ private fun VerticalDivider() {
 
 @Composable
 private fun MapButton(pendingCount: Int, onOpenMap: () -> Unit) {
-    val lab = LocalLabColors.current
-    LabCard(modifier = Modifier.pressable(onClick = onOpenMap)) {
+    val lab = LocalPegasusColors.current
+    PegasusCard(modifier = Modifier.pressable(onClick = onOpenMap)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(LabSpacing.s16),
+                .padding(PegasusSpacing.s16),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -757,14 +757,14 @@ private fun MapButton(pendingCount: Int, onOpenMap: () -> Unit) {
 
 @Composable
 private fun QuickActionsSection(onScanQR: () -> Unit, hasArrivedOrder: Boolean = false) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             text = "Quick Actions",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             color = lab.fg,
-            modifier = Modifier.padding(horizontal = LabSpacing.s4)
+            modifier = Modifier.padding(horizontal = PegasusSpacing.s4)
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -801,9 +801,9 @@ private fun ActionTile(
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     val alpha = if (enabled) 1f else 0.35f
-    LabCard(modifier = modifier.pressable(onClick = { if (enabled) onClick() })) {
+    PegasusCard(modifier = modifier.pressable(onClick = { if (enabled) onClick() })) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -813,7 +813,7 @@ private fun ActionTile(
         ) {
             Box(
                 modifier = Modifier
-                    .size(LabSpacing.s48)
+                    .size(PegasusSpacing.s48)
                     .clip(CircleShape)
                     .background(lab.separator.copy(alpha = alpha)),
                 contentAlignment = Alignment.Center
@@ -841,18 +841,18 @@ private fun ActionTile(
 
 @Composable
 private fun RecentActivitySection(completedOrders: List<Order>) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             text = "Recent",
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             color = lab.fg,
-            modifier = Modifier.padding(horizontal = LabSpacing.s4)
+            modifier = Modifier.padding(horizontal = PegasusSpacing.s4)
         )
 
         if (completedOrders.isEmpty()) {
-            LabCard {
+            PegasusCard {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -876,11 +876,11 @@ private fun RecentActivitySection(completedOrders: List<Order>) {
             }
         } else {
             completedOrders.take(3).forEach { order ->
-                LabCard {
+                PegasusCard {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(LabSpacing.s12),
+                            .padding(PegasusSpacing.s12),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
@@ -953,7 +953,7 @@ private fun PulsingDot(color: androidx.compose.ui.graphics.Color) {
 
 // ── Shimmer skeleton shown while orders are loading ──────────────────────────
 @Composable
-private fun HomeShimmer(lab: com.pegasus.driver.ui.theme.LabColors) {
+private fun HomeShimmer(lab: com.pegasus.driver.ui.theme.PegasusColors) {
     val transition = rememberInfiniteTransition(label = "shimmer")
     val shimmerAlpha by transition.animateFloat(
         initialValue = 0.25f,
@@ -979,11 +979,11 @@ private fun HomeShimmer(lab: com.pegasus.driver.ui.theme.LabColors) {
             .fillMaxSize()
             .background(lab.bg)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = LabSpacing.s16)
+            .padding(horizontal = PegasusSpacing.s16)
             .padding(bottom = 100.dp),
-        verticalArrangement = Arrangement.spacedBy(LabSpacing.s20),
+        verticalArrangement = Arrangement.spacedBy(PegasusSpacing.s20),
     ) {
-        Spacer(Modifier.height(LabSpacing.s20))
+        Spacer(Modifier.height(PegasusSpacing.s20))
         // Greeting skeleton
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ShimmerBlock(width = 0.4f, height = 16)

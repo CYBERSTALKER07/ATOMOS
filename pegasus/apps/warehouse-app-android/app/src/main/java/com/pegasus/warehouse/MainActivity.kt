@@ -7,7 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.pegasus.warehouse.data.remote.WarehouseApi
 import com.pegasus.warehouse.ui.navigation.WarehouseNavigation
-import com.pegasus.warehouse.ui.theme.LabWarehouseTheme
+import com.pegasus.warehouse.ui.theme.PegasusWarehouseTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            LabWarehouseTheme {
+            PegasusWarehouseTheme {
                 WarehouseNavigation(api = warehouseApi)
             }
         }

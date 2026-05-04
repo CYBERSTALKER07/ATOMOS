@@ -81,7 +81,7 @@ object Anim {
 
 // ── Spacing Tokens (4dp grid, M3 compliant) ──
 
-object LabSpacing {
+object PegasusSpacing {
     val s4 = 4.dp
     val s8 = 8.dp
     val s12 = 12.dp
@@ -95,7 +95,7 @@ object LabSpacing {
 
 // ── Corner Radius Tokens (M3 shape scale) ──
 
-object LabRadius {
+object PegasusRadius {
     val none = 0.dp           // ShapeAppearance.M3.Corner.None
     val extraSmall = 4.dp     // ShapeAppearance.M3.Corner.ExtraSmall
     val small = 8.dp          // ShapeAppearance.M3.Corner.Small

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.LabFactory" parent="android:Theme.Material.Light.NoActionBar" />
-    <style name="Theme.LabFactory.Splash" parent="Theme.LabFactory" />
+    <style name="Theme.PegasusFactory" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.PegasusFactory.Splash" parent="Theme.PegasusFactory" />
 </resources>

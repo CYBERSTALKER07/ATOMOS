@@ -38,7 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasus.retailer.data.model.ProductCategory
-import com.pegasus.retailer.ui.components.LabEmptyState
+import com.pegasus.retailer.ui.components.PegasusEmptyState
 import com.pegasus.retailer.ui.components.ProductCard
 import com.pegasus.retailer.ui.theme.PillShape
 
@@ -101,7 +101,7 @@ fun CatalogScreen(
             }
 
             isSearching -> {
-                LabEmptyState(
+                PegasusEmptyState(
                     icon = Icons.Rounded.Inventory2,
                     title = "No products found",
                     message = "Try a different name, category, or supplier keyword.",

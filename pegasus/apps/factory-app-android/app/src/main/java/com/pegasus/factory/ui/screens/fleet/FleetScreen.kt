@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasus.factory.data.model.Vehicle
 import com.pegasus.factory.data.remote.FactoryApi
-import com.pegasus.factory.ui.theme.LabSpacing
+import com.pegasus.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,7 +69,7 @@ fun FleetScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
@@ -77,14 +77,14 @@ fun FleetScreen(
                 Text("No vehicles", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             else -> LazyColumn(
-                contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 items(vehicles, key = { it.id }) { vehicle ->
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                         Row(
-                            modifier = Modifier.padding(LabSpacing.lg),
+                            modifier = Modifier.padding(PegasusSpacing.lg),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
@@ -93,7 +93,7 @@ fun FleetScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(32.dp),
                             )
-                            Spacer(Modifier.width(LabSpacing.lg))
+                            Spacer(Modifier.width(PegasusSpacing.lg))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(vehicle.plateNumber, style = MaterialTheme.typography.titleSmall)
                                 Text(

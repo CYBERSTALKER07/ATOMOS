@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasus.retailer.data.model.Supplier
-import com.pegasus.retailer.ui.components.LabEmptyState
+import com.pegasus.retailer.ui.components.PegasusEmptyState
 import com.pegasus.retailer.ui.theme.StatusGreen
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -63,7 +63,7 @@ fun MySuppliersScreen(
         if (uiState.isLoading && uiState.suppliers.isEmpty()) {
             SupplierSkeletonGrid()
         } else if (uiState.suppliers.isEmpty() && !uiState.isLoading) {
-            LabEmptyState(
+            PegasusEmptyState(
                 icon = Icons.Rounded.Business,
                 title = if (uiState.error != null) "Suppliers Unavailable" else "No Suppliers Yet",
                 message = uiState.error ?: "Suppliers with repeated orders will appear here automatically",

@@ -16,7 +16,7 @@ import com.pegasus.warehouse.data.model.CreateVehicleRequest
 import com.pegasus.warehouse.data.model.UpdateVehicleRequest
 import com.pegasus.warehouse.data.model.Vehicle
 import com.pegasus.warehouse.data.remote.WarehouseApi
-import com.pegasus.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 private val VEHICLE_CLASSES = listOf("CLASS_A" to "50 VU", "CLASS_B" to "150 VU", "CLASS_C" to "400 VU")
@@ -101,18 +101,18 @@ fun VehiclesScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
             else -> LazyColumn(
-                contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 items(vehicles, key = { it.vehicleId }) { v ->
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(v.label.ifBlank { v.licensePlate }, style = MaterialTheme.typography.titleSmall)
                                 Text("${v.vehicleClass} · ${v.capacityVu} VU", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -125,7 +125,7 @@ fun VehiclesScreen(
                                     )
                                 }
                             }
-                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(LabSpacing.sm)) {
+                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                                 AssistChip(onClick = {}, label = { Text(if (v.isActive) v.status.ifBlank { "AVAILABLE" } else "UNAVAILABLE", style = MaterialTheme.typography.labelSmall) })
                                 OutlinedButton(
                                     onClick = { if (v.isActive) reasonVehicle = v else updateVehicleAvailability(v, true) },
@@ -158,7 +158,7 @@ fun VehiclesScreen(
             onDismissRequest = { reasonVehicle = null },
             title = { Text("Set Vehicle Unavailable") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.sm)) {
+                Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                     Text("Choose why ${reasonVehicle?.label?.ifBlank { reasonVehicle?.licensePlate ?: "this vehicle" } ?: "this vehicle"} is unavailable.")
                     VEHICLE_UNAVAILABLE_REASONS.forEach { (reason, label) ->
                         OutlinedButton(
@@ -197,11 +197,11 @@ private fun CreateVehicleDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Vehicle") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.md)) {
+            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                 OutlinedTextField(value = label, onValueChange = { label = it }, label = { Text("Label") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = plate, onValueChange = { plate = it }, label = { Text("License Plate") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Text("Vehicle Class", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                     VEHICLE_CLASSES.forEach { (cls, cap) ->
                         FilterChip(
                             selected = selectedClass == cls,

@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasus.warehouse.data.model.AnalyticsData
 import com.pegasus.warehouse.data.remote.WarehouseApi
-import com.pegasus.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -51,8 +51,8 @@ fun AnalyticsScreen(
                 title = { Text("Analytics") },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
                 actions = {
-                    FilterChip(selected = period == "7d", onClick = { period = "7d" }, label = { Text("7d") }, modifier = Modifier.padding(end = LabSpacing.xs))
-                    FilterChip(selected = period == "30d", onClick = { period = "30d" }, label = { Text("30d") }, modifier = Modifier.padding(end = LabSpacing.sm))
+                    FilterChip(selected = period == "7d", onClick = { period = "7d" }, label = { Text("7d") }, modifier = Modifier.padding(end = PegasusSpacing.xs))
+                    FilterChip(selected = period == "30d", onClick = { period = "30d" }, label = { Text("30d") }, modifier = Modifier.padding(end = PegasusSpacing.sm))
                     IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") }
                 },
             )
@@ -63,36 +63,36 @@ fun AnalyticsScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
             data != null -> LazyColumn(
-                contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 // KPI row
                 item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(LabSpacing.md), modifier = Modifier.fillMaxWidth()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
                         KpiCard("Total Orders", data!!.totalOrders.toString(), Modifier.weight(1f))
                         KpiCard("Revenue", "${fmt.format(data!!.totalRevenue)} UZS", Modifier.weight(1f))
                     }
                 }
                 item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(LabSpacing.md), modifier = Modifier.fillMaxWidth()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
                         KpiCard("Avg Order", "${fmt.format(data!!.avgOrderValue)} UZS", Modifier.weight(1f))
                         KpiCard("Utilization", "${data!!.fleetUtilizationPct}%", Modifier.weight(1f))
                     }
                 }
                 // Top products
                 item {
-                    Spacer(Modifier.height(LabSpacing.sm))
+                    Spacer(Modifier.height(PegasusSpacing.sm))
                     Text("Top Products", style = MaterialTheme.typography.titleMedium)
                 }
                 items(data!!.topProducts) { tp ->
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                             Text(tp.productName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
                             Text("${tp.totalSold} units · ${fmt.format(tp.revenue)} UZS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -106,7 +106,7 @@ fun AnalyticsScreen(
 @Composable
 private fun KpiCard(label: String, value: String, modifier: Modifier = Modifier) {
     ElevatedCard(modifier = modifier) {
-        Column(modifier = Modifier.padding(LabSpacing.md)) {
+        Column(modifier = Modifier.padding(PegasusSpacing.md)) {
             Text(value, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(2.dp))
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

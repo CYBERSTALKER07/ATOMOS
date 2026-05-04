@@ -59,7 +59,7 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 @Composable
-fun LabWarehouseTheme(
+fun PegasusWarehouseTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
@@ -75,7 +75,7 @@ fun LabWarehouseTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = LabTypography,
+        typography = PegasusTypography,
         content = content,
     )
 }

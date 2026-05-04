@@ -42,7 +42,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.pegasus.driver.ui.theme.LocalLabColors
+import com.pegasus.driver.ui.theme.LocalPegasusColors
 import com.pegasus.driver.ui.theme.StatusGreen
 import com.pegasus.driver.ui.theme.StatusOrange
 import com.pegasus.driver.ui.theme.Warning
@@ -57,7 +57,7 @@ fun ShopClosedWaitingScreen(
     viewModel: ShopClosedWaitingViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
 
     // Countdown timer (3 minutes escalation window)
     var remainingSeconds by remember { mutableIntStateOf(180) }

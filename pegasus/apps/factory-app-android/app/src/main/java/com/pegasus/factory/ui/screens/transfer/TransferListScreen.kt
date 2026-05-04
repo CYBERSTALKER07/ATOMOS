@@ -14,7 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasus.factory.data.model.Transfer
 import com.pegasus.factory.data.remote.FactoryApi
-import com.pegasus.factory.ui.theme.LabSpacing
+import com.pegasus.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 private val STATE_FILTERS = listOf("ALL", "DRAFT", "APPROVED", "LOADING", "DISPATCHED", "IN_TRANSIT", "ARRIVED", "RECEIVED", "CANCELLED")
@@ -76,8 +76,8 @@ fun TransferListScreen(
             Row(
                 modifier = Modifier
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = LabSpacing.lg, vertical = LabSpacing.sm),
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                    .padding(horizontal = PegasusSpacing.lg, vertical = PegasusSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
                 STATE_FILTERS.forEach { filter ->
                     FilterChip(
@@ -95,7 +95,7 @@ fun TransferListScreen(
                 error != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(error!!, color = MaterialTheme.colorScheme.error)
-                        Spacer(Modifier.height(LabSpacing.lg))
+                        Spacer(Modifier.height(PegasusSpacing.lg))
                         Button(onClick = { load() }) { Text("Retry") }
                     }
                 }
@@ -103,8 +103,8 @@ fun TransferListScreen(
                     EmptyTransferListState(selectedFilter = selectedFilter)
                 }
                 else -> LazyColumn(
-                    contentPadding = PaddingValues(LabSpacing.lg),
-                    verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                    contentPadding = PaddingValues(PegasusSpacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 ) {
                     item {
                         TransferListSummary(
@@ -128,14 +128,14 @@ private fun TransferRow(transfer: Transfer, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             Row(
                 verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
             ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(LabSpacing.xs)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
                     Text(
                         text = transfer.warehouseName.ifBlank { transfer.warehouseId.take(8) },
                         style = MaterialTheme.typography.titleMedium,
@@ -148,7 +148,7 @@ private fun TransferRow(transfer: Transfer, onClick: () -> Unit) {
                 }
                 Column(
                     horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
                 ) {
                     TransferTag(
                         text = transfer.state,
@@ -164,7 +164,7 @@ private fun TransferRow(transfer: Transfer, onClick: () -> Unit) {
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
                 TransferMetric("Items", transfer.totalItems.toString(), Modifier.weight(1f))
                 TransferMetric("Volume", "${String.format("%.0f", transfer.totalVolumeL)}L", Modifier.weight(1f))
@@ -185,8 +185,8 @@ private fun TransferListSummary(
         ),
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
         ) {
             Text(
                 text = "$count transfers in view",
@@ -209,7 +209,7 @@ private fun TransferListSummary(
 private fun EmptyTransferListState(selectedFilter: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+        verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
     ) {
         Text(
             text = "No transfers found",
@@ -239,8 +239,8 @@ private fun TransferMetric(
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+            modifier = Modifier.padding(PegasusSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
         ) {
             Text(value, style = MaterialTheme.typography.titleMedium)
             Text(
@@ -266,7 +266,7 @@ private fun TransferTag(
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = LabSpacing.sm, vertical = LabSpacing.xs),
+            modifier = Modifier.padding(horizontal = PegasusSpacing.sm, vertical = PegasusSpacing.xs),
         )
     }
 }

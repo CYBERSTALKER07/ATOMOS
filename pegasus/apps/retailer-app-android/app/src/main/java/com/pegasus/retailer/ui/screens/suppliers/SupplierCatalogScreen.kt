@@ -42,7 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasus.retailer.data.model.Product
-import com.pegasus.retailer.ui.components.LabEmptyState
+import com.pegasus.retailer.ui.components.PegasusEmptyState
 import com.pegasus.retailer.ui.components.ProductCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -141,7 +141,7 @@ fun SupplierCatalogScreen(
             }
 
             uiState.products.isEmpty() -> {
-                LabEmptyState(
+                PegasusEmptyState(
                     icon = Icons.Rounded.Inventory2,
                     title = "No Products Yet",
                     message = uiState.error ?: "This supplier has no active products in the catalog.",

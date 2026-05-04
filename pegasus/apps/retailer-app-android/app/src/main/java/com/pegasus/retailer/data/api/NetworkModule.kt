@@ -75,7 +75,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideLabApi(retrofit: Retrofit): PegasusApi {
+    fun providePegasusApi(retrofit: Retrofit): PegasusApi {
         return retrofit.create(PegasusApi::class.java)
     }
 

@@ -14,7 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasus.warehouse.data.model.Order
 import com.pegasus.warehouse.data.remote.WarehouseApi
-import com.pegasus.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -92,7 +92,7 @@ fun OrdersScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
@@ -100,8 +100,8 @@ fun OrdersScreen(
                 Text("No orders", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             else -> LazyColumn(
-                contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 items(orders, key = { it.orderId }) { order ->
@@ -109,7 +109,7 @@ fun OrdersScreen(
                         modifier = Modifier.fillMaxWidth().clickable { onOrderClick(order.orderId) },
                     ) {
                         Row(
-                            modifier = Modifier.padding(LabSpacing.lg),
+                            modifier = Modifier.padding(PegasusSpacing.lg),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
@@ -117,7 +117,7 @@ fun OrdersScreen(
                                     text = order.retailerName.ifBlank { order.orderId.take(8) },
                                     style = MaterialTheme.typography.titleSmall,
                                 )
-                                Spacer(Modifier.height(LabSpacing.xs))
+                                Spacer(Modifier.height(PegasusSpacing.xs))
                                 Text(
                                     text = "${fmt.format(order.totalUzs)} UZS",
                                     style = MaterialTheme.typography.bodySmall,

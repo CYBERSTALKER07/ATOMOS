@@ -7,7 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.pegasus.driver.data.remote.DriverApi
 import com.pegasus.driver.ui.navigation.DriverNavigation
-import com.pegasus.driver.ui.theme.LabDriverTheme
+import com.pegasus.driver.ui.theme.PegasusDriverTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            LabDriverTheme {
+            PegasusDriverTheme {
                 DriverNavigation(api = driverApi)
             }
         }

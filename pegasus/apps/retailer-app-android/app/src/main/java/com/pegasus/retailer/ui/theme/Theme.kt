@@ -23,7 +23,7 @@ import androidx.core.view.WindowCompat
  * M3 surface container hierarchy, shape scale, and motion tokens.
  */
 
-private val LabLightColorScheme = lightColorScheme(
+private val PegasusLightColorScheme = lightColorScheme(
     primary = Black,
     onPrimary = White,
     primaryContainer = Neutral94,
@@ -62,7 +62,7 @@ private val LabLightColorScheme = lightColorScheme(
     surfaceContainerHighest = Neutral92,
 )
 
-private val LabDarkColorScheme = darkColorScheme(
+private val PegasusDarkColorScheme = darkColorScheme(
     primary = White,
     onPrimary = Black,
     primaryContainer = Neutral17,
@@ -102,7 +102,7 @@ private val LabDarkColorScheme = darkColorScheme(
 )
 
 @Composable
-fun LabRetailerTheme(
+fun PegasusRetailerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
@@ -113,8 +113,8 @@ fun LabRetailerTheme(
             if (darkTheme) dynamicDarkColorScheme(context)
             else dynamicLightColorScheme(context)
         }
-        darkTheme -> LabDarkColorScheme
-        else -> LabLightColorScheme
+        darkTheme -> PegasusDarkColorScheme
+        else -> PegasusLightColorScheme
     }
 
     val view = LocalView.current
@@ -132,8 +132,8 @@ fun LabRetailerTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = LabTypography,
-        shapes = LabShapes,
+        typography = PegasusTypography,
+        shapes = PegasusShapes,
         content = content,
     )
 }

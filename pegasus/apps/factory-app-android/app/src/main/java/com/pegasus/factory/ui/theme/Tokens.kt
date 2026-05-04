@@ -28,7 +28,7 @@ object Anim {
 }
 
 // ── Spacing ──
-object LabSpacing {
+object PegasusSpacing {
     val xxs = 2.dp
     val xs = 4.dp
     val sm = 8.dp
@@ -40,7 +40,7 @@ object LabSpacing {
 }
 
 // ── Radius ──
-object LabRadius {
+object PegasusRadius {
     val xs = 4.dp
     val sm = 8.dp
     val md = 12.dp

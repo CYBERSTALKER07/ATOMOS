@@ -17,7 +17,7 @@ import com.pegasus.warehouse.data.model.CreateDriverRequest
 import com.pegasus.warehouse.data.model.Driver
 import com.pegasus.warehouse.data.model.Vehicle
 import com.pegasus.warehouse.data.remote.WarehouseApi
-import com.pegasus.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 private val DRIVER_UNAVAILABLE_REASON_LABELS = mapOf(
@@ -85,18 +85,18 @@ fun DriversScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
             else -> LazyColumn(
-                contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 items(drivers, key = { it.driverId }) { driver ->
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.padding(LabSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
+                        Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(driver.name, style = MaterialTheme.typography.titleSmall)
                                 Text(driver.phone, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -113,7 +113,7 @@ fun DriversScreen(
                                     )
                                 }
                             }
-                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(LabSpacing.sm)) {
+                            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                                 AssistChip(
                                     onClick = {},
                                     label = { Text(driver.truckStatus.ifBlank { "IDLE" }, style = MaterialTheme.typography.labelSmall) },
@@ -157,7 +157,7 @@ fun DriversScreen(
             text = {
                 Column {
                     Text("One-time PIN — save it now:")
-                    Spacer(Modifier.height(LabSpacing.md))
+                    Spacer(Modifier.height(PegasusSpacing.md))
                     Text(createdPin!!, style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
                 }
             },
@@ -204,7 +204,7 @@ private fun AssignVehicleDialog(
         onDismissRequest = onDismiss,
         title = { Text("Assign Vehicle") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.sm)) {
+            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
                 Text(driver.name, style = MaterialTheme.typography.titleSmall)
                 TextButton(onClick = { onAssign(null) }) {
                     Text("Unassign")
@@ -270,7 +270,7 @@ private fun CreateDriverDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Driver") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(LabSpacing.md)) {
+            Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                 OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Phone") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 if (error != null) Text(error!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)

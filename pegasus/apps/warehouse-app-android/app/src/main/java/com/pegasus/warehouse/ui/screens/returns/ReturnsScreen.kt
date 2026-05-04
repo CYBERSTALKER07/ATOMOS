@@ -12,7 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasus.warehouse.data.model.ReturnItem
 import com.pegasus.warehouse.data.remote.WarehouseApi
-import com.pegasus.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +54,7 @@ fun ReturnsScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
@@ -62,18 +62,18 @@ fun ReturnsScreen(
                 Text("No returns", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             else -> LazyColumn(
-                contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 items(items, key = { it.lineItemId }) { r ->
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
-                        Column(modifier = Modifier.padding(LabSpacing.lg)) {
+                        Column(modifier = Modifier.padding(PegasusSpacing.lg)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(r.productName, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
                                 AssistChip(onClick = {}, label = { Text(r.status, style = MaterialTheme.typography.labelSmall) })
                             }
-                            Spacer(Modifier.height(LabSpacing.xs))
+                            Spacer(Modifier.height(PegasusSpacing.xs))
                             Text(
                                 "Qty: ${r.quantity} · Order: ${r.orderId.take(8)} · ${r.updatedAt}",
                                 style = MaterialTheme.typography.bodySmall,

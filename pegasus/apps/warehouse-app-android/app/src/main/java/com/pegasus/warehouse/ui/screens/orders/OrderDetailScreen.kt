@@ -13,7 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasus.warehouse.data.model.Order
 import com.pegasus.warehouse.data.remote.WarehouseApi
-import com.pegasus.warehouse.ui.theme.LabSpacing
+import com.pegasus.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -68,18 +68,18 @@ fun OrderDetailScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
             order != null -> LazyColumn(
-                contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 item {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         SummaryCard("State", order!!.state, Modifier.weight(1f))
@@ -95,13 +95,13 @@ fun OrderDetailScreen(
                 }
                 item {
                     HorizontalDivider()
-                    Spacer(Modifier.height(LabSpacing.sm))
+                    Spacer(Modifier.height(PegasusSpacing.sm))
                     Text("Line Items", style = MaterialTheme.typography.titleMedium)
                 }
                 items(order!!.lineItems) { item ->
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                         Row(
-                            modifier = Modifier.padding(LabSpacing.lg),
+                            modifier = Modifier.padding(PegasusSpacing.lg),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
@@ -128,7 +128,7 @@ fun OrderDetailScreen(
 @Composable
 private fun SummaryCard(label: String, value: String, modifier: Modifier = Modifier) {
     ElevatedCard(modifier = modifier) {
-        Column(modifier = Modifier.padding(LabSpacing.md)) {
+        Column(modifier = Modifier.padding(PegasusSpacing.md)) {
             Text(value, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(2.dp))
             Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

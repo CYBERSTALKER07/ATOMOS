@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasus.retailer.data.model.Supplier
-import com.pegasus.retailer.ui.components.LabEmptyState
+import com.pegasus.retailer.ui.components.PegasusEmptyState
 import com.pegasus.retailer.ui.theme.SoftSquircleShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,7 +98,7 @@ fun CategorySuppliersScreen(
             }
 
             uiState.suppliers.isEmpty() -> {
-                LabEmptyState(
+                PegasusEmptyState(
                     icon = Icons.Rounded.Storefront,
                     title = "No Suppliers in $categoryName",
                     message = uiState.error ?: "No suppliers currently list products in this category.",

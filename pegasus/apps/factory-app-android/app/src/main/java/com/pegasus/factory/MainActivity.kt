@@ -7,7 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.pegasus.factory.data.remote.FactoryApi
 import com.pegasus.factory.ui.navigation.FactoryNavigation
-import com.pegasus.factory.ui.theme.LabFactoryTheme
+import com.pegasus.factory.ui.theme.PegasusFactoryTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            LabFactoryTheme {
+            PegasusFactoryTheme {
                 FactoryNavigation(api = factoryApi)
             }
         }

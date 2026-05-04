@@ -34,8 +34,8 @@ import com.pegasus.retailer.data.model.Order
 import com.pegasus.retailer.ui.components.ActiveDeliveriesSheet
 import com.pegasus.retailer.ui.components.DeliveryPaymentSheet
 import com.pegasus.retailer.ui.components.FloatingActiveOrdersBar
-import com.pegasus.retailer.ui.components.LabBottomBar
-import com.pegasus.retailer.ui.components.LabTab
+import com.pegasus.retailer.ui.components.PegasusBottomBar
+import com.pegasus.retailer.ui.components.PegasusTab
 import com.pegasus.retailer.ui.components.PegasusTopBar
 import com.pegasus.retailer.ui.components.OrderDetailSheet
 import com.pegasus.retailer.ui.components.PaymentPhase
@@ -71,7 +71,7 @@ fun RetailerNavigation(
     val navState by navigationViewModel.uiState.collectAsState()
     val cartViewModel: CartViewModel = hiltViewModel()
     val cartState by cartViewModel.uiState.collectAsState()
-    var currentTab by rememberSaveable { mutableStateOf(LabTab.HOME) }
+    var currentTab by rememberSaveable { mutableStateOf(PegasusTab.HOME) }
     val cartBadge = cartState.totalItems
 
     // Sidebar state
@@ -91,7 +91,7 @@ fun RetailerNavigation(
     val coroutineScope = rememberCoroutineScope()
 
     // Show floating bar on Home, Orders, Suppliers tabs
-    val showFloatingBar = currentTab in listOf(LabTab.HOME, LabTab.ORDERS, LabTab.SUPPLIERS)
+    val showFloatingBar = currentTab in listOf(PegasusTab.HOME, PegasusTab.ORDERS, PegasusTab.SUPPLIERS)
     val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -106,22 +106,22 @@ fun RetailerNavigation(
                     onSidebarNavigate = { dest ->
                         when (dest) {
                             com.pegasus.retailer.ui.components.SidebarDestination.DASHBOARD -> {
-                                currentTab = LabTab.HOME
-                                navController.navigate(LabTab.HOME.name) {
+                                currentTab = PegasusTab.HOME
+                                navController.navigate(PegasusTab.HOME.name) {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
                                 }
                             }
                             com.pegasus.retailer.ui.components.SidebarDestination.PROCUREMENT -> {
-                                currentTab = LabTab.CATALOG
-                                navController.navigate(LabTab.CATALOG.name) {
+                                currentTab = PegasusTab.CATALOG
+                                navController.navigate(PegasusTab.CATALOG.name) {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
                                 }
                             }
                             com.pegasus.retailer.ui.components.SidebarDestination.AI_PREDICTIONS -> {
-                                currentTab = LabTab.ORDERS
-                                navController.navigate(LabTab.ORDERS.name) {
+                                currentTab = PegasusTab.ORDERS
+                                navController.navigate(PegasusTab.ORDERS.name) {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
                                 }
@@ -185,7 +185,7 @@ fun RetailerNavigation(
                         onClick = { showActiveDeliveries = true },
                     )
                     if (isCompact) {
-                        LabBottomBar(
+                        PegasusBottomBar(
                             currentTab = currentTab,
                             onTabSelected = { tab ->
                                 if (tab != currentTab) {
@@ -204,7 +204,7 @@ fun RetailerNavigation(
         ) { innerPadding ->
             NavHost(
                 navController = navController,
-                startDestination = LabTab.HOME.name,
+                startDestination = PegasusTab.HOME.name,
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 enterTransition = {
                     slideInHorizontally(
@@ -228,8 +228,8 @@ fun RetailerNavigation(
                     ) + fadeOut(tween(MotionTokens.DurationShort2, easing = MotionTokens.EasingEmphasizedAccelerate))
                 },
             ) {
-                composable(LabTab.HOME.name) { Box(Modifier.fillMaxSize()) { DashboardScreen() } }
-                composable(LabTab.CATALOG.name) {
+                composable(PegasusTab.HOME.name) { Box(Modifier.fillMaxSize()) { DashboardScreen() } }
+                composable(PegasusTab.CATALOG.name) {
                     Box(Modifier.fillMaxSize()) {
                         CatalogScreen(
                             onProductCash = { productId ->
@@ -241,14 +241,14 @@ fun RetailerNavigation(
                         )
                     }
                 }
-                composable(LabTab.ORDERS.name) { Box(Modifier.fillMaxSize()) { OrdersScreen() } }
-                composable(LabTab.MAP.name) {
+                composable(PegasusTab.ORDERS.name) { Box(Modifier.fillMaxSize()) { OrdersScreen() } }
+                composable(PegasusTab.MAP.name) {
                     Box(Modifier.fillMaxSize()) {
                         DeliveryMapScreen(viewModel = hiltViewModel(), onBack = { navController.popBackStack() })
                     }
                 }
-                composable(LabTab.PROFILE.name) { Box(Modifier.fillMaxSize()) { ProfileScreen() } }
-                composable(LabTab.SUPPLIERS.name) {
+                composable(PegasusTab.PROFILE.name) { Box(Modifier.fillMaxSize()) { ProfileScreen() } }
+                composable(PegasusTab.SUPPLIERS.name) {
                     Box(Modifier.fillMaxSize()) {
                         MySuppliersScreen(
                             onSupplierCash = { supplier ->
@@ -360,22 +360,22 @@ fun RetailerNavigation(
                     // Navigate based on sidebar destination
                     when (dest) {
                         com.pegasus.retailer.ui.components.SidebarDestination.DASHBOARD -> {
-                            currentTab = LabTab.HOME
-                            navController.navigate(LabTab.HOME.name) {
+                            currentTab = PegasusTab.HOME
+                            navController.navigate(PegasusTab.HOME.name) {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true
                             }
                         }
                         com.pegasus.retailer.ui.components.SidebarDestination.PROCUREMENT -> {
-                            currentTab = LabTab.CATALOG
-                            navController.navigate(LabTab.CATALOG.name) {
+                            currentTab = PegasusTab.CATALOG
+                            navController.navigate(PegasusTab.CATALOG.name) {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true
                             }
                         }
                         com.pegasus.retailer.ui.components.SidebarDestination.AI_PREDICTIONS -> {
-                            currentTab = LabTab.ORDERS
-                            navController.navigate(LabTab.ORDERS.name) {
+                            currentTab = PegasusTab.ORDERS
+                            navController.navigate(PegasusTab.ORDERS.name) {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true
                             }

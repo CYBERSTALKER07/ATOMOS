@@ -47,12 +47,12 @@ import androidx.compose.ui.unit.sp
 import com.pegasus.driver.data.model.Order
 import com.pegasus.driver.data.model.OrderState
 import com.pegasus.driver.data.remote.TokenHolder
-import com.pegasus.driver.ui.components.LabCard
+import com.pegasus.driver.ui.components.PegasusCard
 import com.pegasus.driver.ui.components.StaggeredAppear
 import com.pegasus.driver.ui.components.StatusPill
 import com.pegasus.driver.ui.screens.manifest.ManifestViewModel
-import com.pegasus.driver.ui.theme.LabSpacing
-import com.pegasus.driver.ui.theme.LocalLabColors
+import com.pegasus.driver.ui.theme.PegasusSpacing
+import com.pegasus.driver.ui.theme.LocalPegasusColors
 import com.pegasus.driver.ui.theme.formattedAmount
 import com.pegasus.driver.ui.theme.pressable
 import androidx.compose.material3.MaterialTheme
@@ -60,7 +60,7 @@ import androidx.compose.material3.MaterialTheme
 @Composable
 fun ProfileScreen(viewModel: ManifestViewModel) {
     val state by viewModel.state.collectAsState()
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     var showEndSession by remember { mutableStateOf(false) }
 
     if (showEndSession) {
@@ -78,15 +78,15 @@ fun ProfileScreen(viewModel: ManifestViewModel) {
             .fillMaxSize()
             .background(lab.bg)
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = LabSpacing.s16)
+            .padding(horizontal = PegasusSpacing.s16)
             .padding(bottom = 100.dp)
     ) {
         // MARK: - Header
         Column(
             modifier = Modifier.padding(
                 top = 60.dp,
-                start = LabSpacing.s4,
-                end = LabSpacing.s4
+                start = PegasusSpacing.s4,
+                end = PegasusSpacing.s4
             )
         ) {
             Text(
@@ -106,7 +106,7 @@ fun ProfileScreen(viewModel: ManifestViewModel) {
             )
         }
 
-        Spacer(modifier = Modifier.height(LabSpacing.s24))
+        Spacer(modifier = Modifier.height(PegasusSpacing.s24))
 
         // MARK: - Driver Card
         StaggeredAppear(index = 0) {
@@ -118,14 +118,14 @@ fun ProfileScreen(viewModel: ManifestViewModel) {
             )
         }
 
-        Spacer(modifier = Modifier.height(LabSpacing.s24))
+        Spacer(modifier = Modifier.height(PegasusSpacing.s24))
 
         // MARK: - Quick Actions
         StaggeredAppear(index = 1) {
             QuickActions(onEndSession = { showEndSession = true })
         }
 
-        Spacer(modifier = Modifier.height(LabSpacing.s24))
+        Spacer(modifier = Modifier.height(PegasusSpacing.s24))
 
         // MARK: - Ride History
         StaggeredAppear(index = 2) {
@@ -134,7 +134,7 @@ fun ProfileScreen(viewModel: ManifestViewModel) {
             )
         }
 
-        Spacer(modifier = Modifier.height(LabSpacing.s24))
+        Spacer(modifier = Modifier.height(PegasusSpacing.s24))
 
         // MARK: - Stats
         StaggeredAppear(index = 3) {
@@ -149,15 +149,15 @@ fun ProfileScreen(viewModel: ManifestViewModel) {
 
 @Composable
 private fun DriverCard(orders: List<Order>, hasActiveRoute: Boolean) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     val driverName = TokenHolder.driverName ?: "Driver"
     val driverId = TokenHolder.userId ?: "—"
     val truckId = TokenHolder.vehicleType ?: "—"
     val plate = TokenHolder.licensePlate ?: "—"
     val completedCount = orders.count { it.state == OrderState.COMPLETED }
 
-    LabCard {
-        Column(modifier = Modifier.padding(LabSpacing.s20)) {
+    PegasusCard {
+        Column(modifier = Modifier.padding(PegasusSpacing.s20)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
@@ -237,7 +237,7 @@ private fun InfoTile(
     icon: ImageVector,
     modifier: Modifier = Modifier
 ) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     val isDark = isSystemInDarkTheme()
     Column(
         modifier = modifier
@@ -311,14 +311,14 @@ private fun ActionRow(
     destructive: Boolean = false,
     onClick: () -> Unit
 ) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     val tint = if (destructive) lab.destructive else lab.fg
 
-    LabCard(modifier = Modifier.pressable(onClick = onClick)) {
+    PegasusCard(modifier = Modifier.pressable(onClick = onClick)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(LabSpacing.s16),
+                .padding(PegasusSpacing.s16),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -366,7 +366,7 @@ private fun ActionRow(
 
 @Composable
 private fun HistorySection(completedOrders: List<Order>) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
@@ -374,11 +374,11 @@ private fun HistorySection(completedOrders: List<Order>) {
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
             color = lab.fg,
-            modifier = Modifier.padding(horizontal = LabSpacing.s8)
+            modifier = Modifier.padding(horizontal = PegasusSpacing.s8)
         )
 
         if (completedOrders.isEmpty()) {
-            LabCard {
+            PegasusCard {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -412,13 +412,13 @@ private fun HistorySection(completedOrders: List<Order>) {
 
 @Composable
 private fun HistoryRow(order: Order) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
 
-    LabCard {
+    PegasusCard {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(LabSpacing.s16),
+                .padding(PegasusSpacing.s16),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -462,7 +462,7 @@ private fun HistoryRow(order: Order) {
 
 @Composable
 private fun StatsSection(completedOrders: List<Order>) {
-    val lab = LocalLabColors.current
+    val lab = LocalPegasusColors.current
     val totalValue = completedOrders.sumOf { it.totalAmount }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -471,7 +471,7 @@ private fun StatsSection(completedOrders: List<Order>) {
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
             color = lab.fg,
-            modifier = Modifier.padding(horizontal = LabSpacing.s8)
+            modifier = Modifier.padding(horizontal = PegasusSpacing.s8)
         )
 
         Row(
@@ -501,12 +501,12 @@ private fun StatCard(
     icon: ImageVector,
     modifier: Modifier = Modifier
 ) {
-    val lab = LocalLabColors.current
-    LabCard(modifier = modifier) {
+    val lab = LocalPegasusColors.current
+    PegasusCard(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(LabSpacing.s16),
+                .padding(PegasusSpacing.s16),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(

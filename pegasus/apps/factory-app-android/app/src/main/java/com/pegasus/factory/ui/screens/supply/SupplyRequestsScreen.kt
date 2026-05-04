@@ -51,7 +51,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.pegasus.factory.data.model.SupplyRequest
 import com.pegasus.factory.data.model.SupplyRequestTransitionRequest
 import com.pegasus.factory.data.remote.FactoryApi
-import com.pegasus.factory.ui.theme.LabSpacing
+import com.pegasus.factory.ui.theme.PegasusSpacing
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.delay
@@ -213,7 +213,7 @@ fun SupplyRequestsScreen(
             error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(LabSpacing.lg))
+                    Spacer(Modifier.height(PegasusSpacing.lg))
                     Button(onClick = { load() }) { Text("Retry") }
                 }
             }
@@ -224,8 +224,8 @@ fun SupplyRequestsScreen(
                 )
             }
             else -> LazyColumn(
-                contentPadding = PaddingValues(LabSpacing.lg),
-                verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
             ) {
                 item {
@@ -263,7 +263,7 @@ private fun FilterRow(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
     ) {
         requestFilters.forEach { item ->
             FilterChip(
@@ -289,8 +289,8 @@ private fun SupplySummaryCard(
         ),
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
         ) {
             Text(
                 text = "Warehouse demand queue",
@@ -309,7 +309,7 @@ private fun SupplySummaryCard(
                     text = runtimeStatus,
                     style = MaterialTheme.typography.labelMedium,
                     color = if (stale) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = LabSpacing.md, vertical = LabSpacing.sm),
+                    modifier = Modifier.padding(horizontal = PegasusSpacing.md, vertical = PegasusSpacing.sm),
                 )
             }
         }
@@ -324,17 +324,17 @@ private fun SupplyRequestCard(
 ) {
     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.padding(LabSpacing.lg),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.md),
+            modifier = Modifier.padding(PegasusSpacing.lg),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.md),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
                 verticalAlignment = Alignment.Top,
             ) {
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
                 ) {
                     Text(
                         text = requestLabel(request),
@@ -348,7 +348,7 @@ private fun SupplyRequestCard(
                 }
                 Column(
                     horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
                 ) {
                     RequestTag(
                         text = request.state,
@@ -365,7 +365,7 @@ private fun SupplyRequestCard(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
             ) {
                 SupplyMetric("Volume", "${trimDecimal(request.totalVolumeVU)} VU", Modifier.weight(1f))
                 SupplyMetric("Created", formatDate(request.createdAt), Modifier.weight(1f))
@@ -382,7 +382,7 @@ private fun SupplyRequestCard(
                         text = request.notes,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(LabSpacing.md),
+                        modifier = Modifier.padding(PegasusSpacing.md),
                     )
                 }
             }
@@ -397,7 +397,7 @@ private fun SupplyRequestCard(
             } else {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(LabSpacing.sm),
+                    horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
                 ) {
                     actions.forEach { action ->
                         val buttonModifier = Modifier.weight(1f)
@@ -437,8 +437,8 @@ private fun SupplyMetric(
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
         Column(
-            modifier = Modifier.padding(LabSpacing.md),
-            verticalArrangement = Arrangement.spacedBy(LabSpacing.xs),
+            modifier = Modifier.padding(PegasusSpacing.md),
+            verticalArrangement = Arrangement.spacedBy(PegasusSpacing.xs),
         ) {
             Text(
                 text = value,
@@ -467,7 +467,7 @@ private fun RequestTag(
         Text(
             text = text.replace('_', ' '),
             style = MaterialTheme.typography.labelMedium,
-            modifier = Modifier.padding(horizontal = LabSpacing.sm, vertical = LabSpacing.xs),
+            modifier = Modifier.padding(horizontal = PegasusSpacing.sm, vertical = PegasusSpacing.xs),
         )
     }
 }

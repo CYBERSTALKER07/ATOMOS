@@ -21,10 +21,10 @@ import com.pegasus.driver.ui.theme.MotionTokens
 import kotlinx.coroutines.delay
 
 /**
- * LabCard — M3 Card with surfaceContainerLow color and medium shape.
+ * PegasusCard — M3 Card with surfaceContainerLow color and medium shape.
  */
 @Composable
-fun LabCard(
+fun PegasusCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {

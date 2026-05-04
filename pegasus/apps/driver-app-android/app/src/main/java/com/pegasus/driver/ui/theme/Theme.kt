@@ -97,7 +97,7 @@ val DriverShapes = Shapes(
 
 // ── Lab Theme Extensions (bridge for existing screens) ──
 
-data class LabColors(
+data class PegasusColors(
     val fg: Color,
     val fgSecondary: Color,
     val fgTertiary: Color,
@@ -111,8 +111,8 @@ data class LabColors(
     val live: Color = Live
 )
 
-val LocalLabColors = staticCompositionLocalOf {
-    LabColors(
+val LocalPegasusColors = staticCompositionLocalOf {
+    PegasusColors(
         fg = LightFg,
         fgSecondary = LightFgSecondary,
         fgTertiary = LightFgTertiary,
@@ -124,7 +124,7 @@ val LocalLabColors = staticCompositionLocalOf {
 }
 
 @Composable
-fun LabDriverTheme(
+fun PegasusDriverTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
@@ -139,8 +139,8 @@ fun LabDriverTheme(
         else -> DriverLightScheme
     }
 
-    // Bridge LabColors from resolved M3 colorScheme
-    val labColors = LabColors(
+    // Bridge PegasusColors from resolved M3 colorScheme
+    val labColors = PegasusColors(
         fg = colorScheme.onSurface,
         fgSecondary = colorScheme.onSurfaceVariant,
         fgTertiary = colorScheme.outline,
@@ -165,10 +165,10 @@ fun LabDriverTheme(
         }
     }
 
-    CompositionLocalProvider(LocalLabColors provides labColors) {
+    CompositionLocalProvider(LocalPegasusColors provides labColors) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = LabTypography,
+            typography = PegasusTypography,
             shapes = DriverShapes,
             content = content
         )

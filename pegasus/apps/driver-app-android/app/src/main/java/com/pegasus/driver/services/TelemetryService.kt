@@ -48,7 +48,7 @@ class TelemetryService : Service() {
         const val ACTION_START = "com.pegasus.driver.START_TELEMETRY"
         const val ACTION_STOP = "com.pegasus.driver.STOP_TELEMETRY"
         private const val TAG = "TelemetryService"
-        private const val WAKELOCK_TAG = "LabDriver::TelemetryWakelock"
+        private const val WAKELOCK_TAG = "PegasusDriver::TelemetryWakelock"
     }
 
     @Inject lateinit var telemetrySocket: TelemetrySocket
