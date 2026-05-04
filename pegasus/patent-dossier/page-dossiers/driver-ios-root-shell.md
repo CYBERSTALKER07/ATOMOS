@@ -10,7 +10,7 @@
 
 # Sourcefiles
 
-- apps/driverappios/driverappios/LabDriverApp.swift
+- apps/driverappios/driverappios/PegasusDriverApp.swift
 - apps/driverappios/driverappios/Views/MainTabView.swift
 - apps/driverappios/driverappios/Views/Components/ActiveRideBar.swift
 

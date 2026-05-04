@@ -66,7 +66,7 @@
 ## Contents
 
 - FloatingActiveOrdersBar
-- LabBottomBar
+- PegasusBottomBar
 
 ## Visibilityrules
 

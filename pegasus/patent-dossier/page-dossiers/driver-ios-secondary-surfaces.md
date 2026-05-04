@@ -18,7 +18,7 @@
 
 **Surfacetype:** root-gate
 
-**Sourcefile:** apps/driverappios/driverappios/LabDriverApp.swift
+**Sourcefile:** apps/driverappios/driverappios/PegasusDriverApp.swift
 
 **Purpose:** Session gate that decides between driver login flow and the protected multi-tab shell.
 

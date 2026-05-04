@@ -1706,7 +1706,7 @@
 
 ## Sourcefiles
 
-- apps/driverappios/driverappios/LabDriverApp.swift
+- apps/driverappios/driverappios/PegasusDriverApp.swift
 - apps/driverappios/driverappios/Views/MainTabView.swift
 - apps/driverappios/driverappios/Views/Components/ActiveRideBar.swift
 
@@ -1826,7 +1826,7 @@
 
 **Surfacetype:** root-gate
 
-**Sourcefile:** apps/driverappios/driverappios/LabDriverApp.swift
+**Sourcefile:** apps/driverappios/driverappios/PegasusDriverApp.swift
 
 **Localizedsummary:** Локализованный обзор поверхности "ios-driver-root-gate" для роли unknown-role на платформе unknown-platform.
 
@@ -3726,7 +3726,7 @@
 
 - Зона "top-bar" расположена в области "top full-width". Содержимое: "left: avatar circle button"; "center: Pegasus title"; "right: cart icon button with badge; notification icon button with badge".
 - Зона "content-navhost" расположена в области "center full-width". Содержимое: "HOME dashboard"; "CATALOG"; "ORDERS"; "PROFILE"; "SUPPLIERS"; "CART"; "ANALYTICS"; "AUTO_ORDER"; "PRODUCT_DETAIL"; "CATEGORY_SUPPLIERS"; "SUPPLIER_CATEGORY_CATALOG".
-- Зона "bottom-stack" расположена в области "bottom full-width". Содержимое: "FloatingActiveOrdersBar"; "LabBottomBar".
+- Зона "bottom-stack" расположена в области "bottom full-width". Содержимое: "FloatingActiveOrdersBar"; "PegasusBottomBar".
 - Зона "global-overlays" расположена в области "above shell content". Содержимое: "ActiveDeliveriesSheet"; "OrderDetailSheet"; "QROverlay"; "SidebarMenu"; "DeliveryPaymentSheet".
 
 ### Controloverview

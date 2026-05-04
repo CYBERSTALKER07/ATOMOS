@@ -1706,7 +1706,7 @@
 
 ## Sourcefiles
 
-- apps/driverappios/driverappios/LabDriverApp.swift
+- apps/driverappios/driverappios/PegasusDriverApp.swift
 - apps/driverappios/driverappios/Views/MainTabView.swift
 - apps/driverappios/driverappios/Views/Components/ActiveRideBar.swift
 
@@ -1826,7 +1826,7 @@
 
 **Surfacetype:** root-gate
 
-**Sourcefile:** apps/driverappios/driverappios/LabDriverApp.swift
+**Sourcefile:** apps/driverappios/driverappios/PegasusDriverApp.swift
 
 **Localizedsummary:** "ios-driver-root-gate" yuzasi uchun unknown-role roli va unknown-platform platformasidagi lokalizatsiya qilingan ko'rinish.
 
@@ -3726,7 +3726,7 @@
 
 - "top-bar" zonasi "top full-width" hududida joylashgan. Tarkibi: "left: avatar circle button"; "center: Pegasus title"; "right: cart icon button with badge; notification icon button with badge".
 - "content-navhost" zonasi "center full-width" hududida joylashgan. Tarkibi: "HOME dashboard"; "CATALOG"; "ORDERS"; "PROFILE"; "SUPPLIERS"; "CART"; "ANALYTICS"; "AUTO_ORDER"; "PRODUCT_DETAIL"; "CATEGORY_SUPPLIERS"; "SUPPLIER_CATEGORY_CATALOG".
-- "bottom-stack" zonasi "bottom full-width" hududida joylashgan. Tarkibi: "FloatingActiveOrdersBar"; "LabBottomBar".
+- "bottom-stack" zonasi "bottom full-width" hududida joylashgan. Tarkibi: "FloatingActiveOrdersBar"; "PegasusBottomBar".
 - "global-overlays" zonasi "above shell content" hududida joylashgan. Tarkibi: "ActiveDeliveriesSheet"; "OrderDetailSheet"; "QROverlay"; "SidebarMenu"; "DeliveryPaymentSheet".
 
 ### Controloverview
