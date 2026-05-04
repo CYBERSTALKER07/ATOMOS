@@ -48,6 +48,13 @@ class ProfileRepository @Inject constructor(
             || TokenHolder.warehouseName != profile.warehouseName
             || TokenHolder.warehouseLat != profile.warehouseLat
             || TokenHolder.warehouseLng != profile.warehouseLng
+            || TokenHolder.homeNodeType != profile.homeNodeType
+            || TokenHolder.homeNodeId != profile.homeNodeId
+            || TokenHolder.driverMode != profile.driverMode
+            || TokenHolder.factoryId != profile.factoryId
+            || TokenHolder.factoryName != profile.factoryName
+            || TokenHolder.factoryLat != profile.factoryLat
+            || TokenHolder.factoryLng != profile.factoryLng
         ) {
             TokenHolder.vehicleId = profile.vehicleId
             TokenHolder.vehicleClass = profile.vehicleClass
@@ -58,6 +65,13 @@ class ProfileRepository @Inject constructor(
             TokenHolder.warehouseName = profile.warehouseName
             TokenHolder.warehouseLat = profile.warehouseLat
             TokenHolder.warehouseLng = profile.warehouseLng
+            TokenHolder.homeNodeType = profile.homeNodeType
+            TokenHolder.homeNodeId = profile.homeNodeId
+            TokenHolder.driverMode = profile.driverMode
+            TokenHolder.factoryId = profile.factoryId
+            TokenHolder.factoryName = profile.factoryName
+            TokenHolder.factoryLat = profile.factoryLat
+            TokenHolder.factoryLng = profile.factoryLng
         }
     }
 }

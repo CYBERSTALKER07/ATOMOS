@@ -231,6 +231,13 @@ data class AuthResponse(
     @SerialName("warehouse_name") val warehouseName: String = "",
     @SerialName("warehouse_lat") val warehouseLat: Double = 0.0,
     @SerialName("warehouse_lng") val warehouseLng: Double = 0.0,
+    @SerialName("home_node_type") val homeNodeType: String = "",
+    @SerialName("home_node_id") val homeNodeId: String = "",
+    @SerialName("driver_mode") val driverMode: String = "",
+    @SerialName("factory_id") val factoryId: String = "",
+    @SerialName("factory_name") val factoryName: String = "",
+    @SerialName("factory_lat") val factoryLat: Double = 0.0,
+    @SerialName("factory_lng") val factoryLng: Double = 0.0,
 )
 
 @Serializable
@@ -250,6 +257,13 @@ data class DriverProfileResponse(
     @SerialName("warehouse_name") val warehouseName: String = "",
     @SerialName("warehouse_lat") val warehouseLat: Double = 0.0,
     @SerialName("warehouse_lng") val warehouseLng: Double = 0.0,
+    @SerialName("home_node_type") val homeNodeType: String = "",
+    @SerialName("home_node_id") val homeNodeId: String = "",
+    @SerialName("driver_mode") val driverMode: String = "",
+    @SerialName("factory_id") val factoryId: String = "",
+    @SerialName("factory_name") val factoryName: String = "",
+    @SerialName("factory_lat") val factoryLat: Double = 0.0,
+    @SerialName("factory_lng") val factoryLng: Double = 0.0,
 )
 
 @Serializable

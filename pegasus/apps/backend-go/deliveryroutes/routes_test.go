@@ -1,6 +1,7 @@
 package deliveryroutes
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -31,6 +32,13 @@ func TestRegisterRoutes_MissingItemsAllowsPayloaderRole(t *testing.T) {
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	}
+	var body map[string]interface{}
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if got := body["status"]; got != "REPORTED" {
+		t.Fatalf("status body = %v, want REPORTED", got)
 	}
 }
 

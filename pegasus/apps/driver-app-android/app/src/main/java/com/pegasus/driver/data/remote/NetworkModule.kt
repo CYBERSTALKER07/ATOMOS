@@ -179,6 +179,34 @@ object TokenHolder {
         get() = prefs.getString("warehouseLng", "0.0")?.toDoubleOrNull() ?: 0.0
         set(value) = prefs.edit().putString("warehouseLng", value.toString()).apply()
 
+    var homeNodeType: String?
+        get() = prefs.getString("homeNodeType", null)
+        set(value) = prefs.edit().putString("homeNodeType", value).apply()
+
+    var homeNodeId: String?
+        get() = prefs.getString("homeNodeId", null)
+        set(value) = prefs.edit().putString("homeNodeId", value).apply()
+
+    var driverMode: String?
+        get() = prefs.getString("driverMode", null)
+        set(value) = prefs.edit().putString("driverMode", value).apply()
+
+    var factoryId: String?
+        get() = prefs.getString("factoryId", null)
+        set(value) = prefs.edit().putString("factoryId", value).apply()
+
+    var factoryName: String?
+        get() = prefs.getString("factoryName", null)
+        set(value) = prefs.edit().putString("factoryName", value).apply()
+
+    var factoryLat: Double
+        get() = prefs.getString("factoryLat", "0.0")?.toDoubleOrNull() ?: 0.0
+        set(value) = prefs.edit().putString("factoryLat", value.toString()).apply()
+
+    var factoryLng: Double
+        get() = prefs.getString("factoryLng", "0.0")?.toDoubleOrNull() ?: 0.0
+        set(value) = prefs.edit().putString("factoryLng", value.toString()).apply()
+
     fun clear() {
         prefs.edit().clear().apply()
     }

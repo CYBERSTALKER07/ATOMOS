@@ -52,6 +52,7 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 	- Owns `GET /v1/driver/{earnings,history,availability,pending-collections,profile,manifest-gate,manifest}`, legacy `GET /v1/fleet/manifest`, and `GET /v1/ws/driver`
 	- Current role-row consumers are `apps/driver-app-android` and `apps/driverappios`; both now target `GET /v1/driver/manifest` while backend keeps `/v1/fleet/manifest` as an additive compatibility alias
 	- High-consequence driver mutations (`/v1/order/deliver`, `/v1/order/confirm-offload`, `/v1/order/complete`, `/v1/order/collect-cash`, `/v1/delivery/arrive`) now carry deterministic `Idempotency-Key` headers across Android and iOS clients for replay-safe retry behavior
+	- Driver login/profile payloads now include additive dual-node metadata (`home_node_type`, `home_node_id`, `driver_mode`, `factory_*`) so one driver app role row can support both factory-transfer and warehouse-delivery assignments
 - Supplier geo-planning route composition: `pegasus/apps/backend-go/proximityroutes/routes.go`
 	- Owns `GET /v1/supplier/serving-warehouse`, `GET /v1/supplier/geo-report`, `GET /v1/supplier/dispatch-audits`, `GET /v1/supplier/zone-preview`, `POST /v1/supplier/warehouses/validate-coverage`, and `GET /v1/supplier/warehouse-loads`
 	- Current portal consumers are `app/supplier/geo-report/page.tsx`, `app/supplier/warehouses/CoverageEditor.tsx`, `components/warehouse/CoverageMap.tsx`, and `components/dashboard/OrphanAlertsCell.tsx`; `dispatch-audits` exposes the indexed supplier coverage-alert feed while the remaining endpoints stay supplier-facing support surfaces for coverage and load planning
@@ -72,6 +73,7 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 	- Includes the payload-facing manifest exception entrypoint so the supplier and payload roles keep one manifest exception contract while route ownership moves out of `main.go`
 - Payload loading role-row surface: `pegasus/apps/backend-go/authroutes/routes.go`, `pegasus/apps/backend-go/payloaderroutes/routes.go`, `pegasus/apps/backend-go/supplierlogisticsroutes/routes.go`, `pegasus/apps/backend-go/fleetroutes/routes.go`, `pegasus/apps/backend-go/userroutes/routes.go`, `pegasus/apps/backend-go/ws/payloader_hub.go`
 	- Owns `POST /v1/auth/payloader/login`, `GET /v1/payloader/trucks`, `GET /v1/payloader/orders`, `POST /v1/payloader/recommend-reassign`, the shared `GET /v1/supplier/manifests*` and `POST /v1/supplier/manifests/{id}/{start-loading|seal|inject-order}` lifecycle routes, `POST /v1/payload/{manifest-exception,seal}`, `POST /v1/delivery/missing-items`, `POST /v1/fleet/reassign`, `GET /v1/user/notifications`, `POST /v1/user/notifications/read`, and `/v1/ws/payloader`
+	- `POST /v1/delivery/missing-items` includes additive request compatibility for payload clients: accepts `missing_items` and alias `items`; accepts empty-item review flags when `source=PAYLOAD_TERMINAL`
 	- Current payload consumers span `apps/payload-terminal/App.tsx`, `apps/payload-app-ios/payload-app-ios/Services/APIClient.swift`, `apps/payload-app-ios/payload-app-ios/Services/WebSocketClient.swift`, `apps/payload-app-android/app/src/main/java/com/pegasus/payload/data/remote/PayloadApi.kt`, and `apps/payload-app-android/app/src/main/java/com/pegasus/payload/services/PayloadWebSocket.kt`
 	- Shared supplier manifest routes and `/v1/ws/payloader` now admit `PAYLOADER`, keeping Expo, iOS, and Android payload clients aligned with the `SupplierTruckManifests` lifecycle contract
 	- The payloader websocket now distinguishes `PUSH` notification frames from `PAYLOAD_SYNC` refresh frames so payload clients silently reload active manifest data on external overrides instead of surfacing empty notifications
@@ -110,6 +112,8 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 - Warehouse dispatch mutation surface: `/v1/warehouse/supply-requests` and `/v1/warehouse/dispatch-lock*`
 	- Owned by `pegasus/apps/backend-go/warehouse/supply_requests.go` and `pegasus/apps/backend-go/warehouse/dispatch_lock.go`
 	- Mobile and portal dispatch surfaces create demand-forecast-backed supply requests, cancel warehouse-owned requests, acquire `MANUAL_DISPATCH` locks, and release active locks through the same additive contract
+	- Lock release/list enforcement now resolves warehouse/factory scope from JWT claims and rejects out-of-scope lock actions with explicit `403`
+	- Portal + Android + iOS dispatch surfaces map `403` to explicit restricted-state messaging for lock and dispatch controls
 
 ## Android Stack
 

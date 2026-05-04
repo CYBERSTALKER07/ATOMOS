@@ -46,6 +46,13 @@ func effectiveFleetHomeNode(nodeType, nodeID, warehouseID string) (string, strin
 	return "", ""
 }
 
+func driverModeForHomeNode(nodeType string) string {
+	if nodeType == auth.HomeNodeTypeFactory {
+		return "FACTORY_TRANSFER"
+	}
+	return "RETAIL_DELIVERY"
+}
+
 func isVehicleAssignmentLocked(status, routeID string) bool {
 	if strings.TrimSpace(routeID) != "" {
 		return true
@@ -267,10 +274,14 @@ func HandleDriverLogin(spannerClient *spanner.Client) http.HandlerFunc {
 			             COALESCE(d.SupplierId, ''), COALESCE(d.VehicleId, ''),
 			             COALESCE(v.VehicleClass, ''), COALESCE(v.MaxVolumeVU, 0),
 			             COALESCE(d.WarehouseId, ''),
-			             COALESCE(w.Name, ''), COALESCE(w.Lat, 0), COALESCE(w.Lng, 0)
+			             COALESCE(w.Name, ''), COALESCE(w.Lat, 0), COALESCE(w.Lng, 0),
+			             COALESCE(d.HomeNodeType, ''), COALESCE(d.HomeNodeId, ''),
+			             COALESCE(f.FactoryId, ''), COALESCE(f.Name, ''), COALESCE(f.Lat, 0), COALESCE(f.Lng, 0)
 			      FROM Drivers d
 			      LEFT JOIN Vehicles v ON d.VehicleId = v.VehicleId
-			      LEFT JOIN Warehouses w ON d.WarehouseId = w.WarehouseId
+			      LEFT JOIN Warehouses w ON COALESCE(NULLIF(d.HomeNodeId, ''), d.WarehouseId) = w.WarehouseId
+			                            AND COALESCE(NULLIF(d.HomeNodeType, ''), 'WAREHOUSE') = 'WAREHOUSE'
+			      LEFT JOIN Factories f ON d.HomeNodeType = 'FACTORY' AND d.HomeNodeId = f.FactoryId
 			      WHERE d.Phone = @phone`,
 			Params: map[string]interface{}{
 				"phone": req.Phone,
@@ -292,16 +303,20 @@ func HandleDriverLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		var driverID, name, pinHash, vehicleType, licensePlate, supplierID, vehicleID, vehicleClass string
-		var warehouseID, warehouseName string
+		var warehouseID, warehouseName, homeNodeType, homeNodeID string
+		var factoryID, factoryName string
 		var warehouseLat, warehouseLng float64
+		var factoryLat, factoryLng float64
 		var maxVolumeVU float64
 		var isActive bool
 		if err := row.Columns(&driverID, &name, &pinHash, &isActive, &vehicleType, &licensePlate, &supplierID,
-			&vehicleID, &vehicleClass, &maxVolumeVU, &warehouseID, &warehouseName, &warehouseLat, &warehouseLng); err != nil {
+			&vehicleID, &vehicleClass, &maxVolumeVU, &warehouseID, &warehouseName, &warehouseLat, &warehouseLng,
+			&homeNodeType, &homeNodeID, &factoryID, &factoryName, &factoryLat, &factoryLng); err != nil {
 			log.Printf("[DRIVER AUTH] parse error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
+		homeNodeType, homeNodeID = effectiveFleetHomeNode(homeNodeType, homeNodeID, warehouseID)
 
 		if !isActive {
 			http.Error(w, `{"error":"account deactivated"}`, http.StatusForbidden)
@@ -359,6 +374,13 @@ func HandleDriverLogin(spannerClient *spanner.Client) http.HandlerFunc {
 			"warehouse_name": warehouseName,
 			"warehouse_lat":  warehouseLat,
 			"warehouse_lng":  warehouseLng,
+			"home_node_type": homeNodeType,
+			"home_node_id":   homeNodeID,
+			"driver_mode":    driverModeForHomeNode(homeNodeType),
+			"factory_id":     factoryID,
+			"factory_name":   factoryName,
+			"factory_lat":    factoryLat,
+			"factory_lng":    factoryLng,
 		}
 		if firebaseToken != "" {
 			resp["firebase_token"] = firebaseToken
@@ -785,10 +807,14 @@ func fetchDriverProfile(ctx context.Context, spannerClient *spanner.Client, driv
 		             COALESCE(d.IsActive, true), COALESCE(d.SupplierId, ''),
 		             COALESCE(d.VehicleId, ''), COALESCE(v.VehicleClass, ''), COALESCE(v.MaxVolumeVU, 0),
 		             COALESCE(d.WarehouseId, ''),
-		             COALESCE(w.Name, ''), COALESCE(w.Lat, 0), COALESCE(w.Lng, 0)
+		             COALESCE(w.Name, ''), COALESCE(w.Lat, 0), COALESCE(w.Lng, 0),
+		             COALESCE(d.HomeNodeType, ''), COALESCE(d.HomeNodeId, ''),
+		             COALESCE(f.FactoryId, ''), COALESCE(f.Name, ''), COALESCE(f.Lat, 0), COALESCE(f.Lng, 0)
 		      FROM Drivers d
 		      LEFT JOIN Vehicles v ON d.VehicleId = v.VehicleId
-		      LEFT JOIN Warehouses w ON d.WarehouseId = w.WarehouseId
+		      LEFT JOIN Warehouses w ON COALESCE(NULLIF(d.HomeNodeId, ''), d.WarehouseId) = w.WarehouseId
+		                            AND COALESCE(NULLIF(d.HomeNodeType, ''), 'WAREHOUSE') = 'WAREHOUSE'
+		      LEFT JOIN Factories f ON d.HomeNodeType = 'FACTORY' AND d.HomeNodeId = f.FactoryId
 		      WHERE d.DriverId = @driverId`,
 		Params: map[string]interface{}{
 			"driverId": driverID,
@@ -807,15 +833,19 @@ func fetchDriverProfile(ctx context.Context, spannerClient *spanner.Client, driv
 	}
 
 	var name, phone, driverType, vehicleType, licensePlate, supplierID, vehicleID, vehicleClass string
-	var warehouseID, warehouseName string
+	var warehouseID, warehouseName, homeNodeType, homeNodeID string
+	var factoryID, factoryName string
 	var warehouseLat, warehouseLng float64
+	var factoryLat, factoryLng float64
 	var maxVolumeVU float64
 	var isActive bool
 	if err := row.Columns(&driverID, &name, &phone, &driverType, &vehicleType, &licensePlate,
 		&isActive, &supplierID, &vehicleID, &vehicleClass, &maxVolumeVU,
-		&warehouseID, &warehouseName, &warehouseLat, &warehouseLng); err != nil {
+		&warehouseID, &warehouseName, &warehouseLat, &warehouseLng,
+		&homeNodeType, &homeNodeID, &factoryID, &factoryName, &factoryLat, &factoryLng); err != nil {
 		return nil, fmt.Errorf("parse driver %s: %w", driverID, err)
 	}
+	homeNodeType, homeNodeID = effectiveFleetHomeNode(homeNodeType, homeNodeID, warehouseID)
 
 	return json.Marshal(map[string]interface{}{
 		"driver_id":      driverID,
@@ -833,6 +863,13 @@ func fetchDriverProfile(ctx context.Context, spannerClient *spanner.Client, driv
 		"warehouse_name": warehouseName,
 		"warehouse_lat":  warehouseLat,
 		"warehouse_lng":  warehouseLng,
+		"home_node_type": homeNodeType,
+		"home_node_id":   homeNodeID,
+		"driver_mode":    driverModeForHomeNode(homeNodeType),
+		"factory_id":     factoryID,
+		"factory_name":   factoryName,
+		"factory_lat":    factoryLat,
+		"factory_lng":    factoryLng,
 	})
 }
 

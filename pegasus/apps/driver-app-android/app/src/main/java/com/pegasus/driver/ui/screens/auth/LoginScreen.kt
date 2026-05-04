@@ -85,6 +85,13 @@ fun LoginScreen(
                 TokenHolder.warehouseName = response.warehouseName
                 TokenHolder.warehouseLat = response.warehouseLat
                 TokenHolder.warehouseLng = response.warehouseLng
+                TokenHolder.homeNodeType = response.homeNodeType
+                TokenHolder.homeNodeId = response.homeNodeId
+                TokenHolder.driverMode = response.driverMode
+                TokenHolder.factoryId = response.factoryId
+                TokenHolder.factoryName = response.factoryName
+                TokenHolder.factoryLat = response.factoryLat
+                TokenHolder.factoryLng = response.factoryLng
                 // Exchange Firebase custom token for ID token session (graceful degradation)
                 if (response.firebaseToken.isNotBlank()) {
                     val fbIdToken = FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)

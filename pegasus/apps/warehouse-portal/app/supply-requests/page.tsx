@@ -5,7 +5,6 @@ import { apiFetch, subscribeWarehouseWS, type WarehouseSocketStatus } from '@/li
 import Icon from '@/components/Icon';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/components/Toast';
 import type { WarehouseLiveEvent, WarehouseSupplyRequest } from '@pegasus/types';
 
 const STATE_FILTERS = ['ALL', 'DRAFT', 'SUBMITTED', 'ACKNOWLEDGED', 'IN_PRODUCTION', 'READY', 'FULFILLED', 'CANCELLED'];
@@ -25,22 +24,31 @@ function chipClass(state: string): string {
 
 export default function SupplyRequestsPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const [requests, setRequests] = useState<WarehouseSupplyRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
   const [socketStatus, setSocketStatus] = useState<WarehouseSocketStatus>('connecting');
+  const [restricted, setRestricted] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadRequests = useEffectEvent(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await apiFetch('/v1/warehouse/supply-requests');
       if (res.ok) {
         const data = await res.json() as WarehouseSupplyRequest[] | { supply_requests?: WarehouseSupplyRequest[] };
         setRequests(Array.isArray(data) ? data : (data.supply_requests || []));
+        setRestricted(false);
+      } else if (res.status === 403) {
+        setRestricted(true);
+        setRequests([]);
+      } else {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        setLoadError(data.error || 'Failed to load supply requests');
       }
     } catch {
-      toast('Failed to load supply requests', 'error');
+      setLoadError('Failed to load supply requests');
     } finally {
       setLoading(false);
     }
@@ -127,6 +135,17 @@ export default function SupplyRequestsPage() {
               : 'Connecting live supply-request updates…'}
         </div>
       )}
+
+      {restricted ? (
+        <div className="rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/8 p-4 text-sm text-[var(--danger)]">
+          You do not have permission to view supply requests for this scope.
+        </div>
+      ) : null}
+      {loadError ? (
+        <div className="rounded-xl border border-[var(--warning)]/30 bg-[var(--warning)]/8 p-4 text-sm text-[var(--warning)]">
+          {loadError}
+        </div>
+      ) : null}
 
       {loading ? (
         <div className="space-y-2">

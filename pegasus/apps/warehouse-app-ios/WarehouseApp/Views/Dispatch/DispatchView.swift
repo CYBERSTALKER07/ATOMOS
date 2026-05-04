@@ -297,7 +297,7 @@ struct DispatchView: View {
                 supplyRequests = try await supplyData
                 dispatchLocks = try await lockData
             } catch {
-                self.error = error.localizedDescription
+                self.error = describe(error, fallback: "Failed to load dispatch data")
             }
             loading = false
         }
@@ -331,7 +331,7 @@ struct DispatchView: View {
             actionAlert = DispatchActionAlert(title: "Supply Request Submitted", message: "Request \(response.requestId.prefix(8)) is now \(response.state).")
             await reloadSupplyRequests()
         } catch {
-            actionAlert = DispatchActionAlert(title: "Supply Request Failed", message: error.localizedDescription)
+            actionAlert = DispatchActionAlert(title: "Supply Request Failed", message: describe(error))
         }
     }
 
@@ -342,7 +342,7 @@ struct DispatchView: View {
             actionAlert = DispatchActionAlert(title: "Supply Request Cancelled", message: "Request \(response.requestId.prefix(8)) moved to \(response.state).")
             await reloadSupplyRequests()
         } catch {
-            actionAlert = DispatchActionAlert(title: "Cancellation Failed", message: error.localizedDescription)
+            actionAlert = DispatchActionAlert(title: "Cancellation Failed", message: describe(error))
         }
     }
 
@@ -353,7 +353,7 @@ struct DispatchView: View {
             await reloadDispatchLocks()
             await reloadDispatchPreview()
         } catch {
-            actionAlert = DispatchActionAlert(title: "Lock Failed", message: error.localizedDescription)
+            actionAlert = DispatchActionAlert(title: "Lock Failed", message: describe(error))
         }
     }
 
@@ -365,7 +365,7 @@ struct DispatchView: View {
             await reloadDispatchLocks()
             await reloadDispatchPreview()
         } catch {
-            actionAlert = DispatchActionAlert(title: "Release Failed", message: error.localizedDescription)
+            actionAlert = DispatchActionAlert(title: "Release Failed", message: describe(error))
         }
     }
 
@@ -373,7 +373,7 @@ struct DispatchView: View {
         do {
             preview = try await WarehouseService.dispatchPreview()
         } catch {
-            self.error = error.localizedDescription
+            self.error = describe(error, fallback: "Failed to refresh dispatch preview")
         }
     }
 
@@ -381,7 +381,7 @@ struct DispatchView: View {
         do {
             supplyRequests = try await WarehouseService.supplyRequests()
         } catch {
-            self.error = error.localizedDescription
+            self.error = describe(error, fallback: "Failed to refresh supply requests")
         }
     }
 
@@ -389,8 +389,18 @@ struct DispatchView: View {
         do {
             dispatchLocks = try await WarehouseService.dispatchLocks()
         } catch {
-            self.error = error.localizedDescription
+            self.error = describe(error, fallback: "Failed to refresh dispatch locks")
         }
+    }
+
+    private func describe(_ error: Error, fallback: String = "Request failed") -> String {
+        if let apiError = error as? APIError, case let .httpError(code) = apiError {
+            if code == 403 {
+                return "Permission denied for this warehouse scope."
+            }
+            return "\(fallback) (HTTP \(code))"
+        }
+        return error.localizedDescription
     }
 }
 

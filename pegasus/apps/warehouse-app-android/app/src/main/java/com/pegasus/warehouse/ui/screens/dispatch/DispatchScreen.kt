@@ -31,6 +31,13 @@ import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 
+private val DISPATCH_UNAVAILABLE_REASON_LABELS = mapOf(
+    "MAINTENANCE" to "Maintenance",
+    "TRUCK_DAMAGED" to "Truck Damaged",
+    "REGULATORY_HOLD" to "Regulatory Hold",
+    "MANUAL_HOLD" to "Manual Hold",
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DispatchScreen(
@@ -56,6 +63,13 @@ fun DispatchScreen(
     val realtimeClient = remember(context) { WarehouseRealtimeClient(context) }
 
     val hasActiveManualDispatchLock = dispatchLocks.any { lock -> lock.lockType == "MANUAL_DISPATCH" }
+    fun codeMessage(code: Int, fallback: String = "Request failed"): String {
+        return if (code == 403) {
+            "Permission denied for this warehouse scope."
+        } else {
+            "$fallback ($code)"
+        }
+    }
 
     fun load() {
         loading = true; error = null
@@ -65,11 +79,11 @@ fun DispatchScreen(
                 val supplyResp = api.getSupplyRequests()
                 val lockResp = api.getDispatchLocks()
                 if (previewResp.isSuccessful && previewResp.body() != null) preview = previewResp.body()!!
-                else error = "Failed (${previewResp.code()})"
+                else error = codeMessage(previewResp.code(), "Failed to load dispatch preview")
                 if (supplyResp.isSuccessful && supplyResp.body() != null) supplyRequests = supplyResp.body()!!
-                else if (error == null) error = "Failed (${supplyResp.code()})"
+                else if (error == null) error = codeMessage(supplyResp.code(), "Failed to load supply requests")
                 if (lockResp.isSuccessful && lockResp.body() != null) dispatchLocks = lockResp.body()!!
-                else if (error == null) error = "Failed (${lockResp.code()})"
+                else if (error == null) error = codeMessage(lockResp.code(), "Failed to load dispatch locks")
             } catch (e: Exception) { error = e.message ?: "Network error" }
             finally { loading = false }
         }
@@ -123,7 +137,7 @@ fun DispatchScreen(
                     showCreateSupplyRequest = false
                     reloadSupplyRequests()
                 } else {
-                    actionMessage = DispatchActionMessage("Supply Request Failed", "Failed (${response.code()})")
+                    actionMessage = DispatchActionMessage("Supply Request Failed", codeMessage(response.code()))
                 }
             }.onFailure { throwable ->
                 actionMessage = DispatchActionMessage("Supply Request Failed", throwable.message ?: "Network error")
@@ -148,7 +162,7 @@ fun DispatchScreen(
                     requestPendingCancellation = null
                     reloadSupplyRequests()
                 } else {
-                    actionMessage = DispatchActionMessage("Cancellation Failed", "Failed (${response.code()})")
+                    actionMessage = DispatchActionMessage("Cancellation Failed", codeMessage(response.code()))
                 }
             }.onFailure { throwable ->
                 actionMessage = DispatchActionMessage("Cancellation Failed", throwable.message ?: "Network error")
@@ -170,7 +184,7 @@ fun DispatchScreen(
                         reloadDispatchLocks()
                         load()
                     } else {
-                        actionMessage = DispatchActionMessage("Lock Failed", "Failed (${response.code()})")
+                        actionMessage = DispatchActionMessage("Lock Failed", codeMessage(response.code()))
                     }
                 }
                 .onFailure { throwable ->
@@ -193,7 +207,7 @@ fun DispatchScreen(
                         reloadDispatchLocks()
                         load()
                     } else {
-                        actionMessage = DispatchActionMessage("Release Failed", "Failed (${response.code()})")
+                        actionMessage = DispatchActionMessage("Release Failed", codeMessage(response.code()))
                     }
                 }
                 .onFailure { throwable ->
@@ -512,6 +526,13 @@ private fun RealtimeStatusBanner(status: WarehouseRealtimeStatus) {
             )
         }
     }
+}
+
+private fun vehicleUnavailableReasonLabel(reason: String): String {
+    return DISPATCH_UNAVAILABLE_REASON_LABELS[reason]
+        ?: reason.lowercase().split('_').joinToString(" ") { token ->
+            token.replaceFirstChar { ch -> ch.titlecase() }
+        }
 }
 
 @Composable

@@ -180,7 +180,8 @@
       "notes": [
         "driverroutes now owns the driver websocket route mount that was previously inline in main.go.",
         "Legacy GET /v1/fleet/manifest remains additive for compatibility while clients use GET /v1/driver/manifest.",
-        "High-consequence driver mutations (/v1/order/deliver, /v1/order/confirm-offload, /v1/order/complete, /v1/order/collect-cash, /v1/delivery/arrive) now send deterministic Idempotency-Key headers from both Android and iOS clients for replay-safe retries."
+        "High-consequence driver mutations (/v1/order/deliver, /v1/order/confirm-offload, /v1/order/complete, /v1/order/collect-cash, /v1/delivery/arrive) now send deterministic Idempotency-Key headers from both Android and iOS clients for replay-safe retries.",
+        "Driver login/profile payloads include additive dual-node fields (home_node_type, home_node_id, driver_mode, factory metadata) so one driver app role row can operate both factory-transfer and warehouse-delivery assignments."
       ]
     },
     {
@@ -345,7 +346,7 @@
     {
       "name": "Payload loading role-row surface",
       "path": "/v1/{auth/payloader/login,payloader/*,supplier/manifests*,payload/*,user/notifications,ws/payloader}",
-      "owner": "pegasus/apps/backend-go/authroutes/routes.go + pegasus/apps/backend-go/payloaderroutes/routes.go + pegasus/apps/backend-go/supplierlogisticsroutes/routes.go + pegasus/apps/backend-go/fleetroutes/routes.go + pegasus/apps/backend-go/userroutes/routes.go + pegasus/apps/backend-go/ws/payloader_hub.go",
+      "owner": "pegasus/apps/backend-go/authroutes/routes.go + pegasus/apps/backend-go/payloaderroutes/routes.go + pegasus/apps/backend-go/supplierlogisticsroutes/routes.go + pegasus/apps/backend-go/deliveryroutes/routes.go + pegasus/apps/backend-go/fleetroutes/routes.go + pegasus/apps/backend-go/userroutes/routes.go + pegasus/apps/backend-go/ws/payloader_hub.go",
       "delegatedFrom": "pegasus/apps/backend-go/main.go",
       "methods": [
         "POST /v1/auth/payloader/login",
@@ -377,7 +378,8 @@
         "Shared supplier manifest routes and /v1/ws/payloader now admit PAYLOADER alongside SUPPLIER and ADMIN where payload clients already depend on those paths.",
         "SupplierTruckManifests remains the payload-facing manifest lifecycle source, so payload clients stay aligned on DRAFT, LOADING, SEALED, DISPATCHED, and COMPLETED states.",
         "The payloader websocket now emits typed PAYLOAD_SYNC frames with channel SYNC so payload clients can refresh active manifest state without rendering blank notifications.",
-        "PAYLOAD_SYNC is emitted atomically on draft creation plus the supplier manifest start-loading, inject-order, seal, and manifest-exception mutation paths so other payload surfaces stay coherent after cross-device or supplier-portal changes."
+        "PAYLOAD_SYNC is emitted atomically on draft creation plus the supplier manifest start-loading, inject-order, seal, and manifest-exception mutation paths so other payload surfaces stay coherent after cross-device or supplier-portal changes.",
+        "Missing-items reports are additive-contract compatible for payload clients: `missing_items` remains canonical, `items` alias is accepted, and `source=PAYLOAD_TERMINAL` permits empty-item review flags."
       ]
     },
     {
@@ -613,9 +615,11 @@
         "notes": [
           "Create flow submits demand-forecast-backed warehouse supply requests from dispatch surfaces.",
           "Warehouse clients can cancel supply requests in warehouse-owned states and acquire or release MANUAL_DISPATCH locks through the same contract.",
-          "Dispatch control parity now spans portal, iOS, and Android warehouse clients."
+          "Dispatch control parity now spans portal, iOS, and Android warehouse clients.",
+          "Dispatch-lock list/release now enforces warehouse/factory scope from JWT claims and rejects out-of-scope actions with 403.",
+          "Dispatch portal and native clients map 403 lock/dispatch responses to explicit restricted-state messaging."
         ]
-    }
+      }
   ],
   "android": {
     "frameworks": [

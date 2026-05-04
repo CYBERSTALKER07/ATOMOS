@@ -89,6 +89,13 @@ final class TokenStore {
     var warehouseName: String?
     var warehouseLat: Double = 0
     var warehouseLng: Double = 0
+    var homeNodeType: String?
+    var homeNodeId: String?
+    var driverMode: String?
+    var factoryId: String?
+    var factoryName: String?
+    var factoryLat: Double = 0
+    var factoryLng: Double = 0
 
     var isAuthenticated: Bool { token != nil }
 
@@ -104,6 +111,13 @@ final class TokenStore {
     private let warehouseNameKey = "\(AuthNamespace.primaryPrefix).warehouseName"
     private let warehouseLatKey = "\(AuthNamespace.primaryPrefix).warehouseLat"
     private let warehouseLngKey = "\(AuthNamespace.primaryPrefix).warehouseLng"
+    private let homeNodeTypeKey = "\(AuthNamespace.primaryPrefix).homeNodeType"
+    private let homeNodeIdKey = "\(AuthNamespace.primaryPrefix).homeNodeId"
+    private let driverModeKey = "\(AuthNamespace.primaryPrefix).driverMode"
+    private let factoryIdKey = "\(AuthNamespace.primaryPrefix).factoryId"
+    private let factoryNameKey = "\(AuthNamespace.primaryPrefix).factoryName"
+    private let factoryLatKey = "\(AuthNamespace.primaryPrefix).factoryLat"
+    private let factoryLngKey = "\(AuthNamespace.primaryPrefix).factoryLng"
 
     private init() {
         token = loadString(key: tokenKey)
@@ -133,6 +147,13 @@ final class TokenStore {
         warehouseName = loadString(key: warehouseNameKey)
         warehouseLat = loadDouble(key: warehouseLatKey)
         warehouseLng = loadDouble(key: warehouseLngKey)
+        homeNodeType = loadString(key: homeNodeTypeKey)
+        homeNodeId = loadString(key: homeNodeIdKey)
+        driverMode = loadString(key: driverModeKey)
+        factoryId = loadString(key: factoryIdKey)
+        factoryName = loadString(key: factoryNameKey)
+        factoryLat = loadDouble(key: factoryLatKey)
+        factoryLng = loadDouble(key: factoryLngKey)
     }
 
     /// One-shot migration from UserDefaults → Keychain
@@ -176,6 +197,13 @@ final class TokenStore {
         warehouseName = response.warehouseName
         warehouseLat = response.warehouseLat ?? 0
         warehouseLng = response.warehouseLng ?? 0
+        homeNodeType = response.homeNodeType
+        homeNodeId = response.homeNodeId
+        driverMode = response.driverMode
+        factoryId = response.factoryId
+        factoryName = response.factoryName
+        factoryLat = response.factoryLat ?? 0
+        factoryLng = response.factoryLng ?? 0
 
         saveString(response.token, key: tokenKey)
         saveString(response.userId, key: userKey)
@@ -199,6 +227,13 @@ final class TokenStore {
         saveString(warehouseName ?? "", key: warehouseNameKey)
         saveDouble(warehouseLat, key: warehouseLatKey)
         saveDouble(warehouseLng, key: warehouseLngKey)
+        saveString(homeNodeType ?? "", key: homeNodeTypeKey)
+        saveString(homeNodeId ?? "", key: homeNodeIdKey)
+        saveString(driverMode ?? "", key: driverModeKey)
+        saveString(factoryId ?? "", key: factoryIdKey)
+        saveString(factoryName ?? "", key: factoryNameKey)
+        saveDouble(factoryLat, key: factoryLatKey)
+        saveDouble(factoryLng, key: factoryLngKey)
     }
 
     /// Update only the token (used after silent refresh).
@@ -221,6 +256,13 @@ final class TokenStore {
         warehouseName = nil
         warehouseLat = 0
         warehouseLng = 0
+        homeNodeType = nil
+        homeNodeId = nil
+        driverMode = nil
+        factoryId = nil
+        factoryName = nil
+        factoryLat = 0
+        factoryLng = 0
 
         KeychainHelper.delete(forKey: tokenKey)
         KeychainHelper.delete(forKey: userKey)
@@ -234,6 +276,13 @@ final class TokenStore {
         KeychainHelper.delete(forKey: warehouseNameKey)
         KeychainHelper.delete(forKey: warehouseLatKey)
         KeychainHelper.delete(forKey: warehouseLngKey)
+        KeychainHelper.delete(forKey: homeNodeTypeKey)
+        KeychainHelper.delete(forKey: homeNodeIdKey)
+        KeychainHelper.delete(forKey: driverModeKey)
+        KeychainHelper.delete(forKey: factoryIdKey)
+        KeychainHelper.delete(forKey: factoryNameKey)
+        KeychainHelper.delete(forKey: factoryLatKey)
+        KeychainHelper.delete(forKey: factoryLngKey)
     }
 }
 
@@ -260,6 +309,13 @@ struct AuthResponse: Codable {
     let warehouseName: String?
     let warehouseLat: Double?
     let warehouseLng: Double?
+    let homeNodeType: String?
+    let homeNodeId: String?
+    let driverMode: String?
+    let factoryId: String?
+    let factoryName: String?
+    let factoryLat: Double?
+    let factoryLng: Double?
 
     enum CodingKeys: String, CodingKey {
         case token
@@ -277,6 +333,13 @@ struct AuthResponse: Codable {
         case warehouseName = "warehouse_name"
         case warehouseLat = "warehouse_lat"
         case warehouseLng = "warehouse_lng"
+        case homeNodeType = "home_node_type"
+        case homeNodeId = "home_node_id"
+        case driverMode = "driver_mode"
+        case factoryId = "factory_id"
+        case factoryName = "factory_name"
+        case factoryLat = "factory_lat"
+        case factoryLng = "factory_lng"
     }
 }
 
@@ -298,6 +361,13 @@ struct DriverProfileResponse: Codable {
     let warehouseName: String?
     let warehouseLat: Double?
     let warehouseLng: Double?
+    let homeNodeType: String?
+    let homeNodeId: String?
+    let driverMode: String?
+    let factoryId: String?
+    let factoryName: String?
+    let factoryLat: Double?
+    let factoryLng: Double?
 
     enum CodingKeys: String, CodingKey {
         case driverId = "driver_id"
@@ -314,5 +384,12 @@ struct DriverProfileResponse: Codable {
         case warehouseName = "warehouse_name"
         case warehouseLat = "warehouse_lat"
         case warehouseLng = "warehouse_lng"
+        case homeNodeType = "home_node_type"
+        case homeNodeId = "home_node_id"
+        case driverMode = "driver_mode"
+        case factoryId = "factory_id"
+        case factoryName = "factory_name"
+        case factoryLat = "factory_lat"
+        case factoryLng = "factory_lng"
     }
 }

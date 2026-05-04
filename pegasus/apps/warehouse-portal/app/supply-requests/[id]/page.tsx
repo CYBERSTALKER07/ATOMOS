@@ -44,21 +44,31 @@ export default function SupplyRequestDetailPage() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [socketStatus, setSocketStatus] = useState<WarehouseSocketStatus>('connecting');
+  const [restricted, setRestricted] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const id = params.id as string;
 
   const loadDetail = useEffectEvent(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await apiFetch(`/v1/warehouse/supply-requests/${id}`);
       if (res.ok) {
         setDetail(await res.json() as WarehouseSupplyRequestDetail);
-      } else {
+        setRestricted(false);
+      } else if (res.status === 403) {
+        setRestricted(true);
+        setDetail(null);
+      } else if (res.status === 404) {
         toast('Request not found', 'error');
         router.replace('/supply-requests');
+      } else {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        setLoadError(data.error || 'Failed to load request');
       }
     } catch {
-      toast('Failed to load request', 'error');
+      setLoadError('Failed to load request');
     } finally {
       setLoading(false);
     }
@@ -114,6 +124,26 @@ export default function SupplyRequestDetailPage() {
       <div className="p-6 space-y-6">
         <div className="md-skeleton md-skeleton-title" />
         <div className="md-skeleton md-skeleton-card" style={{ height: 200 }} />
+      </div>
+    );
+  }
+
+  if (restricted) {
+    return (
+      <div className="p-6">
+        <div className="rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/8 p-4 text-sm text-[var(--danger)]">
+          You do not have permission to view this supply request.
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="p-6">
+        <div className="rounded-xl border border-[var(--warning)]/30 bg-[var(--warning)]/8 p-4 text-sm text-[var(--warning)]">
+          {loadError}
+        </div>
       </div>
     );
   }

@@ -20,6 +20,13 @@ import com.pegasus.warehouse.data.remote.WarehouseApi
 import com.pegasus.warehouse.ui.theme.LabSpacing
 import kotlinx.coroutines.launch
 
+private val DRIVER_UNAVAILABLE_REASON_LABELS = mapOf(
+    "MAINTENANCE" to "Maintenance",
+    "TRUCK_DAMAGED" to "Truck Damaged",
+    "REGULATORY_HOLD" to "Regulatory Hold",
+    "MANUAL_HOLD" to "Manual Hold",
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DriversScreen(
@@ -238,6 +245,13 @@ private fun assignedVehicleReason(driver: Driver, vehicles: List<Vehicle>): Stri
 private fun vehicleLabel(vehicle: Vehicle): String {
     val title = if (vehicle.label.isBlank()) vehicle.licensePlate else vehicle.label
     return listOf(title, vehicle.vehicleClass).filter { it.isNotBlank() }.joinToString(" · ")
+}
+
+private fun vehicleUnavailableReasonLabel(reason: String): String {
+    return DRIVER_UNAVAILABLE_REASON_LABELS[reason]
+        ?: reason.lowercase().split('_').joinToString(" ") { token ->
+            token.replaceFirstChar { ch -> ch.titlecase() }
+        }
 }
 
 @Composable

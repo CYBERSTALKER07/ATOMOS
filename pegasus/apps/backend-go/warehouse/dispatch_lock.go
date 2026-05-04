@@ -3,6 +3,7 @@ package warehouse
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,6 +18,12 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
+)
+
+var (
+	errDispatchLockNotFound        = errors.New("dispatch lock not found")
+	errDispatchLockAlreadyReleased = errors.New("dispatch lock already released")
+	errDispatchLockForbidden       = errors.New("dispatch lock outside caller scope")
 )
 
 // DispatchLockService manages dispatch locks for supplier/warehouse/factory scopes.
@@ -63,7 +70,8 @@ func (d *DispatchLockService) HandleAcquireDispatchLock(w http.ResponseWriter, r
 
 	validTypes := map[string]bool{"AUTO_DISPATCH": true, "MANUAL_DISPATCH": true, "FACTORY_DISPATCH": true, "SPATIAL_UPDATE": true}
 	if !validTypes[req.LockType] {
-		req.LockType = "MANUAL_DISPATCH"
+		http.Error(w, `{"error":"invalid lock_type"}`, http.StatusBadRequest)
+		return
 	}
 
 	supplierID := claims.ResolveSupplierID()
@@ -77,14 +85,18 @@ func (d *DispatchLockService) HandleAcquireDispatchLock(w http.ResponseWriter, r
 	factoryID := req.FactoryID
 	switch claims.Role {
 	case "WAREHOUSE":
-		if ops := auth.GetWarehouseOps(r.Context()); ops != nil {
-			warehouseID = ops.WarehouseID
+		if claims.WarehouseID == "" {
+			http.Error(w, `{"error":"warehouse scope missing from token"}`, http.StatusForbidden)
+			return
 		}
+		warehouseID = claims.WarehouseID
 		factoryID = "" // warehouse role cannot lock factories
 	case "FACTORY":
-		if fs := auth.GetFactoryScope(r.Context()); fs != nil {
-			factoryID = fs.FactoryID
+		if claims.FactoryID == "" {
+			http.Error(w, `{"error":"factory scope missing from token"}`, http.StatusForbidden)
+			return
 		}
+		factoryID = claims.FactoryID
 		warehouseID = "" // factory role cannot lock warehouses
 	default: // SUPPLIER / ADMIN — validate body IDs belong to this supplier
 		if warehouseID != "" {
@@ -191,7 +203,7 @@ func (d *DispatchLockService) HandleReleaseDispatchLock(w http.ResponseWriter, r
 			spanner.Key{lockID},
 			[]string{"SupplierId", "WarehouseId", "FactoryId", "LockType", "UnlockedAt"})
 		if err != nil {
-			return fmt.Errorf("lock not found")
+			return errDispatchLockNotFound
 		}
 
 		var supplierID, lockType string
@@ -201,7 +213,10 @@ func (d *DispatchLockService) HandleReleaseDispatchLock(w http.ResponseWriter, r
 			return err
 		}
 		if unlockedAt.Valid {
-			return fmt.Errorf("lock already released")
+			return errDispatchLockAlreadyReleased
+		}
+		if !canManageDispatchLock(claims, supplierID, warehouseID.StringVal, factoryID.StringVal) {
+			return errDispatchLockForbidden
 		}
 
 		if err := txn.BufferWrite([]*spanner.Mutation{
@@ -236,11 +251,12 @@ func (d *DispatchLockService) HandleReleaseDispatchLock(w http.ResponseWriter, r
 	})
 
 	if err != nil {
-		errMsg := err.Error()
-		if errMsg == "lock not found" {
+		if errors.Is(err, errDispatchLockNotFound) {
 			http.Error(w, `{"error":"lock not found"}`, http.StatusNotFound)
-		} else if errMsg == "lock already released" {
+		} else if errors.Is(err, errDispatchLockAlreadyReleased) {
 			http.Error(w, `{"error":"lock already released"}`, http.StatusConflict)
+		} else if errors.Is(err, errDispatchLockForbidden) {
+			http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
 		} else {
 			log.Printf("[DISPATCH LOCK] release error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -277,12 +293,27 @@ func (d *DispatchLockService) HandleListDispatchLocks(w http.ResponseWriter, r *
 		supplierID = resolveSupplierFromClaims(r.Context(), d.Spanner, claims)
 	}
 
-	stmt := spanner.Statement{
-		SQL: `SELECT LockId, SupplierId, WarehouseId, FactoryId, LockType, LockedAt, UnlockedAt, LockedBy
-		      FROM DispatchLocks WHERE SupplierId = @sid AND UnlockedAt IS NULL
-		      ORDER BY LockedAt DESC LIMIT 50`,
-		Params: map[string]interface{}{"sid": supplierID},
+	sql := `SELECT LockId, SupplierId, WarehouseId, FactoryId, LockType, LockedAt, UnlockedAt, LockedBy
+		      FROM DispatchLocks WHERE SupplierId = @sid AND UnlockedAt IS NULL`
+	params := map[string]interface{}{"sid": supplierID}
+	if claims.Role == "WAREHOUSE" {
+		if claims.WarehouseID == "" {
+			http.Error(w, `{"error":"warehouse scope missing from token"}`, http.StatusForbidden)
+			return
+		}
+		sql += ` AND WarehouseId = @wid`
+		params["wid"] = claims.WarehouseID
 	}
+	if claims.Role == "FACTORY" {
+		if claims.FactoryID == "" {
+			http.Error(w, `{"error":"factory scope missing from token"}`, http.StatusForbidden)
+			return
+		}
+		sql += ` AND FactoryId = @fid`
+		params["fid"] = claims.FactoryID
+	}
+	sql += ` ORDER BY LockedAt DESC LIMIT 50`
+	stmt := spanner.Statement{SQL: sql, Params: params}
 	iter := d.Spanner.Single().Query(r.Context(), stmt)
 	defer iter.Stop()
 
@@ -406,4 +437,15 @@ func validateEntityOwnership(ctx context.Context, client *spanner.Client, table,
 		return fmt.Errorf("entity %s in %s belongs to another supplier", entityID, table)
 	}
 	return nil
+}
+
+func canManageDispatchLock(claims *auth.PegasusClaims, lockSupplierID, lockWarehouseID, lockFactoryID string) bool {
+	switch claims.Role {
+	case "WAREHOUSE":
+		return claims.WarehouseID != "" && claims.WarehouseID == lockWarehouseID
+	case "FACTORY":
+		return claims.FactoryID != "" && claims.FactoryID == lockFactoryID
+	default:
+		return claims.ResolveSupplierID() == lockSupplierID
+	}
 }

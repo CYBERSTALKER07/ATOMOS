@@ -63,6 +63,13 @@ final class ProfileService {
             || store.warehouseName != profile.warehouseName
             || store.warehouseLat != (profile.warehouseLat ?? 0)
             || store.warehouseLng != (profile.warehouseLng ?? 0)
+            || store.homeNodeType != profile.homeNodeType
+            || store.homeNodeId != profile.homeNodeId
+            || store.driverMode != profile.driverMode
+            || store.factoryId != profile.factoryId
+            || store.factoryName != profile.factoryName
+            || store.factoryLat != (profile.factoryLat ?? 0)
+            || store.factoryLng != (profile.factoryLng ?? 0)
         {
             store.vehicleId = profile.vehicleId
             store.vehicleClass = profile.vehicleClass
@@ -73,6 +80,13 @@ final class ProfileService {
             store.warehouseName = profile.warehouseName
             store.warehouseLat = profile.warehouseLat ?? 0
             store.warehouseLng = profile.warehouseLng ?? 0
+            store.homeNodeType = profile.homeNodeType
+            store.homeNodeId = profile.homeNodeId
+            store.driverMode = profile.driverMode
+            store.factoryId = profile.factoryId
+            store.factoryName = profile.factoryName
+            store.factoryLat = profile.factoryLat ?? 0
+            store.factoryLng = profile.factoryLng ?? 0
 
             store.persistVehicleInfo()
         }

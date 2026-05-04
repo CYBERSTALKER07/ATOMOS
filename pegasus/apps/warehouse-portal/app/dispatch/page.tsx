@@ -27,8 +27,11 @@ export default function DispatchPage() {
   const [drivers, setDrivers] = useState<WarehouseDispatchDriver[]>([]);
   const [unavailableDrivers, setUnavailableDrivers] = useState<WarehouseUnavailableDispatchDriver[]>([]);
   const [loading, setLoading] = useState(true);
+  const [restricted, setRestricted] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setLoadError(null);
     try {
       const res = await apiFetch('/v1/warehouse/ops/dispatch/preview');
       if (res.ok) {
@@ -36,8 +39,19 @@ export default function DispatchPage() {
         setOrders(data.undispatched_orders || data.orders || []);
         setDrivers(data.available_drivers || data.drivers || []);
         setUnavailableDrivers(data.unavailable_drivers || []);
+        setRestricted(false);
+      } else if (res.status === 403) {
+        setRestricted(true);
+        setOrders([]);
+        setDrivers([]);
+        setUnavailableDrivers([]);
+      } else {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        setLoadError(data.error || 'Failed to load dispatch preview');
       }
-    } catch { /* handled */ }
+    } catch {
+      setLoadError('Failed to load dispatch preview');
+    }
     finally { setLoading(false); }
   }, []);
 
@@ -53,6 +67,17 @@ export default function DispatchPage() {
           <Icon name="refresh" size={16} /> Refresh
         </button>
       </div>
+
+      {restricted ? (
+        <div className="rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/8 p-4 text-sm text-[var(--danger)]">
+          You do not have permission to view dispatch preview for this scope.
+        </div>
+      ) : null}
+      {loadError ? (
+        <div className="rounded-xl border border-[var(--warning)]/30 bg-[var(--warning)]/8 p-4 text-sm text-[var(--warning)]">
+          {loadError}
+        </div>
+      ) : null}
 
       {loading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -79,7 +104,7 @@ export default function DispatchPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-sm font-mono">{fmt(o.total_uzs)} UZS</div>
-                      <div className="text-xs text-(--muted)">{new Date(o.created_at).toLocaleDateString()}</div>
+                      <div className="text-xs text-(--muted)">{o.created_at ? new Date(o.created_at).toLocaleDateString() : '—'}</div>
                     </div>
                   </div>
                 ))}

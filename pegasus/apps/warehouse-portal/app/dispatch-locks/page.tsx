@@ -12,17 +12,27 @@ export default function DispatchLocksPage() {
   const [loading, setLoading] = useState(true);
   const [releasing, setReleasing] = useState<string | null>(null);
   const [socketStatus, setSocketStatus] = useState<WarehouseSocketStatus>('connecting');
+  const [restricted, setRestricted] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadLocks = useEffectEvent(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await apiFetch('/v1/warehouse/dispatch-locks');
       if (res.ok) {
         const data = await res.json() as WarehouseDispatchLock[] | { locks?: WarehouseDispatchLock[] };
         setLocks(Array.isArray(data) ? data : (data.locks || []));
+        setRestricted(false);
+      } else if (res.status === 403) {
+        setRestricted(true);
+        setLocks([]);
+      } else {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        setLoadError(data.error || 'Failed to load dispatch locks');
       }
     } catch {
-      toast('Failed to load locks', 'error');
+      setLoadError('Failed to load dispatch locks');
     } finally {
       setLoading(false);
     }
@@ -128,6 +138,17 @@ export default function DispatchLocksPage() {
               : 'Connecting live dispatch-lock updates…'}
         </div>
       )}
+
+      {restricted ? (
+        <div className="rounded-xl border border-[var(--danger)]/30 bg-[var(--danger)]/8 p-4 text-sm text-[var(--danger)]">
+          You do not have permission to manage dispatch locks for this scope.
+        </div>
+      ) : null}
+      {loadError ? (
+        <div className="rounded-xl border border-[var(--warning)]/30 bg-[var(--warning)]/8 p-4 text-sm text-[var(--warning)]">
+          {loadError}
+        </div>
+      ) : null}
 
       {loading ? (
         <div className="space-y-2">
