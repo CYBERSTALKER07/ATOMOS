@@ -454,3 +454,193 @@ struct DispatchResponse: Decodable {
         case stopCount = "stop_count"
     }
 }
+
+// MARK: - Extended Factory Contracts
+struct FactoryProfile: Decodable {
+    let factoryId: String
+    let supplierId: String
+    let name: String
+    let address: String
+    let lat: Double
+    let lng: Double
+    let h3Index: String
+    let regionCode: String
+    let leadTimeDays: Int
+    let productionCapacityVU: Double
+    let productTypes: [String]
+    let isActive: Bool
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case factoryId = "factory_id"
+        case supplierId = "supplier_id"
+        case name, address, lat, lng
+        case h3Index = "h3_index"
+        case regionCode = "region_code"
+        case leadTimeDays = "lead_time_days"
+        case productionCapacityVU = "production_capacity_vu"
+        case productTypes = "product_types"
+        case isActive = "is_active"
+        case createdAt = "created_at"
+    }
+}
+
+struct FactoryAnalyticsDayBucket: Decodable {
+    let date: String
+    let transfersCreated: Int
+    let transfersShipped: Int
+    let unitsProduced: Double
+
+    enum CodingKeys: String, CodingKey {
+        case date
+        case transfersCreated = "transfers_created"
+        case transfersShipped = "transfers_shipped"
+        case unitsProduced = "units_produced"
+    }
+}
+
+struct FactoryAnalyticsStateBucket: Decodable {
+    let state: String
+    let count: Int
+}
+
+struct FactoryAnalyticsOverview: Decodable {
+    let dailyActivity: [FactoryAnalyticsDayBucket]
+    let transfersByState: [FactoryAnalyticsStateBucket]
+    let totalTransfers: Int
+    let avgLeadTimeMins: Double
+
+    enum CodingKeys: String, CodingKey {
+        case dailyActivity = "daily_activity"
+        case transfersByState = "transfers_by_state"
+        case totalTransfers = "total_transfers"
+        case avgLeadTimeMins = "avg_lead_time_mins"
+    }
+}
+
+struct FactoryCreateTransferRequest: Encodable {
+    let warehouseId: String
+    let source: String
+    let items: [FactoryCreateTransferItem]
+
+    enum CodingKeys: String, CodingKey {
+        case warehouseId = "warehouse_id"
+        case source
+        case items
+    }
+}
+
+struct FactoryCreateTransferItem: Encodable {
+    let productId: String
+    let quantity: Int
+    let volumeVU: Double
+
+    enum CodingKeys: String, CodingKey {
+        case productId = "product_id"
+        case quantity
+        case volumeVU = "volume_vu"
+    }
+}
+
+struct FactoryCreateTransferResponse: Decodable {
+    let transferId: String
+    let factoryId: String
+    let warehouseId: String
+    let state: String
+    let totalVolumeVU: Double
+    let source: String
+    let itemsCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case transferId = "transfer_id"
+        case factoryId = "factory_id"
+        case warehouseId = "warehouse_id"
+        case state
+        case totalVolumeVU = "total_volume_vu"
+        case source
+        case itemsCount = "items_count"
+    }
+}
+
+struct FactoryFleetDriver: Decodable, Identifiable {
+    let id: String
+    let name: String
+    let phone: String
+    let driverType: String
+    let vehicleType: String
+    let licensePlate: String
+    let isActive: Bool
+    let truckStatus: String
+    let createdAt: String
+    let vehicleId: String
+
+    enum CodingKeys: String, CodingKey {
+        case id = "driver_id"
+        case name, phone
+        case driverType = "driver_type"
+        case vehicleType = "vehicle_type"
+        case licensePlate = "license_plate"
+        case isActive = "is_active"
+        case truckStatus = "truck_status"
+        case createdAt = "created_at"
+        case vehicleId = "vehicle_id"
+    }
+}
+
+struct FactoryFleetDriverListResponse: Decodable {
+    let data: [FactoryFleetDriver]
+}
+
+struct FactoryFleetVehicle: Decodable, Identifiable {
+    let id: String
+    let supplierId: String
+    let vehicleClass: String
+    let maxVolumeVU: Double
+    let licensePlate: String
+    let isActive: Bool
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case id = "vehicle_id"
+        case supplierId = "supplier_id"
+        case vehicleClass = "vehicle_class"
+        case maxVolumeVU = "max_volume_vu"
+        case licensePlate = "license_plate"
+        case isActive = "is_active"
+        case createdAt = "created_at"
+    }
+}
+
+struct FactoryFleetVehicleListResponse: Decodable {
+    let data: [FactoryFleetVehicle]
+}
+
+struct FactoryStaffDetail: Decodable {
+    let staffId: String
+    let factoryId: String
+    let name: String
+    let phone: String
+    let staffRole: String
+    let isActive: Bool
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case staffId = "staff_id"
+        case factoryId = "factory_id"
+        case name
+        case phone
+        case staffRole = "staff_role"
+        case isActive = "is_active"
+        case createdAt = "created_at"
+    }
+}
+
+struct FactoryManifestTransitionResponse: Decodable {
+    let status: String
+    let manifestId: String?
+
+    enum CodingKeys: String, CodingKey {
+        case status
+        case manifestId = "manifest_id"
+    }
+}

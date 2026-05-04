@@ -19,6 +19,7 @@ import com.pegasus.factory.data.model.DashboardStats
 import com.pegasus.factory.data.remote.FactoryApi
 import com.pegasus.factory.ui.navigation.FactoryRoutes
 import com.pegasus.factory.ui.theme.LabSpacing
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private data class KpiCard(
@@ -39,6 +40,7 @@ private val kpiCards = listOf(
     KpiCard("Staff on Shift", Icons.Default.People, FactoryRoutes.STAFF, { it.staffOnShift.toString() }, { "Operators currently active" }),
     KpiCard("Critical Insights", Icons.Default.Warning, FactoryRoutes.INSIGHTS, { it.criticalInsights.toString() }, { "Restock and exception pressure" }),
 )
+private const val DASHBOARD_REFRESH_MS = 30_000L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,8 +54,10 @@ fun DashboardScreen(
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    fun load() {
-        loading = true
+    fun load(silent: Boolean = false) {
+        if (!silent) {
+            loading = true
+        }
         error = null
         scope.launch {
             try {
@@ -66,12 +70,20 @@ fun DashboardScreen(
             } catch (e: Exception) {
                 error = e.message ?: "Network error"
             } finally {
-                loading = false
+                if (!silent) {
+                    loading = false
+                }
             }
         }
     }
 
-    LaunchedEffect(Unit) { load() }
+    LaunchedEffect(Unit) {
+        load()
+        while (true) {
+            delay(DASHBOARD_REFRESH_MS)
+            load(silent = true)
+        }
+    }
 
     Scaffold(
         topBar = {

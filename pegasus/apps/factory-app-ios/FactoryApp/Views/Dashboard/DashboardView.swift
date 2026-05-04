@@ -7,6 +7,7 @@ struct DashboardView: View {
     @State private var stats = DashboardStats.empty
     @State private var loading = true
     @State private var error: String?
+    private let refreshNanos: UInt64 = 30_000_000_000
 
     var body: some View {
         NavigationStack {
@@ -64,13 +65,21 @@ struct DashboardView: View {
                     .labelStyle(.iconOnly)
                 }
             }
-            .task { await load() }
+            .task {
+                await load()
+                while !Task.isCancelled {
+                    try? await Task.sleep(nanoseconds: refreshNanos)
+                    await load(silent: true)
+                }
+            }
         }
     }
 
     @MainActor
-    private func load() async {
-        loading = true
+    private func load(silent: Bool = false) async {
+        if !silent {
+            loading = true
+        }
         error = nil
 
         do {
@@ -79,7 +88,9 @@ struct DashboardView: View {
             self.error = error.localizedDescription
         }
 
-        loading = false
+        if !silent {
+            loading = false
+        }
     }
 }
 

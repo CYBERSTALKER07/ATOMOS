@@ -408,6 +408,43 @@ func (s *TransferService) fetchWarehouseNames(ctx context.Context, warehouseIDs 
 	return names, nil
 }
 
+func (s *TransferService) fetchProductSuppliersBySku(ctx context.Context, skuIDs []string) (map[string]string, error) {
+	if len(skuIDs) == 0 {
+		return map[string]string{}, nil
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT SkuId, SupplierId
+		      FROM SupplierProducts
+		      WHERE SkuId IN UNNEST(@sku_ids)`,
+		Params: map[string]interface{}{"sku_ids": skuIDs},
+	}
+	iter := s.Spanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	suppliers := make(map[string]string, len(skuIDs))
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		var skuID string
+		var supplierID spanner.NullString
+		if err := row.Columns(&skuID, &supplierID); err != nil {
+			return nil, err
+		}
+		if supplierID.Valid && supplierID.StringVal != "" {
+			suppliers[skuID] = supplierID.StringVal
+		}
+	}
+
+	return suppliers, nil
+}
+
 func (s *TransferService) fetchTransferItemTotals(ctx context.Context, transferIDs []string) (map[string]int64, error) {
 	if len(transferIDs) == 0 {
 		return map[string]int64{}, nil
@@ -1111,19 +1148,30 @@ func (s *TransferService) HandleCreateTransfer(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	uniqueSkuIDs := make([]string, 0, len(req.Items))
+	seenSku := make(map[string]struct{}, len(req.Items))
 	for _, item := range req.Items {
-		var productSupplierID string
-		prodIter := s.Spanner.Single().Query(r.Context(), spanner.Statement{
-			SQL:    "SELECT SupplierId FROM SupplierProducts WHERE SkuId = @skuId LIMIT 1",
-			Params: map[string]interface{}{"skuId": item.ProductId},
-		})
-		prodRow, prodErr := prodIter.Next()
-		if prodErr == nil {
-			_ = prodRow.Columns(&productSupplierID)
+		skuID := strings.TrimSpace(item.ProductId)
+		if skuID == "" {
+			http.Error(w, `{"error":"product_id is required for all items"}`, http.StatusBadRequest)
+			return
 		}
-		prodIter.Stop()
+		if _, exists := seenSku[skuID]; exists {
+			continue
+		}
+		seenSku[skuID] = struct{}{}
+		uniqueSkuIDs = append(uniqueSkuIDs, skuID)
+	}
 
-		if productSupplierID != "" && productSupplierID != supplierID {
+	productSuppliers, err := s.fetchProductSuppliersBySku(r.Context(), uniqueSkuIDs)
+	if err != nil {
+		log.Printf("[TRANSFERS] failed to validate product ownership: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	for _, item := range req.Items {
+		if productSupplierID, ok := productSuppliers[item.ProductId]; ok && productSupplierID != supplierID {
 			log.Printf("[TRANSFERS] cross-tenant ProductId injection blocked: product=%s belongs to %s, caller supplier=%s",
 				item.ProductId, productSupplierID, supplierID)
 			http.Error(w, `{"error":"product does not belong to your organization"}`, http.StatusForbidden)

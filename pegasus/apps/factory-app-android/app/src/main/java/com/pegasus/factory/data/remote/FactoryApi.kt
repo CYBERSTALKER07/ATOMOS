@@ -1,6 +1,7 @@
 package com.pegasus.factory.data.remote
 
 import com.pegasus.factory.data.model.*
+import kotlinx.serialization.json.JsonElement
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -17,6 +18,15 @@ interface FactoryApi {
     @GET("v1/factory/dashboard")
     suspend fun getDashboard(): Response<DashboardStats>
 
+    @GET("v1/factory/profile")
+    suspend fun getFactoryProfile(): Response<JsonElement>
+
+    @GET("v1/factory/analytics/overview")
+    suspend fun getFactoryAnalyticsOverview(
+        @Query("from") from: String? = null,
+        @Query("to") to: String? = null,
+    ): Response<JsonElement>
+
     // ── Transfers ──
     @GET("v1/factory/transfers")
     suspend fun getTransfers(
@@ -27,6 +37,9 @@ interface FactoryApi {
 
     @GET("v1/factory/transfers/{id}")
     suspend fun getTransfer(@Path("id") id: String): Response<Transfer>
+
+    @POST("v1/factory/transfers/create")
+    suspend fun createTransfer(@Body body: JsonElement): Response<JsonElement>
 
     @POST("v1/factory/transfers/{id}/transition")
     suspend fun transitionTransfer(
@@ -63,6 +76,15 @@ interface FactoryApi {
         @Query("state") state: String? = null,
     ): Response<ManifestListResponse>
 
+    @GET("v1/factory/manifests/{id}")
+    suspend fun getManifestDetail(@Path("id") id: String): Response<JsonElement>
+
+    @POST("v1/factory/manifests/{id}/{action}")
+    suspend fun transitionManifest(
+        @Path("id") id: String,
+        @Path("action") action: String,
+    ): Response<JsonElement>
+
     @POST("v1/factory/manifests/rebalance")
     suspend fun rebalanceManifest(
         @Body body: ManifestRebalanceRequest,
@@ -82,9 +104,18 @@ interface FactoryApi {
     @GET("v1/factory/fleet")
     suspend fun getFleet(): Response<VehicleListResponse>
 
+    @GET("v1/factory/fleet/drivers")
+    suspend fun getFleetDrivers(): Response<JsonElement>
+
+    @GET("v1/factory/fleet/vehicles")
+    suspend fun getFleetVehicles(): Response<JsonElement>
+
     // ── Staff ──
     @GET("v1/factory/staff")
     suspend fun getStaff(): Response<StaffListResponse>
+
+    @GET("v1/factory/staff/{id}")
+    suspend fun getStaffDetail(@Path("id") id: String): Response<JsonElement>
 
     // ── Insights ──
     @GET("v1/warehouse/replenishment/insights")

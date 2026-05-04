@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,6 +18,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/iterator"
 )
+
+var errFactoryRegisterPhoneConflict = errors.New("factory register phone already exists")
 
 // HandleFactoryLogin authenticates a factory staff member with phone + PIN
 // (primary) or phone + password (legacy fallback for pre-migration staff).
@@ -184,19 +187,6 @@ func HandleFactoryRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		// Check duplicate phone
-		dupStmt := spanner.Statement{
-			SQL:    `SELECT StaffId FROM FactoryStaff WHERE Phone = @phone LIMIT 1`,
-			Params: map[string]interface{}{"phone": req.Phone},
-		}
-		dupIter := spannerClient.Single().Query(r.Context(), dupStmt)
-		dupRow, dupErr := dupIter.Next()
-		dupIter.Stop()
-		if dupErr == nil && dupRow != nil {
-			http.Error(w, `{"error":"phone number already registered"}`, http.StatusConflict)
-			return
-		}
-
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
 			log.Printf("[FACTORY REGISTER] bcrypt error: %v", err)
@@ -208,6 +198,17 @@ func HandleFactoryRegister(spannerClient *spanner.Client) http.HandlerFunc {
 
 		var pinResult *pin.Result
 		_, txnErr := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			dupIter := txn.Query(ctx, spanner.Statement{
+				SQL:    `SELECT StaffId FROM FactoryStaff WHERE Phone = @phone LIMIT 1`,
+				Params: map[string]interface{}{"phone": req.Phone},
+			})
+			defer dupIter.Stop()
+			if _, dupErr := dupIter.Next(); dupErr == nil {
+				return errFactoryRegisterPhoneConflict
+			} else if dupErr != iterator.Done {
+				return fmt.Errorf("check duplicate phone: %w", dupErr)
+			}
+
 			var pinErr error
 			pinResult, pinErr = pin.GenerateUnique(ctx, txn, pin.EntityFactoryStaff, staffId)
 			if pinErr != nil {
@@ -221,6 +222,10 @@ func HandleFactoryRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			})
 		})
 		if txnErr != nil {
+			if errors.Is(txnErr, errFactoryRegisterPhoneConflict) {
+				http.Error(w, `{"error":"phone number already registered"}`, http.StatusConflict)
+				return
+			}
 			log.Printf("[FACTORY REGISTER] spanner insert error: %v", txnErr)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return

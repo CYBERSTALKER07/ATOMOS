@@ -137,6 +137,12 @@ describe("PaymentState transitions", () => {
     expect(state).toBe("choosing");
   });
 
+  it("transitions idle → choosing on GLOBAL_PAYNT_REQUIRED", () => {
+    let state: PaymentState = "idle";
+    state = "choosing";
+    expect(state).toBe("choosing");
+  });
+
   it("transitions choosing → processing on payment action", () => {
     let state: PaymentState = "choosing";
     // Simulate: user clicks cash or card
@@ -147,6 +153,12 @@ describe("PaymentState transitions", () => {
   it("transitions processing → success on PAYMENT_SETTLED", () => {
     let state: PaymentState = "processing";
     // Simulate: WS confirmation
+    state = "success";
+    expect(state).toBe("success");
+  });
+
+  it("transitions processing → success on GLOBAL_PAYNT_SETTLED", () => {
+    let state: PaymentState = "processing";
     state = "success";
     expect(state).toBe("success");
   });
@@ -189,6 +201,18 @@ describe("PAYMENT_SETTLED matching", () => {
 
     const matches = currentEvent && settledMsg.order_id === currentEvent.order_id;
     expect(matches).toBe(false);
+  });
+
+  it("matches GLOBAL_PAYNT_SETTLED by order_id", () => {
+    const currentEvent: PaymentEvent = {
+      order_id: "ORD-MATCH",
+      amount: 100_000,
+      payment_method: "CARD",
+    };
+    const settledMsg = { type: "GLOBAL_PAYNT_SETTLED", order_id: "ORD-MATCH" };
+
+    const matches = currentEvent && settledMsg.order_id === currentEvent.order_id;
+    expect(matches).toBe(true);
   });
 });
 

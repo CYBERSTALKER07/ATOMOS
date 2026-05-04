@@ -16,6 +16,36 @@
 import { test, expect } from '../fixtures/auth';
 
 test.describe('Factory Transfers', () => {
+  test('shell requests factory profile for live factory label', async ({ factoryPage }) => {
+    let profileRequested = false;
+    await factoryPage.route('**/v1/factory/profile', async (route) => {
+      profileRequested = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          factory_id: 'fac-1',
+          supplier_id: 'sup-1',
+          name: 'North Plant',
+          address: '',
+          lat: 0,
+          lng: 0,
+          h3_index: '',
+          region_code: '',
+          lead_time_days: 2,
+          production_capacity_vu: 1200,
+          product_types: [],
+          is_active: true,
+          created_at: '2026-01-01T00:00:00Z',
+        }),
+      });
+    });
+
+    await factoryPage.goto('http://localhost:3002/transfers');
+    await factoryPage.waitForLoadState('networkidle');
+    expect(profileRequested).toBeTruthy();
+  });
+
   test('transfer list loads with state filters', async ({ factoryPage }) => {
     await factoryPage.goto('http://localhost:3002/transfers');
     await factoryPage.waitForLoadState('networkidle');

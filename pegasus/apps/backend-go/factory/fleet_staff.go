@@ -3,6 +3,8 @@ package factory
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -17,6 +19,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/iterator"
 )
+
+var errFactoryStaffPhoneConflict = errors.New("factory staff phone already exists")
 
 // ── Factory Fleet Management ──────────────────────────────────────────────────
 // Factory-assigned drivers and vehicles (separate from warehouse/supplier fleet).
@@ -380,13 +384,28 @@ func createFactoryStaff(w http.ResponseWriter, r *http.Request, spannerClient *s
 	}
 
 	staffId := uuid.New().String()
-	m := spanner.Insert("FactoryStaff",
-		[]string{"StaffId", "FactoryId", "SupplierId", "Name", "Phone", "PasswordHash", "StaffRole", "IsActive", "CreatedAt"},
-		[]interface{}{staffId, factoryID, supplierID, req.Name, req.Phone, string(hash), req.StaffRole, true, spanner.CommitTimestamp},
-	)
 	if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		dupIter := txn.Query(ctx, spanner.Statement{
+			SQL:    `SELECT StaffId FROM FactoryStaff WHERE Phone = @phone LIMIT 1`,
+			Params: map[string]interface{}{"phone": req.Phone},
+		})
+		defer dupIter.Stop()
+		if _, dupErr := dupIter.Next(); dupErr == nil {
+			return errFactoryStaffPhoneConflict
+		} else if dupErr != iterator.Done {
+			return fmt.Errorf("check duplicate phone: %w", dupErr)
+		}
+
+		m := spanner.Insert("FactoryStaff",
+			[]string{"StaffId", "FactoryId", "SupplierId", "Name", "Phone", "PasswordHash", "StaffRole", "IsActive", "CreatedAt"},
+			[]interface{}{staffId, factoryID, supplierID, req.Name, req.Phone, string(hash), req.StaffRole, true, spanner.CommitTimestamp},
+		)
 		return txn.BufferWrite([]*spanner.Mutation{m})
 	}); err != nil {
+		if errors.Is(err, errFactoryStaffPhoneConflict) {
+			http.Error(w, `{"error":"phone number already registered"}`, http.StatusConflict)
+			return
+		}
 		log.Printf("[FACTORY STAFF] create error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return

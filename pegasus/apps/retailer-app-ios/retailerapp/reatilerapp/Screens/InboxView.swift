@@ -175,9 +175,15 @@ struct InboxView: View {
 
     private func loadOrders() async {
         let rid = AuthManager.shared.currentUser?.id ?? ""
+        if rid.isEmpty {
+            orders = []
+            loadError = true
+            isLoading = false
+            return
+        }
         isLoading = true
         loadError = false
-        do { let r: [Order] = try await api.get(path: "/v1/orders?retailer_id=\(rid)"); orders = r }
+        do { let r: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders"); orders = r }
         catch { orders = []; loadError = true }
         isLoading = false
     }

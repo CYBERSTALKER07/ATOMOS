@@ -43,7 +43,7 @@ export default function OrdersPage() {
   };
 
   const profile = getProfile();
-  const ordersUrl = profile?.id ? `/v1/orders?retailer_id=${profile.id}` : "/v1/orders";
+  const ordersUrl = profile?.id ? `/v1/retailers/${profile.id}/orders` : "/v1/orders";
   const { data: orders, loading, error, mutate } = useLiveData<Order[]>(ordersUrl, 30000);
   const [activeTab, setActiveTab] = useState<"ALL" | "ACTIVE" | "COMPLETED">("ALL");
   const [selectedId, setSelectedId] = useState<string | null>(null);

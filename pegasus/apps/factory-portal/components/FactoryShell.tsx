@@ -2,10 +2,11 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { memo, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import Icon from './Icon';
 import { useTheme, type ThemeMode } from './ThemeProvider';
+import { apiFetch } from '@/lib/auth';
 
 type NavEntry = { href: string; icon: string; label: string };
 type NavSection = { label?: string; items: NavEntry[] };
@@ -87,6 +88,7 @@ function ShellActionLink({ href, icon, label }: NavEntry) {
 export default function FactoryShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [factoryName, setFactoryName] = useState('Factory Portal');
 
   const currentEntry = useMemo(
     () => ALL_NAV_ITEMS.find((item) => isActiveRoute(pathname, item.href)) ?? ALL_NAV_ITEMS[0],
@@ -97,6 +99,25 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
     [currentEntry.href],
   );
   const pageSummary = PAGE_SUMMARIES[currentEntry.href] ?? 'Factory desktop operations workspace.';
+
+  useEffect(() => {
+    let active = true;
+    async function loadFactoryProfile() {
+      const res = await apiFetch('/v1/factory/profile');
+      if (!res.ok) return;
+      const payload = (await res.json()) as { name?: string };
+      const resolved = payload.name?.trim();
+      if (active && resolved) {
+        setFactoryName(resolved);
+      }
+    }
+    loadFactoryProfile().catch((error) => {
+      console.error('[FactoryShell] profile load failed', error);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const isBare = BARE_ROUTES.some((route) => pathname.startsWith(route));
   if (isBare) return <>{children}</>;
@@ -114,11 +135,11 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
           {!collapsed && (
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Factory workspace</p>
-              <span className="block truncate text-sm font-bold tracking-tight text-[var(--foreground)]">
-                Factory Portal
-              </span>
-            </div>
-          )}
+               <span className="block truncate text-sm font-bold tracking-tight text-[var(--foreground)]">
+                 {factoryName}
+               </span>
+             </div>
+           )}
           <button
             onClick={() => setCollapsed((value) => !value)}
             className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--background)] transition-colors hover:bg-[var(--surface)]"

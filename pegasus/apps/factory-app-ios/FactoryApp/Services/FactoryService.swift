@@ -13,6 +13,17 @@ enum FactoryService {
         try await api.get("v1/factory/dashboard")
     }
 
+    static func profile() async throws -> FactoryProfile {
+        try await api.get("v1/factory/profile")
+    }
+
+    static func analyticsOverview(from: String? = nil, to: String? = nil) async throws -> FactoryAnalyticsOverview {
+        var query: [String: String] = [:]
+        if let from { query["from"] = from }
+        if let to { query["to"] = to }
+        return try await api.get("v1/factory/analytics/overview", query: query)
+    }
+
     // MARK: - Transfers
     static func transfers(state: String? = nil, limit: Int = 50) async throws -> TransferListResponse {
         var query: [String: String] = ["limit": "\(limit)"]
@@ -26,6 +37,10 @@ enum FactoryService {
 
     static func transitionTransfer(id: String, target: String) async throws -> Transfer {
         try await api.post("v1/factory/transfers/\(id)/transition", body: TransitionRequest(targetState: target))
+    }
+
+    static func createTransfer(_ req: FactoryCreateTransferRequest) async throws -> FactoryCreateTransferResponse {
+        try await api.post("v1/factory/transfers/create", body: req)
     }
 
     // MARK: - Loading Bay
@@ -53,6 +68,15 @@ enum FactoryService {
     // MARK: - Payload Override / Manifests
     static func loadingManifests() async throws -> ManifestListResponse {
         try await api.get("v1/factory/manifests", query: ["state": "LOADING"])
+    }
+
+    static func manifestDetail(id: String) async throws -> Manifest {
+        try await api.get("v1/factory/manifests/\(id)")
+    }
+
+    static func transitionManifest(id: String, action: String) async throws -> FactoryManifestTransitionResponse {
+        struct EmptyBody: Encodable {}
+        return try await api.post("v1/factory/manifests/\(id)/\(action)", body: EmptyBody())
     }
 
     static func rebalanceManifestTransfer(sourceManifestId: String, targetManifestId: String, transferId: String) async throws -> ManifestRebalanceResponse {
@@ -85,9 +109,21 @@ enum FactoryService {
         try await api.get("v1/factory/fleet")
     }
 
+    static func fleetDrivers() async throws -> FactoryFleetDriverListResponse {
+        try await api.get("v1/factory/fleet/drivers")
+    }
+
+    static func fleetVehicles() async throws -> FactoryFleetVehicleListResponse {
+        try await api.get("v1/factory/fleet/vehicles")
+    }
+
     // MARK: - Staff
     static func staff() async throws -> StaffListResponse {
         try await api.get("v1/factory/staff")
+    }
+
+    static func staffDetail(id: String) async throws -> FactoryStaffDetail {
+        try await api.get("v1/factory/staff/\(id)")
     }
 
     // MARK: - Insights

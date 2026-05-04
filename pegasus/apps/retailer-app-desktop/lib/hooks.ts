@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from './auth';
 
 export function useLiveData<T>(url: string, interval = 0) {
@@ -6,7 +6,13 @@ export function useLiveData<T>(url: string, interval = 0) {
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const mutate = async () => {
+  const mutate = useCallback(async () => {
+    if (!url) {
+      setData(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     try {
       const res = await apiFetch(url);
       if (!res.ok) throw new Error('API fetch failed');
@@ -16,19 +22,17 @@ export function useLiveData<T>(url: string, interval = 0) {
     } catch (err: unknown) {
       setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
-      if (loading) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
-  };
+  }, [url]);
 
   useEffect(() => {
     mutate();
-    if (interval > 0) {
+    if (interval > 0 && url) {
       const pid = setInterval(mutate, interval);
       return () => clearInterval(pid);
     }
-  }, [url, interval]);
+  }, [mutate, interval, url]);
 
   return { data, mutate, error, loading };
 }

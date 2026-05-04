@@ -26,7 +26,19 @@ const EMPTY_PREDICTIONS: Prediction[] = [];
 const EMPTY_PRODUCTS: Product[] = [];
 
 export default function DashboardPage() {
-  const { data: orders, loading: loadingOrders } = useLiveData<Order[]>("/v1/orders", 30000);
+  const getProfileId = () => {
+    if (typeof localStorage === "undefined") return "";
+    try {
+      const parsed = JSON.parse(localStorage.getItem("retailer_profile") || "null") as { id?: string } | null;
+      return parsed?.id ?? "";
+    } catch {
+      return "";
+    }
+  };
+
+  const retailerID = getProfileId();
+  const ordersPath = retailerID ? `/v1/retailers/${retailerID}/orders` : "/v1/orders";
+  const { data: orders, loading: loadingOrders } = useLiveData<Order[]>(ordersPath, 30000);
   const { data: predictions, loading: loadingPred } = useLiveData<Prediction[]>("/v1/ai/predictions");
   const { data: products } = useLiveData<Product[]>("/v1/catalog/products");
   const { addToCart, items } = useCart();

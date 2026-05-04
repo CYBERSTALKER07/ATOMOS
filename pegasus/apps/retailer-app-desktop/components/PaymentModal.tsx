@@ -51,9 +51,45 @@ export default function PaymentModal() {
     }, []),
   );
 
+  useWsEvent(
+    "GLOBAL_PAYNT_REQUIRED",
+    useCallback((msg: WsMessage) => {
+      const evt: PaymentEvent = {
+        order_id: msg.order_id as string,
+        type: "PAYMENT_REQUIRED",
+        invoice_id: (msg.invoice_id as string | null | undefined) ?? null,
+        session_id: msg.session_id as string,
+        amount: msg.amount as number,
+        original_amount: msg.original_amount as number,
+        payment_method: msg.payment_method as string,
+        gateway: msg.gateway as PaymentRequiredEvent["gateway"],
+        currency: msg.currency as string,
+        available_card_gateways: msg.available_card_gateways as string[] | undefined,
+        message: (msg.message as string | undefined) ?? "",
+      };
+      setEvent(evt);
+      setState("choosing");
+      setError(null);
+      setCheckoutUrl(null);
+    }, []),
+  );
+
   // Listen for PAYMENT_SETTLED — auto-dismiss
   useWsEvent(
     "PAYMENT_SETTLED",
+    useCallback((msg: WsMessage) => {
+      if (event && msg.order_id === event.order_id) {
+        setState("success");
+        setTimeout(() => {
+          setEvent(null);
+          setState("idle");
+        }, 2000);
+      }
+    }, [event]),
+  );
+
+  useWsEvent(
+    "GLOBAL_PAYNT_SETTLED",
     useCallback((msg: WsMessage) => {
       if (event && msg.order_id === event.order_id) {
         setState("success");

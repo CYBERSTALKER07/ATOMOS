@@ -178,9 +178,25 @@ struct ActiveOrderView: View {
     // MARK: - API
 
     private func loadActiveOrders() async {
+        let rid = AuthManager.shared.currentUser?.id ?? ""
+        if rid.isEmpty {
+            activeOrders = []
+            loadError = true
+            isLoading = false
+            return
+        }
         isLoading = true
         loadError = false
-        do { let r: [Order] = try await api.get(path: "/v1/orders?state=IN_TRANSIT"); activeOrders = r }
+        do {
+            let r: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
+            var scopedOrders: [Order] = []
+            for order in r {
+                if order.status == .inTransit || order.status == .dispatched || order.status == .arrived {
+                    scopedOrders.append(order)
+                }
+            }
+            activeOrders = scopedOrders
+        }
         catch { activeOrders = []; loadError = true }
         isLoading = false
     }

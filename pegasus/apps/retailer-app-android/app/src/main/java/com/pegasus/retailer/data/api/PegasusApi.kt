@@ -24,6 +24,7 @@ import com.pegasus.retailer.data.model.UnifiedCheckoutResponse
 import com.pegasus.retailer.data.model.UpdateGlobalSettingsRequest
 import com.pegasus.retailer.data.model.UpdateSettingsRequest
 import com.pegasus.retailer.ui.screens.notifications.NotificationsResponse
+import kotlinx.serialization.json.JsonElement
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -61,6 +62,12 @@ interface PegasusApi {
         @Body body: Map<String, String>,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): ApiResponse
+
+    @POST("/v1/orders/request-cancel")
+    suspend fun requestCancelOrder(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
 
     // ── Catalog ──
     @GET("/v1/catalog/categories")
@@ -109,6 +116,21 @@ interface PegasusApi {
     @GET("/v1/retailer/profile")
     suspend fun getRetailerProfile(): Map<String, String>
 
+    @GET("/v1/retailer/family-members")
+    suspend fun getFamilyMembers(): JsonElement
+
+    @POST("/v1/retailer/family-members")
+    suspend fun createFamilyMember(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @DELETE("/v1/retailer/family-members/{memberID}")
+    suspend fun deleteFamilyMember(
+        @Path("memberID") memberId: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
     // ── Analytics ──
     @GET("/v1/retailer/analytics/expenses")
     suspend fun getRetailerExpenses(): RetailerAnalytics
@@ -139,10 +161,52 @@ interface PegasusApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): CardCheckoutResponse
 
+    @POST("/v1/retailer/shop-closed-response")
+    suspend fun shopClosedResponse(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/orders/confirm-ai")
+    suspend fun confirmAiOrder(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/orders/reject-ai")
+    suspend fun rejectAiOrder(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/orders/edit-preorder")
+    suspend fun editPreorder(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/orders/confirm-preorder")
+    suspend fun confirmPreorder(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
     // ── Empathy Engine Settings ──
     // ── Active Fulfillment ──
     @GET("/v1/retailer/active-fulfillment")
     suspend fun getActiveFulfillments(): ActiveFulfillmentsResponse
+
+    @GET("/v1/retailer/pending-payments")
+    suspend fun getPendingPayments(): JsonElement
+
+    @GET("/v1/retailer/cart/sync")
+    suspend fun getCartSync(): JsonElement
+
+    @POST("/v1/retailer/cart/sync")
+    suspend fun postCartSync(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
 
     @GET("/v1/retailer/settings/auto-order")
     suspend fun getAutoOrderSettings(): AutoOrderSettings
@@ -177,6 +241,33 @@ interface PegasusApi {
     // ── Delivery Tracking ──
     @GET("/v1/retailer/tracking")
     suspend fun getTrackingOrders(): TrackingResponse
+
+    @POST("/v1/retailer/card/initiate")
+    suspend fun initiateCard(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/card/confirm")
+    suspend fun confirmCard(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @GET("/v1/retailer/cards")
+    suspend fun getCards(): JsonElement
+
+    @POST("/v1/retailer/card/deactivate")
+    suspend fun deactivateCard(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @POST("/v1/retailer/card/default")
+    suspend fun setDefaultCard(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
 
     // ── Notifications ──
     @GET("/v1/user/notifications")

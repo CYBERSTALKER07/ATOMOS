@@ -154,7 +154,8 @@
       ],
       "notes": [
         "Retailer role-row composition now includes idempotency-guarded legacy procurement create and cancel mutations while shared order list/detail/refund compatibility reads live in orderroutes.",
-        "This extracted surface centralizes the shared retailer contract across desktop, iOS, and Android."
+        "This extracted surface centralizes the shared retailer contract across desktop, iOS, and Android.",
+        "Retailer desktop and iOS order-list consumers now target GET /v1/retailers/{retailerID}/orders, and retailer websocket payment handlers accept both PAYMENT_* and GLOBAL_PAYNT_* aliases for settlement/failure continuity."
       ]
     },
     {
@@ -182,6 +183,45 @@
         "Legacy GET /v1/fleet/manifest remains additive for compatibility while clients use GET /v1/driver/manifest.",
         "High-consequence driver mutations (/v1/order/deliver, /v1/order/confirm-offload, /v1/order/complete, /v1/order/collect-cash, /v1/delivery/arrive) now send deterministic Idempotency-Key headers from both Android and iOS clients for replay-safe retries.",
         "Driver login/profile payloads include additive dual-node fields (home_node_type, home_node_id, driver_mode, factory metadata) so one driver app role row can operate both factory-transfer and warehouse-delivery assignments."
+      ]
+    },
+    {
+      "name": "Factory role-row surface",
+      "path": "/v1/factory/{dashboard,profile,analytics/overview,transfers*,dispatch,manifests*,fleet*,staff*,supply-requests*}",
+      "owner": "pegasus/apps/backend-go/factoryroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/factory/dashboard",
+        "GET /v1/factory/profile",
+        "GET /v1/factory/analytics/overview",
+        "GET /v1/factory/transfers",
+        "GET /v1/factory/transfers/{id}",
+        "POST /v1/factory/transfers/{id}/transition",
+        "POST /v1/factory/transfers/create",
+        "POST /v1/factory/dispatch",
+        "GET /v1/factory/manifests",
+        "GET /v1/factory/manifests/{id}",
+        "POST /v1/factory/manifests/{id}/{action}",
+        "POST /v1/factory/manifests/rebalance",
+        "POST /v1/factory/manifests/cancel-transfer",
+        "POST /v1/factory/manifests/cancel",
+        "GET /v1/factory/fleet",
+        "GET /v1/factory/fleet/drivers",
+        "GET /v1/factory/fleet/vehicles",
+        "GET /v1/factory/staff",
+        "GET /v1/factory/staff/{id}",
+        "GET /v1/factory/supply-requests",
+        "PATCH /v1/factory/supply-requests/{id}"
+      ],
+      "consumers": [
+        "factory-portal dashboard and shell profile hydration",
+        "factory-app-android FactoryApi advanced factory flows",
+        "factory-app-ios FactoryService advanced factory flows"
+      ],
+      "notes": [
+        "Factory portal shell now hydrates identity from GET /v1/factory/profile instead of static labeling.",
+        "Android and iOS clients expose additive advanced-factory endpoint methods (transfers/create, manifests detail/transition, fleet split lists, staff detail) while preserving existing operator-loop behavior.",
+        "Factory live update policy remains polling-based across portal, Android, and iOS dashboards at 30-second cadence; no /v1/ws/factory route is mounted."
       ]
     },
     {
