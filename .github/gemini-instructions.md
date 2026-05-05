@@ -34,6 +34,13 @@ For every request, enforce the following strict retrieval loop:
    4. `npm --prefix pegasus run ast:graph -- --symbol <TargetSymbol> --limit 50`
 - The command results are part of required context gathering. Do not edit code until these queries confirm definition shape + usage blast radius.
 - Read `pegasus/context/technology-inventory.md` and `pegasus/context/technology-inventory.json` as part of required context gathering.
+
+### Sequential Thinking MCP Integration (Mandatory)
+
+- For every non-trivial technical task, plan review, architecture decision, audit, debugging session, migration, or multi-step implementation, use the `sequential-thinking` MCP server's `sequential_thinking` tool before editing or finalizing an answer.
+- Use sequential thinking to break the task into steps, revise the plan when new evidence changes the approach, branch when comparing viable alternatives, and continue until the execution path is clear.
+- Treat sequential thinking output as internal reasoning support. Final user-facing replies should summarize decisions, risks, and completed work rather than exposing raw private reasoning traces.
+
 - After applying edits that alter symbols, architecture, services, dependencies, or integrations, re-run `ast:index` and update all sync files in the same change set:
    1. `.github/ACT.md`
    2. `.github/copilot-instructions.md`

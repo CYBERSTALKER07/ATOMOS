@@ -302,7 +302,7 @@ func (s *Service) readCountryConfig(ctx context.Context, countryCode string) *Co
 		[]string{
 			"CountryCode", "CountryName", "Timezone", "CurrencyCode",
 			"CurrencyDecimalPlaces", "DistanceUnit", "DefaultVUConversion",
-			"MapsProvider", "LLMProvider", "PaymentGateways", "SMSProvider",
+			"MapsProvider", "LLMProvider", "GlobalPayntGateways", "SMSProvider",
 			"NotificationFallbackOrder", "LegalRetentionDays", "GridSystem",
 			"BreachRadiusMeters", "ShopClosedGraceMinutes", "ShopClosedEscalationMinutes",
 			"OfflineModeDurationMinutes", "CashCustodyAlertHours",
@@ -367,7 +367,7 @@ func (s *Service) readSupplierOverride(ctx context.Context, supplierID, countryC
 			"SupplierId", "CountryCode", "BreachRadiusMeters",
 			"ShopClosedGraceMinutes", "ShopClosedEscalationMinutes",
 			"OfflineModeDurationMinutes", "CashCustodyAlertHours",
-			"PaymentGateways", "NotificationFallbackOrder",
+			"GlobalPayntGateways", "NotificationFallbackOrder",
 			"SMSProvider", "MapsProvider", "LLMProvider",
 		})
 	if err != nil {
@@ -477,7 +477,7 @@ func (s *Service) UpsertSupplierOverride(ctx context.Context, o *SupplierOverrid
 			"SupplierId", "CountryCode",
 			"BreachRadiusMeters", "ShopClosedGraceMinutes", "ShopClosedEscalationMinutes",
 			"OfflineModeDurationMinutes", "CashCustodyAlertHours",
-			"PaymentGateways", "NotificationFallbackOrder",
+			"GlobalPayntGateways", "NotificationFallbackOrder",
 			"SMSProvider", "MapsProvider", "LLMProvider",
 			"UpdatedAt",
 		}
@@ -642,7 +642,7 @@ func SeedDefaultConfigs(ctx context.Context, client *spanner.Client) {
 				DefaultVUConversion         float64   `spanner:"DefaultVUConversion"`
 				MapsProvider                string    `spanner:"MapsProvider"`
 				LLMProvider                 string    `spanner:"LLMProvider"`
-				PaymentGateways             string    `spanner:"PaymentGateways"`
+				PaymentGateways             string    `spanner:"GlobalPayntGateways"`
 				SMSProvider                 string    `spanner:"SMSProvider"`
 				NotificationFallbackOrder   string    `spanner:"NotificationFallbackOrder"`
 				LegalRetentionDays          int64     `spanner:"LegalRetentionDays"`
@@ -732,7 +732,7 @@ func (s *Service) UpsertConfig(ctx context.Context, cfg *CountryConfig) error {
 			[]string{
 				"CountryCode", "CountryName", "Timezone", "CurrencyCode", "CurrencyDecimalPlaces",
 				"DistanceUnit", "DefaultVUConversion", "MapsProvider", "LLMProvider",
-				"PaymentGateways", "SMSProvider", "NotificationFallbackOrder", "LegalRetentionDays",
+				"GlobalPayntGateways", "SMSProvider", "NotificationFallbackOrder", "LegalRetentionDays",
 				"GridSystem", "BreachRadiusMeters", "ShopClosedGraceMinutes", "ShopClosedEscalationMinutes",
 				"OfflineModeDurationMinutes", "CashCustodyAlertHours", "IsActive", "CreatedAt", "UpdatedAt",
 			},

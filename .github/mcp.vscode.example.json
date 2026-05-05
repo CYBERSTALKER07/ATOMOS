@@ -8,6 +8,14 @@
         "@heroui/react-mcp@latest"
       ]
     },
+    "sequential-thinking": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
     "void-ast-engine": {
       "type": "stdio",
       "command": "node",

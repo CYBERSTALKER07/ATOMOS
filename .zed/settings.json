@@ -1,10 +1,33 @@
 {
-  "theme": {
-    "mode": "dark",
-    "dark": "SRD's Synthwave Dark",
-    "light": "SRD's Synthwave Dark",
+  "theme": "SRD's Synthwave Dark",
+  "ui_font_size": 16,
+  "buffer_font_size": 15,
+  "window.background_appearance": "transparent",
+  "window.opacity": 0.7,
+  "window.blur": true,
+  "theme_overrides": {
+    "SRD's Synthwave Dark": {
+      "background": "#00000000",
+      "editor.background": "#00000000",
+      "pane.background": "#00000000",
+      "surface.background": "#00000000",
+      "panel.background": "#1a0030cc",
+      "status_bar.background": "#1a0030cc",
+      "title_bar.background": "#1a0030cc",
+      "tab_bar.background": "#1a0030cc",
+    },
+  },
+  "git_panel": {
+    "tree_view": false,
   },
   "context_servers": {
+    "refero": { "enabled": true },
+    "mcp-server-context7": {
+      "enabled": true,
+      "settings": {
+        "context7_api_key": "ctx7sk-8d86082e-30d7-4d08-a9ab-693b6c000af2",
+      },
+    },
     "void-ast-engine": {
       "command": "/opt/homebrew/bin/node",
       "args": [
@@ -13,13 +36,6 @@
       "env": {
         "VOID_AST_ENGINE_PATH": "/Users/shakhzod/Desktop/V.O.I.D/.agents/extensions/ast-engine/engine.mjs",
         "VOID_AST_ROOT": "/Users/shakhzod/Desktop/V.O.I.D/pegasus",
-        "VOID_AST_INDEX": "/Users/shakhzod/Desktop/V.O.I.D/.agents/extensions/ast-engine/.cache/pegasus-index.json",
-      },
-    },
-    "refero": {
-      "endpoint": "https://api.refero.design/mcp",
-      "headers": {
-        "Authorization": "Bearer mcp-y0ATChAzL8rWjJ1Z",
       },
     },
   },

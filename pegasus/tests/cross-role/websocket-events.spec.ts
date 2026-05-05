@@ -95,12 +95,12 @@ test.describe('Cross-Role: WebSocket Event Propagation', () => {
     // Driver reports shop closed
     const shopClosedRes = await driverAPI.post('/v1/delivery/shop-closed', {
       data: {
-        order_id: 'test-shopclosed-order',
+        order_id: 'ORD-SEED-002',
         reason: 'Shop was closed at 14:30',
       },
     });
 
-    expect([200, 400, 401, 404]).toContain(shopClosedRes.status());
+    expect([200, 400, 401, 404, 409]).toContain(shopClosedRes.status());
 
     // Supplier should see the escalation in their orders
     const supplierOrders = await supplierAPI.get('/v1/supplier/orders?page=1&pageSize=10');

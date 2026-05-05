@@ -2,9 +2,13 @@
  * V.O.I.D. Playwright — Auth Fixtures
  *
  * Provides authenticated browser contexts for every role in the ecosystem.
- * Each fixture logs in via the backend API, sets the correct cookie,
+ * Each fixture reuses a short-lived backend token cache, sets the correct cookie,
  * and returns a ready-to-use Page object.
  */
+import { createHash } from 'node:crypto';
+import { promises as fs } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { test as base, type Page, type BrowserContext, type APIRequestContext } from '@playwright/test';
 
 const env = (globalThis as typeof globalThis & {
@@ -12,6 +16,20 @@ const env = (globalThis as typeof globalThis & {
 }).process?.env ?? {};
 
 const API = env.API_BASE_URL || 'http://localhost:8080';
+const AUTH_CACHE_DIR = path.join(
+  env.PLAYWRIGHT_AUTH_CACHE_DIR || os.tmpdir(),
+  'pegasus-playwright-auth',
+);
+const AUTH_CACHE_TTL_MS = Number.parseInt(env.PLAYWRIGHT_AUTH_CACHE_TTL_MS || '300000', 10);
+const AUTH_CACHE_WAIT_MS = 15_000;
+const AUTH_CACHE_POLL_MS = 200;
+
+type LoginResponse = { token: string; [key: string]: unknown };
+
+interface CachedLoginResponse {
+  createdAt: number;
+  response: LoginResponse;
+}
 
 /* ── Credential types per role ── */
 export interface SupplierCredentials { email: string; password: string }
@@ -48,17 +66,131 @@ const PAYLOADER_CREDS: PayloaderCredentials = {
 };
 
 /* ── Login helpers (API-level, returns JWT) ── */
-async function loginViaAPI(
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function loginCacheKey(endpoint: string, body: object) {
+  return createHash('sha256')
+    .update(JSON.stringify({ api: API, endpoint, body }))
+    .digest('hex');
+}
+
+function cachePaths(cacheKey: string) {
+  return {
+    cacheFile: path.join(AUTH_CACHE_DIR, `${cacheKey}.json`),
+    lockFile: path.join(AUTH_CACHE_DIR, `${cacheKey}.lock`),
+  };
+}
+
+async function readCachedLogin(cacheFile: string): Promise<LoginResponse | null> {
+  try {
+    const raw = await fs.readFile(cacheFile, 'utf8');
+    const cached = JSON.parse(raw) as CachedLoginResponse;
+    if (!cached.createdAt || !cached.response?.token) {
+      return null;
+    }
+    if (Date.now() - cached.createdAt > AUTH_CACHE_TTL_MS) {
+      return null;
+    }
+    return cached.response;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null;
+    }
+    return null;
+  }
+}
+
+async function writeCachedLogin(cacheFile: string, response: LoginResponse) {
+  const tempFile = `${cacheFile}.${process.pid}.${Date.now()}.tmp`;
+  const payload: CachedLoginResponse = {
+    createdAt: Date.now(),
+    response,
+  };
+  await fs.writeFile(tempFile, JSON.stringify(payload), 'utf8');
+  await fs.rename(tempFile, cacheFile);
+}
+
+async function waitForCachedLogin(cacheFile: string, lockFile: string): Promise<LoginResponse | null> {
+  const deadline = Date.now() + AUTH_CACHE_WAIT_MS;
+  while (Date.now() < deadline) {
+    const cached = await readCachedLogin(cacheFile);
+    if (cached) {
+      return cached;
+    }
+
+    try {
+      await fs.access(lockFile);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return null;
+      }
+    }
+
+    await sleep(AUTH_CACHE_POLL_MS);
+  }
+
+  return null;
+}
+
+async function performLogin(
   request: APIRequestContext,
   endpoint: string,
   body: object,
-): Promise<{ token: string; [key: string]: unknown }> {
+): Promise<LoginResponse> {
   const res = await request.post(`${API}${endpoint}`, { data: body });
   if (!res.ok()) {
     const text = await res.text();
     throw new Error(`Login failed [${res.status()}] ${endpoint}: ${text}`);
   }
   return res.json();
+}
+
+async function loginViaAPI(
+  request: APIRequestContext,
+  endpoint: string,
+  body: object,
+): Promise<LoginResponse> {
+  const cacheKey = loginCacheKey(endpoint, body);
+  const { cacheFile, lockFile } = cachePaths(cacheKey);
+
+  await fs.mkdir(AUTH_CACHE_DIR, { recursive: true });
+
+  const cached = await readCachedLogin(cacheFile);
+  if (cached) {
+    return cached;
+  }
+
+  let lockHandle: Awaited<ReturnType<typeof fs.open>> | null = null;
+  try {
+    lockHandle = await fs.open(lockFile, 'wx');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+      const awaited = await waitForCachedLogin(cacheFile, lockFile);
+      if (awaited) {
+        return awaited;
+      }
+    } else {
+      throw error;
+    }
+  }
+
+  try {
+    const rechecked = await readCachedLogin(cacheFile);
+    if (rechecked) {
+      return rechecked;
+    }
+
+    const response = await performLogin(request, endpoint, body);
+    await writeCachedLogin(cacheFile, response);
+    return response;
+  } finally {
+    if (lockHandle) {
+      await lockHandle.close();
+      await fs.rm(lockFile, { force: true });
+    }
+  }
 }
 
 async function supplierLogin(request: APIRequestContext, creds = SUPPLIER_CREDS) {

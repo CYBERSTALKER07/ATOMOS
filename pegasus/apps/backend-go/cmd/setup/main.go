@@ -70,6 +70,11 @@ func main() {
 	// 3. Create Spanner Instance (if not exists)
 	parentName := fmt.Sprintf("projects/%s", cfg.SpannerProject)
 	instanceName := fmt.Sprintf("%s/instances/%s", parentName, cfg.SpannerInstance)
+	ddlStatements, err := loadDDLStatements(canonicalSchemaPath)
+	if err != nil {
+		log.Fatalf("Failed to load canonical schema %s: %v", canonicalSchemaPath, err)
+	}
+	dbName := fmt.Sprintf("%s/databases/%s", instanceName, cfg.SpannerDatabase)
 
 	log.Printf("Checking instance: %s", instanceName)
 	_, err = instanceAdmin.GetInstance(ctx, &instancepb.GetInstanceRequest{
@@ -78,465 +83,478 @@ func main() {
 	if err != nil {
 		log.Printf("Instance not found, creating it...")
 		req := &instancepb.CreateInstanceRequest{
-			ddlStatements, err := loadDDLStatements(canonicalSchemaPath)
-			if err != nil {
-				log.Fatalf("Failed to load canonical schema %s: %v", canonicalSchemaPath, err)
-			}
-
-			// 4. Create Database and apply canonical DDL
+			Parent:     parentName,
 			InstanceId: cfg.SpannerInstance,
-		`CREATE INDEX Idx_AuditLog_BySupplier ON InventoryAuditLog(SupplierId)`,
-		`CREATE INDEX Idx_AuditLog_ByProduct  ON InventoryAuditLog(ProductId)`,
+			Instance: &instancepb.Instance{
+				Config:      fmt.Sprintf("projects/%s/instanceConfigs/emulator-config", cfg.SpannerProject),
+				DisplayName: cfg.SpannerInstance,
+				NodeCount:   1,
+			},
+		}
+		op, err := instanceAdmin.CreateInstance(ctx, req)
+		if err != nil {
+			log.Fatalf("Failed to trigger instance creation: %v", err)
+		}
+		if _, err := op.Wait(ctx); err != nil {
+			log.Fatalf("Failed to create instance: %v", err)
+		}
+		log.Println("Instance created.")
+		/*
+			`CREATE INDEX Idx_AuditLog_BySupplier ON InventoryAuditLog(SupplierId)`,
+			`CREATE INDEX Idx_AuditLog_ByProduct  ON InventoryAuditLog(ProductId)`,
 
-		`CREATE TABLE WarehouseStaff (
-			WorkerId    STRING(36)  NOT NULL,
-			SupplierId  STRING(36)  NOT NULL,
-			Name        STRING(MAX) NOT NULL,
-			Phone       STRING(20)  NOT NULL,
-			PinHash     STRING(MAX) NOT NULL,
-			IsActive    BOOL        NOT NULL,
-			CreatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (WorkerId)`,
-		`CREATE INDEX Idx_WarehouseStaff_BySupplierId ON WarehouseStaff(SupplierId)`,
-		`CREATE INDEX Idx_WarehouseStaff_ByPhone ON WarehouseStaff(Phone)`,
+			`CREATE TABLE WarehouseStaff (
+				WorkerId    STRING(36)  NOT NULL,
+				SupplierId  STRING(36)  NOT NULL,
+				Name        STRING(MAX) NOT NULL,
+				Phone       STRING(20)  NOT NULL,
+				PinHash     STRING(MAX) NOT NULL,
+				IsActive    BOOL        NOT NULL,
+				CreatedAt   TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (WorkerId)`,
+			`CREATE INDEX Idx_WarehouseStaff_BySupplierId ON WarehouseStaff(SupplierId)`,
+			`CREATE INDEX Idx_WarehouseStaff_ByPhone ON WarehouseStaff(Phone)`,
 
-		// ── SUPPLIER PAYMENT GATEWAY VAULT ──
-		`CREATE TABLE SupplierPaymentConfigs (
-			ConfigId     STRING(36)  NOT NULL,
-			SupplierId   STRING(36)  NOT NULL,
-			GatewayName  STRING(20)  NOT NULL,
-			MerchantId   STRING(MAX) NOT NULL,
-			ServiceId    STRING(MAX),
-			SecretKey    BYTES(MAX)  NOT NULL,
-			IsActive     BOOL        NOT NULL DEFAULT (true),
-			CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-			UpdatedAt    TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
-			CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'GLOBAL_PAY'))
-		) PRIMARY KEY (ConfigId)`,
-		`CREATE INDEX Idx_SupplierPaymentConfigs_BySupplierId ON SupplierPaymentConfigs(SupplierId)`,
-		`CREATE UNIQUE INDEX Idx_SupplierPaymentConfigs_Unique ON SupplierPaymentConfigs(SupplierId, GatewayName)`,
+			// ── SUPPLIER PAYMENT GATEWAY VAULT ──
+			`CREATE TABLE SupplierPaymentConfigs (
+				ConfigId     STRING(36)  NOT NULL,
+				SupplierId   STRING(36)  NOT NULL,
+				GatewayName  STRING(20)  NOT NULL,
+				MerchantId   STRING(MAX) NOT NULL,
+				ServiceId    STRING(MAX),
+				SecretKey    BYTES(MAX)  NOT NULL,
+				IsActive     BOOL        NOT NULL DEFAULT (true),
+				CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+				UpdatedAt    TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
+				CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'GLOBAL_PAY'))
+			) PRIMARY KEY (ConfigId)`,
+			`CREATE INDEX Idx_SupplierPaymentConfigs_BySupplierId ON SupplierPaymentConfigs(SupplierId)`,
+			`CREATE UNIQUE INDEX Idx_SupplierPaymentConfigs_Unique ON SupplierPaymentConfigs(SupplierId, GatewayName)`,
 
-		// ── GATEWAY ONBOARDING SESSIONS (SUPPLIER CONNECT) ──
-		`CREATE TABLE GatewayOnboardingSessions (
-			SessionId      STRING(36)  NOT NULL,
-			SupplierId     STRING(36)  NOT NULL,
-			Gateway        STRING(20)  NOT NULL,
-			Status         STRING(30)  NOT NULL DEFAULT ('CREATED'),
-			StateNonce     STRING(128),
-			ReturnSurface  STRING(10)  NOT NULL DEFAULT ('web'),
-			RedirectUrl    STRING(MAX),
-			ErrorMessage   STRING(MAX),
-			ExpiresAt      TIMESTAMP   NOT NULL,
-			CreatedAt      TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-			UpdatedAt      TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
-			CONSTRAINT CHK_OnboardStatus CHECK (Status IN ('CREATED', 'PENDING', 'COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED'))
-		) PRIMARY KEY (SessionId)`,
-		`CREATE INDEX Idx_GatewayOnboarding_BySupplierId ON GatewayOnboardingSessions(SupplierId)`,
-		`CREATE INDEX Idx_GatewayOnboarding_ByStatus ON GatewayOnboardingSessions(Status)`,
+			// ── GATEWAY ONBOARDING SESSIONS (SUPPLIER CONNECT) ──
+			`CREATE TABLE GatewayOnboardingSessions (
+				SessionId      STRING(36)  NOT NULL,
+				SupplierId     STRING(36)  NOT NULL,
+				Gateway        STRING(20)  NOT NULL,
+				Status         STRING(30)  NOT NULL DEFAULT ('CREATED'),
+				StateNonce     STRING(128),
+				ReturnSurface  STRING(10)  NOT NULL DEFAULT ('web'),
+				RedirectUrl    STRING(MAX),
+				ErrorMessage   STRING(MAX),
+				ExpiresAt      TIMESTAMP   NOT NULL,
+				CreatedAt      TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+				UpdatedAt      TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
+				CONSTRAINT CHK_OnboardStatus CHECK (Status IN ('CREATED', 'PENDING', 'COMPLETED', 'FAILED', 'CANCELLED', 'EXPIRED'))
+			) PRIMARY KEY (SessionId)`,
+			`CREATE INDEX Idx_GatewayOnboarding_BySupplierId ON GatewayOnboardingSessions(SupplierId)`,
+			`CREATE INDEX Idx_GatewayOnboarding_ByStatus ON GatewayOnboardingSessions(Status)`,
 
-		// ── PAYMENT SESSIONS (PHASE 13: DURABLE PAYMENT SESSION ENGINE) ──
-		`CREATE TABLE PaymentSessions (
-			SessionId         STRING(36)  NOT NULL,
-			OrderId           STRING(36)  NOT NULL,
-			RetailerId        STRING(36)  NOT NULL,
-			SupplierId        STRING(36)  NOT NULL,
-			Gateway           STRING(20)  NOT NULL,
-			LockedAmount   INT64       NOT NULL,
-			Currency          STRING(3)   NOT NULL DEFAULT ('UZS'),
-			Status            STRING(30)  NOT NULL DEFAULT ('CREATED'),
-			CurrentAttemptNo  INT64       NOT NULL DEFAULT (0),
-			InvoiceId         STRING(36),
-			RedirectUrl       STRING(MAX),
-			ProviderReference STRING(MAX),
-			ExpiresAt         TIMESTAMP,
-			LastErrorCode     STRING(50),
-			LastErrorMessage  STRING(MAX),
-			CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-			UpdatedAt         TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
-			SettledAt         TIMESTAMP,
-			CONSTRAINT CHK_SessionStatus CHECK (Status IN ('CREATED', 'PENDING', 'SETTLED', 'FAILED', 'EXPIRED', 'CANCELLED'))
-		) PRIMARY KEY (SessionId)`,
-		`CREATE INDEX Idx_PaymentSessions_ByOrderId ON PaymentSessions(OrderId)`,
-		`CREATE INDEX Idx_PaymentSessions_BySupplierId ON PaymentSessions(SupplierId)`,
-		`CREATE INDEX Idx_PaymentSessions_ByStatus ON PaymentSessions(Status)`,
+			// ── PAYMENT SESSIONS (PHASE 13: DURABLE PAYMENT SESSION ENGINE) ──
+			`CREATE TABLE PaymentSessions (
+				SessionId         STRING(36)  NOT NULL,
+				OrderId           STRING(36)  NOT NULL,
+				RetailerId        STRING(36)  NOT NULL,
+				SupplierId        STRING(36)  NOT NULL,
+				Gateway           STRING(20)  NOT NULL,
+				LockedAmount   INT64       NOT NULL,
+				Currency          STRING(3)   NOT NULL DEFAULT ('UZS'),
+				Status            STRING(30)  NOT NULL DEFAULT ('CREATED'),
+				CurrentAttemptNo  INT64       NOT NULL DEFAULT (0),
+				InvoiceId         STRING(36),
+				RedirectUrl       STRING(MAX),
+				ProviderReference STRING(MAX),
+				ExpiresAt         TIMESTAMP,
+				LastErrorCode     STRING(50),
+				LastErrorMessage  STRING(MAX),
+				CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+				UpdatedAt         TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
+				SettledAt         TIMESTAMP,
+				CONSTRAINT CHK_SessionStatus CHECK (Status IN ('CREATED', 'PENDING', 'SETTLED', 'FAILED', 'EXPIRED', 'CANCELLED'))
+			) PRIMARY KEY (SessionId)`,
+			`CREATE INDEX Idx_PaymentSessions_ByOrderId ON PaymentSessions(OrderId)`,
+			`CREATE INDEX Idx_PaymentSessions_BySupplierId ON PaymentSessions(SupplierId)`,
+			`CREATE INDEX Idx_PaymentSessions_ByStatus ON PaymentSessions(Status)`,
 
-		`CREATE TABLE PaymentAttempts (
-			AttemptId             STRING(36)  NOT NULL,
-			SessionId             STRING(36)  NOT NULL,
-			AttemptNo             INT64       NOT NULL,
-			Gateway               STRING(20)  NOT NULL,
-			ProviderTransactionId STRING(64),
-			Status                STRING(30)  NOT NULL DEFAULT ('INITIATED'),
-			FailureCode           STRING(50),
-			FailureMessage        STRING(MAX),
-			RequestDigest         STRING(MAX),
-			StartedAt             TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-			FinishedAt            TIMESTAMP,
-			CONSTRAINT CHK_AttemptStatus CHECK (Status IN ('INITIATED', 'REDIRECTED', 'PROCESSING', 'SUCCESS', 'FAILED', 'CANCELLED', 'TIMED_OUT'))
-		) PRIMARY KEY (AttemptId)`,
-		`CREATE INDEX Idx_PaymentAttempts_BySessionId ON PaymentAttempts(SessionId)`,
-		`CREATE INDEX Idx_PaymentAttempts_ByProviderTxn ON PaymentAttempts(ProviderTransactionId)`,
+			`CREATE TABLE PaymentAttempts (
+				AttemptId             STRING(36)  NOT NULL,
+				SessionId             STRING(36)  NOT NULL,
+				AttemptNo             INT64       NOT NULL,
+				Gateway               STRING(20)  NOT NULL,
+				ProviderTransactionId STRING(64),
+				Status                STRING(30)  NOT NULL DEFAULT ('INITIATED'),
+				FailureCode           STRING(50),
+				FailureMessage        STRING(MAX),
+				RequestDigest         STRING(MAX),
+				StartedAt             TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+				FinishedAt            TIMESTAMP,
+				CONSTRAINT CHK_AttemptStatus CHECK (Status IN ('INITIATED', 'REDIRECTED', 'PROCESSING', 'SUCCESS', 'FAILED', 'CANCELLED', 'TIMED_OUT'))
+			) PRIMARY KEY (AttemptId)`,
+			`CREATE INDEX Idx_PaymentAttempts_BySessionId ON PaymentAttempts(SessionId)`,
+			`CREATE INDEX Idx_PaymentAttempts_ByProviderTxn ON PaymentAttempts(ProviderTransactionId)`,
 
-		// ── Vector H Phase 2: ETA & Returning-to-Warehouse ────────────────────
-		// Per-stop ETA columns written by routing/eta.go on driver depart (traffic-aware)
-		// and refreshed after each delivery completion from driver's current position.
-		`ALTER TABLE Orders ADD COLUMN EstimatedArrivalAt TIMESTAMP`,
-		`ALTER TABLE Orders ADD COLUMN EstimatedDurationSec INT64`,
-		`ALTER TABLE Orders ADD COLUMN EstimatedDistanceM INT64`,
+			// ── Vector H Phase 2: ETA & Returning-to-Warehouse ────────────────────
+			// Per-stop ETA columns written by routing/eta.go on driver depart (traffic-aware)
+			// and refreshed after each delivery completion from driver's current position.
+			`ALTER TABLE Orders ADD COLUMN EstimatedArrivalAt TIMESTAMP`,
+			`ALTER TABLE Orders ADD COLUMN EstimatedDurationSec INT64`,
+			`ALTER TABLE Orders ADD COLUMN EstimatedDistanceM INT64`,
 
-		// Driver-level return-to-warehouse ETA. Populated when truck enters RETURNING state.
-		`ALTER TABLE Drivers ADD COLUMN EstimatedReturnAt TIMESTAMP`,
-		`ALTER TABLE Drivers ADD COLUMN ReturnDurationSec INT64`,
+			// Driver-level return-to-warehouse ETA. Populated when truck enters RETURNING state.
+			`ALTER TABLE Drivers ADD COLUMN EstimatedReturnAt TIMESTAMP`,
+			`ALTER TABLE Drivers ADD COLUMN ReturnDurationSec INT64`,
 
-		// ── Phase 2: Missing Infrastructure Tables ────────────────────────────
+			// ── Phase 2: Missing Infrastructure Tables ────────────────────────────
 
-		// Device tokens for FCM / APNs push notifications
-		`CREATE TABLE DeviceTokens (
-			TokenId   STRING(36)  NOT NULL,
-			UserId    STRING(36)  NOT NULL,
-			Role      STRING(20)  NOT NULL,
-			Platform  STRING(10)  NOT NULL,
-			Token     STRING(MAX) NOT NULL,
-			CreatedAt TIMESTAMP OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (TokenId)`,
-		`CREATE UNIQUE INDEX Idx_DeviceTokens_ByUserPlatform ON DeviceTokens(UserId, Platform)`,
-		`CREATE INDEX Idx_DeviceTokens_ByUser ON DeviceTokens(UserId)`,
+			// Device tokens for FCM / APNs push notifications
+			`CREATE TABLE DeviceTokens (
+				TokenId   STRING(36)  NOT NULL,
+				UserId    STRING(36)  NOT NULL,
+				Role      STRING(20)  NOT NULL,
+				Platform  STRING(10)  NOT NULL,
+				Token     STRING(MAX) NOT NULL,
+				CreatedAt TIMESTAMP OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (TokenId)`,
+			`CREATE UNIQUE INDEX Idx_DeviceTokens_ByUserPlatform ON DeviceTokens(UserId, Platform)`,
+			`CREATE INDEX Idx_DeviceTokens_ByUser ON DeviceTokens(UserId)`,
 
-		// Notification log
-		`CREATE TABLE Notifications (
-			NotificationId STRING(36)  NOT NULL,
-			RecipientId    STRING(36)  NOT NULL,
-			RecipientRole  STRING(20)  NOT NULL,
-			Type           STRING(50)  NOT NULL,
-			Title          STRING(200) NOT NULL,
-			Body           STRING(MAX),
-			Payload        STRING(MAX),
-			Channel        STRING(20),
-			ReadAt         TIMESTAMP,
-			CreatedAt      TIMESTAMP OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (NotificationId)`,
-		`CREATE INDEX Idx_Notifications_ByRecipient ON Notifications(RecipientId, CreatedAt DESC)`,
+			// Notification log
+			`CREATE TABLE Notifications (
+				NotificationId STRING(36)  NOT NULL,
+				RecipientId    STRING(36)  NOT NULL,
+				RecipientRole  STRING(20)  NOT NULL,
+				Type           STRING(50)  NOT NULL,
+				Title          STRING(200) NOT NULL,
+				Body           STRING(MAX),
+				Payload        STRING(MAX),
+				Channel        STRING(20),
+				ReadAt         TIMESTAMP,
+				CreatedAt      TIMESTAMP OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (NotificationId)`,
+			`CREATE INDEX Idx_Notifications_ByRecipient ON Notifications(RecipientId, CreatedAt DESC)`,
 
-		// Immutable audit trail
-		`CREATE TABLE AuditLog (
-			LogId        STRING(36)  NOT NULL,
-			ActorId      STRING(36)  NOT NULL,
-			ActorRole    STRING(20)  NOT NULL,
-			Action       STRING(50)  NOT NULL,
-			ResourceType STRING(30)  NOT NULL,
-			ResourceId   STRING(36)  NOT NULL,
-			Metadata     STRING(MAX),
-			CreatedAt    TIMESTAMP OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (LogId)`,
-		`CREATE INDEX Idx_AuditLog_ByResource ON AuditLog(ResourceType, ResourceId, CreatedAt DESC)`,
-		`CREATE INDEX Idx_AuditLog_ByActor ON AuditLog(ActorId, CreatedAt DESC)`,
+			// Immutable audit trail
+			`CREATE TABLE AuditLog (
+				LogId        STRING(36)  NOT NULL,
+				ActorId      STRING(36)  NOT NULL,
+				ActorRole    STRING(20)  NOT NULL,
+				Action       STRING(50)  NOT NULL,
+				ResourceType STRING(30)  NOT NULL,
+				ResourceId   STRING(36)  NOT NULL,
+				Metadata     STRING(MAX),
+				CreatedAt    TIMESTAMP OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (LogId)`,
+			`CREATE INDEX Idx_AuditLog_ByResource ON AuditLog(ResourceType, ResourceId, CreatedAt DESC)`,
+			`CREATE INDEX Idx_AuditLog_ByActor ON AuditLog(ActorId, CreatedAt DESC)`,
 
-		// Server-side retailer cart persistence
-		`CREATE TABLE RetailerCarts (
-			CartId       STRING(36)  NOT NULL,
-			RetailerId   STRING(36)  NOT NULL,
-			SupplierId   STRING(36)  NOT NULL,
-			SkuId        STRING(36)  NOT NULL,
-			Quantity     INT64       NOT NULL,
-			UnitPrice INT64       NOT NULL,
-			AddedAt      TIMESTAMP OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (CartId)`,
-		`CREATE INDEX Idx_RetailerCarts_ByRetailer ON RetailerCarts(RetailerId)`,
-		`CREATE INDEX Idx_RetailerCarts_ByRetailerSupplier ON RetailerCarts(RetailerId, SupplierId)`,
+			// Server-side retailer cart persistence
+			`CREATE TABLE RetailerCarts (
+				CartId       STRING(36)  NOT NULL,
+				RetailerId   STRING(36)  NOT NULL,
+				SupplierId   STRING(36)  NOT NULL,
+				SkuId        STRING(36)  NOT NULL,
+				Quantity     INT64       NOT NULL,
+				UnitPrice INT64       NOT NULL,
+				AddedAt      TIMESTAMP OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (CartId)`,
+			`CREATE INDEX Idx_RetailerCarts_ByRetailer ON RetailerCarts(RetailerId)`,
+			`CREATE INDEX Idx_RetailerCarts_ByRetailerSupplier ON RetailerCarts(RetailerId, SupplierId)`,
 
-		// Distributed cron job locking
-		`CREATE TABLE ScheduledJobs (
-			JobId      STRING(36)  NOT NULL,
-			JobName    STRING(100) NOT NULL,
-			LastRunAt  TIMESTAMP,
-			NextRunAt  TIMESTAMP,
-			Status     STRING(20)  NOT NULL DEFAULT ('IDLE'),
-			LockHolder STRING(100),
-			LockExpiry TIMESTAMP,
-			CONSTRAINT CHK_JobStatus CHECK (Status IN ('IDLE', 'RUNNING', 'FAILED'))
-		) PRIMARY KEY (JobId)`,
+			// Distributed cron job locking
+			`CREATE TABLE ScheduledJobs (
+				JobId      STRING(36)  NOT NULL,
+				JobName    STRING(100) NOT NULL,
+				LastRunAt  TIMESTAMP,
+				NextRunAt  TIMESTAMP,
+				Status     STRING(20)  NOT NULL DEFAULT ('IDLE'),
+				LockHolder STRING(100),
+				LockExpiry TIMESTAMP,
+				CONSTRAINT CHK_JobStatus CHECK (Status IN ('IDLE', 'RUNNING', 'FAILED'))
+			) PRIMARY KEY (JobId)`,
 
-		// Missing indexes on existing tables
-		`CREATE INDEX Idx_Orders_ByRetailerState ON Orders(RetailerId, State)`,
-		`CREATE INDEX Idx_PaymentSessions_ByStatusExpiry ON PaymentSessions(Status, ExpiresAt)`,
-		`CREATE INDEX Idx_PaymentSessions_ByRetailerId ON PaymentSessions(RetailerId)`,
+			// Missing indexes on existing tables
+			`CREATE INDEX Idx_Orders_ByRetailerState ON Orders(RetailerId, State)`,
+			`CREATE INDEX Idx_PaymentSessions_ByStatusExpiry ON PaymentSessions(Status, ExpiresAt)`,
+			`CREATE INDEX Idx_PaymentSessions_ByRetailerId ON PaymentSessions(RetailerId)`,
 
-		// ── Retailer Card Tokens (saved payment cards for tokenized checkout) ──
-		`CREATE TABLE RetailerCardTokens (
-			TokenId           STRING(36)  NOT NULL,
-			RetailerId        STRING(36)  NOT NULL,
-			Gateway           STRING(20)  NOT NULL,
-			ProviderCardToken STRING(MAX) NOT NULL,
-			CardLast4         STRING(4),
-			CardType          STRING(20),
-			IsDefault         BOOL        NOT NULL DEFAULT (false),
-			IsActive          BOOL        NOT NULL DEFAULT (true),
-			ExpiresAt         TIMESTAMP,
-			CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (TokenId)`,
-		`CREATE INDEX Idx_RetailerCardTokens_ByRetailer ON RetailerCardTokens(RetailerId)`,
+			// ── Retailer Card Tokens (saved payment cards for tokenized checkout) ──
+			`CREATE TABLE RetailerCardTokens (
+				TokenId           STRING(36)  NOT NULL,
+				RetailerId        STRING(36)  NOT NULL,
+				Gateway           STRING(20)  NOT NULL,
+				ProviderCardToken STRING(MAX) NOT NULL,
+				CardLast4         STRING(4),
+				CardType          STRING(20),
+				IsDefault         BOOL        NOT NULL DEFAULT (false),
+				IsActive          BOOL        NOT NULL DEFAULT (true),
+				ExpiresAt         TIMESTAMP,
+				CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (TokenId)`,
+			`CREATE INDEX Idx_RetailerCardTokens_ByRetailer ON RetailerCardTokens(RetailerId)`,
 
-		// Global Pay split payments: supplier recipient account for distribution
-		`ALTER TABLE SupplierPaymentConfigs ADD COLUMN RecipientId STRING(MAX)`,
+			// Global Pay split payments: supplier recipient account for distribution
+			`ALTER TABLE SupplierPaymentConfigs ADD COLUMN RecipientId STRING(MAX)`,
 
-		// Amendment safeguard: pending supplier approval for large price reductions
-		`ALTER TABLE Orders ADD COLUMN AmendmentPendingApproval BOOL NOT NULL DEFAULT (false)`,
-		`ALTER TABLE Orders ADD COLUMN PendingAmendmentData STRING(MAX)`,
+			// Amendment safeguard: pending supplier approval for large price reductions
+			`ALTER TABLE Orders ADD COLUMN AmendmentPendingApproval BOOL NOT NULL DEFAULT (false)`,
+			`ALTER TABLE Orders ADD COLUMN PendingAmendmentData STRING(MAX)`,
 
-		// ── Phase E: Warehouses, SupplierUsers, Factories ─────────────────
-		`CREATE TABLE Warehouses (
-			WarehouseId      STRING(36)  NOT NULL,
-			SupplierId       STRING(36)  NOT NULL,
-			Name             STRING(255) NOT NULL,
-			Address          STRING(MAX),
-			Lat              FLOAT64,
-			Lng              FLOAT64,
-			H3Indexes        ARRAY<STRING(MAX)>,
-			CoverageRadiusKm FLOAT64     NOT NULL DEFAULT (50.0),
-			IsActive         BOOL        NOT NULL DEFAULT (true),
-			IsDefault        BOOL        NOT NULL DEFAULT (false),
-			IsOnShift        BOOL        NOT NULL DEFAULT (true),
-			CreatedAt        TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-			UpdatedAt        TIMESTAMP   OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (WarehouseId)`,
-		`CREATE INDEX Idx_Warehouses_BySupplierId ON Warehouses(SupplierId)`,
+			// ── Phase E: Warehouses, SupplierUsers, Factories ─────────────────
+			`CREATE TABLE Warehouses (
+				WarehouseId      STRING(36)  NOT NULL,
+				SupplierId       STRING(36)  NOT NULL,
+				Name             STRING(255) NOT NULL,
+				Address          STRING(MAX),
+				Lat              FLOAT64,
+				Lng              FLOAT64,
+				H3Indexes        ARRAY<STRING(MAX)>,
+				CoverageRadiusKm FLOAT64     NOT NULL DEFAULT (50.0),
+				IsActive         BOOL        NOT NULL DEFAULT (true),
+				IsDefault        BOOL        NOT NULL DEFAULT (false),
+				IsOnShift        BOOL        NOT NULL DEFAULT (true),
+				CreatedAt        TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+				UpdatedAt        TIMESTAMP   OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (WarehouseId)`,
+			`CREATE INDEX Idx_Warehouses_BySupplierId ON Warehouses(SupplierId)`,
 
-		`CREATE TABLE SupplierUsers (
-			UserId               STRING(36)  NOT NULL,
-			SupplierId           STRING(36)  NOT NULL,
-			Email                STRING(MAX),
-			Phone                STRING(20),
-			Name                 STRING(MAX) NOT NULL,
-			PasswordHash         STRING(MAX) NOT NULL,
-			SupplierRole         STRING(30)  NOT NULL,
-			AssignedWarehouseId  STRING(36),
-			AssignedFactoryId    STRING(36),
-			IsActive             BOOL        NOT NULL DEFAULT (true),
-			FirebaseUid          STRING(128),
-			CreatedAt            TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-			CONSTRAINT CHK_SupplierRole CHECK (SupplierRole IN ('GLOBAL_ADMIN', 'NODE_ADMIN', 'FACTORY_ADMIN', 'FACTORY_PAYLOADER'))
-		) PRIMARY KEY (UserId)`,
-		`CREATE INDEX Idx_SupplierUsers_BySupplierId ON SupplierUsers(SupplierId)`,
-		`CREATE INDEX Idx_SupplierUsers_ByPhone ON SupplierUsers(Phone)`,
-		`CREATE UNIQUE NULL_FILTERED INDEX Idx_SupplierUsers_ByFirebaseUid ON SupplierUsers(FirebaseUid)`,
+			`CREATE TABLE SupplierUsers (
+				UserId               STRING(36)  NOT NULL,
+				SupplierId           STRING(36)  NOT NULL,
+				Email                STRING(MAX),
+				Phone                STRING(20),
+				Name                 STRING(MAX) NOT NULL,
+				PasswordHash         STRING(MAX) NOT NULL,
+				SupplierRole         STRING(30)  NOT NULL,
+				AssignedWarehouseId  STRING(36),
+				AssignedFactoryId    STRING(36),
+				IsActive             BOOL        NOT NULL DEFAULT (true),
+				FirebaseUid          STRING(128),
+				CreatedAt            TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+				CONSTRAINT CHK_SupplierRole CHECK (SupplierRole IN ('GLOBAL_ADMIN', 'NODE_ADMIN', 'FACTORY_ADMIN', 'FACTORY_PAYLOADER'))
+			) PRIMARY KEY (UserId)`,
+			`CREATE INDEX Idx_SupplierUsers_BySupplierId ON SupplierUsers(SupplierId)`,
+			`CREATE INDEX Idx_SupplierUsers_ByPhone ON SupplierUsers(Phone)`,
+			`CREATE UNIQUE NULL_FILTERED INDEX Idx_SupplierUsers_ByFirebaseUid ON SupplierUsers(FirebaseUid)`,
 
-		`CREATE TABLE Factories (
-			FactoryId            STRING(36)  NOT NULL,
-			SupplierId           STRING(36)  NOT NULL,
-			Name                 STRING(255) NOT NULL,
-			Address              STRING(MAX),
-			Lat                  FLOAT64,
-			Lng                  FLOAT64,
-			RegionCode           STRING(20),
-			LeadTimeDays         INT64       NOT NULL DEFAULT (2),
-			ProductionCapacityVU FLOAT64     NOT NULL DEFAULT (0),
-			IsActive             BOOL        NOT NULL DEFAULT (true),
-			CreatedAt            TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-			UpdatedAt            TIMESTAMP   OPTIONS (allow_commit_timestamp=true)
-		) PRIMARY KEY (FactoryId)`,
-		`CREATE INDEX Idx_Factories_BySupplierId ON Factories(SupplierId)`,
+			`CREATE TABLE Factories (
+				FactoryId            STRING(36)  NOT NULL,
+				SupplierId           STRING(36)  NOT NULL,
+				Name                 STRING(255) NOT NULL,
+				Address              STRING(MAX),
+				Lat                  FLOAT64,
+				Lng                  FLOAT64,
+				RegionCode           STRING(20),
+				LeadTimeDays         INT64       NOT NULL DEFAULT (2),
+				ProductionCapacityVU FLOAT64     NOT NULL DEFAULT (0),
+				IsActive             BOOL        NOT NULL DEFAULT (true),
+				CreatedAt            TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+				UpdatedAt            TIMESTAMP   OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (FactoryId)`,
+			`CREATE INDEX Idx_Factories_BySupplierId ON Factories(SupplierId)`,
 
-		`CREATE TABLE FactoryStaff (
-			StaffId      STRING(36)  NOT NULL,
-			FactoryId    STRING(36)  NOT NULL,
-			SupplierId   STRING(36)  NOT NULL,
-			Name         STRING(MAX) NOT NULL,
-			Phone        STRING(20),
-			PasswordHash STRING(MAX) NOT NULL,
-			StaffRole    STRING(30)  NOT NULL,
-			IsActive     BOOL        NOT NULL DEFAULT (true),
-			FirebaseUid  STRING(128),
-			CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-			CONSTRAINT CHK_FactoryStaffRole CHECK (StaffRole IN ('FACTORY_ADMIN', 'FACTORY_PAYLOADER'))
-		) PRIMARY KEY (StaffId)`,
-		`CREATE INDEX Idx_FactoryStaff_ByFactoryId ON FactoryStaff(FactoryId)`,
-		`CREATE INDEX Idx_FactoryStaff_ByPhone ON FactoryStaff(Phone)`,
-		`CREATE UNIQUE NULL_FILTERED INDEX Idx_FactoryStaff_ByFirebaseUid ON FactoryStaff(FirebaseUid)`,
+			`CREATE TABLE FactoryStaff (
+				StaffId      STRING(36)  NOT NULL,
+				FactoryId    STRING(36)  NOT NULL,
+				SupplierId   STRING(36)  NOT NULL,
+				Name         STRING(MAX) NOT NULL,
+				Phone        STRING(20),
+				PasswordHash STRING(MAX) NOT NULL,
+				StaffRole    STRING(30)  NOT NULL,
+				IsActive     BOOL        NOT NULL DEFAULT (true),
+				FirebaseUid  STRING(128),
+				CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+				CONSTRAINT CHK_FactoryStaffRole CHECK (StaffRole IN ('FACTORY_ADMIN', 'FACTORY_PAYLOADER'))
+			) PRIMARY KEY (StaffId)`,
+			`CREATE INDEX Idx_FactoryStaff_ByFactoryId ON FactoryStaff(FactoryId)`,
+			`CREATE INDEX Idx_FactoryStaff_ByPhone ON FactoryStaff(Phone)`,
+			`CREATE UNIQUE NULL_FILTERED INDEX Idx_FactoryStaff_ByFirebaseUid ON FactoryStaff(FirebaseUid)`,
 
-		`CREATE TABLE InternalTransferOrders (
-			TransferId   STRING(36)  NOT NULL,
-			FactoryId    STRING(36)  NOT NULL,
-			WarehouseId  STRING(36)  NOT NULL,
-			SupplierId   STRING(36)  NOT NULL,
-			State        STRING(20)  NOT NULL DEFAULT ('DRAFT'),
-			TotalVolumeVU FLOAT64    NOT NULL DEFAULT (0),
-			ManifestId   STRING(36),
-			Source       STRING(30)  NOT NULL DEFAULT ('MANUAL_EMERGENCY'),
-			CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-			UpdatedAt    TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
-			CONSTRAINT CHK_TransferState CHECK (State IN ('DRAFT', 'APPROVED', 'LOADING', 'DISPATCHED', 'IN_TRANSIT', 'ARRIVED', 'RECEIVED', 'CANCELLED')),
-			CONSTRAINT CHK_TransferSource CHECK (Source IN ('SYSTEM_THRESHOLD', 'SYSTEM_PREDICTED', 'MANUAL_EMERGENCY'))
-		) PRIMARY KEY (TransferId)`,
-		`CREATE INDEX Idx_Transfers_ByFactoryId ON InternalTransferOrders(FactoryId)`,
-		`CREATE INDEX Idx_Transfers_ByWarehouseId ON InternalTransferOrders(WarehouseId)`,
-		`CREATE INDEX Idx_Transfers_BySupplierId ON InternalTransferOrders(SupplierId)`,
-		`CREATE INDEX Idx_Transfers_ByState ON InternalTransferOrders(State)`,
+			`CREATE TABLE InternalTransferOrders (
+				TransferId   STRING(36)  NOT NULL,
+				FactoryId    STRING(36)  NOT NULL,
+				WarehouseId  STRING(36)  NOT NULL,
+				SupplierId   STRING(36)  NOT NULL,
+				State        STRING(20)  NOT NULL DEFAULT ('DRAFT'),
+				TotalVolumeVU FLOAT64    NOT NULL DEFAULT (0),
+				ManifestId   STRING(36),
+				Source       STRING(30)  NOT NULL DEFAULT ('MANUAL_EMERGENCY'),
+				CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+				UpdatedAt    TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
+				CONSTRAINT CHK_TransferState CHECK (State IN ('DRAFT', 'APPROVED', 'LOADING', 'DISPATCHED', 'IN_TRANSIT', 'ARRIVED', 'RECEIVED', 'CANCELLED')),
+				CONSTRAINT CHK_TransferSource CHECK (Source IN ('SYSTEM_THRESHOLD', 'SYSTEM_PREDICTED', 'MANUAL_EMERGENCY'))
+			) PRIMARY KEY (TransferId)`,
+			`CREATE INDEX Idx_Transfers_ByFactoryId ON InternalTransferOrders(FactoryId)`,
+			`CREATE INDEX Idx_Transfers_ByWarehouseId ON InternalTransferOrders(WarehouseId)`,
+			`CREATE INDEX Idx_Transfers_BySupplierId ON InternalTransferOrders(SupplierId)`,
+			`CREATE INDEX Idx_Transfers_ByState ON InternalTransferOrders(State)`,
 
-		`CREATE TABLE InternalTransferItems (
-			TransferId STRING(36) NOT NULL,
-			ItemId     STRING(36) NOT NULL,
-			ProductId  STRING(36) NOT NULL,
-			Quantity   INT64      NOT NULL,
-			VolumeVU   FLOAT64    NOT NULL DEFAULT (0)
-		) PRIMARY KEY (TransferId, ItemId),
-		  INTERLEAVE IN PARENT InternalTransferOrders ON DELETE CASCADE`,
+			`CREATE TABLE InternalTransferItems (
+				TransferId STRING(36) NOT NULL,
+				ItemId     STRING(36) NOT NULL,
+				ProductId  STRING(36) NOT NULL,
+				Quantity   INT64      NOT NULL,
+				VolumeVU   FLOAT64    NOT NULL DEFAULT (0)
+			) PRIMARY KEY (TransferId, ItemId),
+			  INTERLEAVE IN PARENT InternalTransferOrders ON DELETE CASCADE`,
 
-		`CREATE TABLE FactoryTruckManifests (
-			ManifestId   STRING(36)  NOT NULL,
-			FactoryId    STRING(36)  NOT NULL,
-			DriverId     STRING(36),
-			VehicleId    STRING(36),
-			State        STRING(20)  NOT NULL DEFAULT ('PENDING'),
-			TotalVolumeVU FLOAT64    NOT NULL DEFAULT (0),
-			MaxVolumeVU  FLOAT64     NOT NULL DEFAULT (0),
-			StopCount    INT64       NOT NULL DEFAULT (0),
-			RegionCode   STRING(20),
-			RoutePath    STRING(MAX),
-			CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-			CONSTRAINT CHK_ManifestState CHECK (State IN ('PENDING', 'READY_FOR_LOADING', 'LOADING', 'DISPATCHED', 'COMPLETED'))
-		) PRIMARY KEY (ManifestId)`,
-		`CREATE INDEX Idx_FactoryManifests_ByFactoryId ON FactoryTruckManifests(FactoryId)`,
-		`CREATE INDEX Idx_FactoryManifests_ByState ON FactoryTruckManifests(State)`,
+			`CREATE TABLE FactoryTruckManifests (
+				ManifestId   STRING(36)  NOT NULL,
+				FactoryId    STRING(36)  NOT NULL,
+				DriverId     STRING(36),
+				VehicleId    STRING(36),
+				State        STRING(20)  NOT NULL DEFAULT ('PENDING'),
+				TotalVolumeVU FLOAT64    NOT NULL DEFAULT (0),
+				MaxVolumeVU  FLOAT64     NOT NULL DEFAULT (0),
+				StopCount    INT64       NOT NULL DEFAULT (0),
+				RegionCode   STRING(20),
+				RoutePath    STRING(MAX),
+				CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+				CONSTRAINT CHK_ManifestState CHECK (State IN ('PENDING', 'READY_FOR_LOADING', 'LOADING', 'DISPATCHED', 'COMPLETED'))
+			) PRIMARY KEY (ManifestId)`,
+			`CREATE INDEX Idx_FactoryManifests_ByFactoryId ON FactoryTruckManifests(FactoryId)`,
+			`CREATE INDEX Idx_FactoryManifests_ByState ON FactoryTruckManifests(State)`,
 
-		`CREATE TABLE ReplenishmentInsights (
-			InsightId        STRING(36)  NOT NULL,
-			WarehouseId      STRING(36)  NOT NULL,
-			ProductId        STRING(36)  NOT NULL,
-			SupplierId       STRING(36)  NOT NULL,
-			CurrentStock     INT64       NOT NULL DEFAULT (0),
-			DailyBurnRate    FLOAT64     NOT NULL DEFAULT (0),
-			TimeToEmptyDays  FLOAT64     NOT NULL DEFAULT (0),
-			SuggestedQuantity INT64      NOT NULL DEFAULT (0),
-			UrgencyLevel     STRING(20)  NOT NULL DEFAULT ('STABLE'),
-			ReasonCode       STRING(30)  NOT NULL DEFAULT ('LOW_STOCK'),
-			Status           STRING(20)  NOT NULL DEFAULT ('PENDING'),
-			TargetFactoryId  STRING(36),
-			DemandBreakdown  STRING(MAX),
-			CreatedAt        TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
-			CONSTRAINT CHK_InsightUrgency CHECK (UrgencyLevel IN ('CRITICAL', 'WARNING', 'STABLE')),
-			CONSTRAINT CHK_InsightReason CHECK (ReasonCode IN ('HIGH_VELOCITY', 'LOW_STOCK', 'PREDICTED_SPIKE')),
-			CONSTRAINT CHK_InsightStatus CHECK (Status IN ('PENDING', 'APPROVED', 'DISMISSED'))
-		) PRIMARY KEY (InsightId)`,
-		`CREATE INDEX Idx_Insights_ByWarehouse ON ReplenishmentInsights(WarehouseId)`,
-		`CREATE INDEX Idx_Insights_BySupplierId ON ReplenishmentInsights(SupplierId)`,
-		`CREATE INDEX Idx_Insights_ByStatus ON ReplenishmentInsights(Status)`,
+			`CREATE TABLE ReplenishmentInsights (
+				InsightId        STRING(36)  NOT NULL,
+				WarehouseId      STRING(36)  NOT NULL,
+				ProductId        STRING(36)  NOT NULL,
+				SupplierId       STRING(36)  NOT NULL,
+				CurrentStock     INT64       NOT NULL DEFAULT (0),
+				DailyBurnRate    FLOAT64     NOT NULL DEFAULT (0),
+				TimeToEmptyDays  FLOAT64     NOT NULL DEFAULT (0),
+				SuggestedQuantity INT64      NOT NULL DEFAULT (0),
+				UrgencyLevel     STRING(20)  NOT NULL DEFAULT ('STABLE'),
+				ReasonCode       STRING(30)  NOT NULL DEFAULT ('LOW_STOCK'),
+				Status           STRING(20)  NOT NULL DEFAULT ('PENDING'),
+				TargetFactoryId  STRING(36),
+				DemandBreakdown  STRING(MAX),
+				CreatedAt        TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+				CONSTRAINT CHK_InsightUrgency CHECK (UrgencyLevel IN ('CRITICAL', 'WARNING', 'STABLE')),
+				CONSTRAINT CHK_InsightReason CHECK (ReasonCode IN ('HIGH_VELOCITY', 'LOW_STOCK', 'PREDICTED_SPIKE')),
+				CONSTRAINT CHK_InsightStatus CHECK (Status IN ('PENDING', 'APPROVED', 'DISMISSED'))
+			) PRIMARY KEY (InsightId)`,
+			`CREATE INDEX Idx_Insights_ByWarehouse ON ReplenishmentInsights(WarehouseId)`,
+			`CREATE INDEX Idx_Insights_BySupplierId ON ReplenishmentInsights(SupplierId)`,
+			`CREATE INDEX Idx_Insights_ByStatus ON ReplenishmentInsights(Status)`,
 
-		// ── Warehouse linkage to operational tables ──
-		`ALTER TABLE Drivers ADD COLUMN WarehouseId STRING(36)`,
-		`ALTER TABLE Vehicles ADD COLUMN WarehouseId STRING(36)`,
-		`ALTER TABLE WarehouseStaff ADD COLUMN WarehouseId STRING(36)`,
-		`ALTER TABLE SupplierInventory ADD COLUMN WarehouseId STRING(36)`,
-		`ALTER TABLE InventoryAuditLog ADD COLUMN WarehouseId STRING(36)`,
-		`ALTER TABLE Orders ADD COLUMN WarehouseId STRING(36)`,
-		`ALTER TABLE RetailerCarts ADD COLUMN WarehouseId STRING(36)`,
-		`CREATE INDEX Idx_Drivers_ByWarehouseId ON Drivers(WarehouseId)`,
-		`CREATE INDEX Idx_Vehicles_ByWarehouseId ON Vehicles(WarehouseId)`,
-		`CREATE INDEX Idx_WarehouseStaff_ByWarehouseId ON WarehouseStaff(WarehouseId)`,
-		`CREATE INDEX Idx_Inventory_ByWarehouseId ON SupplierInventory(SupplierId, WarehouseId)`,
-		`CREATE INDEX Idx_Orders_ByWarehouseId ON Orders(WarehouseId)`,
-		`ALTER TABLE AIPredictions ADD COLUMN WarehouseId STRING(36)`,
-		`CREATE INDEX Idx_AIPredictions_ByWarehouse ON AIPredictions(WarehouseId)`,
-		`ALTER TABLE Warehouses ADD COLUMN PrimaryFactoryId STRING(36)`,
-		`ALTER TABLE Warehouses ADD COLUMN SecondaryFactoryId STRING(36)`,
+			// ── Warehouse linkage to operational tables ──
+			`ALTER TABLE Drivers ADD COLUMN WarehouseId STRING(36)`,
+			`ALTER TABLE Vehicles ADD COLUMN WarehouseId STRING(36)`,
+			`ALTER TABLE WarehouseStaff ADD COLUMN WarehouseId STRING(36)`,
+			`ALTER TABLE SupplierInventory ADD COLUMN WarehouseId STRING(36)`,
+			`ALTER TABLE InventoryAuditLog ADD COLUMN WarehouseId STRING(36)`,
+			`ALTER TABLE Orders ADD COLUMN WarehouseId STRING(36)`,
+			`ALTER TABLE RetailerCarts ADD COLUMN WarehouseId STRING(36)`,
+			`CREATE INDEX Idx_Drivers_ByWarehouseId ON Drivers(WarehouseId)`,
+			`CREATE INDEX Idx_Vehicles_ByWarehouseId ON Vehicles(WarehouseId)`,
+			`CREATE INDEX Idx_WarehouseStaff_ByWarehouseId ON WarehouseStaff(WarehouseId)`,
+			`CREATE INDEX Idx_Inventory_ByWarehouseId ON SupplierInventory(SupplierId, WarehouseId)`,
+			`CREATE INDEX Idx_Orders_ByWarehouseId ON Orders(WarehouseId)`,
+			`ALTER TABLE AIPredictions ADD COLUMN WarehouseId STRING(36)`,
+			`CREATE INDEX Idx_AIPredictions_ByWarehouse ON AIPredictions(WarehouseId)`,
+			`ALTER TABLE Warehouses ADD COLUMN PrimaryFactoryId STRING(36)`,
+			`ALTER TABLE Warehouses ADD COLUMN SecondaryFactoryId STRING(36)`,
 
-		// ── Phase IV: Pre-order policy + state expansion ──
-		`ALTER TABLE Orders ADD COLUMN CancelLockedAt TIMESTAMP`,
-		`ALTER TABLE Orders ADD COLUMN CancelLockReason STRING(30)`,
-		`ALTER TABLE Orders ADD COLUMN ConfirmationNotifiedAt TIMESTAMP`,
+			// ── Phase IV: Pre-order policy + state expansion ──
+			`ALTER TABLE Orders ADD COLUMN CancelLockedAt TIMESTAMP`,
+			`ALTER TABLE Orders ADD COLUMN CancelLockReason STRING(30)`,
+			`ALTER TABLE Orders ADD COLUMN ConfirmationNotifiedAt TIMESTAMP`,
 
-		// ── V.5 — H3 spatial indexing on Orders ──
-		// Orders carry an H3 cell (resolution 7, 15-char hex). The composite
-		// (H3Cell, State) index powers proximity-scoped dispatch queries
-		// without a full Orders scan. NULL until backfill hydrates legacy rows.
-		`ALTER TABLE Orders ADD COLUMN H3Cell STRING(15)`,
-		`CREATE INDEX IDX_Orders_H3Cell_State ON Orders(H3Cell, State)`,
+			// ── V.5 — H3 spatial indexing on Orders ──
+			// Orders carry an H3 cell (resolution 7, 15-char hex). The composite
+			// (H3Cell, State) index powers proximity-scoped dispatch queries
+			// without a full Orders scan. NULL until backfill hydrates legacy rows.
+			`ALTER TABLE Orders ADD COLUMN H3Cell STRING(15)`,
+			`CREATE INDEX IDX_Orders_H3Cell_State ON Orders(H3Cell, State)`,
 
-		// ── Transactional Outbox (the atomicity primitive) ──
-		// Every state-change event is written here in the same RWTxn as the
-		// domain mutation. The outbox.Relay tails CreatedAt-ordered rows,
-		// publishes to Kafka with Key = AggregateId (preserves per-entity
-		// partition order) and Header `event_type` = EventType (consumer
-		// discriminator). PublishedAt is filled on successful publish.
-		`CREATE TABLE OutboxEvents (
-			EventId       STRING(36)   NOT NULL,
-			AggregateType STRING(30)   NOT NULL,
-			AggregateId   STRING(36)   NOT NULL,
-			EventType     STRING(60)   NOT NULL,
-			TopicName     STRING(100)  NOT NULL,
-			Payload       BYTES(MAX)   NOT NULL,
-			TraceID       STRING(36),
-			CreatedAt     TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
-			PublishedAt   TIMESTAMP,
-		) PRIMARY KEY (EventId)`,
-		// Composite index supports the relay's tail query:
-		//   WHERE PublishedAt IS NULL ORDER BY CreatedAt LIMIT @lim
-		// Unpublished rows (PublishedAt = NULL) sort first under Spanner's
-		// NULLS FIRST default ordering, so a LIMIT scan stays bounded.
-		`CREATE INDEX Idx_OutboxEvents_Unpublished
-			ON OutboxEvents(PublishedAt, CreatedAt)`,
+			// ── Transactional Outbox (the atomicity primitive) ──
+			// Every state-change event is written here in the same RWTxn as the
+			// domain mutation. The outbox.Relay tails CreatedAt-ordered rows,
+			// publishes to Kafka with Key = AggregateId (preserves per-entity
+			// partition order) and Header `event_type` = EventType (consumer
+			// discriminator). PublishedAt is filled on successful publish.
+			`CREATE TABLE OutboxEvents (
+				EventId       STRING(36)   NOT NULL,
+				AggregateType STRING(30)   NOT NULL,
+				AggregateId   STRING(36)   NOT NULL,
+				EventType     STRING(60)   NOT NULL,
+				TopicName     STRING(100)  NOT NULL,
+				Payload       BYTES(MAX)   NOT NULL,
+				TraceID       STRING(36),
+				CreatedAt     TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+				PublishedAt   TIMESTAMP,
+			) PRIMARY KEY (EventId)`,
+			// Composite index supports the relay's tail query:
+			//   WHERE PublishedAt IS NULL ORDER BY CreatedAt LIMIT @lim
+			// Unpublished rows (PublishedAt = NULL) sort first under Spanner's
+			// NULLS FIRST default ordering, so a LIMIT scan stays bounded.
+			`CREATE INDEX Idx_OutboxEvents_Unpublished
+				ON OutboxEvents(PublishedAt, CreatedAt)`,
 
-		// ── Phase 2 — Intelligent Dispatch Optimization ──
-		// VolumeVU is the per-order volumetric unit total (sum of line-item
-		// volume × quantity). First-class column so the optimizer hydrates
-		// without a per-call OrderLineItems join. NULL until backfill or
-		// next write — hydration COALESCEs to live compute during rollout.
-		`ALTER TABLE Orders ADD COLUMN VolumeVU FLOAT64`,
+			// ── Phase 2 — Intelligent Dispatch Optimization ──
+			// VolumeVU is the per-order volumetric unit total (sum of line-item
+			// volume × quantity). First-class column so the optimizer hydrates
+			// without a per-call OrderLineItems join. NULL until backfill or
+			// next write — hydration COALESCEs to live compute during rollout.
+			`ALTER TABLE Orders ADD COLUMN VolumeVU FLOAT64`,
 
-		// Refined dispatch hydration index: H3 cluster + dispatchable state +
-		// SLA window. Powers "give me every PENDING order in this H3 ring
-		// scheduled for today" in a single index scan.
-		`CREATE INDEX Idx_Orders_H3Cell_State_Date
-			ON Orders(H3Cell, State, RequestedDeliveryDate DESC)`,
+			// Refined dispatch hydration index: H3 cluster + dispatchable state +
+			// SLA window. Powers "give me every PENDING order in this H3 ring
+			// scheduled for today" in a single index scan.
+			`CREATE INDEX Idx_Orders_H3Cell_State_Date
+				ON Orders(H3Cell, State, RequestedDeliveryDate DESC)`,
 
-		// Receiving windows on Retailers — Phase 2 hard-constraint inputs to
-		// the VRP solver. Stored as TIME (local supplier timezone, Tashkent
-		// UTC+5 in v1). Closes the receiving-window slice of Known Gap #13.
-		`ALTER TABLE Retailers ADD COLUMN ReceivingWindowOpen STRING(5)`,
-		`ALTER TABLE Retailers ADD COLUMN ReceivingWindowClose STRING(5)`,
+			// Receiving windows on Retailers — Phase 2 hard-constraint inputs to
+			// the VRP solver. Stored as TIME (local supplier timezone, Tashkent
+			// UTC+5 in v1). Closes the receiving-window slice of Known Gap #13.
+			`ALTER TABLE Retailers ADD COLUMN ReceivingWindowOpen STRING(5)`,
+			`ALTER TABLE Retailers ADD COLUMN ReceivingWindowClose STRING(5)`,
 
-		// OrderManifests + interleaved OrderManifestStops — supplier/warehouse
-		// scoped manifest aggregate. Distinct from the factory-only
-		// FactoryTruckManifests table. State machine owned by the supplier
-		// dispatch flow:
-		//   DRAFT → READY_FOR_LOADING → LOADING → SEALED → DISPATCHED →
-		//   COMPLETED (or CANCELLED at any pre-DISPATCHED step).
-		// OptimizerSource records which engine produced the draft so we can
-		// measure fallback rate over time.
-		`CREATE TABLE OrderManifests (
-			ManifestId           STRING(36) NOT NULL,
-			SupplierId           STRING(36) NOT NULL,
-			VehicleId            STRING(36) NOT NULL,
-			DriverId             STRING(36),
-			HomeNodeType         STRING(20) NOT NULL,
-			HomeNodeId           STRING(36) NOT NULL,
-			State                STRING(20) NOT NULL DEFAULT ('DRAFT'),
-			OptimizerSource      STRING(20) NOT NULL,
-			TotalVolumeVU        FLOAT64    NOT NULL DEFAULT (0),
-			StopCount            INT64      NOT NULL DEFAULT (0),
-			EstimatedDurationSec INT64,
-			EstimatedDistanceM   INT64,
-			SolveTimeMs          INT64,
-			Version              INT64      NOT NULL DEFAULT (1),
-			CreatedAt            TIMESTAMP  NOT NULL OPTIONS (allow_commit_timestamp=true),
-			CONSTRAINT CHK_OrderManifestState CHECK (
-				State IN ('DRAFT','READY_FOR_LOADING','LOADING','SEALED','DISPATCHED','COMPLETED','CANCELLED')
-			)
-		) PRIMARY KEY (ManifestId)`,
-		`CREATE TABLE OrderManifestStops (
-			ManifestId    STRING(36) NOT NULL,
-			SequenceIndex INT64      NOT NULL,
-			OrderId       STRING(36) NOT NULL,
-			ResidualVU    FLOAT64,
-			ArrivalSec    INT64,
-			DepartureSec  INT64,
-		) PRIMARY KEY (ManifestId, SequenceIndex),
-		  INTERLEAVE IN PARENT OrderManifests ON DELETE CASCADE`,
-		`CREATE INDEX Idx_OrderManifests_BySupplierState
-			ON OrderManifests(SupplierId, State)`,
-		`CREATE INDEX Idx_OrderManifests_ByVehicleState
-			ON OrderManifests(VehicleId, State)`,
-		`CREATE INDEX Idx_OrderManifestStops_ByOrderId
-			ON OrderManifestStops(OrderId)`,
+			// OrderManifests + interleaved OrderManifestStops — supplier/warehouse
+			// scoped manifest aggregate. Distinct from the factory-only
+			// FactoryTruckManifests table. State machine owned by the supplier
+			// dispatch flow:
+			//   DRAFT → READY_FOR_LOADING → LOADING → SEALED → DISPATCHED →
+			//   COMPLETED (or CANCELLED at any pre-DISPATCHED step).
+			// OptimizerSource records which engine produced the draft so we can
+			// measure fallback rate over time.
+			`CREATE TABLE OrderManifests (
+				ManifestId           STRING(36) NOT NULL,
+				SupplierId           STRING(36) NOT NULL,
+				VehicleId            STRING(36) NOT NULL,
+				DriverId             STRING(36),
+				HomeNodeType         STRING(20) NOT NULL,
+				HomeNodeId           STRING(36) NOT NULL,
+				State                STRING(20) NOT NULL DEFAULT ('DRAFT'),
+				OptimizerSource      STRING(20) NOT NULL,
+				TotalVolumeVU        FLOAT64    NOT NULL DEFAULT (0),
+				StopCount            INT64      NOT NULL DEFAULT (0),
+				EstimatedDurationSec INT64,
+				EstimatedDistanceM   INT64,
+				SolveTimeMs          INT64,
+				Version              INT64      NOT NULL DEFAULT (1),
+				CreatedAt            TIMESTAMP  NOT NULL OPTIONS (allow_commit_timestamp=true),
+				CONSTRAINT CHK_OrderManifestState CHECK (
+					State IN ('DRAFT','READY_FOR_LOADING','LOADING','SEALED','DISPATCHED','COMPLETED','CANCELLED')
+				)
+			) PRIMARY KEY (ManifestId)`,
+			`CREATE TABLE OrderManifestStops (
+				ManifestId    STRING(36) NOT NULL,
+				SequenceIndex INT64      NOT NULL,
+				OrderId       STRING(36) NOT NULL,
+				ResidualVU    FLOAT64,
+				ArrivalSec    INT64,
+				DepartureSec  INT64,
+			) PRIMARY KEY (ManifestId, SequenceIndex),
+			  INTERLEAVE IN PARENT OrderManifests ON DELETE CASCADE`,
+			`CREATE INDEX Idx_OrderManifests_BySupplierState
+				ON OrderManifests(SupplierId, State)`,
+			`CREATE INDEX Idx_OrderManifests_ByVehicleState
+				ON OrderManifests(VehicleId, State)`,
+			`CREATE INDEX Idx_OrderManifestStops_ByOrderId
+				ON OrderManifestStops(OrderId)`,
+		*/
+	} else {
+		log.Println("Instance already exists.")
 	}
 
 	log.Printf("Checking database: %s", dbName)
@@ -567,17 +585,10 @@ func main() {
 	}
 	log.Println("Canonical schema is applied.")
 
-	// 5. Insert Seed Data
-	log.Println("Inserting Seed Data...")
-	spannerClient, err := spanner.NewClient(ctx, dbName, opts...)
-	if err != nil {
-		log.Fatalf("Failed to create native Spanner client: %v", err)
-	}
-	defer spannerClient.Close()
+	// Seed data is maintained by cmd/seed/main.go. Keep setup focused on schema bootstrap.
+	log.Println("Skipping inline seed data; use cmd/seed/main.go for deterministic fixtures.")
 
-	setupSeedData(ctx, spannerClient)
-
-	// 6. Kafka Topic Initialization
+	// 5. Kafka Topic Initialization
 	log.Println("Initializing Kafka Topics...")
 	setupKafkaTopic(cfg.KafkaBrokerAddress, "orders.completed")
 	setupKafkaTopic(cfg.KafkaBrokerAddress, "orders.dispatched")

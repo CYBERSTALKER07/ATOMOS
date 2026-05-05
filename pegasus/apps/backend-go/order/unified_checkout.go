@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"time"
 
+	"backend-go/auth"
 	"backend-go/cache"
 	"backend-go/cart"
 	"backend-go/dispatch"
@@ -69,6 +70,7 @@ type UnifiedCheckoutResponse struct {
 type supplierMeta struct {
 	SupplierID   string
 	SupplierName string
+	BasePrice    int64
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
@@ -96,6 +98,9 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		apierrors.BadRequest(w, r, "Malformed checkout payload")
 		return
 	}
+	if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims); ok && claims != nil && req.RetailerID == "" {
+		req.RetailerID = claims.UserID
+	}
 
 	// ── Validation ────────────────────────────────────────────────────────────
 	if req.RetailerID == "" {
@@ -117,8 +122,8 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	}
 	req.PaymentGateway = normalizedGateway
 	for _, item := range req.Items {
-		if item.SkuId == "" || item.Quantity <= 0 || item.UnitPrice <= 0 {
-			http.Error(w, `{"error":"each item must have sku_id, positive quantity, and positive unit_price"}`, http.StatusUnprocessableEntity)
+		if item.SkuId == "" || item.Quantity <= 0 {
+			http.Error(w, `{"error":"each item must have sku_id and positive quantity"}`, http.StatusUnprocessableEntity)
 			return
 		}
 	}
@@ -177,11 +182,19 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	for sid, items := range supplierGroups {
 		var groupTotal int64
 		for i, item := range items {
+			basePrice := item.UnitPrice
+			if basePrice <= 0 {
+				basePrice = supplierBySku[item.SkuId].BasePrice
+			}
+			if basePrice <= 0 {
+				http.Error(w, fmt.Sprintf(`{"error":"SKU %s has no base price"}`, item.SkuId), http.StatusUnprocessableEntity)
+				return
+			}
 			effectivePrice, isOverride, priceErr := cart.ResolveRetailerPrice(
-				ctx, s.Client, sid, req.RetailerID, item.SkuId, item.UnitPrice)
+				ctx, s.Client, sid, req.RetailerID, item.SkuId, basePrice)
 			if priceErr != nil {
 				log.Printf("[UNIFIED_CHECKOUT] Price resolution failed for %s/%s: %v — using base", sid, item.SkuId, priceErr)
-				effectivePrice = item.UnitPrice
+				effectivePrice = basePrice
 			}
 			items[i].UnitPrice = effectivePrice
 			_ = isOverride // tracked for future analytics
@@ -246,7 +259,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 
 	// ── Step 4: Single ACID Spanner transaction ───────────────────────────────
 	invoiceID := hotspot.NewInvoiceID()
-	wkt := fmt.Sprintf("POINT(%f %f)", req.Longitude, req.Latitude)
+	wkt := fmt.Sprintf("POINT(%f %f)", retailerLng, retailerLat)
 
 	// Pre-generate all order IDs and delivery tokens BEFORE the transaction
 	// so we can reference them in the Kafka events after commit.
@@ -737,7 +750,7 @@ func (s *OrderService) resolveSuppliers(ctx context.Context, skuIDs []string) (m
 	}
 
 	stmt := spanner.Statement{
-		SQL: `SELECT sp.SkuId, sp.SupplierId, sp.Name
+		SQL: `SELECT sp.SkuId, sp.SupplierId, sp.Name, sp.BasePrice
 		      FROM SupplierProducts sp
 		      WHERE sp.SkuId IN UNNEST(@skuIds)
 		        AND sp.IsActive = TRUE`,
@@ -760,13 +773,15 @@ func (s *OrderService) resolveSuppliers(ctx context.Context, skuIDs []string) (m
 		}
 
 		var skuID, supplierID, productName string
-		if err := row.Columns(&skuID, &supplierID, &productName); err != nil {
+		var basePrice int64
+		if err := row.Columns(&skuID, &supplierID, &productName, &basePrice); err != nil {
 			return nil, fmt.Errorf("supplier resolution row parse failed: %w", err)
 		}
 
 		result[skuID] = supplierMeta{
 			SupplierID:   supplierID,
 			SupplierName: productName, // Product name used as display; real supplier name can be joined later
+			BasePrice:    basePrice,
 		}
 	}
 

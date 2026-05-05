@@ -535,7 +535,12 @@ func applyMigrations(ctx context.Context, dbName string, opts []option.ClientOpt
 		"ALTER TABLE Suppliers ADD COLUMN CardNumber STRING(MAX)",
 		"ALTER TABLE Suppliers ADD COLUMN PaymentGateway STRING(20)",
 		"CREATE TABLE PlatformCategories (CategoryId STRING(36) NOT NULL, DisplayName STRING(MAX) NOT NULL, IconUrl STRING(MAX), DisplayOrder INT64 NOT NULL) PRIMARY KEY (CategoryId)",
+		"CREATE TABLE RetailerGlobalSettings (RetailerId STRING(36) NOT NULL, GlobalAutoOrderEnabled BOOL NOT NULL, AnalyticsStartDate TIMESTAMP, UpdatedAt TIMESTAMP OPTIONS (allow_commit_timestamp=true)) PRIMARY KEY (RetailerId)",
+		"CREATE TABLE RetailerSupplierSettings (RetailerId STRING(36) NOT NULL, SupplierId STRING(36) NOT NULL, AutoOrderEnabled BOOL NOT NULL, UpdatedAt TIMESTAMP OPTIONS (allow_commit_timestamp=true)) PRIMARY KEY (RetailerId, SupplierId), INTERLEAVE IN PARENT RetailerGlobalSettings ON DELETE CASCADE",
+		"CREATE TABLE RetailerProductSettings (RetailerId STRING(36) NOT NULL, ProductId STRING(36) NOT NULL, AutoOrderEnabled BOOL NOT NULL, UpdatedAt TIMESTAMP OPTIONS (allow_commit_timestamp=true)) PRIMARY KEY (RetailerId, ProductId), INTERLEAVE IN PARENT RetailerGlobalSettings ON DELETE CASCADE",
+		"CREATE TABLE RetailerVariantSettings (RetailerId STRING(36) NOT NULL, SkuId STRING(36) NOT NULL, AutoOrderEnabled BOOL NOT NULL, UpdatedAt TIMESTAMP OPTIONS (allow_commit_timestamp=true)) PRIMARY KEY (RetailerId, SkuId), INTERLEAVE IN PARENT RetailerGlobalSettings ON DELETE CASCADE",
 		// Auto-Dispatch Engine: dimensional columns for bin-packing
+		"ALTER TABLE SupplierProducts ADD COLUMN CategoryId STRING(36)",
 		"ALTER TABLE Drivers ADD COLUMN MaxPalletCapacity INT64",
 		"ALTER TABLE SupplierProducts ADD COLUMN PalletFootprint FLOAT64",
 		// Phase 11: Scheduled Orders
@@ -546,6 +551,9 @@ func applyMigrations(ctx context.Context, dbName string, opts []option.ClientOpt
 		"CREATE TABLE WarehouseStaff (WorkerId STRING(36) NOT NULL, SupplierId STRING(36) NOT NULL, Name STRING(MAX) NOT NULL, Phone STRING(20) NOT NULL, PinHash STRING(MAX) NOT NULL, IsActive BOOL NOT NULL, CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true)) PRIMARY KEY (WorkerId)",
 		"CREATE INDEX Idx_WarehouseStaff_BySupplierId ON WarehouseStaff(SupplierId)",
 		"CREATE INDEX Idx_WarehouseStaff_ByPhone ON WarehouseStaff(Phone)",
+		"CREATE TABLE SupplierPaymentConfigs (ConfigId STRING(36) NOT NULL, SupplierId STRING(36) NOT NULL, GatewayName STRING(20) NOT NULL, MerchantId STRING(MAX) NOT NULL, ServiceId STRING(MAX), SecretKey BYTES(MAX) NOT NULL, RecipientId STRING(MAX), IsActive BOOL NOT NULL DEFAULT (true), CreatedAt TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true), UpdatedAt TIMESTAMP OPTIONS (allow_commit_timestamp=true), CONSTRAINT CHK_SupplierPaymentConfigs_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY'))) PRIMARY KEY (ConfigId)",
+		"CREATE INDEX Idx_SupplierPaymentConfigs_BySupplierId ON SupplierPaymentConfigs(SupplierId)",
+		"CREATE UNIQUE INDEX Idx_SupplierPaymentConfigs_Unique ON SupplierPaymentConfigs(SupplierId, GatewayName)",
 		// Widen State column to fit PENDING_CASH_COLLECTION (23 chars)
 		"ALTER TABLE Orders ALTER COLUMN State STRING(30) NOT NULL",
 	}
@@ -576,6 +584,7 @@ func truncateTables(ctx context.Context, client *spanner.Client) {
 		"RetailerSupplierSettings",
 		"RetailerGlobalSettings",
 		"OrderLineItems",
+		"MasterInvoices",
 		"LedgerEntries",
 		"LedgerAnomalies",
 		"Orders",
@@ -738,7 +747,7 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 		seedOrders := []seedOrder{
 			// ── RET-001 orders (Tashkent Central Market) ── various suppliers
 			{"ORD-SEED-001", "RET-001", "SUP-001", "DRV-001", "TRUCK-TASH-01", "PENDING", "PENDING", 620_000, "RETAILER_APP", ""},
-			{"ORD-SEED-002", "RET-001", "SUP-001", "DRV-001", "TRUCK-TASH-01", "LOADED", "PENDING", 300_000, "RETAILER_APP", "a1b2c3d4e5f60002"},
+			{"ORD-SEED-002", "RET-001", "SUP-001", "DRV-001", "TRUCK-TASH-01", "ARRIVED", "PENDING", 300_000, "RETAILER_APP", "a1b2c3d4e5f60002"},
 			{"ORD-SEED-003", "RET-001", "SUP-002", "DRV-002", "TRUCK-TASH-02", "IN_TRANSIT", "PENDING", 485_000, "RETAILER_APP", "a1b2c3d4e5f60003"},
 			{"ORD-SEED-004", "RET-001", "SUP-003", "DRV-003", "TRUCK-TASH-03", "ARRIVED", "AWAITING_GATEWAY_WEBHOOK", 373_000, "RETAILER_APP", "a1b2c3d4e5f60004"},
 			{"ORD-SEED-005", "RET-001", "SUP-004", "DRV-001", "TRUCK-TASH-01", "COMPLETED", "PAID", 662_000, "ADMIN_PORTAL", "a1b2c3d4e5f60005"},
@@ -750,7 +759,7 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 			{"ORD-SEED-009", "RET-002", "SUP-006", "DRV-003", "TRUCK-TASH-03", "ARRIVING", "PENDING", 746_000, "RETAILER_APP", "b2c3d4e5f6a10009"},
 			{"ORD-SEED-010", "RET-002", "SUP-007", "DRV-001", "TRUCK-TASH-01", "COMPLETED", "PAID", 597_000, "RETAILER_APP", "b2c3d4e5f6a10010"},
 			{"ORD-SEED-011", "RET-002", "SUP-002", "", "", "SCHEDULED", "PENDING", 240_000, "ADMIN_PORTAL", ""},
-			{"ORD-SEED-012", "RET-002", "SUP-003", "DRV-002", "TRUCK-TASH-02", "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION", 285_000, "RETAILER_APP", "b2c3d4e5f6a10012"},
+			{"ORD-SEED-012", "RET-002", "SUP-003", "DRV-002", "TRUCK-TASH-02", "AWAITING_GLOBAL_PAYNT", "PENDING_CASH_COLLECTION", 285_000, "RETAILER_APP", "b2c3d4e5f6a10012"},
 
 			// ── RET-003 orders (Yunusabad Mini-Mart) ── various suppliers
 			{"ORD-SEED-013", "RET-003", "SUP-004", "DRV-001", "TRUCK-TASH-01", "LOADED", "PENDING", 452_000, "RETAILER_APP", "c3d4e5f6a1b20013"},
@@ -769,7 +778,7 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 			{"ORD-SEED-024", "RET-004", "SUP-008", "DRV-003", "TRUCK-TASH-03", "IN_TRANSIT", "PENDING", 573_000, "RETAILER_APP", "d4e5f6a1b2c30024"},
 		}
 		orderCols := []string{"OrderId", "RetailerId", "SupplierId", "DriverId", "State",
-			"Amount", "PaymentStatus", "RouteId", "OrderSource", "DeliveryToken", "CreatedAt"}
+			"Amount", "GlobalPayntStatus", "RouteId", "OrderSource", "DeliveryToken", "CreatedAt"}
 		for _, o := range seedOrders {
 			vals := []interface{}{o.id, o.retailerID, o.supplierID, nilStr(o.driverID), o.state,
 				o.amount, o.paymentStatus, nilStr(o.routeID), o.orderSource, nilStr(o.deliveryToken), spanner.CommitTimestamp}
@@ -786,7 +795,7 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 			// ORD-SEED-001: SUP-001 products → RET-001 (PENDING)
 			{"LI-001", "ORD-SEED-001", "COKE-500-50", 2, 250_000, "PENDING"},
 			{"LI-002", "ORD-SEED-001", "FANTA-CAN-24", 1, 120_000, "PENDING"},
-			// ORD-SEED-002: SUP-001 → RET-001 (LOADED)
+			// ORD-SEED-002: SUP-001 → RET-001 (ARRIVED)
 			{"LI-003", "ORD-SEED-002", "SPRITE-1L-20", 1, 180_000, "PENDING"},
 			{"LI-004", "ORD-SEED-002", "FANTA-CAN-24", 1, 120_000, "PENDING"},
 			// ORD-SEED-003: SUP-002 → RET-001 (IN_TRANSIT)
@@ -878,7 +887,7 @@ func seedSpanner(ctx context.Context, client *spanner.Client, passwordHash, pinH
 		}
 		for _, inv := range seedInvoices {
 			mutations = append(mutations, spanner.Insert("MasterInvoices",
-				[]string{"InvoiceId", "RetailerId", "Total", "State", "OrderId", "PaymentMode", "CreatedAt"},
+				[]string{"InvoiceId", "RetailerId", "Total", "State", "OrderId", "GlobalPayntMode", "CreatedAt"},
 				[]interface{}{inv.invoiceID, inv.retailerID, inv.total, inv.state, inv.orderID, inv.paymentMode, spanner.CommitTimestamp}))
 		}
 

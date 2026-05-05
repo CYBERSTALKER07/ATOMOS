@@ -15,6 +15,8 @@ import (
 	"net/http"
 	"time"
 
+	"backend-go/auth"
+
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 )
@@ -50,8 +52,16 @@ func GetDriverManifestHandler(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		// Injected by auth.RequireRole after JWT validation
-		driverID := r.Header.Get("X-Driver-Id")
+		// Prefer the authenticated DRIVER claims already injected by RequireRole.
+		driverID := ""
+		if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims); ok && claims != nil {
+			driverID = claims.UserID
+		}
+
+		// Legacy fallback preserved for older local/dev callers.
+		if driverID == "" {
+			driverID = r.Header.Get("X-Driver-Id")
+		}
 		if driverID == "" {
 			// Fallback for local dev / emulator without full auth pipeline
 			driverID = r.URL.Query().Get("driver_id")

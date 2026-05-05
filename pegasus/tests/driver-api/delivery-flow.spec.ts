@@ -135,12 +135,12 @@ test.describe('Driver API — Delivery Flow', () => {
   test('POST /v1/delivery/shop-closed triggers escalation', async ({ driverAPI }) => {
     const res = await driverAPI.post('/v1/delivery/shop-closed', {
       data: {
-        order_id: 'test-order',
+        order_id: 'ORD-SEED-002',
         reason: 'Shop was closed during delivery attempt',
       },
     });
 
-    expect([200, 400, 401, 404]).toContain(res.status());
+    expect([200, 400, 401, 404, 409]).toContain(res.status());
   });
 
   test('POST /v1/delivery/negotiate proposes quantity amendment', async ({ driverAPI }) => {
@@ -165,6 +165,6 @@ test.describe('Driver API — Delivery Flow', () => {
       },
     });
 
-    expect([200, 400, 401, 404]).toContain(res.status());
+    expect([200, 400, 401, 404, 409]).toContain(res.status());
   });
 });

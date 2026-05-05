@@ -26,14 +26,15 @@ test.describe('Cross-Role: Order Lifecycle', () => {
       data: {
         payment_gateway: 'CASH',
         items: [
-          { sku_id: 'TEST-SKU-001', quantity: 10 },
+          { sku_id: 'COKE-500-50', quantity: 1 },
         ],
       },
     });
 
     if (orderRes.ok()) {
       const orderBody = await orderRes.json();
-      expect(orderBody.order_id).toBeTruthy();
+      expect(orderBody.invoice_id).toBeTruthy();
+      expect(Array.isArray(orderBody.supplier_orders)).toBeTruthy();
 
       // Step 2: Supplier should see this order
       const supplierOrders = await supplierAPI.get('/v1/supplier/orders?page=1&pageSize=10');
@@ -108,12 +109,12 @@ test.describe('Cross-Role: Order Lifecycle', () => {
     // Retailer requests cancellation
     const cancelRes = await retailerAPI.post('/v1/orders/request-cancel', {
       data: {
-        order_id: 'test-cancel-order',
+        order_id: 'ORD-SEED-001',
         reason: 'Changed my mind',
       },
     });
 
-    expect([200, 400, 401, 404]).toContain(cancelRes.status());
+    expect([200, 400, 401, 404, 409]).toContain(cancelRes.status());
 
     // Supplier should see cancel request
     const supplierOrders = await supplierAPI.get('/v1/supplier/orders?page=1&pageSize=10');

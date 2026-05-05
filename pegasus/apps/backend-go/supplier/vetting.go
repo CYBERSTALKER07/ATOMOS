@@ -90,7 +90,7 @@ func (s *OrderVettingService) HandleSupplierOrders(w http.ResponseWriter, r *htt
 	sql := `SELECT o.OrderId, o.RetailerId, COALESCE(ret.Name, 'Unknown'), o.SupplierId,
 	               COALESCE(o.Amount, 0), o.State, COALESCE(o.OrderSource, 'MANUAL'), o.CreatedAt,
 	               (SELECT COUNT(*) FROM OrderLineItems li WHERE li.OrderId = o.OrderId),
-	               o.RouteId, o.RequestedDeliveryDate, o.PaymentGateway, o.PaymentStatus
+	               o.RouteId, o.RequestedDeliveryDate, o.GlobalPayntGateway, o.GlobalPayntStatus
 	        FROM Orders o
 	        LEFT JOIN Retailers ret ON o.RetailerId = ret.RetailerId
 	        WHERE o.SupplierId = @sid`
@@ -116,7 +116,7 @@ func (s *OrderVettingService) HandleSupplierOrders(w http.ResponseWriter, r *htt
 	case "scheduled":
 		sql += ` AND o.State = 'SCHEDULED'`
 	case "dispatched":
-		sql += ` AND o.State IN ('LOADED', 'IN_TRANSIT', 'ARRIVED', 'AWAITING_PAYMENT') AND o.RouteId IS NOT NULL`
+		sql += ` AND o.State IN ('LOADED', 'IN_TRANSIT', 'ARRIVED', 'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION') AND o.RouteId IS NOT NULL`
 	case "history":
 		sql += ` AND o.State IN ('COMPLETED', 'CANCELLED')`
 	default:
@@ -194,7 +194,7 @@ func (s *OrderVettingService) HandleSupplierOrders(w http.ResponseWriter, r *htt
 		var o EnrichedOrder
 		var createdAt spanner.NullTime
 		var routeId spanner.NullString
-		var deliveryDate spanner.NullDate
+		var deliveryDate spanner.NullTime
 		var paymentGateway spanner.NullString
 		var paymentStatus spanner.NullString
 		if err := row.Columns(&o.OrderID, &o.RetailerID, &o.RetailerName, &o.SupplierId, &o.Amount, &o.State, &o.OrderSource, &createdAt, &o.ItemCount, &routeId, &deliveryDate, &paymentGateway, &paymentStatus); err != nil {
@@ -209,7 +209,7 @@ func (s *OrderVettingService) HandleSupplierOrders(w http.ResponseWriter, r *htt
 			o.RouteId = routeId.StringVal
 		}
 		if deliveryDate.Valid {
-			o.RequestedDeliveryDate = deliveryDate.Date.String()
+			o.RequestedDeliveryDate = deliveryDate.Time.Format("2006-01-02")
 		}
 		if paymentGateway.Valid {
 			o.PaymentGateway = paymentGateway.StringVal
