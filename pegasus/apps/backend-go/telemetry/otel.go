@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -26,14 +27,15 @@ import (
 type ShutdownFunc func(ctx context.Context) error
 
 // InitProvider bootstraps the OTel TracerProvider with a batched span
-// processor. Today the exporter writes to stdout (JSON) — swap to OTLP
-// when a collector is deployed. The provider is registered as the global
+// processor. When OTEL_EXPORTER is unset, local runs default to no exporter
+// so backend logs stay readable; production keeps the current stdout exporter
+// until an OTLP collector is wired. The provider is registered as the global
 // default so otel.Tracer("backend-go") works anywhere.
 //
 // Environment knobs:
 //
 //	OTEL_SERVICE_NAME   — defaults to "backend-go"
-//	OTEL_EXPORTER       — "stdout" (default) | "none" (no-op for tests)
+//	OTEL_EXPORTER       — explicit override: "stdout" | "none"
 //	OTEL_SAMPLE_RATE    — reserved for Phase 6 sampling config
 func InitProvider(ctx context.Context) (ShutdownFunc, error) {
 	serviceName := os.Getenv("OTEL_SERVICE_NAME")
@@ -55,7 +57,11 @@ func InitProvider(ctx context.Context) (ShutdownFunc, error) {
 	// ── Exporter selection ──────────────────────────────────────────────
 	exporterKind := os.Getenv("OTEL_EXPORTER")
 	if exporterKind == "" {
-		exporterKind = "stdout"
+		if strings.EqualFold(strings.TrimSpace(os.Getenv("ENVIRONMENT")), "production") {
+			exporterKind = "stdout"
+		} else {
+			exporterKind = "none"
+		}
 	}
 
 	var exporter sdktrace.SpanExporter

@@ -41,6 +41,28 @@ import (
 	"config"
 )
 
+func configureProcessLogger(cfg *config.EnvConfig) {
+	handlerOptions := &slog.HandlerOptions{Level: slog.LevelInfo}
+	var handler slog.Handler
+	if cfg.IsProduction() {
+		handler = slog.NewJSONHandler(os.Stdout, handlerOptions)
+	} else {
+		handler = slog.NewTextHandler(os.Stdout, handlerOptions)
+	}
+
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+
+	// Bridge legacy log.Printf/log.Println call sites through the default
+	// slog handler so bootstrap output stays in one consistent format.
+	bridge := slog.NewLogLogger(handler, slog.LevelInfo)
+	bridge.SetFlags(0)
+	bridge.SetPrefix("")
+	log.SetFlags(0)
+	log.SetPrefix("")
+	log.SetOutput(bridge.Writer())
+}
+
 // NewApp is the composition root. It initialises every long-lived dependency
 // in the order imposed by their construction prerequisites and returns a
 // fully-populated *App. Any fatal error during construction returns an
@@ -50,10 +72,8 @@ import (
 // (Spanner dial, GCS bucket probe, Secret Manager warmup). A timely cancel
 // causes NewApp to surface a context error instead of hanging.
 func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
-	// ── 0. Structured logging (slog JSON as process default) ─────────────
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	})))
+	// ── 0. Process logging (text in dev, JSON in production) ─────────────
+	configureProcessLogger(cfg)
 
 	// ── 0b. OpenTelemetry TracerProvider ─────────────────────────────────
 	// Must init BEFORE Spanner/Redis/Kafka so instrumented clients pick up
@@ -95,7 +115,7 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 	internalKafka.InitNotificationWriter(cfg.KafkaBrokerAddress)
 
 	if err := storage.InitGCS(ctx, cfg.GCSBucketName); err != nil {
-		log.Printf("[WARNING] GCS init failed. Image uploads offline: %v", err)
+		slog.Warn("gcs init failed; image uploads offline", "err", err)
 	}
 
 	// ── 4. Payment + vault services ───────────────────────────────────────
@@ -104,12 +124,6 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 	cardTokenSvc := &payment.CardTokenService{Spanner: spannerClient}
 	cardsClient := payment.NewGlobalPayCardsClient()   // nil when GLOBAL_PAY_GATEWAY_BASE_URL unset
 	directClient := payment.NewGlobalPayDirectClient() // nil when GLOBAL_PAY_GATEWAY_BASE_URL unset
-	if cardsClient != nil {
-		log.Println("[BOOT] Global Pay Cards Service client: ARMED")
-	}
-	if directClient != nil {
-		log.Println("[BOOT] Global Pay Direct Payments client: ARMED")
-	}
 
 	// ── 5. Country/platform/empathy/pricing services ──────────────────────
 	countryCfgSvc := countrycfg.NewService(spannerClient)
@@ -146,10 +160,8 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 	telemetry.FleetHub.ProximityEngine = proxEngine
 	telemetry.FleetHub.Spanner = spannerClient
 	telemetry.FleetHub.Buffer = telemetry.NewGPSBuffer(telemetry.FleetHub)
-	if cache.GetClient() != nil {
-		log.Println("[BOOT] Proximity Engine: ARMED (Redis GEO active, breach radius: 100m)")
-	} else {
-		log.Println("[BOOT] Proximity Engine: DEGRADED (Redis offline — breach detection disabled)")
+	if cache.GetClient() == nil {
+		slog.Warn("proximity engine degraded; breach detection disabled", "reason", "redis offline")
 	}
 
 	// ── 7. Load shedder (priority-aware) ──────────────────────────────────
@@ -168,7 +180,7 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 
 	// ── 10. Firebase Auth (soft-fail into legacy HS256 mode) ──────────────
 	if _, fbErr := auth.InitFirebaseAuth(ctx); fbErr != nil {
-		log.Printf("[FIREBASE AUTH] Init skipped: %v — legacy JWT mode active", fbErr)
+		slog.Warn("firebase auth init skipped; legacy JWT mode active", "err", fbErr)
 	}
 
 	// ── 11. Derived deps that require fcm ─────────────────────────────────
@@ -193,10 +205,6 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 	var optimizerCli *optimizerclient.Client
 	if cfg.OptimizerBaseURL != "" {
 		optimizerCli = optimizerclient.New(cfg.OptimizerBaseURL, cfg.InternalAPIKey)
-		log.Printf("[BOOT] Dispatch Optimizer: ARMED (endpoint=%s, timeout=%s)",
-			cfg.OptimizerBaseURL, optimizerclient.DefaultTimeout)
-	} else {
-		log.Println("[BOOT] Dispatch Optimizer: DEGRADED (OPTIMIZER_BASE_URL unset — Phase 1 fallback only)")
 	}
 
 	// ── 13a. gRPC optimizer client (preferred over HTTP when OPTIMIZER_GRPC_ADDR is set) ──
@@ -204,9 +212,6 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 	optimizerGRPC, err := optimizergrpc.New(cfg.InternalAPIKey)
 	if err != nil {
 		return nil, fmt.Errorf("optimizer grpc client: %w", err)
-	}
-	if optimizerGRPC != nil {
-		log.Println("[BOOT] Dispatch Optimizer gRPC: ARMED (OPTIMIZER_GRPC_ADDR set, HTTP client superseded)")
 	}
 
 	// ── 13a. Shared dispatch source-attribution counters ──────────────────
@@ -221,7 +226,6 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 	var simEngine *simulation.Engine
 	if os.Getenv("SIMULATION_ENABLED") == "true" {
 		simEngine = simulation.NewEngine(optimizerCli, dispatchCounts)
-		log.Println("[BOOT] Simulation Harness: ARMED (/v1/internal/sim/{start,stop,status} mounted)")
 	}
 
 	return &App{

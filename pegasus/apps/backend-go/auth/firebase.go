@@ -37,7 +37,6 @@ func InitFirebaseAuth(ctx context.Context) (*firebaseAuth.Client, error) {
 		if err != nil {
 			return nil, fmt.Errorf("firebase app init (emulator): %w", err)
 		}
-		log.Printf("[FIREBASE AUTH] Emulator mode — connecting to %s", emulatorHost)
 	} else if credPath != "" {
 		// Production mode — use service account credentials.
 		opt := option.WithCredentialsFile(credPath)
@@ -45,7 +44,6 @@ func InitFirebaseAuth(ctx context.Context) (*firebaseAuth.Client, error) {
 		if err != nil {
 			return nil, fmt.Errorf("firebase app init (credentials): %w", err)
 		}
-		log.Println("[FIREBASE AUTH] Production mode — using service account credentials")
 	} else {
 		log.Println("[FIREBASE AUTH] No emulator or credentials configured — Firebase Auth disabled")
 		return nil, nil
@@ -57,7 +55,6 @@ func InitFirebaseAuth(ctx context.Context) (*firebaseAuth.Client, error) {
 	}
 
 	FirebaseAuthClient = client
-	log.Println("[FIREBASE AUTH] Client initialized successfully")
 	return client, nil
 }
 

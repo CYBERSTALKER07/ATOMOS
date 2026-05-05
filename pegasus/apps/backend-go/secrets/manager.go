@@ -60,12 +60,9 @@ func Init(ctx context.Context) *Manager {
 			} else {
 				globalManager.client = client
 				globalManager.projectID = projectID
-				log.Printf("[SECRETS] GCP Secret Manager online (project: %s)", projectID)
 				return
 			}
 		}
-
-		log.Println("[SECRETS] Running in ENV-only mode — all secrets read from environment variables")
 	})
 	return globalManager
 }

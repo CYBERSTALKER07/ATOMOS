@@ -16,7 +16,6 @@ package optimizergrpc
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"time"
 
@@ -105,7 +104,6 @@ func New(apiKey string) (*GRPCClient, error) {
 		return nil, fmt.Errorf("optimizer grpc dial %s: %w", addr, err)
 	}
 
-	slog.Info("[BOOT] Optimizer gRPC client: ARMED", "addr", addr)
 	return &GRPCClient{
 		conn:   conn,
 		stub:   optimizer.NewClient(conn),

@@ -2519,13 +2519,10 @@ func main() {
 
 	// Phase 3: Boot the Retailer WebSocket Hub + DRIVER_APPROACHING Kafka consumer
 	internalKafka.StartApproachConsumer(ctx, retailerHub, fcmClient, spannerClient, cfg.KafkaBrokerAddress)
-	fmt.Println("[BOOT] Retailer WebSocket Hub + Approach Consumer: ONLINE")
 
 	// Phase 3b: Driver WebSocket Hub route now mounts via driverroutes.
-	fmt.Println("[BOOT] Driver WebSocket Hub: ONLINE")
 
 	// Phase 3c: Payloader WebSocket Hub route now mounts via payloaderroutes.
-	fmt.Println("[BOOT] Payloader WebSocket Hub: ONLINE")
 
 	// Boot the Notification Dispatcher Consumer (inbox + WS + Telegram for all event types)
 	internalKafka.StartNotificationDispatcher(ctx, internalKafka.NotificationDeps{
@@ -2536,7 +2533,6 @@ func main() {
 		Telegram:      tgClient,
 		SpannerClient: spannerClient,
 	}, cfg.KafkaBrokerAddress)
-	fmt.Println("[BOOT] Notification Dispatcher Consumer: ONLINE")
 
 	// Boot the Financial Worker
 	internalKafka.StartTreasurer(ctx, spannerClient, cfg.KafkaBrokerAddress, platformCfg)
@@ -2548,14 +2544,12 @@ func main() {
 	})
 	reconcilerSvc := payment.NewReconcilerService(cfg, spannerClient)
 	go reconcilerSvc.Start(ctx)
-	log.Println("[BOOT] Financial Reconciler Service: ONLINE")
 
 	// Boot the Transactional Outbox relay (V.O.I.D. Phase VII).
 	app.Outbox.SetOnFailure(func(eventID, aggregateID, topic string, err error) {
 		app.WarehouseHub.BroadcastOutboxFailure(eventID, aggregateID, topic, err.Error())
 	})
 	app.Outbox.Start(ctx)
-	log.Println("[BOOT] Transactional Outbox Relay: ONLINE")
 
 	// Boot the Global Pay Session Sweeper (expired + stale session recovery)
 	gpReconciler := &payment.GlobalPayReconciler{
@@ -2567,23 +2561,19 @@ func main() {
 		RetailerHub:   retailerHub,
 	}
 	StartGlobalPaySweeper(gpReconciler)
-	log.Println("[BOOT] Global Pay Session Sweeper: ONLINE")
 
 	StartPaymentSessionExpirer(sessionSvc, retailerHub)
-	log.Println("[BOOT] Payment Session Expiry Cron: ONLINE")
 
 	// Boot the Failsafe Transmitter
 	internalKafka.InitDLQ(cfg.KafkaBrokerAddress)
 
 	// 4. Initialize the Field General AI Routing Cron
-	fmt.Println("[BOOT] Arming Field General Route Optimizer (04:00 AM UTC+5)...")
 	// Since we are matching the instruction closely:
 	go routing.StartCron(ctx, spannerClient, cfg.GoogleMapsAPIKey, cfg.DepotLocation)
 
 	// Boot the Replenishment Engine (4h stock deficit analysis)
 	replenishEngine := &replenishment.ReplenishmentEngine{Spanner: spannerClient, Producer: svc.Producer}
 	replenishEngine.StartReplenishmentCron()
-	log.Println("[BOOT] Replenishment Engine Cron: ONLINE (4h interval)")
 
 	// /v1/admin/* — 22 endpoints. Ownership lives in backend-go/adminroutes.
 	adminroutes.RegisterRoutes(r, adminroutes.Deps{
@@ -2605,11 +2595,9 @@ func main() {
 
 	// 6. Quarantine Protocol — Stale Order Auditor (15min sweep)
 	StartStaleOrderAuditor(spannerClient)
-	log.Println("[BOOT] Stale Order Auditor (Quarantine Protocol): ONLINE (15min interval)")
 
 	// 7. Edge 4: Orphaned AIPredictionItems Cleanup (daily)
 	StartOrphanedPredictionCleaner(spannerClient)
-	log.Println("[BOOT] Orphaned Prediction Cleaner: ONLINE (daily interval)")
 
 	// 5. Boot Up the Server
 	srv := &http.Server{
@@ -2704,10 +2692,6 @@ func main() {
 	StartFactorySLAMonitor(slaMonitorSvc)
 	StartCurrentLoadReset(spannerClient)
 	StartCoverageAuditor(spannerClient)
-	log.Println("[BOOT] Pull Matrix Aggregator Cron: ONLINE (4h interval)")
-	log.Println("[BOOT] Factory SLA Monitor Cron: ONLINE (30min interval)")
-	log.Println("[BOOT] Factory CurrentLoad Reset Cron: ONLINE (24h interval)")
-	log.Println("[BOOT] Coverage Auditor Cron: ONLINE (6h interval)")
 
 	// /v1/factory/dispatch moved to factoryroutes.
 
