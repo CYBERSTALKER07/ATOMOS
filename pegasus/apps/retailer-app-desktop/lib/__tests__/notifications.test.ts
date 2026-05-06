@@ -28,6 +28,10 @@ describe('shouldRefreshNotificationInbox', () => {
     expect(shouldRefreshNotificationInbox({ type: 'ORDER_STATUS_CHANGED' })).toBe(true);
   });
 
+  it('refreshes on supplier-scoped completion events', () => {
+    expect(shouldRefreshNotificationInbox({ type: 'ORDER_COMPLETED' })).toBe(true);
+  });
+
   it('ignores unrelated retailer websocket payloads', () => {
     expect(shouldRefreshNotificationInbox({ type: 'TRACKING_POSITION' })).toBe(false);
     expect(shouldRefreshNotificationInbox(null)).toBe(false);

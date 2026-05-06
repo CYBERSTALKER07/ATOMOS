@@ -198,4 +198,17 @@ struct CartManagerTests {
         #expect(payload.items.count == 1)
         #expect(payload.items[0].quantity == 3)
     }
+
+    @Test func buildCheckoutPayload_preservesRetailerScopeFields() {
+        let cart = CartManager()
+        cart.add(product: makeProduct(id: "sku-touch"), variant: makeVariant(id: "variant-touch", price: 9_000), quantity: 1)
+
+        let payload = cart.buildCheckoutPayload(
+            retailerId: "retailer-touch",
+            paymentGateway: "CASH"
+        )
+
+        #expect(payload.retailerId == "retailer-touch")
+        #expect(payload.paymentGateway == "CASH")
+    }
 }

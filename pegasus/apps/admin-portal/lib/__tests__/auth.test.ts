@@ -38,6 +38,14 @@ describe('readTokenFromCookie', () => {
     expect(readTokenFromCookie()).toBe('sup456');
   });
 
+  it('falls back to supplier cookie when admin token is empty', () => {
+    Object.defineProperty(document, 'cookie', {
+      writable: true,
+      value: 'pegasus_admin_jwt=; pegasus_supplier_jwt=sup-fallback',
+    });
+    expect(readTokenFromCookie()).toBe('sup-fallback');
+  });
+
   it('prefers pegasus_admin_jwt over pegasus_supplier_jwt', () => {
     Object.defineProperty(document, 'cookie', {
       writable: true,

@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"backend-go/auth"
 	"backend-go/fleet"
@@ -91,6 +92,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 func passthrough(next http.HandlerFunc) http.HandlerFunc {
 	return next
+}
+
+func withDetachedRequestContext(r *http.Request) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(r.Context()), 30*time.Second)
 }
 
 func handleOrdersList(d Deps) http.HandlerFunc {
@@ -288,7 +293,11 @@ func handleOrderDeliver(d Deps) http.HandlerFunc {
 			return
 		}
 
-		go d.Order.InvalidateDeliveryToken(context.Background(), req.OrderId)
+		go func(orderID string) {
+			ctx, cancel := withDetachedRequestContext(r)
+			defer cancel()
+			d.Order.InvalidateDeliveryToken(ctx, orderID)
+		}(req.OrderId)
 
 		if d.FleetHub != nil && supplierID != "" {
 			go d.FleetHub.BroadcastOrderStateChange(supplierID, req.OrderId, "COMPLETED", "")
@@ -302,7 +311,11 @@ func handleOrderDeliver(d Deps) http.HandlerFunc {
 		})
 
 		if d.Spanner != nil {
-			go fleet.CheckAndAutoReleaseTruck(context.Background(), d.Spanner, req.OrderId, d.MapsAPIKey)
+			go func(orderID string) {
+				ctx, cancel := withDetachedRequestContext(r)
+				defer cancel()
+				fleet.CheckAndAutoReleaseTruck(ctx, d.Spanner, orderID, d.MapsAPIKey)
+			}(req.OrderId)
 		}
 	}
 }
@@ -404,14 +417,22 @@ func handleOrderComplete(d Deps) http.HandlerFunc {
 			return
 		}
 
-		go d.Order.InvalidateDeliveryToken(context.Background(), req.OrderID)
+		go func(orderID string) {
+			ctx, cancel := withDetachedRequestContext(r)
+			defer cancel()
+			d.Order.InvalidateDeliveryToken(ctx, orderID)
+		}(req.OrderID)
 
 		if d.FleetHub != nil && supplierID != "" {
 			go d.FleetHub.BroadcastOrderStateChange(supplierID, req.OrderID, "COMPLETED", "")
 		}
 
 		if d.Spanner != nil {
-			go fleet.CheckAndAutoReleaseTruck(context.Background(), d.Spanner, req.OrderID, d.MapsAPIKey)
+			go func(orderID string) {
+				ctx, cancel := withDetachedRequestContext(r)
+				defer cancel()
+				fleet.CheckAndAutoReleaseTruck(ctx, d.Spanner, orderID, d.MapsAPIKey)
+			}(req.OrderID)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -474,7 +495,11 @@ func handleOrderCollectCash(d Deps) http.HandlerFunc {
 		}
 
 		if d.Spanner != nil {
-			go fleet.CheckAndAutoReleaseTruck(context.Background(), d.Spanner, req.OrderID, d.MapsAPIKey)
+			go func(orderID string) {
+				ctx, cancel := withDetachedRequestContext(r)
+				defer cancel()
+				fleet.CheckAndAutoReleaseTruck(ctx, d.Spanner, orderID, d.MapsAPIKey)
+			}(req.OrderID)
 		}
 
 		w.Header().Set("Content-Type", "application/json")

@@ -127,4 +127,13 @@ class RetailerWSMessageTest {
         assertEquals(null, msg.driverLatitude)
         assertEquals(null, msg.driverLongitude)
     }
+
+    @Test
+    fun `supplier aliases remain available for completion events`() {
+        val raw = """{"type":"ORDER_COMPLETED","order_id":"ORD-004","supplier_id":"SUP-777","supplier_name":"Supplier Seven"}"""
+        val msg = json.decodeFromString<RetailerWSMessage>(raw)
+        assertEquals("ORDER_COMPLETED", msg.type)
+        assertEquals("SUP-777", msg.supplierId)
+        assertEquals("Supplier Seven", msg.supplierName)
+    }
 }
