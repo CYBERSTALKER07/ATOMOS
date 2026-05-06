@@ -59,6 +59,18 @@ func TestNormalizeInventoryItemAliases(t *testing.T) {
 	}
 }
 
+func TestNormalizeInventoryItemAliases_PreservesExistingAliases(t *testing.T) {
+	item := InventoryItem{SkuID: "sku-42", ProductID: "product-9", SKU: "legacy-sku"}
+	normalizeInventoryItemAliases(&item)
+
+	if item.ProductID != "product-9" {
+		t.Fatalf("ProductID = %q, want product-9", item.ProductID)
+	}
+	if item.SKU != "legacy-sku" {
+		t.Fatalf("SKU = %q, want legacy-sku", item.SKU)
+	}
+}
+
 func TestNormalizeWarehouseStaffRole(t *testing.T) {
 	tests := []struct {
 		name string

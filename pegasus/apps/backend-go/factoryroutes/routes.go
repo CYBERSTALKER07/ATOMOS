@@ -8,10 +8,10 @@
 // backend-go/analytics. This package is a thin composer that mounts them
 // behind the FACTORY-role guard and the RequireFactoryScope middleware.
 //
-// Path-prefix routes (/v1/factory/transfers/, /v1/factory/manifests/,
-// /v1/factory/staff/, /v1/factory/supply-requests/) register on
-// http.DefaultServeMux — chi's exact-match semantics would not preserve the
-// "{id}/{verb}" sub-path dispatch the delegated handlers rely on.
+// Path-prefix routes (/v1/factory/transfers/*, /v1/factory/manifests/*,
+// /v1/factory/staff/*, /v1/factory/supply-requests/*) now register on chi
+// wildcard mounts so "{id}/{verb}" dispatch remains intact without relying on
+// http.DefaultServeMux.
 //
 // V.O.I.D. Wave B adoption notes:
 //   - Factory-scope enforcement: every route (except /v1/factory/transfers/create,
@@ -109,13 +109,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(factoryRole, log(withScope(d.TransferSvc.HandleListTransfers))))
 
 	// 5. Create transfer — allowed to FACTORY, SUPPLIER, and ADMIN.
-	//    Registered before the /v1/factory/transfers/ prefix dispatcher so the
+	//    Registered before the /v1/factory/transfers/* wildcard dispatcher so the
 	//    exact-match wins on chi.
 	r.HandleFunc("/v1/factory/transfers/create",
 		auth.RequireRole(factoryCreate, log(withScope(d.TransferSvc.HandleCreateTransfer))))
 
-	// 4. Transfer detail + state transitions — path-prefix dispatcher.
-	http.HandleFunc("/v1/factory/transfers/",
+	// 4. Transfer detail + state transitions — wildcard path dispatcher.
+	r.HandleFunc("/v1/factory/transfers/*",
 		auth.RequireRole(factoryRole, log(withScope(transferByID(d.TransferSvc)))))
 
 	// 6. Factory truck manifests (Loading Bay Kanban).
@@ -131,8 +131,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/factory/manifests/cancel",
 		auth.RequireRole(factoryRole, log(withScope(overrideSvc.HandleCancelManifest))))
 
-	// 7. Manifest detail + state transitions — path-prefix dispatcher.
-	http.HandleFunc("/v1/factory/manifests/",
+	// 7. Manifest detail + state transitions — wildcard path dispatcher.
+	r.HandleFunc("/v1/factory/manifests/*",
 		auth.RequireRole(factoryRole, log(withScope(factory.HandleFactoryManifestTransition(d.Spanner, d.FactoryHub)))))
 
 	// 8–9. Factory-scoped fleet view.
@@ -146,7 +146,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	// 10–11. Staff management.
 	r.HandleFunc("/v1/factory/staff",
 		auth.RequireRole(factoryRole, log(withScope(factory.HandleFactoryStaff(d.Spanner)))))
-	http.HandleFunc("/v1/factory/staff/",
+	r.HandleFunc("/v1/factory/staff/*",
 		auth.RequireRole(factoryRole, log(withScope(factory.HandleFactoryStaffDetail(d.Spanner)))))
 
 	// 12. Dispatch engine — bin-pack + route-optimize + LIFO load order.
@@ -159,8 +159,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/factory/supply-requests",
 		auth.RequireRole(factoryRole, log(withScope(d.SupplyRequestSvc.HandleListSupplyRequests))))
 
-	// 14. Supply-request detail + state transition (path-prefix).
-	http.HandleFunc("/v1/factory/supply-requests/",
+	// 14. Supply-request detail + state transition (wildcard path).
+	r.HandleFunc("/v1/factory/supply-requests/*",
 		auth.RequireRole(factoryRole, log(withScope(supplyRequestByID(d.SupplyRequestSvc)))))
 
 	if d.FactoryHub != nil {

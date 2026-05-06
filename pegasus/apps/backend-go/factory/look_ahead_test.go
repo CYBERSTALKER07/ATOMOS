@@ -130,7 +130,13 @@ func TestSourceToDBValue(t *testing.T) {
 	if got := sourceToDBValue("CRON"); got != "SYSTEM_THRESHOLD" {
 		t.Errorf("sourceToDBValue(CRON) = %s, want SYSTEM_THRESHOLD", got)
 	}
+	if got := sourceToDBValue("EVENT_TRIGGERED"); got != "SYSTEM_THRESHOLD" {
+		t.Errorf("sourceToDBValue(EVENT_TRIGGERED) = %s, want SYSTEM_THRESHOLD", got)
+	}
 	if got := sourceToDBValue("MANUAL"); got != "MANUAL_EMERGENCY" {
 		t.Errorf("sourceToDBValue(MANUAL) = %s, want MANUAL_EMERGENCY", got)
+	}
+	if got := sourceToDBValue("UNKNOWN"); got != "SYSTEM_THRESHOLD" {
+		t.Errorf("sourceToDBValue(UNKNOWN) = %s, want SYSTEM_THRESHOLD", got)
 	}
 }

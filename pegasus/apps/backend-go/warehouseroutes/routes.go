@@ -16,12 +16,12 @@
 //     auth.RequireWarehouseScope so WarehouseId is pinned before the
 //     handler runs. Ops routes layer auth.RequireWarehouseOpsScope on
 //     top for the WAREHOUSE_ADMIN operator surface.
-//   - Path-prefix dispatchers (/v1/warehouse/transfers/,
-//     /v1/warehouse/replenishment/insights/,
-//     /v1/warehouse/supply-requests/, /v1/warehouse/ops/{drivers,
-//     vehicles,staff,orders}/) register on http.DefaultServeMux so the
-//     {id}/{verb} sub-path dispatch the delegated handlers rely on keeps
-//     longest-prefix semantics.
+//   - Path-prefix dispatchers (/v1/warehouse/transfers/*,
+//     /v1/warehouse/replenishment/insights/*,
+//     /v1/warehouse/supply-requests/*, /v1/warehouse/ops/{drivers,
+//     vehicles,staff,orders}/*) register on chi wildcard mounts so
+//     {id}/{verb} sub-path dispatch remains intact without relying on
+//     http.DefaultServeMux.
 //   - Outbox adoption for transfer-receive, supply-request transitions,
 //     and dispatch-lock mutations remains inside the factory/warehouse
 //     packages — progressive migration, tracked separately.
@@ -125,16 +125,15 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/warehouse/transfers/force-receive",
 		auth.RequireRole(warehouseScoped, log(withScope(d.ForceReceiveSvc.HandleForceReceive))))
 
-	// 2. Standard inbound-transfer receive — path-prefix dispatcher on
-	//    /v1/warehouse/transfers/{id}/receive. Uses DefaultServeMux so
-	//    longest-prefix semantics select this after exact-match routes.
-	http.HandleFunc("/v1/warehouse/transfers/",
+	// 2. Standard inbound-transfer receive — wildcard dispatcher on
+	//    /v1/warehouse/transfers/{id}/receive.
+	r.HandleFunc("/v1/warehouse/transfers/*",
 		auth.RequireRole(warehouseScoped, log(withScope(d.TransferSvc.HandleWarehouseReceiveTransfer))))
 
-	// 4. Replenishment insights (exact) + action dispatcher (prefix).
+	// 4. Replenishment insights (exact) + action dispatcher (wildcard).
 	r.HandleFunc("/v1/warehouse/replenishment/insights",
 		auth.RequireRole(warehouseScoped, log(withScope(replenishment.HandleInsights(d.Spanner)))))
-	http.HandleFunc("/v1/warehouse/replenishment/insights/",
+	r.HandleFunc("/v1/warehouse/replenishment/insights/*",
 		auth.RequireRole(warehouseScoped, log(withScope(replenishment.HandleInsightAction(d.Spanner, d.Producer)))))
 
 	// 6. Demand forecast.
@@ -144,32 +143,32 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	// 7. Supply-request list + create (exact).
 	r.HandleFunc("/v1/warehouse/supply-requests",
 		auth.RequireRole(warehouseTriad, log(supplyRequestList(d.SupplyReqSvc))))
-	// 8. Supply-request detail + transition (prefix dispatcher).
-	http.HandleFunc("/v1/warehouse/supply-requests/",
+	// 8. Supply-request detail + transition (wildcard dispatcher).
+	r.HandleFunc("/v1/warehouse/supply-requests/*",
 		auth.RequireRole(warehouseTriad, log(supplyRequestByID(d.SupplyReqSvc))))
 
 	// 9-26. Warehouse Ops Portal (WAREHOUSE_ADMIN scope).
 	r.HandleFunc("/v1/warehouse/ops/dashboard", whOps(warehouse.HandleDashboard(d.Spanner)))
 
 	r.HandleFunc("/v1/warehouse/ops/drivers", whOps(warehouse.HandleOpsDrivers(d.Spanner)))
-	http.HandleFunc("/v1/warehouse/ops/drivers/", whOps(warehouse.HandleOpsDriverDetail(d.Spanner)))
+	r.HandleFunc("/v1/warehouse/ops/drivers/*", whOps(warehouse.HandleOpsDriverDetail(d.Spanner)))
 
 	r.HandleFunc("/v1/warehouse/ops/vehicles", whOps(warehouse.HandleOpsVehicles(d.Spanner)))
-	http.HandleFunc("/v1/warehouse/ops/vehicles/", whOps(warehouse.HandleOpsVehicleDetail(d.Spanner)))
+	r.HandleFunc("/v1/warehouse/ops/vehicles/*", whOps(warehouse.HandleOpsVehicleDetail(d.Spanner)))
 
 	r.HandleFunc("/v1/warehouse/ops/staff", whOps(warehouse.HandleOpsStaff(d.Spanner)))
-	http.HandleFunc("/v1/warehouse/ops/staff/", whOps(warehouse.HandleOpsStaffDetail(d.Spanner)))
+	r.HandleFunc("/v1/warehouse/ops/staff/*", whOps(warehouse.HandleOpsStaffDetail(d.Spanner)))
 
 	r.HandleFunc("/v1/warehouse/ops/orders", whOps(warehouse.HandleOpsOrders(d.Spanner, d.ReadRouter)))
 	// Phase V LEO: ops marks an order DELAYED (capacity overflow / hold).
-	// Registered as an exact chi route BEFORE the /v1/warehouse/ops/orders/
+	// Registered as an exact chi route BEFORE the /v1/warehouse/ops/orders/*
 	// prefix dispatcher so longest-match selects this for /{id}/delay.
 	if d.OrderSvc != nil {
 		r.Post("/v1/warehouse/ops/orders/{id}/delay", whOps(d.OrderSvc.HandleMarkDelayed()))
 		r.Post("/v1/warehouse/ops/orders/{id}/reject", whOps(d.OrderSvc.HandleOrderRejection()))
 		r.Post("/v1/warehouse/ops/orders/{id}/overflow", whOps(d.OrderSvc.HandlePayloadOverflow()))
 	}
-	http.HandleFunc("/v1/warehouse/ops/orders/", whOps(warehouse.HandleOpsOrderDetail(d.Spanner, d.ReadRouter)))
+	r.HandleFunc("/v1/warehouse/ops/orders/*", whOps(warehouse.HandleOpsOrderDetail(d.Spanner, d.ReadRouter)))
 
 	r.HandleFunc("/v1/warehouse/ops/dispatch/preview", whOps(warehouse.HandleOpsDispatchPreview(d.Spanner, d.Optimizer, d.DispatchCounts)))
 	r.HandleFunc("/v1/warehouse/ops/inventory", whOps(warehouse.HandleOpsInventory(d.Spanner, d.Cache)))
