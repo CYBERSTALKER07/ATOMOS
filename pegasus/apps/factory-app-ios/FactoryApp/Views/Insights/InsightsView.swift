@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct InsightsView: View {
+    @State private var realtimeClient = FactoryRealtimeClient()
     @State private var insights: [Insight] = []
     @State private var loading = true
     @State private var error: String?
@@ -41,6 +42,19 @@ struct InsightsView: View {
                 }
             }
             .task { load() }
+            .onAppear {
+                realtimeClient.connect(
+                    onStateChange: { _ in },
+                    onEvent: { event in
+                        guard let eventType = event.eventType else { return }
+                        guard eventType == .supplyRequestUpdate || eventType == .transferUpdate else { return }
+                        load()
+                    }
+                )
+            }
+            .onDisappear {
+                realtimeClient.disconnect()
+            }
         }
     }
 

@@ -293,13 +293,15 @@
         "pegasus/apps/factory-portal/app/page.tsx",
         "pegasus/apps/factory-portal/components/FactoryShell.tsx",
         "pegasus/apps/factory-app-android/app/src/main/java/com/pegasus/factory/data/remote/FactoryApi.kt",
-        "pegasus/apps/factory-app-ios/FactoryApp/Services/FactoryService.swift"
+        "pegasus/apps/factory-app-android/app/src/main/java/com/pegasus/factory/data/remote/FactoryRealtimeClient.kt",
+        "pegasus/apps/factory-app-ios/FactoryApp/Services/FactoryService.swift",
+        "pegasus/apps/factory-app-ios/FactoryApp/Services/FactoryRealtimeClient.swift"
       ],
       "notes": [
         "Factory portal shell now hydrates identity from GET /v1/factory/profile instead of static labeling.",
         "Android and iOS clients expose additive advanced-factory endpoint methods (transfers/create, manifests detail/transition, fleet split lists, staff detail) while preserving the existing operator-loop routes.",
         "Factory role-row realtime contract now includes GET /v1/ws/factory with additive events FACTORY_SUPPLY_REQUEST_UPDATE, FACTORY_TRANSFER_UPDATE, and FACTORY_MANIFEST_UPDATE.",
-        "Polling refresh remains as fallback across portal, Android, and iOS while clients roll into websocket-triggered reloads."
+        "Portal, Android, and iOS now subscribe to websocket-triggered reloads, while polling/manual refresh remains fallback."
       ]
     },
     {
