@@ -10,8 +10,8 @@
 //
 // Path-prefix routes (/v1/factory/transfers/*, /v1/factory/manifests/*,
 // /v1/factory/staff/*, /v1/factory/supply-requests/*) now register on chi
-// wildcard mounts so "{id}/{verb}" dispatch remains intact without relying on
-// http.DefaultServeMux.
+// wildcard mounts so "{id}/{verb}" dispatch remains intact on chi-native
+// routing.
 //
 // V.O.I.D. Wave B adoption notes:
 //   - Factory-scope enforcement: every route (except /v1/factory/transfers/create,

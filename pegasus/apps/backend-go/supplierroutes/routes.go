@@ -62,6 +62,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	idem := d.Idempotency
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
+	withWarehouseScope := auth.RequireWarehouseScopeWithClient(d.Spanner)
 
 	r.HandleFunc("/v1/supplier/configure",
 		auth.RequireRole(supplierRole, log(idem(supplier.HandleSupplierConfigure(d.Spanner)))))
@@ -78,25 +79,25 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/payment/recipient/register",
 		auth.RequireRole(supplierRole, log(idem(vault.HandleRegisterRecipient(d.Spanner, d.DirectClient)))))
 	r.HandleFunc("/v1/supplier/org/members",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleOrgMembers(d.Spanner)))))
+		auth.RequireRole(supplierRole, log(withWarehouseScope(supplier.HandleOrgMembers(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/org/members/invite",
 		auth.RequireRole(supplierRole, log(idem(supplier.HandleOrgInvite(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/org/members/*",
 		auth.RequireRole(supplierRole, log(idem(supplier.HandleOrgMemberAction(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/staff/payloader",
-		auth.RequireRole(supplierRole, log(withMethodIdempotency(auth.RequireWarehouseScope(supplier.HandleStaffPayloaders(d.Spanner)), idem, http.MethodPost))))
+		auth.RequireRole(supplierRole, log(withMethodIdempotency(withWarehouseScope(supplier.HandleStaffPayloaders(d.Spanner)), idem, http.MethodPost))))
 	r.HandleFunc("/v1/supplier/staff/payloader/*",
-		auth.RequireRole(supplierRole, log(withMethodIdempotency(auth.RequireWarehouseScope(supplier.HandlePayloaderDetail(d.Spanner)), idem, http.MethodPost))))
+		auth.RequireRole(supplierRole, log(withMethodIdempotency(withWarehouseScope(supplier.HandlePayloaderDetail(d.Spanner)), idem, http.MethodPost))))
 	r.HandleFunc("/v1/supplier/warehouse-staff",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleWarehouseStaff(d.Spanner)))))
+		auth.RequireRole(supplierRole, log(withWarehouseScope(supplier.HandleWarehouseStaff(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/warehouse-staff/*",
-		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(supplier.HandleWarehouseStaffToggle(d.Spanner))))))
+		auth.RequireRole(supplierRole, log(idem(withWarehouseScope(supplier.HandleWarehouseStaffToggle(d.Spanner))))))
 	r.HandleFunc("/v1/supplier/warehouses",
-		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(supplier.HandleWarehouses(d.Spanner, d.Producer))))))
+		auth.RequireRole(supplierRole, log(idem(withWarehouseScope(supplier.HandleWarehouses(d.Spanner, d.Producer))))))
 	r.HandleFunc("/v1/supplier/warehouses/*",
-		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(supplier.HandleWarehouseByID(d.Spanner, d.Producer))))))
+		auth.RequireRole(supplierRole, log(idem(withWarehouseScope(supplier.HandleWarehouseByID(d.Spanner, d.Producer))))))
 	r.HandleFunc("/v1/supplier/warehouse-inflight-vu",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleWarehouseInflightVU(d.Spanner)))))
+		auth.RequireRole(supplierRole, log(withWarehouseScope(supplier.HandleWarehouseInflightVU(d.Spanner)))))
 
 	if d.SupplierHub != nil {
 		r.HandleFunc("/v1/ws/supplier",

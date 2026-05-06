@@ -1,6 +1,6 @@
 {
   "version": "2026-05-07",
-  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split: telemetryroutes, orderroutes expansion, infra-only infraroutes).",
+  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split: telemetryroutes, orderroutes expansion, infraroutes health-only with authroutes debug mint-token ownership).",
   "agentContext": {
     "syncSet": [
       "../.github/ACT.md",

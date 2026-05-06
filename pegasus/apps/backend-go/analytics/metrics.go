@@ -35,10 +35,16 @@ func DecrementRequest() { ActiveRequests.Add(-1) }
 // IncrementError tracks 5xx responses.
 func IncrementError() { TotalErrors.Add(1) }
 
+// routeRegistrar captures the minimal route registration surface shared by
+// chi routers and net/http ServeMux.
+type routeRegistrar interface {
+	Handle(pattern string, h http.Handler)
+}
+
 // RegisterMetricsRoutes mounts legacy JSON metrics and Prometheus metrics.
-func RegisterMetricsRoutes(mux *http.ServeMux, log func(http.HandlerFunc) http.HandlerFunc) {
-	mux.Handle("/metrics", telemetry.Handler())
-	mux.HandleFunc("/v1/metrics", log(HandleMetrics))
+func RegisterMetricsRoutes(r routeRegistrar, log func(http.HandlerFunc) http.HandlerFunc) {
+	r.Handle("/metrics", telemetry.Handler())
+	r.Handle("/v1/metrics", log(HandleMetrics))
 }
 
 // HandleMetrics returns process-level metrics as JSON.

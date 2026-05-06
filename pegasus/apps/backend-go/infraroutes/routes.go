@@ -9,23 +9,17 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 
-	"backend-go/auth"
 	"backend-go/cache"
 )
 
 // Deps bundles collaborators required for infrastructure endpoints.
 type Deps struct {
-	Spanner              *spanner.Client
-	EnableDebugMintToken bool
+	Spanner *spanner.Client
 }
 
 // RegisterRoutes mounts infrastructure-only compatibility endpoints.
 func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/health", handleHealth(d.Spanner))
-
-	if d.EnableDebugMintToken {
-		r.HandleFunc("/debug/mint-token", handleDebugMintToken)
-	}
 }
 
 func handleHealth(spannerClient *spanner.Client) http.HandlerFunc {
@@ -64,24 +58,4 @@ func handleHealth(spannerClient *spanner.Client) http.HandlerFunc {
 			"time":    time.Now().UTC().Format(time.RFC3339),
 		})
 	}
-}
-
-func handleDebugMintToken(w http.ResponseWriter, r *http.Request) {
-	role := r.URL.Query().Get("role")
-	if role == "" {
-		role = "RETAILER"
-	}
-
-	userID := r.URL.Query().Get("user_id")
-	if userID == "" {
-		userID = "TEST-USER-99"
-	}
-
-	tokenString, err := auth.GenerateTestToken(userID, role)
-	if err != nil {
-		http.Error(w, "Failed to forge token", http.StatusInternalServerError)
-		return
-	}
-
-	_, _ = w.Write([]byte(tokenString))
 }

@@ -131,12 +131,11 @@
     },
     {
       "name": "Legacy infra compatibility surface",
-      "path": "/v1/health + /debug/mint-token",
+	  "path": "/v1/health",
       "owner": "pegasus/apps/backend-go/infraroutes/routes.go",
       "delegatedFrom": "pegasus/apps/backend-go/main.go",
       "methods": [
-        "GET /v1/health",
-        "POST /debug/mint-token"
+		"GET /v1/health"
       ],
       "consumers": [
         "health probes",
@@ -144,7 +143,7 @@
       ],
       "notes": [
         "Domain compatibility mounts were re-homed to orderroutes, catalogroutes, warehouseroutes, and telemetryroutes.",
-        "Debug mint token remains gated by EnableDebugMintToken."
+		"Debug mint token route ownership moved to authroutes and remains gated by EnableDebugMintToken."
       ]
     },
     {

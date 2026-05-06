@@ -22,7 +22,7 @@
 //
 // Path-prefix routes (/v1/fleet/drivers/*, /v1/fleet/trucks/*,
 // /v1/fleet/route/*) now register on chi wildcard mounts so sub-path dispatch
-// remains intact without relying on http.DefaultServeMux.
+// remains intact on chi-native routing.
 package fleetroutes
 
 import (

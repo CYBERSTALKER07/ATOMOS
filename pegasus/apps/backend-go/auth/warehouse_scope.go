@@ -2,10 +2,12 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
 	"cloud.google.com/go/spanner"
+	"google.golang.org/api/iterator"
 )
 
 // ─── Warehouse Scope Middleware ────────────────────────────────────────────────
@@ -21,7 +23,16 @@ import (
 //     - WarehouseID is fixed from JWT → silently enforced on all queries
 //     - Query parameter ?warehouse_id=X → REJECTED if X != JWT warehouse_id
 //
+//   FACTORY_ADMIN (SupplierRole="FACTORY_ADMIN"):
+//     - WarehouseID must belong to warehouses linked to claims.FactoryID
+//       via Warehouses.PrimaryFactoryId / SecondaryFactoryId
+//     - Query parameter ?warehouse_id=X → REJECTED if X is outside linked set
+//     - If one linked warehouse exists and query is omitted, scope auto-pins
+//     - If multiple linked warehouses exist and query is omitted, request is rejected
+//
 // The effective scope is injected into context as WarehouseScopeKey.
+
+type factoryWarehouseResolver func(ctx context.Context, supplierID, factoryID string) (map[string]struct{}, error)
 
 type warehouseScopeKey string
 
@@ -48,6 +59,23 @@ func GetWarehouseScope(ctx context.Context) *WarehouseScope {
 // from JWT claims and optional query parameter, then injects it into context.
 // Must be placed AFTER RequireRole for SUPPLIER/ADMIN endpoints.
 func RequireWarehouseScope(next http.HandlerFunc) http.HandlerFunc {
+	return requireWarehouseScope(nil, next)
+}
+
+// RequireWarehouseScopeWithClient is a spanner-aware variant of
+// RequireWarehouseScope that enforces FACTORY_ADMIN warehouse linkage.
+func RequireWarehouseScopeWithClient(spannerClient *spanner.Client) func(http.HandlerFunc) http.HandlerFunc {
+	resolver := factoryWarehouseResolver(nil)
+	if spannerClient != nil {
+		resolver = spannerFactoryWarehouseResolver(spannerClient)
+	}
+
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return requireWarehouseScope(resolver, next)
+	}
+}
+
+func requireWarehouseScope(resolveFactoryWarehouses factoryWarehouseResolver, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims, ok := r.Context().Value(ClaimsContextKey).(*PegasusClaims)
 		if !ok || claims == nil {
@@ -69,7 +97,8 @@ func RequireWarehouseScope(next http.HandlerFunc) http.HandlerFunc {
 		// Determine effective warehouse scope
 		qsWarehouseID := r.URL.Query().Get("warehouse_id")
 
-		if claims.SupplierRole == "NODE_ADMIN" {
+		switch claims.SupplierRole {
+		case "NODE_ADMIN":
 			// NODE_ADMIN: warehouse scope is enforced from JWT
 			scope.IsNodeAdmin = true
 			scope.WarehouseID = claims.WarehouseID
@@ -87,7 +116,56 @@ func RequireWarehouseScope(next http.HandlerFunc) http.HandlerFunc {
 				http.Error(w, "Access denied: warehouse scope violation", http.StatusForbidden)
 				return
 			}
-		} else {
+
+		case "FACTORY_ADMIN":
+			if claims.FactoryID == "" {
+				log.Printf("[AUTH] FACTORY_ADMIN %s has empty FactoryID in JWT — rejecting", claims.UserID)
+				http.Error(w, "Factory admin must have assigned factory", http.StatusForbidden)
+				return
+			}
+			if scope.SupplierId == "" {
+				log.Printf("[AUTH] FACTORY_ADMIN %s has empty SupplierID in JWT — rejecting", claims.UserID)
+				http.Error(w, "Factory admin must belong to a supplier", http.StatusForbidden)
+				return
+			}
+			if resolveFactoryWarehouses == nil {
+				log.Printf("[AUTH] FACTORY_ADMIN %s scope resolver unavailable", claims.UserID)
+				http.Error(w, "Warehouse scope resolution unavailable", http.StatusInternalServerError)
+				return
+			}
+
+			allowedWarehouses, err := resolveFactoryWarehouses(r.Context(), scope.SupplierId, claims.FactoryID)
+			if err != nil {
+				log.Printf("[AUTH] FACTORY_ADMIN %s warehouse scope resolve failed: %v", claims.UserID, err)
+				http.Error(w, "Failed to resolve warehouse scope", http.StatusInternalServerError)
+				return
+			}
+			if len(allowedWarehouses) == 0 {
+				log.Printf("[AUTH] FACTORY_ADMIN %s has no linked warehouses for factory=%s", claims.UserID, claims.FactoryID)
+				http.Error(w, "Access denied: no linked warehouses for factory scope", http.StatusForbidden)
+				return
+			}
+
+			if qsWarehouseID != "" {
+				if _, ok := allowedWarehouses[qsWarehouseID]; !ok {
+					log.Printf("[AUTH] FACTORY_ADMIN %s attempted cross-warehouse access: factory=%s qs=%s", claims.UserID, claims.FactoryID, qsWarehouseID)
+					http.Error(w, "Access denied: warehouse scope violation", http.StatusForbidden)
+					return
+				}
+				scope.WarehouseID = qsWarehouseID
+				break
+			}
+
+			if len(allowedWarehouses) != 1 {
+				http.Error(w, "warehouse_id is required for this factory scope", http.StatusBadRequest)
+				return
+			}
+			for warehouseID := range allowedWarehouses {
+				scope.WarehouseID = warehouseID
+				break
+			}
+
+		default:
 			// GLOBAL_ADMIN: voluntary scoping via query parameter
 			scope.IsNodeAdmin = false
 			scope.WarehouseID = qsWarehouseID // empty = all warehouses
@@ -95,6 +173,53 @@ func RequireWarehouseScope(next http.HandlerFunc) http.HandlerFunc {
 
 		ctx := context.WithValue(r.Context(), WarehouseScopeKey, scope)
 		next.ServeHTTP(w, r.WithContext(ctx))
+	}
+}
+
+func spannerFactoryWarehouseResolver(spannerClient *spanner.Client) factoryWarehouseResolver {
+	return func(ctx context.Context, supplierID, factoryID string) (map[string]struct{}, error) {
+		if supplierID == "" {
+			return nil, fmt.Errorf("supplier id is required for factory warehouse scope")
+		}
+		if factoryID == "" {
+			return nil, fmt.Errorf("factory id is required for factory warehouse scope")
+		}
+
+		stmt := spanner.Statement{
+			SQL: `SELECT WarehouseId
+			      FROM Warehouses
+			      WHERE SupplierId = @supplierId
+			        AND IsActive = TRUE
+			        AND (PrimaryFactoryId = @factoryId OR SecondaryFactoryId = @factoryId)`,
+			Params: map[string]interface{}{
+				"supplierId": supplierID,
+				"factoryId":  factoryID,
+			},
+		}
+
+		allowed := make(map[string]struct{})
+		iter := spannerClient.Single().Query(ctx, stmt)
+		defer iter.Stop()
+
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				return nil, fmt.Errorf("query linked warehouses: %w", err)
+			}
+
+			var warehouseID string
+			if err := row.Columns(&warehouseID); err != nil {
+				return nil, fmt.Errorf("decode linked warehouse id: %w", err)
+			}
+			if warehouseID != "" {
+				allowed[warehouseID] = struct{}{}
+			}
+		}
+
+		return allowed, nil
 	}
 }
 

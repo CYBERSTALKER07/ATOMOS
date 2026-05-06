@@ -58,15 +58,16 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	idem := d.Idempotency
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
+	withWarehouseScope := auth.RequireWarehouseScopeWithClient(d.Spanner)
 
 	r.HandleFunc("/v1/supplier/delivery-zones/*",
 		auth.RequireRole(supplierRole, log(idem(supplier.HandleDeliveryZoneAction(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/delivery-zones",
 		auth.RequireRole(supplierRole, log(idem(supplier.HandleDeliveryZones(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/factories",
-		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(factory.HandleSupplierFactories(d.Spanner, d.Cache))))))
+		auth.RequireRole(supplierRole, log(idem(withWarehouseScope(factory.HandleSupplierFactories(d.Spanner, d.Cache))))))
 	r.HandleFunc("/v1/supplier/factories/*",
-		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(factory.HandleSupplierFactoryDetail(d.Spanner, d.Cache))))))
+		auth.RequireRole(supplierRole, log(idem(withWarehouseScope(factory.HandleSupplierFactoryDetail(d.Spanner, d.Cache))))))
 	r.HandleFunc("/v1/supplier/factories/recommend-warehouses",
 		auth.RequireRole(supplierRole, log(factory.HandleRecommendWarehouses(d.Spanner))))
 	r.HandleFunc("/v1/supplier/factories/optimal-assignments",

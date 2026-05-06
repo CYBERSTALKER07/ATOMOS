@@ -38,6 +38,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	idem := d.Idempotency
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
+	withWarehouseScope := auth.RequireWarehouseScopeWithClient(d.Spanner)
 
 	r.HandleFunc("/v1/supplier/products/upload-ticket",
 		auth.RequireRole(supplierRole, log(supplierUploadTicketHandler())))
@@ -50,9 +51,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/pricing/rules/*",
 		auth.RequireRole(supplierRole, log(idem(d.Pricing.HandlePricingRuleAction))))
 	r.HandleFunc("/v1/supplier/pricing/retailer-overrides",
-		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrides)))))
+		auth.RequireRole(supplierRole, log(idem(withWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrides)))))
 	r.HandleFunc("/v1/supplier/pricing/retailer-overrides/*",
-		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrideAction)))))
+		auth.RequireRole(supplierRole, log(idem(withWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrideAction)))))
 }
 
 func withMethodIdempotency(next http.HandlerFunc, middleware Middleware, methods ...string) http.HandlerFunc {

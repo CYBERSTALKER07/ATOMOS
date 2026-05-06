@@ -20,8 +20,8 @@
 //     /v1/warehouse/replenishment/insights/*,
 //     /v1/warehouse/supply-requests/*, /v1/warehouse/ops/{drivers,
 //     vehicles,staff,orders}/*) register on chi wildcard mounts so
-//     {id}/{verb} sub-path dispatch remains intact without relying on
-//     http.DefaultServeMux.
+//     {id}/{verb} sub-path dispatch remains intact on chi-native
+//     routing.
 //   - Outbox adoption for transfer-receive, supply-request transitions,
 //     and dispatch-lock mutations remains inside the factory/warehouse
 //     packages — progressive migration, tracked separately.
@@ -107,7 +107,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	warehouseScoped := []string{"SUPPLIER", "ADMIN"}
 	warehouseTriad := []string{"WAREHOUSE", "SUPPLIER", "ADMIN"}
 	warehouseOnly := []string{"WAREHOUSE"}
-	withScope := auth.RequireWarehouseScope
+	withScope := auth.RequireWarehouseScopeWithClient(d.Spanner)
 
 	// whOps layers the WAREHOUSE role guard + RequireWarehouseOpsScope
 	// middleware for the WAREHOUSE_ADMIN operator surface.

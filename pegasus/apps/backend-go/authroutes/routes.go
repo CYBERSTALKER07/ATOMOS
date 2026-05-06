@@ -16,6 +16,9 @@ import (
 // the rate-limited subset (admin/driver/supplier/retailer/warehouse login &
 // register) additionally goes through Deps.RateLimit.
 //
+// When Deps.EnableDebugMintToken is true, Register also mounts the
+// development-only /debug/mint-token compatibility endpoint.
+//
 // Routes mounted:
 //
 //	POST /v1/auth/login               — legacy web retailer login
@@ -34,6 +37,7 @@ import (
 //	POST /v1/auth/factory/register    — factory register (SUPPLIER/ADMIN-gated)
 //	POST /v1/auth/warehouse/login     — warehouse login (rate-limited)
 //	POST /v1/auth/warehouse/register  — warehouse register (SUPPLIER/ADMIN-gated)
+//	GET|POST /debug/mint-token        — development-only token mint compatibility path
 func Register(r chi.Router, deps Deps) {
 	s := deps.Spanner
 	log := deps.Log
@@ -75,4 +79,28 @@ func Register(r chi.Router, deps Deps) {
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, actorRL(log(factory.HandleFactoryRegister(s)))))
 	r.HandleFunc("/v1/auth/warehouse/register",
 		auth.RequireRole([]string{"SUPPLIER", "ADMIN"}, actorRL(log(idem(warehouse.HandleWarehouseRegister(s))))))
+
+	if deps.EnableDebugMintToken {
+		r.HandleFunc("/debug/mint-token", handleDebugMintToken)
+	}
+}
+
+func handleDebugMintToken(w http.ResponseWriter, r *http.Request) {
+	role := r.URL.Query().Get("role")
+	if role == "" {
+		role = "RETAILER"
+	}
+
+	userID := r.URL.Query().Get("user_id")
+	if userID == "" {
+		userID = "TEST-USER-99"
+	}
+
+	tokenString, err := auth.GenerateTestToken(userID, role)
+	if err != nil {
+		http.Error(w, "Failed to forge token", http.StatusInternalServerError)
+		return
+	}
+
+	_, _ = w.Write([]byte(tokenString))
 }

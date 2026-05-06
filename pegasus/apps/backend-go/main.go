@@ -191,13 +191,10 @@ func main() {
 	_ = warehouseHub
 	_ = payloaderHub
 
-	// 4. Chi router — mechanical swap for http.DefaultServeMux. Domain
-	// subrouters (see Phase 5) will mount under r via r.Mount(prefix, sub).
-	// Until every legacy http.HandleFunc call site is migrated, the default
-	// mux is mounted at "/" so new and legacy registrations coexist.
+	// 4. Chi router is now the sole runtime mux. Domain subrouters mount under
+	// r via RegisterRoutes composers; no DefaultServeMux bridge remains.
 	r := chi.NewRouter()
 	r.Use(bootstrap.TraceMiddleware) // Glass Box: trace_id on every request
-	r.Mount("/", http.DefaultServeMux)
 
 	// Spanner admin surface: the inline DDL migrations below build their
 	// own DatabaseAdminClient using the same dial options and database
@@ -280,12 +277,13 @@ func main() {
 	// /v1/auth/* — full login/register surface (14 routes).
 	// Ownership lives in backend-go/authroutes/routes.go.
 	authroutes.Register(r, authroutes.Deps{
-		Spanner:        spannerClient,
-		RetailerStatus: svc,
-		Log:            loggingMiddleware,
-		RateLimit:      cache.RateLimitMiddleware(cache.AuthRateLimit()),
-		ActorRateLimit: cache.RateLimitMiddleware(cache.APIRateLimit()),
-		Idempotency:    idempotency.Guard,
+		Spanner:              spannerClient,
+		EnableDebugMintToken: cfg.IsDevelopment(),
+		RetailerStatus:       svc,
+		Log:                  loggingMiddleware,
+		RateLimit:            cache.RateLimitMiddleware(cache.AuthRateLimit()),
+		ActorRateLimit:       cache.RateLimitMiddleware(cache.APIRateLimit()),
+		Idempotency:          idempotency.Guard,
 	})
 
 	// /v1/user/* — device-token + notification inbox (3 routes).
@@ -340,7 +338,7 @@ func main() {
 	// /v1/health moved to infraroutes.
 
 	// GET /metrics and /v1/metrics — Prometheus and legacy JSON process metrics.
-	analytics.RegisterMetricsRoutes(http.DefaultServeMux, loggingMiddleware)
+	analytics.RegisterMetricsRoutes(r, loggingMiddleware)
 
 	// /v1/driver/{earnings,history,availability} moved to driverroutes.
 
@@ -498,8 +496,7 @@ func main() {
 	})
 
 	infraroutes.RegisterRoutes(r, infraroutes.Deps{
-		Spanner:              spannerClient,
-		EnableDebugMintToken: cfg.IsDevelopment(),
+		Spanner: spannerClient,
 	})
 
 	// /v1/checkout/* + /v1/payment/* — 5 routes (b2b, unified, chargeback,
@@ -902,7 +899,7 @@ func main() {
 	// ── Notification Expirer (soft-deletes stale notifications) ───────────────
 	StartNotificationExpirer(spannerClient)
 
-	// /debug/mint-token is registered in infraroutes when development mode is enabled.
+	// /debug/mint-token is registered in authroutes when development mode is enabled.
 	if cfg.IsDevelopment() {
 		log.Println("[SECURITY] /debug/mint-token is MOUNTED (ENVIRONMENT=development)")
 	}

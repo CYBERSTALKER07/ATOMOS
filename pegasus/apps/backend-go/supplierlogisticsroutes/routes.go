@@ -59,6 +59,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
 	supplierOrPayload := []string{"SUPPLIER", "PAYLOADER", "ADMIN"}
 	supplierOrPayloadException := []string{"SUPPLIER", "ADMIN", "PAYLOADER"}
+	withWarehouseScope := auth.RequireWarehouseScopeWithClient(d.Spanner)
 
 	r.HandleFunc("/v1/supplier/picking-manifests",
 		auth.RequireRole(supplierOrPayload, log(supplier.HandleManifests(d.Spanner))))
@@ -81,11 +82,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/manifests/*",
 		auth.RequireRole(supplierOrPayload, log(manifestPathHandler(d.ManifestSvc, idem))))
 	r.HandleFunc("/v1/supplier/fleet-volumetrics",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleFleetVolumetrics(d.Spanner)))))
+		auth.RequireRole(supplierRole, log(withWarehouseScope(supplier.HandleFleetVolumetrics(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/dispatch-queue",
-		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(supplier.HandleDispatchQueue(d.Spanner, d.ReadRouter, d.ManifestSvc, d.Optimizer, d.Counters))))))
+		auth.RequireRole(supplierRole, log(idem(withWarehouseScope(supplier.HandleDispatchQueue(d.Spanner, d.ReadRouter, d.ManifestSvc, d.Optimizer, d.Counters))))))
 	r.HandleFunc("/v1/supplier/dispatch-preview",
-		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleH3RoutePreview(d.Spanner, d.ReadRouter)))))
+		auth.RequireRole(supplierRole, log(withWarehouseScope(supplier.HandleH3RoutePreview(d.Spanner, d.ReadRouter)))))
 }
 
 func manifestRootHandler(manifestSvc *supplier.ManifestService) http.HandlerFunc {

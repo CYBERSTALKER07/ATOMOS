@@ -46,18 +46,19 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	idem := d.Idempotency
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
+	withWarehouseScope := auth.RequireWarehouseScopeWithClient(d.Spanner)
 
 	returnsSvc := supplier.NewReturnsService(d.Spanner, d.Producer)
 	reconcileSvc := supplier.NewReconcileService(d.Spanner, d.Producer)
 
 	r.HandleFunc("/v1/supplier/fleet/drivers",
-		auth.RequireRole(supplierRole, log(withMethodIdempotency(auth.RequireWarehouseScope(supplier.HandleFleetDrivers(d.Spanner)), idem, http.MethodPost))))
+		auth.RequireRole(supplierRole, log(withMethodIdempotency(withWarehouseScope(supplier.HandleFleetDrivers(d.Spanner)), idem, http.MethodPost))))
 	r.HandleFunc("/v1/supplier/fleet/drivers/*",
-		auth.RequireRole(supplierRole, log(withMethodIdempotency(auth.RequireWarehouseScope(supplier.HandleFleetDriverDetail(d.Spanner)), idem, http.MethodPatch, http.MethodPost))))
+		auth.RequireRole(supplierRole, log(withMethodIdempotency(withWarehouseScope(supplier.HandleFleetDriverDetail(d.Spanner)), idem, http.MethodPatch, http.MethodPost))))
 	r.HandleFunc("/v1/supplier/fleet/vehicles",
-		auth.RequireRole(supplierRole, log(withMethodIdempotency(auth.RequireWarehouseScope(supplier.HandleVehicles(d.Spanner)), idem, http.MethodPost))))
+		auth.RequireRole(supplierRole, log(withMethodIdempotency(withWarehouseScope(supplier.HandleVehicles(d.Spanner)), idem, http.MethodPost))))
 	r.HandleFunc("/v1/supplier/fleet/vehicles/*",
-		auth.RequireRole(supplierRole, log(withMethodIdempotency(auth.RequireWarehouseScope(supplier.HandleVehicleDetail(d.Spanner)), idem, http.MethodPatch, http.MethodDelete))))
+		auth.RequireRole(supplierRole, log(withMethodIdempotency(withWarehouseScope(supplier.HandleVehicleDetail(d.Spanner)), idem, http.MethodPatch, http.MethodDelete))))
 	r.HandleFunc("/v1/supplier/fulfillment/pay",
 		auth.RequireRole([]string{"SUPPLIER", "DRIVER", "ADMIN"}, log(idempotency.Guard(fulfillmentPayHandler(d.Order)))))
 	r.HandleFunc("/v1/supplier/returns",

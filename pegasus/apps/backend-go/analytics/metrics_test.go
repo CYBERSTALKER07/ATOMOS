@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/go-chi/chi/v5"
 )
 
 // ─── Atomic Counters ────────────────────────────────────────────────────────
@@ -142,5 +144,24 @@ func TestRegisterMetricsRoutes_MountsJSONAndPrometheus(t *testing.T) {
 	}
 	if promRecorder.Header().Get("Content-Type") == "application/json" {
 		t.Error("/metrics returned JSON content type, want Prometheus text format")
+	}
+}
+
+func TestRegisterMetricsRoutes_ChiRouterCompatibility(t *testing.T) {
+	router := chi.NewRouter()
+	RegisterMetricsRoutes(router, func(next http.HandlerFunc) http.HandlerFunc { return next })
+
+	jsonRecorder := httptest.NewRecorder()
+	jsonReq := httptest.NewRequest(http.MethodGet, "/v1/metrics", nil)
+	router.ServeHTTP(jsonRecorder, jsonReq)
+	if jsonRecorder.Code != http.StatusOK {
+		t.Errorf("/v1/metrics status = %d, want 200", jsonRecorder.Code)
+	}
+
+	promRecorder := httptest.NewRecorder()
+	promReq := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	router.ServeHTTP(promRecorder, promReq)
+	if promRecorder.Code != http.StatusOK {
+		t.Errorf("/metrics status = %d, want 200", promRecorder.Code)
 	}
 }

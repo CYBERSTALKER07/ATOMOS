@@ -45,10 +45,11 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 - Shared order compatibility route composition: `pegasus/apps/backend-go/orderroutes/routes.go`
 	- Owns `GET /v1/orders`, `GET /v1/orders/line-items/history`, `GET /v1/order/refunds`, `GET /v1/orders/{id}`, `GET /v1/orders/{id}/events`, `PATCH /v1/orders/{id}/status`, `PATCH /v1/orders/{id}/state`, `POST /v1/order/{deliver,validate-qr,confirm-offload,complete,collect-cash,refund,amend}`, `GET /v1/routes`, `POST /v1/prediction/create`, and `PATCH /v1/vehicle/*`
 	- Serves an additive superset detail payload for driver iOS, driver Android, and retailer desktop order detail consumers, plus the supplier portal order timeline feed
-- Telemetry and legacy infra route split: `pegasus/apps/backend-go/telemetryroutes/routes.go`, `pegasus/apps/backend-go/catalogroutes/routes.go`, `pegasus/apps/backend-go/infraroutes/routes.go`
+- Telemetry and legacy infra route split: `pegasus/apps/backend-go/telemetryroutes/routes.go`, `pegasus/apps/backend-go/catalogroutes/routes.go`, `pegasus/apps/backend-go/infraroutes/routes.go`, `pegasus/apps/backend-go/authroutes/routes.go`
 	- `telemetryroutes` owns `GET /ws/telemetry` and `GET /ws/fleet`
 	- `catalogroutes` owns legacy `GET /v1/products`
-	- `infraroutes` is infra-only with `GET /v1/health` and development-only `POST /debug/mint-token`
+	- `infraroutes` is infra-only with `GET /v1/health`
+	- `authroutes` mounts development-only `GET|POST /debug/mint-token` when `EnableDebugMintToken` is true
 - Retailer role-row route composition: `pegasus/apps/backend-go/retailerroutes/routes.go`
 	- Owns `GET /v1/retailer/analytics/{expenses,detailed}`, `POST /v1/{orders/request-cancel,order/cash-checkout,order/card-checkout,retailer/shop-closed-response}`, `GET/POST/DELETE /v1/retailer/family-members*`, `POST /v1/retailer/orders/{confirm-ai,reject-ai}`, `POST /v1/orders/{edit-preorder,confirm-preorder}`, `GET/POST /v1/retailer/cart/sync`, `GET/POST /v1/retailer/suppliers*`, `GET/PUT /v1/retailer/profile`, `GET /v1/retailers/{retailerID}/orders`, `GET /v1/retailer/{tracking,cards,pending-payments,active-fulfillment}`, `POST /v1/retailer/card/{initiate,confirm,deactivate,default}`, `PATCH|GET /v1/retailer/settings/auto-order*`, and `GET /v1/ws/retailer`
 	- Current role-row consumers span retailer desktop supplier/analytics/tracking/saved-card surfaces plus retailer iOS and Android order, fulfillment, payment, settings, and realtime flows; `POST /v1/order/create` and `POST /v1/order/cancel` now mount here with idempotency guards, while shared order list/detail/refund reads moved to `orderroutes`

@@ -20,7 +20,7 @@
 //     SUPPLIER so portal operators can act inside their own tenant.
 //   - Path-prefix dispatcher (/v1/admin/country-configs/*) registers on
 //     chi wildcard routing so the {code} sub-path in countrycfg's handler
-//     keeps compatibility semantics without http.DefaultServeMux.
+//     keeps compatibility semantics under the chi router.
 //   - Outbox adoption for admin-triggered state transitions (nuke,
 //     retailer KYC, DLQ replay) remains inside the delegated packages —
 //     progressive migration, tracked separately.
@@ -164,7 +164,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	// 12. SystemConfig upsert (geofence, fees, etc.). Exact match; the
 	//     /v1/admin/config/platform-fee route below registers as a sibling
-	//     exact match so both can coexist on DefaultServeMux.
+	//     exact match so chi resolves both paths deterministically.
 	r.HandleFunc("/v1/admin/config",
 		auth.RequireRole(adminOnly, log(admin.HandleSystemConfig(d.Spanner))))
 

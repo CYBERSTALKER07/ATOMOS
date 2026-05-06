@@ -35,6 +35,8 @@ type RetailerStatusProvider interface {
 type Deps struct {
 	// Spanner is the shared data-plane client.
 	Spanner *spanner.Client
+	// EnableDebugMintToken gates the development-only /debug/mint-token route.
+	EnableDebugMintToken bool
 	// RetailerStatus backs the legacy POST /v1/auth/login handler (the
 	// pre-mobile-app web login that returns a JWT if KYC is VERIFIED).
 	RetailerStatus RetailerStatusProvider

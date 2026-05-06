@@ -88,3 +88,42 @@ func TestRegister_WarehouseRegisterUsesIdempotency(t *testing.T) {
 		t.Fatalf("idempotency guard header = %q, want warehouse-register", got)
 	}
 }
+
+func TestRegister_DebugMintTokenMountToggle(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+
+	passthrough := func(next http.HandlerFunc) http.HandlerFunc {
+		return next
+	}
+
+	routerDisabled := chi.NewRouter()
+	Register(routerDisabled, Deps{
+		Log:                  passthrough,
+		RateLimit:            passthrough,
+		EnableDebugMintToken: false,
+	})
+
+	disabledReq := httptest.NewRequest(http.MethodGet, "/debug/mint-token?role=ADMIN&user_id=debug-user", nil)
+	disabledResp := httptest.NewRecorder()
+	routerDisabled.ServeHTTP(disabledResp, disabledReq)
+	if disabledResp.Code != http.StatusNotFound {
+		t.Fatalf("disabled debug route status = %d, want %d", disabledResp.Code, http.StatusNotFound)
+	}
+
+	routerEnabled := chi.NewRouter()
+	Register(routerEnabled, Deps{
+		Log:                  passthrough,
+		RateLimit:            passthrough,
+		EnableDebugMintToken: true,
+	})
+
+	enabledReq := httptest.NewRequest(http.MethodGet, "/debug/mint-token?role=ADMIN&user_id=debug-user", nil)
+	enabledResp := httptest.NewRecorder()
+	routerEnabled.ServeHTTP(enabledResp, enabledReq)
+	if enabledResp.Code != http.StatusOK {
+		t.Fatalf("enabled debug route status = %d, want %d", enabledResp.Code, http.StatusOK)
+	}
+	if enabledResp.Body.Len() == 0 {
+		t.Fatal("enabled debug route returned empty token body")
+	}
+}
