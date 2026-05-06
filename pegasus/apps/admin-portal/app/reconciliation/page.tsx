@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { apiFetch } from '@/lib/auth';
-import { usePolling } from '@/lib/usePolling';
+import { useSyncHub } from '@/lib/useSyncHub';
 
 type ReconciliationRecord = {
   order_id: string;
@@ -25,7 +25,7 @@ export default function ReconciliationPage() {
   const canPrev = page > 1;
   const canNext = hasMore;
 
-  usePolling(async (signal) => {
+  useSyncHub("POLL", "default", async (signal) => {
     try {
       const res = await apiFetch(`/v1/admin/reconciliation?limit=${pageSize + 1}&offset=${offset}`, { signal });
       if (!res.ok) throw new Error("HTTP " + res.status);

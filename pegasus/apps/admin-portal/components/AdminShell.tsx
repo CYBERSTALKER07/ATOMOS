@@ -253,7 +253,6 @@ const DrawerContent = memo(function DrawerContent({
                   <Link
                     key={item.href}
                     href={item.href}
-                    prefetch={false}
                     className={`md-nav-item ${active ? 'md-nav-active' : ''}`}
                     data-active={active}
                     title={isRail ? item.label : undefined}

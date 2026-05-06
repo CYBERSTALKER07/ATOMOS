@@ -1412,14 +1412,43 @@ body {
 .bento-skeleton::after {
   content: ""; position: absolute; inset: 0;
   background-image: linear-gradient(
-    90deg, transparent 0%, rgba(255,255,255,0.04) 40%,
-    rgba(255,255,255,0.06) 60%, transparent 100%
+    100deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-md-on-surface) 4%, transparent) 30%,
+    color-mix(in srgb, var(--color-md-on-surface) 9%, transparent) 50%,
+    color-mix(in srgb, var(--color-md-on-surface) 4%, transparent) 70%,
+    transparent 100%
   );
-  animation: skeleton-shimmer 1.8s infinite;
+  background-size: 220% 100%;
+  animation: skeleton-wave 2.4s cubic-bezier(0.45, 0, 0.25, 1) infinite;
 }
 @keyframes skeleton-shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
+}
+/* Wave loader — fluid, wider gradient, slower easing. Used by dynamic-import
+   fallbacks and any element with .skeleton-wave. Respects reduced motion. */
+@keyframes skeleton-wave {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -100% 0; }
+}
+.skeleton-wave {
+  position: relative; overflow: hidden;
+  background: var(--color-md-surface-container);
+  background-image: linear-gradient(
+    100deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-md-on-surface) 4%, transparent) 30%,
+    color-mix(in srgb, var(--color-md-on-surface) 9%, transparent) 50%,
+    color-mix(in srgb, var(--color-md-on-surface) 4%, transparent) 70%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-wave 2.4s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bento-skeleton::after, .skeleton-wave { animation: none; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */

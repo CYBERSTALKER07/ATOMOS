@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { apiFetch, apiFetchNoQueue, useToken } from '@/lib/auth';
-import { usePolling } from '@/lib/usePolling';
+import { useSyncHub } from '@/lib/useSyncHub';
 import EmptyState from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
 import Icon from '@/components/Icon';
@@ -149,8 +149,10 @@ export default function DispatchPage() {
 
   /* ─── Waiting Room Polling ──────────────────────────────── */
 
-  usePolling(
-    async (signal) => {
+  useSyncHub(
+    "POLL",
+    "data",
+    async (signal: AbortSignal) => {
       if (!token) return;
       try {
         const ts = result?.snapshot_timestamp || '';

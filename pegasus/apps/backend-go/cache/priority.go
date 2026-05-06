@@ -290,12 +290,30 @@ func PrioritySheddingMiddleware(engine *BackpressureEngine, bucketCapacity int64
 
 			// Layer 2: Lua-backed token bucket — atomic per-identity rate limit
 			if Client != nil {
-				key := fmt.Sprintf("tb:%s:%s", priority, userOrIPKey(r))
+				actor := userOrIPKey(r)
+				priorityStr := priority.String()
+
+				// Pre-flight jail check — short-circuit if actor is in cooldown.
+				if until, jailed := CheckJail(r.Context(), actor, priorityStr); jailed {
+					retryAfter := until - time.Now().Unix()
+					if retryAfter < 1 {
+						retryAfter = 1
+					}
+					w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfter))
+					w.Header().Set("X-Jail-Until", fmt.Sprintf("%d", until))
+					w.Header().Set("X-Priority", priorityStr)
+					http.Error(w,
+						fmt.Sprintf(`{"error":"cooldown_active","priority":"%s","retry_after":%d,"jail_until":%d}`, priorityStr, retryAfter, until),
+						http.StatusTooManyRequests)
+					return
+				}
+
+				key := fmt.Sprintf("tb:%s:%s", priority, actor)
 				result := CheckTokenBucket(r.Context(), key, bucketCapacity, windowSec)
 
 				w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", bucketCapacity))
 				w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", result.Remaining))
-				w.Header().Set("X-Priority", priority.String())
+				w.Header().Set("X-Priority", priorityStr)
 
 				if result.TTL > 0 {
 					w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", time.Now().Add(time.Duration(result.TTL)*time.Second).Unix()))
@@ -306,9 +324,22 @@ func PrioritySheddingMiddleware(engine *BackpressureEngine, bucketCapacity int64
 					if retryAfter <= 0 {
 						retryAfter = 1
 					}
+					// Record a strike. If escalated to jail, surface the jail expiry.
+					if until, opened := RecordStrike(r.Context(), actor, priorityStr); opened {
+						jailRetry := until - time.Now().Unix()
+						if jailRetry < 1 {
+							jailRetry = 1
+						}
+						w.Header().Set("Retry-After", fmt.Sprintf("%d", jailRetry))
+						w.Header().Set("X-Jail-Until", fmt.Sprintf("%d", until))
+						http.Error(w,
+							fmt.Sprintf(`{"error":"cooldown_active","priority":"%s","retry_after":%d,"jail_until":%d}`, priorityStr, jailRetry, until),
+							http.StatusTooManyRequests)
+						return
+					}
 					w.Header().Set("Retry-After", fmt.Sprintf("%d", retryAfter))
 					http.Error(w,
-						fmt.Sprintf(`{"error":"rate_limit_exceeded","priority":"%s","retry_after":%d}`, priority, retryAfter),
+						fmt.Sprintf(`{"error":"rate_limit_exceeded","priority":"%s","retry_after":%d}`, priorityStr, retryAfter),
 						http.StatusTooManyRequests)
 					return
 				}

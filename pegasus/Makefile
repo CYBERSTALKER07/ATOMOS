@@ -130,6 +130,12 @@ run-backend: require-env ## Run the backend natively
 	@trap 'kill 0' EXIT; \
                 cd $(BACKEND_DIR) && go run . & \
 
+## ── migrate: Run Spanner DDL migrations out-of-band (production pattern) ──
+migrate: require-env ## Apply pending Spanner DDL via cmd/migrate (idempotent)
+	@echo "═══ MIGRATE: Applying Spanner DDL out-of-band ═══"
+	cd $(BACKEND_DIR) && go run ./cmd/migrate
+	@echo "═══ Migrations applied ═══"
+
 ## ── nuke: Purge all Spanner data (uses admin endpoint) ────────────────────
 nuke: require-env ## Truncate all Spanner tables via seed script
 	cd $(BACKEND_DIR) && go run cmd/seed/main.go

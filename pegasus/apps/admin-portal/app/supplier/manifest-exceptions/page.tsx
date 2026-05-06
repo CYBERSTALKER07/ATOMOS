@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { apiFetch } from '@/lib/auth';
-import { usePolling } from '@/lib/usePolling';
+import { useSyncHub } from '@/lib/useSyncHub';
 import EmptyState from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
 import Icon from '@/components/Icon';
@@ -67,7 +67,7 @@ export default function ManifestExceptionsPage() {
     }
   }, [escalatedOnly]);
 
-  usePolling(fetchExceptions, 15000);
+  useSyncHub("POLL", "default", fetchExceptions, 15000);
 
   /* ─── Render ──────────────────────────────────────────── */
 

@@ -18,6 +18,7 @@ interface QueuedRequest {
 
 export class OfflineManager {
   private static QUEUE_KEY = 'void_offline_queue';
+  private static isDraining = false;
 
   /** Enqueue a failed mutation for later replay */
   static enqueue(request: Omit<QueuedRequest, 'id' | 'timestamp'>) {
@@ -42,28 +43,42 @@ export class OfflineManager {
   static async drainQueue(
     executor: (url: string, method: string, body: string | null, headers: Record<string, string>) => Promise<Response>,
   ) {
+    if (this.isDraining) return;
     const queue = this.getQueue();
     if (queue.length === 0) return;
 
-    for (const req of queue) {
-      try {
-        const res = await executor(req.url, req.method, req.body, req.headers);
-        if (!res.ok && res.status >= 500) {
-          // Server error — stop draining to avoid spamming a broken link
-          console.error(`[OFFLINE_QUEUE] Drain halted: server ${res.status} for ${req.id}`);
+    this.isDraining = true;
+    try {
+      for (const req of queue) {
+        // Hardening: Drop queued items older than 24 hours
+        if (Date.now() - req.timestamp > 86400000) {
+          console.warn(`[OFFLINE_QUEUE] Dropping expired mutation ${req.id}`);
+          this.removeFromQueue(req.id);
+          continue;
+        }
+
+        try {
+          const res = await executor(req.url, req.method, req.body, req.headers);
+          if (!res.ok && res.status >= 500) {
+            // Server error — stop draining to avoid spamming a broken link
+            console.error(`[OFFLINE_QUEUE] Drain halted: server ${res.status} for ${req.id}`);
+            break;
+          }
+          this.removeFromQueue(req.id);
+        } catch {
+          console.error(`[OFFLINE_QUEUE] Drain failed for ${req.id}, keeping in queue.`);
           break;
         }
-        this.removeFromQueue(req.id);
-      } catch {
-        console.error(`[OFFLINE_QUEUE] Drain failed for ${req.id}, keeping in queue.`);
-        break;
+      }
+    } finally {
+      this.isDraining = false;
+      // Notify UI of updated queue length
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent('sync-pending', { detail: this.getQueue().length }),
+        );
       }
     }
-
-    // Notify UI of updated queue length
-    window.dispatchEvent(
-      new CustomEvent('sync-pending', { detail: this.getQueue().length }),
-    );
   }
 
   /** Get the current queue length */

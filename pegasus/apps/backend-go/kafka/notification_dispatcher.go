@@ -27,6 +27,7 @@ type NotificationDeps struct {
 	RetailerHub   *ws.RetailerHub
 	DriverHub     *ws.DriverHub
 	PayloaderHub  *ws.PayloaderHub
+	SupplierHub   *ws.SupplierHub
 	FCM           *notifications.FCMClient
 	Telegram      *notifications.TelegramClient
 	SpannerClient *spanner.Client
@@ -2155,8 +2156,8 @@ func dispatchToRecipient(deps NotificationDeps, recipientID, role, eventType str
 			wsDelivered = deps.DriverHub.PushToDriver(recipientID, wsPayload)
 		}
 	case "SUPPLIER":
-		if deps.PayloaderHub != nil {
-			wsDelivered = deps.PayloaderHub.PushToPayloader(recipientID, wsPayload)
+		if deps.SupplierHub != nil {
+			wsDelivered = deps.SupplierHub.PushToSupplier(recipientID, wsPayload)
 		}
 	case "PAYLOADER":
 		if deps.PayloaderHub != nil {
@@ -2498,10 +2499,10 @@ func handlePayloadSync(deps NotificationDeps, data []byte) {
 		slog.Error("notification_dispatcher.unmarshal", "event", "PAYLOAD_SYNC", "err", err)
 		return
 	}
-	if event.SupplierID == "" || deps.PayloaderHub == nil {
+	if event.SupplierID == "" || deps.SupplierHub == nil {
 		return
 	}
-	deps.PayloaderHub.PushToPayloader(event.SupplierID, newPayloadSyncFrame(event))
+	deps.SupplierHub.PushToSupplier(event.SupplierID, newPayloadSyncFrame(event))
 }
 
 // Stakeholder is a (recipientID, role) pair for multi-party notification fan-out.

@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { Button } from '@heroui/react';
 import { apiFetch, apiFetchNoQueue } from '@/lib/auth';
-import { usePolling } from '@/lib/usePolling';
+import { useSyncHub } from '@/lib/useSyncHub';
 import Dialog from '@/components/Dialog';
 import EmptyState from '@/components/EmptyState';
 import { useToast } from '@/components/Toast';
@@ -65,7 +65,7 @@ export default function DLQPage() {
   }, [offset, pageSize]);
 
   // Poll every 5 seconds — DLQ entries are critical assets; check them often
-  usePolling((signal) => fetchDLQ(signal), 5000);
+  useSyncHub("POLL", "default", (signal) => fetchDLQ(signal), 5000);
 
   const replayMessage = async (offset: number) => {
     setReplayingOffset(offset);

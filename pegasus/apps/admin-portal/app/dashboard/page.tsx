@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { apiFetch } from "@/lib/auth";
-import { usePolling } from "@/lib/usePolling";
+import { useSyncHub } from "@/lib/useSyncHub";
 import StatsCard from "@/components/StatsCard";
 
 interface DashboardMetrics {
@@ -19,7 +19,7 @@ export default function SupplierDashboard() {
   });
   const [isLive, setIsLive] = useState(false);
 
-  usePolling(async (signal) => {
+  useSyncHub("POLL", "default", async (signal) => {
     try {
       const response = await apiFetch('/v1/supplier/dashboard', { signal });
       if (!response.ok) throw new Error("Matrix disconnected");

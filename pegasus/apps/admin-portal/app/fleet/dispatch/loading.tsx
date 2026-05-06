@@ -1,2 +1,2 @@
-import PageSkeleton from '@/components/PageSkeleton';
+import { PageSkeleton } from '@/components/Skeleton';
 export default function Loading() { return <PageSkeleton variant="map" />; }

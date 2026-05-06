@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from '@heroui/react';
 import { apiFetch } from '@/lib/auth';
-import { usePolling } from '@/lib/usePolling';
+import { useSyncHub } from '@/lib/useSyncHub';
 import Icon from '@/components/Icon';
 import EmptyState from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
@@ -53,7 +53,7 @@ export default function CashHoldingsPage() {
     }
   }, []);
 
-  usePolling((signal) => fetchHoldings(signal), 30_000);
+  useSyncHub("POLL", "default", (signal) => fetchHoldings(signal), 30_000);
 
   const filteredHoldings = data?.holdings.filter(h => {
     if (activeTab === 'PENDING') return h.custody_status === 'PENDING';

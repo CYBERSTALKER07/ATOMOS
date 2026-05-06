@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { apiFetch } from "@/lib/auth";
-import { usePolling } from "@/lib/usePolling";
+import { useSyncHub } from "@/lib/useSyncHub";
 import { useLocale } from "@/hooks/useLocale";
 
 interface EmpathyAdoption {
@@ -35,7 +35,7 @@ export default function EmpathyDashboard() {
   const [isLive, setIsLive] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  usePolling(async (signal) => {
+  useSyncHub("POLL", "default", async (signal) => {
     try {
       const res = await apiFetch('/v1/admin/empathy/adoption', { signal });
       if (!res.ok) throw new Error(t("supplier_portal.admin.empathy.error.telemetry_disconnected"));

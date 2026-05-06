@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiFetch, useToken } from '@/lib/auth';
-import { usePolling } from '@/lib/usePolling';
+import { useSyncHub } from '@/lib/useSyncHub';
 import { useTelemetry } from '@/hooks/useTelemetry';
 import type { TelemetryMessage } from '@/hooks/useTelemetry';
 import { isTauri } from '@/lib/bridge';
@@ -192,7 +192,7 @@ export default function OrdersPage() {
   }, [fetchOrders]);
 
   // Auto-refresh every 30s for active tabs
-  usePolling(async (signal) => {
+  useSyncHub("POLL", "default", async (signal) => {
     if (showHistory || !token) return;
     try {
       const params = new URLSearchParams({

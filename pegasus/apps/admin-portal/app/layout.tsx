@@ -9,6 +9,7 @@ import LocaleBootstrap from "../components/LocaleBootstrap";
 import { PageSkeleton } from "../components/Skeleton";
 import { ToastProvider } from "../components/Toast";
 import { ThemeProvider } from "../components/ThemeProvider";
+import { SyncHubProvider } from "../lib/SyncHubProvider";
 import { NetworkStatusBanner } from "../components/NetworkStatusBanner";
 import PageTransition from "../components/PageTransition";
 
@@ -63,6 +64,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthGuard>
             <AdminShell>
+              <SyncHubProvider>
               <ToastProvider>
                 <Suspense fallback={<PageSkeleton />}>
                   <PageTransition>
@@ -70,6 +72,7 @@ export default function RootLayout({
                   </PageTransition>
                 </Suspense>
               </ToastProvider>
+            </SyncHubProvider>
             </AdminShell>
           </AuthGuard>
         </ThemeProvider>

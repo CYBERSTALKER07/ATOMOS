@@ -273,6 +273,11 @@ async function connectTelemetry(): Promise<void> {
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
         return;
       }
+      
+      // Dispatch hybrid sync event
+      if (typeof window !== "undefined" && typeof parsed.type === "string") {
+        window.dispatchEvent(new CustomEvent("sync-invalidate", { detail: parsed.type }));
+      }
 
       publishState({ lastSyncTs: new Date().toISOString() });
       broadcastMessage(parsed as TelemetryMessage);

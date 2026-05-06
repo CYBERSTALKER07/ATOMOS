@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiFetch, readTokenFromCookie } from './auth';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-const SUPPLIER_NOTIFICATIONS_WS_PATH = '/v1/ws/payloader';
+const SUPPLIER_NOTIFICATIONS_WS_PATH = '/v1/ws/supplier';
 
 interface BackendNotification {
   notification_id: string;
@@ -154,6 +154,12 @@ export function useNotifications() {
       if (disposedRef.current) return;
       try {
         const msg = JSON.parse(event.data) as RealtimeNotificationFrame;
+        
+        // Dispatch hybrid sync event globally
+        if (msg.type && typeof window !== "undefined") {
+           window.dispatchEvent(new CustomEvent("sync-invalidate", { detail: msg.type }));
+        }
+
         if (msg.type && msg.title) {
           const notif: Notification = {
             id: msg.id || crypto.randomUUID(),

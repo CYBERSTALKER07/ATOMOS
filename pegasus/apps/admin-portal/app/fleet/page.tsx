@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import type { MarkerProps, SourceProps, LayerProps, NavigationControlProps } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { apiFetch, getAdminToken, readTokenFromCookie } from "@/lib/auth";
-import { usePolling } from "@/lib/usePolling";
+import { useSyncHub } from "@/lib/useSyncHub";
 import { extractDriverPositions, useTelemetry } from "@/hooks/useTelemetry";
 import type { TelemetryMessage } from "@/hooks/useTelemetry";
 import {
@@ -155,7 +155,7 @@ export default function FleetPage() {
         }
     }, []);
 
-    usePolling((signal) => fetchFleetData(signal), 10_000);
+    useSyncHub("POLL", "default", (signal) => fetchFleetData(signal), 10_000);
 
     // Ref for WS event handlers to trigger instant refetch
     const fetchFleetDataRef = useRef(fetchFleetData);

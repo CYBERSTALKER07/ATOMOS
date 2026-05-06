@@ -115,6 +115,7 @@ type App struct {
 	RetailerHub  *ws.RetailerHub
 	DriverHub    *ws.DriverHub
 	PayloaderHub *ws.PayloaderHub
+	SupplierHub  *ws.SupplierHub
 	WarehouseHub *ws.WarehouseHub
 	FleetHub     *telemetry.Hub // shared package-level hub; field is a convenience alias
 
@@ -187,6 +188,9 @@ func (a *App) Close() {
 	}
 	if a.PayloaderHub != nil {
 		a.PayloaderHub.Close()
+	}
+	if a.SupplierHub != nil {
+		a.SupplierHub.Close()
 	}
 	if a.WarehouseHub != nil {
 		a.WarehouseHub.Close()

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { apiFetch } from '@/lib/auth';
-import { usePolling } from '@/lib/usePolling';
+import { useSyncHub } from '@/lib/useSyncHub';
 import Link from 'next/link';
 
 interface TreasuryData {
@@ -17,7 +17,7 @@ export default function TreasuryDashboard() {
     const [loading, setLoading] = useState(true);
     const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
-    usePolling(async (signal) => {
+    useSyncHub("POLL", "default", async (signal) => {
         try {
             const res = await apiFetch('/v1/treasury/ledger', { signal });
             if (!res.ok) throw new Error("Vault disconnected");

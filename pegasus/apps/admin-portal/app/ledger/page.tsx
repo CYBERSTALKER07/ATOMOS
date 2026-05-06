@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { apiFetch } from '@/lib/auth';
-import { usePolling } from '@/lib/usePolling';
+import { useSyncHub } from '@/lib/useSyncHub';
 
 type LedgerEntry = {
     order_id: string;
@@ -31,7 +31,7 @@ export default function LedgerPage() {
     const canPrev = page > 1;
     const canNext = hasMore;
 
-    usePolling(async (signal) => {
+    useSyncHub("POLL", "default", async (signal) => {
         try {
             const [ordersRes, treasuryRes] = await Promise.all([
                 apiFetch(`/v1/orders?limit=${pageSize + 1}&offset=${offset}`, { signal }),

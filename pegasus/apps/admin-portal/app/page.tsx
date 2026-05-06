@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo, lazy, Suspense } from "react";
 import { apiFetch } from "@/lib/auth";
-import { usePolling } from "@/lib/usePolling";
+import { useSyncHub } from "@/lib/useSyncHub";
 import { useTelemetry } from "@/hooks/useTelemetry";
 import type { TelemetryMessage } from "@/hooks/useTelemetry";
 import { isTauri } from "@/lib/bridge";
@@ -15,14 +15,21 @@ import {
   Truck, CheckCircle, CreditCard,
   ArrowUpRight, Activity, Send, Search,
 } from "lucide-react";
-import {
-  PieChart, Pie, Cell, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, Tooltip,
-} from "recharts";
+import dynamic from "next/dynamic";
 
 // Lazy-load heavy cells
 const OrphanAlertsCell = lazy(() => import("@/components/dashboard/OrphanAlertsCell"));
 const QuickActionsCell = lazy(() => import("@/components/dashboard/QuickActionsCell"));
+
+// Charts dynamically imported so recharts is excluded from first-paint bundle.
+const PipelinePieChart = dynamic(
+  () => import("@/components/dashboard/DashboardCharts").then(m => m.PipelinePieChart),
+  { ssr: false, loading: () => <div className="skeleton-wave w-full h-full rounded" /> },
+);
+const RevenueBarChart = dynamic(
+  () => import("@/components/dashboard/DashboardCharts").then(m => m.RevenueBarChart),
+  { ssr: false, loading: () => <div className="skeleton-wave w-full h-full rounded" /> },
+);
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -170,7 +177,7 @@ export default function AdminDashboard() {
     [targetRoute],
   );
 
-  usePolling((signal) => fetchOrders(signal), 5000, [fetchOrders]);
+  useSyncHub("POLL", "data", (signal: AbortSignal) => fetchOrders(signal), 5000, [fetchOrders]);
 
   // ── WebSocket: instant order state change notifications ──────────────────
   const fetchOrdersRef = useRef(fetchOrders);
@@ -551,31 +558,7 @@ export default function AdminDashboard() {
             </div>
             {pipelineData.length > 0 ? (
               <div className="flex items-center gap-6 flex-1 min-h-0">
-                <ResponsiveContainer width="50%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pipelineData}
-                      innerRadius={55}
-                      outerRadius={80}
-                      paddingAngle={3}
-                      dataKey="value"
-                      strokeWidth={0}
-                    >
-                      {pipelineData.map((_, i) => (
-                        <Cell key={i} fill={MONO_SHADES[i % MONO_SHADES.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        background: 'var(--surface)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 0,
-                        fontSize: 13,
-                        color: 'var(--foreground)',
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+                <PipelinePieChart data={pipelineData} shades={MONO_SHADES} />
                 <div className="flex flex-col gap-3 flex-1">
                   {pipelineData.map((d, i) => (
                     <div key={d.name} className="flex items-center gap-3">
@@ -605,38 +588,7 @@ export default function AdminDashboard() {
               <span className="bento-card-title">Revenue Split</span>
             </div>
             {kpi.totalRev > 0 ? (
-              <ResponsiveContainer width="100%" height="100%" minHeight={140}>
-                <BarChart data={revData} barSize={40}>
-                  <XAxis
-                    dataKey="gateway"
-                    tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fill: 'var(--muted)', fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(v: number) => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}K` : String(v)}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 0,
-                      fontSize: 13,
-                      color: 'var(--foreground)',
-                    }}
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    formatter={(value: any) => [`${Number(value ?? 0).toLocaleString()}`, 'Revenue']}
-                  />
-                  <Bar dataKey="amount" radius={[0, 0, 0, 0]}>
-                    {revData.map((_, i) => (
-                      <Cell key={i} fill={MONO_SHADES[i]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <RevenueBarChart data={revData} shades={MONO_SHADES} />
             ) : (
               <div className="flex-1 flex items-center justify-center min-h-35">
                 <span className="md-typescale-body-small" style={{ color: 'var(--muted)' }}>No revenue data</span>

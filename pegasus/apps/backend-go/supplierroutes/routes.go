@@ -20,6 +20,7 @@ import (
 	"backend-go/payment"
 	"backend-go/supplier"
 	"backend-go/vault"
+	"backend-go/ws"
 )
 
 // Middleware is the handler-wrap contract supplied by the caller.
@@ -32,6 +33,7 @@ type Deps struct {
 	CacheFlight  *singleflight.Group
 	DirectClient *payment.GlobalPayDirectClient
 	Producer     *kafkago.Writer
+	SupplierHub  *ws.SupplierHub
 	Log          Middleware
 	Idempotency  Middleware
 }
@@ -95,6 +97,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierRole, log(idem(auth.RequireWarehouseScope(supplier.HandleWarehouseByID(d.Spanner, d.Producer))))))
 	r.HandleFunc("/v1/supplier/warehouse-inflight-vu",
 		auth.RequireRole(supplierRole, log(auth.RequireWarehouseScope(supplier.HandleWarehouseInflightVU(d.Spanner)))))
+
+	if d.SupplierHub != nil {
+		r.HandleFunc("/v1/ws/supplier",
+			auth.RequireRole(supplierRole, d.SupplierHub.HandleConnection))
+	}
 }
 
 func withMethodIdempotency(next http.HandlerFunc, middleware Middleware, methods ...string) http.HandlerFunc {
