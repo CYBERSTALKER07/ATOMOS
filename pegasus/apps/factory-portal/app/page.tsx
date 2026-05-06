@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { apiFetch } from '@/lib/auth';
+import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 
 interface FactoryStats {
@@ -34,6 +34,8 @@ export default function FactoryDashboard() {
 
   useEffect(() => {
     let active = true;
+    let liveRefreshTimer: number | null = null;
+
     async function load() {
       try {
         const res = await apiFetch('/v1/factory/dashboard');
@@ -48,10 +50,36 @@ export default function FactoryDashboard() {
         }
       }
     }
+
+    const queueLiveRefresh = () => {
+      if (!active) return;
+      if (liveRefreshTimer !== null) {
+        window.clearTimeout(liveRefreshTimer);
+      }
+      liveRefreshTimer = window.setTimeout(() => {
+        if (active) {
+          void load();
+        }
+      }, 600);
+    };
+
     load();
+
+    const unsubscribe = subscribeFactoryWS({
+      onMessage: payload => {
+        const event = parseFactoryLiveEvent(payload);
+        if (!event) return;
+        queueLiveRefresh();
+      },
+    });
+
     const interval = window.setInterval(load, LIVE_REFRESH_MS);
     return () => {
       active = false;
+      if (liveRefreshTimer !== null) {
+        window.clearTimeout(liveRefreshTimer);
+      }
+      unsubscribe();
       window.clearInterval(interval);
     };
   }, []);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { apiFetch } from '@/lib/auth';
+import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 
 interface Insight {
@@ -37,6 +37,25 @@ export default function InsightsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeFactoryWS({
+      onMessage: payload => {
+        const event = parseFactoryLiveEvent(payload);
+        if (!event) {
+          return;
+        }
+        if (event.type !== 'FACTORY_SUPPLY_REQUEST_UPDATE' && event.type !== 'FACTORY_TRANSFER_UPDATE') {
+          return;
+        }
+        void load();
+      },
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [load]);
 
   const urgencyClass = (u: string) => {
     if (u === 'CRITICAL') return 'status-chip--critical';

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { apiFetch } from '@/lib/auth';
+import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 
 interface Vehicle {
@@ -30,6 +30,25 @@ export default function FleetPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeFactoryWS({
+      onMessage: payload => {
+        const event = parseFactoryLiveEvent(payload);
+        if (!event) {
+          return;
+        }
+        if (event.type !== 'FACTORY_TRANSFER_UPDATE' && event.type !== 'FACTORY_MANIFEST_UPDATE') {
+          return;
+        }
+        void load();
+      },
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [load]);
 
   return (
     <div className="p-6 space-y-4 md-animate-in">

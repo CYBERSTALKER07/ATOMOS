@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { apiFetch } from '@/lib/auth';
+import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 
@@ -45,6 +45,25 @@ export default function LoadingBayPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeFactoryWS({
+      onMessage: payload => {
+        const event = parseFactoryLiveEvent(payload);
+        if (!event) {
+          return;
+        }
+        if (event.type !== 'FACTORY_TRANSFER_UPDATE' && event.type !== 'FACTORY_MANIFEST_UPDATE') {
+          return;
+        }
+        void load();
+      },
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [load]);
 
   const grouped = useMemo(
     () =>

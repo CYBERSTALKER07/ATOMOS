@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { apiFetch } from '@/lib/auth';
+import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
@@ -135,6 +135,22 @@ export default function SupplyRequestsPage() {
 
   useEffect(() => {
     void fetchRequests();
+  }, [fetchRequests]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeFactoryWS({
+      onMessage: payload => {
+        const event = parseFactoryLiveEvent(payload);
+        if (!event || event.type !== 'FACTORY_SUPPLY_REQUEST_UPDATE') {
+          return;
+        }
+        void fetchRequests({ background: true, silent: true });
+      },
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, [fetchRequests]);
 
   useEffect(() => {

@@ -37,6 +37,8 @@ For every request, enforce the following strict retrieval loop:
 ### Sequential Thinking MCP Integration (Mandatory)
 
 - For every non-trivial technical task, plan review, architecture decision, audit, debugging session, migration, or multi-step implementation, use the `sequential-thinking` MCP server's `sequential_thinking` tool before editing or finalizing an answer.
+- For the same non-trivial tasks, also use the `sequential-thinking-ultra` MCP server's `sequential-thinking-ultra` tool alongside other MCP tools (AST, docs, database, design, and integration tooling) before editing and before finalizing the response.
+- `sequential-thinking-ultra` is additive and mandatory alongside `sequential-thinking`; it does not replace the required `sequential_thinking` call.
 - Use sequential thinking to break the task into steps, revise the plan when new evidence changes the approach, branch when comparing viable alternatives, and continue until the execution path is clear.
 - Treat sequential thinking output as internal reasoning support. Final user-facing replies should summarize decisions, risks, and completed work rather than exposing raw private reasoning traces.
 
