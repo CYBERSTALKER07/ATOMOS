@@ -17,7 +17,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.pegasus.factory.data.model.DashboardStats
 import com.pegasus.factory.data.remote.FactoryApi
+import com.pegasus.factory.data.remote.FactoryRealtimeEventType
 import com.pegasus.factory.ui.navigation.FactoryRoutes
+import com.pegasus.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasus.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -83,6 +85,16 @@ fun DashboardScreen(
             delay(DASHBOARD_REFRESH_MS)
             load(silent = true)
         }
+    }
+
+    FactoryRealtimeReloadEffect(
+        eventTypes = setOf(
+            FactoryRealtimeEventType.SupplyRequestUpdate,
+            FactoryRealtimeEventType.TransferUpdate,
+            FactoryRealtimeEventType.ManifestUpdate,
+        ),
+    ) {
+        load(silent = true)
     }
 
     Scaffold(
