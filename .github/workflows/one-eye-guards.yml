@@ -5,7 +5,7 @@ on:
     branches: [main, develop]
     paths:
       - '.github/workflows/one-eye-guards.yml'
-      - 'pegasus/.github/workflows/ci.yml'
+      - '.github/workflows/ci.yml'
       - '.agents/extensions/ast-engine/**'
       - 'pegasus/scripts/guard_utils.py'
       - 'pegasus/scripts/contract_drift_guard.py'
@@ -68,7 +68,7 @@ jobs:
           filters: |
             relevant:
               - '.github/workflows/one-eye-guards.yml'
-              - 'pegasus/.github/workflows/ci.yml'
+              - '.github/workflows/ci.yml'
               - '.agents/extensions/ast-engine/**'
               - 'pegasus/scripts/guard_utils.py'
               - 'pegasus/scripts/contract_drift_guard.py'

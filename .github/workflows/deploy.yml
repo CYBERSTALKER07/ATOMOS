@@ -1,0 +1,164 @@
+name: Deploy — GKE rolling update
+
+on:
+  workflow_run:
+    workflows: ["CI — Build · Test · Push"]
+    types: [completed]
+    branches: [main]
+
+  # Manual trigger for hotfix deploys
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag to deploy (default: latest)"
+        required: false
+        default: "latest"
+
+permissions:
+  contents: read
+  id-token: write   # Workload Identity Federation
+
+env:
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: asia-south1
+  GKE_CLUSTER: void-cluster
+  GAR_REPO: ${{ vars.GAR_REPO }}
+  K8S_NAMESPACE: void-system
+
+jobs:
+  deploy:
+    name: Deploy to GKE
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (WIF — no JSON key)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SA_EMAIL }}
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.REGION }}
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.image_tag }}" >> $GITHUB_OUTPUT
+          else
+            # Use the triggering workflow's SHA
+            echo "tag=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Apply namespace and manifests
+        run: |
+          kubectl apply -f pegasus/infra/k8s/namespace.yaml
+          kubectl apply -f pegasus/infra/k8s/backend
+          kubectl apply -f pegasus/infra/k8s/ai-worker
+          kubectl apply -f pegasus/infra/k8s/keda
+
+      - name: Preflight — verify deployment and service targets
+        run: |
+          set -euo pipefail
+          namespace="${{ env.K8S_NAMESPACE }}"
+          failed=0
+
+          echo "Preflight: validating namespace and rollout targets in ${namespace}"
+
+          if ! kubectl get namespace "${namespace}" >/dev/null 2>&1; then
+            echo "::error::Namespace '${namespace}' not found."
+            failed=1
+          fi
+
+          if ! kubectl -n "${namespace}" get deployment backend-go >/dev/null 2>&1; then
+            echo "::error::Deployment 'backend-go' not found in namespace '${namespace}'."
+            failed=1
+          fi
+
+          if ! kubectl -n "${namespace}" get deployment ai-worker >/dev/null 2>&1; then
+            echo "::error::Deployment 'ai-worker' not found in namespace '${namespace}'."
+            failed=1
+          fi
+
+          if ! kubectl -n "${namespace}" get service backend-go >/dev/null 2>&1; then
+            echo "::error::Service 'backend-go' not found in namespace '${namespace}'."
+            failed=1
+          fi
+
+          backend_containers="$(kubectl -n "${namespace}" get deployment backend-go -o jsonpath='{.spec.template.spec.containers[*].name}' 2>/dev/null || true)"
+          if [[ " ${backend_containers} " != *" backend-go "* ]]; then
+            echo "::error::Deployment 'backend-go' is missing container name 'backend-go'. Found: ${backend_containers:-<none>}"
+            failed=1
+          fi
+
+          ai_worker_containers="$(kubectl -n "${namespace}" get deployment ai-worker -o jsonpath='{.spec.template.spec.containers[*].name}' 2>/dev/null || true)"
+          if [[ " ${ai_worker_containers} " != *" ai-worker "* ]]; then
+            echo "::error::Deployment 'ai-worker' is missing container name 'ai-worker'. Found: ${ai_worker_containers:-<none>}"
+            failed=1
+          fi
+
+          backend_service_ports="$(kubectl -n "${namespace}" get service backend-go -o jsonpath='{range .spec.ports[*]}{.port}{" "}{end}' 2>/dev/null || true)"
+          if [[ " ${backend_service_ports} " != *" 80 "* ]]; then
+            echo "::error::Service 'backend-go' must expose port 80 for smoke test. Found: ${backend_service_ports:-<none>}"
+            failed=1
+          fi
+
+          if [[ "${failed}" -ne 0 ]]; then
+            echo "::group::Preflight debug context"
+            kubectl get namespace "${namespace}" -o yaml || true
+            kubectl -n "${namespace}" get deployment,service -o wide || true
+            echo "::endgroup::"
+            exit 1
+          fi
+
+          kubectl -n "${namespace}" get deployment/backend-go deployment/ai-worker service/backend-go -o wide
+          echo "Preflight passed: rollout targets are present and correctly shaped."
+
+      - name: Set backend image
+        run: |
+          kubectl -n ${{ env.K8S_NAMESPACE }} set image deployment/backend-go \
+            backend-go=${{ env.GAR_REPO }}/backend:${{ steps.tag.outputs.tag }}
+
+      - name: Set ai-worker image
+        run: |
+          kubectl -n ${{ env.K8S_NAMESPACE }} set image deployment/ai-worker \
+            ai-worker=${{ env.GAR_REPO }}/ai-worker:${{ steps.tag.outputs.tag }}
+
+      - name: Wait for backend rollout
+        run: |
+          kubectl rollout status deployment/backend-go \
+            -n ${{ env.K8S_NAMESPACE }} \
+            --timeout=300s
+
+      - name: Wait for ai-worker rollout
+        run: |
+          kubectl rollout status deployment/ai-worker \
+            -n ${{ env.K8S_NAMESPACE }} \
+            --timeout=300s
+
+      - name: Smoke test — /healthz
+        run: |
+          kubectl -n ${{ env.K8S_NAMESPACE }} port-forward svc/backend-go 18080:80 >/tmp/backend-port-forward.log 2>&1 &
+          PF_PID=$!
+          trap 'kill $PF_PID >/dev/null 2>&1 || true' EXIT
+          sleep 3
+          curl --fail --max-time 10 http://127.0.0.1:18080/healthz
+          kill $PF_PID >/dev/null 2>&1 || true
+          trap - EXIT
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deploy failed — initiating rollback"
+          kubectl rollout undo deployment/backend-go -n ${{ env.K8S_NAMESPACE }} || true
+          kubectl rollout undo deployment/ai-worker -n ${{ env.K8S_NAMESPACE }} || true
+          kubectl rollout status deployment/backend-go -n ${{ env.K8S_NAMESPACE }} --timeout=120s || true
+          kubectl rollout status deployment/ai-worker -n ${{ env.K8S_NAMESPACE }} --timeout=120s || true
+          exit 1
