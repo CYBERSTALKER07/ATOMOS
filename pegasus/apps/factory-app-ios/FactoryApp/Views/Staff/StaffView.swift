@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct StaffView: View {
+    @State private var realtimeClient = FactoryRealtimeClient()
     @State private var staff: [StaffMember] = []
     @State private var loading = true
     @State private var error: String?
@@ -63,6 +64,21 @@ struct StaffView: View {
                 }
             }
             .task { load() }
+            .onAppear {
+                realtimeClient.connect(
+                    onStateChange: { _ in },
+                    onEvent: { event in
+                        guard let eventType = event.eventType else { return }
+                        switch eventType {
+                        case .supplyRequestUpdate, .transferUpdate, .manifestUpdate:
+                            load()
+                        }
+                    }
+                )
+            }
+            .onDisappear {
+                realtimeClient.disconnect()
+            }
         }
     }
 
@@ -115,6 +131,7 @@ private func requestActions(for state: String) -> [RequestActionSpec] {
 
 struct SupplyRequestsView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @State private var realtimeClient = FactoryRealtimeClient()
     @State private var requests: [SupplyRequest] = []
     @State private var loading = true
     @State private var error: String?
@@ -215,6 +232,20 @@ struct SupplyRequestsView: View {
                 if newPhase == .active {
                     Task { await load(background: !requests.isEmpty) }
                 }
+            }
+            .onAppear {
+                realtimeClient.connect(
+                    onStateChange: { _ in },
+                    onEvent: { event in
+                        guard event.eventType == .supplyRequestUpdate else { return }
+                        if transitioningID == nil {
+                            Task { await load(background: !requests.isEmpty) }
+                        }
+                    }
+                )
+            }
+            .onDisappear {
+                realtimeClient.disconnect()
             }
         }
     }
