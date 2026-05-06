@@ -20,9 +20,9 @@
 //     HomeNodeId matches the assigned vehicle's HomeNodeId before delegating
 //     to fleet.HandleDriverDepart. Mismatches return 403.
 //
-// Path-prefix routes (/v1/fleet/drivers/, /v1/fleet/trucks/, /v1/fleet/route/)
-// register on http.DefaultServeMux — chi's exact-match semantics would not
-// preserve the "{id}/{verb}" sub-path dispatch the old code relied on.
+// Path-prefix routes (/v1/fleet/drivers/*, /v1/fleet/trucks/*,
+// /v1/fleet/route/*) now register on chi wildcard mounts so sub-path dispatch
+// remains intact without relying on http.DefaultServeMux.
 package fleetroutes
 
 import (
@@ -68,15 +68,15 @@ type Deps struct {
 // emitted through the transactional outbox.
 const topicFleetEvents = "pegasus-logistics-events"
 
-// RegisterRoutes mounts the twelve fleet endpoints. chi handles exact paths;
-// path-prefix dispatchers are registered on http.DefaultServeMux.
+// RegisterRoutes mounts the twelve fleet endpoints. chi handles exact and
+// wildcard path dispatch for both static and by-ID route families.
 func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	driver := []string{"DRIVER"}
 	adminSupplier := []string{"ADMIN", "SUPPLIER"}
 
-	// 1. PUT /v1/fleet/drivers/{id}/status — toggle IsOffline (prefix path).
-	http.HandleFunc("/v1/fleet/drivers/",
+	// 1. PUT /v1/fleet/drivers/{id}/status — toggle IsOffline (wildcard path).
+	r.HandleFunc("/v1/fleet/drivers/*",
 		auth.RequireRole([]string{"DRIVER", "ADMIN", "SUPPLIER"},
 			log(fleet.HandleDriverStatus(d.Spanner))))
 
@@ -102,7 +102,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(adminSupplier, log(handleActive(d))))
 
 	// 7. /v1/fleet/trucks/{id}/{seal|status} — two-key handshake dispatcher.
-	http.HandleFunc("/v1/fleet/trucks/",
+	r.HandleFunc("/v1/fleet/trucks/*",
 		auth.RequireRole([]string{"PAYLOADER", "SUPPLIER", "ADMIN"},
 			log(handleTrucksDispatcher(d))))
 
@@ -123,7 +123,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(driver, log(handleDriverOrders(d))))
 
 	// 12. POST /v1/fleet/route/{id}/complete — route completion + QUARANTINE sweep.
-	http.HandleFunc("/v1/fleet/route/",
+	r.HandleFunc("/v1/fleet/route/*",
 		auth.RequireRole(driver, log(order.HandleCompleteRoute(d.Spanner))))
 }
 

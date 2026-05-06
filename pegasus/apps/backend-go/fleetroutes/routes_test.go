@@ -59,6 +59,34 @@ func TestRegisterRoutes_FleetReassignUsesIdempotency(t *testing.T) {
 	}
 }
 
+func TestRegisterRoutes_WildcardRoutesMounted(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	router := newFleetTestRouter(t)
+
+	tests := []struct {
+		name   string
+		method string
+		path   string
+	}{
+		{name: "drivers status wildcard", method: http.MethodPut, path: "/v1/fleet/drivers/driver-1/status"},
+		{name: "trucks dispatcher wildcard", method: http.MethodPost, path: "/v1/fleet/trucks/truck-1/seal"},
+		{name: "route complete wildcard", method: http.MethodPost, path: "/v1/fleet/route/route-1/complete"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(tc.method, tc.path, nil)
+			response := httptest.NewRecorder()
+
+			router.ServeHTTP(response, request)
+
+			if response.Code == http.StatusNotFound {
+				t.Fatalf("status = %d, want non-404 for %s", response.Code, tc.path)
+			}
+		})
+	}
+}
+
 func passthroughMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		next(w, r)

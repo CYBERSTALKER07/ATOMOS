@@ -18,9 +18,9 @@
 //     /v1/admin/retailer/{pending,approve,reject}, /v1/admin/dlq{,/replay},
 //     and /v1/admin/payment/reconcile. Every other admin route also admits
 //     SUPPLIER so portal operators can act inside their own tenant.
-//   - Path-prefix dispatcher (/v1/admin/country-configs/) registers on
-//     http.DefaultServeMux so the {code} sub-path in countrycfg's handler
-//     keeps the longest-prefix semantics the delegated handler expects.
+//   - Path-prefix dispatcher (/v1/admin/country-configs/*) registers on
+//     chi wildcard routing so the {code} sub-path in countrycfg's handler
+//     keeps compatibility semantics without http.DefaultServeMux.
 //   - Outbox adoption for admin-triggered state transitions (nuke,
 //     retailer KYC, DLQ replay) remains inside the delegated packages —
 //     progressive migration, tracked separately.
@@ -124,10 +124,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/admin/audit-log",
 		auth.RequireRole(adminOrSupplier, log(admin.HandleGetAuditLog(d.Spanner))))
 
-	// 3-4. Country-level operational controls (exact + prefix dispatcher).
+	// 3-4. Country-level operational controls (exact + wildcard dispatcher).
 	r.HandleFunc("/v1/admin/country-configs",
 		auth.RequireRole(adminOrSupplier, log(countrycfg.HandleCountryConfigs(d.CountryConfig))))
-	http.HandleFunc("/v1/admin/country-configs/",
+	r.HandleFunc("/v1/admin/country-configs/*",
 		auth.RequireRole(adminOrSupplier, log(countrycfg.HandleCountryConfigByCode(d.CountryConfig))))
 
 	// 5. Edge 5 — issue payment-bypass token for stuck AWAITING_PAYMENT orders.

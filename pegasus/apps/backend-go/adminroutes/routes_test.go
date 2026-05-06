@@ -126,6 +126,20 @@ func TestRegisterRoutes_NegotiationResolveUsesIdempotency(t *testing.T) {
 	}
 }
 
+func TestRegisterRoutes_CountryConfigWildcardMounted(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	router := newAdminTestRouter(t)
+
+	request := httptest.NewRequest(http.MethodGet, "/v1/admin/country-configs/UZ", nil)
+	response := httptest.NewRecorder()
+
+	router.ServeHTTP(response, request)
+
+	if response.Code == http.StatusNotFound {
+		t.Fatalf("status = %d, want non-404 for country-config wildcard route", response.Code)
+	}
+}
+
 func newAdminTestRouter(t *testing.T) *chi.Mux {
 	t.Helper()
 
