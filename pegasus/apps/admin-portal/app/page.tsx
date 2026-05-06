@@ -21,7 +21,6 @@ import {
 } from "recharts";
 
 // Lazy-load heavy cells
-const FleetMapCell = lazy(() => import("@/components/dashboard/FleetMapCell"));
 const OrphanAlertsCell = lazy(() => import("@/components/dashboard/OrphanAlertsCell"));
 const QuickActionsCell = lazy(() => import("@/components/dashboard/QuickActionsCell"));
 
@@ -472,32 +471,6 @@ export default function AdminDashboard() {
       {/* ══════════════════════════════════════════════════════════════════ */}
 
       <BentoGrid className="mb-8">
-
-        {/* ── ANCHOR (2×2): Real-Time Fleet GPS Map ───────────────────── */}
-        <BentoCard size="anchor" delay={0}>
-          <Suspense fallback={<div className="skeleton w-full h-full rounded" />}>
-            <FleetMapCell />
-          </Suspense>
-        </BentoCard>
-
-        {/* ── STATISTICS (1×1): Active Trucks ─────────────────────────── */}
-        <BentoCard size="stat" delay={60}>
-          <div className="flex flex-col justify-between h-full p-5 active:scale-[0.98] transition-transform cursor-default">
-            <div className="flex items-center justify-between mb-2">
-              <div className="w-10 h-10 rounded-2xl bg-surface-container flex items-center justify-center">
-                <Truck size={20} strokeWidth={1.5} className="text-muted" />
-              </div>
-              <MiniSparkline data={truckSparkline} width={64} height={24} />
-            </div>
-            <div>
-              <p className="md-typescale-label-medium text-muted mb-1">Active Trucks</p>
-              <div className="flex items-baseline gap-2">
-                <CountUp end={kpi.activeTrucks} className="md-typescale-display-small font-bold tabular-nums tracking-tighter" />
-                <span className="md-typescale-label-small text-muted">/ {kpi.total} orders</span>
-              </div>
-            </div>
-          </div>
-        </BentoCard>
 
         {/* ── STATISTICS (1×1): Completed ─────────────────────────────── */}
         <BentoCard size="stat" delay={120}>

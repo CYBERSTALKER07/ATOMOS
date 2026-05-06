@@ -62,9 +62,7 @@ export async function flushQueue(): Promise<{ succeeded: number; failed: number 
 
 /** React hook that tracks network status and auto-flushes the offline queue */
 export function useNetworkStatus() {
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== 'undefined' ? navigator.onLine : true
-  );
+  const [isOnline, setIsOnline] = useState(true);
   const [pendingCount, setPendingCount] = useState(() => getQueueLength());
   const flushTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 

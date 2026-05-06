@@ -15,7 +15,13 @@ const imageConfig: NonNullable<NextConfig["images"]> = {
 
 const nextConfig: NextConfig = {
 	turbopack: {
-		root: appRoot,
+		resolveAlias: {
+			"@pegasus/i18n": "../../packages/i18n/index.ts",
+			"@pegasus/i18n/*": "../../packages/i18n/*",
+			"@pegasus/types": "../../packages/types/index.ts",
+			"@pegasus/types/*": "../../packages/types/*",
+			"@pegasus/api-client": "../../packages/api-client/index.ts",
+		},
 	},
   images: imageConfig,
   // SSG export for Tauri desktop builds; standard server mode for web

@@ -132,9 +132,9 @@ export default function AdvancedAnalyticsPage() {
 
   // ── Supplier View (Global Admin / Node Admin) ─────────────────────────────
   // Compute aggregate KPIs
-  const totalRevenue = analytics.revenue?.time_series.reduce((s, d) => s + d.total, 0) ?? 0;
-  const slaTotal = analytics.slaHealth.reduce((s, d) => s + d.total_orders, 0);
-  const slaOnTime = analytics.slaHealth.reduce((s, d) => s + d.on_time, 0);
+  const totalRevenue = analytics.revenue?.time_series?.reduce((s, d) => s + d.total, 0) ?? 0;
+  const slaTotal = analytics.slaHealth?.reduce((s, d) => s + d.total_orders, 0) ?? 0;
+  const slaOnTime = analytics.slaHealth?.reduce((s, d) => s + d.on_time, 0) ?? 0;
   const slaRate = slaTotal > 0 ? (slaOnTime / slaTotal) * 100 : 0;
 
   return (

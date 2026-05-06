@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, EB_Garamond } from "next/font/google";
 import Image from "next/image";
 import { Suspense } from "react";
 import "./globals.css";
@@ -12,14 +12,15 @@ import { ThemeProvider } from "../components/ThemeProvider";
 import { NetworkStatusBanner } from "../components/NetworkStatusBanner";
 import PageTransition from "../components/PageTransition";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const fontInter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const fontGaramond = EB_Garamond({
+  variable: "--font-garamond",
   subsets: ["latin"],
+  weight: ["400", "500"], // 300 is ideal per spec, usually 400 is lightest in some subsets, but Garamond supports 400+
 });
 
 export const metadata: Metadata = {
@@ -41,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${fontInter.variable} ${fontGaramond.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){try{var m=localStorage.getItem('pegasus-theme-mode');
@@ -50,7 +51,7 @@ export default function RootLayout({
         `}} />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans flex h-screen overflow-hidden bg-background text-foreground`}
+        className={`${fontInter.variable} ${fontGaramond.variable} font-sans flex h-screen overflow-hidden bg-background text-foreground`}
       >
         <LocaleBootstrap />
         {/* Pre-hydration splash — rendered by the browser before React mounts */}
