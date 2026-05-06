@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -29,6 +27,7 @@ import (
 	"backend-go/fleet"
 	"backend-go/fleetroutes"
 	"backend-go/idempotency"
+	"backend-go/infraroutes"
 	"backend-go/migrations"
 	"backend-go/notifications"
 	"backend-go/order"
@@ -58,14 +57,11 @@ import (
 	"backend-go/warehouse"
 	"backend-go/warehouseroutes"
 	"backend-go/webhookroutes"
-	"backend-go/ws"
 	"config"
 
 	internalKafka "backend-go/kafka"
 
-	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
-	"google.golang.org/api/iterator"
 )
 
 type DeliverySubmitRequest struct {
@@ -215,9 +211,7 @@ func main() {
 	// Ownership lives in backend-go/sync/routes.go.
 	sync.RegisterRoutes(r, spannerClient, loggingMiddleware)
 
-	// Telemetry Matrix — uses grace period auth to allow expired driver tokens for 2h (A-4)
-	http.HandleFunc("/ws/telemetry", auth.RequireRoleWithGrace([]string{"DRIVER", "ADMIN", "SUPPLIER"}, 2*time.Hour, telemetry.FleetHub.HandleConnection))
-	http.HandleFunc("/ws/fleet", auth.RequireRoleWithGrace([]string{"DRIVER", "ADMIN", "SUPPLIER"}, 2*time.Hour, telemetry.FleetHub.HandleConnection))
+	// /ws/{telemetry,fleet} moved to infraroutes.
 
 	// ── Vector G: B2B Dynamic Pricing Engine ──────────────────────────────────
 	// (supplierPricingSvc is constructed in bootstrap and aliased above.)
@@ -341,42 +335,7 @@ func main() {
 		Idempotency: idempotency.Guard,
 	})
 
-	// ── Phase 5-6: System Health + Driver + Retailer + Supplier API Gap Closure ──
-
-	// GET /v1/health — Load balancer health check (no auth required)
-	http.HandleFunc("/v1/health", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		// Quick Spanner ping
-		row, err := spannerClient.Single().ReadRow(r.Context(), "Suppliers", spanner.Key{"health-check-probe"}, []string{"SupplierId"})
-		spannerOK := err != nil || row != nil // NOT_FOUND is still healthy — means Spanner is reachable
-		_ = row
-
-		redisOK := cache.Client != nil
-		if redisOK {
-			if err := cache.Client.Ping(r.Context()).Err(); err != nil {
-				redisOK = false
-			}
-		}
-
-		status := "healthy"
-		code := http.StatusOK
-		if !spannerOK {
-			status = "degraded"
-			code = http.StatusServiceUnavailable
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(code)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":  status,
-			"spanner": spannerOK,
-			"redis":   redisOK,
-			"time":    time.Now().UTC().Format(time.RFC3339),
-		})
-	})
+	// /v1/health moved to infraroutes.
 
 	// GET /metrics and /v1/metrics — Prometheus and legacy JSON process metrics.
 	analytics.RegisterMetricsRoutes(http.DefaultServeMux, loggingMiddleware)
@@ -512,276 +471,8 @@ func main() {
 		Log:               loggingMiddleware,
 	})
 
-	http.HandleFunc("/v1/order/deliver", auth.RequireRole([]string{"DRIVER"}, loggingMiddleware(idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var req struct {
-			OrderId      string  `json:"order_id"`
-			ScannedToken string  `json:"scanned_token"`
-			Latitude     float64 `json:"latitude"`
-			Longitude    float64 `json:"longitude"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderId == "" || req.ScannedToken == "" {
-			http.Error(w, "Invalid payload. order_id and scanned_token required.", http.StatusBadRequest)
-			return
-		}
-
-		supplierID, err := svc.CompleteDeliveryWithToken(r.Context(), req.OrderId, req.ScannedToken, req.Latitude, req.Longitude)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusForbidden) // 403 Forbidden if the QR is wrong!
-			return
-		}
-
-		// Invalidate Redis-cached delivery token — order is delivered
-		go svc.InvalidateDeliveryToken(context.Background(), req.OrderId)
-
-		// Push ORDER_STATE_CHANGED to supplier admin portal via WebSocket
-		if supplierID != "" {
-			go telemetry.FleetHub.BroadcastOrderStateChange(supplierID, req.OrderId, "COMPLETED", "")
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{
-			"status":  "COMPLETED",
-			"message": "Handshake successful. Delivery completed.",
-		})
-
-		// Auto-release truck if manifest is fully delivered
-		go fleet.CheckAndAutoReleaseTruck(context.Background(), spannerClient, req.OrderId, cfg.GoogleMapsAPIKey)
-	}))))
-
-	// ── NEW DELIVERY FLOW: validate-qr → confirm-offload → complete ──────────
-
-	// POST /v1/order/validate-qr — Driver scans QR, validates token, sees order info
-	http.HandleFunc("/v1/order/validate-qr", auth.RequireRole([]string{"DRIVER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		var req struct {
-			OrderID      string `json:"order_id"`
-			ScannedToken string `json:"scanned_token"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" || req.ScannedToken == "" {
-			http.Error(w, "order_id and scanned_token required", http.StatusBadRequest)
-			return
-		}
-		resp, err := svc.ValidateQRToken(r.Context(), req.OrderID, req.ScannedToken)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusForbidden)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
-	})))
-
-	// POST /v1/order/confirm-offload — Driver confirms offload, triggers payment flow
-	http.HandleFunc("/v1/order/confirm-offload", auth.RequireRole([]string{"DRIVER"}, loggingMiddleware(idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		var req struct {
-			OrderID string `json:"order_id"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" {
-			http.Error(w, "order_id required", http.StatusBadRequest)
-			return
-		}
-		resp, err := svc.ConfirmOffload(r.Context(), req.OrderID)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusConflict)
-			return
-		}
-
-		// Push PAYMENT_REQUIRED to the retailer's WebSocket for all payment methods
-		retailerHub.PushToRetailer(resp.RetailerID, map[string]interface{}{
-			"type":                    ws.EventPaymentRequired,
-			"order_id":                resp.OrderID,
-			"invoice_id":              resp.InvoiceID,
-			"session_id":              resp.SessionID,
-			"amount":                  resp.Amount,
-			"original_amount":         resp.OriginalAmount,
-			"payment_method":          resp.PaymentMethod,
-			"available_card_gateways": resp.AvailableCardGateways,
-			"message":                 fmt.Sprintf("Payment of %d required for order %s", resp.Amount, resp.OrderID),
-		})
-
-		// Push ORDER_STATE_CHANGED to supplier admin portal via WebSocket
-		if resp.SupplierID != "" {
-			go telemetry.FleetHub.BroadcastOrderStateChange(resp.SupplierID, resp.OrderID, "AWAITING_PAYMENT", "")
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
-	}))))
-
-	// POST /v1/order/complete — Driver finalizes delivery after payment
-	http.HandleFunc("/v1/order/complete", auth.RequireRole([]string{"DRIVER"}, loggingMiddleware(idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		var req struct {
-			OrderID string `json:"order_id"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" {
-			http.Error(w, "order_id required", http.StatusBadRequest)
-			return
-		}
-		supplierID, err := svc.CompleteOrder(r.Context(), req.OrderID)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusConflict)
-			return
-		}
-
-		// Invalidate Redis-cached delivery token
-		go svc.InvalidateDeliveryToken(context.Background(), req.OrderID)
-
-		// Push ORDER_STATE_CHANGED to supplier admin portal via WebSocket
-		if supplierID != "" {
-			go telemetry.FleetHub.BroadcastOrderStateChange(supplierID, req.OrderID, "COMPLETED", "")
-		}
-
-		// Auto-release truck
-		go fleet.CheckAndAutoReleaseTruck(context.Background(), spannerClient, req.OrderID, cfg.GoogleMapsAPIKey)
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{
-			"status":  "COMPLETED",
-			"message": "Delivery finalized.",
-		})
-	}))))
-
-	// /v1/order/{cash-checkout,card-checkout} moved to retailerroutes.
-
-	// /v1/retailer/card/* moved to retailerroutes.
-
-	// POST /v1/order/collect-cash — Driver confirms geofenced cash collection
-	http.HandleFunc("/v1/order/collect-cash", auth.RequireRole([]string{"DRIVER"}, loggingMiddleware(idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var req struct {
-			OrderID   string  `json:"order_id"`
-			Latitude  float64 `json:"latitude"`
-			Longitude float64 `json:"longitude"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" {
-			http.Error(w, "order_id required", http.StatusBadRequest)
-			return
-		}
-		if req.Latitude == 0 && req.Longitude == 0 {
-			http.Error(w, "GPS coordinates required (latitude, longitude)", http.StatusBadRequest)
-			return
-		}
-
-		// Extract driver_id from JWT claims
-		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
-		if !ok || claims.UserID == "" {
-			http.Error(w, "driver identity missing from token", http.StatusUnauthorized)
-			return
-		}
-
-		resp, err := svc.CollectCash(r.Context(), order.CollectCashRequest{
-			OrderID:   req.OrderID,
-			DriverID:  claims.UserID,
-			Latitude:  req.Latitude,
-			Longitude: req.Longitude,
-		})
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusConflict)
-			return
-		}
-
-		// Push ORDER_COMPLETED to the retailer via WebSocket
-		retailerHub.PushToRetailer(resp.RetailerID, map[string]interface{}{
-			"type":     ws.EventOrderCompleted,
-			"order_id": resp.OrderID,
-			"amount":   resp.Amount,
-			"message":  resp.Message,
-		})
-
-		// Auto-release truck
-		go fleet.CheckAndAutoReleaseTruck(context.Background(), spannerClient, req.OrderID, cfg.GoogleMapsAPIKey)
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
-	}))))
-
-	// /v1/retailer/pending-payments and /v1/retailer/active-fulfillment moved to retailerroutes.
-
-	http.HandleFunc("/v1/routes", auth.RequireRole([]string{"ADMIN", "SUPPLIER", "PAYLOADER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		routes, err := svc.ListRoutes(r.Context())
-		if err != nil {
-			log.Printf("Failed to list routes: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(routes)
-	})))
-
-	// /v1/payload/seal moved to payloaderroutes.
-
-	http.HandleFunc("/v1/prediction/create", auth.RequireRole([]string{"RETAILER"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		var req struct {
-			RetailerId  string `json:"retailer_id"`
-			Amount      int64  `json:"amount"`
-			TriggerDate string `json:"trigger_date"`
-			Status      string `json:"status,omitempty"` // WAITING or DORMANT
-			WarehouseId string `json:"warehouse_id,omitempty"`
-			Items       []struct {
-				SkuID    string `json:"sku_id"`
-				Quantity int64  `json:"quantity"`
-				Price    int64  `json:"price"`
-			} `json:"items,omitempty"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid payload", http.StatusBadRequest)
-			return
-		}
-
-		if len(req.Items) > 0 {
-			// SKU-level prediction (v2)
-			var items []order.PredictionItem
-			for _, it := range req.Items {
-				items = append(items, order.PredictionItem{
-					SkuID: it.SkuID, Quantity: it.Quantity, Price: it.Price,
-				})
-			}
-			err := svc.SavePredictionWithItems(r.Context(), req.RetailerId, req.Amount, req.TriggerDate, items, req.Status, req.WarehouseId)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		} else {
-			// Legacy amount-only prediction (v1)
-			err := svc.SavePrediction(r.Context(), req.RetailerId, req.Amount, req.TriggerDate, req.WarehouseId)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-		}
-
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]string{"status": "PREDICTION_LOCKED"})
-	})))
+	// /v1/order/{deliver,validate-qr,confirm-offload,complete,collect-cash} moved to infraroutes.
+	// /v1/routes and /v1/prediction/create moved to infraroutes.
 
 	// /v1/order/{create,cancel} moved to retailerroutes.
 
@@ -798,34 +489,20 @@ func main() {
 		Refund:     refundSvc,
 		Log:        loggingMiddleware,
 	})
-	http.HandleFunc("/v1/order/refund", auth.RequireRole([]string{"ADMIN", "SUPPLIER"}, loggingMiddleware(idempotency.Guard(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
 
-		claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
-		var req payment.RefundRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
-			return
-		}
-		if req.OrderID == "" {
-			http.Error(w, `{"error":"order_id is required"}`, http.StatusBadRequest)
-			return
-		}
-
-		result, err := refundSvc.InitiateRefund(r.Context(), req, claims.UserID)
-		if err != nil {
-			log.Printf("[REFUND] Failed for order %s: %v", req.OrderID, err)
-			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusBadRequest)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(result)
-	}))))
+	infraroutes.RegisterRoutes(r, infraroutes.Deps{
+		Spanner:              spannerClient,
+		Order:                svc,
+		Refund:               refundSvc,
+		FleetHub:             telemetry.FleetHub,
+		RetailerHub:          retailerHub,
+		DriverHub:            driverHub,
+		WarehouseHub:         warehouseHub,
+		MapsAPIKey:           cfg.GoogleMapsAPIKey,
+		Log:                  loggingMiddleware,
+		Idempotency:          idempotency.Guard,
+		EnableDebugMintToken: cfg.IsDevelopment(),
+	})
 
 	// /v1/checkout/* + /v1/payment/* — 5 routes (b2b, unified, chargeback,
 	// chargeback/reversal, global_pay/initiate). Ownership lives in backend-go/paymentroutes.
@@ -845,133 +522,7 @@ func main() {
 	// /v1/fleet/{trucks,driver/depart,driver/return-complete,route/reorder,orders} moved to fleetroutes.
 
 	// /v1/orders and /v1/order/refunds moved to orderroutes.
-
-	http.HandleFunc("/v1/products", auth.RequireRole([]string{"RETAILER", "ADMIN"}, loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		type Variant struct {
-			ID            string  `json:"id"`
-			Size          string  `json:"size"`
-			Pack          string  `json:"pack"`
-			PackCount     int64   `json:"pack_count"`
-			WeightPerUnit string  `json:"weight_per_unit"`
-			Price         float64 `json:"price"`
-		}
-
-		type Product struct {
-			ID               string    `json:"id"`
-			Name             string    `json:"name"`
-			Description      string    `json:"description"`
-			Nutrition        string    `json:"nutrition"`
-			ImageURL         string    `json:"image_url"`
-			Variants         []Variant `json:"variants"`
-			SupplierID       string    `json:"supplier_id"`
-			SupplierName     string    `json:"supplier_name"`
-			SupplierCategory string    `json:"supplier_category"`
-			CategoryID       string    `json:"category_id"`
-			CategoryName     string    `json:"category_name"`
-			SellByBlock      bool      `json:"sell_by_block"`
-			UnitsPerBlock    int64     `json:"units_per_block"`
-			Price            int64     `json:"price"`
-		}
-
-		stmt := spanner.Statement{
-			SQL: `SELECT sp.SkuId, sp.SupplierId, sp.Name, sp.Description, sp.ImageUrl,
-			             sp.SellByBlock, sp.UnitsPerBlock, sp.BasePrice, sp.CategoryId,
-			             COALESCE(c.Name, '') AS CategoryName,
-			             COALESCE(s.Name, '') AS SupplierName,
-			             COALESCE(s.Category, '') AS SupplierCategory
-			      FROM SupplierProducts sp
-			      LEFT JOIN Suppliers s ON sp.SupplierId = s.SupplierId
-			      LEFT JOIN Categories c ON c.CategoryId = sp.CategoryId
-			      WHERE sp.IsActive = TRUE
-			      ORDER BY sp.Name ASC`,
-		}
-
-		iter := spannerClient.Single().Query(r.Context(), stmt)
-		defer iter.Stop()
-
-		var productList []Product
-		for {
-			row, err := iter.Next()
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				log.Printf("Failed to query products: %v", err)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-
-			var skuId, supplierId, name string
-			var desc, imageUrl, catId, categoryName, supplierName, supplierCategory spanner.NullString
-			var sellByBlock bool
-			var unitsPerBlock, basePrice int64
-
-			if err := row.Columns(&skuId, &supplierId, &name, &desc, &imageUrl,
-				&sellByBlock, &unitsPerBlock, &basePrice, &catId, &categoryName, &supplierName, &supplierCategory); err != nil {
-				log.Printf("Failed to parse product row: %v", err)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-
-			p := Product{
-				ID:            skuId,
-				Name:          name,
-				SellByBlock:   sellByBlock,
-				UnitsPerBlock: unitsPerBlock,
-				Price:         basePrice,
-				SupplierID:    supplierId,
-			}
-			if desc.Valid {
-				p.Description = desc.StringVal
-			}
-			if imageUrl.Valid {
-				p.ImageURL = imageUrl.StringVal
-			}
-			if catId.Valid {
-				p.CategoryID = catId.StringVal
-			}
-			if categoryName.Valid {
-				p.CategoryName = categoryName.StringVal
-			}
-			if supplierName.Valid {
-				p.SupplierName = supplierName.StringVal
-			}
-			if supplierCategory.Valid {
-				p.SupplierCategory = supplierCategory.StringVal
-			}
-
-			// Create a synthetic variant so the iOS detail view's variant picker + cart flow works
-			packLabel := "Per unit"
-			if sellByBlock && unitsPerBlock > 1 {
-				packLabel = fmt.Sprintf("Block of %d", unitsPerBlock)
-			}
-			v := Variant{
-				ID:            skuId,
-				Size:          "Standard",
-				Pack:          packLabel,
-				PackCount:     1,
-				WeightPerUnit: "1 unit",
-				Price:         float64(basePrice),
-			}
-			p.Variants = []Variant{v}
-
-			productList = append(productList, p)
-		}
-
-		if productList == nil {
-			productList = []Product{}
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(productList); err != nil {
-			log.Printf("Failed to write products response payload: %v", err)
-		}
-	})))
+	// /v1/order/refund and /v1/products moved to infraroutes.
 
 	// /v1/retailers/{id}/orders and /v1/retailer/tracking moved to retailerroutes.
 
@@ -1009,89 +560,7 @@ func main() {
 
 	// /v1/admin/retailer/{pending,approve,reject} moved to adminroutes.
 
-	// POST /v1/order/amend — Driver partial-quantity reconciliation at delivery.
-	// Recalculates order total, inserts SupplierReturns, emits ORDER_MODIFIED to Kafka.
-	// Wraps HandleAmendOrder with WS push for ORDER_AMENDED event.
-	http.HandleFunc("/v1/order/amend",
-		auth.RequireRole([]string{"DRIVER", "ADMIN"},
-			loggingMiddleware(func(w http.ResponseWriter, r *http.Request) {
-				if r.Method != http.MethodPost {
-					http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-					return
-				}
-				var req order.AmendOrderRequest
-				if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-					http.Error(w, "invalid JSON body", http.StatusBadRequest)
-					return
-				}
-				if req.OrderID == "" || len(req.Items) == 0 {
-					http.Error(w, "order_id and items are required", http.StatusBadRequest)
-					return
-				}
-
-				resp, err := svc.AmendOrder(r.Context(), req)
-				if err != nil {
-					var versionConflict *order.ErrVersionConflict
-					if errors.As(err, &versionConflict) {
-						w.Header().Set("Content-Type", "application/json")
-						w.WriteHeader(http.StatusConflict)
-						json.NewEncoder(w).Encode(map[string]string{"error": versionConflict.Error()})
-						return
-					}
-					var freezeLock *order.ErrFreezeLock
-					if errors.As(err, &freezeLock) {
-						w.Header().Set("Content-Type", "application/json")
-						w.WriteHeader(423)
-						json.NewEncoder(w).Encode(map[string]string{"error": freezeLock.Error()})
-						return
-					}
-					if strings.Contains(err.Error(), "cannot be amended") {
-						http.Error(w, err.Error(), http.StatusConflict)
-					} else if strings.Contains(err.Error(), "not found") {
-						http.Error(w, err.Error(), http.StatusNotFound)
-					} else {
-						http.Error(w, "internal error: "+err.Error(), http.StatusInternalServerError)
-					}
-					return
-				}
-
-				// Push ORDER_AMENDED to retailer + driver via WebSocket
-				if resp.RetailerID != "" {
-					go retailerHub.PushToRetailer(resp.RetailerID, map[string]interface{}{
-						"type":         ws.EventOrderAmended,
-						"order_id":     req.OrderID,
-						"amendment_id": resp.AmendmentID,
-						"new_total":    resp.AdjustedTotal,
-						"message":      resp.Message,
-					})
-				}
-				if resp.DriverID != "" {
-					go driverHub.PushToDriver(resp.DriverID, map[string]interface{}{
-						"type":         ws.EventOrderAmended,
-						"order_id":     req.OrderID,
-						"amendment_id": resp.AmendmentID,
-						"new_total":    resp.AdjustedTotal,
-						"message":      resp.Message,
-					})
-				}
-				if resp.SupplierID != "" {
-					go telemetry.FleetHub.BroadcastOrderStateChange(resp.SupplierID, req.OrderID, "AMENDED", "")
-				}
-
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(resp)
-			}),
-		),
-	)
-
-	// POST /v1/vehicle/{vehicleId}/clear-returns — Supplier confirms return receipt at depot.
-	// Clears ReturnClearedAt on rejected OrderLineItems, releasing locked VU from capacity.
-	http.HandleFunc("/v1/vehicle/",
-		auth.RequireRole([]string{"ADMIN", "SUPPLIER"},
-			loggingMiddleware(idempotency.Guard(svc.HandleClearReturns)),
-		),
-	)
+	// /v1/order/amend and /v1/vehicle/{vehicleId}/clear-returns moved to infraroutes.
 
 	// /v1/retailer/settings/auto-order* moved to retailerroutes.
 
@@ -1419,9 +888,7 @@ func main() {
 		Idempotency:      idempotency.Guard,
 	})
 
-	// ── Warehouse WebSocket Hub ──────────────────────────────────────────────
-	http.HandleFunc("/ws/warehouse",
-		auth.RequireRoleWithGrace([]string{"WAREHOUSE", "SUPPLIER", "ADMIN"}, 2*time.Hour, warehouseHub.HandleConnection))
+	// /ws/warehouse moved to infraroutes.
 
 	// ── Pre-Order Confirmation Policy Cron ────────────────────────────────────
 	StartPreOrderConfirmationSweeper(spannerClient, fcmClient, tgClient, func(ctx context.Context, eventType string, payload interface{}) {
@@ -1436,30 +903,9 @@ func main() {
 	// ── Notification Expirer (soft-deletes stale notifications) ───────────────
 	StartNotificationExpirer(spannerClient)
 
-	// DEBUG ROUTE: strictly gated to ENVIRONMENT=development. Any other
-	// value (including empty, which is now rejected at config load) keeps
-	// /debug/mint-token unmounted.
+	// /debug/mint-token is registered in infraroutes when development mode is enabled.
 	if cfg.IsDevelopment() {
 		log.Println("[SECURITY] /debug/mint-token is MOUNTED (ENVIRONMENT=development)")
-		http.HandleFunc("/debug/mint-token", func(w http.ResponseWriter, r *http.Request) {
-			role := r.URL.Query().Get("role")
-			if role == "" {
-				role = "RETAILER" // Default to lowest clearance
-			}
-
-			userId := r.URL.Query().Get("user_id")
-			if userId == "" {
-				userId = "TEST-USER-99"
-			}
-
-			tokenString, err := auth.GenerateTestToken(userId, role)
-			if err != nil {
-				http.Error(w, "Failed to forge token", http.StatusInternalServerError)
-				return
-			}
-
-			w.Write([]byte(tokenString))
-		})
 	}
 
 	go func() {

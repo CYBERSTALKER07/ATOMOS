@@ -1,4 +1,3 @@
-package infraroutes
 // Package infraroutes owns legacy-compatible infrastructure and compatibility
 // endpoints that were previously mounted inline in main.go via http.HandleFunc.
 //
@@ -25,6 +24,7 @@ import (
 	"backend-go/fleet"
 	"backend-go/order"
 	"backend-go/payment"
+	"backend-go/telemetry"
 	"backend-go/ws"
 )
 
@@ -33,16 +33,16 @@ type Middleware func(http.HandlerFunc) http.HandlerFunc
 
 // Deps bundles collaborators required to register extracted legacy endpoints.
 type Deps struct {
-	Spanner             *spanner.Client
-	Order               *order.OrderService
-	Refund              *payment.RefundService
-	FleetHub            *ws.FleetHub
-	RetailerHub         *ws.RetailerHub
-	DriverHub           *ws.DriverHub
-	WarehouseHub        *ws.WarehouseHub
-	MapsAPIKey          string
-	Log                 Middleware
-	Idempotency         Middleware
+	Spanner              *spanner.Client
+	Order                *order.OrderService
+	Refund               *payment.RefundService
+	FleetHub             *telemetry.Hub
+	RetailerHub          *ws.RetailerHub
+	DriverHub            *ws.DriverHub
+	WarehouseHub         *ws.WarehouseHub
+	MapsAPIKey           string
+	Log                  Middleware
+	Idempotency          Middleware
 	EnableDebugMintToken bool
 }
 
