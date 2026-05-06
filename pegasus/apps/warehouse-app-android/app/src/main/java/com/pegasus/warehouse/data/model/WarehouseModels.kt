@@ -21,17 +21,24 @@ data class AuthResponse(
 
 // ── Dashboard ──
 @Serializable
+data class FleetStatusEntry(
+    val status: String = "",
+    val count: Long = 0,
+)
+
+@Serializable
 data class DashboardData(
-    @SerialName("active_orders") val activeOrders: Int = 0,
-    @SerialName("completed_today") val completedToday: Int = 0,
-    @SerialName("pending_dispatch") val pendingDispatch: Int = 0,
+    @SerialName("active_orders") val activeOrders: Long = 0,
+    @SerialName("completed_today") val completedToday: Long = 0,
+    @SerialName("pending_dispatch") val pendingDispatch: Long = 0,
+    @SerialName("drivers_on_route") val driversOnRoute: Long = 0,
+    @SerialName("drivers_idle") val driversIdle: Long = 0,
+    @SerialName("total_drivers") val totalDrivers: Long = 0,
+    @SerialName("total_vehicles") val totalVehicles: Long = 0,
     @SerialName("today_revenue") val todayRevenue: Long = 0,
-    @SerialName("drivers_on_route") val driversOnRoute: Int = 0,
-    @SerialName("idle_drivers") val idleDrivers: Int = 0,
-    @SerialName("vehicles") val vehicles: Int = 0,
-    @SerialName("low_stock_items") val lowStockItems: Int = 0,
-    @SerialName("total_staff") val totalStaff: Int = 0,
-    @SerialName("fleet_status") val fleetStatus: Map<String, Int> = emptyMap(),
+    @SerialName("low_stock_count") val lowStockCount: Long = 0,
+    @SerialName("total_staff") val totalStaff: Long = 0,
+    @SerialName("fleet_status") val fleetStatus: List<FleetStatusEntry> = emptyList(),
 )
 
 // ── Orders ──

@@ -21,34 +21,80 @@ struct AuthResponse: Decodable {
 
 // MARK: - Dashboard
 
+struct FleetStatusEntry: Decodable, Hashable {
+    let status: String
+    let count: Int64
+}
+
 struct DashboardData: Decodable {
-    let activeOrders: Int
-    let completedToday: Int
-    let pendingDispatch: Int
-    let todayRevenue: Int
-    let driversOnRoute: Int
-    let idleDrivers: Int
-    let vehicles: Int
-    let lowStockItems: Int
-    let totalStaff: Int
+    let activeOrders: Int64
+    let completedToday: Int64
+    let pendingDispatch: Int64
+    let driversOnRoute: Int64
+    let driversIdle: Int64
+    let totalDrivers: Int64
+    let totalVehicles: Int64
+    let todayRevenue: Int64
+    let lowStockCount: Int64
+    let totalStaff: Int64
+    let fleetStatus: [FleetStatusEntry]
 
     enum CodingKeys: String, CodingKey {
         case activeOrders = "active_orders"
         case completedToday = "completed_today"
         case pendingDispatch = "pending_dispatch"
-        case todayRevenue = "today_revenue"
         case driversOnRoute = "drivers_on_route"
-        case idleDrivers = "idle_drivers"
-        case vehicles
-        case lowStockItems = "low_stock_items"
+        case driversIdle = "drivers_idle"
+        case totalDrivers = "total_drivers"
+        case totalVehicles = "total_vehicles"
+        case todayRevenue = "today_revenue"
+        case lowStockCount = "low_stock_count"
         case totalStaff = "total_staff"
+        case fleetStatus = "fleet_status"
     }
 
-    static let empty = DashboardData(
-        activeOrders: 0, completedToday: 0, pendingDispatch: 0,
-        todayRevenue: 0, driversOnRoute: 0, idleDrivers: 0,
-        vehicles: 0, lowStockItems: 0, totalStaff: 0
-    )
+    init(
+        activeOrders: Int64 = 0,
+        completedToday: Int64 = 0,
+        pendingDispatch: Int64 = 0,
+        driversOnRoute: Int64 = 0,
+        driversIdle: Int64 = 0,
+        totalDrivers: Int64 = 0,
+        totalVehicles: Int64 = 0,
+        todayRevenue: Int64 = 0,
+        lowStockCount: Int64 = 0,
+        totalStaff: Int64 = 0,
+        fleetStatus: [FleetStatusEntry] = []
+    ) {
+        self.activeOrders = activeOrders
+        self.completedToday = completedToday
+        self.pendingDispatch = pendingDispatch
+        self.driversOnRoute = driversOnRoute
+        self.driversIdle = driversIdle
+        self.totalDrivers = totalDrivers
+        self.totalVehicles = totalVehicles
+        self.todayRevenue = todayRevenue
+        self.lowStockCount = lowStockCount
+        self.totalStaff = totalStaff
+        self.fleetStatus = fleetStatus
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        activeOrders = (try? c.decode(Int64.self, forKey: .activeOrders)) ?? 0
+        completedToday = (try? c.decode(Int64.self, forKey: .completedToday)) ?? 0
+        pendingDispatch = (try? c.decode(Int64.self, forKey: .pendingDispatch)) ?? 0
+        driversOnRoute = (try? c.decode(Int64.self, forKey: .driversOnRoute)) ?? 0
+        driversIdle = (try? c.decode(Int64.self, forKey: .driversIdle)) ?? 0
+        totalDrivers = (try? c.decode(Int64.self, forKey: .totalDrivers)) ?? 0
+        totalVehicles = (try? c.decode(Int64.self, forKey: .totalVehicles)) ?? 0
+        todayRevenue = (try? c.decode(Int64.self, forKey: .todayRevenue)) ?? 0
+        lowStockCount = (try? c.decode(Int64.self, forKey: .lowStockCount)) ?? 0
+        totalStaff = (try? c.decode(Int64.self, forKey: .totalStaff)) ?? 0
+        fleetStatus = (try? c.decode([FleetStatusEntry].self, forKey: .fleetStatus)) ?? []
+    }
+
+    static let empty = DashboardData()
 }
 
 // MARK: - Order

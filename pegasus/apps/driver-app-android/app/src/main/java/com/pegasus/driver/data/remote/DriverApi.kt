@@ -12,9 +12,11 @@ import com.pegasus.driver.data.model.ConfirmOffloadResponse
 import com.pegasus.driver.data.model.DepartRequest
 import com.pegasus.driver.data.model.DeliverySubmitRequest
 import com.pegasus.driver.data.model.DeliverySubmitResponse
+import com.pegasus.driver.data.model.DriverEarningsResponse
 import com.pegasus.driver.data.model.DriverProfileResponse
 import com.pegasus.driver.data.model.LoginRequest
 import com.pegasus.driver.data.model.Order
+import com.pegasus.driver.data.model.PendingCollection
 import com.pegasus.driver.data.model.ReorderStopsRequest
 import com.pegasus.driver.data.model.ReturnCompleteRequest
 import com.pegasus.driver.data.model.RouteManifest
@@ -42,6 +44,14 @@ interface DriverApi {
     // Driver hash manifest
     @GET("v1/driver/manifest")
     suspend fun getManifest(@Query("date") date: String): RouteManifest
+
+    // Per-driver earnings report (lifetime totals + last 30 days)
+    @GET("v1/driver/earnings")
+    suspend fun getEarnings(): DriverEarningsResponse
+
+    // Outstanding cash collections (PENDING_CASH_COLLECTION orders)
+    @GET("v1/driver/pending-collections")
+    suspend fun getPendingCollections(): List<PendingCollection>
 
     // Order details
     @GET("v1/orders/{id}")

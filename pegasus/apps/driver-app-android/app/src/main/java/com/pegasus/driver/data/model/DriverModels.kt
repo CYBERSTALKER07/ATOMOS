@@ -66,13 +66,19 @@ data class OrderLineItem(
     @SerialName("line_total") val lineTotal: Long
 )
 
+/**
+ * Pegasus Hash Manifest Protocol — mirror of backend-go/crypto/manifest.go::RouteManifest.
+ *
+ * Security model: the raw delivery token never leaves the backend. The driver device
+ * receives only SHA-256 hashes keyed by OrderID, then hashes the retailer's QR payload
+ * locally at drop time and compares against this manifest — no network required.
+ */
 @Serializable
 data class RouteManifest(
     @SerialName("driver_id") val driverId: String,
     val date: String,
-    val orders: List<Order>,
-    @SerialName("total_stops") val totalStops: Int,
-    @SerialName("estimated_distance_km") val estimatedDistanceKm: Double? = null
+    @SerialName("expires_at") val expiresAt: Long,            // Unix epoch — manifest valid one calendar day
+    val hashes: Map<String, String> = emptyMap()              // OrderID → SHA-256(DeliveryToken)
 )
 
 @Serializable
@@ -272,6 +278,34 @@ data class LoginRequest(
     val pin: String
 )
 
+// ── Driver Earnings (mirror of backend-go/fleet/driver_api.go) ──
+
+@Serializable
+data class DailyEarning(
+    val date: String,
+    @SerialName("delivery_count") val deliveryCount: Long,
+    val volume: Long
+)
+
+@Serializable
+data class DriverEarningsResponse(
+    @SerialName("total_deliveries") val totalDeliveries: Long = 0,
+    @SerialName("total_volume") val totalVolume: Long = 0,
+    @SerialName("total_routes") val totalRoutes: Long = 0,
+    @SerialName("last_30_days") val last30Days: List<DailyEarning> = emptyList()
+)
+
+// ── Pending Cash Collections (mirror of backend-go/order/service.go::PendingCollection) ──
+
+@Serializable
+data class PendingCollection(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("retailer_id") val retailerId: String = "",
+    val amount: Long = 0,
+    val state: String = "",
+    @SerialName("updated_at") val updatedAt: String = ""
+)
+
 // ── Room Entities ──
 
 @Entity(tableName = "orders")
@@ -290,12 +324,16 @@ data class OrderEntity(
     val itemsJson: String // serialized OrderLineItem list
 )
 
+/**
+ * Cached hash manifest for offline QR verification.
+ * `hashesJson` stores the OrderID → SHA-256 map as JSON for cross-process portability.
+ */
 @Entity(tableName = "route_manifest")
 data class RouteManifestEntity(
     @PrimaryKey val date: String,
     val driverId: String,
-    val totalStops: Int,
-    val estimatedDistanceKm: Double?,
+    val expiresAt: Long,
+    val hashesJson: String,
     val fetchedAt: Long = System.currentTimeMillis()
 )
 

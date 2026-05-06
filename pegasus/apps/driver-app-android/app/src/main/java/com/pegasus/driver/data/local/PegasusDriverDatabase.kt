@@ -8,7 +8,7 @@ import com.pegasus.driver.data.model.RouteManifestEntity
 
 @Database(
     entities = [OrderEntity::class, RouteManifestEntity::class, PendingMutationEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class PegasusDriverDatabase : RoomDatabase() {

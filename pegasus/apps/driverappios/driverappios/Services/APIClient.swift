@@ -91,6 +91,18 @@ final class APIClient: @unchecked Sendable {
         try await get("v1/driver/manifest?date=\(date)")
     }
 
+    // MARK: - Driver Earnings & Cash
+
+    /// GET /v1/driver/earnings — lifetime totals + per-day breakdown for last 30 days
+    func getEarnings() async throws -> DriverEarningsResponse {
+        try await get("v1/driver/earnings")
+    }
+
+    /// GET /v1/driver/pending-collections — outstanding cash collections (cash shadow recovery)
+    func getPendingCollections() async throws -> [PendingCollection] {
+        try await get("v1/driver/pending-collections")
+    }
+
     // MARK: - Orders
 
     func getOrder(id: String) async throws -> Order {

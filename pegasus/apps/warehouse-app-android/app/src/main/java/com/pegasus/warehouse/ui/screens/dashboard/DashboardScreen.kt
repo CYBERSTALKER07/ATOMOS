@@ -32,9 +32,9 @@ private val kpiCards = listOf(
     KpiCard("Pending Dispatch", Icons.Default.LocalShipping, WarehouseRoutes.DISPATCH) { it.pendingDispatch.toString() },
     KpiCard("Today Revenue", Icons.Default.AttachMoney, WarehouseRoutes.TREASURY) { "${it.todayRevenue / 1000}K" },
     KpiCard("Drivers On Route", Icons.Default.DirectionsCar, WarehouseRoutes.DRIVERS) { it.driversOnRoute.toString() },
-    KpiCard("Idle Drivers", Icons.Default.PersonOff, WarehouseRoutes.DRIVERS) { it.idleDrivers.toString() },
-    KpiCard("Vehicles", Icons.Default.DirectionsCar, WarehouseRoutes.VEHICLES) { it.vehicles.toString() },
-    KpiCard("Low Stock", Icons.Default.Warning, WarehouseRoutes.INVENTORY) { it.lowStockItems.toString() },
+    KpiCard("Idle Drivers", Icons.Default.PersonOff, WarehouseRoutes.DRIVERS) { it.driversIdle.toString() },
+    KpiCard("Vehicles", Icons.Default.DirectionsCar, WarehouseRoutes.VEHICLES) { it.totalVehicles.toString() },
+    KpiCard("Low Stock", Icons.Default.Warning, WarehouseRoutes.INVENTORY) { it.lowStockCount.toString() },
     KpiCard("Staff", Icons.Default.People, WarehouseRoutes.STAFF) { it.totalStaff.toString() },
 )
 

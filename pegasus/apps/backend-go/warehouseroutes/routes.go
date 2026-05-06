@@ -40,6 +40,7 @@ import (
 	"backend-go/dispatch/optimizerclient"
 	"backend-go/dispatch/plan"
 	"backend-go/factory"
+	"backend-go/idempotency"
 	"backend-go/order"
 	"backend-go/proximity"
 	"backend-go/replenishment"
@@ -179,8 +180,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/warehouse/ops/payment-config", whOps(warehouse.HandleOpsPaymentConfig(d.Spanner)))
 
 	// 27-28. Dispatch Lock System.
+	// Idempotency-guarded: lock acquire/release are mutations whose retry must not produce
+	// duplicate locks or release a lock twice (race window with AI-worker).
 	r.HandleFunc("/v1/warehouse/dispatch-lock",
-		auth.RequireRole(warehouseTriad, log(dispatchLockHandler(d.DispatchLockSvc))))
+		auth.RequireRole(warehouseTriad, log(idempotency.Guard(dispatchLockHandler(d.DispatchLockSvc)))))
 	r.HandleFunc("/v1/warehouse/dispatch-locks",
 		auth.RequireRole(warehouseTriad, log(d.DispatchLockSvc.HandleListDispatchLocks)))
 }
@@ -201,14 +204,17 @@ func supplyRequestList(svc *warehouse.SupplyRequestService) http.HandlerFunc {
 }
 
 // supplyRequestByID routes GET→detail and PATCH→transition on
-// /v1/warehouse/supply-requests/{id}.
+// /v1/warehouse/supply-requests/{id}. The PATCH branch is idempotency-guarded
+// because state transitions (PENDING→APPROVED→DISPATCHED→RECEIVED) must not
+// double-fire on client retry; GET passes through unchanged.
 func supplyRequestByID(svc *warehouse.SupplyRequestService) http.HandlerFunc {
+	guardedTransition := idempotency.Guard(svc.HandleSupplyRequestTransition)
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			svc.HandleSupplyRequestDetail(w, r)
 		case http.MethodPatch:
-			svc.HandleSupplyRequestTransition(w, r)
+			guardedTransition(w, r)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}

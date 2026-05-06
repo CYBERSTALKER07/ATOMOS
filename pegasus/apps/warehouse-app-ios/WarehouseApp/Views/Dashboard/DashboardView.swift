@@ -33,9 +33,9 @@ struct DashboardView: View {
                         KpiCard(title: "Pending Dispatch", value: "\(stats.pendingDispatch)", icon: "paperplane", index: 2)
                         KpiCard(title: "Revenue Today", value: "\(stats.todayRevenue / 1000)K", icon: "banknote", index: 3)
                         KpiCard(title: "On Route", value: "\(stats.driversOnRoute)", icon: "location", index: 4)
-                        KpiCard(title: "Idle Drivers", value: "\(stats.idleDrivers)", icon: "person.badge.clock", index: 5)
-                        KpiCard(title: "Vehicles", value: "\(stats.vehicles)", icon: "truck.box", index: 6)
-                        KpiCard(title: "Low Stock", value: "\(stats.lowStockItems)", icon: "exclamationmark.triangle", index: 7)
+                        KpiCard(title: "Idle Drivers", value: "\(stats.driversIdle)", icon: "person.badge.clock", index: 5)
+                        KpiCard(title: "Vehicles", value: "\(stats.totalVehicles)", icon: "truck.box", index: 6)
+                        KpiCard(title: "Low Stock", value: "\(stats.lowStockCount)", icon: "exclamationmark.triangle", index: 7)
                         KpiCard(title: "Staff", value: "\(stats.totalStaff)", icon: "person.2", index: 8)
                     }
                     .padding()

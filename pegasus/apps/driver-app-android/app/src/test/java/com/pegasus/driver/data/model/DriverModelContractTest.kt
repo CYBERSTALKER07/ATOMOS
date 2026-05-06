@@ -56,33 +56,33 @@ class DriverModelContractTest {
         assertEquals(10, item.quantity)
     }
 
-    // ── RouteManifest ────────────────────────────────────────────────────────
+    // ── RouteManifest (Hash Protocol) ────────────────────────────────────────
 
     @Test
-    fun routeManifest_totalStops_matchesOrders() {
+    fun routeManifest_hashes_keyedByOrderId() {
         val manifest = RouteManifest(
             driverId = "DRV-001",
             date = "2026-04-12",
-            orders = listOf(
-                makeOrder("ORD-1"), makeOrder("ORD-2"), makeOrder("ORD-3")
-            ),
-            totalStops = 3,
-            estimatedDistanceKm = 15.5
+            expiresAt = 1_777_000_000L,
+            hashes = mapOf(
+                "ORD-1" to "a".repeat(64),
+                "ORD-2" to "b".repeat(64),
+                "ORD-3" to "c".repeat(64)
+            )
         )
-        assertEquals(3, manifest.totalStops)
-        assertEquals(manifest.orders.size, manifest.totalStops)
+        assertEquals(3, manifest.hashes.size)
+        assertEquals("a".repeat(64), manifest.hashes["ORD-1"])
     }
 
     @Test
-    fun routeManifest_nullDistance() {
+    fun routeManifest_emptyHashes() {
         val manifest = RouteManifest(
             driverId = "DRV-001",
             date = "2026-04-12",
-            orders = emptyList(),
-            totalStops = 0,
-            estimatedDistanceKm = null
+            expiresAt = 0L,
+            hashes = emptyMap()
         )
-        assertEquals(null, manifest.estimatedDistanceKm)
+        assertTrue(manifest.hashes.isEmpty())
     }
 
     // ── DeliverySubmitRequest ────────────────────────────────────────────────

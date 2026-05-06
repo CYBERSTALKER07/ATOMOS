@@ -36,6 +36,7 @@ import (
 	"backend-go/auth"
 	"backend-go/cache"
 	"backend-go/factory"
+	"backend-go/idempotency"
 	"backend-go/proximity"
 	"backend-go/warehouse"
 )
@@ -147,8 +148,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(factoryRole, log(withScope(factory.HandleFactoryStaffDetail(d.Spanner)))))
 
 	// 12. Dispatch engine — bin-pack + route-optimize + LIFO load order.
+	// Idempotency-guarded: dispatch creates manifests + side-effects; client retry MUST replay
+	// the original response rather than create duplicate shipments.
 	r.HandleFunc("/v1/factory/dispatch",
-		auth.RequireRole(factoryRole, log(withScope(batcherSvc.HandleFactoryDispatch))))
+		auth.RequireRole(factoryRole, log(idempotency.Guard(withScope(batcherSvc.HandleFactoryDispatch)))))
 
 	// 13. Supply-request list (factory-scoped view).
 	r.HandleFunc("/v1/factory/supply-requests",
@@ -161,13 +164,16 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 // supplyRequestByID routes GET→detail and PATCH→transition on
 // /v1/factory/supply-requests/{id}. Mirrors the warehouse-side dispatcher.
+// PATCH is idempotency-guarded so client retries replay the original transition
+// instead of double-firing the state machine.
 func supplyRequestByID(svc *warehouse.SupplyRequestService) http.HandlerFunc {
+	guardedTransition := idempotency.Guard(svc.HandleSupplyRequestTransition)
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			svc.HandleSupplyRequestDetail(w, r)
 		case http.MethodPatch:
-			svc.HandleSupplyRequestTransition(w, r)
+			guardedTransition(w, r)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}

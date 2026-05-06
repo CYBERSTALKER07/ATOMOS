@@ -279,6 +279,55 @@ func TestPurge_NonexistentKey_NoError(t *testing.T) {
 	}
 }
 
+// ─── Route adoption regression: factory dispatch / supply-request transitions
+// and warehouse dispatch-lock acquire/release / supply-request transitions are
+// wrapped via Guard in factoryroutes/warehouseroutes. This test pins the
+// contract: a state-changing handler must replay the original 2xx response on
+// a duplicate call carrying the same Idempotency-Key, even if the underlying
+// handler would otherwise mutate state again.
+func TestGuard_DispatchAndLockRoutes_Replay(t *testing.T) {
+	orig := cache.Client
+	defer func() { cache.Client = orig }()
+	setupMiniredis(t)
+
+	mutationCount := 0
+	dispatchHandler := Guard(func(w http.ResponseWriter, r *http.Request) {
+		mutationCount++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"manifest_id":"m-001"}`))
+	})
+
+	for _, key := range []string{
+		"factory-dispatch-key",
+		"warehouse-dispatch-lock-key",
+		"warehouse-supply-request-transition-key",
+	} {
+		first := httptest.NewRequest("POST", "/", nil)
+		first.Header.Set("Idempotency-Key", key)
+		w1 := httptest.NewRecorder()
+		dispatchHandler(w1, first)
+		if w1.Code != http.StatusOK {
+			t.Fatalf("%s first call status=%d, want 200", key, w1.Code)
+		}
+
+		retry := httptest.NewRequest("POST", "/", nil)
+		retry.Header.Set("Idempotency-Key", key)
+		w2 := httptest.NewRecorder()
+		dispatchHandler(w2, retry)
+		if w2.Code != http.StatusOK {
+			t.Fatalf("%s retry status=%d, want 200 replay", key, w2.Code)
+		}
+		if w1.Body.String() != w2.Body.String() {
+			t.Fatalf("%s retry body drift: %q vs %q", key, w1.Body.String(), w2.Body.String())
+		}
+	}
+
+	if mutationCount != 3 {
+		t.Errorf("mutation handler called %d times, want 3 (one per key, retries replay)", mutationCount)
+	}
+}
+
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 func TestConstants(t *testing.T) {
