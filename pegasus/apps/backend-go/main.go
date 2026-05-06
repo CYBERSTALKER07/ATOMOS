@@ -51,6 +51,7 @@ import (
 	"backend-go/supplierroutes"
 	"backend-go/sync"
 	"backend-go/telemetry"
+	"backend-go/telemetryroutes"
 	"backend-go/treasury"
 	"backend-go/userroutes"
 	"backend-go/vault"
@@ -211,7 +212,8 @@ func main() {
 	// Ownership lives in backend-go/sync/routes.go.
 	sync.RegisterRoutes(r, spannerClient, loggingMiddleware)
 
-	// /ws/{telemetry,fleet} moved to infraroutes.
+	// /ws/{telemetry,fleet} moved to telemetryroutes.
+	telemetryroutes.RegisterRoutes(r, telemetryroutes.Deps{FleetHub: telemetry.FleetHub})
 
 	// ── Vector G: B2B Dynamic Pricing Engine ──────────────────────────────────
 	// (supplierPricingSvc is constructed in bootstrap and aliased above.)
@@ -471,8 +473,8 @@ func main() {
 		Log:               loggingMiddleware,
 	})
 
-	// /v1/order/{deliver,validate-qr,confirm-offload,complete,collect-cash} moved to infraroutes.
-	// /v1/routes and /v1/prediction/create moved to infraroutes.
+	// /v1/order/{deliver,validate-qr,confirm-offload,complete,collect-cash} moved to orderroutes.
+	// /v1/routes and /v1/prediction/create moved to orderroutes.
 
 	// /v1/order/{create,cancel} moved to retailerroutes.
 
@@ -483,24 +485,20 @@ func main() {
 	refundSvc := payment.NewRefundService(spannerClient, platformCfg.PlatformFeeBasisPoints())
 	chargebackSvc := payment.NewChargebackService(spannerClient)
 	orderroutes.RegisterRoutes(r, orderroutes.Deps{
-		Spanner:    spannerClient,
-		ReadRouter: app.SpannerRouter,
-		Order:      svc,
-		Refund:     refundSvc,
-		Log:        loggingMiddleware,
+		Spanner:     spannerClient,
+		ReadRouter:  app.SpannerRouter,
+		Order:       svc,
+		Refund:      refundSvc,
+		RetailerHub: retailerHub,
+		DriverHub:   driverHub,
+		FleetHub:    telemetry.FleetHub,
+		MapsAPIKey:  cfg.GoogleMapsAPIKey,
+		Log:         loggingMiddleware,
+		Idempotency: idempotency.Guard,
 	})
 
 	infraroutes.RegisterRoutes(r, infraroutes.Deps{
 		Spanner:              spannerClient,
-		Order:                svc,
-		Refund:               refundSvc,
-		FleetHub:             telemetry.FleetHub,
-		RetailerHub:          retailerHub,
-		DriverHub:            driverHub,
-		WarehouseHub:         warehouseHub,
-		MapsAPIKey:           cfg.GoogleMapsAPIKey,
-		Log:                  loggingMiddleware,
-		Idempotency:          idempotency.Guard,
 		EnableDebugMintToken: cfg.IsDevelopment(),
 	})
 
@@ -521,8 +519,8 @@ func main() {
 
 	// /v1/fleet/{trucks,driver/depart,driver/return-complete,route/reorder,orders} moved to fleetroutes.
 
-	// /v1/orders and /v1/order/refunds moved to orderroutes.
-	// /v1/order/refund and /v1/products moved to infraroutes.
+	// /v1/orders and /v1/order/{refund,refunds} moved to orderroutes.
+	// /v1/products moved to catalogroutes.
 
 	// /v1/retailers/{id}/orders and /v1/retailer/tracking moved to retailerroutes.
 
@@ -560,7 +558,7 @@ func main() {
 
 	// /v1/admin/retailer/{pending,approve,reject} moved to adminroutes.
 
-	// /v1/order/amend and /v1/vehicle/{vehicleId}/clear-returns moved to infraroutes.
+	// /v1/order/amend and /v1/vehicle/{vehicleId}/clear-returns moved to orderroutes.
 
 	// /v1/retailer/settings/auto-order* moved to retailerroutes.
 
@@ -871,6 +869,7 @@ func main() {
 		ReadRouter:      app.SpannerRouter,
 		Optimizer:       app.OptimizerClient,
 		DispatchCounts:  app.DispatchOptimizer,
+		WarehouseHub:    warehouseHub,
 		Log:             loggingMiddleware,
 		Cache:           app.Cache,
 	})
@@ -888,7 +887,7 @@ func main() {
 		Idempotency:      idempotency.Guard,
 	})
 
-	// /ws/warehouse moved to infraroutes.
+	// /ws/warehouse moved to warehouseroutes.
 
 	// ── Pre-Order Confirmation Policy Cron ────────────────────────────────────
 	StartPreOrderConfirmationSweeper(spannerClient, fcmClient, tgClient, func(ctx context.Context, eventType string, payload interface{}) {

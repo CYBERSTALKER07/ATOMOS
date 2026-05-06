@@ -29,6 +29,7 @@ package warehouseroutes
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	kafka "github.com/segmentio/kafka-go"
@@ -45,6 +46,7 @@ import (
 	"backend-go/proximity"
 	"backend-go/replenishment"
 	"backend-go/warehouse"
+	"backend-go/ws"
 )
 
 // Middleware is the handler-wrap contract supplied by the caller (typically
@@ -69,6 +71,7 @@ type Deps struct {
 	ReadRouter      proximity.ReadRouter
 	Optimizer       *optimizerclient.Client
 	DispatchCounts  *plan.SourceCounters
+	WarehouseHub    *ws.WarehouseHub
 	Log             Middleware
 	Cache           *cache.Cache
 }
@@ -186,6 +189,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(warehouseTriad, log(idempotency.Guard(dispatchLockHandler(d.DispatchLockSvc)))))
 	r.HandleFunc("/v1/warehouse/dispatch-locks",
 		auth.RequireRole(warehouseTriad, log(d.DispatchLockSvc.HandleListDispatchLocks)))
+
+	if d.WarehouseHub != nil {
+		r.HandleFunc("/ws/warehouse",
+			auth.RequireRoleWithGrace([]string{"WAREHOUSE", "SUPPLIER", "ADMIN"}, 2*time.Hour, d.WarehouseHub.HandleConnection))
+	}
 }
 
 // supplyRequestList routes GET→list and POST→create on

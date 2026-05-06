@@ -88,7 +88,17 @@
         "GET /v1/orders/{id}",
         "GET /v1/orders/{id}/events",
         "PATCH /v1/orders/{id}/status",
-        "PATCH /v1/orders/{id}/state"
+        "PATCH /v1/orders/{id}/state",
+        "POST /v1/order/deliver",
+        "POST /v1/order/validate-qr",
+        "POST /v1/order/confirm-offload",
+        "POST /v1/order/complete",
+        "POST /v1/order/collect-cash",
+        "POST /v1/order/refund",
+        "PATCH /v1/order/amend",
+        "GET /v1/routes",
+        "POST /v1/prediction/create",
+        "PATCH /v1/vehicle/*"
       ],
       "consumers": [
         "driverappios APIClient.getOrder",
@@ -101,6 +111,40 @@
         "GET /v1/orders/{id}/events returns the scoped OrderEvents audit timeline for the same legacy order surface.",
         "PATCH accepts both /status and /state path aliases.",
         "PATCH accepts either status or state request keys for legacy compatibility."
+      ]
+    },
+    {
+      "name": "Telemetry websocket route composition",
+      "path": "/ws/{telemetry,fleet}",
+      "owner": "pegasus/apps/backend-go/telemetryroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "WS /ws/telemetry",
+        "WS /ws/fleet"
+      ],
+      "consumers": [
+        "admin-portal telemetry fleet websocket consumers"
+      ],
+      "notes": [
+        "Route registration moved from infraroutes/main into telemetryroutes while preserving grace-auth websocket behavior."
+      ]
+    },
+    {
+      "name": "Legacy infra compatibility surface",
+      "path": "/v1/health + /debug/mint-token",
+      "owner": "pegasus/apps/backend-go/infraroutes/routes.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/health",
+        "POST /debug/mint-token"
+      ],
+      "consumers": [
+        "health probes",
+        "development-only local debug token tooling"
+      ],
+      "notes": [
+        "Domain compatibility mounts were re-homed to orderroutes, catalogroutes, warehouseroutes, and telemetryroutes.",
+        "Debug mint token remains gated by EnableDebugMintToken."
       ]
     },
     {
@@ -623,7 +667,7 @@
       {
         "name": "Warehouse live websocket surface",
         "path": "/ws/warehouse",
-        "owner": "pegasus/apps/backend-go/ws/warehouse_hub.go",
+        "owner": "pegasus/apps/backend-go/warehouseroutes/routes.go",
         "methods": [
           "WS /ws/warehouse"
         ],
@@ -633,6 +677,7 @@
           "warehouse-app-android DispatchScreen"
         ],
         "notes": [
+          "Route registration is mounted in warehouseroutes and delegated to ws/warehouse_hub.",
           "Post-commit emitters live in warehouse/supply_requests.go and warehouse/dispatch_lock.go.",
           "Frames include warehouse_id and timestamp for cross-client filtering.",
           "Current live event types are SUPPLY_REQUEST_UPDATE and DISPATCH_LOCK_CHANGE.",
