@@ -3,7 +3,7 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"backend-go/fastjson"
@@ -35,7 +35,7 @@ func InitSyncWriter(brokerAddress string) {
 		Topic:    TopicDriverSync,
 		Balancer: &goKafka.LeastBytes{},
 	}
-	log.Printf("[SYNC_EMITTER] Desert Protocol Kafka writer armed on %s", TopicDriverSync)
+	slog.Info("sync emitter kafka writer armed", "topic", TopicDriverSync)
 }
 
 // EmitOrderSyncEvent fires an immutable, append-only event to the driver sync
@@ -82,7 +82,7 @@ func InitCorrectionWriter(brokerAddress string) {
 		Topic:    TopicMain,
 		Balancer: &goKafka.LeastBytes{},
 	}
-	log.Printf("[AI_FEEDBACK] Correction Kafka writer armed on %s", TopicMain)
+	slog.Info("ai feedback kafka writer armed", "topic", TopicMain)
 }
 
 // EmitPredictionCorrected fires an RLHF correction event to the logistics topic.
@@ -182,7 +182,7 @@ func InitNotificationWriter(brokerAddress string) {
 		Topic:    TopicMain,
 		Balancer: &goKafka.LeastBytes{},
 	}
-	log.Printf("[NOTIFICATION] Kafka writer armed on %s", TopicMain)
+	slog.Info("notification kafka writer armed", "topic", TopicMain)
 }
 
 // EmitNotification publishes eventType-keyed payload to TopicMain. Intended to
@@ -190,12 +190,12 @@ func InitNotificationWriter(brokerAddress string) {
 // notification fan-out. Safe to call before initialisation — logs and returns.
 func EmitNotification(eventType string, payload any) {
 	if notificationWriter == nil {
-		log.Printf("[NOTIFICATION] writer not initialised; skipping %s", eventType)
+		slog.Warn("notification kafka writer not initialised; skipping event", "event_type", eventType)
 		return
 	}
 	body, err := fastjson.Marshal(payload)
 	if err != nil {
-		log.Printf("[NOTIFICATION] marshal %s: %v", eventType, err)
+		slog.Error("notification event marshal failed", "event_type", eventType, "error", err)
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -204,7 +204,7 @@ func EmitNotification(eventType string, payload any) {
 		Key:   []byte(eventType),
 		Value: body,
 	}); err != nil {
-		log.Printf("[NOTIFICATION] publish %s: %v", eventType, err)
+		slog.Error("notification event publish failed", "event_type", eventType, "error", err)
 	}
 }
 
@@ -213,30 +213,30 @@ func EmitNotification(eventType string, payload any) {
 func CloseWriters() {
 	if syncWriter != nil {
 		if err := syncWriter.Close(); err != nil {
-			log.Printf("[KAFKA] syncWriter close error: %v", err)
+			slog.Error("sync writer close failed", "error", err)
 		} else {
-			log.Println("[KAFKA] syncWriter closed.")
+			slog.Info("sync writer closed")
 		}
 	}
 	if correctionWriter != nil {
 		if err := correctionWriter.Close(); err != nil {
-			log.Printf("[KAFKA] correctionWriter close error: %v", err)
+			slog.Error("correction writer close failed", "error", err)
 		} else {
-			log.Println("[KAFKA] correctionWriter closed.")
+			slog.Info("correction writer closed")
 		}
 	}
 	if notificationWriter != nil {
 		if err := notificationWriter.Close(); err != nil {
-			log.Printf("[KAFKA] notificationWriter close error: %v", err)
+			slog.Error("notification writer close failed", "error", err)
 		} else {
-			log.Println("[KAFKA] notificationWriter closed.")
+			slog.Info("notification writer closed")
 		}
 	}
 	if dlqWriter != nil {
 		if err := dlqWriter.Close(); err != nil {
-			log.Printf("[KAFKA] dlqWriter close error: %v", err)
+			slog.Error("dlq writer close failed", "error", err)
 		} else {
-			log.Println("[KAFKA] dlqWriter closed.")
+			slog.Info("dlq writer closed")
 		}
 	}
 }

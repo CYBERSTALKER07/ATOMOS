@@ -5,7 +5,7 @@ import (
 	"backend-go/cache"
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -45,6 +45,10 @@ func (h *SupplierHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	}
 
 	supplierID := claims.ResolveSupplierID()
+	traceID := r.Header.Get("X-Trace-Id")
+	if traceID == "" {
+		traceID = r.Header.Get("X-Request-Id")
+	}
 
 	if supplierID == "" {
 		http.Error(w, "supplier_id could not be determined from auth token", http.StatusUnauthorized)
@@ -53,7 +57,12 @@ func (h *SupplierHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("[SUPPLIER HUB] WebSocket upgrade failed for %s: %v", supplierID, err)
+		slog.ErrorContext(r.Context(), "supplier hub websocket upgrade failed",
+			"hub", "supplier",
+			"supplier_id", supplierID,
+			"trace_id", traceID,
+			"error", err,
+		)
 		return
 	}
 	h.mu.Lock()
@@ -62,7 +71,12 @@ func (h *SupplierHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	h.mu.Unlock()
 	h.subscribeRelay(supplierID)
 
-	log.Printf("[SUPPLIER HUB] Supplier %s connected. Active pipes: %d", supplierID, total)
+	slog.InfoContext(r.Context(), "supplier hub client connected",
+		"hub", "supplier",
+		"supplier_id", supplierID,
+		"active_pipes", total,
+		"trace_id", traceID,
+	)
 
 	// Start keepalive ping/pong to detect stale connections
 	done := ConfigureKeepalive(conn)
@@ -86,7 +100,11 @@ func (h *SupplierHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 		}
 		h.mu.Unlock()
 		conn.Close()
-		log.Printf("[SUPPLIER HUB] Supplier %s disconnected.", supplierID)
+		slog.InfoContext(r.Context(), "supplier hub client disconnected",
+			"hub", "supplier",
+			"supplier_id", supplierID,
+			"trace_id", traceID,
+		)
 	}()
 
 	for {
@@ -101,7 +119,11 @@ func (h *SupplierHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 func (h *SupplierHub) PushToSupplier(supplierID string, payload interface{}) bool {
 	data, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("[SUPPLIER HUB] Failed to marshal payload for %s: %v", supplierID, err)
+		slog.Error("supplier hub payload marshal failed",
+			"hub", "supplier",
+			"supplier_id", supplierID,
+			"error", err,
+		)
 		return false
 	}
 	local := h.pushToSupplierLocal(supplierID, data)
@@ -125,7 +147,11 @@ func (h *SupplierHub) pushToSupplierLocal(supplierID string, data []byte) bool {
 	defer h.writeMu.Unlock()
 	for _, conn := range snapshot {
 		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			log.Printf("[SUPPLIER HUB] Write failed for %s — evicting dead pipe: %v", supplierID, err)
+			slog.Warn("supplier hub write failed; evicting dead connection",
+				"hub", "supplier",
+				"supplier_id", supplierID,
+				"error", err,
+			)
 			conn.Close()
 		} else {
 			delivered = true
@@ -165,5 +191,5 @@ func (h *SupplierHub) Close() {
 		}
 		delete(h.clients, id)
 	}
-	log.Println("[SUPPLIER HUB] All connections closed.")
+	slog.Info("supplier hub closed all connections", "hub", "supplier")
 }

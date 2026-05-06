@@ -10,7 +10,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -33,12 +33,12 @@ var (
 func init() {
 	keyHex := os.Getenv("VAULT_MASTER_KEY")
 	if keyHex == "" {
-		log.Println("[VAULT] WARNING: VAULT_MASTER_KEY not set — credential vault will fail at runtime")
+		slog.Warn("vault.master_key_missing")
 		return
 	}
 	decoded, err := hex.DecodeString(keyHex)
 	if err != nil || len(decoded) != 32 {
-		log.Printf("[VAULT] FATAL: VAULT_MASTER_KEY must be 64 hex chars (32 bytes). Got %d bytes, err=%v", len(decoded), err)
+		slog.Error("vault.master_key_invalid", "decoded_len", len(decoded), "err", err)
 		return
 	}
 	masterKey = decoded
@@ -50,10 +50,10 @@ func init() {
 		if err == nil && len(prevDecoded) == 32 {
 			masterKeyPrev = prevDecoded
 			keyVersion = 0x02
-			log.Println("[VAULT] Key rotation mode — current key v2, previous key v1 loaded")
+			slog.Info("vault.key_rotation_mode_enabled", "current_version", 2, "previous_version", 1)
 		}
 	}
-	log.Printf("[VAULT] Master key loaded (version %d) — AES-256-GCM credential vault armed", keyVersion)
+	slog.Info("vault.master_key_loaded", "version", keyVersion)
 }
 
 // Encrypt encrypts plaintext using AES-256-GCM with the master key.
@@ -448,7 +448,7 @@ func logDecryptAccess(client *spanner.Client, supplierID, gatewayName, configID 
 		})
 	})
 	if err != nil {
-		log.Printf("[VAULT] Audit log write failed: %v", err)
+		slog.Error("vault.audit_log_write_failed", "supplier_id", supplierID, "gateway", gatewayName, "config_id", configID, "err", err)
 	}
 }
 

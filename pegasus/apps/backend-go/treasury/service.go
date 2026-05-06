@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"backend-go/auth"
@@ -44,7 +44,7 @@ func GetTreasuryMetrics(ctx context.Context, client *spanner.Client) (*TreasuryR
 		var accountId string
 		var amount spanner.NullInt64
 		if err := row.Columns(&accountId, &amount); err != nil {
-			log.Printf("[TREASURY ERROR] Failed to decode row: %v", err)
+			slog.Error("treasury.metrics_row_decode_failed", "err", err)
 			continue
 		}
 
@@ -76,7 +76,7 @@ func TreasuryHandler(client *spanner.Client) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(report); err != nil {
-			log.Printf("[TREASURY ERROR] Failed to encode response: %v", err)
+			slog.Error("treasury.metrics_encode_failed", "err", err)
 		}
 	}
 }
@@ -138,7 +138,7 @@ func GetCashHoldings(ctx context.Context, client *spanner.Client, supplierID str
 
 		if err := row.Columns(&invoiceID, &orderID, &driverID, &retailerID,
 			&amount, &custodyStatus, &collectedAt, &geoDist); err != nil {
-			log.Printf("[CASH_HOLDINGS] row decode error: %v", err)
+			slog.Error("treasury.cash_holdings_row_decode_failed", "supplier_id", supplierID, "err", err)
 			continue
 		}
 
@@ -192,7 +192,7 @@ func CashHoldingsHandler(client *spanner.Client) http.HandlerFunc {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(report); err != nil {
-			log.Printf("[CASH_HOLDINGS] encode error: %v", err)
+			slog.Error("treasury.cash_holdings_encode_failed", "err", err)
 		}
 	}
 }

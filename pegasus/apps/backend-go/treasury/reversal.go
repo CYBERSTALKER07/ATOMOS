@@ -3,7 +3,7 @@ package treasury
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -45,7 +45,7 @@ func CreateReversalEntry(ctx context.Context, client *spanner.Client, originalTx
 		return fmt.Errorf("reversal transaction: %w", txErr)
 	}
 
-	log.Printf("[TREASURY] Reversed entry %s: -%d for account %s (reason: %s)", originalTxnID, amount, accountID, reason)
+	slog.Info("treasury.reversal_created", "original_txn_id", originalTxnID, "amount", amount, "account_id", accountID, "reason", reason)
 	return nil
 }
 

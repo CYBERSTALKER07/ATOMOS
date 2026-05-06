@@ -1,7 +1,7 @@
 package ws
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -39,7 +39,7 @@ func CheckWSOrigin(r *http.Request) bool {
 	if isPatternAllowed(origin) {
 		return true
 	}
-	log.Printf("[WS] Rejected WebSocket upgrade from origin: %s", origin)
+	slog.Warn("websocket origin rejected", "hub", "fleet", "origin", origin)
 	return false
 }
 
@@ -97,7 +97,10 @@ func (h *FleetHub) Broadcast(update LocationUpdate) {
 	for client := range h.clients {
 		err := client.WriteJSON(update)
 		if err != nil {
-			log.Printf("[FLEET HUB] Admin pipe broken — evicting client: %v", err)
+			slog.Warn("fleet hub write failed; evicting connection",
+				"hub", "fleet",
+				"error", err,
+			)
 			client.Close()
 			delete(h.clients, client)
 		}
@@ -107,9 +110,18 @@ func (h *FleetHub) Broadcast(update LocationUpdate) {
 // HandleConnection upgrades an HTTP request to a permanent WebSocket pipe.
 // Works for both Admin (reads) and Driver (writes) clients via the same endpoint.
 func (h *FleetHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
+	traceID := r.Header.Get("X-Trace-Id")
+	if traceID == "" {
+		traceID = r.Header.Get("X-Request-Id")
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("[FLEET HUB] WebSocket upgrade failed: %v", err)
+		slog.ErrorContext(r.Context(), "fleet hub websocket upgrade failed",
+			"hub", "fleet",
+			"trace_id", traceID,
+			"error", err,
+		)
 		return
 	}
 
@@ -118,7 +130,11 @@ func (h *FleetHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	clientCount := len(h.clients)
 	h.mu.Unlock()
 
-	log.Printf("[FLEET HUB] New telemetry pipe opened. Active connections: %d", clientCount)
+	slog.InfoContext(r.Context(), "fleet hub client connected",
+		"hub", "fleet",
+		"active_connections", clientCount,
+		"trace_id", traceID,
+	)
 
 	// Start keepalive ping/pong
 	done := ConfigureKeepalive(conn)
@@ -130,7 +146,11 @@ func (h *FleetHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 		remaining := len(h.clients)
 		h.mu.Unlock()
 		conn.Close()
-		log.Printf("[FLEET HUB] Pipe closed. Active connections: %d", remaining)
+		slog.InfoContext(r.Context(), "fleet hub client disconnected",
+			"hub", "fleet",
+			"active_connections", remaining,
+			"trace_id", traceID,
+		)
 	}()
 
 	// Listen for incoming GPS pings — Drivers write, Admins only read
@@ -141,7 +161,12 @@ func (h *FleetHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		log.Printf("[FLEET GPS] %s → Lat: %.6f, Lng: %.6f", update.DriverID, update.Latitude, update.Longitude)
+		slog.Info("fleet gps update received",
+			"hub", "fleet",
+			"driver_id", update.DriverID,
+			"latitude", update.Latitude,
+			"longitude", update.Longitude,
+		)
 		// Immediately fan the ping out to all connected Admin dashboards
 		h.Broadcast(update)
 	}
@@ -158,5 +183,5 @@ func (h *FleetHub) Close() {
 		client.Close()
 		delete(h.clients, client)
 	}
-	log.Println("[FLEET HUB] All connections closed.")
+	slog.Info("fleet hub closed all connections", "hub", "fleet")
 }

@@ -1,7 +1,7 @@
 package ws
 
 import (
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -48,7 +48,10 @@ func ConfigureKeepalive(conn *websocket.Conn) chan struct{} {
 			case <-ticker.C:
 				conn.SetWriteDeadline(time.Now().Add(WriteWait))
 				if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(WriteWait)); err != nil {
-					log.Printf("[WS_KEEPALIVE] Ping failed — connection likely dead: %v", err)
+					slog.Warn("websocket keepalive ping failed; connection likely dead",
+						"hub", "keepalive",
+						"error", err,
+					)
 					return
 				}
 			}

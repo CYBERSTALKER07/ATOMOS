@@ -1,5 +1,5 @@
 {
-  "version": "2026-05-04",
+  "version": "2026-05-07",
   "generatedFrom": {
     "manifests": [
       "pegasus/package.json",
@@ -72,7 +72,8 @@
     "observability": [
       "OpenTelemetry",
       "Prometheus client",
-      "Google Cloud Monitoring"
+      "Google Cloud Monitoring",
+      "log/slog structured logging"
     ]
   },
   "runtimeContracts": [

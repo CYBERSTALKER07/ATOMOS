@@ -3,7 +3,7 @@ package treasury
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -127,7 +127,7 @@ func HandleSettlementReport(client *spanner.Client) http.HandlerFunc {
 			var createdAt time.Time
 
 			if err := row.Columns(&sr.OrderID, &invoiceID, &sr.RetailerID, &amount, &deliveryFee, &paymentMode, &custodyStatus, &collectedAt, &createdAt); err != nil {
-				log.Printf("[SETTLEMENT] Decode error: %v", err)
+				slog.Error("treasury.settlement.decode_failed", "supplier_id", supplierID, "err", err)
 				continue
 			}
 
@@ -227,7 +227,7 @@ func HandleBatchSettle(client *spanner.Client) http.HandlerFunc {
 		})
 
 		if err != nil {
-			log.Printf("[SETTLEMENT] Batch settle failed: %v", err)
+			slog.Error("treasury.batch_settle_failed", "supplier_id", claims.ResolveSupplierID(), "invoice_count", len(req.InvoiceIDs), "err", err)
 			http.Error(w, `{"error":"settlement_failed"}`, http.StatusInternalServerError)
 			return
 		}
@@ -315,7 +315,7 @@ func HandleInvoiceStatusOverride(client *spanner.Client) http.HandlerFunc {
 		})
 
 		if err != nil {
-			log.Printf("[SETTLEMENT] Invoice status override failed: %v", err)
+			slog.Error("treasury.invoice_status_override_failed", "invoice_id", req.InvoiceID, "status", req.Status, "err", err)
 			http.Error(w, `{"error":"update_failed"}`, http.StatusInternalServerError)
 			return
 		}

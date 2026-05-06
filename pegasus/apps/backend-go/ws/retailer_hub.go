@@ -5,7 +5,7 @@ import (
 	"backend-go/cache"
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -60,6 +60,10 @@ func (h *RetailerHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	}
 
 	retailerID := claims.UserID
+	traceID := r.Header.Get("X-Trace-Id")
+	if traceID == "" {
+		traceID = r.Header.Get("X-Request-Id")
+	}
 
 	if retailerID == "" {
 		http.Error(w, "retailer_id could not be determined from auth token", http.StatusUnauthorized)
@@ -68,7 +72,12 @@ func (h *RetailerHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("[RETAILER HUB] WebSocket upgrade failed for %s: %v", retailerID, err)
+		slog.ErrorContext(r.Context(), "retailer hub websocket upgrade failed",
+			"hub", "retailer",
+			"retailer_id", retailerID,
+			"trace_id", traceID,
+			"error", err,
+		)
 		return
 	}
 	h.mu.Lock()
@@ -76,7 +85,12 @@ func (h *RetailerHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	total := len(h.clients[retailerID])
 	h.mu.Unlock()
 
-	log.Printf("[RETAILER HUB] %s connected. Active pipes: %d", retailerID, total)
+	slog.InfoContext(r.Context(), "retailer hub client connected",
+		"hub", "retailer",
+		"retailer_id", retailerID,
+		"active_pipes", total,
+		"trace_id", traceID,
+	)
 
 	// Subscribe to Redis Pub/Sub relay for cross-pod delivery
 	h.subscribeRelay(retailerID)
@@ -103,7 +117,11 @@ func (h *RetailerHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 		}
 		h.mu.Unlock()
 		conn.Close()
-		log.Printf("[RETAILER HUB] %s disconnected.", retailerID)
+		slog.InfoContext(r.Context(), "retailer hub client disconnected",
+			"hub", "retailer",
+			"retailer_id", retailerID,
+			"trace_id", traceID,
+		)
 	}()
 
 	for {
@@ -143,7 +161,11 @@ func (h *RetailerHub) pushToRetailerLocal(retailerID string, payload interface{}
 
 	data, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("[RETAILER HUB] Failed to marshal payload for %s: %v", retailerID, err)
+		slog.Error("retailer hub payload marshal failed",
+			"hub", "retailer",
+			"retailer_id", retailerID,
+			"error", err,
+		)
 		return false
 	}
 
@@ -152,7 +174,11 @@ func (h *RetailerHub) pushToRetailerLocal(retailerID string, payload interface{}
 	defer h.writeMu.Unlock()
 	for _, conn := range snapshot {
 		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			log.Printf("[RETAILER HUB] Write failed for %s — evicting dead pipe: %v", retailerID, err)
+			slog.Warn("retailer hub write failed; evicting dead connection",
+				"hub", "retailer",
+				"retailer_id", retailerID,
+				"error", err,
+			)
 			conn.Close()
 		} else {
 			delivered = true
@@ -218,5 +244,5 @@ func (h *RetailerHub) Close() {
 		}
 		delete(h.clients, id)
 	}
-	log.Println("[RETAILER HUB] All connections closed.")
+	slog.Info("retailer hub closed all connections", "hub", "retailer")
 }

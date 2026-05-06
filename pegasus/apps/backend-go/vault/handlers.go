@@ -2,7 +2,7 @@ package vault
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -49,7 +49,7 @@ type paymentConfigResponse struct {
 func handleListConfigs(w http.ResponseWriter, r *http.Request, svc *Service, supplierId string) {
 	configs, err := svc.ListConfigs(r.Context(), supplierId)
 	if err != nil {
-		log.Printf("[VAULT] ListConfigs error for %s: %v", supplierId, err)
+		slog.Error("vault.list_configs_failed", "supplier_id", supplierId, "err", err)
 		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
 		return
 	}
@@ -79,7 +79,7 @@ func handleUpsertConfig(w http.ResponseWriter, r *http.Request, svc *Service, su
 
 	result, err := svc.UpsertConfig(r.Context(), supplierId, req.GatewayName, req.MerchantId, req.ServiceId, req.SecretKey)
 	if err != nil {
-		log.Printf("[VAULT] UpsertConfig error for %s: %v", supplierId, err)
+		slog.Error("vault.upsert_config_failed", "supplier_id", supplierId, "gateway", req.GatewayName, "err", err)
 		if strings.Contains(err.Error(), "unsupported gateway") ||
 			strings.Contains(err.Error(), "required") {
 			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
@@ -104,7 +104,7 @@ func handleDeactivateConfig(w http.ResponseWriter, r *http.Request, svc *Service
 	}
 
 	if err := svc.DeactivateConfig(r.Context(), supplierId, req.ConfigId); err != nil {
-		log.Printf("[VAULT] DeactivateConfig error: %v", err)
+		slog.Error("vault.deactivate_config_failed", "supplier_id", supplierId, "config_id", req.ConfigId, "err", err)
 		if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "does not belong") {
 			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusForbidden)
 			return
@@ -152,7 +152,7 @@ func HandleRegisterRecipient(client *spanner.Client, gpDirect *payment.GlobalPay
 		// Resolve GP credentials from the supplier's existing vault config.
 		cfg, err := svc.GetDecryptedConfig(r.Context(), supplierId, "GLOBAL_PAY")
 		if err != nil {
-			log.Printf("[VAULT] RegisterRecipient: no GP config for %s: %v", supplierId, err)
+			slog.Error("vault.register_recipient_missing_gateway_config", "supplier_id", supplierId, "err", err)
 			apierrors.WriteOperational(w, r, apierrors.ProblemDetail{
 				Type:       "error/payment/gateway-not-configured",
 				Title:      "Payment Gateway Not Configured",
@@ -182,7 +182,7 @@ func HandleRegisterRecipient(client *spanner.Client, gpDirect *payment.GlobalPay
 			LegalAddress: req.LegalAddress,
 		})
 		if err != nil {
-			log.Printf("[VAULT] RegisterRecipient GP call failed for %s: %v", supplierId, err)
+			slog.Error("vault.register_recipient_gateway_call_failed", "supplier_id", supplierId, "err", err)
 			apierrors.WriteOperational(w, r, apierrors.ProblemDetail{
 				Type:       "error/payment/recipient-registration-failed",
 				Title:      "Recipient Registration Failed",
@@ -197,7 +197,7 @@ func HandleRegisterRecipient(client *spanner.Client, gpDirect *payment.GlobalPay
 		}
 
 		if err := svc.SetRecipientId(r.Context(), supplierId, "GLOBAL_PAY", result.RecipientID); err != nil {
-			log.Printf("[VAULT] RegisterRecipient: SetRecipientId failed for %s: %v", supplierId, err)
+			slog.Error("vault.register_recipient_persist_failed", "supplier_id", supplierId, "recipient_id", result.RecipientID, "err", err)
 			apierrors.WriteOperational(w, r, apierrors.ProblemDetail{
 				Type:       "error/payment/recipient-persist-failed",
 				Title:      "Internal Error",

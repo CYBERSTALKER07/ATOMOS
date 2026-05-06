@@ -3,7 +3,7 @@ package replenishment
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -89,7 +89,7 @@ func HandleInsights(spannerClient *spanner.Client) http.HandlerFunc {
 				break
 			}
 			if err != nil {
-				log.Printf("[REPLENISHMENT API] query error: %v", err)
+				slog.Error("replenishment.api.insights_query_failed", "warehouse_id", whID, "status", status, "err", err)
 				break
 			}
 			var ins InsightResponse
@@ -102,7 +102,7 @@ func HandleInsights(spannerClient *spanner.Client) http.HandlerFunc {
 				&ins.Status, &ins.TargetFactoryId,
 				&ins.DemandBreakdown, &createdAt,
 			); err != nil {
-				log.Printf("[REPLENISHMENT API] row parse error: %v", err)
+				slog.Error("replenishment.api.insights_row_parse_failed", "warehouse_id", whID, "err", err)
 				continue
 			}
 			ins.CreatedAt = createdAt.Format(time.RFC3339)
@@ -257,7 +257,7 @@ func HandleInsightAction(spannerClient *spanner.Client, producer *kafka.Writer) 
 				kafkaevents.EventInsightApprovedTransferCreated, kafkaevents.TopicMain, evt,
 				telemetry.TraceIDFromContext(ctx))
 		}); err != nil {
-			log.Printf("[REPLENISHMENT API] approve failed: %v", err)
+			slog.Error("replenishment.api.approve_failed", "insight_id", insightID, "warehouse_id", whID, "transfer_id", transferID, "err", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}

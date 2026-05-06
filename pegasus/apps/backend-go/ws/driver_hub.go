@@ -5,7 +5,7 @@ import (
 	"backend-go/cache"
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -54,6 +54,10 @@ func (h *DriverHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	}
 
 	driverID := claims.UserID
+	traceID := r.Header.Get("X-Trace-Id")
+	if traceID == "" {
+		traceID = r.Header.Get("X-Request-Id")
+	}
 
 	if driverID == "" {
 		http.Error(w, "driver_id could not be determined from auth token", http.StatusUnauthorized)
@@ -62,7 +66,12 @@ func (h *DriverHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("[DRIVER HUB] WebSocket upgrade failed for %s: %v", driverID, err)
+		slog.ErrorContext(r.Context(), "driver hub websocket upgrade failed",
+			"hub", "driver",
+			"driver_id", driverID,
+			"trace_id", traceID,
+			"error", err,
+		)
 		return
 	}
 	h.mu.Lock()
@@ -71,7 +80,12 @@ func (h *DriverHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	h.mu.Unlock()
 	h.subscribeRelay(driverID)
 
-	log.Printf("[DRIVER HUB] %s connected. Active pipes: %d", driverID, total)
+	slog.InfoContext(r.Context(), "driver hub client connected",
+		"hub", "driver",
+		"driver_id", driverID,
+		"active_pipes", total,
+		"trace_id", traceID,
+	)
 
 	// Start keepalive ping/pong
 	done := ConfigureKeepalive(conn)
@@ -95,7 +109,11 @@ func (h *DriverHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 		}
 		h.mu.Unlock()
 		conn.Close()
-		log.Printf("[DRIVER HUB] %s disconnected.", driverID)
+		slog.InfoContext(r.Context(), "driver hub client disconnected",
+			"hub", "driver",
+			"driver_id", driverID,
+			"trace_id", traceID,
+		)
 	}()
 
 	for {
@@ -110,7 +128,11 @@ func (h *DriverHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 func (h *DriverHub) PushToDriver(driverID string, payload interface{}) bool {
 	data, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("[DRIVER HUB] Failed to marshal payload for %s: %v", driverID, err)
+		slog.Error("driver hub payload marshal failed",
+			"hub", "driver",
+			"driver_id", driverID,
+			"error", err,
+		)
 		return false
 	}
 	local := h.pushToDriverLocal(driverID, data)
@@ -134,7 +156,11 @@ func (h *DriverHub) pushToDriverLocal(driverID string, data []byte) bool {
 	defer h.writeMu.Unlock()
 	for _, conn := range snapshot {
 		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			log.Printf("[DRIVER HUB] Write failed for %s — evicting dead pipe: %v", driverID, err)
+			slog.Warn("driver hub write failed; evicting dead connection",
+				"hub", "driver",
+				"driver_id", driverID,
+				"error", err,
+			)
 			conn.Close()
 		} else {
 			delivered = true
@@ -184,5 +210,5 @@ func (h *DriverHub) Close() {
 		}
 		delete(h.clients, id)
 	}
-	log.Println("[DRIVER HUB] All connections closed.")
+	slog.Info("driver hub closed all connections", "hub", "driver")
 }

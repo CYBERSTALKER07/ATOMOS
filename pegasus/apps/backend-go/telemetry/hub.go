@@ -3,7 +3,7 @@ package telemetry
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"math"
 	"net/http"
 	"sync"
@@ -168,6 +168,11 @@ func (h *Hub) hasSupplierAdminLocked(supplierID string) bool {
 
 // HandleConnection upgrades the HTTP request to a persistent WebSocket
 func (h *Hub) HandleConnection(w http.ResponseWriter, r *http.Request) {
+	traceID := r.Header.Get("X-Trace-Id")
+	if traceID == "" {
+		traceID = r.Header.Get("X-Request-Id")
+	}
+
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 	if !ok || claims == nil {
 		http.Error(w, "Unauthorized telemetry access", http.StatusUnauthorized)
@@ -202,7 +207,14 @@ func (h *Hub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("[TELEMETRY_FAULT] Protocol upgrade failed: %v", err)
+		slog.ErrorContext(r.Context(), "telemetry websocket upgrade failed",
+			"hub", "telemetry",
+			"role", meta.Role,
+			"supplier_id", meta.SupplierID,
+			"driver_id", meta.DriverID,
+			"trace_id", traceID,
+			"error", err,
+		)
 		return
 	}
 
@@ -219,10 +231,22 @@ func (h *Hub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 		close(done)
 		h.removeClient(ws, meta)
 		ws.Close()
-		log.Printf("[TELEMETRY] %s (supplier=%s) disconnected.", meta.Role, meta.SupplierID)
+		slog.InfoContext(r.Context(), "telemetry client disconnected",
+			"hub", "telemetry",
+			"role", meta.Role,
+			"supplier_id", meta.SupplierID,
+			"driver_id", meta.DriverID,
+			"trace_id", traceID,
+		)
 	}()
 
-	log.Printf("[TELEMETRY] %s (supplier=%s) linked to the matrix.", meta.Role, meta.SupplierID)
+	slog.InfoContext(r.Context(), "telemetry client connected",
+		"hub", "telemetry",
+		"role", meta.Role,
+		"supplier_id", meta.SupplierID,
+		"driver_id", meta.DriverID,
+		"trace_id", traceID,
+	)
 
 	// Grace-mode DRIVER connections must refresh + reconnect quickly.
 	if claims.GracePeriod {
@@ -244,7 +268,13 @@ func (h *Hub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 				payload.DriverID = meta.DriverID
 			}
 			if payload.DriverID != meta.DriverID {
-				log.Printf("[TELEMETRY] Driver spoof attempt blocked: token_driver=%s payload_driver=%s", meta.DriverID, payload.DriverID)
+				slog.WarnContext(r.Context(), "telemetry driver spoof attempt blocked",
+					"hub", "telemetry",
+					"supplier_id", meta.SupplierID,
+					"token_driver_id", meta.DriverID,
+					"payload_driver_id", payload.DriverID,
+					"trace_id", traceID,
+				)
 				continue
 			}
 			if payload.Timestamp == 0 {
@@ -263,7 +293,11 @@ func (h *Hub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 				h.BroadcastToSupplier(meta.SupplierID, msg)
 			}
 			if h.ProximityEngine != nil {
-				go h.ProximityEngine.ProcessPing(context.Background(), meta.DriverID, payload.Latitude, payload.Longitude)
+				pingCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
+				go func(driverID string, latitude, longitude float64, ctx context.Context, release context.CancelFunc) {
+					defer release()
+					h.ProximityEngine.ProcessPing(ctx, driverID, latitude, longitude)
+				}(meta.DriverID, payload.Latitude, payload.Longitude, pingCtx, cancel)
 			}
 		}
 	}
@@ -288,7 +322,12 @@ func (h *Hub) publishSupplierRelay(supplierID string, message []byte) {
 	channel := "ws:supplier:" + supplierID
 	if err := rc.Publish(context.Background(), channel, message).Err(); err != nil {
 		WSPubSubFailures.WithLabelValues("fleet").Inc()
-		log.Printf("[TELEMETRY] relay publish failed for supplier %s: %v", supplierID, err)
+		slog.Error("telemetry relay publish failed",
+			"hub", "telemetry",
+			"supplier_id", supplierID,
+			"channel", channel,
+			"error", err,
+		)
 	}
 }
 
@@ -322,11 +361,12 @@ func (h *Hub) broadcastToSupplierLocal(supplierID string, message []byte) {
 	h.writeMu.Unlock()
 
 	if len(dead) > 0 {
-		h.Lock()
 		for _, c := range dead {
-			delete(h.Clients, c)
+			h.RLock()
+			meta := h.Clients[c]
+			h.RUnlock()
+			h.removeClient(c, meta)
 		}
-		h.Unlock()
 	}
 }
 
@@ -402,7 +442,13 @@ func (h *Hub) BroadcastOrderStateChange(supplierID, orderID, newState, driverID 
 	}
 	msg, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("[TELEMETRY] Failed to marshal ORDER_STATE_CHANGED for %s: %v", orderID, err)
+		slog.Error("telemetry event marshal failed",
+			"hub", "telemetry",
+			"event_type", wsEvents.EventOrderStateChanged,
+			"supplier_id", supplierID,
+			"order_id", orderID,
+			"error", err,
+		)
 		return
 	}
 	h.BroadcastToSupplier(supplierID, msg)
@@ -420,7 +466,13 @@ func (h *Hub) BroadcastDriverApproaching(supplierID, orderID string, driverLat, 
 	}
 	msg, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("[TELEMETRY] Failed to marshal DRIVER_APPROACHING for %s: %v", orderID, err)
+		slog.Error("telemetry event marshal failed",
+			"hub", "telemetry",
+			"event_type", wsEvents.EventDriverApproaching,
+			"supplier_id", supplierID,
+			"order_id", orderID,
+			"error", err,
+		)
 		return
 	}
 	h.BroadcastToSupplier(supplierID, msg)
@@ -436,7 +488,13 @@ func (h *Hub) BroadcastETAUpdate(supplierID, driverID string) {
 	}
 	msg, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("[TELEMETRY] Failed to marshal ETA_UPDATED for driver %s: %v", driverID, err)
+		slog.Error("telemetry event marshal failed",
+			"hub", "telemetry",
+			"event_type", wsEvents.EventETAUpdated,
+			"supplier_id", supplierID,
+			"driver_id", driverID,
+			"error", err,
+		)
 		return
 	}
 	h.BroadcastToSupplier(supplierID, msg)
@@ -454,7 +512,13 @@ func (h *Hub) BroadcastDriverAvailability(supplierID, driverID string, available
 	}
 	msg, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("[TELEMETRY] Failed to marshal DRIVER_AVAILABILITY_CHANGED for driver %s: %v", driverID, err)
+		slog.Error("telemetry event marshal failed",
+			"hub", "telemetry",
+			"event_type", wsEvents.EventDriverAvailabilityChanged,
+			"supplier_id", supplierID,
+			"driver_id", driverID,
+			"error", err,
+		)
 		return
 	}
 	h.BroadcastToSupplier(supplierID, msg)
@@ -471,7 +535,13 @@ func (h *Hub) BroadcastOrderReassigned(supplierID, orderID, oldDriverID, newDriv
 	}
 	msg, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("[TELEMETRY] Failed to marshal ORDER_REASSIGNED for order %s: %v", orderID, err)
+		slog.Error("telemetry event marshal failed",
+			"hub", "telemetry",
+			"event_type", wsEvents.EventOrderReassigned,
+			"supplier_id", supplierID,
+			"order_id", orderID,
+			"error", err,
+		)
 		return
 	}
 	h.BroadcastToSupplier(supplierID, msg)
@@ -488,7 +558,13 @@ func (h *Hub) BroadcastDelta(topic string, event wsEvents.DeltaEvent) {
 	event.D = wsEvents.CompressDelta(event.D)
 	msg, err := json.Marshal(event)
 	if err != nil {
-		log.Printf("[TELEMETRY] Failed to marshal DeltaEvent %s for %s: %v", event.T, event.I, err)
+		slog.Error("telemetry delta marshal failed",
+			"hub", "telemetry",
+			"event_type", event.T,
+			"aggregate_id", event.I,
+			"topic", topic,
+			"error", err,
+		)
 		return
 	}
 	h.BroadcastToSupplier(topic, msg)
@@ -532,5 +608,5 @@ func (h *Hub) Close() {
 	for _, supplierID := range suppliers {
 		cache.Unsubscribe("ws:supplier:" + supplierID)
 	}
-	log.Println("[TELEMETRY HUB] All connections closed.")
+	slog.Info("telemetry hub closed all connections", "hub", "telemetry")
 }

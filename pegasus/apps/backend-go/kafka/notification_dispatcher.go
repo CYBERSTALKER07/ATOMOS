@@ -274,6 +274,14 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handleNetworkModeChanged(deps, m.Value)
 			case EventPullMatrixCompleted:
 				handlePullMatrixCompleted(deps, m.Value)
+			case EventReplenishmentLockAcquired:
+				handleReplenishmentLockAcquired(deps, m.Value)
+			case EventReplenishmentLockReleased:
+				handleReplenishmentLockReleased(deps, m.Value)
+			case EventStockThresholdBreach:
+				handleStockThresholdBreach(deps, m.Value)
+			case EventLookAheadCompleted:
+				handleLookAheadCompleted(deps, m.Value)
 			case EventReplenishmentTransferCreated:
 				handleReplenishmentTransferCreated(deps, m.Value)
 			case EventInsightApprovedTransferCreated:
@@ -1646,6 +1654,90 @@ func handlePullMatrixCompleted(deps NotificationDeps, data []byte) {
 			"notification.pull_matrix_completed.title",
 			"notification.pull_matrix_completed.body",
 			map[string]string{"run_id": event.RunId, "transfers_generated": fmt.Sprintf("%d", event.TransfersGenerated), "skus_processed": fmt.Sprintf("%d", event.SKUsProcessed)},
+		))
+}
+
+func handleReplenishmentLockAcquired(deps NotificationDeps, data []byte) {
+	handleReplenishmentLockChanged(deps, data, EventReplenishmentLockAcquired)
+}
+
+func handleReplenishmentLockReleased(deps NotificationDeps, data []byte) {
+	handleReplenishmentLockChanged(deps, data, EventReplenishmentLockReleased)
+}
+
+func handleReplenishmentLockChanged(deps NotificationDeps, data []byte, eventName string) {
+	var event ReplenishmentLockEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", eventName, "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+
+	title := "Replenishment Lock Updated"
+	titleKey := "notification.replenishment_lock_updated.title"
+	bodyKey := "notification.replenishment_lock_updated.body"
+	switch event.Action {
+	case "ACQUIRED":
+		title = "Replenishment Lock Acquired"
+		titleKey = "notification.replenishment_lock_acquired.title"
+		bodyKey = "notification.replenishment_lock_acquired.body"
+	case "RELEASED":
+		title = "Replenishment Lock Released"
+		titleKey = "notification.replenishment_lock_released.title"
+		bodyKey = "notification.replenishment_lock_released.body"
+	case "PREEMPTED":
+		title = "Replenishment Lock Preempted"
+		titleKey = "notification.replenishment_lock_preempted.title"
+		bodyKey = "notification.replenishment_lock_preempted.body"
+	}
+
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", eventName,
+		notifications.NewFormattedNotification(
+			title,
+			fmt.Sprintf("Lock %s for warehouse %s moved to %s (priority %.1f).", event.LockKey, event.WarehouseId, event.Action, event.Priority),
+			titleKey,
+			bodyKey,
+			map[string]string{"lock_key": event.LockKey, "warehouse_id": event.WarehouseId, "action": event.Action, "priority": fmt.Sprintf("%.1f", event.Priority)},
+		))
+}
+
+func handleStockThresholdBreach(deps NotificationDeps, data []byte) {
+	var event StockThresholdBreachEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "STOCK_THRESHOLD_BREACH", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventStockThresholdBreach,
+		notifications.NewFormattedNotification(
+			"Stock Threshold Breach",
+			fmt.Sprintf("Warehouse %s hit safety threshold for product %s (%d/%d).", event.WarehouseId, event.ProductId, event.CurrentStock, event.SafetyLevel),
+			"notification.stock_threshold_breach.title",
+			"notification.stock_threshold_breach.body",
+			map[string]string{"warehouse_id": event.WarehouseId, "product_id": event.ProductId, "current_stock": fmt.Sprintf("%d", event.CurrentStock), "safety_level": fmt.Sprintf("%d", event.SafetyLevel)},
+		))
+}
+
+func handleLookAheadCompleted(deps NotificationDeps, data []byte) {
+	var event LookAheadCompletedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "LOOK_AHEAD_COMPLETED", "err", err)
+		return
+	}
+	if event.SupplierId == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierId, "SUPPLIER", EventLookAheadCompleted,
+		notifications.NewFormattedNotification(
+			"Look-Ahead Completed",
+			fmt.Sprintf("Look-ahead run %s completed via %s in %dms.", event.RunId, event.Source, event.DurationMs),
+			"notification.look_ahead_completed.title",
+			"notification.look_ahead_completed.body",
+			map[string]string{"run_id": event.RunId, "source": event.Source, "duration_ms": fmt.Sprintf("%d", event.DurationMs), "horizon_days": fmt.Sprintf("%d", event.HorizonDays)},
 		))
 }
 

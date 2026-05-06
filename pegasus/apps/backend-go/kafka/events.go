@@ -659,7 +659,7 @@ const (
 	EventManifestForceSeal = "MANIFEST_FORCE_SEALED"
 
 	// Phase VIII: Replenishment Graph Hardening Events
-	EventStockThresholdBreach      = "STOCK_THRESHOLD_BREACH" // Scaffolding: no producer, no consumer — planned for proximity.Engine threshold detection
+	EventStockThresholdBreach      = "STOCK_THRESHOLD_BREACH" // Scaffolding: producer pending in proximity.Engine; notification consumer wired
 	EventReplenishmentLockAcquired = "REPLENISHMENT_LOCK_ACQUIRED"
 	EventReplenishmentLockReleased = "REPLENISHMENT_LOCK_RELEASED"
 	EventPullMatrixCompleted       = "PULL_MATRIX_COMPLETED"
@@ -671,7 +671,7 @@ const (
 	// Phase V: Pull Matrix Look-Ahead
 	EventReplenishmentTransferCreated   = "REPLENISHMENT_TRANSFER_CREATED"
 	EventInsightApprovedTransferCreated = "INSIGHT_APPROVED_TRANSFER_CREATED"
-	EventLookAheadCompleted             = "LOOK_AHEAD_COMPLETED" // Scaffolding: no producer, no consumer — planned for pull-matrix look-ahead completion signal
+	EventLookAheadCompleted             = "LOOK_AHEAD_COMPLETED" // Scaffolding: producer pending; notification consumer wired
 )
 
 // ManifestLifecycleEvent covers DRAFT_CREATED, LOADING_STARTED, SEALED, DISPATCHED, COMPLETED.
@@ -915,6 +915,16 @@ type PullMatrixCompletedEvent struct {
 	DurationMs         int64     `json:"duration_ms"`
 	Source             string    `json:"source"` // "CRON" | "EVENT_TRIGGERED" | "MANUAL"
 	Timestamp          time.Time `json:"timestamp"`
+}
+
+// LookAheadCompletedEvent is emitted when a look-ahead replenishment simulation run finishes.
+type LookAheadCompletedEvent struct {
+	RunId       string    `json:"run_id"`
+	SupplierId  string    `json:"supplier_id"`
+	Source      string    `json:"source"`
+	DurationMs  int64     `json:"duration_ms"`
+	HorizonDays int64     `json:"horizon_days,omitempty"`
+	Timestamp   time.Time `json:"timestamp"`
 }
 
 // FactorySLABreachEvent is emitted at each escalation level for a stalled transfer.

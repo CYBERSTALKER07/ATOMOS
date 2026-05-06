@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"math"
 	"net/http"
 	"time"
@@ -73,7 +73,7 @@ type skuStock struct {
 
 // StartReplenishmentCron runs every 4 hours, scanning all active warehouses.
 func (e *ReplenishmentEngine) StartReplenishmentCron() {
-	fmt.Println("[REPLENISHMENT] Stock deficit analysis cron initiated (4h interval)...")
+	slog.Info("replenishment.engine.cron_started", "interval", "4h")
 
 	ticker := time.NewTicker(4 * time.Hour)
 
@@ -104,11 +104,11 @@ func (e *ReplenishmentEngine) HandleManualTrigger(w http.ResponseWriter, r *http
 }
 
 func (e *ReplenishmentEngine) runCycle(ctx context.Context) {
-	log.Println("[REPLENISHMENT] Starting deficit analysis cycle...")
+	slog.Info("replenishment.engine.cycle_started")
 
 	warehouses, err := e.fetchActiveWarehouses(ctx)
 	if err != nil {
-		log.Printf("[REPLENISHMENT] Failed to fetch warehouses: %v", err)
+		slog.Error("replenishment.engine.fetch_warehouses_failed", "err", err)
 		return
 	}
 
@@ -122,15 +122,14 @@ func (e *ReplenishmentEngine) runCycle(ctx context.Context) {
 
 		insights, transfers, err := e.analyzeWarehouse(ctx, wh)
 		if err != nil {
-			log.Printf("[REPLENISHMENT] warehouse %s analysis failed: %v", wh.WarehouseId, err)
+			slog.Error("replenishment.engine.warehouse_analysis_failed", "warehouse_id", wh.WarehouseId, "supplier_id", wh.SupplierId, "err", err)
 			continue
 		}
 		totalInsights += insights
 		totalTransfers += transfers
 	}
 
-	log.Printf("[REPLENISHMENT] Cycle complete: %d warehouses scanned, %d insights generated, %d auto-transfers created",
-		len(warehouses), totalInsights, totalTransfers)
+	slog.Info("replenishment.engine.cycle_completed", "warehouses_scanned", len(warehouses), "insights_generated", totalInsights, "auto_transfers_created", totalTransfers)
 }
 
 func (e *ReplenishmentEngine) fetchActiveWarehouses(ctx context.Context) ([]warehouseInfo, error) {
@@ -297,8 +296,7 @@ func (e *ReplenishmentEngine) analyzeWarehouse(ctx context.Context, wh warehouse
 		if _, err := e.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			return txn.BufferWrite(mutations)
 		}); err != nil {
-			log.Printf("[REPLENISHMENT] Failed to write insight for %s/%s: %v",
-				wh.WarehouseId, sku.SkuId, err)
+			slog.Error("replenishment.engine.write_insight_failed", "warehouse_id", wh.WarehouseId, "sku_id", sku.SkuId, "err", err)
 			continue
 		}
 		insightCount++
@@ -306,8 +304,7 @@ func (e *ReplenishmentEngine) analyzeWarehouse(ctx context.Context, wh warehouse
 		// Auto-draft transfer for CRITICAL urgency
 		if urgency == "CRITICAL" {
 			if err := e.autoCreateTransfer(ctx, wh, sku.SkuId, suggestedQty, sku.VolumetricUnit, targetFactory); err != nil {
-				log.Printf("[REPLENISHMENT] Auto-transfer failed for %s/%s: %v",
-					wh.WarehouseId, sku.SkuId, err)
+				slog.Error("replenishment.engine.auto_transfer_failed", "warehouse_id", wh.WarehouseId, "sku_id", sku.SkuId, "err", err)
 			} else {
 				transferCount++
 			}
@@ -522,7 +519,6 @@ func (e *ReplenishmentEngine) autoCreateTransfer(ctx context.Context, wh warehou
 		return err
 	}
 
-	log.Printf("[REPLENISHMENT] Auto-created transfer %s: %s → %s (SKU %s, qty %d)",
-		transferID, factoryId, wh.WarehouseId, skuId, qty)
+	slog.Info("replenishment.engine.auto_transfer_created", "transfer_id", transferID, "factory_id", factoryId, "warehouse_id", wh.WarehouseId, "sku_id", skuId, "quantity", qty)
 	return nil
 }

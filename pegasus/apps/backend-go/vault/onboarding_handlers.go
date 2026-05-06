@@ -2,7 +2,7 @@ package vault
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"backend-go/auth"
@@ -59,7 +59,7 @@ func handleCreateOnboarding(w http.ResponseWriter, r *http.Request, svc *Service
 
 	session, err := svc.CreateOnboardingSession(r.Context(), supplierID, req.Gateway, req.ReturnSurface)
 	if err != nil {
-		log.Printf("[VAULT] CreateOnboardingSession error for %s: %v", supplierID, err)
+		slog.Error("vault.onboarding_create_failed", "supplier_id", supplierID, "gateway", req.Gateway, "err", err)
 		if isUserError(err) {
 			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
 			return
@@ -80,7 +80,7 @@ func handleGetOnboarding(w http.ResponseWriter, r *http.Request, svc *Service, s
 		// Single session lookup
 		session, err := svc.GetOnboardingSession(r.Context(), supplierID, sessionID)
 		if err != nil {
-			log.Printf("[VAULT] GetOnboardingSession error: %v", err)
+			slog.Error("vault.onboarding_get_failed", "supplier_id", supplierID, "session_id", sessionID, "err", err)
 			http.Error(w, `{"error":"session not found"}`, http.StatusNotFound)
 			return
 		}
@@ -92,7 +92,7 @@ func handleGetOnboarding(w http.ResponseWriter, r *http.Request, svc *Service, s
 	// List active sessions
 	sessions, err := svc.ListActiveOnboardingSessions(r.Context(), supplierID)
 	if err != nil {
-		log.Printf("[VAULT] ListActiveOnboardingSessions error for %s: %v", supplierID, err)
+		slog.Error("vault.onboarding_list_failed", "supplier_id", supplierID, "err", err)
 		http.Error(w, `{"error":"internal server error"}`, http.StatusInternalServerError)
 		return
 	}
@@ -113,7 +113,7 @@ func handleCancelOnboarding(w http.ResponseWriter, r *http.Request, svc *Service
 	}
 
 	if err := svc.CancelOnboardingSession(r.Context(), supplierID, req.SessionID); err != nil {
-		log.Printf("[VAULT] CancelOnboardingSession error: %v", err)
+		slog.Error("vault.onboarding_cancel_failed", "supplier_id", supplierID, "session_id", req.SessionID, "err", err)
 		if isUserError(err) {
 			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
 			return

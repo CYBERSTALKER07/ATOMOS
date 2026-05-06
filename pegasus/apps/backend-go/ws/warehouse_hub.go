@@ -5,7 +5,7 @@ import (
 	"backend-go/cache"
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -45,6 +45,10 @@ func (h *WarehouseHub) HandleConnection(w http.ResponseWriter, r *http.Request) 
 	}
 
 	warehouseID := claims.WarehouseID
+	traceID := r.Header.Get("X-Trace-Id")
+	if traceID == "" {
+		traceID = r.Header.Get("X-Request-Id")
+	}
 
 	if warehouseID == "" {
 		http.Error(w, "warehouse_id could not be determined from auth token", http.StatusUnauthorized)
@@ -53,7 +57,12 @@ func (h *WarehouseHub) HandleConnection(w http.ResponseWriter, r *http.Request) 
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("[WAREHOUSE HUB] WebSocket upgrade failed for %s: %v", warehouseID, err)
+		slog.ErrorContext(r.Context(), "warehouse hub websocket upgrade failed",
+			"hub", "warehouse",
+			"warehouse_id", warehouseID,
+			"trace_id", traceID,
+			"error", err,
+		)
 		return
 	}
 	h.mu.Lock()
@@ -62,7 +71,12 @@ func (h *WarehouseHub) HandleConnection(w http.ResponseWriter, r *http.Request) 
 	h.mu.Unlock()
 	h.subscribeRelay(warehouseID)
 
-	log.Printf("[WAREHOUSE HUB] Warehouse %s terminal connected. Active pipes: %d", warehouseID, total)
+	slog.InfoContext(r.Context(), "warehouse hub client connected",
+		"hub", "warehouse",
+		"warehouse_id", warehouseID,
+		"active_pipes", total,
+		"trace_id", traceID,
+	)
 
 	// Start keepalive ping/pong to detect stale connections
 	done := ConfigureKeepalive(conn)
@@ -86,7 +100,11 @@ func (h *WarehouseHub) HandleConnection(w http.ResponseWriter, r *http.Request) 
 		}
 		h.mu.Unlock()
 		conn.Close()
-		log.Printf("[WAREHOUSE HUB] Warehouse %s terminal disconnected.", warehouseID)
+		slog.InfoContext(r.Context(), "warehouse hub client disconnected",
+			"hub", "warehouse",
+			"warehouse_id", warehouseID,
+			"trace_id", traceID,
+		)
 	}()
 
 	for {
@@ -101,7 +119,11 @@ func (h *WarehouseHub) HandleConnection(w http.ResponseWriter, r *http.Request) 
 func (h *WarehouseHub) PushToWarehouse(warehouseID string, payload interface{}) bool {
 	data, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("[WAREHOUSE HUB] Failed to marshal payload for %s: %v", warehouseID, err)
+		slog.Error("warehouse hub payload marshal failed",
+			"hub", "warehouse",
+			"warehouse_id", warehouseID,
+			"error", err,
+		)
 		return false
 	}
 	local := h.pushToWarehouseLocal(warehouseID, data)
@@ -125,7 +147,11 @@ func (h *WarehouseHub) pushToWarehouseLocal(warehouseID string, data []byte) boo
 	defer h.writeMu.Unlock()
 	for _, conn := range snapshot {
 		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			log.Printf("[WAREHOUSE HUB] Write failed for %s — evicting dead pipe: %v", warehouseID, err)
+			slog.Warn("warehouse hub write failed; evicting dead connection",
+				"hub", "warehouse",
+				"warehouse_id", warehouseID,
+				"error", err,
+			)
 			conn.Close()
 		} else {
 			delivered = true
@@ -226,5 +252,5 @@ func (h *WarehouseHub) Close() {
 		}
 		delete(h.clients, id)
 	}
-	log.Println("[WAREHOUSE HUB] All connections closed.")
+	slog.Info("warehouse hub closed all connections", "hub", "warehouse")
 }

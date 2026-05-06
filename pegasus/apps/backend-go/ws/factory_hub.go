@@ -5,7 +5,7 @@ import (
 	"backend-go/cache"
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -43,6 +43,10 @@ func (h *FactoryHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	if factoryID == "" {
 		factoryID = claims.FactoryID
 	}
+	traceID := r.Header.Get("X-Trace-Id")
+	if traceID == "" {
+		traceID = r.Header.Get("X-Request-Id")
+	}
 	if factoryID == "" {
 		http.Error(w, "factory_id could not be determined from auth token", http.StatusUnauthorized)
 		return
@@ -50,7 +54,12 @@ func (h *FactoryHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("[FACTORY HUB] WebSocket upgrade failed for %s: %v", factoryID, err)
+		slog.ErrorContext(r.Context(), "factory hub websocket upgrade failed",
+			"hub", "factory",
+			"factory_id", factoryID,
+			"trace_id", traceID,
+			"error", err,
+		)
 		return
 	}
 
@@ -60,7 +69,12 @@ func (h *FactoryHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	h.mu.Unlock()
 	h.subscribeRelay(factoryID)
 
-	log.Printf("[FACTORY HUB] Factory %s connected. Active pipes: %d", factoryID, total)
+	slog.InfoContext(r.Context(), "factory hub client connected",
+		"hub", "factory",
+		"factory_id", factoryID,
+		"active_pipes", total,
+		"trace_id", traceID,
+	)
 
 	done := ConfigureKeepalive(conn)
 
@@ -83,7 +97,11 @@ func (h *FactoryHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 		}
 		h.mu.Unlock()
 		conn.Close()
-		log.Printf("[FACTORY HUB] Factory %s disconnected.", factoryID)
+		slog.InfoContext(r.Context(), "factory hub client disconnected",
+			"hub", "factory",
+			"factory_id", factoryID,
+			"trace_id", traceID,
+		)
 	}()
 
 	for {
@@ -102,7 +120,11 @@ func (h *FactoryHub) PushToFactory(factoryID string, payload interface{}) bool {
 
 	data, err := json.Marshal(payload)
 	if err != nil {
-		log.Printf("[FACTORY HUB] Failed to marshal payload for %s: %v", factoryID, err)
+		slog.Error("factory hub payload marshal failed",
+			"hub", "factory",
+			"factory_id", factoryID,
+			"error", err,
+		)
 		return false
 	}
 
@@ -127,7 +149,11 @@ func (h *FactoryHub) pushToFactoryLocal(factoryID string, data []byte) bool {
 	defer h.writeMu.Unlock()
 	for _, conn := range snapshot {
 		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			log.Printf("[FACTORY HUB] Write failed for %s — evicting dead pipe: %v", factoryID, err)
+			slog.Warn("factory hub write failed; evicting dead connection",
+				"hub", "factory",
+				"factory_id", factoryID,
+				"error", err,
+			)
 			conn.Close()
 		} else {
 			delivered = true
@@ -242,5 +268,5 @@ func (h *FactoryHub) Close() {
 		}
 		delete(h.clients, id)
 	}
-	log.Println("[FACTORY HUB] All connections closed.")
+	slog.Info("factory hub closed all connections", "hub", "factory")
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -113,7 +113,7 @@ func HandleCatchup(client *spanner.Client) http.HandlerFunc {
 					break
 				}
 				if err != nil {
-					log.Printf("[CATCHUP] order query error: %v", err)
+					slog.Error("sync.catchup.order_query_failed", "role", claims.Role, "err", err)
 					break
 				}
 				var od OrderDelta
@@ -144,7 +144,7 @@ func HandleCatchup(client *spanner.Client) http.HandlerFunc {
 					break
 				}
 				if err != nil {
-					log.Printf("[CATCHUP] fleet query error: %v", err)
+					slog.Error("sync.catchup.fleet_query_failed", "supplier_id", supplierID, "err", err)
 					break
 				}
 				var fd FleetDelta

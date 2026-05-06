@@ -2,6 +2,9 @@
 
 Use this protocol for every technical task. The agent is a companion engineer, not a blind executor.
 
+## Context Sync Log
+- 2026-05-07: Synced runtime/docs after replenishment pipeline + logging tranche. Added notification consumers for `REPLENISHMENT_LOCK_ACQUIRED`, `REPLENISHMENT_LOCK_RELEASED`, `STOCK_THRESHOLD_BREACH`, and `LOOK_AHEAD_COMPLETED` in `kafka/notification_dispatcher.go`; migrated high-noise runtime logging to `slog` across `analytics/`, `sync/`, `replenishment/`, `treasury/`, `vault/`; refreshed known-gap status in `.github/copilot-instructions.md` and `.github/gemini-instructions.md`.
+
 ## Scope (Always On)
 Apply ACT for all technical asks, including:
 - feature implementation

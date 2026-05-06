@@ -3,7 +3,7 @@ package telemetry
 import (
 	wsEvents "backend-go/ws"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"math"
 	"os"
 	"strconv"
@@ -65,7 +65,10 @@ func NewGPSBuffer(hub *Hub) *GPSBuffer {
 		done:     make(chan struct{}),
 	}
 	go buf.flushLoop()
-	log.Printf("[GPS_BUFFER] Started with %v flush interval", interval)
+	slog.Info("gps buffer started",
+		"component", "gps_buffer",
+		"flush_interval", interval.String(),
+	)
 	return buf
 }
 
@@ -162,7 +165,12 @@ func (b *GPSBuffer) flush() {
 	}
 
 	if totalDrivers > 0 {
-		log.Printf("[GPS_BUFFER] Flushed %d driver positions to %d supplier channels (significant-change filtered)", totalDrivers, totalSuppliers)
+		slog.Info("gps buffer flush completed",
+			"component", "gps_buffer",
+			"driver_positions", totalDrivers,
+			"supplier_channels", totalSuppliers,
+			"filtered", "significant_change",
+		)
 	}
 }
 
@@ -175,5 +183,5 @@ func isSignificantMove(prev, curr *GPSEntry) bool {
 // Stop gracefully stops the flush loop.
 func (b *GPSBuffer) Stop() {
 	close(b.done)
-	log.Println("[GPS_BUFFER] Stopped")
+	slog.Info("gps buffer stopped", "component", "gps_buffer")
 }

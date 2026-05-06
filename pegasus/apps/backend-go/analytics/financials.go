@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -80,7 +80,7 @@ func HandleSupplierFinancials(spannerClient *spanner.Client, readRouter proximit
 		readClient := getReadClient(r.Context(), spannerClient, readRouter, nil)
 		resp, err := querySupplierFinancials(ctx, readClient, supplierID, startDate, endDate, period)
 		if err != nil {
-			log.Printf("[FINANCIALS] supplier=%s error: %v", supplierID, err)
+			slog.Error("financials.query_failed", "supplier_id", supplierID, "period", period, "err", err)
 			http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
 			return
 		}

@@ -16,7 +16,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -72,7 +72,7 @@ func HandleBatchSync(db *spanner.Client) http.HandlerFunc {
 
 		for _, delivery := range payload.Deliveries {
 			if delivery.OrderID == "" || delivery.Status == "" {
-				log.Printf("[DESERT] Skipping malformed delivery in batch from %s", payload.DriverID)
+				slog.Warn("sync.batch.malformed_delivery", "driver_id", payload.DriverID)
 				continue
 			}
 
@@ -84,17 +84,16 @@ func HandleBatchSync(db *spanner.Client) http.HandlerFunc {
 				assignRow, assignErr := db.Single().ReadRow(ctx, "Orders",
 					spanner.Key{delivery.OrderID}, []string{"DriverId"})
 				if assignErr != nil {
-					log.Printf("[DESERT] Cannot verify assignment for %s: %v — skipping", delivery.OrderID, assignErr)
+					slog.Warn("sync.batch.assignment_lookup_failed", "order_id", delivery.OrderID, "err", assignErr)
 					continue
 				}
 				var currentDriverID spanner.NullString
 				if err := assignRow.Columns(&currentDriverID); err != nil {
-					log.Printf("[DESERT] Cannot parse DriverId for %s: %v — skipping", delivery.OrderID, err)
+					slog.Warn("sync.batch.assignment_parse_failed", "order_id", delivery.OrderID, "err", err)
 					continue
 				}
 				if !currentDriverID.Valid || currentDriverID.StringVal != payload.DriverID {
-					log.Printf("[DESERT] Order %s reassigned (current=%s, sync=%s) — rejecting",
-						delivery.OrderID, currentDriverID.StringVal, payload.DriverID)
+					slog.Warn("sync.batch.assignment_mismatch", "order_id", delivery.OrderID, "current_driver_id", currentDriverID.StringVal, "sync_driver_id", payload.DriverID)
 					skipped++
 					continue
 				}
@@ -109,14 +108,12 @@ func HandleBatchSync(db *spanner.Client) http.HandlerFunc {
 			if err != nil {
 				// Redis is unavailable — fail CLOSED to prevent double-credit.
 				// The delivery stays in the phone's local queue for the next sync pulse.
-				log.Printf("[DESERT] Redis dedup unavailable for %s/%s: %v — skipping to prevent double-credit",
-					payload.DriverID, delivery.OrderID, err)
+				slog.Error("sync.batch.redis_dedup_unavailable", "driver_id", payload.DriverID, "order_id", delivery.OrderID, "err", err)
 				continue
 			} else if !locked {
 				// Already processed. Safe to skip — the phone will delete on the
 				// processed list, but this order just won't be in it.
-				log.Printf("[DESERT] Duplicate detected (Redis): %s for driver %s — skipped",
-					delivery.OrderID, payload.DriverID)
+				slog.Info("sync.batch.duplicate_detected", "order_id", delivery.OrderID, "driver_id", payload.DriverID)
 				skipped++
 				// We still add it to processed so the phone cleans up its local DB.
 				// If we returned it as "not processed", the phone would keep retrying
@@ -129,8 +126,7 @@ func HandleBatchSync(db *spanner.Client) http.HandlerFunc {
 			// Reject deliveries older than 48 hours (prevents replaying stale events).
 			scanTime := time.UnixMilli(delivery.Timestamp)
 			if time.Since(scanTime) > 48*time.Hour {
-				log.Printf("[DESERT] Stale delivery rejected: %s (scanned %v ago)",
-					delivery.OrderID, time.Since(scanTime).Round(time.Minute))
+				slog.Warn("sync.batch.stale_delivery", "order_id", delivery.OrderID, "age", time.Since(scanTime).Round(time.Minute).String())
 				// Unlock Redis so the driver doesn't get silently stuck
 				cache.Client.Del(ctx, dedupKey)
 				continue
@@ -153,12 +149,11 @@ func HandleBatchSync(db *spanner.Client) http.HandlerFunc {
 				})
 				qCancel()
 				if quarantineErr != nil {
-					log.Printf("[DESERT] QUARANTINE transition FAILED for %s: %v — unlocking dedup, skipping emit",
-						delivery.OrderID, quarantineErr)
+					slog.Error("sync.batch.quarantine_transition_failed", "order_id", delivery.OrderID, "err", quarantineErr)
 					cache.Client.Del(ctx, dedupKey)
 					continue
 				}
-				log.Printf("[DESERT] Order %s → QUARANTINE committed, proceeding to emit", delivery.OrderID)
+				slog.Info("sync.batch.quarantine_committed", "order_id", delivery.OrderID)
 			}
 
 			// ── Step 3b: Emit Immutable Event to Kafka ─────────────────────────────
@@ -175,15 +170,13 @@ func HandleBatchSync(db *spanner.Client) http.HandlerFunc {
 
 			if err := kafka.EmitOrderSyncEvent(event); err != nil {
 				// Kafka is down. Unlock Redis so the next sync pulse can retry.
-				log.Printf("[DESERT] Kafka emit failed for %s: %v — unlocking dedup key",
-					delivery.OrderID, err)
+				slog.Error("sync.batch.kafka_emit_failed", "order_id", delivery.OrderID, "driver_id", payload.DriverID, "err", err)
 				cache.Client.Del(ctx, dedupKey)
 				// Do NOT add to processed — the phone keeps this in its local queue.
 				continue
 			}
 
-			log.Printf("[DESERT] Locked & emitted: %s | %s | driver=%s",
-				delivery.OrderID, delivery.Status, payload.DriverID)
+			slog.Info("sync.batch.locked_and_emitted", "order_id", delivery.OrderID, "status", delivery.Status, "driver_id", payload.DriverID)
 			processed = append(processed, delivery.OrderID)
 		}
 

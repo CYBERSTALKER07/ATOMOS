@@ -3,7 +3,7 @@ package analytics
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -137,7 +137,7 @@ func HandleSupplierEarnings(client *spanner.Client, readRouter proximity.ReadRou
 				break
 			}
 			if err != nil {
-				log.Printf("[SUPPLIER EARNINGS] Monthly query error: %v", err)
+				slog.Error("supplier_earnings.monthly_query_failed", "supplier_id", supplierID, "err", err)
 				break
 			}
 			var m MonthlyRevenue
