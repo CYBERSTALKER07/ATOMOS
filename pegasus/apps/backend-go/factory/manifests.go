@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/telemetry"
 	factoryws "backend-go/ws"
 
 	"cloud.google.com/go/spanner"
@@ -405,6 +406,7 @@ func HandleFactoryManifestTransition(spannerClient *spanner.Client, factoryHub *
 		}
 
 		if factoryHub != nil {
+			traceID := telemetry.TraceIDFromContext(r.Context())
 			factoryHub.BroadcastManifestUpdate(
 				factoryID,
 				manifestID,
@@ -413,6 +415,7 @@ func HandleFactoryManifestTransition(spannerClient *spanner.Client, factoryHub *
 				"",
 				supplierID,
 				nil,
+				traceID,
 			)
 		}
 

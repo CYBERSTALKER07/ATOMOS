@@ -137,6 +137,16 @@ func TestExtractToken_WSQueryParam(t *testing.T) {
 	}
 }
 
+func TestExtractToken_WSQueryParamFactoryEndpoint(t *testing.T) {
+	r := httptest.NewRequest("GET", "/v1/ws/factory?token=factory-token", nil)
+	r.Header.Set("Connection", "Upgrade")
+	r.Header.Set("Upgrade", "websocket")
+	got := extractTokenFromRequest(r)
+	if got != "factory-token" {
+		t.Errorf("got %q, want %q", got, "factory-token")
+	}
+}
+
 func TestExtractToken_WSQueryParamRejectedOnUnknownEndpoint(t *testing.T) {
 	r := httptest.NewRequest("GET", "/ws?token=ws-token", nil)
 	r.Header.Set("Connection", "Upgrade")

@@ -232,10 +232,11 @@ func (o *OverrideService) HandleManifestRebalance(w http.ResponseWriter, r *http
 
 	// MANIFEST_REBALANCED event was emitted via outbox inside the transaction.
 	if o.FactoryHub != nil {
-		o.FactoryHub.BroadcastManifestUpdate(factoryScope.FactoryID, req.SourceManifestID, "LOADING", "REBALANCE", reason, supplierID, req.TransferIDs)
-		o.FactoryHub.BroadcastManifestUpdate(factoryScope.FactoryID, req.TargetManifestID, "LOADING", "REBALANCE", reason, supplierID, req.TransferIDs)
+		traceID := telemetry.TraceIDFromContext(r.Context())
+		o.FactoryHub.BroadcastManifestUpdate(factoryScope.FactoryID, req.SourceManifestID, "LOADING", "REBALANCE", reason, supplierID, req.TransferIDs, traceID)
+		o.FactoryHub.BroadcastManifestUpdate(factoryScope.FactoryID, req.TargetManifestID, "LOADING", "REBALANCE", reason, supplierID, req.TransferIDs, traceID)
 		for _, transferID := range req.TransferIDs {
-			o.FactoryHub.BroadcastTransferUpdate(factoryScope.FactoryID, transferID, "", req.TargetManifestID, "LOADING", "LOADING", "REBALANCE", supplierID)
+			o.FactoryHub.BroadcastTransferUpdate(factoryScope.FactoryID, transferID, "", req.TargetManifestID, "LOADING", "LOADING", "REBALANCE", supplierID, traceID)
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -372,8 +373,9 @@ func (o *OverrideService) HandleCancelManifestTransfer(w http.ResponseWriter, r 
 
 	// TRANSFER_UNASSIGNED event was emitted via outbox inside the transaction.
 	if o.FactoryHub != nil {
-		o.FactoryHub.BroadcastTransferUpdate(factoryScope.FactoryID, req.TransferID, "", "", "LOADING", "APPROVED", "CANCEL_TRANSFER", supplierID)
-		o.FactoryHub.BroadcastManifestUpdate(factoryScope.FactoryID, req.ManifestID, "LOADING", "CANCEL_TRANSFER", req.Reason, supplierID, []string{req.TransferID})
+		traceID := telemetry.TraceIDFromContext(r.Context())
+		o.FactoryHub.BroadcastTransferUpdate(factoryScope.FactoryID, req.TransferID, "", "", "LOADING", "APPROVED", "CANCEL_TRANSFER", supplierID, traceID)
+		o.FactoryHub.BroadcastManifestUpdate(factoryScope.FactoryID, req.ManifestID, "LOADING", "CANCEL_TRANSFER", req.Reason, supplierID, []string{req.TransferID}, traceID)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -516,9 +518,10 @@ func (o *OverrideService) HandleCancelManifest(w http.ResponseWriter, r *http.Re
 
 	// MANIFEST_CANCELLED event was emitted via outbox inside the transaction.
 	if o.FactoryHub != nil {
-		o.FactoryHub.BroadcastManifestUpdate(factoryScope.FactoryID, req.ManifestID, "CANCELLED", "CANCEL", cancelReason, supplierID, transferIDs)
+		traceID := telemetry.TraceIDFromContext(r.Context())
+		o.FactoryHub.BroadcastManifestUpdate(factoryScope.FactoryID, req.ManifestID, "CANCELLED", "CANCEL", cancelReason, supplierID, transferIDs, traceID)
 		for _, transferID := range transferIDs {
-			o.FactoryHub.BroadcastTransferUpdate(factoryScope.FactoryID, transferID, "", "", "LOADING", "APPROVED", "CANCEL_MANIFEST", supplierID)
+			o.FactoryHub.BroadcastTransferUpdate(factoryScope.FactoryID, transferID, "", "", "LOADING", "APPROVED", "CANCEL_MANIFEST", supplierID, traceID)
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")

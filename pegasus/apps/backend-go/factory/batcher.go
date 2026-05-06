@@ -306,10 +306,11 @@ func (b *BatcherService) runBatch(ctx context.Context, factoryID string) (*Batch
 		}
 
 		if b.FactoryHub != nil {
+			traceID := telemetry.TraceIDFromContext(ctx)
 			for _, m := range results {
-				b.FactoryHub.BroadcastManifestUpdate(factoryID, m.ManifestId, "READY_FOR_LOADING", "CREATE", "", supplierID, m.Transfers)
+				b.FactoryHub.BroadcastManifestUpdate(factoryID, m.ManifestId, "READY_FOR_LOADING", "CREATE", "", supplierID, m.Transfers, traceID)
 				for _, stop := range m.LoadingOrder {
-					b.FactoryHub.BroadcastTransferUpdate(factoryID, stop.TransferId, stop.WarehouseId, m.ManifestId, "APPROVED", "LOADING", "BATCH_ASSIGN", supplierID)
+					b.FactoryHub.BroadcastTransferUpdate(factoryID, stop.TransferId, stop.WarehouseId, m.ManifestId, "APPROVED", "LOADING", "BATCH_ASSIGN", supplierID, traceID)
 				}
 			}
 		}

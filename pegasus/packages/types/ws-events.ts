@@ -5,6 +5,7 @@
  */
 
 import type { OrderState, PaymentGateway } from './order';
+import type { FactoryLiveEvent } from './factory';
 
 // ─── Discriminated Union of All WS Events ───────────────────────────────────
 export type WSEvent =
@@ -24,7 +25,8 @@ export type WSEvent =
   | FreezeLockAcquiredWSEvent
   | FreezeLockReleasedWSEvent
   | DriverCreatedWSEvent
-  | VehicleCreatedWSEvent;
+  | VehicleCreatedWSEvent
+  | FactoryLiveEvent;
 
 // ─── Order State Changed (Supplier Portal) ──────────────────────────────────
 export interface OrderStateChangedEvent {

@@ -13,6 +13,7 @@ enum FactoryRealtimeEventType: String {
     case supplyRequestUpdate = "FACTORY_SUPPLY_REQUEST_UPDATE"
     case transferUpdate = "FACTORY_TRANSFER_UPDATE"
     case manifestUpdate = "FACTORY_MANIFEST_UPDATE"
+    case outboxFailed = "FACTORY_OUTBOX_FAILED"
 }
 
 struct FactoryLiveEvent: Decodable {

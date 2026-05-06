@@ -153,7 +153,7 @@ func (h *FactoryHub) subscribeRelay(factoryID string) {
 }
 
 // BroadcastSupplyRequestUpdate sends a supply-request state change to a factory room.
-func (h *FactoryHub) BroadcastSupplyRequestUpdate(factoryID, requestID, warehouseID, state, action, supplierID string) {
+func (h *FactoryHub) BroadcastSupplyRequestUpdate(factoryID, requestID, warehouseID, state, action, supplierID, traceID string) {
 	h.PushToFactory(factoryID, map[string]interface{}{
 		"type":         EventFactorySupplyRequestUpdate,
 		"factory_id":   factoryID,
@@ -162,12 +162,13 @@ func (h *FactoryHub) BroadcastSupplyRequestUpdate(factoryID, requestID, warehous
 		"request_id":   requestID,
 		"state":        state,
 		"action":       action,
+		"trace_id":     traceID,
 		"timestamp":    time.Now().UTC().Format(time.RFC3339),
 	})
 }
 
 // BroadcastTransferUpdate sends transfer lifecycle changes to a factory room.
-func (h *FactoryHub) BroadcastTransferUpdate(factoryID, transferID, warehouseID, manifestID, fromState, toState, action, supplierID string) {
+func (h *FactoryHub) BroadcastTransferUpdate(factoryID, transferID, warehouseID, manifestID, fromState, toState, action, supplierID, traceID string) {
 	h.PushToFactory(factoryID, map[string]interface{}{
 		"type":         EventFactoryTransferUpdate,
 		"factory_id":   factoryID,
@@ -178,12 +179,13 @@ func (h *FactoryHub) BroadcastTransferUpdate(factoryID, transferID, warehouseID,
 		"from_state":   fromState,
 		"to_state":     toState,
 		"action":       action,
+		"trace_id":     traceID,
 		"timestamp":    time.Now().UTC().Format(time.RFC3339),
 	})
 }
 
 // BroadcastManifestUpdate sends manifest lifecycle changes to a factory room.
-func (h *FactoryHub) BroadcastManifestUpdate(factoryID, manifestID, state, action, reason, supplierID string, transferIDs []string) {
+func (h *FactoryHub) BroadcastManifestUpdate(factoryID, manifestID, state, action, reason, supplierID string, transferIDs []string, traceID string) {
 	h.PushToFactory(factoryID, map[string]interface{}{
 		"type":         EventFactoryManifestUpdate,
 		"factory_id":   factoryID,
@@ -193,8 +195,36 @@ func (h *FactoryHub) BroadcastManifestUpdate(factoryID, manifestID, state, actio
 		"action":       action,
 		"reason":       reason,
 		"transfer_ids": transferIDs,
+		"trace_id":     traceID,
 		"timestamp":    time.Now().UTC().Format(time.RFC3339),
 	})
+}
+
+// BroadcastOutboxFailure pushes a FACTORY_OUTBOX_FAILED event to all connected
+// factory clients. This surfaces relay publish failures on factory surfaces in
+// real time without coupling to a specific factory aggregate.
+func (h *FactoryHub) BroadcastOutboxFailure(eventID, aggregateID, topic, reason, traceID string) {
+	h.mu.RLock()
+	factoryIDs := make([]string, 0, len(h.clients))
+	for factoryID := range h.clients {
+		factoryIDs = append(factoryIDs, factoryID)
+	}
+	h.mu.RUnlock()
+
+	timestamp := time.Now().UTC().Format(time.RFC3339)
+	for _, factoryID := range factoryIDs {
+		h.PushToFactory(factoryID, map[string]interface{}{
+			"type":         EventFactoryOutboxFailed,
+			"factory_id":   factoryID,
+			"supplier_id":  "",
+			"event_id":     eventID,
+			"aggregate_id": aggregateID,
+			"topic":        topic,
+			"reason":       reason,
+			"trace_id":     traceID,
+			"timestamp":    timestamp,
+		})
+	}
 }
 
 // Close gracefully closes all connections in the FactoryHub.

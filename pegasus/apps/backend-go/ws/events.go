@@ -112,6 +112,8 @@ const (
 	EventFactoryTransferUpdate = "FACTORY_TRANSFER_UPDATE"
 	// EventFactoryManifestUpdate is pushed when a manifest lifecycle event occurs.
 	EventFactoryManifestUpdate = "FACTORY_MANIFEST_UPDATE"
+	// EventFactoryOutboxFailed is pushed when the outbox relay cannot publish an event.
+	EventFactoryOutboxFailed = "FACTORY_OUTBOX_FAILED"
 )
 
 // ─── Notifications / FCM ───────────────────────────────────────────────────────

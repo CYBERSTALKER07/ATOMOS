@@ -261,7 +261,15 @@ func (s *SupplyRequestService) HandleCreateSupplyRequest(w http.ResponseWriter, 
 		s.WarehouseHub.BroadcastSupplyRequestUpdate(warehouseID, requestID, "SUBMITTED")
 	}
 	if s.FactoryHub != nil {
-		s.FactoryHub.BroadcastSupplyRequestUpdate(req.FactoryID, requestID, warehouseID, "SUBMITTED", "CREATE", supplierID)
+		s.FactoryHub.BroadcastSupplyRequestUpdate(
+			req.FactoryID,
+			requestID,
+			warehouseID,
+			"SUBMITTED",
+			"CREATE",
+			supplierID,
+			telemetry.TraceIDFromContext(r.Context()),
+		)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -583,7 +591,15 @@ func (s *SupplyRequestService) HandleSupplyRequestTransition(w http.ResponseWrit
 		s.WarehouseHub.BroadcastSupplyRequestUpdate(warehouseID, requestID, newState)
 	}
 	if s.FactoryHub != nil && factoryID != "" {
-		s.FactoryHub.BroadcastSupplyRequestUpdate(factoryID, requestID, warehouseID, newState, req.Action, supplierID)
+		s.FactoryHub.BroadcastSupplyRequestUpdate(
+			factoryID,
+			requestID,
+			warehouseID,
+			newState,
+			req.Action,
+			supplierID,
+			telemetry.TraceIDFromContext(r.Context()),
+		)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

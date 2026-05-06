@@ -38,7 +38,8 @@ enum class FactoryRealtimeStatus {
 enum class FactoryRealtimeEventType(val wireName: String) {
     SupplyRequestUpdate("FACTORY_SUPPLY_REQUEST_UPDATE"),
     TransferUpdate("FACTORY_TRANSFER_UPDATE"),
-    ManifestUpdate("FACTORY_MANIFEST_UPDATE");
+    ManifestUpdate("FACTORY_MANIFEST_UPDATE"),
+    OutboxFailed("FACTORY_OUTBOX_FAILED");
 
     companion object {
         fun fromWireName(value: String): FactoryRealtimeEventType? {

@@ -1199,7 +1199,13 @@ func main() {
 
 	// Boot the Transactional Outbox relay (V.O.I.D. Phase VII).
 	app.Outbox.SetOnFailure(func(eventID, aggregateID, topic string, err error) {
-		app.WarehouseHub.BroadcastOutboxFailure(eventID, aggregateID, topic, err.Error())
+		reason := err.Error()
+		if app.WarehouseHub != nil {
+			app.WarehouseHub.BroadcastOutboxFailure(eventID, aggregateID, topic, reason)
+		}
+		if app.FactoryHub != nil {
+			app.FactoryHub.BroadcastOutboxFailure(eventID, aggregateID, topic, reason, "")
+		}
 	})
 	app.Outbox.Start(ctx)
 

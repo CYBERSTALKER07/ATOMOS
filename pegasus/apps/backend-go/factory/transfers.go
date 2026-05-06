@@ -275,7 +275,7 @@ func factoryRealtimeAction(action string) string {
 	return strings.ReplaceAll(normalized, "-", "_")
 }
 
-func (s *TransferService) broadcastFactoryTransferUpdate(factoryID, transferID, warehouseID, manifestID, fromState, toState, action, supplierID string) {
+func (s *TransferService) broadcastFactoryTransferUpdate(factoryID, transferID, warehouseID, manifestID, fromState, toState, action, supplierID, traceID string) {
 	if s.FactoryHub == nil || factoryID == "" {
 		return
 	}
@@ -288,6 +288,7 @@ func (s *TransferService) broadcastFactoryTransferUpdate(factoryID, transferID, 
 		toState,
 		action,
 		supplierID,
+		traceID,
 	)
 }
 
@@ -808,6 +809,7 @@ func (s *TransferService) HandleTransferTransition(w http.ResponseWriter, r *htt
 		targetState,
 		factoryRealtimeAction(action),
 		supplierID,
+		telemetry.TraceIDFromContext(r.Context()),
 	)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -974,6 +976,7 @@ func (s *TransferService) HandleApproveTransfer(w http.ResponseWriter, r *http.R
 		"APPROVED",
 		"APPROVE",
 		supplierID,
+		telemetry.TraceIDFromContext(ctx),
 	)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1114,6 +1117,7 @@ func (s *TransferService) HandleWarehouseReceiveTransfer(w http.ResponseWriter, 
 		"RECEIVED",
 		"RECEIVE",
 		supplierID,
+		telemetry.TraceIDFromContext(r.Context()),
 	)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1314,6 +1318,7 @@ func (s *TransferService) HandleCreateTransfer(w http.ResponseWriter, r *http.Re
 		"DRAFT",
 		"CREATE",
 		supplierID,
+		telemetry.TraceIDFromContext(r.Context()),
 	)
 
 	w.Header().Set("Content-Type", "application/json")

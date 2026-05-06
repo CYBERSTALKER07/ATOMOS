@@ -11,6 +11,7 @@ export * from './treasury';
 export * from './notifications';
 export * from './analytics';
 export * from './warehouse';
+export * from './factory';
 export * from './ws-events';
 export * from './pricing';
 export * from './problem';
