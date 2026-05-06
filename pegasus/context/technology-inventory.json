@@ -211,7 +211,8 @@
         "GET /v1/factory/staff",
         "GET /v1/factory/staff/{id}",
         "GET /v1/factory/supply-requests",
-        "PATCH /v1/factory/supply-requests/{id}"
+        "PATCH /v1/factory/supply-requests/{id}",
+        "GET /v1/ws/factory"
       ],
       "consumers": [
         "factory-portal dashboard and shell profile hydration",
@@ -221,7 +222,8 @@
       "notes": [
         "Factory portal shell now hydrates identity from GET /v1/factory/profile instead of static labeling.",
         "Android and iOS clients expose additive advanced-factory endpoint methods (transfers/create, manifests detail/transition, fleet split lists, staff detail) while preserving existing operator-loop behavior.",
-        "Factory live update policy remains polling-based across portal, Android, and iOS dashboards at 30-second cadence; no /v1/ws/factory route is mounted."
+        "Factory realtime contract is additive with GET /v1/ws/factory and typed events FACTORY_SUPPLY_REQUEST_UPDATE, FACTORY_TRANSFER_UPDATE, and FACTORY_MANIFEST_UPDATE.",
+        "Portal, Android, and iOS polling refresh remains as fallback while clients adopt websocket-triggered reloads."
       ]
     },
     {

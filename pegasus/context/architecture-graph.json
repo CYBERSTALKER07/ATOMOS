@@ -286,7 +286,8 @@
         "GET /v1/factory/staff",
         "GET /v1/factory/staff/{id}",
         "GET /v1/factory/supply-requests",
-        "PATCH /v1/factory/supply-requests/{id}"
+        "PATCH /v1/factory/supply-requests/{id}",
+        "GET /v1/ws/factory"
       ],
       "consumers": [
         "pegasus/apps/factory-portal/app/page.tsx",
@@ -297,7 +298,8 @@
       "notes": [
         "Factory portal shell now hydrates identity from GET /v1/factory/profile instead of static labeling.",
         "Android and iOS clients expose additive advanced-factory endpoint methods (transfers/create, manifests detail/transition, fleet split lists, staff detail) while preserving the existing operator-loop routes.",
-        "Factory role-row live updates are currently polling-based across portal, Android, and iOS dashboards at 30-second cadence; there is no mounted /v1/ws/factory route in this contract."
+        "Factory role-row realtime contract now includes GET /v1/ws/factory with additive events FACTORY_SUPPLY_REQUEST_UPDATE, FACTORY_TRANSFER_UPDATE, and FACTORY_MANIFEST_UPDATE.",
+        "Polling refresh remains as fallback across portal, Android, and iOS while clients roll into websocket-triggered reloads."
       ]
     },
     {
