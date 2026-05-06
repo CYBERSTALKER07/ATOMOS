@@ -358,7 +358,8 @@
       ],
       "notes": [
         "Route composition moved out of main.go into supplierroutes while preserving the existing supplier handlers.",
-        "POST /v1/supplier/warehouses/{id}/coverage now persists polygon-derived H3 cells through the warehouse spatial outbox and cache refresh path instead of failing as an unwired portal mutation."
+        "POST /v1/supplier/warehouses/{id}/coverage now persists polygon-derived H3 cells through the warehouse spatial outbox and cache refresh path instead of failing as an unwired portal mutation.",
+        "Warehouse-scoped supplier routes now inject auth.RequireWarehouseScopeWithClient(d.Spanner), constraining SupplierRole=FACTORY_ADMIN to warehouses linked through Warehouses.PrimaryFactoryId/SecondaryFactoryId; out-of-scope warehouse_id returns 403 and multi-link scope without explicit warehouse_id returns 400."
       ]
     },
     {
@@ -522,7 +523,7 @@
       "notes": [
         "Route composition moved out of main.go into supplierinsightsroutes while preserving the existing countrycfg, analytics, and supplier handlers.",
         "Supplier CRM list/detail payloads now include additive retailer email for the supplier portal contact drawer consumer.",
-        "Warehouse-scoped analytics routes keep their RequireWarehouseScope middleware inside the extracted composer."
+        "Warehouse-scoped analytics routes in this composer now use auth.RequireWarehouseScopeWithClient(d.Spanner), applying FACTORY_ADMIN factory-linked warehouse validation before handler execution."
       ]
     },
     {
