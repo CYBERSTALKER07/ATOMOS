@@ -1984,32 +1984,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pegasus-admin-desktop"
-version = "0.1.0"
-dependencies = [
- "cc",
- "cocoa",
- "env_logger",
- "futures-util",
- "keyring",
- "log",
- "objc",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-os",
- "tauri-plugin-process",
- "tauri-plugin-shell",
- "tokio",
- "tokio-tungstenite",
- "url",
-]
-
-[[package]]
 name = "leb128fmt"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2687,6 +2661,32 @@ name = "pathdiff"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df94ce210e5bc13cb6651479fa48d14f601d9858cfe0467f43ae157023b938d3"
+
+[[package]]
+name = "pegasus-admin-desktop"
+version = "0.1.0"
+dependencies = [
+ "cc",
+ "cocoa",
+ "env_logger",
+ "futures-util",
+ "keyring",
+ "log",
+ "objc",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-os",
+ "tauri-plugin-process",
+ "tauri-plugin-shell",
+ "tokio",
+ "tokio-tungstenite",
+ "url",
+]
 
 [[package]]
 name = "percent-encoding"

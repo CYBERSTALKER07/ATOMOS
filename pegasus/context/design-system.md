@@ -10,6 +10,14 @@ No `<md-button>`, `<md-filled-text-field>`, or external web component libraries.
 Layout and spacing rely on Tailwind CSS v4 (`@tailwindcss/postcss`).
 Components and identity rely on our global M3 CSS variables defined in `globals.css`.
 
+### Shared Desktop Foundation (Phase 1)
+Desktop surfaces now share a foundation stylesheet at `pegasus/packages/ui-kit/styles/desktop-foundation.css`.
+
+- Import this file at the top of each desktop app `globals.css`.
+- Keep app-specific `globals.css` blocks additive; do not remove existing `md-*`, `button--*`, or `status-chip*` classes during rollout.
+- The foundation file is compatibility-first and centralizes baseline tokens for body, card, button, input, chip, and status-chip semantics.
+- Any new cross-desktop token should be introduced in the foundation file first, then consumed by app-specific layers.
+
 ### Tokens Available
 - **Colors**: `--color-md-primary`, `--color-md-on-primary`, `--color-md-surface`, `--color-md-surface-container`, `--color-md-outline`, `--color-md-error`
 - **Semantic colors**: `--color-md-success`, `--color-md-warning`, `--color-md-info`

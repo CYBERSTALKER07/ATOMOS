@@ -1,9 +1,10 @@
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 
 const isTauriBuild = process.env.TAURI_BUILD === "1";
 const appRoot = dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = resolve(appRoot, "../..");
 
 const imageConfig: NonNullable<NextConfig["images"]> = {
   remotePatterns: [
@@ -15,6 +16,7 @@ const imageConfig: NonNullable<NextConfig["images"]> = {
 
 const nextConfig: NextConfig = {
 	turbopack: {
+		root: workspaceRoot,
 		resolveAlias: {
 			"@pegasus/i18n": "../../packages/i18n/index.ts",
 			"@pegasus/i18n/*": "../../packages/i18n/*",

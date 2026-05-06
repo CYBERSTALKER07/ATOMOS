@@ -81,6 +81,8 @@ struct DashboardView: View {
                         switch eventType {
                         case .supplyRequestUpdate, .transferUpdate, .manifestUpdate:
                             Task { await load(silent: true) }
+                        case .outboxFailed:
+                            break
                         }
                     }
                 )

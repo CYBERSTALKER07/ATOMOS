@@ -1,0 +1,126 @@
+/* Shared desktop design tokens and compatibility classes.
+   Import this before app-specific globals.css blocks. */
+
+:root {
+  --desktop-canvas: oklch(0.985 0.003 95);
+  --desktop-surface: oklch(0.998 0.001 95);
+  --desktop-surface-muted: oklch(0.958 0.004 95);
+  --desktop-ink: oklch(0.17 0.01 95);
+  --desktop-ink-muted: oklch(0.45 0.01 95);
+  --desktop-border: oklch(0.88 0.004 95);
+  --desktop-border-strong: oklch(0.78 0.004 95);
+  --desktop-accent: oklch(0.2 0.01 95);
+  --desktop-on-accent: oklch(0.995 0 0);
+  --desktop-success: oklch(0.62 0.12 150);
+  --desktop-warning: oklch(0.73 0.13 83);
+  --desktop-danger: oklch(0.62 0.18 26);
+  --desktop-radius-sm: 8px;
+  --desktop-radius-md: 12px;
+  --desktop-radius-lg: 18px;
+  --desktop-spacing-sm: 8px;
+  --desktop-spacing-md: 12px;
+  --desktop-spacing-lg: 16px;
+  --desktop-font-sans: var(--font-geist-sans, "IBM Plex Sans", "Segoe UI", sans-serif);
+  --desktop-font-mono: var(--font-geist-mono, "IBM Plex Mono", "SFMono-Regular", monospace);
+}
+
+:root.dark,
+.dark {
+  --desktop-canvas: oklch(0.12 0.01 95);
+  --desktop-surface: oklch(0.16 0.01 95);
+  --desktop-surface-muted: oklch(0.2 0.01 95);
+  --desktop-ink: oklch(0.93 0.01 95);
+  --desktop-ink-muted: oklch(0.74 0.01 95);
+  --desktop-border: oklch(0.3 0.01 95);
+  --desktop-border-strong: oklch(0.42 0.01 95);
+  --desktop-accent: oklch(0.93 0.01 95);
+  --desktop-on-accent: oklch(0.14 0.01 95);
+  --desktop-success: oklch(0.74 0.13 150);
+  --desktop-warning: oklch(0.78 0.12 83);
+  --desktop-danger: oklch(0.73 0.14 26);
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans, var(--desktop-font-sans));
+    background: var(--color-md-surface, var(--background, var(--desktop-canvas)));
+    color: var(--color-md-on-surface, var(--foreground, var(--desktop-ink)));
+  }
+}
+
+@layer components {
+  :where(.button--primary) {
+    background: var(--accent, var(--color-md-primary, var(--desktop-accent)));
+    color: var(--accent-foreground, var(--color-md-on-primary, var(--desktop-on-accent)));
+  }
+
+  :where(.button--secondary) {
+    background: var(--default, var(--color-md-secondary-container, var(--desktop-surface-muted)));
+    color: var(--default-foreground, var(--color-md-on-secondary-container, var(--desktop-ink)));
+  }
+
+  :where(.button--outline) {
+    border: 1px solid var(--border, var(--color-md-outline, var(--desktop-border)));
+    color: var(--foreground, var(--color-md-on-surface, var(--desktop-ink)));
+    background: transparent;
+  }
+
+  :where(.button--ghost) {
+    color: var(--foreground, var(--color-md-on-surface, var(--desktop-ink)));
+    background: transparent;
+  }
+
+  :where(.button--danger) {
+    background: var(--danger, var(--color-md-error, var(--desktop-danger)));
+    color: var(--danger-foreground, var(--color-md-on-error, var(--desktop-on-accent)));
+  }
+
+  :where(.status-chip) {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background: var(--default, var(--desktop-surface-muted));
+    color: var(--default-foreground, var(--desktop-ink));
+  }
+
+  :where(.status-chip--ready) {
+    background: var(--success, var(--desktop-success));
+    color: var(--success-foreground, var(--desktop-on-accent));
+  }
+
+  :where(.status-chip--in-production) {
+    background: var(--warning, var(--desktop-warning));
+    color: var(--warning-foreground, var(--desktop-ink));
+  }
+
+  :where(.status-chip--cancelled),
+  :where(.status-chip--critical) {
+    background: var(--danger, var(--desktop-danger));
+    color: var(--danger-foreground, var(--desktop-on-accent));
+  }
+
+  :where(.md-card) {
+    border: 1px solid var(--color-md-outline-variant, var(--desktop-border));
+    border-radius: var(--md-shape-md, var(--desktop-radius-md));
+    background: var(--color-md-surface-container, var(--surface, var(--desktop-surface)));
+    color: var(--color-md-on-surface, var(--foreground, var(--desktop-ink)));
+  }
+
+  :where(.md-input-outlined) {
+    border: 1px solid var(--field-border, var(--color-md-outline, var(--desktop-border)));
+    border-radius: var(--md-shape-sm, var(--desktop-radius-sm));
+    background: var(--field-background, var(--color-md-surface, var(--desktop-surface)));
+    color: var(--field-foreground, var(--color-md-on-surface, var(--desktop-ink)));
+  }
+
+  :where(.md-chip) {
+    border: 1px solid var(--color-md-outline-variant, var(--desktop-border));
+    border-radius: 999px;
+    background: var(--color-md-surface-container, var(--desktop-surface-muted));
+    color: var(--color-md-on-surface-variant, var(--desktop-ink-muted));
+  }
+}

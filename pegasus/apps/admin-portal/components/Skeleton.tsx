@@ -1,4 +1,8 @@
-export function Skeleton({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
+'use client';
+
+import type { CSSProperties } from 'react';
+
+export function Skeleton({ className = '', style }: { className?: string; style?: CSSProperties }) {
   return <div className={`md-skeleton ${className}`} style={style} />;
 }
 
@@ -21,9 +25,6 @@ export function SkeletonCard({ className = '' }: { className?: string }) {
 }
 
 /** Full-page loading skeleton matching common dashboard layouts */
-
-
-'use client';
 
 /**
  * M3 Page-level loading skeleton.

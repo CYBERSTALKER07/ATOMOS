@@ -72,6 +72,8 @@ struct StaffView: View {
                         switch eventType {
                         case .supplyRequestUpdate, .transferUpdate, .manifestUpdate:
                             load()
+                        case .outboxFailed:
+                            break
                         }
                     }
                 )

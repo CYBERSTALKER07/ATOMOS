@@ -13,6 +13,7 @@
     "./notifications": "./notifications.ts",
     "./analytics": "./analytics.ts",
     "./warehouse": "./warehouse.ts",
+    "./factory": "./factory.ts",
     "./ws": "./ws-events.ts"
   }
 }

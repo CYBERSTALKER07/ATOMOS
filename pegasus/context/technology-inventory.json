@@ -222,7 +222,8 @@
       "notes": [
         "Factory portal shell now hydrates identity from GET /v1/factory/profile instead of static labeling.",
         "Android and iOS clients expose additive advanced-factory endpoint methods (transfers/create, manifests detail/transition, fleet split lists, staff detail) while preserving existing operator-loop behavior.",
-        "Factory realtime contract is additive with GET /v1/ws/factory and typed events FACTORY_SUPPLY_REQUEST_UPDATE, FACTORY_TRANSFER_UPDATE, and FACTORY_MANIFEST_UPDATE.",
+        "Factory realtime contract is additive with GET /v1/ws/factory and typed events FACTORY_SUPPLY_REQUEST_UPDATE, FACTORY_TRANSFER_UPDATE, FACTORY_MANIFEST_UPDATE, and FACTORY_OUTBOX_FAILED.",
+        "Factory realtime envelopes now include stable trace_id keys for supply request, transfer, manifest, and outbox-failure updates.",
         "Portal, Android, and iOS now subscribe to websocket-triggered reloads, while polling/manual refresh remains fallback."
       ]
     },

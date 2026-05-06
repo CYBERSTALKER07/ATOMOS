@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-05-06T18:16:32.753Z",
+  "generatedAt": "2026-05-06T18:29:04.607Z",
   "rootDir": "/Users/shakhzod/Desktop/V.O.I.D/pegasus",
-  "fileCount": 749,
+  "fileCount": 751,
   "files": [
     {
       "path": "apps/admin-portal/app/admin/audit-log/page.tsx",
@@ -8416,7 +8416,7 @@
     {
       "path": "apps/backend-go/auth/middleware_test.go",
       "language": "go",
-      "lineCount": 474,
+      "lineCount": 484,
       "imports": [
         "context",
         "encoding/json",
@@ -8464,114 +8464,119 @@
           "line": 130
         },
         {
-          "name": "TestExtractToken_WSQueryParamRejectedOnUnknownEndpoint",
+          "name": "TestExtractToken_WSQueryParamFactoryEndpoint",
           "kind": "function",
           "line": 140
         },
         {
-          "name": "TestExtractToken_Empty",
+          "name": "TestExtractToken_WSQueryParamRejectedOnUnknownEndpoint",
           "kind": "function",
           "line": 150
         },
         {
+          "name": "TestExtractToken_Empty",
+          "kind": "function",
+          "line": 160
+        },
+        {
           "name": "TestExtractToken_BearerPriority",
           "kind": "function",
-          "line": 158
+          "line": 168
         },
         {
           "name": "TestIsWebSocketUpgrade_True",
           "kind": "function",
-          "line": 170
+          "line": 180
         },
         {
           "name": "TestIsWebSocketUpgrade_CaseInsensitive",
           "kind": "function",
-          "line": 179
+          "line": 189
         },
         {
           "name": "TestIsWebSocketUpgrade_False",
           "kind": "function",
-          "line": 188
+          "line": 198
         },
         {
           "name": "TestTransportKind_HTTP",
           "kind": "function",
-          "line": 197
+          "line": 207
         },
         {
           "name": "TestTransportKind_WebSocket",
           "kind": "function",
-          "line": 204
+          "line": 214
         },
         {
           "name": "TestRequireRole_ValidToken",
           "kind": "function",
-          "line": 215
+          "line": 225
         },
         {
           "name": "body",
           "kind": "var",
-          "line": 231
+          "line": 241
         },
         {
           "name": "TestRequireRole_WrongRole",
           "kind": "function",
-          "line": 238
+          "line": 248
         },
         {
           "name": "TestRequireRole_MissingToken",
           "kind": "function",
-          "line": 254
+          "line": 264
         },
         {
           "name": "TestRequireRole_InvalidToken",
           "kind": "function",
-          "line": 268
+          "line": 278
         },
         {
           "name": "TestRequireRole_ExpiredToken",
           "kind": "function",
-          "line": 283
+          "line": 293
         },
         {
           "name": "TestRequireRole_OptionsPassthrough",
           "kind": "function",
-          "line": 308
+          "line": 318
         },
         {
           "name": "TestRequireRole_InternalAPIKey",
           "kind": "function",
-          "line": 327
+          "line": 337
         },
         {
           "name": "TestRequireRole_WrongInternalKey",
           "kind": "function",
-          "line": 349
+          "line": 359
         },
         {
           "name": "TestRequireRole_MultipleRoles",
           "kind": "function",
-          "line": 364
+          "line": 374
         },
         {
           "name": "TestRequireRole_TamperedPayload",
           "kind": "function",
-          "line": 380
+          "line": 390
         },
         {
           "name": "TestClaimsContextRoundTrip",
           "kind": "function",
-          "line": 405
+          "line": 415
         },
         {
           "name": "TestRequireRoleWithGrace_AllowsExpiredDriverWithinWindow",
           "kind": "function",
-          "line": 414
+          "line": 424
         },
         {
           "name": "TestRequireRoleWithGrace_RejectsExpiredDriverBeyondWindow",
           "kind": "function",
-          "line": 450
+          "line": 460
         }
       ]
     },
@@ -12733,7 +12738,7 @@
     {
       "path": "apps/backend-go/factory/batcher.go",
       "language": "go",
-      "lineCount": 497,
+      "lineCount": 498,
       "imports": [
         "context",
         "encoding/json",
@@ -12823,82 +12828,82 @@
         {
           "name": "fetchApprovedTransfers",
           "kind": "function",
-          "line": 337
+          "line": 338
         },
         {
           "name": "result",
           "kind": "var",
-          "line": 350
+          "line": 351
         },
         {
           "name": "t",
           "kind": "var",
-          "line": 359
+          "line": 360
         },
         {
           "name": "getFactoryCoords",
           "kind": "function",
-          "line": 369
+          "line": 370
         },
         {
           "name": "lat",
           "kind": "var",
-          "line": 375
+          "line": 376
         },
         {
           "name": "resolveFactorySupplier",
           "kind": "function",
-          "line": 383
+          "line": 384
         },
         {
           "name": "sid",
           "kind": "var",
-          "line": 389
+          "line": 390
         },
         {
           "name": "fetchFactoryVehicles",
           "kind": "function",
-          "line": 396
+          "line": 397
         },
         {
           "name": "supplierID",
           "kind": "var",
-          "line": 403
+          "line": 404
         },
         {
           "name": "result",
           "kind": "var",
-          "line": 422
+          "line": 423
         },
         {
           "name": "v",
           "kind": "var",
-          "line": 431
+          "line": 432
         },
         {
           "name": "nearestNeighborSort",
           "kind": "function",
-          "line": 443
+          "line": 444
         },
         {
           "name": "routeZoneLabel",
           "kind": "function",
-          "line": 473
+          "line": 474
         },
         {
           "name": "sumLat",
           "kind": "var",
-          "line": 477
+          "line": 478
         },
         {
           "name": "haversineKm",
           "kind": "function",
-          "line": 487
+          "line": 488
         },
         {
           "name": "R",
           "kind": "const",
-          "line": 488
+          "line": 489
         }
       ]
     },
@@ -13796,7 +13801,7 @@
     {
       "path": "apps/backend-go/factory/manifests.go",
       "language": "go",
-      "lineCount": 426,
+      "lineCount": 429,
       "imports": [
         "context",
         "encoding/json",
@@ -13805,6 +13810,7 @@
         "strings",
         "time",
         "backend-go/auth",
+        "backend-go/telemetry",
         "backend-go/ws",
         "cloud.google.com/go/spanner",
         "google.golang.org/api/iterator"
@@ -13813,102 +13819,102 @@
         {
           "name": "ManifestResponse",
           "kind": "type",
-          "line": 21
+          "line": 22
         },
         {
           "name": "ManifestTransferSummary",
           "kind": "type",
-          "line": 41
+          "line": 42
         },
         {
           "name": "HandleFactoryManifests",
           "kind": "function",
-          "line": 50
+          "line": 51
         },
         {
           "name": "m",
-          "kind": "var",
-          "line": 94
-        },
-        {
-          "name": "createdAt",
           "kind": "var",
           "line": 95
         },
         {
+          "name": "createdAt",
+          "kind": "var",
+          "line": 96
+        },
+        {
           "name": "attachManifestTransfers",
           "kind": "function",
-          "line": 123
+          "line": 124
         },
         {
           "name": "transferLocation",
           "kind": "type",
-          "line": 145
+          "line": 146
         },
         {
           "name": "manifestID",
           "kind": "var",
-          "line": 161
+          "line": 162
         },
         {
           "name": "transfer",
           "kind": "var",
-          "line": 162
+          "line": 163
         },
         {
           "name": "transferID",
           "kind": "var",
-          "line": 204
+          "line": 205
         },
         {
           "name": "quantity",
           "kind": "var",
-          "line": 205
+          "line": 206
         },
         {
           "name": "productName",
           "kind": "var",
-          "line": 206
+          "line": 207
         },
         {
           "name": "shortRef",
           "kind": "function",
-          "line": 231
+          "line": 232
         },
         {
           "name": "HandleFactoryManifestDetail",
           "kind": "function",
-          "line": 240
+          "line": 241
         },
         {
           "name": "m",
           "kind": "var",
-          "line": 275
+          "line": 276
         },
         {
           "name": "createdAt",
           "kind": "var",
-          "line": 276
+          "line": 277
         },
         {
           "name": "LinkedTransfer",
           "kind": "type",
-          "line": 295
+          "line": 296
         },
         {
           "name": "lt",
           "kind": "var",
-          "line": 311
+          "line": 312
         },
         {
           "name": "HandleFactoryManifestTransition",
           "kind": "function",
-          "line": 329
+          "line": 330
         },
         {
           "name": "currentState",
           "kind": "var",
-          "line": 379
+          "line": 380
         }
       ]
     },
@@ -14054,7 +14060,7 @@
     {
       "path": "apps/backend-go/factory/override.go",
       "language": "go",
-      "lineCount": 531,
+      "lineCount": 534,
       "imports": [
         "context",
         "encoding/json",
@@ -14136,62 +14142,62 @@
         {
           "name": "HandleCancelManifestTransfer",
           "kind": "function",
-          "line": 253
+          "line": 254
         },
         {
           "name": "req",
           "kind": "var",
-          "line": 271
+          "line": 272
         },
         {
           "name": "mFactoryID",
-          "kind": "var",
-          "line": 294
-        },
-        {
-          "name": "mVolume",
           "kind": "var",
           "line": 295
         },
         {
-          "name": "tManifest",
+          "name": "mVolume",
           "kind": "var",
-          "line": 313
+          "line": 296
         },
         {
-          "name": "tVolume",
+          "name": "tManifest",
           "kind": "var",
           "line": 314
         },
         {
-          "name": "tState",
+          "name": "tVolume",
           "kind": "var",
           "line": 315
         },
         {
+          "name": "tState",
+          "kind": "var",
+          "line": 316
+        },
+        {
           "name": "HandleCancelManifest",
           "kind": "function",
-          "line": 388
+          "line": 390
         },
         {
           "name": "req",
           "kind": "var",
-          "line": 406
+          "line": 408
         },
         {
           "name": "transferIDs",
           "kind": "var",
-          "line": 419
+          "line": 421
         },
         {
           "name": "mFactoryID",
           "kind": "var",
-          "line": 433
+          "line": 435
         },
         {
           "name": "tid",
           "kind": "var",
-          "line": 461
+          "line": 463
         }
       ]
     },
@@ -14852,7 +14858,7 @@
     {
       "path": "apps/backend-go/factory/transfers.go",
       "language": "go",
-      "lineCount": 1331,
+      "lineCount": 1336,
       "imports": [
         "context",
         "encoding/json",
@@ -14974,207 +14980,207 @@
         {
           "name": "buildTransferResponse",
           "kind": "function",
-          "line": 294
+          "line": 295
         },
         {
           "name": "listTransferHeaders",
           "kind": "function",
-          "line": 319
+          "line": 320
         },
         {
           "name": "header",
           "kind": "var",
-          "line": 348
+          "line": 349
         },
         {
           "name": "loadTransferHeader",
           "kind": "function",
-          "line": 369
+          "line": 370
         },
         {
           "name": "header",
           "kind": "var",
-          "line": 387
+          "line": 388
         },
         {
           "name": "fetchWarehouseNames",
           "kind": "function",
-          "line": 406
+          "line": 407
         },
         {
           "name": "warehouseID",
           "kind": "var",
-          "line": 427
+          "line": 428
         },
         {
           "name": "fetchProductSuppliersBySku",
           "kind": "function",
-          "line": 437
+          "line": 438
         },
         {
           "name": "skuID",
           "kind": "var",
-          "line": 461
+          "line": 462
         },
         {
           "name": "supplierID",
           "kind": "var",
-          "line": 462
+          "line": 463
         },
         {
           "name": "fetchTransferItemTotals",
           "kind": "function",
-          "line": 474
+          "line": 475
         },
         {
           "name": "transferID",
           "kind": "var",
-          "line": 498
+          "line": 499
         },
         {
           "name": "totalItems",
           "kind": "var",
-          "line": 499
+          "line": 500
         },
         {
           "name": "buildTransferListResponses",
           "kind": "function",
-          "line": 511
+          "line": 512
         },
         {
           "name": "fetchProductNames",
           "kind": "function",
-          "line": 545
+          "line": 546
         },
         {
           "name": "productID",
           "kind": "var",
-          "line": 566
+          "line": 567
         },
         {
           "name": "loadTransferItems",
           "kind": "function",
-          "line": 576
+          "line": 577
         },
         {
           "name": "itemRow",
           "kind": "type",
-          "line": 584
+          "line": 585
         },
         {
           "name": "totalItems",
           "kind": "var",
-          "line": 593
+          "line": 594
         },
         {
           "name": "row",
           "kind": "var",
-          "line": 604
+          "line": 605
         },
         {
           "name": "loadTransferResponse",
           "kind": "function",
-          "line": 638
+          "line": 639
         },
         {
           "name": "HandleTransferTransition",
           "kind": "function",
-          "line": 664
+          "line": 665
         },
         {
           "name": "req",
           "kind": "var",
-          "line": 681
+          "line": 682
         },
         {
           "name": "supplierID",
           "kind": "var",
-          "line": 727
+          "line": 728
         },
         {
           "name": "currentState",
           "kind": "var",
-          "line": 737
+          "line": 738
         },
         {
           "name": "HandleApproveTransfer",
           "kind": "function",
-          "line": 831
+          "line": 833
         },
         {
           "name": "currentState",
           "kind": "var",
-          "line": 862
+          "line": 864
         },
         {
           "name": "totalVolumeVU",
           "kind": "var",
-          "line": 863
+          "line": 865
         },
         {
           "name": "manifestIDs",
           "kind": "var",
-          "line": 898
+          "line": 900
         },
         {
           "name": "mutations",
           "kind": "var",
-          "line": 900
+          "line": 902
         },
         {
           "name": "HandleWarehouseReceiveTransfer",
           "kind": "function",
-          "line": 990
+          "line": 993
         },
         {
           "name": "currentState",
           "kind": "var",
-          "line": 1010
+          "line": 1013
         },
         {
           "name": "manifestID",
           "kind": "var",
-          "line": 1011
+          "line": 1014
         },
         {
           "name": "mutations",
           "kind": "var",
-          "line": 1039
+          "line": 1042
         },
         {
           "name": "item",
           "kind": "var",
-          "line": 1049
+          "line": 1052
         },
         {
           "name": "currentQty",
           "kind": "var",
-          "line": 1058
+          "line": 1061
         },
         {
           "name": "HandleCreateTransfer",
           "kind": "function",
-          "line": 1129
+          "line": 1133
         },
         {
           "name": "req",
           "kind": "var",
-          "line": 1141
+          "line": 1145
         },
         {
           "name": "supplierID",
           "kind": "var",
-          "line": 1188
+          "line": 1192
         },
         {
           "name": "warehouseSupplierID",
           "kind": "var",
-          "line": 1204
+          "line": 1208
         },
         {
           "name": "totalVolumeVU",
           "kind": "var",
-          "line": 1246
+          "line": 1250
         }
       ]
     },
@@ -18966,7 +18972,7 @@
     {
       "path": "apps/backend-go/main.go",
       "language": "go",
-      "lineCount": 1511,
+      "lineCount": 1517,
       "imports": [
         "context",
         "encoding/json",
@@ -38934,7 +38940,7 @@
     {
       "path": "apps/backend-go/warehouse/supply_requests.go",
       "language": "go",
-      "lineCount": 612,
+      "lineCount": 628,
       "imports": [
         "context",
         "encoding/json",
@@ -39017,92 +39023,92 @@
         {
           "name": "HandleListSupplyRequests",
           "kind": "function",
-          "line": 281
+          "line": 289
         },
         {
           "name": "sql",
           "kind": "var",
-          "line": 293
+          "line": 301
         },
         {
           "name": "results",
           "kind": "var",
-          "line": 342
+          "line": 350
         },
         {
           "name": "resp",
           "kind": "var",
-          "line": 354
+          "line": 362
         },
         {
           "name": "reqDelivery",
           "kind": "var",
-          "line": 355
+          "line": 363
         },
         {
           "name": "notes",
           "kind": "var",
-          "line": 356
+          "line": 364
         },
         {
           "name": "updatedAt",
           "kind": "var",
-          "line": 357
+          "line": 365
         },
         {
           "name": "HandleSupplyRequestDetail",
           "kind": "function",
-          "line": 391
+          "line": 399
         },
         {
           "name": "resp",
           "kind": "var",
-          "line": 421
+          "line": 429
         },
         {
           "name": "reqDelivery",
           "kind": "var",
-          "line": 422
+          "line": 430
         },
         {
           "name": "notes",
           "kind": "var",
-          "line": 423
+          "line": 431
         },
         {
           "name": "updatedAt",
           "kind": "var",
-          "line": 424
+          "line": 432
         },
         {
           "name": "item",
           "kind": "var",
-          "line": 465
+          "line": 473
         },
         {
           "name": "HandleSupplyRequestTransition",
           "kind": "function",
-          "line": 480
+          "line": 488
         },
         {
           "name": "req",
           "kind": "var",
-          "line": 499
+          "line": 507
         },
         {
           "name": "warehouseID",
           "kind": "var",
-          "line": 521
+          "line": 529
         },
         {
           "name": "currentState",
           "kind": "var",
-          "line": 529
+          "line": 537
         },
         {
           "name": "supplyRequestEventTypeForState",
           "kind": "function",
-          "line": 596
+          "line": 612
         }
       ]
     },
@@ -39563,7 +39569,7 @@
     {
       "path": "apps/backend-go/ws/events.go",
       "language": "go",
-      "lineCount": 210,
+      "lineCount": 212,
       "imports": [
         "time"
       ],
@@ -39571,29 +39577,29 @@
         {
           "name": "DeltaEvent",
           "kind": "type",
-          "line": 137
+          "line": 139
         },
         {
           "name": "NewDelta",
           "kind": "function",
-          "line": 145
+          "line": 147
         },
         {
           "name": "ShortKeyMap",
           "kind": "var",
-          "line": 184
+          "line": 186
         },
         {
           "name": "CompressDelta",
           "kind": "function",
-          "line": 199
+          "line": 201
         }
       ]
     },
     {
       "path": "apps/backend-go/ws/factory_hub.go",
       "language": "go",
-      "lineCount": 217,
+      "lineCount": 247,
       "imports": [
         "backend-go/auth",
         "backend-go/cache",
@@ -39644,17 +39650,83 @@
         {
           "name": "BroadcastTransferUpdate",
           "kind": "function",
-          "line": 170
+          "line": 171
         },
         {
           "name": "BroadcastManifestUpdate",
           "kind": "function",
-          "line": 186
+          "line": 188
+        },
+        {
+          "name": "BroadcastOutboxFailure",
+          "kind": "function",
+          "line": 206
         },
         {
           "name": "Close",
           "kind": "function",
-          "line": 201
+          "line": 231
+        }
+      ]
+    },
+    {
+      "path": "apps/backend-go/ws/factory_hub_integration_test.go",
+      "language": "go",
+      "lineCount": 168,
+      "imports": [
+        "backend-go/auth",
+        "context",
+        "net",
+        "net/http",
+        "net/http/httptest",
+        "testing",
+        "time"
+      ],
+      "definitions": [
+        {
+          "name": "newFactoryHubServer",
+          "kind": "function",
+          "line": 13
+        },
+        {
+          "name": "waitFactoryConnected",
+          "kind": "function",
+          "line": 26
+        },
+        {
+          "name": "TestFactoryHub_BroadcastTransferUpdateIncludesTraceID",
+          "kind": "function",
+          "line": 45
+        },
+        {
+          "name": "event",
+          "kind": "var",
+          "line": 67
+        },
+        {
+          "name": "TestFactoryHub_PushToFactoryRespectsScopeIsolation",
+          "kind": "function",
+          "line": 86
+        },
+        {
+          "name": "gotA",
+          "kind": "var",
+          "line": 103
+        },
+        {
+          "name": "gotB",
+          "kind": "var",
+          "line": 112
+        },
+        {
+          "name": "TestFactoryHub_BroadcastOutboxFailureToAllFactories",
+          "kind": "function",
+          "line": 122
+        },
+        {
+          "name": "event",
+          "kind": "var",
+          "line": 150
         }
       ]
     },
@@ -40873,7 +40945,7 @@
     {
       "path": "apps/factory-portal/lib/auth.ts",
       "language": "ts",
-      "lineCount": 239,
+      "lineCount": 240,
       "imports": [
         "react",
         "./bridge",
@@ -40883,87 +40955,87 @@
         {
           "name": "FactoryLiveEventType",
           "kind": "type",
-          "line": 13
+          "line": 14
         },
         {
           "name": "FactoryLiveEvent",
           "kind": "interface",
-          "line": 15
+          "line": 16
         },
         {
           "name": "FactorySocketStatus",
           "kind": "type",
-          "line": 20
+          "line": 21
         },
         {
           "name": "readTokenFromCookie",
           "kind": "function",
-          "line": 22
+          "line": 23
         },
         {
           "name": "useToken",
           "kind": "function",
-          "line": 29
+          "line": 30
         },
         {
           "name": "getFactoryToken",
           "kind": "function",
-          "line": 37
+          "line": 38
         },
         {
           "name": "tryRefreshToken",
           "kind": "function",
-          "line": 58
+          "line": 59
         },
         {
           "name": "apiFetch",
           "kind": "function",
-          "line": 81
+          "line": 82
         },
         {
           "name": "toWSBaseUrl",
           "kind": "function",
-          "line": 119
+          "line": 120
         },
         {
           "name": "readFactorySocketToken",
           "kind": "function",
-          "line": 123
+          "line": 124
         },
         {
           "name": "isFactoryEventType",
           "kind": "function",
-          "line": 131
+          "line": 132
         },
         {
           "name": "parseFactoryLiveEvent",
           "kind": "function",
-          "line": 135
+          "line": 136
         },
         {
           "name": "subscribeFactoryWS",
           "kind": "function",
-          "line": 151
+          "line": 152
         },
         {
           "name": "clearReconnect",
           "kind": "variable",
-          "line": 160
+          "line": 161
         },
         {
           "name": "openSocket",
           "kind": "variable",
-          "line": 167
+          "line": 168
         },
         {
           "name": "handleOnline",
           "kind": "variable",
-          "line": 213
+          "line": 214
         },
         {
           "name": "handleOffline",
           "kind": "variable",
-          "line": 218
+          "line": 219
         }
       ]
     },
@@ -43917,6 +43989,39 @@
       ]
     },
     {
+      "path": "packages/types/factory.ts",
+      "language": "ts",
+      "lineCount": 57,
+      "imports": [],
+      "definitions": [
+        {
+          "name": "FactorySupplyRequestUpdateEvent",
+          "kind": "interface",
+          "line": 1
+        },
+        {
+          "name": "FactoryTransferUpdateEvent",
+          "kind": "interface",
+          "line": 13
+        },
+        {
+          "name": "FactoryManifestUpdateEvent",
+          "kind": "interface",
+          "line": 27
+        },
+        {
+          "name": "FactoryOutboxFailureEvent",
+          "kind": "interface",
+          "line": 40
+        },
+        {
+          "name": "FactoryLiveEvent",
+          "kind": "type",
+          "line": 52
+        }
+      ]
+    },
+    {
       "path": "packages/types/fleet.ts",
       "language": "ts",
       "lineCount": 116,
@@ -43990,7 +44095,7 @@
     {
       "path": "packages/types/index.ts",
       "language": "ts",
-      "lineCount": 17,
+      "lineCount": 18,
       "imports": [],
       "definitions": []
     },
@@ -44400,100 +44505,101 @@
     {
       "path": "packages/types/ws-events.ts",
       "language": "ts",
-      "lineCount": 221,
+      "lineCount": 223,
       "imports": [
-        "./order"
+        "./order",
+        "./factory"
       ],
       "definitions": [
         {
           "name": "WSEvent",
           "kind": "type",
-          "line": 10
+          "line": 11
         },
         {
           "name": "OrderStateChangedEvent",
           "kind": "interface",
-          "line": 30
+          "line": 32
         },
         {
           "name": "DriverApproachingEvent",
           "kind": "interface",
-          "line": 40
+          "line": 42
         },
         {
           "name": "ETAUpdatedEvent",
           "kind": "interface",
-          "line": 51
+          "line": 53
         },
         {
           "name": "PaymentRequiredWSEvent",
           "kind": "interface",
-          "line": 60
+          "line": 62
         },
         {
           "name": "CashCollectionRequiredEvent",
           "kind": "interface",
-          "line": 74
+          "line": 76
         },
         {
           "name": "OrderCompletedWSEvent",
           "kind": "interface",
-          "line": 84
+          "line": 86
         },
         {
           "name": "PaymentSettledWSEvent",
           "kind": "interface",
-          "line": 93
+          "line": 95
         },
         {
           "name": "OrderAmendedEvent",
           "kind": "interface",
-          "line": 102
+          "line": 104
         },
         {
           "name": "PaymentFailedWSEvent",
           "kind": "interface",
-          "line": 113
+          "line": 115
         },
         {
           "name": "PaymentExpiredEvent",
           "kind": "interface",
-          "line": 123
+          "line": 125
         },
         {
           "name": "FleetDispatchedWSEvent",
           "kind": "interface",
-          "line": 134
+          "line": 136
         },
         {
           "name": "DispatchLockAcquiredWSEvent",
           "kind": "interface",
-          "line": 147
+          "line": 149
         },
         {
           "name": "DispatchLockReleasedWSEvent",
           "kind": "interface",
-          "line": 158
+          "line": 160
         },
         {
           "name": "FreezeLockAcquiredWSEvent",
           "kind": "interface",
-          "line": 172
+          "line": 174
         },
         {
           "name": "FreezeLockReleasedWSEvent",
           "kind": "interface",
-          "line": 183
+          "line": 185
         },
         {
           "name": "DriverCreatedWSEvent",
           "kind": "interface",
-          "line": 195
+          "line": 197
         },
         {
           "name": "VehicleCreatedWSEvent",
           "kind": "interface",
-          "line": 208
+          "line": 210
         }
       ]
     },
@@ -51001,7 +51107,7 @@
       },
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 22,
+        "line": 23,
         "kind": "function",
         "language": "ts"
       },
@@ -51021,7 +51127,7 @@
       },
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 29,
+        "line": 30,
         "kind": "function",
         "language": "ts"
       },
@@ -51063,7 +51169,7 @@
       },
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 58,
+        "line": 59,
         "kind": "function",
         "language": "ts"
       },
@@ -51105,7 +51211,7 @@
       },
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 81,
+        "line": 82,
         "kind": "function",
         "language": "ts"
       },
@@ -51801,7 +51907,7 @@
       },
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 213,
+        "line": 214,
         "kind": "variable",
         "language": "ts"
       },
@@ -53412,6 +53518,18 @@
         "line": 290,
         "kind": "var",
         "language": "go"
+      },
+      {
+        "path": "apps/backend-go/ws/factory_hub_integration_test.go",
+        "line": 67,
+        "kind": "var",
+        "language": "go"
+      },
+      {
+        "path": "apps/backend-go/ws/factory_hub_integration_test.go",
+        "line": 150,
+        "kind": "var",
+        "language": "go"
       }
     ],
     "runPredictionEngineV3": [
@@ -54183,13 +54301,13 @@
       },
       {
         "path": "apps/backend-go/factory/override.go",
-        "line": 271,
+        "line": 272,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/override.go",
-        "line": 406,
+        "line": 408,
         "kind": "var",
         "language": "go"
       },
@@ -54213,13 +54331,13 @@
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 681,
+        "line": 682,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 1141,
+        "line": 1145,
         "kind": "var",
         "language": "go"
       },
@@ -54927,7 +55045,7 @@
       },
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 499,
+        "line": 507,
         "kind": "var",
         "language": "go"
       },
@@ -54983,13 +55101,13 @@
       },
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 350,
+        "line": 351,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 422,
+        "line": 423,
         "kind": "var",
         "language": "go"
       },
@@ -55143,7 +55261,7 @@
       },
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 487,
+        "line": 488,
         "kind": "function",
         "language": "go"
       },
@@ -55327,13 +55445,13 @@
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 900,
+        "line": 902,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 1039,
+        "line": 1042,
         "kind": "var",
         "language": "go"
       },
@@ -55541,13 +55659,13 @@
       },
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 95,
+        "line": 96,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 276,
+        "line": 277,
         "kind": "var",
         "language": "go"
       },
@@ -56357,7 +56475,7 @@
       },
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 231,
+        "line": 241,
         "kind": "var",
         "language": "go"
       },
@@ -57025,13 +57143,13 @@
       },
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 94,
+        "line": 95,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 275,
+        "line": 276,
         "kind": "var",
         "language": "go"
       },
@@ -57867,7 +57985,7 @@
       },
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 375,
+        "line": 376,
         "kind": "var",
         "language": "go"
       },
@@ -58717,7 +58835,7 @@
       },
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 431,
+        "line": 432,
         "kind": "var",
         "language": "go"
       },
@@ -59380,7 +59498,7 @@
         "language": "go"
       }
     ],
-    "TestExtractToken_WSQueryParamRejectedOnUnknownEndpoint": [
+    "TestExtractToken_WSQueryParamFactoryEndpoint": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
         "line": 140,
@@ -59388,7 +59506,7 @@
         "language": "go"
       }
     ],
-    "TestExtractToken_Empty": [
+    "TestExtractToken_WSQueryParamRejectedOnUnknownEndpoint": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
         "line": 150,
@@ -59396,10 +59514,18 @@
         "language": "go"
       }
     ],
+    "TestExtractToken_Empty": [
+      {
+        "path": "apps/backend-go/auth/middleware_test.go",
+        "line": 160,
+        "kind": "function",
+        "language": "go"
+      }
+    ],
     "TestExtractToken_BearerPriority": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 158,
+        "line": 168,
         "kind": "function",
         "language": "go"
       }
@@ -59407,7 +59533,7 @@
     "TestIsWebSocketUpgrade_True": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 170,
+        "line": 180,
         "kind": "function",
         "language": "go"
       }
@@ -59415,7 +59541,7 @@
     "TestIsWebSocketUpgrade_CaseInsensitive": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 179,
+        "line": 189,
         "kind": "function",
         "language": "go"
       }
@@ -59423,7 +59549,7 @@
     "TestIsWebSocketUpgrade_False": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 188,
+        "line": 198,
         "kind": "function",
         "language": "go"
       }
@@ -59431,7 +59557,7 @@
     "TestTransportKind_HTTP": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 197,
+        "line": 207,
         "kind": "function",
         "language": "go"
       }
@@ -59439,7 +59565,7 @@
     "TestTransportKind_WebSocket": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 204,
+        "line": 214,
         "kind": "function",
         "language": "go"
       }
@@ -59447,7 +59573,7 @@
     "TestRequireRole_ValidToken": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 215,
+        "line": 225,
         "kind": "function",
         "language": "go"
       }
@@ -59455,7 +59581,7 @@
     "TestRequireRole_WrongRole": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 238,
+        "line": 248,
         "kind": "function",
         "language": "go"
       }
@@ -59463,7 +59589,7 @@
     "TestRequireRole_MissingToken": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 254,
+        "line": 264,
         "kind": "function",
         "language": "go"
       }
@@ -59471,7 +59597,7 @@
     "TestRequireRole_InvalidToken": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 268,
+        "line": 278,
         "kind": "function",
         "language": "go"
       }
@@ -59479,7 +59605,7 @@
     "TestRequireRole_ExpiredToken": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 283,
+        "line": 293,
         "kind": "function",
         "language": "go"
       }
@@ -59487,7 +59613,7 @@
     "TestRequireRole_OptionsPassthrough": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 308,
+        "line": 318,
         "kind": "function",
         "language": "go"
       }
@@ -59495,7 +59621,7 @@
     "TestRequireRole_InternalAPIKey": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 327,
+        "line": 337,
         "kind": "function",
         "language": "go"
       }
@@ -59503,7 +59629,7 @@
     "TestRequireRole_WrongInternalKey": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 349,
+        "line": 359,
         "kind": "function",
         "language": "go"
       }
@@ -59511,7 +59637,7 @@
     "TestRequireRole_MultipleRoles": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 364,
+        "line": 374,
         "kind": "function",
         "language": "go"
       }
@@ -59519,7 +59645,7 @@
     "TestRequireRole_TamperedPayload": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 380,
+        "line": 390,
         "kind": "function",
         "language": "go"
       }
@@ -59527,7 +59653,7 @@
     "TestClaimsContextRoundTrip": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 405,
+        "line": 415,
         "kind": "function",
         "language": "go"
       }
@@ -59535,7 +59661,7 @@
     "TestRequireRoleWithGrace_AllowsExpiredDriverWithinWindow": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 414,
+        "line": 424,
         "kind": "function",
         "language": "go"
       }
@@ -59543,7 +59669,7 @@
     "TestRequireRoleWithGrace_RejectsExpiredDriverBeyondWindow": [
       {
         "path": "apps/backend-go/auth/middleware_test.go",
-        "line": 450,
+        "line": 460,
         "kind": "function",
         "language": "go"
       }
@@ -59931,7 +60057,7 @@
       },
       {
         "path": "apps/backend-go/ws/factory_hub.go",
-        "line": 201,
+        "line": 231,
         "kind": "function",
         "language": "go"
       },
@@ -61797,7 +61923,7 @@
       },
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 359,
+        "line": 360,
         "kind": "var",
         "language": "go"
       },
@@ -63227,7 +63353,7 @@
       },
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 389,
+        "line": 390,
         "kind": "var",
         "language": "go"
       },
@@ -63831,13 +63957,13 @@
       },
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 357,
+        "line": 365,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 424,
+        "line": 432,
         "kind": "var",
         "language": "go"
       }
@@ -63859,7 +63985,7 @@
       },
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 403,
+        "line": 404,
         "kind": "var",
         "language": "go"
       },
@@ -63889,19 +64015,19 @@
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 462,
+        "line": 463,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 727,
+        "line": 728,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 1188,
+        "line": 1192,
         "kind": "var",
         "language": "go"
       },
@@ -64571,7 +64697,7 @@
       },
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 477,
+        "line": 478,
         "kind": "var",
         "language": "go"
       },
@@ -64687,13 +64813,13 @@
       },
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 354,
+        "line": 362,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 421,
+        "line": 429,
         "kind": "var",
         "language": "go"
       }
@@ -65661,7 +65787,7 @@
       },
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 342,
+        "line": 350,
         "kind": "var",
         "language": "go"
       }
@@ -65669,7 +65795,7 @@
     "fetchApprovedTransfers": [
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 337,
+        "line": 338,
         "kind": "function",
         "language": "go"
       }
@@ -65677,7 +65803,7 @@
     "getFactoryCoords": [
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 369,
+        "line": 370,
         "kind": "function",
         "language": "go"
       }
@@ -65685,7 +65811,7 @@
     "resolveFactorySupplier": [
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 383,
+        "line": 384,
         "kind": "function",
         "language": "go"
       }
@@ -65693,7 +65819,7 @@
     "fetchFactoryVehicles": [
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 396,
+        "line": 397,
         "kind": "function",
         "language": "go"
       }
@@ -65701,7 +65827,7 @@
     "nearestNeighborSort": [
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 443,
+        "line": 444,
         "kind": "function",
         "language": "go"
       },
@@ -65721,7 +65847,7 @@
     "routeZoneLabel": [
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 473,
+        "line": 474,
         "kind": "function",
         "language": "go"
       }
@@ -65729,7 +65855,7 @@
     "R": [
       {
         "path": "apps/backend-go/factory/batcher.go",
-        "line": 488,
+        "line": 489,
         "kind": "const",
         "language": "go"
       },
@@ -66231,13 +66357,13 @@
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 863,
+        "line": 865,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 1246,
+        "line": 1250,
         "kind": "var",
         "language": "go"
       },
@@ -66485,7 +66611,7 @@
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 1058,
+        "line": 1061,
         "kind": "var",
         "language": "go"
       },
@@ -66871,7 +66997,7 @@
     "ManifestResponse": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 21,
+        "line": 22,
         "kind": "type",
         "language": "go"
       }
@@ -66879,7 +67005,7 @@
     "ManifestTransferSummary": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 41,
+        "line": 42,
         "kind": "type",
         "language": "go"
       }
@@ -66887,7 +67013,7 @@
     "HandleFactoryManifests": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 50,
+        "line": 51,
         "kind": "function",
         "language": "go"
       }
@@ -66895,7 +67021,7 @@
     "attachManifestTransfers": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 123,
+        "line": 124,
         "kind": "function",
         "language": "go"
       }
@@ -66903,7 +67029,7 @@
     "transferLocation": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 145,
+        "line": 146,
         "kind": "type",
         "language": "go"
       }
@@ -66911,7 +67037,7 @@
     "manifestID": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 161,
+        "line": 162,
         "kind": "var",
         "language": "go"
       },
@@ -66923,7 +67049,7 @@
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 1011,
+        "line": 1014,
         "kind": "var",
         "language": "go"
       },
@@ -66937,7 +67063,7 @@
     "transfer": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 162,
+        "line": 163,
         "kind": "var",
         "language": "go"
       }
@@ -66945,13 +67071,13 @@
     "transferID": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 204,
+        "line": 205,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 498,
+        "line": 499,
         "kind": "var",
         "language": "go"
       }
@@ -66959,7 +67085,7 @@
     "quantity": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 205,
+        "line": 206,
         "kind": "var",
         "language": "go"
       },
@@ -66985,7 +67111,7 @@
     "productName": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 206,
+        "line": 207,
         "kind": "var",
         "language": "go"
       }
@@ -66993,7 +67119,7 @@
     "shortRef": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 231,
+        "line": 232,
         "kind": "function",
         "language": "go"
       }
@@ -67001,7 +67127,7 @@
     "HandleFactoryManifestDetail": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 240,
+        "line": 241,
         "kind": "function",
         "language": "go"
       }
@@ -67009,7 +67135,7 @@
     "LinkedTransfer": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 295,
+        "line": 296,
         "kind": "type",
         "language": "go"
       }
@@ -67017,7 +67143,7 @@
     "lt": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 311,
+        "line": 312,
         "kind": "var",
         "language": "go"
       }
@@ -67025,7 +67151,7 @@
     "HandleFactoryManifestTransition": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 329,
+        "line": 330,
         "kind": "function",
         "language": "go"
       }
@@ -67033,25 +67159,25 @@
     "currentState": [
       {
         "path": "apps/backend-go/factory/manifests.go",
-        "line": 379,
+        "line": 380,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 737,
+        "line": 738,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 862,
+        "line": 864,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 1010,
+        "line": 1013,
         "kind": "var",
         "language": "go"
       },
@@ -67063,7 +67189,7 @@
       },
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 529,
+        "line": 537,
         "kind": "var",
         "language": "go"
       }
@@ -67333,7 +67459,7 @@
       },
       {
         "path": "apps/backend-go/factory/override.go",
-        "line": 315,
+        "line": 316,
         "kind": "var",
         "language": "go"
       }
@@ -67341,7 +67467,7 @@
     "HandleCancelManifestTransfer": [
       {
         "path": "apps/backend-go/factory/override.go",
-        "line": 253,
+        "line": 254,
         "kind": "function",
         "language": "go"
       }
@@ -67349,13 +67475,13 @@
     "mFactoryID": [
       {
         "path": "apps/backend-go/factory/override.go",
-        "line": 294,
+        "line": 295,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/override.go",
-        "line": 433,
+        "line": 435,
         "kind": "var",
         "language": "go"
       }
@@ -67363,7 +67489,7 @@
     "mVolume": [
       {
         "path": "apps/backend-go/factory/override.go",
-        "line": 295,
+        "line": 296,
         "kind": "var",
         "language": "go"
       }
@@ -67371,7 +67497,7 @@
     "tManifest": [
       {
         "path": "apps/backend-go/factory/override.go",
-        "line": 313,
+        "line": 314,
         "kind": "var",
         "language": "go"
       }
@@ -67379,7 +67505,7 @@
     "tVolume": [
       {
         "path": "apps/backend-go/factory/override.go",
-        "line": 314,
+        "line": 315,
         "kind": "var",
         "language": "go"
       }
@@ -67387,7 +67513,7 @@
     "HandleCancelManifest": [
       {
         "path": "apps/backend-go/factory/override.go",
-        "line": 388,
+        "line": 390,
         "kind": "function",
         "language": "go"
       }
@@ -67395,7 +67521,7 @@
     "transferIDs": [
       {
         "path": "apps/backend-go/factory/override.go",
-        "line": 419,
+        "line": 421,
         "kind": "var",
         "language": "go"
       }
@@ -67403,7 +67529,7 @@
     "tid": [
       {
         "path": "apps/backend-go/factory/override.go",
-        "line": 461,
+        "line": 463,
         "kind": "var",
         "language": "go"
       }
@@ -67471,7 +67597,7 @@
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 427,
+        "line": 428,
         "kind": "var",
         "language": "go"
       },
@@ -67531,7 +67657,7 @@
       },
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 521,
+        "line": 529,
         "kind": "var",
         "language": "go"
       }
@@ -67885,7 +68011,7 @@
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 1049,
+        "line": 1052,
         "kind": "var",
         "language": "go"
       },
@@ -67945,7 +68071,7 @@
       },
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 465,
+        "line": 473,
         "kind": "var",
         "language": "go"
       }
@@ -68309,7 +68435,7 @@
     "buildTransferResponse": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 294,
+        "line": 295,
         "kind": "function",
         "language": "go"
       }
@@ -68317,7 +68443,7 @@
     "listTransferHeaders": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 319,
+        "line": 320,
         "kind": "function",
         "language": "go"
       }
@@ -68325,13 +68451,13 @@
     "header": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 348,
+        "line": 349,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 387,
+        "line": 388,
         "kind": "var",
         "language": "go"
       }
@@ -68339,7 +68465,7 @@
     "loadTransferHeader": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 369,
+        "line": 370,
         "kind": "function",
         "language": "go"
       }
@@ -68347,7 +68473,7 @@
     "fetchWarehouseNames": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 406,
+        "line": 407,
         "kind": "function",
         "language": "go"
       }
@@ -68355,7 +68481,7 @@
     "fetchProductSuppliersBySku": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 437,
+        "line": 438,
         "kind": "function",
         "language": "go"
       }
@@ -68363,7 +68489,7 @@
     "skuID": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 461,
+        "line": 462,
         "kind": "var",
         "language": "go"
       },
@@ -68395,7 +68521,7 @@
     "fetchTransferItemTotals": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 474,
+        "line": 475,
         "kind": "function",
         "language": "go"
       }
@@ -68403,13 +68529,13 @@
     "totalItems": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 499,
+        "line": 500,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 593,
+        "line": 594,
         "kind": "var",
         "language": "go"
       }
@@ -68417,7 +68543,7 @@
     "buildTransferListResponses": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 511,
+        "line": 512,
         "kind": "function",
         "language": "go"
       }
@@ -68425,7 +68551,7 @@
     "fetchProductNames": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 545,
+        "line": 546,
         "kind": "function",
         "language": "go"
       }
@@ -68433,7 +68559,7 @@
     "productID": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 566,
+        "line": 567,
         "kind": "var",
         "language": "go"
       },
@@ -68465,7 +68591,7 @@
     "loadTransferItems": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 576,
+        "line": 577,
         "kind": "function",
         "language": "go"
       }
@@ -68473,7 +68599,7 @@
     "itemRow": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 584,
+        "line": 585,
         "kind": "type",
         "language": "go"
       }
@@ -68481,7 +68607,7 @@
     "row": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 604,
+        "line": 605,
         "kind": "var",
         "language": "go"
       }
@@ -68489,7 +68615,7 @@
     "loadTransferResponse": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 638,
+        "line": 639,
         "kind": "function",
         "language": "go"
       }
@@ -68497,7 +68623,7 @@
     "HandleTransferTransition": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 664,
+        "line": 665,
         "kind": "function",
         "language": "go"
       }
@@ -68505,7 +68631,7 @@
     "HandleApproveTransfer": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 831,
+        "line": 833,
         "kind": "function",
         "language": "go"
       }
@@ -68513,7 +68639,7 @@
     "manifestIDs": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 898,
+        "line": 900,
         "kind": "var",
         "language": "go"
       }
@@ -68521,7 +68647,7 @@
     "HandleWarehouseReceiveTransfer": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 990,
+        "line": 993,
         "kind": "function",
         "language": "go"
       }
@@ -68529,7 +68655,7 @@
     "HandleCreateTransfer": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 1129,
+        "line": 1133,
         "kind": "function",
         "language": "go"
       }
@@ -68537,7 +68663,7 @@
     "warehouseSupplierID": [
       {
         "path": "apps/backend-go/factory/transfers.go",
-        "line": 1204,
+        "line": 1208,
         "kind": "var",
         "language": "go"
       }
@@ -73091,7 +73217,7 @@
       },
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 293,
+        "line": 301,
         "kind": "var",
         "language": "go"
       }
@@ -80759,7 +80885,7 @@
       },
       {
         "path": "packages/types/ws-events.ts",
-        "line": 40,
+        "line": 42,
         "kind": "interface",
         "language": "ts"
       }
@@ -87161,13 +87287,13 @@
       },
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 356,
+        "line": 364,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 423,
+        "line": 431,
         "kind": "var",
         "language": "go"
       }
@@ -92029,7 +92155,7 @@
     "HandleListSupplyRequests": [
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 281,
+        "line": 289,
         "kind": "function",
         "language": "go"
       }
@@ -92037,13 +92163,13 @@
     "reqDelivery": [
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 355,
+        "line": 363,
         "kind": "var",
         "language": "go"
       },
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 422,
+        "line": 430,
         "kind": "var",
         "language": "go"
       }
@@ -92051,7 +92177,7 @@
     "HandleSupplyRequestDetail": [
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 391,
+        "line": 399,
         "kind": "function",
         "language": "go"
       }
@@ -92059,7 +92185,7 @@
     "HandleSupplyRequestTransition": [
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 480,
+        "line": 488,
         "kind": "function",
         "language": "go"
       }
@@ -92067,7 +92193,7 @@
     "supplyRequestEventTypeForState": [
       {
         "path": "apps/backend-go/warehouse/supply_requests.go",
-        "line": 596,
+        "line": 612,
         "kind": "function",
         "language": "go"
       }
@@ -92491,7 +92617,7 @@
     "DeltaEvent": [
       {
         "path": "apps/backend-go/ws/events.go",
-        "line": 137,
+        "line": 139,
         "kind": "type",
         "language": "go"
       }
@@ -92499,7 +92625,7 @@
     "NewDelta": [
       {
         "path": "apps/backend-go/ws/events.go",
-        "line": 145,
+        "line": 147,
         "kind": "function",
         "language": "go"
       }
@@ -92507,7 +92633,7 @@
     "ShortKeyMap": [
       {
         "path": "apps/backend-go/ws/events.go",
-        "line": 184,
+        "line": 186,
         "kind": "var",
         "language": "go"
       }
@@ -92515,7 +92641,7 @@
     "CompressDelta": [
       {
         "path": "apps/backend-go/ws/events.go",
-        "line": 199,
+        "line": 201,
         "kind": "function",
         "language": "go"
       }
@@ -92569,7 +92695,7 @@
     "BroadcastTransferUpdate": [
       {
         "path": "apps/backend-go/ws/factory_hub.go",
-        "line": 170,
+        "line": 171,
         "kind": "function",
         "language": "go"
       }
@@ -92577,7 +92703,77 @@
     "BroadcastManifestUpdate": [
       {
         "path": "apps/backend-go/ws/factory_hub.go",
-        "line": 186,
+        "line": 188,
+        "kind": "function",
+        "language": "go"
+      }
+    ],
+    "BroadcastOutboxFailure": [
+      {
+        "path": "apps/backend-go/ws/factory_hub.go",
+        "line": 206,
+        "kind": "function",
+        "language": "go"
+      },
+      {
+        "path": "apps/backend-go/ws/warehouse_hub.go",
+        "line": 184,
+        "kind": "function",
+        "language": "go"
+      }
+    ],
+    "newFactoryHubServer": [
+      {
+        "path": "apps/backend-go/ws/factory_hub_integration_test.go",
+        "line": 13,
+        "kind": "function",
+        "language": "go"
+      }
+    ],
+    "waitFactoryConnected": [
+      {
+        "path": "apps/backend-go/ws/factory_hub_integration_test.go",
+        "line": 26,
+        "kind": "function",
+        "language": "go"
+      }
+    ],
+    "TestFactoryHub_BroadcastTransferUpdateIncludesTraceID": [
+      {
+        "path": "apps/backend-go/ws/factory_hub_integration_test.go",
+        "line": 45,
+        "kind": "function",
+        "language": "go"
+      }
+    ],
+    "TestFactoryHub_PushToFactoryRespectsScopeIsolation": [
+      {
+        "path": "apps/backend-go/ws/factory_hub_integration_test.go",
+        "line": 86,
+        "kind": "function",
+        "language": "go"
+      }
+    ],
+    "gotA": [
+      {
+        "path": "apps/backend-go/ws/factory_hub_integration_test.go",
+        "line": 103,
+        "kind": "var",
+        "language": "go"
+      }
+    ],
+    "gotB": [
+      {
+        "path": "apps/backend-go/ws/factory_hub_integration_test.go",
+        "line": 112,
+        "kind": "var",
+        "language": "go"
+      }
+    ],
+    "TestFactoryHub_BroadcastOutboxFailureToAllFactories": [
+      {
+        "path": "apps/backend-go/ws/factory_hub_integration_test.go",
+        "line": 122,
         "kind": "function",
         "language": "go"
       }
@@ -92982,14 +93178,6 @@
         "language": "go"
       }
     ],
-    "BroadcastOutboxFailure": [
-      {
-        "path": "apps/backend-go/ws/warehouse_hub.go",
-        "line": 184,
-        "kind": "function",
-        "language": "go"
-      }
-    ],
     "TestCheckWSOrigin_EmptyOrigin_Allowed": [
       {
         "path": "apps/backend-go/ws/ws_test.go",
@@ -93219,7 +93407,7 @@
       },
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 218,
+        "line": 219,
         "kind": "variable",
         "language": "ts"
       },
@@ -93351,7 +93539,7 @@
     "FactoryLiveEventType": [
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 13,
+        "line": 14,
         "kind": "type",
         "language": "ts"
       }
@@ -93359,15 +93547,21 @@
     "FactoryLiveEvent": [
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 15,
+        "line": 16,
         "kind": "interface",
+        "language": "ts"
+      },
+      {
+        "path": "packages/types/factory.ts",
+        "line": 52,
+        "kind": "type",
         "language": "ts"
       }
     ],
     "FactorySocketStatus": [
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 20,
+        "line": 21,
         "kind": "type",
         "language": "ts"
       }
@@ -93375,7 +93569,7 @@
     "getFactoryToken": [
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 37,
+        "line": 38,
         "kind": "function",
         "language": "ts"
       }
@@ -93383,7 +93577,7 @@
     "toWSBaseUrl": [
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 119,
+        "line": 120,
         "kind": "function",
         "language": "ts"
       }
@@ -93391,7 +93585,7 @@
     "readFactorySocketToken": [
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 123,
+        "line": 124,
         "kind": "function",
         "language": "ts"
       }
@@ -93399,7 +93593,7 @@
     "isFactoryEventType": [
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 131,
+        "line": 132,
         "kind": "function",
         "language": "ts"
       }
@@ -93407,7 +93601,7 @@
     "parseFactoryLiveEvent": [
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 135,
+        "line": 136,
         "kind": "function",
         "language": "ts"
       }
@@ -93415,7 +93609,7 @@
     "subscribeFactoryWS": [
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 151,
+        "line": 152,
         "kind": "function",
         "language": "ts"
       }
@@ -93423,7 +93617,7 @@
     "clearReconnect": [
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 160,
+        "line": 161,
         "kind": "variable",
         "language": "ts"
       },
@@ -93437,7 +93631,7 @@
     "openSocket": [
       {
         "path": "apps/factory-portal/lib/auth.ts",
-        "line": 167,
+        "line": 168,
         "kind": "variable",
         "language": "ts"
       },
@@ -94896,6 +95090,38 @@
         "language": "ts"
       }
     ],
+    "FactorySupplyRequestUpdateEvent": [
+      {
+        "path": "packages/types/factory.ts",
+        "line": 1,
+        "kind": "interface",
+        "language": "ts"
+      }
+    ],
+    "FactoryTransferUpdateEvent": [
+      {
+        "path": "packages/types/factory.ts",
+        "line": 13,
+        "kind": "interface",
+        "language": "ts"
+      }
+    ],
+    "FactoryManifestUpdateEvent": [
+      {
+        "path": "packages/types/factory.ts",
+        "line": 27,
+        "kind": "interface",
+        "language": "ts"
+      }
+    ],
+    "FactoryOutboxFailureEvent": [
+      {
+        "path": "packages/types/factory.ts",
+        "line": 40,
+        "kind": "interface",
+        "language": "ts"
+      }
+    ],
     "TruckAssignment": [
       {
         "path": "packages/types/fleet.ts",
@@ -95291,7 +95517,7 @@
     "WSEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 10,
+        "line": 11,
         "kind": "type",
         "language": "ts"
       }
@@ -95299,7 +95525,7 @@
     "OrderStateChangedEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 30,
+        "line": 32,
         "kind": "interface",
         "language": "ts"
       }
@@ -95307,7 +95533,7 @@
     "ETAUpdatedEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 51,
+        "line": 53,
         "kind": "interface",
         "language": "ts"
       }
@@ -95315,7 +95541,7 @@
     "PaymentRequiredWSEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 60,
+        "line": 62,
         "kind": "interface",
         "language": "ts"
       }
@@ -95323,7 +95549,7 @@
     "CashCollectionRequiredEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 74,
+        "line": 76,
         "kind": "interface",
         "language": "ts"
       }
@@ -95331,7 +95557,7 @@
     "OrderCompletedWSEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 84,
+        "line": 86,
         "kind": "interface",
         "language": "ts"
       }
@@ -95339,7 +95565,7 @@
     "PaymentSettledWSEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 93,
+        "line": 95,
         "kind": "interface",
         "language": "ts"
       }
@@ -95347,7 +95573,7 @@
     "OrderAmendedEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 102,
+        "line": 104,
         "kind": "interface",
         "language": "ts"
       }
@@ -95355,7 +95581,7 @@
     "PaymentFailedWSEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 113,
+        "line": 115,
         "kind": "interface",
         "language": "ts"
       }
@@ -95363,7 +95589,7 @@
     "PaymentExpiredEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 123,
+        "line": 125,
         "kind": "interface",
         "language": "ts"
       }
@@ -95371,7 +95597,7 @@
     "FleetDispatchedWSEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 134,
+        "line": 136,
         "kind": "interface",
         "language": "ts"
       }
@@ -95379,7 +95605,7 @@
     "DispatchLockAcquiredWSEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 147,
+        "line": 149,
         "kind": "interface",
         "language": "ts"
       }
@@ -95387,7 +95613,7 @@
     "DispatchLockReleasedWSEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 158,
+        "line": 160,
         "kind": "interface",
         "language": "ts"
       }
@@ -95395,7 +95621,7 @@
     "FreezeLockAcquiredWSEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 172,
+        "line": 174,
         "kind": "interface",
         "language": "ts"
       }
@@ -95403,7 +95629,7 @@
     "FreezeLockReleasedWSEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 183,
+        "line": 185,
         "kind": "interface",
         "language": "ts"
       }
@@ -95411,7 +95637,7 @@
     "DriverCreatedWSEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 195,
+        "line": 197,
         "kind": "interface",
         "language": "ts"
       }
@@ -95419,7 +95645,7 @@
     "VehicleCreatedWSEvent": [
       {
         "path": "packages/types/ws-events.ts",
-        "line": 208,
+        "line": 210,
         "kind": "interface",
         "language": "ts"
       }

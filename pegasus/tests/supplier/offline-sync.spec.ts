@@ -6,7 +6,7 @@
  *   2. DeltaEvent processing (ORD_UP, FLT_GPS, etc.)
  *   3. Short-key expansion (s→status, l→location, v→volumetric_units)
  *   4. OfflineManager queue (localStorage: void_offline_queue)
- *   5. NetworkStatusBanner states (offline/backpressure/syncing)
+ *   5. NetworkStatusBanner states (backpressure/syncing; offline top banner suppressed)
  *   6. Catch-up protocol (GET /v1/sync/catchup?since=lastSyncTs)
  *   7. Exponential backoff (1s→2s→4s→8s→16s cap)
  *   8. Backpressure detection (X-Backpressure-Interval header)
@@ -115,7 +115,7 @@ test.describe('Supplier Offline Sync (CRITICAL)', () => {
     expect(typeof queueState.hasQueue).toBe('boolean');
   });
 
-  test('NetworkStatusBanner shows offline state', async ({ supplierPage }) => {
+  test('offline event does not render top queued banner', async ({ supplierPage }) => {
     await supplierPage.goto('http://localhost:3000/');
     await supplierPage.waitForLoadState('networkidle');
 
@@ -124,11 +124,8 @@ test.describe('Supplier Offline Sync (CRITICAL)', () => {
       window.dispatchEvent(new Event('offline'));
     });
 
-    // Banner should appear
-    const banner = supplierPage.getByText(/offline|queued|changes/i);
-    if (await banner.count() > 0) {
-      await expect(banner.first()).toBeVisible({ timeout: 5_000 });
-    }
+    // Top queued/offline banner should remain hidden per UX policy.
+    await expect(supplierPage.getByText(/changes will be queued/i)).toHaveCount(0);
   });
 
   test('network restore triggers drainQueue and clears localStorage', async ({ supplierPage }) => {

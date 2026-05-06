@@ -542,7 +542,50 @@ func listDrivers(w http.ResponseWriter, r *http.Request, spannerClient *spanner.
 	}
 	stmt = auth.AppendWarehouseFilterStmt(r.Context(), stmt, "d")
 
-	iter := spannerx.StaleQuery(r.Context(), spannerClient, stmt)
+	drivers, err := fetchDriverList(r.Context(), spannerClient, stmt, true)
+	if err != nil && shouldFallbackDriverListQuery(err) {
+		log.Printf("[FLEET] list drivers optional column fallback: %v", err)
+		legacyStmt := spanner.Statement{
+			SQL: `SELECT d.DriverId, d.Name, COALESCE(d.Phone, ''), COALESCE(d.DriverType, ''),
+			             COALESCE(d.VehicleType, ''), COALESCE(d.LicensePlate, ''),
+			             COALESCE(d.IsActive, true), d.CreatedAt, COALESCE(d.VehicleId, '')
+			      FROM Drivers d
+			      WHERE d.SupplierId = @supplierId
+			      ORDER BY d.CreatedAt DESC`,
+			Params: map[string]interface{}{
+				"supplierId": supplierID,
+			},
+		}
+		legacyStmt = auth.AppendWarehouseFilterStmt(r.Context(), legacyStmt, "d")
+		drivers, err = fetchDriverList(r.Context(), spannerClient, legacyStmt, false)
+	}
+	if err != nil {
+		log.Printf("[FLEET] list drivers query error: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(drivers)
+}
+
+func shouldFallbackDriverListQuery(err error) bool {
+	if err == nil || spanner.ErrCode(err) != codes.InvalidArgument {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	if !strings.Contains(msg, "not found inside d") {
+		return false
+	}
+	return strings.Contains(msg, "estimatedreturnat") ||
+		strings.Contains(msg, "returndurationsec") ||
+		strings.Contains(msg, "offlinereason") ||
+		strings.Contains(msg, "offlinereasonnote") ||
+		strings.Contains(msg, "offlineat")
+}
+
+func fetchDriverList(ctx context.Context, spannerClient *spanner.Client, stmt spanner.Statement, includeOptionalColumns bool) ([]DriverListItem, error) {
+	iter := spannerx.StaleQuery(ctx, spannerClient, stmt)
 	defer iter.Stop()
 
 	drivers := []DriverListItem{}
@@ -552,41 +595,44 @@ func listDrivers(w http.ResponseWriter, r *http.Request, spannerClient *spanner.
 			break
 		}
 		if err != nil {
-			log.Printf("[FLEET] list drivers query error: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
+			return nil, err
 		}
 
 		var d DriverListItem
 		var createdAt time.Time
-		var estReturnAt spanner.NullTime
-		var returnDurSec spanner.NullInt64
-		var offlineAt spanner.NullTime
-		if err := row.Columns(&d.DriverID, &d.Name, &d.Phone, &d.DriverType,
-			&d.VehicleType, &d.LicensePlate, &d.IsActive, &d.TruckStatus, &createdAt,
-			&d.VehicleId, &d.VehicleClass, &d.MaxVolumeVU, &estReturnAt, &returnDurSec,
-			&d.OfflineReason, &d.OfflineReasonNote, &offlineAt, &d.CurrentLocation); err != nil {
-			log.Printf("[FLEET] list drivers parse error: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
+		if includeOptionalColumns {
+			var estReturnAt spanner.NullTime
+			var returnDurSec spanner.NullInt64
+			var offlineAt spanner.NullTime
+			if err := row.Columns(&d.DriverID, &d.Name, &d.Phone, &d.DriverType,
+				&d.VehicleType, &d.LicensePlate, &d.IsActive, &d.TruckStatus, &createdAt,
+				&d.VehicleId, &d.VehicleClass, &d.MaxVolumeVU, &estReturnAt, &returnDurSec,
+				&d.OfflineReason, &d.OfflineReasonNote, &offlineAt, &d.CurrentLocation); err != nil {
+				return nil, err
+			}
+			if estReturnAt.Valid {
+				s := estReturnAt.Time.Format(time.RFC3339)
+				d.EstimatedReturnAt = &s
+			}
+			if returnDurSec.Valid {
+				d.ReturnDurationSec = &returnDurSec.Int64
+			}
+			if offlineAt.Valid {
+				s := offlineAt.Time.Format(time.RFC3339)
+				d.OfflineAt = &s
+			}
+		} else {
+			if err := row.Columns(&d.DriverID, &d.Name, &d.Phone, &d.DriverType,
+				&d.VehicleType, &d.LicensePlate, &d.IsActive, &createdAt, &d.VehicleId); err != nil {
+				return nil, err
+			}
+			d.TruckStatus = "AVAILABLE"
 		}
 		d.CreatedAt = createdAt.Format(time.RFC3339)
-		if estReturnAt.Valid {
-			s := estReturnAt.Time.Format(time.RFC3339)
-			d.EstimatedReturnAt = &s
-		}
-		if returnDurSec.Valid {
-			d.ReturnDurationSec = &returnDurSec.Int64
-		}
-		if offlineAt.Valid {
-			s := offlineAt.Time.Format(time.RFC3339)
-			d.OfflineAt = &s
-		}
 		drivers = append(drivers, d)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(drivers)
+	return drivers, nil
 }
 
 // ── Vehicle Assignment ────────────────────────────────────────────────────

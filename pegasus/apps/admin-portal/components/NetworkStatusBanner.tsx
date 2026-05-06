@@ -34,36 +34,18 @@ export function NetworkStatusBanner() {
 
   const totalPending = pendingCount;
 
-  // Nothing to show
-  if (isOnline && totalPending === 0 && backpressureMs === 0) return null;
+  // Offline banner is intentionally suppressed across web/desktop shells.
+  if (!isOnline) return null;
 
-  // Determine banner state — priority: offline > backpressure > syncing
+  // Nothing to show
+  if (totalPending === 0 && backpressureMs === 0) return null;
+
+  // Determine banner state — priority: backpressure > syncing
   let bg: string;
   let fg: string;
   let content: React.ReactNode;
 
-  if (!isOnline) {
-    bg = 'var(--color-md-error-container, #fecaca)';
-    fg = 'var(--color-md-on-error-container, #991b1b)';
-    content = (
-      <>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <line x1="1" y1="1" x2="23" y2="23" />
-          <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55" />
-          <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39" />
-          <path d="M10.71 5.05A16 16 0 0 1 22.56 9" />
-          <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88" />
-          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
-          <line x1="12" y1="20" x2="12.01" y2="20" />
-        </svg>
-        <span>
-          Offline — {totalPending > 0
-            ? `${totalPending} change${totalPending !== 1 ? 's' : ''} queued`
-            : 'changes will be queued'}
-        </span>
-      </>
-    );
-  } else if (backpressureMs > 0) {
+  if (backpressureMs > 0) {
     bg = 'var(--color-md-warning-container, #fef3c7)';
     fg = 'var(--color-md-on-warning-container, #92400e)';
     content = (

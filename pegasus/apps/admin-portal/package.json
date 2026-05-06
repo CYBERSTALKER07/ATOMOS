@@ -22,6 +22,7 @@
     "@heroui/styles": "^3.0.2",
     "@pegasus/api-client": "file:../../packages/api-client",
     "@pegasus/i18n": "file:../../packages/i18n",
+    "@pegasus/ui-kit": "file:../../packages/ui-kit",
     "@pegasus/types": "file:../../packages/types",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.7.0",

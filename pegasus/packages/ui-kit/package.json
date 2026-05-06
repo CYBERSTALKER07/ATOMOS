@@ -1,0 +1,12 @@
+{
+  "name": "@pegasus/ui-kit",
+  "version": "0.1.0",
+  "private": true,
+  "sideEffects": [
+    "./styles/*.css"
+  ],
+  "exports": {
+    "./styles/desktop-foundation.css": "./styles/desktop-foundation.css",
+    "./tailwind.config": "./tailwind.config.ts"
+  }
+}

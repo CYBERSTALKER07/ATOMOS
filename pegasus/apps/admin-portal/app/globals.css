@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@heroui/styles";
+@import "@pegasus/ui-kit/styles/desktop-foundation.css";
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* Pre-hydration Splash Screen                                                */
