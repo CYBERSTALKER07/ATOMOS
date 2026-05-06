@@ -20,7 +20,6 @@ import (
 	"backend-go/auth"
 	"backend-go/authroutes"
 	"backend-go/bootstrap"
-	"backend-go/migrations"
 	"backend-go/cache"
 	"backend-go/catalogroutes"
 	"backend-go/deliveryroutes"
@@ -30,6 +29,7 @@ import (
 	"backend-go/fleet"
 	"backend-go/fleetroutes"
 	"backend-go/idempotency"
+	"backend-go/migrations"
 	"backend-go/notifications"
 	"backend-go/order"
 	"backend-go/orderroutes"
@@ -138,7 +138,6 @@ func enableCORS(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-
 
 func main() {
 	log.Println("Booting up Pegasus - Backend API...")
@@ -993,7 +992,6 @@ func main() {
 	// migration gate — this is operator bootstrap, not schema DDL).
 	auth.SeedDefaultAdmin(ctx, spannerClient)
 
-
 	fleet.AvailabilityEmitter = func(driverID, supplierID string, available bool, reason, note, truckID string) {
 		// 1. Kafka event
 		svc.PublishEvent(context.Background(), internalKafka.EventDriverAvailabilityChanged, internalKafka.DriverAvailabilityChangedEvent{
@@ -1312,7 +1310,7 @@ func main() {
 	// ══════════════════════════════════════════════════════════════════════════════
 
 	// Factory Transfer Services (need Kafka producer)
-	transferSvc := &factory.TransferService{Spanner: spannerClient, Cache: app.Cache, Producer: svc.Producer}
+	transferSvc := &factory.TransferService{Spanner: spannerClient, Cache: app.Cache, Producer: svc.Producer, FactoryHub: app.FactoryHub}
 	emergencySvc := &factory.EmergencyTransferService{Spanner: spannerClient, Producer: svc.Producer}
 
 	// /v1/auth/factory/{login,register} → authroutes package.
@@ -1358,7 +1356,7 @@ func main() {
 	// /v1/warehouse/{demand/forecast,supply-requests,supply-requests/} moved to
 	// warehouseroutes. supplyReqSvc is kept here because factoryroutes below
 	// also consumes it (shared supply-request surface).
-	supplyReqSvc := &warehouse.SupplyRequestService{Spanner: spannerClient, Producer: svc.Producer, WarehouseHub: app.WarehouseHub}
+	supplyReqSvc := &warehouse.SupplyRequestService{Spanner: spannerClient, Producer: svc.Producer, WarehouseHub: app.WarehouseHub, FactoryHub: app.FactoryHub}
 
 	// /v1/factory/* — 17 routes (analytics, profile, transfers, manifests,
 	// fleet/drivers, fleet/vehicles, staff, dispatch, supply-requests,
@@ -1372,6 +1370,7 @@ func main() {
 		Producer:         svc.Producer,
 		TransferSvc:      transferSvc,
 		SupplyRequestSvc: supplyReqSvc,
+		FactoryHub:       app.FactoryHub,
 		Cache:            app.Cache,
 		CacheFlight:      app.CacheFlight,
 		Log:              loggingMiddleware,

@@ -15,6 +15,7 @@ import (
 	"backend-go/outbox"
 	"backend-go/spannerx"
 	"backend-go/telemetry"
+	factoryws "backend-go/ws"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -35,8 +36,9 @@ import (
 
 // BatcherService holds dependencies for the factory dispatch engine.
 type BatcherService struct {
-	Spanner  *spanner.Client
-	Producer *kafka.Writer
+	Spanner    *spanner.Client
+	Producer   *kafka.Writer
+	FactoryHub *factoryws.FactoryHub
 }
 
 // batchableTransfer is the working struct for a single APPROVED transfer.
@@ -301,6 +303,15 @@ func (b *BatcherService) runBatch(ctx context.Context, factoryID string) (*Batch
 		})
 		if err != nil {
 			return nil, fmt.Errorf("commit manifests: %w", err)
+		}
+
+		if b.FactoryHub != nil {
+			for _, m := range results {
+				b.FactoryHub.BroadcastManifestUpdate(factoryID, m.ManifestId, "READY_FOR_LOADING", "CREATE", "", supplierID, m.Transfers)
+				for _, stop := range m.LoadingOrder {
+					b.FactoryHub.BroadcastTransferUpdate(factoryID, stop.TransferId, stop.WarehouseId, m.ManifestId, "APPROVED", "LOADING", "BATCH_ASSIGN", supplierID)
+				}
+			}
 		}
 	}
 

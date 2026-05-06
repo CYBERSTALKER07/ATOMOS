@@ -13,6 +13,7 @@ import (
 	internalKafka "backend-go/kafka"
 	"backend-go/outbox"
 	"backend-go/telemetry"
+	factoryws "backend-go/ws"
 
 	"cloud.google.com/go/spanner"
 	kafkago "github.com/segmentio/kafka-go"
@@ -35,8 +36,9 @@ import (
 // All state-change events are emitted via the transactional outbox inside the
 // owning ReadWriteTransaction — there is no in-process Kafka writer here.
 type OverrideService struct {
-	Spanner  *spanner.Client
-	Producer *kafkago.Writer // retained for legacy wiring; no longer used internally
+	Spanner    *spanner.Client
+	Producer   *kafkago.Writer // retained for legacy wiring; no longer used internally
+	FactoryHub *factoryws.FactoryHub
 }
 
 // ReassignRequest moves transfer orders from one manifest to another.
@@ -229,6 +231,13 @@ func (o *OverrideService) HandleManifestRebalance(w http.ResponseWriter, r *http
 	}
 
 	// MANIFEST_REBALANCED event was emitted via outbox inside the transaction.
+	if o.FactoryHub != nil {
+		o.FactoryHub.BroadcastManifestUpdate(factoryScope.FactoryID, req.SourceManifestID, "LOADING", "REBALANCE", reason, supplierID, req.TransferIDs)
+		o.FactoryHub.BroadcastManifestUpdate(factoryScope.FactoryID, req.TargetManifestID, "LOADING", "REBALANCE", reason, supplierID, req.TransferIDs)
+		for _, transferID := range req.TransferIDs {
+			o.FactoryHub.BroadcastTransferUpdate(factoryScope.FactoryID, transferID, "", req.TargetManifestID, "LOADING", "LOADING", "REBALANCE", supplierID)
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"source_manifest_id": req.SourceManifestID,
@@ -362,6 +371,10 @@ func (o *OverrideService) HandleCancelManifestTransfer(w http.ResponseWriter, r 
 	}
 
 	// TRANSFER_UNASSIGNED event was emitted via outbox inside the transaction.
+	if o.FactoryHub != nil {
+		o.FactoryHub.BroadcastTransferUpdate(factoryScope.FactoryID, req.TransferID, "", "", "LOADING", "APPROVED", "CANCEL_TRANSFER", supplierID)
+		o.FactoryHub.BroadcastManifestUpdate(factoryScope.FactoryID, req.ManifestID, "LOADING", "CANCEL_TRANSFER", req.Reason, supplierID, []string{req.TransferID})
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"manifest_id": req.ManifestID,
@@ -502,6 +515,12 @@ func (o *OverrideService) HandleCancelManifest(w http.ResponseWriter, r *http.Re
 	}
 
 	// MANIFEST_CANCELLED event was emitted via outbox inside the transaction.
+	if o.FactoryHub != nil {
+		o.FactoryHub.BroadcastManifestUpdate(factoryScope.FactoryID, req.ManifestID, "CANCELLED", "CANCEL", cancelReason, supplierID, transferIDs)
+		for _, transferID := range transferIDs {
+			o.FactoryHub.BroadcastTransferUpdate(factoryScope.FactoryID, transferID, "", "", "LOADING", "APPROVED", "CANCEL_MANIFEST", supplierID)
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"manifest_id":        req.ManifestID,

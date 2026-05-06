@@ -39,6 +39,7 @@ import (
 	"backend-go/idempotency"
 	"backend-go/proximity"
 	"backend-go/warehouse"
+	"backend-go/ws"
 )
 
 // Middleware is the handler-wrap contract supplied by the caller (typically
@@ -56,6 +57,7 @@ type Deps struct {
 	Producer         *kafka.Writer
 	TransferSvc      *factory.TransferService
 	SupplyRequestSvc *warehouse.SupplyRequestService
+	FactoryHub       *ws.FactoryHub
 	Cache            *cache.Cache
 	CacheFlight      *singleflight.Group
 	Log              Middleware
@@ -89,8 +91,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	factoryCreate := []string{"FACTORY", "SUPPLIER", "ADMIN"}
 	withScope := auth.RequireFactoryScope
 
-	batcherSvc := &factory.BatcherService{Spanner: d.Spanner, Producer: d.Producer}
-	overrideSvc := &factory.OverrideService{Spanner: d.Spanner, Producer: d.Producer}
+	batcherSvc := &factory.BatcherService{Spanner: d.Spanner, Producer: d.Producer, FactoryHub: d.FactoryHub}
+	overrideSvc := &factory.OverrideService{Spanner: d.Spanner, Producer: d.Producer, FactoryHub: d.FactoryHub}
 
 	// 1. Analytics overview.
 	r.HandleFunc("/v1/factory/analytics/overview",
@@ -131,7 +133,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 	// 7. Manifest detail + state transitions — path-prefix dispatcher.
 	http.HandleFunc("/v1/factory/manifests/",
-		auth.RequireRole(factoryRole, log(withScope(factory.HandleFactoryManifestTransition(d.Spanner)))))
+		auth.RequireRole(factoryRole, log(withScope(factory.HandleFactoryManifestTransition(d.Spanner, d.FactoryHub)))))
 
 	// 8–9. Factory-scoped fleet view.
 	r.HandleFunc("/v1/factory/fleet",
@@ -160,6 +162,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	// 14. Supply-request detail + state transition (path-prefix).
 	http.HandleFunc("/v1/factory/supply-requests/",
 		auth.RequireRole(factoryRole, log(withScope(supplyRequestByID(d.SupplyRequestSvc)))))
+
+	if d.FactoryHub != nil {
+		r.HandleFunc("/v1/ws/factory",
+			auth.RequireRole(factoryRole, log(withScope(d.FactoryHub.HandleConnection))))
+	}
 }
 
 // supplyRequestByID routes GET→detail and PATCH→transition on

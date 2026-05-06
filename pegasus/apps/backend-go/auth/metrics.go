@@ -40,6 +40,8 @@ func wsEndpointClass(path string) string {
 		return "fleet"
 	case "/ws/warehouse":
 		return "warehouse"
+	case "/v1/ws/factory":
+		return "factory"
 	case "/v1/ws/retailer":
 		return "retailer"
 	case "/v1/ws/driver":
@@ -53,7 +55,7 @@ func wsEndpointClass(path string) string {
 
 func allowsWSQueryToken(path string) bool {
 	switch wsEndpointClass(path) {
-	case "telemetry", "fleet", "warehouse", "retailer", "driver", "payloader":
+	case "telemetry", "fleet", "warehouse", "factory", "retailer", "driver", "payloader":
 		return true
 	default:
 		return false

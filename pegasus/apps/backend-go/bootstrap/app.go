@@ -117,6 +117,7 @@ type App struct {
 	PayloaderHub *ws.PayloaderHub
 	SupplierHub  *ws.SupplierHub
 	WarehouseHub *ws.WarehouseHub
+	FactoryHub   *ws.FactoryHub
 	FleetHub     *telemetry.Hub // shared package-level hub; field is a convenience alias
 
 	// ── Transactional Outbox relay (V.O.I.D. Phase VII) ─────────────────
@@ -194,6 +195,9 @@ func (a *App) Close() {
 	}
 	if a.WarehouseHub != nil {
 		a.WarehouseHub.Close()
+	}
+	if a.FactoryHub != nil {
+		a.FactoryHub.Close()
 	}
 	if a.FleetHub != nil {
 		a.FleetHub.Close()

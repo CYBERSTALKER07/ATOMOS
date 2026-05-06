@@ -50,6 +50,7 @@ type SupplyRequestService struct {
 	Spanner      *spanner.Client
 	Producer     *kafka.Writer
 	WarehouseHub *warehousews.WarehouseHub
+	FactoryHub   *warehousews.FactoryHub
 }
 
 // ── Request/Response Shapes ───────────────────────────────────────────────────
@@ -258,6 +259,9 @@ func (s *SupplyRequestService) HandleCreateSupplyRequest(w http.ResponseWriter, 
 	}
 	if s.WarehouseHub != nil {
 		s.WarehouseHub.BroadcastSupplyRequestUpdate(warehouseID, requestID, "SUBMITTED")
+	}
+	if s.FactoryHub != nil {
+		s.FactoryHub.BroadcastSupplyRequestUpdate(req.FactoryID, requestID, warehouseID, "SUBMITTED", "CREATE", supplierID)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -514,7 +518,7 @@ func (s *SupplyRequestService) HandleSupplyRequestTransition(w http.ResponseWrit
 		return
 	}
 
-	var warehouseID string
+	var warehouseID, factoryID, supplierID string
 	_, err := s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "SupplyRequests",
 			spanner.Key{requestID}, []string{"State", "WarehouseId", "FactoryId", "SupplierId"})
@@ -522,7 +526,7 @@ func (s *SupplyRequestService) HandleSupplyRequestTransition(w http.ResponseWrit
 			return fmt.Errorf("supply request not found")
 		}
 
-		var currentState, factoryID, supplierID string
+		var currentState string
 		if err := row.Columns(&currentState, &warehouseID, &factoryID, &supplierID); err != nil {
 			return err
 		}
@@ -577,6 +581,9 @@ func (s *SupplyRequestService) HandleSupplyRequestTransition(w http.ResponseWrit
 	}
 	if s.WarehouseHub != nil && warehouseID != "" {
 		s.WarehouseHub.BroadcastSupplyRequestUpdate(warehouseID, requestID, newState)
+	}
+	if s.FactoryHub != nil && factoryID != "" {
+		s.FactoryHub.BroadcastSupplyRequestUpdate(factoryID, requestID, warehouseID, newState, req.Action, supplierID)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

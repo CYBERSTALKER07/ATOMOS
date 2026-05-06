@@ -17,6 +17,7 @@ import (
 	internalKafka "backend-go/kafka"
 	"backend-go/outbox"
 	"backend-go/telemetry"
+	factoryws "backend-go/ws"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -119,9 +120,10 @@ type transferTransitionRequest struct {
 
 // TransferService holds dependencies for transfer endpoints.
 type TransferService struct {
-	Spanner  *spanner.Client
-	Cache    *cache.Cache
-	Producer *kafka.Writer
+	Spanner    *spanner.Client
+	Cache      *cache.Cache
+	Producer   *kafka.Writer
+	FactoryHub *factoryws.FactoryHub
 }
 
 // HandleListTransfers — GET /v1/factory/transfers (factory-scoped)
@@ -263,6 +265,30 @@ func transferUpdatedAt(createdAt time.Time, updatedAt spanner.NullTime) string {
 		return updatedAt.Time.Format(time.RFC3339)
 	}
 	return createdAt.Format(time.RFC3339)
+}
+
+func factoryRealtimeAction(action string) string {
+	normalized := strings.ToUpper(strings.TrimSpace(action))
+	if normalized == "" {
+		return "UNKNOWN"
+	}
+	return strings.ReplaceAll(normalized, "-", "_")
+}
+
+func (s *TransferService) broadcastFactoryTransferUpdate(factoryID, transferID, warehouseID, manifestID, fromState, toState, action, supplierID string) {
+	if s.FactoryHub == nil || factoryID == "" {
+		return
+	}
+	s.FactoryHub.BroadcastTransferUpdate(
+		factoryID,
+		transferID,
+		warehouseID,
+		manifestID,
+		fromState,
+		toState,
+		action,
+		supplierID,
+	)
 }
 
 func buildTransferResponse(header transferHeader, warehouseName string, totalItems int64, items []TransferItemDetail) TransferResponse {
@@ -698,7 +724,7 @@ func (s *TransferService) HandleTransferTransition(w http.ResponseWriter, r *htt
 		return
 	}
 
-	var supplierID, warehouseID string
+	var supplierID, warehouseID, previousState string
 
 	err := func() error {
 		_, txErr := s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
@@ -712,6 +738,7 @@ func (s *TransferService) HandleTransferTransition(w http.ResponseWriter, r *htt
 			if colErr := row.Columns(&currentState, &rowFactoryID, &supplierID, &warehouseID); colErr != nil {
 				return colErr
 			}
+			previousState = currentState
 
 			if rowFactoryID != factoryID {
 				return fmt.Errorf("ownership mismatch")
@@ -772,6 +799,16 @@ func (s *TransferService) HandleTransferTransition(w http.ResponseWriter, r *htt
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	s.broadcastFactoryTransferUpdate(
+		factoryID,
+		transferID,
+		warehouseID,
+		transfer.ManifestId,
+		previousState,
+		targetState,
+		factoryRealtimeAction(action),
+		supplierID,
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(transfer)
@@ -928,6 +965,16 @@ func (s *TransferService) HandleApproveTransfer(w http.ResponseWriter, r *http.R
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	s.broadcastFactoryTransferUpdate(
+		factoryID,
+		transferID,
+		warehouseID,
+		transfer.ManifestId,
+		"DRAFT",
+		"APPROVED",
+		"APPROVE",
+		supplierID,
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(approveTransferResponse{
@@ -961,16 +1008,17 @@ func (s *TransferService) HandleWarehouseReceiveTransfer(w http.ResponseWriter, 
 
 	// Read transfer + items atomically
 	var currentState, factoryID, supplierID, rowWhID string
+	var manifestID spanner.NullString
 	items := []TransferItemDetail{}
 
 	_, err := s.Spanner.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// Read transfer header
 		hdrRow, err := txn.ReadRow(ctx, "InternalTransferOrders",
-			spanner.Key{transferID}, []string{"State", "FactoryId", "SupplierId", "WarehouseId"})
+			spanner.Key{transferID}, []string{"State", "FactoryId", "SupplierId", "WarehouseId", "ManifestId"})
 		if err != nil {
 			return fmt.Errorf("transfer not found: %w", err)
 		}
-		if err := hdrRow.Columns(&currentState, &factoryID, &supplierID, &rowWhID); err != nil {
+		if err := hdrRow.Columns(&currentState, &factoryID, &supplierID, &rowWhID, &manifestID); err != nil {
 			return err
 		}
 		if rowWhID != whID {
@@ -1052,6 +1100,21 @@ func (s *TransferService) HandleWarehouseReceiveTransfer(w http.ResponseWriter, 
 			cache.PrefixWarehouseDetail+whID,
 		)
 	}
+
+	manifestRef := ""
+	if manifestID.Valid {
+		manifestRef = manifestID.StringVal
+	}
+	s.broadcastFactoryTransferUpdate(
+		factoryID,
+		transferID,
+		whID,
+		manifestRef,
+		currentState,
+		"RECEIVED",
+		"RECEIVE",
+		supplierID,
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -1241,6 +1304,17 @@ func (s *TransferService) HandleCreateTransfer(w http.ResponseWriter, r *http.Re
 			cache.PrefixWarehouseDetail+req.WarehouseId,
 		)
 	}
+
+	s.broadcastFactoryTransferUpdate(
+		factoryID,
+		transferID,
+		req.WarehouseId,
+		"",
+		"",
+		"DRAFT",
+		"CREATE",
+		supplierID,
+	)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

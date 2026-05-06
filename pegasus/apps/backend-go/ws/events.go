@@ -103,6 +103,17 @@ const (
 	EventDispatchLockChange = "DISPATCH_LOCK_CHANGE"
 )
 
+// ─── Factory Hub → Factory Portal & Native Apps ──────────────────────────────
+
+const (
+	// EventFactorySupplyRequestUpdate is pushed when a factory-facing supply request changes.
+	EventFactorySupplyRequestUpdate = "FACTORY_SUPPLY_REQUEST_UPDATE"
+	// EventFactoryTransferUpdate is pushed when a transfer lifecycle state changes.
+	EventFactoryTransferUpdate = "FACTORY_TRANSFER_UPDATE"
+	// EventFactoryManifestUpdate is pushed when a manifest lifecycle event occurs.
+	EventFactoryManifestUpdate = "FACTORY_MANIFEST_UPDATE"
+)
+
 // ─── Notifications / FCM ───────────────────────────────────────────────────────
 
 const (

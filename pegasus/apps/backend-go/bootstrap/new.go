@@ -174,6 +174,7 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 	payloaderHub := ws.NewPayloaderHub()
 	supplierHub := ws.NewSupplierHub()
 	warehouseHub := ws.NewWarehouseHub()
+	factoryHub := ws.NewFactoryHub()
 
 	// ── 9. Communication spine: FCM (primary) + Telegram (fallback) ───────
 	fcm := initFCM(spannerClient)
@@ -263,6 +264,7 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 		PayloaderHub:      payloaderHub,
 		SupplierHub:       supplierHub,
 		WarehouseHub:      warehouseHub,
+		FactoryHub:        factoryHub,
 		FleetHub:          telemetry.FleetHub,
 		Outbox:            outbox.NewRelay(spannerClient, cfg.KafkaBrokerAddress, 2*time.Second, 100, 0),
 		OptimizerClient:   optimizerCli,

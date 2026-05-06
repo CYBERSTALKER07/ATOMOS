@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	factoryws "backend-go/ws"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -325,7 +326,7 @@ func HandleFactoryManifestDetail(spannerClient *spanner.Client) http.HandlerFunc
 // HandleFactoryManifestTransition handles state changes on manifests.
 // POST /v1/factory/manifests/{id}/load     → READY_FOR_LOADING → LOADING
 // POST /v1/factory/manifests/{id}/dispatch → LOADING → DISPATCHED
-func HandleFactoryManifestTransition(spannerClient *spanner.Client) http.HandlerFunc {
+func HandleFactoryManifestTransition(spannerClient *spanner.Client, factoryHub *factoryws.FactoryHub) http.HandlerFunc {
 	validManifestTransitions := map[string]string{
 		"load":     "LOADING",
 		"dispatch": "DISPATCHED",
@@ -362,6 +363,12 @@ func HandleFactoryManifestTransition(spannerClient *spanner.Client) http.Handler
 			return
 		}
 
+		claims, _ := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
+		supplierID := ""
+		if claims != nil {
+			supplierID = claims.ResolveSupplierID()
+		}
+
 		row, err := spannerClient.Single().ReadRow(r.Context(), "FactoryTruckManifests",
 			spanner.Key{manifestID}, []string{"State", "FactoryId"})
 		if err != nil {
@@ -395,6 +402,18 @@ func HandleFactoryManifestTransition(spannerClient *spanner.Client) http.Handler
 			log.Printf("[FACTORY MANIFESTS] transition error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
+		}
+
+		if factoryHub != nil {
+			factoryHub.BroadcastManifestUpdate(
+				factoryID,
+				manifestID,
+				targetState,
+				strings.ToUpper(strings.ReplaceAll(action, "-", "_")),
+				"",
+				supplierID,
+				nil,
+			)
 		}
 
 		w.Header().Set("Content-Type", "application/json")
