@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasus.factory.data.model.Insight
 import com.pegasus.factory.data.remote.FactoryApi
+import com.pegasus.factory.data.remote.FactoryRealtimeEventType
+import com.pegasus.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasus.factory.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -47,6 +49,15 @@ fun InsightsScreen(
     }
 
     LaunchedEffect(Unit) { load() }
+
+    FactoryRealtimeReloadEffect(
+        eventTypes = setOf(
+            FactoryRealtimeEventType.SupplyRequestUpdate,
+            FactoryRealtimeEventType.TransferUpdate,
+        ),
+    ) {
+        load()
+    }
 
     Scaffold(
         topBar = {

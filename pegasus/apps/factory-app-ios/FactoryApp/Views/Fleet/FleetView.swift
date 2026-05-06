@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct FleetView: View {
+    @State private var realtimeClient = FactoryRealtimeClient()
     @State private var vehicles: [Vehicle] = []
     @State private var loading = true
     @State private var error: String?
@@ -63,6 +64,19 @@ struct FleetView: View {
                 }
             }
             .task { load() }
+            .onAppear {
+                realtimeClient.connect(
+                    onStateChange: { _ in },
+                    onEvent: { event in
+                        guard let eventType = event.eventType else { return }
+                        guard eventType == .transferUpdate || eventType == .manifestUpdate else { return }
+                        load()
+                    }
+                )
+            }
+            .onDisappear {
+                realtimeClient.disconnect()
+            }
         }
     }
 

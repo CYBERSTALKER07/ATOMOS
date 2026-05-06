@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TransferDetailView: View {
     let transferId: String
+    @State private var realtimeClient = FactoryRealtimeClient()
     @State private var transfer: Transfer?
     @State private var loading = true
     @State private var error: String?
@@ -118,6 +119,21 @@ struct TransferDetailView: View {
             }
         }
         .task { await load() }
+        .onAppear {
+            realtimeClient.connect(
+                onStateChange: { _ in },
+                onEvent: { event in
+                    guard let eventType = event.eventType else { return }
+                    guard eventType == .transferUpdate || eventType == .manifestUpdate else { return }
+                    if !transitioning {
+                        Task { await load() }
+                    }
+                }
+            )
+        }
+        .onDisappear {
+            realtimeClient.disconnect()
+        }
     }
 
     @MainActor

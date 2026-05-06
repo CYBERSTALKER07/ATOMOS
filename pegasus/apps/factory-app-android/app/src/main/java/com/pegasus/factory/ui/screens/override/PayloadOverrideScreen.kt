@@ -57,6 +57,8 @@ import com.pegasus.factory.data.model.ManifestCancelTransferRequest
 import com.pegasus.factory.data.model.ManifestRebalanceRequest
 import com.pegasus.factory.data.model.ManifestTransfer
 import com.pegasus.factory.data.remote.FactoryApi
+import com.pegasus.factory.data.remote.FactoryRealtimeEventType
+import com.pegasus.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasus.factory.ui.theme.PegasusSpacing
 import java.text.DateFormat
 import java.util.Date
@@ -225,6 +227,17 @@ fun PayloadOverrideScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    FactoryRealtimeReloadEffect(
+        eventTypes = setOf(
+            FactoryRealtimeEventType.TransferUpdate,
+            FactoryRealtimeEventType.ManifestUpdate,
+        ),
+    ) {
+        if (actingKey == null) {
+            load(background = manifests.isNotEmpty())
         }
     }
 

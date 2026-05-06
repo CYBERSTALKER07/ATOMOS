@@ -4,6 +4,7 @@ struct DashboardView: View {
     @Environment(TokenStore.self) private var tokenStore
     let onOpenSupplyRequests: () -> Void
     let onOpenPayloadOverride: () -> Void
+    @State private var realtimeClient = FactoryRealtimeClient()
     @State private var stats = DashboardStats.empty
     @State private var loading = true
     @State private var error: String?
@@ -71,6 +72,21 @@ struct DashboardView: View {
                     try? await Task.sleep(nanoseconds: refreshNanos)
                     await load(silent: true)
                 }
+            }
+            .onAppear {
+                realtimeClient.connect(
+                    onStateChange: { _ in },
+                    onEvent: { event in
+                        guard let eventType = event.eventType else { return }
+                        switch eventType {
+                        case .supplyRequestUpdate, .transferUpdate, .manifestUpdate:
+                            Task { await load(silent: true) }
+                        }
+                    }
+                )
+            }
+            .onDisappear {
+                realtimeClient.disconnect()
             }
         }
     }

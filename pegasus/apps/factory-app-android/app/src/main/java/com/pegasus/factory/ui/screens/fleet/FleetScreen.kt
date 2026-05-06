@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.pegasus.factory.data.model.Vehicle
 import com.pegasus.factory.data.remote.FactoryApi
+import com.pegasus.factory.data.remote.FactoryRealtimeEventType
+import com.pegasus.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasus.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -48,6 +50,15 @@ fun FleetScreen(
     }
 
     LaunchedEffect(Unit) { load() }
+
+    FactoryRealtimeReloadEffect(
+        eventTypes = setOf(
+            FactoryRealtimeEventType.TransferUpdate,
+            FactoryRealtimeEventType.ManifestUpdate,
+        ),
+    ) {
+        load()
+    }
 
     Scaffold(
         topBar = {

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct LoadingBayView: View {
+    @State private var realtimeClient = FactoryRealtimeClient()
     @State private var transfers: [Transfer] = []
     @State private var loading = true
     @State private var error: String?
@@ -84,6 +85,19 @@ struct LoadingBayView: View {
                 }
             }
             .task { await load() }
+            .onAppear {
+                realtimeClient.connect(
+                    onStateChange: { _ in },
+                    onEvent: { event in
+                        guard let eventType = event.eventType else { return }
+                        guard eventType == .transferUpdate || eventType == .manifestUpdate else { return }
+                        Task { await load() }
+                    }
+                )
+            }
+            .onDisappear {
+                realtimeClient.disconnect()
+            }
         }
     }
 
@@ -276,6 +290,7 @@ private struct CancelTransferCandidate: Identifiable {
 
 struct PayloadOverrideView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @State private var realtimeClient = FactoryRealtimeClient()
     @State private var manifests: [Manifest] = []
     @State private var loading = true
     @State private var error: String?
@@ -374,6 +389,21 @@ struct PayloadOverrideView: View {
                 if newPhase == .active {
                     Task { await load(background: !manifests.isEmpty) }
                 }
+            }
+            .onAppear {
+                realtimeClient.connect(
+                    onStateChange: { _ in },
+                    onEvent: { event in
+                        guard let eventType = event.eventType else { return }
+                        guard eventType == .transferUpdate || eventType == .manifestUpdate else { return }
+                        if actingKey == nil {
+                            Task { await load(background: !manifests.isEmpty) }
+                        }
+                    }
+                )
+            }
+            .onDisappear {
+                realtimeClient.disconnect()
             }
             .sheet(item: $moveCandidate, onDismiss: { selectedTargetManifestID = "" }) { candidate in
                 MoveTransferSheet(

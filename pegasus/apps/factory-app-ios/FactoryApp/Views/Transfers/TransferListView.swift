@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct TransferListView: View {
+    @State private var realtimeClient = FactoryRealtimeClient()
     @State private var transfers: [Transfer] = []
     @State private var loading = true
     @State private var error: String?
@@ -102,6 +103,19 @@ struct TransferListView: View {
             }
         }
         .task(id: selectedFilter) { await load() }
+        .onAppear {
+            realtimeClient.connect(
+                onStateChange: { _ in },
+                onEvent: { event in
+                    guard let eventType = event.eventType else { return }
+                    guard eventType == .transferUpdate || eventType == .manifestUpdate else { return }
+                    Task { await load() }
+                }
+            )
+        }
+        .onDisappear {
+            realtimeClient.disconnect()
+        }
     }
 
     @MainActor

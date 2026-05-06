@@ -14,6 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.pegasus.factory.data.model.Transfer
 import com.pegasus.factory.data.remote.FactoryApi
+import com.pegasus.factory.data.remote.FactoryRealtimeEventType
+import com.pegasus.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasus.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -53,6 +55,15 @@ fun TransferListScreen(
     }
 
     LaunchedEffect(selectedFilter) { load() }
+
+    FactoryRealtimeReloadEffect(
+        eventTypes = setOf(
+            FactoryRealtimeEventType.TransferUpdate,
+            FactoryRealtimeEventType.ManifestUpdate,
+        ),
+    ) {
+        load()
+    }
 
     Scaffold(
         topBar = {

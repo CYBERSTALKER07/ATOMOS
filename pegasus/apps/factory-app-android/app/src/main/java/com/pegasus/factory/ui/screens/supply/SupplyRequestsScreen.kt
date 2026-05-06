@@ -51,6 +51,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.pegasus.factory.data.model.SupplyRequest
 import com.pegasus.factory.data.model.SupplyRequestTransitionRequest
 import com.pegasus.factory.data.remote.FactoryApi
+import com.pegasus.factory.data.remote.FactoryRealtimeEventType
+import com.pegasus.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasus.factory.ui.theme.PegasusSpacing
 import java.text.DateFormat
 import java.util.Date
@@ -181,6 +183,14 @@ fun SupplyRequestsScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    FactoryRealtimeReloadEffect(
+        eventTypes = setOf(FactoryRealtimeEventType.SupplyRequestUpdate),
+    ) {
+        if (transitioningId == null) {
+            load(background = requests.isNotEmpty())
         }
     }
 

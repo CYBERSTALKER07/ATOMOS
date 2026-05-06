@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import com.pegasus.factory.data.model.Transfer
 import com.pegasus.factory.data.model.TransitionRequest
 import com.pegasus.factory.data.remote.FactoryApi
+import com.pegasus.factory.data.remote.FactoryRealtimeEventType
+import com.pegasus.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasus.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -70,6 +72,17 @@ fun TransferDetailScreen(
     }
 
     LaunchedEffect(transferId) { load() }
+
+    FactoryRealtimeReloadEffect(
+        eventTypes = setOf(
+            FactoryRealtimeEventType.TransferUpdate,
+            FactoryRealtimeEventType.ManifestUpdate,
+        ),
+    ) {
+        if (!transitioning) {
+            load()
+        }
+    }
 
     Scaffold(
         topBar = {
