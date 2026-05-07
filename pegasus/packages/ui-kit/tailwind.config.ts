@@ -37,26 +37,17 @@ const config: Config = {
                 border: "#e2e8f0", // slate-200
             },
             boxShadow: {
-                // Enforcing NO soft consumer shadows. Only hard borders or minimal crisp shadows if absolutely necessary
-                sm: "none",
-                DEFAULT: "none",
-                md: "none",
-                lg: "none",
-                xl: "none",
-                "2xl": "none",
+                sm: "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+                DEFAULT: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)",
+                md: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)",
+                lg: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)",
+                xl: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+                "2xl": "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+                inner: "inset 0 2px 4px 0 rgba(0, 0, 0, 0.05)",
+                none: "none",
+                soft: "0 4px 16px rgba(0,0,0,0.04)",
+                "soft-hover": "0 12px 32px -12px rgba(0, 0, 0, 0.08)",
             },
-            backgroundImage: {
-                // Enforcing NO gradients
-                'none': 'none',
-                'gradient-to-t': 'none',
-                'gradient-to-tr': 'none',
-                'gradient-to-r': 'none',
-                'gradient-to-br': 'none',
-                'gradient-to-b': 'none',
-                'gradient-to-bl': 'none',
-                'gradient-to-l': 'none',
-                'gradient-to-tl': 'none',
-            }
         },
     },
     plugins: [],

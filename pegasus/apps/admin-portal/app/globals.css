@@ -35,41 +35,41 @@
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ElevenLabs Theme Background & Surface */
-  --background: #f5f5f5;
-  --foreground: #0c0a09;
+  /* URBN Theme Background & Surface */
+  --background: #f8fafc;
+  --foreground: #0f172a;
   --surface: #ffffff;
-  --surface-foreground: #4e4e4e;
-  --overlay: #fafafa;
-  --overlay-foreground: #0c0a09;
+  --surface-foreground: #475569;
+  --overlay: #ffffff;
+  --overlay-foreground: #0f172a;
 
   /* Accent — ink primary action */
-  --accent: #292524;
+  --accent: #000000;
   --accent-foreground: #ffffff;
-  --accent-soft: #f0efed;
-  --accent-soft-foreground: #0c0a09;
+  --accent-soft: #f1f5f9;
+  --accent-soft-foreground: #0f172a;
 
   /* Default */
-  --default: #e7e5e4;
-  --default-foreground: #4e4e4e;
+  --default: #f1f5f9;
+  --default-foreground: #475569;
 
   /* Muted, Border, Focus */
-  --muted: #777169;
-  --border: #e7e5e4;
-  --focus: #292524;
-  --link: #292524;
-  --scrollbar: #d6d3d1;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --focus: #000000;
+  --link: #000000;
+  --scrollbar: #cbd5e1;
 
   /* Form Fields */
   --field-background: #ffffff;
-  --field-foreground: #0c0a09;
-  --field-placeholder: #777169;
-  --field-border: #d6d3d1;
+  --field-foreground: #0f172a;
+  --field-placeholder: #94a3b8;
+  --field-border: #e2e8f0;
 
   /* Semantic */
-  --success: #16a34a;
+  --success: #10b981;
   --success-foreground: #ffffff;
-  --danger: #dc2626;
+  --danger: #ef4444;
   --danger-foreground: #ffffff;
 }
 
@@ -188,12 +188,12 @@
 
 .bento-card:hover {
   @apply -translate-y-1;
-  box-shadow: 0 12px 32px -12px oklch(0% 0 0 / 0.1);
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.08);
   border-color: var(--color-md-outline);
 }
 
 .dark .bento-card:hover {
-  box-shadow: 0 12px 32px -12px oklch(0% 0 0 / 0.5);
+  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.4);
 }
 
 /* Bento Sizes */
@@ -217,32 +217,32 @@
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 @theme inline {
-  /* ── ElevenLabs Colors ─────────────────────────── */
-  --color-canvas: #f5f5f5;
-  --color-canvas-soft: #fafafa;
-  --color-canvas-deep: #0c0a09;
+  /* ── URBN Colors ─────────────────────────── */
+  --color-canvas: #f8fafc; /* slate-50 */
+  --color-canvas-soft: #ffffff;
+  --color-canvas-deep: #0f172a; /* slate-900 */
   --color-surface-card: #ffffff;
-  --color-surface-strong: #f0efed;
-  --color-surface-dark: #0c0a09;
-  --color-surface-elevated: #1c1917;
+  --color-surface-strong: #f1f5f9; /* slate-100 */
+  --color-surface-dark: #0f172a;
+  --color-surface-elevated: #1e293b; /* slate-800 */
 
-  --color-ink: #0c0a09;
-  --color-body: #4e4e4e;
-  --color-body-strong: #292524;
-  --color-muted: #777169;
-  --color-muted-soft: #a8a29e;
+  --color-ink: #0f172a;
+  --color-body: #475569; /* slate-600 */
+  --color-body-strong: #1e293b; /* slate-800 */
+  --color-muted: #64748b; /* slate-500 */
+  --color-muted-soft: #94a3b8; /* slate-400 */
   --color-on-primary: #ffffff;
   --color-on-dark: #ffffff;
-  --color-on-dark-soft: #a8a29e;
+  --color-on-dark-soft: #94a3b8;
 
   /* Accent Ink Pill */
-  --color-primary: #292524;
-  --color-primary-active: #0c0a09;
+  --color-primary: #000000;
+  --color-primary-active: #1e293b; /* slate-800 */
 
   /* Hairlines */
-  --color-hairline: #e7e5e4;
-  --color-hairline-soft: #f0efed;
-  --color-hairline-strong: #d6d3d1;
+  --color-hairline: #f1f5f9; /* slate-100 */
+  --color-hairline-soft: #f8fafc; /* slate-50 */
+  --color-hairline-strong: #e2e8f0; /* slate-200 */
 
   /* Semantic */
   --color-semantic-success: #16a34a;
