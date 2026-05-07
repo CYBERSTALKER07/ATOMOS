@@ -68,6 +68,10 @@ func (s *PullMatrixService) RunPullMatrix(ctx context.Context, source string) er
 
 	log.Printf("[PULL_MATRIX] Found %d breached SKUs across all warehouses", len(breached))
 
+	if err := s.emitStockThresholdBreachEvents(ctx, breached); err != nil {
+		log.Printf("[PULL_MATRIX] threshold breach outbox emit failed: %v", err)
+	}
+
 	// 3. Group breached SKUs by supplier for per-supplier processing
 	bySupplier := map[string][]breachedSKU{}
 	for _, b := range breached {
@@ -146,6 +150,10 @@ func (s *PullMatrixService) RunSingleSKU(ctx context.Context, supplierID, wareho
 		return err
 	}
 
+	if err := s.emitStockThresholdBreachEvents(ctx, breached); err != nil {
+		log.Printf("[PULL_MATRIX] event-triggered threshold breach outbox emit failed: %v", err)
+	}
+
 	transfers, processed, err := s.processSupplierBreaches(ctx, supplierID, breached, "EVENT_TRIGGERED", mode)
 	if err != nil {
 		return err
@@ -166,6 +174,43 @@ func (s *PullMatrixService) RunSingleSKU(ctx context.Context, supplierID, wareho
 				),
 			})
 		})
+	}
+
+	return nil
+}
+
+func (s *PullMatrixService) emitStockThresholdBreachEvents(ctx context.Context, breached []breachedSKU) error {
+	if len(breached) == 0 {
+		return nil
+	}
+
+	const batchSize = 200
+	for start := 0; start < len(breached); start += batchSize {
+		end := start + batchSize
+		if end > len(breached) {
+			end = len(breached)
+		}
+		batch := breached[start:end]
+
+		if _, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			for _, b := range batch {
+				evt := kafka.StockThresholdBreachEvent{
+					SupplierId:   b.SupplierId,
+					WarehouseId:  b.WarehouseId,
+					ProductId:    b.ProductId,
+					CurrentStock: b.CurrentQty,
+					SafetyLevel:  b.SafetyLevel,
+					Timestamp:    time.Now().UTC(),
+				}
+				aggregateID := fmt.Sprintf("%s:%s:%s", b.SupplierId, b.WarehouseId, b.ProductId)
+				if err := outbox.EmitJSON(txn, "SupplierInventory", aggregateID, kafka.EventStockThresholdBreach, kafka.TopicMain, evt, telemetry.TraceIDFromContext(ctx)); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			return fmt.Errorf("emit stock-threshold breaches [%d:%d]: %w", start, end, err)
+		}
 	}
 
 	return nil

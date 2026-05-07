@@ -45,7 +45,7 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 
 - Replenishment event notification consumer coverage: `pegasus/apps/backend-go/kafka/notification_dispatcher.go`
 	- Consumes `REPLENISHMENT_LOCK_ACQUIRED`, `REPLENISHMENT_LOCK_RELEASED`, `STOCK_THRESHOLD_BREACH`, and `LOOK_AHEAD_COMPLETED`
-	- Lock events are produced in `pegasus/apps/backend-go/factory/replenishment_lock.go`; stock-threshold and look-ahead producers remain pending
+	- Producer coverage is complete: lock events in `pegasus/apps/backend-go/factory/replenishment_lock.go`, stock-threshold events in `pegasus/apps/backend-go/factory/pull_matrix.go`, and look-ahead completion events in `pegasus/apps/backend-go/factory/look_ahead.go`
 
 - Shared order compatibility route composition: `pegasus/apps/backend-go/orderroutes/routes.go`
 	- Owns `GET /v1/orders`, `GET /v1/orders/line-items/history`, `GET /v1/order/refunds`, `GET /v1/orders/{id}`, `GET /v1/orders/{id}/events`, `PATCH /v1/orders/{id}/status`, `PATCH /v1/orders/{id}/state`, `POST /v1/order/{deliver,validate-qr,confirm-offload,complete,collect-cash,refund,amend}`, `GET /v1/routes`, `POST /v1/prediction/create`, and `PATCH /v1/vehicle/*`

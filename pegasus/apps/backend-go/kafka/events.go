@@ -659,7 +659,7 @@ const (
 	EventManifestForceSeal = "MANIFEST_FORCE_SEALED"
 
 	// Phase VIII: Replenishment Graph Hardening Events
-	EventStockThresholdBreach      = "STOCK_THRESHOLD_BREACH" // Scaffolding: producer pending in proximity.Engine; notification consumer wired
+	EventStockThresholdBreach      = "STOCK_THRESHOLD_BREACH" // Producer: factory/pull_matrix.go; notification consumer wired
 	EventReplenishmentLockAcquired = "REPLENISHMENT_LOCK_ACQUIRED"
 	EventReplenishmentLockReleased = "REPLENISHMENT_LOCK_RELEASED"
 	EventPullMatrixCompleted       = "PULL_MATRIX_COMPLETED"
@@ -671,7 +671,7 @@ const (
 	// Phase V: Pull Matrix Look-Ahead
 	EventReplenishmentTransferCreated   = "REPLENISHMENT_TRANSFER_CREATED"
 	EventInsightApprovedTransferCreated = "INSIGHT_APPROVED_TRANSFER_CREATED"
-	EventLookAheadCompleted             = "LOOK_AHEAD_COMPLETED" // Scaffolding: producer pending; notification consumer wired
+	EventLookAheadCompleted             = "LOOK_AHEAD_COMPLETED" // Producer: factory/look_ahead.go; notification consumer wired
 )
 
 // ManifestLifecycleEvent covers DRAFT_CREATED, LOADING_STARTED, SEALED, DISPATCHED, COMPLETED.

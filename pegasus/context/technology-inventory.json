@@ -78,6 +78,24 @@
   },
   "runtimeContracts": [
     {
+      "name": "Replenishment event pipeline",
+      "path": "TopicMain replenishment events",
+      "owner": "pegasus/apps/backend-go/factory/{replenishment_lock.go,pull_matrix.go,look_ahead.go} + pegasus/apps/backend-go/kafka/notification_dispatcher.go",
+      "methods": [
+        "OUTBOX Event REPLENISHMENT_LOCK_ACQUIRED",
+        "OUTBOX Event REPLENISHMENT_LOCK_RELEASED",
+        "OUTBOX Event STOCK_THRESHOLD_BREACH",
+        "OUTBOX Event LOOK_AHEAD_COMPLETED"
+      ],
+      "consumers": [
+        "supplier-channel fanout via kafka/notification_dispatcher.go"
+      ],
+      "notes": [
+        "All four replenishment events now have producer + notification-consumer coverage.",
+        "Lock events are emitted by factory/replenishment_lock.go; threshold and look-ahead completion events are emitted by factory/pull_matrix.go and factory/look_ahead.go."
+      ]
+    },
+    {
       "name": "Shared order compatibility surface",
       "path": "/v1/{orders,orders/{id},order/refunds}",
       "owner": "pegasus/apps/backend-go/orderroutes/routes.go",

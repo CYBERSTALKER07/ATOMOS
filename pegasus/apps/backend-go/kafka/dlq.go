@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"backend-go/cache"
@@ -21,13 +21,13 @@ func InitDLQ(brokerAddress string) {
 		Topic:    TopicMainDLQ,
 		Balancer: &kafka.LeastBytes{},
 	}
-	log.Println("[DLQ SYSTEM] Dead Letter Queue Transmitter Online.")
+	slog.Info("dlq transmitter online", "topic", TopicMainDLQ)
 }
 
 // RouteToDLQ catches dropped transactions and permanently stores them.
 func RouteToDLQ(event LogisticsEvent, failReason string) {
 	if dlqWriter == nil {
-		log.Println("[CRITICAL FAULT] DLQ Writer not initialized. Money lost!")
+		slog.Error("dlq writer not initialized", "order_id", event.OrderId, "event_name", event.EventName, "reason", failReason)
 		return
 	}
 
@@ -48,9 +48,9 @@ func RouteToDLQ(event LogisticsEvent, failReason string) {
 	)
 
 	if err != nil {
-		log.Printf("[CRITICAL FAULT] Failed to write to DLQ for Order %s: %v", event.OrderId, err)
+		slog.Error("dlq write failed", "order_id", event.OrderId, "event_name", event.EventName, "err", err)
 	} else {
-		log.Printf("[DLQ SYSTEM] Event for %s safely secured in Dead Letter Queue.", event.OrderId)
+		slog.Info("dlq write succeeded", "order_id", event.OrderId, "event_name", event.EventName)
 	}
 }
 
@@ -134,8 +134,13 @@ func ListDLQMessages(brokerAddress string, maxMessages int, offset int) ([]DLQMe
 	}
 	paged := filteredMessages[offset:end]
 
-	log.Printf("[DLQ SYSTEM] Inspector: %d total, %d resolved (hidden), %d active, returning %d from offset %d.",
-		len(rawMessages), len(rawMessages)-len(filteredMessages), len(filteredMessages), len(paged), offset)
+	slog.Info("dlq inspector page",
+		"total", len(rawMessages),
+		"resolved_hidden", len(rawMessages)-len(filteredMessages),
+		"active", len(filteredMessages),
+		"returned", len(paged),
+		"offset", offset,
+	)
 	return paged, nil
 }
 
@@ -199,10 +204,10 @@ func ReplayDLQMessage(brokerAddress string, offset int64) error {
 	markCtx, markCancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer markCancel()
 	if redisErr := cache.MarkResolved(markCtx, offset); redisErr != nil {
-		log.Printf("[DLQ SYSTEM] WARNING: Replay succeeded but Resolution Ledger write failed for offset %d: %v", offset, redisErr)
+		slog.Warn("dlq replay succeeded but resolution ledger update failed", "offset", offset, "err", redisErr)
 		return fmt.Errorf("replay succeeded but failed to mark offset %d as resolved: %w", offset, redisErr)
 	}
 
-	log.Printf("[DLQ SYSTEM] Replayed message at offset %d (key=%s) → main topic. Resolution Ledger updated.", offset, string(msg.Key))
+	slog.Info("dlq replay succeeded", "offset", offset, "key", string(msg.Key), "topic", TopicMain)
 	return nil
 }

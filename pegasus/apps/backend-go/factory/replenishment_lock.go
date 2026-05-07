@@ -3,7 +3,7 @@ package factory
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"backend-go/kafka"
@@ -56,7 +56,7 @@ func (s *ReplenishmentLockService) AcquireLock(ctx context.Context, supplierID, 
 	// Calculate this warehouse's 30-day sales velocity for this SKU
 	velocity, err := s.calculateSalesVelocity(ctx, supplierID, warehouseID, skuID)
 	if err != nil {
-		log.Printf("[REPLENISHMENT_LOCK] velocity calc error for %s/%s: %v", warehouseID, skuID, err)
+		slog.Warn("replenishment lock velocity calculation failed", "warehouse_id", warehouseID, "sku_id", skuID, "err", err)
 		velocity = 0
 	}
 
@@ -83,8 +83,13 @@ func (s *ReplenishmentLockService) AcquireLock(ctx context.Context, supplierID, 
 				// Lock is valid and held by someone else
 				if velocity > heldPriority {
 					// We have higher priority — preempt
-					log.Printf("[REPLENISHMENT_LOCK] Preempting lock %s: %s (%.1f) > %s (%.1f)",
-						lockKey, warehouseID, velocity, heldBy, heldPriority)
+					slog.Info("replenishment lock preempted",
+						"lock_key", lockKey,
+						"warehouse_id", warehouseID,
+						"priority", velocity,
+						"held_by", heldBy,
+						"held_priority", heldPriority,
+					)
 					result.Acquired = true
 					if err := txn.BufferWrite([]*spanner.Mutation{
 						spanner.InsertOrUpdate("ReplenishmentLocks",

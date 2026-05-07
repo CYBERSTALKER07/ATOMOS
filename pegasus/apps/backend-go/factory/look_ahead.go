@@ -130,6 +130,7 @@ func (s *PullMatrixService) RunLookAhead(ctx context.Context) error {
 	}
 
 	var totalTransfers int64
+	touchedSuppliers := make(map[string]struct{})
 
 	for _, wh := range warehouses {
 		// Check network mode — skip MANUAL_ONLY suppliers
@@ -137,6 +138,7 @@ func (s *PullMatrixService) RunLookAhead(ctx context.Context) error {
 		if err != nil || mode == "MANUAL_ONLY" {
 			continue
 		}
+		touchedSuppliers[wh.SupplierId] = struct{}{}
 
 		transfers, err := s.processWarehouseLookAhead(ctx, wh.WarehouseId, wh.SupplierId, mode)
 		if err != nil {
@@ -147,8 +149,53 @@ func (s *PullMatrixService) RunLookAhead(ctx context.Context) error {
 	}
 
 	elapsed := time.Since(startTime)
+	if err := s.emitLookAheadCompletedEvents(ctx, touchedSuppliers, "CRON", elapsed.Milliseconds()); err != nil {
+		log.Printf("[LOOK_AHEAD] completion outbox emit failed: %v", err)
+	}
 	log.Printf("[LOOK_AHEAD] Completed: %d proactive transfers generated across %d warehouses (%dms)",
 		totalTransfers, len(warehouses), elapsed.Milliseconds())
+
+	return nil
+}
+
+func (s *PullMatrixService) emitLookAheadCompletedEvents(ctx context.Context, suppliers map[string]struct{}, source string, durationMs int64) error {
+	if len(suppliers) == 0 {
+		return nil
+	}
+
+	supplierIDs := make([]string, 0, len(suppliers))
+	for supplierID := range suppliers {
+		supplierIDs = append(supplierIDs, supplierID)
+	}
+
+	const batchSize = 200
+	for start := 0; start < len(supplierIDs); start += batchSize {
+		end := start + batchSize
+		if end > len(supplierIDs) {
+			end = len(supplierIDs)
+		}
+		batch := supplierIDs[start:end]
+
+		if _, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			for _, supplierID := range batch {
+				runID := uuid.New().String()
+				evt := kafka.LookAheadCompletedEvent{
+					RunId:       runID,
+					SupplierId:  supplierID,
+					Source:      source,
+					DurationMs:  durationMs,
+					HorizonDays: int64(LookAheadWindowDays),
+					Timestamp:   time.Now().UTC(),
+				}
+				if err := outbox.EmitJSON(txn, "LookAheadRun", runID, kafka.EventLookAheadCompleted, kafka.TopicMain, evt, telemetry.TraceIDFromContext(ctx)); err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			return fmt.Errorf("emit look-ahead completion events [%d:%d]: %w", start, end, err)
+		}
+	}
 
 	return nil
 }

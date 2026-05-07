@@ -3,6 +3,8 @@
 Use this protocol for every technical task. The agent is a companion engineer, not a blind executor.
 
 ## Context Sync Log
+- 2026-05-07: Completed low-touch infra slog sweep by migrating `kafka/dlq.go` and `factory/replenishment_lock.go` from `log.*` to structured `slog` with no behavior changes.
+- 2026-05-07: Closed Phase VIII replenishment producer gap by wiring outbox producers for `STOCK_THRESHOLD_BREACH` (`factory/pull_matrix.go`) and `LOOK_AHEAD_COMPLETED` (`factory/look_ahead.go`); synced event contract comments plus architecture/inventory context docs.
 - 2026-05-07: Synced runtime/docs after replenishment pipeline + logging tranche. Added notification consumers for `REPLENISHMENT_LOCK_ACQUIRED`, `REPLENISHMENT_LOCK_RELEASED`, `STOCK_THRESHOLD_BREACH`, and `LOOK_AHEAD_COMPLETED` in `kafka/notification_dispatcher.go`; migrated high-noise runtime logging to `slog` across `analytics/`, `sync/`, `replenishment/`, `treasury/`, `vault/`; refreshed known-gap status in `.github/copilot-instructions.md` and `.github/gemini-instructions.md`.
 
 ## Scope (Always On)
