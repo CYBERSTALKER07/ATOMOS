@@ -1,41 +1,29 @@
-'use client';
+"use client";
 
-import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { motion, AnimatePresence } from "framer-motion";
+import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
-export default function PageTransition({ children }: { children: ReactNode }) {
+interface PageTransitionProps {
+  children: ReactNode;
+  className?: string;
+}
+
+export default function PageTransition({ children, className = "" }: PageTransitionProps) {
   const pathname = usePathname();
-  const [displayChildren, setDisplayChildren] = useState(children);
-  const [phase, setPhase] = useState<'enter' | 'exit'>('enter');
-  const prevPath = useRef(pathname);
-
-  useEffect(() => {
-    if (pathname !== prevPath.current) {
-      setPhase('exit');
-      const timer = setTimeout(() => {
-        setDisplayChildren(children);
-        setPhase('enter');
-        prevPath.current = pathname;
-      }, 60);
-      return () => clearTimeout(timer);
-    } else {
-      setDisplayChildren(children);
-    }
-  }, [pathname, children]);
 
   return (
-    <div
-      className="flex-1 min-w-0 w-full"
-      style={{
-        opacity: phase === 'exit' ? 0 : 1,
-        transform: phase === 'exit' ? 'scale(0.998) translateY(2px)' : 'scale(1) translateY(0)',
-        transition: phase === 'enter'
-          ? 'opacity 120ms ease-out, transform 120ms ease-out'
-          : 'opacity 60ms ease-in, transform 60ms ease-in',
-        willChange: 'opacity, transform',
-      }}
-    >
-      {displayChildren}
-    </div>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={pathname}
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -15 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        className={`w-full h-full ${className}`}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
   );
 }

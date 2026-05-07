@@ -11,6 +11,8 @@ import { Card, Button, Chip, Skeleton } from "@heroui/react";
 import { BentoGrid, BentoCard, BentoSkeleton } from "@/components/BentoGrid";
 import CountUp from "@/components/CountUp";
 import MiniSparkline from "@/components/MiniSparkline";
+import EmptyState from "@/components/EmptyState";
+import PageTransition from "@/components/PageTransition";
 import {
   Truck, CheckCircle, CreditCard,
   ArrowUpRight, Activity, Send, Search,
@@ -421,7 +423,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-full p-6 md:p-8">
+    <PageTransition className="min-h-full p-6 md:p-8">
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className="mb-6 flex items-end justify-between gap-4">
         <div>
@@ -743,15 +745,12 @@ export default function AdminDashboard() {
 
       {/* ── Orders Table ────────────────────────────────────────────────── */}
       {filteredOrders.length === 0 ? (
-        <div className="bento-card flex flex-col items-center justify-center py-24 rounded-[32px]!">
-          <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center mb-4">
-            <Search size={24} className="text-muted" />
-          </div>
-          <span className="md-typescale-body-medium text-muted">
-            {orders.length === 0
-              ? (isApiOnline ? "No active orders" : "Awaiting connection...")
-              : "No orders match the current filters"}
-          </span>
+        <div className="bento-card py-16 rounded-[32px]!">
+          <EmptyState 
+            imageUrl="/images/empty-orders.png"
+            headline={orders.length === 0 ? (isApiOnline ? "No active orders" : "Awaiting connection...") : "No matching orders"}
+            body="Adjust your filters or wait for new incoming requests."
+          />
         </div>
       ) : (
         <div className="bento-card p-0 overflow-hidden rounded-[32px]! border-none! shadow-xl bg-surface">
@@ -926,6 +925,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-    </div>
+    </PageTransition>
   );
 }

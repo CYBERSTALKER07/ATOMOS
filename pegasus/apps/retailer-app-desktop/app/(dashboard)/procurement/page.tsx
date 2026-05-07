@@ -7,6 +7,9 @@ import {
   X, Search, Loader2, Trash2,
 } from "lucide-react";
 import { Button, Chip, Skeleton } from "@heroui/react";
+import { motion, AnimatePresence } from "framer-motion";
+import EmptyState from "../../../components/EmptyState";
+import PageTransition from "../../../components/PageTransition";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";
@@ -120,19 +123,20 @@ export default function ProcurementPage() {
   /* ── Empty state ── */
   if (supplierList.length === 0) {
     return (
-      <div className="min-h-full p-6 md:p-8 flex flex-col items-center justify-center gap-4">
-        <Building2 size={48} style={{ color: "var(--muted)" }} />
-        <p className="md-typescale-title-large font-semibold text-foreground">No suppliers connected</p>
-        <p className="md-typescale-body-medium text-muted">Add your first supplier to start procuring inventory.</p>
-        <Button variant="primary" onPress={() => setShowAddModal(true)} className="md-btn md-btn-filled flex items-center gap-2">
-          <Plus size={18} /> Add Vendor
-        </Button>
-      </div>
+      <PageTransition>
+        <EmptyState 
+          imageUrl="/images/empty-suppliers.png"
+          headline="No suppliers connected"
+          body="Add your first supplier to start procuring inventory."
+          action="Add Vendor"
+          onAction={() => setShowAddModal(true)}
+        />
+      </PageTransition>
     );
   }
 
   return (
-    <div className="min-h-full p-6 md:p-8">
+    <PageTransition className="min-h-full p-6 md:p-8">
       {/* ── Header ── */}
       <header className="mb-6 flex items-end justify-between gap-4 flex-wrap">
         <div>
@@ -210,7 +214,18 @@ export default function ProcurementPage() {
       <div className="flex gap-6 min-h-[420px]">
 
         {/* Left: Vendor List */}
-        <div className="flex-1 flex flex-col gap-2 overflow-y-auto max-h-[calc(100dvh-440px)] pr-1">
+        <motion.div 
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: { staggerChildren: 0.05 }
+            }
+          }}
+          className="flex-1 flex flex-col gap-2 overflow-y-auto max-h-[calc(100dvh-440px)] pr-1"
+        >
           <div className="flex items-center justify-between mb-3">
             <h2 className="md-typescale-title-large font-semibold text-foreground">Contracted Suppliers</h2>
             <span className="md-typescale-label-large text-muted">{supplierList.length} vendors</span>
@@ -219,7 +234,14 @@ export default function ProcurementPage() {
           {supplierList.map((vendor) => {
             const topEntry = topSuppliers.find((t) => t.supplier_id === vendor.id);
             return (
-              <button key={vendor.id} className="bento-card w-full text-left cursor-pointer transition-all duration-150">
+              <motion.button 
+                variants={{
+                  hidden: { opacity: 0, y: 10 },
+                  visible: { opacity: 1, y: 0 }
+                }}
+                key={vendor.id} 
+                className="bento-card w-full text-left cursor-pointer hover-lift active-press transition-all duration-150"
+              >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--surface)" }}>
                     {vendor.logo_url ? (
@@ -262,10 +284,10 @@ export default function ProcurementPage() {
                     )}
                   </button>
                 </div>
-              </button>
+              </motion.button>
             );
           })}
-        </div>
+        </motion.div>
 
         {/* Right: Ledger Summary Panel */}
         <div className="w-full lg:w-[360px] xl:w-[400px] shrink-0 hidden lg:flex flex-col gap-4">
@@ -407,6 +429,6 @@ export default function ProcurementPage() {
           </div>
         </>
       )}
-    </div>
+    </PageTransition>
   );
 }

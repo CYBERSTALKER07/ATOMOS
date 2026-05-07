@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
+import { motion } from 'framer-motion';
+import PageTransition from '@/components/PageTransition';
 
 interface FactoryStats {
   pending_transfers: number;
@@ -151,7 +153,7 @@ export default function FactoryDashboard() {
   ];
 
   return (
-    <div className="space-y-8 p-6 md:animate-in md:p-8">
+    <PageTransition className="space-y-8 p-6 md:p-8">
       <section className="rounded-[28px] border border-[var(--border)] bg-[var(--background)] p-6 shadow-[var(--shadow-md-elevation-1)]">
         <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
           <div>
@@ -168,7 +170,9 @@ export default function FactoryDashboard() {
                 <Link
                   key={card.href}
                   href={card.href}
-                  className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--accent)]"
+                <motion.div
+                  whileTap={{ scale: 0.98 }}
+                  className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--accent)] hover-lift"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--background)]">
@@ -178,7 +182,8 @@ export default function FactoryDashboard() {
                   </div>
                   <h3 className="mt-4 text-base font-semibold text-[var(--foreground)]">{card.title}</h3>
                   <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{card.description}</p>
-                </Link>
+                </motion.div>
+              </Link>
               ))}
             </div>
           </div>
@@ -199,17 +204,18 @@ export default function FactoryDashboard() {
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {primaryKpis.map((kpi) => (
-          <Link
-            key={kpi.label}
-            href={kpi.href}
-            className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-5 transition-colors hover:border-[var(--accent)]"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-[var(--muted)]">{kpi.label}</span>
-              <Icon name={kpi.icon} size={18} className="text-[var(--muted)]" />
-            </div>
-            <div className="mt-5 text-4xl font-semibold tracking-tight text-[var(--foreground)] tabular-nums">{kpi.value}</div>
-            <p className="mt-2 text-sm text-[var(--muted)]">{kpi.detail}</p>
+          <Link key={kpi.label} href={kpi.href}>
+            <motion.div
+              whileTap={{ scale: 0.98 }}
+              className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-5 transition-colors hover:border-[var(--accent)] hover-lift h-full"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-[var(--muted)]">{kpi.label}</span>
+                <Icon name={kpi.icon} size={18} className="text-[var(--muted)]" />
+              </div>
+              <div className="mt-5 text-4xl font-semibold tracking-tight text-[var(--foreground)] tabular-nums">{kpi.value}</div>
+              <p className="mt-2 text-sm text-[var(--muted)]">{kpi.detail}</p>
+            </motion.div>
           </Link>
         ))}
       </section>
@@ -282,6 +288,6 @@ export default function FactoryDashboard() {
           </div>
         </div>
       </section>
-    </div>
+    </PageTransition>
   );
 }
