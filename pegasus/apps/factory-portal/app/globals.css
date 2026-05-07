@@ -68,39 +68,44 @@
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.1 0 0);
-  --surface: oklch(0.97 0 0);
-  --surface-foreground: oklch(0.2 0 0);
-  --overlay: oklch(0.99 0 0);
-  --overlay-foreground: oklch(0.15 0 0);
+  /* URBN Theme Background & Surface */
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --surface: #ffffff;
+  --surface-foreground: #475569;
+  --overlay: #ffffff;
+  --overlay-foreground: #0f172a;
 
-  --accent: oklch(0.15 0 0);
-  --accent-foreground: oklch(1 0 0);
-  --accent-soft: oklch(0.93 0 0);
-  --accent-soft-foreground: oklch(0.2 0 0);
+  /* Accent — ink primary action */
+  --accent: #000000;
+  --accent-foreground: #ffffff;
+  --accent-soft: #f1f5f9;
+  --accent-soft-foreground: #0f172a;
 
-  --default: oklch(0.92 0 0);
-  --default-foreground: oklch(0.3 0 0);
+  /* Default */
+  --default: #f1f5f9;
+  --default-foreground: #475569;
 
-  --muted: oklch(0.55 0 0);
-  --border: oklch(0.88 0 0);
-  --focus: oklch(0.15 0 0);
-  --link: oklch(0.15 0 0);
-  --backdrop: oklch(0 0 0 / 0.5);
-  --scrollbar: oklch(0.7 0 0);
+  /* Muted, Border, Focus */
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --focus: #000000;
+  --link: #000000;
+  --scrollbar: #cbd5e1;
 
-  --field-background: oklch(1 0 0);
-  --field-foreground: oklch(0.15 0 0);
-  --field-placeholder: oklch(0.55 0 0);
-  --field-border: oklch(0.82 0 0);
+  /* Form Fields */
+  --field-background: #ffffff;
+  --field-foreground: #0f172a;
+  --field-placeholder: #94a3b8;
+  --field-border: #e2e8f0;
 
-  --success: oklch(0.55 0.16 145);
-  --success-foreground: oklch(0.98 0.02 145);
-  --warning: oklch(0.65 0.16 75);
-  --warning-foreground: oklch(0.98 0.02 75);
-  --danger: oklch(0.55 0.2 25);
-  --danger-foreground: oklch(0.97 0.01 25);
+  /* Semantic */
+  --success: #10b981;
+  --success-foreground: #ffffff;
+  --warning: #f59e0b;
+  --warning-foreground: #ffffff;
+  --danger: #ef4444;
+  --danger-foreground: #ffffff;
 }
 
 :root.dark {
