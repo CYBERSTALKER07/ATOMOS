@@ -17,6 +17,8 @@ import {
 import { Chip, Skeleton } from "@heroui/react";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
+import EmptyState from "../../../components/EmptyState";
+import PageTransition from "../../../components/PageTransition";
 import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
 import type { Order, Prediction, Product } from "../../../lib/types";
@@ -74,7 +76,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-full p-6 md:p-8">
+    <PageTransition className="min-h-full p-6 md:p-8">
       <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="md-typescale-headline-large">Retailer operations hub</h1>
@@ -165,9 +167,12 @@ export default function DashboardPage() {
           </div>
 
           {reorderProducts.length === 0 ? (
-            <div className="bento-card flex flex-col items-center justify-center gap-2 py-10">
-              <Package size={32} style={{ color: "var(--muted)" }} />
-              <p className="md-typescale-body-medium text-muted">No products available for reorder.</p>
+            <div className="py-10">
+              <EmptyState 
+                icon={<Package size={32} />}
+                headline="No products available"
+                body="Your catalog is currently empty."
+              />
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -217,9 +222,12 @@ export default function DashboardPage() {
           </div>
 
           {predictionList.length === 0 ? (
-            <div className="bento-card flex flex-col items-center justify-center gap-2 py-10">
-              <Brain size={32} style={{ color: "var(--muted)" }} />
-              <p className="md-typescale-body-medium text-muted">No predictions available yet.</p>
+            <div className="py-10">
+              <EmptyState 
+                icon={<Brain size={32} />}
+                headline="No predictions yet"
+                body="AI recommendations will appear here."
+              />
             </div>
           ) : (
             <div className="flex max-h-[420px] flex-col gap-3 overflow-y-auto pr-1">
@@ -262,7 +270,7 @@ export default function DashboardPage() {
           </div>
         </section>
       )}
-    </div>
+    </PageTransition>
   );
 }
 

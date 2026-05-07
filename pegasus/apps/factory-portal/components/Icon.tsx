@@ -33,7 +33,11 @@ const iconMap: Record<string, LucideIcon> = {
 export default function Icon({ name, size = 24, className = '' }: { name: string; size?: number; className?: string }) {
   const LucideComponent = iconMap[name];
   if (!LucideComponent) return null;
-  return <LucideComponent size={size} strokeWidth={1.75} className={className} />;
+
+  const parsedSize = typeof size === 'number' ? size : Number(size);
+  const safeSize = Number.isFinite(parsedSize) && parsedSize > 0 ? parsedSize : 24;
+
+  return <LucideComponent size={safeSize} strokeWidth={1.75} className={className} />;
 }
 
 export { iconMap };

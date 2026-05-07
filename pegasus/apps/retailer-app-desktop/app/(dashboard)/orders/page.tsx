@@ -11,6 +11,9 @@ import { Button, Chip, Skeleton } from "@heroui/react";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";
+import EmptyState from "../../../components/EmptyState";
+import PageTransition from "../../../components/PageTransition";
+import { motion } from "framer-motion";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import type { Order, RetailerProfile } from "../../../lib/types";
@@ -168,16 +171,20 @@ export default function OrdersPage() {
   /* ── Empty state ── */
   if (list.length === 0) {
     return (
-      <div className="min-h-full p-6 md:p-8 flex flex-col items-center justify-center gap-4">
-        <PackageOpen size={48} style={{ color: "var(--muted)" }} />
-        <p className="md-typescale-title-large font-semibold text-foreground">No orders yet</p>
-        <p className="md-typescale-body-medium text-muted">Your incoming deliveries will appear here.</p>
-      </div>
+      <PageTransition>
+        <EmptyState 
+          icon={<PackageOpen size={48} />}
+          headline="No orders yet"
+          body="Your incoming deliveries will appear here."
+          action="Place Order"
+          onAction={() => router.push("/catalog")}
+        />
+      </PageTransition>
     );
   }
 
   return (
-    <div className="min-h-full p-6 md:p-8">
+    <PageTransition className="min-h-full p-6 md:p-8">
       {/* ── Header ── */}
       <header className="mb-6 flex items-end justify-between gap-4 flex-wrap">
         <div>
@@ -278,15 +285,32 @@ export default function OrdersPage() {
       <div className="flex gap-6 min-h-[480px]">
         
         {/* Left: Order List */}
-        <div className="w-full lg:w-[420px] xl:w-[480px] shrink-0 flex flex-col gap-2 overflow-y-auto max-h-[calc(100dvh-420px)] pr-1">
+        <motion.div 
+          className="w-full lg:w-[420px] xl:w-[480px] shrink-0 flex flex-col gap-2 overflow-y-auto max-h-[calc(100dvh-420px)] pr-1"
+          initial="hidden"
+          animate="show"
+          variants={{
+            hidden: { opacity: 0 },
+            show: {
+              opacity: 1,
+              transition: { staggerChildren: 0.05 }
+            }
+          }}
+        >
           {filtered.map((order) => {
             const c = chipCfg[order.state] ?? chipCfg.PENDING;
             const isSelected = (selectedId ?? list[0]?.order_id) === order.order_id;
             return (
-              <button
+              <motion.button
                 key={order.order_id}
+                variants={{
+                  hidden: { opacity: 0, x: -20 },
+                  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+                }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setSelectedId(order.order_id)}
-                className={`bento-card w-full text-left cursor-pointer transition-all duration-150 ${
+                className={`bento-card hover-lift w-full text-left cursor-pointer transition-all duration-150 ${
                   isSelected ? 'ring-2 ring-accent border-accent' : ''
                 }`}
               >
@@ -317,10 +341,10 @@ export default function OrdersPage() {
                     </span>
                   </div>
                 </div>
-              </button>
+              </motion.button>
             );
           })}
-        </div>
+        </motion.div>
 
         {/* Right: Detail Panel */}
         <div className="hidden lg:flex flex-1 flex-col bento-card overflow-y-auto">
@@ -527,6 +551,6 @@ export default function OrdersPage() {
           )}
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 }

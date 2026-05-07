@@ -18,6 +18,9 @@ import MiniSparkline from "../../../components/MiniSparkline";
 import CartDrawer from "../../../components/CartDrawer";
 import CheckoutModal from "../../../components/CheckoutModal";
 import ProductDetailDrawer from "../../../components/ProductDetailDrawer";
+import EmptyState from "../../../components/EmptyState";
+import PageTransition from "../../../components/PageTransition";
+import { motion } from "framer-motion";
 import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
 import type { Product, Category, Supplier } from "../../../lib/types";
@@ -96,7 +99,7 @@ export default function CatalogPage() {
   }
 
   return (
-    <div className="min-h-full p-6 md:p-8">
+    <PageTransition className="min-h-full p-6 md:p-8">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="md-typescale-headline-large">Supplier catalog</h1>
@@ -271,16 +274,36 @@ export default function CatalogPage() {
           </div>
 
           {filteredProducts.length === 0 ? (
-            <div className="bento-card flex flex-col items-center justify-center gap-3 py-16">
-              <Package size={40} style={{ color: "var(--muted)" }} />
-              <p className="md-typescale-title-medium text-foreground">No products found</p>
-              <p className="md-typescale-body-medium text-muted">Try a different supplier, category, or search query.</p>
+            <div className="py-16">
+              <EmptyState 
+                icon={<Package size={48} />}
+                headline="No products found"
+                body="Try a different supplier, category, or search query."
+                action="Clear Filters"
+                onAction={() => {
+                  setActiveCategory("All");
+                  setActiveSupplier("");
+                  setSearchQuery("");
+                }}
+              />
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <motion.div 
+              className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: { opacity: 0 },
+                show: { opacity: 1, transition: { staggerChildren: 0.05 } }
+              }}
+            >
               {filteredProducts.map((product) => (
-                <article
+                <motion.article
                   key={product.id}
+                  variants={{
+                    hidden: { opacity: 0, y: 20 },
+                    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+                  }}
                   onClick={() => setSelectedProduct(product)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -335,9 +358,9 @@ export default function CatalogPage() {
                       </div>
                     </div>
                   </div>
-                </article>
+                </motion.article>
               ))}
-            </div>
+            </motion.div>
           )}
         </section>
       </div>
@@ -360,7 +383,7 @@ export default function CatalogPage() {
         isOpen={!!selectedProduct}
         onClose={() => setSelectedProduct(null)}
       />
-    </div>
+    </PageTransition>
   );
 }
 

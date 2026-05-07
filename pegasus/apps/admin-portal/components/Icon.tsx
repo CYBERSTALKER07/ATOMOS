@@ -74,7 +74,11 @@ const iconMap: Record<string, LucideIcon> = {
 export default function Icon({ name, size = 24, className = '', style }: { name: string; size?: number; className?: string; style?: React.CSSProperties }) {
   const LucideComponent = iconMap[name];
   if (!LucideComponent) return null;
-  return <LucideComponent size={size} strokeWidth={1.75} className={className} style={style} />;
+
+  const parsedSize = typeof size === 'number' ? size : Number(size);
+  const safeSize = Number.isFinite(parsedSize) && parsedSize > 0 ? parsedSize : 24;
+
+  return <LucideComponent size={safeSize} strokeWidth={1.75} className={className} style={style} />;
 }
 
 export { iconMap };

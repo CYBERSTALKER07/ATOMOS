@@ -1,10 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { storeToken } from '../lib/bridge';
+import { getStoredToken, isTauri, storeToken } from '../lib/bridge';
+import { readToken } from '../lib/auth';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+type LoginErrorBody = {
+  error?: string;
+  detail?: string;
+  title?: string;
+  message?: string;
+};
+
+type LoginSuccessBody = {
+  token?: string;
+  refresh_token?: string;
+  user?: unknown;
+};
+
+async function parseLoginError(res: Response): Promise<string> {
+  const contentType = (res.headers.get('content-type') || '').toLowerCase();
+  if (contentType.includes('application/json') || contentType.includes('application/problem+json')) {
+    const payload = (await res.json().catch(() => null)) as LoginErrorBody | null;
+    if (payload) {
+      return payload.error || payload.detail || payload.title || payload.message || `Login failed (${res.status})`;
+    }
+  }
+
+  const raw = (await res.text().catch(() => '')).trim();
+  return raw || `Login failed (${res.status})`;
+}
 
 export default function Home() {
   const [phone, setPhone] = useState('');
@@ -12,6 +39,31 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const restoreSession = async () => {
+      const cookieToken = readToken();
+      if (cookieToken) {
+        router.replace('/dashboard');
+        return;
+      }
+
+      if (!isTauri()) return;
+
+      const storedToken = await getStoredToken();
+      if (!storedToken || cancelled) return;
+
+      document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(storedToken)}; path=/; max-age=86400; SameSite=Lax`;
+      router.replace('/dashboard');
+    };
+
+    void restoreSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,11 +78,13 @@ export default function Home() {
       });
 
       if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.error || 'Login failed');
+        throw new Error(await parseLoginError(res));
       }
 
-      const data = await res.json();
+      const data = (await res.json().catch(() => null)) as LoginSuccessBody | null;
+      if (!data?.token) {
+        throw new Error('Login response is missing token');
+      }
       
       // Store in cookie for Next.js routing/middleware
       document.cookie = `pegasus_retailer_jwt=${encodeURIComponent(data.token)}; path=/; max-age=86400; SameSite=Lax`;
@@ -43,7 +97,7 @@ export default function Home() {
         localStorage.setItem('retailer_profile', JSON.stringify(data.user));
       }
 
-      router.push('/dashboard');
+      router.replace('/dashboard');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
