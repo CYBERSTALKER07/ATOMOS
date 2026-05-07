@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="900" viewBox="0 0 1100 900">
+  <rect x="0" y="0" width="1100" height="900" fill="white"/>
+  <g stroke="black" stroke-width="2" fill="none" font-family="Arial" font-size="18">
+    <text x="40" y="50">FIG. 2 - DELIVERY CORRECTION USER INTERFACE ABSTRACTION</text>
+
+    <rect x="190" y="100" width="420" height="720" rx="28" ry="28"/>
+    <rect x="220" y="150" width="360" height="60"/>
+    <text x="235" y="188">(201) VERIFY CARGO HEADER + MODIFIED BADGE</text>
+
+    <rect x="220" y="230" width="360" height="90"/>
+    <text x="235" y="265">(202) LINE ITEM CARD A</text>
+    <text x="235" y="295">SKU, ORIGINAL, ACCEPTED, TOTAL</text>
+
+    <rect x="220" y="335" width="360" height="90"/>
+    <text x="235" y="370">(203) LINE ITEM CARD B (MODIFIED)</text>
+    <text x="235" y="400">REASON TAG + ADJUSTED TOTAL</text>
+
+    <rect x="220" y="440" width="360" height="210"/>
+    <text x="235" y="475">(204) MODIFICATION SHEET</text>
+    <rect x="245" y="495" width="120" height="45"/>
+    <text x="278" y="525">-</text>
+    <rect x="365" y="495" width="70" height="45"/>
+    <text x="392" y="525">QTY</text>
+    <rect x="435" y="495" width="120" height="45"/>
+    <text x="485" y="525">+</text>
+
+    <rect x="245" y="555" width="90" height="35"/>
+    <text x="258" y="578">DAMAGED</text>
+    <rect x="345" y="555" width="90" height="35"/>
+    <text x="363" y="578">MISSING</text>
+    <rect x="445" y="555" width="110" height="35"/>
+    <text x="456" y="578">WRONG ITEM</text>
+
+    <rect x="245" y="605" width="310" height="35"/>
+    <text x="262" y="628">APPLY MODIFICATION</text>
+
+    <rect x="220" y="670" width="360" height="130"/>
+    <text x="235" y="705">(205) STICKY FOOTER</text>
+    <text x="235" y="735">ORIGINAL TOTAL / REFUND DELTA / ADJUSTED</text>
+    <rect x="245" y="750" width="310" height="35"/>
+    <text x="275" y="773">SUBMIT AMENDMENT</text>
+
+    <rect x="700" y="220" width="340" height="200"/>
+    <text x="720" y="260">(206) CONFIRM AMENDMENT DIALOG</text>
+    <text x="720" y="295">MODIFICATION COUNT</text>
+    <text x="720" y="325">REFUND AMOUNT PANEL</text>
+    <rect x="730" y="345" width="130" height="40"/>
+    <text x="744" y="372">CONFIRM</text>
+    <rect x="875" y="345" width="130" height="40"/>
+    <text x="918" y="372">CANCEL</text>
+
+    <line x1="580" y1="765" x2="700" y2="385" marker-end="url(#arrow)"/>
+    <text x="602" y="560">SUBMIT</text>
+
+    <line x1="700" y1="300" x2="610" y2="300" marker-end="url(#arrow)"/>
+    <text x="620" y="288">CONFIRMED</text>
+
+    <rect x="700" y="500" width="340" height="220"/>
+    <text x="720" y="540">(207) AMENDMENT PAYLOAD</text>
+    <text x="720" y="575">order_id</text>
+    <text x="720" y="605">items[]: product_id, accepted_qty,</text>
+    <text x="720" y="630">rejected_qty, reason</text>
+    <text x="720" y="660">driver_notes, amendment_id</text>
+
+    <line x1="610" y1="380" x2="700" y2="590" marker-end="url(#arrow)"/>
+    <text x="620" y="500">BUILD REQUEST</text>
+  </g>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="black"/>
+    </marker>
+  </defs>
+</svg>

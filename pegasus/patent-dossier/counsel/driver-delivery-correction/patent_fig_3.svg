@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="920" viewBox="0 0 1500 920">
+  <rect x="0" y="0" width="1500" height="920" fill="white"/>
+  <g stroke="black" stroke-width="2" fill="none" font-family="Arial" font-size="18">
+    <text x="40" y="50">FIG. 3 - AMENDMENT TRANSACTION AND EVENT SEQUENCE</text>
+
+    <text x="80" y="110">(301) DRIVER APP</text>
+    <line x1="130" y1="130" x2="130" y2="860" stroke-dasharray="8,8"/>
+
+    <text x="360" y="110">(302) AMENDMENT API</text>
+    <line x1="430" y1="130" x2="430" y2="860" stroke-dasharray="8,8"/>
+
+    <text x="640" y="110">(303) ORDER TXN</text>
+    <line x1="710" y1="130" x2="710" y2="860" stroke-dasharray="8,8"/>
+
+    <text x="910" y="110">(304) DATA STORE</text>
+    <line x1="980" y1="130" x2="980" y2="860" stroke-dasharray="8,8"/>
+
+    <text x="1180" y="110">(305) OUTBOX/RELAY</text>
+    <line x1="1260" y1="130" x2="1260" y2="860" stroke-dasharray="8,8"/>
+
+    <text x="1360" y="110">(306) DOWNSTREAM</text>
+    <line x1="1420" y1="130" x2="1420" y2="860" stroke-dasharray="8,8"/>
+
+    <line x1="130" y1="180" x2="430" y2="180" marker-end="url(#arrow)"/>
+    <text x="170" y="170">SUBMIT AMENDMENT(order_id, items, reasons)</text>
+
+    <line x1="430" y1="230" x2="710" y2="230" marker-end="url(#arrow)"/>
+    <text x="470" y="220">VALIDATE STATE + LOCK + PAYLOAD</text>
+
+    <line x1="710" y1="280" x2="980" y2="280" marker-end="url(#arrow)"/>
+    <text x="740" y="270">READ ORDER + LINE ITEMS + VERSION</text>
+
+    <line x1="980" y1="320" x2="710" y2="320" marker-end="url(#arrow)"/>
+    <text x="745" y="310">RETURN CURRENT VALUES</text>
+
+    <rect x="545" y="350" width="330" height="75"/>
+    <text x="565" y="390">(307) CHECK accepted + rejected = original</text>
+
+    <line x1="710" y1="460" x2="980" y2="460" marker-end="url(#arrow)"/>
+    <text x="740" y="450">UPDATE LINE ITEMS + INSERT RETURNS</text>
+
+    <line x1="710" y1="510" x2="980" y2="510" marker-end="url(#arrow)"/>
+    <text x="740" y="500">RECALCULATE ADJUSTED TOTAL</text>
+
+    <line x1="710" y1="560" x2="980" y2="560" marker-end="url(#arrow)"/>
+    <text x="740" y="550">UPDATE ORDER + VERSION + PAYMENT/INVOICE</text>
+
+    <line x1="710" y1="610" x2="1260" y2="610" marker-end="url(#arrow)"/>
+    <text x="760" y="600">WRITE OUTBOX EVENT ORDER_MODIFIED</text>
+
+    <line x1="1260" y1="660" x2="1420" y2="660" marker-end="url(#arrow)"/>
+    <text x="1280" y="650">PUBLISH / FANOUT</text>
+
+    <line x1="710" y1="710" x2="430" y2="710" marker-end="url(#arrow)"/>
+    <text x="470" y="700">COMMIT SUCCESS + adjusted_total + amendment_id</text>
+
+    <line x1="430" y1="760" x2="130" y2="760" marker-end="url(#arrow)"/>
+    <text x="190" y="750">RESPONSE TO DRIVER</text>
+
+    <rect x="520" y="790" width="380" height="95"/>
+    <text x="540" y="825">ALTERNATE PATHS:</text>
+    <text x="540" y="850">- VERSION CONFLICT -> RETRY/409</text>
+    <text x="540" y="873">- FREEZE LOCK ACTIVE -> REJECT/LOCKED</text>
+  </g>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="black"/>
+    </marker>
+  </defs>
+</svg>

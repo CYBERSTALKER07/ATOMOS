@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900">
+  <rect x="0" y="0" width="1400" height="900" fill="white"/>
+  <g stroke="black" stroke-width="2" fill="none" font-family="Arial" font-size="20">
+    <text x="40" y="50">FIG. 1 - DRIVER CORRECTION ARCHITECTURE</text>
+
+    <rect x="70" y="170" width="280" height="520"/>
+    <rect x="90" y="220" width="240" height="430"/>
+    <text x="105" y="255">(101) DRIVER MOBILE CLIENT</text>
+    <rect x="110" y="290" width="200" height="50"/>
+    <text x="120" y="322">CORRECTION UI</text>
+    <rect x="110" y="360" width="200" height="50"/>
+    <text x="120" y="392">QTY + REASON INPUT</text>
+    <rect x="110" y="430" width="200" height="50"/>
+    <text x="120" y="462">REFUND DELTA PREVIEW</text>
+    <rect x="110" y="500" width="200" height="50"/>
+    <text x="120" y="532">SUBMIT AMENDMENT</text>
+
+    <rect x="500" y="120" width="360" height="110"/>
+    <text x="530" y="165">(102) AMENDMENT API</text>
+    <text x="530" y="200">/v1/order/amend</text>
+
+    <rect x="470" y="300" width="420" height="250"/>
+    <text x="510" y="340">(103) ORDER RECONCILIATION SERVICE</text>
+    <text x="510" y="380">- STATE + LOCK VALIDATION</text>
+    <text x="510" y="415">- QTY CONSERVATION CHECK</text>
+    <text x="510" y="450">- LINE ITEM UPDATE</text>
+    <text x="510" y="485">- TOTAL RECALCULATION</text>
+    <text x="510" y="520">- EVENT MATERIALIZATION</text>
+
+    <rect x="980" y="90" width="330" height="130"/>
+    <text x="1005" y="140">(104) ORDERS + LINE ITEMS</text>
+    <text x="1005" y="175">TRANSACTIONAL DATA STORE</text>
+
+    <rect x="980" y="260" width="330" height="120"/>
+    <text x="1005" y="310">(105) SUPPLIER RETURNS</text>
+    <text x="1005" y="345">REJECTED QTY LEDGER</text>
+
+    <rect x="980" y="420" width="330" height="120"/>
+    <text x="1005" y="470">(106) PAYMENT ARTIFACTS</text>
+    <text x="1005" y="505">SESSION + INVOICE SYNC</text>
+
+    <rect x="980" y="580" width="330" height="130"/>
+    <text x="1005" y="630">(107) OUTBOX + EVENT RELAY</text>
+    <text x="1005" y="665">ORDER_MODIFIED FANOUT</text>
+
+    <line x1="350" y1="380" x2="500" y2="175" marker-end="url(#arrow)"/>
+    <text x="365" y="240">AMENDMENT PAYLOAD</text>
+
+    <line x1="680" y1="230" x2="680" y2="300" marker-end="url(#arrow)"/>
+    <text x="690" y="268">DISPATCH</text>
+
+    <line x1="890" y1="350" x2="980" y2="155" marker-end="url(#arrow)"/>
+    <text x="905" y="245">READ/WRITE</text>
+
+    <line x1="890" y1="410" x2="980" y2="320" marker-end="url(#arrow)"/>
+    <text x="900" y="378">INSERT RETURNS</text>
+
+    <line x1="890" y1="470" x2="980" y2="480" marker-end="url(#arrow)"/>
+    <text x="900" y="455">SYNC TOTALS</text>
+
+    <line x1="890" y1="530" x2="980" y2="645" marker-end="url(#arrow)"/>
+    <text x="900" y="595">EMIT EVENT</text>
+
+    <line x1="980" y1="680" x2="860" y2="680" marker-end="url(#arrow)"/>
+    <text x="865" y="710">ACK/RESPONSE</text>
+
+    <line x1="500" y1="640" x2="350" y2="560" marker-end="url(#arrow)"/>
+    <text x="360" y="610">ADJUSTED TOTAL</text>
+  </g>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="black"/>
+    </marker>
+  </defs>
+</svg>
