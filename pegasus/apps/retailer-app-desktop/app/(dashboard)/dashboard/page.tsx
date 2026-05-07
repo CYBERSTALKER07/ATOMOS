@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
   ShoppingCart,
@@ -26,6 +26,7 @@ import type { Order, Prediction, Product } from "../../../lib/types";
 const EMPTY_ORDERS: Order[] = [];
 const EMPTY_PREDICTIONS: Prediction[] = [];
 const EMPTY_PRODUCTS: Product[] = [];
+type DashboardLoadIssue = "offline" | "restricted" | "error";
 
 export default function DashboardPage() {
   const getProfileId = () => {
@@ -40,9 +41,24 @@ export default function DashboardPage() {
 
   const retailerID = getProfileId();
   const ordersPath = retailerID ? `/v1/retailers/${retailerID}/orders` : "/v1/orders";
-  const { data: orders, loading: loadingOrders } = useLiveData<Order[]>(ordersPath, 30000);
-  const { data: predictions, loading: loadingPred } = useLiveData<Prediction[]>("/v1/ai/predictions");
-  const { data: products } = useLiveData<Product[]>("/v1/catalog/products");
+  const {
+    data: orders,
+    loading: loadingOrders,
+    error: ordersError,
+    mutate: refreshOrders,
+  } = useLiveData<Order[]>(ordersPath, 30000);
+  const {
+    data: predictions,
+    loading: loadingPred,
+    error: predictionsError,
+    mutate: refreshPredictions,
+  } = useLiveData<Prediction[]>("/v1/ai/predictions");
+  const {
+    data: products,
+    loading: loadingProducts,
+    error: productsError,
+    mutate: refreshProducts,
+  } = useLiveData<Product[]>("/v1/catalog/products");
   const { addToCart, items } = useCart();
 
   const orderList = orders ?? EMPTY_ORDERS;
@@ -59,7 +75,32 @@ export default function DashboardPage() {
     [orderList],
   );
   const reorderProducts = useMemo(() => productList.slice(0, 8), [productList]);
-  const loading = loadingOrders || loadingPred;
+  const loading = loadingOrders || loadingPred || loadingProducts;
+  const liveErrors = [ordersError, predictionsError, productsError].filter(
+    (err): err is Error & { status?: number } => Boolean(err),
+  );
+  const hasSnapshotData = orderList.length > 0 || predictionList.length > 0 || productList.length > 0;
+  const loadIssue = useMemo<DashboardLoadIssue | null>(() => {
+    if (liveErrors.length === 0) return null;
+
+    const statuses = liveErrors
+      .map((error) => error.status)
+      .filter((status): status is number => typeof status === "number");
+    if (statuses.some((status) => status === 401 || status === 403)) {
+      return "restricted";
+    }
+
+    const message = liveErrors.map((error) => error.message.toLowerCase()).join(" ");
+    if ((typeof navigator !== "undefined" && !navigator.onLine) || /network|offline|failed to fetch/.test(message)) {
+      return "offline";
+    }
+
+    return "error";
+  }, [liveErrors]);
+
+  const refreshAll = useCallback(() => {
+    void Promise.all([refreshOrders(), refreshPredictions(), refreshProducts()]);
+  }, [refreshOrders, refreshPredictions, refreshProducts]);
 
   if (loading) {
     return (
@@ -75,8 +116,60 @@ export default function DashboardPage() {
     );
   }
 
+  if (!hasSnapshotData && loadIssue) {
+    const stateContent: Record<DashboardLoadIssue, { headline: string; body: string }> = {
+      offline: {
+        headline: "You are offline",
+        body: "Dashboard data could not load because the network is unavailable.",
+      },
+      restricted: {
+        headline: "Access restricted",
+        body: "Your session currently does not have access to retailer dashboard resources.",
+      },
+      error: {
+        headline: "Unable to load dashboard",
+        body: "A server issue blocked dashboard hydration. Retry to fetch the latest retailer signals.",
+      },
+    };
+
+    const content = stateContent[loadIssue];
+
+    return (
+      <PageTransition className="min-h-full p-6 md:p-8">
+        <EmptyState
+          variant={loadIssue}
+          headline={content.headline}
+          body={content.body}
+          action="Retry"
+          onAction={refreshAll}
+        />
+      </PageTransition>
+    );
+  }
+
   return (
     <PageTransition className="min-h-full p-6 md:p-8">
+      {loadIssue && hasSnapshotData && (
+        <div
+          className="mb-6 rounded-xl px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+          style={{ border: "1px solid var(--border)", background: "var(--surface)" }}
+        >
+          <span className="md-typescale-body-small" style={{ color: "var(--muted)" }}>
+            {loadIssue === "restricted"
+              ? "Live dashboard refresh is permission-blocked. Showing the most recent snapshot."
+              : loadIssue === "offline"
+                ? "Network is unavailable. Showing the most recent dashboard snapshot."
+                : "Dashboard refresh failed. Showing the most recent snapshot while retry remains available."}
+          </span>
+          <button
+            onClick={refreshAll}
+            className="md-btn md-btn-outlined md-typescale-label-large inline-flex h-9 items-center px-4"
+          >
+            Retry sync
+          </button>
+        </div>
+      )}
+
       <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="md-typescale-headline-large">Retailer operations hub</h1>

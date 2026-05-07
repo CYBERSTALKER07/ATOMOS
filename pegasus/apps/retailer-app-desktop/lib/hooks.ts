@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from './auth';
 
+type LiveDataError = Error & { status?: number };
+
 export function useLiveData<T>(url: string, interval = 0) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -15,7 +17,11 @@ export function useLiveData<T>(url: string, interval = 0) {
     }
     try {
       const res = await apiFetch(url);
-      if (!res.ok) throw new Error('API fetch failed');
+      if (!res.ok) {
+        const requestError = new Error(`API fetch failed (${res.status})`) as LiveDataError;
+        requestError.status = res.status;
+        throw requestError;
+      }
       const json = await res.json();
       setData(json);
       setError(null);
