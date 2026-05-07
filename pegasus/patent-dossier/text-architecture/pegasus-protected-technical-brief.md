@@ -42,13 +42,13 @@ The realtime hub drawing should show warehouse, retailer, driver, payload, facto
 
 The auto-dispatch and planning drawing should show order demand, warehouse load, driver readiness, vehicle availability, H3-style spatial planning, dispatch preview, manual lock or override behavior, manifest generation, route execution, and replenishment feedback. The existing auto-dispatch pipeline visual provides the public drawing basis, while the codebase route graph supports the planning, proximity, supplier logistics, and warehouse dispatch relationships.
 
-The reliability control-plane drawing should show priority guard, rate limiting, circuit-breaker posture, Redis invalidation, idempotency, retry behavior, structured logging, metrics, role-restricted failures, and stale or offline states as one safety layer. The drawing should express graceful degradation, not just uptime. A failed live channel, stale read, out-of-scope action, duplicate mutation attempt, or overloaded low-priority request should become visible and bounded.
+The reliability control-plane drawing should show priority guard, rate limiting, circuit-breaker posture, Redis invalidation, idempotency, retry behavior, structured logging, metrics, role-restricted failures, and stale or offline states as one safety layer. The drawing should express graceful degradation, not uptime alone. A failed live channel, stale read, out-of-scope action, duplicate mutation attempt, or overloaded low-priority request should become visible and bounded.
 
 The financial integrity drawing should connect operational completion, payment state, ledger lineage, treasury review, reconciliation, and exception handling. Logistics and finance remain separate domains, but their state transitions must not drift. This drawing should show operational facts and money movement sharing an auditable lineage.
 
 The visual and image register drawing should group the public architecture overview, Maglev load-balancing visual, auto-dispatch pipeline visual, reliability control-plane visual, technology-stack composites, omni-code surface artwork, role-feature diagrams, role-relations diagrams, role-surface diagrams, ecosystem workflow diagrams, and Pegasus identity logo. These visual references support formal architecture, infrastructure, system-flow, technical-stack, role-map, and brand-ending pages in the PDF without turning the document into an implementation manual.
 
-The mathematical landscape drawing should show the formula families as abstract control surfaces. Engineering and Computer Science covers orchestration quality and consistency. Radar, Positioning and Navigation covers location-aware confidence. Remote Sensing covers noisy observation and scene confidence. Physics and Mathematics covers stable optimization. General Physics and Mathematics covers uncertainty and the decision boundary between automation and human confirmation.
+The mathematical-area drawing should show the formula families as abstract control surfaces. Engineering and Computer Science covers orchestration quality and consistency. Radar, Positioning and Navigation covers location-aware confidence. Remote Sensing covers noisy observation and scene confidence. Physics and Mathematics covers stable optimization. General Physics and Mathematics covers uncertainty and the decision boundary between automation and human confirmation.
 
 The future-vision drawing should show assistive autonomy, predictive replenishment, exception anticipation, adaptive routing, supply-lane planning, risk-aware forecasting, and operator-governed recommendations. The drawing should make clear that recommendations are bounded proposals with confidence and authority checks, not unreviewable commands.
 
@@ -202,13 +202,13 @@ The system relies on additive compatibility rather than casual renaming. When a 
 
 Non-technically, Pegasus is built around trust. A supplier trusts that the warehouse sees the same business reality. A warehouse trusts that the driver receives executable work, not stale theory. A retailer trusts that confirmed demand and receipt affect payment and fulfillment correctly. A payload team trusts that a sealed manifest means something operationally. Leadership trusts that when an exception happens, the system can explain who acted, under what authority, and what changed.
 
-This is the part most software descriptions skip. The invention is not just the presence of dispatch, maps, payments, dashboards, and apps. Those are expected. The invention is that those surfaces behave as one controlled operating environment instead of one polished portal sitting beside several weaker side channels.
+This is the part most software descriptions skip. Dispatch, maps, payments, dashboards, and apps are expected. The invention is that those surfaces behave as one controlled operating environment instead of one polished portal sitting beside several weaker side channels.
 
 ### Infra, Architecture, Logic, Purpose, Idea, and Flow
 
 The infrastructure is split into planes so the system can scale without turning every request into a database fight. Request traffic passes through a routing and protection layer before it reaches backend handlers. Backend handlers resolve actor identity, scope, and policy. Transactional data stores preserve durable truth. Cache and Pub/Sub invalidation preserve read speed without accepting stale correctness as normal. Eventing carries state changes to workers and role surfaces. Live channels keep operational screens fresh. Observability ties logs, events, and operator-visible behavior together.
 
-The architecture is role-row oriented. A role is not just one client. A role is a business actor with web, desktop, mobile, terminal, backend, event, and notification consequences. Supplier, driver, retailer, payload, factory, and warehouse surfaces each have their own contract row. When the backend expands a role capability, the corresponding role clients must understand the shape or the system must hide the capability until parity exists.
+The architecture is organized around role rows. A role is more than one client. It is a business actor with web, desktop, mobile, terminal, backend, event, and notification consequences. Supplier, driver, retailer, payload, factory, and warehouse surfaces each have their own contract row. When the backend expands a role capability, the corresponding role clients must understand the shape. Otherwise, the system must hide the capability until parity exists.
 
 The logic follows a guarded transition model. A request starts as intent, not permission. The system resolves the actor from authentication, resolves the operational scope from claims and node relationships, evaluates whether the target object can move to the requested state, rejects stale or replayed attempts, commits the state change, emits the durable event, invalidates affected read models, and notifies the relevant role channels. This is intentionally more strict than ordinary CRUD. Logistics is physical. A mistaken state change can send a truck, unlock a manifest, or shift liability.
 
@@ -236,19 +236,19 @@ The technical value is that Pegasus gives distributed logistics a shared transit
 
 The non-technical value is that people can trust the operating picture. A supplier can see where risk is building. A warehouse can explain why dispatch changed. A driver can retry without duplicating an action. A retailer can track fulfillment without needing to understand internal logistics. A payload operator can report the loading truth early. Finance can reconcile from the same lineage instead of cleaning up after the system.
 
-### Engineering and Computer Science Formula Landscape
+### Engineering and Computer Science Formula Area
 
-This landscape models orchestration quality. The formula is written in plain notation so it survives PDF export and can be read without a math renderer.
+This area models orchestration quality. The formula is written in plain notation so it survives PDF export and can be read without a math renderer.
 
 $$
 Q_ops = alpha_valid * valid_transition_rate + alpha_sync * role_sync_score - alpha_conflict * conflict_rate - alpha_latency * propagation_delay
 $$
 
-The formula describes the system goal in engineering terms. Valid transitions should rise. Role synchronization should rise. Conflict rate and propagation delay should fall. The exact weights are intentionally not disclosed because they are implementation-sensitive. The patent-level idea is the use of a composite orchestration score that treats correctness, role agreement, conflict, and propagation delay as one control surface.
+The formula describes the system goal in engineering terms. Valid transitions and role synchronization should rise. Conflict rate and propagation delay should fall. The exact weights are intentionally not disclosed because they are implementation-sensitive. The patent-level idea is a composite orchestration score that treats correctness, role agreement, conflict, and propagation delay as one control surface.
 
-### Radar, Positioning and Navigation Formula Landscape
+### Radar, Positioning and Navigation Formula Area
 
-This landscape models location-aware confidence. Logistics decisions often depend on where an actor, vehicle, warehouse, retailer, or route actually is, but location readings are imperfect. The system therefore treats position as a confidence problem, not a blind coordinate lookup.
+This area models location-aware confidence. Logistics decisions often depend on where an actor, vehicle, warehouse, retailer, or route actually is, but location readings are imperfect. The system therefore treats position as a confidence problem, not a blind coordinate lookup.
 
 $$
 p_hat(t) = argmin_over_p SUM[k in S(t)] w_k * residual_score(signal_k, p, time_lag_k)
@@ -256,9 +256,9 @@ $$
 
 The formula states that the chosen position estimate is the candidate position that minimizes weighted residual error across available signals and time lag. The invention does not require one specific positioning vendor. It requires that location-sensitive actions be evaluated against a confidence model before they affect completion, dispatch, arrival, or exception state.
 
-### Remote Sensing Formula Landscape
+### Remote Sensing Formula Area
 
-This landscape models operational scene confidence. In logistics, the observed scene can be incomplete. A signal may be delayed, occluded, low quality, or inconsistent with another source. The platform therefore treats scene state as a confidence score rather than a simple yes or no.
+This area models operational scene confidence. In logistics, the observed scene can be incomplete. A signal may be delayed, occluded, low quality, or inconsistent with another source. The platform therefore treats scene state as a confidence score rather than a simple yes or no.
 
 $$
 C_scene = beta_signal * signal_quality + beta_coherence * cross_signal_agreement - beta_occlusion * occlusion_penalty - beta_staleness * data_age
@@ -266,9 +266,9 @@ $$
 
 The formula captures why a warehouse, route, driver, or manifest state should not be trusted equally under all observation conditions. High signal quality and cross-signal agreement increase confidence. Occlusion and stale data reduce confidence. The protected concept is the use of scene confidence as a gate for automation and escalation.
 
-### Physics and Mathematics Formula Landscape
+### Physics and Mathematics Formula Area
 
-This landscape models stable optimization. Routing, replenishment, dispatch, and balancing systems can become unstable if they chase every small change. Pegasus uses the idea of a regularized objective. The system seeks a good fit to current reality while penalizing instability and policy violation.
+This area models stable optimization. Routing, replenishment, dispatch, and balancing systems can become unstable if they chase every small change. Pegasus uses a regularized objective. The system seeks a good fit to current reality while penalizing instability and policy violation.
 
 $$
 Loss(x) = lambda_fit * norm2(x - x_hat)^2 + lambda_smooth * norm1(gradient(x)) + lambda_policy * policy_penalty(x)
@@ -276,9 +276,9 @@ $$
 
 This is the corrected format for the formula that previously rendered poorly. It avoids raw LaTeX commands such as backslash mathcal and backslash lambda. In words, the system compares a candidate plan to the observed plan, penalizes unnecessary jagged changes, and adds a policy penalty when a plan would violate business or safety constraints. The constants are not disclosed because they encode operational tuning.
 
-### General Physics and Mathematics Formula Landscape
+### General Physics and Mathematics Formula Area
 
-This landscape models uncertainty. Automation should act when uncertainty is low and ask for human confirmation when uncertainty is high. The system can treat decision ambiguity as entropy.
+This area models uncertainty. Automation should act when uncertainty is low and ask for human confirmation when uncertainty is high. The system can treat decision ambiguity as entropy.
 
 $$
 Entropy(P) = - SUM[i] p_i * log(p_i), with SUM[i] p_i = 1 and 0 <= p_i <= 1
@@ -292,7 +292,7 @@ The future version of Pegasus should not become a black box that pushes operator
 
 The next generation of features should make risk visible before it becomes a ticket. A warehouse should see a likely dispatch bottleneck before drivers wait. A supplier should see forecast drift before inventory collapses. A factory should see replenishment pressure before the warehouse starts escalating. A retailer should see fulfillment confidence without decoding internal state. The system should get quieter when things are healthy and more precise when things are not.
 
-The patent-relevant idea behind the future vision is not just prediction. Prediction alone is cheap. The stronger idea is prediction with governed actuation. A recommendation becomes useful only when the system can explain the role scope, the confidence level, the expected consequence, the rollback path, and the audit evidence that will remain afterward.
+The patent-relevant idea behind the future vision is prediction with governed actuation. Prediction alone is cheap. A recommendation becomes useful only when the system can explain the role scope, the confidence level, the expected consequence, the rollback path, and the audit evidence that will remain afterward.
 
 ### Additional Professional Fields
 
@@ -300,7 +300,7 @@ Novelty posture: Pegasus combines role-row contract integrity, transactional eve
 
 Industrial applicability: The system applies to supplier-led distribution, factory-to-warehouse replenishment, warehouse dispatch, direct-to-retailer fulfillment, payload loading, driver execution, route monitoring, payment reconciliation, and exception handling. The same control model can be adapted to regulated delivery, cold-chain logistics, high-value goods, route-sensitive fulfillment, and multi-node regional supply networks.
 
-Reliability posture: The system is designed to degrade in visible ways. A dropped live channel should reconnect or show offline state. A stale view should be labeled rather than trusted. A retry should replay safely rather than duplicate a mutation. A manual override should lock the affected entity instead of racing automation.
+Reliability posture: The system degrades in visible ways. A dropped live channel should reconnect or show offline state. A stale view should be labeled rather than trusted. A retry should replay safely rather than duplicate a mutation. A manual override should lock the affected entity instead of racing automation.
 
 Security posture: Scope must come from authenticated identity and node relationship, not from a convenient field supplied by a client. Mutating actions should be replay-safe, audit-backed, and role-bound. External integrations should be verified before body parsing or state mutation. This brief does not disclose secret material, signing details, private endpoints, or production topology.
 

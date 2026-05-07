@@ -14,7 +14,7 @@ Hujjat joriy repository architecture va qo'llab-quvvatlovchi documentation asosi
 
 Ko'p logistics software biror narsa buzilmaguncha integratsiyalashgandek ko'rinadi. Route o'zgaradi, warehouse short bo'ladi, truck unavailable bo'ladi, payment reconciliation talab qiladi yoki driver system kutganidan oldin location'ga yetadi. O'sha paytda weak design ko'rinadi. Inventory bir narsa deydi. Dispatch boshqa narsa deydi. Driver app stale work ko'rsatadi. Portal request two hundred response qaytargani uchun success deydi. Finance mismatch'ni keyin topadi.
 
-Oddiy fix — ko'proq dashboard. Bu odamlarga muammoni ko'rishga yordam beradi, lekin muammoni olib tashlamaydi. Qiyinroq problem presentation emas. Qiyinroq problem state authority. Modern logistics platform qaysi actor qaysi object'ni o'zgartira olishini, qaysi boshqa role'lar xabardor qilinishi kerakligini, qaysi financial consequence kelishini, qaysi cached view'lar invalidated bo'lishini, qaysi automation pause bo'lishini va nima bo'lganini qaysi audit trail isbotlashini bilishi kerak.
+Oddiy javob ko'pincha shunday bo'ladi: yana bitta dashboard qo'shish. Odamlar muammoni yaxshiroq ko'radi, lekin muammo joyida qoladi. Qiyinroq problem presentation emas, state authority. Modern logistics platform qaysi actor qaysi object'ni o'zgartira olishini, qaysi boshqa role'lar xabardor qilinishi kerakligini, qaysi financial consequence kelishini, qaysi cached view'lar invalidated bo'lishini, qaysi automation pause bo'lishini va nima bo'lganini qaysi audit trail isbotlashini bilishi kerak.
 
 Pegasus bunga har bir important workflow'ni governed state transition sifatida ko'rish orqali javob beradi. System supplier, factory yoki warehouse scope uchun client request body'dagi friendly field'ga tayanmaydi. Scope authenticated role context'dan chiqariladi. System event delivery'ni database write'dan keyingi umidli side effect deb ko'rmaydi. Durable mutation va durable propagation birga bog'lanadi. Manual intervention automated dispatch bilan race qilishiga yo'l qo'yilmaydi. Lock semantics insonga machine bilan urishmasdan plan'ni override qilish imkonini beradi.
 
@@ -48,7 +48,7 @@ Financial integrity drawing operational completion, payment state, ledger lineag
 
 Visual and image register drawing public architecture overview, Maglev load-balancing visual, auto-dispatch pipeline visual, reliability control-plane visual, technology-stack composites, omni-code surface artwork, role-feature diagrams, role-relations diagrams, role-surface diagrams, ecosystem workflow diagrams va Pegasus identity logo'ni group qiladi. Bu visual references PDF ichidagi formal architecture, infrastructure, system-flow, technical-stack, role-map va brand-ending pages'ni qo'llaydi, lekin document'ni implementation manual'ga aylantirmaydi.
 
-Mathematical landscape drawing formula families'ni abstract control surfaces sifatida ko'rsatadi. Engineering and Computer Science orchestration quality and consistency'ni qamrab oladi. Radar, Positioning and Navigation location-aware confidence'ni qamrab oladi. Remote Sensing noisy observation and scene confidence'ni qamrab oladi. Physics and Mathematics stable optimization'ni qamrab oladi. General Physics and Mathematics uncertainty va automation bilan human confirmation orasidagi decision boundary'ni qamrab oladi.
+Matematik soha drawing formula families'ni abstract control surfaces sifatida ko'rsatadi. Engineering and Computer Science orchestration quality and consistency'ni qamrab oladi. Radar, Positioning and Navigation location-aware confidence'ni qamrab oladi. Remote Sensing noisy observation and scene confidence'ni qamrab oladi. Physics and Mathematics stable optimization'ni qamrab oladi. General Physics and Mathematics uncertainty va automation bilan human confirmation orasidagi decision boundary'ni qamrab oladi.
 
 Future-vision drawing assistive autonomy, predictive replenishment, exception anticipation, adaptive routing, supply-lane planning, risk-aware forecasting va operator-governed recommendations'ni ko'rsatishi kerak. Drawing recommendations confidence and authority checks bilan bounded proposals ekanini, unreviewable commands emasligini aniq ko'rsatishi kerak.
 
@@ -202,13 +202,13 @@ System additive compatibility'ga tayanadi, casual renaming'ga emas. Route, event
 
 Notexnik jihatdan Pegasus trust atrofida qurilgan. Supplier warehouse bir xil business reality ko'rishiga ishonadi. Warehouse driver executable work olganiga, stale theory emasligiga ishonadi. Retailer confirmed demand va receipt payment and fulfillment'ga to'g'ri ta'sir qilishiga ishonadi. Payload team sealed manifest operational ma'noga ega ekaniga ishonadi. Leadership exception bo'lganda system kim act qilganini, qaysi authority ostida va nima o'zgarganini tushuntira olishiga ishonadi.
 
-Ko'p software description aynan shu qismni tashlab ketadi. Ixtiro dispatch, maps, payments, dashboards va apps borligida emas. Bular expected. Ixtiro bu surfaces bir polished portal yonidagi zaif side channels emas, bitta controlled operating environment sifatida ishlashida.
+Ko'p software description aynan shu qismni tashlab ketadi. Dispatch, maps, payments, dashboards va apps borligining o'zi ixtiro emas. Bular expected. Ixtiro bu surfaces bir polished portal yonidagi zaif side channels emas, bitta controlled operating environment sifatida ishlashida.
 
 ### Infra, arxitektura, logika, maqsad, g'oya va oqim
 
 Infrastructure planes'ga bo'lingan, shunda system scale qilganda har bir request database fight'ga aylanmaydi. Request traffic backend handlers'ga yetishdan oldin routing and protection layer'dan o'tadi. Backend handlers actor identity, scope va policy'ni resolve qiladi. Transactional data stores durable truth'ni saqlaydi. Cache va Pub/Sub invalidation read speed'ni saqlaydi, lekin stale correctness'ni normal deb qabul qilmaydi. Eventing state changes'ni workers va role surfaces'ga olib boradi. Live channels operational screens'ni fresh saqlaydi. Observability logs, events va operator-visible behavior'ni birga bog'laydi.
 
-Architecture role-row oriented. Role faqat bitta client emas. Role web, desktop, mobile, terminal, backend, event va notification consequences'ga ega business actor. Supplier, driver, retailer, payload, factory va warehouse surfaces har biri o'z contract row'ga ega. Backend role capability'ni kengaytirganda corresponding role clients shape'ni tushunishi kerak yoki parity bo'lmaguncha system capability'ni hide qilishi kerak.
+Architecture role row atrofida qurilgan. Role faqat bitta client emas. Role web, desktop, mobile, terminal, backend, event va notification consequences'ga ega business actor. Supplier, driver, retailer, payload, factory va warehouse surfaces har biri o'z contract row'ga ega. Backend role capability'ni kengaytirganda corresponding role clients shape'ni tushunishi kerak. Aks holda parity bo'lmaguncha system capability'ni hide qilishi kerak.
 
 Logic guarded transition model'ga amal qiladi. Request permission emas, intent sifatida boshlanadi. System actor'ni authentication'dan, operational scope'ni claims and node relationships'dan resolve qiladi, target object requested state'ga o'ta olishini evaluate qiladi, stale yoki replayed attempts'ni rejects qiladi, state change'ni commits qiladi, durable event'ni emits qiladi, affected read models'ni invalidates qiladi va relevant role channels'ni notifies qiladi. Bu ordinary CRUD'dan qattiqroq. Logistics physical. Mistaken state change truck yuborishi, manifest unlock qilishi yoki liability shift qilishi mumkin.
 
@@ -216,13 +216,13 @@ Purpose speed va correctness'ni birga ushlashdir. Silent state drift yaratadigan
 
 Flow ortidagi idea shuki, har bir operational object lineage olib yuradi. Order shunchaki complete bo'lmaydi. U accepted, assigned, loaded, transported, arrived, verified, completed va reconciled bo'ladi, chain of evidence orqali. Manifest shunchaki sealed bo'lmaydi. U assembled, checked, started, sealed, dispatched va reality deviates bo'lsa exception-handled bo'ladi. Payment shunchaki settled bo'lmaydi. U fulfillment state bilan tied va append-only accounting logic orqali reconciled bo'ladi.
 
-### Role behavior
+### Rollar xatti-harakati
 
-Supplier role commercial and operational owner hisoblanadi. Current product doctrine ichida Admin Portal Supplier Portal hisoblanadi. Supplier catalog posture, pricing intent, operational policy, warehouse and factory planning, fleet visibility, analytics, billing setup va exception governance'ga egalik qiladi. Supplier role generic platform administrator degani emas. U o'z logistics network'i uchun responsible business operator degani.
+Supplier role commercial and operational owner hisoblanadi. Current product doctrine ichida Admin Portal Supplier Portal hisoblanadi. Supplier catalog posture, pricing intent, operational policy, warehouse and factory planning, fleet visibility, analytics, billing setup va exception governance'ga egalik qiladi. Supplier role generic platform administrator degani emas. U o'z logistics network'i uchun responsible business operator.
 
 Factory admin role production-side readiness va supply generation'ga egalik qiladi. Factory role transfers tayyorlashi, replenishment demand'ga javob berishi, staff and fleet resources'ni coordinate qilishi va production-side manifest state'ni warehouse needs bilan coherent saqlashi mumkin. Uning authority node-scoped, chunki factory operator UI'da field borligi uchun boshqa node'ni mutate qilmasligi kerak.
 
-Warehouse admin role local fulfillment control'ga egalik qiladi. Warehouse stock posture, staff availability, dispatch locks, supply requests, vehicle availability, driver readiness va live operational state'ni kuzatadi. Warehouse role automation va human override eng ko'rinarli uchrashadigan joy. Warehouse operator intervene qilishi mumkin, lekin intervention conflicting automation'ni pause qilishi va audit trail qoldirishi kerak.
+Warehouse admin role local fulfillment control'ga egalik qiladi. Warehouse stock posture, staff availability, dispatch locks, supply requests, vehicle availability, driver readiness va live operational state'ni kuzatadi. Bu yerda automation va human override eng aniq to'qnashadi. Warehouse operator intervene qilishi mumkin, lekin intervention conflicting automation'ni pause qilishi va audit trail qoldirishi kerak.
 
 Driver role physical execution'ga egalik qiladi. Driver route work oladi, arrival validates qiladi, delivery steps'ni confirms qiladi, kerak bo'lganda missing items reports qiladi va high-consequence actions'ni replay-safe requests orqali completes qiladi. Driver role home node model'ga scoped, shunda execution authority loosely trusted request body emas, driver identity'ga ergashadi.
 
@@ -236,19 +236,19 @@ Texnik qiymat shundaki, Pegasus distributed logistics'ga shared transition gramm
 
 Notexnik qiymat shundaki, odamlar operating picture'ga ishonishi mumkin. Supplier risk qayerda building ekanini ko'radi. Warehouse dispatch nega changed bo'lganini tushuntira oladi. Driver action'ni duplicate qilmasdan retry qila oladi. Retailer internal logistics'ni tushunmasdan fulfillment'ni track qiladi. Payload operator loading truth'ni early report qiladi. Finance system ortidan cleanup qilish o'rniga same lineage'dan reconcile qiladi.
 
-### Engineering and Computer Science formula landscape
+### Engineering and Computer Science formula sohasi
 
-Bu landscape orchestration quality'ni model qiladi. Formula PDF export'dan omon o'tishi va math renderer'siz o'qilishi uchun plain notation'da yozilgan.
+Bu soha orchestration quality'ni model qiladi. Formula PDF export'dan omon o'tishi va math renderer'siz o'qilishi uchun plain notation'da yozilgan.
 
 $$
 Q_ops = alpha_valid * valid_transition_rate + alpha_sync * role_sync_score - alpha_conflict * conflict_rate - alpha_latency * propagation_delay
 $$
 
-Formula system goal'ni engineering terms'da tasvirlaydi. Valid transitions oshishi kerak. Role synchronization oshishi kerak. Conflict rate va propagation delay tushishi kerak. Exact weights ataylab disclosed qilinmaydi, chunki ular implementation-sensitive. Patent-level idea correctness, role agreement, conflict va propagation delay'ni bitta control surface sifatida ko'radigan composite orchestration score ishlatishdir.
+Formula system goal'ni engineering terms'da tasvirlaydi. Valid transitions va role synchronization oshishi kerak. Conflict rate va propagation delay tushishi kerak. Exact weights ataylab disclosed qilinmaydi, chunki ular implementation-sensitive. Patent-level idea correctness, role agreement, conflict va propagation delay'ni bitta control surface sifatida ko'radigan composite orchestration score ishlatishdir.
 
-### Radar, Positioning and Navigation formula landscape
+### Radar, Positioning and Navigation formula sohasi
 
-Bu landscape location-aware confidence'ni model qiladi. Logistics decisions ko'pincha actor, vehicle, warehouse, retailer yoki route aslida qayerda ekaniga bog'liq, lekin location readings imperfect. Shuning uchun system position'ni blind coordinate lookup emas, confidence problem sifatida ko'radi.
+Bu soha location-aware confidence'ni model qiladi. Logistics decisions ko'pincha actor, vehicle, warehouse, retailer yoki route aslida qayerda ekaniga bog'liq, lekin location readings imperfect. Shuning uchun system position'ni blind coordinate lookup emas, confidence problem sifatida ko'radi.
 
 $$
 p_hat(t) = argmin_over_p SUM[k in S(t)] w_k * residual_score(signal_k, p, time_lag_k)
@@ -256,9 +256,9 @@ $$
 
 Formula chosen position estimate available signals va time lag bo'yicha weighted residual error'ni minimallashtiradigan candidate position ekanini bildiradi. Ixtiro bitta specific positioning vendor talab qilmaydi. U location-sensitive actions completion, dispatch, arrival yoki exception state'ga ta'sir qilishdan oldin confidence model orqali evaluated bo'lishini talab qiladi.
 
-### Remote Sensing formula landscape
+### Remote Sensing formula sohasi
 
-Bu landscape operational scene confidence'ni model qiladi. Logistics'da observed scene incomplete bo'lishi mumkin. Signal delayed, occluded, low quality yoki boshqa source bilan inconsistent bo'lishi mumkin. Platform therefore scene state'ni simple yes/no emas, confidence score sifatida ko'radi.
+Bu soha operational scene confidence'ni model qiladi. Logistics'da observed scene incomplete bo'lishi mumkin. Signal delayed, occluded, low quality yoki boshqa source bilan inconsistent bo'lishi mumkin. Shuning uchun platform scene state'ni simple yes/no emas, confidence score sifatida ko'radi.
 
 $$
 C_scene = beta_signal * signal_quality + beta_coherence * cross_signal_agreement - beta_occlusion * occlusion_penalty - beta_staleness * data_age
@@ -266,9 +266,9 @@ $$
 
 Formula warehouse, route, driver yoki manifest state nega barcha observation conditions'da bir xil trusted bo'lmasligini ko'rsatadi. High signal quality va cross-signal agreement confidence'ni oshiradi. Occlusion va stale data confidence'ni kamaytiradi. Protected concept scene confidence'ni automation va escalation gate sifatida ishlatishdir.
 
-### Physics and Mathematics formula landscape
+### Physics and Mathematics formula sohasi
 
-Bu landscape stable optimization'ni model qiladi. Routing, replenishment, dispatch va balancing systems har bir small change ortidan quvsa unstable bo'lishi mumkin. Pegasus regularized objective g'oyasidan foydalanadi. System current reality'ga yaxshi fit izlaydi, instability va policy violation'ni penalize qiladi.
+Bu soha stable optimization'ni model qiladi. Routing, replenishment, dispatch va balancing systems har bir small change ortidan quvsa unstable bo'lishi mumkin. Pegasus regularized objective g'oyasidan foydalanadi. System current reality'ga yaxshi fit izlaydi, instability va policy violation'ni penalize qiladi.
 
 $$
 Loss(x) = lambda_fit * norm2(x - x_hat)^2 + lambda_smooth * norm1(gradient(x)) + lambda_policy * policy_penalty(x)
@@ -276,9 +276,9 @@ $$
 
 Bu avval yomon rendered bo'lgan formula uchun corrected format. U backslash mathcal va backslash lambda kabi raw LaTeX commands'dan qochadi. So'z bilan aytganda, system candidate plan'ni observed plan bilan taqqoslaydi, unnecessary jagged changes'ni penalize qiladi va plan business yoki safety constraints'ni buzsa policy penalty qo'shadi. Constants disclosed qilinmaydi, chunki ular operational tuning'ni encode qiladi.
 
-### General Physics and Mathematics formula landscape
+### General Physics and Mathematics formula sohasi
 
-Bu landscape uncertainty'ni model qiladi. Automation uncertainty low bo'lganda act qilishi, uncertainty high bo'lganda human confirmation so'rashi kerak. System decision ambiguity'ni entropy sifatida ko'rishi mumkin.
+Bu soha uncertainty'ni model qiladi. Automation uncertainty low bo'lganda act qilishi, uncertainty high bo'lganda human confirmation so'rashi kerak. System decision ambiguity'ni entropy sifatida ko'rishi mumkin.
 
 $$
 Entropy(P) = - SUM[i] p_i * log(p_i), with SUM[i] p_i = 1 and 0 <= p_i <= 1
@@ -286,21 +286,21 @@ $$
 
 Low entropy system clear best action'ga ega ekanini bildiradi. High entropy system multiple plausible interpretations ko'rayotganini bildiradi. Non-technical translation oddiy. System confident bo'lmasa, pretending'ni to'xtatib right operator'dan so'rashi kerak.
 
-### Future vision features
+### Kelajak ko'rinishi funksiyalari
 
 Pegasus'ning future version'i operators'ni itaradigan black box bo'lmasligi kerak. Kuchliroq yo'l assistive autonomy. System dispatch batches, replenishment timing, route changes, supply-lane shifts, warehouse territory changes, payment exception handling va staffing adjustments tavsiya qilishi mumkin, lekin role authority va auditability saqlanadi.
 
 Next generation features risk ticket'ga aylanishidan oldin visible qilishi kerak. Warehouse drivers kutishidan oldin likely dispatch bottleneck'ni ko'rishi kerak. Supplier inventory collapses bo'lishidan oldin forecast drift'ni ko'rishi kerak. Factory warehouse escalating boshlashidan oldin replenishment pressure'ni ko'rishi kerak. Retailer internal state'ni decode qilmasdan fulfillment confidence'ni ko'rishi kerak. System healthy bo'lganda quiet, nosog'lom bo'lganda precise bo'lishi kerak.
 
-Future vision ortidagi patent-relevant idea prediction emas. Prediction alone cheap. Kuchliroq idea prediction with governed actuation. Recommendation faqat system role scope, confidence level, expected consequence, rollback path va qoladigan audit evidence'ni explain qila olganda foydali bo'ladi.
+Future vision ortidagi patent-relevant idea prediction with governed actuation. Prediction o'zi yetarli emas. Recommendation faqat system role scope, confidence level, expected consequence, rollback path va qoladigan audit evidence'ni explain qila olganda foydali bo'ladi.
 
 ### Qo'shimcha professional maydonlar
 
-Novelty posture: Pegasus role-row contract integrity, transactional event lineage, geospatial confidence, manifest governance, replay safety va financial reconciliation'ni bitta logistics control plane ichida birlashtiradi. Novelty eng kuchli joy har bir mechanism alohida turganida emas, ular interaction qilganida.
+Novelty posture: Pegasus role-row contract integrity, transactional event lineage, geospatial confidence, manifest governance, replay safety va financial reconciliation'ni bitta logistics control plane ichida birlashtiradi. Novelty eng kuchli joy har bir mechanism alohida turganida emas, ular interaction qilganida ko'rinadi.
 
 Industrial applicability: System supplier-led distribution, factory-to-warehouse replenishment, warehouse dispatch, direct-to-retailer fulfillment, payload loading, driver execution, route monitoring, payment reconciliation va exception handling'ga qo'llanadi. Same control model regulated delivery, cold-chain logistics, high-value goods, route-sensitive fulfillment va multi-node regional supply networks'ga moslashtirilishi mumkin.
 
-Reliability posture: System visible ways'da degrade bo'lishi uchun designed. Dropped live channel reconnect qilishi yoki offline state ko'rsatishi kerak. Stale view trusted bo'lish o'rniga labeled bo'lishi kerak. Retry mutation duplicate qilish o'rniga safely replay bo'lishi kerak. Manual override automation bilan race qilish o'rniga affected entity'ni lock qilishi kerak.
+Reliability posture: System visible ways'da degrade bo'ladi. Dropped live channel reconnect qilishi yoki offline state ko'rsatishi kerak. Stale view trusted bo'lish o'rniga labeled bo'lishi kerak. Retry mutation duplicate qilish o'rniga safely replay bo'lishi kerak. Manual override automation bilan race qilish o'rniga affected entity'ni lock qilishi kerak.
 
 Security posture: Scope client supplied convenient field'dan emas, authenticated identity va node relationship'dan kelishi kerak. Mutating actions replay-safe, audit-backed va role-bound bo'lishi kerak. External integrations body parsing yoki state mutation'dan oldin verified bo'lishi kerak. Bu brief secret material, signing details, private endpoints yoki production topology'ni oshkor qilmaydi.
 
