@@ -148,3 +148,65 @@ saving(i,j) = d(depot,i) + d(depot,j) - d(i,j).
 1. Платежный retry/рефанд: pegasus/apps/backend-go/payment/gateway_client.go, pegasus/apps/backend-go/payment/refund.go.
 1. Идемпотентность/оффлайн/backpressure: pegasus/apps/backend-go/idempotency/middleware.go, pegasus/apps/admin-portal/lib/auth.ts, pegasus/apps/admin-portal/lib/api/offlineQueue.ts, pegasus/apps/admin-portal/lib/usePolling.ts.
 1. Мобильная геодистанция/телеметрия: pegasus/apps/driver-app-android/.../Haversine.kt, pegasus/apps/driverappios/.../Utilities/Haversine.swift.
+
+## Раздел G. Дополнительные Зависимые Пункты (Full Spectrum Extraction)
+
+Пункт 49. Способ по пункту 1 или пункту 31, в котором мульти-получательный split вычисляют в минорных единицах по формулам:
+
+$$
+P_{total,minor}=P_{amount}\cdot100,
+\quad
+P_{platform}=\left\lfloor\frac{P_{total,minor}\cdot feeBP}{10000}\right\rfloor,
+\quad
+P_{supplier}=P_{total,minor}-P_{platform}.
+$$
+
+Пункт 50. Способ по пункту 49, в котором параметр $feeBP$ получают из платформенной конфигурации как `platform_fee_percent * 100`, причем значение по умолчанию равно 0.
+
+Пункт 51. Способ по пункту 49, в котором при частичном capture удержанной транзакции масштабирование долей получателей выполняют пропорционально фактической сумме capture.
+
+Пункт 52. Способ по пункту 31, в котором refund reversal выполняют симметрично split-декомпозиции с использованием тех же basis-point коэффициентов.
+
+Пункт 53. Способ по пункту 31, в котором коэффициент settlement вычисляют как:
+
+$$
+SettlementRate=\frac{TotalRevenue-CashPending}{TotalRevenue}.
+$$
+
+Пункт 54. Способ по пункту 22, в котором клиентский idempotency key для payload sealing формируют детерминированно как конкатенацию префикса payload, кода действия и идентификатора сущности.
+
+Пункт 55. Способ по пункту 54, в котором backend middleware применяет Redis-блокировку `SET NX` для ключа `idem:<key>:lock` с TTL 30 секунд и replay-cache для `idem:<key>` с TTL 24 часа.
+
+Пункт 56. Способ по пункту 4 или пункту 11, в котором передача телеметрической точки разрешена при выполнении хотя бы одного порога: $\Delta t>15$ секунд, $\Delta d>20$ метров или $\Delta\psi>15^\circ$.
+
+Пункт 57. Способ по пункту 56, в котором автоматический переход в состояние прибытия выполняют при $d_{hav}(P_{driver},P_{target})\le100$ метров.
+
+Пункт 58. Способ по пункту 5, в котором freeze-lock preemption для AI-контуров задают проверкой:
+
+$$
+isFrozen(entityType,entityId)=1\iff now<t_{exp}.
+$$
+
+Пункт 59. Способ по пункту 58, в котором момент истечения блокировки вычисляют как:
+
+$$
+t_{exp}=t_{acq}+\max(ttl_{event},300\text{s}).
+$$
+
+Пункт 60. Способ по пункту 1 или пункту 2, в котором reassignment маршрута разрешают только при выполнении предиката:
+
+$$
+ReassignAllowed\iff\neg FreezeLocked\land StateReassignable\land\neg Sealed\land CapacityOK.
+$$
+
+## Раздел H. Альтернативные Варианты Выполнения (Future Embodiment Claims)
+
+Пункт 61. Способ по любому из предыдущих пунктов, в котором налоговую компоненту регионального разбиения вычисляют как $T_i=S_i\cdot\tau_{region}$ и включают в итоговую финансовую декомпозицию, где $\tau_{region}$ выбирается из региональной матрицы правил.
+
+Пункт 62. Способ по любому из предыдущих пунктов, в котором момент route re-optimization определяют вероятностной экспоненциальной функцией:
+
+$$
+P_{reroute}=1-\exp\left(-\frac{\Delta t_{delay}}{T_{buffer}}\right).
+$$
+
+Пункт 63. Способ по любому из предыдущих пунктов, в котором edge-дедупликацию payload-сканов выполняют вероятностным Bloom filter до серверной idempotency-проверки.
