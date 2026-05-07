@@ -10,6 +10,10 @@ const defaultOutput = path.resolve(
   __dirname,
   '../../text-architecture-pdf/pegasus-protected-technical-brief.pdf'
 );
+const logoPath = path.resolve(
+  __dirname,
+  '../../../apps/admin-portal/public/logo-solid.png'
+);
 
 function escapeHtml(text) {
   return text
@@ -156,7 +160,17 @@ function markdownToHtml(markdown) {
   return out.join('\n');
 }
 
-function buildHtml(title, bodyHtml) {
+function imageDataUri(filePath) {
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Image asset not found: ${filePath}`);
+  }
+
+  const extension = path.extname(filePath).toLowerCase();
+  const mimeType = extension === '.svg' ? 'image/svg+xml' : 'image/png';
+  return `data:${mimeType};base64,${fs.readFileSync(filePath).toString('base64')}`;
+}
+
+function buildHtml(title, bodyHtml, logoDataUri) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -177,7 +191,7 @@ function buildHtml(title, bodyHtml) {
       line-height: 1.48;
     }
     body::before {
-      content: "CONTROLLED DISCLOSURE";
+      content: "PEGASUS";
       position: fixed;
       top: 45%;
       left: 20%;
@@ -194,26 +208,34 @@ function buildHtml(title, bodyHtml) {
     }
     .cover {
       border: 1px solid #222;
-      padding: 22px;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      min-height: 118mm;
+      overflow: hidden;
       margin-bottom: 16px;
       page-break-inside: avoid;
     }
-    .cover .label {
-      font-size: 10px;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-      color: #333;
-      margin-bottom: 8px;
+    .cover-title {
+      display: flex;
+      align-items: center;
+      padding: 22px;
     }
     .cover h1 {
       margin: 0;
       font-size: 24px;
       line-height: 1.2;
     }
-    .cover .sub {
-      margin-top: 12px;
-      font-size: 12px;
-      color: #333;
+    .cover-logo-pane {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-left: 1px solid #222;
+      padding: 18px;
+    }
+    .cover-logo {
+      width: 88%;
+      max-height: 82mm;
+      object-fit: contain;
     }
     h1, h2, h3, h4 {
       margin: 12px 0 6px;
@@ -242,11 +264,13 @@ function buildHtml(title, bodyHtml) {
     li { margin: 3px 0; }
     .math-block {
       margin: 8px 0;
-      padding: 8px 10px;
+      padding: 10px 12px;
       border-left: 3px solid #222;
       background: #fafafa;
       font-family: "Menlo", "Consolas", monospace;
-      font-size: 10.5px;
+      font-size: 10.8px;
+      line-height: 1.55;
+      text-align: center;
       page-break-inside: avoid;
       white-space: pre-wrap;
       word-break: break-word;
@@ -273,17 +297,36 @@ function buildHtml(title, bodyHtml) {
       font-size: 10px;
       color: #444;
     }
+    .closing-logo {
+      min-height: 190mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      page-break-before: always;
+      page-break-inside: avoid;
+    }
+    .closing-logo img {
+      width: 78%;
+      max-height: 150mm;
+      object-fit: contain;
+    }
   </style>
 </head>
 <body>
   <div class="page">
     <section class="cover">
-      <div class="label">Patent-Oriented Technical Dossier</div>
-      <h1>${escapeHtml(title)}</h1>
-      <div class="sub">Professional summary aligned for architecture, logic, formula landscapes, and controlled disclosure boundaries.</div>
+      <div class="cover-title">
+        <h1>${escapeHtml(title)}</h1>
+      </div>
+      <div class="cover-logo-pane">
+        <img class="cover-logo" src="${logoDataUri}" alt="Pegasus logo" />
+      </div>
     </section>
     ${bodyHtml}
-    <div class="footer-note">Generated for controlled technical review. This document intentionally omits implementation-critical secrets.</div>
+    <section class="closing-logo" aria-label="Pegasus closing logo">
+      <img src="${logoDataUri}" alt="Pegasus logo" />
+    </section>
+    <div class="footer-note">Intellectual property of The Lab Industries.</div>
   </div>
 </body>
 </html>`;
@@ -302,8 +345,9 @@ async function main() {
   const markdown = fs.readFileSync(inputPath, 'utf8');
   const titleMatch = markdown.match(/^#\s+(.+)$/m);
   const title = titleMatch ? titleMatch[1].trim() : path.basename(inputPath, '.md');
+  const logoDataUri = imageDataUri(logoPath);
 
-  const html = buildHtml(title, markdownToHtml(markdown));
+  const html = buildHtml(title, markdownToHtml(markdown), logoDataUri);
 
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
