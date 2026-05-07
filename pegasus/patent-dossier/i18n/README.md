@@ -21,6 +21,7 @@
 1. `patent-packet.uz.md`: Uzbek legal and strategic patent packet covering claim families, figure groups, backend automation architecture, and autonomy roadmap.
 1. `patent-algorithm-atlas.ru.md`: Russian formula-level atlas of implemented algorithms across backend-go, ai-worker, app-side protocols, and infrastructure reliability controls.
 1. `patent-claim-skeleton.ru.md`: Russian filing-oriented claim scaffold with independent and dependent claim templates mapped to verified implementation evidence.
+1. `patent-claims-draft.ru.md`: Russian full-length numbered claims draft in legal style for pre-filing counsel iteration.
 1. `patent-line-art-prompts.ru.md`: Russian prompt library for strict black-and-white patent figure generation with unified line-art constraints.
 1. `future-autonomous-vision.ru.md`: Russian no-human-loop future embodiment covering autonomous trucks, robotic payload/warehouse operation, and backend-first execution governance.
 1. `filing-review-pack-high-priority.manifest.json`: machine-readable manifest fixing the exact high-priority surface subset used for the filing-ready native review packs.
@@ -36,6 +37,7 @@
 1. Use the Russian and Uzbek markdown packets for counsel review, business review, and regional filing preparation.
 1. Use `patent-algorithm-atlas.ru.md` when drafting formula-centric or algorithm-centric claims and dependent claim trees.
 1. Use `patent-claim-skeleton.ru.md` as the fast starting point for constructing independent and dependent claim sets before legal finalization.
+1. Use `patent-claims-draft.ru.md` as the extended numbered draft for legal review and filing-structure refinement.
 1. Use `patent-line-art-prompts.ru.md` to keep all generated figures in legally clean monochrome line-art style.
 1. Use `future-autonomous-vision.ru.md` when extending filings from human-assisted logistics to machine-native autonomous embodiments.
 1. Use the Russian and Uzbek high-priority review packs when a filing team needs native-language narrative prose rather than source-anchored overlay JSON.

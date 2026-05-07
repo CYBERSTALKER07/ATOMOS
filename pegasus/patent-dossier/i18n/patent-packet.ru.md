@@ -65,6 +65,7 @@
 **Алгоритмические И Визуальные Приложения (RU)**
 1. `patent-algorithm-atlas.ru.md`: формульный атлас реализованной логики backend, ai-worker, app-side и infra-слоя с отметкой границ доказательности.
 1. `patent-claim-skeleton.ru.md`: filing-ready каркас независимых и зависимых притязаний, связанный с подтвержденными алгоритмами реализации.
+1. `patent-claims-draft.ru.md`: расширенный черновик формулы изобретения с полной нумерацией пунктов в юридическом стиле.
 1. `patent-line-art-prompts.ru.md`: production-библиотека промптов для строгих монохромных патентных диаграмм (black-white line art only).
 1. `future-autonomous-vision.ru.md`: отдельная no-human-loop эмбодиментация с автономными грузовиками, роботизированными payload/warehouse узлами и backend-first orchestration.
 
@@ -134,5 +135,6 @@
 1. Для терминов интерфейса и minifeatures используйте glossary-файлы из каталога i18n.
 1. Для формульной детализации используйте `patent-algorithm-atlas.ru.md`.
 1. Для быстрой сборки формулы изобретения используйте `patent-claim-skeleton.ru.md`.
+1. Для полного черновика пунктов притязаний используйте `patent-claims-draft.ru.md`.
 1. Для черно-белой визуализации используйте `patent-line-art-prompts.ru.md`.
 1. Для автономной машинной эмбодиментации используйте `future-autonomous-vision.ru.md`.
