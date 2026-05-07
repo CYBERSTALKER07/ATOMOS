@@ -3,7 +3,8 @@ import { motion } from "framer-motion";
 import { ReactNode } from "react";
 
 interface EmptyStateProps {
-  icon: ReactNode;
+  icon?: ReactNode;
+  imageUrl?: string;
   headline: string;
   body?: string;
   action?: string;
@@ -12,6 +13,7 @@ interface EmptyStateProps {
 
 export default function EmptyState({
   icon,
+  imageUrl,
   headline,
   body,
   action,
@@ -29,9 +31,14 @@ export default function EmptyState({
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.1, type: "spring", stiffness: 200, damping: 20 }}
-        className="w-20 h-20 flex items-center justify-center mb-6 rounded-full bg-surface text-muted shadow-sm ring-1 ring-[var(--border)]"
+        className="w-32 h-32 flex items-center justify-center mb-6 rounded-3xl bg-surface/50 overflow-hidden shadow-sm ring-1 ring-[var(--border)]"
       >
-        {icon}
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt={headline} className="w-full h-full object-cover" />
+        ) : (
+          icon
+        )}
       </motion.div>
       <motion.h3 
         initial={{ opacity: 0 }}

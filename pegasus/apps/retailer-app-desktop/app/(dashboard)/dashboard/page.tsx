@@ -169,7 +169,7 @@ export default function DashboardPage() {
           {reorderProducts.length === 0 ? (
             <div className="py-10">
               <EmptyState 
-                icon={<Package size={32} />}
+                imageUrl="/images/empty-products.png"
                 headline="No products available"
                 body="Your catalog is currently empty."
               />
@@ -224,7 +224,7 @@ export default function DashboardPage() {
           {predictionList.length === 0 ? (
             <div className="py-10">
               <EmptyState 
-                icon={<Brain size={32} />}
+                imageUrl="/images/empty-predictions.png"
                 headline="No predictions yet"
                 body="AI recommendations will appear here."
               />

@@ -276,7 +276,7 @@ export default function CatalogPage() {
           {filteredProducts.length === 0 ? (
             <div className="py-16">
               <EmptyState 
-                icon={<Package size={48} />}
+                imageUrl="/images/empty-products.png"
                 headline="No products found"
                 body="Try a different supplier, category, or search query."
                 action="Clear Filters"

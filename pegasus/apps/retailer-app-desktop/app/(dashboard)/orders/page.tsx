@@ -173,7 +173,7 @@ export default function OrdersPage() {
     return (
       <PageTransition>
         <EmptyState 
-          icon={<PackageOpen size={48} />}
+          imageUrl="/images/empty-orders.png"
           headline="No orders yet"
           body="Your incoming deliveries will appear here."
           action="Place Order"
