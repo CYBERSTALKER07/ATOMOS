@@ -3,7 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -78,7 +78,7 @@ func (cb *CircuitBreaker) Allow() bool {
 		if time.Since(cb.lastTransition) >= cb.OpenDuration {
 			cb.state = CircuitHalfOpen
 			cb.lastTransition = time.Now()
-			log.Printf("[CIRCUIT_BREAKER] %s: OPEN → HALF_OPEN (probing)", cb.Name)
+			slog.Info("circuit breaker transition", "name", cb.Name, "from", "OPEN", "to", "HALF_OPEN", "reason", "probe")
 			return true
 		}
 		return false
@@ -99,7 +99,7 @@ func (cb *CircuitBreaker) RecordSuccess() {
 	defer cb.mu.Unlock()
 
 	if cb.state != CircuitClosed {
-		log.Printf("[CIRCUIT_BREAKER] %s: %s → CLOSED (success)", cb.Name, cb.state)
+		slog.Info("circuit breaker transition", "name", cb.Name, "from", cb.state.String(), "to", "CLOSED", "reason", "success")
 	}
 	cb.state = CircuitClosed
 	cb.failureCount = 0
@@ -121,7 +121,7 @@ func (cb *CircuitBreaker) RecordFailure() {
 		// Probe failed — back to open
 		cb.state = CircuitOpen
 		cb.lastTransition = time.Now()
-		log.Printf("[CIRCUIT_BREAKER] %s: HALF_OPEN → OPEN (probe failed, failures=%d)", cb.Name, cb.failureCount)
+		slog.Warn("circuit breaker transition", "name", cb.Name, "from", "HALF_OPEN", "to", "OPEN", "reason", "probe_failed", "failures", cb.failureCount)
 		cb.syncToRedis("OPEN")
 		return
 	}
@@ -129,7 +129,7 @@ func (cb *CircuitBreaker) RecordFailure() {
 	if cb.failureCount >= cb.FailureThreshold {
 		cb.state = CircuitOpen
 		cb.lastTransition = time.Now()
-		log.Printf("[CIRCUIT_BREAKER] %s: CLOSED → OPEN (threshold=%d reached)", cb.Name, cb.FailureThreshold)
+		slog.Warn("circuit breaker transition", "name", cb.Name, "from", "CLOSED", "to", "OPEN", "reason", "threshold_reached", "threshold", cb.FailureThreshold)
 		cb.syncToRedis("OPEN")
 	}
 }

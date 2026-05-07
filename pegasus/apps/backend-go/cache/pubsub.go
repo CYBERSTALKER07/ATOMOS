@@ -2,7 +2,7 @@ package cache
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"sync"
 
 	"github.com/redis/go-redis/v9"
@@ -47,7 +47,7 @@ func ensureRelay() *relay {
 	}
 	c := GetClient()
 	if c == nil {
-		log.Println("[PUBSUB] Redis client nil — Pub/Sub backplane disabled")
+		slog.Warn("pubsub backplane disabled: redis client unavailable")
 		return nil
 	}
 
@@ -60,7 +60,7 @@ func ensureRelay() *relay {
 		cancel:   cancel,
 	}
 	go globalRelay.listen()
-	log.Println("[PUBSUB] Backplane relay started")
+	slog.Info("pubsub backplane relay started")
 	return globalRelay
 }
 
@@ -98,7 +98,7 @@ func Publish(ctx context.Context, channel string, payload []byte) {
 		return
 	}
 	if err := c.Publish(ctx, channel, payload).Err(); err != nil {
-		log.Printf("[PUBSUB] Publish to %s failed: %v", channel, err)
+		slog.Warn("pubsub publish failed", "channel", channel, "err", err)
 	}
 }
 
@@ -120,7 +120,7 @@ func Subscribe(channel string, handler PubSubHandler) {
 
 	if shouldSubscribe {
 		if err := r.pubsub.Subscribe(r.ctx, channel); err != nil {
-			log.Printf("[PUBSUB] Subscribe to %s failed: %v", channel, err)
+			slog.Warn("pubsub subscribe failed", "channel", channel, "err", err)
 			r.mu.Lock()
 			delete(r.subs, channel)
 			r.mu.Unlock()
@@ -143,7 +143,7 @@ func Unsubscribe(channel string) {
 
 	if hadSub {
 		if err := r.pubsub.Unsubscribe(r.ctx, channel); err != nil {
-			log.Printf("[PUBSUB] Unsubscribe from %s failed: %v", channel, err)
+			slog.Warn("pubsub unsubscribe failed", "channel", channel, "err", err)
 		}
 	}
 }
@@ -163,5 +163,5 @@ func StopRelay() {
 	if r.pubsub != nil {
 		r.pubsub.Close()
 	}
-	log.Println("[PUBSUB] Backplane relay stopped")
+	slog.Info("pubsub backplane relay stopped")
 }

@@ -3,7 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -122,8 +122,11 @@ func NewBackpressureEngine(cfg BackpressureConfig) *BackpressureEngine {
 		done:   make(chan struct{}),
 	}
 	go eng.probeLoop()
-	log.Printf("[BACKPRESSURE] Engine started — P2 shed at %v, P1 shed at %v, probe every %v",
-		cfg.P2ShedLatency, cfg.P1ShedLatency, cfg.ProbeInterval)
+	slog.Info("backpressure engine started",
+		"p2_shed_latency", cfg.P2ShedLatency,
+		"p1_shed_latency", cfg.P1ShedLatency,
+		"probe_interval", cfg.ProbeInterval,
+	)
 	return eng
 }
 

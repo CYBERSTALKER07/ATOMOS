@@ -1,6 +1,6 @@
 {
   "version": "2026-05-07",
-  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure and slog observability tranche across high-noise runtime domains).",
+  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure and slog observability tranche across high-noise runtime domains and cache infrastructure paths).",
   "agentContext": {
     "syncSet": [
       "../.github/ACT.md",

@@ -9,7 +9,7 @@ package cache
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -39,7 +39,7 @@ func IncrementQueueDepth(ctx context.Context, warehouseID string) {
 	pipe.Incr(ctx, key)
 	pipe.Expire(ctx, key, warehouseQueueTTL)
 	if _, err := pipe.Exec(ctx); err != nil {
-		log.Printf("[WAREHOUSE-LOAD] INCR failed for %s: %v", warehouseID, err)
+		slog.Warn("warehouse load increment failed", "warehouse_id", warehouseID, "err", err)
 	}
 }
 
@@ -53,7 +53,7 @@ func DecrementQueueDepth(ctx context.Context, warehouseID string) {
 	key := warehouseQueueKey(warehouseID)
 	val, err := c.Decr(ctx, key).Result()
 	if err != nil {
-		log.Printf("[WAREHOUSE-LOAD] DECR failed for %s: %v", warehouseID, err)
+		slog.Warn("warehouse load decrement failed", "warehouse_id", warehouseID, "err", err)
 		return
 	}
 	// Floor at zero — DECR can go negative if counters drift
@@ -108,7 +108,7 @@ func GetAllWarehouseLoads(ctx context.Context, warehouseIDs []string) map[string
 
 	vals, err := c.MGet(ctx, keys...).Result()
 	if err != nil {
-		log.Printf("[WAREHOUSE-LOAD] MGET failed: %v", err)
+		slog.Warn("warehouse load batch read failed", "err", err)
 		return result
 	}
 
@@ -143,7 +143,7 @@ func BulkIncrementQueueDepth(ctx context.Context, warehouseCounts map[string]int
 		pipe.Expire(ctx, key, warehouseQueueTTL)
 	}
 	if _, err := pipe.Exec(ctx); err != nil {
-		log.Printf("[WAREHOUSE-LOAD] BulkINCR failed: %v", err)
+		slog.Warn("warehouse load bulk increment failed", "err", err)
 	}
 }
 

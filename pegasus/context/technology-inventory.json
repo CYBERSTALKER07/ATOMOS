@@ -73,7 +73,7 @@
       "OpenTelemetry",
       "Prometheus client",
       "Google Cloud Monitoring",
-      "log/slog structured logging"
+      "log/slog structured logging (including cache infra tranche: redis, pubsub, invalidation, middleware, warehouse_load, warehouse_geo, priority, circuitbreaker)"
     ]
   },
   "runtimeContracts": [

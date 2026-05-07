@@ -2,7 +2,7 @@ package cache
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"strings"
 	"sync"
 )
@@ -38,7 +38,9 @@ var (
 // all — downstream reads will eventually re-populate from the source of truth.
 // InvalidatePrefix scans for keys matching the prefix and invalidates them.
 func (c *Cache) InvalidatePrefix(ctx context.Context, prefix string) error {
-	if c.Client() == nil { return nil }
+	if c.Client() == nil {
+		return nil
+	}
 	var keys []string
 	iter := c.Client().Scan(ctx, 0, prefix+"*", 1000).Iterator()
 	for iter.Next(ctx) {
@@ -62,7 +64,7 @@ func (c *Cache) Invalidate(ctx context.Context, keys ...string) {
 	l1Evict(keys)
 	if rc := GetClient(); rc != nil {
 		if err := rc.Del(ctx, keys...).Err(); err != nil {
-			log.Printf("[CACHE] Invalidate DEL %v failed: %v", keys, err)
+			slog.Warn("cache invalidate DEL failed", "keys", keys, "err", err)
 		}
 	}
 	// Announce to peers even if the local DEL fails — their copies may still
@@ -97,7 +99,7 @@ func (c *Cache) OnInvalidate(h func(keys []string)) {
 // Typically called once from bootstrap.NewApp.
 func (c *Cache) StartInvalidationSubscriber(ctx context.Context) {
 	if Client == nil {
-		log.Println("[CACHE] Invalidation subscriber disabled: no Redis client")
+		slog.Warn("cache invalidation subscriber disabled: no redis client")
 		return
 	}
 	Subscribe(invalidationChannel, func(channel string, payload []byte) {
@@ -112,5 +114,5 @@ func (c *Cache) StartInvalidationSubscriber(ctx context.Context) {
 			h(keys)
 		}
 	})
-	log.Println("[CACHE] Invalidation subscriber online on", invalidationChannel)
+	slog.Info("cache invalidation subscriber online", "channel", invalidationChannel)
 }

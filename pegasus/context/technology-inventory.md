@@ -39,7 +39,7 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 - Redis cache and Pub/Sub invalidation
 - Firebase integration
 - OpenTelemetry and Prometheus metrics
-- Structured logging via `log/slog` on runtime paths (including recent high-noise migration in `analytics/`, `sync/`, `replenishment/`, `treasury/`, `vault/`, and `kafka/emitter.go`)
+- Structured logging via `log/slog` on runtime paths (including recent high-noise migration in `analytics/`, `sync/`, `replenishment/`, `treasury/`, `vault/`, and `kafka/emitter.go`, plus tranche-1 cache infra migration in `cache/redis.go`, `cache/pubsub.go`, `cache/invalidate.go`, `cache/middleware.go`, `cache/warehouse_load.go`, `cache/warehouse_geo.go`, `cache/priority.go`, and `cache/circuitbreaker.go`)
 
 ## Runtime Contract Surfaces
 

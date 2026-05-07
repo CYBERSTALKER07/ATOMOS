@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -44,7 +44,7 @@ func cacheWriteWorker(ctx context.Context) {
 			}
 			writeCtx, writeCancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 			if setErr := c.Set(writeCtx, job.key, job.val, job.ttl).Err(); setErr != nil {
-				log.Printf("[CACHE] Failed to write key %s: %v", job.key, setErr)
+				slog.Warn("cache write failed", "key", job.key, "err", setErr)
 			}
 			writeCancel()
 		}
@@ -138,7 +138,7 @@ func Invalidate(ctx context.Context, keys ...string) {
 // InvalidatePrefix removes all keys matching a prefix pattern. Use sparingly.
 func InvalidatePrefix(ctx context.Context, prefix string) {
 	if err := (&Cache{}).InvalidatePrefix(ctx, prefix); err != nil {
-		log.Printf("[CACHE] Prefix invalidation failed for %s: %v", prefix, err)
+		slog.Warn("cache prefix invalidation failed", "prefix", prefix, "err", err)
 	}
 }
 

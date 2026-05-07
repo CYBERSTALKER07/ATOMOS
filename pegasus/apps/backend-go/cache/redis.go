@@ -6,7 +6,7 @@ package cache
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -52,7 +52,7 @@ const DLQResolvedKey = KeyDLQResolved
 // Init logs a warning and leaves Client as nil — callers degrade gracefully.
 func Init(addr string) {
 	if addr == "" {
-		log.Println("[REDIS] REDIS_ADDRESS not set — Resolution Ledger running in degraded mode (no DLQ de-duplication).")
+		slog.Warn("redis address not set; running in degraded mode")
 		return
 	}
 
@@ -64,7 +64,7 @@ func Init(addr string) {
 	}
 	setClient(c)
 	redisHealthy.Store(true)
-	log.Println("[REDIS] Memorystore connection established. Resolution Ledger: ACTIVE.")
+	slog.Info("redis connection established", "mode", "resolution_ledger_active")
 }
 
 // newUniversalClient dials a single-node or cluster client and returns it after
@@ -93,7 +93,7 @@ func newUniversalClient(addr string) redis.UniversalClient {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := c.Ping(ctx).Err(); err != nil {
-		log.Printf("[REDIS] Ping failed (%v) — Resolution Ledger degraded. DLQ replay will work but de-duplication is disabled.", err)
+		slog.Warn("redis ping failed; running in degraded mode", "err", err)
 		_ = c.Close()
 		return nil
 	}
@@ -137,7 +137,7 @@ func ResolvedOffsets(ctx context.Context) map[string]bool {
 	}
 	members, err := c.SMembers(ctx, DLQResolvedKey).Result()
 	if err != nil {
-		log.Printf("[REDIS] Failed to fetch resolved offsets: %v — showing full DLQ", err)
+		slog.Warn("redis failed to fetch resolved offsets", "err", err)
 		return resolved
 	}
 	for _, m := range members {
@@ -190,15 +190,15 @@ func StartHealthMonitor() {
 
 				if err != nil {
 					consecutiveFailures++
-					log.Printf("[REDIS_HEALTH] Ping failed (%d/3): %v", consecutiveFailures, err)
+					slog.Warn("redis health ping failed", "failures", consecutiveFailures, "err", err)
 					if consecutiveFailures >= 3 {
-						log.Println("[REDIS_HEALTH] 3 consecutive failures — setting Client=nil for graceful degradation")
+						slog.Warn("redis health degraded; disabling client after consecutive failures", "failures", consecutiveFailures)
 						setClient(nil)
 						redisHealthy.Store(false)
 					}
 				} else {
 					if consecutiveFailures > 0 {
-						log.Printf("[REDIS_HEALTH] Recovered after %d failures", consecutiveFailures)
+						slog.Info("redis health recovered", "previous_failures", consecutiveFailures)
 					}
 					consecutiveFailures = 0
 					redisHealthy.Store(true)
@@ -209,7 +209,7 @@ func StartHealthMonitor() {
 					setClient(c)
 					redisHealthy.Store(true)
 					consecutiveFailures = 0
-					log.Println("[REDIS_HEALTH] Reconnected successfully")
+					slog.Info("redis reconnected successfully")
 				}
 			}
 		}
@@ -221,9 +221,9 @@ func StartHealthMonitor() {
 func Close() {
 	if c := GetClient(); c != nil {
 		if err := c.Close(); err != nil {
-			log.Printf("[REDIS] Close error: %v", err)
+			slog.Warn("redis close error", "err", err)
 		} else {
-			log.Println("[REDIS] Connection pool closed.")
+			slog.Info("redis connection pool closed")
 		}
 		setClient(nil)
 	}

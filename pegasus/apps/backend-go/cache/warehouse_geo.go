@@ -3,7 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -75,7 +75,7 @@ func IndexWarehouse(ctx context.Context, entry WarehouseGeoEntry) error {
 
 	_, err := pipe.Exec(ctx)
 	if err != nil {
-		log.Printf("[WAREHOUSE-GEO] Failed to index warehouse %s: %v", entry.WarehouseId, err)
+		slog.Warn("warehouse geo index failed", "warehouse_id", entry.WarehouseId, "err", err)
 		return err
 	}
 
