@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
+import EmptyState from '@/components/EmptyState';
 import { motion } from 'framer-motion';
 import PageTransition from '@/components/PageTransition';
 
@@ -29,23 +30,41 @@ const EMPTY_STATS: FactoryStats = {
   critical_insights: 0,
 };
 const LIVE_REFRESH_MS = 30_000;
+type DashboardLoadIssue = 'offline' | 'restricted' | 'error';
 
 export default function FactoryDashboard() {
   const [stats, setStats] = useState<FactoryStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadIssue, setLoadIssue] = useState<DashboardLoadIssue | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     let active = true;
     let liveRefreshTimer: number | null = null;
+    setLoading(true);
 
     async function load() {
       try {
         const res = await apiFetch('/v1/factory/dashboard');
-        if (res.ok && active) {
+        if (!res.ok) {
+          if (active) {
+            if (res.status === 401 || res.status === 403) {
+              setLoadIssue('restricted');
+            } else {
+              setLoadIssue('error');
+            }
+          }
+          return;
+        }
+
+        if (active) {
           setStats(await res.json());
+          setLoadIssue(null);
         }
       } catch {
-        // empty state handled below
+        if (active) {
+          setLoadIssue('offline');
+        }
       } finally {
         if (active) {
           setLoading(false);
@@ -84,7 +103,7 @@ export default function FactoryDashboard() {
       unsubscribe();
       window.clearInterval(interval);
     };
-  }, []);
+  }, [reloadToken]);
 
   if (loading) {
     return (
@@ -96,6 +115,58 @@ export default function FactoryDashboard() {
           ))}
         </div>
       </div>
+    );
+  }
+
+  if (!stats && loadIssue) {
+    const stateContent: Record<DashboardLoadIssue, { headline: string; body: string }> = {
+      offline: {
+        headline: 'You are offline',
+        body: 'Factory dashboard data could not be refreshed because the network is unavailable.',
+      },
+      restricted: {
+        headline: 'Access restricted',
+        body: 'Your current session does not have permission to view factory dashboard metrics.',
+      },
+      error: {
+        headline: 'Unable to load dashboard',
+        body: 'A server issue blocked this view. Retry to fetch the latest factory status.',
+      },
+    };
+
+    const content = stateContent[loadIssue];
+
+    return (
+      <PageTransition className="space-y-6 p-6 md:p-8">
+        <EmptyState
+          variant={loadIssue}
+          headline={content.headline}
+          body={content.body}
+          action="Retry"
+          onAction={() => {
+            setLoading(true);
+            setLoadIssue(null);
+            setReloadToken(v => v + 1);
+          }}
+        />
+      </PageTransition>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <PageTransition className="space-y-6 p-6 md:p-8">
+        <EmptyState
+          variant="no-data"
+          headline="No factory metrics yet"
+          body="Once transfer and loading activity starts, operational metrics will appear here."
+          action="Refresh"
+          onAction={() => {
+            setLoading(true);
+            setReloadToken(v => v + 1);
+          }}
+        />
+      </PageTransition>
     );
   }
 
@@ -170,6 +241,7 @@ export default function FactoryDashboard() {
                 <Link
                   key={card.href}
                   href={card.href}
+                >
                 <motion.div
                   whileTap={{ scale: 0.98 }}
                   className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--accent)] hover-lift"
@@ -232,18 +304,19 @@ export default function FactoryDashboard() {
 
           <div className="mt-5 grid gap-4 md:grid-cols-3">
             {secondaryKpis.map((kpi) => (
-              <Link
-                key={kpi.label}
-                href={kpi.href}
-                className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--accent)]"
-              >
-                <div className="flex items-center justify-between">
-                  <Icon name={kpi.icon} size={18} className="text-[var(--muted)]" />
-                  {kpi.danger && <span className="status-chip status-chip--critical">Alert</span>}
-                </div>
-                <div className="mt-4 text-2xl font-semibold tabular-nums text-[var(--foreground)]">{kpi.value}</div>
-                <div className="mt-1 text-sm font-medium text-[var(--foreground)]">{kpi.label}</div>
-                <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{kpi.detail}</p>
+              <Link key={kpi.label} href={kpi.href}>
+                <motion.div
+                  whileTap={{ scale: 0.98 }}
+                  className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--accent)] hover-lift h-full"
+                >
+                  <div className="flex items-center justify-between">
+                    <Icon name={kpi.icon} size={18} className="text-[var(--muted)]" />
+                    {kpi.danger && <span className="status-chip status-chip--critical">Alert</span>}
+                  </div>
+                  <div className="mt-4 text-2xl font-semibold tabular-nums text-[var(--foreground)]">{kpi.value}</div>
+                  <div className="mt-1 text-sm font-medium text-[var(--foreground)]">{kpi.label}</div>
+                  <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{kpi.detail}</p>
+                </motion.div>
               </Link>
             ))}
           </div>
@@ -271,18 +344,19 @@ export default function FactoryDashboard() {
                 description: `${s.critical_insights} critical signal(s) are open in the insights queue.`,
               },
             ].map((step) => (
-              <Link
-                key={step.href}
-                href={step.href}
-                className="flex items-start gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--accent)]"
-              >
-                <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--background)]">
-                  <Icon name="chevronR" size={16} />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-[var(--foreground)]">{step.title}</h3>
-                  <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{step.description}</p>
-                </div>
+              <Link key={step.href} href={step.href}>
+                <motion.div
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-start gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--accent)] hover-lift h-full"
+                >
+                  <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--background)]">
+                    <Icon name="chevronR" size={16} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-[var(--foreground)]">{step.title}</h3>
+                    <p className="mt-1 text-sm leading-6 text-[var(--muted)]">{step.description}</p>
+                  </div>
+                </motion.div>
               </Link>
             ))}
           </div>

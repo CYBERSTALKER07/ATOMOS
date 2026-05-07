@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
+import EmptyState from '@/components/EmptyState';
+import PageTransition from '@/components/PageTransition';
+import { motion } from 'framer-motion';
 
 interface Transfer {
   id: string;
@@ -100,7 +103,7 @@ export default function TransfersPage() {
   );
 
   return (
-    <div className="space-y-6 p-6 md:animate-in md:p-8">
+    <PageTransition className="space-y-6 p-6 md:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Transfer coordination</p>
@@ -162,11 +165,11 @@ export default function TransfersPage() {
           {Array.from({ length: 6 }).map((_, index) => <div key={index} className="md-skeleton md-skeleton-row" />)}
         </div>
       ) : transfers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-[var(--border)] bg-[var(--background)] py-20 text-[var(--muted)]">
-          <Icon name="transfers" size={48} className="mb-3 opacity-40" />
-          <p className="text-base font-medium text-[var(--foreground)]">No transfers found</p>
-          <p className="mt-2 text-sm">Adjust the state filter or wait for the next warehouse request cycle.</p>
-        </div>
+        <EmptyState
+          imageUrl="/images/empty-production-line.png"
+          headline="No transfers found"
+          body="Adjust the state filter or wait for the next warehouse request cycle."
+        />
       ) : (
         <section className="overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--background)]">
           <div className="overflow-x-auto">
@@ -182,11 +185,25 @@ export default function TransfersPage() {
                   <th className="table__column px-4 py-3 text-right font-medium">Action</th>
                 </tr>
               </thead>
-              <tbody>
+              <motion.tbody
+                initial="hidden"
+                animate="show"
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: { opacity: 1, transition: { staggerChildren: 0.05 } }
+                }}
+              >
                 {transfers.map((transfer) => {
                   const priorityStyle = priorityTone(transfer.priority);
                   return (
-                    <tr key={transfer.id} className="table__row">
+                    <motion.tr 
+                      key={transfer.id} 
+                      className="table__row"
+                      variants={{
+                        hidden: { opacity: 0, y: 10 },
+                        show: { opacity: 1, y: 0 }
+                      }}
+                    >
                       <td className="px-4 py-4">
                         <Link href={`/transfers/${transfer.id}`} className="block">
                           <span className="block font-semibold text-[var(--foreground)] hover:underline">
@@ -212,20 +229,20 @@ export default function TransfersPage() {
                       <td className="px-4 py-4 text-right">
                         <Link
                           href={`/transfers/${transfer.id}`}
-                          className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--foreground)] transition-colors hover:border-[var(--accent)]"
+                          className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--foreground)] transition-colors hover:border-[var(--accent)] hover-lift active-press"
                         >
                           Open
                           <Icon name="chevronR" size={14} />
                         </Link>
                       </td>
-                    </tr>
+                    </motion.tr>
                   );
                 })}
-              </tbody>
+              </motion.tbody>
             </table>
           </div>
         </section>
       )}
-    </div>
+    </PageTransition>
   );
 }

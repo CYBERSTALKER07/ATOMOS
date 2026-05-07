@@ -1,61 +1,150 @@
-# Design System: URBN SaaS
+# Desktop Design Contract
 
-This document outlines the core design tokens, layout principles, and interactive guidelines that define the unified URBN aesthetic across all V.O.I.D. desktop portals (Admin, Factory, Warehouse, Retailer).
+This document is the canonical visual contract for all Pegasus desktop apps.
 
-## 1. Core Philosophy
-The design language shifts from a brutalist, strictly monochrome aesthetic to a modern, fluid, and inviting "Soft SaaS" look. Key characteristics include:
-- **Depth & Layers:** Soft, multi-layered drop shadows instead of harsh borders.
-- **Vibrancy:** Pastel gradients, subtle glows, and semantic colors that pop against neutral surfaces.
-- **Motion-First:** Micro-interactions (hover lifts, active presses) and fluid page transitions.
-- **Generous Geometry:** Larger border radii (16px - 24px) for cards, inputs, and modals.
+## Scope
 
-## 2. Color Palette Tokens
+Applies to:
 
-### Neutral Foundation
-- `--background`: `oklch(0.985 0 0)` — Crisp, off-white background.
-- `--surface`: `oklch(1 0 0)` — Pure white surface for cards and elevated elements.
-- `--foreground`: `oklch(0.145 0 0)` — Deep slate/charcoal for primary text.
-- `--muted`: `oklch(0.556 0 0)` — Medium gray for secondary text and disabled states.
-- `--border`: `oklch(0.922 0 0)` — Soft, almost invisible borders.
+- pegasus/apps/admin-portal
+- pegasus/apps/factory-portal
+- pegasus/apps/warehouse-portal
+- pegasus/apps/retailer-app-desktop
 
-### Semantic Colors
-- `--primary`: `oklch(0.21 0.006 285.885)` — Deep slate blue.
-- `--accent`: `oklch(0.5 0.15 250)` — Vibrant periwinkle/blue for interactive elements.
-- `--success`: `oklch(0.6 0.15 150)` — Soft emerald green.
-- `--warning`: `oklch(0.7 0.15 70)` — Warm amber/orange.
-- `--danger`: `oklch(0.6 0.2 25)` — Soft crimson red.
+## Style Direction
 
-## 3. Typography
-- **Font Family:** Inter or system sans-serif.
-- **Headlines:** Semi-bold to bold, tight tracking (-0.02em).
-- **Body:** Regular to medium, open tracking for legibility.
-- **Labels (Caps):** Small font size (10-12px), high tracking (0.16em), uppercase, often muted color.
+Visual direction is grounded in local references under pegasus/assets, especially:
 
-## 4. UI Components
+- 1d42d3c569b68b3816f840c3b9066724.webp
+- 62665a5798605f336decc4a26bbc4911.webp
+- 8601eed85c98c6c01f57cc314eb77094.webp
+- original-6f769336f644695f12fff0002b352b2e.webp
+- CD123FFA-EBD9-4790-A6F8-5788ACF80A54.jpeg
+- DB1E9E1A-315A-47B0-A2F7-9B9776725EE3.jpeg
 
-### Cards (`.bento-card`)
-- **Background:** `--surface`
-- **Border Radius:** `16px` to `24px`
-- **Border:** 1px solid `--border`
-- **Hover State:** `.hover-lift` utility class. Applies `translateY(-2px)` and a soft shadow `0 10px 20px -10px rgba(0,0,0,0.1)`.
+Generated placeholder illustrations live in:
 
-### Buttons (`.md-btn`)
-- **Padding:** Generous horizontal padding (px-4 to px-6).
-- **Height:** 40px (h-10) or 44px (h-11).
-- **Border Radius:** `9999px` (pill shape) or `12px` depending on context.
-- **Active State:** `.active-press` utility class `transform: scale(0.97)`.
+- pegasus/assets/illustrations/no-data.svg
+- pegasus/assets/illustrations/no-results.svg
+- pegasus/assets/illustrations/offline.svg
+- pegasus/assets/illustrations/restricted.svg
+- pegasus/assets/illustrations/error.svg
 
-### Empty States (`<EmptyState />`)
-- Must feature a 3D pastel illustration (or high-quality icon if image unavailable).
-- Centered layout, large image container with soft background (`bg-surface/50`).
-- Headline, descriptive body text, and a primary CTA button.
+## Token Source Of Truth
 
-## 5. Animation & Motion
-- **Page Transitions:** `<PageTransition>` wrapper uses Framer Motion (`AnimatePresence`). Pages fade in and slide up slightly (`y: 15` to `0`).
-- **List Staggering:** Data grids and lists should use `staggerChildren: 0.05` to cascade items onto the screen.
-- **Loading:** Use `.skeleton-shimmer` with a soft gradient spanning the width of the placeholder.
+Primary source:
 
-## 6. Implementation Notes
-- Global CSS is heavily tokenized in `:root` inside `globals.css`.
-- Override HeroUI defaults by assigning our tokens to `--heroui-*` variables.
-- Avoid raw hex codes in components; always use CSS variables (e.g., `var(--accent)`).
+- pegasus/packages/ui-kit/styles/desktop-foundation.css
+
+All desktop apps import this file from globals.css before app-specific overrides.
+
+## Canonical Tokens
+
+### Color Tokens
+
+- --desk-canvas: #F3F4F6
+- --desk-surface: #FFFFFF
+- --desk-surface-subtle: #F8FAFC
+- --desk-border: #E5E7EB
+- --desk-border-strong: #CBD5E1
+- --desk-text-primary: #111827
+- --desk-text-secondary: #6B7280
+- --desk-text-tertiary: #9CA3AF
+- --desk-accent: #FF7A1A
+- --desk-accent-soft: #FFF3EA
+- --desk-success: #16A34A
+- --desk-warning: #D97706
+- --desk-danger: #DC2626
+- --desk-info: #2563EB
+- --desk-focus-ring: #111827
+
+### Typography Tokens
+
+- --type-display-xl
+- --type-display-lg
+- --type-heading-lg
+- --type-heading-md
+- --type-title
+- --type-body-lg
+- --type-body-md
+- --type-caption-sm
+- --type-metric
+
+### Spacing Tokens
+
+- --space-0
+- --space-1
+- --space-2
+- --space-3
+- --space-4
+- --space-5
+- --space-6
+- --space-8
+- --space-10
+
+### Radius Tokens
+
+- --radius-sm
+- --radius-md
+- --radius-lg
+- --radius-xl
+- --radius-pill
+
+### Motion Tokens
+
+- --duration-fast
+- --duration-base
+- --duration-slow
+- --ease-standard
+- --ease-enter
+- --ease-exit
+
+## Interaction Contract
+
+### Required States For Every Live Screen
+
+- Loading
+- Empty
+- Offline or disconnected
+- Stale data where applicable
+- Permission-restricted
+- Error
+
+### Animation Rules
+
+- Use framer-motion for page transitions and staggered list entry.
+- Keep motion meaningful and state-communicative.
+- Respect reduced motion preferences.
+
+### Microinteraction Rules
+
+- hover-lift for card and row affordance.
+- active-press for button and command feedback.
+- skeleton-shimmer for loading placeholders.
+
+## Icon Rules
+
+- Use lucide-react icons only.
+- No emoji icons anywhere.
+- Empty states may use real illustration assets and optional icon overlays.
+
+## Layout Contract
+
+- Desktop shell keeps stable navigation rhythm and dense, readable operational layout.
+- Use consistent command rows for search, filtering, and sorting.
+- Detail inspection stays in right-side panel or drawer patterns.
+
+## Implementation Notes
+
+- Existing compatibility aliases (--desktop-*) remain supported during migration.
+- App-specific globals.css may extend but should not redefine canonical token intent.
+- New components must consume semantic tokens, not raw hex values.
+
+## Quality Gate
+
+Before completion of desktop UX changes:
+
+- Lint and type checks pass for touched apps.
+- Visual regressions are reviewed.
+- Route-state matrix confirms all required states are implemented.
+- Design and token docs remain synchronized with code.

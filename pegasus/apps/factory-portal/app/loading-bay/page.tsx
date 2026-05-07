@@ -5,6 +5,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
+import EmptyState from '@/components/EmptyState';
+import PageTransition from '@/components/PageTransition';
+import { motion } from 'framer-motion';
 
 type TransferState = 'APPROVED' | 'LOADING' | 'DISPATCHED';
 
@@ -118,7 +121,7 @@ export default function LoadingBayPage() {
   }
 
   return (
-    <div className="space-y-6 p-6 md:animate-in md:p-8">
+    <PageTransition className="space-y-6 p-6 md:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Dispatch workspace</p>
@@ -192,10 +195,12 @@ export default function LoadingBayPage() {
       </section>
 
       {transfers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-[28px] border border-dashed border-[var(--border)] bg-[var(--background)] py-20 text-[var(--muted)]">
-          <Icon name="loadingBay" size={48} className="mb-3 opacity-40" />
-          <p className="text-base font-medium text-[var(--foreground)]">No active transfers in the loading bay</p>
-          <p className="mt-2 text-sm">Approved transfers will appear here as soon as warehouse demand is accepted.</p>
+        <div className="py-12">
+          <EmptyState
+            imageUrl="/images/empty-production-line.png"
+            headline="No active transfers in the loading bay"
+            body="Approved transfers will appear here as soon as warehouse demand is accepted."
+          />
         </div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-3">
@@ -215,36 +220,49 @@ export default function LoadingBayPage() {
                 </span>
               </div>
 
-              <div className="mt-4 space-y-3">
+              <motion.div 
+                className="mt-4 space-y-3"
+                initial="hidden"
+                animate="show"
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: { opacity: 1, transition: { staggerChildren: 0.05 } }
+                }}
+              >
                 {column.items.map((transfer) => (
-                  <Link
-                    key={transfer.id}
-                    href={`/transfers/${transfer.id}`}
-                    className="block rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--accent)]"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-base font-semibold text-[var(--foreground)]">{transfer.warehouse_name}</p>
-                        <p className="mt-1 text-xs font-mono text-[var(--muted)]">{transfer.id}</p>
+                  <Link key={transfer.id} href={`/transfers/${transfer.id}`}>
+                    <motion.div
+                      variants={{
+                        hidden: { opacity: 0, y: 10 },
+                        show: { opacity: 1, y: 0 }
+                      }}
+                      whileTap={{ scale: 0.98 }}
+                      className="block rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--accent)] hover-lift active-press"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-base font-semibold text-[var(--foreground)]">{transfer.warehouse_name}</p>
+                          <p className="mt-1 text-xs font-mono text-[var(--muted)]">{transfer.id}</p>
+                        </div>
+                        <Icon name="chevronR" size={16} className="text-[var(--muted)]" />
                       </div>
-                      <Icon name="chevronR" size={16} className="text-[var(--muted)]" />
-                    </div>
 
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                      <div className="rounded-xl bg-[var(--background)] p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Items</p>
-                        <p className="mt-2 text-lg font-semibold tabular-nums text-[var(--foreground)]">{transfer.total_items}</p>
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div className="rounded-xl bg-[var(--background)] p-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Items</p>
+                          <p className="mt-2 text-lg font-semibold tabular-nums text-[var(--foreground)]">{transfer.total_items}</p>
+                        </div>
+                        <div className="rounded-xl bg-[var(--background)] p-3">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Volume</p>
+                          <p className="mt-2 text-lg font-semibold tabular-nums text-[var(--foreground)]">{transfer.total_volume_m3.toFixed(1)} m³</p>
+                        </div>
                       </div>
-                      <div className="rounded-xl bg-[var(--background)] p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Volume</p>
-                        <p className="mt-2 text-lg font-semibold tabular-nums text-[var(--foreground)]">{transfer.total_volume_m3.toFixed(1)} m³</p>
-                      </div>
-                    </div>
 
-                    <div className="mt-4 flex items-center justify-between gap-3 text-xs text-[var(--muted)]">
-                      <span>Created {new Date(transfer.created_at).toLocaleDateString()}</span>
-                      <span>Updated {new Date(transfer.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
+                      <div className="mt-4 flex items-center justify-between gap-3 text-xs text-[var(--muted)]">
+                        <span>Created {new Date(transfer.created_at).toLocaleDateString()}</span>
+                        <span>Updated {new Date(transfer.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </motion.div>
                   </Link>
                 ))}
 
@@ -253,11 +271,11 @@ export default function LoadingBayPage() {
                     No transfers in this stage.
                   </div>
                 )}
-              </div>
+              </motion.div>
             </section>
           ))}
         </div>
       )}
-    </div>
+    </PageTransition>
   );
 }

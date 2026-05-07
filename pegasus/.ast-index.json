@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-05-07T23:14:29.154Z",
+  "generatedAt": "2026-05-07T23:26:58.425Z",
   "rootDir": "/Users/shakhzod/Desktop/V.O.I.D/pegasus",
-  "fileCount": 761,
+  "fileCount": 763,
   "files": [
     {
       "path": "apps/admin-portal/app/admin/audit-log/page.tsx",
@@ -634,7 +634,7 @@
     {
       "path": "apps/admin-portal/app/page.tsx",
       "language": "ts",
-      "lineCount": 932,
+      "lineCount": 931,
       "imports": [
         "react",
         "@/lib/auth",
@@ -647,53 +647,55 @@
         "@/components/BentoGrid",
         "@/components/CountUp",
         "@/components/MiniSparkline",
+        "@/components/EmptyState",
+        "@/components/PageTransition",
         "next/dynamic"
       ],
       "definitions": [
         {
           "name": "Order",
           "kind": "type",
-          "line": 36
+          "line": 38
         },
         {
           "name": "FleetDriver",
           "kind": "type",
-          "line": 48
+          "line": 50
         },
         {
           "name": "LoadingManifestEntry",
           "kind": "type",
-          "line": 57
+          "line": 59
         },
         {
           "name": "TruckManifest",
           "kind": "type",
-          "line": 67
+          "line": 69
         },
         {
           "name": "OrderViewFilter",
           "kind": "type",
-          "line": 74
+          "line": 76
         },
         {
           "name": "StatusChip",
           "kind": "variable",
-          "line": 94
+          "line": 96
         },
         {
           "name": "getTemporalStatus",
           "kind": "variable",
-          "line": 106
+          "line": 108
         },
         {
           "name": "matchesOrderView",
           "kind": "variable",
-          "line": 212
+          "line": 214
         },
         {
           "name": "urgencyWeight",
           "kind": "variable",
-          "line": 227
+          "line": 229
         }
       ]
     },
@@ -3465,12 +3467,19 @@
     {
       "path": "apps/admin-portal/components/EmptyState.tsx",
       "language": "ts",
-      "lineCount": 40,
+      "lineCount": 81,
       "imports": [
-        "./Icon",
-        "@heroui/react"
+        "@heroui/react",
+        "framer-motion",
+        "react"
       ],
-      "definitions": []
+      "definitions": [
+        {
+          "name": "EmptyStateProps",
+          "kind": "interface",
+          "line": 5
+        }
+      ]
     },
     {
       "path": "apps/admin-portal/components/Icon.tsx",
@@ -3600,12 +3609,19 @@
     {
       "path": "apps/admin-portal/components/PageTransition.tsx",
       "language": "ts",
-      "lineCount": 42,
+      "lineCount": 30,
       "imports": [
-        "next/navigation",
-        "react"
+        "framer-motion",
+        "react",
+        "next/navigation"
       ],
-      "definitions": []
+      "definitions": [
+        {
+          "name": "PageTransitionProps",
+          "kind": "interface",
+          "line": 7
+        }
+      ]
     },
     {
       "path": "apps/admin-portal/components/PaginationControls.tsx",
@@ -40884,28 +40900,30 @@
     {
       "path": "apps/factory-portal/app/page.tsx",
       "language": "ts",
-      "lineCount": 288,
+      "lineCount": 297,
       "imports": [
         "react",
         "next/link",
         "@/lib/auth",
-        "@/components/Icon"
+        "@/components/Icon",
+        "framer-motion",
+        "@/components/PageTransition"
       ],
       "definitions": [
         {
           "name": "FactoryStats",
           "kind": "interface",
-          "line": 8
+          "line": 10
         },
         {
           "name": "load",
           "kind": "function",
-          "line": 39
+          "line": 41
         },
         {
           "name": "queueLiveRefresh",
           "kind": "variable",
-          "line": 54
+          "line": 56
         }
       ]
     },
@@ -41137,6 +41155,23 @@
       ]
     },
     {
+      "path": "apps/factory-portal/components/EmptyState.tsx",
+      "language": "ts",
+      "lineCount": 81,
+      "imports": [
+        "@heroui/react",
+        "framer-motion",
+        "react"
+      ],
+      "definitions": [
+        {
+          "name": "EmptyStateProps",
+          "kind": "interface",
+          "line": 5
+        }
+      ]
+    },
+    {
       "path": "apps/factory-portal/components/FactoryShell.tsx",
       "language": "ts",
       "lineCount": 242,
@@ -41197,12 +41232,19 @@
     {
       "path": "apps/factory-portal/components/PageTransition.tsx",
       "language": "ts",
-      "lineCount": 42,
+      "lineCount": 30,
       "imports": [
-        "next/navigation",
-        "react"
+        "framer-motion",
+        "react",
+        "next/navigation"
       ],
-      "definitions": []
+      "definitions": [
+        {
+          "name": "PageTransitionProps",
+          "kind": "interface",
+          "line": 7
+        }
+      ]
     },
     {
       "path": "apps/factory-portal/components/Skeleton.tsx",
@@ -42150,10 +42192,13 @@
     {
       "path": "apps/retailer-app-desktop/app/(dashboard)/procurement/page.tsx",
       "language": "ts",
-      "lineCount": 413,
+      "lineCount": 435,
       "imports": [
         "react",
         "@heroui/react",
+        "framer-motion",
+        "../../../components/EmptyState",
+        "../../../components/PageTransition",
         "../../../components/BentoGrid",
         "../../../components/CountUp",
         "../../../components/MiniSparkline",
@@ -42381,7 +42426,7 @@
     {
       "path": "apps/retailer-app-desktop/components/EmptyState.tsx",
       "language": "ts",
-      "lineCount": 74,
+      "lineCount": 81,
       "imports": [
         "@heroui/react",
         "framer-motion",
@@ -43324,33 +43369,35 @@
     {
       "path": "apps/warehouse-portal/app/page.tsx",
       "language": "ts",
-      "lineCount": 119,
+      "lineCount": 134,
       "imports": [
         "react",
         "@/lib/auth",
         "@/components/Icon",
-        "next/link"
+        "next/link",
+        "framer-motion",
+        "@/components/PageTransition"
       ],
       "definitions": [
         {
           "name": "DashboardData",
           "kind": "interface",
-          "line": 8
+          "line": 10
         },
         {
           "name": "load",
           "kind": "function",
-          "line": 27
+          "line": 29
         },
         {
           "name": "fmt",
           "kind": "variable",
-          "line": 57
+          "line": 59
         },
         {
           "name": "fmtCurrency",
           "kind": "variable",
-          "line": 58
+          "line": 60
         }
       ]
     },
@@ -43579,6 +43626,23 @@
       ]
     },
     {
+      "path": "apps/warehouse-portal/components/EmptyState.tsx",
+      "language": "ts",
+      "lineCount": 81,
+      "imports": [
+        "@heroui/react",
+        "framer-motion",
+        "react"
+      ],
+      "definitions": [
+        {
+          "name": "EmptyStateProps",
+          "kind": "interface",
+          "line": 5
+        }
+      ]
+    },
+    {
       "path": "apps/warehouse-portal/components/Icon.tsx",
       "language": "ts",
       "lineCount": 58,
@@ -43598,12 +43662,19 @@
     {
       "path": "apps/warehouse-portal/components/PageTransition.tsx",
       "language": "ts",
-      "lineCount": 42,
+      "lineCount": 30,
       "imports": [
-        "next/navigation",
-        "react"
+        "framer-motion",
+        "react",
+        "next/navigation"
       ],
-      "definitions": []
+      "definitions": [
+        {
+          "name": "PageTransitionProps",
+          "kind": "interface",
+          "line": 7
+        }
+      ]
     },
     {
       "path": "apps/warehouse-portal/components/Skeleton.tsx",
@@ -46432,7 +46503,7 @@
     "Order": [
       {
         "path": "apps/admin-portal/app/page.tsx",
-        "line": 36,
+        "line": 38,
         "kind": "type",
         "language": "ts"
       },
@@ -46470,7 +46541,7 @@
     "FleetDriver": [
       {
         "path": "apps/admin-portal/app/page.tsx",
-        "line": 48,
+        "line": 50,
         "kind": "type",
         "language": "ts"
       }
@@ -46478,7 +46549,7 @@
     "LoadingManifestEntry": [
       {
         "path": "apps/admin-portal/app/page.tsx",
-        "line": 57,
+        "line": 59,
         "kind": "type",
         "language": "ts"
       },
@@ -46492,7 +46563,7 @@
     "TruckManifest": [
       {
         "path": "apps/admin-portal/app/page.tsx",
-        "line": 67,
+        "line": 69,
         "kind": "type",
         "language": "ts"
       },
@@ -46518,7 +46589,7 @@
     "OrderViewFilter": [
       {
         "path": "apps/admin-portal/app/page.tsx",
-        "line": 74,
+        "line": 76,
         "kind": "type",
         "language": "ts"
       }
@@ -46526,7 +46597,7 @@
     "StatusChip": [
       {
         "path": "apps/admin-portal/app/page.tsx",
-        "line": 94,
+        "line": 96,
         "kind": "variable",
         "language": "ts"
       }
@@ -46534,7 +46605,7 @@
     "getTemporalStatus": [
       {
         "path": "apps/admin-portal/app/page.tsx",
-        "line": 106,
+        "line": 108,
         "kind": "variable",
         "language": "ts"
       }
@@ -46542,7 +46613,7 @@
     "matchesOrderView": [
       {
         "path": "apps/admin-portal/app/page.tsx",
-        "line": 212,
+        "line": 214,
         "kind": "variable",
         "language": "ts"
       }
@@ -46550,7 +46621,7 @@
     "urgencyWeight": [
       {
         "path": "apps/admin-portal/app/page.tsx",
-        "line": 227,
+        "line": 229,
         "kind": "variable",
         "language": "ts"
       }
@@ -49594,7 +49665,7 @@
       },
       {
         "path": "apps/warehouse-portal/app/page.tsx",
-        "line": 57,
+        "line": 59,
         "kind": "variable",
         "language": "ts"
       },
@@ -50161,6 +50232,32 @@
         "language": "ts"
       }
     ],
+    "EmptyStateProps": [
+      {
+        "path": "apps/admin-portal/components/EmptyState.tsx",
+        "line": 5,
+        "kind": "interface",
+        "language": "ts"
+      },
+      {
+        "path": "apps/factory-portal/components/EmptyState.tsx",
+        "line": 5,
+        "kind": "interface",
+        "language": "ts"
+      },
+      {
+        "path": "apps/retailer-app-desktop/components/EmptyState.tsx",
+        "line": 5,
+        "kind": "interface",
+        "language": "ts"
+      },
+      {
+        "path": "apps/warehouse-portal/components/EmptyState.tsx",
+        "line": 5,
+        "kind": "interface",
+        "language": "ts"
+      }
+    ],
     "LucideIcon": [
       {
         "path": "apps/admin-portal/components/Icon.tsx",
@@ -50232,6 +50329,32 @@
         "path": "apps/retailer-app-desktop/app/(dashboard)/dock/page.tsx",
         "line": 40,
         "kind": "function",
+        "language": "ts"
+      }
+    ],
+    "PageTransitionProps": [
+      {
+        "path": "apps/admin-portal/components/PageTransition.tsx",
+        "line": 7,
+        "kind": "interface",
+        "language": "ts"
+      },
+      {
+        "path": "apps/factory-portal/components/PageTransition.tsx",
+        "line": 7,
+        "kind": "interface",
+        "language": "ts"
+      },
+      {
+        "path": "apps/retailer-app-desktop/components/PageTransition.tsx",
+        "line": 7,
+        "kind": "interface",
+        "language": "ts"
+      },
+      {
+        "path": "apps/warehouse-portal/components/PageTransition.tsx",
+        "line": 7,
+        "kind": "interface",
         "language": "ts"
       }
     ],
@@ -50972,13 +51095,13 @@
       },
       {
         "path": "apps/factory-portal/app/page.tsx",
-        "line": 39,
+        "line": 41,
         "kind": "function",
         "language": "ts"
       },
       {
         "path": "apps/warehouse-portal/app/page.tsx",
-        "line": 27,
+        "line": 29,
         "kind": "function",
         "language": "ts"
       }
@@ -94642,7 +94765,7 @@
     "FactoryStats": [
       {
         "path": "apps/factory-portal/app/page.tsx",
-        "line": 8,
+        "line": 10,
         "kind": "interface",
         "language": "ts"
       }
@@ -94650,7 +94773,7 @@
     "queueLiveRefresh": [
       {
         "path": "apps/factory-portal/app/page.tsx",
-        "line": 54,
+        "line": 56,
         "kind": "variable",
         "language": "ts"
       }
@@ -95503,22 +95626,6 @@
         "language": "ts"
       }
     ],
-    "EmptyStateProps": [
-      {
-        "path": "apps/retailer-app-desktop/components/EmptyState.tsx",
-        "line": 5,
-        "kind": "interface",
-        "language": "ts"
-      }
-    ],
-    "PageTransitionProps": [
-      {
-        "path": "apps/retailer-app-desktop/components/PageTransition.tsx",
-        "line": 7,
-        "kind": "interface",
-        "language": "ts"
-      }
-    ],
     "PaymentEvent": [
       {
         "path": "apps/retailer-app-desktop/components/PaymentModal.tsx",
@@ -95910,7 +96017,7 @@
       },
       {
         "path": "apps/warehouse-portal/app/page.tsx",
-        "line": 58,
+        "line": 60,
         "kind": "variable",
         "language": "ts"
       }
@@ -96008,7 +96115,7 @@
     "DashboardData": [
       {
         "path": "apps/warehouse-portal/app/page.tsx",
-        "line": 8,
+        "line": 10,
         "kind": "interface",
         "language": "ts"
       }

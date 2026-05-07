@@ -2,134 +2,244 @@
    Import this before app-specific globals.css blocks. */
 
 :root {
-  --desktop-canvas: #f8fafc;
-  --desktop-surface: #ffffff;
-  --desktop-surface-muted: #f1f5f9;
-  --desktop-ink: #0f172a;
-  --desktop-ink-muted: #64748b;
-  --desktop-border: #e2e8f0;
-  --desktop-border-strong: #cbd5e1;
-  --desktop-accent: #0f172a;
+  /* Canonical desktop tokens */
+  --desk-canvas: #f3f4f6;
+  --desk-surface: #ffffff;
+  --desk-surface-subtle: #f8fafc;
+  --desk-border: #e5e7eb;
+  --desk-border-strong: #cbd5e1;
+  --desk-text-primary: #111827;
+  --desk-text-secondary: #6b7280;
+  --desk-text-tertiary: #9ca3af;
+  --desk-accent: #ff7a1a;
+  --desk-accent-soft: #fff3ea;
+  --desk-success: #16a34a;
+  --desk-warning: #d97706;
+  --desk-danger: #dc2626;
+  --desk-info: #2563eb;
+  --desk-focus-ring: #111827;
+
+  --type-display-xl: 700 48px/56px var(--font-sans, "Inter", "Geist", "Segoe UI", sans-serif);
+  --type-display-lg: 700 40px/48px var(--font-sans, "Inter", "Geist", "Segoe UI", sans-serif);
+  --type-heading-lg: 600 32px/40px var(--font-sans, "Inter", "Geist", "Segoe UI", sans-serif);
+  --type-heading-md: 600 24px/32px var(--font-sans, "Inter", "Geist", "Segoe UI", sans-serif);
+  --type-title: 600 18px/26px var(--font-sans, "Inter", "Geist", "Segoe UI", sans-serif);
+  --type-body-lg: 400 16px/24px var(--font-sans, "Inter", "Geist", "Segoe UI", sans-serif);
+  --type-body-md: 400 14px/22px var(--font-sans, "Inter", "Geist", "Segoe UI", sans-serif);
+  --type-caption-sm: 500 12px/18px var(--font-sans, "Inter", "Geist", "Segoe UI", sans-serif);
+  --type-metric: 700 36px/40px var(--font-sans, "Inter", "Geist", "Segoe UI", sans-serif);
+
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 9999px;
+
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+
+  /* Compatibility aliases for existing desktop classes */
+  --desktop-canvas: var(--desk-canvas);
+  --desktop-surface: var(--desk-surface);
+  --desktop-surface-muted: var(--desk-surface-subtle);
+  --desktop-ink: var(--desk-text-primary);
+  --desktop-ink-muted: var(--desk-text-secondary);
+  --desktop-border: var(--desk-border);
+  --desktop-border-strong: var(--desk-border-strong);
+  --desktop-accent: var(--desk-accent);
   --desktop-on-accent: #ffffff;
-  --desktop-success: #10b981;
-  --desktop-warning: #f59e0b;
-  --desktop-danger: #ef4444;
-  --desktop-radius-sm: 8px;
-  --desktop-radius-md: 12px;
-  --desktop-radius-lg: 16px;
-  --desktop-spacing-sm: 8px;
-  --desktop-spacing-md: 12px;
-  --desktop-spacing-lg: 16px;
-  --desktop-font-sans: var(--font-inter, "Inter", "Geist", "Segoe UI", sans-serif);
+  --desktop-success: var(--desk-success);
+  --desktop-warning: var(--desk-warning);
+  --desktop-danger: var(--desk-danger);
+  --desktop-radius-sm: var(--radius-sm);
+  --desktop-radius-md: var(--radius-md);
+  --desktop-radius-lg: var(--radius-lg);
+  --desktop-spacing-sm: var(--space-2);
+  --desktop-spacing-md: var(--space-3);
+  --desktop-spacing-lg: var(--space-4);
+  --desktop-font-sans: var(--font-sans, "Inter", "Geist", "Segoe UI", sans-serif);
   --desktop-font-mono: var(--font-geist-mono, "IBM Plex Mono", "SFMono-Regular", monospace);
+
+  /* Bridge vars used in existing apps */
+  --background: var(--desk-canvas);
+  --surface: var(--desk-surface);
+  --foreground: var(--desk-text-primary);
+  --muted: var(--desk-text-secondary);
+  --border: var(--desk-border);
+  --accent: var(--desk-accent);
+  --accent-soft: var(--desk-accent-soft);
+  --success: var(--desk-success);
+  --warning: var(--desk-warning);
+  --danger: var(--desk-danger);
 }
 
 :root.dark,
 .dark {
-  --desktop-canvas: oklch(0.12 0.01 95);
-  --desktop-surface: oklch(0.16 0.01 95);
-  --desktop-surface-muted: oklch(0.2 0.01 95);
-  --desktop-ink: oklch(0.93 0.01 95);
-  --desktop-ink-muted: oklch(0.74 0.01 95);
-  --desktop-border: oklch(0.3 0.01 95);
-  --desktop-border-strong: oklch(0.42 0.01 95);
-  --desktop-accent: oklch(0.93 0.01 95);
-  --desktop-on-accent: oklch(0.14 0.01 95);
-  --desktop-success: oklch(0.74 0.13 150);
-  --desktop-warning: oklch(0.78 0.12 83);
-  --desktop-danger: oklch(0.73 0.14 26);
+  --desk-canvas: oklch(0.14 0.01 95);
+  --desk-surface: oklch(0.18 0.01 95);
+  --desk-surface-subtle: oklch(0.22 0.01 95);
+  --desk-border: oklch(0.32 0.01 95);
+  --desk-border-strong: oklch(0.44 0.01 95);
+  --desk-text-primary: oklch(0.93 0.01 95);
+  --desk-text-secondary: oklch(0.74 0.01 95);
+  --desk-text-tertiary: oklch(0.62 0.01 95);
+  --desk-accent: oklch(0.72 0.17 62);
+  --desk-accent-soft: oklch(0.26 0.03 62);
+  --desk-success: oklch(0.76 0.13 150);
+  --desk-warning: oklch(0.79 0.12 83);
+  --desk-danger: oklch(0.73 0.14 26);
+  --desk-info: oklch(0.7 0.14 250);
+  --desk-focus-ring: oklch(0.93 0.01 95);
+
+  --desktop-on-accent: oklch(0.16 0.01 95);
 }
 
 @layer base {
   body {
-    font-family: var(--font-sans, var(--desktop-font-sans));
-    background: var(--color-md-surface, var(--background, var(--desktop-canvas)));
-    color: var(--color-md-on-surface, var(--foreground, var(--desktop-ink)));
+    font-family: var(--desktop-font-sans);
+    background: var(--color-md-surface, var(--background, var(--desk-canvas)));
+    color: var(--color-md-on-surface, var(--foreground, var(--desk-text-primary)));
   }
 }
 
 @layer components {
   :where(.button--primary) {
-    background: var(--accent, var(--color-md-primary, var(--desktop-accent)));
-    color: var(--accent-foreground, var(--color-md-on-primary, var(--desktop-on-accent)));
+    background: var(--accent, var(--color-md-primary, var(--desk-accent)));
+    color: var(--accent-foreground, var(--color-md-on-primary, #ffffff));
   }
 
   :where(.button--secondary) {
-    background: var(--default, var(--color-md-secondary-container, var(--desktop-surface-muted)));
-    color: var(--default-foreground, var(--color-md-on-secondary-container, var(--desktop-ink)));
+    background: var(--default, var(--color-md-secondary-container, var(--desk-surface-subtle)));
+    color: var(--default-foreground, var(--color-md-on-secondary-container, var(--desk-text-primary)));
   }
 
   :where(.button--outline) {
-    border: 1px solid var(--border, var(--color-md-outline, var(--desktop-border)));
-    color: var(--foreground, var(--color-md-on-surface, var(--desktop-ink)));
+    border: 1px solid var(--border, var(--color-md-outline, var(--desk-border)));
+    color: var(--foreground, var(--color-md-on-surface, var(--desk-text-primary)));
     background: transparent;
   }
 
   :where(.button--ghost) {
-    color: var(--foreground, var(--color-md-on-surface, var(--desktop-ink)));
+    color: var(--foreground, var(--color-md-on-surface, var(--desk-text-primary)));
     background: transparent;
   }
 
   :where(.button--danger) {
-    background: var(--danger, var(--color-md-error, var(--desktop-danger)));
-    color: var(--danger-foreground, var(--color-md-on-error, var(--desktop-on-accent)));
+    background: var(--danger, var(--color-md-error, var(--desk-danger)));
+    color: var(--danger-foreground, var(--color-md-on-error, #ffffff));
   }
 
   :where(.status-chip) {
     display: inline-flex;
     align-items: center;
     padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 600;
+    border-radius: var(--radius-pill);
+    font: var(--type-caption-sm);
     letter-spacing: 0.02em;
-    background: var(--default, var(--desktop-surface-muted));
-    color: var(--default-foreground, var(--desktop-ink));
+    background: var(--default, var(--desk-surface-subtle));
+    color: var(--default-foreground, var(--desk-text-primary));
+    text-transform: uppercase;
   }
 
   :where(.status-chip--ready) {
-    background: var(--success, var(--desktop-success));
-    color: var(--success-foreground, var(--desktop-on-accent));
+    background: var(--success, var(--desk-success));
+    color: #ffffff;
   }
 
   :where(.status-chip--in-production) {
-    background: var(--warning, var(--desktop-warning));
-    color: var(--warning-foreground, var(--desktop-ink));
+    background: var(--warning, var(--desk-warning));
+    color: #111827;
   }
 
   :where(.status-chip--cancelled),
   :where(.status-chip--critical) {
-    background: var(--danger, var(--desktop-danger));
-    color: var(--danger-foreground, var(--desktop-on-accent));
+    background: var(--danger, var(--desk-danger));
+    color: #ffffff;
   }
 
   :where(.md-card) {
-    border: 1px solid var(--color-md-outline-variant, var(--desktop-border));
-    border-radius: var(--md-shape-md, var(--desktop-radius-md));
-    background: var(--color-md-surface-container, var(--surface, var(--desktop-surface)));
-    color: var(--color-md-on-surface, var(--foreground, var(--desktop-ink)));
-    box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+    border: 1px solid var(--color-md-outline-variant, var(--desk-border));
+    border-radius: var(--md-shape-md, var(--radius-lg));
+    background: var(--color-md-surface-container, var(--surface, var(--desk-surface)));
+    color: var(--color-md-on-surface, var(--foreground, var(--desk-text-primary)));
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+    transition: box-shadow var(--duration-base) var(--ease-standard), transform var(--duration-base) var(--ease-standard);
   }
 
   :where(.md-input-outlined) {
-    border: 1px solid var(--field-border, var(--color-md-outline, var(--desktop-border)));
-    border-radius: var(--md-shape-sm, var(--desktop-radius-sm));
-    background: var(--field-background, var(--color-md-surface, var(--desktop-surface)));
-    color: var(--field-foreground, var(--color-md-on-surface, var(--desktop-ink)));
-    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-    transition: border-color 0.2s, box-shadow 0.2s;
+    border: 1px solid var(--field-border, var(--color-md-outline, var(--desk-border)));
+    border-radius: var(--md-shape-sm, var(--radius-md));
+    background: var(--field-background, var(--color-md-surface, var(--desk-surface)));
+    color: var(--field-foreground, var(--color-md-on-surface, var(--desk-text-primary)));
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
   }
-  
+
   :where(.md-input-outlined):focus {
-    border-color: var(--desktop-ink-muted);
-    box-shadow: 0 0 0 1px var(--desktop-ink-muted);
+    border-color: var(--desk-focus-ring);
+    box-shadow: 0 0 0 1px var(--desk-focus-ring);
     outline: none;
   }
 
   :where(.md-chip) {
-    border: 1px solid var(--color-md-outline-variant, var(--desktop-border));
-    border-radius: 999px;
-    background: var(--color-md-surface-container, var(--desktop-surface-muted));
-    color: var(--color-md-on-surface-variant, var(--desktop-ink-muted));
+    border: 1px solid var(--color-md-outline-variant, var(--desk-border));
+    border-radius: var(--radius-pill);
+    background: var(--color-md-surface-container, var(--desk-surface-subtle));
+    color: var(--color-md-on-surface-variant, var(--desk-text-secondary));
+  }
+
+  :where(.desk-illustration-frame) {
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--desk-border);
+    background: linear-gradient(165deg, var(--desk-surface), var(--desk-surface-subtle));
+  }
+}
+
+@layer utilities {
+  .hover-lift {
+    transition: transform var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px -12px rgba(15, 23, 42, 0.22);
+  }
+
+  .active-press {
+    transition: transform var(--duration-fast) var(--ease-standard);
+  }
+
+  .active-press:active {
+    transform: scale(0.98);
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(90deg, var(--desk-surface-subtle) 25%, var(--desk-border) 50%, var(--desk-surface-subtle) 75%);
+    background-size: 200% 100%;
+    animation: desk-shimmer 1.4s linear infinite;
+  }
+}
+
+@keyframes desk-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
   }
 }

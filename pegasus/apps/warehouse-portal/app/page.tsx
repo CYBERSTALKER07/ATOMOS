@@ -3,7 +3,10 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
+import EmptyState from '@/components/EmptyState';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import PageTransition from '@/components/PageTransition';
 
 interface DashboardData {
   active_orders: number;
@@ -19,20 +22,37 @@ interface DashboardData {
   fleet_status: Record<string, number>;
 }
 
+type DashboardLoadIssue = 'offline' | 'restricted' | 'error';
+
 export default function WarehouseDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadIssue, setLoadIssue] = useState<DashboardLoadIssue | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
+    setLoading(true);
     async function load() {
       try {
         const res = await apiFetch('/v1/warehouse/ops/dashboard');
-        if (res.ok) setData(await res.json());
-      } catch { /* empty state */ }
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            setLoadIssue('restricted');
+          } else {
+            setLoadIssue('error');
+          }
+          return;
+        }
+
+        setData(await res.json());
+        setLoadIssue(null);
+      } catch {
+        setLoadIssue('offline');
+      }
       finally { setLoading(false); }
     }
     load();
-  }, []);
+  }, [reloadToken]);
 
   if (loading) {
     return (
@@ -44,6 +64,58 @@ export default function WarehouseDashboard() {
           ))}
         </div>
       </div>
+    );
+  }
+
+  if (!data && loadIssue) {
+    const stateContent: Record<DashboardLoadIssue, { headline: string; body: string }> = {
+      offline: {
+        headline: 'You are offline',
+        body: 'Warehouse metrics are unavailable because the network connection dropped.',
+      },
+      restricted: {
+        headline: 'Access restricted',
+        body: 'Your role does not currently allow access to warehouse dashboard data.',
+      },
+      error: {
+        headline: 'Unable to load dashboard',
+        body: 'A server issue blocked this dashboard. Retry to load warehouse operations status.',
+      },
+    };
+
+    const content = stateContent[loadIssue];
+
+    return (
+      <PageTransition className="p-6 space-y-6">
+        <EmptyState
+          variant={loadIssue}
+          headline={content.headline}
+          body={content.body}
+          action="Retry"
+          onAction={() => {
+            setLoading(true);
+            setLoadIssue(null);
+            setReloadToken(v => v + 1);
+          }}
+        />
+      </PageTransition>
+    );
+  }
+
+  if (!data) {
+    return (
+      <PageTransition className="p-6 space-y-6">
+        <EmptyState
+          variant="no-data"
+          headline="No warehouse metrics yet"
+          body="As dispatch, fleet, and inventory activity starts, this dashboard will populate automatically."
+          action="Refresh"
+          onAction={() => {
+            setLoading(true);
+            setReloadToken(v => v + 1);
+          }}
+        />
+      </PageTransition>
     );
   }
 
@@ -70,31 +142,44 @@ export default function WarehouseDashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6 md-animate-in">
+    <PageTransition className="p-6 space-y-6">
       <h1 className="text-xl font-bold tracking-tight">Warehouse Dashboard</h1>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <motion.div
+        initial="hidden"
+        animate="show"
+        variants={{
+          hidden: { opacity: 0 },
+          show: { opacity: 1, transition: { staggerChildren: 0.05 } }
+        }}
+        className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+      >
         {kpis.map(kpi => (
-          <Link
-            key={kpi.label}
-            href={kpi.href}
-            className="rounded-xl border border-[var(--border)] p-4 flex flex-col gap-2 hover:border-[var(--accent)] transition-colors"
-            style={{ background: 'var(--background)' }}
-          >
-            <div className="flex items-center justify-between">
-              <Icon name={kpi.icon} size={20} className="text-[var(--muted)]" />
-              {kpi.danger && (
-                <span className="status-chip status-chip--critical text-[10px]">ALERT</span>
-              )}
-              {kpi.highlight && (
-                <span className="status-chip status-chip--ready text-[10px]">DONE</span>
-              )}
-            </div>
-            <div className="text-2xl font-bold">{kpi.value}</div>
-            <div className="text-xs text-[var(--muted)]">{kpi.label}</div>
+          <Link key={kpi.label} href={kpi.href}>
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 10 },
+                show: { opacity: 1, y: 0 }
+              }}
+              whileTap={{ scale: 0.98 }}
+              className="rounded-xl border border-[var(--border)] p-4 flex flex-col gap-2 transition-colors hover:border-[var(--accent)] hover-lift h-full"
+              style={{ background: 'var(--background)' }}
+            >
+              <div className="flex items-center justify-between">
+                <Icon name={kpi.icon} size={20} className="text-[var(--muted)]" />
+                {kpi.danger && (
+                  <span className="status-chip status-chip--critical text-[10px]">ALERT</span>
+                )}
+                {kpi.highlight && (
+                  <span className="status-chip status-chip--ready text-[10px]">DONE</span>
+                )}
+              </div>
+              <div className="text-2xl font-bold">{kpi.value}</div>
+              <div className="text-xs text-[var(--muted)]">{kpi.label}</div>
+            </motion.div>
           </Link>
         ))}
-      </div>
+      </motion.div>
 
       {/* Fleet Status Breakdown */}
       {Object.keys(d.fleet_status).length > 0 && (
@@ -113,6 +198,6 @@ export default function WarehouseDashboard() {
           </div>
         </div>
       )}
-    </div>
+    </PageTransition>
   );
 }
