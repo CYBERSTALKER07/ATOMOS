@@ -14,28 +14,25 @@
     --desk-text-secondary: #6b7280;
     --desk-text-tertiary: #9098a4;
     --desk-accent: #ff7a1a;
-    --desk-accent-rgb: 255, 122, 26;
     --desk-accent-strong: #f25a1a;
     --desk-accent-soft: #fff3ea;
     --desk-accent-on: #ffffff;
     --desk-success: #16a34a;
-    --desk-success-soft: #e8f7ee;
     --desk-warning: #d97706;
-    --desk-warning-soft: #fdf2e2;
     --desk-danger: #dc2626;
-    --desk-danger-soft: #fdecec;
     --desk-info: #2563eb;
-    --desk-info-soft: #e8efff;
     --desk-focus-ring: #111827;
-    --desk-ink: #0a0a0a; /* used for floating action bars */
+    --desk-ink: #0a0a0a;
     --desk-on-ink: #ffffff;
 
-    /* Soft elevation — references show NO shadows on cards, only on overlays/drawers */
+    /* Elevation — references show flat modular panes with crisp borders */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md:
+        0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
     --shadow-overlay:
-        0 12px 40px -12px rgba(15, 17, 21, 0.18),
-        0 2px 6px rgba(15, 17, 21, 0.04);
-    --shadow-floating: 0 8px 24px -10px rgba(15, 17, 21, 0.22);
-    --shadow-sticky: 0 1px 0 rgba(15, 17, 21, 0.04);
+        0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    --shadow-floating: var(--shadow-md);
+    --shadow-sticky: 0 1px 0 rgba(0, 0, 0, 0.04);
 
     /* Legacy glass tokens — kept for back-compat, but de-frosted to match the
      reference vibe (no decorative glassmorphism on product surfaces) */

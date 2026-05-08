@@ -200,6 +200,7 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [factoryName, setFactoryName] = useState('Factory Portal');
+  const [refreshEpoch, setRefreshEpoch] = useState(0);
 
   const currentEntry = useMemo(
     () => ALL_NAV_ITEMS.find((item) => isActiveRoute(pathname, item.href)) ?? ALL_NAV_ITEMS[0],
@@ -214,24 +215,43 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
     document.cookie = 'pegasus_factory_jwt=; Max-Age=0; path=/';
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    async function loadFactoryProfile() {
-      const res = await apiFetch('/v1/factory/profile');
-      if (!res.ok) return;
-      const payload = (await res.json()) as { name?: string };
-      const resolved = payload.name?.trim();
-      if (active && resolved) {
-        setFactoryName(resolved);
-      }
+  const loadFactoryProfile = useCallback(async () => {
+    const res = await apiFetch('/v1/factory/profile');
+    if (!res.ok) return;
+    const payload = (await res.json()) as { name?: string };
+    const resolved = payload.name?.trim();
+    if (resolved) {
+      setFactoryName(resolved);
     }
+  }, []);
+
+  useEffect(() => {
     loadFactoryProfile().catch((error) => {
       console.error('[FactoryShell] profile load failed', error);
     });
-    return () => {
-      active = false;
+  }, [loadFactoryProfile]);
+
+  useEffect(() => {
+    const wakeRefresh = () => {
+      if (document.visibilityState === 'hidden') return;
+      setRefreshEpoch((current) => current + 1);
+      loadFactoryProfile().catch((error) => {
+        console.error('[FactoryShell] profile refresh failed', error);
+      });
     };
-  }, []);
+
+    window.addEventListener('focus', wakeRefresh);
+    window.addEventListener('pageshow', wakeRefresh);
+    window.addEventListener('online', wakeRefresh);
+    document.addEventListener('visibilitychange', wakeRefresh);
+
+    return () => {
+      window.removeEventListener('focus', wakeRefresh);
+      window.removeEventListener('pageshow', wakeRefresh);
+      window.removeEventListener('online', wakeRefresh);
+      document.removeEventListener('visibilitychange', wakeRefresh);
+    };
+  }, [loadFactoryProfile]);
 
   const isBare = BARE_ROUTES.some((route) => pathname.startsWith(route));
   if (isBare) return <>{children}</>;
@@ -279,7 +299,7 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 overflow-y-auto" style={{ background: 'var(--desk-canvas)' }}>
+        <main key={refreshEpoch} className="min-w-0 flex-1 overflow-y-auto" style={{ background: 'var(--desk-canvas)' }}>
           <div className="min-h-full">{children}</div>
         </main>
       </div>

@@ -1,4 +1,5 @@
 import SwiftUI
+import Network
 
 enum AppTab: String, CaseIterable {
     case dashboard = "Dashboard"
@@ -30,6 +31,8 @@ struct MainTabView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: AppTab = .dashboard
     @State private var refreshEpoch: Int = 0
+    @State private var pathMonitor: NWPathMonitor?
+    @State private var wasOffline = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -70,11 +73,33 @@ struct MainTabView: View {
                 .tabItem { Label(AppTab.staff.rawValue, systemImage: AppTab.staff.icon) }
                 .tag(AppTab.staff)
         }
-        .buttonStyle(PressableButtonStyle())
         .onChange(of: scenePhase) { phase in
             if phase == .active {
                 refreshEpoch += 1
             }
+        }
+        .onAppear {
+            guard pathMonitor == nil else { return }
+            let monitor = NWPathMonitor()
+            let queue = DispatchQueue(label: "com.pegasus.warehouse.main-tab.network")
+            monitor.pathUpdateHandler = { path in
+                DispatchQueue.main.async {
+                    if path.status == .satisfied {
+                        if wasOffline {
+                            refreshEpoch += 1
+                        }
+                        wasOffline = false
+                    } else {
+                        wasOffline = true
+                    }
+                }
+            }
+            monitor.start(queue: queue)
+            pathMonitor = monitor
+        }
+        .onDisappear {
+            pathMonitor?.cancel()
+            pathMonitor = nil
         }
     }
 }

@@ -1,5 +1,11 @@
 package com.pegasus.warehouse.ui.navigation
 
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -9,8 +15,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -67,7 +75,9 @@ fun WarehouseNavigation(
 ) {
     val startDestination = if (TokenHolder.isLoggedIn) WarehouseRoutes.DASHBOARD else WarehouseRoutes.LOGIN
     val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
     var refreshEpoch by remember { mutableIntStateOf(0) }
+    var networkAvailable by remember { mutableStateOf(true) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -78,6 +88,33 @@ fun WarehouseNavigation(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    DisposableEffect(context) {
+        val mainHandler = Handler(Looper.getMainLooper())
+        val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                mainHandler.post {
+                    if (!networkAvailable) {
+                        refreshEpoch += 1
+                    }
+                    networkAvailable = true
+                }
+            }
+
+            override fun onLost(network: Network) {
+                mainHandler.post { networkAvailable = false }
+            }
+        }
+
+        runCatching { connectivityManager?.registerNetworkCallback(request, callback) }
+        onDispose {
+            runCatching { connectivityManager?.unregisterNetworkCallback(callback) }
         }
     }
 

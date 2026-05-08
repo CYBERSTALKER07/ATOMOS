@@ -47,21 +47,41 @@ Use semantic tokens only. Raw hex in component code is prohibited.
 
 | Token | Value | Purpose |
 | --- | --- | --- |
-| `--desk-canvas` | `#F3F4F6` | Global app background |
-| `--desk-surface` | `#FFFFFF` | Cards, panes, drawers |
-| `--desk-surface-subtle` | `#F8FAFC` | Alternate rows, grouped controls |
-| `--desk-border` | `#E5E7EB` | Dividers, table rules, input outlines |
+| `--desk-canvas` | `#F3F4F6` | Global app background (very light cool grey) |
+| `--desk-surface` | `#FFFFFF` | Cards, panes, drawers (pure white) |
+| `--desk-surface-subtle` | `#F8FAFC` | Alternate rows, grouped controls (almost white) |
+| `--desk-border` | `#E5E7EB` | 1px crisp hairline for dividers and outlines |
 | `--desk-border-strong` | `#CBD5E1` | Active containers, emphasized boundaries |
-| `--desk-text-primary` | `#111827` | Primary labels and values |
-| `--desk-text-secondary` | `#6B7280` | Metadata and secondary text |
-| `--desk-text-tertiary` | `#9CA3AF` | Placeholder and tertiary hints |
-| `--desk-accent` | `#FF7A1A` | Primary CTA, selected tab underline, key trend glyph |
-| `--desk-accent-soft` | `#FFF3EA` | Soft active backgrounds |
-| `--desk-success` | `#16A34A` | Positive state |
+| `--desk-text-primary` | `#111827` | Primary labels and values (high-contrast navy-black) |
+| `--desk-text-secondary` | `#6B7280` | Metadata and secondary text (medium grey) |
+| `--desk-text-tertiary` | `#9CA3AF` | Placeholder and tertiary hints (light grey) |
+| `--desk-accent` | `#FF7A1A` | Vibrant orange primary action / selected state |
+| `--desk-accent-soft` | `#FFF3EA` | Soft active backgrounds for orange |
+| `--desk-success` | `#16A34A` | Positive state / stable connection |
 | `--desk-warning` | `#D97706` | Caution state |
 | `--desk-danger` | `#DC2626` | Error and destructive state |
-| `--desk-info` | `#2563EB` | Informational state |
+| `--desk-info` | `#2563EB` | Informational state / fleet blue variation |
 | `--desk-focus-ring` | `#111827` | Keyboard focus-visible outline |
+
+### Shadow Tokens (Elevation)
+
+References show a heavy reliance on flat surfaces with crisp borders rather than deep shadows.
+
+| Token | Value |
+| --- | --- |
+| `--shadow-sm` | `0 1px 2px 0 rgba(0, 0, 0, 0.05)` |
+| `--shadow-md` | `0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)` |
+| `--shadow-overlay` | `0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)` |
+
+## Calm Motion Standards
+
+Motion must be functional, layout-preserving, and non-disruptive.
+
+- **Layout Stability**: Use `layout` props on motion components to preserve spatial anchors during data updates.
+- **Calm Transitions**: Avoid full-page refreshes. Use `AnimatePresence` for smooth entry/exit.
+- **Background Orchestration**: Data syncing must happen silently. Loading states should be expressed through subtle skeleton fades or progress overlays, never "bouncing" the UI.
+- **Duration**: Fast for interaction (`120ms`), Base for layout changes (`200ms`).
+- **Ease**: Always use `cubic-bezier(0.2, 0, 0, 1)` (standard) for layout shifts.
 
 ### Typography Tokens
 
