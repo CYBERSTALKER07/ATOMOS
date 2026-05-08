@@ -89,7 +89,7 @@ function getTruckStatusStyle(status: string): { bg: string; fg: string; label: s
     switch (status) {
         case "IN_TRANSIT": return { bg: "var(--accent)", fg: "var(--accent-foreground)", label: "In Transit" };
         case "DISPATCHED": return { bg: "var(--accent)", fg: "var(--accent-foreground)", label: "Dispatched" };
-        case "RETURNING": return { bg: "var(--warning)", fg: "var(--background)", label: "Returning" };
+        case "RETURNING": return { bg: "var(--warning)", fg: "var(--warning-foreground)", label: "Returning" };
         case "LOADING": return { bg: "var(--muted)", fg: "var(--foreground)", label: "Loading" };
         case "READY": return { bg: "var(--muted)", fg: "var(--foreground)", label: "Ready" };
         case "AVAILABLE": return { bg: "var(--surface)", fg: "var(--foreground)", label: "Available" };
@@ -423,7 +423,15 @@ export default function FleetPage() {
                                             <div className="w-1.5 h-1.5 bg-white rounded-full" />
                                         </div>
                                         {/* Rich hover card */}
-                                        <div className="absolute bottom-7 left-1/2 -translate-x-1/2 px-4 py-3 md-shape-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none md-elevation-2 whitespace-nowrap space-y-1 z-20 min-w-55" style={{ background: 'var(--foreground)', color: 'var(--background)' }}>
+                                        <div
+                                            className="absolute bottom-7 left-1/2 -translate-x-1/2 px-4 py-3 md-shape-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap space-y-1 z-20 min-w-55"
+                                            style={{
+                                                background: 'var(--desk-surface)',
+                                                color: 'var(--desk-text-primary)',
+                                                border: '1px solid var(--desk-border)',
+                                                boxShadow: 'var(--shadow-overlay)',
+                                            }}
+                                        >
                                             <div className="md-typescale-label-medium font-medium">
                                                 {info?.name ?? d.driver_id}
                                             </div>

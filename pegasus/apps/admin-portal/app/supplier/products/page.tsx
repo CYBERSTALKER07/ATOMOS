@@ -279,7 +279,7 @@ export default function MyProductsPage() {
                     background: p.is_active
                       ? 'color-mix(in srgb, var(--success) 90%, transparent)'
                       : 'color-mix(in srgb, var(--danger) 90%, transparent)',
-                    color: 'var(--desk-surface)',
+                    color: 'var(--desk-accent-on)',
                   }}
                 >
                   {p.is_active ? 'Active' : 'Inactive'}

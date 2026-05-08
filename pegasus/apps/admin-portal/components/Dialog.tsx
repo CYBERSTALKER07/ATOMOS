@@ -38,7 +38,7 @@ export default function Dialog({ open, onClose, title, children, actions }: Dial
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0"
-            style={{ background: 'color-mix(in srgb, var(--desk-text-primary) 40%, transparent)' }}
+            style={{ background: 'color-mix(in srgb, var(--desk-ink) 52%, transparent)' }}
             onClick={onClose}
           />
           <motion.div
@@ -52,7 +52,7 @@ export default function Dialog({ open, onClose, title, children, actions }: Dial
               background: 'var(--desk-surface)',
               border: '1px solid var(--desk-border)',
               borderRadius: 'var(--radius-lg)',
-              boxShadow: '0 16px 36px rgba(15, 23, 42, 0.18)',
+              boxShadow: 'var(--shadow-overlay)',
             }}
             role="dialog"
             aria-modal="true"

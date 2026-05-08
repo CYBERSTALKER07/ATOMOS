@@ -76,7 +76,7 @@ export default function NotificationPanel({
               {unreadCount > 0 && (
                 <span
                   className="inline-flex min-w-5 h-5 items-center justify-center px-1.5 rounded-full text-[10px] font-semibold"
-                  style={{ background: 'var(--desk-danger)', color: '#ffffff' }}
+                  style={{ background: 'var(--desk-danger)', color: 'var(--desk-accent-on)' }}
                 >
                   {unreadCount}
                 </span>

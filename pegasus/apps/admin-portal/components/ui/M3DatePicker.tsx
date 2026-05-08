@@ -69,7 +69,7 @@ export default function M3DatePicker({
             background: 'var(--desk-surface)',
             borderColor: 'var(--desk-border)',
             borderRadius: 'var(--radius-lg)',
-            boxShadow: '0 12px 28px rgba(15, 23, 42, 0.16)',
+            boxShadow: 'var(--shadow-overlay)',
           }}
         >
           {/* Header */}
@@ -108,7 +108,7 @@ export default function M3DatePicker({
                   onClick={() => handleSelectDate(dayNum)}
                   className={`h-10 w-10 rounded-full flex items-center justify-center text-base font-semibold transition-colors ${!isSelected && !isToday ? 'hover:bg-(--desk-surface-subtle)' : ''}`}
                   style={isSelected
-                    ? { background: 'var(--desk-accent)', color: 'var(--desk-surface)' }
+                    ? { background: 'var(--desk-accent)', color: 'var(--desk-accent-on)' }
                     : isToday
                       ? { background: 'var(--desk-accent-soft)', color: 'var(--desk-text-primary)' }
                       : { color: 'var(--desk-text-primary)' }}
