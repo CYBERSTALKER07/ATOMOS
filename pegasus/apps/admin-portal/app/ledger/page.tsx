@@ -75,7 +75,7 @@ export default function LedgerPage() {
     };
 
     return (
-        <div className="min-h-full p-6 md:p-10" style={{ background: 'var(--desk-bg)', color: 'var(--desk-text-primary)' }}>
+        <div className="min-h-full p-6 md:p-10" style={{ background: 'var(--desk-canvas)', color: 'var(--desk-text-primary)' }}>
             {/* Page Header */}
             <header className="mb-10">
                 <h1 className="md-typescale-headline-medium" style={{ color: 'var(--desk-text-primary)' }}>Financial Ledger</h1>
@@ -87,8 +87,8 @@ export default function LedgerPage() {
                 {isLoading ? (
                     Array.from({ length: 3 }).map((_, i) => (
                         <div key={i} className="desk-card p-6 h-32 flex flex-col justify-between">
-                            <div className="w-1/2 h-3 rounded animate-pulse" style={{ background: 'var(--desk-surface-alt)' }} />
-                            <div className="w-2/3 h-8 rounded mt-4 animate-pulse" style={{ background: 'var(--desk-surface-alt)' }} />
+                            <div className="w-1/2 h-3 rounded animate-pulse" style={{ background: 'var(--desk-surface-subtle)' }} />
+                            <div className="w-2/3 h-8 rounded mt-4 animate-pulse" style={{ background: 'var(--desk-surface-subtle)' }} />
                         </div>
                     ))
                 ) : (
@@ -133,12 +133,12 @@ export default function LedgerPage() {
                             {isLoading ? (
                                 Array.from({ length: 8 }).map((_, i) => (
                                     <tr key={`skel-${i}`}>
-                                        <td><div className="w-24 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-alt)' }} /></td>
-                                        <td><div className="w-24 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-alt)' }} /></td>
-                                        <td><div className="w-20 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-alt)' }} /></td>
-                                        <td><div className="w-16 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-alt)' }} /></td>
-                                        <td className="flex justify-end"><div className="w-20 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-alt)' }} /></td>
-                                        <td><div className="w-24 h-6 rounded animate-pulse ml-auto" style={{ background: 'var(--desk-surface-alt)' }} /></td>
+                                        <td><div className="w-24 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
+                                        <td><div className="w-24 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
+                                        <td><div className="w-20 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
+                                        <td><div className="w-16 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
+                                        <td className="flex justify-end"><div className="w-20 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
+                                        <td><div className="w-24 h-6 rounded animate-pulse ml-auto" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
                                     </tr>
                                 ))
                             ) : entries.length === 0 ? (

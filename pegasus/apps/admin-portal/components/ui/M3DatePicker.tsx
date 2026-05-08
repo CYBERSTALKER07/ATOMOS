@@ -44,50 +44,49 @@ export default function M3DatePicker({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="
-          flex items-center justify-between w-full min-h-[56px] px-4 
-          bg-[var(--surface)] rounded-2xl
-          text-[var(--foreground)] text-left
-          border border-[var(--border)]
-          focus:outline-none focus:ring-2 focus:ring-[var(--accent)]
-          transition-all
-        "
+        className="flex items-center justify-between w-full min-h-11 px-4 rounded-md border text-left transition-colors focus:outline-none focus-visible:ring-2"
+        style={{
+          background: 'var(--desk-surface)',
+          color: 'var(--desk-text-primary)',
+          borderColor: 'var(--desk-border)',
+          boxShadow: 'none',
+        }}
       >
         <span className="flex flex-col">
-          <span className="text-xs text-[var(--accent)] font-medium uppercase tracking-wider">{label}</span>
+          <span className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--desk-text-tertiary)' }}>{label}</span>
           <span className="text-lg">
             {selected ? selected.toLocaleDateString() : 'Pick a date...'}
           </span>
         </span>
-        <Icon name="calendar" className="text-[var(--accent)] w-6 h-6" />
+        <Icon name="calendar" className="w-6 h-6" />
       </button>
 
       {/* Popover */}
       {isOpen && (
         <div 
-          className="
-            absolute z-50 mt-2 p-6 w-[340px] 
-            bg-[var(--surface)] 
-            rounded-3xl shadow-xl md-elevation-4
-            border border-[var(--border)]
-            fade-in-up origin-top
-          "
+          className="absolute z-50 mt-2 p-4 w-85 border fade-in-up origin-top"
+          style={{
+            background: 'var(--desk-surface)',
+            borderColor: 'var(--desk-border)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: '0 12px 28px rgba(15, 23, 42, 0.16)',
+          }}
         >
           {/* Header */}
-          <div className="flex justify-between items-center mb-6">
-            <button className="md-icon-btn bg-[var(--surface)] rounded-full hover:bg-[var(--surface)] p-2 transition-colors" type="button" onClick={handlePrevMonth}>
+          <div className="flex justify-between items-center mb-4">
+            <button className="md-icon-btn rounded-full p-2 transition-colors" style={{ color: 'var(--desk-text-secondary)' }} type="button" onClick={handlePrevMonth}>
                <Icon name="left" className="w-5 h-5"/>
             </button>
-            <div className="text-xl font-bold text-[var(--foreground)]">
+            <div className="text-xl font-semibold" style={{ color: 'var(--desk-text-primary)' }}>
               {monthNames[currentMonth]} {currentYear}
             </div>
-            <button className="md-icon-btn bg-[var(--surface)] rounded-full hover:bg-[var(--surface)] p-2 transition-colors" type="button" onClick={handleNextMonth}>
+            <button className="md-icon-btn rounded-full p-2 transition-colors" style={{ color: 'var(--desk-text-secondary)' }} type="button" onClick={handleNextMonth}>
                <Icon name="right" className="w-5 h-5" />
             </button>
           </div>
 
           {/* Grid */}
-          <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium text-[var(--muted)] mb-2">
+          <div className="grid grid-cols-7 gap-2 text-center text-sm font-medium mb-2" style={{ color: 'var(--desk-text-tertiary)' }}>
             <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
           </div>
           <div className="grid grid-cols-7 gap-2">
@@ -107,16 +106,12 @@ export default function M3DatePicker({
                   key={dayNum}
                   type="button"
                   onClick={() => handleSelectDate(dayNum)}
-                  className={`
-                    h-10 w-10 rounded-full flex items-center justify-center
-                    text-base font-semibold transition-all
-                    ${isSelected 
-                      ? 'bg-[var(--accent)] text-[var(--accent-foreground)] shadow-md transform scale-110' 
-                      : isToday 
-                        ? 'bg-[var(--accent-soft)] text-[var(--accent-soft-foreground)]'
-                        : 'text-[var(--foreground)] hover:bg-[var(--surface)]'
-                    }
-                  `}
+                  className={`h-10 w-10 rounded-full flex items-center justify-center text-base font-semibold transition-colors ${!isSelected && !isToday ? 'hover:bg-(--desk-surface-subtle)' : ''}`}
+                  style={isSelected
+                    ? { background: 'var(--desk-accent)', color: 'var(--desk-surface)' }
+                    : isToday
+                      ? { background: 'var(--desk-accent-soft)', color: 'var(--desk-text-primary)' }
+                      : { color: 'var(--desk-text-primary)' }}
                 >
                   {dayNum}
                 </button>

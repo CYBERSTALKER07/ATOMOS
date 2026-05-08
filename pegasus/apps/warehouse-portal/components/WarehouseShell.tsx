@@ -2,10 +2,11 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useState, memo } from 'react';
+import { useState, memo, useMemo, useCallback } from 'react';
 import Icon from './Icon';
 import { useTheme, type ThemeMode } from './ThemeProvider';
 import { PanelLeftClose, PanelLeft } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 type NavEntry = { href: string; icon: string; label: string };
 type NavSection = { label?: string; items: NavEntry[] };
@@ -54,13 +55,28 @@ const NAV: NavSection[] = [
   },
 ];
 
+const ALL_NAV_ITEMS = NAV.flatMap((s) => s.items);
+
 function isActiveRoute(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/';
   return pathname === href || pathname.startsWith(href + '/');
 }
 
+function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
+  if (pathname === '/') return [{ label: 'Dashboard', href: '/' }];
+  const segs = pathname.split('/').filter(Boolean);
+  const crumbs: { label: string; href: string }[] = [{ label: 'Home', href: '/' }];
+  let path = '';
+  for (const seg of segs) {
+    path += '/' + seg;
+    crumbs.push({ label: seg.charAt(0).toUpperCase() + seg.slice(1).replace(/-/g, ' '), href: path });
+  }
+  return crumbs;
+}
+
 const BARE_ROUTES = ['/auth/'];
 
+/* ── Theme Toggle ── */
 const ThemeToggle = memo(function ThemeToggle() {
   const { mode, cycle } = useTheme();
   const iconName: Record<ThemeMode, string> = {
@@ -71,7 +87,7 @@ const ThemeToggle = memo(function ThemeToggle() {
   return (
     <button
       onClick={cycle}
-      className="flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:bg-[var(--surface)]"
+      className="desk-icon-btn"
       title={`Theme: ${mode}`}
     >
       <Icon name={iconName[mode]} size={18} />
@@ -79,85 +95,179 @@ const ThemeToggle = memo(function ThemeToggle() {
   );
 });
 
-export default function WarehouseShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-
-  const isBare = BARE_ROUTES.some(r => pathname.startsWith(r));
-  if (isBare) return <>{children}</>;
+/* ── Drawer Content ── */
+const DrawerContent = memo(function DrawerContent({
+  collapsed,
+  isMobile,
+  pathname,
+  onToggle,
+  onLogout,
+}: {
+  collapsed: boolean;
+  isMobile: boolean;
+  pathname: string;
+  onToggle: () => void;
+  onLogout: () => void;
+}) {
+  const isRail = collapsed && !isMobile;
 
   return (
-    <>
-      <aside
-        className="h-screen flex flex-col border-r border-[var(--border)] bg-[var(--background)] transition-[width] duration-200"
-        style={{ width: collapsed ? 64 : 240 }}
-      >
-        <div className="flex items-center gap-3 px-4 h-14 border-b border-[var(--border)]">
-          {!collapsed && (
-            <span className="text-sm font-bold tracking-tight truncate flex-1">
-              Warehouse Portal
-            </span>
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        {/* Header */}
+        <div className={`flex items-center gap-3 transition-all duration-200 ${isRail ? 'justify-center px-2 pt-4 pb-2' : 'px-4 pt-4 pb-2'}`}>
+          {isRail ? (
+            <button onClick={onToggle} aria-label="Open sidebar" className="desk-icon-btn">
+              <PanelLeft size={20} strokeWidth={1.75} />
+            </button>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-3 w-full"
+            >
+              <div className="desk-logo-mark">W</div>
+              <div className="min-w-0 flex-1">
+                <p className="desk-sidebar-section-label" style={{ padding: 0, margin: 0 }}>Warehouse workspace</p>
+                <h1 style={{ font: 'var(--type-title)', color: 'var(--desk-text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
+                  Warehouse Portal
+                </h1>
+              </div>
+              {!isMobile && (
+                <button onClick={onToggle} className="desk-icon-btn" style={{ width: 28, height: 28 }} aria-label="Collapse sidebar">
+                  <PanelLeftClose size={16} strokeWidth={1.75} />
+                </button>
+              )}
+            </motion.div>
           )}
-          <button
-            onClick={() => setCollapsed(c => !c)}
-            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-[var(--surface)] transition-colors"
-          >
-            {collapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
-          </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-2 px-2">
+        {/* Divider */}
+        <div style={{ height: 1, background: 'var(--desk-border)', margin: isRail ? '4px 8px' : '4px 16px' }} />
+
+        {/* Navigation */}
+        <nav className={`flex flex-col gap-0.5 mt-1 transition-all duration-200 ${isRail ? 'px-1.5' : 'px-2.5'}`}>
           {NAV.map((section, si) => (
             <div key={si}>
-              {section.label && !collapsed && (
-                <div className="px-2 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                  {section.label}
-                </div>
+              {si > 0 && <div style={{ height: 1, background: 'var(--desk-border)', margin: isRail ? '8px 4px' : '8px 12px' }} />}
+              {section.label && !isRail && (
+                <div className="desk-sidebar-section-label">{section.label}</div>
               )}
-              {section.items.map(item => {
+              {section.items.map((item, ii) => {
                 const active = isActiveRoute(pathname, item.href);
                 return (
-                  <Link
+                  <motion.div
                     key={item.href}
-                    href={item.href}
-                    className={`
-                      flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                      ${active
-                        ? 'bg-[var(--accent)] text-[var(--accent-foreground)]'
-                        : 'text-[var(--muted)] hover:bg-[var(--surface)] hover:text-[var(--foreground)]'
-                      }
-                    `}
-                    title={collapsed ? item.label : undefined}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: (si * 0.08) + (ii * 0.02), type: 'spring', stiffness: 320, damping: 28 }}
                   >
-                    <Icon name={item.icon} size={20} />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
-                  </Link>
+                    <Link
+                      href={item.href}
+                      className={`desk-sidebar-item ${active ? 'desk-sidebar-item--accent' : ''}`}
+                      title={isRail ? item.label : undefined}
+                      aria-label={item.label}
+                      style={isRail ? { justifyContent: 'center', padding: '0', height: 42 } : undefined}
+                    >
+                      <Icon name={item.icon} size={18} className="desk-sidebar-item-icon" />
+                      {!isRail && <span className="truncate">{item.label}</span>}
+                    </Link>
+                  </motion.div>
                 );
               })}
             </div>
           ))}
         </nav>
+      </div>
 
-        <div className="px-3 py-3 border-t border-[var(--border)] flex items-center gap-2">
+      {/* Footer */}
+      <div className={`py-3 transition-all duration-200 ${isRail ? 'px-2' : 'px-3'}`} style={{ borderTop: '1px solid var(--desk-border)' }}>
+        <div className={`flex items-center ${isRail ? 'justify-center' : 'gap-2'}`}>
           <ThemeToggle />
-          {!collapsed && (
+          {!isRail && (
             <Link
               href="/auth/login"
-              onClick={() => {
-                document.cookie = 'pegasus_warehouse_jwt=; Max-Age=0; path=/';
-              }}
-              className="flex items-center gap-2 text-sm text-[var(--muted)] hover:text-[var(--danger)]"
+              onClick={onLogout}
+              className="desk-sidebar-item flex-1"
+              title="Sign Out"
             >
               <Icon name="logout" size={18} />
               <span>Sign Out</span>
             </Link>
           )}
         </div>
-      </aside>
+      </div>
+    </div>
+  );
+});
 
-      <main className="flex-1 min-w-0 overflow-y-auto">
-        {children}
-      </main>
-    </>
+/* ── Shell ── */
+export default function WarehouseShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+
+  const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname), [pathname]);
+
+  const handleLogout = useCallback(() => {
+    document.cookie = 'pegasus_warehouse_jwt=; Max-Age=0; path=/';
+  }, []);
+
+  const isBare = BARE_ROUTES.some(r => pathname.startsWith(r));
+  if (isBare) return <>{children}</>;
+
+  return (
+    <div className="flex h-dvh overflow-hidden" style={{ background: 'var(--desk-canvas)' }}>
+      {/* Desktop Sidebar */}
+      <motion.aside
+        initial={false}
+        animate={{ width: collapsed ? 64 : 260 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className="hidden md:flex flex-col shrink-0 overflow-hidden"
+        style={{
+          borderRight: '1px solid var(--desk-border)',
+          background: 'var(--desk-surface)',
+        }}
+      >
+        <DrawerContent
+          collapsed={collapsed}
+          isMobile={false}
+          pathname={pathname}
+          onToggle={() => setCollapsed(c => !c)}
+          onLogout={handleLogout}
+        />
+      </motion.aside>
+
+      {/* Main content */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Top bar */}
+        <header className="desk-topbar shrink-0">
+          <div className="desk-topbar-left">
+            <nav className="desk-breadcrumb" aria-label="Breadcrumb">
+              {breadcrumbs.map((crumb, i) => (
+                <span key={crumb.href} className="flex items-center gap-2 min-w-0">
+                  {i > 0 && <span className="desk-breadcrumb-sep">/</span>}
+                  {i === breadcrumbs.length - 1 ? (
+                    <span className="desk-breadcrumb-current truncate">{crumb.label}</span>
+                  ) : (
+                    <Link href={crumb.href} className="truncate">{crumb.label}</Link>
+                  )}
+                </span>
+              ))}
+            </nav>
+          </div>
+
+          <div className="desk-topbar-right">
+            <div className="desk-live-indicator hidden lg:inline-flex">
+              <span className="desk-live-dot" />
+              Warehouse live
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 min-w-0 overflow-y-auto" style={{ background: 'var(--desk-canvas)' }}>
+          {children}
+        </main>
+      </div>
+    </div>
   );
 }

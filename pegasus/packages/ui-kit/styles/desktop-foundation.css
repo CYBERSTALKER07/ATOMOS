@@ -939,4 +939,297 @@
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: var(--space-4);
   }
+
+  /* ── Sidebar search (⌘ shortcut hint) ────────────────────────────── */
+  :where(.desk-sidebar-search) {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: var(--space-2) var(--space-3);
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    background: var(--desk-surface-subtle);
+    border: 1px solid var(--desk-border);
+    color: var(--desk-text-tertiary);
+    font: 400 13px/18px var(--desktop-font-sans);
+    cursor: pointer;
+    transition: border-color var(--duration-fast) var(--ease-standard),
+                background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  :where(.desk-sidebar-search:hover) {
+    border-color: var(--desk-border-strong);
+    background: var(--desk-surface);
+  }
+
+  :where(.desk-sidebar-search-icon) {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    color: var(--desk-text-tertiary);
+  }
+
+  :where(.desk-sidebar-search-text) {
+    flex: 1;
+    color: var(--desk-text-tertiary);
+  }
+
+  :where(.desk-sidebar-search-kbd) {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid var(--desk-border);
+    background: var(--desk-surface);
+    font: 500 10px/14px var(--desktop-font-sans);
+    color: var(--desk-text-tertiary);
+    letter-spacing: 0;
+  }
+
+  /* ── Top bar ─────────────────────────────────────────────────────── */
+  :where(.desk-topbar) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    padding: 0 var(--space-5);
+    border-bottom: 1px solid var(--desk-border);
+    background: var(--desk-surface);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  :where(.desk-topbar-left) {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  :where(.desk-topbar-right) {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  :where(.desk-topbar-search) {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 7px 14px;
+    border-radius: var(--radius-pill);
+    background: var(--desk-surface-subtle);
+    border: 1px solid var(--desk-border);
+    color: var(--desk-text-tertiary);
+    font: 400 14px/20px var(--desktop-font-sans);
+    cursor: pointer;
+    min-width: 220px;
+    transition: border-color var(--duration-fast) var(--ease-standard),
+                background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  :where(.desk-topbar-search:hover) {
+    border-color: var(--desk-border-strong);
+    background: var(--desk-surface);
+  }
+
+  /* ── Profile pill (top bar) ──────────────────────────────────────── */
+  :where(.desk-profile-pill) {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 4px 12px 4px 4px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--desk-border);
+    background: var(--desk-surface);
+    cursor: pointer;
+    transition: border-color var(--duration-fast) var(--ease-standard),
+                background-color var(--duration-fast) var(--ease-standard);
+  }
+
+  :where(.desk-profile-pill:hover) {
+    border-color: var(--desk-border-strong);
+    background: var(--desk-surface-subtle);
+  }
+
+  :where(.desk-profile-avatar) {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-pill);
+    background: var(--desk-accent);
+    color: var(--desk-accent-on);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 600 12px/1 var(--desktop-font-sans);
+    flex: 0 0 32px;
+  }
+
+  :where(.desk-profile-info) {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  :where(.desk-profile-name) {
+    font: 600 13px/16px var(--desktop-font-sans);
+    color: var(--desk-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  :where(.desk-profile-role) {
+    font: 400 11px/14px var(--desktop-font-sans);
+    color: var(--desk-text-tertiary);
+  }
+
+  /* ── Icon button (topbar actions) ────────────────────────────────── */
+  :where(.desk-icon-btn) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: transparent;
+    color: var(--desk-text-secondary);
+    cursor: pointer;
+    position: relative;
+    transition: background-color var(--duration-fast) var(--ease-standard),
+                color var(--duration-fast) var(--ease-standard);
+  }
+
+  :where(.desk-icon-btn:hover) {
+    background: var(--desk-surface-subtle);
+    color: var(--desk-text-primary);
+  }
+
+  :where(.desk-icon-btn svg) {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* ── Notification badge (on icon buttons) ────────────────────────── */
+  :where(.desk-notif-badge) {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: var(--radius-pill);
+    background: var(--desk-danger);
+    color: #ffffff;
+    font: 600 10px/16px var(--desktop-font-sans);
+    text-align: center;
+    border: 2px solid var(--desk-surface);
+  }
+
+  /* ── Enhanced sidebar active state — left accent strip ───────────── */
+  :where(.desk-sidebar-item--accent) {
+    background: var(--desk-accent-soft);
+    border-color: transparent;
+    color: var(--desk-text-primary);
+    position: relative;
+  }
+
+  :where(.desk-sidebar-item--accent::before) {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--desk-accent);
+  }
+
+  /* ── Section badge (Messages 4) ──────────────────────────────────── */
+  :where(.desk-sidebar-count) {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: var(--radius-pill);
+    background: var(--desk-surface-subtle);
+    color: var(--desk-text-secondary);
+    font: 600 11px/20px var(--desktop-font-sans);
+  }
+
+  /* ── Breadcrumb ──────────────────────────────────────────────────── */
+  :where(.desk-breadcrumb) {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font: 500 14px/20px var(--desktop-font-sans);
+    color: var(--desk-text-secondary);
+  }
+
+  :where(.desk-breadcrumb-sep) {
+    color: var(--desk-text-tertiary);
+    font-size: 12px;
+  }
+
+  :where(.desk-breadcrumb-current) {
+    color: var(--desk-text-primary);
+    font-weight: 600;
+  }
+
+  :where(.desk-breadcrumb a) {
+    color: var(--desk-text-secondary);
+    text-decoration: none;
+    transition: color var(--duration-fast) var(--ease-standard);
+  }
+
+  :where(.desk-breadcrumb a:hover) {
+    color: var(--desk-text-primary);
+  }
+
+  /* ── Status live indicator ───────────────────────────────────────── */
+  :where(.desk-live-indicator) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    border: 1px solid color-mix(in oklch, var(--desk-success) 25%, var(--desk-border));
+    background: color-mix(in oklch, var(--desk-success) 8%, transparent);
+    font: 600 11px/16px var(--desktop-font-sans);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--desk-text-primary);
+  }
+
+  :where(.desk-live-dot) {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--desk-success);
+    animation: desk-pulse 2s ease-in-out infinite;
+  }
+
+  /* ── Logo mark ───────────────────────────────────────────────────── */
+  :where(.desk-logo-mark) {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--desk-text-primary);
+    color: var(--desk-surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 700 16px/1 var(--desktop-font-sans);
+    flex: 0 0 36px;
+  }
+}
+
+@keyframes desk-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
 }

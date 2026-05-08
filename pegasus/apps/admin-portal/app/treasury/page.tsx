@@ -39,7 +39,7 @@ export default function TreasuryDashboard() {
     const fmt = (n: number) => new Intl.NumberFormat('en-US').format(n);
 
     return (
-        <div className="min-h-full p-6 md:p-10" style={{ background: 'var(--desk-bg)', color: 'var(--desk-text-primary)' }}>
+        <div className="min-h-full p-6 md:p-10" style={{ background: 'var(--desk-canvas)', color: 'var(--desk-text-primary)' }}>
             {/* ── Page Header ── */}
             <header className="md-page-header">
                 <div>

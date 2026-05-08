@@ -6,16 +6,20 @@ export default function StatsCard({
   value,
   sub,
   trend,
+  trendValue,
   accent,
   delay = 0,
+  sparkline,
   className = '',
 }: {
   label: string;
   value: string;
   sub?: string;
   trend?: 'up' | 'down' | 'neutral';
+  trendValue?: string;
   accent?: string;
   delay?: number;
+  sparkline?: number[];
   className?: string;
 }) {
   const trendIcon = trend === 'up' ? '↑' : trend === 'down' ? '↓' : trend === 'neutral' ? '→' : null;
@@ -24,6 +28,23 @@ export default function StatsCard({
     : trend === 'down' ? 'desk-stat-delta desk-stat-delta--down'
     : trend === 'neutral' ? 'desk-stat-delta desk-stat-delta--neutral'
     : '';
+
+  // Generate simple SVG sparkline path
+  const sparklinePath = sparkline && sparkline.length > 1 ? (() => {
+    const max = Math.max(...sparkline);
+    const min = Math.min(...sparkline);
+    const range = max - min || 1;
+    const h = 36;
+    const w = 100;
+    const step = w / (sparkline.length - 1);
+    return sparkline
+      .map((v, i) => {
+        const x = i * step;
+        const y = h - ((v - min) / range) * (h - 4) - 2;
+        return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(' ');
+  })() : null;
 
   return (
     <motion.div
@@ -34,14 +55,36 @@ export default function StatsCard({
       className={`desk-kpi-card ${className}`}
       style={{ position: 'relative' }}
     >
-      <div className="desk-kpi-card-meta">
-        <span>{label}</span>
-        {trendIcon && <span className={deltaClass}>{trendIcon}</span>}
+      {/* Label row */}
+      <span className="desk-kpi-card-label">{label}</span>
+
+      {/* Value + trend */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+        <div className="desk-kpi-card-value">
+          <CountUp value={value} delay={delay / 1000 + 0.2} className="tabular-nums" />
+        </div>
+        {trendIcon && (
+          <span className={deltaClass}>
+            {trendIcon} {trendValue || ''}
+          </span>
+        )}
       </div>
-      <div className="desk-kpi-card-value">
-        <CountUp value={value} delay={delay / 1000 + 0.2} className="tabular-nums" />
-      </div>
-      {sub && <div className="desk-kpi-card-meta" style={{ marginTop: 4 }}>{sub}</div>}
+
+      {/* Sparkline */}
+      {sparklinePath && (
+        <svg className="desk-sparkline" viewBox="0 0 100 36" preserveAspectRatio="none">
+          <path d={sparklinePath} />
+        </svg>
+      )}
+
+      {/* Sub text */}
+      {sub && (
+        <div className="desk-kpi-card-meta" style={{ marginTop: 4 }}>
+          <span style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-tertiary)' }}>{sub}</span>
+        </div>
+      )}
+
+      {/* Top accent bar */}
       {accent && (
         <div
           aria-hidden="true"

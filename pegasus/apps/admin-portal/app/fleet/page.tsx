@@ -417,13 +417,13 @@ export default function FleetPage() {
                                     <div className="relative group cursor-pointer" onClick={() => setSelectedDriverId(d.driver_id)}>
                                         {/* Pin */}
                                         <div
-                                            className={`w-5 h-5 rounded-full border-2 border-white shadow-lg flex items-center justify-center ${staleness === "live" ? "animate-pulse" : ""}`}
+                                            className={`w-5 h-5 rounded-full border-2 border-white flex items-center justify-center ${staleness === "live" ? "animate-pulse" : ""}`}
                                             style={{ background: getMarkerColor(staleness) }}
                                         >
                                             <div className="w-1.5 h-1.5 bg-white rounded-full" />
                                         </div>
                                         {/* Rich hover card */}
-                                        <div className="absolute bottom-7 left-1/2 -translate-x-1/2 px-4 py-3 md-shape-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none md-elevation-2 whitespace-nowrap space-y-1 z-20 min-w-[220px]" style={{ background: 'var(--foreground)', color: 'var(--background)' }}>
+                                        <div className="absolute bottom-7 left-1/2 -translate-x-1/2 px-4 py-3 md-shape-xs opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none md-elevation-2 whitespace-nowrap space-y-1 z-20 min-w-55" style={{ background: 'var(--foreground)', color: 'var(--background)' }}>
                                             <div className="md-typescale-label-medium font-medium">
                                                 {info?.name ?? d.driver_id}
                                             </div>
@@ -467,7 +467,7 @@ export default function FleetPage() {
 
                     {/* Empty state overlay */}
                     {driverList.length === 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none backdrop-blur-[1px]" style={{ background: 'var(--backdrop)' }}>
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ background: 'var(--backdrop)' }}>
                             <div className="px-8 py-5 md-card md-card-elevated flex flex-col items-center">
                                 <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
                                 <p className="md-typescale-label-small mt-4" style={{ color: 'var(--muted)' }}>

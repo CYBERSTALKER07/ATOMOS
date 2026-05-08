@@ -182,7 +182,7 @@ export default function MyProductsPage() {
 
       {/* Search + filter bar */}
       <div className="flex gap-3 mb-6 flex-wrap items-center">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
+        <div className="relative flex-1 min-w-50 max-w-md">
           <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted" />
           <input
             type="text"
@@ -251,12 +251,12 @@ export default function MyProductsPage() {
           {filtered.map(p => (
             <div
               key={p.sku_id}
-              className="md-card md-card-elevated md-shape-lg overflow-hidden flex flex-col transition-shadow hover:shadow-lg cursor-pointer"
+              className="md-card md-card-elevated md-shape-lg overflow-hidden flex flex-col transition-colors cursor-pointer"
               style={{ opacity: p.is_active ? 1 : 0.6 }}
               onClick={() => router.push(`/supplier/products/${p.sku_id}`)}
             >
               {/* Image */}
-              <div className="relative aspect-[4/3] overflow-hidden" style={{ background: 'var(--surface)' }}>
+              <div className="relative aspect-4/3 overflow-hidden" style={{ background: 'var(--surface)' }}>
                 {p.image_url ? (
                   <Image
                     src={p.image_url}
@@ -279,7 +279,7 @@ export default function MyProductsPage() {
                     background: p.is_active
                       ? 'color-mix(in srgb, var(--success) 90%, transparent)'
                       : 'color-mix(in srgb, var(--danger) 90%, transparent)',
-                    color: '#fff',
+                    color: 'var(--desk-surface)',
                   }}
                 >
                   {p.is_active ? 'Active' : 'Inactive'}

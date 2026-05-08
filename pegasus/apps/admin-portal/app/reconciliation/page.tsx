@@ -66,7 +66,7 @@ export default function ReconciliationPage() {
   };
 
   return (
-    <div className="min-h-full p-6 md:p-10" style={{ background: 'var(--desk-bg)', color: 'var(--desk-text-primary)' }}>
+    <div className="min-h-full p-6 md:p-10" style={{ background: 'var(--desk-canvas)', color: 'var(--desk-text-primary)' }}>
       {/* Header */}
       <header className="mb-10">
         <div className="flex items-start justify-between">
@@ -87,8 +87,8 @@ export default function ReconciliationPage() {
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="desk-card p-6 h-32 flex flex-col justify-between">
-              <Skeleton className="w-1/2 h-3" style={{ background: 'var(--desk-surface-alt)' }} />
-              <Skeleton className="w-2/3 h-8 mt-4" style={{ background: 'var(--desk-surface-alt)' }} />
+              <Skeleton className="w-1/2 h-3" style={{ background: 'var(--desk-surface-subtle)' }} />
+              <Skeleton className="w-2/3 h-8 mt-4" style={{ background: 'var(--desk-surface-subtle)' }} />
             </div>
           ))
         ) : (
@@ -128,14 +128,14 @@ export default function ReconciliationPage() {
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={`skel-${i}`}>
-                    <td><Skeleton className="w-24 h-4" style={{ background: 'var(--desk-surface-alt)' }} /></td>
-                    <td><Skeleton className="w-20 h-4" style={{ background: 'var(--desk-surface-alt)' }} /></td>
-                    <td><Skeleton className="w-20 h-4 ml-auto" style={{ background: 'var(--desk-surface-alt)' }} /></td>
-                    <td><Skeleton className="w-20 h-4 ml-auto" style={{ background: 'var(--desk-surface-alt)' }} /></td>
-                    <td><Skeleton className="w-16 h-4 ml-auto" style={{ background: 'var(--desk-surface-alt)' }} /></td>
-                    <td><Skeleton className="w-16 h-4" style={{ background: 'var(--desk-surface-alt)' }} /></td>
-                    <td><Skeleton className="w-24 h-4" style={{ background: 'var(--desk-surface-alt)' }} /></td>
-                    <td><Skeleton className="w-20 h-4 ml-auto" style={{ background: 'var(--desk-surface-alt)' }} /></td>
+                    <td><Skeleton className="w-24 h-4" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
+                    <td><Skeleton className="w-20 h-4" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
+                    <td><Skeleton className="w-20 h-4 ml-auto" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
+                    <td><Skeleton className="w-20 h-4 ml-auto" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
+                    <td><Skeleton className="w-16 h-4 ml-auto" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
+                    <td><Skeleton className="w-16 h-4" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
+                    <td><Skeleton className="w-24 h-4" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
+                    <td><Skeleton className="w-20 h-4 ml-auto" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
                   </tr>
                 ))
               ) : records.length === 0 ? (

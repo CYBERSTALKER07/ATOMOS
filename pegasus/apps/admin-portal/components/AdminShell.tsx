@@ -219,84 +219,92 @@ const DrawerContent = memo(function DrawerContent({
     [isGlobalAdmin, isFactoryStaff],
   );
   return (
-    <>
-      <div className="flex-1 overflow-y-auto">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
         {/* Header */}
-        <div className={`flex items-center gap-3 pt-4 pb-2 ${isRail ? 'justify-center px-2' : 'px-4'}`}>
+        <div className={`flex items-center gap-3 transition-all duration-200 ${isRail ? 'justify-center px-2 pt-4 pb-2' : 'px-4 pt-4 pb-2'}`}>
           {isRail ? (
-            <Button
-              variant="ghost"
-              isIconOnly
-              onPress={onToggle}
+            <button
+              onClick={onToggle}
               aria-label="Open sidebar"
-              className="desk-btn-ghost w-9 h-9 min-w-0 p-0"
+              className="desk-icon-btn"
             >
               <PanelLeft size={20} strokeWidth={1.75} />
-            </Button>
+            </button>
           ) : (
-            <>
-              <div
-                className="w-8 h-8 flex items-center justify-center text-xs font-semibold shrink-0"
-                style={{
-                  background: 'var(--desk-accent)',
-                  color: 'var(--desk-accent-on)',
-                  borderRadius: 10,
-                }}
-              >
-                L
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-3 w-full"
+            >
+              <div className="desk-logo-mark">
+                P
               </div>
-              <h1 className="text-[14px] font-semibold truncate flex-1" style={{ color: 'var(--desk-text-primary)' }}>
-                Pegasus Hub
-              </h1>
+              <div className="min-w-0 flex-1">
+                <p className="desk-sidebar-section-label" style={{ padding: 0, margin: 0 }}>Enterprise</p>
+                <h1 style={{ font: 'var(--type-title)', color: 'var(--desk-text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
+                  Pegasus Hub
+                </h1>
+              </div>
               {!isMobile && (
-                <Button
-                  variant="ghost"
-                  isIconOnly
-                  onPress={onToggle}
-                  className="desk-btn-ghost w-7 h-7 min-w-0 p-0"
+                <button
+                  onClick={onToggle}
+                  className="desk-icon-btn"
+                  style={{ width: 28, height: 28 }}
                   aria-label="Collapse sidebar"
                 >
                   <PanelLeftClose size={16} strokeWidth={1.75} />
-                </Button>
+                </button>
               )}
-            </>
+            </motion.div>
           )}
         </div>
 
-        <div className={`md-divider my-1.5 ${isRail ? 'mx-2' : 'mx-4'}`} />
+        {/* Search bar */}
+        {!isRail && (
+          <button
+            className="desk-sidebar-search"
+            onClick={() => {
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+            }}
+            aria-label="Search pages (⌘K)"
+          >
+            <Icon name="search" size={16} className="desk-sidebar-search-icon" />
+            <span className="desk-sidebar-search-text">Search…</span>
+            <kbd className="desk-sidebar-search-kbd">⌘K</kbd>
+          </button>
+        )}
 
         {/* Navigation */}
-        <nav className={`flex flex-col gap-0.5 ${isRail ? 'px-1.5' : 'px-2.5'}`}>
+        <nav className={`flex flex-col gap-0.5 mt-1 transition-all duration-200 ${isRail ? 'px-1.5' : 'px-2.5'}`}>
           {filteredNav.map((section, si) => (
             <div key={si}>
-              {si > 0 && <div className={`md-divider my-1.5 ${isRail ? 'mx-1' : 'mx-3'}`} />}
+              {si > 0 && <div style={{ height: 1, background: 'var(--desk-border)', margin: isRail ? '8px 4px' : '8px 12px' }} />}
               {section.label && !isRail && (
-                <p className="md-nav-section-label">{section.label}</p>
+                <div className="desk-sidebar-section-label">{section.label}</div>
               )}
               {section.items.map((item, ii) => {
                 const active = isActiveRoute(pathname, item.href);
                 return (
                   <motion.div
                     key={item.href}
-                    initial={{ opacity: 0, x: -10 }}
+                    initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ 
-                      delay: (si * 0.1) + (ii * 0.03),
+                    transition={{
+                      delay: (si * 0.08) + (ii * 0.02),
                       type: 'spring',
-                      stiffness: 300,
-                      damping: 30
+                      stiffness: 320,
+                      damping: 28
                     }}
-                    whileTap={{ scale: 0.98 }}
                   >
                     <Link
                       href={item.href}
-                      className={`md-nav-item desk-sidebar-item ${active ? 'md-nav-active desk-sidebar-item--active' : ''}`}
-                      data-active={active}
+                      className={`desk-sidebar-item ${active ? 'desk-sidebar-item--accent' : ''}`}
                       title={isRail ? item.label : undefined}
                       aria-label={item.label}
                       style={isRail ? { justifyContent: 'center', padding: '0', height: 42 } : undefined}
                     >
-                      <Icon name={item.icon} size={20} className="desk-sidebar-item-icon" />
+                      <Icon name={item.icon} size={18} className="desk-sidebar-item-icon" />
                       {!isRail && <span className="truncate">{item.label}</span>}
                     </Link>
                   </motion.div>
@@ -308,25 +316,35 @@ const DrawerContent = memo(function DrawerContent({
       </div>
 
       {/* Footer */}
-      <div className={`py-3 ${isRail ? 'px-2' : 'px-4'}`} style={{ borderTop: '1px solid var(--desk-border)' }}>
-        <button
-          onClick={onLogout}
-          className={`md-nav-item desk-sidebar-item w-full ${isRail ? 'justify-center' : ''}`}
-          style={isRail ? { padding: 0 } : undefined}
-          title={isRail ? 'Sign Out' : undefined}
-          aria-label="Sign Out"
-        >
-          <Icon name="logout" />
-          {!isRail && <span>Sign Out</span>}
-        </button>
+      <div className={`py-3 transition-all duration-200 ${isRail ? 'px-2' : 'px-3'}`} style={{ borderTop: '1px solid var(--desk-border)' }}>
+        <div className={`flex items-center ${isRail ? 'justify-center' : 'gap-2'}`}>
+          <ThemeToggle />
+          {!isRail && (
+            <button
+              onClick={onLogout}
+              className="desk-sidebar-item flex-1"
+              title="Sign Out"
+              aria-label="Sign Out"
+            >
+              <Icon name="logout" size={18} />
+              <span>Sign Out</span>
+            </button>
+          )}
+        </div>
         {!isRail && (
-          <div className="flex items-center gap-2 mt-3 px-4">
-            <div className="w-2 h-2 rounded-full" style={{ background: 'var(--desk-success)' }} />
-            <p className="md-typescale-label-small text-muted">v2.0.0</p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 px-3"
+          >
+            <div className="flex items-center gap-2">
+              <span className="desk-live-dot" />
+              <span style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-secondary)' }}>v2.0.0 · System ready</span>
+            </div>
+          </motion.div>
         )}
       </div>
-    </>
+    </div>
   );
 });
 
@@ -500,102 +518,78 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       {/* ── Main Content Area ── */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* ── Top App Bar ── */}
-        <header
-          className="h-14 flex items-center justify-between px-4 shrink-0 gap-4 sticky top-0 z-30"
-          style={{
-            borderBottom: '1px solid var(--desk-border)',
-            background: 'var(--desk-surface)',
-          }}
-        >
+        <header className="desk-topbar shrink-0">
           {/* Left section */}
-          <div className="flex items-center gap-2 min-w-0">
-            <Button
-              variant="ghost"
-              isIconOnly
-              className="desk-btn-ghost md:hidden w-9 h-9 min-w-0 p-0"
-              onPress={() => setMobileOpen(true)}
+          <div className="desk-topbar-left">
+            <button
+              className="desk-icon-btn md:hidden"
+              onClick={() => setMobileOpen(true)}
               aria-label="Open navigation"
             >
               <Icon name="menu" />
-            </Button>
+            </button>
 
             {/* Breadcrumbs */}
-            <nav className="hidden md:flex items-center gap-1 min-w-0" aria-label="Breadcrumb">
+            <nav className="desk-breadcrumb hidden md:flex" aria-label="Breadcrumb">
               {breadcrumbs.map((crumb, i) => (
-                <span key={crumb.href} className="flex items-center gap-1 min-w-0">
-                  {i > 0 && (
-                    <span className="md-typescale-body-small text-muted">/</span>
-                  )}
+                <span key={crumb.href} className="flex items-center gap-2 min-w-0">
+                  {i > 0 && <span className="desk-breadcrumb-sep">/</span>}
                   {i === breadcrumbs.length - 1 ? (
-                    <span className="md-typescale-label-large truncate text-foreground">
-                      {crumb.label}
-                    </span>
+                    <span className="desk-breadcrumb-current truncate">{crumb.label}</span>
                   ) : (
-                    <Link
-                      href={crumb.href}
-                      className="md-typescale-label-large truncate text-muted"
-                    >
-                      {crumb.label}
-                    </Link>
+                    <Link href={crumb.href} className="truncate">{crumb.label}</Link>
                   )}
                 </span>
               ))}
             </nav>
 
             {/* Mobile: page title only */}
-            <span className="md:hidden md-typescale-title-small truncate text-foreground">
+            <span className="md:hidden truncate" style={{ font: 'var(--type-title)', color: 'var(--desk-text-primary)' }}>
               {breadcrumbs[breadcrumbs.length - 1]?.label || 'Supplier Portal'}
             </span>
           </div>
 
           {/* Right section */}
-          <div className="flex items-center gap-1">
-            {/* Theme toggle */}
-            <ThemeToggle />
-
+          <div className="desk-topbar-right">
             {/* Search trigger */}
-            <Button
-              variant="ghost"
-              isIconOnly
-              className="desk-btn-ghost w-9 h-9 min-w-0 p-0"
-              onPress={() => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 100); }}
+            <button
+              className="desk-topbar-search hidden md:flex"
+              onClick={() => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 100); }}
               aria-label="Search (Ctrl+K)"
             >
+              <Icon name="search" size={16} />
+              <span style={{ flex: 1, textAlign: 'left' }}>Search…</span>
+              <kbd className="desk-sidebar-search-kbd">⌘K</kbd>
+            </button>
+
+            <button
+              className="desk-icon-btn md:hidden"
+              onClick={() => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 100); }}
+              aria-label="Search"
+            >
               <Icon name="search" />
-            </Button>
+            </button>
+
+            {/* Live indicator */}
+            <div className="desk-live-indicator hidden lg:inline-flex">
+              <span className="desk-live-dot" />
+              Live
+            </div>
 
             {/* Notifications */}
             <div className="relative" ref={notifRef}>
-              <Button
-                variant="ghost"
-                isIconOnly
-                className="desk-btn-ghost w-9 h-9 min-w-0 p-0 relative"
+              <button
+                className="desk-icon-btn"
                 aria-label="Notifications"
-                onPress={() => setNotifOpen(p => !p)}
+                onClick={() => setNotifOpen(p => !p)}
               >
                 <Icon name="notifications" />
                 {unreadCount > 0 && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      top: 4,
-                      right: 4,
-                      width: unreadCount > 9 ? 18 : 16,
-                      height: 16,
-                      borderRadius: 8,
-                      background: 'var(--desk-danger)',
-                      color: '#ffffff',
-                      fontSize: 10,
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
+                  <span className="desk-notif-badge">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
-              </Button>
+              </button>
               <NotificationPanel
                 open={notifOpen}
                 onClose={() => setNotifOpen(false)}
@@ -606,59 +600,37 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               />
             </div>
 
-            {/* Profile */}
+            {/* Profile pill */}
             <div className="relative" ref={profileRef}>
-              <div className="flex items-center gap-2">
-                {supplierRole === 'NODE_ADMIN' && (
-                  <span className="hidden md:inline-flex md-typescale-label-small px-2 py-0.5 md-shape-sm"
-                    style={{ background: 'var(--color-md-tertiary-container)', color: 'var(--color-md-on-tertiary-container)' }}>
-                    Node Admin
+              <button
+                onClick={() => setProfileOpen(p => !p)}
+                className="desk-profile-pill"
+                aria-label="Profile menu"
+              >
+                <div className="desk-profile-avatar">AS</div>
+                <div className="desk-profile-info hidden lg:flex">
+                  <span className="desk-profile-name">Admin</span>
+                  <span className="desk-profile-role">
+                    {supplierRole === 'NODE_ADMIN' ? 'Node Admin' : supplierRole === 'FACTORY_ADMIN' ? 'Factory Admin' : supplierRole === 'FACTORY_PAYLOADER' ? 'Payloader' : 'Supplier'}
                   </span>
-                )}
-                {supplierRole === 'FACTORY_ADMIN' && (
-                  <span className="hidden md:inline-flex md-typescale-label-small px-2 py-0.5 md-shape-sm"
-                    style={{ background: 'var(--color-md-secondary-container)', color: 'var(--color-md-on-secondary-container)' }}>
-                    Factory Admin
-                  </span>
-                )}
-                {supplierRole === 'FACTORY_PAYLOADER' && (
-                  <span className="hidden md:inline-flex md-typescale-label-small px-2 py-0.5 md-shape-sm"
-                    style={{ background: 'var(--color-md-secondary-container)', color: 'var(--color-md-on-secondary-container)' }}>
-                    Payloader
-                  </span>
-                )}
-                <button
-                  onClick={() => setProfileOpen(p => !p)}
-                  className="w-9 h-9 flex items-center justify-center md-typescale-label-medium md-shape-full cursor-pointer bg-accent text-accent-foreground"
-                  aria-label="Profile menu"
-                >
-                  AS
-                </button>
-              </div>
+                </div>
+              </button>
               {profileOpen && (
-                <div className="md-menu" style={{ right: 0, top: 44, minWidth: 200 }}>
-                  <div className="px-3 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
-                    <p className="md-typescale-title-small text-foreground">Admin Supplier</p>
-                    <p className="md-typescale-body-small text-muted">admin@void.pegasus.uz</p>
+                <div className="md-menu" style={{ right: 0, top: 48, minWidth: 220 }}>
+                  <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--desk-border)' }}>
+                    <p style={{ font: 'var(--type-title)', color: 'var(--desk-text-primary)', margin: 0 }}>Admin Supplier</p>
+                    <p style={{ font: 'var(--type-caption-sm)', color: 'var(--desk-text-tertiary)', margin: '4px 0 0' }}>admin@void.pegasus.uz</p>
                   </div>
-                  <Link
-                    href="/supplier/profile"
-                    className="md-menu-item"
-                    onClick={() => setProfileOpen(false)}
-                  >
+                  <Link href="/supplier/profile" className="md-menu-item" onClick={() => setProfileOpen(false)}>
                     <Icon name="supplier" />
                     <span>Profile</span>
                   </Link>
-                  <Link
-                    href="/supplier/settings"
-                    className="md-menu-item"
-                    onClick={() => setProfileOpen(false)}
-                  >
+                  <Link href="/supplier/settings" className="md-menu-item" onClick={() => setProfileOpen(false)}>
                     <Icon name="config" />
                     <span>Settings</span>
                   </Link>
-                  <div className="md-divider mx-3 my-1" />
-                  <button className="md-menu-item text-danger" onClick={() => { setProfileOpen(false); handleLogout(); }}>
+                  <div style={{ height: 1, background: 'var(--desk-border)', margin: '4px 12px' }} />
+                  <button className="md-menu-item" style={{ color: 'var(--desk-danger)' }} onClick={() => { setProfileOpen(false); handleLogout(); }}>
                     <Icon name="logout" />
                     <span>Sign Out</span>
                   </button>
