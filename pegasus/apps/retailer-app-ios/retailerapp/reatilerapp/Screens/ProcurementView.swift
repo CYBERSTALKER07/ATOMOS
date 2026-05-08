@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProcurementView: View {
     @Environment(CartManager.self) private var cart
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var forecasts: [DemandForecast] = []
     @State private var selectedItems: Set<String> = []
     @State private var quantities: [String: Int] = [:]
@@ -36,6 +37,7 @@ struct ProcurementView: View {
         }
         .background(AppTheme.background)
         .task { await loadPredictions() }
+        .task(id: refreshCenter.refreshToken) { await loadPredictions() }
         .alert("Order Created", isPresented: $showSuccess) {
             Button("OK") { selectedItems.removeAll(); quantities.removeAll() }
         } message: {

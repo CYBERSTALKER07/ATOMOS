@@ -331,7 +331,7 @@ struct DeliveryPaymentSheetView: View {
     }
 
     private func listenForCompletion() async {
-        for await event in ws.events {
+        for await event in ws.eventStream() {
             switch event {
             case .orderCompleted(let completed) where completed.orderId == self.event.orderId:
                 phase = .success

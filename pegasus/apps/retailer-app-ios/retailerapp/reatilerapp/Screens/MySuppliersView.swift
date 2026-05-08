@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct MySuppliersView: View {
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var suppliers: [Supplier] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -35,6 +36,7 @@ struct MySuppliersView: View {
         .scrollIndicators(.hidden)
         .background(AppTheme.background)
         .task { await loadSuppliers() }
+        .task(id: refreshCenter.refreshToken) { await loadSuppliers() }
         .refreshable { await loadSuppliers() }
     }
 

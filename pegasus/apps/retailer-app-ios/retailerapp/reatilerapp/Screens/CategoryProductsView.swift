@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CategoryProductsView: View {
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     let category: ProductCategory
     @Environment(CartManager.self) private var cart
     @State private var products: [Product] = []
@@ -69,6 +70,8 @@ struct CategoryProductsView: View {
             ProductDetailView(product: product)
         }
         .task { await loadProducts() }
+        .task(id: refreshCenter.refreshToken) { await loadProducts() }
+        .refreshable { await loadProducts() }
     }
 
     // MARK: - Product Row with Auto-Order Toggle

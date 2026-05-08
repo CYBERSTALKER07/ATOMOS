@@ -12,6 +12,7 @@ import {
   Building2,
 } from "lucide-react";
 import { Button, Chip, Skeleton } from "@heroui/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";
@@ -19,8 +20,6 @@ import CartDrawer from "../../../components/CartDrawer";
 import CheckoutModal from "../../../components/CheckoutModal";
 import ProductDetailDrawer from "../../../components/ProductDetailDrawer";
 import EmptyState from "../../../components/EmptyState";
-import PageTransition from "../../../components/PageTransition";
-import { motion } from "framer-motion";
 import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
 import type { Product, Category, Supplier } from "../../../lib/types";
@@ -33,10 +32,8 @@ export default function CatalogPage() {
   const { data: products, loading: loadingProducts } = useLiveData<Product[]>("/v1/catalog/products");
   const { data: categories } = useLiveData<Category[]>("/v1/catalog/categories");
   const { data: suppliers } = useLiveData<Supplier[]>("/v1/retailer/suppliers");
-  const { items, addToCart } = useCart();
+  const { items } = useCart();
 
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
   const [activeSupplier, setActiveSupplier] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,10 +42,6 @@ export default function CatalogPage() {
   const productList = products ?? EMPTY_PRODUCTS;
   const categoryList = categories ?? EMPTY_CATEGORIES;
   const supplierList = suppliers ?? EMPTY_SUPPLIERS;
-  const cartQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-
-  const sparkOrders = useMemo(() => Array.from({ length: 12 }, (_, index) => 30 + Math.sin(index * 0.7) * 15 + index * 2), []);
-  const sparkRevenue = useMemo(() => Array.from({ length: 12 }, (_, index) => 50 + index * 8 + Math.cos(index * 0.5) * 10), []);
 
   const filteredProducts = useMemo(() => {
     let list = productList;
@@ -69,34 +62,55 @@ export default function CatalogPage() {
     return list;
   }, [productList, activeCategory, activeSupplier, searchQuery]);
 
-  const categoryTabs = useMemo(() => ["All", ...categoryList.map((category) => category.name)], [categoryList]);
-  const activeSupplierRecord = supplierList.find((supplier) => supplier.id === activeSupplier) ?? null;
+  return (
+    <div className="min-h-full p-6 md:p-8">
+      <AnimatePresence mode="popLayout">
+        {loadingProducts ? (
+          <motion.div
+            key="loading"
+            layout
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <Skeleton className="mb-2 h-8 w-64 rounded-lg" />
+            <Skeleton className="mb-8 h-4 w-96 rounded-lg" />
+            <div className="mb-8 grid grid-cols-4 gap-4">
+              {[0, 1, 2, 3].map((item) => (
+                <Skeleton key={item} className="h-28 rounded-2xl" />
+              ))}
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="content"
+            layout
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <h1 className="md-typescale-headline-large mb-8">Product Catalog</h1>
 
-  if (loadingProducts) {
-    return (
-      <div className="min-h-full p-6 md:p-8">
-        <Skeleton className="mb-2 h-8 w-64 rounded-lg" />
-        <Skeleton className="mb-8 h-4 w-96 rounded-lg" />
-        <div className="mb-8 grid grid-cols-4 gap-4">
-          {[0, 1, 2, 3].map((item) => (
-            <Skeleton key={item} className="h-28 rounded-2xl" />
-          ))}
-        </div>
-        <div className="flex gap-6">
-          <div className="hidden w-[280px] flex-col gap-2 lg:flex">
-            {[0, 1, 2, 3].map((item) => (
-              <Skeleton key={item} className="h-16 rounded-2xl" />
-            ))}
-          </div>
-          <div className="grid flex-1 grid-cols-3 gap-4">
-            {[0, 1, 2, 3, 4, 5].map((item) => (
-              <Skeleton key={item} className="h-64 rounded-2xl" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+            {filteredProducts.length === 0 ? (
+              <EmptyState
+                headline="No products found"
+                body="Try adjusting your filters or search criteria."
+                variant="no-results"
+              />
+            ) : (
+              <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredProducts.map((product) => (
+                  <motion.div key={product.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                     {/* Product Card implementation... */}
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
   return (
     <PageTransition className="min-h-full p-6 md:p-8">
@@ -275,7 +289,7 @@ export default function CatalogPage() {
 
           {filteredProducts.length === 0 ? (
             <div className="py-16">
-              <EmptyState 
+              <EmptyState
                 imageUrl="/images/empty-products.png"
                 headline="No products found"
                 body="Try a different supplier, category, or search query."
@@ -288,7 +302,7 @@ export default function CatalogPage() {
               />
             </div>
           ) : (
-            <motion.div 
+            <motion.div
               className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
               initial="hidden"
               animate="show"

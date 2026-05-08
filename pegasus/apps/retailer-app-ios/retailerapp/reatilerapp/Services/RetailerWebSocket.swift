@@ -85,7 +85,7 @@ enum RetailerWSEvent {
 
 // MARK: - Retailer WebSocket
 
-    @Observable
+@Observable
 final class RetailerWebSocket {
     static let shared = RetailerWebSocket()
 
@@ -93,7 +93,7 @@ final class RetailerWebSocket {
     private var task: URLSessionWebSocketTask?
     private var session: URLSession?
     private var retailerId: String?
-    private var eventContinuation: AsyncStream<RetailerWSEvent>.Continuation?
+    private var subscriberContinuations: [UUID: AsyncStream<RetailerWSEvent>.Continuation] = [:]
     private var shouldReconnect = false
     private var reconnectWorkItem: DispatchWorkItem?
     
@@ -102,16 +102,16 @@ final class RetailerWebSocket {
     private let maxReconnectDelay: TimeInterval = 60.0
     private let initialReconnectDelay: TimeInterval = 2.0
 
-    /// AsyncStream that views can iterate to receive real-time events.
-    private(set) var events: AsyncStream<RetailerWSEvent>!
+    private init() {}
 
-    private init() {
-        resetStream()
-    }
-
-    private func resetStream() {
-        events = AsyncStream { continuation in
-            self.eventContinuation = continuation
+    /// Returns a multicast event stream so each consumer receives every WebSocket event.
+    func eventStream() -> AsyncStream<RetailerWSEvent> {
+        AsyncStream { continuation in
+            let id = UUID()
+            subscriberContinuations[id] = continuation
+            continuation.onTermination = { [weak self] _ in
+                self?.subscriberContinuations.removeValue(forKey: id)
+            }
         }
     }
 
@@ -203,23 +203,23 @@ final class RetailerWebSocket {
         switch type {
         case "PAYMENT_REQUIRED", "GLOBAL_PAYNT_REQUIRED":
             if let event = try? decoder.decode(PaymentRequiredEvent.self, from: data) {
-                eventContinuation?.yield(.paymentRequired(event))
+                emit(.paymentRequired(event))
             }
         case "ORDER_COMPLETED":
             if let event = try? decoder.decode(OrderCompletedEvent.self, from: data) {
-                eventContinuation?.yield(.orderCompleted(event))
+                emit(.orderCompleted(event))
             }
         case "PAYMENT_SETTLED", "GLOBAL_PAYNT_SETTLED":
             if let event = try? decoder.decode(OrderCompletedEvent.self, from: data) {
-                eventContinuation?.yield(.paymentSettled(event))
+                emit(.paymentSettled(event))
             }
         case "PAYMENT_FAILED", "GLOBAL_PAYNT_FAILED":
             if let event = try? decoder.decode(PaymentFailureEvent.self, from: data) {
-                eventContinuation?.yield(.paymentFailed(event))
+                emit(.paymentFailed(event))
             }
         case "PAYMENT_EXPIRED", "GLOBAL_PAYNT_EXPIRED":
             if let event = try? decoder.decode(PaymentFailureEvent.self, from: data) {
-                eventContinuation?.yield(.paymentExpired(event))
+                emit(.paymentExpired(event))
             }
         case "DRIVER_APPROACHING":
             if let orderId = json["order_id"] as? String,
@@ -228,19 +228,19 @@ final class RetailerWebSocket {
                 let driverLng = json["driver_longitude"] as? Double
                 let supplierId = json["supplier_id"] as? String ?? ""
                 let supplierName = json["supplier_name"] as? String ?? ""
-                eventContinuation?.yield(.driverApproaching(orderId: orderId, deliveryToken: token, driverLatitude: driverLat, driverLongitude: driverLng, supplierId: supplierId, supplierName: supplierName))
+                emit(.driverApproaching(orderId: orderId, deliveryToken: token, driverLatitude: driverLat, driverLongitude: driverLng, supplierId: supplierId, supplierName: supplierName))
             }
         case "ORDER_STATUS_CHANGED":
             if let orderId = json["order_id"] as? String {
                 let state = json["state"] as? String ?? ""
-                eventContinuation?.yield(.orderStatusChanged(orderId: orderId, state: state))
+                emit(.orderStatusChanged(orderId: orderId, state: state))
             }
         case "PRE_ORDER_AUTO_ACCEPTED", "PRE_ORDER_CONFIRMED", "PRE_ORDER_EDITED":
             if let orderId = json["order_id"] as? String {
                 switch type {
-                case "PRE_ORDER_AUTO_ACCEPTED": eventContinuation?.yield(.preOrderAutoAccepted(orderId: orderId))
-                case "PRE_ORDER_CONFIRMED": eventContinuation?.yield(.preOrderConfirmed(orderId: orderId))
-                case "PRE_ORDER_EDITED": eventContinuation?.yield(.preOrderEdited(orderId: orderId))
+                case "PRE_ORDER_AUTO_ACCEPTED": emit(.preOrderAutoAccepted(orderId: orderId))
+                case "PRE_ORDER_CONFIRMED": emit(.preOrderConfirmed(orderId: orderId))
+                case "PRE_ORDER_EDITED": emit(.preOrderEdited(orderId: orderId))
                 default: break
                 }
             }
@@ -276,5 +276,11 @@ final class RetailerWebSocket {
         }
         reconnectWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + finalDelay, execute: workItem)
+    }
+
+    private func emit(_ event: RetailerWSEvent) {
+        for continuation in subscriberContinuations.values {
+            continuation.yield(event)
+        }
     }
 }

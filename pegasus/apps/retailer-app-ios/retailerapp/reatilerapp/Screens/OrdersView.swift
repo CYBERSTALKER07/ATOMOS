@@ -25,6 +25,7 @@ enum OrderTab: String, CaseIterable {
 
 struct OrdersView: View {
     @Environment(\.modelContext) private var modelContext
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var selectedTab: OrderTab = .active
     @State private var allOrders: [Order] = []
     @State private var predictions: [DemandForecast] = []
@@ -63,6 +64,10 @@ struct OrdersView: View {
             .task { await loadData() }
             .task { await listenWebSocket() }
             .task { await flushPendingOrders() }
+            .task(id: refreshCenter.refreshToken) {
+                await loadData()
+                await flushPendingOrders()
+            }
             .refreshable { await loadData() }
             .alert("Failed to Load", isPresented: $loadError) {
                 Button("Retry") { Task { await loadData() } }
@@ -437,7 +442,7 @@ struct OrdersView: View {
         let rid = AuthManager.shared.currentUser?.id ?? ""
         guard !rid.isEmpty else { return }
         RetailerWebSocket.shared.connect(retailerId: rid)
-        for await event in RetailerWebSocket.shared.events {
+        for await event in RetailerWebSocket.shared.eventStream() {
             switch event {
             case .paymentRequired, .driverApproaching, .orderCompleted, .paymentSettled,
                  .paymentFailed, .paymentExpired, .orderStatusChanged,

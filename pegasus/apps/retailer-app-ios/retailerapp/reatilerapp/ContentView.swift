@@ -69,6 +69,7 @@ enum SideMenuTab: String, Hashable, CaseIterable {
 struct ContentView: View {
     @Environment(CartManager.self) private var cart
     @Environment(AuthManager.self) private var auth
+    @Environment(\.scenePhase) private var scenePhase
 
     @State private var selectedTab: AppTab = .home
     @State private var sideMenuSelection: SideMenuTab = .home
@@ -88,6 +89,7 @@ struct ContentView: View {
     @State private var cartBounce = false
     @State private var activeOrders: [Order] = []
     @State private var paymentEvent: PaymentRequiredEvent?
+    @State private var refreshCenter = RetailerRefreshCenter.shared
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
@@ -183,6 +185,13 @@ struct ContentView: View {
         }
         .onChange(of: cart.totalItems) {
             withAnimation(AnimationConstants.bouncy) { cartBounce = true }
+        }
+        .onChange(of: scenePhase) {
+            guard scenePhase == .active else { return }
+            Task {
+                await loadActiveOrders()
+                await MainActor.run { refreshCenter.trigger() }
+            }
         }
         .task { await loadActiveOrders() }
         .task { await connectWebSocket() }
@@ -581,7 +590,7 @@ struct ContentView: View {
         let rid = AuthManager.shared.currentUser?.id ?? ""
         guard !rid.isEmpty else { return }
         ws.connect(retailerId: rid)
-        for await event in ws.events {
+        for await event in ws.eventStream() {
             switch event {
             case .paymentRequired(let payload):
                 paymentEvent = payload
@@ -595,9 +604,12 @@ struct ContentView: View {
                 await loadActiveOrders()
             case .orderStatusChanged:
                 await loadActiveOrders()
+            case .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited:
+                await loadActiveOrders()
             default:
                 break
             }
+            await MainActor.run { refreshCenter.trigger() }
         }
     }
 }

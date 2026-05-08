@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @Environment(CartManager.self) private var cart
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var activeOrders: [Order] = []
     @State private var predictions: [DemandForecast] = []
     @State private var reorderProducts: [Product] = []
@@ -31,6 +32,9 @@ struct DashboardView: View {
         .scrollIndicators(.hidden)
         .background(AppTheme.background)
         .task {
+            await loadData()
+        }
+        .task(id: refreshCenter.refreshToken) {
             await loadData()
         }
         .refreshable {

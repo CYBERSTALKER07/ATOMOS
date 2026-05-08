@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CategorySuppliersView: View {
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     let category: ProductCategory
     @State private var suppliers: [Supplier] = []
     @State private var isLoading = false
@@ -70,6 +71,7 @@ struct CategorySuppliersView: View {
         .navigationTitle(category.name)
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadSuppliers() }
+        .task(id: refreshCenter.refreshToken) { await loadSuppliers() }
         .refreshable { await loadSuppliers() }
     }
 

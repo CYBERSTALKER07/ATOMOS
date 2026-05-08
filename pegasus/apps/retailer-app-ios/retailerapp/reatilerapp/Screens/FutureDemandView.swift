@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FutureDemandView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var forecasts: [DemandForecast] = []
     @State private var isLoading = false
     @State private var preorderingId: String?
@@ -44,6 +45,8 @@ struct FutureDemandView: View {
                 }
             }
             .task { await loadForecasts() }
+            .task(id: refreshCenter.refreshToken) { await loadForecasts() }
+            .refreshable { await loadForecasts() }
             .alert("Correct Prediction", isPresented: .init(
                 get: { correctionForecast != nil },
                 set: { if !$0 { correctionForecast = nil; correctionAmount = "" } }

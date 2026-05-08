@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct InboxView: View {
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var orders: [Order] = []
     @State private var isLoading = false
     @State private var loadError = false
@@ -34,6 +35,7 @@ struct InboxView: View {
         .scrollIndicators(.hidden)
         .background(AppTheme.background)
         .task { await loadOrders() }
+        .task(id: refreshCenter.refreshToken) { await loadOrders() }
         .refreshable { await loadOrders() }
     }
 

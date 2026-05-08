@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CatalogView: View {
     @Environment(CartManager.self) private var cart
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var searchText = ""
     @State private var categories: [ProductCategory] = []
     @State private var products: [Product] = []
@@ -46,6 +47,10 @@ struct CatalogView: View {
             ProductDetailView(product: product)
         }
         .task {
+            await loadCategories()
+            await loadProducts()
+        }
+        .task(id: refreshCenter.refreshToken) {
             await loadCategories()
             await loadProducts()
         }

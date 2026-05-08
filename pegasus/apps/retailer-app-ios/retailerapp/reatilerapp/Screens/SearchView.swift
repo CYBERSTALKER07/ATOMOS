@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SearchView: View {
     @Environment(CartManager.self) private var cart
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var searchText = ""
     @State private var products: [Product] = []
     @State private var selectedProduct: Product?
@@ -75,6 +76,8 @@ struct SearchView: View {
             await loadProducts()
             isSearchFocused = true
         }
+        .task(id: refreshCenter.refreshToken) { await loadProducts() }
+        .refreshable { await loadProducts() }
     }
 
     private var emptySearchState: some View {

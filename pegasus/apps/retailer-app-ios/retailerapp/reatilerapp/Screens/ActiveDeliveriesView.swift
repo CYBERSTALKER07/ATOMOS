@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ActiveDeliveriesView: View {
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var orders: [Order] = []
     @State private var isLoading = false
     @State private var loadError = false
@@ -41,6 +42,7 @@ struct ActiveDeliveriesView: View {
             .scrollIndicators(.hidden)
             .background(AppTheme.background)
             .task { await loadOrders() }
+            .task(id: refreshCenter.refreshToken) { await loadOrders() }
             .refreshable { await loadOrders() }
             .alert("Failed to Load", isPresented: $loadError) {
                 Button("Retry") { Task { await loadOrders() } }
@@ -77,7 +79,7 @@ struct ActiveDeliveriesView: View {
     // MARK: - WebSocket Listener
 
     private func listenForApproaching() async {
-        for await event in ws.events {
+        for await event in ws.eventStream() {
             if case .driverApproaching(let orderId, _, _, _, _, _) = event {
                 approachingOrderIds.insert(orderId)
             }

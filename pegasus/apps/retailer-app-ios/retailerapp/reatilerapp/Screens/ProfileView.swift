@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     @AppStorage("aiAutoOrder") private var aiAutoOrder = false
     @AppStorage("globalAutoOrder") private var globalAutoOrder = false
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
@@ -58,6 +59,15 @@ struct ProfileView: View {
         .scrollIndicators(.hidden)
         .background(AppTheme.background)
         .task { await loadProfile() }
+        .task { await loadStats() }
+        .task(id: refreshCenter.refreshToken) {
+            await loadProfile()
+            await loadStats()
+        }
+        .refreshable {
+            await loadProfile()
+            await loadStats()
+        }
     }
 
     // MARK: - User Card

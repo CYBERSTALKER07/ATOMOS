@@ -151,6 +151,7 @@ enum DateRange: String, CaseIterable {
 // MARK: - Insights View
 
 struct InsightsView: View {
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var analytics: RetailerAnalytics?
     @State private var detailed: RetailerDetailedAnalytics?
     @State private var isLoading = false
@@ -418,6 +419,10 @@ struct InsightsView: View {
         }
         .background(AppTheme.background)
         .task {
+            await loadAnalytics()
+            await loadDetailedAnalytics()
+        }
+        .task(id: refreshCenter.refreshToken) {
             await loadAnalytics()
             await loadDetailedAnalytics()
         }

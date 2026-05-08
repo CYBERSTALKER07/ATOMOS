@@ -92,6 +92,7 @@ private struct EmptyOK: Decodable {}
 
 struct NotificationInboxView: View {
     @State private var vm = NotificationInboxViewModel()
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -108,13 +109,19 @@ struct NotificationInboxView: View {
                     )
                 } else {
                     List(vm.items) { notif in
-                        NotificationRow(notification: notif)
-                            .listRowBackground(notif.isUnread ? Color(.systemGray6) : Color.clear)
-                            .onTapGesture {
-                                if notif.isUnread {
-                                    Task { await vm.markRead(notif.id) }
-                                }
+                        Button {
+                            Haptics.light()
+                            if notif.isUnread {
+                                Task { await vm.markRead(notif.id) }
                             }
+                        } label: {
+                            NotificationRow(notification: notif)
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(notif.isUnread ? Color(.systemGray6) : Color.clear)
+                        .pressable()
+                        .contentShape(Rectangle())
+                        .accessibilityHint(notif.isUnread ? "Marks notification as read" : "Notification already read")
                     }
                     .listStyle(.plain)
                 }
@@ -138,6 +145,7 @@ struct NotificationInboxView: View {
                 }
             }
             .task { await vm.load() }
+            .task(id: refreshCenter.refreshToken) { await vm.load() }
         }
     }
 }

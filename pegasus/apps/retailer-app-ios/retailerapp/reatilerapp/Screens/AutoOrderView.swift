@@ -96,6 +96,7 @@ struct VariantOverride: Codable, Identifiable, Hashable {
 
 struct AutoOrderView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var refreshCenter = RetailerRefreshCenter.shared
 
     @State private var settings: AutoOrderSettings?
     @State private var forecasts: [DemandForecast] = []
@@ -203,6 +204,7 @@ struct AutoOrderView: View {
                 }
             }
             .task { await loadAll() }
+            .task(id: refreshCenter.refreshToken) { await loadAll() }
             .refreshable { await loadAll() }
             .alert("Use Previous Analytics?", isPresented: Binding(
                 get: { pendingTarget != nil },

@@ -3,6 +3,7 @@ import SwiftUI
 struct SupplierProductsView: View {
     let supplier: Supplier
     @Environment(CartManager.self) private var cart
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var products: [Product] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
@@ -56,6 +57,10 @@ struct SupplierProductsView: View {
             async let fetchSettings: () = loadAutoOrderState()
             await fetchProducts
             await fetchSettings
+        }
+        .task(id: refreshCenter.refreshToken) {
+            await loadProducts()
+            await loadAutoOrderState()
         }
         .refreshable { 
             await loadProducts() 

@@ -4,6 +4,7 @@ import MapKit
 // MARK: - Delivery Map View
 
 struct DeliveryMapView: View {
+    @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var orders: [TrackingOrder] = []
     @State private var suppliers: [SupplierFilter] = []
     @State private var selectedSupplierIds: Set<String> = []
@@ -116,6 +117,7 @@ struct DeliveryMapView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await startPolling() }
         .task { await observeWebSocket() }
+        .task(id: refreshCenter.refreshToken) { await fetchTracking() }
         .onChange(of: visibleOrders.count) { fitCamera() }
     }
 
@@ -147,7 +149,7 @@ struct DeliveryMapView: View {
     }
 
     private func observeWebSocket() async {
-        for await event in ws.events {
+        for await event in ws.eventStream() {
             switch event {
             case .orderCompleted(let e):
                 orders.removeAll { $0.orderId == e.orderId }
