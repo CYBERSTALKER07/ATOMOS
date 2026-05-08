@@ -96,7 +96,7 @@ export default function ReconciliationPage() {
             {[
               { label: "Total Anomalies", value: records.length, color: 'var(--desk-text-primary)' },
               { label: "Delta Mismatches", value: deltaCount, color: 'var(--desk-text-secondary)' },
-              { label: "Orphaned Records", value: orphanedCount, color: 'var(--danger)' },
+              { label: "Orphaned Records", value: orphanedCount, color: 'var(--desk-danger)' },
               { label: "Total Exposure (Amount)", value: totalExposure.toLocaleString(), color: 'var(--desk-text-primary)' },
             ].map(({ label, value, color }, i) => (
               <div key={i} className="desk-card p-6 flex flex-col justify-between cursor-default">
@@ -158,7 +158,7 @@ export default function ReconciliationPage() {
                       <td className="md-typescale-body-medium font-medium">{rec.retailer_id}</td>
                       <td className="text-right font-mono" style={{ fontVariantNumeric: 'tabular-nums' }}>{rec.spanner_amount.toLocaleString()}</td>
                       <td className="text-right font-mono" style={{ fontVariantNumeric: 'tabular-nums' }}>{rec.gateway_amount.toLocaleString()}</td>
-                      <td className="text-right font-mono font-medium" style={{ color: delta === 0 ? 'var(--desk-text-tertiary)' : isNegative ? 'var(--danger)' : 'var(--desk-text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                      <td className="text-right font-mono font-medium" style={{ color: delta === 0 ? 'var(--desk-text-tertiary)' : isNegative ? 'var(--desk-danger)' : 'var(--desk-text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
                         {delta === 0 ? "—" : `${isNegative ? "" : "+"}${delta.toLocaleString()}`}
                       </td>
                       <td className="md-typescale-body-small" style={{ color: 'var(--desk-text-secondary)' }}>{rec.gateway_provider}</td>

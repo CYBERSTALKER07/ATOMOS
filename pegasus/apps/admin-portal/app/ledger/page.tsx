@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { apiFetch } from '@/lib/auth';
 import { useSyncHub } from '@/lib/useSyncHub';
+import StatusChip from '@/components/StatusChip';
 
 type LedgerEntry = {
     order_id: string;
@@ -60,16 +61,17 @@ export default function LedgerPage() {
 
     const getStatusBadge = (status: string | undefined) => {
         if (!status) {
-            return <span className="md-chip md-typescale-label-small" style={{ background: 'var(--danger)', color: 'var(--danger-foreground)', borderColor: 'transparent', cursor: 'default', height: 26 }}>Unknown</span>;
+            return <StatusChip status="FAILED" label="Unknown" size="sm" />;
         }
-        const map: Record<string, { bg: string; color: string; label: string }> = {
-            PENDING:          { bg: 'var(--surface)', color: 'var(--muted)', label: 'Pending' },
-            FAILED_HANDSHAKE: { bg: 'var(--danger)', color: 'var(--danger-foreground)', label: 'Fault' },
-            COMPLETED:        { bg: 'var(--default)', color: 'var(--default-foreground)', label: 'Completed' },
-            EN_ROUTE:         { bg: 'var(--accent)', color: 'var(--accent-foreground)', label: 'Dispatched' },
-        };
-        const s = map[status.toUpperCase()] ?? { bg: 'var(--accent-soft)', color: 'var(--accent-soft-foreground)', label: status.toUpperCase() };
-        return <span className="md-chip md-typescale-label-small" style={{ background: s.bg, color: s.color, borderColor: 'transparent', cursor: 'default', height: 26 }}>{s.label}</span>;
+
+        const normalized = status.toUpperCase();
+        if (normalized === 'FAILED_HANDSHAKE') {
+            return <StatusChip status="FAILED" label="Fault" size="sm" />;
+        }
+        if (normalized === 'EN_ROUTE') {
+            return <StatusChip status="DISPATCHED" label="Dispatched" size="sm" />;
+        }
+        return <StatusChip status={normalized} size="sm" />;
     };
 
     return (

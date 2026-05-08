@@ -59,9 +59,9 @@ export default function TreasuryDashboard() {
                             <span className="md-typescale-label-small">Vault Secure</span>
                         </div>
                     ) : (
-                        <div className="md-chip" style={{ cursor: 'default', borderColor: 'var(--danger)' }}>
+                        <div className="md-chip" style={{ cursor: 'default', borderColor: 'var(--desk-danger)' }}>
                             <span className="desk-status-dot desk-status-dot--danger" />
-                            <span className="md-typescale-label-small" style={{ color: 'var(--danger)' }}>Vault Offline</span>
+                            <span className="md-typescale-label-small" style={{ color: 'var(--desk-danger)' }}>Vault Offline</span>
                         </div>
                     )}
                 </div>
@@ -80,25 +80,25 @@ export default function TreasuryDashboard() {
                 ) : data ? (
                     <>
                         <div className="desk-card md-kpi-card relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-1 h-full" style={{ background: 'var(--success)' }} />
+                            <div className="absolute top-0 right-0 w-1 h-full" style={{ background: 'var(--desk-success)' }} />
                             <p className="md-kpi-label">Net Revenue (5% Commission)</p>
                             <p className="md-kpi-value" style={{ fontVariantNumeric: 'tabular-nums' }}>
                                 {fmt(data.platform_revenue)}
                             </p>
-                            <p className="md-kpi-sub" style={{ color: 'var(--success)' }}>Liquid — Settled</p>
+                            <p className="md-kpi-sub" style={{ color: 'var(--desk-success)' }}>Liquid — Settled</p>
                         </div>
 
                         <div className="desk-card md-kpi-card relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-1 h-full" style={{ background: 'var(--warning)' }} />
+                            <div className="absolute top-0 right-0 w-1 h-full" style={{ background: 'var(--desk-warning)' }} />
                             <p className="md-kpi-label">Supplier Payout Liability</p>
                             <p className="md-kpi-value" style={{ fontVariantNumeric: 'tabular-nums' }}>
                                 {fmt(data.supplier_payout)}
                             </p>
-                            <p className="md-kpi-sub" style={{ color: 'var(--warning)' }}>Pending Clearing</p>
+                            <p className="md-kpi-sub" style={{ color: 'var(--desk-warning)' }}>Pending Clearing</p>
                         </div>
 
                         <div className="desk-card md-kpi-card relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-1 h-full" style={{ background: 'var(--accent)' }} />
+                            <div className="absolute top-0 right-0 w-1 h-full" style={{ background: 'var(--desk-accent)' }} />
                             <p className="md-kpi-label">Gross System Volume</p>
                             <p className="md-kpi-value" style={{ fontVariantNumeric: 'tabular-nums' }}>
                                 {fmt(data.total_volume)}
