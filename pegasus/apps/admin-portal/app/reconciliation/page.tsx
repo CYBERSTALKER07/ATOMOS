@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { apiFetch } from '@/lib/auth';
 import { useSyncHub } from '@/lib/useSyncHub';
+import EmptyState from '@/components/EmptyState';
+import StatusChip from '@/components/StatusChip';
+import { Skeleton } from '@/components/Skeleton';
 
 type ReconciliationRecord = {
   order_id: string;
@@ -49,26 +52,30 @@ export default function ReconciliationPage() {
   const totalExposure = records.reduce((sum, r) => sum + Math.abs(r.spanner_amount - r.gateway_amount), 0);
 
   const getStatusBadge = (status: string) => {
-    const map: Record<string, { bg: string; color: string; label: string }> = {
-      DELTA:    { bg: 'var(--default)', color: 'var(--default-foreground)', label: 'Delta' },
-      ORPHANED: { bg: 'var(--danger)',    color: 'var(--danger-foreground)', label: 'Orphaned' },
-      MATCH:    { bg: 'var(--accent-soft)',  color: 'var(--accent-soft-foreground)', label: 'Match' },
-    };
-    const s = map[status] ?? { bg: 'var(--surface)', color: 'var(--muted)', label: status };
-    return <span className="md-chip md-typescale-label-small" style={{ background: s.bg, color: s.color, borderColor: 'transparent', cursor: 'default', height: 26 }}>{s.label}</span>;
+    const normalized = status.toUpperCase();
+    if (normalized === 'DELTA') {
+      return <StatusChip status="PENDING_REVIEW" label="Delta" size="sm" />;
+    }
+    if (normalized === 'ORPHANED') {
+      return <StatusChip status="FAILED" label="Orphaned" size="sm" />;
+    }
+    if (normalized === 'MATCH') {
+      return <StatusChip status="MATCHED" label="Match" size="sm" />;
+    }
+    return <StatusChip status={normalized} size="sm" />;
   };
 
   return (
-    <div className="min-h-full p-6 md:p-10" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
+    <div className="min-h-full p-6 md:p-10" style={{ background: 'var(--desk-bg)', color: 'var(--desk-text-primary)' }}>
       {/* Header */}
       <header className="mb-10">
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="md-typescale-headline-medium" style={{ color: 'var(--foreground)' }}>Reconciliation</h1>
-            <p className="md-typescale-body-medium mt-2" style={{ color: 'var(--muted)' }}>Spanner ↔ Gateway Settlement Anomaly Scanner</p>
+            <h1 className="md-typescale-headline-medium" style={{ color: 'var(--desk-text-primary)' }}>Reconciliation</h1>
+            <p className="md-typescale-body-medium mt-2" style={{ color: 'var(--desk-text-secondary)' }}>Spanner ↔ Gateway Settlement Anomaly Scanner</p>
           </div>
           {lastRefreshed && (
-            <span className="md-typescale-label-small mt-1" style={{ color: 'var(--border)' }}>
+            <span className="md-typescale-label-small mt-1" style={{ color: 'var(--desk-text-tertiary)' }}>
               Last refreshed {lastRefreshed.toLocaleTimeString()}
             </span>
           )}
@@ -79,21 +86,21 @@ export default function ReconciliationPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="md-card md-card-elevated p-6 h-32 flex flex-col justify-between">
-              <div className="w-1/2 h-3 rounded animate-pulse" style={{ background: 'var(--surface)' }} />
-              <div className="w-2/3 h-8 rounded mt-4 animate-pulse" style={{ background: 'var(--surface)' }} />
+            <div key={i} className="desk-card p-6 h-32 flex flex-col justify-between">
+              <Skeleton className="w-1/2 h-3" style={{ background: 'var(--desk-surface-alt)' }} />
+              <Skeleton className="w-2/3 h-8 mt-4" style={{ background: 'var(--desk-surface-alt)' }} />
             </div>
           ))
         ) : (
           <>
             {[
-              { label: "Total Anomalies", value: records.length, color: 'var(--foreground)' },
-              { label: "Delta Mismatches", value: deltaCount, color: 'var(--muted)' },
+              { label: "Total Anomalies", value: records.length, color: 'var(--desk-text-primary)' },
+              { label: "Delta Mismatches", value: deltaCount, color: 'var(--desk-text-secondary)' },
               { label: "Orphaned Records", value: orphanedCount, color: 'var(--danger)' },
-              { label: "Total Exposure (Amount)", value: totalExposure.toLocaleString(), color: 'var(--foreground)' },
+              { label: "Total Exposure (Amount)", value: totalExposure.toLocaleString(), color: 'var(--desk-text-primary)' },
             ].map(({ label, value, color }, i) => (
-              <div key={i} className="md-card md-card-elevated p-6 flex flex-col justify-between cursor-default md-animate-in" style={{ animationDelay: `${i * 50}ms` }}>
-                <p className="md-typescale-label-small mb-4" style={{ color: 'var(--muted)' }}>{label}</p>
+              <div key={i} className="desk-card p-6 flex flex-col justify-between cursor-default">
+                <p className="md-typescale-label-small mb-4" style={{ color: 'var(--desk-text-secondary)' }}>{label}</p>
                 <p className="md-typescale-headline-small tracking-tight" style={{ color, fontVariantNumeric: 'tabular-nums' }}>{value}</p>
               </div>
             ))}
@@ -102,8 +109,8 @@ export default function ReconciliationPage() {
       </div>
 
       {/* Anomaly Table — M3 Data Table */}
-      <main className="md-animate-in" style={{ animationDelay: '200ms' }}>
-        <div className="w-full overflow-hidden md-card md-card-outlined p-0">
+      <main>
+        <div className="w-full overflow-hidden desk-card p-0">
           <table className="md-table">
             <thead>
               <tr>
@@ -121,22 +128,24 @@ export default function ReconciliationPage() {
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={`skel-${i}`}>
-                    <td><div className="w-24 h-4 rounded animate-pulse" style={{ background: 'var(--surface)' }} /></td>
-                    <td><div className="w-20 h-4 rounded animate-pulse" style={{ background: 'var(--surface)' }} /></td>
-                    <td><div className="w-20 h-4 rounded animate-pulse ml-auto" style={{ background: 'var(--surface)' }} /></td>
-                    <td><div className="w-20 h-4 rounded animate-pulse ml-auto" style={{ background: 'var(--surface)' }} /></td>
-                    <td><div className="w-16 h-4 rounded animate-pulse ml-auto" style={{ background: 'var(--surface)' }} /></td>
-                    <td><div className="w-16 h-4 rounded animate-pulse" style={{ background: 'var(--surface)' }} /></td>
-                    <td><div className="w-24 h-4 rounded animate-pulse" style={{ background: 'var(--surface)' }} /></td>
-                    <td><div className="w-20 h-4 rounded animate-pulse ml-auto" style={{ background: 'var(--surface)' }} /></td>
+                    <td><Skeleton className="w-24 h-4" style={{ background: 'var(--desk-surface-alt)' }} /></td>
+                    <td><Skeleton className="w-20 h-4" style={{ background: 'var(--desk-surface-alt)' }} /></td>
+                    <td><Skeleton className="w-20 h-4 ml-auto" style={{ background: 'var(--desk-surface-alt)' }} /></td>
+                    <td><Skeleton className="w-20 h-4 ml-auto" style={{ background: 'var(--desk-surface-alt)' }} /></td>
+                    <td><Skeleton className="w-16 h-4 ml-auto" style={{ background: 'var(--desk-surface-alt)' }} /></td>
+                    <td><Skeleton className="w-16 h-4" style={{ background: 'var(--desk-surface-alt)' }} /></td>
+                    <td><Skeleton className="w-24 h-4" style={{ background: 'var(--desk-surface-alt)' }} /></td>
+                    <td><Skeleton className="w-20 h-4 ml-auto" style={{ background: 'var(--desk-surface-alt)' }} /></td>
                   </tr>
                 ))
               ) : records.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="p-16 text-center">
-                    <svg width="40" height="40" viewBox="0 0 24 24" fill="var(--success)" className="mx-auto mb-4"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                    <p className="md-typescale-body-medium" style={{ color: 'var(--muted)' }}>No anomalies detected</p>
-                    <p className="md-typescale-body-small mt-1" style={{ color: 'var(--border)' }}>Spanner and Gateway ledgers are in sync</p>
+                    <EmptyState
+                      icon="reconcile"
+                      headline="No anomalies detected"
+                      body="Spanner and gateway ledgers are in sync."
+                    />
                   </td>
                 </tr>
               ) : (
@@ -144,16 +153,16 @@ export default function ReconciliationPage() {
                   const delta = rec.spanner_amount - rec.gateway_amount;
                   const isNegative = delta < 0;
                   return (
-                    <tr key={rec.order_id || `idx-${i}`} className="transition-colors cursor-pointer">
+                    <tr key={rec.order_id || `idx-${i}`} className="transition-colors">
                       <td className="font-mono md-typescale-body-small font-medium">{rec.order_id}</td>
                       <td className="md-typescale-body-medium font-medium">{rec.retailer_id}</td>
                       <td className="text-right font-mono" style={{ fontVariantNumeric: 'tabular-nums' }}>{rec.spanner_amount.toLocaleString()}</td>
                       <td className="text-right font-mono" style={{ fontVariantNumeric: 'tabular-nums' }}>{rec.gateway_amount.toLocaleString()}</td>
-                      <td className="text-right font-mono font-medium" style={{ color: delta === 0 ? 'var(--border)' : isNegative ? 'var(--danger)' : 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
+                      <td className="text-right font-mono font-medium" style={{ color: delta === 0 ? 'var(--desk-text-tertiary)' : isNegative ? 'var(--danger)' : 'var(--desk-text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
                         {delta === 0 ? "—" : `${isNegative ? "" : "+"}${delta.toLocaleString()}`}
                       </td>
-                      <td className="md-typescale-body-small" style={{ color: 'var(--muted)' }}>{rec.gateway_provider}</td>
-                      <td className="md-typescale-body-small whitespace-nowrap" style={{ color: 'var(--muted)' }}>
+                      <td className="md-typescale-body-small" style={{ color: 'var(--desk-text-secondary)' }}>{rec.gateway_provider}</td>
+                      <td className="md-typescale-body-small whitespace-nowrap" style={{ color: 'var(--desk-text-secondary)' }}>
                         {rec.timestamp ? new Date(rec.timestamp).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
                       </td>
                       <td className="text-right">{getStatusBadge(rec.status)}</td>
@@ -164,9 +173,9 @@ export default function ReconciliationPage() {
             </tbody>
           </table>
           {records.length > 0 && (
-            <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
+            <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--desk-border)' }}>
               <div className="flex items-center gap-2">
-                <label className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>Rows</label>
+                <label className="md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>Rows</label>
                 <select
                   value={pageSize}
                   onChange={(e) => {
@@ -174,7 +183,7 @@ export default function ReconciliationPage() {
                     setPage(1);
                   }}
                   className="md-typescale-label-small px-2 py-1 rounded-md"
-                  style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--foreground)' }}
+                  style={{ border: '1px solid var(--desk-border)', background: 'var(--desk-surface)', color: 'var(--desk-text-primary)' }}
                 >
                   {[10, 25, 50, 100].map((s) => (
                     <option key={s} value={s}>{s}</option>
@@ -182,7 +191,7 @@ export default function ReconciliationPage() {
                 </select>
               </div>
               <div className="flex items-center gap-3">
-                <span className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>
+                <span className="md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>
                   Page {page}
                 </span>
                 <div className="flex gap-1">

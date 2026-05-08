@@ -10,11 +10,10 @@ import { buildSupplierFleetDispatchIdempotencyKey } from "@/app/supplier/_shared
 import { Card, Button, Chip, Skeleton } from "@heroui/react";
 import { BentoGrid, BentoCard, BentoSkeleton } from "@/components/BentoGrid";
 import CountUp from "@/components/CountUp";
-import MiniSparkline from "@/components/MiniSparkline";
 import EmptyState from "@/components/EmptyState";
 import PageTransition from "@/components/PageTransition";
 import {
-  Truck, CheckCircle, CreditCard,
+  CheckCircle, CreditCard,
   ArrowUpRight, Activity, Send, Search,
 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -370,11 +369,6 @@ export default function AdminDashboard() {
     return { activeTrucks, completed, inTransit, pending, totalRev, globalPayRev, cashRev, total: orders.length };
   }, [orders]);
 
-  // Fake sparkline data (deterministic from order counts)
-  const truckSparkline = useMemo(() =>
-    Array.from({ length: 12 }, (_, i) => Math.max(0, kpi.activeTrucks + Math.sin(i * 0.8) * 2)),
-    [kpi.activeTrucks]
-  );
   const completedSparkline = useMemo(() =>
     Array.from({ length: 12 }, (_, i) => Math.max(0, kpi.completed * 0.3 + i * (kpi.completed * 0.06))),
     [kpi.completed]
@@ -719,7 +713,10 @@ export default function AdminDashboard() {
       {/* ── Order View Controls ────────────────────────────────────────── */}
       <section className="mb-4">
         <div className="flex flex-col xl:flex-row gap-4 xl:items-center">
-          <div className="flex flex-wrap p-1 gap-1 bg-surface-container rounded-[20px] shadow-sm">
+          <div
+            className="flex flex-wrap p-1 gap-1 rounded-xl border"
+            style={{ background: 'var(--desk-surface)', borderColor: 'var(--desk-border)' }}
+          >
             {[
               { id: "ALL", label: "All", count: filterCounts.all },
               { id: "PENDING", label: "Pending", count: filterCounts.pending },
@@ -730,9 +727,9 @@ export default function AdminDashboard() {
               <button
                 key={v.id}
                 onClick={() => setOrderView(v.id as "ALL" | "PENDING" | "ACTIVE" | "COMPLETED" | "REVIEW")}
-                className={`px-4 py-2 rounded-4xl md-typescale-label-medium transition-all duration-200 flex items-center gap-2 ${
+                className={`px-4 py-2 rounded-4xl md-typescale-label-medium transition-colors duration-200 flex items-center gap-2 ${
                   orderView === v.id
-                    ? "bg-accent text-accent-foreground shadow-md scale-105"
+                    ? "bg-accent text-accent-foreground"
                     : "text-muted hover:bg-surface-container-high"
                 }`}
               >
@@ -753,7 +750,7 @@ export default function AdminDashboard() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search orders..."
-                className="w-full md-input-outlined rounded-[20px]! pl-10 h-10 transition-all focus:ring-2 focus:ring-accent/20"
+                className="w-full md-input-outlined rounded-xl! pl-10 h-10"
                 aria-label="Search orders"
               />
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-accent transition-colors" size={16} />
@@ -767,7 +764,7 @@ export default function AdminDashboard() {
                 : "border-border bg-surface text-muted hover:bg-surface-container"
               }`}
             >
-              <div className={`w-1.5 h-1.5 rounded-full ${showUrgentOnly ? "bg-danger animate-pulse" : "bg-muted"}`} />
+              <div className={`w-1.5 h-1.5 rounded-full ${showUrgentOnly ? "bg-danger" : "bg-muted"}`} />
               <span className="md-typescale-label-small">Urgency</span>
             </button>
 
@@ -789,7 +786,7 @@ export default function AdminDashboard() {
 
       {/* ── Orders Table ────────────────────────────────────────────────── */}
       {filteredOrders.length === 0 ? (
-        <div className="bento-card py-16 rounded-[32px]!">
+        <div className="bento-card py-16">
           <EmptyState 
             imageUrl="/images/empty-orders.png"
             headline={orders.length === 0 ? (isApiOnline ? "No active orders" : "Awaiting connection...") : "No matching orders"}
@@ -797,7 +794,7 @@ export default function AdminDashboard() {
           />
         </div>
       ) : (
-        <div className="bento-card p-0 overflow-hidden rounded-[32px]! border-none! shadow-xl bg-surface">
+        <div className="bento-card p-0 overflow-hidden bg-surface">
           <div
             className="px-6 py-4 flex items-center justify-between bg-surface-container/30"
           >
@@ -808,7 +805,7 @@ export default function AdminDashboard() {
               </span>
             </div>
             {selectedOrders.size > 0 && (
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-accent text-accent-foreground md-typescale-label-small animate-in fade-in zoom-in duration-300">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-accent text-accent-foreground md-typescale-label-small">
                 <Activity size={12} strokeWidth={3} />
                 {selectedOrders.size} selected for dispatch
               </div>
@@ -885,7 +882,7 @@ export default function AdminDashboard() {
                         <div className="flex flex-col items-end gap-1.5">
                           <StatusChip status={order.state} />
                           {temporal.label && (
-                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-danger/10 text-danger md-typescale-label-small animate-pulse font-medium">
+                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-danger/10 text-danger md-typescale-label-small font-medium">
                               <Activity size={10} />
                               {temporal.label.toUpperCase()}
                             </div>

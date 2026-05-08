@@ -50,12 +50,12 @@ const STATUS_MAP: Record<string, { tone: string }> = {
 };
 
 const TONE_STYLE: Record<string, React.CSSProperties> = {
-  'success':         { background: 'rgba(16, 185, 129, 0.10)', color: '#047857', borderColor: 'rgba(16, 185, 129, 0.28)' },
-  'success-strong':  { background: '#047857', color: '#ffffff', borderColor: '#047857' },
-  'warning':         { background: 'rgba(245, 158, 11, 0.10)', color: '#b45309', borderColor: 'rgba(245, 158, 11, 0.28)' },
-  'warning-strong':  { background: '#b45309', color: '#ffffff', borderColor: '#b45309' },
-  'danger':          { background: 'rgba(239, 68, 68, 0.10)', color: '#b91c1c', borderColor: 'rgba(239, 68, 68, 0.28)' },
-  'danger-strong':   { background: '#b91c1c', color: '#ffffff', borderColor: '#b91c1c' },
+  'success':         { background: 'var(--desk-success-soft)', color: 'var(--desk-success)', borderColor: 'color-mix(in srgb, var(--desk-success) 30%, transparent)' },
+  'success-strong':  { background: 'var(--desk-success)', color: '#ffffff', borderColor: 'var(--desk-success)' },
+  'warning':         { background: 'var(--desk-warning-soft)', color: 'var(--desk-warning)', borderColor: 'color-mix(in srgb, var(--desk-warning) 30%, transparent)' },
+  'warning-strong':  { background: 'var(--desk-warning)', color: '#ffffff', borderColor: 'var(--desk-warning)' },
+  'danger':          { background: 'var(--desk-danger-soft)', color: 'var(--desk-danger)', borderColor: 'color-mix(in srgb, var(--desk-danger) 30%, transparent)' },
+  'danger-strong':   { background: 'var(--desk-danger)', color: '#ffffff', borderColor: 'var(--desk-danger)' },
   'accent':          { background: 'var(--desk-accent-soft)', color: 'var(--desk-accent-strong)', borderColor: 'rgba(var(--desk-accent-rgb), 0.28)' },
   'accent-strong':   { background: 'var(--desk-accent)', color: 'var(--desk-accent-on)', borderColor: 'var(--desk-accent)' },
   'neutral':         { background: 'var(--desk-canvas)', color: 'var(--desk-text-secondary)', borderColor: 'var(--desk-border)' },
@@ -75,11 +75,12 @@ interface StatusChipProps {
 }
 
 export default function StatusChip({ status, label, size = 'sm', className }: StatusChipProps) {
-  const key = status.toUpperCase().replace(/[\s-]+/g, '_');
+  const normalized = (status || 'UNKNOWN').trim();
+  const key = normalized.toUpperCase().replace(/[\s-]+/g, '_');
   const config = STATUS_MAP[key] || { tone: 'neutral' };
   const tone = TONE_STYLE[config.tone] || TONE_STYLE.neutral;
   const sizeStyle = SIZE_STYLE[size];
-  const displayLabel = label || status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const displayLabel = label || normalized.replace(/[_-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
   return (
     <span

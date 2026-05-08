@@ -1,6 +1,6 @@
-import { Button } from "@heroui/react";
 import { motion } from "framer-motion";
 import { ReactNode, useEffect, useState } from "react";
+import Icon from './Icon';
 
 type EmptyStateVariant = 
   | "no-data" 
@@ -15,7 +15,7 @@ type EmptyStateVariant =
   | "no-suppliers";
 
 interface EmptyStateProps {
-  icon?: ReactNode;
+  icon?: ReactNode | string;
   imageUrl?: string;
   headline: string;
   body?: string;
@@ -123,31 +123,25 @@ export default function EmptyState({
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ 
-          scale: 1, 
-          opacity: 1,
-          y: [0, -10, 0] 
-        }}
+        animate={{ scale: 1, opacity: 1 }}
         transition={{ 
           opacity: { duration: 0.4 },
           scale: { type: "spring", stiffness: 200, damping: 25 },
-          y: { 
-            duration: 4, 
-            repeat: Infinity, 
-            ease: "easeInOut" 
-          }
         }}
         className="relative w-56 h-56 flex items-center justify-center mb-8"
       >
-        {/* Glow effect behind illustration */}
-        <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full" />
-        
-        <div className="relative z-10 w-full h-full flex items-center justify-center overflow-hidden desk-illustration-frame glass-premium rounded-3xl shadow-premium">
+        <div className="relative z-10 w-full h-full flex items-center justify-center overflow-hidden desk-illustration-frame rounded-3xl">
           {imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={imageUrl} alt={headline} className="w-full h-full object-contain p-6" />
           ) : icon ? (
-            <div className="text-primary w-20 h-20">{icon}</div>
+            typeof icon === 'string' ? (
+              <div className="flex items-center justify-center w-20 h-20" style={{ color: 'var(--desk-accent)' }}>
+                <Icon name={icon} size={48} />
+              </div>
+            ) : (
+              <div className="w-20 h-20" style={{ color: 'var(--desk-accent)' }}>{icon}</div>
+            )
           ) : assetType === "png" ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -193,14 +187,13 @@ export default function EmptyState({
           transition={{ delay: 0.4, type: "spring" }}
           className="mt-8"
         >
-          <Button 
-            variant="solid" 
-            color="primary"
-            onPress={onAction}
-            className="font-bold px-10 h-14 rounded-2xl shadow-lg hover-lift active-press text-lg"
+          <button
+            type="button"
+            onClick={onAction}
+            className="desk-btn-primary"
           >
             {action}
-          </Button>
+          </button>
         </motion.div>
       )}
     </motion.div>

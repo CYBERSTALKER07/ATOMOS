@@ -14,17 +14,55 @@ interface DrawerProps {
 
 export default function Drawer({ open, onClose, title, children }: DrawerProps) {
   const panelRef = useRef<HTMLElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (open) {
+      previousFocusRef.current = document.activeElement as HTMLElement;
+
       const handleEsc = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') onClose();
+        if (e.key === 'Escape') {
+          onClose();
+          return;
+        }
+
+        if (e.key !== 'Tab' || !panelRef.current) return;
+
+        const focusable = Array.from(
+          panelRef.current.querySelectorAll<HTMLElement>(
+            'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => !el.hasAttribute('aria-hidden'));
+
+        if (focusable.length === 0) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       };
+
       document.addEventListener('keydown', handleEsc);
       document.body.style.overflow = 'hidden';
+
+      const id = window.requestAnimationFrame(() => {
+        panelRef.current?.focus();
+      });
+
       return () => {
+        window.cancelAnimationFrame(id);
         document.removeEventListener('keydown', handleEsc);
         document.body.style.overflow = '';
+
+        if (previousFocusRef.current && document.contains(previousFocusRef.current)) {
+          previousFocusRef.current.focus();
+        }
       };
     }
   }, [open, onClose]);
@@ -39,7 +77,7 @@ export default function Drawer({ open, onClose, title, children }: DrawerProps) 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-90 bg-black/35"
           />
 
           {/* Panel */}
@@ -49,25 +87,30 @@ export default function Drawer({ open, onClose, title, children }: DrawerProps) 
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            role="dialog"
+            aria-modal="true"
             aria-label={title || 'Detail panel'}
-            className="fixed top-0 right-0 z-[100] h-full w-full md:w-[480px] flex flex-col glass-premium border-l border-white/10"
+            tabIndex={-1}
+            className="fixed top-0 right-0 z-100 h-full w-full md:w-100 md:min-w-90 md:max-w-110 flex flex-col desk-inspector rounded-none"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-8 py-6 border-b border-white/10 bg-white/[0.03]">
-              <h2 className="text-2xl font-bold tracking-tight text-white">{title}</h2>
+            <div className="desk-inspector-header px-5 py-4">
+              <h2 className="md-typescale-title-medium" style={{ color: 'var(--desk-text-primary)' }}>
+                {title || 'Details'}
+              </h2>
               <Button
                 variant="ghost"
                 isIconOnly
                 onPress={onClose}
                 aria-label="Close"
-                className="w-12 h-12 rounded-full text-white/60 hover:bg-white/10 transition-colors active-press"
+                className="desk-btn-ghost w-9 h-9 p-0"
               >
-                <Icon name="close" className="w-6 h-6" />
+                <Icon name="close" className="w-5 h-5" />
               </Button>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto px-8 py-8 md-typescale-body-large text-white/80 leading-relaxed custom-scrollbar">
+            <div className="desk-inspector-body md-typescale-body-medium" style={{ color: 'var(--desk-text-secondary)' }}>
               {children}
             </div>
           </motion.aside>

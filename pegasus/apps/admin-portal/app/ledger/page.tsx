@@ -73,20 +73,20 @@ export default function LedgerPage() {
     };
 
     return (
-        <div className="min-h-full p-6 md:p-10" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
+        <div className="min-h-full p-6 md:p-10" style={{ background: 'var(--desk-bg)', color: 'var(--desk-text-primary)' }}>
             {/* Page Header */}
             <header className="mb-10">
-                <h1 className="md-typescale-headline-medium" style={{ color: 'var(--foreground)' }}>Financial Ledger</h1>
-                <p className="md-typescale-body-medium mt-2" style={{ color: 'var(--muted)' }}>System Settlement & Reconciliation Engine</p>
+                <h1 className="md-typescale-headline-medium" style={{ color: 'var(--desk-text-primary)' }}>Financial Ledger</h1>
+                <p className="md-typescale-body-medium mt-2" style={{ color: 'var(--desk-text-secondary)' }}>System Settlement & Reconciliation Engine</p>
             </header>
 
             {/* KPI Cards — M3 Filled Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
                 {isLoading ? (
                     Array.from({ length: 3 }).map((_, i) => (
-                        <div key={i} className="md-card md-card-elevated p-6 h-32 flex flex-col justify-between">
-                            <div className="w-1/2 h-3 rounded animate-pulse" style={{ background: 'var(--surface)' }} />
-                            <div className="w-2/3 h-8 rounded mt-4 animate-pulse" style={{ background: 'var(--surface)' }} />
+                        <div key={i} className="desk-card p-6 h-32 flex flex-col justify-between">
+                            <div className="w-1/2 h-3 rounded animate-pulse" style={{ background: 'var(--desk-surface-alt)' }} />
+                            <div className="w-2/3 h-8 rounded mt-4 animate-pulse" style={{ background: 'var(--desk-surface-alt)' }} />
                         </div>
                     ))
                 ) : (
@@ -104,9 +104,9 @@ export default function LedgerPage() {
                                 { label: "Completed Drops", value: String(completedDrops) },
                             ];
                         })().map(({ label, value }, i) => (
-                            <div key={i} className="md-card md-card-elevated p-6 flex flex-col justify-between cursor-default md-animate-in" style={{ animationDelay: `${i * 50}ms` }}>
-                                <p className="md-typescale-label-small mb-4" style={{ color: 'var(--muted)' }}>{label}</p>
-                                <p className="md-typescale-headline-small tracking-tight" style={{ color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums' }}>{value}</p>
+                            <div key={i} className="desk-card p-6 flex flex-col justify-between cursor-default">
+                                <p className="md-typescale-label-small mb-4" style={{ color: 'var(--desk-text-secondary)' }}>{label}</p>
+                                <p className="md-typescale-headline-small tracking-tight" style={{ color: 'var(--desk-text-primary)', fontVariantNumeric: 'tabular-nums' }}>{value}</p>
                             </div>
                         ))}
                     </>
@@ -114,8 +114,8 @@ export default function LedgerPage() {
             </div>
 
             {/* M3 Data Table */}
-            <main className="md-animate-in" style={{ animationDelay: '150ms' }}>
-                <div className="w-full overflow-hidden md-card md-card-outlined p-0">
+            <main>
+                <div className="w-full overflow-hidden desk-card p-0">
                     <table className="md-table">
                         <thead>
                             <tr>
@@ -131,17 +131,17 @@ export default function LedgerPage() {
                             {isLoading ? (
                                 Array.from({ length: 8 }).map((_, i) => (
                                     <tr key={`skel-${i}`}>
-                                        <td><div className="w-24 h-4 rounded animate-pulse" style={{ background: 'var(--surface)' }} /></td>
-                                        <td><div className="w-24 h-4 rounded animate-pulse" style={{ background: 'var(--surface)' }} /></td>
-                                        <td><div className="w-20 h-4 rounded animate-pulse" style={{ background: 'var(--surface)' }} /></td>
-                                        <td><div className="w-16 h-4 rounded animate-pulse" style={{ background: 'var(--surface)' }} /></td>
-                                        <td className="flex justify-end"><div className="w-20 h-4 rounded animate-pulse" style={{ background: 'var(--surface)' }} /></td>
-                                        <td><div className="w-24 h-6 rounded animate-pulse ml-auto" style={{ background: 'var(--surface)' }} /></td>
+                                        <td><div className="w-24 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-alt)' }} /></td>
+                                        <td><div className="w-24 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-alt)' }} /></td>
+                                        <td><div className="w-20 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-alt)' }} /></td>
+                                        <td><div className="w-16 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-alt)' }} /></td>
+                                        <td className="flex justify-end"><div className="w-20 h-4 rounded animate-pulse" style={{ background: 'var(--desk-surface-alt)' }} /></td>
+                                        <td><div className="w-24 h-6 rounded animate-pulse ml-auto" style={{ background: 'var(--desk-surface-alt)' }} /></td>
                                     </tr>
                                 ))
                             ) : entries.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="p-12 text-center md-typescale-body-medium" style={{ color: 'var(--muted)' }}>
+                                    <td colSpan={6} className="p-12 text-center md-typescale-body-medium" style={{ color: 'var(--desk-text-secondary)' }}>
                                         No ledger entries found
                                     </td>
                                 </tr>
@@ -155,13 +155,13 @@ export default function LedgerPage() {
                                             <td className="font-mono md-typescale-body-small font-medium">
                                                 {entry.order_id}
                                             </td>
-                                            <td className="md-typescale-body-small whitespace-nowrap" style={{ color: 'var(--muted)' }}>
+                                            <td className="md-typescale-body-small whitespace-nowrap" style={{ color: 'var(--desk-text-secondary)' }}>
                                                 {entry.timestamp || "14:02:11"}
                                             </td>
                                             <td className="md-typescale-body-medium font-medium">
                                                 {entry.retailer_id}
                                             </td>
-                                            <td className="md-typescale-body-small" style={{ color: 'var(--muted)' }}>
+                                            <td className="md-typescale-body-small" style={{ color: 'var(--desk-text-secondary)' }}>
                                                 {entry.payment_gateway}
                                             </td>
                                             <td className="font-mono font-medium text-right" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -177,9 +177,9 @@ export default function LedgerPage() {
                         </tbody>
                     </table>
                     {entries.length > 0 && (
-                        <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
+                        <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--desk-border)' }}>
                             <div className="flex items-center gap-2">
-                                <label className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>Rows</label>
+                                <label className="md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>Rows</label>
                                 <select
                                     value={pageSize}
                                     onChange={(e) => {
@@ -187,7 +187,7 @@ export default function LedgerPage() {
                                         setPage(1);
                                     }}
                                     className="md-typescale-label-small px-2 py-1 rounded-md"
-                                    style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--foreground)' }}
+                                    style={{ border: '1px solid var(--desk-border)', background: 'var(--desk-surface)', color: 'var(--desk-text-primary)' }}
                                 >
                                     {[10, 25, 50, 100].map((s) => (
                                         <option key={s} value={s}>{s}</option>
@@ -195,7 +195,7 @@ export default function LedgerPage() {
                                 </select>
                             </div>
                             <div className="flex items-center gap-3">
-                                <span className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>
+                                <span className="md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>
                                     Page {page}
                                 </span>
                                 <div className="flex gap-1">

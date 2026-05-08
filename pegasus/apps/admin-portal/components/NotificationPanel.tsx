@@ -3,7 +3,7 @@
 import { useRef, useEffect } from 'react';
 import { Notification } from '@/lib/useNotifications';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@heroui/react';
+import Icon from './Icon';
 
 interface NotificationPanelProps {
   open: boolean;
@@ -25,12 +25,12 @@ function timeAgo(iso: string): string {
 }
 
 const typeIcons: Record<string, string> = {
-  ORDER_DISPATCHED: 'local_shipping',
-  DRIVER_ARRIVED: 'place',
-  ORDER_STATUS_CHANGED: 'sync_alt',
-  PAYLOAD_READY_TO_SEAL: 'inventory_2',
+  ORDER_DISPATCHED: 'dispatch',
+  DRIVER_ARRIVED: 'pin',
+  ORDER_STATUS_CHANGED: 'refresh',
+  PAYLOAD_READY_TO_SEAL: 'inventory',
   PAYLOAD_SEALED: 'verified',
-  PAYMENT_SETTLED: 'payments',
+  PAYMENT_SETTLED: 'payment',
   PAYMENT_FAILED: 'error',
 };
 
@@ -65,23 +65,26 @@ export default function NotificationPanel({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.95 }}
           transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          className="absolute right-0 top-14 w-[420px] max-h-[600px] glass-premium rounded-3xl z-[100] flex flex-col overflow-hidden shadow-2xl"
+          className="absolute right-0 top-14 w-95 md:w-105 max-h-140 desk-inspector z-100"
         >
           {/* Header */}
-          <div className="px-8 py-6 flex items-center justify-between border-b border-white/10 bg-white/[0.03]">
+          <div className="desk-inspector-header px-4 py-3">
             <div className="flex items-center gap-3">
-              <h3 className="text-xl font-bold text-white tracking-tight">
+              <h3 className="md-typescale-title-medium" style={{ color: 'var(--desk-text-primary)' }}>
                 Notifications
               </h3>
               {unreadCount > 0 && (
-                <span className="bg-desk-accent text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-desk-accent/40">
+                <span
+                  className="inline-flex min-w-5 h-5 items-center justify-center px-1.5 rounded-full text-[10px] font-semibold"
+                  style={{ background: 'var(--desk-danger)', color: '#ffffff' }}
+                >
                   {unreadCount}
                 </span>
               )}
             </div>
             {unreadCount > 0 && (
               <button
-                className="text-desk-accent text-sm font-bold hover:underline active-press"
+                className="desk-btn-ghost px-2 py-1 text-xs"
                 onClick={onMarkAllRead}
               >
                 Mark all read
@@ -90,71 +93,76 @@ export default function NotificationPanel({
           </div>
 
           {/* List */}
-          <div className="overflow-y-auto flex-1 custom-scrollbar">
+          <div className="overflow-y-auto flex-1">
             {items.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-24 px-10 text-center">
-                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 animate-float">
-                  <span className="material-symbols-outlined text-3xl text-white/20">
-                    notifications_off
-                  </span>
+              <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center mb-3"
+                  style={{ background: 'var(--desk-surface-subtle)', color: 'var(--desk-text-tertiary)' }}
+                >
+                  <Icon name="notifications" size={20} />
                 </div>
-                <p className="text-lg font-medium text-white/40">
+                <p className="md-typescale-body-large" style={{ color: 'var(--desk-text-secondary)' }}>
                   All caught up!
                 </p>
-                <p className="text-sm text-white/20 mt-1">
+                <p className="md-typescale-body-small mt-1" style={{ color: 'var(--desk-text-tertiary)' }}>
                   No new notifications at this time.
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-white/5">
+              <div>
                 {items.map((n, i) => (
                   <motion.div
                     key={n.id}
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05 }}
+                    style={{ borderBottom: '1px solid var(--desk-border)' }}
                   >
                     <button
-                      className={`w-full text-left px-8 py-6 flex gap-5 items-start transition-all hover:bg-white/[0.04] active:bg-white/[0.06] relative group ${
-                        !n.read_at ? 'bg-white/[0.02]' : ''
-                      } hover-lift`}
+                      className="w-full text-left px-4 py-3 flex gap-3 items-start transition-colors relative"
+                      style={{ background: !n.read_at ? 'var(--desk-surface-subtle)' : 'var(--desk-surface)' }}
                       onClick={() => {
                         if (!n.read_at) onMarkRead(n.id);
                       }}
                     >
                       {/* Unread indicator */}
                       {!n.read_at && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-12 bg-desk-accent rounded-r-full shadow-[0_0_12px_rgba(var(--desk-accent-rgb),0.5)]" />
+                        <div className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r" style={{ background: 'var(--desk-accent)' }} />
                       )}
 
-                      <div className={`p-3 rounded-2xl flex-shrink-0 shadow-inner ${
-                        !n.read_at ? 'bg-desk-accent/10 text-desk-accent' : 'bg-white/5 text-white/30'
-                      }`}>
-                        <span className="material-symbols-outlined text-2xl">
-                          {typeIcons[n.type] || 'notifications'}
-                        </span>
+                      <div
+                        className="p-2 rounded-lg shrink-0"
+                        style={{
+                          background: !n.read_at ? 'var(--desk-accent-soft)' : 'var(--desk-surface-subtle)',
+                          color: !n.read_at ? 'var(--desk-accent-strong)' : 'var(--desk-text-tertiary)',
+                        }}
+                      >
+                        <Icon name={typeIcons[n.type] || 'notifications'} size={18} />
                       </div>
 
                       <div className="flex-1 min-w-0 pt-0.5">
                         <div className="flex items-center justify-between gap-3 mb-1.5">
-                          <span className={`text-base truncate tracking-tight ${
-                            !n.read_at ? 'font-bold text-white' : 'font-medium text-white/50'
-                          }`}>
+                          <span
+                            className={`truncate tracking-tight ${!n.read_at ? 'font-semibold' : 'font-medium'}`}
+                            style={{ color: !n.read_at ? 'var(--desk-text-primary)' : 'var(--desk-text-secondary)' }}
+                          >
                             {n.title}
                           </span>
-                          <span className="text-[11px] font-bold text-white/20 uppercase tracking-widest whitespace-nowrap">
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.08em] whitespace-nowrap" style={{ color: 'var(--desk-text-tertiary)' }}>
                             {timeAgo(n.created_at)}
                           </span>
                         </div>
-                        <p className={`text-sm leading-relaxed line-clamp-2 ${
-                          !n.read_at ? 'text-white/70' : 'text-white/30'
-                        }`}>
+                        <p
+                          className="text-xs leading-relaxed line-clamp-2"
+                          style={{ color: !n.read_at ? 'var(--desk-text-secondary)' : 'var(--desk-text-tertiary)' }}
+                        >
                           {n.body}
                         </p>
                       </div>
 
                       {!n.read_at && (
-                        <div className="w-2.5 h-2.5 rounded-full bg-desk-accent mt-2 animate-glow" />
+                        <div className="w-2 h-2 rounded-full mt-1.5" style={{ background: 'var(--desk-accent)' }} />
                       )}
                     </button>
                   </motion.div>
@@ -165,9 +173,9 @@ export default function NotificationPanel({
 
           {/* Footer */}
           {items.length > 0 && (
-            <div className="p-4 border-t border-white/10 bg-white/[0.03] text-center">
+            <div className="p-3 text-center" style={{ borderTop: '1px solid var(--desk-border)', background: 'var(--desk-surface)' }}>
               <button
-                className="w-full py-3 rounded-xl text-sm font-bold text-white/40 hover:text-white hover:bg-white/5 transition-all active-press"
+                className="desk-btn-secondary w-full justify-center"
                 onClick={onClose}
               >
                 Close Panel

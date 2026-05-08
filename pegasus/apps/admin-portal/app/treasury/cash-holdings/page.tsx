@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Button } from '@heroui/react';
 import { apiFetch } from '@/lib/auth';
 import { useSyncHub } from '@/lib/useSyncHub';
@@ -64,29 +64,22 @@ export default function CashHoldingsPage() {
   const fmt = (n: number) => n.toLocaleString('en-US');
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--background)' }}>
+    <div className="min-h-screen" style={{ background: 'var(--desk-bg)' }}>
       {/* Header */}
       <div className="px-6 pt-6 pb-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="md-typescale-headline-small" style={{ color: 'var(--foreground)' }}>
+            <h1 className="md-typescale-headline-small" style={{ color: 'var(--desk-text-primary)' }}>
               Cash Holdings
             </h1>
-            <p className="md-typescale-body-small mt-1" style={{ color: 'var(--muted)' }}>
+            <p className="md-typescale-body-small mt-1" style={{ color: 'var(--desk-text-secondary)' }}>
               Cash custody pipeline — driver collections and pending handovers
             </p>
           </div>
           <div className="flex items-center gap-3">
             {/* Live indicator */}
-            <span
-              className="inline-flex items-center gap-1.5 px-3 py-1 md-shape-full md-typescale-label-small"
-              style={{
-                background: isLive ? 'var(--success)' : 'var(--danger)',
-                color: isLive ? 'var(--success-foreground)' : 'var(--danger-foreground)',
-              }}
-            >
-              <span className={`w-2 h-2 rounded-full ${isLive ? 'animate-pulse' : ''}`}
-                    style={{ background: isLive ? 'var(--success)' : 'var(--danger)' }} />
+            <span className="md-chip" style={{ cursor: 'default' }}>
+              <span className={isLive ? 'desk-status-dot desk-status-dot--success' : 'desk-status-dot desk-status-dot--danger'} />
               {isLive ? 'Live' : 'Offline'}
             </span>
             <Button
@@ -107,22 +100,22 @@ export default function CashHoldingsPage() {
             label="Pending Collection"
             value={`${fmt(data.total_pending)}`}
             count={data.pending_count}
-            accent="var(--warning)"
-            accentBg="var(--warning)"
+            accent="var(--desk-warning)"
+            accentBg="var(--desk-warning-soft)"
           />
           <SummaryCard
             label="Collected (In Custody)"
             value={`${fmt(data.total_collected)}`}
             count={data.collected_count}
-            accent="var(--success)"
-            accentBg="var(--success)"
+            accent="var(--desk-success)"
+            accentBg="var(--desk-success-soft)"
           />
           <SummaryCard
             label="Total Cash Volume"
             value={`${fmt(data.total_pending + data.total_collected)}`}
             count={data.pending_count + data.collected_count}
-            accent="var(--accent)"
-            accentBg="var(--accent-soft)"
+            accent="var(--desk-accent-strong)"
+            accentBg="var(--desk-accent-soft)"
           />
         </div>
       )}
@@ -136,8 +129,8 @@ export default function CashHoldingsPage() {
             className="md-typescale-label-medium px-4 py-1.5 md-shape-full transition-colors"
             style={{
               background: activeTab === tab ? 'var(--accent-soft)' : 'transparent',
-              color: activeTab === tab ? 'var(--accent-soft-foreground)' : 'var(--muted)',
-              border: activeTab === tab ? 'none' : '1px solid var(--border)',
+              color: activeTab === tab ? 'var(--accent-soft-foreground)' : 'var(--desk-text-secondary)',
+              border: activeTab === tab ? 'none' : '1px solid var(--desk-border)',
             }}
           >
             {tab === 'ALL' ? 'All' : tab === 'PENDING' ? 'Pending' : 'Collected'}
@@ -146,7 +139,7 @@ export default function CashHoldingsPage() {
       </div>
 
       {/* Divider */}
-      <div className="mx-6 mb-4" style={{ height: 1, background: 'var(--border)' }} />
+      <div className="mx-6 mb-4" style={{ height: 1, background: 'var(--desk-border)' }} />
 
       {/* Content */}
       <div className="px-6 pb-8">
@@ -168,19 +161,19 @@ export default function CashHoldingsPage() {
           />
         ) : (
           <div
-            className="md-card md-elevation-0 md-shape-md overflow-hidden"
-            style={{ background: 'var(--background)' }}
+            className="desk-card overflow-hidden"
+            style={{ background: 'var(--desk-surface)' }}
           >
             <table className="w-full">
               <thead>
-                <tr style={{ background: 'var(--surface)' }}>
-                  <th className="text-left px-4 py-3 md-typescale-label-small" style={{ color: 'var(--muted)' }}>Order</th>
-                  <th className="text-left px-4 py-3 md-typescale-label-small" style={{ color: 'var(--muted)' }}>Driver</th>
-                  <th className="text-left px-4 py-3 md-typescale-label-small" style={{ color: 'var(--muted)' }}>Retailer</th>
-                  <th className="text-right px-4 py-3 md-typescale-label-small" style={{ color: 'var(--muted)' }}>Amount</th>
-                  <th className="text-center px-4 py-3 md-typescale-label-small" style={{ color: 'var(--muted)' }}>Status</th>
-                  <th className="text-right px-4 py-3 md-typescale-label-small" style={{ color: 'var(--muted)' }}>Distance</th>
-                  <th className="text-left px-4 py-3 md-typescale-label-small" style={{ color: 'var(--muted)' }}>Collected</th>
+                <tr style={{ background: 'var(--desk-surface-alt)' }}>
+                  <th className="text-left px-4 py-3 md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>Order</th>
+                  <th className="text-left px-4 py-3 md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>Driver</th>
+                  <th className="text-left px-4 py-3 md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>Retailer</th>
+                  <th className="text-right px-4 py-3 md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>Amount</th>
+                  <th className="text-center px-4 py-3 md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>Status</th>
+                  <th className="text-right px-4 py-3 md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>Distance</th>
+                  <th className="text-left px-4 py-3 md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>Collected</th>
                 </tr>
               </thead>
               <tbody>
@@ -188,27 +181,27 @@ export default function CashHoldingsPage() {
                   <tr
                     key={h.invoice_id}
                     className="border-t transition-colors hover:opacity-90"
-                    style={{ borderColor: 'var(--border)' }}
+                    style={{ borderColor: 'var(--desk-border)' }}
                   >
-                    <td className="px-4 py-3 md-typescale-body-small" style={{ color: 'var(--foreground)', fontFamily: 'var(--font-mono, monospace)' }}>
+                    <td className="px-4 py-3 md-typescale-body-small" style={{ color: 'var(--desk-text-primary)', fontFamily: 'var(--font-mono, monospace)' }}>
                       {h.order_id.slice(-8)}
                     </td>
-                    <td className="px-4 py-3 md-typescale-body-small" style={{ color: 'var(--muted)' }}>
+                    <td className="px-4 py-3 md-typescale-body-small" style={{ color: 'var(--desk-text-secondary)' }}>
                       {h.driver_id ? h.driver_id.slice(-6) : '—'}
                     </td>
-                    <td className="px-4 py-3 md-typescale-body-small" style={{ color: 'var(--muted)' }}>
+                    <td className="px-4 py-3 md-typescale-body-small" style={{ color: 'var(--desk-text-secondary)' }}>
                       {h.retailer_id ? h.retailer_id.slice(-6) : '—'}
                     </td>
-                    <td className="px-4 py-3 text-right md-typescale-body-small font-semibold" style={{ color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums' }}>
-                      {fmt(h.amount)} <span className="md-typescale-label-small" style={{ color: 'var(--muted)' }}></span>
+                    <td className="px-4 py-3 text-right md-typescale-body-small font-semibold" style={{ color: 'var(--desk-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
+                      {fmt(h.amount)}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <CustodyBadge status={h.custody_status} />
                     </td>
-                    <td className="px-4 py-3 text-right md-typescale-body-small" style={{ color: 'var(--muted)' }}>
+                    <td className="px-4 py-3 text-right md-typescale-body-small" style={{ color: 'var(--desk-text-secondary)' }}>
                       {h.geofence_dist_m > 0 ? `${h.geofence_dist_m.toFixed(0)}m` : '—'}
                     </td>
-                    <td className="px-4 py-3 md-typescale-body-small" style={{ color: 'var(--muted)' }}>
+                    <td className="px-4 py-3 md-typescale-body-small" style={{ color: 'var(--desk-text-secondary)' }}>
                       {h.collected_at ? new Date(h.collected_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                     </td>
                   </tr>
@@ -220,7 +213,7 @@ export default function CashHoldingsPage() {
 
         {/* Last refreshed */}
         {lastRefreshed && (
-          <p className="mt-3 md-typescale-label-small text-right" style={{ color: 'var(--muted)' }}>
+          <p className="mt-3 md-typescale-label-small text-right" style={{ color: 'var(--desk-text-secondary)' }}>
             Last updated: {lastRefreshed.toLocaleTimeString()}
           </p>
         )}
@@ -238,12 +231,12 @@ function SummaryCard({ label, value, count, accent, accentBg }: {
 }) {
   return (
     <div
-      className="md-card md-elevation-1 md-shape-md p-4 relative overflow-hidden"
-      style={{ background: 'var(--surface)' }}
+      className="desk-card p-4 relative overflow-hidden"
+      style={{ background: 'var(--desk-surface)' }}
     >
       <div className="absolute top-0 left-0 w-1 h-full" style={{ background: accent }} />
-      <p className="md-typescale-label-small mb-1" style={{ color: 'var(--muted)' }}>{label}</p>
-      <p className="md-typescale-headline-small font-bold" style={{ color: 'var(--foreground)' }}>{value}</p>
+      <p className="md-typescale-label-small mb-1" style={{ color: 'var(--desk-text-secondary)' }}>{label}</p>
+      <p className="md-typescale-headline-small font-bold" style={{ color: 'var(--desk-text-primary)' }}>{value}</p>
       <span
         className="inline-flex items-center mt-2 px-2 py-0.5 md-shape-full md-typescale-label-small"
         style={{ background: accentBg, color: accent }}
@@ -256,15 +249,17 @@ function SummaryCard({ label, value, count, accent, accentBg }: {
 
 function CustodyBadge({ status }: { status: string }) {
   const isPending = status === 'PENDING';
+  const background = isPending ? 'var(--desk-warning-soft)' : 'var(--desk-success-soft)';
+  const color = isPending ? 'var(--desk-warning)' : 'var(--desk-success)';
   return (
     <span
       className="inline-flex items-center gap-1 px-2 py-0.5 md-shape-full md-typescale-label-small"
       style={{
-        background: isPending ? 'var(--warning)' : 'var(--success)',
-        color: isPending ? 'var(--warning-foreground)' : 'var(--success-foreground)',
+        background,
+        color,
       }}
     >
-      {isPending && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--warning)' }} />}
+      {isPending && <span className="desk-status-dot desk-status-dot--warning" />}
       {isPending ? 'Pending' : 'Collected'}
     </span>
   );

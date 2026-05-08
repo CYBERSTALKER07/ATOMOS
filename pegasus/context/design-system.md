@@ -21,6 +21,7 @@ If guidance in other docs conflicts with `/design.md`, `/design.md` takes preced
 - Keep app-specific `globals.css` blocks additive; do not remove existing `md-*`, `button--*`, or `status-chip*` classes during rollout.
 - The foundation file is compatibility-first and centralizes baseline tokens for body, card, button, input, chip, and status-chip semantics.
 - Any new cross-desktop token should be introduced in the foundation file first, then consumed by app-specific layers.
+- Legacy decorative utility hooks (`.glass-*`, `.orb-*`, `.gradient-orb-*`) are compatibility-only and must remain visually disabled on product surfaces.
 
 ### Tokens Available
 - **Colors**: `--color-md-primary`, `--color-md-on-primary`, `--color-md-surface`, `--color-md-surface-container`, `--color-md-outline`, `--color-md-error`

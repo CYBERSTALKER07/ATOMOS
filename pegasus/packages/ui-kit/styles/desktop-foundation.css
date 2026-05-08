@@ -134,20 +134,20 @@
 
   --desktop-on-accent: oklch(0.16 0.01 95);
 
-  --glass-bg: rgba(0, 0, 0, 0.3);
-  --glass-border: rgba(255, 255, 255, 0.05);
-  --glass-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.6);
+  --glass-bg: var(--desk-surface);
+  --glass-border: var(--desk-border);
+  --glass-shadow: var(--shadow-overlay);
 
-  --glass-premium-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
-  --glass-premium-border: rgba(255, 255, 255, 0.1);
-  --glass-premium-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.7);
+  --glass-premium-bg: var(--desk-surface);
+  --glass-premium-border: var(--desk-border);
+  --glass-premium-shadow: var(--shadow-overlay);
 }
 
 :root.synthwave,
 .synthwave {
-  --glass-bg: rgba(45, 10, 80, 0.2);
-  --glass-border: rgba(255, 0, 255, 0.1);
-  --glass-shadow: 0 0 15px rgba(255, 0, 255, 0.1);
+  --glass-bg: var(--desk-surface);
+  --glass-border: var(--desk-border);
+  --glass-shadow: var(--shadow-overlay);
 }
 
 @layer base {
@@ -256,18 +256,19 @@
   :where(.desk-illustration-frame) {
     border-radius: var(--radius-xl);
     border: 1px solid var(--desk-border);
-    background: linear-gradient(165deg, var(--desk-surface), var(--desk-surface-subtle));
+    background: var(--desk-surface);
   }
 }
 
 @layer utilities {
   .hover-lift {
-    transition: transform var(--duration-slow) var(--ease-enter), box-shadow var(--duration-slow) var(--ease-enter);
+    transition: border-color var(--duration-base) var(--ease-standard),
+                background-color var(--duration-base) var(--ease-standard);
   }
 
   .hover-lift:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.12);
+    transform: none;
+    box-shadow: none;
   }
 
   .active-press {
@@ -294,9 +295,8 @@
   }
 
   .glass-subtle {
-    background: rgba(255, 255, 255, 0.02);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--desk-surface);
+    border: 1px solid var(--desk-border);
   }
 
   .glow-text {
@@ -305,30 +305,24 @@
 
   .text-cinematic {
     letter-spacing: -0.02em;
-    background: linear-gradient(to bottom, var(--desk-text-primary), var(--desk-text-secondary));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--desk-text-primary);
   }
 
-  /* Atmospheric Orbs */
+  /* Decorative orb classes are retained only for compatibility and intentionally disabled. */
   .orb-container {
-    position: absolute;
-    width: 400px;
-    height: 400px;
-    filter: blur(40px);
-    opacity: 0.6;
-    z-index: 0;
-    pointer-events: none;
+    display: none !important;
   }
 
-  .gradient-orb-mint { background: radial-gradient(circle, var(--color-gradient-mint, #cdfaf0) 0%, transparent 75%); }
-  .gradient-orb-peach { background: radial-gradient(circle, var(--color-gradient-peach, #ffe5d9) 0%, transparent 75%); }
-  .gradient-orb-lavender { background: radial-gradient(circle, var(--color-gradient-lavender, #e2e2ff) 0%, transparent 75%); }
-  .gradient-orb-sky { background: radial-gradient(circle, var(--color-gradient-sky, #e0f2fe) 0%, transparent 75%); }
-  .gradient-orb-rose { background: radial-gradient(circle, var(--color-gradient-rose, #ffe4e6) 0%, transparent 75%); }
-  .gradient-orb-gold { background: radial-gradient(circle, #fef3c7 0%, transparent 75%); }
-  .gradient-orb-indigo { background: radial-gradient(circle, #e0e7ff 0%, transparent 75%); }
+  .gradient-orb-mint,
+  .gradient-orb-peach,
+  .gradient-orb-lavender,
+  .gradient-orb-sky,
+  .gradient-orb-rose,
+  .gradient-orb-gold,
+  .gradient-orb-indigo {
+    display: none !important;
+    background: transparent !important;
+  }
 
   /* Advanced Animations */
   .animate-float {

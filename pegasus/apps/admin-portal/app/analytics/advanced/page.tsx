@@ -29,7 +29,7 @@ export default function AdvancedAnalyticsPage() {
     return (
       <div className="p-6 flex flex-col gap-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <h1 className="md-typescale-headline-small" style={{ color: 'var(--color-md-on-surface)' }}>
+          <h1 className="md-typescale-headline-small" style={{ color: 'var(--desk-text-primary)' }}>
             {t('supplier_portal.analytics.advanced.title')}
           </h1>
         </div>
@@ -51,12 +51,12 @@ export default function AdvancedAnalyticsPage() {
   if (analytics.error) {
     return (
       <div className="p-6 flex flex-col gap-6">
-        <h1 className="md-typescale-headline-small" style={{ color: 'var(--color-md-on-surface)' }}>
+        <h1 className="md-typescale-headline-small" style={{ color: 'var(--desk-text-primary)' }}>
           {t('supplier_portal.analytics.advanced.title')}
         </h1>
         <div
-          className="md-card md-elevation-1 md-shape-md p-6 flex items-center justify-center h-48"
-          style={{ background: 'var(--color-md-error-container)', color: 'var(--color-md-on-error-container)' }}
+          className="desk-card p-6 flex items-center justify-center h-48"
+          style={{ background: 'var(--desk-danger-soft)', color: 'var(--desk-danger)' }}
         >
           <span className="md-typescale-body-medium">
             {t('supplier_portal.analytics.advanced.error.fault', { detail: analytics.error })}
@@ -72,7 +72,7 @@ export default function AdvancedAnalyticsPage() {
     return (
       <div className="p-6 flex flex-col gap-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <h1 className="md-typescale-headline-small" style={{ color: 'var(--color-md-on-surface)' }}>
+          <h1 className="md-typescale-headline-small" style={{ color: 'var(--desk-text-primary)' }}>
             {t('supplier_portal.analytics.advanced.factory.title')}
           </h1>
           <DateRangePicker
@@ -85,14 +85,14 @@ export default function AdvancedAnalyticsPage() {
         <BentoGrid>
           {/* KPI Stats */}
           <BentoCard size="wide" delay={0}>
-            <div className="md-card md-elevation-1 md-shape-md p-5 h-full" style={{ background: 'var(--color-md-surface-container)' }}>
+            <div className="desk-card p-5 h-full" style={{ background: 'var(--desk-surface)' }}>
               <div className="flex flex-col gap-2 h-full justify-center">
-                <h3 className="md-typescale-title-small" style={{ color: 'var(--color-md-on-surface)' }}>
+                <h3 className="md-typescale-title-small" style={{ color: 'var(--desk-text-primary)' }}>
                   {t('supplier_portal.analytics.advanced.factory.summary_title')}
                 </h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col">
-                    <span className="md-typescale-label-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                    <span className="md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>
                       {t('supplier_portal.analytics.advanced.factory.total_transfers')}
                     </span>
                     <span className="md-typescale-headline-small font-bold" style={{ color: 'var(--color-md-primary)' }}>
@@ -100,7 +100,7 @@ export default function AdvancedAnalyticsPage() {
                     </span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="md-typescale-label-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                    <span className="md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>
                       {t('supplier_portal.analytics.advanced.factory.avg_lead_time')}
                     </span>
                     <span className="md-typescale-headline-small font-bold" style={{ color: 'var(--color-md-secondary)' }}>
@@ -114,14 +114,14 @@ export default function AdvancedAnalyticsPage() {
 
           {/* Factory Activity Chart */}
           <BentoCard size="anchor" delay={60}>
-            <div className="md-card md-elevation-1 md-shape-md p-5 h-full" style={{ background: 'var(--color-md-surface-container)' }}>
+            <div className="desk-card p-5 h-full" style={{ background: 'var(--desk-surface)' }}>
               <FactoryActivityChart data={fo?.daily_activity ?? []} />
             </div>
           </BentoCard>
 
           {/* Transfers Pie */}
           <BentoCard size="stat" delay={120}>
-            <div className="md-card md-elevation-1 md-shape-md p-5 h-full" style={{ background: 'var(--color-md-surface-container)' }}>
+            <div className="desk-card p-5 h-full" style={{ background: 'var(--desk-surface)' }}>
               <FactoryTransfersPie data={fo?.transfers_by_state ?? []} />
             </div>
           </BentoCard>
@@ -141,10 +141,10 @@ export default function AdvancedAnalyticsPage() {
     <div className="p-6 flex flex-col gap-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="md-typescale-headline-small" style={{ color: 'var(--color-md-on-surface)' }}>
+          <h1 className="md-typescale-headline-small" style={{ color: 'var(--desk-text-primary)' }}>
             {t('supplier_portal.analytics.advanced.title')}
           </h1>
-          <p className="md-typescale-body-small mt-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+          <p className="md-typescale-body-small mt-1" style={{ color: 'var(--desk-text-secondary)' }}>
             {analytics.dateRange.from} → {analytics.dateRange.to}
           </p>
         </div>
@@ -166,14 +166,14 @@ export default function AdvancedAnalyticsPage() {
       <BentoGrid>
         {/* Row 1: KPI Stats (wide) + Revenue Stat + SLA Gauge */}
         <BentoCard size="wide" delay={0}>
-          <div className="md-card md-elevation-1 md-shape-md p-5 h-full" style={{ background: 'var(--color-md-surface-container)' }}>
+          <div className="desk-card p-5 h-full" style={{ background: 'var(--desk-surface)' }}>
             <KPIStatsRow data={analytics.throughput} />
           </div>
         </BentoCard>
 
         <BentoCard size="stat" delay={40}>
-          <div className="md-card md-elevation-1 md-shape-md p-5 h-full flex flex-col items-center justify-center" style={{ background: 'var(--color-md-surface-container)' }}>
-            <span className="md-typescale-label-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+          <div className="desk-card p-5 h-full flex flex-col items-center justify-center" style={{ background: 'var(--desk-surface)' }}>
+            <span className="md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>
               {t('supplier_portal.analytics.advanced.total_revenue')}
             </span>
             <span className="md-typescale-headline-medium font-bold" style={{ color: 'var(--color-md-primary)' }}>
@@ -188,7 +188,7 @@ export default function AdvancedAnalyticsPage() {
         </BentoCard>
 
         <BentoCard size="stat" delay={80}>
-          <div className="md-card md-elevation-1 md-shape-md p-5 h-full flex items-center justify-center" style={{ background: 'var(--color-md-surface-container)' }}>
+          <div className="desk-card p-5 h-full flex items-center justify-center" style={{ background: 'var(--desk-surface)' }}>
             <CircularProgress
               value={slaRate}
               size={100}
@@ -201,46 +201,46 @@ export default function AdvancedAnalyticsPage() {
 
         {/* Row 2: Revenue Chart (anchor) + Gateway Pie */}
         <BentoCard size="anchor" delay={120}>
-          <div className="md-card md-elevation-1 md-shape-md p-5 h-full" style={{ background: 'var(--color-md-surface-container)' }}>
+          <div className="desk-card p-5 h-full" style={{ background: 'var(--desk-surface)' }}>
             <RevenueChart data={analytics.revenue?.time_series ?? []} />
           </div>
         </BentoCard>
 
         <BentoCard size="list" delay={160}>
-          <div className="md-card md-elevation-1 md-shape-md p-5 h-full" style={{ background: 'var(--color-md-surface-container)' }}>
+          <div className="desk-card p-5 h-full" style={{ background: 'var(--desk-surface)' }}>
             <GatewayPieChart data={analytics.revenue?.gateway_breakdown ?? []} />
           </div>
         </BentoCard>
 
         {/* Row 3: Throughput Line (wide) + Fleet Load */}
         <BentoCard size="wide" delay={200}>
-          <div className="md-card md-elevation-1 md-shape-md p-5 h-full" style={{ background: 'var(--color-md-surface-container)' }}>
+          <div className="desk-card p-5 h-full" style={{ background: 'var(--desk-surface)' }}>
             <ThroughputLine data={analytics.throughput} />
           </div>
         </BentoCard>
 
         <BentoCard size="list" delay={240}>
-          <div className="md-card md-elevation-1 md-shape-md p-5 h-full" style={{ background: 'var(--color-md-surface-container)' }}>
+          <div className="desk-card p-5 h-full" style={{ background: 'var(--desk-surface)' }}>
             <FleetLoadBars data={analytics.loadDistribution} />
           </div>
         </BentoCard>
 
         {/* Row 4: SLA Stacked Bar (wide) + Top Retailers (list) */}
         <BentoCard size="wide" delay={280}>
-          <div className="md-card md-elevation-1 md-shape-md p-5 h-full" style={{ background: 'var(--color-md-surface-container)' }}>
+          <div className="desk-card p-5 h-full" style={{ background: 'var(--desk-surface)' }}>
             <SLAStackedBar data={analytics.slaHealth} />
           </div>
         </BentoCard>
 
         <BentoCard size="list" delay={320}>
-          <div className="md-card md-elevation-1 md-shape-md p-5 h-full" style={{ background: 'var(--color-md-surface-container)' }}>
+          <div className="desk-card p-5 h-full" style={{ background: 'var(--desk-surface)' }}>
             <TopRetailersTable data={analytics.topRetailers} />
           </div>
         </BentoCard>
 
         {/* Row 5: Node Efficiency (full) */}
         <BentoCard size="full" delay={360}>
-          <div className="md-card md-elevation-1 md-shape-md p-5" style={{ background: 'var(--color-md-surface-container)' }}>
+          <div className="desk-card p-5" style={{ background: 'var(--desk-surface)' }}>
             <NodeEfficiencyGrid data={analytics.nodeEfficiency} />
           </div>
         </BentoCard>

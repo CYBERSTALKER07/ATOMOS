@@ -230,8 +230,8 @@ export default function SettlementPage() {
           ].map((s) => (
             <div
               key={s.label}
-              className="md-card md-elevation-0 md-shape-md p-4"
-              style={{ background: 'var(--color-md-surface-container)' }}
+              className="desk-card p-4"
+              style={{ background: 'var(--desk-surface)' }}
             >
               <span className="md-typescale-label-small block" style={{ color: 'var(--color-md-on-surface-variant)' }}>
                 {s.label}
@@ -264,7 +264,7 @@ export default function SettlementPage() {
             />
           ) : (
             <>
-              <div className="md-card md-elevation-1 md-shape-md overflow-hidden" style={{ background: 'var(--color-md-surface)' }}>
+              <div className="desk-card overflow-hidden" style={{ background: 'var(--desk-surface)' }}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr

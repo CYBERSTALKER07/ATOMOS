@@ -25,6 +25,7 @@ Applies to:
   - no decorative gradients on product surfaces
   - no emoji icons for UI semantics
   - explicit loading, empty, offline, stale, and restricted states for live screens
+- Legacy decorative utility classes may remain for compatibility but must be visually disabled on product surfaces.
 
 ## Operational Note
 

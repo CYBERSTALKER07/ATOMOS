@@ -1,8 +1,8 @@
 'use client';
 
-import { Table, Pagination, Checkbox, Button } from '@heroui/react';
+import { Table, Checkbox } from '@heroui/react';
 import type { SortDescriptor, Selection, Key } from 'react-aria-components';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Skeleton } from './Skeleton';
 import EmptyState from './EmptyState';
 
@@ -92,6 +92,19 @@ export default function DataTable<T extends { id: string }>({
   const hasPagination = totalPages !== undefined && totalPages > 0 && onPageChange;
 
   const wrapperClass = `desk-card overflow-hidden ${className || ''}`;
+  const tableProps: Record<string, unknown> = {
+    'aria-label': ariaLabel,
+    variant,
+    className: 'w-full desk-table',
+    removeWrapper: true,
+  };
+
+  if (selectionMode !== 'none') tableProps.selectionMode = selectionMode;
+  if (selectedKeys !== undefined) tableProps.selectedKeys = selectedKeys;
+  if (onSelectionChange) tableProps.onSelectionChange = onSelectionChange;
+  if (sortDescriptor) tableProps.sortDescriptor = sortDescriptor;
+  if (onSortChange) tableProps.onSortChange = onSortChange;
+  if (onRowAction) tableProps.onRowAction = onRowAction;
 
   if (isLoading) {
     return (
@@ -126,18 +139,7 @@ export default function DataTable<T extends { id: string }>({
 
   return (
     <div className={wrapperClass}>
-      <Table 
-        aria-label={ariaLabel} 
-        variant={variant} 
-        className="w-full desk-table"
-        selectionMode={selectionMode !== 'none' ? selectionMode : undefined}
-        selectedKeys={selectedKeys}
-        onSelectionChange={onSelectionChange}
-        sortDescriptor={sortDescriptor}
-        onSortChange={onSortChange}
-        onRowAction={onRowAction}
-        removeWrapper
-      >
+      <Table {...tableProps}>
         <Table.Header style={{ borderBottom: '1px solid var(--desk-border)' }}>
           {selectionMode === 'multiple' && (
             <Table.Column id="selection" width={48}>
@@ -169,7 +171,7 @@ export default function DataTable<T extends { id: string }>({
           renderEmptyState={() => (
             <div className="py-24">
               <EmptyState
-                icon={emptyIcon as React.ElementType}
+                icon={emptyIcon}
                 headline={emptyHeadline}
                 body={emptyBody}
                 action={emptyAction}

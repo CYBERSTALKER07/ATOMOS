@@ -117,7 +117,7 @@ export default function ChargebacksPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="md-card md-elevation-1 md-shape-md p-4" style={{ background: 'var(--color-md-surface)' }}>
+        <div className="desk-card p-4" style={{ background: 'var(--desk-surface)' }}>
           <h2 className="md-typescale-title-small mb-3">Record Chargeback</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <input className="md-input-outlined px-3 py-2" placeholder="Order ID" value={orderId} onChange={(e) => setOrderId(e.target.value)} />
@@ -131,7 +131,7 @@ export default function ChargebacksPage() {
           <Button variant="primary" className="mt-3" onPress={createChargeback}>Record</Button>
         </div>
 
-        <div className="md-card md-elevation-1 md-shape-md p-4" style={{ background: 'var(--color-md-surface)' }}>
+        <div className="desk-card p-4" style={{ background: 'var(--desk-surface)' }}>
           <h2 className="md-typescale-title-small mb-3">Record Reversal</h2>
           <input className="md-input-outlined px-3 py-2 w-full" placeholder="GlobalPaynt Session ID" value={sessionId} onChange={(e) => setSessionId(e.target.value)} />
           <Button variant="outline" className="mt-3" onPress={createReversal}>Record Reversal</Button>
@@ -139,11 +139,11 @@ export default function ChargebacksPage() {
       </div>
 
       {loading ? (
-        <div className="md-card md-elevation-1 md-shape-md p-6" style={{ background: 'var(--color-md-surface)' }}>Loading…</div>
+        <div className="desk-card p-6" style={{ background: 'var(--desk-surface)' }}>Loading…</div>
       ) : rows.length === 0 ? (
         <EmptyState icon="reconcile" headline="No chargeback anomalies" body="No CHARGEBACK or REVERSAL anomalies in the reconciliation queue." />
       ) : (
-        <div className="md-card md-elevation-1 md-shape-md overflow-hidden" style={{ background: 'var(--color-md-surface)' }}>
+        <div className="desk-card overflow-hidden" style={{ background: 'var(--desk-surface)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b" style={{ borderColor: 'var(--color-md-outline-variant)' }}>

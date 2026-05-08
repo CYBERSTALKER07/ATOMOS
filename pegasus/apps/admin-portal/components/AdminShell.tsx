@@ -181,7 +181,7 @@ function ThemeToggle() {
       isIconOnly
       onPress={cycle}
       aria-label={`${meta.label} — switch to ${meta.next}`}
-      className="w-9 h-9 min-w-0 text-muted"
+      className="desk-btn-ghost w-9 h-9 min-w-0 p-0"
     >
       <Icon name={meta.icon} />
     </Button>
@@ -229,7 +229,7 @@ const DrawerContent = memo(function DrawerContent({
               isIconOnly
               onPress={onToggle}
               aria-label="Open sidebar"
-              className="w-9 h-9 min-w-0 text-muted"
+              className="desk-btn-ghost w-9 h-9 min-w-0 p-0"
             >
               <PanelLeft size={20} strokeWidth={1.75} />
             </Button>
@@ -253,7 +253,7 @@ const DrawerContent = memo(function DrawerContent({
                   variant="ghost"
                   isIconOnly
                   onPress={onToggle}
-                  className="w-7 h-7 min-w-0 text-muted"
+                  className="desk-btn-ghost w-7 h-7 min-w-0 p-0"
                   aria-label="Collapse sidebar"
                 >
                   <PanelLeftClose size={16} strokeWidth={1.75} />
@@ -290,13 +290,13 @@ const DrawerContent = memo(function DrawerContent({
                   >
                     <Link
                       href={item.href}
-                      className={`md-nav-item hover-lift ${active ? 'md-nav-active' : ''}`}
+                      className={`md-nav-item desk-sidebar-item ${active ? 'md-nav-active desk-sidebar-item--active' : ''}`}
                       data-active={active}
                       title={isRail ? item.label : undefined}
                       aria-label={item.label}
                       style={isRail ? { justifyContent: 'center', padding: '0', height: 42 } : undefined}
                     >
-                      <Icon name={item.icon} size={20} />
+                      <Icon name={item.icon} size={20} className="desk-sidebar-item-icon" />
                       {!isRail && <span className="truncate">{item.label}</span>}
                     </Link>
                   </motion.div>
@@ -308,10 +308,10 @@ const DrawerContent = memo(function DrawerContent({
       </div>
 
       {/* Footer */}
-      <div className={`py-3 ${isRail ? 'px-2' : 'px-4'}`} style={{ borderTop: '1px solid var(--border)' }}>
+      <div className={`py-3 ${isRail ? 'px-2' : 'px-4'}`} style={{ borderTop: '1px solid var(--desk-border)' }}>
         <button
           onClick={onLogout}
-          className={`md-nav-item w-full ${isRail ? 'justify-center' : ''}`}
+          className={`md-nav-item desk-sidebar-item w-full ${isRail ? 'justify-center' : ''}`}
           style={isRail ? { padding: 0 } : undefined}
           title={isRail ? 'Sign Out' : undefined}
           aria-label="Sign Out"
@@ -321,7 +321,7 @@ const DrawerContent = memo(function DrawerContent({
         </button>
         {!isRail && (
           <div className="flex items-center gap-2 mt-3 px-4">
-            <div className="w-2 h-2 rounded-full bg-success" />
+            <div className="w-2 h-2 rounded-full" style={{ background: 'var(--desk-success)' }} />
             <p className="md-typescale-label-small text-muted">v2.0.0</p>
           </div>
         )}
@@ -456,9 +456,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <motion.aside
         animate={{ width: collapsed ? 64 : 260 }}
         transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-        className="hidden md:flex flex-col justify-between shrink-0 bg-background overflow-hidden"
+        data-shell-sidebar
+        className="hidden md:flex flex-col justify-between shrink-0 overflow-hidden"
         style={{
-          borderRight: '1px solid var(--border)',
+          borderRight: '1px solid var(--desk-border)',
+          background: 'var(--desk-surface)',
         }}
       >
         <DrawerContent isMobile={false} collapsed={collapsed} pathname={pathname} isGlobalAdmin={isGlobalAdmin} isFactoryStaff={isFactoryStaff} onToggle={toggleSidebar} onLogout={handleLogout} />
@@ -472,7 +474,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 md:hidden bg-black/40 backdrop-blur-sm"
+              className="fixed inset-0 z-40 md:hidden bg-black/30"
               onClick={() => setMobileOpen(false)}
             />
             <motion.aside
@@ -481,10 +483,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed top-0 left-0 z-50 h-full flex flex-col md:hidden bg-background overflow-hidden"
+              data-shell-sidebar
+              className="fixed top-0 left-0 z-50 h-full flex flex-col md:hidden overflow-hidden"
               style={{
                 width: 256,
-                borderRight: '1px solid var(--border)',
+                borderRight: '1px solid var(--desk-border)',
+                background: 'var(--desk-surface)',
               }}
             >
               <DrawerContent isMobile={true} collapsed={collapsed} pathname={pathname} isGlobalAdmin={isGlobalAdmin} isFactoryStaff={isFactoryStaff} onToggle={toggleSidebar} onLogout={handleLogout} />
@@ -497,15 +501,18 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* ── Top App Bar ── */}
         <header
-          className="h-14 flex items-center justify-between px-4 shrink-0 gap-4 glass-premium sticky top-0 z-30"
-          style={{ borderBottom: '1px solid var(--border)', background: 'transparent' }}
+          className="h-14 flex items-center justify-between px-4 shrink-0 gap-4 sticky top-0 z-30"
+          style={{
+            borderBottom: '1px solid var(--desk-border)',
+            background: 'var(--desk-surface)',
+          }}
         >
           {/* Left section */}
           <div className="flex items-center gap-2 min-w-0">
             <Button
               variant="ghost"
               isIconOnly
-              className="md:hidden w-9 h-9 min-w-0 text-muted"
+              className="desk-btn-ghost md:hidden w-9 h-9 min-w-0 p-0"
               onPress={() => setMobileOpen(true)}
               aria-label="Open navigation"
             >
@@ -550,7 +557,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <Button
               variant="ghost"
               isIconOnly
-              className="w-9 h-9 min-w-0 text-muted"
+              className="desk-btn-ghost w-9 h-9 min-w-0 p-0"
               onPress={() => { setSearchOpen(true); setTimeout(() => searchRef.current?.focus(), 100); }}
               aria-label="Search (Ctrl+K)"
             >
@@ -562,7 +569,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               <Button
                 variant="ghost"
                 isIconOnly
-                className="w-9 h-9 min-w-0 text-muted relative"
+                className="desk-btn-ghost w-9 h-9 min-w-0 p-0 relative"
                 aria-label="Notifications"
                 onPress={() => setNotifOpen(p => !p)}
               >
@@ -576,8 +583,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                       width: unreadCount > 9 ? 18 : 16,
                       height: 16,
                       borderRadius: 8,
-                      background: 'var(--color-md-error)',
-                      color: 'var(--color-md-on-error)',
+                      background: 'var(--desk-danger)',
+                      color: '#ffffff',
                       fontSize: 10,
                       fontWeight: 600,
                       display: 'flex',
@@ -668,16 +675,17 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-200 flex items-start justify-center pt-20 bg-black/40 backdrop-blur-md"
+              className="fixed inset-0 z-200 flex items-start justify-center pt-20 bg-black/30"
               onClick={(e) => { if (e.target === e.currentTarget) { setSearchOpen(false); setSearchQuery(''); } }}
             >
               <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: -20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                className="w-full max-w-lg mx-4 md-shape-xl overflow-hidden glass-effect shadow-premium"
+                className="w-full max-w-lg mx-4 overflow-hidden desk-card"
+                style={{ borderRadius: 16 }}
               >
-                <div className="md-search-bar" style={{ borderRadius: '28px 28px 0 0', height: 56 }}>
+                <div className="md-search-bar" style={{ borderRadius: '16px 16px 0 0', height: 56, borderBottom: '1px solid var(--desk-border)' }}>
                   <Icon name="search" />
                   <input
                     ref={searchRef}
@@ -690,7 +698,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                   <kbd
                     className="hidden sm:inline-flex items-center px-1.5 h-5 md-typescale-label-small md-shape-xs text-muted"
                     style={{
-                      border: '1px solid var(--border)',
+                      border: '1px solid var(--desk-border)',
                       fontSize: 10,
                     }}
                   >
@@ -726,7 +734,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </AnimatePresence>
 
         {/* ── Page content ── */}
-        <main className="flex-1 overflow-y-auto bg-background/50">
+        <main className="flex-1 overflow-y-auto" style={{ background: 'var(--desk-canvas)' }}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={pathname}

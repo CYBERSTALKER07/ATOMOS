@@ -89,7 +89,7 @@ export default function RefundsPage() {
         </p>
       </div>
 
-      <div className="md-card md-elevation-1 md-shape-md p-4 grid grid-cols-1 md:grid-cols-4 gap-3" style={{ background: 'var(--color-md-surface)' }}>
+      <div className="desk-card p-4 grid grid-cols-1 md:grid-cols-4 gap-3" style={{ background: 'var(--desk-surface)' }}>
         <input
           value={orderId}
           onChange={(e) => setOrderId(e.target.value)}
@@ -127,7 +127,7 @@ export default function RefundsPage() {
           body="Load an order to inspect existing refunds or initiate a new one."
         />
       ) : (
-        <div className="md-card md-elevation-1 md-shape-md overflow-hidden" style={{ background: 'var(--color-md-surface)' }}>
+        <div className="desk-card overflow-hidden" style={{ background: 'var(--desk-surface)' }}>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b" style={{ borderColor: 'var(--color-md-outline-variant)' }}>

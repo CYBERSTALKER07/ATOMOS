@@ -22,11 +22,11 @@ export default function IntelligencePage() {
   if (loading) {
     return (
       <div className="p-6">
-        <h1 className="md-typescale-headline-small mb-6" style={{ color: 'var(--color-md-on-surface)' }}>
+        <h1 className="md-typescale-headline-small mb-6" style={{ color: 'var(--desk-text-primary)' }}>
           Intelligence Vector
         </h1>
         <div className="flex items-center justify-center h-64">
-          <div className="md-typescale-body-medium" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+          <div className="md-typescale-body-medium" style={{ color: 'var(--desk-text-secondary)' }}>
             Initializing analytics...
           </div>
         </div>
@@ -37,12 +37,12 @@ export default function IntelligencePage() {
   if (error) {
     return (
       <div className="p-6">
-        <h1 className="md-typescale-headline-small mb-6" style={{ color: 'var(--color-md-on-surface)' }}>
+        <h1 className="md-typescale-headline-small mb-6" style={{ color: 'var(--desk-text-primary)' }}>
           Intelligence Vector
         </h1>
         <div
-          className="md-card md-elevation-1 md-shape-md p-6 flex items-center justify-center h-48"
-          style={{ background: 'var(--color-md-error-container)', color: 'var(--color-md-on-error-container)' }}
+          className="desk-card p-6 flex items-center justify-center h-48"
+          style={{ background: 'var(--desk-danger-soft)', color: 'var(--desk-danger)' }}
         >
           <span className="md-typescale-body-medium">Analytics fault: {error}</span>
         </div>
@@ -52,44 +52,44 @@ export default function IntelligencePage() {
 
   return (
     <div className="p-6">
-      <h1 className="md-typescale-headline-small mb-6" style={{ color: 'var(--color-md-on-surface)' }}>
+      <h1 className="md-typescale-headline-small mb-6" style={{ color: 'var(--desk-text-primary)' }}>
         Intelligence Vector
       </h1>
 
       <BentoGrid>
         {/* Row 1: Throughput (wide) + Transit Heatmap */}
-        <BentoCard span={3} delay={0} className="min-h-[340px]">
+        <BentoCard span={3} delay={0} className="min-h-85">
           <div
-            className="md-card md-elevation-1 md-shape-md p-5 h-full"
-            style={{ background: 'var(--color-md-surface-container)' }}
+            className="desk-card p-5 h-full"
+            style={{ background: 'var(--desk-surface)' }}
           >
             <ThroughputChart data={throughput} />
           </div>
         </BentoCard>
 
-        <BentoCard span={1} delay={60} className="min-h-[340px]">
+        <BentoCard span={1} delay={60} className="min-h-85">
           <div
-            className="md-card md-elevation-1 md-shape-md p-5 h-full"
-            style={{ background: 'var(--color-md-surface-container)' }}
+            className="desk-card p-5 h-full"
+            style={{ background: 'var(--desk-surface)' }}
           >
             <TransitHeatmap data={transitHeatmap} />
           </div>
         </BentoCard>
 
         {/* Row 2: Load Distribution + SLA Health */}
-        <BentoCard span={2} delay={120} className="min-h-[320px]">
+        <BentoCard span={2} delay={120} className="min-h-80">
           <div
-            className="md-card md-elevation-1 md-shape-md p-5 h-full"
-            style={{ background: 'var(--color-md-surface-container)' }}
+            className="desk-card p-5 h-full"
+            style={{ background: 'var(--desk-surface)' }}
           >
             <LoadDistribution data={loadDistribution} />
           </div>
         </BentoCard>
 
-        <BentoCard span={2} delay={180} className="min-h-[320px]">
+        <BentoCard span={2} delay={180} className="min-h-80">
           <div
-            className="md-card md-elevation-1 md-shape-md p-5 h-full"
-            style={{ background: 'var(--color-md-surface-container)' }}
+            className="desk-card p-5 h-full"
+            style={{ background: 'var(--desk-surface)' }}
           >
             <SLAHealth data={slaHealth} />
           </div>
@@ -98,8 +98,8 @@ export default function IntelligencePage() {
         {/* Row 3: Node Efficiency (full width) */}
         <BentoCard span={4} delay={240}>
           <div
-            className="md-card md-elevation-1 md-shape-md p-5"
-            style={{ background: 'var(--color-md-surface-container)' }}
+            className="desk-card p-5"
+            style={{ background: 'var(--desk-surface)' }}
           >
             <NodeEfficiency data={nodeEfficiency} />
           </div>
