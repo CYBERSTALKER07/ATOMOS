@@ -1,7 +1,16 @@
-'use client';
+"use client";
 
 import { useState } from "react";
-import { X, Ticket, CreditCard, Loader2 } from "lucide-react";
+import {
+  X,
+  Ticket,
+  CreditCard,
+  Loader2,
+  ShieldCheck,
+  Truck,
+  ChevronRight,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../lib/cart";
 import { apiFetch } from "../lib/auth";
 import { useRouter } from "next/navigation";
@@ -13,11 +22,13 @@ import type {
 } from "../lib/types";
 
 function getProfile(): RetailerProfile | null {
-  if (typeof localStorage === 'undefined') return null;
+  if (typeof localStorage === "undefined") return null;
   try {
-    const raw = localStorage.getItem('retailer_profile');
+    const raw = localStorage.getItem("retailer_profile");
     return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 interface CheckoutModalProps {
@@ -26,32 +37,35 @@ interface CheckoutModalProps {
   total: number;
 }
 
-export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalProps) {
+export default function CheckoutModal({
+  isOpen,
+  onClose,
+  total,
+}: CheckoutModalProps) {
   const { items, clearCart } = useCart();
-  const [method, setMethod] = useState<'global_pay'|'cash'>('global_pay');
+  const [method, setMethod] = useState<"global_pay" | "cash">("global_pay");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [oosItems, setOosItems] = useState<string[]>([]);
   const router = useRouter();
 
   const handleCheckout = async () => {
     if (items.length === 0) return;
     setLoading(true);
-    setError('');
+    setError("");
     setOosItems([]);
 
     try {
       const profile = getProfile();
-      if (!profile?.id) throw new Error('Retailer profile not found. Please log in again.');
+      if (!profile?.id)
+        throw new Error("Retailer profile not found. Please log in again.");
 
-      // Map payment method to backend gateway name
       const gatewayMap: Record<string, string> = {
-        cash: 'CASH',
-        global_pay: 'GLOBAL_PAY',
+        cash: "CASH",
+        global_pay: "GLOBAL_PAY",
       };
 
-      // Build line items matching backend UnifiedCheckoutRequest shape
-      const lineItems = items.map(item => ({
+      const lineItems = items.map((item) => ({
         sku_id: item.product_id,
         quantity: item.quantity,
         unit_price: item.price,
@@ -59,15 +73,16 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
       const cartKey = lineItems
         .map((item) => `${item.sku_id}:${item.quantity}:${item.unit_price}`)
         .sort()
-        .join('|');
+        .join("|");
 
-      // 1. Fan-out Cart via unified checkout
-      const cartRes = await apiFetch('/v1/checkout/unified', {
-        method: 'POST',
-        headers: { 'Idempotency-Key': `retailer-checkout:${method}:${cartKey}` },
+      const cartRes = await apiFetch("/v1/checkout/unified", {
+        method: "POST",
+        headers: {
+          "Idempotency-Key": `retailer-checkout:${method}:${cartKey}`,
+        },
         body: JSON.stringify({
           retailer_id: profile.id,
-          payment_gateway: gatewayMap[method] || 'GLOBAL_PAY',
+          payment_gateway: gatewayMap[method] || "GLOBAL_PAY",
           latitude: 0,
           longitude: 0,
           items: lineItems,
@@ -76,159 +91,231 @@ export default function CheckoutModal({ isOpen, onClose, total }: CheckoutModalP
 
       if (!cartRes.ok) {
         const errBody = await cartRes.json().catch(() => null);
-        if (cartRes.status === 409 && errBody?.code === 'ALL_ITEMS_OUT_OF_STOCK') {
+        if (
+          cartRes.status === 409 &&
+          errBody?.code === "ALL_ITEMS_OUT_OF_STOCK"
+        ) {
           setOosItems(errBody.oos_items || []);
-          throw new Error('All items are out of stock. Please update your cart.');
+          throw new Error(
+            "All items are out of stock. Please update your cart.",
+          );
         }
-        throw new Error(errBody?.error || 'Failed to create orders from cart');
+        throw new Error(errBody?.error || "Failed to create orders from cart");
       }
       const cartData: UnifiedCheckoutResponse = await cartRes.json();
       const supplierOrders = cartData.supplier_orders || [];
 
-      // 2. Initiate payment for each supplier order
-      if (['global_pay'].includes(method)) {
+      if (["global_pay"].includes(method)) {
         for (const so of supplierOrders) {
-          const payRes = await apiFetch('/v1/order/card-checkout', {
-            method: 'POST',
-            headers: { 'Idempotency-Key': `retailer-card-checkout:${so.order_id}:${gatewayMap[method]}` },
+          const payRes = await apiFetch("/v1/order/card-checkout", {
+            method: "POST",
+            headers: {
+              "Idempotency-Key": `retailer-card-checkout:${so.order_id}:${gatewayMap[method]}`,
+            },
             body: JSON.stringify({
               order_id: so.order_id,
               gateway: gatewayMap[method],
               amount: so.total,
-              return_url: 'retailer-app://orders',
+              return_url: "retailer-app://orders",
             }),
           });
-          if (!payRes.ok) throw new Error(`Payment initiation failed for order ${so.order_id}`);
+          if (!payRes.ok)
+            throw new Error(
+              `Payment initiation failed for order ${so.order_id}`,
+            );
           const payData: CardCheckoutResponse = await payRes.json();
           if (payData.payment_url) {
-            window.open(payData.payment_url, '_blank');
+            window.open(payData.payment_url, "_blank");
           }
         }
-      } else if (method === 'cash') {
+      } else if (method === "cash") {
         for (const so of supplierOrders) {
-          const payRes = await apiFetch('/v1/order/cash-checkout', {
-            method: 'POST',
-            headers: { 'Idempotency-Key': `retailer-cash-checkout:${so.order_id}` },
+          const payRes = await apiFetch("/v1/order/cash-checkout", {
+            method: "POST",
+            headers: {
+              "Idempotency-Key": `retailer-cash-checkout:${so.order_id}`,
+            },
             body: JSON.stringify({ order_id: so.order_id }),
           });
-          if (!payRes.ok) throw new Error(`Cash checkout failed for order ${so.order_id}`);
-          await payRes.json() as Promise<CashCheckoutResponse>;
+          if (!payRes.ok)
+            throw new Error(`Cash checkout failed for order ${so.order_id}`);
+          await ((await payRes.json()) as Promise<CashCheckoutResponse>);
         }
       }
 
       clearCart();
       onClose();
-      router.push('/orders');
+      router.push("/orders");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Checkout failed');
+      setError(err instanceof Error ? err.message : "Checkout failed");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      
-      <div className="relative w-full max-w-2xl rounded-[28px] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform animate-fade-in-up" style={{ background: 'var(--background)' }}>
-        
-        <div className="px-8 py-6 border-b border-[var(--border)] flex items-center justify-between" style={{ background: 'var(--background)' }}>
-          <h2 className="md-typescale-headline-small font-bold text-foreground">
-            Checkout & Payment
-          </h2>
-          <button 
-            onClick={onClose} 
-            className="w-10 h-10 flex items-center justify-center rounded-full text-muted hover:text-foreground transition-all" style={{ background: 'var(--surface)' }}
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-8" style={{ background: 'var(--background)' }}>
-          {error && (
-            <div className="p-4 rounded-xl" style={{ background: 'rgba(220,38,38,0.08)', color: 'var(--danger)' }}>
-              <p>{error}</p>
-              {oosItems.length > 0 && (
-                <ul className="mt-2 text-sm opacity-80 list-disc pl-4">
-                  {oosItems.map(sku => <li key={sku}>{sku}</li>)}
-                </ul>
-              )}
-            </div>
-          )}
-
-          <div className="p-6 rounded-2xl border border-[var(--border)] flex items-center justify-between" style={{ background: 'var(--surface)' }}>
-            <div>
-              <p className="md-typescale-body-medium text-muted uppercase tracking-wider font-semibold mb-1">Total Due</p>
-              <h3 className="md-typescale-display-small font-bold" style={{ color: 'var(--accent)' }}>{total.toLocaleString()}</h3>
-            </div>
-            <div className="text-right">
-              <p className="md-typescale-body-medium text-muted mb-1">Delivery Estimate</p>
-              <p className="md-typescale-title-medium font-semibold text-foreground">Tomorrow</p>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="md-typescale-title-medium font-bold text-foreground mb-4">
-              Select Payment Gateway
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div 
-                onClick={() => setMethod('cash')}
-                className={`border p-5 rounded-2xl cursor-pointer transition-all flex items-center gap-4 ${method === 'cash' ? 'border-[var(--warning)] bg-[var(--warning)]/8' : 'border-[var(--border)] hover:border-[var(--warning)] hover:bg-[var(--warning)]/4'}`}
-              >
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-muted" style={{ background: 'var(--surface)' }}>
-                  <Ticket size={24} />
-                </div>
-                <div>
-                  <h4 className="md-typescale-title-medium font-bold text-foreground">Cash on Delivery</h4>
-                  <p className="md-typescale-body-small text-muted flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full" style={{ background: 'var(--warning)' }} />
-                    Available for overrides
-                  </p>
-                </div>
-              </div>
-
-              <div 
-                onClick={() => setMethod('global_pay')}
-                className={`border p-5 rounded-2xl cursor-pointer transition-all flex items-center gap-4 ${method === 'global_pay' ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/3'}`}
-              >
-                <div className="w-12 h-12 bg-cyan-500/10 text-cyan-600 rounded-xl flex items-center justify-center">
-                  <CreditCard size={24} />
-                </div>
-                <div>
-                  <h4 className="md-typescale-title-medium font-bold text-foreground">Global Pay</h4>
-                  <p className="md-typescale-body-small text-muted flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full" style={{ background: 'var(--success)' }} />
-                    Credit & Debit Cards
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-8 py-6 border-t border-[var(--border)] flex justify-end gap-3" style={{ background: 'var(--background)' }}>
-          <button 
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-[#0a0a0a]/60 backdrop-blur-md"
             onClick={onClose}
-            disabled={loading}
-            className="md-btn px-6 py-2.5 rounded-full font-bold text-muted hover:bg-surface transition-colors"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={handleCheckout}
-            disabled={loading || items.length === 0}
-            className="md-btn md-btn-filled flex items-center justify-center gap-2 px-8 py-2.5 rounded-full font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
-            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}
-          >
-            {loading ? <Loader2 size={18} className="animate-spin" /> : 'Confirm & Pay'}
-          </button>
-        </div>
+          />
 
-      </div>
-    </div>
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            className="relative w-full max-w-2xl bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+          >
+            {/* Header */}
+            <div className="px-8 py-6 border-b border-[var(--desk-border)] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] flex items-center justify-center">
+                  <ShieldCheck size={22} />
+                </div>
+                <div>
+                  <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                    Trade Settlement
+                  </h2>
+                  <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                    Secure Operational Protocol
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-10 h-10 rounded-full hover:bg-[var(--desk-surface-subtle)] flex items-center justify-center transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 space-y-8">
+              {error && (
+                <div className="p-4 rounded-xl bg-red-50 border border-red-100 flex items-start gap-3">
+                  <XCircle className="text-red-500 mt-0.5" size={18} />
+                  <div>
+                    <p className="text-red-800 font-bold text-sm">
+                      Execution Interrupted
+                    </p>
+                    <p className="text-red-600 text-xs mt-0.5">{error}</p>
+                    {oosItems.length > 0 && (
+                      <ul className="mt-2 text-xs text-red-500 list-disc pl-4 space-y-1">
+                        {oosItems.map((sku) => (
+                          <li key={sku}>{sku}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="p-6 rounded-2xl bg-[var(--desk-text-primary)] text-white shadow-xl flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest opacity-60 mb-2">
+                    Total Settlement Amount
+                  </p>
+                  <h3 className="md-typescale-display-small font-bold tabular-nums">
+                    {total.toLocaleString()}{" "}
+                    <small className="text-sm opacity-40 ml-0.5 uppercase">
+                      UZS
+                    </small>
+                  </h3>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-2 justify-end mb-2">
+                    <Truck size={16} className="opacity-60" />
+                    <span className="text-xs font-bold uppercase tracking-widest opacity-60">
+                      Estimated Arrival
+                    </span>
+                  </div>
+                  <p className="md-typescale-title-medium font-bold uppercase tracking-tighter">
+                    Immediate Route
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="md-typescale-label-small uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] mb-4">
+                  Select Settlement Gateway
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div
+                    onClick={() => setMethod("cash")}
+                    className={`p-5 rounded-2xl border-2 transition-all cursor-pointer group ${method === "cash" ? "border-[var(--desk-accent)] bg-[var(--desk-accent-soft)] shadow-md" : "border-[var(--desk-border)] hover:border-[var(--desk-border-strong)] bg-[var(--desk-surface)]"}`}
+                  >
+                    <div
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors ${method === "cash" ? "bg-[var(--desk-accent)] text-white" : "bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)] group-hover:text-[var(--desk-text-primary)]"}`}
+                    >
+                      <Ticket size={24} />
+                    </div>
+                    <h4
+                      className={`md-typescale-title-small font-bold transition-colors ${method === "cash" ? "text-[var(--desk-accent)]" : "text-[var(--desk-text-primary)]"}`}
+                    >
+                      Physical Settlement
+                    </h4>
+                    <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">
+                      Cash payment on node arrival.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => setMethod("global_pay")}
+                    className={`p-5 rounded-2xl border-2 transition-all cursor-pointer group ${method === "global_pay" ? "border-[var(--desk-accent)] bg-[var(--desk-accent-soft)] shadow-md" : "border-[var(--desk-border)] hover:border-[var(--desk-border-strong)] bg-[var(--desk-surface)]"}`}
+                  >
+                    <div
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors ${method === "global_pay" ? "bg-[var(--desk-accent)] text-white" : "bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)] group-hover:text-[var(--desk-text-primary)]"}`}
+                    >
+                      <CreditCard size={24} />
+                    </div>
+                    <h4
+                      className={`md-typescale-title-small font-bold transition-colors ${method === "global_pay" ? "text-[var(--desk-accent)]" : "text-[var(--desk-text-primary)]"}`}
+                    >
+                      Network Transaction
+                    </h4>
+                    <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">
+                      Instant digital credit settlement.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-8 py-6 border-t border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] flex items-center justify-between">
+              <button
+                onClick={onClose}
+                disabled={loading}
+                className="text-[var(--desk-text-tertiary)] font-bold md-typescale-label-large hover:text-[var(--desk-text-primary)] transition-colors disabled:opacity-30"
+              >
+                Cancel Protocol
+              </button>
+
+              <Button
+                onClick={handleCheckout}
+                disabled={loading || items.length === 0}
+                className="bg-[var(--desk-text-primary)] text-white font-bold h-12 px-10 rounded-xl shadow-xl transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100 flex items-center gap-3"
+              >
+                {loading ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <>
+                    Execute Order <ChevronRight size={18} />
+                  </>
+                )}
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
+}
+
+function XCircle({ className, size }: { className?: string; size?: number }) {
+  return <X className={className} size={size} />;
 }

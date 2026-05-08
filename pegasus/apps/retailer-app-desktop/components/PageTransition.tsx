@@ -9,19 +9,26 @@ interface PageTransitionProps {
   className?: string;
 }
 
-export default function PageTransition({ children, className = "" }: PageTransitionProps) {
+export default function PageTransition({
+  children,
+  className = "",
+}: PageTransitionProps) {
   const pathname = usePathname();
   const shouldReduceMotion = useReducedMotion();
 
+  // Calm, high-fidelity transition: subtle fade + layout shift
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="popLayout">
       <motion.div
         key={pathname}
-        initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, filter: "blur(2px)" }}
-        animate={{ opacity: 1, filter: "blur(0px)" }}
-        exit={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, filter: "blur(1px)" }}
-        transition={{ duration: shouldReduceMotion ? 0.01 : 0.22, ease: [0.2, 0, 0, 1] }}
-        className={`w-full h-full ${className}`}
+        initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: -4 }}
+        transition={{
+          duration: shouldReduceMotion ? 0.01 : 0.2,
+          ease: [0.2, 0, 0, 1], // Canonical Standard Ease
+        }}
+        className={`w-full min-h-full ${className}`}
       >
         {children}
       </motion.div>

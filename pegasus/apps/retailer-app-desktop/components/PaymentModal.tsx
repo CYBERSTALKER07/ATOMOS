@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { CreditCard, Banknote, X, Loader2, ExternalLink } from "lucide-react";
+import {
+  CreditCard,
+  Banknote,
+  X,
+  Loader2,
+  ExternalLink,
+  ShieldCheck,
+  CheckCircle2,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { PaymentRequiredEvent } from "@pegasus/types";
 import { useWsEvent, type WsMessage } from "../lib/ws";
 import { apiFetch } from "../lib/auth";
@@ -16,7 +25,7 @@ type PaymentEvent = PaymentRequiredEvent & {
 type PaymentState = "idle" | "choosing" | "processing" | "success" | "error";
 
 function formatAmount(amount: number): string {
-  return amount.toLocaleString("en-US").replace(/,/g, " ") + "";
+  return amount.toLocaleString("en-US").replace(/,/g, " ");
 }
 
 /* ── Component ── */
@@ -27,7 +36,6 @@ export default function PaymentModal() {
   const [error, setError] = useState<string | null>(null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
-  // Listen for PAYMENT_REQUIRED WS events
   useWsEvent(
     "PAYMENT_REQUIRED",
     useCallback((msg: WsMessage) => {
@@ -41,7 +49,9 @@ export default function PaymentModal() {
         payment_method: msg.payment_method as string,
         gateway: msg.gateway as PaymentRequiredEvent["gateway"],
         currency: msg.currency as string,
-        available_card_gateways: msg.available_card_gateways as string[] | undefined,
+        available_card_gateways: msg.available_card_gateways as
+          | string[]
+          | undefined,
         message: (msg.message as string | undefined) ?? "",
       };
       setEvent(evt);
@@ -64,7 +74,9 @@ export default function PaymentModal() {
         payment_method: msg.payment_method as string,
         gateway: msg.gateway as PaymentRequiredEvent["gateway"],
         currency: msg.currency as string,
-        available_card_gateways: msg.available_card_gateways as string[] | undefined,
+        available_card_gateways: msg.available_card_gateways as
+          | string[]
+          | undefined,
         message: (msg.message as string | undefined) ?? "",
       };
       setEvent(evt);
@@ -74,31 +86,36 @@ export default function PaymentModal() {
     }, []),
   );
 
-  // Listen for PAYMENT_SETTLED — auto-dismiss
   useWsEvent(
     "PAYMENT_SETTLED",
-    useCallback((msg: WsMessage) => {
-      if (event && msg.order_id === event.order_id) {
-        setState("success");
-        setTimeout(() => {
-          setEvent(null);
-          setState("idle");
-        }, 2000);
-      }
-    }, [event]),
+    useCallback(
+      (msg: WsMessage) => {
+        if (event && msg.order_id === event.order_id) {
+          setState("success");
+          setTimeout(() => {
+            setEvent(null);
+            setState("idle");
+          }, 2000);
+        }
+      },
+      [event],
+    ),
   );
 
   useWsEvent(
     "GLOBAL_PAYNT_SETTLED",
-    useCallback((msg: WsMessage) => {
-      if (event && msg.order_id === event.order_id) {
-        setState("success");
-        setTimeout(() => {
-          setEvent(null);
-          setState("idle");
-        }, 2000);
-      }
-    }, [event]),
+    useCallback(
+      (msg: WsMessage) => {
+        if (event && msg.order_id === event.order_id) {
+          setState("success");
+          setTimeout(() => {
+            setEvent(null);
+            setState("idle");
+          }, 2000);
+        }
+      },
+      [event],
+    ),
   );
 
   const dismiss = useCallback(() => {
@@ -156,7 +173,6 @@ export default function PaymentModal() {
           setCheckoutUrl(data.payment_url);
           window.open(data.payment_url, "_blank", "noopener");
         }
-        // Stay in processing until PAYMENT_SETTLED WS event arrives
       } catch (err) {
         setError(err instanceof Error ? err.message : "Card checkout failed");
         setState("choosing");
@@ -165,157 +181,172 @@ export default function PaymentModal() {
     [event],
   );
 
-  // Don't render unless there's an active payment event
   if (!event || state === "idle") return null;
 
   const gateways = event.available_card_gateways ?? [];
-  const amended = event.original_amount && event.original_amount !== event.amount;
+  const amended =
+    event.original_amount && event.original_amount !== event.amount;
 
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0"
-        style={{ background: "rgba(15, 17, 21, 0.4)" }}
-      >
-        {/* Modal */}
-        <div
-          className="relative w-full max-w-md rounded-xl p-6 border border-[var(--border)]"
-          style={{
-            background: "var(--background)",
-            border: "1px solid var(--border)",
-            boxShadow: "0 12px 32px rgba(0,0,0,0.14)",
-          }}
-        >
-          {/* Close */}
-          <button
-            onClick={dismiss}
-            className="absolute right-4 top-4 rounded-full p-1 transition-colors hover:bg-[var(--surface)]"
-          >
-            <X size={18} style={{ color: "var(--muted)" }} />
-          </button>
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 bg-[#0a0a0a]/60 backdrop-blur-md"
+          onClick={dismiss}
+        />
 
-          {/* Success State */}
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.95, opacity: 0, y: 20 }}
+          className="relative w-full max-w-md bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-3xl shadow-2xl overflow-hidden"
+        >
           {state === "success" ? (
-            <div className="flex flex-col items-center gap-4 py-8">
-              <div
-                className="flex h-16 w-16 items-center justify-center rounded-full"
-                style={{ background: "var(--success)", color: "white" }}
-              >
-                <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
+            <div className="flex flex-col items-center gap-4 py-16 px-6 text-center">
+              <div className="w-20 h-20 rounded-full bg-[var(--desk-success)] flex items-center justify-center text-white shadow-xl">
+                <CheckCircle2 size={40} />
               </div>
-              <p className="md-typescale-title-medium" style={{ color: "var(--foreground)" }}>
-                Payment confirmed
-              </p>
+              <div>
+                <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                  Payment Settled
+                </h2>
+                <p className="md-typescale-body-medium text-[var(--desk-text-secondary)] mt-1">
+                  Order #{event.order_id.slice(-8)} transition complete
+                </p>
+              </div>
             </div>
           ) : (
             <>
               {/* Header */}
-              <div className="mb-6">
-                <p className="md-typescale-title-large" style={{ color: "var(--foreground)" }}>
-                  Payment Required
-                </p>
-                <p className="md-typescale-body-small mt-1" style={{ color: "var(--muted)" }}>
-                  Order {event.order_id.slice(0, 8)} · Delivery complete
-                </p>
-              </div>
-
-              {/* Amount */}
-              <div className="mb-6 rounded-xl p-4" style={{ background: "var(--surface)" }}>
-                <p className="md-typescale-label-small uppercase tracking-widest" style={{ color: "var(--muted)" }}>
-                  Amount Due
-                </p>
-                <p className="md-typescale-headline-small tabular-nums mt-1" style={{ color: "var(--foreground)" }}>
-                  {formatAmount(event.amount)}
-                </p>
-                {amended && (
-                  <p className="md-typescale-body-small mt-1" style={{ color: "var(--warning)" }}>
-                    Amended from {formatAmount(event.original_amount!)}
-                  </p>
-                )}
-              </div>
-
-              {/* Error */}
-              {error && (
-                <div className="mb-4 rounded-xl p-3" style={{ background: "var(--danger)", color: "white" }}>
-                  <p className="md-typescale-body-small">{error}</p>
+              <div className="p-6 border-b border-[var(--desk-border)] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] flex items-center justify-center">
+                    <ShieldCheck size={22} />
+                  </div>
+                  <div>
+                    <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                      Payment Required
+                    </h2>
+                    <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
+                      Node ID: #{event.order_id.slice(-8)}
+                    </p>
+                  </div>
                 </div>
-              )}
+                <button
+                  onClick={dismiss}
+                  className="w-10 h-10 rounded-full hover:bg-[var(--desk-surface-subtle)] flex items-center justify-center transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
 
-              {/* Processing */}
-              {state === "processing" ? (
-                <div className="flex flex-col items-center gap-3 py-4">
-                  <Loader2 size={24} className="animate-spin" style={{ color: "var(--muted)" }} />
-                  <p className="md-typescale-body-medium" style={{ color: "var(--muted)" }}>
-                    {checkoutUrl ? "Waiting for payment confirmation..." : "Processing..."}
+              <div className="p-6 space-y-6">
+                {/* Amount */}
+                <div className="p-6 rounded-2xl bg-[var(--desk-text-primary)] text-white shadow-xl relative overflow-hidden">
+                  <div className="absolute right-0 top-0 w-24 h-24 bg-white opacity-5 rotate-12 translate-x-4 -translate-y-4" />
+                  <p className="text-xs font-bold uppercase tracking-widest opacity-60 mb-2">
+                    Node Settlement Amount
                   </p>
-                  {checkoutUrl && (
-                    <a
-                      href={checkoutUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 md-typescale-label-large"
-                      style={{ color: "var(--accent)" }}
-                    >
-                      Open payment page <ExternalLink size={14} />
-                    </a>
+                  <h3 className="md-typescale-display-small font-bold tabular-nums">
+                    {formatAmount(event.amount)}{" "}
+                    <small className="text-sm opacity-40 uppercase ml-0.5">
+                      UZS
+                    </small>
+                  </h3>
+                  {amended && (
+                    <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
+                      <span className="text-[10px] font-bold opacity-60 uppercase">
+                        Amended Baseline
+                      </span>
+                      <span className="text-xs font-bold line-through opacity-40">
+                        {formatAmount(event.original_amount!)}
+                      </span>
+                    </div>
                   )}
                 </div>
-              ) : (
-                /* Payment Options */
-                <div className="space-y-3">
-                  {/* Cash */}
-                  <button
-                    onClick={handleCash}
-                    className="flex w-full items-center gap-3 rounded-xl p-4 text-left transition-colors hover:bg-[var(--surface)]"
-                    style={{ border: "1px solid var(--border)" }}
-                  >
-                    <div
-                      className="flex h-10 w-10 items-center justify-center rounded-xl"
-                      style={{ background: "var(--surface)" }}
-                    >
-                      <Banknote size={20} style={{ color: "var(--foreground)" }} />
-                    </div>
+
+                {error && (
+                  <div className="p-4 rounded-xl bg-red-50 border border-red-100 flex items-center gap-3 text-red-600">
+                    <AlertTriangle size={18} />
+                    <p className="text-xs font-bold">{error}</p>
+                  </div>
+                )}
+
+                {state === "processing" ? (
+                  <div className="flex flex-col items-center gap-4 py-8 text-center">
+                    <Loader2
+                      size={32}
+                      className="animate-spin text-[var(--desk-accent)]"
+                    />
                     <div>
-                      <p className="md-typescale-title-small" style={{ color: "var(--foreground)" }}>Pay Cash</p>
-                      <p className="md-typescale-body-small" style={{ color: "var(--muted)" }}>
-                        Driver will collect at your location
+                      <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)]">
+                        {checkoutUrl
+                          ? "Gateway Synchronizing..."
+                          : "Initializing..."}
+                      </p>
+                      <p className="text-xs text-[var(--desk-text-tertiary)] mt-1">
+                        Do not close this protocol
                       </p>
                     </div>
-                  </button>
-
-                  {/* Card Gateways */}
-                  {gateways.map((gw) => (
-                    <button
-                      key={gw}
-                      onClick={() => handleCard(gw)}
-                      className="flex w-full items-center gap-3 rounded-xl p-4 text-left transition-colors hover:bg-[var(--surface)]"
-                      style={{ border: "1px solid var(--border)" }}
-                    >
-                      <div
-                        className="flex h-10 w-10 items-center justify-center rounded-xl"
-                        style={{ background: "var(--surface)" }}
+                    {checkoutUrl && (
+                      <a
+                        href={checkoutUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-6 h-11 rounded-xl bg-[var(--desk-accent)] text-white font-bold transition-all hover:scale-105"
                       >
-                        <CreditCard size={20} style={{ color: "var(--foreground)" }} />
+                        Open Payment Portal <ExternalLink size={16} />
+                      </a>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleCash}
+                      className="flex items-center gap-4 w-full p-4 rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] hover:border-[var(--desk-border-strong)] hover:shadow-md transition-all group"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)] flex items-center justify-center group-hover:bg-[var(--desk-accent-soft)] group-hover:text-[var(--desk-accent)] transition-colors">
+                        <Banknote size={24} />
                       </div>
-                      <div>
-                        <p className="md-typescale-title-small" style={{ color: "var(--foreground)" }}>
-                          Pay via {gw.replace(/_/g, " ")}
+                      <div className="text-left">
+                        <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                          Physical Cash Settlement
                         </p>
-                        <p className="md-typescale-body-small" style={{ color: "var(--muted)" }}>
-                          Secure card payment
+                        <p className="md-typescale-body-small text-[var(--desk-text-tertiary)]">
+                          Driver will verify at node location
                         </p>
                       </div>
                     </button>
-                  ))}
-                </div>
-              )}
+
+                    {gateways.map((gw) => (
+                      <button
+                        key={gw}
+                        onClick={() => handleCard(gw)}
+                        className="flex items-center gap-4 w-full p-4 rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] hover:border-[var(--desk-border-strong)] hover:shadow-md transition-all group"
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)] flex items-center justify-center group-hover:bg-[var(--desk-accent-soft)] group-hover:text-[var(--desk-accent)] transition-colors">
+                          <CreditCard size={24} />
+                        </div>
+                        <div className="text-left">
+                          <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                            Pay via {gw.replace(/_/g, " ")}
+                          </p>
+                          <p className="md-typescale-body-small text-[var(--desk-text-tertiary)]">
+                            Secure encrypted network trade
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </>
           )}
-        </div>
+        </motion.div>
       </div>
-    </>
+    </AnimatePresence>
   );
 }
