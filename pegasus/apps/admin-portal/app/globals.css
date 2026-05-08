@@ -87,7 +87,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
   /* Specific premium shadows */
-}
+
 
 @media (max-width: 768px) {
   .bento-grid { grid-template-columns: 1fr; grid-auto-rows: auto; }

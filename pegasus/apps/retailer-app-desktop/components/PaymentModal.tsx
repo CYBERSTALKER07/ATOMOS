@@ -175,12 +175,12 @@ export default function PaymentModal() {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center"
-        style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0"
+        style={{ background: "rgba(15, 17, 21, 0.4)" }}
       >
         {/* Modal */}
         <div
-          className="relative w-full max-w-md rounded-2xl p-6"
+          className="relative w-full max-w-md rounded-xl p-6 border border-[var(--border)]"
           style={{
             background: "var(--background)",
             border: "1px solid var(--border)",

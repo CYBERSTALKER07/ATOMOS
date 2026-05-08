@@ -91,7 +91,7 @@ const DrawerContent = memo(function DrawerContent({
               isIconOnly
               onPress={onToggle}
               aria-label="Open sidebar"
-              className="w-9 h-9 min-w-0 text-muted hover-lift active-press"
+              className="w-9 h-9 min-w-0 text-muted  active-press"
             >
               <PanelLeft size={20} strokeWidth={1.75} />
             </Button>
@@ -101,7 +101,7 @@ const DrawerContent = memo(function DrawerContent({
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-3 w-full"
             >
-              <div className="w-8 h-8 flex items-center justify-center text-xs font-semibold md-shape-full shrink-0 bg-accent text-accent-foreground shadow-lg shadow-desk-accent/20">
+              <div className="w-8 h-8 flex items-center justify-center text-xs font-semibold md-shape-full shrink-0 bg-accent text-accent-foreground ">
                 <Store size={18} />
               </div>
               <div className="min-w-0 flex-1">
@@ -113,7 +113,7 @@ const DrawerContent = memo(function DrawerContent({
                   variant="ghost"
                   isIconOnly
                   onPress={onToggle}
-                  className="w-7 h-7 min-w-0 text-muted hover-lift active-press"
+                  className="w-7 h-7 min-w-0 text-muted  active-press"
                   aria-label="Collapse sidebar"
                 >
                   <PanelLeftClose size={16} strokeWidth={1.75} />
@@ -147,7 +147,7 @@ const DrawerContent = memo(function DrawerContent({
                     key={item.href}
                     href={item.href}
                     prefetch={false}
-                    className={`md-nav-item hover-lift active-press ${active ? 'md-nav-active' : ''}`}
+                    className={`md-nav-item  active-press ${active ? 'md-nav-active' : ''}`}
                     data-active={active}
                     title={isRail ? item.label : undefined}
                     aria-label={item.label}
@@ -175,7 +175,7 @@ const DrawerContent = memo(function DrawerContent({
       <div className={`py-3 transition-all duration-300 ${isRail ? 'px-2' : 'px-4'}`} style={{ borderTop: '1px solid var(--border)' }}>
         <button
           onClick={onLogout}
-          className={`md-nav-item w-full hover-lift active-press ${isRail ? 'justify-center' : ''}`}
+          className={`md-nav-item w-full  active-press ${isRail ? 'justify-center' : ''}`}
           style={isRail ? { padding: 0 } : undefined}
           title={isRail ? 'Sign Out' : undefined}
           aria-label="Sign Out"
@@ -284,7 +284,7 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
             >
               <div className="flex items-center justify-between px-4 h-14 border-b border-[var(--border)]">
                 <span className="md-typescale-title-small font-bold text-foreground">Menu</span>
-                <Button variant="ghost" isIconOnly onPress={() => setMobileOpen(false)} className="w-8 h-8 min-w-0 text-muted hover-lift active-press" aria-label="Close menu">
+                <Button variant="ghost" isIconOnly onPress={() => setMobileOpen(false)} className="w-8 h-8 min-w-0 text-muted  active-press" aria-label="Close menu">
                   <X size={20} />
                 </Button>
               </div>
@@ -309,7 +309,7 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
             <Button
               variant="ghost"
               isIconOnly
-              className="md:hidden w-10 h-10 min-w-0 -ml-2 hover-lift active-press"
+              className="md:hidden w-10 h-10 min-w-0 -ml-2  active-press"
               onPress={() => setMobileOpen(true)}
               aria-label="Open menu"
             >
@@ -354,7 +354,7 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
 
             <Button
               variant="ghost"
-              className="hidden md:flex h-10 min-w-[200px] items-center justify-between rounded-full border border-[var(--border)] bg-surface-subtle px-4 text-muted hover-lift active-press"
+              className="hidden md:flex h-10 min-w-[200px] items-center justify-between rounded-full border border-[var(--border)] bg-surface-subtle px-4 text-muted  active-press"
               aria-label="Open catalog search"
               onPress={() => router.push('/catalog')}
             >
@@ -365,14 +365,14 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
               <kbd className="px-1.5 py-0.5 rounded border border-[var(--border)] bg-background text-[10px] font-bold opacity-60">⌘K</kbd>
             </Button>
 
-            <Button variant="ghost" isIconOnly className="md:hidden w-9 h-9 min-w-0 text-muted hover-lift active-press" aria-label="Search catalog" onPress={() => router.push('/catalog')}>
+            <Button variant="ghost" isIconOnly className="md:hidden w-9 h-9 min-w-0 text-muted  active-press" aria-label="Search catalog" onPress={() => router.push('/catalog')}>
               <Search size={20} />
             </Button>
 
             <Button
               variant="ghost"
               isIconOnly
-              className="w-9 h-9 min-w-0 text-muted relative hover-lift active-press"
+              className="w-9 h-9 min-w-0 text-muted relative  active-press"
               aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
               onPress={() => router.push('/notifications')}
             >
@@ -392,7 +392,7 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
             </Button>
 
             <div className="ml-1 flex items-center gap-3 rounded-full border border-[var(--border)] bg-surface-subtle px-2.5 py-1.5 hover:border-desk-accent/40 transition-colors cursor-pointer group">
-              <div className="w-8 h-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-bold text-xs border shadow-lg shadow-desk-accent/20 group-hover:scale-105 transition-transform">
+              <div className="w-8 h-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center font-bold text-xs border  group-hover:scale-105 transition-transform">
                 {identity.initials}
               </div>
               <div className="hidden lg:flex flex-col min-w-0 max-w-[140px]">

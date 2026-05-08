@@ -179,10 +179,9 @@ export default function EmptyState({
           className="mt-6"
         >
           <Button 
-            variant="flat" 
-            color="primary"
+            variant="solid" 
             onPress={onAction}
-            className="font-bold px-8 h-12 rounded-xl hover-lift active-press"
+            className="font-bold px-8 h-12 rounded-xl active-press"
           >
             {action}
           </Button>

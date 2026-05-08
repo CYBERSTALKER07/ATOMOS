@@ -34,7 +34,7 @@ export function BentoCard({ children, span = 1, rowSpan = false, className = '',
         delay: delay / 1000, 
         ease: [0.21, 0.47, 0.32, 0.98] 
       }}
-      className={`bento-card bento-span-${span} ${rowSpan ? 'bento-row-2' : ''} hover-lift ${className}`}
+      className={`bento-card bento-span-${span} ${rowSpan ? 'bento-row-2' : ''}  ${className}`}
     >
       {children}
     </motion.div>
