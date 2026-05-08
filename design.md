@@ -1,5 +1,6 @@
 ---
 name: design-md-generator-community
+description: Canonical desktop UI contract for all Pegasus desktop surfaces.
 source_file: DESIGN.md Generator (Community)
 source_page: Page 1
 generated_at: 2026-05-08T00:00:00Z
@@ -11,6 +12,11 @@ scope: desktop-apps
 ## Context And Goals
 
 This document defines one shared desktop visual and interaction language for all Pegasus desktop surfaces.
+
+## Canonical Directive
+
+- The desktop UI system must follow this document for all desktop visual, interaction, and accessibility decisions.
+- If any other design guidance conflicts with this file, this file takes precedence.
 
 ### Source References
 

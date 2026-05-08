@@ -13,6 +13,11 @@ user-invocable: true
 
 Operationalize one desktop-first design language across all Pegasus desktop apps using the visual direction from `pegasus/assets`.
 
+## Canonical Contract Binding
+
+- Generated guidance must conform to `/design.md` at the repository root.
+- If generated guidance conflicts with `/design.md`, `/design.md` must take precedence.
+
 ## Scope
 
 This skill is for desktop UI work in:
@@ -36,6 +41,8 @@ Use a calm, high-density enterprise style:
 ## Source Inputs
 
 Before generating guidance, read visual references from `pegasus/assets` and extract:
+
+Then validate and align the output against `/design.md` before finalizing.
 
 1. shell structure (left rail, top utility bar, content canvas)
 2. hierarchy (KPI strip -> commands -> table/grid -> detail panel)

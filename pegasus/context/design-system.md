@@ -13,6 +13,10 @@ Components and identity rely on our global M3 CSS variables defined in `globals.
 ### Shared Desktop Foundation (Phase 1)
 Desktop surfaces now share a foundation stylesheet at `pegasus/packages/ui-kit/styles/desktop-foundation.css`.
 
+Canonical desktop contract source of truth: `/design.md` at repository root.
+
+If guidance in other docs conflicts with `/design.md`, `/design.md` takes precedence.
+
 - Import this file at the top of each desktop app `globals.css`.
 - Keep app-specific `globals.css` blocks additive; do not remove existing `md-*`, `button--*`, or `status-chip*` classes during rollout.
 - The foundation file is compatibility-first and centralizes baseline tokens for body, card, button, input, chip, and status-chip semantics.
