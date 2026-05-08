@@ -4,21 +4,32 @@ import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useWsEvent } from "../../../lib/ws";
 import {
-  Copy, Truck, CheckCircle2, PackageOpen, MoreVertical,
-  Clock, ArrowUpRight, Filter, AlertTriangle, XCircle, Loader2,
+  Copy,
+  Truck,
+  CheckCircle2,
+  PackageOpen,
+  MoreVertical,
+  Clock,
+  ArrowUpRight,
+  RefreshCw,
+  AlertTriangle,
+  XCircle,
+  Loader2,
 } from "lucide-react";
 import { Button, Chip, Skeleton } from "@heroui/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";
 import EmptyState from "../../../components/EmptyState";
-import PageTransition from "../../../components/PageTransition";
-import { motion } from "framer-motion";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
 import type { Order, RetailerProfile } from "../../../lib/types";
 
-const chipCfg: Record<string, { color: "warning" | "success" | "default" | "danger"; label: string }> = {
+const chipCfg: Record<
+  string,
+  { color: "warning" | "success" | "default" | "danger"; label: string }
+> = {
   IN_TRANSIT: { color: "warning", label: "In Transit" },
   COMPLETED: { color: "success", label: "Completed" },
   PENDING: { color: "default", label: "Order Placed" },
@@ -41,516 +52,383 @@ const chipCfg: Record<string, { color: "warning" | "success" | "default" | "dang
 
 export default function OrdersPage() {
   const getProfile = (): RetailerProfile | null => {
-    if (typeof localStorage === 'undefined') return null;
-    try { return JSON.parse(localStorage.getItem('retailer_profile') || 'null'); } catch { return null; }
+    if (typeof localStorage === "undefined") return null;
+    try {
+      return JSON.parse(localStorage.getItem("retailer_profile") || "null");
+    } catch {
+      return null;
+    }
   };
 
   const profile = getProfile();
-  const ordersUrl = profile?.id ? `/v1/retailers/${profile.id}/orders` : "/v1/orders";
-  const { data: orders, loading, error, mutate } = useLiveData<Order[]>(ordersUrl, 30000);
-  const [activeTab, setActiveTab] = useState<"ALL" | "ACTIVE" | "COMPLETED">("ALL");
+  const ordersUrl = profile?.id
+    ? `/v1/retailers/${profile.id}/orders`
+    : "/v1/orders";
+  const {
+    data: orders,
+    loading,
+    mutate,
+  } = useLiveData<Order[]>(ordersUrl, 30000);
+  const [activeTab, setActiveTab] = useState<"ALL" | "ACTIVE" | "COMPLETED">(
+    "ALL",
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Auto-refresh orders list when backend pushes order events
-  useWsEvent("ORDER_COMPLETED", useCallback(() => mutate(), [mutate]));
-  useWsEvent("ORDER_STATUS_CHANGED", useCallback(() => mutate(), [mutate]));
-  useWsEvent("DRIVER_APPROACHING", useCallback(() => mutate(), [mutate]));
-  useWsEvent("PRE_ORDER_AUTO_ACCEPTED", useCallback(() => mutate(), [mutate]));
-  useWsEvent("PRE_ORDER_CONFIRMED", useCallback(() => mutate(), [mutate]));
-  useWsEvent("PRE_ORDER_EDITED", useCallback(() => mutate(), [mutate]));
+  useWsEvent(
+    "ORDER_COMPLETED",
+    useCallback(() => mutate(), [mutate]),
+  );
+  useWsEvent(
+    "ORDER_STATUS_CHANGED",
+    useCallback(() => mutate(), [mutate]),
+  );
+  useWsEvent(
+    "DRIVER_APPROACHING",
+    useCallback(() => mutate(), [mutate]),
+  );
 
-  // Fetch detail for selected order (includes line items)
   const { data: orderDetail } = useLiveData<Order>(
     selectedId ? `/v1/orders/${selectedId}` : "",
   );
 
-  const cancelOrder = useCallback(async (order: Order) => {
-    const profile = getProfile();
-    if (!profile?.id) { setActionError('Profile not found. Please re-login.'); return; }
-    setCancelling(true);
-    setActionError(null);
-    try {
-      const res = await apiFetch('/v1/order/cancel', {
-        method: 'POST',
-        headers: {
-          "Idempotency-Key": `retailer-cancel:${order.order_id}:${order.version ?? 0}`,
-        },
-        body: JSON.stringify({
-          order_id: order.order_id,
-          retailer_id: profile.id,
-          version: order.version ?? 0,
-        }),
-      });
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => null);
-        throw new Error(errBody?.error || `Cancel failed (${res.status})`);
-      }
-      mutate();
-    } catch (err: unknown) {
-      setActionError(err instanceof Error ? err.message : 'Cancel failed');
-    } finally { setCancelling(false); }
-  }, [mutate]);
-
-  const verifyOrder = useCallback(async (order: Order) => {
-    setVerifying(true);
-    setActionError(null);
-    try {
-      const res = await apiFetch(`/v1/orders/${order.order_id}/status`, {
-        method: 'PATCH',
-        headers: { "Idempotency-Key": `retailer-verify:${order.order_id}:${order.version ?? 0}` },
-        body: JSON.stringify({ status: 'COMPLETED' }),
-      });
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => null);
-        throw new Error(errBody?.error || `Verify failed (${res.status})`);
-      }
-      mutate();
-    } catch (err: unknown) {
-      setActionError(err instanceof Error ? err.message : 'Verify failed');
-    } finally { setVerifying(false); }
-  }, [mutate]);
-
   const list = orders ?? [];
-
   const filtered = useMemo(() => {
-    if (activeTab === "ACTIVE") return list.filter((o) => o.state !== "COMPLETED" && o.state !== "CANCELLED");
-    if (activeTab === "COMPLETED") return list.filter((o) => o.state === "COMPLETED");
+    if (activeTab === "ACTIVE")
+      return list.filter(
+        (o) => o.state !== "COMPLETED" && o.state !== "CANCELLED",
+      );
+    if (activeTab === "COMPLETED")
+      return list.filter((o) => o.state === "COMPLETED");
     return list;
   }, [activeTab, list]);
 
   const kpi = useMemo(() => {
-    const active = list.filter((o) => o.state === "IN_TRANSIT" || o.state === "DISPATCHED").length;
-    const pending = list.filter((o) => o.state === "PENDING" || o.state === "SCHEDULED").length;
+    const active = list.filter(
+      (o) => o.state === "IN_TRANSIT" || o.state === "DISPATCHED",
+    ).length;
+    const pending = list.filter(
+      (o) => o.state === "PENDING" || o.state === "SCHEDULED",
+    ).length;
     const completed = list.filter((o) => o.state === "COMPLETED").length;
-    const totalRev = list.filter((o) => o.state === "COMPLETED").reduce((s, o) => s + o.amount, 0);
+    const totalRev = list
+      .filter((o) => o.state === "COMPLETED")
+      .reduce((s, o) => s + o.amount, 0);
     return { active, pending, completed, totalRev, total: list.length };
   }, [list]);
 
-  const sparkActive = useMemo(() => Array.from({ length: 12 }, (_, i) => Math.max(0, kpi.active + Math.sin(i * 0.8) * 2)), [kpi.active]);
-  const sparkCompleted = useMemo(() => Array.from({ length: 12 }, (_, i) => Math.max(0, kpi.completed * 0.3 + i * (kpi.completed * 0.06))), [kpi.completed]);
+  const sparkActive = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) =>
+        Math.max(0, kpi.active + Math.sin(i * 0.8) * 2),
+      ),
+    [kpi.active],
+  );
 
-  const selected = selectedId ? list.find((o) => o.order_id === selectedId) ?? null : list[0] ?? null;
+  const selected = selectedId
+    ? (list.find((o) => o.order_id === selectedId) ?? null)
+    : (list[0] ?? null);
   const detail = orderDetail ?? selected;
-  const cfg = detail ? (chipCfg[detail.state] ?? chipCfg.PENDING) : chipCfg.PENDING;
-
-  /* ── Loading skeleton ── */
-  if (loading) {
-    return (
-      <div className="min-h-full p-6 md:p-8">
-        <Skeleton className="h-8 w-64 rounded-lg mb-2" />
-        <Skeleton className="h-4 w-96 rounded-lg mb-8" />
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}
-        </div>
-        <div className="flex gap-6">
-          <div className="w-[480px] flex flex-col gap-2">
-            {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
-          </div>
-          <Skeleton className="flex-1 h-96 rounded-2xl" />
-        </div>
-      </div>
-    );
-  }
-
-  /* ── Error state ── */
-  if (error) {
-    return (
-      <div className="min-h-full p-6 md:p-8 flex flex-col items-center justify-center gap-4">
-        <AlertTriangle size={32} style={{ color: "var(--danger)" }} />
-        <p className="md-typescale-title-medium text-foreground">Failed to load orders</p>
-        <p className="md-typescale-body-medium text-muted">{error.message}</p>
-        <Button onPress={() => mutate()} className="md-btn md-btn-outlined">Retry</Button>
-      </div>
-    );
-  }
-
-  /* ── Empty state ── */
-  if (list.length === 0) {
-    return (
-      <PageTransition>
-        <EmptyState 
-          imageUrl="/images/empty-orders.png"
-          headline="No orders yet"
-          body="Your incoming deliveries will appear here."
-          action="Place Order"
-          onAction={() => router.push("/catalog")}
-        />
-      </PageTransition>
-    );
-  }
 
   return (
-    <PageTransition className="min-h-full p-6 md:p-8">
-      {/* ── Header ── */}
-      <header className="mb-6 flex items-end justify-between gap-4 flex-wrap">
+    <div
+      className="min-h-full p-6 md:p-8"
+      style={{ background: "var(--desk-canvas)" }}
+    >
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="md-typescale-headline-large">Orders & Tracking</h1>
-          <p className="md-typescale-body-medium mt-1" style={{ color: 'var(--muted)' }}>
-            Monitor incoming deliveries. Verify manifests and confirm receipt.
+          <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
+            Logistics Tracking
+          </h1>
+          <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
+            Monitor inbound nodes and verify delivery manifests.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="primary" className="md-btn md-btn-filled md-typescale-label-large active-press px-5 h-10 flex items-center gap-2" onPress={() => router.push("/catalog")}>
-            <PackageOpen size={18} /> Fast Order
-          </Button>
-        </div>
+        <Button
+          variant="solid"
+          onPress={() => router.push("/catalog")}
+          className="h-11 px-6 rounded-xl font-bold transition-all shadow-[var(--shadow-sm)]"
+          style={{ background: "var(--desk-accent)", color: "white" }}
+        >
+          <PackageOpen size={18} className="mr-2" /> New Order
+        </Button>
       </header>
 
-      {/* ── KPI Bento ── */}
       <BentoGrid className="mb-8">
-        <BentoCard delay={0}>
-          <div className="md-kpi-card">
-            <div className="flex items-center justify-between">
-              <span className="md-kpi-label">In Transit</span>
-              <Truck size={18} strokeWidth={1.5} style={{ color: 'var(--muted)' }} />
+        <BentoCard interactive={false}>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+                En Route
+              </span>
+              <Truck size={18} style={{ color: "var(--desk-accent)" }} />
             </div>
-            <div className="flex items-end justify-between gap-4">
-              <CountUp end={kpi.active} className="md-kpi-value" />
-              <MiniSparkline data={sparkActive} width={72} height={28} />
+            <div className="flex items-end justify-between">
+              <CountUp
+                end={kpi.active}
+                className="md-typescale-metric text-[var(--desk-text-primary)]"
+              />
+              <MiniSparkline data={sparkActive} width={80} height={32} />
             </div>
-            <span className="md-kpi-sub">{kpi.pending} pending</span>
           </div>
         </BentoCard>
 
-        <BentoCard delay={60}>
-          <div className="md-kpi-card">
-            <div className="flex items-center justify-between">
-              <span className="md-kpi-label">Completed</span>
-              <CheckCircle2 size={18} strokeWidth={1.5} style={{ color: 'var(--muted)' }} />
+        <BentoCard interactive={false}>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+                Completed
+              </span>
+              <CheckCircle2
+                size={18}
+                style={{ color: "var(--desk-success)" }}
+              />
             </div>
-            <div className="flex items-end justify-between gap-4">
-              <CountUp end={kpi.completed} className="md-kpi-value" />
-              <MiniSparkline data={sparkCompleted} width={72} height={28} />
-            </div>
-            {kpi.total > 0 && (
-              <div className="flex items-center gap-1.5">
-                <ArrowUpRight size={14} strokeWidth={2} style={{ color: 'var(--success)' }} />
-                <span className="md-kpi-sub" style={{ color: 'var(--success)' }}>
-                  {((kpi.completed / kpi.total) * 100).toFixed(0)}%
-                </span>
-              </div>
-            )}
+            <CountUp
+              end={kpi.completed}
+              className="md-typescale-metric text-[var(--desk-text-primary)]"
+            />
+            <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
+              Nodes delivered
+            </p>
           </div>
         </BentoCard>
 
-        <BentoCard delay={120}>
-          <div className="md-kpi-card">
-            <div className="flex items-center justify-between">
-              <span className="md-kpi-label">Pending</span>
-              <Clock size={18} strokeWidth={1.5} style={{ color: 'var(--muted)' }} />
+        <BentoCard interactive={false}>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+                Pending
+              </span>
+              <Clock size={18} style={{ color: "var(--desk-warning)" }} />
             </div>
-            <CountUp end={kpi.pending} className="md-kpi-value" />
-            <span className="md-kpi-sub">Awaiting dispatch</span>
+            <CountUp
+              end={kpi.pending}
+              className="md-typescale-metric text-[var(--desk-text-primary)]"
+            />
+            <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
+              Awaiting dispatch
+            </p>
           </div>
         </BentoCard>
 
-        <BentoCard delay={180}>
-          <div className="md-kpi-card">
-            <div className="flex items-center justify-between">
-              <span className="md-kpi-label">Settled</span>
-              <CheckCircle2 size={18} strokeWidth={1.5} style={{ color: 'var(--muted)' }} />
+        <BentoCard interactive={false}>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+                Settled
+              </span>
+              <Layers3 size={18} style={{ color: "var(--desk-info)" }} />
             </div>
-            <CountUp end={kpi.totalRev} className="md-kpi-value" suffix="" />
-            <span className="md-kpi-sub">Revenue confirmed</span>
+            <CountUp
+              end={kpi.totalRev}
+              className="md-typescale-metric text-[var(--desk-text-primary)]"
+            />
+            <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
+              UZS Volume
+            </p>
           </div>
         </BentoCard>
       </BentoGrid>
 
-      {/* ── Filter Tabs ── */}
-      <div className="flex items-center gap-3 mb-6 border-b border-[var(--border)] pb-3 flex-wrap">
+      <div className="flex items-center gap-3 mb-6 border-b border-[var(--desk-border)] pb-3">
         {(["ALL", "ACTIVE", "COMPLETED"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-              className={`md-typescale-label-large active-press px-4 py-2 rounded-full font-semibold transition-colors cursor-pointer ${
-                activeTab === tab
-                  ? 'bg-accent text-accent-foreground'
-                  : 'text-muted hover:text-foreground hover:bg-surface'
-              }`}
+            className={`px-5 py-2 rounded-full md-typescale-label-large font-bold transition-all ${
+              activeTab === tab
+                ? "bg-[var(--desk-text-primary)] text-white shadow-[var(--shadow-sm)]"
+                : "text-[var(--desk-text-secondary)] hover:bg-[var(--desk-surface-subtle)]"
+            }`}
           >
-            {tab === "ALL" ? `All (${list.length})` : tab === "ACTIVE" ? "Active" : "Completed"}
+            {tab}
           </button>
         ))}
         <div className="flex-1" />
-        <Button variant="ghost" className="text-muted md-typescale-label-large active-press flex items-center gap-2" onPress={() => mutate()}>
-          <Filter size={16} /> Refresh
+        <Button
+          variant="light"
+          size="sm"
+          isIconOnly
+          onPress={() => mutate()}
+          className="text-[var(--desk-text-tertiary)]"
+        >
+          <RefreshCw size={16} />
         </Button>
       </div>
 
-      {/* ── Split: Order List + Detail Panel ── */}
-      <div className="flex gap-6 min-h-[480px]">
-        
-        {/* Left: Order List */}
-        <motion.div 
-          className="w-full lg:w-[420px] xl:w-[480px] shrink-0 flex flex-col gap-2 overflow-y-auto max-h-[calc(100dvh-420px)] pr-1"
-          initial="hidden"
-          animate="show"
-          variants={{
-            hidden: { opacity: 0 },
-            show: {
-              opacity: 1,
-              transition: { staggerChildren: 0.05 }
-            }
-          }}
+      <div className="flex gap-8 min-h-[520px]">
+        {/* Order List */}
+        <div
+          className="w-[440px] shrink-0 flex flex-col gap-2 overflow-y-auto pr-2"
+          style={{ maxHeight: "calc(100vh - 440px)" }}
         >
-          {filtered.map((order) => {
-            const c = chipCfg[order.state] ?? chipCfg.PENDING;
-            const isSelected = (selectedId ?? list[0]?.order_id) === order.order_id;
-            return (
-              <motion.button
-                key={order.order_id}
-                variants={{
-                  hidden: { opacity: 0, x: -20 },
-                  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-                }}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setSelectedId(order.order_id)}
-                className={`bento-card w-full text-left cursor-pointer transition-all duration-150 ${
-                  isSelected ? 'ring-2 ring-accent border-accent' : ''
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--surface)' }}>
-                    <PackageOpen size={18} style={{ color: 'var(--muted)' }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="md-typescale-title-small font-semibold text-foreground truncate">
-                        #{order.order_id.slice(-8)}
-                      </span>
-                      <Chip size="sm" color={c.color} variant="soft" className="shrink-0">{c.label}</Chip>
+          <AnimatePresence mode="popLayout">
+            {loading ? (
+              [0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-24 rounded-2xl animate-pulse bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)]"
+                />
+              ))
+            ) : filtered.length === 0 ? (
+              <EmptyState headline="No orders found" variant="no-results" />
+            ) : (
+              filtered.map((order) => {
+                const isSelected =
+                  (selectedId ?? list[0]?.order_id) === order.order_id;
+                const c = chipCfg[order.state] || chipCfg.PENDING;
+                return (
+                  <motion.button
+                    key={order.order_id}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={() => setSelectedId(order.order_id)}
+                    className={`flex items-center gap-4 p-4 rounded-2xl border transition-all text-left group ${
+                      isSelected
+                        ? "bg-[var(--desk-surface)] border-[var(--desk-accent)] shadow-md ring-2 ring-[var(--desk-accent-soft)]"
+                        : "bg-[var(--desk-surface)] border-[var(--desk-border)] hover:border-[var(--desk-border-strong)]"
+                    }`}
+                  >
+                    <div
+                      className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors ${isSelected ? "bg-[var(--desk-accent-soft)] text-[var(--desk-accent)]" : "bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)] group-hover:text-[var(--desk-text-secondary)]"}`}
+                    >
+                      <PackageOpen size={20} />
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="md-typescale-body-small text-muted truncate">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                          #{order.order_id.slice(-8)}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md ${c.color === "success" ? "bg-green-100 text-green-700" : c.color === "warning" ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-700"}`}
+                        >
+                          {c.label}
+                        </span>
+                      </div>
+                      <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] truncate">
                         {order.payment_gateway || "UNSPECIFIED"}
-                      </span>
-                      <span className="text-muted opacity-40">·</span>
-                      <span className="md-typescale-label-small font-mono tabular-nums text-muted">
-                        {order.items?.length ?? 0} items
-                      </span>
+                      </p>
                     </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="md-typescale-label-large font-semibold tabular-nums">
-                      {order.amount.toLocaleString()}
+                    <div className="text-right">
+                      <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                        {order.amount.toLocaleString()}
+                      </p>
+                      <ArrowUpRight
+                        size={14}
+                        className={`ml-auto transition-opacity ${isSelected ? "opacity-100 text-[var(--desk-accent)]" : "opacity-20 group-hover:opacity-100"}`}
+                      />
+                    </div>
+                  </motion.button>
+                );
+              })
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Detail Panel */}
+        <div className="flex-1 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)] flex flex-col overflow-hidden">
+          {detail ? (
+            <div className="p-8 flex-1 overflow-y-auto">
+              <div className="flex items-start justify-between mb-8">
+                <div>
+                  <div className="flex items-center gap-3 mb-2 text-[var(--desk-text-tertiary)]">
+                    <span className="md-typescale-label-small font-bold uppercase tracking-[0.2em]">
+                      {detail.state.replace("_", " ")}
+                    </span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--desk-border-strong)]" />
+                    <span className="md-typescale-label-small font-mono">
+                      {detail.order_id}
                     </span>
                   </div>
-                </div>
-              </motion.button>
-            );
-          })}
-        </motion.div>
-
-        {/* Right: Detail Panel */}
-        <div className="hidden lg:flex flex-1 flex-col bento-card overflow-y-auto">
-          {detail ? (
-            <div className="p-6 flex-1">
-              {/* Order Header */}
-              <div className="flex items-start justify-between mb-6">
-                <div>
-                  <Chip size="sm" color={cfg.color} variant="soft" className="font-bold tracking-widest uppercase mb-3">
-                    {cfg.label}
-                  </Chip>
-                  <h2 className="md-typescale-headline-small font-semibold text-foreground">
-                    Order #{detail.order_id.slice(-8)}
+                  <h2 className="md-typescale-display-small font-bold text-[var(--desk-text-primary)]">
+                    Order Details
                   </h2>
-                  <div className="flex items-center gap-2 mt-1.5 md-typescale-body-small text-muted">
-                    <span className="font-mono tabular-nums">{detail.order_id}</span>
-                    <Copy size={13} className="active-press cursor-pointer hover:text-foreground transition-colors" />
-                    {detail.deliver_before && (
-                      <>
-                        <span className="opacity-40">·</span>
-                        <span>Deliver by {new Date(detail.deliver_before).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                      </>
-                    )}
-                  </div>
                 </div>
-                <Button isIconOnly variant="ghost" className="text-muted">
-                  <MoreVertical size={18} />
+                <Button
+                  isIconOnly
+                  variant="light"
+                  className="text-[var(--desk-text-tertiary)]"
+                >
+                  <MoreVertical size={20} />
                 </Button>
               </div>
 
-              {/* Detail Cards */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-8">
-                <div className="bento-card">
-                  <span className="md-kpi-label">Route</span>
-                  <p className="md-typescale-title-small font-semibold flex items-center gap-2 mt-2 text-foreground">
-                    <Truck size={16} style={{ color: 'var(--accent)' }} />
-                    {detail.route_id ? detail.route_id.slice(-8) : "Unassigned"}
-                  </p>
-                  {detail.state === "IN_TRANSIT" && (
-                    <p className="md-typescale-body-small text-muted mt-1">Currently en route</p>
-                  )}
+              <div className="grid grid-cols-2 gap-4 mb-10">
+                <div className="p-5 rounded-2xl bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)]">
+                  <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-2 block">
+                    Assigned Route
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <Truck size={20} className="text-[var(--desk-accent)]" />
+                    <span className="md-typescale-title-medium font-bold text-[var(--desk-text-primary)]">
+                      {detail.route_id
+                        ? detail.route_id.slice(-8)
+                        : "Pending Assignment"}
+                    </span>
+                  </div>
                 </div>
-                <div className="bento-card" style={{ background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
-                  <span className="md-typescale-label-small uppercase tracking-widest opacity-80 font-semibold">Payment</span>
-                  <p className="md-typescale-headline-small font-bold mt-1 tabular-nums">
-                    {detail.amount.toLocaleString()}
-                  </p>
-                  <p className="md-typescale-body-small mt-1 opacity-80 flex items-center gap-1.5 font-medium">
-                    <CheckCircle2 size={14} />
-                    {detail.payment_gateway || "UNSPECIFIED"}
-                  </p>
+                <div className="p-5 rounded-2xl bg-[var(--desk-text-primary)] text-white shadow-lg">
+                  <span className="md-typescale-label-small uppercase tracking-widest opacity-60 mb-2 block">
+                    Settlement Amount
+                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="md-typescale-display-small font-bold tabular-nums">
+                      {detail.amount.toLocaleString()}
+                    </span>
+                    <CheckCircle2 size={24} className="opacity-40" />
+                  </div>
                 </div>
               </div>
 
-              {/* ── Delivery Progress Tracker ── */}
-              {(() => {
-                const stages = ["PENDING", "LOADED", "DISPATCHED", "IN_TRANSIT", "ARRIVED", "COMPLETED"] as const;
-                const stageLabels: Record<string, string> = {
-                  PENDING: "Order Placed",
-                  LOADED: "Approved",
-                  DISPATCHED: "Dispatched",
-                  IN_TRANSIT: "In Transit",
-                  ARRIVED: "Driver Arrived",
-                  COMPLETED: "Delivered",
-                };
-                const idx = stages.indexOf(detail.state as typeof stages[number]);
-                const isCancelled = detail.state === "CANCELLED";
-                return (
-                  <div className="mb-8">
-                    <h3 className="md-typescale-title-small font-semibold text-foreground mb-4">Delivery Progress</h3>
-                    {isCancelled ? (
-                      <div className="flex items-center gap-2 p-3 rounded-xl" style={{ background: "rgba(220,38,38,0.08)" }}>
-                        <AlertTriangle size={16} style={{ color: "var(--danger)" }} />
-                        <span className="md-typescale-body-medium font-semibold" style={{ color: "var(--danger)" }}>Order Cancelled</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        {stages.map((stage, i) => {
-                          const isComplete = i <= idx;
-                          const isCurrent = i === idx;
-                          return (
-                            <div key={stage} className="flex items-center gap-1 flex-1">
-                              <div className="flex flex-col items-center gap-1.5 flex-1">
-                                <div
-                                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors"
-                                  style={{
-                                    background: isComplete ? "var(--accent)" : "var(--surface)",
-                                    color: isComplete ? "var(--accent-foreground)" : "var(--muted)",
-                                    boxShadow: isCurrent ? "0 0 0 3px var(--accent), 0 0 0 5px var(--background)" : "none",
-                                  }}
-                                >
-                                  {isComplete && i < idx ? "✓" : i + 1}
-                                </div>
-                                <span
-                                  className="md-typescale-label-small text-center font-medium"
-                                  style={{ color: isCurrent ? "var(--accent)" : isComplete ? "var(--foreground)" : "var(--muted)" }}
-                                >
-                                  {stageLabels[stage]}
-                                </span>
-                              </div>
-                              {i < stages.length - 1 && (
-                                <div
-                                  className="h-0.5 flex-1 rounded-full mt-[-18px]"
-                                  style={{ background: i < idx ? "var(--accent)" : "var(--surface)" }}
-                                />
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {(detail.state === "IN_TRANSIT" || detail.state === "DISPATCHED") && detail.route_id && (
-                      <div className="mt-3 p-3 rounded-xl flex items-center gap-3" style={{ background: "var(--surface)" }}>
-                        <Truck size={16} style={{ color: "var(--accent)" }} />
-                        <span className="md-typescale-body-small text-foreground">
-                          {detail.state === "DISPATCHED" ? "Truck loaded & sealed — awaiting departure" : `Driver is en route — Route #${detail.route_id.slice(-6)}`}
-                        </span>
-                        {detail.deliver_before && (
-                          <span className="ml-auto md-typescale-label-small text-muted">
-                            ETA: {new Date(detail.deliver_before).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Manifest */}
-              <div className="border-t border-[var(--border)] pt-6">
-                <h3 className="md-typescale-title-small font-semibold text-foreground mb-4">
-                  Manifest ({detail.items?.length ?? 0} items)
+              <div className="mb-10">
+                <h3 className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-6">
+                  Manifest Content
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {(detail.items ?? []).map((item) => (
-                    <div key={item.line_item_id} className="active-press flex justify-between items-center p-3 rounded-xl border border-[var(--border)] hover:bg-surface transition-colors cursor-pointer">
-                      <div className="flex gap-3 items-center">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--surface)' }}>
-                          <PackageOpen size={16} style={{ color: 'var(--muted)' }} />
+                    <div
+                      key={item.line_item_id}
+                      className="flex items-center justify-between p-4 bg-[var(--desk-canvas)] rounded-xl border border-[var(--desk-border)]"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-[var(--desk-surface)] rounded-lg flex items-center justify-center border border-[var(--desk-border)]">
+                          <PackageOpen
+                            size={18}
+                            className="text-[var(--desk-text-tertiary)]"
+                          />
                         </div>
                         <div>
-                          <p className="md-typescale-body-medium font-semibold text-foreground">
-                            {item.sku_name || item.sku_id} x{item.quantity}
+                          <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)]">
+                            {item.sku_name || "Generic SKU"}
                           </p>
-                          <p className="md-typescale-body-small text-muted">{item.status}</p>
+                          <p className="md-typescale-body-small text-[var(--desk-text-tertiary)]">
+                            QTY: {item.quantity}
+                          </p>
                         </div>
                       </div>
-                      <span className="md-typescale-label-large font-semibold tabular-nums">
+                      <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
                         {(item.unit_price * item.quantity).toLocaleString()}
                       </span>
                     </div>
                   ))}
-                  {(!detail.items || detail.items.length === 0) && (
-                    <p className="md-typescale-body-medium text-muted text-center py-4">No line items</p>
-                  )}
                 </div>
               </div>
-
-              {/* Actions */}
-              {detail.state !== "COMPLETED" && detail.state !== "CANCELLED" && (
-                <div className="mt-8 pt-6 border-t border-[var(--border)] flex flex-col gap-3">
-                  {actionError && (
-                    <div className="p-3 rounded-xl flex items-center gap-2" style={{ background: 'rgba(220,38,38,0.08)' }}>
-                      <AlertTriangle size={14} style={{ color: 'var(--danger)' }} />
-                      <span className="md-typescale-body-small" style={{ color: 'var(--danger)' }}>{actionError}</span>
-                    </div>
-                  )}
-                  <div className="flex gap-3">
-                    {detail.state === "ARRIVED" && (
-                      <Button
-                        variant="primary"
-                        onPress={() => verifyOrder(detail)}
-                        isDisabled={verifying}
-                        className="md-btn md-btn-filled active-press flex-1 md-typescale-label-large h-11 flex items-center justify-center gap-2"
-                      >
-                        {verifying ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                        Verify & Receipt
-                      </Button>
-                    )}
-                    {detail.state === "PENDING" && !detail.route_id && (
-                      <Button
-                        variant="danger"
-                        onPress={() => cancelOrder(detail)}
-                        isDisabled={cancelling}
-                        className="md-typescale-label-large active-press h-11 flex items-center justify-center gap-2"
-                      >
-                        {cancelling ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />}
-                        Cancel Order
-                      </Button>
-                    )}
-                    {detail.state !== "PENDING" && detail.state !== "ARRIVED" && (
-                      <Button variant="outline" className="md-typescale-label-large active-press h-11 flex items-center justify-center gap-2">
-                        <AlertTriangle size={16} /> Flag Issue
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="md-typescale-body-medium text-muted">Select an order to view details</p>
+            <div className="flex-1 flex flex-col items-center justify-center opacity-40 grayscale">
+              <PackageOpen size={64} strokeWidth={1} />
+              <p className="mt-4 md-typescale-body-large">
+                Select an active node
+              </p>
             </div>
           )}
         </div>
       </div>
-    </PageTransition>
+    </div>
   );
 }
