@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useState, memo, useMemo, useCallback } from 'react';
+import { useState, memo, useMemo, useCallback, useEffect } from 'react';
 import Icon from './Icon';
 import { useTheme, type ThemeMode } from './ThemeProvider';
 import { PanelLeftClose, PanelLeft } from 'lucide-react';
@@ -205,11 +205,31 @@ const DrawerContent = memo(function DrawerContent({
 export default function WarehouseShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [refreshEpoch, setRefreshEpoch] = useState(0);
 
   const breadcrumbs = useMemo(() => buildBreadcrumbs(pathname), [pathname]);
 
   const handleLogout = useCallback(() => {
     document.cookie = 'pegasus_warehouse_jwt=; Max-Age=0; path=/';
+  }, []);
+
+  useEffect(() => {
+    const wakeRefresh = () => {
+      if (document.visibilityState === 'hidden') return;
+      setRefreshEpoch((current) => current + 1);
+    };
+
+    window.addEventListener('focus', wakeRefresh);
+    window.addEventListener('pageshow', wakeRefresh);
+    window.addEventListener('online', wakeRefresh);
+    document.addEventListener('visibilitychange', wakeRefresh);
+
+    return () => {
+      window.removeEventListener('focus', wakeRefresh);
+      window.removeEventListener('pageshow', wakeRefresh);
+      window.removeEventListener('online', wakeRefresh);
+      document.removeEventListener('visibilitychange', wakeRefresh);
+    };
   }, []);
 
   const isBare = BARE_ROUTES.some(r => pathname.startsWith(r));
@@ -264,7 +284,11 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
           </div>
         </header>
 
-        <main className="flex-1 min-w-0 overflow-y-auto" style={{ background: 'var(--desk-canvas)' }}>
+        <main
+          key={refreshEpoch}
+          className="flex-1 min-w-0 overflow-y-auto"
+          style={{ background: 'var(--desk-canvas)' }}
+        >
           {children}
         </main>
       </div>
