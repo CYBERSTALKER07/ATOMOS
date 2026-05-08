@@ -103,42 +103,43 @@
 
 @theme inline {
   /* ── URBN Colors ─────────────────────────── */
-  --color-canvas: #f8fafc; /* slate-50 */
-  --color-canvas-soft: #ffffff;
-  --color-canvas-deep: #0f172a; /* slate-900 */
-  --color-surface-card: #ffffff;
-  --color-surface-strong: #f1f5f9; /* slate-100 */
-  --color-surface-dark: #0f172a;
-  --color-surface-elevated: #1e293b; /* slate-800 */
+  /* Conceptzilla canvas — light cool grey + white cards */
+  --color-canvas: var(--desk-canvas);
+  --color-canvas-soft: var(--desk-surface);
+  --color-canvas-deep: #0f1115;
+  --color-surface-card: var(--desk-surface);
+  --color-surface-strong: var(--desk-surface-subtle);
+  --color-surface-dark: #0f1115;
+  --color-surface-elevated: #1a1d24;
 
-  --color-ink: #0f172a;
-  --color-body: #475569; /* slate-600 */
-  --color-body-strong: #1e293b; /* slate-800 */
-  --color-muted: #64748b; /* slate-500 */
-  --color-muted-soft: #94a3b8; /* slate-400 */
-  --color-on-primary: #ffffff;
+  --color-ink: var(--desk-text-primary);
+  --color-body: var(--desk-text-secondary);
+  --color-body-strong: var(--desk-text-primary);
+  --color-muted: var(--desk-text-secondary);
+  --color-muted-soft: var(--desk-text-tertiary);
+  --color-on-primary: var(--desk-accent-on);
   --color-on-dark: #ffffff;
-  --color-on-dark-soft: #94a3b8;
+  --color-on-dark-soft: #9098a4;
 
-  /* Accent Ink Pill */
-  --color-primary: #000000;
-  --color-primary-active: #1e293b; /* slate-800 */
+  /* Vibrant orange primary */
+  --color-primary: var(--desk-accent);
+  --color-primary-active: var(--desk-accent-strong);
 
   /* Hairlines */
-  --color-hairline: #f1f5f9; /* slate-100 */
-  --color-hairline-soft: #f8fafc; /* slate-50 */
-  --color-hairline-strong: #e2e8f0; /* slate-200 */
+  --color-hairline: var(--desk-border);
+  --color-hairline-soft: var(--desk-surface-subtle);
+  --color-hairline-strong: var(--desk-border-strong);
 
   /* Semantic */
-  --color-semantic-success: #16a34a;
-  --color-semantic-error: #dc2626;
+  --color-semantic-success: var(--desk-success);
+  --color-semantic-error: var(--desk-danger);
 
-  /* Gradient Orbs */
-  --color-gradient-mint: #a7e5d3;
-  --color-gradient-peach: #f4c5a8;
-  --color-gradient-lavender: #c8b8e0;
-  --color-gradient-sky: #a8c8e8;
-  --color-gradient-rose: #e8b8c4;
+  /* Gradient orbs (legacy decorative — de-emphasised to neutral) */
+  --color-gradient-mint: #d6f1e6;
+  --color-gradient-peach: var(--desk-accent-soft);
+  --color-gradient-lavender: #ece6f5;
+  --color-gradient-sky: #dde9f5;
+  --color-gradient-rose: #f5dee4;
 
   /* Legacy M3 compatibility mappings */
   --color-md-surface: var(--color-canvas);
@@ -147,12 +148,12 @@
   --color-md-on-primary: var(--color-on-primary);
   --color-md-outline-variant: var(--color-hairline);
   --color-md-outline: var(--color-hairline-strong);
-  
+
   --color-md-error: var(--color-semantic-error);
   --color-md-on-error: #ffffff;
-  --color-md-error-container: #fee2e2;
+  --color-md-error-container: var(--desk-danger-soft);
   --color-md-on-error-container: var(--color-semantic-error);
-  
+
   --color-md-surface-container: var(--color-surface-card);
 
   /* ── Typeface ──────────────────────────────────── */
