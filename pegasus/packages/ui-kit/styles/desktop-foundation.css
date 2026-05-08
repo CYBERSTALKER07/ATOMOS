@@ -888,4 +888,61 @@
     font: 500 18px/24px var(--desktop-font-sans);
     color: var(--desk-text-tertiary);
   }
+
+  /* ── Generic surface card (hairline border, no shadow) ───────────── */
+  :where(.desk-card) {
+    background: var(--desk-surface);
+    border: 1px solid var(--desk-border);
+    border-radius: var(--radius-lg);
+    color: var(--desk-text-primary);
+  }
+
+  :where(.desk-card-padded) {
+    padding: var(--space-5);
+  }
+
+  /* ── Toolbar / page header ───────────────────────────────────────── */
+  :where(.desk-toolbar) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--desk-border);
+    margin-bottom: var(--space-5);
+  }
+
+  :where(.desk-toolbar-title) {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  :where(.desk-toolbar-title h1) {
+    font: 700 22px/28px var(--desktop-font-sans);
+    color: var(--desk-text-primary);
+    letter-spacing: -0.015em;
+    margin: 0;
+  }
+
+  :where(.desk-toolbar-title p) {
+    font: 400 13px/18px var(--desktop-font-sans);
+    color: var(--desk-text-secondary);
+    margin: 0;
+  }
+
+  /* ── Page chrome (canvas wrapper) ────────────────────────────────── */
+  :where(.desk-page) {
+    min-height: 100%;
+    background: var(--desk-canvas);
+    color: var(--desk-text-primary);
+    padding: var(--space-6);
+  }
+
+  /* ── KPI grid layout helper ──────────────────────────────────────── */
+  :where(.desk-kpi-grid) {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--space-4);
+  }
 }
