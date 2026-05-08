@@ -108,10 +108,10 @@ export default function ChargebacksPage() {
   }, [load, sessionId, toast]);
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto px-4 py-6">
+    <div className="min-h-full w-full max-w-7xl mx-auto px-4 py-6 flex flex-col gap-6" style={{ background: 'var(--desk-bg)' }}>
       <div>
-        <h1 className="md-typescale-headline-small" style={{ color: 'var(--color-md-on-surface)' }}>Chargebacks</h1>
-        <p className="md-typescale-body-small mt-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+        <h1 className="md-typescale-headline-small" style={{ color: 'var(--desk-text-primary)' }}>Chargebacks</h1>
+        <p className="md-typescale-body-small mt-1" style={{ color: 'var(--desk-text-secondary)' }}>
           Manage provider-initiated chargebacks and settlement reversals.
         </p>
       </div>
@@ -139,14 +139,14 @@ export default function ChargebacksPage() {
       </div>
 
       {loading ? (
-        <div className="desk-card p-6" style={{ background: 'var(--desk-surface)' }}>Loading…</div>
+        <div className="desk-card p-6 md-typescale-body-medium" style={{ background: 'var(--desk-surface)', color: 'var(--desk-text-secondary)' }}>Loading...</div>
       ) : rows.length === 0 ? (
         <EmptyState icon="reconcile" headline="No chargeback anomalies" body="No CHARGEBACK or REVERSAL anomalies in the reconciliation queue." />
       ) : (
         <div className="desk-card overflow-hidden" style={{ background: 'var(--desk-surface)' }}>
-          <table className="w-full text-sm">
+          <table className="md-table">
             <thead>
-              <tr className="border-b" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
+              <tr className="border-b" style={{ borderColor: 'var(--desk-border)' }}>
                 <th className="text-left px-4 py-3">Order</th>
                 <th className="text-left px-4 py-3">Retailer</th>
                 <th className="text-right px-4 py-3">Spanner</th>
@@ -158,7 +158,7 @@ export default function ChargebacksPage() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={`${r.order_id}-${r.timestamp}`} className="border-b last:border-b-0" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
+                <tr key={`${r.order_id}-${r.timestamp}`} className="border-b last:border-b-0" style={{ borderColor: 'var(--desk-border)' }}>
                   <td className="px-4 py-3 font-mono text-xs">{r.order_id}</td>
                   <td className="px-4 py-3 font-mono text-xs">{r.retailer_id}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{r.spanner_amount}</td>

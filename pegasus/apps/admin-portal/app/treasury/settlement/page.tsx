@@ -159,14 +159,14 @@ export default function SettlementPage() {
   /* ─── Render ────────────────────────────────────────────── */
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-7xl mx-auto px-4 py-6">
+    <div className="min-h-full w-full max-w-7xl mx-auto px-4 py-6 flex flex-col gap-6" style={{ background: 'var(--desk-bg)' }}>
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="md-typescale-headline-small" style={{ color: 'var(--color-md-on-surface)' }}>
+          <h1 className="md-typescale-headline-small" style={{ color: 'var(--desk-text-primary)' }}>
             Settlement Report
           </h1>
-          <p className="md-typescale-body-small mt-1" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+          <p className="md-typescale-body-small mt-1" style={{ color: 'var(--desk-text-secondary)' }}>
             Invoice settlement status and payout reconciliation.
           </p>
         </div>
@@ -176,21 +176,21 @@ export default function SettlementPage() {
             value={from}
             onChange={(e) => setFrom(e.target.value)}
             className="md-input-outlined px-3 py-2 md-typescale-body-medium md-shape-sm"
-            style={{ background: 'var(--color-md-surface)', color: 'var(--color-md-on-surface)', borderColor: 'var(--color-md-outline)' }}
+            style={{ background: 'var(--desk-surface)', color: 'var(--desk-text-primary)', borderColor: 'var(--desk-border)' }}
           />
-          <span className="md-typescale-body-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>to</span>
+          <span className="md-typescale-body-small" style={{ color: 'var(--desk-text-secondary)' }}>to</span>
           <input
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
             className="md-input-outlined px-3 py-2 md-typescale-body-medium md-shape-sm"
-            style={{ background: 'var(--color-md-surface)', color: 'var(--color-md-on-surface)', borderColor: 'var(--color-md-outline)' }}
+            style={{ background: 'var(--desk-surface)', color: 'var(--desk-text-primary)', borderColor: 'var(--desk-border)' }}
           />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
             className="md-input-outlined px-3 py-2 md-typescale-body-medium md-shape-sm"
-            style={{ background: 'var(--color-md-surface)', color: 'var(--color-md-on-surface)', borderColor: 'var(--color-md-outline)' }}
+            style={{ background: 'var(--desk-surface)', color: 'var(--desk-text-primary)', borderColor: 'var(--desk-border)' }}
           >
             <option value="">All statuses</option>
             <option value="PAID">Paid</option>
@@ -206,7 +206,7 @@ export default function SettlementPage() {
           </Button>
         </div>
         <div className="flex items-center gap-2">
-          <span className="md-typescale-label-small" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+          <span className="md-typescale-label-small" style={{ color: 'var(--desk-text-secondary)' }}>
             Selected: {selectedInvoiceIds.length}
           </span>
           <Button
@@ -223,17 +223,17 @@ export default function SettlementPage() {
       {!loading && report && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Total Paid', value: formatAmount(report.summary.total_paid), color: 'var(--color-md-on-surface)' },
-            { label: 'Total Pending', value: formatAmount(report.summary.total_pending), color: 'var(--color-md-warning)' },
-            { label: 'Paid Invoices', value: report.summary.paid_count.toString(), color: 'var(--color-md-on-surface)' },
-            { label: 'Pending Invoices', value: report.summary.pending_count.toString(), color: 'var(--color-md-warning)' },
+            { label: 'Total Paid', value: formatAmount(report.summary.total_paid), color: 'var(--desk-text-primary)' },
+            { label: 'Total Pending', value: formatAmount(report.summary.total_pending), color: 'var(--desk-warning)' },
+            { label: 'Paid Invoices', value: report.summary.paid_count.toString(), color: 'var(--desk-text-primary)' },
+            { label: 'Pending Invoices', value: report.summary.pending_count.toString(), color: 'var(--desk-warning)' },
           ].map((s) => (
             <div
               key={s.label}
               className="desk-card p-4"
               style={{ background: 'var(--desk-surface)' }}
             >
-              <span className="md-typescale-label-small block" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+              <span className="md-typescale-label-small block" style={{ color: 'var(--desk-text-secondary)' }}>
                 {s.label}
               </span>
               <span className="md-typescale-headline-small tabular-nums" style={{ color: s.color }}>
@@ -265,11 +265,11 @@ export default function SettlementPage() {
           ) : (
             <>
               <div className="desk-card overflow-hidden" style={{ background: 'var(--desk-surface)' }}>
-                <table className="w-full text-sm">
+                <table className="md-table">
                   <thead>
                     <tr
                       className="border-b"
-                      style={{ borderColor: 'var(--color-md-outline-variant)', color: 'var(--color-md-on-surface-variant)' }}
+                      style={{ borderColor: 'var(--desk-border)', color: 'var(--desk-text-secondary)' }}
                     >
                       <th className="text-left px-4 py-3 md-typescale-label-medium">Order</th>
                       <th className="text-left px-4 py-3 md-typescale-label-medium">Invoice</th>
@@ -286,7 +286,7 @@ export default function SettlementPage() {
                       <tr
                         key={r.invoice_id}
                         className="border-b last:border-b-0"
-                        style={{ borderColor: 'var(--color-md-outline-variant)', color: 'var(--color-md-on-surface)' }}
+                        style={{ borderColor: 'var(--desk-border)', color: 'var(--desk-text-primary)' }}
                       >
                         <td className="px-4 py-3 font-mono text-xs">{shortId(r.order_id)}</td>
                         <td className="px-4 py-3 font-mono text-xs">{shortId(r.invoice_id)}</td>
@@ -299,18 +299,18 @@ export default function SettlementPage() {
                             style={{
                               background:
                                 r.invoice_status === 'SETTLED'
-                                  ? 'var(--color-md-primary-container)'
-                                  : 'var(--color-md-tertiary-container)',
+                                  ? 'var(--desk-success-soft)'
+                                  : 'var(--desk-warning-soft)',
                               color:
                                 r.invoice_status === 'SETTLED'
-                                  ? 'var(--color-md-on-primary-container)'
-                                  : 'var(--color-md-on-tertiary-container)',
+                                  ? 'var(--desk-success)'
+                                  : 'var(--desk-warning)',
                             }}
                           >
                             {r.invoice_status}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                        <td className="px-4 py-3 text-xs tabular-nums" style={{ color: 'var(--desk-text-secondary)' }}>
                           {r.paid_at ? new Date(r.paid_at).toLocaleString() : '—'}
                         </td>
                         <td className="px-4 py-3">

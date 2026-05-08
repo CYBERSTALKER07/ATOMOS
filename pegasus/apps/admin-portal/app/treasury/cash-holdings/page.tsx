@@ -64,7 +64,7 @@ export default function CashHoldingsPage() {
   const fmt = (n: number) => n.toLocaleString('en-US');
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--desk-bg)' }}>
+    <div className="min-h-full" style={{ background: 'var(--desk-bg)' }}>
       {/* Header */}
       <div className="px-6 pt-6 pb-4">
         <div className="flex items-center justify-between">
@@ -128,8 +128,8 @@ export default function CashHoldingsPage() {
             onClick={() => setActiveTab(tab)}
             className="md-typescale-label-medium px-4 py-1.5 md-shape-full transition-colors"
             style={{
-              background: activeTab === tab ? 'var(--accent-soft)' : 'transparent',
-              color: activeTab === tab ? 'var(--accent-soft-foreground)' : 'var(--desk-text-secondary)',
+              background: activeTab === tab ? 'var(--desk-accent-soft)' : 'transparent',
+              color: activeTab === tab ? 'var(--desk-accent-strong)' : 'var(--desk-text-secondary)',
               border: activeTab === tab ? 'none' : '1px solid var(--desk-border)',
             }}
           >
