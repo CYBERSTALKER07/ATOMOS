@@ -71,7 +71,7 @@
   }
 
   .md-card-interactive {
-    @apply hover-lift active-press cursor-pointer;
+    @apply hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-95 transition-all cursor-pointer;
   }
 
   /* Status Chips */

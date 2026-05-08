@@ -240,7 +240,7 @@ export default function ProcurementPage() {
                   visible: { opacity: 1, y: 0 }
                 }}
                 key={vendor.id} 
-                className="bento-card w-full text-left cursor-pointer hover-lift active-press transition-all duration-150"
+                className="bento-card w-full text-left cursor-pointer active-press transition-all duration-150"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--surface)" }}>

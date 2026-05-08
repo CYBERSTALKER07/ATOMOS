@@ -93,7 +93,7 @@ export default function SupplyRequestsPage() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={loadRequests}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm button--secondary hover-lift active-press"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm button--secondary active-press"
             >
               <Icon name="refresh" size={16} />
               Refresh
@@ -104,7 +104,7 @@ export default function SupplyRequestsPage() {
             >
               <Link
                 href="/supply-requests/new"
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold button--primary hover-lift active-press"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold button--primary active-press"
               >
                 <Icon name="plus" size={16} />
                 New Request
@@ -123,7 +123,7 @@ export default function SupplyRequestsPage() {
                 onClick={() => setFilter(s)}
                 className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
                   filter === s
-                    ? 'bg-[var(--primary)] text-white shadow-lg shadow-[var(--primary)]/20'
+                    ? 'bg-[var(--primary)] text-white'
                     : 'text-[var(--muted)] hover:bg-[var(--default)]'
                 }`}
               >

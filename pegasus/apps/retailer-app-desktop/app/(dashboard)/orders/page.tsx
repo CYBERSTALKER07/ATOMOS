@@ -310,7 +310,7 @@ export default function OrdersPage() {
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setSelectedId(order.order_id)}
-                className={`bento-card hover-lift w-full text-left cursor-pointer transition-all duration-150 ${
+                className={`bento-card w-full text-left cursor-pointer transition-all duration-150 ${
                   isSelected ? 'ring-2 ring-accent border-accent' : ''
                 }`}
               >

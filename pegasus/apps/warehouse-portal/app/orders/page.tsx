@@ -66,7 +66,7 @@ export default function OrdersPage() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => { setLoading(true); load(); }} 
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary hover-lift active-press"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary active-press"
             >
               <Icon name="refresh" size={16} /> Refresh
             </motion.button>

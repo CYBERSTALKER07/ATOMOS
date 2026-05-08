@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { motion } from "framer-motion";
 import { apiFetch } from "@/lib/auth";
 import { useSyncHub } from "@/lib/useSyncHub";
 import StatsCard from "@/components/StatsCard";

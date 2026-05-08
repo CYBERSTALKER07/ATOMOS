@@ -169,7 +169,7 @@ export default function DataTable<T extends { id: string }>({
           renderEmptyState={() => (
             <div className="py-24">
               <EmptyState
-                icon={emptyIcon as any}
+                icon={emptyIcon as React.ElementType}
                 headline={emptyHeadline}
                 body={emptyBody}
                 action={emptyAction}

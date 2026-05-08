@@ -541,7 +541,7 @@ export default function AdminDashboard() {
             </div>
             <div>
               <p className="md-typescale-label-medium text-muted mb-1">Completed</p>
-              <CountUp end={kpi.completed} className="md-typescale-display-small font-bold tabular-nums tracking-tighter" />
+              <CountUp value={kpi.completed.toString()} className="md-typescale-display-small font-bold tabular-nums tracking-tighter" />
             </div>
           </div>
         </BentoCard>
@@ -557,7 +557,7 @@ export default function AdminDashboard() {
             <div>
               <p className="md-typescale-label-medium text-muted mb-1">In Transit</p>
               <div className="flex items-baseline gap-2">
-                <CountUp end={kpi.inTransit} className="md-typescale-display-small font-bold tabular-nums tracking-tighter" />
+                <CountUp value={kpi.inTransit.toString()} className="md-typescale-display-small font-bold tabular-nums tracking-tighter" />
                 <span className="md-typescale-label-small text-muted">{kpi.pending} pending</span>
               </div>
             </div>
@@ -575,7 +575,7 @@ export default function AdminDashboard() {
             <div>
               <p className="md-typescale-label-medium text-muted mb-1">Revenue</p>
               <div className="flex items-baseline gap-1">
-                <CountUp end={kpi.totalRev} className="md-typescale-display-small font-bold tabular-nums tracking-tighter" />
+                <CountUp value={kpi.totalRev.toString()} className="md-typescale-display-small font-bold tabular-nums tracking-tighter" />
                 <span className="md-typescale-label-small text-muted">Total</span>
               </div>
             </div>

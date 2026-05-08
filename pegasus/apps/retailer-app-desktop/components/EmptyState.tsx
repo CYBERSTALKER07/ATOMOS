@@ -179,7 +179,7 @@ export default function EmptyState({
           className="mt-6"
         >
           <Button 
-            variant="solid" 
+            variant="primary" 
             onPress={onAction}
             className="font-bold px-8 h-12 rounded-xl active-press"
           >

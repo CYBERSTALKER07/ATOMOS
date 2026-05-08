@@ -77,7 +77,7 @@ export default function InventoryPage() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => { setLoading(true); load(); }} 
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary hover-lift active-press"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary active-press"
             >
               <Icon name="refresh" size={16} />
             </motion.button>
@@ -148,7 +148,7 @@ export default function InventoryPage() {
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
                               onClick={() => handleAdjust(item.product_id)} 
-                              className="px-2 py-1 text-xs button--primary rounded hover-lift active-press"
+                              className="px-2 py-1 text-xs button--primary rounded active-press"
                             >
                               Set
                             </motion.button>
@@ -156,7 +156,7 @@ export default function InventoryPage() {
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.9 }}
                               onClick={() => setAdjusting(null)} 
-                              className="px-2 py-1 text-xs button--secondary rounded hover-lift active-press"
+                              className="px-2 py-1 text-xs button--secondary rounded active-press"
                             >
                               X
                             </motion.button>
