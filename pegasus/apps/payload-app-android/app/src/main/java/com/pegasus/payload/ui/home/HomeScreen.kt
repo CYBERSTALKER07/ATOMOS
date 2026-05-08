@@ -71,6 +71,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -83,6 +84,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pegasus.payload.data.model.LiveOrder
 import com.pegasus.payload.data.model.Manifest
@@ -106,6 +110,7 @@ fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val navigator = rememberListDetailPaneScaffoldNavigator<String>()
     val snackbarHostState = remember { SnackbarHostState() }
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     var showInjectDialog by remember { mutableStateOf(false) }
     var exceptionTargetOrderId by remember { mutableStateOf<String?>(null) }
@@ -120,6 +125,23 @@ fun HomeScreen(
         state.queuedNoticeMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearQueuedNoticeMessage()
+        }
+    }
+    LaunchedEffect(state.online) {
+        if (!state.online) return@LaunchedEffect
+        viewModel.refreshTrucks()
+        viewModel.refreshManifest()
+    }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshTrucks()
+                viewModel.refreshManifest()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Text, View, Pressable, Alert, ScrollView, TextInput, Modal, FlatList, Animated, PanResponder, useWindowDimensions } from 'react-native';
+import { useState, useEffect, useCallback, useMemo, useRef, type ComponentProps } from 'react';
+import { Text, View, Pressable as RNPressable, AppState, Alert, ScrollView, TextInput, Modal, FlatList, Animated, PanResponder, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -20,6 +20,20 @@ const API_BASE = (process.env.EXPO_PUBLIC_API_URL?.trim() || '') ||
   (__DEV__ ? 'http://localhost:8080' : 'https://api.pegasus.uz');
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const defaultPressFeedback = { opacity: 0.82, transform: [{ scale: 0.97 }] } as const;
+
+function Pressable(props: ComponentProps<typeof RNPressable>) {
+  const { style, ...rest } = props;
+  return (
+    <RNPressable
+      {...rest}
+      style={(state) => {
+        if (typeof style === 'function') return style(state);
+        return [style, state.pressed ? defaultPressFeedback : null];
+      }}
+    />
+  );
+}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -224,25 +238,27 @@ export default function App() {
     };
   }, []);
 
+  const fetchTrucks = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/v1/payloader/trucks`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const vehicles: { id: string; label: string; license_plate: string; vehicle_class: string }[] = await res.json();
+      setTrucks(vehicles.map(v => ({
+        id: v.id,
+        label: v.label || v.license_plate || v.id.slice(0, 8),
+        license_plate: v.license_plate,
+        vehicle_class: v.vehicle_class,
+      })));
+    } catch {}
+  }, [token]);
+
   // Fetch supplier's vehicles once authenticated
   useEffect(() => {
-    if (!token) return;
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}/v1/payloader/trucks`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (!res.ok) return;
-        const vehicles: { id: string; label: string; license_plate: string; vehicle_class: string }[] = await res.json();
-        setTrucks(vehicles.map(v => ({
-          id: v.id,
-          label: v.label || v.license_plate || v.id.slice(0, 8),
-          license_plate: v.license_plate,
-          vehicle_class: v.vehicle_class,
-        })));
-      } catch {}
-    })();
-  }, [token]);
+    fetchTrucks();
+  }, [fetchTrucks]);
 
   // ── Payloader Login ──────────────────────────────────────────────────────
   const handleLogin = async () => {
@@ -772,6 +788,33 @@ export default function App() {
     fetchManifest(activeTruck);
     fetchTruckManifest();
   }, [token, activeTruck, liveSyncRevision, fetchManifest, fetchTruckManifest]);
+
+  useEffect(() => {
+    if (!token || !isOnline) return;
+    fetchTrucks();
+    fetchNotifications();
+    if (activeTruck) {
+      fetchManifest(activeTruck);
+      fetchTruckManifest();
+    }
+  }, [token, isOnline, activeTruck, fetchTrucks, fetchNotifications, fetchManifest, fetchTruckManifest]);
+
+  useEffect(() => {
+    if (!token) return;
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState !== 'active') return;
+      fetchTrucks();
+      fetchNotifications();
+      if (activeTruck) {
+        fetchManifest(activeTruck);
+        fetchTruckManifest();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [token, activeTruck, fetchTrucks, fetchNotifications, fetchManifest, fetchTruckManifest]);
 
   // ── LEO: Start Loading (DRAFT → LOADING) ─────────────────────────────
   const handleStartLoading = async () => {

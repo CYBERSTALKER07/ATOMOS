@@ -1400,7 +1400,7 @@ private struct NotificationRow: View {
             }
             .padding(.vertical, 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tactical)
     }
 }
 
