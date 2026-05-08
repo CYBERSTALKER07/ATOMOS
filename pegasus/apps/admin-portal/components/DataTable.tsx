@@ -91,26 +91,28 @@ export default function DataTable<T extends { id: string }>({
 }: DataTableProps<T>) {
   const hasPagination = totalPages !== undefined && totalPages > 0 && onPageChange;
 
+  const wrapperClass = `desk-card overflow-hidden ${className || ''}`;
+
   if (isLoading) {
     return (
-      <div className={`glass-premium border-none overflow-hidden ${className || ''}`}>
+      <div className={wrapperClass}>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-white/5 border-b border-white/10">
+            <thead style={{ borderBottom: '1px solid var(--desk-border)' }}>
               <tr>
                 {columns.map(col => (
-                  <th key={col.id} className={`px-6 py-5 ${ALIGN_MAP[col.align || 'left']}`}>
-                    <Skeleton className="h-3 w-16 rounded-full opacity-30" />
+                  <th key={col.id} className={`px-4 py-3 ${ALIGN_MAP[col.align || 'left']}`}>
+                    <Skeleton className="h-3 w-16 rounded-sm" />
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {Array.from({ length: skeletonRows }).map((_, i) => (
-                <tr key={i} className="border-b border-white/5 last:border-b-0">
+                <tr key={i} style={{ borderBottom: '1px solid var(--desk-border)' }}>
                   {columns.map(col => (
-                    <td key={col.id} className="px-6 py-6">
-                      <Skeleton className="h-4 w-24 rounded-full opacity-20" />
+                    <td key={col.id} className="px-4 py-4">
+                      <Skeleton className="h-4 w-24 rounded-sm" />
                     </td>
                   ))}
                 </tr>
@@ -123,11 +125,11 @@ export default function DataTable<T extends { id: string }>({
   }
 
   return (
-    <div className={`glass-premium border-none overflow-hidden ${className || ''}`}>
+    <div className={wrapperClass}>
       <Table 
         aria-label={ariaLabel} 
         variant={variant} 
-        className="w-full"
+        className="w-full desk-table"
         selectionMode={selectionMode !== 'none' ? selectionMode : undefined}
         selectedKeys={selectedKeys}
         onSelectionChange={onSelectionChange}
@@ -136,10 +138,10 @@ export default function DataTable<T extends { id: string }>({
         onRowAction={onRowAction}
         removeWrapper
       >
-        <Table.Header className="bg-white/5 backdrop-blur-md border-b border-white/10">
+        <Table.Header style={{ borderBottom: '1px solid var(--desk-border)' }}>
           {selectionMode === 'multiple' && (
             <Table.Column id="selection" width={48}>
-              <Checkbox slot="selection" className="ml-2" />
+              <Checkbox slot="selection" className="ml-2 desk-checkbox" />
             </Table.Column>
           )}
           {columns.map(col => (
@@ -152,10 +154,11 @@ export default function DataTable<T extends { id: string }>({
               minWidth={col.minWidth}
               maxWidth={col.maxWidth}
               className={[
-                'px-6 py-5 md-typescale-label-medium font-bold text-desk-text-secondary uppercase tracking-widest',
+                'px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em]',
                 ALIGN_MAP[col.align || 'left'],
                 col.hideBelow ? HIDE_MAP[col.hideBelow] : '',
               ].join(' ').trim()}
+              style={{ color: 'var(--desk-text-tertiary)' }}
             >
               {col.header}
             </Table.Column>
@@ -178,21 +181,23 @@ export default function DataTable<T extends { id: string }>({
           {(item) => (
             <Table.Row 
               id={item.id}
-              className="group border-b border-white/5 last:border-b-0 hover:bg-white/[0.04] transition-all duration-300 cursor-pointer active-press"
+              className="group cursor-pointer transition-colors"
+              style={{ borderBottom: '1px solid var(--desk-border)' }}
             >
               {selectionMode === 'multiple' && (
-                <Table.Cell className="px-6 py-4">
-                  <Checkbox slot="selection" />
+                <Table.Cell className="px-4 py-3">
+                  <Checkbox slot="selection" className="desk-checkbox" />
                 </Table.Cell>
               )}
               {columns.map((col, colIndex) => (
                 <Table.Cell
                   key={col.id}
                   className={[
-                    'px-6 py-5 md-typescale-body-medium text-white transition-all duration-500',
+                    'px-4 py-3 text-[13px]',
                     ALIGN_MAP[col.align || 'left'],
                     col.hideBelow ? HIDE_MAP[col.hideBelow] : '',
                   ].join(' ').trim()}
+                  style={{ color: 'var(--desk-text-primary)' }}
                 >
                   <motion.div
                     initial={{ opacity: 0, x: -8 }}
@@ -213,70 +218,68 @@ export default function DataTable<T extends { id: string }>({
       </Table>
 
       {hasPagination && (
-        <div className="flex items-center justify-between px-8 py-6 border-t border-white/10 bg-white/[0.02]">
-          <div className="flex items-center gap-8">
+        <div
+          className="flex items-center justify-between px-4 py-3"
+          style={{ borderTop: '1px solid var(--desk-border)' }}
+        >
+          <div className="flex items-center gap-6">
             {totalItems !== undefined && (
-              <span className="md-typescale-label-medium text-desk-text-tertiary font-medium">
-                {totalItems} <span className="opacity-50 font-normal ml-1">results found</span>
+              <span className="text-[12px]" style={{ color: 'var(--desk-text-tertiary)' }}>
+                <span style={{ color: 'var(--desk-text-primary)', fontWeight: 600 }}>{totalItems}</span> results
               </span>
             )}
             {pageSizeOptions && onPageSizeChange && (
-              <div className="flex items-center gap-3">
-                <span className="md-typescale-label-small text-desk-text-tertiary uppercase tracking-wider opacity-50">Show</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-[0.12em]" style={{ color: 'var(--desk-text-tertiary)' }}>Show</span>
                 <select
                   value={pageSize}
                   onChange={e => onPageSizeChange(Number(e.target.value))}
-                  className="md-typescale-label-medium bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-desk-accent/20 transition-all cursor-pointer hover:bg-black/30"
+                  className="text-[12px] px-2 py-1 rounded-md focus:outline-none cursor-pointer"
+                  style={{
+                    background: 'var(--desk-surface)',
+                    border: '1px solid var(--desk-border)',
+                    color: 'var(--desk-text-primary)',
+                  }}
                 >
                   {pageSizeOptions.map(opt => (
-                    <option key={opt} value={opt} className="bg-slate-900">{opt}</option>
+                    <option key={opt} value={opt}>{opt}</option>
                   ))}
                 </select>
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              isIconOnly
-              variant="light"
-              onPress={() => page! > 1 && onPageChange!(page! - 1)}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => page! > 1 && onPageChange!(page! - 1)}
               disabled={page === 1}
-              className="w-10 h-10 rounded-xl hover:bg-white/10 transition-colors disabled:opacity-30 active-press"
+              className="desk-btn-ghost w-8 h-8 p-0 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Previous page"
             >
-              <span className="material-symbols-outlined text-xl text-desk-text-primary">chevron_left</span>
-            </Button>
-            
-            <div className="flex items-center gap-1.5 mx-2">
+              <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+            </button>
+            <div className="flex items-center gap-1 mx-1">
               {Array.from({ length: Math.min(totalPages!, 5) }, (_, i) => {
                 const p = i + 1;
+                const active = p === page;
                 return (
-                  <Button
+                  <button
                     key={p}
-                    isIconOnly
-                    variant={p === page ? "solid" : "light"}
-                    color={p === page ? "primary" : "default"}
-                    onPress={() => onPageChange!(p)}
-                    className={`w-10 h-10 rounded-xl font-bold transition-all duration-500 ${
-                      p === page 
-                        ? "bg-desk-accent text-white shadow-xl shadow-desk-accent/20 scale-110" 
-                        : "hover:bg-white/10 text-desk-text-secondary"
-                    }`}
+                    onClick={() => onPageChange!(p)}
+                    className={active ? 'desk-btn-primary w-8 h-8 p-0 text-[12px]' : 'desk-btn-ghost w-8 h-8 p-0 text-[12px]'}
                   >
                     {p}
-                  </Button>
+                  </button>
                 );
               })}
             </div>
-
-            <Button
-              isIconOnly
-              variant="light"
-              onPress={() => page! < totalPages! && onPageChange!(page! + 1)}
+            <button
+              onClick={() => page! < totalPages! && onPageChange!(page! + 1)}
               disabled={page === totalPages}
-              className="w-10 h-10 rounded-xl hover:bg-white/10 transition-colors disabled:opacity-30 active-press"
+              className="desk-btn-ghost w-8 h-8 p-0 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Next page"
             >
-              <span className="material-symbols-outlined text-xl text-desk-text-primary">chevron_right</span>
-            </Button>
+              <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+            </button>
           </div>
         </div>
       )}
