@@ -74,7 +74,7 @@ struct ContentView: View {
     @State private var selectedTab: AppTab = .home
     @State private var sideMenuSelection: SideMenuTab = .home
     @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
-@State private var isSidebarExpanded: Bool = true
+    @State private var isSidebarExpanded: Bool = true
     @Namespace private var namespace
 
     @State private var showSidebar = false
@@ -190,7 +190,7 @@ struct ContentView: View {
             guard scenePhase == .active else { return }
             Task {
                 await loadActiveOrders()
-                await MainActor.run { refreshCenter.trigger() }
+                refreshCenter.trigger()
             }
         }
         .task { await loadActiveOrders() }
@@ -606,10 +606,8 @@ struct ContentView: View {
                 await loadActiveOrders()
             case .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited:
                 await loadActiveOrders()
-            default:
-                break
             }
-            await MainActor.run { refreshCenter.trigger() }
+            refreshCenter.trigger()
         }
     }
 }

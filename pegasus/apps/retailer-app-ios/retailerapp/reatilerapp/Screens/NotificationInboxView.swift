@@ -48,6 +48,9 @@ final class NotificationInboxViewModel {
     private let api = APIClient.shared
 
     func load() async {
+        if items.isEmpty {
+            isLoading = true
+        }
         do {
             let resp: NotificationsResponse = try await api.get(path: "/v1/user/notifications?limit=50")
             items = resp.notifications

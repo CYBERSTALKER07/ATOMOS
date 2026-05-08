@@ -168,16 +168,24 @@ struct ElevatedCardModifier: ViewModifier {
 // MARK: - Press Scale Effect
 
 struct PressableModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isPressed = false
 
     func body(content: Content) -> some View {
         content
-            .scaleEffect(isPressed ? 0.97 : 1.0)
-            .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isPressed)
-            .sensoryFeedback(.impact(weight: .light), trigger: isPressed)
-            .onLongPressGesture(minimumDuration: .infinity, pressing: { pressing in
-                isPressed = pressing
-            }, perform: {})
+            .scaleEffect((isPressed && !reduceMotion) ? 0.97 : 1.0)
+            .animation(reduceMotion ? nil : .spring(response: 0.2, dampingFraction: 0.8), value: isPressed)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        if !isPressed {
+                            isPressed = true
+                        }
+                    }
+                    .onEnded { _ in
+                        isPressed = false
+                    }
+            )
     }
 }
 

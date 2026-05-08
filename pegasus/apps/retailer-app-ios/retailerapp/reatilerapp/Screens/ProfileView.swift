@@ -258,7 +258,6 @@ struct ProfileView: View {
             miniStat(value: String(format: "$%.1fk", totalSpent / 1000), label: "Spent", icon: "dollarsign.circle.fill", color: AppTheme.success)
             miniStat(value: "4.9", label: "Rating", icon: "star.fill", color: AppTheme.warning)
         }
-        .task { await loadStats() }
     }
 
     private func miniStat(value: String, label: String, icon: String, color: Color) -> some View {

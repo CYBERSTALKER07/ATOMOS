@@ -1,7 +1,6 @@
 import Foundation
 import Observation
 
-@MainActor
 @Observable
 final class RetailerRefreshCenter {
     static let shared = RetailerRefreshCenter()

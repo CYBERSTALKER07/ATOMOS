@@ -37,8 +37,16 @@ struct DeliveryMapView: View {
                 ForEach(visibleOrders) { order in
                     if let lat = order.driverLatitude, let lng = order.driverLongitude {
                         Annotation(order.supplierName, coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lng)) {
-                            DriverMarker(isGreen: order.isGreen)
-                                .onTapGesture { selectedOrder = order }
+                            Button {
+                                Haptics.light()
+                                selectedOrder = order
+                            } label: {
+                                DriverMarker(isGreen: order.isGreen)
+                            }
+                            .buttonStyle(.plain)
+                            .pressable()
+                            .accessibilityLabel("Driver marker for \(order.supplierName)")
+                            .accessibilityHint("Opens order details")
                         }
                         .tag(order.orderId)
                     }

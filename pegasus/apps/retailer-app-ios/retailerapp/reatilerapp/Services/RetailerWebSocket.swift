@@ -96,6 +96,7 @@ final class RetailerWebSocket {
     private var subscriberContinuations: [UUID: AsyncStream<RetailerWSEvent>.Continuation] = [:]
     private var shouldReconnect = false
     private var reconnectWorkItem: DispatchWorkItem?
+    private let subscriberQueue = DispatchQueue(label: "RetailerWebSocket.subscribers")
     
     // Backoff tracking
     private var reconnectAttempts = 0
@@ -108,9 +109,13 @@ final class RetailerWebSocket {
     func eventStream() -> AsyncStream<RetailerWSEvent> {
         AsyncStream { continuation in
             let id = UUID()
-            subscriberContinuations[id] = continuation
+            subscriberQueue.sync {
+                subscriberContinuations[id] = continuation
+            }
             continuation.onTermination = { [weak self] _ in
-                self?.subscriberContinuations.removeValue(forKey: id)
+                self?.subscriberQueue.async {
+                    self?.subscriberContinuations.removeValue(forKey: id)
+                }
             }
         }
     }
@@ -268,8 +273,6 @@ final class RetailerWebSocket {
         
         let finalDelay = max(initialReconnectDelay, min(delayWithJitter, maxReconnectDelay))
         
-        print("WebSocket disconnected. Scheduled reconnect in \(String(format: "%.2f", finalDelay)) seconds")
-
         let workItem = DispatchWorkItem { [weak self] in
             guard let self, self.shouldReconnect else { return }
             self.connect(retailerId: retailerId)
@@ -279,7 +282,10 @@ final class RetailerWebSocket {
     }
 
     private func emit(_ event: RetailerWSEvent) {
-        for continuation in subscriberContinuations.values {
+        let continuations = subscriberQueue.sync {
+            Array(subscriberContinuations.values)
+        }
+        for continuation in continuations {
             continuation.yield(event)
         }
     }
