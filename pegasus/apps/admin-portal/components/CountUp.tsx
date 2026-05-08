@@ -1,48 +1,50 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+import { useMotionValue, useSpring, useTransform, motion } from 'framer-motion';
 
-interface CountUpProps {
-  end: number;
+export default function CountUp({
+  value,
+  duration = 2,
+  delay = 0,
+  className = '',
+}: {
+  value: string;
   duration?: number;
-  prefix?: string;
-  suffix?: string;
-  decimals?: number;
+  delay?: number;
   className?: string;
-}
-
-export default function CountUp({ end, duration = 1200, prefix = '', suffix = '', decimals = 0, className = '' }: CountUpProps) {
-  const [value, setValue] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const hasAnimated = useRef(false);
+}) {
+  const numericValue = parseFloat(value.replace(/[^0-9.]/g, '')) || 0;
+  const prefix = value.match(/^[^0-9]*/)?.[0] || '';
+  const suffix = value.match(/[0-9.]*(.*)$/)?.[1] || '';
+  
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (latest) => {
+    // If it was an integer, keep it integer. If it had decimals, keep 2 decimals.
+    if (value.includes('.')) {
+      return latest.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    return Math.floor(latest).toLocaleString();
+  });
+  
+  const springValue = useSpring(count, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
+  });
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !hasAnimated.current) {
-          hasAnimated.current = true;
-          const start = performance.now();
-          const step = (now: number) => {
-            const progress = Math.min((now - start) / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            setValue(eased * end);
-            if (progress < 1) requestAnimationFrame(step);
-          };
-          requestAnimationFrame(step);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.3 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [end, duration]);
+    const timer = setTimeout(() => {
+      count.set(numericValue);
+    }, delay * 1000);
+    return () => clearTimeout(timer);
+  }, [numericValue, count, delay]);
 
   return (
-    <span ref={ref} className={className}>
-      {prefix}{value.toFixed(decimals)}{suffix}
+    <span className={className}>
+      {prefix}
+      <motion.span>{rounded}</motion.span>
+      {suffix}
     </span>
   );
 }

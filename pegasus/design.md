@@ -57,6 +57,11 @@ All desktop apps import this file from globals.css before app-specific overrides
 - --desk-danger: #DC2626
 - --desk-info: #2563EB
 - --desk-focus-ring: #111827
+- --glass-bg: rgba(255, 255, 255, 0.05)
+- --glass-premium-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%)
+- --glass-border: rgba(255, 255, 255, 0.12)
+- --glass-blur: 24px
+- --glass-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.25)
 
 ### Typography Tokens
 
@@ -112,21 +117,39 @@ All desktop apps import this file from globals.css before app-specific overrides
 
 ### Animation Rules
 
-- Use framer-motion for page transitions and staggered list entry.
-- Keep motion meaningful and state-communicative.
-- Respect reduced motion preferences.
+- Use `motion` (framer-motion v12+) for all non-trivial transitions.
+- **Page Transitions**: Use `AnimatePresence` with a consistent `opacity` and `y` offset (e.g., `y: 10` to `y: 0`) for entry.
+- **List Staggering**: Apply `staggerChildren` to all data lists and bento grids for a "wave" entry effect.
+- **Sidebar**: Use spring physics (`type: "spring", stiffness: 300, damping: 30`) for collapse/expand.
+- **Hover**: Cards must use `whileHover={{ y: -4, boxShadow: "..." }}` for premium tactile feel.
+- Respect `prefers-reduced-motion` using the `useReducedMotion` hook.
 
 ### Microinteraction Rules
 
-- hover-lift for card and row affordance.
-- active-press for button and command feedback.
-- skeleton-shimmer for loading placeholders.
+- **.hover-lift**: Apply to all interactive cards and list rows. Smoothly translate -2px or -4px on hover.
+- **.active-press**: Mandatory for all buttons and nav items. Scale down to 0.98 or 0.96 on press.
+- **.skeleton-shimmer**: Use a subtle, slow-moving gradient for loading states. Avoid jarring flashes.
+- **Glassmorphism**: Use `backdrop-filter: blur(16px)` via the `.glass-premium` class for primary containers, sticky headers, and modal backdrops.
+- **Input Focus**: Use a high-contrast focus ring (2px) with a subtle outer glow using the accent color.
+- **Atmospheric Orbs**: Use `.orb-container` with `.gradient-orb-*` for adding depth to page backgrounds.
+- **Floating Effect**: Use `.animate-float` for illustrations and highlight elements to create a sense of life.
+- **Glow Pulse**: Use `.animate-glow` for critical alerts or primary action buttons.
 
-## Icon Rules
+- **Bento Grid**: Use `.bento-grid` for dashboard layouts. Cards should use `.bento-card` with appropriate span classes (`.bento-anchor`, `.bento-wide`, etc.) for visual interest.
 
-- Use lucide-react icons only.
-- No emoji icons anywhere.
-- Empty states may use real illustration assets and optional icon overlays.
+### Empty State Rules
+
+- **Illustrations**: Never use simple icons for primary empty states. Use the generated 3D assets.
+- **Contextual Actions**: Every empty state should provide a clear "Next Step" button.
+- **Animations**: Empty state illustrations should have a gentle "float" or "pulse" animation.
+
+### Cinematic Excellence
+
+- **Depth & Dimension**: Use `glass-premium` for containers that need to feel "above" the canvas.
+- **Atmospheric Lighting**: Place `orb-container` with `gradient-orb-*` classes behind glass surfaces to create depth.
+- **Micro-interactions**: Use `hover-lift` and `active-press` for all interactive elements.
+- **Smooth Transitions**: Leverage `PageTransition` with scale-in effects for a premium feel.
+- **Typography as Art**: Use `text-cinematic` and `glow-text` for hero headlines or critical metrics.
 
 ## Layout Contract
 

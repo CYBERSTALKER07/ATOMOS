@@ -1,22 +1,43 @@
 'use client';
 
-import { useRef, useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { motion } from 'framer-motion';
 
 // ── Bento Grid Container ────────────────────────────────────────────────────
 
 interface BentoGridProps {
   children: ReactNode;
   className?: string;
-  /** Visual theme: 'brutalist' = 0 radius (default), 'apple' = 24px radius */
+  /** Visual theme: 'brutalist' = sharp, 'apple' = premium rounded (default) */
   theme?: 'brutalist' | 'apple';
+  staggerChildren?: number;
 }
 
-export function BentoGrid({ children, className = '', theme = 'brutalist' }: BentoGridProps) {
+export function BentoGrid({ 
+  children, 
+  className = '', 
+  theme = 'apple',
+  staggerChildren = 0.05 
+}: BentoGridProps) {
   const themeClass = theme === 'apple' ? 'bento-apple' : '';
+  
   return (
-    <div className={`bento-grid ${themeClass} ${className}`}>
+    <motion.div 
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: "-50px" }}
+      variants={{
+        hidden: {},
+        show: {
+          transition: {
+            staggerChildren: staggerChildren
+          }
+        }
+      }}
+      className={`bento-grid ${themeClass} ${className}`}
+    >
       {children}
-    </div>
+    </motion.div>
   );
 }
 
@@ -33,8 +54,8 @@ interface BentoCardProps {
   /** Legacy row span */
   rowSpan?: boolean;
   className?: string;
-  /** Stagger delay for reveal animation (ms) */
-  delay?: number;
+  /** Interaction: enable premium hover lift/glow */
+  interactive?: boolean;
 }
 
 export function BentoCard({
@@ -43,27 +64,8 @@ export function BentoCard({
   span = 1,
   rowSpan = false,
   className = '',
-  delay = 0,
+  interactive = true,
 }: BentoCardProps) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
   // Build size class — semantic size takes priority over legacy span/rowSpan
   let sizeClass: string;
   if (size) {
@@ -73,17 +75,34 @@ export function BentoCard({
   }
 
   return (
-    <div
-      ref={ref}
-      className={`bento-card ${sizeClass} ${className}`}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? 'translateY(0) scale(1)' : 'translateY(12px) scale(0.98)',
-        transition: `opacity 0.4s cubic-bezier(0.05, 0.7, 0.1, 1) ${delay}ms, transform 0.4s cubic-bezier(0.05, 0.7, 0.1, 1) ${delay}ms`,
+    <motion.div
+      variants={{
+        hidden: { opacity: 0, y: 20, scale: 0.98 },
+        show: { 
+          opacity: 1, 
+          y: 0, 
+          scale: 1,
+          transition: {
+            type: "spring",
+            stiffness: 260,
+            damping: 20
+          }
+        }
       }}
+      whileHover={interactive ? { 
+        y: -4, 
+        scale: 1.002,
+        transition: { duration: 0.2, ease: "easeOut" }
+      } : undefined}
+      className={`bento-card glass-premium ${sizeClass} ${interactive ? 'hover:shadow-2xl hover:border-white/20' : ''} ${className} relative overflow-hidden`}
     >
-      {children}
-    </div>
+      <div className="relative h-full w-full overflow-hidden rounded-[inherit] z-10">
+        {children}
+      </div>
+      
+      {/* Subtle corner highlight */}
+      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-white/5 to-transparent pointer-events-none" />
+    </motion.div>
   );
 }
 
@@ -104,5 +123,7 @@ export function BentoSkeleton({ size, span = 1, rowSpan = false, className = '' 
     sizeClass = `bento-span-${span}${rowSpan ? ' bento-row-2' : ''}`;
   }
 
-  return <div className={`bento-skeleton ${sizeClass} ${className}`} />;
+  return (
+    <div className={`bento-skeleton animate-pulse bg-muted/20 ${sizeClass} ${className} md-shape-lg`} />
+  );
 }

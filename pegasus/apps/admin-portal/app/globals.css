@@ -13,16 +13,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
+  background: var(--desk-canvas);
   transition: opacity 0.4s ease, visibility 0.4s ease;
 }
-.dark #app-splash {
-  background: #0a0a0a;
-}
-.dark #app-splash img {
-  filter: invert(1);
-}
-/* Hide splash once React has hydrated (ThemeProvider adds data-hydrated) */
+
 [data-hydrated] #app-splash {
   opacity: 0;
   visibility: hidden;
@@ -30,179 +24,70 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
-/* HeroUI v3 — Monochrome X-Like Color Overrides                             */
-/* Overrides HeroUI defaults so all HeroUI components render monochrome.      */
+/* Design Token Overrides & Bridge                                            */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* URBN Theme Background & Surface */
-  --background: #f8fafc;
-  --foreground: #0f172a;
-  --surface: #ffffff;
-  --surface-foreground: #475569;
-  --overlay: #ffffff;
-  --overlay-foreground: #0f172a;
-
-  /* Accent — ink primary action */
-  --accent: #000000;
-  --accent-foreground: #ffffff;
-  --accent-soft: #f1f5f9;
-  --accent-soft-foreground: #0f172a;
-
-  /* Default */
-  --default: #f1f5f9;
-  --default-foreground: #475569;
-
-  /* Muted, Border, Focus */
-  --muted: #64748b;
-  --border: #e2e8f0;
-  --focus: #000000;
-  --link: #000000;
-  --scrollbar: #cbd5e1;
-
-  /* Form Fields */
-  --field-background: #ffffff;
-  --field-foreground: #0f172a;
-  --field-placeholder: #94a3b8;
-  --field-border: #e2e8f0;
-
-  /* Semantic */
-  --success: #10b981;
-  --success-foreground: #ffffff;
-  --danger: #ef4444;
-  --danger-foreground: #ffffff;
+  /* Ensure bridge variables are linked to canonical desktop tokens */
+  --background: var(--desk-canvas);
+  --foreground: var(--desk-text-primary);
+  --surface: var(--desk-surface);
+  --surface-foreground: var(--desk-text-secondary);
+  --muted: var(--desk-text-secondary);
+  --border: var(--desk-border);
+  --accent: var(--desk-accent);
+  --accent-soft: var(--desk-accent-soft);
+  
+  /* Glassmorphism primitives */
+  --glass-surface: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-blur: blur(12px);
 }
-
 
 .dark {
-  /* Dark hero / Canvas deep */
-  --background: #0c0a09;
-  --foreground: #ffffff;
-  --surface: #1c1917;
-  --surface-foreground: #a8a29e;
-  --overlay: #1c1917;
-  --overlay-foreground: #ffffff;
-
-  --accent: #ffffff;
-  --accent-foreground: #0c0a09;
-  --accent-soft: #292524;
-  --accent-soft-foreground: #ffffff;
-
-  --default: #292524;
-  --default-foreground: #a8a29e;
-
-  --muted: #a8a29e;
-  --border: #292524;
-  --focus: #ffffff;
-  --field-background: #0c0a09;
-  --field-foreground: #ffffff;
-  --field-border: #292524;
+  --glass-surface: rgba(15, 23, 42, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.05);
 }
 
-
 /* ═══════════════════════════════════════════════════════════════════════════ */
-/* HeroUI v3 — BEM Component Overrides (monochrome enforcement)               */
+/* Component System Refinement                                                */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 @layer components {
-  /* Button — black primary, gray secondary */
-  .button--primary { @apply bg-accent text-accent-foreground; }
-  .button--secondary { @apply bg-default text-default-foreground; }
-  .button--outline { @apply border-border text-foreground bg-transparent; }
-  .button--ghost { @apply bg-transparent text-foreground; }
-  .button--danger { @apply bg-danger text-danger-foreground; }
-
-  /* Card — clean monochrome surfaces */
-  .card-root { @apply border-border; }
-  .card-root--secondary { background: var(--surface); }
-
-  /* Table — monochrome header/rows */
-  .table__header { background: var(--surface); }
-  .table__column { color: var(--muted); }
-  .table__row { border-bottom: 1px solid var(--border); }
-  .table__row:hover { background: oklch(0 0 0 / 0.02); }
-
-  /* Chip — monochrome defaults */
-  .chip--primary { @apply bg-accent text-accent-foreground; }
-  .chip--secondary { @apply border-border text-foreground; }
-
-  /* Input — clean borders */
-  .input-root {
-    border-color: var(--field-border);
-    background: var(--field-background);
-    color: var(--field-foreground);
+  /* Standardized Card (Material 3 + Desktop Premium) */
+  .md-card {
+    border: 1px solid var(--desk-border);
+    border-radius: var(--radius-lg);
+    background: var(--desk-surface);
+    transition: 
+      border-color var(--duration-base) var(--ease-standard),
+      background-color var(--duration-base) var(--ease-standard),
+      box-shadow var(--duration-base) var(--ease-standard),
+      transform var(--duration-base) var(--ease-standard);
   }
-  .input-root::placeholder { color: var(--field-placeholder); }
-}
 
-:root.dark .table__row:hover { background: oklch(1 0 0 / 0.03); }
-
-/* ═══════════════════════════════════════════════════════════════════════════ */
-/* Native Fluid Layout & Motion                                               */
-/* ═══════════════════════════════════════════════════════════════════════════ */
-
-:root {
-  --native-radius-lg: 24px;
-  --native-radius-md: 16px;
-  --native-radius-sm: 8px;
-  --native-font-sm: 13px;
-  --native-font-base: 15px;
-  --native-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  --native-mask: blur(20px) saturate(180%);
-}
-
-@layer base {
-  * {
-    @apply selection:bg-accent selection:text-accent-foreground;
+  .md-card-elevated {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
   }
-  
-  body {
-    @apply antialiased subpixel-antialiased;
-    letter-spacing: -0.011em; /* Apple-style SF subpixel tracking */
-    background: var(--color-md-surface);
-    color: var(--color-md-on-surface);
-    font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+  .md-card-interactive {
+    @apply hover-lift active-press cursor-pointer;
+  }
+
+  /* Status Chips */
+
+  /* Status Chips */
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
-/* Bento Grid — Native Fluidity                                               */
+/* Animation Utilities                                                        */
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
-.bento-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  grid-auto-rows: 240px;
-  grid-auto-flow: dense;
-  gap: 16px;
-  padding: 16px;
+  /* Specific premium shadows */
 }
-
-.bento-card {
-  @apply flex flex-col overflow-hidden;
-  border-radius: var(--native-radius-lg);
-  background: var(--color-md-surface);
-  border: 1px solid var(--color-md-outline-variant);
-  transition: all 0.5s var(--md-easing-emphasized);
-}
-
-.bento-card:hover {
-  @apply -translate-y-1;
-  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.08);
-  border-color: var(--color-md-outline);
-}
-
-.dark .bento-card:hover {
-  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.4);
-}
-
-/* Bento Sizes */
-.bento-stat { grid-column: span 1; grid-row: span 1; }
-.bento-anchor { grid-column: span 2; grid-row: span 2; }
-.bento-list { grid-column: span 1; grid-row: span 2; }
-.bento-control { grid-column: span 2; grid-row: span 1; }
-.bento-wide { grid-column: span 2; grid-row: span 1; }
-.bento-full { grid-column: 1 / -1; min-height: 240px; }
 
 @media (max-width: 768px) {
   .bento-grid { grid-template-columns: 1fr; grid-auto-rows: auto; }
@@ -1694,33 +1579,36 @@ body {
 
 :root.synthwave {
   /* Core variables overriding M3 standard dark */
-  --background: oklch(0.2 0.05 300);
-  --foreground: oklch(0.9 0.02 300);
-  --surface: oklch(0.18 0.05 300);
-  --surface-foreground: oklch(0.9 0.02 300);
-  --overlay: oklch(0.15 0.05 300);
+  --background: oklch(0.12 0.04 285);
+  --foreground: oklch(0.98 0.01 285);
+  --surface: oklch(0.16 0.04 285);
+  --surface-foreground: oklch(0.95 0.02 285);
+  --overlay: oklch(0.1 0.04 285);
 
   /* M3 Token Overrides (Neon Pink/Magenta primary, Dark Purple base) */
-  --color-md-primary: oklch(62% 0.25 330); /* Neon Pinkish */
+  --color-md-primary: oklch(70% 0.3 340); /* Vibrantly Neon Pink/Magenta */
   --color-md-on-primary: oklch(100% 0 0);
-  --color-md-primary-container: oklch(35% 0.15 330);
-  --color-md-on-primary-container: oklch(90% 0.1 330);
+  --color-md-primary-container: oklch(25% 0.15 340);
+  --color-md-on-primary-container: oklch(95% 0.05 340);
 
-  --color-md-secondary: oklch(75% 0.15 190); /* Cyan */
-  --color-md-on-secondary: oklch(15% 0.1 190);
-  --color-md-secondary-container: oklch(30% 0.1 190);
-  --color-md-on-secondary-container: oklch(90% 0.1 190);
+  --color-md-secondary: oklch(80% 0.2 195); /* Electric Cyan */
+  --color-md-on-secondary: oklch(15% 0.1 195);
+  --color-md-secondary-container: oklch(22% 0.12 195);
+  --color-md-on-secondary-container: oklch(92% 0.05 195);
 
-  --color-md-tertiary: oklch(80% 0.18 140); /* Neon Greenish */
-  --color-md-on-tertiary: oklch(15% 0.1 140);
+  --color-md-tertiary: oklch(85% 0.22 145); /* Neon Green */
+  --color-md-on-tertiary: oklch(15% 0.1 145);
   
-  --color-md-surface: oklch(18% 0.05 300);
-  --color-md-surface-container-low: oklch(20% 0.05 300);
-  --color-md-surface-container: oklch(22% 0.05 300);
-  --color-md-surface-container-high: oklch(25% 0.05 300);
+  --color-md-surface: oklch(12% 0.04 285);
+  --color-md-surface-container-low: oklch(15% 0.04 285);
+  --color-md-surface-container: oklch(18% 0.04 285);
+  --color-md-surface-container-high: oklch(22% 0.04 285);
   
-  --color-md-outline: oklch(40% 0.05 300);
-  --color-md-outline-variant: oklch(28% 0.05 300);
+  --color-md-outline: oklch(45% 0.08 285);
+  --color-md-outline-variant: oklch(25% 0.06 285);
+
+  --color-accent: var(--color-md-primary);
+  --color-on-accent: var(--color-md-on-primary);
 }
 
 :root.synthwave body {
@@ -1907,3 +1795,7 @@ body {
   z-index: 0;
   pointer-events: none;
 }
+
+/* The following premium utilities are now inherited from @pegasus/ui-kit/desktop-foundation.css:
+   .glass-premium, .orb-container, .gradient-orb-*, .animate-float, .animate-glow, .hover-lift, .active-press, .skeleton-shimmer
+*/

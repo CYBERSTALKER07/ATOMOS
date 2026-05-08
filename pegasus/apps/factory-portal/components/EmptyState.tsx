@@ -1,12 +1,11 @@
 import { Button } from "@heroui/react";
 import { motion } from "framer-motion";
 import { ReactNode, useEffect, useState } from "react";
-import Icon, { iconMap } from "./Icon";
 
 type EmptyStateVariant = "no-data" | "no-results" | "offline" | "restricted" | "error";
 
 interface EmptyStateProps {
-  icon?: ReactNode | string;
+  icon?: ReactNode;
   imageUrl?: string;
   headline: string;
   body?: string;
@@ -90,13 +89,6 @@ export default function EmptyState({
     setAssetLoadFailed(false);
   }, [variantImageUrl]);
 
-  const iconNode =
-    typeof icon === "string"
-      ? iconMap[icon]
-        ? <Icon name={icon} size={54} className="text-[var(--accent)]" />
-        : null
-      : icon;
-
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -114,8 +106,8 @@ export default function EmptyState({
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imageUrl} alt={headline} className="w-full h-full object-cover" />
-        ) : iconNode ? (
-          iconNode
+        ) : icon ? (
+          icon
         ) : !assetLoadFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

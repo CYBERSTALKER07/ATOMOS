@@ -18,6 +18,16 @@
   --desk-danger: #dc2626;
   --desk-info: #2563eb;
   --desk-focus-ring: #111827;
+  
+  /* Premium Visual Tokens */
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-blur: 24px;
+  --glass-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.25);
+
+  --glass-premium-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  --glass-premium-border: rgba(255, 255, 255, 0.15);
+  --glass-premium-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.3);
 
   --type-display-xl: 700 48px/56px var(--font-sans, "Inter", "Geist", "Segoe UI", sans-serif);
   --type-display-lg: 700 40px/48px var(--font-sans, "Inter", "Geist", "Segoe UI", sans-serif);
@@ -106,6 +116,21 @@
   --desk-focus-ring: oklch(0.93 0.01 95);
 
   --desktop-on-accent: oklch(0.16 0.01 95);
+
+  --glass-bg: rgba(0, 0, 0, 0.3);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.6);
+
+  --glass-premium-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+  --glass-premium-border: rgba(255, 255, 255, 0.1);
+  --glass-premium-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.7);
+}
+
+:root.synthwave,
+.synthwave {
+  --glass-bg: rgba(45, 10, 80, 0.2);
+  --glass-border: rgba(255, 0, 255, 0.1);
+  --glass-shadow: 0 0 15px rgba(255, 0, 255, 0.1);
 }
 
 @layer base {
@@ -211,12 +236,12 @@
 
 @layer utilities {
   .hover-lift {
-    transition: transform var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+    transition: transform var(--duration-slow) var(--ease-enter), box-shadow var(--duration-slow) var(--ease-enter);
   }
 
   .hover-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 22px -12px rgba(15, 23, 42, 0.22);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.12);
   }
 
   .active-press {
@@ -224,7 +249,7 @@
   }
 
   .active-press:active {
-    transform: scale(0.98);
+    transform: scale(0.96);
   }
 
   .skeleton-shimmer {
@@ -232,6 +257,117 @@
     background-size: 200% 100%;
     animation: desk-shimmer 1.4s linear infinite;
   }
+
+  .glass-premium {
+    background: var(--glass-premium-bg, var(--glass-bg));
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-premium-border, var(--glass-border));
+    box-shadow: var(--glass-premium-shadow, var(--glass-shadow));
+    transition: background var(--duration-base) var(--ease-standard), border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
+  }
+
+  .glass-subtle {
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .glow-text {
+    text-shadow: 0 0 20px rgba(var(--desk-accent-rgb, 255, 122, 26), 0.3);
+  }
+
+  .text-cinematic {
+    letter-spacing: -0.02em;
+    background: linear-gradient(to bottom, var(--desk-text-primary), var(--desk-text-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Atmospheric Orbs */
+  .orb-container {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    filter: blur(40px);
+    opacity: 0.6;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .gradient-orb-mint { background: radial-gradient(circle, var(--color-gradient-mint, #cdfaf0) 0%, transparent 75%); }
+  .gradient-orb-peach { background: radial-gradient(circle, var(--color-gradient-peach, #ffe5d9) 0%, transparent 75%); }
+  .gradient-orb-lavender { background: radial-gradient(circle, var(--color-gradient-lavender, #e2e2ff) 0%, transparent 75%); }
+  .gradient-orb-sky { background: radial-gradient(circle, var(--color-gradient-sky, #e0f2fe) 0%, transparent 75%); }
+  .gradient-orb-rose { background: radial-gradient(circle, var(--color-gradient-rose, #ffe4e6) 0%, transparent 75%); }
+  .gradient-orb-gold { background: radial-gradient(circle, #fef3c7 0%, transparent 75%); }
+  .gradient-orb-indigo { background: radial-gradient(circle, #e0e7ff 0%, transparent 75%); }
+
+  /* Advanced Animations */
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  .animate-glow {
+    animation: glow-pulse 3s ease-in-out infinite;
+  }
+
+  /* Bento Grid Utilities */
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-auto-rows: 240px;
+    grid-auto-flow: dense;
+    gap: var(--space-4);
+  }
+
+  .bento-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    background: var(--desk-surface);
+    border: 1px solid var(--desk-border);
+    transition: 
+      border-color var(--duration-slow) var(--ease-enter),
+      transform var(--duration-slow) var(--ease-enter),
+      box-shadow var(--duration-slow) var(--ease-enter);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  }
+
+  .bento-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--desk-border-strong);
+    box-shadow: 0 16px 32px -12px rgba(0, 0, 0, 0.08);
+  }
+
+  .bento-anchor { grid-column: span 2; grid-row: span 2; }
+  .bento-list { grid-column: span 1; grid-row: span 2; }
+  .bento-control { grid-column: span 2; grid-row: span 1; }
+  .bento-wide { grid-column: span 2; grid-row: span 1; }
+  .bento-full { grid-column: 1 / -1; min-height: 240px; }
+
+  /* Masking & Effects */
+  .mask-gradient-top {
+    mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+  }
+
+  .shadow-premium {
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+  }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes glow-pulse {
+  0% { box-shadow: 0 0 5px rgba(var(--desk-accent-rgb, 255, 122, 26), 0.2); }
+  50% { box-shadow: 0 0 20px rgba(var(--desk-accent-rgb, 255, 122, 26), 0.4); }
+  100% { box-shadow: 0 0 5px rgba(var(--desk-accent-rgb, 255, 122, 26), 0.2); }
 }
 
 @keyframes desk-shimmer {

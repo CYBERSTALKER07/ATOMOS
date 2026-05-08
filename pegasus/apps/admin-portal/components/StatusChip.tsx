@@ -80,8 +80,16 @@ export default function StatusChip({ status, label, size = 'sm', className }: St
   const displayLabel = label || status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
   return (
-    <Chip color={config.color} variant={config.variant} size={size} className={className}>
-      <Chip.Label>{displayLabel}</Chip.Label>
+    <Chip 
+      color={config.color} 
+      variant={config.variant} 
+      size={size} 
+      className={`font-semibold border-none shadow-sm ${className}`}
+      style={{
+        boxShadow: config.variant === 'primary' ? `0 0 12px -2px ${config.color === 'default' ? 'var(--color-md-outline)' : `var(--color-md-${config.color})`}40` : 'none'
+      }}
+    >
+      {displayLabel}
     </Chip>
   );
 }

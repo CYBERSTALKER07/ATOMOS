@@ -10,6 +10,7 @@ import { PanelLeftClose, PanelLeft } from 'lucide-react';
 import NotificationPanel from './NotificationPanel';
 import { useNotifications } from '@/lib/useNotifications';
 import { useAuth } from '@/hooks/useAuth';
+import { motion, AnimatePresence } from 'framer-motion';
 
 /* ────────── Navigation Config ────────── */
 
@@ -102,42 +103,52 @@ function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
 // Routes where the navigation drawer should NOT render
 const BARE_ROUTES = ['/login', '/signup', '/auth/'];
 
-/* ── Splash Screen (X-style) ── */
+/* ── Splash Screen (Cinematic) ── */
 function SplashScreen({ onComplete }: { onComplete: () => void }) {
-  const [phase, setPhase] = useState<'enter' | 'exit'>('enter');
-
-  useEffect(() => {
-    const t1 = setTimeout(() => setPhase('exit'), 1200);
-    const t2 = setTimeout(() => onComplete(), 1800);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [onComplete]);
-
   return (
-    <div
-      className="fixed inset-0 z-9999 flex items-center justify-center bg-accent"
-      style={{
-        opacity: phase === 'exit' ? 0 : 1,
-        transform: phase === 'exit' ? 'scale(1.15)' : 'scale(1)',
-        transition: 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)',
-        pointerEvents: phase === 'exit' ? 'none' : 'auto',
+    <motion.div
+      initial={{ opacity: 1 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      onAnimationComplete={(definition) => {
+        if (definition === 'exit') onComplete();
       }}
+      className="fixed inset-0 z-9999 flex items-center justify-center bg-background"
     >
-      <div
-        style={{
-          animation: 'splash-logo-in 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
-        }}
+      <div className="absolute inset-0 bg-accent/5 opacity-50" />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+        className="relative z-10 flex flex-col items-center gap-6"
       >
-        <svg width="72" height="72" viewBox="0 0 24 24" fill="var(--accent-foreground)">
-          <path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z"/>
-        </svg>
-      </div>
-      <style>{`
-        @keyframes splash-logo-in {
-          0% { opacity: 0; transform: scale(0.6); }
-          100% { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
-    </div>
+        <div className="w-20 h-20 flex items-center justify-center bg-accent text-accent-foreground md-shape-xl shadow-2xl shadow-accent/40">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z"/>
+          </svg>
+        </div>
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5, duration: 1 }}
+          className="flex flex-col items-center"
+        >
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">PEGASUS</h2>
+          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground mt-1">Enterprise Hub</p>
+        </motion.div>
+        
+        {/* Loading bar */}
+        <div className="w-32 h-0.5 bg-muted/20 rounded-full mt-4 overflow-hidden">
+          <motion.div 
+            initial={{ x: '-100%' }}
+            animate={{ x: '100%' }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+            className="w-full h-full bg-accent"
+          />
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -247,21 +258,33 @@ const DrawerContent = memo(function DrawerContent({
               {section.label && !isRail && (
                 <p className="md-nav-section-label">{section.label}</p>
               )}
-              {section.items.map(item => {
+              {section.items.map((item, ii) => {
                 const active = isActiveRoute(pathname, item.href);
                 return (
-                  <Link
+                  <motion.div
                     key={item.href}
-                    href={item.href}
-                    className={`md-nav-item ${active ? 'md-nav-active' : ''}`}
-                    data-active={active}
-                    title={isRail ? item.label : undefined}
-                    aria-label={item.label}
-                    style={isRail ? { justifyContent: 'center', padding: '0', height: 42 } : undefined}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ 
+                      delay: (si * 0.1) + (ii * 0.03),
+                      type: 'spring',
+                      stiffness: 300,
+                      damping: 30
+                    }}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <Icon name={item.icon} size={20} />
-                    {!isRail && <span className="truncate">{item.label}</span>}
-                  </Link>
+                    <Link
+                      href={item.href}
+                      className={`md-nav-item hover-lift ${active ? 'md-nav-active' : ''}`}
+                      data-active={active}
+                      title={isRail ? item.label : undefined}
+                      aria-label={item.label}
+                      style={isRail ? { justifyContent: 'center', padding: '0', height: 42 } : undefined}
+                    >
+                      <Icon name={item.icon} size={20} />
+                      {!isRail && <span className="truncate">{item.label}</span>}
+                    </Link>
+                  </motion.div>
                 );
               })}
             </div>
@@ -415,45 +438,52 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       {!splashDone && <SplashScreen onComplete={dismissSplash} />}
 
       {/* ── Desktop: M3 Navigation Rail / Drawer ─────────────────────── */}
-      <aside
-        className="hidden md:flex flex-col justify-between shrink-0 bg-background"
+      <motion.aside
+        animate={{ width: collapsed ? 64 : 260 }}
+        transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+        className="hidden md:flex flex-col justify-between shrink-0 bg-background overflow-hidden"
         style={{
-          width: collapsed ? 64 : 256,
           borderRight: '1px solid var(--border)',
-          transition: `width 300ms cubic-bezier(0.2,0,0,1)`,
         }}
       >
         <DrawerContent isMobile={false} collapsed={collapsed} pathname={pathname} isGlobalAdmin={isGlobalAdmin} isFactoryStaff={isFactoryStaff} onToggle={toggleSidebar} onLogout={handleLogout} />
-      </aside>
+      </motion.aside>
 
       {/* ── Mobile: Scrim + Slide Drawer ─────────────────────────────── */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 md:hidden"
-          style={{ background: 'var(--backdrop)' }}
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-      <aside
-        ref={mobileMenuRef}
-        className={`fixed top-0 left-0 z-50 h-full flex flex-col md:hidden bg-background ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-        style={{
-          width: 256,
-          borderRight: '1px solid var(--border)',
-          transition: `transform 300ms cubic-bezier(0.2,0,0,1)`,
-        }}
-      >
-        <DrawerContent isMobile={true} collapsed={collapsed} pathname={pathname} isGlobalAdmin={isGlobalAdmin} isFactoryStaff={isFactoryStaff} onToggle={toggleSidebar} onLogout={handleLogout} />
-      </aside>
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 md:hidden bg-black/40 backdrop-blur-sm"
+              onClick={() => setMobileOpen(false)}
+            />
+            <motion.aside
+              ref={mobileMenuRef}
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="fixed top-0 left-0 z-50 h-full flex flex-col md:hidden bg-background overflow-hidden"
+              style={{
+                width: 256,
+                borderRight: '1px solid var(--border)',
+              }}
+            >
+              <DrawerContent isMobile={true} collapsed={collapsed} pathname={pathname} isGlobalAdmin={isGlobalAdmin} isFactoryStaff={isFactoryStaff} onToggle={toggleSidebar} onLogout={handleLogout} />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* ── Main Content Area ── */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* ── Top App Bar ── */}
         <header
-          className="h-14 flex items-center justify-between px-4 shrink-0 gap-4 bg-background"
-          style={{ borderBottom: '1px solid var(--border)' }}
+          className="h-14 flex items-center justify-between px-4 shrink-0 gap-4 glass-premium sticky top-0 z-30"
+          style={{ borderBottom: '1px solid var(--border)', background: 'transparent' }}
         >
           {/* Left section */}
           <div className="flex items-center gap-2 min-w-0">
@@ -617,68 +647,83 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </header>
 
         {/* ── Search overlay ── */}
-        {searchOpen && (
-          <div
-            className="fixed inset-0 z-200 flex items-start justify-center pt-20"
-            style={{ background: 'var(--backdrop)' }}
-            onClick={(e) => { if (e.target === e.currentTarget) { setSearchOpen(false); setSearchQuery(''); } }}
-          >
-            <div
-              className="w-full max-w-lg mx-4 md-shape-xl overflow-hidden bg-surface"
-              style={{
-                boxShadow: '0 8px 12px 6px rgba(0,0,0,0.15), 0 4px 4px rgba(0,0,0,0.3)',
-              }}
+        <AnimatePresence>
+          {searchOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-200 flex items-start justify-center pt-20 bg-black/40 backdrop-blur-md"
+              onClick={(e) => { if (e.target === e.currentTarget) { setSearchOpen(false); setSearchQuery(''); } }}
             >
-              <div className="md-search-bar" style={{ borderRadius: '28px 28px 0 0', height: 56 }}>
-                <Icon name="search" />
-                <input
-                  ref={searchRef}
-                  type="text"
-                  placeholder="Search pages..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  autoFocus
-                />
-                <kbd
-                  className="hidden sm:inline-flex items-center px-1.5 h-5 md-typescale-label-small md-shape-xs text-muted"
-                  style={{
-                    border: '1px solid var(--border)',
-                    fontSize: 10,
-                  }}
-                >
-                  ESC
-                </kbd>
-              </div>
-              {searchResults.length > 0 && (
-                <div className="py-1" style={{ borderTop: '1px solid var(--border)' }}>
-                  {searchResults.slice(0, 8).map(item => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="md-menu-item"
-                      onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
-                    >
-                      <Icon name={item.icon} />
-                      <span>{item.label}</span>
-                      <span className="ml-auto md-typescale-label-small text-muted">
-                        {item.href}
-                      </span>
-                    </Link>
-                  ))}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                className="w-full max-w-lg mx-4 md-shape-xl overflow-hidden glass-effect shadow-premium"
+              >
+                <div className="md-search-bar" style={{ borderRadius: '28px 28px 0 0', height: 56 }}>
+                  <Icon name="search" />
+                  <input
+                    ref={searchRef}
+                    type="text"
+                    placeholder="Search pages..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    autoFocus
+                  />
+                  <kbd
+                    className="hidden sm:inline-flex items-center px-1.5 h-5 md-typescale-label-small md-shape-xs text-muted"
+                    style={{
+                      border: '1px solid var(--border)',
+                      fontSize: 10,
+                    }}
+                  >
+                    ESC
+                  </kbd>
                 </div>
-              )}
-              {searchQuery.trim() && searchResults.length === 0 && (
-                <div className="px-4 py-6 text-center md-typescale-body-small text-muted">
-                  No pages match &ldquo;{searchQuery}&rdquo;
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+                {searchResults.length > 0 && (
+                  <div className="py-1" style={{ borderTop: '1px solid var(--border)' }}>
+                    {searchResults.slice(0, 8).map(item => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="md-menu-item active-press"
+                        onClick={() => { setSearchOpen(false); setSearchQuery(''); }}
+                      >
+                        <Icon name={item.icon} />
+                        <span>{item.label}</span>
+                        <span className="ml-auto md-typescale-label-small text-muted">
+                          {item.href}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                {searchQuery.trim() && searchResults.length === 0 && (
+                  <div className="px-4 py-6 text-center md-typescale-body-small text-muted">
+                    No pages match &ldquo;{searchQuery}&rdquo;
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── Page content ── */}
-        <main className="flex-1 overflow-y-auto bg-background">
-          {children}
+        <main className="flex-1 overflow-y-auto bg-background/50">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="h-full"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </>

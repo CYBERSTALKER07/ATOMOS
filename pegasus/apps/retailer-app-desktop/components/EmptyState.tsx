@@ -2,7 +2,17 @@ import { Button } from "@heroui/react";
 import { motion } from "framer-motion";
 import { ReactNode, useEffect, useState } from "react";
 
-type EmptyStateVariant = "no-data" | "no-results" | "offline" | "restricted" | "error";
+type EmptyStateVariant = 
+  | "no-data" 
+  | "no-results" 
+  | "offline" 
+  | "restricted" 
+  | "error" 
+  | "production" 
+  | "no-orders" 
+  | "no-products" 
+  | "no-predictions" 
+  | "no-suppliers";
 
 interface EmptyStateProps {
   icon?: ReactNode;
@@ -20,6 +30,11 @@ function resolveVariant(headline: string, body?: string): EmptyStateVariant {
   if (/permission|forbidden|access denied|restricted/.test(text)) return "restricted";
   if (/error|failed|unable|unavailable/.test(text)) return "error";
   if (/search|filter|result/.test(text)) return "no-results";
+  if (/order/.test(text)) return "no-orders";
+  if (/product/.test(text)) return "no-products";
+  if (/prediction|insight/.test(text)) return "no-predictions";
+  if (/supplier/.test(text)) return "no-suppliers";
+  if (/production|factory|line/.test(text)) return "production";
   return "no-data";
 }
 
@@ -31,7 +46,7 @@ function Illustration({ variant, title }: { variant: EmptyStateVariant; title: s
       <rect x="34" y="70" width="112" height="10" rx="5" fill="var(--desk-border-strong, #cbd5e1)" />
       <rect x="34" y="86" width="88" height="10" rx="5" fill="var(--desk-border, #e5e7eb)" />
 
-      {variant === "no-results" && (
+      {(variant === "no-results" || variant === "no-predictions") && (
         <>
           <circle cx="170" cy="92" r="18" fill="none" stroke="var(--desk-accent, #ff7a1a)" strokeWidth="8" />
           <line x1="183" y1="105" x2="198" y2="120" stroke="var(--desk-accent, #ff7a1a)" strokeWidth="8" strokeLinecap="round" />
@@ -62,10 +77,19 @@ function Illustration({ variant, title }: { variant: EmptyStateVariant; title: s
         </>
       )}
 
-      {variant === "no-data" && (
+      {(variant === "no-data" || variant === "no-orders" || variant === "no-products" || variant === "no-suppliers") && (
         <>
           <circle cx="170" cy="92" r="20" fill="var(--desk-accent, #ff7a1a)" opacity="0.16" />
           <rect x="158" y="84" width="24" height="16" rx="6" fill="none" stroke="var(--desk-accent, #ff7a1a)" strokeWidth="5" />
+        </>
+      )}
+
+      {variant === "production" && (
+        <>
+          <rect x="150" y="80" width="40" height="24" rx="4" fill="var(--desk-warning, #d97706)" opacity="0.16" />
+          <path d="M155 92h30" stroke="var(--desk-warning, #d97706)" strokeWidth="4" strokeLinecap="round" />
+          <circle cx="160" cy="100" r="3" fill="var(--desk-warning, #d97706)" />
+          <circle cx="180" cy="100" r="3" fill="var(--desk-warning, #d97706)" />
         </>
       )}
     </svg>
@@ -82,12 +106,13 @@ export default function EmptyState({
   variant,
 }: EmptyStateProps) {
   const resolvedVariant = variant ?? resolveVariant(headline, body);
-  const variantImageUrl = `/illustrations/${resolvedVariant}.svg`;
-  const [assetLoadFailed, setAssetLoadFailed] = useState(false);
+  const pngUrl = `/illustrations/${resolvedVariant}.png`;
+  const svgUrl = `/illustrations/${resolvedVariant}.svg`;
+  const [assetType, setAssetType] = useState<"png" | "svg" | "none">("png");
 
   useEffect(() => {
-    setAssetLoadFailed(false);
-  }, [variantImageUrl]);
+    setAssetType("png");
+  }, [resolvedVariant]);
 
   return (
     <motion.div 
@@ -101,20 +126,28 @@ export default function EmptyState({
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.1, type: "spring", stiffness: 200, damping: 20 }}
-        className="w-32 h-32 flex items-center justify-center mb-6 overflow-hidden shadow-sm ring-1 ring-[var(--border)] desk-illustration-frame"
+        className="w-48 h-48 flex items-center justify-center mb-6 overflow-hidden desk-illustration-frame"
       >
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={headline} className="w-full h-full object-cover" />
+          <img src={imageUrl} alt={headline} className="w-full h-full object-contain p-4" />
         ) : icon ? (
-          icon
-        ) : !assetLoadFailed ? (
+          <div className="text-desk-accent w-16 h-16">{icon}</div>
+        ) : assetType === "png" ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={variantImageUrl}
+            src={pngUrl}
             alt={headline}
-            className="w-full h-full object-cover"
-            onError={() => setAssetLoadFailed(true)}
+            className="w-full h-full object-contain p-2"
+            onError={() => setAssetType("svg")}
+          />
+        ) : assetType === "svg" ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={svgUrl}
+            alt={headline}
+            className="w-full h-full object-contain p-4"
+            onError={() => setAssetType("none")}
           />
         ) : (
           <Illustration variant={resolvedVariant} title={headline} />
@@ -124,7 +157,7 @@ export default function EmptyState({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="md-typescale-title-large font-semibold text-foreground mb-2"
+        className="md-typescale-title-large font-bold text-foreground mb-2"
       >
         {headline}
       </motion.h3>
@@ -149,7 +182,7 @@ export default function EmptyState({
             variant="flat" 
             color="primary"
             onPress={onAction}
-            className="font-medium hover-lift active-press"
+            className="font-bold px-8 h-12 rounded-xl hover-lift active-press"
           >
             {action}
           </Button>

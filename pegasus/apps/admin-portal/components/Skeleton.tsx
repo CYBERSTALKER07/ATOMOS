@@ -3,7 +3,7 @@
 import type { CSSProperties } from 'react';
 
 export function Skeleton({ className = '', style }: { className?: string; style?: CSSProperties }) {
-  return <div className={`md-skeleton ${className}`} style={style} />;
+  return <div className={`skeleton-shimmer md-shape-md ${className}`} style={style} />;
 }
 
 export function SkeletonText({ lines = 3, className = '' }: { lines?: number; className?: string }) {
@@ -12,7 +12,7 @@ export function SkeletonText({ lines = 3, className = '' }: { lines?: number; cl
       {Array.from({ length: lines }).map((_, i) => (
         <div
           key={i}
-          className="md-skeleton md-skeleton-text"
+          className="skeleton-shimmer md-skeleton-text md-shape-sm"
           style={i === lines - 1 ? { width: '60%' } : undefined}
         />
       ))}
@@ -21,7 +21,7 @@ export function SkeletonText({ lines = 3, className = '' }: { lines?: number; cl
 }
 
 export function SkeletonCard({ className = '' }: { className?: string }) {
-  return <div className={`md-skeleton md-skeleton-card ${className}`} />;
+  return <div className={`skeleton-shimmer md-skeleton-card md-shape-lg ${className}`} />;
 }
 
 /** Full-page loading skeleton matching common dashboard layouts */
