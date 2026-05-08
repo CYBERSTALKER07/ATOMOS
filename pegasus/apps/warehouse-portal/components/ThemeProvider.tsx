@@ -51,6 +51,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     setMounted(true);
     document.documentElement.setAttribute('data-hydrated', '');
+
+    if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__) {
+      document.documentElement.setAttribute('data-tauri', '');
+    }
   }, []);
 
   useEffect(() => {

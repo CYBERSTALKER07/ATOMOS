@@ -106,40 +106,40 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen p-8 flex flex-col items-center justify-center" style={{ background: 'var(--surface)' }}>
-      <div className="rounded-2xl shadow-lg p-8 max-w-md w-full border border-[var(--border)]" style={{ backgroundColor: 'var(--background)' }}>
-        <h1 className="md-typescale-display-small mb-2 text-center font-bold" style={{ color: 'var(--accent)' }}>Retailer Portal</h1>
-        <p className="md-typescale-body-large text-muted mb-8 text-center">
+    <main className="retailer-auth-shell">
+      <section className="retailer-auth-card" aria-labelledby="retailer-auth-title">
+        <h1 id="retailer-auth-title" className="retailer-auth-title md-typescale-display-small">Retailer Portal</h1>
+        <p className="retailer-auth-subtitle md-typescale-body-large">
           Sign in to your account
         </p>
         
         {error && (
-          <div className="p-3 mb-4 rounded-lg text-sm" style={{ background: 'rgba(220,38,38,0.08)', color: 'var(--danger)' }}>
+          <div className="retailer-auth-error" role="alert">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="md-typescale-label-medium text-foreground">Phone Number</label>
+        <form onSubmit={handleLogin} className="retailer-auth-form">
+          <div className="retailer-auth-field">
+            <label className="retailer-auth-label md-typescale-label-medium">Phone Number</label>
             <input 
               type="tel" 
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+998901234567"
-              className="p-3 w-full border rounded-lg border-[var(--border)] focus:outline-none focus:border-[var(--accent)] bg-transparent text-foreground"
+              className="retailer-auth-input"
               required
             />
           </div>
           
-          <div className="flex flex-col gap-1 mb-4">
-            <label className="md-typescale-label-medium text-foreground">Password</label>
+          <div className="retailer-auth-field">
+            <label className="retailer-auth-label md-typescale-label-medium">Password</label>
             <input 
               type="password" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="p-3 w-full border rounded-lg border-[var(--border)] focus:outline-none focus:border-[var(--accent)] bg-transparent text-foreground"
+              className="retailer-auth-input"
               required
             />
           </div>
@@ -147,13 +147,12 @@ export default function Home() {
           <button 
             type="submit" 
             disabled={loading}
-            className="md-typescale-label-large px-6 py-3 w-full flex justify-center disabled:opacity-50 rounded-full font-bold transition-opacity hover:opacity-90"
-            style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' }}
+            className="retailer-auth-submit md-typescale-label-large"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-      </div>
+      </section>
     </main>
   );
 }
