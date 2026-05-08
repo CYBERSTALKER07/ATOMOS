@@ -1,7 +1,6 @@
 package com.pegasus.retailer.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.pegasus.retailer.ui.components.modifiers.bounceCash
 
 /**
  * B&W minimalist top bar matching iOS:
@@ -50,10 +50,10 @@ fun PegasusTopBar(
             Box(
                 modifier = Modifier
                     .padding(start = 12.dp)
-                    .size(32.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.primary)
-                    .clickable { onAvatarCash() },
+                    .bounceCash(onClick = onAvatarCash),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(

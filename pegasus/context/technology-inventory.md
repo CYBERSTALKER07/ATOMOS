@@ -178,6 +178,8 @@ From Terraform under `pegasus/infra/terraform`:
 
 ## Engineering Guard Tooling
 
+- Local Sequential Thinking MCP: `.agents/extensions/sequential-thinking/mcp-server.mjs`
+  - Provides the canonical `sequential_thinking` tool without relying on registry-fetched `npx` startup.
 - Contract Guard MCP: `pegasus/scripts/contract_guard_mcp.py`
 	- Enforces codebase-first MCP context weighting on contract-triggered diffs (runtime code surfaces must dominate context-doc touches).
 - Architecture Guard MCP: `pegasus/scripts/architecture_guard_mcp.py`

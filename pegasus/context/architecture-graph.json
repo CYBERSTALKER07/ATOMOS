@@ -1,6 +1,6 @@
 {
   "version": "2026-05-07",
-  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure and slog observability tranche across high-noise runtime domains and cache infrastructure paths).",
+  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, slog observability tranche across high-noise runtime domains and cache infrastructure paths, and local sequential-thinking MCP fallback).",
   "agentContext": {
     "syncSet": [
       "../.github/ACT.md",
@@ -32,6 +32,15 @@
         "void_ast_definition",
         "void_ast_usages",
         "void_ast_graph"
+      ]
+    },
+    "sequentialThinkingMcp": {
+      "path": "../.vscode/mcp.json",
+      "template": "../.github/mcp.vscode.example.json",
+      "serverId": "sequential-thinking",
+      "entry": "../.agents/extensions/sequential-thinking/mcp-server.mjs",
+      "toolNames": [
+        "sequential_thinking"
       ]
     },
     "engine": {
@@ -104,6 +113,7 @@
     { "id": "copilot_agent", "type": "agent", "label": "GitHub Copilot Agent" },
     { "id": "gemini_agent", "type": "agent", "label": "Gemini Agent" },
     { "id": "act_protocol", "type": "agent_policy", "label": "ACT Companion Protocol" },
+    { "id": "sequential_mcp_server", "type": "agent_tool", "label": "Sequential Thinking MCP Server" },
     { "id": "ast_mcp_server", "type": "agent_tool", "label": "AST MCP Server" },
     { "id": "ast_engine", "type": "agent_tool", "label": "AST Symbol Graph Engine" },
     { "id": "arch_docs", "type": "docs", "label": "Architecture Docs + Graph" },
@@ -129,7 +139,10 @@
     { "from": "kafka", "to": "reconciler", "relationship": "consumed_by" },
     { "from": "copilot_agent", "to": "act_protocol", "relationship": "follows" },
     { "from": "gemini_agent", "to": "act_protocol", "relationship": "follows" },
+    { "from": "copilot_agent", "to": "sequential_mcp_server", "relationship": "queries" },
+    { "from": "gemini_agent", "to": "sequential_mcp_server", "relationship": "queries" },
     { "from": "act_protocol", "to": "ast_mcp_server", "relationship": "requires" },
+    { "from": "act_protocol", "to": "sequential_mcp_server", "relationship": "requires" },
     { "from": "act_protocol", "to": "ast_engine", "relationship": "fallback_requires" },
     { "from": "act_protocol", "to": "handlers", "relationship": "codebase_primary" },
     { "from": "act_protocol", "to": "arch_docs", "relationship": "requires" },

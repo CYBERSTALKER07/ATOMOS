@@ -46,18 +46,21 @@ export default function DashboardPage() {
     loading: loadingOrders,
     error: ordersError,
     mutate: refreshOrders,
+    isRefreshing: isRefreshingOrders,
   } = useLiveData<Order[]>(ordersPath, 30000);
   const {
     data: predictions,
     loading: loadingPred,
     error: predictionsError,
     mutate: refreshPredictions,
+    isRefreshing: isRefreshingPredictions,
   } = useLiveData<Prediction[]>("/v1/ai/predictions");
   const {
     data: products,
     loading: loadingProducts,
     error: productsError,
     mutate: refreshProducts,
+    isRefreshing: isRefreshingProducts,
   } = useLiveData<Product[]>("/v1/catalog/products");
   const { addToCart, items } = useCart();
 
@@ -76,6 +79,7 @@ export default function DashboardPage() {
   );
   const reorderProducts = useMemo(() => productList.slice(0, 8), [productList]);
   const loading = loadingOrders || loadingPred || loadingProducts;
+  const refreshing = isRefreshingOrders || isRefreshingPredictions || isRefreshingProducts;
   const liveErrors = [ordersError, predictionsError, productsError].filter(
     (err): err is Error & { status?: number } => Boolean(err),
   );
@@ -163,9 +167,9 @@ export default function DashboardPage() {
           </span>
           <button
             onClick={refreshAll}
-            className="md-btn md-btn-outlined md-typescale-label-large inline-flex h-9 items-center px-4"
+            className="md-btn md-btn-outlined md-typescale-label-large active-press inline-flex h-9 items-center px-4"
           >
-            Retry sync
+            {refreshing ? "Syncing…" : "Retry sync"}
           </button>
         </div>
       )}
@@ -178,10 +182,10 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Link href="/orders" className="md-btn md-btn-outlined md-typescale-label-large inline-flex h-10 items-center px-5">
+          <Link href="/orders" className="md-btn md-btn-outlined md-typescale-label-large active-press inline-flex h-10 items-center px-5">
             Review orders
           </Link>
-          <Link href="/catalog" className="md-btn md-btn-filled md-typescale-label-large inline-flex h-10 items-center px-5">
+          <Link href="/catalog" className="md-btn md-btn-filled md-typescale-label-large active-press inline-flex h-10 items-center px-5">
             Open catalog
           </Link>
         </div>
@@ -273,7 +277,7 @@ export default function DashboardPage() {
                 <button
                   key={product.id}
                   onClick={() => addToCart(product)}
-                  className="bento-card flex cursor-pointer flex-col gap-4 text-left transition-all duration-150 hover:ring-1 hover:ring-accent"
+                  className="bento-card active-press flex cursor-pointer flex-col gap-4 text-left transition-all duration-150 hover:ring-1 hover:ring-accent"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
@@ -327,7 +331,7 @@ export default function DashboardPage() {
               {predictionList.slice(0, 6).map((prediction) => (
                 <PredictionCard key={prediction.id} forecast={prediction} />
               ))}
-              <Link href="/insights" className="inline-flex items-center gap-2 px-2 md-typescale-label-large font-semibold text-accent hover:underline">
+              <Link href="/insights" className="active-press inline-flex items-center gap-2 px-2 md-typescale-label-large font-semibold text-accent hover:underline">
                 Review all predictions
                 <ArrowRight size={16} />
               </Link>
@@ -345,7 +349,7 @@ export default function DashboardPage() {
           </div>
           <div className="grid gap-3 xl:grid-cols-3">
             {activeOrders.slice(0, 6).map((order) => (
-              <Link key={order.order_id} href="/orders" className="bento-card transition-all duration-150 hover:ring-1 hover:ring-accent">
+              <Link key={order.order_id} href="/orders" className="bento-card active-press transition-all duration-150 hover:ring-1 hover:ring-accent">
                 <div className="flex items-center gap-3">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" style={{ background: "var(--surface)" }}>
                     <Truck size={18} style={{ color: "var(--muted)" }} />
@@ -381,7 +385,7 @@ function WorkspaceActionCard({
   return (
     <Link
       href={href}
-      className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-all duration-150 hover:border-[var(--color-md-outline)] hover:bg-[var(--color-md-surface-container-low)]"
+      className="active-press rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-all duration-150 hover:border-[var(--color-md-outline)] hover:bg-[var(--color-md-surface-container-low)]"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--color-md-surface-container)]">

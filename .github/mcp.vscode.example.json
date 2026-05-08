@@ -1,19 +1,11 @@
 {
   "servers": {
-    "heroui-react": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@heroui/react-mcp@latest"
-      ]
-    },
     "sequential-thinking": {
       "type": "stdio",
-      "command": "npx",
+      "command": "node",
+      "cwd": "${workspaceFolder}",
       "args": [
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
+        ".agents/extensions/sequential-thinking/mcp-server.mjs"
       ]
     },
     "void-ast-engine": {

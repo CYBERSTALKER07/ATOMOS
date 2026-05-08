@@ -4,14 +4,14 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 
-interface ThemeCtx {
+interface ThemeContextValue {
   mode: ThemeMode;
   resolved: 'light' | 'dark';
-  setMode: (m: ThemeMode) => void;
+  setMode: (mode: ThemeMode) => void;
   cycle: () => void;
 }
 
-const ThemeContext = createContext<ThemeCtx>({
+const ThemeContext = createContext<ThemeContextValue>({
   mode: 'system',
   resolved: 'light',
   setMode: () => {},
@@ -20,7 +20,7 @@ const ThemeContext = createContext<ThemeCtx>({
 
 export const useTheme = () => useContext(ThemeContext);
 
-const STORAGE_KEY = 'pegasus-theme-mode';
+const STORAGE_KEY = 'pegasus-retailer-theme-mode';
 const CYCLE_ORDER: ThemeMode[] = ['system', 'light', 'dark'];
 
 function getSystemPreference(): 'light' | 'dark' {
@@ -30,15 +30,8 @@ function getSystemPreference(): 'light' | 'dark' {
 
 function applyTheme(resolved: 'light' | 'dark') {
   const root = document.documentElement;
-
-  root.classList.remove('dark');
-
-  if (resolved === 'dark') {
-    root.classList.add('dark');
-    root.style.colorScheme = 'dark';
-  } else {
-    root.style.colorScheme = 'light';
-  }
+  root.classList.toggle('dark', resolved === 'dark');
+  root.style.colorScheme = resolved;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -52,41 +45,39 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setModeState(stored);
     }
     setMounted(true);
-    document.documentElement.setAttribute('data-hydrated', '');
-
-    if (typeof window !== 'undefined' && (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__) {
-      document.documentElement.setAttribute('data-tauri', '');
-    }
   }, []);
 
   useEffect(() => {
     if (!mounted) return;
 
     const resolve = () => {
-      const effective = mode === 'system' ? getSystemPreference() : mode;
-      setResolved(effective);
-      applyTheme(effective);
+      const nextResolved = mode === 'system' ? getSystemPreference() : mode;
+      setResolved(nextResolved);
+      applyTheme(nextResolved);
     };
 
     resolve();
 
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => { if (mode === 'system') resolve(); };
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleThemeChange = () => {
+      if (mode === 'system') resolve();
+    };
+
+    mediaQuery.addEventListener('change', handleThemeChange);
+    return () => mediaQuery.removeEventListener('change', handleThemeChange);
   }, [mode, mounted]);
 
-  const setMode = useCallback((m: ThemeMode) => {
-    setModeState(m);
-    localStorage.setItem(STORAGE_KEY, m);
+  const setMode = useCallback((nextMode: ThemeMode) => {
+    setModeState(nextMode);
+    localStorage.setItem(STORAGE_KEY, nextMode);
   }, []);
 
   const cycle = useCallback(() => {
-    setModeState(prev => {
-      const idx = CYCLE_ORDER.indexOf(prev);
-      const next = CYCLE_ORDER[(idx + 1) % CYCLE_ORDER.length];
-      localStorage.setItem(STORAGE_KEY, next);
-      return next;
+    setModeState((previous) => {
+      const index = CYCLE_ORDER.indexOf(previous);
+      const nextMode = CYCLE_ORDER[(index + 1) % CYCLE_ORDER.length];
+      localStorage.setItem(STORAGE_KEY, nextMode);
+      return nextMode;
     });
   }, []);
 

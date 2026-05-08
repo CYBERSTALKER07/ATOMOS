@@ -45,6 +45,7 @@ graph TD
     subgraph AgentContext [Agent Context Tooling]
         Copilot[GitHub Copilot Agent]
         Gemini[Gemini Agent]
+        SeqThinking[Sequential Thinking MCP Server]
         MCPServer[AST MCP Server]
         ASTEngine[Local AST Symbol Graph Engine]
         ArchDocs[Architecture Docs + JSON Graph]
@@ -55,6 +56,8 @@ graph TD
     Mobile --> Maglev
     Terminal --> Maglev
 
+    Copilot --> SeqThinking
+    Gemini --> SeqThinking
     Copilot --> MCPServer
     Gemini --> MCPServer
     MCPServer --> ASTEngine

@@ -1,7 +1,6 @@
 package com.pegasus.retailer.ui.screens.dashboard
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.pegasus.retailer.data.model.DemandForecast
 import com.pegasus.retailer.data.model.Product
+import com.pegasus.retailer.ui.components.modifiers.bounceCash
 import com.pegasus.retailer.ui.theme.HexagonShape
 import com.pegasus.retailer.ui.theme.StatusGreen
 import com.pegasus.retailer.ui.theme.StatusOrange
@@ -76,6 +76,13 @@ private val timeRanges = listOf("Day", "Week", "Month")
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
+    onOpenCatalog: () -> Unit = {},
+    onOpenOrders: () -> Unit = {},
+    onOpenInsights: () -> Unit = {},
+    onOpenSuppliers: () -> Unit = {},
+    onOpenProcurement: () -> Unit = {},
+    onOpenProfile: () -> Unit = {},
+    onQuickReorder: (Product) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedRange by rememberSaveable { mutableIntStateOf(0) }
@@ -116,6 +123,12 @@ fun DashboardScreen(
                     ServiceGrid(
                         activeOrderCount = uiState.activeOrders.size,
                         predictionCount = uiState.predictions.size,
+                        onOpenCatalog = onOpenCatalog,
+                        onOpenOrders = onOpenOrders,
+                        onOpenInsights = onOpenInsights,
+                        onOpenSuppliers = onOpenSuppliers,
+                        onOpenProcurement = onOpenProcurement,
+                        onOpenProfile = onOpenProfile,
                     )
                 }
 
@@ -123,7 +136,10 @@ fun DashboardScreen(
                     item {
                         SectionHeader(title = "Quick reorder", icon = Icons.Rounded.History)
                         Spacer(modifier = Modifier.height(12.dp))
-                        QuickReorderRow(products = uiState.recentProducts)
+                        QuickReorderRow(
+                            products = uiState.recentProducts,
+                            onReorder = onQuickReorder,
+                        )
                     }
                 }
 
@@ -263,6 +279,12 @@ private fun MetricPill(
 private fun ServiceGrid(
     activeOrderCount: Int,
     predictionCount: Int,
+    onOpenCatalog: () -> Unit = {},
+    onOpenOrders: () -> Unit = {},
+    onOpenInsights: () -> Unit = {},
+    onOpenSuppliers: () -> Unit = {},
+    onOpenProcurement: () -> Unit = {},
+    onOpenProfile: () -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
@@ -273,6 +295,7 @@ private fun ServiceGrid(
                 title = "Catalog",
                 subtitle = "Browse products and suppliers",
                 icon = Icons.Rounded.ShoppingBag,
+                onClick = onOpenCatalog,
                 modifier = Modifier
                     .weight(1f)
                     .height(152.dp),
@@ -281,6 +304,7 @@ private fun ServiceGrid(
                 title = "AI insights",
                 subtitle = "$predictionCount restock signals",
                 icon = Icons.Rounded.AutoAwesome,
+                onClick = onOpenInsights,
                 modifier = Modifier
                     .weight(1f)
                     .height(152.dp),
@@ -295,6 +319,7 @@ private fun ServiceGrid(
                 title = "Orders",
                 subtitle = "$activeOrderCount active now",
                 icon = Icons.Rounded.Inventory2,
+                onClick = onOpenOrders,
                 modifier = Modifier
                     .weight(1f)
                     .height(128.dp),
@@ -306,11 +331,13 @@ private fun ServiceGrid(
                 ServiceTileCompact(
                     title = "Inbox",
                     icon = Icons.Rounded.Storefront,
+                    onClick = onOpenSuppliers,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 ServiceTileCompact(
                     title = "Search",
                     icon = Icons.Rounded.Search,
+                    onClick = onOpenCatalog,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -323,16 +350,19 @@ private fun ServiceGrid(
             ServiceTileCompact(
                 title = "Procurement",
                 icon = Icons.AutoMirrored.Rounded.TrendingUp,
+                onClick = onOpenProcurement,
                 modifier = Modifier.weight(1f),
             )
             ServiceTileCompact(
                 title = "History",
                 icon = Icons.Rounded.History,
+                onClick = onOpenOrders,
                 modifier = Modifier.weight(1f),
             )
             ServiceTileCompact(
                 title = "Profile",
                 icon = Icons.Rounded.Storefront,
+                onClick = onOpenProfile,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -344,10 +374,11 @@ private fun ServiceTile(
     title: String,
     subtitle: String,
     icon: ImageVector,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier,
+        modifier = modifier.bounceCash(onClick = onClick),
         shape = SquircleShape,
         color = MaterialTheme.colorScheme.surfaceContainer,
     ) {
@@ -394,10 +425,13 @@ private fun ServiceTile(
 private fun ServiceTileCompact(
     title: String,
     icon: ImageVector,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.height(88.dp),
+        modifier = modifier
+            .height(88.dp)
+            .bounceCash(onClick = onClick),
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
@@ -435,7 +469,10 @@ private fun ServiceTileCompact(
 }
 
 @Composable
-private fun QuickReorderRow(products: List<Product>) {
+private fun QuickReorderRow(
+    products: List<Product>,
+    onReorder: (Product) -> Unit,
+) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(end = 4.dp),
@@ -444,7 +481,7 @@ private fun QuickReorderRow(products: List<Product>) {
             Surface(
                 modifier = Modifier
                     .width(112.dp)
-                    .clickable { },
+                    .bounceCash(onClick = { onReorder(product) }),
                 shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
             ) {

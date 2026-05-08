@@ -31,7 +31,7 @@ Apply ACT for all technical asks, including:
    - `npm --prefix pegasus run ast:def -- --symbol <TargetSymbol>`
    - `npm --prefix pegasus run ast:refs -- --symbol <TargetSymbol> --limit 50`
    - `npm --prefix pegasus run ast:graph -- --symbol <TargetSymbol> --limit 50`
-3. For every non-trivial technical task, plan review, architecture decision, audit, debugging session, migration, or multi-step implementation, run `sequential_thinking` from the `sequential-thinking` MCP server before editing or finalizing an answer. Use revisions and branches when evidence changes the plan or viable alternatives need comparison, and summarize only decisions/risks/work in user-facing replies.
+3. For every non-trivial technical task, plan review, architecture decision, audit, debugging session, migration, or multi-step implementation, run `sequential_thinking` from the `sequential-thinking` MCP server before editing or finalizing an answer. The canonical local entrypoint is `.agents/extensions/sequential-thinking/mcp-server.mjs`. Use revisions and branches when evidence changes the plan or viable alternatives need comparison, and summarize only decisions/risks/work in user-facing replies.
 4. Read required architecture docs before edits:
    - `pegasus/context/architecture.md`
    - `pegasus/context/architecture-graph.json`

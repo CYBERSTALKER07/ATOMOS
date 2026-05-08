@@ -164,12 +164,10 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
 /* ── Static nav flat list for search ── */
 const ALL_NAV_ITEMS = NAV.flatMap(s => s.items);
 
-/* ── Theme Toggle — cycles system → light → dark → synthwave ── */
 const THEME_META: Record<ThemeMode, { icon: string; label: string; next: ThemeMode }> = {
   system: { icon: 'autoMode', label: 'System theme', next: 'light' },
-  light:  { icon: 'lightMode', label: 'Light theme', next: 'dark' },
-  dark:   { icon: 'darkMode', label: 'Dark theme', next: 'synthwave' },
-  synthwave: { icon: 'darkMode', label: 'Synthwave Dark', next: 'system' }, // Recycles darkMode icon, but gives unique label
+  light: { icon: 'lightMode', label: 'Light theme', next: 'dark' },
+  dark: { icon: 'darkMode', label: 'Dark theme', next: 'system' },
 };
 
 function ThemeToggle() {
@@ -181,7 +179,7 @@ function ThemeToggle() {
       isIconOnly
       onPress={cycle}
       aria-label={`${meta.label} — switch to ${meta.next}`}
-      className="desk-btn-ghost w-9 h-9 min-w-0 p-0"
+      className="desk-btn-ghost w-10 h-10 min-w-0 p-0"
     >
       <Icon name={meta.icon} />
     </Button>
@@ -302,7 +300,7 @@ const DrawerContent = memo(function DrawerContent({
                       className={`desk-sidebar-item ${active ? 'desk-sidebar-item--accent' : ''}`}
                       title={isRail ? item.label : undefined}
                       aria-label={item.label}
-                      style={isRail ? { justifyContent: 'center', padding: '0', height: 42 } : undefined}
+                      style={isRail ? { justifyContent: 'center', padding: '0', height: 44 } : undefined}
                     >
                       <Icon name={item.icon} size={18} className="desk-sidebar-item-icon" />
                       {!isRail && <span className="truncate">{item.label}</span>}
@@ -472,7 +470,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
       {/* ── Desktop: M3 Navigation Rail / Drawer ─────────────────────── */}
       <motion.aside
-        animate={{ width: collapsed ? 64 : 260 }}
+        animate={{ width: collapsed ? 72 : 264 }}
         transition={{ type: 'spring', stiffness: 200, damping: 25 }}
         data-shell-sidebar
         className="hidden md:flex flex-col justify-between shrink-0 overflow-hidden"
@@ -504,7 +502,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               data-shell-sidebar
               className="fixed top-0 left-0 z-50 h-full flex flex-col md:hidden overflow-hidden"
               style={{
-                width: 256,
+                width: 264,
                 borderRight: '1px solid var(--desk-border)',
                 background: 'var(--desk-surface)',
               }}

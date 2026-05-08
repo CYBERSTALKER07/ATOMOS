@@ -833,6 +833,15 @@
   },
   "engineeringGuardTooling": {
     "workflow": ".github/workflows/one-eye-guards.yml",
+    "agentMcpServers": [
+      {
+        "serverId": "sequential-thinking",
+        "entry": "../.agents/extensions/sequential-thinking/mcp-server.mjs",
+        "toolNames": [
+          "sequential_thinking"
+        ]
+      }
+    ],
     "codebaseFirstPolicy": {
       "enforcedBy": [
         "pegasus/scripts/contract_guard_mcp.py",

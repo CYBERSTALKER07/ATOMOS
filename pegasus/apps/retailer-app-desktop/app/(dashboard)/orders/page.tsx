@@ -194,7 +194,7 @@ export default function OrdersPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="primary" className="md-btn md-btn-filled md-typescale-label-large px-5 h-10 flex items-center gap-2" onPress={() => router.push("/catalog")}>
+          <Button variant="primary" className="md-btn md-btn-filled md-typescale-label-large active-press px-5 h-10 flex items-center gap-2" onPress={() => router.push("/catalog")}>
             <PackageOpen size={18} /> Fast Order
           </Button>
         </div>
@@ -266,17 +266,17 @@ export default function OrdersPage() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`md-typescale-label-large px-4 py-2 rounded-full font-semibold transition-colors cursor-pointer ${
-              activeTab === tab
-                ? 'bg-accent text-accent-foreground'
-                : 'text-muted hover:text-foreground hover:bg-surface'
-            }`}
+              className={`md-typescale-label-large active-press px-4 py-2 rounded-full font-semibold transition-colors cursor-pointer ${
+                activeTab === tab
+                  ? 'bg-accent text-accent-foreground'
+                  : 'text-muted hover:text-foreground hover:bg-surface'
+              }`}
           >
             {tab === "ALL" ? `All (${list.length})` : tab === "ACTIVE" ? "Active" : "Completed"}
           </button>
         ))}
         <div className="flex-1" />
-        <Button variant="ghost" className="text-muted md-typescale-label-large flex items-center gap-2" onPress={() => mutate()}>
+        <Button variant="ghost" className="text-muted md-typescale-label-large active-press flex items-center gap-2" onPress={() => mutate()}>
           <Filter size={16} /> Refresh
         </Button>
       </div>
@@ -361,7 +361,7 @@ export default function OrdersPage() {
                   </h2>
                   <div className="flex items-center gap-2 mt-1.5 md-typescale-body-small text-muted">
                     <span className="font-mono tabular-nums">{detail.order_id}</span>
-                    <Copy size={13} className="cursor-pointer hover:text-foreground transition-colors" />
+                    <Copy size={13} className="active-press cursor-pointer hover:text-foreground transition-colors" />
                     {detail.deliver_before && (
                       <>
                         <span className="opacity-40">·</span>
@@ -480,7 +480,7 @@ export default function OrdersPage() {
                 </h3>
                 <div className="space-y-3">
                   {(detail.items ?? []).map((item) => (
-                    <div key={item.line_item_id} className="flex justify-between items-center p-3 rounded-xl border border-[var(--border)] hover:bg-surface transition-colors cursor-pointer">
+                    <div key={item.line_item_id} className="active-press flex justify-between items-center p-3 rounded-xl border border-[var(--border)] hover:bg-surface transition-colors cursor-pointer">
                       <div className="flex gap-3 items-center">
                         <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--surface)' }}>
                           <PackageOpen size={16} style={{ color: 'var(--muted)' }} />
@@ -518,7 +518,7 @@ export default function OrdersPage() {
                         variant="primary"
                         onPress={() => verifyOrder(detail)}
                         isDisabled={verifying}
-                        className="md-btn md-btn-filled flex-1 md-typescale-label-large h-11 flex items-center justify-center gap-2"
+                        className="md-btn md-btn-filled active-press flex-1 md-typescale-label-large h-11 flex items-center justify-center gap-2"
                       >
                         {verifying ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
                         Verify & Receipt
@@ -529,14 +529,14 @@ export default function OrdersPage() {
                         variant="danger"
                         onPress={() => cancelOrder(detail)}
                         isDisabled={cancelling}
-                        className="md-typescale-label-large h-11 flex items-center justify-center gap-2"
+                        className="md-typescale-label-large active-press h-11 flex items-center justify-center gap-2"
                       >
                         {cancelling ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />}
                         Cancel Order
                       </Button>
                     )}
                     {detail.state !== "PENDING" && detail.state !== "ARRIVED" && (
-                      <Button variant="outline" className="md-typescale-label-large h-11 flex items-center justify-center gap-2">
+                      <Button variant="outline" className="md-typescale-label-large active-press h-11 flex items-center justify-center gap-2">
                         <AlertTriangle size={16} /> Flag Issue
                       </Button>
                     )}

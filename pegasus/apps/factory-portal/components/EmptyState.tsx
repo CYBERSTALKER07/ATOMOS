@@ -1,8 +1,12 @@
-import { Button } from "@heroui/react";
 import { motion } from "framer-motion";
 import { ReactNode, useEffect, useState } from "react";
 
-type EmptyStateVariant = "no-data" | "no-results" | "offline" | "restricted" | "error";
+type EmptyStateVariant =
+  | "no-data"
+  | "no-results"
+  | "offline"
+  | "restricted"
+  | "error";
 
 interface EmptyStateProps {
   icon?: ReactNode;
@@ -17,57 +21,103 @@ interface EmptyStateProps {
 function resolveVariant(headline: string, body?: string): EmptyStateVariant {
   const text = `${headline} ${body ?? ""}`.toLowerCase();
   if (/offline|disconnected|network/.test(text)) return "offline";
-  if (/permission|forbidden|access denied|restricted/.test(text)) return "restricted";
+  if (/permission|forbidden|access denied|restricted/.test(text))
+    return "restricted";
   if (/error|failed|unable|unavailable/.test(text)) return "error";
   if (/search|filter|result/.test(text)) return "no-results";
   return "no-data";
 }
 
-function Illustration({ variant, title }: { variant: EmptyStateVariant; title: string }) {
+function Illustration({
+  variant,
+  title,
+}: {
+  variant: EmptyStateVariant;
+  title: string;
+}) {
   return (
-    <svg viewBox="0 0 240 160" role="img" aria-label={title} className="h-24 w-24 md:h-28 md:w-28">
-      <rect x="22" y="36" width="196" height="102" rx="18" fill="var(--desk-surface-subtle, #f8fafc)" />
-      <rect x="34" y="48" width="172" height="14" rx="7" fill="var(--desk-border, #e5e7eb)" />
-      <rect x="34" y="70" width="112" height="10" rx="5" fill="var(--desk-border-strong, #cbd5e1)" />
-      <rect x="34" y="86" width="88" height="10" rx="5" fill="var(--desk-border, #e5e7eb)" />
+    <svg
+      viewBox="0 0 240 160"
+      role="img"
+      aria-label={title}
+      className="h-24 w-24 md:h-28 md:w-28"
+    >
+      {/* Container Base */}
+      <rect
+        x="30"
+        y="40"
+        width="180"
+        height="100"
+        rx="12"
+        fill="var(--desk-surface-subtle)"
+        stroke="var(--desk-border)"
+        strokeWidth="2"
+      />
+      {/* Container Top-Lip (Depth) */}
+      <rect
+        x="30"
+        y="30"
+        width="180"
+        height="10"
+        rx="5"
+        fill="var(--desk-surface)"
+        stroke="var(--desk-border)"
+        strokeWidth="2"
+      />
 
-      {variant === "no-results" && (
-        <>
-          <circle cx="170" cy="92" r="18" fill="none" stroke="var(--desk-accent, #ff7a1a)" strokeWidth="8" />
-          <line x1="183" y1="105" x2="198" y2="120" stroke="var(--desk-accent, #ff7a1a)" strokeWidth="8" strokeLinecap="round" />
-        </>
-      )}
+      {/* Content Skeleton */}
+      <rect
+        x="50"
+        y="55"
+        width="140"
+        height="12"
+        rx="6"
+        fill="var(--desk-border)"
+      />
+      <rect
+        x="50"
+        y="80"
+        width="80"
+        height="8"
+        rx="4"
+        fill="var(--desk-border-strong)"
+      />
+      <rect
+        x="50"
+        y="96"
+        width="60"
+        height="8"
+        rx="4"
+        fill="var(--desk-border)"
+      />
 
-      {variant === "offline" && (
-        <>
-          <circle cx="170" cy="92" r="18" fill="var(--desk-warning, #d97706)" opacity="0.16" />
-          <path d="M156 96c8-8 20-8 28 0" fill="none" stroke="var(--desk-warning, #d97706)" strokeWidth="6" strokeLinecap="round" />
-          <line x1="156" y1="84" x2="184" y2="112" stroke="var(--desk-warning, #d97706)" strokeWidth="6" strokeLinecap="round" />
-        </>
-      )}
-
-      {variant === "restricted" && (
-        <>
-          <path d="M170 74l18 8v14c0 13-8 22-18 27-10-5-18-14-18-27V82l18-8z" fill="var(--desk-info, #2563eb)" opacity="0.18" />
-          <rect x="162" y="90" width="16" height="14" rx="3" fill="none" stroke="var(--desk-info, #2563eb)" strokeWidth="5" />
-          <path d="M165 90v-4a5 5 0 0110 0v4" fill="none" stroke="var(--desk-info, #2563eb)" strokeWidth="5" strokeLinecap="round" />
-        </>
-      )}
-
-      {variant === "error" && (
-        <>
-          <polygon points="170,72 196,118 144,118" fill="var(--desk-danger, #dc2626)" opacity="0.18" />
-          <line x1="170" y1="86" x2="170" y2="102" stroke="var(--desk-danger, #dc2626)" strokeWidth="6" strokeLinecap="round" />
-          <circle cx="170" cy="110" r="3.8" fill="var(--desk-danger, #dc2626)" />
-        </>
-      )}
-
-      {variant === "no-data" && (
-        <>
-          <circle cx="170" cy="92" r="20" fill="var(--desk-accent, #ff7a1a)" opacity="0.16" />
-          <rect x="158" y="84" width="24" height="16" rx="6" fill="none" stroke="var(--desk-accent, #ff7a1a)" strokeWidth="5" />
-        </>
-      )}
+      {/* Action Point */}
+      <g transform="translate(160, 95)">
+        <circle
+          cx="20"
+          cy="20"
+          r="16"
+          fill="var(--desk-surface)"
+          stroke="var(--desk-accent)"
+          strokeWidth="3"
+        />
+        {variant === "no-data" ? (
+          <path
+            d="M10 20h20M20 10v20"
+            stroke="var(--desk-accent)"
+            strokeWidth="4"
+            strokeLinecap="round"
+          />
+        ) : (
+          <path
+            d="M12 20h16M20 12l8 8-8 8"
+            stroke="var(--desk-accent)"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+      </g>
     </svg>
   );
 }
@@ -90,7 +140,7 @@ export default function EmptyState({
   }, [variantImageUrl]);
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95 }}
@@ -105,7 +155,11 @@ export default function EmptyState({
       >
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={headline} className="w-full h-full object-cover" />
+          <img
+            src={imageUrl}
+            alt={headline}
+            className="w-full h-full object-cover"
+          />
         ) : icon ? (
           icon
         ) : !assetLoadFailed ? (
@@ -120,7 +174,7 @@ export default function EmptyState({
           <Illustration variant={resolvedVariant} title={headline} />
         )}
       </motion.div>
-      <motion.h3 
+      <motion.h3
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
@@ -129,7 +183,7 @@ export default function EmptyState({
         {headline}
       </motion.h3>
       {body && (
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
@@ -145,13 +199,13 @@ export default function EmptyState({
           transition={{ delay: 0.4 }}
           className="mt-6"
         >
-          <Button 
-            variant="primary" 
-            onPress={onAction}
-            className="font-medium hover-lift active-press"
+          <button
+            type="button"
+            onClick={onAction}
+            className="desk-btn-primary active-press"
           >
             {action}
-          </Button>
+          </button>
         </motion.div>
       )}
     </motion.div>

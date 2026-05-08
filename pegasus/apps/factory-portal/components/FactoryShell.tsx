@@ -149,7 +149,7 @@ const DrawerContent = memo(function DrawerContent({
                       className={`desk-sidebar-item ${active ? 'desk-sidebar-item--accent' : ''}`}
                       title={isRail ? item.label : undefined}
                       aria-label={item.label}
-                      style={isRail ? { justifyContent: 'center', padding: '0', height: 42 } : undefined}
+                      style={isRail ? { justifyContent: 'center', padding: '0', height: 44 } : undefined}
                     >
                       <Icon name={item.icon} size={18} className="desk-sidebar-item-icon" />
                       {!isRail && <span className="truncate">{item.label}</span>}
@@ -241,7 +241,7 @@ export default function FactoryShell({ children }: { children: React.ReactNode }
       {/* Desktop Sidebar */}
       <motion.aside
         initial={false}
-        animate={{ width: collapsed ? 64 : 264 }}
+        animate={{ width: collapsed ? 72 : 264 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className="hidden md:flex flex-col shrink-0 overflow-hidden"
         style={{

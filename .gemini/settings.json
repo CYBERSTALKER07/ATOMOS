@@ -1,28 +1,10 @@
 {
   "mcpServers": {
     "sequential-thinking": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "@modelcontextprotocol/server-sequential-thinking"
+        ".agents/extensions/sequential-thinking/mcp-server.mjs"
       ]
-    },
-    "sequential-thinking-ultra": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@iflow-mcp/hyokunkwak-sequential-thinking-ultra"
-      ],
-      "env": {
-        "ULTRA_THINK_AUTO_LABEL": "true",
-        "ULTRA_THINK_QUALITY": "true",
-        "ULTRA_THINK_META": "true",
-        "ULTRA_THINK_BUDGET": "true",
-        "ENABLE_QUERY_REWRITING": "true",
-        "DEFAULT_BUDGET_MODE": "balanced",
-        "META_CHECKPOINT_FREQ": "25",
-        "QUALITY_THRESHOLD": "0.6"
-      }
     }
   }
 }

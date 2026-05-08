@@ -37,3 +37,13 @@ Before editing any user-facing feature, the agent must confirm:
 5. the loading, empty, offline, restricted, and error states.
 
 Do not mark a feature "end-to-end" because one page or one app looks complete. End-to-end means the backend contract and UI behavior were checked across all affected clients for the role, or the missing clients are explicitly hidden behind a rollout plan.
+
+## Desktop Contract Enforcement
+- The canonical desktop visual contract lives in `/Users/shakhzod/Desktop/V.O.I.D/design.md`.
+- Shared desktop tokens and chrome are enforced through `pegasus/packages/ui-kit/styles/desktop-foundation.css`.
+- `admin-portal`, `factory-portal`, `warehouse-portal`, and `retailer-app-desktop` must stay on one desktop system:
+  - light / dark / system themes only,
+  - 264px expanded rail and 72px collapsed rail,
+  - 64px utility top bar,
+  - semantic token usage instead of per-app accent remaps,
+  - explicit loading / empty / offline / restricted surfaces through shared primitives.

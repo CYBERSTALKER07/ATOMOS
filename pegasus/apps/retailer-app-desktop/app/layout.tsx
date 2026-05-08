@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import "./globals.css";
 import LocaleBootstrap from "../components/LocaleBootstrap";
+import { ThemeProvider } from "../components/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "Pegasus Retailer",
@@ -23,14 +24,13 @@ export default function RootLayout({
         `}} />
       </head>
       <body
-        className="font-sans antialiased min-h-screen"
-        style={{ background: "var(--background)", color: "var(--foreground)" }}
+        className="font-sans antialiased flex h-screen min-h-screen overflow-hidden bg-background text-foreground"
       >
         <LocaleBootstrap />
         <div id="app-splash" aria-hidden="true">
           <Image src="/logo-solid-square.png" alt="" width={80} height={80} priority />
         </div>
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

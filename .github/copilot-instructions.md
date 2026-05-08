@@ -40,11 +40,10 @@ For every request, enforce the following strict retrieval loop in order (summary
 ### Sequential Thinking MCP Integration (Mandatory)
 
 - For every non-trivial technical task, plan review, architecture decision, audit, debugging session, migration, or multi-step implementation, use the `sequential-thinking` MCP server's `sequential_thinking` tool before editing or finalizing an answer.
-- For the same non-trivial tasks, also use the `sequential-thinking-ultra` MCP server's `sequential-thinking-ultra` tool alongside other MCP tools (AST, docs, database, design, and integration tooling) before editing and before finalizing the response.
-- `sequential-thinking-ultra` is additive and mandatory alongside `sequential-thinking`; it does not replace the required `sequential_thinking` call.
+- The canonical workspace server is the local entrypoint at `.agents/extensions/sequential-thinking/mcp-server.mjs` so the tool remains available without registry-fetched `npx` installs.
 - Use sequential thinking to break the task into steps, revise the plan when new evidence changes the approach, branch when comparing viable alternatives, and continue until the execution path is clear.
 - Treat sequential thinking output as internal reasoning support and do not expose it directly to the user. Final user-facing replies should summarize decisions, risks, and completed work rather than exposing raw private reasoning traces.
-- Example flow: gather context -> run sequential-thinking pass -> run sequential-thinking-ultra pass -> execute edits -> validate -> report concise outcomes.
+- Example flow: gather context -> run sequential-thinking pass -> execute edits -> validate -> report concise outcomes.
 
 - After applying edits that alter symbols, architecture, services, dependencies, or integrations, re-run `ast:index` and update all sync files in the same change set:
    1. `.github/ACT.md`

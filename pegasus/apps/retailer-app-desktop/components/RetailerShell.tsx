@@ -12,6 +12,7 @@ import {
 import { useWebSocket } from '../lib/ws';
 import { useRetailerNotifications } from '../lib/notifications';
 import { clearStoredToken } from '../lib/bridge';
+import { useTheme, type ThemeMode } from './ThemeProvider';
 
 /* ────────── Navigation Config ────────── */
 
@@ -63,6 +64,28 @@ function buildBreadcrumbs(pathname: string): { label: string; href: string }[] {
   }
   return crumbs;
 }
+
+const ThemeToggle = memo(function ThemeToggle() {
+  const { mode, cycle } = useTheme();
+  const iconByMode: Record<ThemeMode, React.ElementType> = {
+    system: Activity,
+    light: Store,
+    dark: Container,
+  };
+  const IconComponent = iconByMode[mode];
+
+  return (
+    <button
+      onClick={cycle}
+      className="desk-icon-btn active-press"
+      title={`Theme: ${mode}`}
+      aria-label={`Theme: ${mode}`}
+      type="button"
+    >
+      <IconComponent size={18} />
+    </button>
+  );
+});
 
 /* ── Memoized Drawer Content ── */
 const DrawerContent = memo(function DrawerContent({
@@ -140,7 +163,7 @@ const DrawerContent = memo(function DrawerContent({
                     className={`desk-sidebar-item active-press ${active ? 'desk-sidebar-item--accent' : ''}`}
                     title={isRail ? item.label : undefined}
                     aria-label={item.label}
-                    style={isRail ? { justifyContent: 'center', padding: '0', height: 42 } : undefined}
+                     style={isRail ? { justifyContent: 'center', padding: '0', height: 44 } : undefined}
                   >
                     <ItemIcon size={18} className="desk-sidebar-item-icon" style={{ color: active ? 'var(--desk-accent)' : undefined }} />
                     {!isRail && (
@@ -162,16 +185,21 @@ const DrawerContent = memo(function DrawerContent({
 
       {/* Footer */}
       <div className={`py-3 transition-all duration-200 ${isRail ? 'px-2' : 'px-3'}`} style={{ borderTop: '1px solid var(--desk-border)' }}>
-        <button
-          onClick={onLogout}
-          className={`desk-sidebar-item w-full active-press ${isRail ? 'justify-center' : ''}`}
-          style={isRail ? { padding: 0 } : undefined}
-          title={isRail ? 'Sign Out' : undefined}
-          aria-label="Sign Out"
-        >
-          <LogOut size={18} className="desk-sidebar-item-icon" />
-          {!isRail && <span>Sign Out</span>}
-        </button>
+        <div className={`flex items-center ${isRail ? 'justify-center' : 'gap-2'}`}>
+          <ThemeToggle />
+          {!isRail && (
+            <button
+              onClick={onLogout}
+              className="desk-sidebar-item active-press flex-1"
+              title="Sign Out"
+              aria-label="Sign Out"
+              type="button"
+            >
+              <LogOut size={18} className="desk-sidebar-item-icon" />
+              <span>Sign Out</span>
+            </button>
+          )}
+        </div>
         {!isRail && (
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
@@ -238,7 +266,7 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
       {/* ── Desktop Sidebar ── */}
       <motion.div
         initial={false}
-        animate={{ width: collapsed ? 64 : 240 }}
+        animate={{ width: collapsed ? 72 : 264 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className="hidden md:flex flex-col shrink-0 overflow-hidden z-10"
         style={{
@@ -271,7 +299,7 @@ export default function RetailerShell({ children }: { children: React.ReactNode 
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="absolute inset-y-0 left-0 w-[280px] flex flex-col shadow-2xl"
+              className="absolute inset-y-0 left-0 w-[264px] flex flex-col shadow-2xl"
               style={{
                 background: 'var(--desk-surface)',
                 borderRight: '1px solid var(--desk-border)',

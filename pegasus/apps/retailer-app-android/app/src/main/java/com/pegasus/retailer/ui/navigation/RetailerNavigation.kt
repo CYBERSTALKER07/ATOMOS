@@ -228,7 +228,61 @@ fun RetailerNavigation(
                     ) + fadeOut(tween(MotionTokens.DurationShort2, easing = MotionTokens.EasingEmphasizedAccelerate))
                 },
             ) {
-                composable(PegasusTab.HOME.name) { Box(Modifier.fillMaxSize()) { DashboardScreen() } }
+                composable(PegasusTab.HOME.name) {
+                    Box(Modifier.fillMaxSize()) {
+                        DashboardScreen(
+                            onOpenCatalog = {
+                                currentTab = PegasusTab.CATALOG
+                                navController.navigate(PegasusTab.CATALOG.name) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            onOpenOrders = {
+                                currentTab = PegasusTab.ORDERS
+                                navController.navigate(PegasusTab.ORDERS.name) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            onOpenInsights = {
+                                navController.navigate("ANALYTICS") {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                }
+                            },
+                            onOpenSuppliers = {
+                                currentTab = PegasusTab.SUPPLIERS
+                                navController.navigate(PegasusTab.SUPPLIERS.name) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            onOpenProcurement = {
+                                currentTab = PegasusTab.CATALOG
+                                navController.navigate(PegasusTab.CATALOG.name) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            onOpenProfile = {
+                                currentTab = PegasusTab.PROFILE
+                                navController.navigate(PegasusTab.PROFILE.name) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            onQuickReorder = { product ->
+                                navController.navigate("PRODUCT_DETAIL/${Uri.encode(product.id)}")
+                            },
+                        )
+                    }
+                }
                 composable(PegasusTab.CATALOG.name) {
                     Box(Modifier.fillMaxSize()) {
                         CatalogScreen(
