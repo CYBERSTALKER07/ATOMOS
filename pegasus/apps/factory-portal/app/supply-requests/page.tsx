@@ -387,7 +387,7 @@ export default function SupplyRequestsPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </motion.div>
         )}
       </div>
     </PageTransition>
