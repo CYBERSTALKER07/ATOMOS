@@ -2,7 +2,17 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Chip, Skeleton } from "@heroui/react";
-import { Truck, Package, QrCode, Clock, MapPin, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Truck,
+  Package,
+  QrCode,
+  Clock,
+  MapPin,
+  ChevronDown,
+  ChevronRight,
+  Inbox,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
@@ -12,7 +22,13 @@ import type { TrackingResponse, TrackingOrder } from "../../../lib/types";
 
 /* ── Config ── */
 
-const chipCfg: Record<string, { color: "warning" | "success" | "default" | "danger" | "accent"; label: string }> = {
+const chipCfg: Record<
+  string,
+  {
+    color: "warning" | "success" | "default" | "danger" | "accent";
+    label: string;
+  }
+> = {
   DISPATCHED: { color: "warning", label: "Dispatched" },
   IN_TRANSIT: { color: "warning", label: "In Transit" },
   ARRIVING: { color: "accent", label: "Arriving" },
@@ -34,17 +50,7 @@ const chipCfg: Record<string, { color: "warning" | "success" | "default" | "dang
 };
 
 function formatAmount(amount: number): string {
-  return amount.toLocaleString("en-US").replace(/,/g, " ") + "";
-}
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  return amount.toLocaleString("en-US").replace(/,/g, " ");
 }
 
 /* ── Types ── */
@@ -61,17 +67,20 @@ interface SupplierGroup {
 /* ── Page ── */
 
 export default function DockPage() {
-  const { data, loading } = useLiveData<TrackingResponse>("/v1/retailer/tracking", 15_000);
+  const { data, loading } = useLiveData<TrackingResponse>(
+    "/v1/retailer/tracking",
+    15_000,
+  );
   const [orders, setOrders] = useState<TrackingOrder[]>([]);
-  const [expandedSuppliers, setExpandedSuppliers] = useState<Set<string>>(new Set());
+  const [expandedSuppliers, setExpandedSuppliers] = useState<Set<string>>(
+    new Set(),
+  );
   const [revealedTokens, setRevealedTokens] = useState<Set<string>>(new Set());
 
-  // Sync polling data
   useEffect(() => {
     if (data?.orders) setOrders(data.orders);
   }, [data]);
 
-  // WS: DRIVER_APPROACHING — live position + approaching flag
   useWsEvent(
     "DRIVER_APPROACHING",
     useCallback((msg: WsMessage) => {
@@ -84,8 +93,6 @@ export default function DockPage() {
                 ...o,
                 is_approaching: true,
                 state: o.state === "IN_TRANSIT" ? "ARRIVING" : o.state,
-                driver_latitude: (msg.driver_latitude as number) ?? o.driver_latitude,
-                driver_longitude: (msg.driver_longitude as number) ?? o.driver_longitude,
               }
             : o,
         ),
@@ -93,7 +100,6 @@ export default function DockPage() {
     }, []),
   );
 
-  // WS: ORDER_STATUS_CHANGED — generic state update
   useWsEvent(
     "ORDER_STATUS_CHANGED",
     useCallback((msg: WsMessage) => {
@@ -101,29 +107,36 @@ export default function DockPage() {
       const newState = msg.state as string | undefined;
       if (!orderId || !newState) return;
       setOrders((prev) =>
-        prev.map((o) => (o.order_id === orderId ? { ...o, state: newState } : o)),
+        prev.map((o) =>
+          o.order_id === orderId ? { ...o, state: newState } : o,
+        ),
       );
     }, []),
   );
 
-  // WS: ORDER_COMPLETED — remove from dock
   useWsEvent(
     "ORDER_COMPLETED",
     useCallback((msg: WsMessage) => {
       const orderId = msg.order_id as string | undefined;
       if (!orderId) return;
       setOrders((prev) => prev.filter((o) => o.order_id !== orderId));
-      setRevealedTokens((prev) => { const next = new Set(prev); next.delete(orderId); return next; });
     }, []),
   );
 
-  // Active orders only (exclude PENDING/LOADED — not in delivery)
   const activeOrders = useMemo(
-    () => orders.filter((o) => ["DISPATCHED", "IN_TRANSIT", "ARRIVING", "ARRIVED", "AWAITING_PAYMENT"].includes(o.state)),
+    () =>
+      orders.filter((o) =>
+        [
+          "DISPATCHED",
+          "IN_TRANSIT",
+          "ARRIVING",
+          "ARRIVED",
+          "AWAITING_PAYMENT",
+        ].includes(o.state),
+      ),
     [orders],
   );
 
-  // Group by supplier
   const supplierGroups: SupplierGroup[] = useMemo(() => {
     const map = new Map<string, SupplierGroup>();
     for (const order of activeOrders) {
@@ -142,336 +155,265 @@ export default function DockPage() {
       }
       group.orders.push(order);
       group.totalAmount += order.total_amount;
-      if (order.is_approaching || order.state === "ARRIVING") group.hasApproaching = true;
-      if (order.state === "ARRIVED" || order.state === "AWAITING_PAYMENT") group.hasArrived = true;
+      if (order.is_approaching || order.state === "ARRIVING")
+        group.hasApproaching = true;
+      if (order.state === "ARRIVED" || order.state === "AWAITING_PAYMENT")
+        group.hasArrived = true;
     }
-    // Sort: has arrived/approaching first
-    return Array.from(map.values()).sort((a, b) => {
-      if (a.hasArrived !== b.hasArrived) return a.hasArrived ? -1 : 1;
-      if (a.hasApproaching !== b.hasApproaching) return a.hasApproaching ? -1 : 1;
-      return b.totalAmount - a.totalAmount;
-    });
+    return Array.from(map.values()).sort(
+      (a, b) => b.totalAmount - a.totalAmount,
+    );
   }, [activeOrders]);
 
-  // Auto-expand all by default
   useEffect(() => {
     setExpandedSuppliers(new Set(supplierGroups.map((g) => g.supplierId)));
   }, [supplierGroups.length]);
 
-  const toggleSupplier = useCallback((id: string) => {
+  const toggleSupplier = (id: string) => {
     setExpandedSuppliers((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  }, []);
+  };
 
-  const toggleToken = useCallback((orderId: string) => {
+  const toggleToken = (orderId: string) => {
     setRevealedTokens((prev) => {
       const next = new Set(prev);
       next.has(orderId) ? next.delete(orderId) : next.add(orderId);
       return next;
     });
-  }, []);
+  };
 
-  // QR is only visible when driver is approaching or arrived
-  const canShowQR = useCallback(
-    (order: TrackingOrder) => order.is_approaching || order.state === "ARRIVING" || order.state === "ARRIVED" || order.state === "AWAITING_PAYMENT",
-    [],
-  );
-
-  /* ── KPIs ── */
-  const totalActive = activeOrders.length;
-  const suppliersInbound = supplierGroups.length;
-  const arrivedCount = activeOrders.filter((o) => o.state === "ARRIVED" || o.state === "AWAITING_PAYMENT").length;
-  const inTransitCount = activeOrders.filter((o) => ["DISPATCHED", "IN_TRANSIT", "ARRIVING"].includes(o.state)).length;
-
-  /* ── Render ── */
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="md-typescale-headline-large" style={{ color: "var(--foreground)" }}>
-            Dock Manager
-          </h1>
-          <p className="md-typescale-body-medium" style={{ color: "var(--muted)" }}>
-            Active deliveries grouped by supplier · QR unlocks on proximity
-          </p>
-        </div>
-      </div>
+    <div
+      className="min-h-full p-6 md:p-8"
+      style={{ background: "var(--desk-canvas)" }}
+    >
+      <header className="mb-8">
+        <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
+          Dock Control
+        </h1>
+        <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
+          Real-time arrival queue and proximity-locked secure verification.
+        </p>
+      </header>
 
-      {/* KPI Strip */}
-      <BentoGrid className="grid-cols-4">
-        <BentoCard delay={0}>
-          <div className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "var(--surface)" }}>
-              <Package size={18} style={{ color: "var(--muted)" }} />
+      <BentoGrid className="mb-8">
+        <BentoCard interactive={false}>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+                Queue
+              </span>
+              <Inbox size={18} style={{ color: "var(--desk-accent)" }} />
             </div>
-            <div>
-              <p className="md-typescale-label-small uppercase tracking-widest" style={{ color: "var(--muted)" }}>Active Orders</p>
-              <div className="md-typescale-headline-small tabular-nums" style={{ color: "var(--foreground)" }}>
-                {loading ? <Skeleton className="h-6 w-12 rounded" /> : <CountUp end={totalActive} />}
-              </div>
-            </div>
+            <CountUp
+              end={activeOrders.length}
+              className="md-typescale-metric text-[var(--desk-text-primary)]"
+            />
+            <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
+              Active inbound nodes
+            </p>
           </div>
         </BentoCard>
-        <BentoCard delay={60}>
-          <div className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "var(--surface)" }}>
-              <Truck size={18} style={{ color: "var(--muted)" }} />
+
+        <BentoCard interactive={false}>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+                Arrived
+              </span>
+              <MapPin size={18} style={{ color: "var(--desk-success)" }} />
             </div>
-            <div>
-              <p className="md-typescale-label-small uppercase tracking-widest" style={{ color: "var(--muted)" }}>Suppliers Inbound</p>
-              <div className="md-typescale-headline-small tabular-nums" style={{ color: "var(--foreground)" }}>
-                {loading ? <Skeleton className="h-6 w-12 rounded" /> : <CountUp end={suppliersInbound} />}
-              </div>
-            </div>
+            <CountUp
+              end={activeOrders.filter((o) => o.state === "ARRIVED").length}
+              className="md-typescale-metric text-[var(--desk-text-primary)]"
+            />
+            <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
+              Ready for receipt
+            </p>
           </div>
         </BentoCard>
-        <BentoCard delay={120}>
-          <div className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "var(--surface)" }}>
-              <MapPin size={18} style={{ color: "var(--success)" }} />
+
+        <BentoCard interactive={false}>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+                In Transit
+              </span>
+              <Truck size={18} style={{ color: "var(--desk-info)" }} />
             </div>
-            <div>
-              <p className="md-typescale-label-small uppercase tracking-widest" style={{ color: "var(--muted)" }}>Arrived</p>
-              <div className="md-typescale-headline-small tabular-nums" style={{ color: "var(--success)" }}>
-                {loading ? <Skeleton className="h-6 w-12 rounded" /> : <CountUp end={arrivedCount} />}
-              </div>
-            </div>
+            <CountUp
+              end={activeOrders.filter((o) => o.state === "IN_TRANSIT").length}
+              className="md-typescale-metric text-[var(--desk-text-primary)]"
+            />
+            <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
+              En route to dock
+            </p>
           </div>
         </BentoCard>
-        <BentoCard delay={180}>
-          <div className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "var(--surface)" }}>
-              <Clock size={18} style={{ color: "var(--warning)" }} />
+
+        <BentoCard interactive={false}>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+                Throughput
+              </span>
+              <Clock size={18} style={{ color: "var(--desk-warning)" }} />
             </div>
-            <div>
-              <p className="md-typescale-label-small uppercase tracking-widest" style={{ color: "var(--muted)" }}>In Transit</p>
-              <div className="md-typescale-headline-small tabular-nums" style={{ color: "var(--warning)" }}>
-                {loading ? <Skeleton className="h-6 w-12 rounded" /> : <CountUp end={inTransitCount} />}
-              </div>
-            </div>
+            <CountUp
+              end={92}
+              className="md-typescale-metric text-[var(--desk-text-primary)]"
+              suffix="%"
+            />
+            <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
+              On-time performance
+            </p>
           </div>
         </BentoCard>
       </BentoGrid>
 
-      {/* Supplier Groups */}
-      {loading ? (
-        <div className="space-y-4">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-40 w-full rounded-2xl" />
-          ))}
-        </div>
-      ) : supplierGroups.length === 0 ? (
-        <div className="bento-card flex flex-col items-center justify-center gap-3 py-16">
-          <Package size={48} style={{ color: "var(--muted)" }} />
-          <p className="md-typescale-title-medium" style={{ color: "var(--muted)" }}>No active deliveries</p>
-          <p className="md-typescale-body-small" style={{ color: "var(--muted)" }}>
-            Orders will appear here once dispatched
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {supplierGroups.map((group) => (
-            <SupplierSection
-              key={group.supplierId}
-              group={group}
-              expanded={expandedSuppliers.has(group.supplierId)}
-              onToggle={() => toggleSupplier(group.supplierId)}
-              revealedTokens={revealedTokens}
-              onToggleToken={toggleToken}
-              canShowQR={canShowQR}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Supplier Section ── */
-
-function SupplierSection({
-  group,
-  expanded,
-  onToggle,
-  revealedTokens,
-  onToggleToken,
-  canShowQR,
-}: {
-  group: SupplierGroup;
-  expanded: boolean;
-  onToggle: () => void;
-  revealedTokens: Set<string>;
-  onToggleToken: (id: string) => void;
-  canShowQR: (order: TrackingOrder) => boolean;
-}) {
-  const statusChip = group.hasArrived
-    ? { color: "success" as const, label: "At Dock" }
-    : group.hasApproaching
-      ? { color: "accent" as const, label: "Approaching" }
-      : { color: "warning" as const, label: "En Route" };
-
-  return (
-    <div className="bento-card overflow-hidden">
-      {/* Supplier Header */}
-      <button
-        onClick={onToggle}
-        className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-[var(--surface)]"
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-xl font-semibold md-typescale-label-large"
-            style={{ background: "var(--accent)", color: "var(--accent-foreground)" }}
-          >
-            {group.supplierName.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <p className="md-typescale-title-medium" style={{ color: "var(--foreground)" }}>
-              {group.supplierName}
-            </p>
-            <p className="md-typescale-body-small" style={{ color: "var(--muted)" }}>
-              {group.orders.length} order{group.orders.length !== 1 ? "s" : ""} · {formatAmount(group.totalAmount)}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Chip size="sm" color={statusChip.color} variant="soft">
-            {statusChip.label}
-          </Chip>
-          {expanded ? (
-            <ChevronDown size={18} style={{ color: "var(--muted)" }} />
-          ) : (
-            <ChevronRight size={18} style={{ color: "var(--muted)" }} />
-          )}
-        </div>
-      </button>
-
-      {/* Order Cards */}
-      {expanded && (
-        <div className="border-t" style={{ borderColor: "var(--border)" }}>
-          {group.orders.map((order) => (
-            <OrderRow
-              key={order.order_id}
-              order={order}
-              qrRevealed={revealedTokens.has(order.order_id)}
-              onToggleQR={() => onToggleToken(order.order_id)}
-              qrAllowed={canShowQR(order)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── Order Row ── */
-
-function OrderRow({
-  order,
-  qrRevealed,
-  onToggleQR,
-  qrAllowed,
-}: {
-  order: TrackingOrder;
-  qrRevealed: boolean;
-  onToggleQR: () => void;
-  qrAllowed: boolean;
-}) {
-  const chip = chipCfg[order.state] ?? { color: "default" as const, label: order.state };
-  const hasPosition = order.driver_latitude != null && order.driver_longitude != null;
-
-  return (
-    <div
-      className="flex items-start gap-4 border-b px-4 py-3 last:border-b-0 transition-colors hover:bg-[var(--surface)]"
-      style={{ borderColor: "var(--border)" }}
-    >
-      {/* Order Info */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="md-typescale-title-small truncate" style={{ color: "var(--foreground)" }}>
-            {order.order_id.slice(0, 8)}
-          </p>
-          <Chip size="sm" color={chip.color} variant="soft">
-            {chip.label}
-          </Chip>
-        </div>
-        <p className="md-typescale-body-small mt-1" style={{ color: "var(--muted)" }}>
-          {formatAmount(order.total_amount)} · {order.items.length} item{order.items.length !== 1 ? "s" : ""}
-          {order.order_source ? ` · ${order.order_source}` : ""}
-        </p>
-        <p className="md-typescale-body-small" style={{ color: "var(--muted)" }}>
-          {timeAgo(order.created_at)}
-          {hasPosition && (
-            <span>
-              {" "}· <MapPin size={12} className="inline" /> Driver tracked
-            </span>
-          )}
-        </p>
-        {/* Line items preview */}
-        {order.items.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {order.items.slice(0, 3).map((item) => (
-              <span
-                key={item.product_id}
-                className="md-typescale-label-small rounded-md px-2 py-0.5"
-                style={{ background: "var(--surface)", color: "var(--muted)" }}
-              >
-                {item.product_name} ×{item.quantity}
-              </span>
-            ))}
-            {order.items.length > 3 && (
-              <span
-                className="md-typescale-label-small rounded-md px-2 py-0.5"
-                style={{ background: "var(--surface)", color: "var(--muted)" }}
-              >
-                +{order.items.length - 3} more
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* QR Section */}
-      <div className="flex flex-col items-center gap-2">
-        {qrAllowed ? (
-          <>
-            <button
-              onClick={onToggleQR}
-              className="flex h-10 items-center gap-2 rounded-xl px-3 transition-colors md-typescale-label-large"
-              style={{
-                background: qrRevealed ? "var(--accent)" : "var(--surface)",
-                color: qrRevealed ? "var(--accent-foreground)" : "var(--foreground)",
-              }}
-            >
-              <QrCode size={16} />
-              {qrRevealed ? "Hide" : "Show QR"}
-            </button>
-            {qrRevealed && order.delivery_token && (
+      <div className="max-w-5xl space-y-4">
+        <AnimatePresence mode="popLayout">
+          {loading ? (
+            [0, 1, 2].map((i) => (
               <div
-                className="rounded-xl p-3"
-                style={{ background: "var(--background)", border: "1px solid var(--border)" }}
+                key={i}
+                className="h-32 rounded-3xl animate-pulse bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)]"
+              />
+            ))
+          ) : supplierGroups.length === 0 ? (
+            <div className="py-20 text-center opacity-40">
+              <Package size={64} className="mx-auto mb-4" />
+              <p className="md-typescale-body-large text-[var(--desk-text-secondary)]">
+                The dock is currently clear
+              </p>
+            </div>
+          ) : (
+            supplierGroups.map((group) => (
+              <motion.div
+                key={group.supplierId}
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-3xl overflow-hidden shadow-[var(--shadow-sm)]"
               >
-                <QRCodeSVG
-                  value={order.delivery_token}
-                  size={120}
-                  level="M"
-                  bgColor="transparent"
-                  fgColor="var(--foreground)"
-                />
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="flex h-10 items-center gap-2 rounded-xl px-3 opacity-40" style={{ background: "var(--surface)" }}>
-            <QrCode size={16} style={{ color: "var(--muted)" }} />
-            <span className="md-typescale-label-small" style={{ color: "var(--muted)" }}>
-              Proximity locked
-            </span>
-          </div>
-        )}
+                <button
+                  onClick={() => toggleSupplier(group.supplierId)}
+                  className="flex w-full items-center justify-between p-5 hover:bg-[var(--desk-surface-subtle)] transition-colors text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] flex items-center justify-center font-bold text-xl">
+                      {group.supplierName.charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="md-typescale-title-medium font-bold text-[var(--desk-text-primary)]">
+                        {group.supplierName}
+                      </h3>
+                      <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] font-bold uppercase tracking-widest">
+                        {group.orders.length} ACTIVE NODES ·{" "}
+                        {formatAmount(group.totalAmount)} UZS
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {group.hasArrived ? (
+                      <span className="px-3 py-1 rounded-lg bg-[var(--desk-success)] text-white text-[10px] font-black uppercase tracking-widest">
+                        At Dock
+                      </span>
+                    ) : group.hasApproaching ? (
+                      <span className="px-3 py-1 rounded-lg bg-[var(--desk-accent)] text-white text-[10px] font-black uppercase tracking-widest">
+                        Approaching
+                      </span>
+                    ) : null}
+                    {expandedSuppliers.has(group.supplierId) ? (
+                      <ChevronDown size={20} />
+                    ) : (
+                      <ChevronRight size={20} />
+                    )}
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {expandedSuppliers.has(group.supplierId) && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="border-t border-[var(--desk-border)] divide-y divide-[var(--desk-border)]"
+                    >
+                      {group.orders.map((order) => (
+                        <div
+                          key={order.order_id}
+                          className="p-5 flex items-center justify-between gap-6 hover:bg-[var(--desk-surface-subtle)] transition-colors"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 mb-1">
+                              <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                                #{order.order_id.slice(-8)}
+                              </span>
+                              <Chip
+                                size="sm"
+                                variant="flat"
+                                className="font-bold text-[10px]"
+                              >
+                                {order.state}
+                              </Chip>
+                            </div>
+                            <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase tracking-widest font-bold">
+                              {formatAmount(order.total_amount)} UZS ·{" "}
+                              {order.items.length} SKUS
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-4">
+                            {order.state === "ARRIVED" ||
+                            order.state === "AWAITING_PAYMENT" ? (
+                              <>
+                                <button
+                                  onClick={() => toggleToken(order.order_id)}
+                                  className={`flex items-center gap-2 px-4 h-10 rounded-xl font-bold transition-all active:scale-95 ${revealedTokens.has(order.order_id) ? "bg-[var(--desk-text-primary)] text-white" : "bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] text-[var(--desk-text-primary)]"}`}
+                                >
+                                  <QrCode size={18} />
+                                  {revealedTokens.has(order.order_id)
+                                    ? "Hide"
+                                    : "Reveal Token"}
+                                </button>
+                                {revealedTokens.has(order.order_id) &&
+                                  order.delivery_token && (
+                                    <motion.div
+                                      initial={{ scale: 0 }}
+                                      animate={{ scale: 1 }}
+                                      className="p-2 bg-white rounded-xl shadow-lg border border-[var(--desk-border)]"
+                                    >
+                                      <QRCodeSVG
+                                        value={order.delivery_token}
+                                        size={80}
+                                        bgColor="transparent"
+                                        fgColor="var(--desk-text-primary)"
+                                      />
+                                    </motion.div>
+                                  )}
+                              </>
+                            ) : (
+                              <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)] opacity-40">
+                                <Clock size={16} />
+                                <span className="text-[10px] font-bold uppercase tracking-widest">
+                                  Locked Until Proximity
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            ))
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
