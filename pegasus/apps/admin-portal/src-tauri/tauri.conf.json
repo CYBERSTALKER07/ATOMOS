@@ -5,8 +5,8 @@
   "identifier": "com.pegasus.admin",
   "build": {
     "frontendDist": "../out",
-    "devUrl": "http://localhost:3000",
-    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:3002",
+    "beforeDevCommand": "npm run dev -- --hostname 127.0.0.1 --port 3002",
     "beforeBuildCommand": "npm run build:static"
   },
   "app": {
