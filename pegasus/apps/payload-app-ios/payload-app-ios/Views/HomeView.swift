@@ -11,6 +11,7 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(TokenStore.self) private var tokenStore
+    @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel = HomeViewModel()
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var showInjectSheet = false
@@ -171,6 +172,28 @@ struct HomeView: View {
                 if !viewModel.showNotificationsPanel { viewModel.toggleNotificationsPanel() }
             }
             await PushNotificationManager.shared.requestAuthorization()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Re-fetch on foreground resume so stale manifests are never shown.
+            if phase == .active {
+                Task {
+                    await viewModel.refreshTrucks()
+                    if viewModel.selectedTruckId != nil {
+                        await viewModel.refreshManifest()
+                    }
+                }
+            }
+        }
+        .onChange(of: viewModel.online) { _, online in
+            // Re-fetch after every WS reconnect to drain any missed mutations.
+            if online {
+                Task {
+                    await viewModel.refreshTrucks()
+                    if viewModel.selectedTruckId != nil {
+                        await viewModel.refreshManifest()
+                    }
+                }
+            }
         }
         .onDisappear { viewModel.disconnectPhase6() }
     }
@@ -540,7 +563,8 @@ private struct OrderChecklistSection: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             }
                             .disabled(viewModel.sealingOrderId != nil || !viewModel.canSealOrder(selected.orderId))
-                            
+                            .buttonStyle(.tactical)
+
                             HStack(spacing: 12) {
                                 Button("REPORT_ISSUE") { onShowException(selected.orderId) }
                                     .font(.system(size: 12, weight: .bold, design: .monospaced))
@@ -548,6 +572,7 @@ private struct OrderChecklistSection: View {
                                     .frame(maxWidth: .infinity)
                                     .background(TermTheme.warn.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
                                     .foregroundStyle(TermTheme.warn)
+                                    .buttonStyle(.tactical)
 
                                 Button("RE_DISPATCH") { onShowReDispatch(selected.orderId) }
                                     .font(.system(size: 12, weight: .bold, design: .monospaced))
@@ -555,6 +580,7 @@ private struct OrderChecklistSection: View {
                                     .frame(maxWidth: .infinity)
                                     .background(TermTheme.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
                                     .foregroundStyle(TermTheme.accent)
+                                    .buttonStyle(.tactical)
                             }
                         }
                     }
@@ -620,7 +646,7 @@ private struct OrderChip: View {
                     }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tactical)
     }
 
     private var background: Color {
@@ -674,7 +700,7 @@ private struct ItemRow: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.tactical)
         .opacity(enabled ? 1 : 0.5)
         .disabled(!enabled)
     }
@@ -817,6 +843,7 @@ private struct AllSealedSuccessView: View {
                     .foregroundStyle(TermTheme.card)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
+                .buttonStyle(.tactical)
             }
             .padding(24)
         }
@@ -980,6 +1007,7 @@ private struct InjectOrderSheet: View {
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .disabled(injecting || orderId.trimmingCharacters(in: .whitespaces).isEmpty)
+                .buttonStyle(.tactical)
             }
             .padding(24)
         }
@@ -1059,6 +1087,7 @@ private struct ExceptionReasonSheet: View {
                                 .tacticalCard()
                             }
                             .disabled(inFlight)
+                            .buttonStyle(.tactical)
                         }
                     }
                     
@@ -1278,14 +1307,33 @@ private struct RecommendationRow: View {
 private struct OnlineDot: View {
     let online: Bool
     let queued: Int
+
+    @State private var pulseScale: CGFloat = 1
+
     var body: some View {
         HStack(spacing: 6) {
-            Circle()
-                .fill(online ? Color.green : Color.red)
-                .frame(width: 8, height: 8)
+            ZStack {
+                if online {
+                    Circle()
+                        .fill(Color.green.opacity(0.35))
+                        .frame(width: 14, height: 14)
+                        .scaleEffect(pulseScale)
+                        .animation(
+                            .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
+                            value: pulseScale
+                        )
+                }
+                Circle()
+                    .fill(online ? Color.green : Color.red)
+                    .frame(width: 8, height: 8)
+            }
             Text(online ? "Live" : queued > 0 ? "Offline · \(queued) queued" : "Offline")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+        .onAppear { if online { pulseScale = 1.6 } }
+        .onChange(of: online) { _, isOnline in
+            pulseScale = isOnline ? 1.6 : 1
         }
     }
 }

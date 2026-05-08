@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Text, View, TouchableOpacity, Alert, ScrollView, TextInput, Modal, FlatList, Animated, PanResponder, useWindowDimensions } from 'react-native';
+import { Text, View, Pressable, Alert, ScrollView, TextInput, Modal, FlatList, Animated, PanResponder, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -590,9 +590,9 @@ export default function App() {
               </Text>
             ) : null}
           </View>
-          <TouchableOpacity onPress={() => dismissToast()} style={{ marginLeft: 10, padding: 2 }}>
+          <Pressable onPress={() => dismissToast()} style={({ pressed }) => ({ marginLeft: 10, padding: 2, opacity: pressed ? 0.7 : 1 })}>
             <MaterialIcons name="close" size={16} color={tone.message} />
-          </TouchableOpacity>
+          </Pressable>
         </Animated.View>
       </View>
     );
@@ -1046,7 +1046,7 @@ export default function App() {
         <Text style={{ fontFamily: T.typography.mono.fontFamily, fontSize: 12, color: 'rgba(255,255,255,0.7)', letterSpacing: 0.5, marginBottom: 32 }}>
           {postSealOrderId}
         </Text>
-        <TouchableOpacity
+        <Pressable
           onPress={() => {
             Alert.alert(
               isIOS ? 'Report Missing Items?' : 'REPORT MISSING ITEMS?',
@@ -1082,22 +1082,24 @@ export default function App() {
               ]
             );
           }}
-          style={{
+          style={({ pressed }) => ({
             borderWidth: 2,
             borderColor: 'rgba(255,255,255,0.6)',
             paddingHorizontal: 32,
             paddingVertical: 14,
             borderRadius: T.radius.button,
-            flexDirection: 'row',
-            alignItems: 'center',
+            flexDirection: 'row' as const,
+            alignItems: 'center' as const,
             gap: 8,
-          }}
+            opacity: pressed ? 0.82 : 1,
+            transform: [{ scale: pressed ? 0.97 : 1 }],
+          })}
         >
           <MaterialIcons name="report-problem" size={20} color="#FFFFFF" />
           <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14, letterSpacing: 0.3 }}>
             {isIOS ? 'Report Missing Items' : 'REPORT MISSING ITEMS'}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
         {renderUiToast()}
       </View>
     );
@@ -1131,20 +1133,22 @@ export default function App() {
             ))}
           </View>
         )}
-        <TouchableOpacity
+        <Pressable
           onPress={() => { setActiveTruck(null); setAllSealed(false); setDispatchCodes({}); }}
-          style={{
+          style={({ pressed }) => ({
             borderWidth: 1,
             borderColor: 'rgba(255,255,255,0.5)',
             paddingHorizontal: 32,
             paddingVertical: 14,
             borderRadius: T.radius.button,
-          }}
+            opacity: pressed ? 0.82 : 1,
+            transform: [{ scale: pressed ? 0.97 : 1 }],
+          })}
         >
           <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14, letterSpacing: 0.3 }}>
             {isIOS ? 'New Manifest' : 'NEW MANIFEST'}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
         {renderUiToast()}
       </View>
     );
@@ -1203,16 +1207,18 @@ export default function App() {
             textAlign: 'center',
           }}
         />
-        <TouchableOpacity
+        <Pressable
           onPress={handleLogin}
           disabled={isLoggingIn || !phoneInput || pinInput.length < 6}
-          style={{
+          style={({ pressed }) => ({
             width: 320,
             paddingVertical: 16,
-            alignItems: 'center',
+            alignItems: 'center' as const,
             backgroundColor: !isLoggingIn && phoneInput && pinInput.length >= 6 ? T.colors.accent : T.colors.fillSecondary,
             borderRadius: T.radius.button,
-          }}
+            opacity: pressed ? 0.82 : 1,
+            transform: [{ scale: pressed ? 0.97 : 1 }],
+          })}
         >
           <Text style={{
             fontWeight: '600',
@@ -1222,7 +1228,7 @@ export default function App() {
           }}>
             {isLoggingIn ? tx('auth.login.authenticating') : tx('auth.login.submit')}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
         {renderUiToast()}
       </View>
     );
@@ -1241,11 +1247,11 @@ export default function App() {
               {workerName}
             </Text>
           </View>
-          <TouchableOpacity onPress={handleLogout} style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+          <Pressable onPress={handleLogout} style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
             <Text style={{ color: T.colors.sidebarSecondary, fontSize: 12, fontWeight: '600', letterSpacing: 0.3 }}>
               {tx('common.action.sign_out')}
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         {/* Truck selector */}
@@ -1260,19 +1266,21 @@ export default function App() {
               </Text>
             ) : (
               trucks.map(truck => (
-                <TouchableOpacity
+                <Pressable
                   key={truck.id}
                   onPress={() => handleTruckSelect(truck.id)}
-                  style={{
+                  style={({ pressed }) => ({
                     borderWidth: isIOS ? 0.33 : 1,
                     borderColor: T.colors.separator,
                     backgroundColor: T.colors.cardBackground,
                     paddingHorizontal: 40,
                     paddingVertical: 32,
-                    alignItems: 'center',
+                    alignItems: 'center' as const,
                     borderRadius: T.radius.card,
                     ...T.shadow.card,
-                  }}
+                    opacity: pressed ? 0.82 : 1,
+                    transform: [{ scale: pressed ? 0.96 : 1 }],
+                  })}
                 >
                   <Text style={{ fontSize: 22, fontWeight: '700', color: T.colors.label, letterSpacing: isIOS ? -0.4 : 1 }}>
                     {truck.label}
@@ -1285,7 +1293,7 @@ export default function App() {
                   <Text style={{ fontSize: 10, color: T.colors.tertiaryLabel, marginTop: 4, letterSpacing: 0.3 }}>
                     {truck.vehicle_class}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               ))
             )}
           </View>
@@ -1316,20 +1324,20 @@ export default function App() {
               {activeTruck}
             </Text>
           </View>
-          <TouchableOpacity onPress={() => setShowNotifPanel(true)} style={{ padding: 6 }}>
+          <Pressable onPress={() => setShowNotifPanel(true)} style={{ padding: 6 }}>
             <MaterialIcons name="notifications" size={20} color={T.colors.sidebarLabel} />
             {unreadCount > 0 && (
               <View style={{ position: 'absolute', top: 2, right: 2, backgroundColor: '#EF4444', borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '700' }}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
               </View>
             )}
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         {/* Truck toggle bar */}
         <View style={{ flexDirection: 'row', borderBottomWidth: 0.5, borderBottomColor: T.colors.sidebarSeparator }}>
           {trucks.map(truck => (
-            <TouchableOpacity
+            <Pressable
               key={truck.id}
               onPress={() => handleTruckSelect(truck.id)}
               style={{
@@ -1349,7 +1357,7 @@ export default function App() {
               }}>
                 {truck.label}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           ))}
         </View>
 
@@ -1373,7 +1381,7 @@ export default function App() {
               } as any} />
             </View>
             {manifestState === 'DRAFT' && (
-              <TouchableOpacity
+              <Pressable
                 onPress={handleStartLoading}
                 disabled={isStartingLoad}
                 style={{
@@ -1387,7 +1395,7 @@ export default function App() {
                 <Text style={{ fontWeight: '600', fontSize: 12, letterSpacing: 0.5, color: isStartingLoad ? T.colors.tertiaryLabel : '#FFFFFF' }}>
                   {isStartingLoad ? (isIOS ? 'Starting...' : 'STARTING...') : (isIOS ? 'Start Loading' : 'START LOADING')}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             )}
           </View>
         )}
@@ -1411,7 +1419,7 @@ export default function App() {
               const isSealed = sealedOrderIds.has(order.order_id);
               const isActive = order.order_id === selectedOrderId;
               return (
-                <TouchableOpacity
+                <Pressable
                   key={order.order_id}
                   onPress={() => !isSealed && setSelectedOrderId(order.order_id)}
                   onLongPress={() => {
@@ -1448,7 +1456,7 @@ export default function App() {
                       {isIOS ? 'Cleared' : 'CLEARED'}
                     </Text>
                   )}
-                </TouchableOpacity>
+                </Pressable>
               );
             })
           )}
@@ -1484,7 +1492,7 @@ export default function App() {
                   {activeTruck}
                 </Text>
               </View>
-              <TouchableOpacity
+              <Pressable
                 onPress={() => selectedOrderId && openReDispatch(selectedOrderId)}
                 style={{
                   marginLeft: 10,
@@ -1502,13 +1510,13 @@ export default function App() {
                 <Text style={{ fontFamily: T.typography.mono.fontFamily, fontWeight: '600', fontSize: 11, color: T.colors.secondaryLabel, letterSpacing: 0.5 }}>
                   {isIOS ? 'Re-Dispatch' : 'RE-DISPATCH'}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
 
               {/* LEO: Exception buttons — remove order from manifest */}
               {manifestState === 'LOADING' && selectedOrderId && (
                 <View style={{ flexDirection: 'row', marginLeft: 8, gap: 4 }}>
                   {(['OVERFLOW', 'DAMAGED', 'MANUAL'] as const).map(reason => (
-                    <TouchableOpacity
+                    <Pressable
                       key={reason}
                       onPress={() => {
                         Alert.alert(
@@ -1521,14 +1529,16 @@ export default function App() {
                         );
                       }}
                       disabled={exceptionLoading === selectedOrderId}
-                      style={{
+                      style={({ pressed }) => ({
                         paddingHorizontal: 8,
                         paddingVertical: 6,
                         borderRadius: T.radius.checkbox,
                         borderWidth: isIOS ? 0.33 : 1,
                         borderColor: reason === 'DAMAGED' ? '#EF4444' : reason === 'OVERFLOW' ? '#F59E0B' : T.colors.separator,
                         backgroundColor: T.colors.fillTertiary,
-                      }}
+                        opacity: pressed ? 0.75 : 1,
+                        transform: [{ scale: pressed ? 0.95 : 1 }],
+                      })}
                     >
                       <Text style={{
                         fontFamily: T.typography.mono.fontFamily,
@@ -1539,7 +1549,7 @@ export default function App() {
                       }}>
                         {reason}
                       </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   ))}
                 </View>
               )}
@@ -1548,17 +1558,18 @@ export default function App() {
             {/* Manifest checklist */}
             <ScrollView className="flex-1 px-8 py-4">
               {selectedManifest.map(item => (
-                <TouchableOpacity
+                <Pressable
                   key={item.id}
                   onPress={() => toggleCheck(item.id)}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
+                  style={({ pressed }) => ({
+                    flexDirection: 'row' as const,
+                    alignItems: 'center' as const,
                     paddingVertical: 16,
                     borderBottomWidth: isIOS ? 0.33 : 1,
                     borderBottomColor: T.colors.separator,
-                    opacity: item.scanned ? 0.4 : 1,
-                  }}
+                    opacity: item.scanned ? 0.4 : pressed ? 0.75 : 1,
+                    transform: [{ scale: pressed ? 0.99 : 1 }],
+                  })}
                 >
                   {/* Checkbox */}
                   <View style={{
@@ -1584,7 +1595,7 @@ export default function App() {
                       {item.label}
                     </Text>
                   </View>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </ScrollView>
 
@@ -1592,15 +1603,17 @@ export default function App() {
             <View style={{ paddingHorizontal: 32, paddingVertical: 20, borderTopWidth: isIOS ? 0.33 : 1, borderTopColor: T.colors.separator }}>
               {/* Per-order seal (legacy — when no manifest entity exists) */}
               {!manifestId && (
-                <TouchableOpacity
+                <Pressable
                   onPress={handleSeal}
                   disabled={!allChecked || isSealing}
-                  style={{
+                  style={({ pressed }) => ({
                     paddingVertical: 16,
-                    alignItems: 'center',
+                    alignItems: 'center' as const,
                     backgroundColor: allChecked && !isSealing ? T.colors.accent : T.colors.fillSecondary,
                     borderRadius: T.radius.button,
-                  }}
+                    opacity: pressed ? 0.82 : 1,
+                    transform: [{ scale: pressed ? 0.97 : 1 }],
+                  })}
                 >
                   <Text style={{
                     fontWeight: '600',
@@ -1610,13 +1623,13 @@ export default function App() {
                   }}>
                     {isSealing ? (isIOS ? 'Sealing...' : 'SEALING...') : (isIOS ? 'Mark as Loaded' : 'MARK AS LOADED')}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               )}
               {/* Manifest-level seal (LEO — slide to seal entire manifest) */}
               {manifestId && manifestState === 'LOADING' && (
                 <View style={{ gap: 10 }}>
                   {/* Inject order button */}
-                  <TouchableOpacity
+                  <Pressable
                     onPress={() => setShowInjectOrder(true)}
                     style={{
                       paddingVertical: 14,
@@ -1639,9 +1652,9 @@ export default function App() {
                     }}>
                       {isIOS ? 'Add Order' : 'ADD ORDER'}
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                   {/* Seal manifest button */}
-                  <TouchableOpacity
+                  <Pressable
                     onPress={handleManifestSeal}
                     disabled={isSealingManifest}
                     style={{
@@ -1663,7 +1676,7 @@ export default function App() {
                     }}>
                       {isSealingManifest ? (isIOS ? 'Sealing Manifest...' : 'SEALING MANIFEST...') : (isIOS ? 'Seal Manifest' : 'SEAL MANIFEST')}
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 </View>
               )}
               {manifestId && manifestState === 'SEALED' && (
@@ -1723,13 +1736,13 @@ export default function App() {
                 </View>
               )}
               <View style={{ flexDirection: 'row', gap: 12 }}>
-                <TouchableOpacity
+                <Pressable
                   onPress={() => { setShowInjectOrder(false); setInjectOrderId(''); }}
                   style={{ flex: 1, paddingVertical: 14, alignItems: 'center', backgroundColor: T.colors.fillSecondary, borderRadius: T.radius.button }}
                 >
                   <Text style={{ fontWeight: '600', fontSize: 14, color: T.colors.secondaryLabel }}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
+                </Pressable>
+                <Pressable
                   onPress={handleInjectOrder}
                   disabled={!injectOrderId.trim() || isInjecting}
                   style={{
@@ -1743,7 +1756,7 @@ export default function App() {
                   <Text style={{ fontWeight: '700', fontSize: 14, color: injectOrderId.trim() && !isInjecting ? '#FFFFFF' : T.colors.tertiaryLabel }}>
                     {isInjecting ? 'Adding...' : 'Add Order'}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               </View>
             </View>
           </View>
@@ -1784,9 +1797,9 @@ export default function App() {
                   </Text>
                 ) : null}
               </View>
-              <TouchableOpacity onPress={() => { setShowReDispatch(false); setReDispatchOrderId(null); }} style={{ padding: 8 }}>
+              <Pressable onPress={() => { setShowReDispatch(false); setReDispatchOrderId(null); }} style={{ padding: 8 }}>
                 <MaterialIcons name="close" size={22} color={T.colors.tertiaryLabel} />
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             {/* Recommendation list */}
@@ -1813,7 +1826,7 @@ export default function App() {
                   const fits = item.free_volume_vu >= reDispatchVolume;
                   const isMaintenance = item.truck_status === 'MAINTENANCE';
                   return (
-                    <TouchableOpacity
+                    <Pressable
                       onPress={() => { if (!isMaintenance && !isReassigning) handleReassign(item.driver_id, item.vehicle_id); }}
                       disabled={isMaintenance || isReassigning}
                       style={{
@@ -1894,7 +1907,7 @@ export default function App() {
                           {item.order_count} orders
                         </Text>
                       </View>
-                    </TouchableOpacity>
+                    </Pressable>
                   );
                 }}
               />
@@ -1920,13 +1933,13 @@ export default function App() {
                 {isIOS ? 'Notifications' : 'NOTIFICATIONS'}
               </Text>
               {unreadCount > 0 && (
-                <TouchableOpacity onPress={markAllNotifsRead} style={{ marginRight: 12 }}>
+                <Pressable onPress={markAllNotifsRead} style={{ marginRight: 12 }}>
                   <Text style={{ fontSize: 12, color: T.colors.accent, fontWeight: '600' }}>Mark all read</Text>
-                </TouchableOpacity>
+                </Pressable>
               )}
-              <TouchableOpacity onPress={() => setShowNotifPanel(false)}>
+              <Pressable onPress={() => setShowNotifPanel(false)}>
                 <MaterialIcons name="close" size={20} color={T.colors.sidebarSecondary} />
-              </TouchableOpacity>
+              </Pressable>
             </View>
             {/* Notification list */}
             <FlatList
@@ -1948,7 +1961,7 @@ export default function App() {
                   item.type === 'PAYMENT_FAILED' ? 'error' :
                   'notifications';
                 return (
-                  <TouchableOpacity
+                  <Pressable
                     onPress={() => { if (isUnread) markNotifRead(item.id); }}
                     style={{
                       flexDirection: 'row',
@@ -1966,7 +1979,7 @@ export default function App() {
                       <Text style={{ fontSize: 10, color: T.colors.tertiaryLabel, marginTop: 4 }}>{new Date(item.created_at).toLocaleString()}</Text>
                     </View>
                     {isUnread && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: T.colors.accent, alignSelf: 'center', marginLeft: 8 }} />}
-                  </TouchableOpacity>
+                  </Pressable>
                 );
               }}
             />

@@ -1,5 +1,14 @@
 package com.pegasus.payload.ui.home
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.EaseInOut
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -234,13 +243,35 @@ fun HomeScreen(
 @Composable
 private fun OnlineDot(online: Boolean, queued: Int) {
     val color = if (online) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+
+    val infiniteTransition = rememberInfiniteTransition(label = "dot-pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = EaseInOut),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "dot-pulse-alpha",
+    )
+
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier
-                .size(12.dp)
-                .clip(RoundedCornerShape(50))
-                .background(color),
-        )
+        Box(contentAlignment = Alignment.Center) {
+            if (online) {
+                Box(
+                    Modifier
+                        .size(20.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(color.copy(alpha = pulseAlpha)),
+                )
+            }
+            Box(
+                Modifier
+                    .size(10.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(color),
+            )
+        }
         Spacer(Modifier.size(8.dp))
         Text(
             text = if (online) "Live" else if (queued > 0) "Offline · $queued queued" else "Offline",
@@ -370,11 +401,18 @@ private fun TruckListPane(
 
 @Composable
 private fun TruckRow(truck: Truck, selected: Boolean, onClick: () -> Unit) {
-    val bg = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh
-    val fg = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+    val bgColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "truck-bg",
+    )
+    val fgColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+        label = "truck-fg",
+    )
     Surface(
-        color = bg,
-        contentColor = fg,
+        color = bgColor,
+        contentColor = fgColor,
         shape = RoundedCornerShape(14.dp),
         modifier = Modifier
             .fillMaxWidth()

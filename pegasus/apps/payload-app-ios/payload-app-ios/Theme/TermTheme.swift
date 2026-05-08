@@ -65,3 +65,44 @@ enum TermAnim {
     static let snappy = Animation.spring(response: 0.35, dampingFraction: 0.85, blendDuration: 0)
     static let fluid = Animation.spring(response: 0.5, dampingFraction: 0.9, blendDuration: 0)
 }
+
+// MARK: - Pressable Button Style
+
+private struct PressableModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isPressed = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isPressed && !reduceMotion ? 0.96 : 1)
+            .opacity(isPressed ? 0.82 : 1)
+            .animation(TermAnim.snappy, value: isPressed)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in isPressed = true }
+                    .onEnded { _ in isPressed = false }
+            )
+    }
+}
+
+extension View {
+    /// Adds a tactile scale + fade press animation to any interactive element.
+    func pressable() -> some View { modifier(PressableModifier()) }
+}
+
+// MARK: - Tactical Button Style (for Button-based interactive elements)
+
+struct TacticalButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
+            .opacity(configuration.isPressed ? 0.82 : 1)
+            .animation(TermAnim.snappy, value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == TacticalButtonStyle {
+    static var tactical: TacticalButtonStyle { TacticalButtonStyle() }
+}
