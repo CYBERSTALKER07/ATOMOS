@@ -60,7 +60,7 @@ export default function WarehouseDashboard() {
         <div className="md-skeleton md-skeleton-title" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="md-skeleton md-skeleton-card" />
+            <div key={i} className="md-skeleton md-skeleton-card h-[120px] rounded-2xl" />
           ))}
         </div>
       </div>
@@ -142,8 +142,19 @@ export default function WarehouseDashboard() {
   ];
 
   return (
-    <PageTransition className="p-6 space-y-6">
-      <h1 className="text-xl font-bold tracking-tight">Warehouse Dashboard</h1>
+    <PageTransition>
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold tracking-tight text-[var(--foreground)]">Warehouse Dashboard</h1>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setReloadToken(v => v + 1)}
+            className="p-2 rounded-full hover:bg-[var(--default)] transition-colors text-[var(--muted)]"
+          >
+            <Icon name="refresh" size={18} />
+          </motion.button>
+        </div>
 
       <motion.div
         initial="hidden"
@@ -161,21 +172,26 @@ export default function WarehouseDashboard() {
                 hidden: { opacity: 0, y: 10 },
                 show: { opacity: 1, y: 0 }
               }}
+              whileHover={{ y: -4, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="rounded-xl border border-[var(--border)] p-4 flex flex-col gap-2 transition-colors hover:border-[var(--accent)] hover-lift h-full"
-              style={{ background: 'var(--background)' }}
+              className="rounded-2xl border border-[var(--border)] p-5 flex flex-col gap-3 transition-all hover:border-[var(--primary)] hover:shadow-xl hover:shadow-[var(--primary)]/10 h-full bg-[var(--surface)] relative overflow-hidden group"
             >
+              <div className="absolute top-0 left-0 w-1 h-full bg-[var(--primary)] opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="flex items-center justify-between">
-                <Icon name={kpi.icon} size={20} className="text-[var(--muted)]" />
+                <div className="p-2 rounded-lg bg-[var(--default)] text-[var(--muted)] group-hover:text-[var(--primary)] transition-colors">
+                  <Icon name={kpi.icon} size={20} />
+                </div>
                 {kpi.danger && (
-                  <span className="status-chip status-chip--critical text-[10px]">ALERT</span>
+                  <span className="status-chip status-chip--critical text-[10px] font-bold tracking-tighter">ALERT</span>
                 )}
                 {kpi.highlight && (
-                  <span className="status-chip status-chip--ready text-[10px]">DONE</span>
+                  <span className="status-chip status-chip--ready text-[10px] font-bold tracking-tighter">DONE</span>
                 )}
               </div>
-              <div className="text-2xl font-bold">{kpi.value}</div>
-              <div className="text-xs text-[var(--muted)]">{kpi.label}</div>
+              <div>
+                <div className="text-2xl font-bold tracking-tight font-mono">{kpi.value}</div>
+                <div className="text-xs font-bold uppercase tracking-widest text-[var(--muted)] mt-1">{kpi.label}</div>
+              </div>
             </motion.div>
           </Link>
         ))}
@@ -183,21 +199,27 @@ export default function WarehouseDashboard() {
 
       {/* Fleet Status Breakdown */}
       {Object.keys(d.fleet_status).length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold mb-3 text-[var(--muted)]">Fleet Status</h2>
-          <div className="flex flex-wrap gap-2">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="p-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
+        >
+          <h2 className="text-xs font-bold uppercase tracking-widest mb-4 text-[var(--muted)]">Fleet Status Tracking</h2>
+          <div className="flex flex-wrap gap-3">
             {Object.entries(d.fleet_status).map(([status, count]) => (
-              <span
+              <motion.span
                 key={status}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium border border-[var(--border)]"
-                style={{ background: 'var(--surface)' }}
+                whileHover={{ scale: 1.05 }}
+                className="px-4 py-2 rounded-xl text-xs font-bold border border-[var(--border)] bg-[var(--default)] transition-colors hover:border-[var(--primary)]"
               >
-                {status.replace(/_/g, ' ')}: <strong>{count}</strong>
-              </span>
+                {status.replace(/_/g, ' ')}: <span className="text-[var(--primary)] ml-1">{count}</span>
+              </motion.span>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
+    </div>
     </PageTransition>
   );
 }

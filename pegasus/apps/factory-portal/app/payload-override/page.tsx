@@ -6,6 +6,8 @@ import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageSkeleton } from '@/components/Skeleton';
+import EmptyState from '@/components/EmptyState';
+import { motion } from 'framer-motion';
 
 interface Transfer {
   transfer_id: string;
@@ -305,12 +307,14 @@ export default function PayloadOverridePage() {
             <span className="text-sm" style={{ color: 'var(--color-md-on-surface-variant)' }}>
               {loadingManifests.length} loading manifest{loadingManifests.length !== 1 ? 's' : ''}
             </span>
-            <button
-              onClick={() => void fetchManifests({ background: manifests.length > 0 })}
-              className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
-            >
-              <Icon name="refresh" size={16} /> Refresh
-            </button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => void fetchManifests({ background: manifests.length > 0 })}
+            className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium hover-lift active-press"
+          >
+            <Icon name="refresh" size={16} /> Refresh
+          </motion.button>
           </div>
         </div>
 
@@ -326,11 +330,11 @@ export default function PayloadOverridePage() {
         </div>
 
         {loadingManifests.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3" style={{ color: 'var(--color-md-on-surface-variant)' }}>
-            <Icon name="loadingBay" size={40} />
-            <p className="text-sm">No manifests currently in LOADING state</p>
-            <p className="text-xs">Payload override is only available during the loading phase</p>
-          </div>
+          <EmptyState
+            imageUrl="/images/empty-production-line.png"
+            headline="No manifests currently in LOADING state"
+            body="Payload override is only available during the loading phase. All current manifests are either dispatched or completed."
+          />
         ) : (
           <div className="space-y-6">
             {loadingManifests.map((manifest) => (
@@ -370,14 +374,16 @@ export default function PayloadOverridePage() {
                         }}
                       />
                     </div>
-                    <button
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => void handleCancelManifest(manifest.manifest_id)}
                       disabled={acting === manifest.manifest_id}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50"
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50 hover-lift active-press"
                       style={{ background: 'var(--color-md-error-container)', color: 'var(--color-md-on-error-container)' }}
                     >
                       {acting === manifest.manifest_id ? '...' : 'Cancel Manifest'}
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
 
@@ -402,22 +408,26 @@ export default function PayloadOverridePage() {
                         <td className="px-4 py-2.5 text-right tabular-nums">{transfer.volume_vu.toLocaleString()}</td>
                         <td className="px-4 py-2.5 text-right">
                           <div className="flex gap-2 justify-end">
-                            <button
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                               onClick={() => setRebalanceModal({ transfer, sourceManifest: manifest.manifest_id })}
                               disabled={acting === transfer.transfer_id}
-                              className="px-2.5 py-1 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50"
+                              className="px-2.5 py-1 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50 hover-lift active-press"
                               style={{ background: 'var(--color-md-primary-container)', color: 'var(--color-md-on-primary-container)' }}
                             >
                               Move
-                            </button>
-                            <button
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                               onClick={() => void handleCancelTransfer(transfer.transfer_id, manifest.manifest_id)}
                               disabled={acting === transfer.transfer_id}
-                              className="px-2.5 py-1 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50"
+                              className="px-2.5 py-1 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50 hover-lift active-press"
                               style={{ background: 'var(--color-md-error-container)', color: 'var(--color-md-on-error-container)' }}
                             >
                               Remove
-                            </button>
+                            </motion.button>
                           </div>
                         </td>
                       </tr>

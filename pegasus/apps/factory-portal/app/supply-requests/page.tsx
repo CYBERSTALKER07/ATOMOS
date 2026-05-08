@@ -6,6 +6,8 @@ import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import { PageSkeleton } from '@/components/Skeleton';
+import EmptyState from '@/components/EmptyState';
+import { motion } from 'framer-motion';
 
 interface SupplyRequest {
   request_id: string;
@@ -269,12 +271,14 @@ export default function SupplyRequestsPage() {
               {filtered.length} request{filtered.length !== 1 ? 's' : ''} in view
             </p>
           </div>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => void fetchRequests({ background: requests.length > 0 })}
-            className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
+            className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium hover-lift active-press"
           >
             <Icon name="refresh" size={16} /> Refresh
-          </button>
+          </motion.button>
         </div>
 
         <div
@@ -306,12 +310,17 @@ export default function SupplyRequestsPage() {
         </div>
 
         {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3" style={{ color: 'var(--color-md-on-surface-variant)' }}>
-            <Icon name="transfers" size={40} />
-            <p className="text-sm">No supply requests found</p>
-          </div>
+          <EmptyState
+            imageUrl="/images/empty-orders.png"
+            headline="No supply requests found"
+            body="There are no supply requests matching the selected filter."
+          />
         ) : (
-          <div className="overflow-x-auto rounded-xl border" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-sm"
+          >
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: 'var(--color-md-surface-container)' }}>
@@ -325,47 +334,56 @@ export default function SupplyRequestsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((request) => (
-                  <tr key={request.request_id} className="border-t" style={{ borderColor: 'var(--color-md-outline-variant)' }}>
+                {filtered.map((request, index) => (
+                  <motion.tr 
+                    key={request.request_id} 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="border-t hover:bg-[var(--default)]/50 transition-colors" 
+                    style={{ borderColor: 'var(--color-md-outline-variant)' }}
+                  >
                     <td className="px-4 py-3">
                       <div className="font-medium">{request.warehouse_name || request.warehouse_id.slice(0, 8)}</div>
-                      <div className="text-xs" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                      <div className="text-xs font-mono" style={{ color: 'var(--color-md-on-surface-variant)' }}>
                         {request.request_id.slice(0, 8)}
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ color: PRIORITY_COLORS[request.priority] || 'inherit' }}>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ border: `1px solid ${PRIORITY_COLORS[request.priority]}`, color: PRIORITY_COLORS[request.priority] || 'inherit' }}>
                         {request.priority}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded text-xs font-medium" style={{ color: STATE_COLORS[request.state] || 'inherit' }}>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider" style={{ background: STATE_COLORS[request.state], color: 'white' }}>
                         {request.state.replace(/_/g, ' ')}
                       </span>
                     </td>
-                    <td className="px-4 py-3 tabular-nums">{request.total_volume_vu.toLocaleString()}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 tabular-nums font-mono">{request.total_volume_vu.toLocaleString()}</td>
+                    <td className="px-4 py-3 tabular-nums font-mono text-xs">
                       {request.requested_delivery_date ? new Date(request.requested_delivery_date).toLocaleDateString() : '—'}
                     </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: 'var(--color-md-on-surface-variant)' }}>
+                    <td className="px-4 py-3 text-xs tabular-nums font-mono" style={{ color: 'var(--color-md-on-surface-variant)' }}>
                       {new Date(request.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex gap-2 justify-end">
                         {(ACTIONS[request.state] || []).map((action) => (
-                          <button
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             key={action.action}
                             onClick={() => void handleTransition(request.request_id, action.action)}
                             disabled={transitioning === request.request_id}
-                            className="px-3 py-1 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50"
+                            className="px-3 py-1 rounded-lg text-xs font-medium transition-opacity disabled:opacity-50 hover-lift active-press"
                             style={{ background: action.color, color: 'white' }}
                           >
                             {transitioning === request.request_id ? '...' : action.label}
-                          </button>
+                          </motion.button>
                         ))}
                       </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>

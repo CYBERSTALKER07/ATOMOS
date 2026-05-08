@@ -74,6 +74,7 @@ type TruckManifest = {
 };
 
 type OrderViewFilter = "ALL" | "PENDING" | "ACTIVE" | "COMPLETED" | "REVIEW";
+type DashboardLoadIssue = "offline" | "restricted" | "error";
 
 // ─── Status Chip ────────────────────────────────────────────────────────────
 
@@ -130,6 +131,7 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<FleetDriver[]>([]);
   const [isApiOnline, setIsApiOnline] = useState(false);
+  const [loadIssue, setLoadIssue] = useState<DashboardLoadIssue | null>(null);
   const [lastUpdated, setLastUpdated] = useState("");
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -158,10 +160,16 @@ export default function AdminDashboard() {
           const data = await ordersRes.json();
           setOrders(data ?? []);
           setIsApiOnline(true);
+          setLoadIssue(null);
           setLastUpdated(new Date().toLocaleTimeString());
           setLastUpdatedAt(Date.now());
         } else {
           setIsApiOnline(false);
+          if (ordersRes.status === 401 || ordersRes.status === 403) {
+            setLoadIssue("restricted");
+          } else {
+            setLoadIssue("error");
+          }
         }
         if (driversRes.ok) {
           const driverData: FleetDriver[] = await driversRes.json();
@@ -172,6 +180,7 @@ export default function AdminDashboard() {
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
         setIsApiOnline(false);
+        setLoadIssue("offline");
       } finally {
         setIsLoading(false);
       }
@@ -422,6 +431,37 @@ export default function AdminDashboard() {
     );
   }
 
+  if (orders.length === 0 && loadIssue) {
+    const stateContent: Record<DashboardLoadIssue, { headline: string; body: string }> = {
+      offline: {
+        headline: "You are offline",
+        body: "Dashboard data could not load because the network is unavailable.",
+      },
+      restricted: {
+        headline: "Access restricted",
+        body: "Your session currently does not have access to supplier dashboard resources.",
+      },
+      error: {
+        headline: "Unable to load dashboard",
+        body: "A server issue blocked dashboard hydration. Retry to fetch the latest logistics status.",
+      },
+    };
+
+    const content = stateContent[loadIssue];
+
+    return (
+      <PageTransition className="min-h-full p-6 md:p-8">
+        <EmptyState
+          variant={loadIssue}
+          headline={content.headline}
+          body={content.body}
+          action="Retry"
+          onAction={() => void fetchOrders()}
+        />
+      </PageTransition>
+    );
+  }
+
   return (
     <PageTransition className="min-h-full p-6 md:p-8">
       {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -465,7 +505,11 @@ export default function AdminDashboard() {
         >
           <span className="md-typescale-body-small" style={{ color: 'var(--muted)' }}>
             {!isApiOnline
-              ? "Realtime feed is disconnected. Dashboard is showing the most recent successful snapshot."
+              ? loadIssue === "restricted"
+                ? "Live dashboard refresh is permission-blocked. Showing the most recent successful snapshot."
+                : loadIssue === "error"
+                  ? "Dashboard refresh failed server-side. Showing the most recent successful snapshot."
+                  : "Realtime feed is disconnected. Dashboard is showing the most recent successful snapshot."
               : "Data is older than 20 seconds. Verify network stability or refresh manually."}
           </span>
           <Button variant="secondary" size="sm" onPress={() => void fetchOrders()}>
