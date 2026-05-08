@@ -18,66 +18,45 @@ export default function StatsCard({
   delay?: number;
   className?: string;
 }) {
-  const trendIcon = trend === 'up' ? '↑' : trend === 'down' ? '↓' : null;
-  const trendColor = trend === 'up'
-    ? 'var(--success)'
-    : trend === 'down'
-    ? 'var(--danger)'
-    : 'var(--muted)';
+  const trendIcon = trend === 'up' ? '↑' : trend === 'down' ? '↓' : trend === 'neutral' ? '→' : null;
+  const deltaClass =
+    trend === 'up' ? 'desk-stat-delta desk-stat-delta--up'
+    : trend === 'down' ? 'desk-stat-delta desk-stat-delta--down'
+    : trend === 'neutral' ? 'desk-stat-delta desk-stat-delta--neutral'
+    : '';
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 8 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      whileHover={{ y: -6, transition: { duration: 0.2 } }}
-      transition={{ 
-        duration: 0.5, 
-        delay: delay / 1000, 
-        ease: [0.16, 1, 0.3, 1] 
-      }}
-      className={`md-card glass-premium p-6 flex flex-col justify-between cursor-default overflow-hidden relative shadow-premium bg-surface/40 backdrop-blur-md border-white/5 ${className}`}
+      transition={{ duration: 0.35, delay: delay / 1000, ease: [0.16, 1, 0.3, 1] }}
+      className={`desk-kpi-card ${className}`}
+      style={{ position: 'relative' }}
     >
+      <div className="desk-kpi-card-meta">
+        <span>{label}</span>
+        {trendIcon && <span className={deltaClass}>{trendIcon}</span>}
+      </div>
+      <div className="desk-kpi-card-value">
+        <CountUp value={value} delay={delay / 1000 + 0.2} className="tabular-nums" />
+      </div>
+      {sub && <div className="desk-kpi-card-meta" style={{ marginTop: 4 }}>{sub}</div>}
       {accent && (
         <div
-          className="absolute top-0 left-0 w-full h-1 opacity-50"
-          style={{ background: accent }}
           aria-hidden="true"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 2,
+            background: accent,
+            borderTopLeftRadius: 'inherit',
+            borderTopRightRadius: 'inherit',
+          }}
         />
       )}
-      <div className="flex justify-between items-start mb-4 relative z-10">
-        <p className="md-typescale-label-small uppercase tracking-wider font-semibold opacity-70">
-          {label}
-        </p>
-        {trendIcon && (
-          <div 
-            className="flex items-center gap-0.5 px-2 py-0.5 rounded-full md-typescale-label-small font-bold"
-            style={{ backgroundColor: `${trendColor}20`, color: trendColor }}
-          >
-            {trendIcon}
-          </div>
-        )}
-      </div>
-      <div className="relative z-10">
-        <div className="flex items-baseline gap-2">
-          <CountUp
-            value={value}
-            delay={delay / 1000 + 0.3}
-            className="text-3xl font-bold tracking-tight text-foreground tabular-nums"
-          />
-        </div>
-        {sub && (
-          <p className="md-typescale-label-small mt-1 opacity-60">
-            {sub}
-          </p>
-        )}
-      </div>
-      
-      {/* Subtle background glow */}
-      <div 
-        className="absolute -bottom-10 -right-10 w-32 h-32 blur-3xl opacity-10 pointer-events-none"
-        style={{ background: accent || 'var(--color-md-primary)' }}
-      />
     </motion.div>
   );
 }

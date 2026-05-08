@@ -1,71 +1,71 @@
 'use client';
 
-import { Chip } from '@heroui/react';
+const STATUS_MAP: Record<string, { tone: string }> = {
+  PENDING:                 { tone: 'warning' },
+  SCHEDULED:               { tone: 'neutral' },
+  LOADED:                  { tone: 'accent' },
+  DISPATCHED:              { tone: 'accent' },
+  IN_TRANSIT:              { tone: 'accent-strong' },
+  ARRIVED:                 { tone: 'success' },
+  ARRIVED_SHOP_CLOSED:     { tone: 'warning-strong' },
+  AWAITING_PAYMENT:        { tone: 'warning' },
+  PENDING_CASH_COLLECTION: { tone: 'warning' },
+  COMPLETED:               { tone: 'success-strong' },
+  CANCELLED:               { tone: 'danger' },
+  CANCEL_REQUESTED:        { tone: 'accent' },
+  NO_CAPACITY:             { tone: 'danger-strong' },
+  FAILED:                  { tone: 'danger-strong' },
+  QUARANTINE:              { tone: 'danger' },
+  DELIVERED_ON_CREDIT:     { tone: 'warning-strong' },
 
-type ChipColor = 'default' | 'accent' | 'success' | 'warning' | 'danger';
-type ChipVariant = 'primary' | 'secondary' | 'tertiary' | 'soft';
+  ACTIVE:                  { tone: 'success' },
+  INACTIVE:                { tone: 'neutral' },
+  ENABLED:                 { tone: 'success' },
+  DISABLED:                { tone: 'neutral' },
+  VERIFIED:                { tone: 'success' },
+  UNVERIFIED:              { tone: 'warning' },
+  APPROVED:                { tone: 'success-strong' },
+  REJECTED:                { tone: 'danger' },
+  SUSPENDED:               { tone: 'danger' },
 
-interface StatusConfig {
-  color: ChipColor;
-  variant: ChipVariant;
-}
+  AVAILABLE:               { tone: 'success' },
+  ON_ROUTE:                { tone: 'accent-strong' },
+  OFF_DUTY:                { tone: 'neutral' },
+  MAINTENANCE:             { tone: 'warning' },
 
-const STATUS_MAP: Record<string, StatusConfig> = {
-  // Order lifecycle
-  PENDING:                 { color: 'warning', variant: 'soft' },
-  SCHEDULED:               { color: 'default', variant: 'soft' },
-  LOADED:                  { color: 'accent',  variant: 'soft' },
-  DISPATCHED:              { color: 'accent',  variant: 'soft' },
-  IN_TRANSIT:              { color: 'accent',  variant: 'primary' },
-  ARRIVED:                 { color: 'success', variant: 'soft' },
-  ARRIVED_SHOP_CLOSED:     { color: 'warning', variant: 'primary' },
-  AWAITING_PAYMENT:        { color: 'warning', variant: 'soft' },
-  PENDING_CASH_COLLECTION: { color: 'warning', variant: 'soft' },
-  COMPLETED:               { color: 'success', variant: 'primary' },
-  CANCELLED:               { color: 'danger',  variant: 'soft' },
-  CANCEL_REQUESTED:        { color: 'accent',  variant: 'soft' },
-  NO_CAPACITY:             { color: 'danger',  variant: 'primary' },
-  FAILED:                  { color: 'danger',  variant: 'primary' },
-  QUARANTINE:              { color: 'danger',  variant: 'soft' },
-  DELIVERED_ON_CREDIT:     { color: 'warning', variant: 'primary' },
+  PAID:                    { tone: 'success' },
+  UNPAID:                  { tone: 'danger' },
+  PARTIAL:                 { tone: 'warning' },
+  REFUNDED:                { tone: 'neutral' },
+  MATCHED:                 { tone: 'success' },
+  UNMATCHED:               { tone: 'danger' },
+  RECONCILED:              { tone: 'success-strong' },
 
-  // Generic states
-  ACTIVE:                  { color: 'success', variant: 'soft' },
-  INACTIVE:                { color: 'default', variant: 'soft' },
-  ENABLED:                 { color: 'success', variant: 'soft' },
-  DISABLED:                { color: 'default', variant: 'soft' },
-  VERIFIED:                { color: 'success', variant: 'soft' },
-  UNVERIFIED:              { color: 'warning', variant: 'soft' },
-  APPROVED:                { color: 'success', variant: 'primary' },
-  REJECTED:                { color: 'danger',  variant: 'soft' },
-  SUSPENDED:               { color: 'danger',  variant: 'soft' },
+  IN_STOCK:                { tone: 'success' },
+  LOW_STOCK:               { tone: 'warning' },
+  OUT_OF_STOCK:            { tone: 'danger' },
 
-  // Fleet / driver
-  AVAILABLE:               { color: 'success', variant: 'soft' },
-  ON_ROUTE:                { color: 'accent',  variant: 'primary' },
-  OFF_DUTY:                { color: 'default', variant: 'soft' },
-  MAINTENANCE:             { color: 'warning', variant: 'soft' },
-
-  // Financial
-  PAID:                    { color: 'success', variant: 'soft' },
-  UNPAID:                  { color: 'danger',  variant: 'soft' },
-  PARTIAL:                 { color: 'warning', variant: 'soft' },
-  REFUNDED:                { color: 'default', variant: 'soft' },
-  MATCHED:                 { color: 'success', variant: 'soft' },
-  UNMATCHED:               { color: 'danger',  variant: 'soft' },
-  RECONCILED:              { color: 'success', variant: 'primary' },
-
-  // Inventory / stock
-  IN_STOCK:                { color: 'success', variant: 'soft' },
-  LOW_STOCK:               { color: 'warning', variant: 'soft' },
-  OUT_OF_STOCK:            { color: 'danger',  variant: 'soft' },
-
-  // KYC
-  PENDING_REVIEW:          { color: 'warning', variant: 'soft' },
-  UNDER_REVIEW:            { color: 'accent',  variant: 'soft' },
+  PENDING_REVIEW:          { tone: 'warning' },
+  UNDER_REVIEW:            { tone: 'accent' },
 };
 
-const FALLBACK: StatusConfig = { color: 'default', variant: 'soft' };
+const TONE_STYLE: Record<string, React.CSSProperties> = {
+  'success':         { background: 'rgba(16, 185, 129, 0.10)', color: '#047857', borderColor: 'rgba(16, 185, 129, 0.28)' },
+  'success-strong':  { background: '#047857', color: '#ffffff', borderColor: '#047857' },
+  'warning':         { background: 'rgba(245, 158, 11, 0.10)', color: '#b45309', borderColor: 'rgba(245, 158, 11, 0.28)' },
+  'warning-strong':  { background: '#b45309', color: '#ffffff', borderColor: '#b45309' },
+  'danger':          { background: 'rgba(239, 68, 68, 0.10)', color: '#b91c1c', borderColor: 'rgba(239, 68, 68, 0.28)' },
+  'danger-strong':   { background: '#b91c1c', color: '#ffffff', borderColor: '#b91c1c' },
+  'accent':          { background: 'var(--desk-accent-soft)', color: 'var(--desk-accent-strong)', borderColor: 'rgba(var(--desk-accent-rgb), 0.28)' },
+  'accent-strong':   { background: 'var(--desk-accent)', color: 'var(--desk-accent-on)', borderColor: 'var(--desk-accent)' },
+  'neutral':         { background: 'var(--desk-canvas)', color: 'var(--desk-text-secondary)', borderColor: 'var(--desk-border)' },
+};
+
+const SIZE_STYLE: Record<string, React.CSSProperties> = {
+  sm: { fontSize: 11, padding: '2px 8px' },
+  md: { fontSize: 12, padding: '3px 10px' },
+  lg: { fontSize: 13, padding: '4px 12px' },
+};
 
 interface StatusChipProps {
   status: string;
@@ -76,20 +76,25 @@ interface StatusChipProps {
 
 export default function StatusChip({ status, label, size = 'sm', className }: StatusChipProps) {
   const key = status.toUpperCase().replace(/[\s-]+/g, '_');
-  const config = STATUS_MAP[key] || FALLBACK;
+  const config = STATUS_MAP[key] || { tone: 'neutral' };
+  const tone = TONE_STYLE[config.tone] || TONE_STYLE.neutral;
+  const sizeStyle = SIZE_STYLE[size];
   const displayLabel = label || status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
   return (
-    <Chip 
-      color={config.color} 
-      variant={config.variant} 
-      size={size} 
-      className={`font-semibold border-none shadow-sm ${className}`}
+    <span
+      className={`inline-flex items-center font-semibold tracking-tight ${className || ''}`}
       style={{
-        boxShadow: config.variant === 'primary' ? `0 0 12px -2px ${config.color === 'default' ? 'var(--color-md-outline)' : `var(--color-md-${config.color})`}40` : 'none'
+        ...tone,
+        ...sizeStyle,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderStyle: 'solid',
+        lineHeight: 1.2,
+        whiteSpace: 'nowrap',
       }}
     >
       {displayLabel}
-    </Chip>
+    </span>
   );
 }

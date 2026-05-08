@@ -114,17 +114,24 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
       onAnimationComplete={(definition) => {
         if (definition === 'exit') onComplete();
       }}
-      className="fixed inset-0 z-9999 flex items-center justify-center bg-background"
+      className="fixed inset-0 z-9999 flex items-center justify-center"
+      style={{ background: 'var(--desk-canvas)' }}
     >
-      <div className="absolute inset-0 bg-accent/5 opacity-50" />
       <motion.div
         initial={{ opacity: 0, scale: 0.8, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
         className="relative z-10 flex flex-col items-center gap-6"
       >
-        <div className="w-20 h-20 flex items-center justify-center bg-accent text-accent-foreground md-shape-xl shadow-2xl shadow-accent/40">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="currentColor">
+        <div
+          className="w-16 h-16 flex items-center justify-center"
+          style={{
+            background: 'var(--desk-accent)',
+            color: 'var(--desk-accent-on)',
+            borderRadius: 16,
+          }}
+        >
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
             <path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z"/>
           </svg>
         </div>
@@ -134,17 +141,18 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
           transition={{ delay: 0.5, duration: 1 }}
           className="flex flex-col items-center"
         >
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">PEGASUS</h2>
-          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground mt-1">Enterprise Hub</p>
+          <h2 className="text-2xl font-bold tracking-tight" style={{ color: 'var(--desk-text-primary)' }}>PEGASUS</h2>
+          <p className="text-[10px] uppercase tracking-[0.3em] mt-1" style={{ color: 'var(--desk-text-tertiary)' }}>Enterprise Hub</p>
         </motion.div>
         
         {/* Loading bar */}
-        <div className="w-32 h-0.5 bg-muted/20 rounded-full mt-4 overflow-hidden">
+        <div className="w-32 h-0.5 rounded-full mt-4 overflow-hidden" style={{ background: 'var(--desk-border)' }}>
           <motion.div 
             initial={{ x: '-100%' }}
             animate={{ x: '100%' }}
             transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-            className="w-full h-full bg-accent"
+            className="w-full h-full"
+            style={{ background: 'var(--desk-accent)' }}
           />
         </div>
       </motion.div>
@@ -227,10 +235,17 @@ const DrawerContent = memo(function DrawerContent({
             </Button>
           ) : (
             <>
-              <div className="w-8 h-8 flex items-center justify-center text-xs font-semibold md-shape-full shrink-0 bg-accent text-accent-foreground">
+              <div
+                className="w-8 h-8 flex items-center justify-center text-xs font-semibold shrink-0"
+                style={{
+                  background: 'var(--desk-accent)',
+                  color: 'var(--desk-accent-on)',
+                  borderRadius: 10,
+                }}
+              >
                 L
               </div>
-              <h1 className="md-typescale-title-small truncate flex-1 text-foreground">
+              <h1 className="text-[14px] font-semibold truncate flex-1" style={{ color: 'var(--desk-text-primary)' }}>
                 Pegasus Hub
               </h1>
               {!isMobile && (
