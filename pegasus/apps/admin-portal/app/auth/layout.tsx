@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { useLocale } from '@/hooks/useLocale';
+import { useTheme } from '@/components/ThemeProvider';
 
 // ─── Theme toggle icon (sun/moon) ──────────────────────────────────────────
 function ThemeToggle({
@@ -43,8 +44,9 @@ function ThemeToggle({
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const { t: translate } = useLocale();
+  const { resolved, setMode } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [isDark, setIsDark] = useState(true);
+  const isDark = resolved === 'dark';
   const [splashDone, setSplashDone] = useState(() => {
     if (typeof window !== 'undefined') {
       return sessionStorage.getItem('auth-splash-shown') === '1';
@@ -54,24 +56,18 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     setMounted(true);
-    const saved = localStorage.getItem('auth-theme');
-    if (saved) setIsDark(saved === 'dark');
     if (!splashDone) {
       const timer = setTimeout(() => {
         setSplashDone(true);
         sessionStorage.setItem('auth-splash-shown', '1');
-      }, 1600);
+      }, 240);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [splashDone]);
 
   const toggleTheme = useCallback(() => {
-    setIsDark(prev => {
-      const next = !prev;
-      localStorage.setItem('auth-theme', next ? 'dark' : 'light');
-      return next;
-    });
-  }, []);
+    setMode(isDark ? 'light' : 'dark');
+  }, [isDark, setMode]);
 
   return (
     <div className={`auth-shell ${isDark ? 'auth-dark' : 'auth-light'}`}>

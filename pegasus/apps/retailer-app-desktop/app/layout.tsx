@@ -3,6 +3,7 @@ import Image from "next/image";
 import "./globals.css";
 import LocaleBootstrap from "../components/LocaleBootstrap";
 import { ThemeProvider } from "../components/ThemeProvider";
+import PageTransition from "../components/PageTransition";
 
 export const metadata: Metadata = {
   title: "Pegasus Retailer",
@@ -19,8 +20,8 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){try{var m=localStorage.getItem('pegasus-retailer-theme-mode');
-          if(m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches))
-          document.documentElement.classList.add('dark')}catch(e){}})();
+          var d=m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);
+          var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';}catch(e){}})();
         `}} />
       </head>
       <body
@@ -30,7 +31,9 @@ export default function RootLayout({
         <div id="app-splash" aria-hidden="true">
           <Image src="/logo-solid-square.png" alt="" width={80} height={80} priority />
         </div>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <PageTransition>{children}</PageTransition>
+        </ThemeProvider>
       </body>
     </html>
   );

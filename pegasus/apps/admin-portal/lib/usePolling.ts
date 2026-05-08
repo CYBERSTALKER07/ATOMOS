@@ -78,6 +78,14 @@ export function usePolling(
       }
     };
 
+    const onFocus = () => {
+      if (document.visibilityState === 'visible' && (typeof navigator === 'undefined' || navigator.onLine)) {
+        currentIntervalRef.current = intervalMs;
+        if (timerRef.current) clearTimeout(timerRef.current);
+        doFetch();
+      }
+    };
+
     const onBackpressure = (e: Event) => {
       const waitMs = (e as CustomEvent<number>).detail;
       currentIntervalRef.current = Math.max(currentIntervalRef.current, waitMs);
@@ -90,6 +98,8 @@ export function usePolling(
 
     document.addEventListener('visibilitychange', onVisibilityChange);
     window.addEventListener('online', onOnline);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('pageshow', onFocus);
     window.addEventListener('backpressure', onBackpressure);
 
     return () => {
@@ -97,6 +107,8 @@ export function usePolling(
       controllerRef.current?.abort();
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('online', onOnline);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('pageshow', onFocus);
       window.removeEventListener('backpressure', onBackpressure);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

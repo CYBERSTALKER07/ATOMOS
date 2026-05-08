@@ -35,8 +35,8 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){try{var m=localStorage.getItem('pegasus-factory-theme-mode');
-          if(m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches))
-          document.documentElement.classList.add('dark')}catch(e){}})();
+          var d=m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);
+          var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';}catch(e){}})();
         `}} />
       </head>
       <body

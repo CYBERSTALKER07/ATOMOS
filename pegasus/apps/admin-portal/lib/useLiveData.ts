@@ -24,11 +24,25 @@ export function useLiveData(fetchFn: (signal: AbortSignal) => Promise<void>) {
     const onVisible = () => {
       if (document.visibilityState === 'visible') doFetch();
     };
+    const onOnline = () => {
+      if (document.visibilityState === 'visible') doFetch();
+    };
+    const onFocus = () => {
+      if (document.visibilityState === 'visible' && (typeof navigator === 'undefined' || navigator.onLine)) {
+        doFetch();
+      }
+    };
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('pageshow', onFocus);
 
     return () => {
       controllerRef.current?.abort();
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('pageshow', onFocus);
     };
   }, [doFetch]);
 

@@ -201,18 +201,37 @@ export function useNotifications() {
     fetchInbox(ac.signal);
     connectWS();
 
-    const handleOnline = () => {
+    const reconnectIfNeeded = () => {
+      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
+      connectWS();
+    };
+
+    const handleWake = () => {
       void fetchInbox();
-      if (!wsRef.current) {
-        connectWS();
+      if (document.visibilityState !== 'hidden') {
+        reconnectIfNeeded();
       }
     };
 
-    window.addEventListener('online', handleOnline);
+    const handleVisible = () => {
+      if (document.visibilityState === 'visible') {
+        handleWake();
+      }
+    };
+
+    window.addEventListener('online', handleWake);
+    window.addEventListener('focus', handleWake);
+    window.addEventListener('pageshow', handleWake);
+    document.addEventListener('visibilitychange', handleVisible);
     return () => {
       disposedRef.current = true;
       ac.abort();
-      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('online', handleWake);
+      window.removeEventListener('focus', handleWake);
+      window.removeEventListener('pageshow', handleWake);
+      document.removeEventListener('visibilitychange', handleVisible);
       clearTimeout(reconnectTimer.current);
       wsRef.current?.close();
       wsRef.current = null;
