@@ -90,7 +90,7 @@ struct OrderCardView: View {
             }
 
             // Footer
-            if order.status == .pending {
+            if order.status.canCancel, onCancel != nil {
                 Rectangle()
                     .fill(AppTheme.separator.opacity(0.5))
                     .frame(height: AppTheme.separatorHeight)

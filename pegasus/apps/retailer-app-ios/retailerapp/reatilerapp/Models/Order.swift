@@ -1,5 +1,37 @@
 import Foundation
 
+private func formatRetailerMoney(_ amount: Int64, currency: String) -> String {
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .decimal
+    formatter.groupingSeparator = " "
+    formatter.maximumFractionDigits = 0
+    let formatted = formatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
+    let normalizedCurrency = currency.isEmpty ? "UZS" : currency
+    return "\(formatted) \(normalizedCurrency)"
+}
+
+private extension KeyedDecodingContainer {
+    func decodeInt64Lossy(forKey key: Key) throws -> Int64 {
+        if let value = try decodeIfPresent(Int64.self, forKey: key) {
+            return value
+        }
+        if let value = try decodeIfPresent(Double.self, forKey: key) {
+            return Int64(value.rounded())
+        }
+        return 0
+    }
+
+    func decodeDoubleLossy(forKey key: Key) throws -> Double {
+        if let value = try decodeIfPresent(Double.self, forKey: key) {
+            return value
+        }
+        if let value = try decodeIfPresent(Int64.self, forKey: key) {
+            return Double(value)
+        }
+        return 0
+    }
+}
+
 // MARK: - Order Status
 
 enum OrderStatus: String, Codable, CaseIterable {
@@ -98,8 +130,6 @@ enum OrderStatus: String, Codable, CaseIterable {
     }
 }
 
-import Foundation
-
 // MARK: - Order Line Item
 
 struct OrderLineItem: Codable, Identifiable, Hashable {
@@ -113,11 +143,17 @@ struct OrderLineItem: Codable, Identifiable, Hashable {
     let totalPrice: Double
 
     enum CodingKeys: String, CodingKey {
-        case id = "line_item_id"
-        case variantId = "sku_id"
-        case productName = "sku_name"
+        case lineItemID = "line_item_id"
+        case legacyID = "id"
+        case productID = "product_id"
+        case skuID = "sku_id"
+        case productName = "product_name"
+        case skuName = "sku_name"
+        case variantId = "variant_id"
+        case variantSize = "variant_size"
         case quantity = "quantity"
         case unitPrice = "unit_price"
+        case totalPrice = "total_price"
     }
 
     init(id: String, productId: String, productName: String, variantId: String, variantSize: String, quantity: Int, unitPrice: Double, totalPrice: Double) {
@@ -133,16 +169,21 @@ struct OrderLineItem: Codable, Identifiable, Hashable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
-        let parsedVariant = try container.decodeIfPresent(String.self, forKey: .variantId) ?? ""
-        self.variantId = parsedVariant
-        self.productId = parsedVariant
-        self.productName = try container.decodeIfPresent(String.self, forKey: .productName) ?? "Unknown"
-        self.variantSize = ""
+        self.id = try container.decodeIfPresent(String.self, forKey: .lineItemID)
+            ?? container.decodeIfPresent(String.self, forKey: .legacyID)
+            ?? UUID().uuidString
+        let decodedSku = try container.decodeIfPresent(String.self, forKey: .skuID) ?? ""
+        self.variantId = try container.decodeIfPresent(String.self, forKey: .variantId) ?? decodedSku
+        self.productId = try container.decodeIfPresent(String.self, forKey: .productID) ?? decodedSku
+        self.productName = try container.decodeIfPresent(String.self, forKey: .skuName)
+            ?? container.decodeIfPresent(String.self, forKey: .productName)
+            ?? "Unknown"
+        self.variantSize = try container.decodeIfPresent(String.self, forKey: .variantSize) ?? ""
         self.quantity = try container.decodeIfPresent(Int.self, forKey: .quantity) ?? 1
-        let basePrice = try container.decodeIfPresent(Double.self, forKey: .unitPrice) ?? 0.0
+        let basePrice = try container.decodeDoubleLossy(forKey: .unitPrice)
         self.unitPrice = basePrice
-        self.totalPrice = basePrice * Double(self.quantity)
+        let decodedTotal = try container.decodeDoubleLossy(forKey: .totalPrice)
+        self.totalPrice = decodedTotal > 0 ? decodedTotal : basePrice * Double(self.quantity)
     }
 }
 
@@ -155,12 +196,19 @@ struct Order: Codable, Identifiable, Hashable {
     let supplierName: String?
     let status: OrderStatus
     let items: [OrderLineItem]
-    let totalAmount: Double
+    let totalAmount: Int64
+    let currency: String
+    let paymentGateway: String
+    let paymentStatus: String?
+    let routeId: String?
+    let autoConfirmAt: String?
+    let deliverBefore: String?
     let orderSource: String?
     let createdAt: String
     let updatedAt: String
     let estimatedDelivery: String?
     let qrCode: String?
+    let version: Int64
 
     enum CodingKeys: String, CodingKey {
         case id = "order_id"
@@ -170,12 +218,21 @@ struct Order: Codable, Identifiable, Hashable {
         case status = "state"
         case items = "items"
         case totalAmount = "amount"
+        case currency = "currency"
+        case paymentGateway = "payment_gateway"
+        case paymentStatus = "payment_status"
+        case routeId = "route_id"
+        case autoConfirmAt = "auto_confirm_at"
+        case deliverBefore = "deliver_before"
         case orderSource = "order_source"
         case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case estimatedDelivery = "estimated_delivery"
         case qrCode = "delivery_token"
+        case version = "version"
     }
 
-    init(id: String, retailerId: String, supplierId: String?, supplierName: String?, status: OrderStatus, items: [OrderLineItem], totalAmount: Double, orderSource: String?, createdAt: String, updatedAt: String, estimatedDelivery: String?, qrCode: String?) {
+    init(id: String, retailerId: String, supplierId: String?, supplierName: String?, status: OrderStatus, items: [OrderLineItem], totalAmount: Int64, currency: String = "UZS", paymentGateway: String = "", paymentStatus: String? = nil, routeId: String? = nil, autoConfirmAt: String? = nil, deliverBefore: String? = nil, orderSource: String?, createdAt: String, updatedAt: String, estimatedDelivery: String?, qrCode: String?, version: Int64 = 0) {
         self.id = id
         self.retailerId = retailerId
         self.supplierId = supplierId
@@ -183,11 +240,18 @@ struct Order: Codable, Identifiable, Hashable {
         self.status = status
         self.items = items
         self.totalAmount = totalAmount
+        self.currency = currency
+        self.paymentGateway = paymentGateway
+        self.paymentStatus = paymentStatus
+        self.routeId = routeId
+        self.autoConfirmAt = autoConfirmAt
+        self.deliverBefore = deliverBefore
         self.orderSource = orderSource
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.estimatedDelivery = estimatedDelivery
         self.qrCode = qrCode
+        self.version = version
     }
 
     init(from decoder: Decoder) throws {
@@ -205,12 +269,19 @@ struct Order: Codable, Identifiable, Hashable {
         }
         
         self.items = try c.decodeIfPresent([OrderLineItem].self, forKey: .items) ?? []
-        self.totalAmount = try c.decodeIfPresent(Double.self, forKey: .totalAmount) ?? 0.0
+                self.totalAmount = try c.decodeInt64Lossy(forKey: .totalAmount)
+                self.currency = try c.decodeIfPresent(String.self, forKey: .currency) ?? "UZS"
+                self.paymentGateway = try c.decodeIfPresent(String.self, forKey: .paymentGateway) ?? ""
+                self.paymentStatus = try c.decodeIfPresent(String.self, forKey: .paymentStatus)
+                self.routeId = try c.decodeIfPresent(String.self, forKey: .routeId)
+                self.autoConfirmAt = try c.decodeIfPresent(String.self, forKey: .autoConfirmAt)
+                self.deliverBefore = try c.decodeIfPresent(String.self, forKey: .deliverBefore)
         self.orderSource = try c.decodeIfPresent(String.self, forKey: .orderSource)
         self.createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
-        self.updatedAt = self.createdAt
-        self.estimatedDelivery = nil
+                self.updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt) ?? self.createdAt
+                self.estimatedDelivery = try c.decodeIfPresent(String.self, forKey: .estimatedDelivery) ?? self.deliverBefore
         self.qrCode = try c.decodeIfPresent(String.self, forKey: .qrCode)
+                self.version = try c.decodeIfPresent(Int64.self, forKey: .version) ?? 0
     }
 
     var isAiGenerated: Bool {
@@ -218,7 +289,7 @@ struct Order: Codable, Identifiable, Hashable {
     }
 
     var displayTotal: String {
-        "\(Int(totalAmount).formatted())"
+        formatRetailerMoney(totalAmount, currency: currency)
     }
 
     var itemCount: Int {
@@ -381,7 +452,7 @@ extension Order {
                 OrderLineItem(id: "li-001", productId: "prod-001", productName: "Organic Whole Milk", variantId: "v-001a", variantSize: "1L", quantity: 3, unitPrice: 3.49, totalPrice: 10.47),
                 OrderLineItem(id: "li-002", productId: "prod-003", productName: "Free-Range Eggs", variantId: "v-003a", variantSize: "12 ct", quantity: 2, unitPrice: 5.99, totalPrice: 11.98)
             ],
-            totalAmount: 22.45,
+            totalAmount: 22_450,
             orderSource: "MANUAL",
             createdAt: "2026-03-17T08:00:00Z",
             updatedAt: "2026-03-17T09:30:00Z",
@@ -397,7 +468,7 @@ extension Order {
             items: [
                 OrderLineItem(id: "li-003", productId: "prod-002", productName: "Sourdough Bread", variantId: "v-002b", variantSize: "500g", quantity: 1, unitPrice: 13.49, totalPrice: 13.49)
             ],
-            totalAmount: 13.49,
+            totalAmount: 13_490,
             orderSource: "AI_PREDICTED",
             createdAt: "2026-03-16T10:00:00Z",
             updatedAt: "2026-03-16T15:00:00Z",
@@ -413,7 +484,7 @@ extension Order {
             items: [
                 OrderLineItem(id: "li-004", productId: "prod-005", productName: "Sparkling Water", variantId: "v-005b", variantSize: "500ml", quantity: 2, unitPrice: 14.99, totalPrice: 29.98)
             ],
-            totalAmount: 29.98,
+            totalAmount: 29_980,
             orderSource: "B2B_CHECKOUT",
             createdAt: "2026-03-17T11:00:00Z",
             updatedAt: "2026-03-17T11:00:00Z",

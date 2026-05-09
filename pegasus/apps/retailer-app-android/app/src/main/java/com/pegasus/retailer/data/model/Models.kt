@@ -1,5 +1,7 @@
 package com.pegasus.retailer.data.model
 
+import java.text.NumberFormat
+import java.util.Locale
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonNames
@@ -326,9 +328,9 @@ data class Supplier(
 
 @Serializable
 data class OrderLineItem(
-    @SerialName("id") val id: String,
-    @SerialName("product_id") val productId: String,
-    @SerialName("product_name") val productName: String,
+    @SerialName("line_item_id") @JsonNames("id") val id: String,
+    @SerialName("sku_id") @JsonNames("product_id") val productId: String,
+    @SerialName("sku_name") @JsonNames("product_name") val productName: String,
     @SerialName("variant_id") val variantId: String = "",
     @SerialName("variant_size") val variantSize: String = "",
     @SerialName("quantity") val quantity: Int,
@@ -346,16 +348,30 @@ data class Order(
     @SerialName("supplier_name") val supplierName: String = "",
     @SerialName("state") val status: OrderStatus = OrderStatus.PENDING,
     @SerialName("items") val items: List<OrderLineItem> = emptyList(),
-    @SerialName("amount") val totalAmount: Double = 0.0,
+    @SerialName("amount") val totalAmount: Long = 0,
+    @SerialName("currency") val currency: String = "UZS",
+    @SerialName("payment_gateway") val paymentGateway: String = "",
+    @SerialName("payment_status") val paymentStatus: String? = null,
+    @SerialName("route_id") val routeId: String? = null,
+    @SerialName("auto_confirm_at") val autoConfirmAt: String? = null,
+    @SerialName("deliver_before") val deliverBefore: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
     @SerialName("estimated_delivery") val estimatedDelivery: String? = null,
     @SerialName("delivery_token") val qrCode: String? = null,
     @SerialName("order_source") val orderSource: String = "MANUAL",
+    @SerialName("version") val version: Long = 0,
 ) {
-    val displayTotal: String get() = String.format("$%.2f", totalAmount)
+    val displayTotal: String get() = formatRetailerAmount(totalAmount, currency)
     val itemCount: Int get() = items.sumOf { it.quantity }
     val isAiGenerated: Boolean get() = orderSource == "AI_PREDICTED"
+}
+
+fun formatRetailerAmount(amount: Long, currency: String): String {
+    val formatter = NumberFormat.getIntegerInstance(Locale.US)
+    val formatted = formatter.format(amount).replace(',', ' ')
+    val normalizedCurrency = currency.ifBlank { "UZS" }
+    return "$formatted $normalizedCurrency"
 }
 
 @Serializable

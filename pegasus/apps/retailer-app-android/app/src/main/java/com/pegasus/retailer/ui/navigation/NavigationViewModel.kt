@@ -8,6 +8,7 @@ import com.pegasus.retailer.data.api.RetailerWebSocket
 import com.pegasus.retailer.data.local.TokenManager
 import com.pegasus.retailer.data.model.CardCheckoutRequest
 import com.pegasus.retailer.data.model.CashCheckoutRequest
+import com.pegasus.retailer.data.model.formatRetailerAmount
 import com.pegasus.retailer.data.model.Order
 import com.pegasus.retailer.data.model.PendingPaymentSession
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,7 +44,8 @@ data class NavigationUiState(
     val floatingTotalDisplay: String
         get() {
             val total = activeOrders.sumOf { it.totalAmount }
-            return if (total > 0) String.format("$%.2f", total) else ""
+            val currency = activeOrders.firstOrNull()?.currency ?: "UZS"
+            return if (total > 0) formatRetailerAmount(total, currency) else ""
         }
     val floatingCountdownIso: String?
         get() = activeOrders.firstOrNull()?.estimatedDelivery

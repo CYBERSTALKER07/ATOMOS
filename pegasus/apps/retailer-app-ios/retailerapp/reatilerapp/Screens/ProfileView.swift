@@ -250,12 +250,13 @@ struct ProfileView: View {
     // MARK: - Stats
 
     @State private var orderCount: Int = 0
-    @State private var totalSpent: Double = 0
+    @State private var totalSpent: Int64 = 0
+    @State private var totalSpentCurrency: String = "UZS"
 
     private var statsRow: some View {
         HStack(spacing: AppTheme.spacingMD) {
             miniStat(value: "\(orderCount)", label: "Orders", icon: "shippingbox.fill", color: AppTheme.accent)
-            miniStat(value: String(format: "$%.1fk", totalSpent / 1000), label: "Spent", icon: "dollarsign.circle.fill", color: AppTheme.success)
+            miniStat(value: formatRetailerMoney(totalSpent, currency: totalSpentCurrency), label: "Spent", icon: "dollarsign.circle.fill", color: AppTheme.success)
             miniStat(value: "4.9", label: "Rating", icon: "star.fill", color: AppTheme.warning)
         }
     }
@@ -412,6 +413,7 @@ struct ProfileView: View {
             let orders: [Order] = try await api.get(path: "/v1/retailers/\(rid)/orders")
             orderCount = orders.count
             totalSpent = orders.reduce(0) { $0 + $1.totalAmount }
+            totalSpentCurrency = orders.first?.currency ?? "UZS"
             
             // Also fetch settings so toggles are perfectly in sync
             let s: AutoOrderSettings = try await api.get(path: "/v1/retailer/settings/auto-order")

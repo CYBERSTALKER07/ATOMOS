@@ -21,13 +21,19 @@ var errRetailerOrderAccessForbidden = errors.New(`{"error":"forbidden: cannot ac
 
 type mobileLineItem struct {
 	ID          string `json:"id"`
+	LineItemID  string `json:"line_item_id"`
+	OrderID     string `json:"order_id,omitempty"`
 	ProductID   string `json:"product_id"`
 	ProductName string `json:"product_name"`
+	SkuID       string `json:"sku_id"`
+	SkuName     string `json:"sku_name"`
 	VariantID   string `json:"variant_id,omitempty"`
 	VariantSize string `json:"variant_size,omitempty"`
 	Quantity    int64  `json:"quantity"`
 	UnitPrice   int64  `json:"unit_price"`
 	TotalPrice  int64  `json:"total_price"`
+	Currency    string `json:"currency,omitempty"`
+	Status      string `json:"status,omitempty"`
 }
 
 type mobileOrder struct {
@@ -37,11 +43,18 @@ type mobileOrder struct {
 	SupplierName      string           `json:"supplier_name,omitempty"`
 	State             string           `json:"state"`
 	Amount            int64            `json:"amount"`
-	OrderSource       string           `json:"order_source,omitempty"`
+	Currency          string           `json:"currency,omitempty"`
+	PaymentGateway    string           `json:"payment_gateway,omitempty"`
+	PaymentStatus     string           `json:"payment_status,omitempty"`
+	RouteID           *string          `json:"route_id"`
+	OrderSource       *string          `json:"order_source"`
+	AutoConfirmAt     *string          `json:"auto_confirm_at"`
+	DeliverBefore     *string          `json:"deliver_before"`
 	CreatedAt         string           `json:"created_at"`
 	UpdatedAt         string           `json:"updated_at,omitempty"`
-	EstimatedDelivery string           `json:"estimated_delivery,omitempty"`
+	EstimatedDelivery *string          `json:"estimated_delivery,omitempty"`
 	DeliveryToken     string           `json:"delivery_token,omitempty"`
+	Version           int64            `json:"version"`
 	Items             []mobileLineItem `json:"items"`
 }
 
@@ -172,7 +185,7 @@ func handleRetailerTracking(d Deps) http.HandlerFunc {
 
 func authorizeRetailerOrders(r *http.Request, retailerID string) error {
 	claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
-	if ok && claims != nil && claims.Role == "RETAILER" && claims.UserID != retailerID {
+	if !ok || claims == nil || claims.Role != "RETAILER" || claims.UserID != retailerID {
 		return errRetailerOrderAccessForbidden
 	}
 	return nil
@@ -181,21 +194,29 @@ func authorizeRetailerOrders(r *http.Request, retailerID string) error {
 func mapMobileOrders(orders []order.Order) []mobileOrder {
 	result := make([]mobileOrder, 0, len(orders))
 	for _, current := range orders {
+		routeID := stringPointerFromNullString(current.RouteID)
+		orderSource := stringPointerFromNullString(current.OrderSource)
+		autoConfirmAt := stringPointerFromNullTime(current.AutoConfirmAt)
+		deliverBefore := stringPointerFromNullTime(current.DeliverBefore)
 		mapped := mobileOrder{
-			OrderID:      current.ID,
-			RetailerID:   current.RetailerID,
-			SupplierID:   current.SupplierID,
-			SupplierName: current.SupplierName,
-			State:        current.State,
-			Amount:       current.Amount,
-			CreatedAt:    current.CreatedAt.Format(time.RFC3339),
-			Items:        make([]mobileLineItem, 0, len(current.Items)),
-		}
-		if current.OrderSource.Valid {
-			mapped.OrderSource = current.OrderSource.StringVal
-		}
-		if current.DeliverBefore.Valid {
-			mapped.EstimatedDelivery = current.DeliverBefore.Time.Format(time.RFC3339)
+			OrderID:           current.ID,
+			RetailerID:        current.RetailerID,
+			SupplierID:        current.SupplierID,
+			SupplierName:      current.SupplierName,
+			State:             current.State,
+			Amount:            current.Amount,
+			Currency:          current.Currency,
+			PaymentGateway:    current.PaymentGateway,
+			PaymentStatus:     current.PaymentStatus,
+			RouteID:           routeID,
+			OrderSource:       orderSource,
+			AutoConfirmAt:     autoConfirmAt,
+			DeliverBefore:     deliverBefore,
+			CreatedAt:         current.CreatedAt.UTC().Format(time.RFC3339),
+			UpdatedAt:         current.UpdatedAt.UTC().Format(time.RFC3339),
+			EstimatedDelivery: deliverBefore,
+			Version:           current.Version,
+			Items:             make([]mobileLineItem, 0, len(current.Items)),
 		}
 		if current.DeliveryToken.Valid {
 			mapped.DeliveryToken = current.DeliveryToken.StringVal
@@ -203,16 +224,39 @@ func mapMobileOrders(orders []order.Order) []mobileOrder {
 		for _, item := range current.Items {
 			mapped.Items = append(mapped.Items, mobileLineItem{
 				ID:          item.LineItemID,
+				LineItemID:  item.LineItemID,
+				OrderID:     current.ID,
 				ProductID:   item.SkuID,
 				ProductName: item.SkuName,
+				SkuID:       item.SkuID,
+				SkuName:     item.SkuName,
+				VariantID:   item.SkuID,
 				Quantity:    item.Quantity,
 				UnitPrice:   item.UnitPrice,
 				TotalPrice:  item.Quantity * item.UnitPrice,
+				Currency:    item.Currency,
+				Status:      item.Status,
 			})
 		}
 		result = append(result, mapped)
 	}
 	return result
+}
+
+func stringPointerFromNullString(value spanner.NullString) *string {
+	if !value.Valid {
+		return nil
+	}
+	text := value.StringVal
+	return &text
+}
+
+func stringPointerFromNullTime(value spanner.NullTime) *string {
+	if !value.Valid {
+		return nil
+	}
+	text := value.Time.UTC().Format(time.RFC3339)
+	return &text
 }
 
 func loadTrackingRows(r *http.Request, client *spanner.Client, retailerID string) ([]trackingRow, []string, []string, []string, []string, error) {

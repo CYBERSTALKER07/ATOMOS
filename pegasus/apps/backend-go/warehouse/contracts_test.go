@@ -2,7 +2,9 @@ package warehouse
 
 import (
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestInventorySearchTerm(t *testing.T) {
@@ -98,5 +100,44 @@ func TestVehicleAvailabilityStatus(t *testing.T) {
 	}
 	if got := vehicleAvailabilityStatus(false); got != "INACTIVE" {
 		t.Fatalf("vehicleAvailabilityStatus(false) = %q, want INACTIVE", got)
+	}
+}
+
+func TestOpsPaymentConfigQueryTargetsSupplierConfigs(t *testing.T) {
+	if !strings.Contains(opsPaymentConfigQuery, "FROM SupplierPaymentConfigs") {
+		t.Fatalf("opsPaymentConfigQuery = %q, want SupplierPaymentConfigs source", opsPaymentConfigQuery)
+	}
+	if strings.Contains(opsPaymentConfigQuery, "SupplierPaymentGateways") {
+		t.Fatalf("opsPaymentConfigQuery = %q, still references stale SupplierPaymentGateways", opsPaymentConfigQuery)
+	}
+}
+
+func TestBuildOpsPaymentGatewayItem(t *testing.T) {
+	updatedAt := time.Date(2026, time.May, 9, 7, 30, 0, 0, time.UTC)
+	item := buildOpsPaymentGatewayItem("cfg-1", "GLOBAL_PAY", "merchant-1", "service-7", true, updatedAt)
+
+	if item.ConfigID != "cfg-1" {
+		t.Fatalf("ConfigID = %q, want cfg-1", item.ConfigID)
+	}
+	if item.GatewayID != "cfg-1" {
+		t.Fatalf("GatewayID = %q, want cfg-1", item.GatewayID)
+	}
+	if item.GatewayName != "GLOBAL_PAY" {
+		t.Fatalf("GatewayName = %q, want GLOBAL_PAY", item.GatewayName)
+	}
+	if item.Provider != "GLOBAL_PAY" {
+		t.Fatalf("Provider = %q, want GLOBAL_PAY", item.Provider)
+	}
+	if item.Mode != "MANUAL_ONLY" {
+		t.Fatalf("Mode = %q, want MANUAL_ONLY", item.Mode)
+	}
+	if item.MerchantID != "merchant-1" {
+		t.Fatalf("MerchantID = %q, want merchant-1", item.MerchantID)
+	}
+	if item.ServiceID != "service-7" {
+		t.Fatalf("ServiceID = %q, want service-7", item.ServiceID)
+	}
+	if item.LastUpdated != "2026-05-09T07:30:00Z" {
+		t.Fatalf("LastUpdated = %q, want 2026-05-09T07:30:00Z", item.LastUpdated)
 	}
 }

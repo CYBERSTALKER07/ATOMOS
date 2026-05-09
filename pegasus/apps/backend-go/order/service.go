@@ -89,6 +89,7 @@ type Order struct {
 	Amount         int64              `json:"amount"`
 	Currency       string             `json:"currency"`
 	PaymentGateway string             `json:"payment_gateway"`
+	PaymentStatus  string             `json:"payment_status,omitempty"`
 	State          string             `json:"state"`
 	RouteID        spanner.NullString `json:"route_id"`
 	OrderSource    spanner.NullString `json:"order_source"`
@@ -96,6 +97,8 @@ type Order struct {
 	DeliverBefore  spanner.NullTime   `json:"deliver_before"`
 	DeliveryToken  spanner.NullString `json:"delivery_token"`
 	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at,omitempty"`
+	Version        int64              `json:"version"`
 	Items          []LineItem         `json:"items,omitempty"`
 }
 
@@ -527,8 +530,8 @@ func (s *OrderService) ListOrdersPaginatedScoped(ctx context.Context, routeId st
 		offset = 0
 	}
 
-	sql := `SELECT o.OrderId, o.RetailerId, o.Amount, o.Currency, o.PaymentGateway, o.State, o.RouteId,
-	               o.OrderSource, o.AutoConfirmAt, o.DeliverBefore, o.DeliveryToken, o.CreatedAt,
+	sql := `SELECT o.OrderId, o.RetailerId, o.Amount, o.Currency, o.PaymentGateway, COALESCE(o.PaymentStatus, ''), o.State, o.RouteId,
+	               o.OrderSource, o.AutoConfirmAt, o.DeliverBefore, o.DeliveryToken, o.CreatedAt, o.UpdatedAt, o.Version,
 	               o.SupplierId, COALESCE(s.Name, '') AS SupplierName
 	        FROM Orders o
 	        LEFT JOIN Suppliers s ON o.SupplierId = s.SupplierId
@@ -575,17 +578,25 @@ func (s *OrderService) ListOrdersPaginatedScoped(ctx context.Context, routeId st
 		var amount spanner.NullInt64
 		var currency spanner.NullString
 		var gateway spanner.NullString
+		var paymentStatus spanner.NullString
 		var routeIdVal spanner.NullString
 		var orderSource spanner.NullString
 		var autoConfirmAt spanner.NullTime
 		var deliverBefore spanner.NullTime
 		var deliveryToken spanner.NullString
 		var createdAt spanner.NullTime
+		var updatedAt spanner.NullTime
+		var version spanner.NullInt64
 		var supplierID spanner.NullString
 		var supplierName spanner.NullString
 
-		if err := row.Columns(&id, &retailerId, &amount, &currency, &gateway, &stateVal, &routeIdVal, &orderSource, &autoConfirmAt, &deliverBefore, &deliveryToken, &createdAt, &supplierID, &supplierName); err != nil {
+		if err := row.Columns(&id, &retailerId, &amount, &currency, &gateway, &paymentStatus, &stateVal, &routeIdVal, &orderSource, &autoConfirmAt, &deliverBefore, &deliveryToken, &createdAt, &updatedAt, &version, &supplierID, &supplierName); err != nil {
 			return nil, fmt.Errorf("failed to parse order row: %w", err)
+		}
+
+		updatedAtTime := createdAt.Time
+		if updatedAt.Valid {
+			updatedAtTime = updatedAt.Time
 		}
 
 		orders = append(orders, Order{
@@ -596,6 +607,7 @@ func (s *OrderService) ListOrdersPaginatedScoped(ctx context.Context, routeId st
 			Amount:         amount.Int64,
 			Currency:       currency.StringVal,
 			PaymentGateway: gateway.StringVal,
+			PaymentStatus:  paymentStatus.StringVal,
 			State:          stateVal,
 			RouteID:        routeIdVal,
 			OrderSource:    orderSource,
@@ -603,6 +615,8 @@ func (s *OrderService) ListOrdersPaginatedScoped(ctx context.Context, routeId st
 			DeliverBefore:  deliverBefore,
 			DeliveryToken:  deliveryToken,
 			CreatedAt:      createdAt.Time,
+			UpdatedAt:      updatedAtTime,
+			Version:        version.Int64,
 		})
 	}
 

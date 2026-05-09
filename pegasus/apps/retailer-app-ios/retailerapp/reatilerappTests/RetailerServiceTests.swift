@@ -122,6 +122,41 @@ struct RetailerServiceTests {
         #expect(item.totalPrice == 120_000.0)
     }
 
+    @Test func orderDecodingIncludesRetailerListMetadata() throws {
+        let json = """
+        {
+          "order_id":"ord-1",
+          "retailer_id":"ret-1",
+          "supplier_id":"sup-1",
+          "supplier_name":"Pegasus Supplier",
+          "state":"PENDING",
+          "amount":22450,
+          "currency":"UZS",
+          "payment_gateway":"GLOBAL_PAY",
+          "payment_status":"PENDING",
+          "route_id":"route-1",
+          "order_source":"MANUAL",
+          "auto_confirm_at":"2026-01-01T10:00:00Z",
+          "deliver_before":"2026-01-01T11:00:00Z",
+          "created_at":"2026-01-01T09:00:00Z",
+          "updated_at":"2026-01-01T09:30:00Z",
+          "estimated_delivery":"2026-01-01T11:00:00Z",
+          "delivery_token":"tok-1",
+          "version":7,
+          "items":[{"line_item_id":"li-1","sku_id":"sku-1","sku_name":"Milk","quantity":2,"unit_price":11225,"total_price":22450}]
+        }
+        """.data(using: .utf8)!
+
+        let order = try JSONDecoder().decode(Order.self, from: json)
+        #expect(order.totalAmount == 22450)
+        #expect(order.currency == "UZS")
+        #expect(order.paymentGateway == "GLOBAL_PAY")
+        #expect(order.paymentStatus == "PENDING")
+        #expect(order.routeId == "route-1")
+        #expect(order.version == 7)
+        #expect(order.displayTotal == "22 450 UZS")
+    }
+
     // MARK: - Token Refresh Guard
 
     @Test func refreshPreventsConcurrentLoops() {

@@ -127,8 +127,8 @@ class ModelComputedPropsTest {
 
     @Test
     fun order_displayTotal_formatsCorrectly() {
-        val o = Order(id = "o1", totalAmount = 22.45)
-        assertEquals("$22.45", o.displayTotal)
+        val o = Order(id = "o1", totalAmount = 22_450, currency = "UZS")
+        assertEquals("22 450 UZS", o.displayTotal)
     }
 
     @Test
@@ -137,7 +137,7 @@ class ModelComputedPropsTest {
             OrderLineItem("l1", "p1", "A", "v1", "1L", 3, 10.0, 30.0),
             OrderLineItem("l2", "p2", "B", "v2", "2L", 2, 5.0, 10.0),
         )
-        val o = Order(id = "o1", items = items, totalAmount = 40.0)
+        val o = Order(id = "o1", items = items, totalAmount = 40)
         assertEquals(5, o.itemCount)
     }
 

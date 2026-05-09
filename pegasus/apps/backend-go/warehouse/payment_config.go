@@ -2,10 +2,12 @@ package warehouse
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
+	"time"
 
 	"backend-go/auth"
+	"backend-go/vault"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -14,11 +16,43 @@ import (
 // ─── Payment Config (read-only view of supplier's payment gateways) ──────────
 
 type PaymentGatewayItem struct {
+	ConfigID    string `json:"config_id,omitempty"`
 	GatewayID   string `json:"gateway_id"`
-	Provider    string `json:"provider"` // CASH | GLOBAL_PAY
+	GatewayName string `json:"gateway_name"`
+	Provider    string `json:"provider"`
 	IsActive    bool   `json:"is_active"`
-	Environment string `json:"environment"` // SANDBOX | PRODUCTION
+	Environment string `json:"environment,omitempty"`
+	Mode        string `json:"mode,omitempty"`
 	MerchantID  string `json:"merchant_id,omitempty"`
+	ServiceID   string `json:"service_id,omitempty"`
+	LastUpdated string `json:"last_updated,omitempty"`
+}
+
+const opsPaymentConfigQuery = `SELECT ConfigId, GatewayName, MerchantId, ServiceId, IsActive, CreatedAt, UpdatedAt
+	      FROM SupplierPaymentConfigs
+	      WHERE SupplierId = @sid
+	      ORDER BY GatewayName`
+
+func buildOpsPaymentGatewayItem(configID string, gatewayName string, merchantID string, serviceID string, isActive bool, lastUpdated time.Time) PaymentGatewayItem {
+	mode := ""
+	if capability := vault.GetProviderCapability(gatewayName); capability != nil {
+		mode = string(capability.OnboardingMode)
+	}
+
+	item := PaymentGatewayItem{
+		ConfigID:    configID,
+		GatewayID:   configID,
+		GatewayName: gatewayName,
+		Provider:    gatewayName,
+		IsActive:    isActive,
+		Mode:        mode,
+		MerchantID:  merchantID,
+		ServiceID:   serviceID,
+	}
+	if !lastUpdated.IsZero() {
+		item.LastUpdated = lastUpdated.UTC().Format(time.RFC3339)
+	}
+	return item
 }
 
 // HandleOpsPaymentConfig — GET for /v1/warehouse/ops/payment-config
@@ -36,10 +70,7 @@ func HandleOpsPaymentConfig(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		stmt := spanner.Statement{
-			SQL: `SELECT GatewayId, Provider, IsActive, Environment, COALESCE(MerchantId, '')
-			      FROM SupplierPaymentGateways
-			      WHERE SupplierId = @sid
-			      ORDER BY Provider`,
+			SQL:    opsPaymentConfigQuery,
 			Params: map[string]interface{}{"sid": ops.SupplierID},
 		}
 
@@ -53,17 +84,34 @@ func HandleOpsPaymentConfig(spannerClient *spanner.Client) http.HandlerFunc {
 				break
 			}
 			if err != nil {
-				log.Printf("[WH PAYMENT] list error: %v", err)
+				slog.Error("warehouse.payment_config_list_failed", "supplier_id", ops.SupplierID, "err", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
-			var g PaymentGatewayItem
-			if err := row.Columns(&g.GatewayID, &g.Provider, &g.IsActive,
-				&g.Environment, &g.MerchantID); err != nil {
-				log.Printf("[WH PAYMENT] parse: %v", err)
+			var configID string
+			var gatewayName string
+			var merchantID string
+			var serviceID spanner.NullString
+			var isActive bool
+			var createdAt time.Time
+			var updatedAt spanner.NullTime
+			if err := row.Columns(&configID, &gatewayName, &merchantID, &serviceID,
+				&isActive, &createdAt, &updatedAt); err != nil {
+				slog.Error("warehouse.payment_config_row_parse_failed", "supplier_id", ops.SupplierID, "err", err)
 				continue
 			}
-			gateways = append(gateways, g)
+			lastUpdated := createdAt
+			if updatedAt.Valid {
+				lastUpdated = updatedAt.Time
+			}
+			gateways = append(gateways, buildOpsPaymentGatewayItem(
+				configID,
+				gatewayName,
+				merchantID,
+				serviceID.StringVal,
+				isActive,
+				lastUpdated,
+			))
 		}
 		if gateways == nil {
 			gateways = []PaymentGatewayItem{}

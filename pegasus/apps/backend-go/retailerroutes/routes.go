@@ -111,7 +111,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/retailer/profile",
 		auth.RequireRole(retailerRole, log(supplier.HandleRetailerProfile(d.Spanner, d.Cache, d.CacheFlight))))
 	r.HandleFunc("/v1/retailers/{retailerID}/orders",
-		auth.RequireRole([]string{"ADMIN", "RETAILER"}, log(handleRetailerOrders(d))))
+		auth.RequireRole(retailerRole, log(handleRetailerOrders(d))))
 	r.HandleFunc("/v1/retailer/tracking",
 		auth.RequireRole(retailerRole, log(handleRetailerTracking(d))))
 	r.HandleFunc("/v1/retailer/card/initiate",

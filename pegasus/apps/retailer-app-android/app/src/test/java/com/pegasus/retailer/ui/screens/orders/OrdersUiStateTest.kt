@@ -16,7 +16,7 @@ class OrdersUiStateTest {
         supplierName = "Test Supplier",
         retailerId = "r-1",
         status = status,
-        totalAmount = 100_000.0,
+        totalAmount = 100_000,
         createdAt = "2026-01-01T00:00:00Z",
         updatedAt = "2026-01-01T00:00:00Z",
     )
