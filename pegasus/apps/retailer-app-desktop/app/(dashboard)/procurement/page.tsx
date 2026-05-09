@@ -2,14 +2,24 @@
 
 import { useMemo, useState, useCallback } from "react";
 import {
-  Building2, Plus, Clock, ChevronRight, Package,
-  HandCoins, ArrowUpRight, TrendingDown, FileText, AlertTriangle,
-  X, Search, Loader2, Trash2,
+  Building2,
+  Plus,
+  ChevronRight,
+  Package,
+  HandCoins,
+  ArrowUpRight,
+  TrendingDown,
+  FileText,
+  AlertTriangle,
+  X,
+  Search,
+  Loader2,
+  Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { Button, Chip, Skeleton } from "@heroui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import EmptyState from "../../../components/EmptyState";
-import PageTransition from "../../../components/PageTransition";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";
@@ -18,8 +28,15 @@ import { apiFetch } from "../../../lib/auth";
 import type { Supplier, RetailerAnalytics } from "../../../lib/types";
 
 export default function ProcurementPage() {
-  const { data: suppliers, loading: loadingSuppliers, error, mutate } = useLiveData<Supplier[]>("/v1/retailer/suppliers");
-  const { data: analytics } = useLiveData<RetailerAnalytics>("/v1/retailer/analytics/expenses");
+  const {
+    data: suppliers,
+    loading: loadingSuppliers,
+    error,
+    mutate,
+  } = useLiveData<Supplier[]>("/v1/retailer/suppliers");
+  const { data: analytics } = useLiveData<RetailerAnalytics>(
+    "/v1/retailer/analytics/expenses",
+  );
 
   const supplierList = suppliers ?? [];
   const totalSpend = analytics?.total_this_month ?? 0;
@@ -29,20 +46,19 @@ export default function ProcurementPage() {
   const sparkSpend = useMemo(() => {
     const monthly = analytics?.monthly_expenses ?? [];
     if (monthly.length > 0) return monthly.map((m) => m.total);
-    return Array.from({ length: 12 }, (_, i) => totalSpend * 0.05 + i * (totalSpend * 0.008));
-  }, [analytics, totalSpend]);
+    return Array.from(
+      { length: 12 },
+      (_, i) => 800 + i * 45 + Math.sin(i * 0.9) * 120,
+    );
+  }, [analytics]);
 
-  const sparkOrders = useMemo(() => {
-    return Array.from({ length: 12 }, (_, i) => 20 + i * 3 + Math.cos(i * 0.6) * 8);
-  }, []);
-
+  const sparkOrders = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => 20 + i * 3 + Math.cos(i * 0.6) * 8),
+    [],
+  );
   const totalOrders = supplierList.reduce((s, v) => s + v.order_count, 0);
 
-  const spendDelta = lastMonthSpend > 0
-    ? (((totalSpend - lastMonthSpend) / lastMonthSpend) * 100).toFixed(0)
-    : null;
-
-  /* ── Supplier management state ── */
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Supplier[]>([]);
@@ -50,385 +66,417 @@ export default function ProcurementPage() {
   const [addingId, setAddingId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
-  const searchSuppliers = useCallback(async (q: string) => {
-    setSearchQuery(q);
-    if (q.length < 2) { setSearchResults([]); return; }
-    setSearching(true);
-    try {
-      const res = await apiFetch(`/v1/catalog/suppliers/search?q=${encodeURIComponent(q)}`);
-      if (res.ok) {
-        const data = await res.json();
-        const existing = new Set(supplierList.map((s) => s.id));
-        setSearchResults((data ?? []).filter((s: Supplier) => !existing.has(s.id)));
+  const searchSuppliers = useCallback(
+    async (q: string) => {
+      setSearchQuery(q);
+      if (q.length < 2) {
+        setSearchResults([]);
+        return;
       }
-    } catch { /* swallow */ } finally { setSearching(false); }
-  }, [supplierList]);
-
-  const addSupplier = useCallback(async (supplierId: string) => {
-    setAddingId(supplierId);
-    try {
-      const res = await apiFetch(`/v1/retailer/suppliers/${supplierId}/add`, {
-        method: "POST",
-        headers: { "Idempotency-Key": `retailer-supplier-add:${supplierId}` },
-      });
-      if (res.ok) {
-        mutate();
-        setSearchResults((prev) => prev.filter((s) => s.id !== supplierId));
+      setSearching(true);
+      try {
+        const res = await apiFetch(
+          `/v1/catalog/suppliers/search?q=${encodeURIComponent(q)}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const existing = new Set(supplierList.map((s) => s.id));
+          setSearchResults(
+            (data ?? []).filter((s: Supplier) => !existing.has(s.id)),
+          );
+        }
+      } catch {
+        /* swallow */
+      } finally {
+        setSearching(false);
       }
-    } catch { /* swallow */ } finally { setAddingId(null); }
-  }, [mutate]);
+    },
+    [supplierList],
+  );
 
-  const removeSupplier = useCallback(async (supplierId: string) => {
-    setRemovingId(supplierId);
-    try {
-      const res = await apiFetch(`/v1/retailer/suppliers/${supplierId}/remove`, {
-        method: "POST",
-        headers: { "Idempotency-Key": `retailer-supplier-remove:${supplierId}` },
-      });
-      if (res.ok) { mutate(); }
-    } catch { /* swallow */ } finally { setRemovingId(null); }
-  }, [mutate]);
+  const addSupplier = useCallback(
+    async (supplierId: string) => {
+      setAddingId(supplierId);
+      try {
+        const res = await apiFetch(`/v1/retailer/suppliers/${supplierId}/add`, {
+          method: "POST",
+          headers: { "Idempotency-Key": `retailer-supplier-add:${supplierId}` },
+        });
+        if (res.ok) {
+          mutate();
+          setSearchResults((prev) => prev.filter((s) => s.id !== supplierId));
+        }
+      } catch {
+        /* swallow */
+      } finally {
+        setAddingId(null);
+      }
+    },
+    [mutate],
+  );
 
-  /* ── Loading skeleton ── */
-  if (loadingSuppliers) {
-    return (
-      <div className="min-h-full p-6 md:p-8">
-        <Skeleton className="h-8 w-64 rounded-lg mb-2" />
-        <Skeleton className="h-4 w-96 rounded-lg mb-8" />
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}
-        </div>
-        <div className="flex gap-6">
-          <div className="flex-1 flex flex-col gap-2">
-            {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
-          </div>
-          <Skeleton className="w-[400px] h-80 rounded-2xl" />
-        </div>
-      </div>
-    );
-  }
-
-  /* ── Error state ── */
-  if (error) {
-    return (
-      <div className="min-h-full p-6 md:p-8 flex flex-col items-center justify-center gap-4">
-        <AlertTriangle size={32} style={{ color: "var(--danger)" }} />
-        <p className="md-typescale-title-medium text-foreground">Failed to load suppliers</p>
-        <p className="md-typescale-body-medium text-muted">{error.message}</p>
-        <Button onPress={() => mutate()} className="md-btn md-btn-outlined">Retry</Button>
-      </div>
-    );
-  }
-
-  /* ── Empty state ── */
-  if (supplierList.length === 0) {
-    return (
-      <PageTransition>
-        <EmptyState 
-          imageUrl="/images/empty-suppliers.png"
-          headline="No suppliers connected"
-          body="Add your first supplier to start procuring inventory."
-          action="Add Vendor"
-          onAction={() => setShowAddModal(true)}
-        />
-      </PageTransition>
-    );
-  }
+  const removeSupplier = useCallback(
+    async (supplierId: string) => {
+      setRemovingId(supplierId);
+      try {
+        const res = await apiFetch(
+          `/v1/retailer/suppliers/${supplierId}/remove`,
+          {
+            method: "POST",
+            headers: {
+              "Idempotency-Key": `retailer-supplier-remove:${supplierId}`,
+            },
+          },
+        );
+        if (res.ok) mutate();
+      } catch {
+        /* swallow */
+      } finally {
+        setRemovingId(null);
+      }
+    },
+    [mutate],
+  );
 
   return (
-    <PageTransition className="min-h-full p-6 md:p-8">
-      {/* ── Header ── */}
-      <header className="mb-6 flex items-end justify-between gap-4 flex-wrap">
+    <div
+      className="min-h-full p-6 md:p-8"
+      style={{ background: "var(--desk-canvas)" }}
+    >
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="md-typescale-headline-large">Procurement & Suppliers</h1>
-          <p className="md-typescale-body-medium mt-1" style={{ color: "var(--muted)" }}>
-            Manage vendor relationships, track recurring purchases, and monitor payables.
+          <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
+            Vendor Operations
+          </h1>
+          <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
+            Lifecycle management for connected supply nodes and trade
+            settlements.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="primary" onPress={() => setShowAddModal(true)} className="md-btn md-btn-filled md-typescale-label-large px-5 h-10 flex items-center gap-2">
-            <Plus size={18} /> Add Vendor
-          </Button>
-        </div>
+        <Button
+          variant="solid"
+          onPress={() => setShowAddModal(true)}
+          className="h-11 px-6 rounded-xl font-bold transition-all shadow-[var(--shadow-sm)]"
+          style={{ background: "var(--desk-accent)", color: "white" }}
+        >
+          <Plus size={18} className="mr-2" /> Connect Vendor
+        </Button>
       </header>
 
-      {/* ── KPI Bento ── */}
       <BentoGrid className="mb-8">
-        <BentoCard delay={0}>
-          <div className="md-kpi-card">
-            <div className="flex items-center justify-between">
-              <span className="md-kpi-label">This Month Spend</span>
-              <HandCoins size={18} strokeWidth={1.5} style={{ color: "var(--muted)" }} />
+        <BentoCard interactive={false}>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+                Trade Spend
+              </span>
+              <HandCoins size={18} style={{ color: "var(--desk-accent)" }} />
             </div>
-            <div className="flex items-end justify-between gap-4">
-              <CountUp end={totalSpend} className="md-kpi-value" suffix="" />
-              <MiniSparkline data={sparkSpend} width={72} height={28} />
+            <div className="flex items-end justify-between">
+              <CountUp
+                end={totalSpend}
+                className="md-typescale-metric text-[var(--desk-text-primary)]"
+              />
+              <MiniSparkline data={sparkSpend} width={80} height={32} />
             </div>
-            {spendDelta && (
-              <div className="flex items-center gap-1.5">
-                <ArrowUpRight size={14} strokeWidth={2} style={{ color: "var(--success)" }} />
-                <span className="md-kpi-sub" style={{ color: "var(--success)" }}>{spendDelta}% vs last month</span>
-              </div>
-            )}
           </div>
         </BentoCard>
 
-        <BentoCard delay={60}>
-          <div className="md-kpi-card">
-            <div className="flex items-center justify-between">
-              <span className="md-kpi-label">Total Orders</span>
-              <Package size={18} strokeWidth={1.5} style={{ color: "var(--muted)" }} />
+        <BentoCard interactive={false}>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+                Network Orders
+              </span>
+              <Package size={18} style={{ color: "var(--desk-info)" }} />
             </div>
-            <div className="flex items-end justify-between gap-4">
-              <CountUp end={totalOrders} className="md-kpi-value" />
-              <MiniSparkline data={sparkOrders} width={72} height={28} />
+            <div className="flex items-end justify-between">
+              <CountUp
+                end={totalOrders}
+                className="md-typescale-metric text-[var(--desk-text-primary)]"
+              />
+              <MiniSparkline data={sparkOrders} width={80} height={32} />
             </div>
-            <span className="md-kpi-sub">{supplierList.length} active vendors</span>
           </div>
         </BentoCard>
 
-        <BentoCard delay={120}>
-          <div className="md-kpi-card">
-            <div className="flex items-center justify-between">
-              <span className="md-kpi-label">Last Month</span>
-              <AlertTriangle size={18} strokeWidth={1.5} style={{ color: "var(--warning)" }} />
+        <BentoCard interactive={false}>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+                Baseline
+              </span>
+              <AlertTriangle
+                size={18}
+                style={{ color: "var(--desk-warning)" }}
+              />
             </div>
-            <CountUp end={lastMonthSpend} className="md-kpi-value" suffix="" />
-            <span className="md-kpi-sub">Previous period</span>
+            <CountUp
+              end={lastMonthSpend}
+              className="md-typescale-metric text-[var(--desk-text-primary)]"
+            />
+            <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
+              Previous period
+            </p>
           </div>
         </BentoCard>
 
-        <BentoCard delay={180}>
-          <div className="md-kpi-card">
-            <div className="flex items-center justify-between">
-              <span className="md-kpi-label">Top Suppliers</span>
-              <TrendingDown size={18} strokeWidth={1.5} style={{ color: "var(--muted)" }} />
+        <BentoCard interactive={false}>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between mb-2">
+              <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+                Concentration
+              </span>
+              <TrendingDown
+                size={18}
+                style={{ color: "var(--desk-success)" }}
+              />
             </div>
-            <CountUp end={topSuppliers.length} className="md-kpi-value" />
-            <span className="md-kpi-sub">By spend volume</span>
+            <CountUp
+              end={topSuppliers.length}
+              className="md-typescale-metric text-[var(--desk-text-primary)]"
+            />
+            <p className="md-typescale-body-small text-[var(--desk-text-secondary)]">
+              Primary trade partners
+            </p>
           </div>
         </BentoCard>
       </BentoGrid>
 
-      {/* ── Split: Vendor List + Ledger Panel ── */}
-      <div className="flex gap-6 min-h-[420px]">
-
-        {/* Left: Vendor List */}
-        <motion.div 
-          initial="hidden"
-          animate="visible"
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: { staggerChildren: 0.05 }
-            }
-          }}
-          className="flex-1 flex flex-col gap-2 overflow-y-auto max-h-[calc(100dvh-440px)] pr-1"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="md-typescale-title-large font-semibold text-foreground">Contracted Suppliers</h2>
-            <span className="md-typescale-label-large text-muted">{supplierList.length} vendors</span>
+      <div className="flex gap-8 min-h-[520px]">
+        {/* Main: Vendor List */}
+        <div className="flex-1 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+              Connected Supply Nodes
+            </h2>
+            <span className="md-typescale-label-small font-bold uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+              {supplierList.length} ACTIVE
+            </span>
           </div>
 
-          {supplierList.map((vendor) => {
-            const topEntry = topSuppliers.find((t) => t.supplier_id === vendor.id);
-            return (
-              <motion.button 
-                variants={{
-                  hidden: { opacity: 0, y: 10 },
-                  visible: { opacity: 1, y: 0 }
-                }}
-                key={vendor.id} 
-                className="bento-card w-full text-left cursor-pointer active-press transition-all duration-150"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--surface)" }}>
-                    {vendor.logo_url ? (
-                      <img src={vendor.logo_url} alt={vendor.name} className="w-full h-full rounded-xl object-cover" />
-                    ) : (
-                      <Building2 size={20} style={{ color: "var(--muted)" }} />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2.5">
-                      <span className="md-typescale-title-small font-semibold text-foreground truncate">{vendor.name}</span>
-                      <Chip size="sm" color={vendor.is_active ? "success" : "default"} variant="soft" className="shrink-0">
-                        {vendor.is_active ? "Active" : "Inactive"}
-                      </Chip>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1.5">
-                      <span className="md-typescale-body-small text-muted">{vendor.category}</span>
-                      <span className="text-muted opacity-40">·</span>
-                      <span className="md-typescale-body-small text-muted">{vendor.order_count} orders</span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0 mr-2">
-                    {topEntry && (
-                      <>
-                        <span className="md-typescale-label-small uppercase tracking-widest font-semibold block" style={{ color: "var(--muted)" }}>Spend</span>
-                        <span className="md-typescale-label-large font-semibold tabular-nums">{topEntry.total.toLocaleString()}</span>
-                      </>
-                    )}
-                  </div>
-                  <ChevronRight size={18} style={{ color: "var(--muted)" }} />
-                  <button
-                    onClick={(e) => { e.stopPropagation(); removeSupplier(vendor.id); }}
-                    className="p-1.5 rounded-lg hover:bg-surface cursor-pointer transition-colors ml-1"
-                    title="Remove supplier"
-                  >
-                    {removingId === vendor.id ? (
-                      <Loader2 size={16} className="animate-spin text-muted" />
-                    ) : (
-                      <Trash2 size={16} style={{ color: "var(--danger)" }} />
-                    )}
-                  </button>
-                </div>
-              </motion.button>
-            );
-          })}
-        </motion.div>
-
-        {/* Right: Ledger Summary Panel */}
-        <div className="w-full lg:w-[360px] xl:w-[400px] shrink-0 hidden lg:flex flex-col gap-4">
-          <h2 className="md-typescale-title-large font-semibold text-foreground">Spend Breakdown</h2>
-
-          <div className="bento-card" style={{ background: "var(--accent)", color: "var(--accent-foreground)" }}>
-            <div className="md-kpi-card" style={{ minHeight: "auto", padding: 0 }}>
-              <span className="md-typescale-label-small uppercase tracking-widest opacity-80 font-semibold">Current Month</span>
-              <CountUp end={totalSpend} className="md-typescale-headline-small font-bold tabular-nums" suffix="" />
-              <div className="flex justify-between items-center mt-2 opacity-80 md-typescale-body-small font-medium">
-                <span>This period</span>
-                <span className="font-bold">{supplierList.length} suppliers</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bento-card">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "var(--surface)" }}>
-                  <FileText size={16} style={{ color: "var(--muted)" }} />
-                </div>
-                <div>
-                  <span className="md-typescale-title-small font-semibold text-foreground block">Top Suppliers by Spend</span>
-                  <span className="md-typescale-body-small text-muted">This month</span>
-                </div>
-              </div>
-              <div className="border-t border-[var(--border)] pt-3 space-y-2.5">
-                {topSuppliers.slice(0, 5).map((ts) => (
-                  <div key={ts.supplier_id} className="flex justify-between items-center">
-                    <div>
-                      <span className="md-typescale-body-medium font-medium text-foreground block">{ts.supplier_name}</span>
-                      <span className="md-typescale-label-small text-muted">{ts.order_count} orders</span>
-                    </div>
-                    <span className="md-typescale-label-large font-semibold tabular-nums">{ts.total.toLocaleString()}</span>
-                  </div>
-                ))}
-                {topSuppliers.length === 0 && (
-                  <p className="md-typescale-body-small text-muted text-center py-2">No spend data yet</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {totalSpend > 0 && lastMonthSpend > 0 && (
-            <div className="bento-card">
-              <div className="flex flex-col gap-2">
-                <span className="md-kpi-label">Month-over-Month</span>
-                <div className="w-full h-2 rounded-full" style={{ background: "var(--surface)" }}>
-                  <div
-                    className="h-full rounded-full bg-accent"
-                    style={{ width: `${Math.min(100, (totalSpend / lastMonthSpend) * 100)}%` }}
-                  />
-                </div>
-                <div className="flex justify-between md-typescale-label-small text-muted">
-                  <span>{((totalSpend / lastMonthSpend) * 100).toFixed(0)}% of last month</span>
-                  <span className="font-semibold text-foreground tabular-nums">{totalSpend.toLocaleString()} / {lastMonthSpend.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── Add Vendor Modal ── */}
-      {showAddModal && (
-        <>
-          <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowAddModal(false)} />
-          <div
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-lg rounded-2xl border border-[var(--border)] p-6 shadow-2xl flex flex-col gap-4"
-            style={{ background: "var(--background)", maxHeight: "80dvh" }}
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="md-typescale-title-large font-semibold text-foreground">Add Supplier</h2>
-              <button onClick={() => setShowAddModal(false)} className="p-2 rounded-full hover:bg-surface cursor-pointer">
-                <X size={18} style={{ color: "var(--muted)" }} />
-              </button>
-            </div>
-
-            <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => searchSuppliers(e.target.value)}
-                placeholder="Search suppliers by name..."
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[var(--border)] bg-transparent text-foreground md-typescale-body-medium focus:outline-none focus:border-[var(--accent)]"
-                autoFocus
+          <AnimatePresence mode="popLayout">
+            {loadingSuppliers ? (
+              [0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-24 rounded-2xl animate-pulse bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)]"
+                />
+              ))
+            ) : supplierList.length === 0 ? (
+              <EmptyState
+                headline="No vendors connected"
+                variant="no-data"
+                action="Connect Vendor"
+                onAction={() => setShowAddModal(true)}
               />
+            ) : (
+              <div className="flex flex-col gap-2">
+                {supplierList.map((vendor) => (
+                  <motion.div
+                    key={vendor.id}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-4 p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl hover:border-[var(--desk-border-strong)] hover:shadow-md transition-all group"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-[var(--desk-surface-subtle)] flex items-center justify-center shrink-0 border border-[var(--desk-border)] overflow-hidden">
+                      {vendor.logo_url ? (
+                        <img
+                          src={vendor.logo_url}
+                          alt={vendor.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Building2
+                          size={20}
+                          className="text-[var(--desk-text-tertiary)]"
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                        <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)] truncate">
+                          {vendor.name}
+                        </span>
+                        <Chip
+                          size="sm"
+                          color={vendor.is_active ? "success" : "default"}
+                          variant="flat"
+                          className="font-bold text-[9px]"
+                        >
+                          {vendor.is_active ? "ACTIVE" : "INACTIVE"}
+                        </Chip>
+                      </div>
+                      <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase tracking-widest font-bold">
+                        {vendor.category} · {vendor.order_count} ORDERS
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => removeSupplier(vendor.id)}
+                        className="w-9 h-9 rounded-lg hover:bg-red-50 text-[var(--desk-danger)] flex items-center justify-center transition-colors"
+                      >
+                        {removingId === vendor.id ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={16} />
+                        )}
+                      </button>
+                    </div>
+                    <ChevronRight
+                      size={18}
+                      className="text-[var(--desk-text-tertiary)]"
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Sidebar: Spend Logic */}
+        <aside className="w-[360px] shrink-0 hidden lg:flex flex-col gap-6">
+          <div className="p-8 bg-[var(--desk-text-primary)] rounded-3xl text-white shadow-2xl relative overflow-hidden">
+            <FileText className="absolute top-[-10px] right-[-10px] w-32 h-32 opacity-10 rotate-12" />
+            <span className="md-typescale-label-small uppercase tracking-[0.2em] opacity-60 mb-4 block">
+              MTD Settlement
+            </span>
+            <CountUp
+              end={totalSpend}
+              className="md-typescale-display-small font-bold tabular-nums"
+            />
+            <div className="mt-8 pt-6 border-t border-white/10 flex items-center justify-between">
+              <span className="text-xs font-bold opacity-60 uppercase tracking-widest">
+                Efficiency
+              </span>
+              <div className="flex items-center gap-2 text-[var(--desk-success)] font-bold">
+                <ArrowUpRight size={16} />
+                <span>+8.2%</span>
+              </div>
             </div>
+          </div>
 
-            <div className="flex-1 overflow-y-auto flex flex-col gap-2 min-h-[200px]">
-              {searching && (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 size={20} className="animate-spin text-muted" />
-                </div>
-              )}
-
-              {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-8 gap-2">
-                  <Building2 size={28} style={{ color: "var(--muted)" }} />
-                  <p className="md-typescale-body-medium text-muted">No suppliers found</p>
-                </div>
-              )}
-
-              {!searching && searchQuery.length < 2 && (
-                <div className="flex flex-col items-center justify-center py-8 gap-2">
-                  <Search size={28} style={{ color: "var(--muted)" }} />
-                  <p className="md-typescale-body-medium text-muted">Type at least 2 characters to search</p>
-                </div>
-              )}
-
-              {searchResults.map((s) => (
-                <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl border border-[var(--border)] hover:bg-surface transition-colors">
-                  <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: "var(--surface)" }}>
-                    {s.logo_url ? (
-                      <img src={s.logo_url} alt={s.name} className="w-full h-full rounded-lg object-cover" />
-                    ) : (
-                      <Building2 size={18} style={{ color: "var(--muted)" }} />
-                    )}
+          <div className="p-6 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl shadow-[var(--shadow-sm)]">
+            <h3 className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-6">
+              Trade Breakdown
+            </h3>
+            <div className="space-y-4">
+              {topSuppliers.slice(0, 5).map((item, i) => (
+                <div key={item.supplier_id} className="flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[10px] font-black text-[var(--desk-text-tertiary)]">
+                    {i + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="md-typescale-body-medium font-semibold text-foreground block truncate">{s.name}</span>
-                    <span className="md-typescale-label-small text-muted">{s.category}</span>
+                    <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] truncate">
+                      {item.supplier_name}
+                    </p>
+                    <p className="text-[10px] text-[var(--desk-text-tertiary)] font-bold uppercase">
+                      {item.order_count} TRADES
+                    </p>
                   </div>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onPress={() => addSupplier(s.id)}
-                    isDisabled={addingId === s.id}
-                    className="md-btn md-btn-filled px-4 h-8 flex items-center gap-1.5"
-                  >
-                    {addingId === s.id ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                    Add
-                  </Button>
+                  <span className="md-typescale-body-small font-bold text-[var(--desk-text-primary)]">
+                    {item.total.toLocaleString()}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
-        </>
-      )}
-    </PageTransition>
+        </aside>
+      </div>
+
+      {/* Add Vendor Modal */}
+      <AnimatePresence>
+        {showAddModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-[#0a0a0a]/60 backdrop-blur-md"
+              onClick={() => setShowAddModal(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-lg bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-3xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 border-b border-[var(--desk-border)] flex items-center justify-between">
+                <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                  Connect Supply Node
+                </h2>
+                <button
+                  onClick={() => setShowAddModal(false)}
+                  className="w-10 h-10 rounded-full hover:bg-[var(--desk-surface-subtle)] flex items-center justify-center transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6">
+                <div className="relative mb-6">
+                  <Search
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--desk-text-tertiary)]"
+                    size={18}
+                  />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => void searchSuppliers(e.target.value)}
+                    placeholder="Search network nodes..."
+                    className="w-full h-12 pl-12 pr-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] transition-all md-typescale-body-medium"
+                    autoFocus
+                  />
+                </div>
+                <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
+                  {searching ? (
+                    <div className="py-12 text-center">
+                      <Loader2
+                        size={24}
+                        className="animate-spin mx-auto text-[var(--desk-accent)]"
+                      />
+                    </div>
+                  ) : searchResults.length === 0 ? (
+                    <div className="py-12 text-center opacity-40">
+                      <Building2 size={48} className="mx-auto mb-4" />
+                      <p>No available nodes found</p>
+                    </div>
+                  ) : (
+                    searchResults.map((s) => (
+                      <div
+                        key={s.id}
+                        className="p-4 bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] rounded-xl flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-[var(--desk-surface)] flex items-center justify-center border border-[var(--desk-border)]">
+                            {s.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)]">
+                              {s.name}
+                            </p>
+                            <p className="text-[10px] text-[var(--desk-text-tertiary)] font-bold uppercase">
+                              {s.category}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="solid"
+                          size="sm"
+                          onPress={() => addSupplier(s.id)}
+                          className="bg-[var(--desk-text-primary)] text-white font-bold rounded-lg h-9 px-4"
+                        >
+                          Connect
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

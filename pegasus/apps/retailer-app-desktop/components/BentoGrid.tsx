@@ -1,28 +1,24 @@
-'use client';
+"use client";
 
-import { type ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { type ReactNode } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface BentoGridProps {
   children: ReactNode;
   className?: string;
-  theme?: 'brutalist' | 'apple';
   staggerChildren?: number;
 }
 
 export function BentoGrid({
   children,
-  className = '',
-  theme = 'apple',
-  staggerChildren = 0.05,
+  className = "",
+  staggerChildren = 0.04,
 }: BentoGridProps) {
-  const themeClass = theme === 'apple' ? 'bento-apple' : '';
-
   return (
     <motion.div
+      layout
       initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, margin: '-50px' }}
+      animate="show"
       variants={{
         hidden: {},
         show: {
@@ -31,14 +27,14 @@ export function BentoGrid({
           },
         },
       }}
-      className={`bento-grid ${themeClass} ${className}`}
+      className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 ${className}`}
     >
-      {children}
+      <AnimatePresence mode="popLayout">{children}</AnimatePresence>
     </motion.div>
   );
 }
 
-type BentoSize = 'stat' | 'anchor' | 'list' | 'control' | 'wide' | 'full';
+type BentoSize = "stat" | "anchor" | "list" | "control" | "wide" | "full";
 
 interface BentoCardProps {
   children: ReactNode;
@@ -55,32 +51,46 @@ export function BentoCard({
   size,
   span = 1,
   rowSpan = false,
-  className = '',
+  className = "",
   interactive = true,
   delay = 0,
 }: BentoCardProps) {
-  const sizeClass = size ? `bento-${size}` : `bento-span-${span}${rowSpan ? ' bento-row-2' : ''}`;
+  const spanClass =
+    span === 4
+      ? "lg:col-span-4"
+      : span === 3
+        ? "lg:col-span-3"
+        : span === 2
+          ? "lg:col-span-2"
+          : "lg:col-span-1";
+  const rowSpanClass = rowSpan ? "row-span-2" : "";
 
   return (
     <motion.div
+      layout
       variants={{
-        hidden: { opacity: 0, y: 12 },
+        hidden: { opacity: 0, y: 10 },
         show: {
           opacity: 1,
           y: 0,
           transition: {
-            type: 'spring',
-            stiffness: 260,
-            damping: 24,
+            type: "spring",
+            stiffness: 400,
+            damping: 40,
             delay: delay / 1000,
           },
         },
+        exit: { opacity: 0, scale: 0.95 },
       }}
-      className={`bento-card ${interactive ? 'active-press' : ''} ${sizeClass} ${className} relative overflow-hidden`}
+      className={`desk-card ${interactive ? "active-press cursor-pointer hover:shadow-md transition-shadow duration-200" : ""} ${spanClass} ${rowSpanClass} ${className} relative overflow-hidden`}
+      style={{
+        background: "var(--desk-surface)",
+        border: "1px solid var(--desk-border)",
+        borderRadius: "var(--radius-lg)",
+        padding: "var(--desk-card-padding)",
+      }}
     >
-      <div className="relative h-full w-full overflow-hidden rounded-[inherit] z-10">
-        {children}
-      </div>
+      <div className="relative h-full w-full z-10">{children}</div>
     </motion.div>
   );
 }
@@ -92,16 +102,31 @@ interface BentoSkeletonProps {
   className?: string;
 }
 
-export function BentoSkeleton({ size, span = 1, rowSpan = false, className = '' }: BentoSkeletonProps) {
-  const sizeClass = size ? `bento-${size}` : `bento-span-${span}${rowSpan ? ' bento-row-2' : ''}`;
+export function BentoSkeleton({
+  size,
+  span = 1,
+  rowSpan = false,
+  className = "",
+}: BentoSkeletonProps) {
+  const spanClass =
+    span === 4
+      ? "lg:col-span-4"
+      : span === 3
+        ? "lg:col-span-3"
+        : span === 2
+          ? "lg:col-span-2"
+          : "lg:col-span-1";
+  const rowSpanClass = rowSpan ? "row-span-2" : "";
 
   return (
     <div
-      className={`bento-skeleton animate-pulse ${sizeClass} ${className}`}
+      className={`animate-pulse ${spanClass} ${rowSpanClass} ${className}`}
       style={{
-        background: 'var(--desk-canvas)',
-        border: '1px solid var(--desk-border)',
-        borderRadius: 'var(--radius-lg)',
+        background: "var(--desk-surface-subtle)",
+        border: "1px solid var(--desk-border)",
+        borderRadius: "var(--radius-lg)",
+        height: "100%",
+        minHeight: "120px",
       }}
     />
   );

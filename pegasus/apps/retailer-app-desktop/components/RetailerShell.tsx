@@ -221,9 +221,15 @@ const DrawerContent = memo(function DrawerContent({
               )}
               {section.label && !isRail && (
                 <motion.div
+                  layout
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="desk-sidebar-section-label"
+                  style={{
+                    color: "var(--desk-text-tertiary)",
+                    paddingLeft: "12px",
+                    marginBottom: "4px",
+                  }}
                 >
                   {section.label}
                 </motion.div>
@@ -239,24 +245,35 @@ const DrawerContent = memo(function DrawerContent({
                     className={`desk-sidebar-item active-press ${active ? "desk-sidebar-item--accent" : ""}`}
                     title={isRail ? item.label : undefined}
                     aria-label={item.label}
-                    style={
-                      isRail
-                        ? { justifyContent: "center", padding: "0", height: 44 }
-                        : undefined
-                    }
+                    style={{
+                      justifyContent: isRail ? "center" : "flex-start",
+                      padding: isRail ? "0" : "0 12px",
+                      height: 40,
+                      background: active
+                        ? "var(--desk-accent-soft)"
+                        : "transparent",
+                      borderRadius: "var(--radius-md)",
+                      color: active
+                        ? "var(--desk-accent)"
+                        : "var(--desk-text-secondary)",
+                      fontWeight: active ? 600 : 400,
+                    }}
                   >
                     <ItemIcon
                       size={18}
                       className="desk-sidebar-item-icon"
                       style={{
-                        color: active ? "var(--desk-accent)" : undefined,
+                        color: active
+                          ? "var(--desk-accent)"
+                          : "var(--desk-text-tertiary)",
                       }}
                     />
                     {!isRail && (
                       <motion.span
+                        layout
                         initial={{ opacity: 0, x: -5 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="truncate"
+                        className="truncate ml-3"
                       >
                         {item.label}
                       </motion.span>
@@ -272,7 +289,10 @@ const DrawerContent = memo(function DrawerContent({
       {/* Footer */}
       <div
         className={`py-3 transition-all duration-200 ${isRail ? "px-2" : "px-3"}`}
-        style={{ borderTop: "1px solid var(--desk-border)" }}
+        style={{
+          borderTop: "1px solid var(--desk-border)",
+          background: "var(--desk-surface-subtle)",
+        }}
       >
         <div
           className={`flex items-center ${isRail ? "justify-center" : "gap-2"}`}
@@ -285,27 +305,48 @@ const DrawerContent = memo(function DrawerContent({
               title="Sign Out"
               aria-label="Sign Out"
               type="button"
+              style={{
+                height: 40,
+                borderRadius: "var(--radius-md)",
+                padding: "0 12px",
+              }}
             >
-              <LogOut size={18} className="desk-sidebar-item-icon" />
-              <span>Sign Out</span>
+              <LogOut
+                size={18}
+                className="desk-sidebar-item-icon"
+                style={{ color: "var(--desk-text-tertiary)" }}
+              />
+              <span
+                style={{
+                  color: "var(--desk-text-secondary)",
+                  marginLeft: "12px",
+                }}
+              >
+                Sign Out
+              </span>
             </button>
           )}
         </div>
         {!isRail && (
           <motion.div
+            layout
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="mt-3 px-3"
           >
             <div className="flex items-center gap-2">
-              <span className="desk-live-dot" />
+              <span
+                className="desk-live-dot"
+                style={{ background: "var(--desk-success)" }}
+              />
               <span
                 style={{
                   font: "var(--type-caption-sm)",
-                  color: "var(--desk-text-secondary)",
+                  color: "var(--desk-text-tertiary)",
+                  fontSize: "10px",
                 }}
               >
-                v2.0.0 · Desktop ready
+                v2.0.0 · DESKTOP READY
               </span>
             </div>
           </motion.div>

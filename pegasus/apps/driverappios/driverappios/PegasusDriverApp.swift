@@ -35,6 +35,7 @@ struct RootView: View {
                 .transition(.opacity)
             }
         }
+        .buttonStyle(.pressable)
         .animation(Anim.snappy, value: tokenStore.isAuthenticated)
     }
 }

@@ -9,16 +9,15 @@ import {
   Truck,
   Brain,
   Package,
-  RefreshCcw,
   ArrowRight,
   ArrowUpRight,
   Layers3,
 } from "lucide-react";
-import { Chip, Skeleton } from "@heroui/react";
+import { Button, Chip, Skeleton } from "@heroui/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import EmptyState from "../../../components/EmptyState";
-import PageTransition from "../../../components/PageTransition";
 import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
 import type { Order, Prediction, Product } from "../../../lib/types";
@@ -26,13 +25,14 @@ import type { Order, Prediction, Product } from "../../../lib/types";
 const EMPTY_ORDERS: Order[] = [];
 const EMPTY_PREDICTIONS: Prediction[] = [];
 const EMPTY_PRODUCTS: Product[] = [];
-type DashboardLoadIssue = "offline" | "restricted" | "error";
 
 export default function DashboardPage() {
   const getProfileId = () => {
     if (typeof localStorage === "undefined") return "";
     try {
-      const parsed = JSON.parse(localStorage.getItem("retailer_profile") || "null") as { id?: string } | null;
+      const parsed = JSON.parse(
+        localStorage.getItem("retailer_profile") || "null",
+      ) as { id?: string } | null;
       return parsed?.id ?? "";
     } catch {
       return "";
@@ -40,27 +40,24 @@ export default function DashboardPage() {
   };
 
   const retailerID = getProfileId();
-  const ordersPath = retailerID ? `/v1/retailers/${retailerID}/orders` : "/v1/orders";
+  const ordersPath = retailerID
+    ? `/v1/retailers/${retailerID}/orders`
+    : "/v1/orders";
+
   const {
     data: orders,
     loading: loadingOrders,
-    error: ordersError,
     mutate: refreshOrders,
-    isRefreshing: isRefreshingOrders,
   } = useLiveData<Order[]>(ordersPath, 30000);
   const {
     data: predictions,
     loading: loadingPred,
-    error: predictionsError,
     mutate: refreshPredictions,
-    isRefreshing: isRefreshingPredictions,
   } = useLiveData<Prediction[]>("/v1/ai/predictions");
   const {
     data: products,
     loading: loadingProducts,
-    error: productsError,
     mutate: refreshProducts,
-    isRefreshing: isRefreshingProducts,
   } = useLiveData<Product[]>("/v1/catalog/products");
   const { addToCart, items } = useCart();
 
@@ -70,7 +67,10 @@ export default function DashboardPage() {
   const cartQuantity = items.reduce((total, item) => total + item.quantity, 0);
 
   const activeOrders = useMemo(
-    () => orderList.filter((order) => order.state !== "COMPLETED" && order.state !== "CANCELLED"),
+    () =>
+      orderList.filter(
+        (order) => order.state !== "COMPLETED" && order.state !== "CANCELLED",
+      ),
     [orderList],
   );
   const completedOrders = useMemo(
@@ -78,323 +78,258 @@ export default function DashboardPage() {
     [orderList],
   );
   const reorderProducts = useMemo(() => productList.slice(0, 8), [productList]);
+
   const loading = loadingOrders || loadingPred || loadingProducts;
-  const refreshing = isRefreshingOrders || isRefreshingPredictions || isRefreshingProducts;
-  const liveErrors = [ordersError, predictionsError, productsError].filter(
-    (err): err is Error & { status?: number } => Boolean(err),
-  );
-  const hasSnapshotData = orderList.length > 0 || predictionList.length > 0 || productList.length > 0;
-  const loadIssue = useMemo<DashboardLoadIssue | null>(() => {
-    if (liveErrors.length === 0) return null;
-
-    const statuses = liveErrors
-      .map((error) => error.status)
-      .filter((status): status is number => typeof status === "number");
-    if (statuses.some((status) => status === 401 || status === 403)) {
-      return "restricted";
-    }
-
-    const message = liveErrors.map((error) => error.message.toLowerCase()).join(" ");
-    if ((typeof navigator !== "undefined" && !navigator.onLine) || /network|offline|failed to fetch/.test(message)) {
-      return "offline";
-    }
-
-    return "error";
-  }, [liveErrors]);
-
-  const refreshAll = useCallback(() => {
-    void Promise.all([refreshOrders(), refreshPredictions(), refreshProducts()]);
-  }, [refreshOrders, refreshPredictions, refreshProducts]);
-
-  if (loading) {
-    return (
-      <div className="min-h-full p-6 md:p-8">
-        <Skeleton className="mb-2 h-8 w-56 rounded-lg" />
-        <Skeleton className="mb-8 h-4 w-96 rounded-lg" />
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {[0, 1, 2, 3].map((item) => (
-            <Skeleton key={item} className="h-32 rounded-2xl" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (!hasSnapshotData && loadIssue) {
-    const stateContent: Record<DashboardLoadIssue, { headline: string; body: string }> = {
-      offline: {
-        headline: "You are offline",
-        body: "Dashboard data could not load because the network is unavailable.",
-      },
-      restricted: {
-        headline: "Access restricted",
-        body: "Your session currently does not have access to retailer dashboard resources.",
-      },
-      error: {
-        headline: "Unable to load dashboard",
-        body: "A server issue blocked dashboard hydration. Retry to fetch the latest retailer signals.",
-      },
-    };
-
-    const content = stateContent[loadIssue];
-
-    return (
-      <PageTransition className="min-h-full p-6 md:p-8">
-        <EmptyState
-          variant={loadIssue}
-          headline={content.headline}
-          body={content.body}
-          action="Retry"
-          onAction={refreshAll}
-        />
-      </PageTransition>
-    );
-  }
 
   return (
-    <PageTransition className="min-h-full p-6 md:p-8">
-      {loadIssue && hasSnapshotData && (
-        <div
-          className="mb-6 rounded-xl px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
-          style={{ border: "1px solid var(--border)", background: "var(--surface)" }}
-        >
-          <span className="md-typescale-body-small" style={{ color: "var(--muted)" }}>
-            {loadIssue === "restricted"
-              ? "Live dashboard refresh is permission-blocked. Showing the most recent snapshot."
-              : loadIssue === "offline"
-                ? "Network is unavailable. Showing the most recent dashboard snapshot."
-                : "Dashboard refresh failed. Showing the most recent snapshot while retry remains available."}
-          </span>
-          <button
-            onClick={refreshAll}
-            className="md-btn md-btn-outlined md-typescale-label-large active-press inline-flex h-9 items-center px-4"
+    <div
+      className="min-h-full p-6 md:p-8"
+      style={{ background: "var(--desk-canvas)" }}
+    >
+      <AnimatePresence mode="popLayout">
+        {loading ? (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
           >
-            {refreshing ? "Syncing…" : "Retry sync"}
-          </button>
-        </div>
-      )}
-
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="md-typescale-headline-large">Retailer operations hub</h1>
-          <p className="mt-1 md-typescale-body-medium" style={{ color: "var(--muted)" }}>
-            Review active deliveries, restock signals, and fast reorder actions from one workspace.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link href="/orders" className="md-btn md-btn-outlined md-typescale-label-large active-press inline-flex h-10 items-center px-5">
-            Review orders
-          </Link>
-          <Link href="/catalog" className="md-btn md-btn-filled md-typescale-label-large active-press inline-flex h-10 items-center px-5">
-            Open catalog
-          </Link>
-        </div>
-      </header>
-
-      <BentoGrid className="mb-8">
-        <BentoCard span={2} className="lg:min-h-[240px]">
-          <div className="flex h-full flex-col justify-between gap-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="max-w-2xl">
-                <p className="md-typescale-label-small uppercase tracking-[0.16em] text-muted">Today&apos;s focus</p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground">Keep replenishment predictable and deliveries confirmed.</h2>
-                <p className="mt-2 max-w-xl md-typescale-body-medium text-muted">
-                  {activeOrders.length} active deliveries and {predictionList.length} AI restock signals are currently shaping your next procurement run.
+            <Skeleton className="mb-2 h-8 w-64 rounded-lg" />
+            <Skeleton className="mb-8 h-4 w-96 rounded-lg" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-32 rounded-2xl animate-pulse bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)]"
+                />
+              ))}
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="content"
+            layout
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
+                  Operations Hub
+                </h1>
+                <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
+                  Active deliveries, restock signals, and fleet telemetry.
                 </p>
               </div>
-              <Chip size="sm" color="default" variant="soft" className="font-semibold">
-                {productList.length} catalog SKUs available
-              </Chip>
-            </div>
+              <div className="flex items-center gap-3">
+                <Link href="/orders">
+                  <Button
+                    variant="flat"
+                    className="h-10 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
+                  >
+                    Review Orders
+                  </Button>
+                </Link>
+                <Link href="/catalog">
+                  <Button
+                    variant="solid"
+                    className="h-10 px-5 rounded-xl font-bold shadow-[var(--shadow-sm)]"
+                    style={{ background: "var(--desk-accent)", color: "white" }}
+                  >
+                    Open Catalog
+                  </Button>
+                </Link>
+              </div>
+            </header>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <WorkspaceActionCard
-                href="/catalog"
-                icon={PackageSearch}
-                title="Supplier catalog"
-                subtitle="Search SKUs, compare partners, and add products to the cart."
-              />
-              <WorkspaceActionCard
-                href="/orders"
-                icon={ShoppingCart}
-                title="Order desk"
-                subtitle="Verify inbound deliveries and review order exceptions."
-              />
-              <WorkspaceActionCard
-                href="/insights"
-                icon={Brain}
-                title="AI planning"
-                subtitle="Inspect demand predictions before the next procurement cycle."
-              />
-            </div>
-          </div>
-        </BentoCard>
-
-        <KpiCard
-          label="Active deliveries"
-          value={activeOrders.length}
-          supporting={`${completedOrders.length} completed`}
-          icon={<Truck size={18} strokeWidth={1.5} style={{ color: "var(--muted)" }} />}
-        />
-        <KpiCard
-          label="Restock signals"
-          value={predictionList.length}
-          supporting="AI recommendations ready"
-          icon={<Brain size={18} strokeWidth={1.5} style={{ color: "var(--muted)" }} />}
-        />
-        <KpiCard
-          label="Cart quantity"
-          value={cartQuantity}
-          supporting="Items staged for checkout"
-          icon={<ShoppingCart size={18} strokeWidth={1.5} style={{ color: "var(--muted)" }} />}
-        />
-        <KpiCard
-          label="Supplier coverage"
-          value={new Set(productList.map((product) => product.supplier_id)).size}
-          supporting="Partners represented in catalog"
-          icon={<Layers3 size={18} strokeWidth={1.5} style={{ color: "var(--muted)" }} />}
-        />
-      </BentoGrid>
-
-      <div className="grid gap-8 xl:grid-cols-[1.2fr_0.8fr]">
-        <section>
-          <div className="mb-4 flex items-center gap-2">
-            <RefreshCcw size={16} style={{ color: "var(--muted)" }} />
-            <h2 className="md-typescale-title-large font-semibold text-foreground">Quick reorder</h2>
-          </div>
-
-          {reorderProducts.length === 0 ? (
-            <div className="py-10">
-              <EmptyState 
-                imageUrl="/images/empty-products.png"
-                headline="No products available"
-                body="Your catalog is currently empty."
-              />
-            </div>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {reorderProducts.map((product) => (
-                <button
-                  key={product.id}
-                  onClick={() => addToCart(product)}
-                  className="bento-card active-press flex cursor-pointer flex-col gap-4 text-left transition-all duration-150 hover:ring-1 hover:ring-accent"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div
-                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
-                        style={{ background: "var(--surface)" }}
-                      >
-                        <Package size={20} style={{ color: "var(--muted)" }} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate md-typescale-title-small font-semibold text-foreground">{product.name}</p>
-                        <p className="truncate md-typescale-body-small text-muted">{product.supplier_name}</p>
-                      </div>
-                    </div>
-                    <ArrowUpRight size={16} style={{ color: "var(--muted)" }} />
-                  </div>
-                  <div className="flex items-end justify-between gap-3">
-                    <div>
-                      <p className="md-typescale-label-small uppercase tracking-[0.14em] text-muted">Price</p>
-                      <p className="md-typescale-title-medium font-semibold tabular-nums text-foreground">
-                        {product.price.toLocaleString()}
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-[var(--surface)] px-3 py-1 md-typescale-label-small font-semibold text-foreground">
-                      Add item
+            <BentoGrid className="mb-10">
+              <BentoCard
+                span={2}
+                interactive={false}
+                className="flex flex-col justify-between"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+                      Focus today
                     </span>
+                    <h2 className="mt-2 text-2xl font-bold tracking-tight text-[var(--desk-text-primary)] leading-tight">
+                      Predictive Replenishment
+                    </h2>
+                    <p className="mt-2 md-typescale-body-medium text-[var(--desk-text-secondary)]">
+                      {activeOrders.length} inbound nodes and{" "}
+                      {predictionList.length} AI signals are shaping your next
+                      run.
+                    </p>
                   </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section>
-          <div className="mb-4 flex items-center gap-2">
-            <Brain size={16} style={{ color: "var(--accent)" }} />
-            <h2 className="md-typescale-title-large font-semibold text-foreground">AI restock queue</h2>
-            <Chip size="sm" color="default" variant="soft">{predictionList.length}</Chip>
-          </div>
-
-          {predictionList.length === 0 ? (
-            <div className="py-10">
-              <EmptyState 
-                imageUrl="/images/empty-predictions.png"
-                headline="No predictions yet"
-                body="AI recommendations will appear here."
-              />
-            </div>
-          ) : (
-            <div className="flex max-h-[420px] flex-col gap-3 overflow-y-auto pr-1">
-              {predictionList.slice(0, 6).map((prediction) => (
-                <PredictionCard key={prediction.id} forecast={prediction} />
-              ))}
-              <Link href="/insights" className="active-press inline-flex items-center gap-2 px-2 md-typescale-label-large font-semibold text-accent hover:underline">
-                Review all predictions
-                <ArrowRight size={16} />
-              </Link>
-            </div>
-          )}
-        </section>
-      </div>
-
-      {activeOrders.length > 0 && (
-        <section className="mt-10">
-          <div className="mb-4 flex items-center gap-2">
-            <Inbox size={16} style={{ color: "var(--muted)" }} />
-            <h2 className="md-typescale-title-large font-semibold text-foreground">Active deliveries</h2>
-            <Chip size="sm" color="warning" variant="soft">{activeOrders.length}</Chip>
-          </div>
-          <div className="grid gap-3 xl:grid-cols-3">
-            {activeOrders.slice(0, 6).map((order) => (
-              <Link key={order.order_id} href="/orders" className="bento-card active-press transition-all duration-150 hover:ring-1 hover:ring-accent">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" style={{ background: "var(--surface)" }}>
-                    <Truck size={18} style={{ color: "var(--muted)" }} />
+                  <div className="px-3 py-1 rounded-lg bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] font-bold text-xs">
+                    {productList.length} SKUS
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate md-typescale-title-small font-semibold text-foreground">#{order.order_id.slice(-8)}</p>
-                    <p className="truncate md-typescale-body-small text-muted">{order.state.replace(/_/g, " ")}</p>
-                  </div>
-                  <span className="md-typescale-label-large font-semibold tabular-nums text-foreground">
-                    {order.amount.toLocaleString()}
-                  </span>
                 </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-    </PageTransition>
+
+                <div className="grid grid-cols-3 gap-3 mt-6">
+                  <QuickAction
+                    href="/catalog"
+                    icon={PackageSearch}
+                    label="Catalog"
+                  />
+                  <QuickAction
+                    href="/orders"
+                    icon={ShoppingCart}
+                    label="Orders"
+                  />
+                  <QuickAction href="/insights" icon={Brain} label="Planning" />
+                </div>
+              </BentoCard>
+
+              <KpiCard
+                label="Active Nodes"
+                value={activeOrders.length}
+                sub={`${completedOrders.length} archived`}
+                icon={
+                  <Truck size={18} style={{ color: "var(--desk-accent)" }} />
+                }
+              />
+              <KpiCard
+                label="AI Signals"
+                value={predictionList.length}
+                sub="Restock Ready"
+                icon={<Brain size={18} style={{ color: "var(--desk-info)" }} />}
+              />
+              <KpiCard
+                label="Staged Cart"
+                value={cartQuantity}
+                sub="Items in queue"
+                icon={
+                  <ShoppingCart
+                    size={18}
+                    style={{ color: "var(--desk-success)" }}
+                  />
+                }
+              />
+              <KpiCard
+                label="Suppliers"
+                value={new Set(productList.map((p) => p.supplier_id)).size}
+                sub="Active partners"
+                icon={
+                  <Layers3 size={18} style={{ color: "var(--desk-warning)" }} />
+                }
+              />
+            </BentoGrid>
+
+            <div className="grid gap-8 xl:grid-cols-[1.2fr_0.8fr]">
+              <section>
+                <h3 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)] mb-4">
+                  Quick Reorder
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {reorderProducts.map((p) => (
+                    <motion.button
+                      key={p.id}
+                      layout
+                      whileHover={{ y: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => addToCart(p)}
+                      className="flex items-center gap-4 p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl text-left hover:shadow-md transition-shadow group"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[var(--desk-text-tertiary)] group-hover:bg-[var(--desk-accent-soft)] group-hover:text-[var(--desk-accent)] transition-colors">
+                        <Package size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="md-typescale-title-small font-bold truncate text-[var(--desk-text-primary)]">
+                          {p.name}
+                        </p>
+                        <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] truncate uppercase tracking-widest">
+                          {p.supplier_name}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                          {p.price.toLocaleString()}
+                        </p>
+                        <ArrowUpRight
+                          size={14}
+                          className="ml-auto opacity-20 group-hover:opacity-100 transition-opacity"
+                        />
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+              </section>
+
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                    AI Restock
+                  </h3>
+                  <Link
+                    href="/insights"
+                    className="text-[var(--desk-accent)] md-typescale-label-small font-bold uppercase tracking-widest hover:underline"
+                  >
+                    View All
+                  </Link>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {predictionList.slice(0, 5).map((forecast) => (
+                    <div
+                      key={forecast.id}
+                      className="p-4 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-2xl flex items-center gap-4"
+                    >
+                      <div
+                        className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-xs font-bold ${forecast.confidence > 0.8 ? "border-[var(--desk-success)] text-[var(--desk-success)]" : "border-[var(--desk-warning)] text-[var(--desk-warning)]"}`}
+                      >
+                        {Math.round(forecast.confidence * 100)}%
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="md-typescale-title-small font-bold truncate text-[var(--desk-text-primary)]">
+                          {forecast.productName}
+                        </p>
+                        <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] line-clamp-1">
+                          {forecast.reasoning}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                          {forecast.predictedQuantity}
+                        </p>
+                        <p className="text-[10px] text-[var(--desk-text-tertiary)] uppercase font-bold tracking-tighter">
+                          Units
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
-function WorkspaceActionCard({
+function QuickAction({
   href,
   icon: Icon,
-  title,
-  subtitle,
+  label,
 }: {
   href: string;
-  icon: React.ElementType;
-  title: string;
-  subtitle: string;
+  icon: any;
+  label: string;
 }) {
   return (
     <Link
       href={href}
-      className="active-press rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 transition-all duration-150 hover:border-[var(--color-md-outline)] hover:bg-[var(--color-md-surface-container-low)]"
+      className="flex flex-col items-center gap-2 p-3 bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] rounded-xl hover:bg-[var(--desk-accent-soft)] hover:border-[var(--desk-accent)] hover:text-[var(--desk-accent)] transition-all active:scale-95 group"
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--color-md-surface-container)]">
-          <Icon size={18} strokeWidth={1.6} className="text-foreground" />
-        </div>
-        <ArrowRight size={16} style={{ color: "var(--muted)" }} />
-      </div>
-      <p className="mt-4 md-typescale-title-small font-semibold text-foreground">{title}</p>
-      <p className="mt-1 md-typescale-body-small text-muted">{subtitle}</p>
+      <Icon
+        size={20}
+        strokeWidth={1.5}
+        className="group-hover:scale-110 transition-transform"
+      />
+      <span className="md-typescale-label-small font-bold uppercase tracking-widest">
+        {label}
+      </span>
     </Link>
   );
 }
@@ -402,56 +337,29 @@ function WorkspaceActionCard({
 function KpiCard({
   label,
   value,
-  supporting,
+  sub,
   icon,
 }: {
   label: string;
   value: number;
-  supporting: string;
-  icon: React.ReactNode;
+  sub: string;
+  icon: any;
 }) {
   return (
-    <BentoCard>
-      <div className="md-kpi-card">
-        <div className="flex items-center justify-between">
-          <span className="md-kpi-label">{label}</span>
-          {icon}
-        </div>
-        <CountUp end={value} className="md-kpi-value" />
-        <span className="md-kpi-sub">{supporting}</span>
+    <BentoCard interactive={false}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)]">
+          {label}
+        </span>
+        {icon}
       </div>
+      <CountUp
+        end={value}
+        className="md-typescale-metric text-[var(--desk-text-primary)]"
+      />
+      <p className="md-typescale-body-small text-[var(--desk-text-secondary)] mt-1">
+        {sub}
+      </p>
     </BentoCard>
-  );
-}
-
-function PredictionCard({ forecast }: { forecast: Prediction }) {
-  const confidenceColor =
-    forecast.confidence >= 0.8
-      ? "var(--success)"
-      : forecast.confidence >= 0.6
-        ? "var(--warning)"
-        : "var(--danger)";
-  const confidence = Math.round(forecast.confidence * 100);
-
-  return (
-    <div className="bento-card">
-      <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-sm font-bold" style={{ color: confidenceColor }}>
-          {confidence}%
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate md-typescale-title-small font-semibold text-foreground">
-            {forecast.productName || `Prediction ${forecast.id.slice(-6)}`}
-          </p>
-          <p className="line-clamp-2 md-typescale-body-small text-muted">
-            {forecast.reasoning || "AI recommendation"}
-          </p>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="md-typescale-title-small font-bold tabular-nums text-foreground">{forecast.predictedQuantity}</p>
-          <p className="md-typescale-label-small text-muted">units</p>
-        </div>
-      </div>
-    </div>
   );
 }

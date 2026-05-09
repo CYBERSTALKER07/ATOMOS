@@ -1,12 +1,29 @@
 package com.pegasus.driver.ui.navigation
 
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -65,32 +82,76 @@ object DriverRoutes {
 fun DriverNavigation(api: DriverApi) {
     val navController = rememberNavController()
     val startDest = if (TokenHolder.token != null) DriverRoutes.MAIN else DriverRoutes.LOGIN
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
+    var refreshEpoch by remember { mutableIntStateOf(0) }
+    var networkAvailable by remember { mutableStateOf(true) }
 
-    NavHost(
-        navController = navController,
-        startDestination = startDest,
-        enterTransition = {
-            slideInHorizontally(
-                initialOffsetX = { it / 5 },
-                animationSpec = tween(MotionTokens.DurationMedium4, easing = MotionTokens.EasingEmphasizedDecelerate)
-            ) + fadeIn(tween(MotionTokens.DurationMedium2, easing = MotionTokens.EasingEmphasizedDecelerate))
-        },
-        exitTransition = {
-            fadeOut(tween(MotionTokens.DurationShort3, easing = MotionTokens.EasingEmphasizedAccelerate))
-        },
-        popEnterTransition = {
-            slideInHorizontally(
-                initialOffsetX = { -it / 5 },
-                animationSpec = tween(MotionTokens.DurationMedium4, easing = MotionTokens.EasingEmphasizedDecelerate)
-            ) + fadeIn(tween(MotionTokens.DurationMedium2, easing = MotionTokens.EasingEmphasizedDecelerate))
-        },
-        popExitTransition = {
-            slideOutHorizontally(
-                targetOffsetX = { it / 5 },
-                animationSpec = tween(MotionTokens.DurationShort4, easing = MotionTokens.EasingEmphasizedAccelerate)
-            ) + fadeOut(tween(MotionTokens.DurationShort3, easing = MotionTokens.EasingEmphasizedAccelerate))
-        },
-    ) {
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshEpoch += 1
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    DisposableEffect(context) {
+        val mainHandler = Handler(Looper.getMainLooper())
+        val connectivityManager = context.getSystemService(ConnectivityManager::class.java)
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                mainHandler.post {
+                    if (!networkAvailable) {
+                        refreshEpoch += 1
+                    }
+                    networkAvailable = true
+                }
+            }
+
+            override fun onLost(network: Network) {
+                mainHandler.post { networkAvailable = false }
+            }
+        }
+
+        runCatching { connectivityManager?.registerNetworkCallback(request, callback) }
+        onDispose {
+            runCatching { connectivityManager?.unregisterNetworkCallback(callback) }
+        }
+    }
+
+    key(refreshEpoch) {
+        NavHost(
+            navController = navController,
+            startDestination = startDest,
+            enterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { it / 5 },
+                    animationSpec = tween(MotionTokens.DurationMedium4, easing = MotionTokens.EasingEmphasizedDecelerate)
+                ) + fadeIn(tween(MotionTokens.DurationMedium2, easing = MotionTokens.EasingEmphasizedDecelerate))
+            },
+            exitTransition = {
+                fadeOut(tween(MotionTokens.DurationShort3, easing = MotionTokens.EasingEmphasizedAccelerate))
+            },
+            popEnterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { -it / 5 },
+                    animationSpec = tween(MotionTokens.DurationMedium4, easing = MotionTokens.EasingEmphasizedDecelerate)
+                ) + fadeIn(tween(MotionTokens.DurationMedium2, easing = MotionTokens.EasingEmphasizedDecelerate))
+            },
+            popExitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { it / 5 },
+                    animationSpec = tween(MotionTokens.DurationShort4, easing = MotionTokens.EasingEmphasizedAccelerate)
+                ) + fadeOut(tween(MotionTokens.DurationShort3, easing = MotionTokens.EasingEmphasizedAccelerate))
+            },
+        ) {
         composable(DriverRoutes.LOGIN) {
             LoginScreen(
                 api = api,
@@ -229,6 +290,7 @@ fun DriverNavigation(api: DriverApi) {
                     navController.popBackStack(DriverRoutes.MAIN, inclusive = false)
                 }
             )
+        }
         }
     }
 }
