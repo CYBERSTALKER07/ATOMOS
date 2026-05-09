@@ -41,7 +41,7 @@ type ProviderCapability = {
   manual_hint: string;
 };
 
-type GatewayName = 'CASH' | 'GLOBAL_PAY' | 'GLOBAL_PAY';
+type GatewayName = 'CASH' | 'GLOBAL_PAY';
 
 const DEFAULT_CAPABILITIES: ProviderCapability[] = [
   {

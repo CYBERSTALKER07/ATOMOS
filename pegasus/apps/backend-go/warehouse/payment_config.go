@@ -15,7 +15,7 @@ import (
 
 type PaymentGatewayItem struct {
 	GatewayID   string `json:"gateway_id"`
-	Provider    string `json:"provider"` // CASH | GLOBAL_PAY | GLOBAL_PAY
+	Provider    string `json:"provider"` // CASH | GLOBAL_PAY
 	IsActive    bool   `json:"is_active"`
 	Environment string `json:"environment"` // SANDBOX | PRODUCTION
 	MerchantID  string `json:"merchant_id,omitempty"`

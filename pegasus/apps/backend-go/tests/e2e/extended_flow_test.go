@@ -167,7 +167,7 @@ func TestGlobalPayWebhookSettlement(t *testing.T) {
 		"id": 1
 	}`, orderID)
 
-	resp, err := http.Post(baseURL+"/v1/webhooks/global_pay", "application/json", strings.NewReader(body))
+	resp, err := http.Post(baseURL+"/v1/webhooks/global-pay", "application/json", strings.NewReader(body))
 	if err != nil {
 		t.Fatalf("GlobalPay webhook request failed: %v", err)
 	}

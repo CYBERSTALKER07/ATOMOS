@@ -1,19 +1,16 @@
-// Package payment — Cash & GlobalPay Webhook Handlers (Phase 7: Payment Settlement)
+// Package payment — Global Pay Webhook Handler (Phase 7: Payment Settlement)
 //
-// POST /v1/webhooks/cash   — Server-to-server callback from Cash Up
-// POST /v1/webhooks/global_pay   — Server-to-server JSON-RPC callback from GlobalPay
+// POST /v1/webhooks/global-pay   — Server-to-server callback from Global Pay
 //
-// These endpoints are UNAUTHENTICATED (no JWT). Security is enforced via:
-//   - Cash:  MD5 sign_string verification against CLICK_SECRET_KEY
-//   - GlobalPay:  Basic Auth header verification against PAYME_MERCHANT_KEY
+// This endpoint is UNAUTHENTICATED (no JWT). Security is enforced via:
+//   - Global Pay: Basic Auth header verification against the configured gateway secret
 //
 // Idempotency:
-//   - Cash:  Keyed by cash_trans_id — duplicate action=1 returns success without re-crediting.
-//   - GlobalPay:  Keyed by global_pay_transaction_id — PerformTransaction on an already-SETTLED invoice
-//     returns the original result without double-crediting.
+//   - Global Pay: keyed by provider payment/session identifiers so retries replay
+//     the original settlement response instead of double-crediting.
 //
-// Both handlers settle invoices inside a Spanner ReadWriteTransaction.
-// Kafka INVOICE_SETTLED events are written through the transactional outbox.
+// Invoice settlement runs inside a Spanner ReadWriteTransaction and emits
+// INVOICE_SETTLED through the transactional outbox.
 package payment
 
 import (

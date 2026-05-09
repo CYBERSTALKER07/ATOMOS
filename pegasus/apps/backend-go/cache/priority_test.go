@@ -17,7 +17,7 @@ func TestClassifyRequest_P0Critical(t *testing.T) {
 		"/v1/admin/orders/approve-cancel",
 		"/v1/order/cancel",
 		"/v1/webhooks/cash",
-		"/v1/webhooks/global_pay",
+		"/v1/webhooks/global-pay",
 		"/v1/payment/chargeback",
 	}
 	for _, path := range cases {
