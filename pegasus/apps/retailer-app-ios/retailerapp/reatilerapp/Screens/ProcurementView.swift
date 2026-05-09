@@ -243,27 +243,45 @@ struct ProcurementView: View {
     private func createOrder() async {
         isSubmitting = true
         let rid = AuthManager.shared.currentUser?.id ?? ""
+        let orderItems = forecasts.filter { selectedItems.contains($0.id) }.map {
+            ProcurementOrderRequest.Item(productId: $0.productId, quantity: quantities[$0.id] ?? $0.predictedQuantity)
+        }
+        let body = ProcurementOrderRequest(retailerId: rid, items: orderItems)
+        let idempotencyKey = "retailer-procurement:" + orderItems
+            .map { "\($0.productId):\($0.quantity)" }
+            .sorted()
+            .joined(separator: "|")
         do {
-            let orderItems = forecasts.filter { selectedItems.contains($0.id) }.map {
-                ProcurementOrderRequest.Item(productId: $0.productId, quantity: quantities[$0.id] ?? $0.predictedQuantity)
-            }
-            let body = ProcurementOrderRequest(retailerId: rid, items: orderItems)
-            let idempotencyKey = "retailer-procurement:" + orderItems
-                .map { "\($0.productId):\($0.quantity)" }
-                .sorted()
-                .joined(separator: "|")
             let _: ProcurementOrderResponse = try await api.post(
                 path: "/v1/order/create",
                 body: body,
                 headers: ["Idempotency-Key": idempotencyKey]
             )
             isSubmitting = false
+            refreshCenter.trigger()
             showSuccess = true
-        } catch {
+        } catch let apiError as APIError {
             isSubmitting = false
-            errorMessage = "Failed to submit order. Please try again."
+            errorMessage = apiError.localizedDescription
+            showError = true
+        } catch {
+            queuePendingProcurementOrder(body: body, idempotencyKey: idempotencyKey)
+            isSubmitting = false
+            errorMessage = "Saved for retry — \(error.localizedDescription)"
             showError = true
         }
+    }
+
+    private func queuePendingProcurementOrder(body: ProcurementOrderRequest, idempotencyKey: String) {
+        guard let data = try? JSONEncoder().encode(body) else { return }
+        let pending = PendingOrder(
+            payloadJson: String(data: data, encoding: .utf8) ?? "",
+            endpoint: "/v1/order/create",
+            method: "POST",
+            idempotencyKey: idempotencyKey
+        )
+        modelContext.insert(pending)
+        try? modelContext.save()
     }
 
     private func loadPredictions() async {
@@ -277,7 +295,7 @@ struct ProcurementView: View {
     }
 }
 
-private struct ProcurementOrderRequest: Codable {
+struct ProcurementOrderRequest: Codable {
     let retailerId: String
     let items: [Item]
     struct Item: Codable {
@@ -288,7 +306,7 @@ private struct ProcurementOrderRequest: Codable {
     enum CodingKeys: String, CodingKey { case retailerId = "retailer_id"; case items }
 }
 
-private struct ProcurementOrderResponse: Codable {
+struct ProcurementOrderResponse: Codable {
     let status: String
     let orderId: String
     let total: Int64?

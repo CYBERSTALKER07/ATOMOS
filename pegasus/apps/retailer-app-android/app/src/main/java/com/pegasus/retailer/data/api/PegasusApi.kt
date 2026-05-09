@@ -11,6 +11,7 @@ import com.pegasus.retailer.data.model.CashCheckoutResponse
 import com.pegasus.retailer.data.model.DemandForecast
 import com.pegasus.retailer.data.model.LoginRequest
 import com.pegasus.retailer.data.model.Order
+import com.pegasus.retailer.data.model.PendingPaymentsResponse
 import com.pegasus.retailer.data.model.Product
 import com.pegasus.retailer.data.model.ProductCategory
 import com.pegasus.retailer.data.model.ProcurementOrderResponse
@@ -197,7 +198,7 @@ interface PegasusApi {
     suspend fun getActiveFulfillments(): ActiveFulfillmentsResponse
 
     @GET("/v1/retailer/pending-payments")
-    suspend fun getPendingPayments(): JsonElement
+    suspend fun getPendingPayments(): PendingPaymentsResponse
 
     @GET("/v1/retailer/cart/sync")
     suspend fun getCartSync(): JsonElement

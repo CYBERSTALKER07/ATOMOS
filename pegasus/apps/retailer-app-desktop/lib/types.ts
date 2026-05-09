@@ -215,6 +215,28 @@ export interface ActiveFulfillmentsResponse {
   count: number;
 }
 
+export interface PendingPaymentSession {
+  session_id: string;
+  order_id: string;
+  retailer_id: string;
+  supplier_id: string;
+  gateway: string;
+  locked_amount: number;
+  currency: string;
+  status: string;
+  current_attempt_no: number;
+  invoice_id?: string;
+  redirect_url?: string;
+  expires_at?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface PendingPaymentsResponse {
+  pending_payments: PendingPaymentSession[];
+  count: number;
+}
+
 /* ── Cancel ── */
 export interface CancelOrderRequest {
   order_id: string;

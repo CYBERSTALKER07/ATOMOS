@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { PaymentRequiredEvent } from "@pegasus/types";
 import { useWsEvent, type WsMessage } from "../lib/ws";
 import { apiFetch } from "../lib/auth";
-import type { CardCheckoutResponse } from "../lib/types";
+import type { CardCheckoutResponse, PendingPaymentSession, PendingPaymentsResponse } from "../lib/types";
 
 /* ── Types ── */
 
@@ -141,12 +141,56 @@ export default function PaymentModal() {
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || "Cash checkout failed");
+
+      function sessionToPaymentEvent(session: PendingPaymentSession): PaymentEvent {
+        const gateway = session.gateway || "GLOBAL_PAY";
+        return {
+          type: "PAYMENT_REQUIRED",
+          order_id: session.order_id,
+          invoice_id: session.invoice_id ?? null,
+          session_id: session.session_id,
+          amount: session.locked_amount,
+          original_amount: session.locked_amount,
+          payment_method: gateway === "CASH" ? "CASH" : "CARD",
+          gateway: gateway as PaymentRequiredEvent["gateway"],
+          currency: session.currency || "UZS",
+          available_card_gateways: gateway === "CASH" ? [] : [gateway],
+          message: "Pending payment requires completion.",
+        };
+      }
       }
       setState("success");
       setTimeout(dismiss, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cash checkout failed");
       setState("choosing");
+
+        useEffect(() => {
+          let cancelled = false;
+
+          async function loadPendingPayments() {
+            try {
+              const res = await apiFetch("/v1/retailer/pending-payments");
+              if (!res.ok) return;
+              const data: PendingPaymentsResponse = await res.json();
+              const pending = data.pending_payments?.[0];
+              if (!cancelled && pending && !event) {
+                setEvent(sessionToPaymentEvent(pending));
+                setState("choosing");
+                setError(null);
+                setCheckoutUrl(null);
+              }
+            } catch {
+              // WebSocket delivery remains the primary realtime path.
+            }
+          }
+
+          void loadPendingPayments();
+
+          return () => {
+            cancelled = true;
+          };
+        }, [event]);
     }
   }, [event, dismiss]);
 

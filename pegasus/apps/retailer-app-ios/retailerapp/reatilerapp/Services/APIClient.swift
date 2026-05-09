@@ -163,6 +163,10 @@ final class APIClient {
         return response.orders
     }
 
+    func getPendingPayments() async throws -> PendingPaymentsResponse {
+        try await get(path: "/v1/retailer/pending-payments")
+    }
+
     func getActiveFulfillments() async throws -> ActiveFulfillmentsResponse {
         try await get(path: "/v1/retailer/active-fulfillment")
     }

@@ -190,10 +190,14 @@ struct ContentView: View {
             guard scenePhase == .active else { return }
             Task {
                 await loadActiveOrders()
+                await loadPendingPayments()
                 refreshCenter.trigger()
             }
         }
-        .task { await loadActiveOrders() }
+        .task {
+            await loadActiveOrders()
+            await loadPendingPayments()
+        }
         .task { await connectWebSocket() }
         .sheet(item: $paymentEvent) { event in
             DeliveryPaymentSheetView(event: event) {
@@ -581,6 +585,27 @@ struct ContentView: View {
             activeOrders = result.filter { $0.status.isActive }
         } catch {
             activeOrders = []
+        }
+    }
+
+    private func loadPendingPayments() async {
+        guard paymentEvent == nil else { return }
+        do {
+            let response = try await api.getPendingPayments()
+            guard let session = response.pendingPayments.first else { return }
+            paymentEvent = PaymentRequiredEvent(
+                type: "PAYMENT_REQUIRED",
+                orderId: session.orderId,
+                invoiceId: session.invoiceId ?? "",
+                sessionId: session.sessionId,
+                amountUzs: session.lockedAmount,
+                originalAmountUzs: session.lockedAmount,
+                availableCardGateways: session.gateway == "CASH" ? [] : [session.gateway],
+                message: "Pending payment requires completion.",
+                paymentMethod: session.gateway == "CASH" ? "CASH" : "CARD"
+            )
+        } catch {
+            // WebSocket delivery remains the primary realtime path.
         }
     }
 

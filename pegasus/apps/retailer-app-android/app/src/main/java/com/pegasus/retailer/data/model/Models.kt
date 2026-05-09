@@ -718,3 +718,27 @@ data class ActiveFulfillmentsResponse(
     val fulfillments: List<ActiveFulfillmentItem> = emptyList(),
     val count: Int = 0,
 )
+
+@Serializable
+data class PendingPaymentSession(
+    @SerialName("session_id") val sessionId: String,
+    @SerialName("order_id") val orderId: String,
+    @SerialName("retailer_id") val retailerId: String,
+    @SerialName("supplier_id") val supplierId: String,
+    @SerialName("gateway") val gateway: String,
+    @SerialName("locked_amount") val lockedAmount: Long,
+    @SerialName("currency") val currency: String,
+    @SerialName("status") val status: String,
+    @SerialName("current_attempt_no") val currentAttemptNo: Int,
+    @SerialName("invoice_id") val invoiceId: String? = null,
+    @SerialName("redirect_url") val redirectUrl: String? = null,
+    @SerialName("expires_at") val expiresAt: String? = null,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("updated_at") val updatedAt: String? = null,
+)
+
+@Serializable
+data class PendingPaymentsResponse(
+    @SerialName("pending_payments") val pendingPayments: List<PendingPaymentSession> = emptyList(),
+    @SerialName("count") val count: Int = 0,
+)

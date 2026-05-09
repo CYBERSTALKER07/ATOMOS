@@ -322,6 +322,51 @@ struct ActiveFulfillmentsResponse: Codable {
     let count: Int
 }
 
+struct PendingPaymentSession: Codable, Identifiable, Hashable {
+    var id: String { sessionId }
+    let sessionId: String
+    let orderId: String
+    let retailerId: String
+    let supplierId: String
+    let gateway: String
+    let lockedAmount: Int
+    let currency: String
+    let status: String
+    let currentAttemptNo: Int
+    let invoiceId: String?
+    let redirectURL: String?
+    let expiresAt: String?
+    let createdAt: String
+    let updatedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case sessionId = "session_id"
+        case orderId = "order_id"
+        case retailerId = "retailer_id"
+        case supplierId = "supplier_id"
+        case gateway
+        case lockedAmount = "locked_amount"
+        case currency
+        case status
+        case currentAttemptNo = "current_attempt_no"
+        case invoiceId = "invoice_id"
+        case redirectURL = "redirect_url"
+        case expiresAt = "expires_at"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+}
+
+struct PendingPaymentsResponse: Codable {
+    let pendingPayments: [PendingPaymentSession]
+    let count: Int
+
+    enum CodingKeys: String, CodingKey {
+        case pendingPayments = "pending_payments"
+        case count
+    }
+}
+
 // MARK: - Sample Data
 
 extension Order {

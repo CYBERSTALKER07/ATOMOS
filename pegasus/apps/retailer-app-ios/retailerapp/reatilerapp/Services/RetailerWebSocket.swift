@@ -38,6 +38,28 @@ struct PaymentRequiredEvent: Decodable, Identifiable {
         message = try c.decodeIfPresent(String.self, forKey: .message) ?? ""
         paymentMethod = try c.decodeIfPresent(String.self, forKey: .paymentMethod) ?? ""
     }
+
+    init(
+        type: String,
+        orderId: String,
+        invoiceId: String,
+        sessionId: String,
+        amountUzs: Int,
+        originalAmountUzs: Int,
+        availableCardGateways: [String],
+        message: String,
+        paymentMethod: String
+    ) {
+        self.type = type
+        self.orderId = orderId
+        self.invoiceId = invoiceId
+        self.sessionId = sessionId
+        self.amountUzs = amountUzs
+        self.originalAmountUzs = originalAmountUzs
+        self.availableCardGateways = availableCardGateways
+        self.message = message
+        self.paymentMethod = paymentMethod
+    }
 }
 
 struct OrderCompletedEvent: Decodable {

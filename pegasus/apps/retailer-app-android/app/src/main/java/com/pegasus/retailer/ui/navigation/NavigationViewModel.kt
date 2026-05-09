@@ -9,6 +9,7 @@ import com.pegasus.retailer.data.local.TokenManager
 import com.pegasus.retailer.data.model.CardCheckoutRequest
 import com.pegasus.retailer.data.model.CashCheckoutRequest
 import com.pegasus.retailer.data.model.Order
+import com.pegasus.retailer.data.model.PendingPaymentSession
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,6 +49,22 @@ data class NavigationUiState(
         get() = activeOrders.firstOrNull()?.estimatedDelivery
 }
 
+private fun PendingPaymentSession.toRetailerPaymentEvent(): RetailerWSMessage {
+    val normalizedGateway = gateway.ifBlank { "GLOBAL_PAY" }
+    return RetailerWSMessage(
+        type = "PAYMENT_REQUIRED",
+        orderId = orderId,
+        invoiceId = invoiceId ?: "",
+        sessionId = sessionId,
+        amount = lockedAmount,
+        originalAmount = lockedAmount,
+        availableCardGateways = if (normalizedGateway == "CASH") emptyList() else listOf(normalizedGateway),
+        message = "Pending payment requires completion.",
+        paymentMethod = if (normalizedGateway == "CASH") "CASH" else "CARD",
+        gateway = normalizedGateway,
+    )
+}
+
 @HiltViewModel
 class NavigationViewModel @Inject constructor(
     private val api: PegasusApi,
@@ -68,6 +85,7 @@ class NavigationViewModel @Inject constructor(
             )
         }
         loadActiveOrders()
+        loadPendingPayments()
         connectWebSocket()
     }
 
@@ -87,6 +105,21 @@ class NavigationViewModel @Inject constructor(
     fun clearPaymentEvent() {
         _uiState.update { it.copy(paymentEvent = null, orderCompleted = false, paymentFailed = false, paymentFailureMessage = "") }
         loadActiveOrders()
+        loadPendingPayments()
+    }
+
+    fun loadPendingPayments() {
+        viewModelScope.launch {
+            try {
+                val response = api.getPendingPayments()
+                val pending = response.pendingPayments.firstOrNull()
+                if (pending != null) {
+                    _uiState.update { it.copy(paymentEvent = pending.toRetailerPaymentEvent()) }
+                }
+            } catch (_: Exception) {
+                // WebSocket delivery remains the primary realtime path.
+            }
+        }
     }
 
     suspend fun cashCheckout(orderId: String): Result<Unit> {

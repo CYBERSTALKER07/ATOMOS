@@ -53,7 +53,9 @@ export default function InsightsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [orderResult, setOrderResult] = useState<string | null>(null);
+  const [orderResult, setOrderResult] = useState<"success" | "error" | null>(
+    null,
+  );
 
   const predList = predictions ?? [];
   const topProducts = analytics?.top_products ?? [];
@@ -113,6 +115,68 @@ export default function InsightsPage() {
     [],
   );
 
+  const getRetailerId = useCallback(() => {
+    if (typeof localStorage === "undefined") return "";
+    try {
+      const profile = JSON.parse(
+        localStorage.getItem("retailer_profile") || "null",
+      ) as { id?: string } | null;
+      return profile?.id ?? "";
+    } catch {
+      return "";
+    }
+  }, []);
+
+  const createOrder = useCallback(async () => {
+    if (selected.size === 0) return;
+
+    setSubmitting(true);
+    setOrderResult(null);
+
+    try {
+      const retailerId = getRetailerId();
+      if (!retailerId) {
+        throw new Error("Retailer profile not found. Please log in again.");
+      }
+
+      const orderItems = predList
+        .filter((item) => selected.has(item.id))
+        .map((item) => ({
+          product_id: item.productId,
+          quantity: quantities[item.id] ?? item.predictedQuantity,
+        }));
+
+      const idempotencyKey =
+        "retailer-procurement:" +
+        orderItems
+          .map((item) => `${item.product_id}:${item.quantity}`)
+          .sort()
+          .join("|");
+
+      const res = await apiFetch("/v1/order/create", {
+        method: "POST",
+        headers: { "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({
+          retailer_id: retailerId,
+          items: orderItems,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error((await res.text()) || "Failed to submit procurement order.");
+      }
+
+      setSelected(new Set());
+      setQuantities({});
+      setOrderResult("success");
+      await refreshPred();
+    } catch {
+      setOrderResult("error");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [getRetailerId, predList, quantities, refreshPred, selected]);
+
   const loading = loadingPred || loadingAnalytics;
 
   return (
@@ -137,6 +201,20 @@ export default function InsightsPage() {
           <RefreshCw size={16} className="mr-2" /> Sync Signals
         </Button>
       </header>
+
+      {orderResult && (
+        <div className="mb-6">
+          <Chip
+            color={orderResult === "success" ? "success" : "danger"}
+            variant="flat"
+            className="font-bold"
+          >
+            {orderResult === "success"
+              ? "Procurement order submitted. Signals are refreshing."
+              : "Procurement order failed. Retry when the connection is stable."}
+          </Chip>
+        </div>
+      )}
 
       <BentoGrid className="mb-8">
         <BentoCard interactive={false}>
@@ -358,9 +436,17 @@ export default function InsightsPage() {
               </div>
               <Button
                 onClick={() => void createOrder()}
+                isDisabled={submitting}
                 className="bg-[var(--desk-accent)] text-white font-bold h-11 px-8 rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all"
               >
-                Execute Procurement
+                {submitting ? (
+                  <>
+                    <Loader2 size={14} className="mr-2 animate-spin" />
+                    Executing...
+                  </>
+                ) : (
+                  "Execute Procurement"
+                )}
               </Button>
             </motion.div>
           )}
