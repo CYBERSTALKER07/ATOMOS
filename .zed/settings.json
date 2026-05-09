@@ -28,15 +28,5 @@
         "context7_api_key": "ctx7sk-8d86082e-30d7-4d08-a9ab-693b6c000af2",
       },
     },
-    "void-ast-engine": {
-      "command": "/opt/homebrew/bin/node",
-      "args": [
-        "/Users/shakhzod/Desktop/V.O.I.D/.agents/extensions/ast-engine/mcp-server.mjs",
-      ],
-      "env": {
-        "VOID_AST_ENGINE_PATH": "/Users/shakhzod/Desktop/V.O.I.D/.agents/extensions/ast-engine/engine.mjs",
-        "VOID_AST_ROOT": "/Users/shakhzod/Desktop/V.O.I.D/pegasus",
-      },
-    },
   },
 }

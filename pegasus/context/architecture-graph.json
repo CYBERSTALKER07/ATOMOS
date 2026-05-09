@@ -1,6 +1,6 @@
 {
-  "version": "2026-05-07",
-  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, slog observability tranche across high-noise runtime domains and cache infrastructure paths, and local sequential-thinking MCP fallback).",
+  "version": "2026-05-09",
+  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, and targeted workspace retrieval as the default codebase-retrieval path).",
   "agentContext": {
     "syncSet": [
       "../.github/ACT.md",
@@ -23,17 +23,6 @@
         "hyperscale_10m"
       ]
     },
-    "mcpServer": {
-      "path": "../.vscode/mcp.json",
-      "template": "../.github/mcp.vscode.example.json",
-      "serverId": "void-ast-engine",
-      "toolNames": [
-        "void_ast_index",
-        "void_ast_definition",
-        "void_ast_usages",
-        "void_ast_graph"
-      ]
-    },
     "sequentialThinkingMcp": {
       "path": "../.vscode/mcp.json",
       "template": "../.github/mcp.vscode.example.json",
@@ -43,20 +32,18 @@
         "sequential_thinking"
       ]
     },
-    "engine": {
-      "name": "Local AST Symbol Graph Engine",
-      "entry": "../.agents/extensions/ast-engine/engine.mjs",
-      "commands": [
-        "npm --prefix pegasus run ast:index",
-        "npm --prefix pegasus run ast:def -- --symbol <TargetSymbol>",
-        "npm --prefix pegasus run ast:refs -- --symbol <TargetSymbol> --limit 50",
-        "npm --prefix pegasus run ast:graph -- --symbol <TargetSymbol> --limit 50"
+    "codeRetrieval": {
+      "preferredTools": [
+        "file_search",
+        "grep_search",
+        "read_file",
+        "vscode_listCodeUsages",
+        "semantic_search"
       ],
-      "requiredFor": [
-        "symbol definition retrieval",
-        "usage blast-radius analysis",
-        "import-neighbor graph checks"
-      ]
+      "fallback": [
+        "run_in_terminal: rg"
+      ],
+      "policy": "targeted_workspace_retrieval_first"
     },
     "technologyInventory": {
       "markdown": "technology-inventory.md",
@@ -114,8 +101,7 @@
     { "id": "gemini_agent", "type": "agent", "label": "Gemini Agent" },
     { "id": "act_protocol", "type": "agent_policy", "label": "ACT Companion Protocol" },
     { "id": "sequential_mcp_server", "type": "agent_tool", "label": "Sequential Thinking MCP Server" },
-    { "id": "ast_mcp_server", "type": "agent_tool", "label": "AST MCP Server" },
-    { "id": "ast_engine", "type": "agent_tool", "label": "AST Symbol Graph Engine" },
+    { "id": "workspace_retrieval", "type": "agent_tool", "label": "Workspace Search + Language Server Retrieval" },
     { "id": "arch_docs", "type": "docs", "label": "Architecture Docs + Graph" },
     { "id": "tech_inventory", "type": "docs", "label": "Technology Inventory" },
     { "id": "one_eye_guards", "type": "policy_guard", "label": "One-Eye Guard Suite" }
@@ -141,21 +127,18 @@
     { "from": "gemini_agent", "to": "act_protocol", "relationship": "follows" },
     { "from": "copilot_agent", "to": "sequential_mcp_server", "relationship": "queries" },
     { "from": "gemini_agent", "to": "sequential_mcp_server", "relationship": "queries" },
-    { "from": "act_protocol", "to": "ast_mcp_server", "relationship": "requires" },
+    { "from": "act_protocol", "to": "workspace_retrieval", "relationship": "requires" },
     { "from": "act_protocol", "to": "sequential_mcp_server", "relationship": "requires" },
-    { "from": "act_protocol", "to": "ast_engine", "relationship": "fallback_requires" },
     { "from": "act_protocol", "to": "handlers", "relationship": "codebase_primary" },
     { "from": "act_protocol", "to": "arch_docs", "relationship": "requires" },
     { "from": "act_protocol", "to": "tech_inventory", "relationship": "requires" },
     { "from": "act_protocol", "to": "one_eye_guards", "relationship": "requires" },
-    { "from": "copilot_agent", "to": "ast_mcp_server", "relationship": "queries" },
-    { "from": "gemini_agent", "to": "ast_mcp_server", "relationship": "queries" },
-    { "from": "ast_mcp_server", "to": "ast_engine", "relationship": "executes" },
+    { "from": "copilot_agent", "to": "workspace_retrieval", "relationship": "queries" },
+    { "from": "gemini_agent", "to": "workspace_retrieval", "relationship": "queries" },
     { "from": "copilot_agent", "to": "arch_docs", "relationship": "reads" },
     { "from": "gemini_agent", "to": "arch_docs", "relationship": "reads" },
     { "from": "copilot_agent", "to": "tech_inventory", "relationship": "reads" },
-    { "from": "gemini_agent", "to": "tech_inventory", "relationship": "reads" },
-    { "from": "arch_docs", "to": "ast_engine", "relationship": "sync_contract" }
+    { "from": "gemini_agent", "to": "tech_inventory", "relationship": "reads" }
   ],
   "runtimeContracts": [
     {

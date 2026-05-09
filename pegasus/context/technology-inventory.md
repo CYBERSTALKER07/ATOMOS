@@ -180,12 +180,14 @@ From Terraform under `pegasus/infra/terraform`:
 
 - Local Sequential Thinking MCP: `.agents/extensions/sequential-thinking/mcp-server.mjs`
   - Provides the canonical `sequential_thinking` tool without relying on registry-fetched `npx` startup.
+- Workspace retrieval baseline: `file_search`, `grep_search`, `read_file`, `vscode_listCodeUsages`, `semantic_search`
+	- Provides the default codebase-retrieval path for symbol discovery, usage checks, and local blast-radius analysis.
 - Contract Guard MCP: `pegasus/scripts/contract_guard_mcp.py`
-	- Enforces codebase-first MCP context weighting on contract-triggered diffs (runtime code surfaces must dominate context-doc touches).
+	- Enforces codebase-first context weighting on contract-triggered diffs (runtime code surfaces must dominate context-doc touches).
 - Architecture Guard MCP: `pegasus/scripts/architecture_guard_mcp.py`
-	- Enforces codebase-first MCP context weighting on architecture-triggered diffs (runtime code surfaces must dominate context-doc touches).
+	- Enforces codebase-first context weighting on architecture-triggered diffs (runtime code surfaces must dominate context-doc touches).
 - Design System Guard MCP: `pegasus/scripts/design_system_guard_mcp.py`
-	- Enforces codebase-first MCP context weighting on design-triggered diffs (runtime code surfaces must dominate context-doc touches).
+	- Enforces codebase-first context weighting on design-triggered diffs (runtime code surfaces must dominate context-doc touches).
 - Production Safety Guard: `pegasus/scripts/production_safety_guard.py`
 - Visual + Test Intelligence Guard: `pegasus/scripts/visual_test_intelligence_guard.py`
 - Security Guard: `pegasus/scripts/security_guard.py`

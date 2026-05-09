@@ -46,8 +46,7 @@ graph TD
         Copilot[GitHub Copilot Agent]
         Gemini[Gemini Agent]
         SeqThinking[Sequential Thinking MCP Server]
-        MCPServer[AST MCP Server]
-        ASTEngine[Local AST Symbol Graph Engine]
+        Retrieval[Workspace Search + Language Server Retrieval]
         ArchDocs[Architecture Docs + JSON Graph]
     end
 
@@ -58,12 +57,10 @@ graph TD
 
     Copilot --> SeqThinking
     Gemini --> SeqThinking
-    Copilot --> MCPServer
-    Gemini --> MCPServer
-    MCPServer --> ASTEngine
+    Copilot --> Retrieval
+    Gemini --> Retrieval
     Copilot --> ArchDocs
     Gemini --> ArchDocs
-    ArchDocs -.Sync Contract.-> ASTEngine
     
     Maglev --> Router
     Maglev -.-> WSHubs
@@ -76,10 +73,10 @@ graph TD
     Spanner -.->|Tailed by| OutboxRelay
     OutboxRelay --> Kafka
 
-    ASTEngine -.Definition + Usage Queries.-> Handlers
-    ASTEngine -.Definition + Usage Queries.-> AP
-    ASTEngine -.Definition + Usage Queries.-> FP
-    ASTEngine -.Definition + Usage Queries.-> WP
+    Retrieval -.Definition + Usage Queries.-> Handlers
+    Retrieval -.Definition + Usage Queries.-> AP
+    Retrieval -.Definition + Usage Queries.-> FP
+    Retrieval -.Definition + Usage Queries.-> WP
     
     Kafka --> AIWorker
     Kafka --> Reconciler
@@ -148,10 +145,10 @@ graph TD
 - **Warehouse restricted-state UX parity**: warehouse portal and native dispatch clients now map `403` responses for dispatch and lock actions to explicit permission-denied state messaging, preventing generic or silent failure treatment on scoped operators.
 
 ## Agent Context Rules
-1. **MCP First**: Before any technical task, call native MCP tools `void_ast_index`, `void_ast_definition`, `void_ast_usages`, and `void_ast_graph`.
-2. **Script Fallback**: If MCP tools are unavailable, run `npm --prefix pegasus run ast:index`, `ast:def`, `ast:refs`, and `ast:graph` for the target symbol.
-3. **Dual Read Mandatory**: Agent retrieval is complete only after symbol graph queries plus architecture docs and technology inventory docs are read.
-4. **Codebase-First Mandatory**: Runtime code paths are the primary source of truth. Documentation is mandatory for validation and synchronization, but never a replacement for code-level definition/usage/graph retrieval.
+1. **Targeted Retrieval First**: Before any technical task, use `file_search` or `grep_search` to locate the owning entry point.
+2. **Usage-Aware Retrieval**: Use `read_file` for the owning implementation and nearest dependency boundary, then `vscode_listCodeUsages` or `semantic_search` when symbol blast radius matters.
+3. **Dual Read Mandatory**: Agent retrieval is complete only after the relevant code paths plus architecture docs and technology inventory docs are read.
+4. **Codebase-First Mandatory**: Runtime code paths are the primary source of truth. Documentation is mandatory for validation and synchronization, but never a replacement for code-level retrieval and usage checks.
 5. **Prompt Verification Gate**: Before implementation, classify request risk (`safe`, `risky`, `production-breaking`, `scope-conflict`). If not `safe`, propose the safer approach first.
 6. **Dual Sync Mandatory**: If architecture, dependencies, services, or integrations change, update the full sync set in one change set:
     - `.github/ACT.md`

@@ -20,17 +20,13 @@ Apply ACT for all technical asks, including:
 
 ## A: Assess
 1. Parse user intent, constraints, and risk tolerance.
-2. Run local AST retrieval sequence before action.
-   Preferred path (native MCP tools from `void-ast-engine`):
-   - `void_ast_index`
-   - `void_ast_definition`
-   - `void_ast_usages`
-   - `void_ast_graph`
-   Fallback path (shell scripts) only if MCP tools are unavailable:
-   - `npm --prefix pegasus run ast:index`
-   - `npm --prefix pegasus run ast:def -- --symbol <TargetSymbol>`
-   - `npm --prefix pegasus run ast:refs -- --symbol <TargetSymbol> --limit 50`
-   - `npm --prefix pegasus run ast:graph -- --symbol <TargetSymbol> --limit 50`
+2. Run targeted code retrieval before action.
+   Preferred path (workspace tooling):
+   - `file_search` or `grep_search` to find the entry point
+   - `read_file` for the owning implementation and nearest dependency boundary
+   - `vscode_listCodeUsages` or `semantic_search` when symbol blast radius matters
+   Fallback path only if workspace retrieval tools are insufficient:
+   - terminal `rg` searches scoped to the relevant package or surface
 3. For every non-trivial technical task, plan review, architecture decision, audit, debugging session, migration, or multi-step implementation, run `sequential_thinking` from the `sequential-thinking` MCP server before editing or finalizing an answer. The canonical local entrypoint is `.agents/extensions/sequential-thinking/mcp-server.mjs`. Use revisions and branches when evidence changes the plan or viable alternatives need comparison, and summarize only decisions/risks/work in user-facing replies.
 4. Read required architecture docs before edits:
    - `pegasus/context/architecture.md`

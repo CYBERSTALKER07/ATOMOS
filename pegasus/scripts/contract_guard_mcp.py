@@ -56,11 +56,6 @@ CONTEXT_SYNC_PATTERNS = [
     "pegasus/context/technology-inventory.json",
 ]
 
-MCP_REQUIRED_FILES = [
-    ".agents/extensions/ast-engine/engine.mjs",
-    ".agents/extensions/ast-engine/mcp-server.mjs",
-]
-
 RETAILER_CLIENT_SURFACES = {
     "retailer-desktop": ["pegasus/apps/retailer-app-desktop/**"],
     "retailer-android": ["pegasus/apps/retailer-app-android/**"],
@@ -113,7 +108,7 @@ def has_keyword_dto_signal(
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Contract Guard MCP: enforce contract drift discipline plus AST MCP context readiness."
+            "Contract Guard MCP: enforce contract drift discipline plus context readiness."
         )
     )
     parser.add_argument("--repo-root", default=".", help="Repository root.")
@@ -149,10 +144,6 @@ def main() -> int:
     context_sync_changes = [path for path in files if match_any(path, CONTEXT_SYNC_PATTERNS)]
     codebase_focus_changes = sorted(set(trigger_changes + shared_changes + consumer_changes))
     dto_signal_changes = [path for path in files if match_any(path, DTO_SIGNAL_PATTERNS)]
-
-    missing_mcp_files = [
-        path for path in MCP_REQUIRED_FILES if not (repo_root / path).exists()
-    ]
 
     failures: list[str] = []
 
@@ -226,11 +217,6 @@ def main() -> int:
                 + ", ".join(missing_surfaces)
                 + "."
             )
-
-    if missing_mcp_files:
-        failures.append(
-            "Missing required AST MCP engine file(s): " + ", ".join(missing_mcp_files)
-        )
 
     print("contract-guard-mcp: trigger changes:")
     for path in trigger_changes:

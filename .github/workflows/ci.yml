@@ -58,7 +58,6 @@ jobs:
             relevant:
               - '.github/workflows/one-eye-guards.yml'
               - '.github/workflows/ci.yml'
-              - '.agents/extensions/ast-engine/**'
               - 'pegasus/scripts/guard_utils.py'
               - 'pegasus/scripts/contract_drift_guard.py'
               - 'pegasus/scripts/architecture_boundary_guard.py'

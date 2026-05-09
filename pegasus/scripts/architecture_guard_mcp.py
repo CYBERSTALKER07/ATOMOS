@@ -35,16 +35,10 @@ CONTEXT_SYNC_PATTERNS = [
     "pegasus/context/technology-inventory.json",
 ]
 
-MCP_REQUIRED_FILES = [
-    ".agents/extensions/ast-engine/engine.mjs",
-    ".agents/extensions/ast-engine/mcp-server.mjs",
-]
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Architecture Guard MCP: run architecture boundary checks and enforce context sync + MCP readiness."
+            "Architecture Guard MCP: run architecture boundary checks and enforce context sync readiness."
         )
     )
     parser.add_argument("--repo-root", default=".", help="Repository root.")
@@ -74,10 +68,6 @@ def main() -> int:
     route_doc_sync_changes = [path for path in files if match_any(path, ROUTE_DOC_SYNC_PATTERNS)]
     context_sync_changes = [path for path in files if match_any(path, CONTEXT_SYNC_PATTERNS)]
     codebase_focus_changes = sorted(set(trigger_changes))
-    missing_mcp_files = [
-        path for path in MCP_REQUIRED_FILES if not (repo_root / path).exists()
-    ]
-
     cmd = [
         "python3",
         "pegasus/scripts/architecture_boundary_guard.py",
@@ -112,11 +102,6 @@ def main() -> int:
             "Codebase-first MCP policy violated. Architecture-triggered diffs must rely primarily on "
             "real codebase surfaces; context docs are secondary verification. "
             f"codebase_focus={len(codebase_focus_changes)} context_sync={len(context_sync_changes)}."
-        )
-
-    if missing_mcp_files:
-        failures.append(
-            "Missing required AST MCP engine file(s): " + ", ".join(missing_mcp_files)
         )
 
     print("architecture-guard-mcp: trigger changes:")

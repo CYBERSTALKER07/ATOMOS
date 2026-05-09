@@ -20,21 +20,15 @@ For every request, enforce the following strict retrieval loop in order (summary
 4. **Find Usages**: Before modifying an existing function or type, use usage-finding tools (like `vscode_listCodeUsages` or grep) to find all places in the codebase where it is consumed.
 5. **Map the Graph & Gather FULL Context**: Follow imports down to the repository layer, and up to the handler/UI layer. You MUST have the full context of the execution path before you output a single line of code.
 6. **Dual-Sync Execution**: If you change the code, you MUST update the corresponding architecture documentation, and vice versa. 
-7. **Architecture Graph Maintenance**: Whenever you create or modify relationships in the codebase, you must update the global architecture tracking files (e.g., `context/architecture.md`, `context/design-system.md`, or a central architecture JSON/diagrams if provided) so the documentation stays precisely in sync with the AST graph.
+7. **Architecture Graph Maintenance**: Whenever you create or modify relationships in the codebase, you must update the global architecture tracking files (e.g., `context/architecture.md`, `context/design-system.md`, or a central architecture JSON/diagrams if provided) so the documentation stays precisely in sync with the real codebase topology.
 
-### Local AST Engine Integration (Mandatory)
-- Before any technical task (code edits, architecture updates, plan reviews, or audits), use native MCP tools from server `void-ast-engine` first:
-   1. `void_ast_index`
-   2. `void_ast_definition` with `symbol=<TargetSymbol>`
-   3. `void_ast_usages` with `symbol=<TargetSymbol> limit=50`
-   4. `void_ast_graph` with `symbol=<TargetSymbol> limit=50`
-- MCP server registration lives in `.vscode/mcp.json` (local) with committed template `.github/mcp.vscode.example.json`.
-- If MCP tools are unavailable, use script fallback:
-   1. `npm --prefix pegasus run ast:index`
-   2. `npm --prefix pegasus run ast:def -- --symbol <TargetSymbol>`
-   3. `npm --prefix pegasus run ast:refs -- --symbol <TargetSymbol> --limit 50`
-   4. `npm --prefix pegasus run ast:graph -- --symbol <TargetSymbol> --limit 50`
-- The command results are part of required context gathering. Do not edit code until these queries confirm definition shape + usage blast radius.
+### Targeted Code Retrieval (Mandatory)
+- Before any technical task (code edits, architecture updates, plan reviews, or audits), ground the work with targeted workspace retrieval:
+   1. `file_search` or `grep_search` to find the entry point
+   2. `read_file` for the owning implementation and nearest dependency boundary
+   3. `vscode_listCodeUsages` or `semantic_search` when symbol blast radius matters
+   4. terminal `rg` fallback only when workspace retrieval tools are insufficient
+- The retrieval results are part of required context gathering. Do not edit code until these queries confirm the owning control path and nearby blast radius.
 - Read `pegasus/context/technology-inventory.md` and `pegasus/context/technology-inventory.json` as part of required context gathering.
 
 ### Sequential Thinking MCP Integration (Mandatory)
@@ -45,7 +39,7 @@ For every request, enforce the following strict retrieval loop in order (summary
 - Treat sequential thinking output as internal reasoning support and do not expose it directly to the user. Final user-facing replies should summarize decisions, risks, and completed work rather than exposing raw private reasoning traces.
 - Example flow: gather context -> run sequential-thinking pass -> execute edits -> validate -> report concise outcomes.
 
-- After applying edits that alter symbols, architecture, services, dependencies, or integrations, re-run `ast:index` and update all sync files in the same change set:
+- After applying edits that alter architecture, services, dependencies, or integrations, update all sync files in the same change set:
    1. `.github/ACT.md`
    2. `.github/copilot-instructions.md`
    3. `.github/gemini-instructions.md`

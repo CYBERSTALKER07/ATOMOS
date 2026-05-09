@@ -1,5 +1,5 @@
 {
-  "version": "2026-05-07",
+  "version": "2026-05-09",
   "generatedFrom": {
     "manifests": [
       "pegasus/package.json",
@@ -18,17 +18,6 @@
   "languagesAndRuntimes": [
     "Go",
     "TypeScript",
-    "JavaScript",
-    "Kotlin",
-    "Swift/SwiftUI",
-    "Rust",
-    "Python",
-    "Shell"
-  ],
-  "webAndFrontend": {
-    "frameworks": [
-      "Next.js",
-      "React",
       "Tailwind CSS",
       "Tauri",
       "Expo",
@@ -38,19 +27,16 @@
     "tooling": [
       "Vite",
       "ESLint",
-      "TypeScript",
-      "Vitest",
-      "Cypress",
-      "Playwright"
-    ],
-    "mappingAndCharts": [
-      "mapbox-gl",
-      "maplibre-gl",
-      "react-map-gl",
-      "recharts",
-      "three",
-      "h3-js"
-    ]
+    "codeRetrieval": {
+      "preferredTools": [
+        "file_search",
+        "grep_search",
+        "read_file",
+        "vscode_listCodeUsages",
+        "semantic_search"
+      ],
+      "fallback": [
+        "run_in_terminal: rg"
   },
   "backend": {
     "httpAndRealtime": [
