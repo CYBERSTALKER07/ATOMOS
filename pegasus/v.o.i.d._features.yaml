@@ -1,0 +1,517 @@
+# V.O.I.D. Master Feature Registry
+# Location: pegasus/v.o.i.d._features.yaml
+# Context: Tracks the hyperscale verification matrix of the entire ecosystem.
+# A feature is not "Done" until all flags are TRUE.
+
+applications:
+  backend-go:
+    features:
+      # Foundational Mechanics & Telemetry
+      - name: "Transactional Outbox Event Emitter"
+        status: "WIRED"
+        verification: {logic_verified: true, math_proof: true, wire_connected: true}
+        owner: "outbox"
+      - name: "Kafka Sync Writers & Relays"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "kafka"
+      - name: "Double-Entry Ledger & Reconciliation"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "treasury"
+      - name: "H3 Geo-Batching & Dead Reckoning Optimization"
+        status: "WIRED"
+        verification: {logic_verified: true, math_proof: true, wire_connected: true}
+        owner: "proximity"
+      - name: "WebSocket Hub Ecosystem (ws.FleetHub, ws.DriverHub, ws.RetailerHub, ws.WarehouseHub)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "ws"
+      - name: "Distributed Rate Limiting & Circuit Breakers"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "pkg/cache"
+
+      # Authentication & Core Roles
+      - name: "Supplier Registration & JWT Profile Claims (/v1/auth/supplier/*)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "authroutes"
+      - name: "Retailer Authentication & Scope Validation"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "authroutes"
+      - name: "Driver & Factory JWT Cross-Scopes (/v1/auth/admin/*)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "authroutes"
+
+      # Orders & Dispatch Execution
+      - name: "Order Core Lifecycle & State Machine (/v1/orders, /v1/orders/{id}/*)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "orderroutes"
+      - name: "Delivery Execution Flow (/v1/order/deliver, confirm-offload, collect-cash)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "driverroutes"
+      - name: "Dispatch Bin-Packing & Freeze Locks"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "dispatch"
+      - name: "Shop Closed Reporting & Escalations"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "order/retailerroutes"
+
+      # Supplier Ops & Planning
+      - name: "Supplier Setup Wizard & Profile Overrides (/v1/supplier/configure)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "supplierroutes"
+      - name: "Supplier Fleet Operations & Assignments (/v1/supplier/fleet)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "supplieroperationsroutes"
+      - name: "Supplier Logistics & Manifest Generation (/v1/supplier/picking-manifests)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "supplierlogisticsroutes"
+      - name: "Supplier Planning & Delivery Zones (/v1/supplier/delivery-zones)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "supplierplanningroutes"
+      - name: "Supplier Core Dashboard / Earnings Analytics (/v1/supplier/dashboard)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "suppliercoreroutes"
+      - name: "Supplier Catalog, Pricing, Overrides (/v1/supplier/products)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "suppliercatalogroutes"
+      - name: "Supplier Insights & CRM Tracking (/v1/supplier/crm/*)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "supplierinsightsroutes"
+
+      # Retailing / Purchasing
+      - name: "Retailer Checkout & Preorder Generation (/v1/retailer/orders)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "retailerroutes"
+      - name: "Retailer Cart Sync & Auto-Order Management"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "retailerroutes"
+      - name: "Retailer Family Member Assignments"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "retailerroutes"
+
+      # Warehouse, Factory & Replenishment
+      - name: "Warehouse Operator Tracking (/ws/warehouse, inflight VU)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "warehouseroutes"
+      - name: "Payload Seal & Exceptions (/v1/payloader/*)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "payloaderroutes"
+      - name: "Factory Root Configurations (/v1/factory/*)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "factoryroutes"
+      - name: "System Replenishment Loop & Audit Switches"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "replenishment"
+
+      # AI Worker & Simulation
+      - name: "AI Worker / Mux Integrations (/v1/ai/*)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "airoutes"
+      - name: "Internal Simulation Harness (/v1/internal/sim/*)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "simroutes"
+        
+      # Notifications, Payments & External Providers
+      - name: "Omni-channel Notification Dispacher (Telegram, FCM, APNs, WebSocket)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "notifications"
+      - name: "Gateway Webhooks & Idempotency Guards (Payme/Click)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "webhookroutes"
+      - name: "Telemetry Export & Streamers (/v1/telemetry/*)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "telemetryroutes"
+
+  admin-portal:
+    features:
+      # Dashboard & Core UI
+      - name: "Bento Grid Dashboard Live Telemetry"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Dashboard/UI"
+      - name: "Platform Hand-rolled M3 Theming Component Library"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "UI Core"
+
+      # Auth & Onboarding
+      - name: "4-Step Supplier Registration Wizard (Account, Location, Business, Categories)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Auth"
+      - name: "Post-Registration Billing & Webhook Gateway Configurations"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Auth/Finance"
+
+      # Logistics & Operations
+      - name: "Live Fleet Telemetry Map & Route Execution Tracking"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Telemetry UI"
+      - name: "Picking Manifest & Manifest Exception Handling View"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Logistics UI"
+      - name: "Dispatch Queue & Fleet Volumetrics Preview"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Logistics UI"
+      - name: "Inventory Management & Returns Reconciliation"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Operations UI"
+
+      # Planning & Catalog
+      - name: "Supply Lanes & Network Analytics Settings"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Planning UI"
+      - name: "Product Catalog Management & Dynamic Pricing/Overrides"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Catalog UI"
+
+      # Analytics & Insights
+      - name: "Supplier Earnings, Ledger Adjustments & Treasury Splits"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Finance UI"
+      - name: "Supplier Insights, Forecasting & CRM Workflows"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Insights UI"
+
+      # Exception Handling Banners & Queues
+      - name: "Shop Closed, Negotiation, & Early Complete Escalation Resolvers"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Exceptions UI"
+
+  driver-app-android:
+    features:
+      # Core Execution & Location
+      - name: "Offline Sync & Local Dead Reckoning"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Driver Execution"
+      - name: "Live Location Telemetry Streamer to Backend"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Telemetry/Network"
+      - name: "Stop Sequencing & Geofence Override / Enforcement"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Dispatch"
+
+      # Order Mutations
+      - name: "Delivery State Machine (Arrive, Deliver, Offload, Complete)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Order Execution"
+      - name: "Cash Collection & Ledger Synchronization"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Order Execution"
+      - name: "QR Code Manifest Validation & Handshake"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Scanner"
+
+      # UI & Communications
+      - name: "M3 Jetpack Compose Navigation & Core Layouts"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "UI"
+      - name: "Earnings Dashboard & Route History Views"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Driver Profile"
+      - name: "Live WebSocket Subscription (ws.DriverHub)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Network Sync"
+
+  driverappios:
+    features:
+      # Core Execution & Location
+      - name: "Offline Sync & Local Dead Reckoning"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Driver Execution"
+      - name: "Live Location Telemetry Streamer to Backend"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Telemetry/Network"
+      - name: "Stop Sequencing & Geofence Override / Enforcement"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Dispatch"
+
+      # Order Mutations
+      - name: "Delivery State Machine (Arrive, Deliver, Offload, Complete)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Order Execution"
+      - name: "Cash Collection & Ledger Synchronization"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Order Execution"
+      - name: "QR Code Manifest Validation & Handshake"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Scanner"
+
+      # UI & Communications
+      - name: "Native SwiftUI Maps Core & Apple HIG Compliance"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "UI"
+      - name: "Earnings Dashboard & Route History Views"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Driver Profile"
+      - name: "Live WebSocket Subscription (ws.DriverHub)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Network Sync"
+
+  retailer-app-ios:
+    features:
+      # Commerce & Checkout
+      - name: "Order Payment Ledger Lock & SwiftUI Checkout"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Treasury"
+      - name: "Preorder Generation & Cart Synchronization"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Retailer Core"
+      - name: "Auto-Order Settings & Subscription Management"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Retailer Core"
+
+      # Operations & Feedback
+      - name: "Demand Feedback & Dispute Submission"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Retailer Core"
+      - name: "Shop Closed Reporting & Alerts"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Retailer Operations"
+      - name: "Family Members & Staff Access UI"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Identity & Access"
+
+      # UI & Communications
+      - name: "Native SwiftUI HIG Navigation & Components"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "UI"
+      - name: "Live WebSocket Subscription (ws.RetailerHub)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Network Sync"
+
+  retailer-app-android:
+    features:
+      # Commerce & Checkout
+      - name: "Order Payment Ledger Lock & Android Checkout"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Treasury"
+      - name: "Preorder Generation & Cart Synchronization"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Retailer Core"
+      - name: "Auto-Order Settings & Subscription Management"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Retailer Core"
+
+      # Operations & Feedback
+      - name: "Demand Feedback & Dispute Submission"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Retailer Core"
+      - name: "Shop Closed Reporting & Alerts"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Retailer Operations"
+      - name: "Family Members & Staff Access UI"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Identity & Access"
+
+      # UI & Communications
+      - name: "Material 3 Jetpack Compose Navigation & Layouts"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "UI"
+      - name: "Live WebSocket Subscription (ws.RetailerHub)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Network Sync"
+
+  retailer-app-desktop:
+    features:
+      # Desktop Core & POS
+      - name: "Point of Sale Keyboard Mapping & Shortcuts"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Retailer Desktop"
+      - name: "Next.js Tauri Shell & Offline Caching"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "System/UI"
+
+      # Commerce & Bulk Operations
+      - name: "Bulk Order & Wholesale Cart Management"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Retailer Core"
+      - name: "Invoice Generation & Printing Workflows"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Treasury"
+
+      # Access & Network
+      - name: "Family Members & Staff Access UI"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Identity & Access"
+      - name: "Live WebSocket Subscription (ws.RetailerHub)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Network Sync"
+
+  payload-terminal:
+    features:
+      # Execution & Manifests
+      - name: "Manifest Seal & Expo Camera QR Handshake"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Warehouse Ops"
+      - name: "Truck Unloading & Missing Items Reporting Flow"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Warehouse Ops"
+      - name: "Payloader Fleet Assignment & Truck Inspection"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Payload Operations"
+
+      # UI & Connectivity
+      - name: "Material 3 Discipline via React Native Styling"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "UI"
+      - name: "Live WebSocket Subscription (ws.PayloaderHub)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Network Sync"
+
+  factory-portal:
+    features:
+      # Configuration & Inventory
+      - name: "Supply Lanes & Network Configuration"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Factory Admin"
+      - name: "Inventory Bulk Restock Push & Thresholds"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Replenishment"
+
+      # Payload & Dispatch Operations
+      - name: "Warehouse Restock Request Acceptance"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Factory Operations"
+      - name: "Loading Manifest & Digital ID Scanner Handshake"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Payload Dispatch"
+
+      # UI & Desktop Core
+      - name: "Next.js & Tauri Desktop Shell Integration"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "System/UI"
+      - name: "Tailwind v4 + M3 Token Dashboard Layouts"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "UI"
+
+  warehouse-portal:
+    features:
+      - name: "Warehouse Admin Supply Request Overrides"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Warehouse Admin"
+      - name: "Live /ws/warehouse Dispatch Lock Observer"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Warehouse Socket UI"
+
+  payload-app-android:
+    features:
+      - name: "Kotlin/Compose Material 3 Adaptive Layouts for Tablet"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "UI"
+      - name: "Live /v1/ws/payloader Hub Sync"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Payload Operations"
+      - name: "Manifest Seal & Exception Handling (/v1/payload/seal)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Payload Operations"
+
+  payload-app-ios:
+    features:
+      - name: "SwiftUI iPad Native Layouts & SF Symbols"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "UI"
+      - name: "Live /v1/ws/payloader Hub Sync"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Payload Operations"
+      - name: "Manifest Seal & Exception Handling (/v1/payload/seal)"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Payload Operations"
+
