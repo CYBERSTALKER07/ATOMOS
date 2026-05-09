@@ -476,41 +476,92 @@ applications:
 
   warehouse-portal:
     features:
-      - name: "Warehouse Admin Supply Request Overrides"
+      # Configuration & Capacity
+      - name: "Warehouse Coverage Territories & Capacity Bounds"
         status: "MOCKED"
         verification: {logic_verified: false, math_proof: false, wire_connected: false}
         owner: "Warehouse Admin"
-      - name: "Live /ws/warehouse Dispatch Lock Observer"
+      - name: "Staff & Payloader Roster Management"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Warehouse Ops"
+
+      # Payload & Dispatch Operations
+      - name: "Warehouse Supply Request Accept/Override Flow"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Warehouse Ops"
+      - name: "Factory Payload Receipt & Unloading Handshake"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Payload Receipt"
+      - name: "Live Dispatch Queue & Active Driver/Vehicle Assignment"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Dispatch Operations"
+
+      # UI & Network Core
+      - name: "Live /ws/warehouse Dispatch Lock Observer & Auto-Reconnect"
         status: "MOCKED"
         verification: {logic_verified: false, math_proof: false, wire_connected: false}
         owner: "Warehouse Socket UI"
+      - name: "Next.js & Tauri Desktop Shell Integration"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "System/UI"
+      - name: "Tailwind v4 + M3 Token Console Layouts"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "UI"
 
   payload-app-android:
     features:
+      # Execution & Manifests
+      - name: "Manifest Seal & Android Camera QR Handshake"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Warehouse Ops"
+      - name: "Truck Unloading & Missing Items Reporting Flow"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Warehouse Ops"
+      - name: "Payloader Fleet Assignment & Truck Inspection"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Payload Operations"
+        
+      # UI & Connectivity
       - name: "Kotlin/Compose Material 3 Adaptive Layouts for Tablet"
         status: "MOCKED"
         verification: {logic_verified: false, math_proof: false, wire_connected: false}
         owner: "UI"
-      - name: "Live /v1/ws/payloader Hub Sync"
+      - name: "Live WebSocket Subscription (ws.PayloaderHub)"
         status: "MOCKED"
         verification: {logic_verified: false, math_proof: false, wire_connected: false}
-        owner: "Payload Operations"
-      - name: "Manifest Seal & Exception Handling (/v1/payload/seal)"
-        status: "MOCKED"
-        verification: {logic_verified: false, math_proof: false, wire_connected: false}
-        owner: "Payload Operations"
+        owner: "Network Sync"
 
   payload-app-ios:
     features:
+      # Execution & Manifests
+      - name: "Manifest Seal & iPad Camera QR Handshake"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Warehouse Ops"
+      - name: "Truck Unloading & Missing Items Reporting Flow"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Warehouse Ops"
+      - name: "Payloader Fleet Assignment & Truck Inspection"
+        status: "MOCKED"
+        verification: {logic_verified: false, math_proof: false, wire_connected: false}
+        owner: "Payload Operations"
+        
+      # UI & Connectivity
       - name: "SwiftUI iPad Native Layouts & SF Symbols"
         status: "MOCKED"
         verification: {logic_verified: false, math_proof: false, wire_connected: false}
         owner: "UI"
       - name: "Live /v1/ws/payloader Hub Sync"
-        status: "MOCKED"
-        verification: {logic_verified: false, math_proof: false, wire_connected: false}
-        owner: "Payload Operations"
-      - name: "Manifest Seal & Exception Handling (/v1/payload/seal)"
         status: "MOCKED"
         verification: {logic_verified: false, math_proof: false, wire_connected: false}
         owner: "Payload Operations"
