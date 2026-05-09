@@ -1,16 +1,19 @@
 package outbox
 
 import (
-	"context"
-	"hash/fnv"
-	"log/slog"
-	"runtime"
-	"sync"
-	"time"
+        "context"
+        "encoding/json"
+        "hash/fnv"
+        "log/slog"
+        "runtime"
+        "sync"
+        "time"
 
-	"cloud.google.com/go/spanner"
-	goKafka "github.com/segmentio/kafka-go"
-	"google.golang.org/api/iterator"
+        "cloud.google.com/go/spanner"
+        goKafka "github.com/segmentio/kafka-go"
+        "google.golang.org/api/iterator"
+
+        "backend-go/telemetry"
 )
 
 // Relay tails unpublished OutboxEvents rows and publishes them to Kafka.
@@ -233,26 +236,36 @@ func (r *Relay) readBatch(ctx context.Context) ([]batchEvent, error) {
 // runShard is the per-shard worker goroutine. It publishes events from its
 // channel sequentially, preserving per-AggregateID ordering within the shard.
 func (r *Relay) runShard(ctx context.Context, shardIdx int) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case job := <-r.shardChs[shardIdx]:
-			err := r.publish(ctx, job.topic, job.aggregateID, job.eventType, job.traceID, job.payload)
-			if err != nil {
-				slog.Error("outbox.relay.publish",
-					"shard", shardIdx,
-					"topic", job.topic,
-					"event_id", job.eventID,
-					"aggregate_id", job.aggregateID,
-					"err", err)
-				if r.onFailure != nil {
-					r.onFailure(job.eventID, job.aggregateID, job.topic, err)
-				}
-			}
-			job.resultCh <- shardResult{eventID: job.eventID, err: err}
-		}
-	}
+        for {
+                select {
+                case <-ctx.Done():
+                        return
+                case job := <-r.shardChs[shardIdx]:
+                        err := r.publish(ctx, job.topic, job.aggregateID, job.eventType, job.traceID, job.payload)
+                        if err != nil {
+                                slog.Error("outbox.relay.publish",
+                                        "shard", shardIdx,
+                                        "topic", job.topic,
+                                        "event_id", job.eventID,
+                                        "aggregate_id", job.aggregateID,
+                                        "err", err)
+                                if r.onFailure != nil {
+                                        r.onFailure(job.eventID, job.aggregateID, job.topic, err)
+                                }
+                        } else {
+                                // Extract supplier_id for telemetry metric
+                                var partial struct {
+                                        SupplierID string `json:"supplier_id"`
+                                }
+                                supplierID := "unknown"
+                                if unmarshalErr := json.Unmarshal(job.payload, &partial); unmarshalErr == nil && partial.SupplierID != "" {
+                                        supplierID = partial.SupplierID
+                                }
+                                telemetry.KafkaEventsTotal.WithLabelValues(supplierID, job.topic).Inc()
+                        }
+                        job.resultCh <- shardResult{eventID: job.eventID, err: err}
+                }
+        }
 }
 
 // shardFor returns the shard index for a given aggregateID.

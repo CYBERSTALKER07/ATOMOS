@@ -17,13 +17,13 @@
 package migrations
 
 import (
-"context"
-"fmt"
+	"context"
+	"fmt"
 
-database "cloud.google.com/go/spanner/admin/database/apiv1"
-"cloud.google.com/go/spanner/admin/database/apiv1/databasepb"
-"cloud.google.com/go/spanner"
-"google.golang.org/api/option"
+	"cloud.google.com/go/spanner"
+	database "cloud.google.com/go/spanner/admin/database/apiv1"
+	"cloud.google.com/go/spanner/admin/database/apiv1/databasepb"
+	"google.golang.org/api/option"
 )
 
 // Run executes the full in-process migration sequence: schema DDL followed
@@ -33,8 +33,8 @@ database "cloud.google.com/go/spanner/admin/database/apiv1"
 //   - main.go invokes when MIGRATE_ON_BOOT != "false" (default-on for dev).
 //   - cmd/migrate invokes unconditionally as a one-shot job (production).
 func Run(ctx context.Context, opts []option.ClientOption, dbName string, spannerClient *spanner.Client) {
-var err error
-_ = err
+	var err error
+	_ = err
 
 	// ── TEMPORARY MIGRATION: Complete Schema Synchronization ────────────────────
 	adminClient, adminErr := database.NewDatabaseAdminClient(ctx, opts...)
@@ -780,6 +780,7 @@ _ = err
 			`CREATE TABLE SupplierPaymentConfigs (
 				ConfigId     STRING(36)  NOT NULL,
 				SupplierId   STRING(36)  NOT NULL,
+				WarehouseId  STRING(36),
 				GatewayName  STRING(20)  NOT NULL,
 				MerchantId   STRING(MAX) NOT NULL,
 				ServiceId    STRING(MAX),
@@ -787,10 +788,19 @@ _ = err
 				IsActive     BOOL        NOT NULL DEFAULT (true),
 				CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 				UpdatedAt    TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
-				CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'GLOBAL_PAY'))
+				CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'AIRWALLEX'))
 			) PRIMARY KEY (ConfigId)`,
 			"CREATE INDEX Idx_SupplierPaymentConfigs_BySupplierId ON SupplierPaymentConfigs(SupplierId)",
-			"CREATE UNIQUE INDEX Idx_SupplierPaymentConfigs_Unique ON SupplierPaymentConfigs(SupplierId, GatewayName)",
+			"CREATE INDEX Idx_SupplierPaymentConfigs_ByWarehouseId ON SupplierPaymentConfigs(WarehouseId)",
+			"CREATE UNIQUE INDEX Idx_SupplierPaymentConfigs_Unique ON SupplierPaymentConfigs(SupplierId, WarehouseId, GatewayName)",
+			`CREATE TABLE SupplierBillingTiers (
+				TierId       STRING(36)  NOT NULL,
+				SupplierId   STRING(36)  NOT NULL,
+				MinVolume    INT64       NOT NULL,
+				MaxVolume    INT64,
+				FeeBasisPts  INT64       NOT NULL,
+				CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (TierId)`,
 			// Phase 2 addendum: ServiceId for Cash gateway
 			"ALTER TABLE SupplierPaymentConfigs ADD COLUMN ServiceId STRING(MAX)",
 			"ALTER TABLE SupplierPaymentConfigs DROP CONSTRAINT CHK_GatewayName",
@@ -1397,10 +1407,9 @@ _ = err
 	}
 }
 
-
 func minInt(a, b int) int {
-if a < b {
-return a
-}
-return b
+	if a < b {
+		return a
+	}
+	return b
 }

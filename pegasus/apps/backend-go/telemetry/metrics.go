@@ -137,3 +137,25 @@ func RegisterMetricsHandler(mux *http.ServeMux) {
 func Handler() http.Handler {
 	return promhttp.Handler()
 }
+
+// ─── Infra Metering ───────────────────────────────────────────────────────
+
+// HTTPRequestsTotal tracks all incoming requests with SupplierId tag
+var HTTPRequestsTotal = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Namespace: "void",
+		Name:      "http_requests_total",
+		Help:      "Total HTTP requests by supplier.",
+	},
+	[]string{"supplier_id", "method", "path"},
+)
+
+// KafkaEventsTotal tracks events pushed to Kafka by supplier
+var KafkaEventsTotal = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Namespace: "void",
+		Name:      "kafka_events_total",
+		Help:      "Total Kafka events emitted by supplier.",
+	},
+	[]string{"supplier_id", "topic"},
+)
