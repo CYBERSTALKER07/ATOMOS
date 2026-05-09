@@ -7,7 +7,7 @@ import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import { useLiveData } from "../../../lib/hooks";
 import { useWsEvent, type WsMessage } from "../../../lib/ws";
-import type { TrackingResponse, TrackingOrder } from "../../../lib/types";
+import type { ActiveFulfillmentsResponse, TrackingResponse, TrackingOrder } from "../../../lib/types";
 import MapGL, { Marker, NavigationControl } from "react-map-gl/maplibre";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -38,6 +38,8 @@ const chipCfg: Record<string, { color: "warning" | "success" | "default" | "dang
   DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
 };
 
+type LoadIssue = "restricted" | "offline" | "error";
+
 function formatAmount(amount: number): string {
   return amount.toLocaleString("en-US").replace(/,/g, " ") + "";
 }
@@ -55,7 +57,17 @@ function useColorScheme(): "light" | "dark" {
 }
 
 export default function TrackingPage() {
-  const { data, loading, mutate } = useLiveData<TrackingResponse>("/v1/retailer/tracking", 15_000);
+  const {
+    data: trackingData,
+    loading,
+    error: trackingError,
+    mutate: mutateTracking,
+  } = useLiveData<TrackingResponse>("/v1/retailer/tracking", 15_000);
+  const {
+    data: fulfillmentData,
+    error: fulfillmentError,
+    mutate: mutateFulfillments,
+  } = useLiveData<ActiveFulfillmentsResponse>("/v1/retailer/active-fulfillment", 30_000);
   const [orders, setOrders] = useState<TrackingOrder[]>([]);
   const [selectedSupplierIds, setSelectedSupplierIds] = useState<Set<string>>(new Set());
   const [selectedOrder, setSelectedOrder] = useState<TrackingOrder | null>(null);
@@ -64,8 +76,8 @@ export default function TrackingPage() {
 
   // Sync polling data into local state
   useEffect(() => {
-    if (data?.orders) setOrders(data.orders);
-  }, [data]);
+    if (trackingData?.orders) setOrders(trackingData.orders);
+  }, [trackingData]);
 
   // WS: DRIVER_APPROACHING — instant green transition + position update
   useWsEvent(
@@ -96,15 +108,17 @@ export default function TrackingPage() {
       if (!orderId) return;
       setOrders((prev) => prev.filter((o) => o.order_id !== orderId));
       setSelectedOrder((prev) => (prev?.order_id === orderId ? null : prev));
-    }, []),
+      void mutateFulfillments();
+    }, [mutateFulfillments]),
   );
 
   // WS: ORDER_STATUS_CHANGED — refresh tracking data
   useWsEvent(
     "ORDER_STATUS_CHANGED",
     useCallback(() => {
-      mutate();
-    }, [mutate]),
+      void mutateTracking();
+      void mutateFulfillments();
+    }, [mutateFulfillments, mutateTracking]),
   );
 
   // Derived: unique suppliers
@@ -124,6 +138,32 @@ export default function TrackingPage() {
       return true;
     });
   }, [orders, selectedSupplierIds]);
+
+  const activeFulfillmentCount = useMemo(
+    () => fulfillmentData?.count ?? orders.length,
+    [fulfillmentData?.count, orders.length],
+  );
+
+  const loadIssue = useMemo<LoadIssue | null>(() => {
+    const errors = [trackingError, fulfillmentError].filter(Boolean) as Array<Error & { status?: number }>;
+    if (errors.length === 0) return null;
+    if (errors.some((err) => err.status === 401 || err.status === 403)) return "restricted";
+    if (
+      (typeof navigator !== "undefined" && !navigator.onLine) ||
+      errors.some((err) => /Failed to fetch|NetworkError|Load failed/i.test(err.message))
+    ) {
+      return "offline";
+    }
+    return "error";
+  }, [fulfillmentError, trackingError]);
+
+  const emptyStateMessage = useMemo(() => {
+    if (loadIssue === "restricted") return "Your account cannot view retailer tracking right now.";
+    if (loadIssue === "offline") return "Live tracking is offline. Reconnect to refresh driver positions.";
+    if (loadIssue === "error") return "Tracking data could not be loaded right now.";
+    if (activeFulfillmentCount > 0) return "Active deliveries exist, but live driver location is not available yet.";
+    return "No active deliveries with driver location";
+  }, [activeFulfillmentCount, loadIssue]);
 
   // KPI metrics
   const approachingCount = useMemo(() => orders.filter((o) => o.is_approaching || o.state === "ARRIVED").length, [orders]);
@@ -174,7 +214,7 @@ export default function TrackingPage() {
             <div>
               <p className="md-typescale-label-small uppercase tracking-widest" style={{ color: "var(--muted)" }}>Active Deliveries</p>
               <p className="md-typescale-headline-small tabular-nums" style={{ color: "var(--foreground)" }}>
-                <CountUp end={orders.length} />
+                <CountUp end={activeFulfillmentCount} />
               </p>
             </div>
           </div>
@@ -285,13 +325,13 @@ export default function TrackingPage() {
         )}
 
         {/* Active badge */}
-        {visibleOrders.length > 0 && (
+        {activeFulfillmentCount > 0 && (
           <div
             className="absolute top-4 left-4 flex items-center gap-2 px-3 py-1.5 rounded-full md-typescale-label-medium"
             style={{ background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }}
           >
             <Truck size={14} />
-            <span className="tabular-nums">{visibleOrders.length}</span> active
+            <span className="tabular-nums">{activeFulfillmentCount}</span> active
           </div>
         )}
 
@@ -302,7 +342,7 @@ export default function TrackingPage() {
               <Truck size={28} style={{ color: "var(--muted)" }} />
             </div>
             <p className="md-typescale-body-medium" style={{ color: "var(--muted)" }}>
-              No active deliveries with driver location
+              {emptyStateMessage}
             </p>
           </div>
         )}

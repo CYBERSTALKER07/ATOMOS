@@ -10,6 +10,7 @@ import type { FactoryLiveEvent } from './factory';
 // ─── Discriminated Union of All WS Events ───────────────────────────────────
 export type WSEvent =
   | OrderStateChangedEvent
+  | RetailerOrderStatusChangedEvent
   | DriverApproachingEvent
   | ETAUpdatedEvent
   | PaymentRequiredWSEvent
@@ -35,6 +36,14 @@ export interface OrderStateChangedEvent {
   old_state: OrderState;
   new_state: OrderState;
   driver_id?: string;
+  timestamp: string;
+}
+
+// ─── Order Status Changed (Retailer Apps) ─────────────────────────────────
+export interface RetailerOrderStatusChangedEvent {
+  type: 'ORDER_STATUS_CHANGED';
+  order_id: string;
+  state: OrderState;
   timestamp: string;
 }
 

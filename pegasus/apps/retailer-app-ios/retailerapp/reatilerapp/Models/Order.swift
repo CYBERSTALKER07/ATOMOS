@@ -298,6 +298,30 @@ struct TrackingResponse: Codable {
     let orders: [TrackingOrder]
 }
 
+struct ActiveFulfillmentItem: Codable, Identifiable, Hashable {
+    var id: String { orderId }
+    let orderId: String
+    let supplierId: String
+    let supplierName: String
+    let state: String
+    let adjustedAmount: Int
+    let itemCount: Int
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case supplierId = "supplier_id"
+        case supplierName = "supplier_name"
+        case state
+        case adjustedAmount = "adjusted_amount"
+        case itemCount = "item_count"
+    }
+}
+
+struct ActiveFulfillmentsResponse: Codable {
+    let fulfillments: [ActiveFulfillmentItem]
+    let count: Int
+}
+
 // MARK: - Sample Data
 
 extension Order {

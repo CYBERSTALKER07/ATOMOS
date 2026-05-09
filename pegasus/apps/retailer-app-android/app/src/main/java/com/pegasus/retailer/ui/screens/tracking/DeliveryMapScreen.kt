@@ -236,7 +236,7 @@ fun DeliveryMapScreen(
                 }
 
                 // Active count badge
-                if (visibleOrders.isNotEmpty()) {
+                if (uiState.activeDeliveryCount > 0) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -247,7 +247,7 @@ fun DeliveryMapScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Icon(Icons.Default.LocalShipping, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
                             Text(
-                                "${visibleOrders.size} active",
+                                "${uiState.activeDeliveryCount} active",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                             )
@@ -271,7 +271,7 @@ fun DeliveryMapScreen(
                 if (visibleOrders.isEmpty() && !uiState.isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            text = "No active deliveries with driver location",
+                            text = uiState.emptyStateMessage,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

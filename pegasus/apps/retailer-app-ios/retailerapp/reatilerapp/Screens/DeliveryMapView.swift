@@ -1,6 +1,12 @@
 import SwiftUI
 import MapKit
 
+private enum TrackingLoadIssue {
+    case restricted
+    case offline
+    case error
+}
+
 // MARK: - Delivery Map View
 
 struct DeliveryMapView: View {
@@ -9,6 +15,8 @@ struct DeliveryMapView: View {
     @State private var suppliers: [SupplierFilter] = []
     @State private var selectedSupplierIds: Set<String> = []
     @State private var isLoading = false
+    @State private var activeFulfillmentCount = 0
+    @State private var loadIssue: TrackingLoadIssue?
     @State private var selectedOrder: TrackingOrder?
     @State private var cameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
@@ -24,6 +32,28 @@ struct DeliveryMapView: View {
     private var visibleOrders: [TrackingOrder] {
         orders.filter { order in
             order.hasDriverLocation && (selectedSupplierIds.isEmpty || selectedSupplierIds.contains(order.supplierId))
+        }
+    }
+
+    private var activeDeliveryCount: Int {
+        if activeFulfillmentCount > 0 || orders.isEmpty {
+            return activeFulfillmentCount
+        }
+        return orders.count
+    }
+
+    private var emptyStateMessage: String {
+        switch loadIssue {
+        case .restricted:
+            return "Your account cannot view retailer tracking right now"
+        case .offline:
+            return "Live tracking is offline. Reconnect to refresh driver positions"
+        case .error:
+            return "Tracking data could not be loaded right now"
+        case nil:
+            return activeDeliveryCount > 0
+                ? "Active deliveries exist, but live driver location is not available yet"
+                : "No active deliveries with driver location"
         }
     }
 
@@ -78,11 +108,11 @@ struct DeliveryMapView: View {
             }
 
             // Active count badge
-            if !visibleOrders.isEmpty {
+            if activeDeliveryCount > 0 {
                 VStack {
                     Spacer()
                     HStack {
-                        ActiveCountBadge(count: visibleOrders.count)
+                        ActiveCountBadge(count: activeDeliveryCount)
                             .padding(.leading, AppTheme.spacingLG)
                         Spacer()
                     }
@@ -100,7 +130,7 @@ struct DeliveryMapView: View {
             if !isLoading && visibleOrders.isEmpty {
                 VStack {
                     Spacer()
-                    Text("No active deliveries with driver location")
+                    Text(emptyStateMessage)
                         .font(.system(.subheadline, design: .rounded))
                         .foregroundStyle(AppTheme.textTertiary)
                         .padding()
@@ -125,7 +155,7 @@ struct DeliveryMapView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await startPolling() }
         .task { await observeWebSocket() }
-        .task(id: refreshCenter.refreshToken) { await fetchTracking() }
+        .task(id: refreshCenter.refreshToken) { await refreshTrackingState() }
         .onChange(of: visibleOrders.count) { fitCamera() }
     }
 
@@ -133,9 +163,14 @@ struct DeliveryMapView: View {
 
     private func startPolling() async {
         while !Task.isCancelled {
-            await fetchTracking()
+            await refreshTrackingState()
             try? await Task.sleep(for: .seconds(pollingInterval))
         }
+    }
+
+    private func refreshTrackingState() async {
+        await fetchTracking()
+        await fetchActiveFulfillments()
     }
 
     private func fetchTracking() async {
@@ -144,6 +179,7 @@ struct DeliveryMapView: View {
         do {
             let fetched = try await api.getTrackingOrders()
             orders = fetched
+            loadIssue = nil
             let unique = Dictionary(grouping: fetched, by: \.supplierId)
                 .compactMap { (id, group) -> SupplierFilter? in
                     guard let name = group.first?.supplierName else { return nil }
@@ -153,6 +189,21 @@ struct DeliveryMapView: View {
             suppliers = unique
         } catch {
             // Keep existing data on error
+            if orders.isEmpty {
+                loadIssue = resolveLoadIssue(error)
+            }
+        }
+    }
+
+    private func fetchActiveFulfillments() async {
+        do {
+            let response = try await api.getActiveFulfillments()
+            activeFulfillmentCount = response.count
+            loadIssue = nil
+        } catch {
+            if orders.isEmpty && activeFulfillmentCount == 0 {
+                loadIssue = resolveLoadIssue(error)
+            }
         }
     }
 
@@ -161,6 +212,7 @@ struct DeliveryMapView: View {
             switch event {
             case .orderCompleted(let e):
                 orders.removeAll { $0.orderId == e.orderId }
+                await fetchActiveFulfillments()
             case .driverApproaching(let orderId, _, let lat, let lng, _, _):
                 if let idx = orders.firstIndex(where: { $0.orderId == orderId }) {
                     // Mutate the order in-place by creating a new copy
@@ -175,10 +227,26 @@ struct DeliveryMapView: View {
                     )
                     orders[idx] = updated
                 }
+            case .orderStatusChanged:
+                await refreshTrackingState()
             default:
                 break
             }
         }
+    }
+
+    private func resolveLoadIssue(_ error: Error) -> TrackingLoadIssue {
+        if let apiError = error as? APIError,
+           case let .serverError(statusCode, _) = apiError,
+           statusCode == 401 || statusCode == 403 {
+            return .restricted
+        }
+
+        if error is URLError || (error as NSError).domain == NSURLErrorDomain {
+            return .offline
+        }
+
+        return .error
     }
 
     private func toggleSupplier(_ id: String) {

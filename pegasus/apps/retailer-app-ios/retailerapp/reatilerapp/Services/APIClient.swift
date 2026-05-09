@@ -162,6 +162,10 @@ final class APIClient {
         let response: TrackingResponse = try await get(path: "/v1/retailer/tracking")
         return response.orders
     }
+
+    func getActiveFulfillments() async throws -> ActiveFulfillmentsResponse {
+        try await get(path: "/v1/retailer/active-fulfillment")
+    }
 }
 
 // MARK: - API Error
