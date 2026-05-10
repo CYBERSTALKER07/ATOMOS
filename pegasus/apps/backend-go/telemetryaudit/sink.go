@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"backend-go/fastjson"
+	internalKafka "backend-go/kafka"
 	"backend-go/kafka/workerpool"
 	"backend-go/telemetry"
 
@@ -22,7 +23,7 @@ const consumerGroupID = "pegasus-telemetry-audit-consumer-group"
 func StartSink(ctx context.Context, spannerClient *spanner.Client, brokerAddress string) {
 	reader := goKafka.NewReader(goKafka.ReaderConfig{
 		Brokers:  []string{brokerAddress},
-		Topic:    TopicRaw,
+		Topic:    internalKafka.TopicTelemetryRaw,
 		GroupID:  consumerGroupID,
 		MinBytes: 1,
 		MaxBytes: 10 << 20,
@@ -50,7 +51,7 @@ func StartSink(ctx context.Context, spannerClient *spanner.Client, brokerAddress
 			slog.Error("telemetry audit sink exited", "err", err)
 		}
 	}()
-	slog.Info("telemetry audit sink ONLINE", "topic", TopicRaw, "group_id", consumerGroupID)
+	slog.Info("telemetry audit sink ONLINE", "topic", internalKafka.TopicTelemetryRaw, "group_id", consumerGroupID)
 }
 
 func persistAuditEvent(ctx context.Context, spannerClient *spanner.Client, event telemetry.AuditEvent) error {

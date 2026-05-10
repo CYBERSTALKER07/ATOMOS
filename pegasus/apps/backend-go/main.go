@@ -154,7 +154,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Fatal bootstrap error: %v", err)
 	}
-	defer app.Close()
 
 	// 3. Aliases preserve the legacy variable names used throughout the 279
 	// route registrations below. Route-by-route migration into domain
@@ -927,22 +926,12 @@ func main() {
 		log.Fatalf("HTTP server shutdown forced: %v", err)
 	}
 
-	// Close all WebSocket hubs (send CloseGoingAway to connected clients)
-	driverHub.Close()
-	retailerHub.Close()
-	payloaderHub.Close()
-	warehouseHub.Close()
-	telemetry.FleetHub.Close()
-
-	spannerClient.Close()
 	// Kafka Writer close (if directly attached to struct)
 	if svc.Producer != nil {
 		svc.Producer.Close()
 	}
 	// Close singleton Kafka writers (sync, correction, DLQ)
 	internalKafka.CloseWriters()
-	// Close Redis connection pool
-	cache.Close()
 
 	// ── Flush OTel spans before exit ─────────────────────────────────────
 	// This is the "silent P0" guard: if the pod dies before flushing the
@@ -956,5 +945,6 @@ func main() {
 		otelCancel()
 	}
 
+	app.Close()
 	log.Println("Backend teardown complete.")
 }

@@ -83,6 +83,7 @@ const (
 	TopicMain           = "pegasus-logistics-events"
 	TopicDemandForecast = "pegasus-demand-forecast"
 	TopicDriverSync     = "pegasus-driver-sync-events"
+	TopicTelemetryRaw   = "pegasus-telemetry-raw"
 	TopicMainDLQ        = "pegasus-logistics-events-dlq"
 
 	// Fleet Entity Lifecycle Events

@@ -23,6 +23,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	internalKafka "backend-go/kafka"
 	"config" // local map
 )
 
@@ -592,7 +593,7 @@ func main() {
 	log.Println("Initializing Kafka Topics...")
 	setupKafkaTopic(cfg.KafkaBrokerAddress, "orders.completed")
 	setupKafkaTopic(cfg.KafkaBrokerAddress, "orders.dispatched")
-	setupKafkaTopic(cfg.KafkaBrokerAddress, "pegasus-telemetry-raw")
+	setupKafkaTopic(cfg.KafkaBrokerAddress, internalKafka.TopicTelemetryRaw)
 
 	log.Println("Setup and Seed Script execution complete. Environment is READY.")
 }

@@ -169,17 +169,6 @@ func (a *App) Close() {
 	if a == nil {
 		return
 	}
-	if a.Cache != nil {
-		a.Cache.Close()
-	}
-	if a.Backpressure != nil {
-		a.Backpressure.Stop()
-	}
-	if a.Spanner != nil {
-		a.Spanner.Close()
-	}
-	secrets.Close()
-
 	// WebSocket hubs — inform connected clients of shutdown.
 	if a.RetailerHub != nil {
 		a.RetailerHub.Close()
@@ -202,6 +191,17 @@ func (a *App) Close() {
 	if a.FleetHub != nil {
 		a.FleetHub.Close()
 	}
+
+	if a.Cache != nil {
+		a.Cache.Close()
+	}
+	if a.Backpressure != nil {
+		a.Backpressure.Stop()
+	}
+	if a.Spanner != nil {
+		a.Spanner.Close()
+	}
+	secrets.Close()
 
 	// Firebase Admin SDK manages its own lifecycle; nothing to close here.
 	_ = auth.FirebaseAuthClient

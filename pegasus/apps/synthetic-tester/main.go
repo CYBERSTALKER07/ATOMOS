@@ -1,4 +1,3 @@
-package synthetictester
 package main
 
 import (
@@ -46,11 +45,11 @@ func main() {
 	tracerID := uuid.New().String()
 
 	// 1. Subscribe to Redis invalidation stream
-	// Note: You would normally hit a WebSocket endpoint here for real simulation, 
+	// Note: You would normally hit a WebSocket endpoint here for real simulation,
 	// but listening directly to Redis proves the event traversed local pub/sub.
 	pubsub := rdb.Subscribe(ctx, "cache:invalidate") // From doctrine: "kill signal on cache:invalidate"
 	defer pubsub.Close()
-	
+
 	slog.Info("Subscribed to Redis channels. Ready to fire HTTP request.")
 
 	// 2. Trigger the sequence (Simulating an action)
@@ -58,7 +57,7 @@ func main() {
 
 	// 3. Monitor the stream for the tracer
 	timeout := time.After(10 * time.Second)
-	
+
 	slog.Info("Waiting for response sequence with timeout...")
 
 	for {
@@ -95,7 +94,7 @@ func triggerHTTPRequest(traceID string) {
 		return
 	}
 	defer resp.Body.Close()
-	
+
 	body, _ := io.ReadAll(resp.Body)
 	slog.Info("Performed HTTP Request", "status", resp.StatusCode, "trace_id", traceID, "body", string(body))
 }

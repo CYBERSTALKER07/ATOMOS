@@ -9,19 +9,18 @@ import (
 	"time"
 
 	"backend-go/fastjson"
+	internalKafka "backend-go/kafka"
 	"backend-go/telemetry"
 
 	goKafka "github.com/segmentio/kafka-go"
 )
 
 const (
-	// TopicRaw is the additive Kafka journal for live telemetry ingress.
-	TopicRaw = "pegasus-telemetry-raw"
-
 	journalQueueDepth = 1024
 )
 
 var errJournalBackpressure = errors.New("telemetry audit journal queue full")
+var errJournalClosed = errors.New("telemetry audit journal closed")
 
 // Journal asynchronously writes telemetry audit events to Kafka so the
 // WebSocket ingress path remains non-blocking.
@@ -30,6 +29,9 @@ type Journal struct {
 	queue  chan telemetry.AuditEvent
 	done   chan struct{}
 	once   sync.Once
+	mu     sync.RWMutex
+	closed bool
+	err    error
 }
 
 // NewJournal arms the background writer loop for telemetry audit events.
@@ -37,7 +39,7 @@ func NewJournal(brokerAddress string) *Journal {
 	j := &Journal{
 		writer: &goKafka.Writer{
 			Addr:         goKafka.TCP(brokerAddress),
-			Topic:        TopicRaw,
+			Topic:        internalKafka.TopicTelemetryRaw,
 			Balancer:     &goKafka.LeastBytes{},
 			BatchTimeout: 50 * time.Millisecond,
 			RequiredAcks: goKafka.RequireOne,
@@ -47,7 +49,7 @@ func NewJournal(brokerAddress string) *Journal {
 		done:  make(chan struct{}),
 	}
 	go j.run()
-	slog.Info("telemetry audit journal armed", "topic", TopicRaw, "queue_depth", journalQueueDepth)
+	slog.Info("telemetry audit journal armed", "topic", internalKafka.TopicTelemetryRaw, "queue_depth", journalQueueDepth)
 	return j
 }
 
@@ -56,12 +58,20 @@ func (j *Journal) Emit(ctx context.Context, event telemetry.AuditEvent) error {
 	if j == nil {
 		return nil
 	}
+	j.mu.RLock()
+	if j.closed {
+		j.mu.RUnlock()
+		return errJournalClosed
+	}
 	select {
 	case j.queue <- event:
+		j.mu.RUnlock()
 		return nil
 	case <-ctx.Done():
+		j.mu.RUnlock()
 		return ctx.Err()
 	default:
+		j.mu.RUnlock()
 		return errJournalBackpressure
 	}
 }
@@ -72,13 +82,16 @@ func (j *Journal) Close() error {
 		return nil
 	}
 	j.once.Do(func() {
+		j.mu.Lock()
+		j.closed = true
 		close(j.queue)
+		j.mu.Unlock()
 		<-j.done
+		if err := j.writer.Close(); err != nil {
+			j.err = fmt.Errorf("close telemetry audit writer: %w", err)
+		}
 	})
-	if err := j.writer.Close(); err != nil {
-		return fmt.Errorf("close telemetry audit writer: %w", err)
-	}
-	return nil
+	return j.err
 }
 
 func (j *Journal) run() {
@@ -109,7 +122,7 @@ func (j *Journal) run() {
 				"trace_id", event.TraceID,
 				"driver_id", event.DriverID,
 				"supplier_id", event.SupplierID,
-				"topic", TopicRaw,
+				"topic", internalKafka.TopicTelemetryRaw,
 				"error", err,
 			)
 		}
