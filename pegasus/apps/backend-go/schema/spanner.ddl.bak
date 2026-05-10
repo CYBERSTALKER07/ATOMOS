@@ -1346,7 +1346,8 @@ CREATE TABLE DispatchLocks (
 ) PRIMARY KEY (LockId);
 
 CREATE INDEX Idx_DispatchLocks_Active
-    ON DispatchLocks(SupplierId, UnlockedAt, LockedAt DESC);
+    ON DispatchLocks(SupplierId, LockedAt DESC)
+    WHERE UnlockedAt IS NOT NULL;
 -- ── IV.6: TRANSFER ORDER BACK-LINK ─────────────────────────────────────────
 -- Links InternalTransferOrders to the originating SupplyRequest.
 ALTER TABLE InternalTransferOrders ADD COLUMN SupplyRequestId STRING(36);
@@ -1431,16 +1432,16 @@ CREATE TABLE ManifestExceptions (
 CREATE INDEX Idx_ManifestExceptions_ByOrder ON ManifestExceptions(OrderId, AttemptCount DESC);
 CREATE INDEX Idx_ManifestExceptions_BySupplierId ON ManifestExceptions(SupplierId, EscalatedAt)
     WHERE EscalatedAt IS NOT NULL;
--- Keep unresolved-exception lookups emulator-safe without inverting NULL semantics.
-CREATE INDEX Idx_ManifestExceptions_Unresolved ON ManifestExceptions(SupplierId, ResolvedAt, CreatedAt DESC);
+CREATE INDEX Idx_ManifestExceptions_Unresolved ON ManifestExceptions(SupplierId, CreatedAt DESC)
+    WHERE ResolvedAt IS NOT NULL;
 
 -- ── V.4: ALTER ORDERS — LEO Columns ────────────────────────────────────────
 ALTER TABLE Orders ADD COLUMN ManifestId STRING(36);
 ALTER TABLE Orders ADD COLUMN DispatchPriority INT64 DEFAULT (0);
 ALTER TABLE Orders ADD COLUMN OverflowCount INT64 DEFAULT (0);
 CREATE INDEX Idx_Orders_ByManifestId ON Orders(ManifestId);
--- Keep pending dispatch scans emulator-safe without filtered-index predicates.
-CREATE INDEX Idx_Orders_ByDispatchPriority ON Orders(SupplierId, State, DispatchPriority DESC, CreatedAt ASC);
+CREATE INDEX Idx_Orders_ByDispatchPriority ON Orders(SupplierId, DispatchPriority DESC, CreatedAt ASC)
+    WHERE State IN ('PENDING', 'NO_CAPACITY');
 
 -- ── V.5: ALTER ORDERS — H3 Spatial Index + DELAYED State ───────────────────
 -- H3Cell: H3 resolution-7 cell (15-char hex) for spatial geo-batching during
@@ -1547,7 +1548,7 @@ CREATE TABLE DeliveryZones (
 CREATE INDEX Idx_DeliveryZones_Lookup ON DeliveryZones(SupplierId, WarehouseId, IsActive);
 
 -- VII.3: WarehouseId on SupplierInventory (warehouse-scoped stock)
--- Already added in the warehouse-linkage tranche above for fresh canonical boot.
+ALTER TABLE SupplierInventory ADD COLUMN WarehouseId STRING(36);
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- Phase VIII: REPLENISHMENT GRAPH HARDENING — Supply Lanes, Distributed Locks,
@@ -1666,7 +1667,7 @@ CREATE INDEX Idx_SupplierOverrides_ByTime ON SupplierOverrides(SupplierId, Times
 -- Adds factory scope column and expands role CHECK to universal identity.
 -- Apply these ALTER statements for existing deployments (new deploys use the
 -- updated CREATE TABLE above).
--- AssignedFactoryId already exists in the canonical CREATE TABLE above.
+ALTER TABLE SupplierUsers ADD COLUMN AssignedFactoryId STRING(36);
 ALTER TABLE SupplierUsers DROP CONSTRAINT CHK_SupplierRole;
 ALTER TABLE SupplierUsers ADD CONSTRAINT CHK_SupplierRole
     CHECK (SupplierRole IN ('GLOBAL_ADMIN', 'NODE_ADMIN', 'FACTORY_ADMIN', 'FACTORY_PAYLOADER'));
@@ -1695,8 +1696,8 @@ CREATE TABLE DispatchAudit (
 ) PRIMARY KEY (AuditId);
 
 CREATE INDEX Idx_DispatchAudit_BySupplierId ON DispatchAudit(SupplierId, CreatedAt DESC);
--- Keep unresolved-audit lookups emulator-safe without inverting NULL semantics.
-CREATE INDEX Idx_DispatchAudit_Unresolved ON DispatchAudit(SupplierId, ResolvedAt, CreatedAt DESC);
+CREATE INDEX Idx_DispatchAudit_Unresolved ON DispatchAudit(SupplierId, AuditType, ResolvedAt)
+    WHERE ResolvedAt IS NOT NULL;
 CREATE INDEX Idx_DispatchAudit_ByRetailer ON DispatchAudit(RetailerId, CreatedAt DESC);
 
 -- ── V.O.I.D. Phase VII: Home Node Lifecycle ──────────────────────────────────
@@ -1712,7 +1713,7 @@ ALTER TABLE Drivers  ADD COLUMN HomeNodeType STRING(20);
 ALTER TABLE Drivers  ADD COLUMN HomeNodeId   STRING(36);
 ALTER TABLE Vehicles ADD COLUMN HomeNodeType STRING(20);
 ALTER TABLE Vehicles ADD COLUMN HomeNodeId   STRING(36);
--- UnavailableReason already exists in the canonical CREATE TABLE above.
+ALTER TABLE Vehicles ADD COLUMN UnavailableReason STRING(64);
 CREATE INDEX Idx_Drivers_ByHomeNode  ON Drivers(HomeNodeType, HomeNodeId);
 CREATE INDEX Idx_Vehicles_ByHomeNode ON Vehicles(HomeNodeType, HomeNodeId);
 
@@ -1736,30 +1737,8 @@ CREATE TABLE OutboxEvents (
 ) PRIMARY KEY (EventId);
 
 CREATE INDEX Idx_OutboxEvents_Unpublished
-    ON OutboxEvents(PublishedAt, CreatedAt);
-
--- ── Phase VII-B: Telemetry Audit Journal ─────────────────────────────────────
--- Durable append-only storage for live driver GPS ingress. TraceId accepts both
--- client UUIDs and deterministic server-derived SHA-256 hex when older clients
--- have not yet been upgraded to send a trace_id.
-CREATE TABLE DriverTelemetry (
-    TraceId     STRING(64)   NOT NULL,
-    DriverId    STRING(36)   NOT NULL,
-    SupplierId  STRING(36)   NOT NULL,
-    EventTime   TIMESTAMP    NOT NULL,
-    Payload     BYTES(MAX)   NOT NULL,
-    Lat         FLOAT64,
-    Lng         FLOAT64,
-    Velocity    FLOAT64,
-    Heading     FLOAT64,
-    CreatedAt   TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true)
-) PRIMARY KEY (TraceId);
-
-CREATE INDEX Idx_DriverTelemetry_ByDriverTime
-    ON DriverTelemetry(DriverId, EventTime DESC);
-
-CREATE INDEX Idx_DriverTelemetry_BySupplierTime
-    ON DriverTelemetry(SupplierId, EventTime DESC);
+    ON OutboxEvents(CreatedAt)
+    WHERE PublishedAt IS NOT NULL;
 
 -- ══════════════════════════════════════════════════════════════════════════════
 -- PHASE IX: PRE-ORDER LIFECYCLE & NOTIFICATION HARDENING
@@ -1773,7 +1752,8 @@ ALTER TABLE Orders ADD COLUMN PreorderReminderSentAt TIMESTAMP;
 
 -- Index for the auto-accept sweep: SCHEDULED orders past T-4 midnight with cancel lock but not yet promoted.
 CREATE INDEX Idx_Orders_ByAutoAcceptEligible
-    ON Orders(State, CancelLockedAt, RequestedDeliveryDate);
+    ON Orders(State, RequestedDeliveryDate);
+    WHERE State = 'SCHEDULED' AND CancelLockedAt IS NOT NULL;
 
 -- ══ PHASE X: GLOBAL PIN UNIQUENESS & FACTORY PIN MIGRATION ══════════════════
 
@@ -1817,3 +1797,4 @@ ALTER TABLE Orders ADD CONSTRAINT CHK_Order_State CHECK (State IN (
 -- pool. Clarke-Wright solver reads this to add a priority savings boost
 -- (recovery orders get first dibs on vehicle volume).
 ALTER TABLE Orders ADD COLUMN IsRecovery BOOL;
+

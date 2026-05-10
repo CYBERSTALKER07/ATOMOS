@@ -25,9 +25,12 @@ var upgrader = websocket.Upgrader{
 
 // GPSPayload defines the exact packet fired by the React Native app
 type GPSPayload struct {
+	TraceID   string  `json:"trace_id,omitempty"`
 	DriverID  string  `json:"driver_id"`
 	Latitude  float64 `json:"latitude"`
 	Longitude float64 `json:"longitude"`
+	Velocity  float64 `json:"velocity,omitempty"`
+	Heading   float64 `json:"heading,omitempty"`
 	Timestamp int64   `json:"timestamp"`
 }
 
@@ -45,6 +48,7 @@ type Hub struct {
 	ProximityEngine *proximity.Engine               // Phase 2: Redis GEO proximity detector (nil-safe)
 	Spanner         *spanner.Client                 // For resolving Driver→Supplier ownership
 	Buffer          *GPSBuffer                      // GPS buffer for batched flush (nil = direct broadcast)
+	AuditJournal    AuditJournal                    // Best-effort Kafka journal for durable telemetry audit
 	writeMu         sync.Mutex
 	subscribed      map[string]bool // supplierID → relay subscription active
 	// driverSupplierCache maps driverID → supplierID to avoid repeated Spanner reads
@@ -277,8 +281,30 @@ func (h *Hub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 				)
 				continue
 			}
-			if payload.Timestamp == 0 {
-				payload.Timestamp = time.Now().Unix()
+			auditEvent, normalizedPayload, err := BuildAuditEvent(payload, meta.SupplierID)
+			if err != nil {
+				slog.ErrorContext(r.Context(), "telemetry audit event build failed",
+					"hub", "telemetry",
+					"supplier_id", meta.SupplierID,
+					"driver_id", meta.DriverID,
+					"trace_id", traceID,
+					"error", err,
+				)
+				continue
+			}
+			payload = normalizedPayload
+			normalizedMsg := auditEvent.Payload
+
+			if h.AuditJournal != nil {
+				if err := h.AuditJournal.Emit(r.Context(), auditEvent); err != nil {
+					slog.WarnContext(r.Context(), "telemetry audit enqueue failed",
+						"hub", "telemetry",
+						"supplier_id", meta.SupplierID,
+						"driver_id", meta.DriverID,
+						"trace_id", auditEvent.TraceID,
+						"error", err,
+					)
+				}
 			}
 
 			if h.Buffer != nil {
@@ -290,7 +316,7 @@ func (h *Hub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 					SupplierID: meta.SupplierID,
 				})
 			} else {
-				h.BroadcastToSupplier(meta.SupplierID, msg)
+				h.BroadcastToSupplier(meta.SupplierID, normalizedMsg)
 			}
 			if h.ProximityEngine != nil {
 				pingCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Second)
@@ -607,6 +633,11 @@ func (h *Hub) Close() {
 
 	for _, supplierID := range suppliers {
 		cache.Unsubscribe("ws:supplier:" + supplierID)
+	}
+	if h.AuditJournal != nil {
+		if err := h.AuditJournal.Close(); err != nil {
+			slog.Error("telemetry audit journal close failed", "hub", "telemetry", "error", err)
+		}
 	}
 	slog.Info("telemetry hub closed all connections", "hub", "telemetry")
 }

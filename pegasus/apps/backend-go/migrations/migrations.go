@@ -1375,7 +1375,7 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 				CreatedAt     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 				PublishedAt   TIMESTAMP,
 			) PRIMARY KEY (EventId)`,
-			`CREATE INDEX Idx_OutboxEvents_Unpublished ON OutboxEvents(CreatedAt) WHERE PublishedAt IS NULL`,
+			`CREATE INDEX Idx_OutboxEvents_Unpublished ON OutboxEvents(PublishedAt, CreatedAt)`,
 		}
 		for _, stmt := range phaseVIIDDL {
 			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
@@ -1393,6 +1393,38 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 			"ALTER TABLE OutboxEvents ADD COLUMN TraceID STRING(36)",
 		}
 		for _, stmt := range glassBoxDDL {
+			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
+				Database:   dbName,
+				Statements: []string{stmt},
+			})
+			if ddlErr == nil {
+				op.Wait(ctx)
+				fmt.Println("DATABASE MIGRATION SUCCESS:", stmt[:minInt(80, len(stmt))])
+			}
+		}
+
+		adminClient.Close()
+	}
+
+	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
+	if err == nil {
+		telemetryDDL := []string{
+			`CREATE TABLE DriverTelemetry (
+				TraceId     STRING(64)   NOT NULL,
+				DriverId    STRING(36)   NOT NULL,
+				SupplierId  STRING(36)   NOT NULL,
+				EventTime   TIMESTAMP    NOT NULL,
+				Payload     BYTES(MAX)   NOT NULL,
+				Lat         FLOAT64,
+				Lng         FLOAT64,
+				Velocity    FLOAT64,
+				Heading     FLOAT64,
+				CreatedAt   TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (TraceId)`,
+			`CREATE INDEX Idx_DriverTelemetry_ByDriverTime ON DriverTelemetry(DriverId, EventTime DESC)`,
+			`CREATE INDEX Idx_DriverTelemetry_BySupplierTime ON DriverTelemetry(SupplierId, EventTime DESC)`,
+		}
+		for _, stmt := range telemetryDDL {
 			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
 				Database:   dbName,
 				Statements: []string{stmt},

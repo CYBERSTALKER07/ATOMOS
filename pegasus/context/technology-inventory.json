@@ -1,5 +1,5 @@
 {
-  "version": "2026-05-09",
+  "version": "2026-05-10",
   "generatedFrom": {
     "manifests": [
       "pegasus/package.json",
@@ -18,25 +18,27 @@
   "languagesAndRuntimes": [
     "Go",
     "TypeScript",
-      "Tailwind CSS",
-      "Tauri",
-      "Expo",
-      "React Native",
-      "HeroUI"
+    "Tailwind CSS",
+    "Tauri",
+    "Expo",
+    "React Native",
+    "HeroUI"
+  ],
+  "tooling": [
+    "Vite",
+    "ESLint"
+  ],
+  "codeRetrieval": {
+    "preferredTools": [
+      "file_search",
+      "grep_search",
+      "read_file",
+      "vscode_listCodeUsages",
+      "semantic_search"
     ],
-    "tooling": [
-      "Vite",
-      "ESLint",
-    "codeRetrieval": {
-      "preferredTools": [
-        "file_search",
-        "grep_search",
-        "read_file",
-        "vscode_listCodeUsages",
-        "semantic_search"
-      ],
-      "fallback": [
-        "run_in_terminal: rg"
+    "fallback": [
+      "run_in_terminal: rg"
+    ]
   },
   "backend": {
     "httpAndRealtime": [
@@ -131,7 +133,25 @@
         "admin-portal telemetry fleet websocket consumers"
       ],
       "notes": [
-        "Route registration moved from infraroutes/main into telemetryroutes while preserving grace-auth websocket behavior."
+        "Route registration moved from infraroutes/main into telemetryroutes while preserving grace-auth websocket behavior.",
+        "telemetry/hub.go now derives or forwards trace_id and hands best-effort journal events to telemetryaudit/ for Kafka topic pegasus-telemetry-raw plus replay-safe Spanner persistence into DriverTelemetry."
+      ]
+    },
+    {
+      "name": "Telemetry audit journal",
+      "path": "pegasus-telemetry-raw -> DriverTelemetry",
+      "owner": "pegasus/apps/backend-go/telemetryaudit/{journal.go,sink.go}",
+      "methods": [
+        "Kafka topic pegasus-telemetry-raw",
+        "Spanner table DriverTelemetry"
+      ],
+      "consumers": [
+        "telemetryaudit.StartSink",
+        "future supplier telemetry audit read models"
+      ],
+      "notes": [
+        "WebSocket ingress remains JSON for current admin/mobile clients; durability is additive behind the hub.",
+        "TraceId accepts both client UUIDs and deterministic SHA-256 hex derived server-side when older clients omit trace_id."
       ]
     },
     {

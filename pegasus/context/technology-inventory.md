@@ -52,6 +52,7 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 	- Serves an additive superset detail payload for driver iOS, driver Android, and retailer desktop order detail consumers, plus the supplier portal order timeline feed
 - Telemetry and legacy infra route split: `pegasus/apps/backend-go/telemetryroutes/routes.go`, `pegasus/apps/backend-go/catalogroutes/routes.go`, `pegasus/apps/backend-go/infraroutes/routes.go`, `pegasus/apps/backend-go/authroutes/routes.go`
 	- `telemetryroutes` owns `GET /ws/telemetry` and `GET /ws/fleet`
+	- `telemetry/hub.go` preserves the JSON websocket ingress/egress contract while deriving or forwarding `trace_id`; `telemetryaudit/{journal,sink}.go` add best-effort Kafka journaling on `pegasus-telemetry-raw` plus replay-safe Spanner persistence into `DriverTelemetry`
 	- `catalogroutes` owns legacy `GET /v1/products`
 	- `infraroutes` is infra-only with `GET /v1/health`
 	- `authroutes` mounts development-only `GET|POST /debug/mint-token` when `EnableDebugMintToken` is true

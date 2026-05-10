@@ -1,6 +1,6 @@
 {
-  "version": "2026-05-09",
-  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, and targeted workspace retrieval as the default codebase-retrieval path).",
+  "version": "2026-05-10",
+  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, and targeted workspace retrieval as the default codebase-retrieval path).",
   "agentContext": {
     "syncSet": [
       "../.github/ACT.md",
@@ -89,6 +89,8 @@
     { "id": "handlers", "type": "backend", "label": "Domain Handlers" },
     { "id": "ws_hubs", "type": "backend", "label": "WebSocket Hubs" },
     { "id": "outbox_relay", "type": "backend", "label": "Outbox Relay" },
+    { "id": "telemetry_audit_journal", "type": "backend", "label": "Telemetry Audit Journal" },
+    { "id": "telemetry_audit_sink", "type": "worker", "label": "Telemetry Audit Sink" },
     { "id": "admin_portal", "type": "web", "label": "Admin Portal" },
     { "id": "factory_portal", "type": "web", "label": "Factory Portal" },
     { "id": "warehouse_portal", "type": "web", "label": "Warehouse Portal" },
@@ -119,10 +121,14 @@
     { "from": "handlers", "to": "spanner", "relationship": "rwtxn_outbox_emit" },
     { "from": "handlers", "to": "redis", "relationship": "cache_invalidate" },
     { "from": "ws_hubs", "to": "redis", "relationship": "pubsub_fanout" },
+    { "from": "ws_hubs", "to": "telemetry_audit_journal", "relationship": "best_effort_journal" },
+    { "from": "telemetry_audit_journal", "to": "kafka", "relationship": "publishes" },
     { "from": "spanner", "to": "outbox_relay", "relationship": "tailed_by" },
     { "from": "outbox_relay", "to": "kafka", "relationship": "publishes" },
     { "from": "kafka", "to": "ai_worker", "relationship": "consumed_by" },
     { "from": "kafka", "to": "reconciler", "relationship": "consumed_by" },
+    { "from": "kafka", "to": "telemetry_audit_sink", "relationship": "consumed_by" },
+    { "from": "telemetry_audit_sink", "to": "spanner", "relationship": "writes_audit_rows" },
     { "from": "copilot_agent", "to": "act_protocol", "relationship": "follows" },
     { "from": "gemini_agent", "to": "act_protocol", "relationship": "follows" },
     { "from": "copilot_agent", "to": "sequential_mcp_server", "relationship": "queries" },
@@ -166,6 +172,28 @@
         "GET /v1/orders/{id}/events returns the scoped OrderEvents audit timeline for the same compatibility surface.",
         "PATCH accepts both /status and /state path aliases.",
         "PATCH accepts either status or state in the request body for legacy compatibility."
+      ]
+    },
+    {
+      "id": "telemetry_audit_journal",
+      "path": "/ws/{telemetry,fleet} -> pegasus-telemetry-raw -> DriverTelemetry",
+      "owner": "pegasus/apps/backend-go/telemetry/hub.go + pegasus/apps/backend-go/telemetryaudit/{journal.go,sink.go}",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "WS /ws/telemetry",
+        "WS /ws/fleet",
+        "Kafka topic pegasus-telemetry-raw",
+        "Spanner table DriverTelemetry"
+      ],
+      "consumers": [
+        "pegasus/apps/admin-portal/hooks/useTelemetry.ts",
+        "pegasus/apps/driver-app-android/app/src/main/java/com/pegasus/driver/data/remote/TelemetrySocket.kt",
+        "future supplier telemetry audit read models"
+      ],
+      "notes": [
+        "WebSocket ingress/egress remains additive JSON for current clients.",
+        "Hub derives a deterministic trace_id when the driver payload does not provide one yet.",
+        "Kafka journaling is best-effort and non-blocking at ingress; the sink persists replay-safe rows keyed by TraceId."
       ]
     },
     {

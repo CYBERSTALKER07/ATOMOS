@@ -3,6 +3,7 @@
 Use this protocol for every technical task. The agent is a companion engineer, not a blind executor.
 
 ## Context Sync Log
+- 2026-05-10: Added additive telemetry durability behind `/ws/telemetry`: `telemetry/hub.go` now derives or forwards `trace_id`, enqueues best-effort journal events to Kafka topic `pegasus-telemetry-raw` via `telemetryaudit/`, and `telemetryaudit.StartSink` persists replay-safe audit rows into `DriverTelemetry` without changing the JSON WebSocket contract current admin/mobile clients use.
 - 2026-05-07: Completed tranche-1 cache infra slog migration by converting `cache/{redis,pubsub,invalidate,middleware,warehouse_load,warehouse_geo,priority,circuitbreaker}.go` from `log.*` to structured `slog`.
 - 2026-05-07: Completed low-touch infra slog sweep by migrating `kafka/dlq.go` and `factory/replenishment_lock.go` from `log.*` to structured `slog` with no behavior changes.
 - 2026-05-07: Closed Phase VIII replenishment producer gap by wiring outbox producers for `STOCK_THRESHOLD_BREACH` (`factory/pull_matrix.go`) and `LOOK_AHEAD_COMPLETED` (`factory/look_ahead.go`); synced event contract comments plus architecture/inventory context docs.

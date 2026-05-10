@@ -36,6 +36,7 @@ import (
 	"backend-go/storage"
 	"backend-go/supplier"
 	"backend-go/telemetry"
+	"backend-go/telemetryaudit"
 	"backend-go/vault"
 	"backend-go/ws"
 	"config"
@@ -160,6 +161,7 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 	telemetry.FleetHub.ProximityEngine = proxEngine
 	telemetry.FleetHub.Spanner = spannerClient
 	telemetry.FleetHub.Buffer = telemetry.NewGPSBuffer(telemetry.FleetHub)
+	telemetry.FleetHub.AuditJournal = telemetryaudit.NewJournal(cfg.KafkaBrokerAddress)
 	if cache.GetClient() == nil {
 		slog.Warn("proximity engine degraded; breach detection disabled", "reason", "redis offline")
 	}

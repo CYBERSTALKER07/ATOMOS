@@ -98,7 +98,12 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		apierrors.BadRequest(w, r, "Malformed checkout payload")
 		return
 	}
-	if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims); ok && claims != nil && req.RetailerID == "" {
+	if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims); ok && claims != nil {
+		if req.RetailerID != "" && req.RetailerID != claims.UserID {
+			log.Printf("[UNIFIED_CHECKOUT] retailer_id mismatch: payload=%s, claims=%s", req.RetailerID, claims.UserID)
+			http.Error(w, `{"error":"RetailerID mismatch. Do not trust request body."}`, http.StatusForbidden)
+			return
+		}
 		req.RetailerID = claims.UserID
 	}
 
@@ -130,19 +135,27 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 
 	ctx := r.Context()
 
-	// ── Step 0: Resolve retailer coordinates ──────────────────────────────────
+	var retailerTIN string // fetched for fiscalization
+
+	// ── Step 0: Resolve retailer coordinates & TIN ────────────────────────────
 	// Client may send 0,0 (e.g. older app versions). Fall back to the stored
 	// Retailers table coordinates so the proximity resolver always has input.
 	retailerLat, retailerLng := req.Latitude, req.Longitude
-	if retailerLat == 0 && retailerLng == 0 {
+	{
 		row, errR := s.Client.Single().ReadRow(ctx, "Retailers",
 			spanner.Key{req.RetailerID},
-			[]string{"Latitude", "Longitude"},
+			[]string{"Latitude", "Longitude", "TaxIdentificationNumber"},
 		)
 		if errR == nil {
 			var lat, lng spanner.NullFloat64
-			if errC := row.Columns(&lat, &lng); errC == nil && lat.Valid && lng.Valid {
-				retailerLat, retailerLng = lat.Float64, lng.Float64
+			var tin spanner.NullString
+			if errC := row.Columns(&lat, &lng, &tin); errC == nil {
+				if lat.Valid && lng.Valid {
+					retailerLat, retailerLng = lat.Float64, lng.Float64
+				}
+				if tin.Valid {
+					retailerTIN = tin.StringVal
+				}
 			}
 		}
 	}
@@ -453,8 +466,12 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		if err := txn.BufferWrite(mutations); err != nil {
 			return err
 		}
+
 		now := time.Now().UTC()
 		for _, plan := range processedPlans {
+			// Temporary Resolver Logic for Unified Checkout
+			terminalID := resolveTerminalForWarehouse(ctx, plan.WarehouseID, "globalpay")
+
 			event := kafkaEvents.OrderCreatedEvent{
 				InvoiceID:     invoiceID,
 				OrderID:       plan.OrderID,
@@ -462,6 +479,8 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 				RetailerID:    req.RetailerID,
 				WarehouseID:   plan.WarehouseID,
 				WarehouseName: plan.WarehouseName,
+				TIN:           retailerTIN,
+				TerminalID:    terminalID,
 				Total:         processedTotals[plan.OrderID],
 				Currency:      "UZS",
 				Items:         plan.Items,
@@ -483,6 +502,16 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 
 	if err != nil {
 		log.Printf("[UNIFIED_CHECKOUT] Spanner transaction failed: %v", err)
+
+		// New Target: Inject OrderValidationFailed for UI feedback
+		// Must be isolated since main checkout txn failed.
+		_, _ = s.Client.ReadWriteTransaction(ctx, func(innerCtx context.Context, errTxn *spanner.ReadWriteTransaction) error {
+			return outbox.EmitJSON(errTxn, "Order", invoiceID, "OrderValidationFailed", "topic.orders.v1", kafkaEvents.OrderValidationFailedEvent{
+				OrderID: invoiceID,
+				Reason:  "INVENTORY_LOCK_OR_CAPACITY_FAILED",
+			}, telemetry.TraceIDFromContext(ctx))
+		})
+
 		apierrors.WriteOperational(w, r, apierrors.ProblemDetail{
 			Type:       "error/order/checkout-failed",
 			Title:      "Checkout Failed",
@@ -731,7 +760,24 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 			SQL:    `UPDATE Orders SET PaymentStatus = 'AUTHORIZED' WHERE OrderId = @oid AND PaymentStatus IN ('PENDING', '')`,
 			Params: map[string]interface{}{"oid": orderID},
 		})
-		return err
+		if err != nil {
+			return err
+		}
+
+		// Atomic Outbox Emission: Payment Processed
+		if eErr := outbox.EmitJSON(txn, "Order", orderID, "PaymentCleared", "topic.orders.v1", kafkaEvents.PaymentClearedEvent{
+			OrderID:   orderID,
+			InvoiceID: "", // Not natively tracked here, omit or map appropriately
+			Status:    "CLEARED",
+		}, telemetry.TraceIDFromContext(ctx)); eErr != nil {
+			return eErr
+		}
+
+		// Atomic Outbox Emission: Order Finalized (Post-Fiscalization)
+		return outbox.EmitJSON(txn, "Order", orderID, "OrderFinalized", "topic.orders.v1", kafkaEvents.OrderFinalizedEvent{
+			OrderID:    orderID,
+			FiscalSign: "PENDING_SOLIQ_SIGNATURE",
+		}, telemetry.TraceIDFromContext(ctx))
 	})
 	if err != nil {
 		log.Printf("[CHECKOUT-AUTH] Orders.PaymentStatus update failed for %s: %v", orderID, err)
@@ -793,4 +839,10 @@ func (s *OrderService) resolveSuppliers(ctx context.Context, skuIDs []string) (m
 func mustJSON(v interface{}) string {
 	b, _ := json.Marshal(v)
 	return string(b)
+}
+
+// resolveTerminalForWarehouse wraps gateway terminal resolution logic.
+func resolveTerminalForWarehouse(ctx context.Context, warehouseID, provider string) string {
+	// Temporary Resolver Logic for Unified Checkout
+	return fmt.Sprintf("term_%s_%s", warehouseID, provider)
 }

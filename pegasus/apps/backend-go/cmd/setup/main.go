@@ -592,6 +592,7 @@ func main() {
 	log.Println("Initializing Kafka Topics...")
 	setupKafkaTopic(cfg.KafkaBrokerAddress, "orders.completed")
 	setupKafkaTopic(cfg.KafkaBrokerAddress, "orders.dispatched")
+	setupKafkaTopic(cfg.KafkaBrokerAddress, "pegasus-telemetry-raw")
 
 	log.Println("Setup and Seed Script execution complete. Environment is READY.")
 }

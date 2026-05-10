@@ -1,14 +1,14 @@
 package bootstrap
 
 import (
-        "log/slog"
-        "net/http"
-        "strings"
-        "time"
+	"log/slog"
+	"net/http"
+	"strings"
+	"time"
 
-        "backend-go/analytics"
-        "backend-go/auth"
-        "backend-go/telemetry"
+	"backend-go/analytics"
+	"backend-go/auth"
+	"backend-go/telemetry"
 )
 
 // EnableCORS returns a middleware that applies the App's origin allowlist.
@@ -57,30 +57,41 @@ func isPatternAllowed(origin string) bool {
 // matches the legacy main.go helper so domain routers can adopt it by name
 // when the route migration happens.
 func LoggingMiddleware(next http.HandlerFunc) http.HandlerFunc {
-        return func(w http.ResponseWriter, r *http.Request) {
-                analytics.IncrementRequest()
-                defer analytics.DecrementRequest()
-                start := time.Now()
-                
-                next.ServeHTTP(w, r)
-                
-                supplierID := "unknown"
-                if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims); ok {
-                        supplierID = claims.ResolveSupplierID()
-                        if supplierID == "" {
-                                supplierID = "anonymous"
-                        }
-                }
-                
-                // Track pass-through utility metric
-                telemetry.HTTPRequestsTotal.WithLabelValues(supplierID, r.Method, r.URL.Path).Inc()
-                
-                slog.InfoContext(r.Context(), "http request",
-                        "trace_id", telemetry.TraceIDFromContext(r.Context()),
-                        "method", r.Method,
-                        "path", r.URL.Path,
-                        "supplier_id", supplierID,
-                        "duration_ms", time.Since(start).Milliseconds(),
-                )
-        }
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Ensure X-Trace-Id propagates
+		traceID := r.Header.Get("X-Trace-Id")
+		if traceID == "" {
+			traceID = telemetry.GenerateTraceID() // Fallback if missing
+		}
+		ctx := telemetry.WithTraceID(r.Context(), traceID)
+		r = r.WithContext(ctx)
+
+		// Return it in response
+		w.Header().Set("X-Trace-Id", traceID)
+
+		analytics.IncrementRequest()
+		defer analytics.DecrementRequest()
+		start := time.Now()
+
+		next.ServeHTTP(w, r)
+
+		supplierID := "unknown"
+		if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims); ok {
+			supplierID = claims.ResolveSupplierID()
+			if supplierID == "" {
+				supplierID = "anonymous"
+			}
+		}
+
+		// Track pass-through utility metric
+		telemetry.HTTPRequestsTotal.WithLabelValues(supplierID, r.Method, r.URL.Path).Inc()
+
+		slog.InfoContext(r.Context(), "http request",
+			"trace_id", telemetry.TraceIDFromContext(r.Context()),
+			"method", r.Method,
+			"path", r.URL.Path,
+			"supplier_id", supplierID,
+			"duration_ms", time.Since(start).Milliseconds(),
+		)
+	}
 }

@@ -586,16 +586,23 @@ type PreOrderEditedEvent struct {
 // The payload is additive so both legacy procurement and unified checkout producers
 // can publish one canonical wire contract.
 type OrderCreatedEvent struct {
-	InvoiceID     string               `json:"invoice_id,omitempty"`
-	OrderID       string               `json:"order_id"`
-	SupplierID    string               `json:"supplier_id,omitempty"`
-	RetailerID    string               `json:"retailer_id,omitempty"`
-	WarehouseID   string               `json:"warehouse_id,omitempty"`
-	WarehouseName string               `json:"warehouse_name,omitempty"`
-	Total         int64                `json:"total"`
-	Currency      string               `json:"currency"`
-	Items         []cart.OrderLineItem `json:"items,omitempty"`
-	Timestamp     time.Time            `json:"timestamp"`
+	InvoiceID     string `json:"invoice_id,omitempty"`
+	OrderID       string `json:"order_id"`
+	SupplierID    string `json:"supplier_id,omitempty"`
+	RetailerID    string `json:"retailer_id,omitempty"`
+	WarehouseID   string `json:"warehouse_id,omitempty"`
+	WarehouseName string `json:"warehouse_name,omitempty"`
+
+	// Updated for Uzbekistan B2B Compliance
+	TIN         string `json:"tin,omitempty"`          // Taxpayer ID (STIR)
+	TerminalID  string `json:"terminal_id,omitempty"`  // E-Pos / Physical Terminal ID
+	ReceiptType string `json:"receipt_type,omitempty"` // B2B, B2C, or Installment
+	FiscalSign  string `json:"fiscal_sign,omitempty"`  // Soliq-generated signature placeholder
+
+	Total     int64                `json:"total"`
+	Currency  string               `json:"currency"`
+	Items     []cart.OrderLineItem `json:"items,omitempty"`
+	Timestamp time.Time            `json:"timestamp"`
 }
 
 // UnifiedCheckoutCompletedEvent is emitted once per completed unified checkout invoice.
@@ -1131,4 +1138,23 @@ type InternalLoadConfirmedEvent struct {
 	ConfirmedBy string    `json:"confirmed_by"` // payloader user_id
 	VolumeVU    float64   `json:"volume_vu"`
 	Timestamp   time.Time `json:"timestamp"`
+}
+
+// PaymentClearedEvent is emitted when an order payment is successfully authorized/cleared.
+type PaymentClearedEvent struct {
+	OrderID   string `json:"order_id"`
+	InvoiceID string `json:"invoice_id"`
+	Status    string `json:"status"`
+}
+
+// OrderValidationFailedEvent is emitted when an order fails to construct (e.g. inventory lock).
+type OrderValidationFailedEvent struct {
+	OrderID string `json:"order_id"`
+	Reason  string `json:"reason"`
+}
+
+// OrderFinalizedEvent is emitted post-fiscalization.
+type OrderFinalizedEvent struct {
+	OrderID    string `json:"order_id"`
+	FiscalSign string `json:"fiscal_sign"`
 }

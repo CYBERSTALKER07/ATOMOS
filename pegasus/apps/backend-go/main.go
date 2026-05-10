@@ -51,6 +51,7 @@ import (
 	"backend-go/supplierroutes"
 	"backend-go/sync"
 	"backend-go/telemetry"
+	"backend-go/telemetryaudit"
 	"backend-go/telemetryroutes"
 	"backend-go/treasury"
 	"backend-go/userroutes"
@@ -634,6 +635,7 @@ func main() {
 
 	// Phase 3: Boot the Retailer WebSocket Hub + DRIVER_APPROACHING Kafka consumer
 	internalKafka.StartApproachConsumer(ctx, retailerHub, fcmClient, spannerClient, cfg.KafkaBrokerAddress)
+	telemetryaudit.StartSink(ctx, spannerClient, cfg.KafkaBrokerAddress)
 
 	// Phase 3b: Driver WebSocket Hub route now mounts via driverroutes.
 

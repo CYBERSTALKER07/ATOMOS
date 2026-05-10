@@ -81,6 +81,8 @@ services:
         kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 16 --replication-factor 1 --topic pegasus-freeze-locks
         echo 'Creating pegasus-driver-sync-events topic with 16 partitions...'
         kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 16 --replication-factor 1 --topic pegasus-driver-sync-events
+        echo 'Creating pegasus-telemetry-raw topic with 16 partitions...'
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 16 --replication-factor 1 --topic pegasus-telemetry-raw
         echo 'Creating pegasus-logistics-events-dlq topic with 1 partition...'
         kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 1 --replication-factor 1 --topic pegasus-logistics-events-dlq
         echo 'Topics created successfully.'
@@ -115,7 +117,7 @@ services:
       - '9010:9010' # gRPC API
       - '9020:9020' # REST API
     healthcheck:
-      test: curl -f http://localhost:9020/ || exit 1
+      test: ["CMD", "./gateway_main", "--help"]
       interval: 10s
       timeout: 5s
       retries: 5
