@@ -55,7 +55,7 @@ struct TreasuryView: View {
                                     VStack(alignment: .leading, spacing: LabTheme.spacingXS) {
                                         Text(inv.retailerName)
                                             .font(.headline)
-                                        Text("\(inv.amountUzs.formatted()) UZS · Due: \(inv.dueDate)")
+                                        Text("\(inv.amountUzs.formatted()) \(inv.currency) · Due: \(inv.dueDate)")
                                             .font(.subheadline)
                                             .foregroundStyle(.secondary)
                                     }

@@ -13,7 +13,9 @@ interface TreasuryOverview {
 interface Invoice {
   invoice_id: string;
   retailer_name: string;
-  amount_uzs: number;
+  amount?: number;
+  amount_uzs?: number;
+  currency?: string;
   status: string;
   due_date: string;
   created_at: string;
@@ -43,6 +45,12 @@ export default function TreasuryPage() {
   useEffect(() => { load(); }, [load]);
 
   const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
+  const resolveAmount = (inv: Invoice) => {
+    if (typeof inv.amount === 'number' && Number.isFinite(inv.amount)) return inv.amount;
+    if (typeof inv.amount_uzs === 'number' && Number.isFinite(inv.amount_uzs)) return inv.amount_uzs;
+    return 0;
+  };
+  const resolveCurrency = (inv: Invoice) => (inv.currency || 'UZS').toUpperCase();
 
   if (loading) {
     return (
@@ -106,7 +114,7 @@ export default function TreasuryPage() {
                 <tr className="border-b border-[var(--border)]">
                   <th className="text-left py-2 px-3 font-medium">Invoice</th>
                   <th className="text-left py-2 px-3 font-medium">Retailer</th>
-                  <th className="text-right py-2 px-3 font-medium">Amount (UZS)</th>
+                  <th className="text-right py-2 px-3 font-medium">Amount</th>
                   <th className="text-left py-2 px-3 font-medium">Status</th>
                   <th className="text-right py-2 px-3 font-medium">Due</th>
                 </tr>
@@ -116,7 +124,7 @@ export default function TreasuryPage() {
                   <tr key={inv.invoice_id} className="border-b border-[var(--border)] hover:bg-[var(--surface)] transition-colors">
                     <td className="py-2.5 px-3 font-mono text-xs">{inv.invoice_id.slice(0, 8)}...</td>
                     <td className="py-2.5 px-3">{inv.retailer_name || '—'}</td>
-                    <td className="py-2.5 px-3 text-right font-mono">{fmt(inv.amount_uzs)}</td>
+                    <td className="py-2.5 px-3 text-right font-mono">{fmt(resolveAmount(inv))} {resolveCurrency(inv)}</td>
                     <td className="py-2.5 px-3">
                       <span className={`status-chip ${inv.status === 'PAID' ? 'status-chip--stable' : inv.status === 'OVERDUE' ? 'status-chip--critical' : 'status-chip--draft'}`}>
                         {inv.status}

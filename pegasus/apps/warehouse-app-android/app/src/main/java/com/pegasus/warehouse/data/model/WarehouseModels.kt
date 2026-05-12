@@ -271,7 +271,9 @@ data class TreasuryOverview(
 data class Invoice(
     @SerialName("invoice_id") val invoiceId: String,
     @SerialName("retailer_name") val retailerName: String = "",
+    @SerialName("amount") val amount: Long = 0,
     @SerialName("amount_uzs") val amountUzs: Long = 0,
+    val currency: String = "UZS",
     val status: String = "",
     @SerialName("due_date") val dueDate: String = "",
 )

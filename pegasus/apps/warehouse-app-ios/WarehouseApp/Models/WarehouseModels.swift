@@ -601,13 +601,16 @@ struct Invoice: Decodable, Identifiable {
     let invoiceId: String
     let retailerName: String
     let amountUzs: Int
+    let currency: String
     let status: String
     let dueDate: String
 
     enum CodingKeys: String, CodingKey {
         case invoiceId = "invoice_id"
         case retailerName = "retailer_name"
+        case amount = "amount"
         case amountUzs = "amount_uzs"
+        case currency
         case status
         case dueDate = "due_date"
     }
@@ -616,7 +619,10 @@ struct Invoice: Decodable, Identifiable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         invoiceId = try c.decode(String.self, forKey: .invoiceId)
         retailerName = try c.decodeIfPresent(String.self, forKey: .retailerName) ?? ""
-        amountUzs = try c.decodeIfPresent(Int.self, forKey: .amountUzs) ?? 0
+        let additiveAmount = try c.decodeIfPresent(Int.self, forKey: .amount)
+        let legacyAmount = try c.decodeIfPresent(Int.self, forKey: .amountUzs)
+        amountUzs = additiveAmount ?? legacyAmount ?? 0
+        currency = (try c.decodeIfPresent(String.self, forKey: .currency) ?? "UZS").uppercased()
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
         dueDate = try c.decodeIfPresent(String.self, forKey: .dueDate) ?? ""
     }

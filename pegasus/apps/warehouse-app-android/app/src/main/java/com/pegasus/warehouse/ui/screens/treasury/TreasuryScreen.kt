@@ -97,11 +97,13 @@ fun TreasuryScreen(
                         } else {
                             LazyColumn(contentPadding = PaddingValues(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md)) {
                                 items(invoices, key = { it.invoiceId }) { inv ->
+                                    val displayAmount = if (inv.amount > 0) inv.amount else inv.amountUzs
+                                    val displayCurrency = if (inv.currency.isBlank()) "UZS" else inv.currency.uppercase()
                                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                                         Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(inv.retailerName, style = MaterialTheme.typography.titleSmall)
-                                                Text("${fmt.format(inv.amountUzs)} UZS · ${inv.dueDate}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                Text("${fmt.format(displayAmount)} $displayCurrency · ${inv.dueDate}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             }
                                             AssistChip(onClick = {}, label = { Text(inv.status, style = MaterialTheme.typography.labelSmall) })
                                         }

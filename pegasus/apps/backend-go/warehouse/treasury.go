@@ -19,6 +19,8 @@ type SettlementItem struct {
 	InvoiceID    string `json:"invoice_id"`
 	OrderID      string `json:"order_id"`
 	Amount       int64  `json:"amount"`
+	AmountUZS    int64  `json:"amount_uzs"`
+	Currency     string `json:"currency"`
 	Status       string `json:"status"`
 	RetailerID   string `json:"retailer_id"`
 	RetailerName string `json:"retailer_name,omitempty"`
@@ -89,6 +91,7 @@ func handleTreasuryInvoices(w http.ResponseWriter, r *http.Request, client *span
 	stmt := spanner.Statement{
 		SQL: `SELECT mi.InvoiceId, mi.OrderId, mi.TotalAmount, mi.Status,
 		             COALESCE(o.RetailerId, ''), COALESCE(rt.StoreName, ''),
+		             COALESCE(o.Currency, 'UZS'),
 		             mi.CreatedAt
 		      FROM MasterInvoices mi
 		      JOIN Orders o ON mi.OrderId = o.OrderId
@@ -115,10 +118,16 @@ func handleTreasuryInvoices(w http.ResponseWriter, r *http.Request, client *span
 		}
 		var si SettlementItem
 		var createdAt time.Time
+		var currency spanner.NullString
 		if err := row.Columns(&si.InvoiceID, &si.OrderID, &si.Amount,
-			&si.Status, &si.RetailerID, &si.RetailerName, &createdAt); err != nil {
+			&si.Status, &si.RetailerID, &si.RetailerName, &currency, &createdAt); err != nil {
 			log.Printf("[WH TREASURY] parse: %v", err)
 			continue
+		}
+		si.AmountUZS = si.Amount
+		si.Currency = "UZS"
+		if currency.Valid && currency.StringVal != "" {
+			si.Currency = currency.StringVal
 		}
 		si.CreatedAt = createdAt.Format(time.RFC3339)
 		invoices = append(invoices, si)
