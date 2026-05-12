@@ -50,6 +50,7 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 - Shared order compatibility route composition: `pegasus/apps/backend-go/orderroutes/routes.go`
 	- Owns `GET /v1/orders`, `GET /v1/orders/line-items/history`, `GET /v1/order/refunds`, `GET /v1/orders/{id}`, `GET /v1/orders/{id}/events`, `PATCH /v1/orders/{id}/status`, `PATCH /v1/orders/{id}/state`, `POST /v1/order/{deliver,validate-qr,confirm-offload,complete,collect-cash,refund,amend}`, `GET /v1/routes`, `POST /v1/prediction/create`, and `PATCH /v1/vehicle/*`
 	- Serves an additive superset detail payload for driver iOS, driver Android, and retailer desktop order detail consumers, plus the supplier portal order timeline feed
+	- Unified checkout emits `ORDER_VALIDATION_FAILED`, `PAYMENT_CLEARED`, and `ORDER_FINALIZED` to canonical `kafka.TopicMain` through the transactional outbox, replacing the stale `topic.orders.v1` path.
 - Telemetry and legacy infra route split: `pegasus/apps/backend-go/telemetryroutes/routes.go`, `pegasus/apps/backend-go/catalogroutes/routes.go`, `pegasus/apps/backend-go/infraroutes/routes.go`, `pegasus/apps/backend-go/authroutes/routes.go`
 	- `telemetryroutes` owns `GET /ws/telemetry` and `GET /ws/fleet`
 	- `telemetry/hub.go` preserves the JSON websocket ingress/egress contract while deriving or forwarding `trace_id`; `telemetryaudit/{journal,sink}.go` add best-effort Kafka journaling on `pegasus-telemetry-raw` plus replay-safe Spanner persistence into `DriverTelemetry`
@@ -64,6 +65,7 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 	- Owns `GET /v1/driver/{earnings,history,availability,pending-collections,profile,manifest-gate,manifest}`, legacy `GET /v1/fleet/manifest`, and `GET /v1/ws/driver`
 	- Current role-row consumers are `apps/driver-app-android` and `apps/driverappios`; both now target `GET /v1/driver/manifest` while backend keeps `/v1/fleet/manifest` as an additive compatibility alias
 	- High-consequence driver mutations (`/v1/order/deliver`, `/v1/order/confirm-offload`, `/v1/order/complete`, `/v1/order/collect-cash`, `/v1/delivery/arrive`) now carry deterministic `Idempotency-Key` headers across Android and iOS clients for replay-safe retry behavior
+	- Driver availability toggles (`PATCH|POST /v1/driver/availability`) now emit `DRIVER_AVAILABILITY_CHANGED` inside the same Spanner transaction via outbox; post-commit `kafka.EmitNotification` remains best-effort UX fanout.
 	- Driver login/profile payloads now include additive dual-node metadata (`home_node_type`, `home_node_id`, `driver_mode`, `factory_*`) so one driver app role row can support both factory-transfer and warehouse-delivery assignments
 - Factory role-row route composition: `pegasus/apps/backend-go/factoryroutes/routes.go`
 	- Owns `GET /v1/factory/{dashboard,profile,analytics/overview,transfers*,manifests*,fleet*,staff*,supply-requests*}` plus `POST /v1/factory/{dispatch,transfers/create,manifests/rebalance,manifests/cancel-transfer,manifests/cancel}`

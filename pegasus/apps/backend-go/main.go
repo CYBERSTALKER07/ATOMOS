@@ -24,7 +24,6 @@ import (
 	"backend-go/driverroutes"
 	"backend-go/factory"
 	"backend-go/factoryroutes"
-	"backend-go/fleet"
 	"backend-go/fleetroutes"
 	"backend-go/idempotency"
 	"backend-go/infraroutes"
@@ -537,21 +536,6 @@ func main() {
 	// Seed default admin account if none exist (intentionally outside the
 	// migration gate — this is operator bootstrap, not schema DDL).
 	auth.SeedDefaultAdmin(ctx, spannerClient)
-
-	fleet.AvailabilityEmitter = func(driverID, supplierID string, available bool, reason, note, truckID string) {
-		// 1. Kafka event
-		svc.PublishEvent(context.Background(), internalKafka.EventDriverAvailabilityChanged, internalKafka.DriverAvailabilityChangedEvent{
-			DriverID:   driverID,
-			SupplierID: supplierID,
-			Available:  available,
-			Reason:     reason,
-			Note:       note,
-			TruckID:    truckID,
-			Timestamp:  time.Now().UTC(),
-		})
-		// 2. WebSocket push to admin portal
-		telemetry.FleetHub.BroadcastDriverAvailability(supplierID, driverID, available, reason)
-	}
 
 	// /v1/admin/retailer/{pending,approve,reject} moved to adminroutes.
 

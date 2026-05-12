@@ -506,9 +506,12 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		// New Target: Inject OrderValidationFailed for UI feedback
 		// Must be isolated since main checkout txn failed.
 		_, _ = s.Client.ReadWriteTransaction(ctx, func(innerCtx context.Context, errTxn *spanner.ReadWriteTransaction) error {
-			return outbox.EmitJSON(errTxn, "Order", invoiceID, "OrderValidationFailed", "topic.orders.v1", kafkaEvents.OrderValidationFailedEvent{
-				OrderID: invoiceID,
-				Reason:  "INVENTORY_LOCK_OR_CAPACITY_FAILED",
+			return outbox.EmitJSON(errTxn, "Order", invoiceID, kafkaEvents.EventOrderValidationFailed, kafkaEvents.TopicMain, kafkaEvents.OrderValidationFailedEvent{
+				OrderID:    invoiceID,
+				InvoiceID:  invoiceID,
+				RetailerID: req.RetailerID,
+				Reason:     "INVENTORY_LOCK_OR_CAPACITY_FAILED",
+				Timestamp:  time.Now().UTC(),
 			}, telemetry.TraceIDFromContext(ctx))
 		})
 
@@ -765,18 +768,25 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 		}
 
 		// Atomic Outbox Emission: Payment Processed
-		if eErr := outbox.EmitJSON(txn, "Order", orderID, "PaymentCleared", "topic.orders.v1", kafkaEvents.PaymentClearedEvent{
-			OrderID:   orderID,
-			InvoiceID: "", // Not natively tracked here, omit or map appropriately
-			Status:    "CLEARED",
+		if eErr := outbox.EmitJSON(txn, "Order", orderID, kafkaEvents.EventPaymentCleared, kafkaEvents.TopicMain, kafkaEvents.PaymentClearedEvent{
+			OrderID:    orderID,
+			InvoiceID:  invoiceID,
+			SupplierID: supplierID,
+			RetailerID: retailerID,
+			Status:     "CLEARED",
+			Timestamp:  time.Now().UTC(),
 		}, telemetry.TraceIDFromContext(ctx)); eErr != nil {
 			return eErr
 		}
 
 		// Atomic Outbox Emission: Order Finalized (Post-Fiscalization)
-		return outbox.EmitJSON(txn, "Order", orderID, "OrderFinalized", "topic.orders.v1", kafkaEvents.OrderFinalizedEvent{
+		return outbox.EmitJSON(txn, "Order", orderID, kafkaEvents.EventOrderFinalized, kafkaEvents.TopicMain, kafkaEvents.OrderFinalizedEvent{
 			OrderID:    orderID,
+			InvoiceID:  invoiceID,
+			SupplierID: supplierID,
+			RetailerID: retailerID,
 			FiscalSign: "PENDING_SOLIQ_SIGNATURE",
+			Timestamp:  time.Now().UTC(),
 		}, telemetry.TraceIDFromContext(ctx))
 	})
 	if err != nil {

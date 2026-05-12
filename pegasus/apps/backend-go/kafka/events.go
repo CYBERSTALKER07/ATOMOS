@@ -20,6 +20,9 @@ const (
 	EventPaymentSettled            = "PAYMENT_SETTLED"
 	EventPaymentFailed             = "PAYMENT_FAILED"
 	EventPaymentIntentCreated      = "PAYMENT_INTENT_CREATED"
+	EventPaymentCleared            = "PAYMENT_CLEARED"
+	EventOrderValidationFailed     = "ORDER_VALIDATION_FAILED"
+	EventOrderFinalized            = "ORDER_FINALIZED"
 	EventOrderCompleted            = "ORDER_COMPLETED"
 	EventDriverAvailabilityChanged = "DRIVER_AVAILABILITY_CHANGED"
 	EventOrderReassigned           = "ORDER_REASSIGNED"
@@ -1143,19 +1146,29 @@ type InternalLoadConfirmedEvent struct {
 
 // PaymentClearedEvent is emitted when an order payment is successfully authorized/cleared.
 type PaymentClearedEvent struct {
-	OrderID   string `json:"order_id"`
-	InvoiceID string `json:"invoice_id"`
-	Status    string `json:"status"`
+	OrderID    string    `json:"order_id"`
+	InvoiceID  string    `json:"invoice_id"`
+	SupplierID string    `json:"supplier_id,omitempty"`
+	RetailerID string    `json:"retailer_id,omitempty"`
+	Status     string    `json:"status"`
+	Timestamp  time.Time `json:"timestamp"`
 }
 
 // OrderValidationFailedEvent is emitted when an order fails to construct (e.g. inventory lock).
 type OrderValidationFailedEvent struct {
-	OrderID string `json:"order_id"`
-	Reason  string `json:"reason"`
+	OrderID    string    `json:"order_id"`
+	InvoiceID  string    `json:"invoice_id,omitempty"`
+	RetailerID string    `json:"retailer_id,omitempty"`
+	Reason     string    `json:"reason"`
+	Timestamp  time.Time `json:"timestamp"`
 }
 
 // OrderFinalizedEvent is emitted post-fiscalization.
 type OrderFinalizedEvent struct {
-	OrderID    string `json:"order_id"`
-	FiscalSign string `json:"fiscal_sign"`
+	OrderID    string    `json:"order_id"`
+	InvoiceID  string    `json:"invoice_id,omitempty"`
+	SupplierID string    `json:"supplier_id,omitempty"`
+	RetailerID string    `json:"retailer_id,omitempty"`
+	FiscalSign string    `json:"fiscal_sign"`
+	Timestamp  time.Time `json:"timestamp"`
 }

@@ -171,7 +171,8 @@
         "GET returns an additive superset order-detail payload with line items.",
         "GET /v1/orders/{id}/events returns the scoped OrderEvents audit timeline for the same compatibility surface.",
         "PATCH accepts both /status and /state path aliases.",
-        "PATCH accepts either status or state in the request body for legacy compatibility."
+        "PATCH accepts either status or state in the request body for legacy compatibility.",
+        "Unified checkout emits ORDER_VALIDATION_FAILED, PAYMENT_CLEARED, and ORDER_FINALIZED to kafka.TopicMain through transactional outbox, replacing the stale topic.orders.v1 path."
       ]
     },
     {
@@ -267,6 +268,8 @@
         "GET /v1/driver/profile",
         "GET /v1/driver/manifest-gate",
         "GET /v1/driver/manifest",
+        "PATCH /v1/driver/availability",
+        "POST /v1/driver/availability",
         "GET /v1/fleet/manifest",
         "GET /v1/ws/driver"
       ],
@@ -281,6 +284,7 @@
         "driverroutes now owns the driver websocket mount previously registered inline in main.go.",
         "Legacy GET /v1/fleet/manifest is preserved as compatibility alias while mobile clients migrate to GET /v1/driver/manifest.",
         "High-consequence driver mutations (/v1/order/deliver, /v1/order/confirm-offload, /v1/order/complete, /v1/order/collect-cash, /v1/delivery/arrive) now send deterministic Idempotency-Key headers from both Android and iOS clients for replay-safe retries.",
+        "Driver availability toggles emit DRIVER_AVAILABILITY_CHANGED inside the same Spanner ReadWriteTransaction via outbox; kafka.EmitNotification remains post-commit best-effort fanout.",
         "Driver login/profile payloads include additive dual-node fields (home_node_type, home_node_id, driver_mode, factory metadata) so one driver app role row can operate both factory-transfer and warehouse-delivery assignments."
       ]
     },

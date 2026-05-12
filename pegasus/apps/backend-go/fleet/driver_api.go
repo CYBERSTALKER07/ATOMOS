@@ -10,6 +10,9 @@ import (
 	"time"
 
 	"backend-go/auth"
+	kafkaEvents "backend-go/kafka"
+	"backend-go/outbox"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -202,13 +205,6 @@ func HandleDriverHistory(client *spanner.Client) http.HandlerFunc {
 // When going online, reason fields are cleared.
 // Emits DRIVER_AVAILABILITY_CHANGED to Kafka for real-time admin visibility.
 
-// AvailabilityChangedEmitter is called after a successful availability toggle.
-// Wired in main.go to emit Kafka events + WebSocket push without circular imports.
-type AvailabilityChangedEmitter func(driverID, supplierID string, available bool, reason, note, truckID string)
-
-// AvailabilityEmitter is set from main.go during init.
-var AvailabilityEmitter AvailabilityChangedEmitter
-
 func HandleDriverAvailability(client *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPatch && r.Method != http.MethodPost {
@@ -259,6 +255,15 @@ func HandleDriverAvailability(client *spanner.Client) http.HandlerFunc {
 
 		var supplierID, vehicleID string
 
+		eventTimestamp := time.Now().UTC()
+		availabilityEvent := kafkaEvents.DriverAvailabilityChangedEvent{
+			DriverID:  claims.UserID,
+			Available: req.Available,
+			Reason:    req.Reason,
+			Note:      req.Note,
+			Timestamp: eventTimestamp,
+		}
+
 		_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			row, err := txn.ReadRow(ctx, "Drivers", spanner.Key{claims.UserID}, []string{"TruckStatus", "SupplierId", "VehicleId"})
 			if err != nil {
@@ -272,35 +277,44 @@ func HandleDriverAvailability(client *spanner.Client) http.HandlerFunc {
 			if sid.Valid {
 				supplierID = sid.StringVal
 			}
+			if supplierID == "" {
+				return fmt.Errorf("driver supplier not found")
+			}
 			if vid.Valid {
 				vehicleID = vid.StringVal
 			}
+			availabilityEvent.SupplierID = supplierID
+			availabilityEvent.TruckID = vehicleID
 
 			// Cannot go offline while IN_TRANSIT
 			if !req.Available && currentStatus.StringVal == StatusInTransit {
 				return fmt.Errorf("cannot go offline while IN_TRANSIT")
 			}
 
+			var mut *spanner.Mutation
 			if req.Available {
 				// Going ONLINE — clear offline fields, set active
-				mut := spanner.Update("Drivers",
+				mut = spanner.Update("Drivers",
 					[]string{"DriverId", "IsActive", "OfflineReason", "OfflineReasonNote", "OfflineAt"},
 					[]interface{}{claims.UserID, true, nil, nil, nil},
 				)
-				return txn.BufferWrite([]*spanner.Mutation{mut})
+			} else {
+				// Going OFFLINE — set reason fields
+				truckStatus := StatusAvailable
+				if req.Reason == "TRUCK_DAMAGED" {
+					truckStatus = StatusMaintenance
+				}
+
+				mut = spanner.Update("Drivers",
+					[]string{"DriverId", "IsActive", "TruckStatus", "OfflineReason", "OfflineReasonNote", "OfflineAt"},
+					[]interface{}{claims.UserID, false, truckStatus, req.Reason, spanner.NullString{StringVal: req.Note, Valid: req.Note != ""}, eventTimestamp},
+				)
+			}
+			if err := txn.BufferWrite([]*spanner.Mutation{mut}); err != nil {
+				return err
 			}
 
-			// Going OFFLINE — set reason fields
-			truckStatus := StatusAvailable
-			if req.Reason == "TRUCK_DAMAGED" {
-				truckStatus = StatusMaintenance
-			}
-
-			mut := spanner.Update("Drivers",
-				[]string{"DriverId", "IsActive", "TruckStatus", "OfflineReason", "OfflineReasonNote", "OfflineAt"},
-				[]interface{}{claims.UserID, false, truckStatus, req.Reason, spanner.NullString{StringVal: req.Note, Valid: req.Note != ""}, time.Now().UTC()},
-			)
-			return txn.BufferWrite([]*spanner.Mutation{mut})
+			return outbox.EmitJSON(txn, "Driver", claims.UserID, kafkaEvents.EventDriverAvailabilityChanged, kafkaEvents.TopicMain, availabilityEvent, telemetry.TraceIDFromContext(ctx))
 		})
 		if err != nil {
 			log.Printf("[AVAILABILITY] Failed: %v", err)
@@ -316,9 +330,8 @@ func HandleDriverAvailability(client *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		// Emit DRIVER_AVAILABILITY_CHANGED (Kafka + WebSocket) — non-blocking
-		if AvailabilityEmitter != nil && supplierID != "" {
-			go AvailabilityEmitter(claims.UserID, supplierID, req.Available, req.Reason, req.Note, vehicleID)
+		if supplierID != "" {
+			kafkaEvents.EmitNotification(kafkaEvents.EventDriverAvailabilityChanged, availabilityEvent)
 		}
 
 		w.Header().Set("Content-Type", "application/json")

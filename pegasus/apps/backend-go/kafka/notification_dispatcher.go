@@ -2591,10 +2591,10 @@ func handlePayloadSync(deps NotificationDeps, data []byte) {
 		slog.Error("notification_dispatcher.unmarshal", "event", "PAYLOAD_SYNC", "err", err)
 		return
 	}
-	if event.SupplierID == "" || deps.SupplierHub == nil {
+	if event.SupplierID == "" || deps.PayloaderHub == nil {
 		return
 	}
-	deps.SupplierHub.PushToSupplier(event.SupplierID, newPayloadSyncFrame(event))
+	deps.PayloaderHub.PushToPayloader(event.SupplierID, newPayloadSyncFrame(event))
 }
 
 // Stakeholder is a (recipientID, role) pair for multi-party notification fan-out.
