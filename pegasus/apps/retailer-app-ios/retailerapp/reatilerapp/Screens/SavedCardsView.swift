@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct SavedCardsView: View {
-    @StateObject private var apiClient = APIClient.shared
+    private var apiClient = APIClient.shared
     @State private var cards: [RetailerCardToken] = []
     @State private var isLoading = true
     @State private var errorMessage: String? = nil

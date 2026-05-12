@@ -155,22 +155,29 @@ struct CheckoutResponse: Codable {
         case total = "total"
         case supplierOrders = "supplier_orders"
     }
+}
 
-
+extension CartManager {
     // MARK: - Server Sync
     func sync() async {
         guard let retailerId = AuthManager.shared.currentUser?.id else { return }
         
-        let cartItems = items.map {
-            CartSyncItem(productId: $0.product.id, variantId: $0.variant.id, quantity: $0.quantity)
+        let cartItems = items.map { item in
+            CartSyncItem(
+                cartId: nil,
+                skuId: item.variant.id,
+                supplierId: item.product.supplierID ?? "",
+                quantity: Int64(item.quantity),
+                unitPrice: Int64(item.variant.price),
+                currency: "UZS"
+            )
         }
-        let request = CartSyncRequest(retailerId: retailerId, items: cartItems)
+        let request = CartSyncRequest(items: cartItems)
         
         do {
             let response = try await APIClient.shared.syncCart(request: request)
             
-            // For now, just print synced state, could update local warnings based on `response.warnings`
-            print("Cart synced. Total value: \(response.totalValue), Warnings: \(response.warnings.count)")
+            print("Cart synced. Items count: \(response.items.count)")
         } catch {
             print("Failed to sync cart: \(error)")
         }
