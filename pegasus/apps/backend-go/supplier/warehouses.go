@@ -194,7 +194,7 @@ func listWarehouses(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 	stmt := spanner.Statement{
 		SQL: `SELECT w.WarehouseId, w.Name, w.Address, w.Lat, w.Lng, w.H3Indexes,
 		             w.CoverageRadiusKm, w.IsActive, w.IsDefault, w.IsOnShift, w.CreatedAt,
-		             (SELECT COUNT(*) FROM Drivers d WHERE d.WarehouseId = w.WarehouseId OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = w.WarehouseId)) AS DriverCount,
+		             (SELECT COUNT(*) FROM Drivers d WHERE d.SupplierId = w.SupplierId AND (d.WarehouseId = w.WarehouseId OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = w.WarehouseId))) AS DriverCount,
 		             (SELECT COUNT(*) FROM Orders o
 		               WHERE o.WarehouseId = w.WarehouseId
 		                 AND o.State NOT IN ('COMPLETED', 'CANCELLED', 'REJECTED', 'RETURNED')) AS OrderCount,
@@ -318,7 +318,7 @@ func getWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Client
 	if createdAt.Valid {
 		wh.CreatedAt = createdAt.Time.Format("2006-01-02T15:04:05Z")
 	}
-	stats, statsErr := loadWarehouseAggregateStats(r.Context(), client, warehouseID)
+	stats, statsErr := loadWarehouseAggregateStats(r.Context(), client, supplierID, warehouseID)
 	if statsErr != nil {
 		log.Printf("[WAREHOUSE] Stats query error for %s: %v", warehouseID, statsErr)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -444,15 +444,15 @@ func createWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 	})
 }
 
-func loadWarehouseAggregateStats(ctx context.Context, client *spanner.Client, warehouseID string) (warehouseAggregateStats, error) {
+func loadWarehouseAggregateStats(ctx context.Context, client *spanner.Client, supplierID, warehouseID string) (warehouseAggregateStats, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT
-		        (SELECT COUNT(*) FROM Drivers d WHERE d.WarehouseId = @wid OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = @wid)) AS DriverCount,
+		        (SELECT COUNT(*) FROM Drivers d WHERE d.SupplierId = @sid AND (d.WarehouseId = @wid OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = @wid))) AS DriverCount,
 		        (SELECT COUNT(*) FROM Orders o
 		          WHERE o.WarehouseId = @wid
 		            AND o.State NOT IN ('COMPLETED', 'CANCELLED', 'REJECTED', 'RETURNED')) AS OrderCount,
 		        (SELECT COUNT(*) FROM WarehouseStaff ws WHERE ws.WarehouseId = @wid) AS StaffCount`,
-		Params: map[string]interface{}{"wid": warehouseID},
+		Params: map[string]interface{}{"sid": supplierID, "wid": warehouseID},
 	}
 
 	iter := client.Single().Query(ctx, stmt)

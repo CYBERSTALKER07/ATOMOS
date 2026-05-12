@@ -32,9 +32,11 @@ func HandleFactoryLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		var req struct {
-			Phone    string `json:"phone"`
-			PIN      string `json:"pin"`
-			Password string `json:"password"`
+			Phone      string `json:"phone"`
+			PIN        string `json:"pin"`
+			Password   string `json:"password"`
+			SupplierID string `json:"supplier_id,omitempty"`
+			FactoryID  string `json:"factory_id,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, `{"error":"invalid JSON body"}`, http.StatusBadRequest)
@@ -51,61 +53,96 @@ func HandleFactoryLogin(spannerClient *spanner.Client) http.HandlerFunc {
 			             fs.SupplierId, fs.IsActive, COALESCE(f.Name, '') AS FactoryName
 			      FROM FactoryStaff fs
 			      JOIN Factories f ON fs.FactoryId = f.FactoryId
-			      WHERE fs.Phone = @phone LIMIT 1`,
+			      WHERE fs.Phone = @phone`,
 			Params: map[string]interface{}{"phone": req.Phone},
 		}
 
 		iter := spannerClient.Single().Query(r.Context(), stmt)
 		defer iter.Stop()
 
-		row, err := iter.Next()
-		if err == iterator.Done {
+		type loginCandidate struct {
+			staffID    string
+			name       string
+			staffRole  string
+			factoryID  string
+			supplierID string
+			factoryName string
+		}
+
+		matches := make([]loginCandidate, 0, 1)
+		hasDeactivatedMatch := false
+
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				log.Printf("[FACTORY AUTH] query error: %v", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			var cand loginCandidate
+			var passwordHash, pinHash string
+			var isActive bool
+			if err := row.Columns(&cand.staffID, &cand.name, &passwordHash, &pinHash, &cand.staffRole, &cand.factoryID,
+				&cand.supplierID, &isActive, &cand.factoryName); err != nil {
+				log.Printf("[FACTORY AUTH] parse error: %v", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			if req.SupplierID != "" && cand.supplierID != req.SupplierID {
+				continue
+			}
+			if req.FactoryID != "" && cand.factoryID != req.FactoryID {
+				continue
+			}
+
+			authOK := false
+			if req.PIN != "" && pinHash != "" {
+				if bcrypt.CompareHashAndPassword([]byte(pinHash), []byte(req.PIN)) == nil {
+					authOK = true
+				}
+			}
+			if !authOK && req.Password != "" {
+				if bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)) == nil {
+					authOK = true
+				}
+			}
+			if !authOK {
+				continue
+			}
+			if !isActive {
+				hasDeactivatedMatch = true
+				continue
+			}
+
+			matches = append(matches, cand)
+		}
+
+		if len(matches) == 0 {
+			if hasDeactivatedMatch {
+				http.Error(w, `{"error":"account deactivated"}`, http.StatusForbidden)
+				return
+			}
 			http.Error(w, `{"error":"invalid credentials"}`, http.StatusUnauthorized)
 			return
 		}
-		if err != nil {
-			log.Printf("[FACTORY AUTH] query error: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		if len(matches) > 1 {
+			http.Error(w, `{"error":"multiple factory accounts matched; retry with supplier_id or factory_id"}`, http.StatusConflict)
 			return
 		}
 
-		var staffID, name, passwordHash, pinHash, staffRole, factoryID, supplierID, factoryName string
-		var isActive bool
-		if err := row.Columns(&staffID, &name, &passwordHash, &pinHash, &staffRole, &factoryID,
-			&supplierID, &isActive, &factoryName); err != nil {
-			log.Printf("[FACTORY AUTH] parse error: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		if !isActive {
-			http.Error(w, `{"error":"account deactivated"}`, http.StatusForbidden)
-			return
-		}
-
-		// Dual-auth: try PIN first (new path), fall back to password (legacy).
-		authOK := false
-		if req.PIN != "" && pinHash != "" {
-			if bcrypt.CompareHashAndPassword([]byte(pinHash), []byte(req.PIN)) == nil {
-				authOK = true
-			}
-		}
-		if !authOK && req.Password != "" {
-			if bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)) == nil {
-				authOK = true
-			}
-		}
-		if !authOK {
-			http.Error(w, `{"error":"invalid credentials"}`, http.StatusUnauthorized)
-			return
-		}
+		selected := matches[0]
 
 		// Mint JWT with FACTORY role + factory scope
 		claims := &auth.PegasusClaims{
-			UserID:      staffID,
+			UserID:      selected.staffID,
 			Role:        "FACTORY",
-			FactoryID:   factoryID,
-			FactoryRole: staffRole,
+			FactoryID:   selected.factoryID,
+			FactoryRole: selected.staffRole,
 			RegisteredClaims: jwt.RegisteredClaims{
 				ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			},
@@ -121,13 +158,13 @@ func HandleFactoryLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"token":        tokenStr,
-			"user_id":      staffID,
+			"user_id":      selected.staffID,
 			"role":         "FACTORY",
-			"factory_role": staffRole,
-			"factory_id":   factoryID,
-			"factory_name": factoryName,
-			"supplier_id":  supplierID,
-			"name":         name,
+			"factory_role": selected.staffRole,
+			"factory_id":   selected.factoryID,
+			"factory_name": selected.factoryName,
+			"supplier_id":  selected.supplierID,
+			"name":         selected.name,
 		})
 	}
 }
@@ -199,8 +236,8 @@ func HandleFactoryRegister(spannerClient *spanner.Client) http.HandlerFunc {
 		var pinResult *pin.Result
 		_, txnErr := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			dupIter := txn.Query(ctx, spanner.Statement{
-				SQL:    `SELECT StaffId FROM FactoryStaff WHERE Phone = @phone LIMIT 1`,
-				Params: map[string]interface{}{"phone": req.Phone},
+				SQL:    `SELECT StaffId FROM FactoryStaff WHERE Phone = @phone AND SupplierId = @supplierId LIMIT 1`,
+				Params: map[string]interface{}{"phone": req.Phone, "supplierId": claims.ResolveSupplierID()},
 			})
 			defer dupIter.Stop()
 			if _, dupErr := dupIter.Next(); dupErr == nil {

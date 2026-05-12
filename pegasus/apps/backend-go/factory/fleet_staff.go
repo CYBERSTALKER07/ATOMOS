@@ -386,8 +386,8 @@ func createFactoryStaff(w http.ResponseWriter, r *http.Request, spannerClient *s
 	staffId := uuid.New().String()
 	if _, err := spannerClient.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		dupIter := txn.Query(ctx, spanner.Statement{
-			SQL:    `SELECT StaffId FROM FactoryStaff WHERE Phone = @phone LIMIT 1`,
-			Params: map[string]interface{}{"phone": req.Phone},
+			SQL:    `SELECT StaffId FROM FactoryStaff WHERE Phone = @phone AND SupplierId = @supplierId LIMIT 1`,
+			Params: map[string]interface{}{"phone": req.Phone, "supplierId": supplierID},
 		})
 		defer dupIter.Stop()
 		if _, dupErr := dupIter.Next(); dupErr == nil {

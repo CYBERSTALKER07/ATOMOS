@@ -256,8 +256,9 @@ func HandleDriverLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		var req struct {
-			Phone string `json:"phone"`
-			Pin   string `json:"pin"`
+			Phone      string `json:"phone"`
+			Pin        string `json:"pin"`
+			SupplierID string `json:"supplier_id,omitempty"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Invalid JSON body", http.StatusBadRequest)
@@ -291,49 +292,94 @@ func HandleDriverLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		iter := spannerClient.Single().Query(r.Context(), stmt)
 		defer iter.Stop()
 
-		row, err := iter.Next()
-		if err == iterator.Done {
+		type loginCandidate struct {
+			driverID      string
+			name          string
+			supplierID    string
+			vehicleType   string
+			licensePlate  string
+			vehicleID     string
+			vehicleClass  string
+			maxVolumeVU   float64
+			warehouseID   string
+			warehouseName string
+			warehouseLat  float64
+			warehouseLng  float64
+			homeNodeType  string
+			homeNodeID    string
+			factoryID     string
+			factoryName   string
+			factoryLat    float64
+			factoryLng    float64
+		}
+
+		matches := make([]loginCandidate, 0, 1)
+		hasDeactivatedMatch := false
+		hasCredentiallessMatch := false
+
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				log.Printf("[DRIVER AUTH] query error: %v", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			var cand loginCandidate
+			var pinHash string
+			var isActive bool
+			if err := row.Columns(&cand.driverID, &cand.name, &pinHash, &isActive, &cand.vehicleType, &cand.licensePlate, &cand.supplierID,
+				&cand.vehicleID, &cand.vehicleClass, &cand.maxVolumeVU, &cand.warehouseID, &cand.warehouseName, &cand.warehouseLat, &cand.warehouseLng,
+				&cand.homeNodeType, &cand.homeNodeID, &cand.factoryID, &cand.factoryName, &cand.factoryLat, &cand.factoryLng); err != nil {
+				log.Printf("[DRIVER AUTH] parse error: %v", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			if req.SupplierID != "" && cand.supplierID != req.SupplierID {
+				continue
+			}
+
+			cand.homeNodeType, cand.homeNodeID = effectiveFleetHomeNode(cand.homeNodeType, cand.homeNodeID, cand.warehouseID)
+
+			if pinHash == "" {
+				hasCredentiallessMatch = true
+				continue
+			}
+			if bcrypt.CompareHashAndPassword([]byte(pinHash), []byte(req.Pin)) != nil {
+				continue
+			}
+			if !isActive {
+				hasDeactivatedMatch = true
+				continue
+			}
+
+			matches = append(matches, cand)
+		}
+
+		if len(matches) == 0 {
+			if hasDeactivatedMatch {
+				http.Error(w, `{"error":"account deactivated"}`, http.StatusForbidden)
+				return
+			}
+			if hasCredentiallessMatch {
+				http.Error(w, `{"error":"no credentials configured"}`, http.StatusUnauthorized)
+				return
+			}
 			http.Error(w, `{"error":"invalid credentials"}`, http.StatusUnauthorized)
 			return
 		}
-		if err != nil {
-			log.Printf("[DRIVER AUTH] query error: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		if len(matches) > 1 {
+			http.Error(w, `{"error":"multiple driver accounts matched; retry with supplier_id"}`, http.StatusConflict)
 			return
 		}
 
-		var driverID, name, pinHash, vehicleType, licensePlate, supplierID, vehicleID, vehicleClass string
-		var warehouseID, warehouseName, homeNodeType, homeNodeID string
-		var factoryID, factoryName string
-		var warehouseLat, warehouseLng float64
-		var factoryLat, factoryLng float64
-		var maxVolumeVU float64
-		var isActive bool
-		if err := row.Columns(&driverID, &name, &pinHash, &isActive, &vehicleType, &licensePlate, &supplierID,
-			&vehicleID, &vehicleClass, &maxVolumeVU, &warehouseID, &warehouseName, &warehouseLat, &warehouseLng,
-			&homeNodeType, &homeNodeID, &factoryID, &factoryName, &factoryLat, &factoryLng); err != nil {
-			log.Printf("[DRIVER AUTH] parse error: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		homeNodeType, homeNodeID = effectiveFleetHomeNode(homeNodeType, homeNodeID, warehouseID)
+		selected := matches[0]
 
-		if !isActive {
-			http.Error(w, `{"error":"account deactivated"}`, http.StatusForbidden)
-			return
-		}
-
-		if pinHash == "" {
-			http.Error(w, `{"error":"no credentials configured"}`, http.StatusUnauthorized)
-			return
-		}
-
-		if err := bcrypt.CompareHashAndPassword([]byte(pinHash), []byte(req.Pin)); err != nil {
-			http.Error(w, `{"error":"invalid credentials"}`, http.StatusUnauthorized)
-			return
-		}
-
-		token, err := auth.GenerateTestToken(driverID, "DRIVER")
+		token, err := auth.GenerateTestToken(selected.driverID, "DRIVER")
 		if err != nil {
 			log.Printf("[DRIVER AUTH] token generation error: %v", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -346,13 +392,13 @@ func HandleDriverLogin(spannerClient *spanner.Client) http.HandlerFunc {
 			var fbUid string
 			if err := spannerClient.Single().Query(r.Context(), spanner.Statement{
 				SQL:    "SELECT COALESCE(FirebaseUid, '') FROM Drivers WHERE DriverId = @id",
-				Params: map[string]interface{}{"id": driverID},
+				Params: map[string]interface{}{"id": selected.driverID},
 			}).Do(func(row *spanner.Row) error { return row.Columns(&fbUid) }); err != nil {
-				log.Printf("[DRIVER AUTH] firebase UID lookup failed for driver %s: %v", driverID, err)
+				log.Printf("[DRIVER AUTH] firebase UID lookup failed for driver %s: %v", selected.driverID, err)
 			}
 			if fbUid != "" {
-				if token, err := auth.MintCustomToken(r.Context(), fbUid, map[string]interface{}{"role": "DRIVER", "driver_id": driverID, "supplier_id": supplierID}); err != nil {
-					log.Printf("[DRIVER AUTH] firebase token mint failed for driver %s: %v", driverID, err)
+				if token, err := auth.MintCustomToken(r.Context(), fbUid, map[string]interface{}{"role": "DRIVER", "driver_id": selected.driverID, "supplier_id": selected.supplierID}); err != nil {
+					log.Printf("[DRIVER AUTH] firebase token mint failed for driver %s: %v", selected.driverID, err)
 				} else {
 					firebaseToken = token
 				}
@@ -361,26 +407,26 @@ func HandleDriverLogin(spannerClient *spanner.Client) http.HandlerFunc {
 
 		resp := map[string]interface{}{
 			"token":          token,
-			"user_id":        driverID,
+			"user_id":        selected.driverID,
 			"role":           "DRIVER",
-			"name":           name,
-			"vehicle_type":   vehicleType,
-			"license_plate":  licensePlate,
-			"supplier_id":    supplierID,
-			"vehicle_id":     vehicleID,
-			"vehicle_class":  vehicleClass,
-			"max_volume_vu":  maxVolumeVU,
-			"warehouse_id":   warehouseID,
-			"warehouse_name": warehouseName,
-			"warehouse_lat":  warehouseLat,
-			"warehouse_lng":  warehouseLng,
-			"home_node_type": homeNodeType,
-			"home_node_id":   homeNodeID,
-			"driver_mode":    driverModeForHomeNode(homeNodeType),
-			"factory_id":     factoryID,
-			"factory_name":   factoryName,
-			"factory_lat":    factoryLat,
-			"factory_lng":    factoryLng,
+			"name":           selected.name,
+			"vehicle_type":   selected.vehicleType,
+			"license_plate":  selected.licensePlate,
+			"supplier_id":    selected.supplierID,
+			"vehicle_id":     selected.vehicleID,
+			"vehicle_class":  selected.vehicleClass,
+			"max_volume_vu":  selected.maxVolumeVU,
+			"warehouse_id":   selected.warehouseID,
+			"warehouse_name": selected.warehouseName,
+			"warehouse_lat":  selected.warehouseLat,
+			"warehouse_lng":  selected.warehouseLng,
+			"home_node_type": selected.homeNodeType,
+			"home_node_id":   selected.homeNodeID,
+			"driver_mode":    driverModeForHomeNode(selected.homeNodeType),
+			"factory_id":     selected.factoryID,
+			"factory_name":   selected.factoryName,
+			"factory_lat":    selected.factoryLat,
+			"factory_lng":    selected.factoryLng,
 		}
 		if firebaseToken != "" {
 			resp["firebase_token"] = firebaseToken
@@ -420,8 +466,8 @@ func createDriver(w http.ResponseWriter, r *http.Request, spannerClient *spanner
 
 	// Check for duplicate phone
 	dupStmt := spanner.Statement{
-		SQL:    `SELECT DriverId FROM Drivers WHERE Phone = @phone LIMIT 1`,
-		Params: map[string]interface{}{"phone": req.Phone},
+		SQL:    `SELECT DriverId FROM Drivers WHERE Phone = @phone AND SupplierId = @supplierId LIMIT 1`,
+		Params: map[string]interface{}{"phone": req.Phone, "supplierId": supplierID},
 	}
 	dupIter := spannerClient.Single().Query(r.Context(), dupStmt)
 	dupRow, dupErr := dupIter.Next()

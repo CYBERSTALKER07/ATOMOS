@@ -286,8 +286,8 @@ func createOpsDriver(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 
 	// Check duplicate phone
 	dupStmt := spanner.Statement{
-		SQL:    `SELECT DriverId FROM Drivers WHERE Phone = @phone LIMIT 1`,
-		Params: map[string]interface{}{"phone": req.Phone},
+		SQL:    `SELECT DriverId FROM Drivers WHERE Phone = @phone AND SupplierId = @supplierId LIMIT 1`,
+		Params: map[string]interface{}{"phone": req.Phone, "supplierId": ops.SupplierID},
 	}
 	dupIter := client.Single().Query(r.Context(), dupStmt)
 	dupRow, dupErr := dupIter.Next()
