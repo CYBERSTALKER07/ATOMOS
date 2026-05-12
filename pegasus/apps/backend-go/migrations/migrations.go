@@ -788,7 +788,7 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 				IsActive     BOOL        NOT NULL DEFAULT (true),
 				CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 				UpdatedAt    TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
-				CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'AIRWALLEX'))
+				CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN', 'AIRWALLEX'))
 			) PRIMARY KEY (ConfigId)`,
 			"CREATE INDEX Idx_SupplierPaymentConfigs_BySupplierId ON SupplierPaymentConfigs(SupplierId)",
 			"CREATE INDEX Idx_SupplierPaymentConfigs_ByWarehouseId ON SupplierPaymentConfigs(WarehouseId)",
@@ -804,7 +804,7 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 			// Phase 2 addendum: ServiceId for Cash gateway
 			"ALTER TABLE SupplierPaymentConfigs ADD COLUMN ServiceId STRING(MAX)",
 			"ALTER TABLE SupplierPaymentConfigs DROP CONSTRAINT CHK_GatewayName",
-			"ALTER TABLE SupplierPaymentConfigs ADD CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'GLOBAL_PAY'))",
+			"ALTER TABLE SupplierPaymentConfigs ADD CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN', 'AIRWALLEX'))",
 		}
 		for _, stmt := range multiVendorPaymentDDL {
 			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
@@ -1435,6 +1435,65 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 			}
 		}
 
+		adminClient.Close()
+	}
+
+	// ── MIGRATION: Phase 1 Global Modular — Regions + Regional Configs ─────────
+	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
+	if err == nil {
+		regionalDDL := []string{
+			`CREATE TABLE Regions (
+				RegionId     STRING(36)  NOT NULL,
+				RegionCode   STRING(20)  NOT NULL,
+				RegionName   STRING(120) NOT NULL,
+				CountryCode  STRING(2)   NOT NULL,
+				Timezone     STRING(50)  NOT NULL,
+				CurrencyCode STRING(3)   NOT NULL,
+				DistanceUnit STRING(10)  NOT NULL DEFAULT ('km'),
+				IsDefault    BOOL        NOT NULL DEFAULT (false),
+				IsActive     BOOL        NOT NULL DEFAULT (true),
+				CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+				UpdatedAt    TIMESTAMP   OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (RegionId)`,
+			"CREATE UNIQUE INDEX Idx_Regions_ByCode ON Regions(RegionCode)",
+			"CREATE INDEX Idx_Regions_ByCountry ON Regions(CountryCode, IsActive)",
+			`CREATE TABLE RegionalConfigs (
+				RegionId                    STRING(36)  NOT NULL,
+				PaymentGateways             STRING(MAX),
+				NotificationFallbackOrder   STRING(MAX),
+				SMSProvider                 STRING(30),
+				MapsProvider                STRING(20),
+				LLMProvider                 STRING(20),
+				DefaultVUConversion         FLOAT64      NOT NULL DEFAULT (1.0),
+				BreachRadiusMeters          FLOAT64      NOT NULL DEFAULT (100.0),
+				ShopClosedGraceMinutes      INT64        NOT NULL DEFAULT (5),
+				ShopClosedEscalationMinutes INT64        NOT NULL DEFAULT (3),
+				OfflineModeDurationMinutes  INT64        NOT NULL DEFAULT (30),
+				CashCustodyAlertHours       INT64        NOT NULL DEFAULT (4),
+				CreatedAt                   TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+				UpdatedAt                   TIMESTAMP    OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (RegionId)`,
+			"ALTER TABLE Suppliers ADD COLUMN RegionId STRING(36)",
+			"ALTER TABLE Warehouses ADD COLUMN RegionId STRING(36)",
+			"ALTER TABLE Retailers ADD COLUMN RegionId STRING(36)",
+			"CREATE INDEX Idx_Suppliers_ByRegionId ON Suppliers(RegionId)",
+			"CREATE INDEX Idx_Warehouses_ByRegionId ON Warehouses(RegionId)",
+			"CREATE INDEX Idx_Retailers_ByRegionId ON Retailers(RegionId)",
+			"ALTER TABLE SupplierPaymentConfigs DROP CONSTRAINT CHK_GatewayName",
+			"ALTER TABLE SupplierPaymentConfigs ADD CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN', 'AIRWALLEX'))",
+			"ALTER TABLE SupplierGlobalPayntConfigs DROP CONSTRAINT CHK_GatewayName",
+			"ALTER TABLE SupplierGlobalPayntConfigs ADD CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN'))",
+		}
+		for _, stmt := range regionalDDL {
+			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
+				Database:   dbName,
+				Statements: []string{stmt},
+			})
+			if ddlErr == nil {
+				op.Wait(ctx)
+				fmt.Println("DATABASE MIGRATION SUCCESS:", stmt[:minInt(80, len(stmt))])
+			}
+		}
 		adminClient.Close()
 	}
 }

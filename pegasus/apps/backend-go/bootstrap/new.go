@@ -130,6 +130,7 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 	countryCfgSvc := countrycfg.NewService(spannerClient)
 	countryCfgSvc.AttachInvalidation(c)
 	countrycfg.SeedDefaultConfigs(ctx, spannerClient)
+	countrycfg.SeedDefaultRegions(ctx, spannerClient)
 
 	platformCfg := settings.NewPlatformConfig(spannerClient)
 	empathySvc := &settings.EmpathyService{Client: spannerClient, Cache: c}

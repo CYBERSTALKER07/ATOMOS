@@ -55,10 +55,22 @@ var providerRegistry = map[string]ProviderCapability{
 		},
 		ManualHint: "Enter the Global Pay Checkout Service OAuth username, OAuth password, and service ID issued for your supplier account.",
 	},
+	"ADYEN": {
+		Gateway:        "ADYEN",
+		DisplayName:    "Adyen",
+		OnboardingMode: ManualOnly,
+		RequiredFields: []string{"merchant_id", "secret_key"},
+		ManualFields: []ManualField{
+			{Name: "merchant_id", Label: "Merchant Account", Placeholder: "e.g. PegasusEU"},
+			{Name: "service_id", Label: "API Prefix", Placeholder: "optional region prefix (e.g. live-us)", HelperText: "Optional for staged rollout; leave empty when not provided."},
+			{Name: "secret_key", Label: "API Key", Placeholder: "Enter your Adyen API key", InputType: "password"},
+		},
+		ManualHint: "Enter your Adyen merchant account and API key for this supplier region.",
+	},
 }
 
 // providerOrder enforces display order in the UI.
-var providerOrder = []string{"CASH", "GLOBAL_PAY"}
+var providerOrder = []string{"CASH", "GLOBAL_PAY", "ADYEN"}
 
 // GetProviderCapabilities returns the capability metadata for all supported gateways.
 func GetProviderCapabilities() []ProviderCapability {

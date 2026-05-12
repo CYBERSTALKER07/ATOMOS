@@ -166,7 +166,7 @@ type Service struct {
 func (s *Service) UpsertConfig(ctx context.Context, supplierId, gatewayName, merchantId, serviceId, secretKey string) (*GatewayConfigSummary, error) {
 	cap := GetProviderCapability(gatewayName)
 	if cap == nil {
-		return nil, fmt.Errorf("unsupported gateway: %s (supported: CASH, GLOBAL_PAY)", gatewayName)
+		return nil, fmt.Errorf("unsupported gateway: %s (supported: CASH, GLOBAL_PAY, ADYEN)", gatewayName)
 	}
 	fieldValues := map[string]string{
 		"merchant_id": merchantId,

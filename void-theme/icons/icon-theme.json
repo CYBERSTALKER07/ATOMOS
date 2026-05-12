@@ -4,19 +4,39 @@
     "_file": {
       "iconPath": "./file.svg"
     },
+    "_spanner_file": {
+      "iconPath": "./spanner-file.svg"
+    },
     "_folder": {
       "iconPath": "./folder.svg"
     },
+    "_spanner_folder": {
+      "iconPath": "./spanner-folder.svg"
+    },
     "_folder_open": {
       "iconPath": "./folder-open.svg"
+    },
+    "_spanner_folder_open": {
+      "iconPath": "./spanner-folder-open.svg"
     }
   },
   "file": "_file",
   "folder": "_folder",
   "folderExpanded": "_folder_open",
-  "fileExtensions": {},
-  "fileNames": {},
-  "folderNames": {},
-  "folderNamesExpanded": {},
+  "fileExtensions": {
+    "ddl": "_spanner_file"
+  },
+  "fileNames": {
+    "spanner.ddl": "_spanner_file",
+    "spanner.ddl.bak": "_spanner_file"
+  },
+  "folderNames": {
+    "spanner": "_spanner_folder",
+    "schema": "_spanner_folder"
+  },
+  "folderNamesExpanded": {
+    "spanner": "_spanner_folder_open",
+    "schema": "_spanner_folder_open"
+  },
   "languageIds": {}
 }

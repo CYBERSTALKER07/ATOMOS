@@ -521,14 +521,14 @@ CREATE INDEX Idx_WarehouseStaff_ByPhone      ON WarehouseStaff(Phone);
 CREATE TABLE SupplierGlobalPayntConfigs (
     ConfigId     STRING(36)  NOT NULL,
     SupplierId   STRING(36)  NOT NULL,
-    GatewayName  STRING(20)  NOT NULL,  -- CASH | GLOBAL_PAY | GLOBAL_PAY
+    GatewayName  STRING(20)  NOT NULL,  -- CASH | GLOBAL_PAY | ADYEN
     MerchantId   STRING(MAX) NOT NULL,
     ServiceId    STRING(MAX),           -- Cash service_id (NULL for GlobalPay/Global Pay)
     SecretKey    BYTES(MAX)  NOT NULL,  -- AES-256-GCM encrypted at rest
     IsActive     BOOL        NOT NULL DEFAULT (true),
     CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
     UpdatedAt    TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
-    CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'GLOBAL_PAY'))
+    CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN'))
 ) PRIMARY KEY (ConfigId);
 
 CREATE INDEX Idx_SupplierGlobalPayntConfigs_BySupplierId ON SupplierGlobalPayntConfigs(SupplierId);
@@ -1050,6 +1050,54 @@ CREATE TABLE SupplierCountryOverrides (
 ) PRIMARY KEY (SupplierId, CountryCode);
 
 CREATE INDEX Idx_SupplierCountryOverrides_ByCountry ON SupplierCountryOverrides(CountryCode);
+
+-- ── I.2a: REGIONS + REGIONAL CONFIGS (PHASE 1 GLOBAL MODULAR) ─────────────
+-- Regions model market-level operational boundaries (country, timezone,
+-- currency, and unit defaults). RegionalConfigs override country defaults when
+-- tenants operate multiple regions inside one country.
+CREATE TABLE Regions (
+    RegionId       STRING(36)  NOT NULL,
+    RegionCode     STRING(20)  NOT NULL, -- e.g. UZ-TAS, UZ-SAM, KZ-ALA
+    RegionName     STRING(120) NOT NULL,
+    CountryCode    STRING(2)   NOT NULL,
+    Timezone       STRING(50)  NOT NULL,
+    CurrencyCode   STRING(3)   NOT NULL,
+    DistanceUnit   STRING(10)  NOT NULL DEFAULT ('km'), -- km | miles
+    IsDefault      BOOL        NOT NULL DEFAULT (false),
+    IsActive       BOOL        NOT NULL DEFAULT (true),
+    CreatedAt      TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+    UpdatedAt      TIMESTAMP   OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (RegionId);
+
+CREATE UNIQUE INDEX Idx_Regions_ByCode ON Regions(RegionCode);
+CREATE INDEX Idx_Regions_ByCountry ON Regions(CountryCode, IsActive);
+
+CREATE TABLE RegionalConfigs (
+    RegionId                    STRING(36)  NOT NULL,
+    PaymentGateways             STRING(MAX), -- JSON: ["GLOBAL_PAY","ADYEN","CASH"]
+    NotificationFallbackOrder   STRING(MAX), -- JSON override
+    SMSProvider                 STRING(30),
+    MapsProvider                STRING(20),
+    LLMProvider                 STRING(20),
+    DefaultVUConversion         FLOAT64      NOT NULL DEFAULT (1.0),
+    BreachRadiusMeters          FLOAT64      NOT NULL DEFAULT (100.0),
+    ShopClosedGraceMinutes      INT64        NOT NULL DEFAULT (5),
+    ShopClosedEscalationMinutes INT64        NOT NULL DEFAULT (3),
+    OfflineModeDurationMinutes  INT64        NOT NULL DEFAULT (30),
+    CashCustodyAlertHours       INT64        NOT NULL DEFAULT (4),
+    CreatedAt                   TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+    UpdatedAt                   TIMESTAMP    OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (RegionId);
+
+-- Region linkage is additive and nullable to preserve compatibility with
+-- existing rows and token payloads during phased rollout.
+ALTER TABLE Suppliers ADD COLUMN RegionId STRING(36);
+ALTER TABLE Warehouses ADD COLUMN RegionId STRING(36);
+ALTER TABLE Retailers ADD COLUMN RegionId STRING(36);
+
+CREATE INDEX Idx_Suppliers_ByRegionId ON Suppliers(RegionId);
+CREATE INDEX Idx_Warehouses_ByRegionId ON Warehouses(RegionId);
+CREATE INDEX Idx_Retailers_ByRegionId ON Retailers(RegionId);
 
 -- ── I.3: ORDER EVENTS AUDIT TABLE ────────────────────────────────────────────
 -- Immutable, chronological event log for every significant order action.

@@ -125,18 +125,16 @@ type cashInvoiceRequest struct {
 
 // NewGatewayClient returns the correct GatewayClient implementation based on
 // the PaymentGateway column value stored in Spanner.
-// Supported values: "GLOBAL_PAY" and "CASH".
+// Supported values: "GLOBAL_PAY", "ADYEN", and "CASH".
 func NewGatewayClient(gateway string) (GatewayClient, error) {
-	switch gateway {
-	case "GLOBAL_PAY":
-		log.Printf("[PAYMENT] GLOBAL_PAY gateway: hosted checkout supported, direct charge/refund not wired yet")
-		return &noopGateway{gateway: "GLOBAL_PAY"}, nil
-	case "CASH":
-		// Cash is collected physically — no electronic charge needed
-		return &noopGateway{gateway: "CASH"}, nil
-	default:
-		return nil, fmt.Errorf("unsupported payment gateway: %s (supported: GLOBAL_PAY, CASH)", gateway)
+	provider, err := NewProviderClient(gateway)
+	if err != nil {
+		return nil, err
 	}
+	if provider.GatewayName() == "GLOBAL_PAY" {
+		log.Printf("[PAYMENT] GLOBAL_PAY gateway: hosted checkout supported, direct charge/refund not wired yet")
+	}
+	return provider, nil
 }
 
 // ─── CHECKOUT URL GENERATORS ─────────────────────────────────────────────────
