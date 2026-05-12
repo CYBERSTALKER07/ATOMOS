@@ -1,6 +1,6 @@
 ---
 name: iosui
-description: Expo UI Guidelines References and best practices for building iOS user interfaces with Expo Router and React Native.
+description: "Use when: designing, building, reviewing, or fixing iOS-style user interfaces in Expo Router or React Native, including navigation, forms, touch targets, platform conventions, accessibility, responsive layouts, and Apple-like interaction patterns."
 ---
 
 <!-- Tip: Use /create-skill in chat to generate content with agent assistance -->

@@ -1,3 +1,9 @@
+---
+name: cache-redis-correctness
+description: "Use when: writing, reviewing, debugging, or auditing cache and Redis logic in V.O.I.D., including cache.Get, cache.Set, cache.Delete, cache.Invalidate, Redis operations, TTL policy, key prefixes, Pub/Sub invalidation, stale data, cache poisoning, memoization, and mutation handlers that must invalidate cached aggregates."
+version: 1.0.0
+---
+
 # Cache & Redis Correctness — Cache Invalidation & Redis Safety
 
 ## Description

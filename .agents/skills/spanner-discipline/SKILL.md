@@ -1,3 +1,9 @@
+---
+name: spanner-discipline
+description: "Use when: writing, reviewing, debugging, or auditing Cloud Spanner access in V.O.I.D., including ReadWriteTransaction, Apply, mutations, queries, indexes, DDL, schema migrations, stale reads, row.Columns, InsertOrUpdate, BufferWrite, and read-then-write race safety."
+version: 1.0.0
+---
+
 # Spanner Discipline — Cloud Spanner Access Patterns & Traps
 
 ## Description

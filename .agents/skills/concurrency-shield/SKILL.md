@@ -1,3 +1,9 @@
+---
+name: concurrency-shield
+description: "Use when: writing, reviewing, debugging, or refactoring Go concurrency in V.O.I.D., including goroutines, channels, mutexes, sync.Map, sync.RWMutex, sync.Once, errgroup, worker pools, WebSocket write pumps, shared mutable state, race conditions, data races, deadlocks, and goroutine lifecycle leaks."
+version: 1.0.0
+---
+
 # Concurrency Shield — Go Race Condition & Goroutine Safety
 
 ## Description

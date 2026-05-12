@@ -1,3 +1,9 @@
+---
+name: financial-integrity
+description: "Use when: writing, reviewing, debugging, or auditing money-related logic in V.O.I.D., including prices, amounts, payments, ledgers, treasury, reconciliation, fees, splits, refunds, tiyin/cents minor units, currency handling, charges, captures, settlements, wallets, escrow, and basis points."
+version: 1.0.0
+---
+
 # Financial Integrity — Money Math & Ledger Safety
 
 ## Description

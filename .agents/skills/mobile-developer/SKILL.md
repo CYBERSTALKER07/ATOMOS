@@ -1,13 +1,9 @@
 ---
 trigger: always_on
 ---
-
 ---
-
-name: mobile-developer
-description: Develop React Native, Flutter, or native mobile apps with modern architecture patterns. Masters cross-platform development, native integrations, offline sync, and app store optimization.
 risk: unknown
-source: community
+description: "Use when: developing, reviewing, debugging, or planning React Native, Flutter, native iOS, or native Android mobile apps; especially mobile architecture, native integrations, offline sync, performance, app store readiness, platform APIs, cross-platform tradeoffs, and mobile delivery checklists."
 date_added: '2026-02-27'
 ---
 

@@ -1,3 +1,9 @@
+---
+name: defensive-typescript
+description: "Use when: writing, reviewing, debugging, or refactoring TypeScript, React, Next.js, or Tailwind code in the admin portal, retailer desktop, factory portal, or warehouse portal; especially for API config, fetch calls, hooks, error boundaries, XSS, type safety, loading/error/empty states, and frontend contract drift."
+version: 1.0.0
+---
+
 # Defensive TypeScript — Frontend Anti-Pattern Prevention
 
 ## Description

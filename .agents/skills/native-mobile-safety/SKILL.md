@@ -1,3 +1,9 @@
+---
+name: native-mobile-safety
+description: "Use when: writing, reviewing, debugging, or refactoring native iOS SwiftUI or Android Kotlin/Compose code in driver, retailer, factory, warehouse, or payload apps; especially force unwraps, try!, MainActor, URLSession, Codable drift, coroutines, SupervisorJob, CoroutineScope, OkHttp, Retrofit, @Serializable models, offline sync, and lifecycle safety."
+version: 1.0.0
+---
+
 # Native Mobile Safety — Swift/SwiftUI & Kotlin/Compose Anti-Pattern Prevention
 
 ## Description

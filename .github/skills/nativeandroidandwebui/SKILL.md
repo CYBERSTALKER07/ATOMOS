@@ -1,8 +1,6 @@
 ---
 name: nativeandroidandwebui
-description: material-design
-Guide for implementing Material Design 3 (Material You) principles for Android, web, and cross-platform applications with dynamic theming
-Material Design 3 (Material You).
+description: "Use when: designing, building, reviewing, or fixing Material Design 3 interfaces for Android, web, Flutter, Jetpack Compose, or cross-platform apps, including dynamic theming, color roles, component patterns, accessibility, responsive layout, and Material You compliance."
 ---
 
 <!-- Tip: Use /create-skill in chat to generate content with agent assistance -->

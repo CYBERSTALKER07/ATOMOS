@@ -1,3 +1,9 @@
+---
+name: kafka-event-contracts
+description: "Use when: writing, reviewing, debugging, or auditing Kafka producers, consumers, event structs, transactional outbox usage, WriteMessages calls, topics, partition keys, offsets, consumer groups, DLQs, notification_dispatcher handlers, trace_id propagation, and producer/consumer contract drift."
+version: 1.0.0
+---
+
 # Kafka Event Contracts — Event Production & Consumption Discipline
 
 ## Description

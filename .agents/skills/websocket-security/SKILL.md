@@ -1,3 +1,9 @@
+---
+name: websocket-security
+description: "Use when: writing, reviewing, debugging, or auditing WebSocket hubs, real-time updates, live telemetry, push notifications, Upgrader flows, Broadcast/PushTo paths, room subscriptions, signed socket tokens, cross-pod relay, Redis Pub/Sub fanout, heartbeat handling, and concurrent WebSocket writes."
+version: 1.0.0
+---
+
 # WebSocket Security — Authentication, Relay, and Connection Safety
 
 ## Description

@@ -119,6 +119,8 @@ enum RetailerWSEvent {
     case preOrderAutoAccepted(orderId: String)
     case preOrderConfirmed(orderId: String)
     case preOrderEdited(orderId: String)
+    case preOrderNudge(orderId: String)
+    case preOrderConfirmationPush(orderId: String)
     case shopClosedAlert(ShopClosedAlertEvent)
 }
 

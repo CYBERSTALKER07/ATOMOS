@@ -1,7 +1,7 @@
 ---
 name: uiux
 description: >
-  Always when user requests UI/UX work (design, build, create, implement, review, fix, improve), follow the workflow in this skill:
+  Use when: the user requests UI/UX work such as design, build, create, implement, review, fix, improve, optimize, or refactor interface work. Follow this workflow:
   1. Analyze user requirements.
   2. Start with design system generation for comprehensive recommendations.
   3. Supplement with detailed domain searches as needed.
