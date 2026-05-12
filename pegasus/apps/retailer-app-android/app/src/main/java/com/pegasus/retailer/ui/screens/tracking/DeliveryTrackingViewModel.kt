@@ -165,7 +165,7 @@ class DeliveryTrackingViewModel @Inject constructor(
                         }
                         fetchActiveFulfillmentCount()
                     }
-                    "ORDER_STATUS_CHANGED", "ORDER_AMENDED" -> {
+                    "ORDER_STATUS_CHANGED", "ORDER_AMENDED", "ORDER_REASSIGNED" -> {
                         refreshTrackingState()
                     }
                 }

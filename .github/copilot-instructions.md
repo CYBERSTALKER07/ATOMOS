@@ -2,7 +2,7 @@
 
 Use this priority stack while executing: safety and data integrity first, code completeness (updating all connected layers) second, direct user intent third, code-doc sync fourth, and optimization/style constraints fifth.
 
-Current runtime sync: unified checkout emits `ORDER_VALIDATION_FAILED`, `PAYMENT_CLEARED`, and `ORDER_FINALIZED` through canonical `kafka.TopicMain`, `/v1/driver/availability` writes `DRIVER_AVAILABILITY_CHANGED` via transactional outbox before best-effort notification fanout, and `POST /v1/retailer/cart/sync` emits `CART_SYNC_UPDATED` over `ws/retailer` post-commit for cross-device cart rehydrate.
+Current runtime sync: unified checkout emits `ORDER_VALIDATION_FAILED`, `PAYMENT_CLEARED`, and `ORDER_FINALIZED` through canonical `kafka.TopicMain`, `/v1/driver/availability` writes `DRIVER_AVAILABILITY_CHANGED` via transactional outbox before best-effort notification fanout, `POST /v1/retailer/cart/sync` emits `CART_SYNC_UPDATED` over `ws/retailer` post-commit for cross-device cart rehydrate, `/v1/retailer/orders/{confirm-ai,reject-ai}` now emits `AI_ORDER_CONFIRMED`/`AI_ORDER_REJECTED` via transactional outbox in the same order mutation transaction, and `ORDER_REASSIGNED` fanout now includes affected retailers for desktop/iOS/Android refresh parity.
 
 ## Primary Directive & Role
 - **F.R.I.D.A.Y. Protocol**: You are an advanced tactical engineering AI assistant overseeing the "Leviathan" logistics monorepo for Pegasus.

@@ -130,6 +130,7 @@ enum RetailerWSEvent {
     case paymentExpired(PaymentFailureEvent)
     case driverApproaching(orderId: String, deliveryToken: String, driverLatitude: Double?, driverLongitude: Double?, supplierId: String, supplierName: String)
     case orderStatusChanged(orderId: String, state: String)
+    case orderReassigned
     case preOrderAutoAccepted(orderId: String)
     case preOrderConfirmed(orderId: String)
     case preOrderEdited(orderId: String)
@@ -296,6 +297,8 @@ final class RetailerWebSocket {
                 let state = json["state"] as? String ?? ""
                 emit(.orderStatusChanged(orderId: orderId, state: state))
             }
+        case "ORDER_REASSIGNED":
+            emit(.orderReassigned)
         case "PRE_ORDER_AUTO_ACCEPTED", "PRE_ORDER_CONFIRMED", "PRE_ORDER_EDITED", "PRE_ORDER_NUDGE", "PRE_ORDER_CONFIRMATION":
             if let orderId = json["order_id"] as? String {
                 switch type {

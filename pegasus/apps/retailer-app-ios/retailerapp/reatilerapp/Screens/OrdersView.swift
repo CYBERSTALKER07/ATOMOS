@@ -445,9 +445,12 @@ struct OrdersView: View {
         for await event in RetailerWebSocket.shared.eventStream() {
             switch event {
             case .paymentRequired, .driverApproaching, .orderCompleted, .paymentSettled,
-                 .paymentFailed, .paymentExpired, .orderStatusChanged,
-                 .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited:
+                 .paymentFailed, .paymentExpired, .orderStatusChanged, .orderReassigned,
+                 .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited,
+                 .preOrderNudge, .preOrderConfirmationPush:
                 await loadData()
+            case .shopClosedAlert, .cartSyncUpdated:
+                break
             }
         }
     }

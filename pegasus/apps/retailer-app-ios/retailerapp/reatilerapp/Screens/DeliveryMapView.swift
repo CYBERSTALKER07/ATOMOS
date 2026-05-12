@@ -227,7 +227,7 @@ struct DeliveryMapView: View {
                     )
                     orders[idx] = updated
                 }
-            case .orderStatusChanged:
+            case .orderStatusChanged, .orderReassigned:
                 await refreshTrackingState()
             default:
                 break

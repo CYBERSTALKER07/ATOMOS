@@ -226,7 +226,11 @@ class NavigationViewModel @Inject constructor(
         }
         viewModelScope.launch {
             retailerWebSocket.events
-                .filter { it.type == "ORDER_STATUS_CHANGED" || it.type == "ORDER_AMENDED" }
+                .filter {
+                    it.type == "ORDER_STATUS_CHANGED" ||
+                        it.type == "ORDER_AMENDED" ||
+                        it.type == "ORDER_REASSIGNED"
+                }
                 .collect { loadActiveOrders() }
         }
     }

@@ -627,10 +627,12 @@ struct ContentView: View {
                 await loadActiveOrders()
             case .paymentFailed, .paymentExpired:
                 await loadActiveOrders()
-            case .orderStatusChanged:
+            case .orderStatusChanged, .orderReassigned:
                 await loadActiveOrders()
-            case .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited:
+            case .preOrderAutoAccepted, .preOrderConfirmed, .preOrderEdited, .preOrderNudge, .preOrderConfirmationPush:
                 await loadActiveOrders()
+            case .shopClosedAlert, .cartSyncUpdated:
+                break
             }
             refreshCenter.trigger()
         }
