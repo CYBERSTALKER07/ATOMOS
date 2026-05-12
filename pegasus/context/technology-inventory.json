@@ -122,6 +122,8 @@
         "Unified checkout now resolves supplier-effective currency via countrycfg.Service and writes currency-consistent MasterInvoices, Orders, OrderLineItems, and checkout outbox payloads, with a temporary 422 guard for mixed-supplier-currency invoices.",
         "payment/session.go now honors CreateSessionRequest.Currency and preserves prior session currency across RetryPaymentSession gateway switches.",
         "payment/provider.go now centralizes gateway selection through NewProviderClient with normalized GLOBAL_PAY, ADYEN, and CASH routing; ADYEN currently fails closed until adapter wiring is complete.",
+        "payment/session.go create/attempt/bind/retry paths now normalize gateway values through NewProviderClient, checkout URL generators fail closed for unsupported/unavailable providers, and payment/webhooks.go validates session gateway compatibility through the provider resolver before Global Pay settlement.",
+        "order/service.go and order/unified_checkout.go now reject ADYEN checkout execution before mutation side effects while ADYEN adapter wiring remains unavailable.",
         "payment/refund.go and paymentroutes/routes.go now accept additive amount+currency compatibility input (while preserving amount_uzs), and payment/chargeback.go writes LedgerAnomalies currency from runtime input/session currency instead of hardcoded UZS.",
         "Treasury/anomaly read models now expose additive currency compatibility: admin reconciliation rows return currency with UZS fallback, treasury cash-holdings report/rows expose default UZS currency, and admin-portal reconciliation/treasury pages consume currency while preserving legacy amount_uzs request compatibility."
       ]
@@ -350,11 +352,13 @@
       ],
       "consumers": [
         "backend-go unified checkout currency context resolution via countrycfg.Service",
+        "supplier and warehouse route composers via auth.RequireRegionScopeWithClient query compatibility enforcement",
         "future supplier and warehouse region-filtered surfaces"
       ],
       "notes": [
         "Phase-1 rollout is additive and backward-compatible: RegionId links are nullable and country defaults remain valid.",
-        "Bootstrap now seeds UZ-DEFAULT region/config rows so runtime region resolution has deterministic fallback behavior."
+        "Bootstrap now seeds UZ-DEFAULT region/config rows so runtime region resolution has deterministic fallback behavior.",
+        "auth/region_scope.go now provides RegionScope context injection and AppendRegionFilter helpers; supplier and warehouse role-route composers enforce region_id query compatibility for SUPPLIER/ADMIN/WAREHOUSE callers."
       ]
     },
     {
