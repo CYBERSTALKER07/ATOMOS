@@ -44,36 +44,37 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	idem := d.Idempotency
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
+	withRegionScope := auth.RequireRegionScopeWithClient(d.Spanner)
 	withWarehouseScope := auth.RequireWarehouseScopeWithClient(d.Spanner)
 
 	r.HandleFunc("/v1/supplier/country-overrides",
-		auth.RequireRole(supplierRole, log(idem(countrycfg.HandleSupplierCountryOverrides(d.CountryCfg)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(countrycfg.HandleSupplierCountryOverrides(d.CountryCfg))))))
 	r.HandleFunc("/v1/supplier/country-overrides/*",
-		auth.RequireRole(supplierRole, log(idem(countrycfg.HandleSupplierCountryOverrideByCode(d.CountryCfg)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(countrycfg.HandleSupplierCountryOverrideByCode(d.CountryCfg))))))
 	r.HandleFunc("/v1/supplier/analytics/velocity",
-		auth.RequireRole(supplierRole, log(analytics.HandleGetVelocity(d.Spanner, d.ReadRouter))))
+		auth.RequireRole(supplierRole, log(withRegionScope(analytics.HandleGetVelocity(d.Spanner, d.ReadRouter)))))
 	r.HandleFunc("/v1/supplier/analytics/demand/today",
-		auth.RequireRole(supplierRole, log(analytics.HandleDemandToday(d.Spanner, d.ReadRouter))))
+		auth.RequireRole(supplierRole, log(withRegionScope(analytics.HandleDemandToday(d.Spanner, d.ReadRouter)))))
 	r.HandleFunc("/v1/supplier/analytics/demand/history",
-		auth.RequireRole(supplierRole, log(analytics.HandleDemandHistory(d.Spanner, d.ReadRouter))))
+		auth.RequireRole(supplierRole, log(withRegionScope(analytics.HandleDemandHistory(d.Spanner, d.ReadRouter)))))
 	r.HandleFunc("/v1/supplier/analytics/transit-heatmap",
-		auth.RequireRole(supplierRole, log(withWarehouseScope(analytics.HandleTransitHeatmap(d.Spanner, d.ReadRouter)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(withWarehouseScope(analytics.HandleTransitHeatmap(d.Spanner, d.ReadRouter))))))
 	r.HandleFunc("/v1/supplier/analytics/throughput",
-		auth.RequireRole(supplierRole, log(withWarehouseScope(analytics.HandleThroughput(d.Spanner, d.ReadRouter)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(withWarehouseScope(analytics.HandleThroughput(d.Spanner, d.ReadRouter))))))
 	r.HandleFunc("/v1/supplier/analytics/load-distribution",
-		auth.RequireRole(supplierRole, log(withWarehouseScope(analytics.HandleLoadDistribution(d.Spanner, d.ReadRouter)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(withWarehouseScope(analytics.HandleLoadDistribution(d.Spanner, d.ReadRouter))))))
 	r.HandleFunc("/v1/supplier/analytics/node-efficiency",
-		auth.RequireRole(supplierRole, log(withWarehouseScope(analytics.HandleNodeEfficiency(d.Spanner, d.ReadRouter)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(withWarehouseScope(analytics.HandleNodeEfficiency(d.Spanner, d.ReadRouter))))))
 	r.HandleFunc("/v1/supplier/analytics/sla-health",
-		auth.RequireRole(supplierRole, log(withWarehouseScope(analytics.HandleSLAHealth(d.Spanner, d.ReadRouter)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(withWarehouseScope(analytics.HandleSLAHealth(d.Spanner, d.ReadRouter))))))
 	r.HandleFunc("/v1/supplier/analytics/revenue",
-		auth.RequireRole(supplierRole, log(withWarehouseScope(analytics.HandleRevenue(d.Spanner, d.ReadRouter)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(withWarehouseScope(analytics.HandleRevenue(d.Spanner, d.ReadRouter))))))
 	r.HandleFunc("/v1/supplier/analytics/top-retailers",
-		auth.RequireRole(supplierRole, log(withWarehouseScope(analytics.HandleTopRetailers(d.Spanner, d.ReadRouter)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(withWarehouseScope(analytics.HandleTopRetailers(d.Spanner, d.ReadRouter))))))
 	r.HandleFunc("/v1/supplier/financials",
-		auth.RequireRole(supplierRole, log(analytics.HandleSupplierFinancials(d.Spanner, d.ReadRouter))))
+		auth.RequireRole(supplierRole, log(withRegionScope(analytics.HandleSupplierFinancials(d.Spanner, d.ReadRouter)))))
 	r.HandleFunc("/v1/supplier/crm/retailers",
-		auth.RequireRole(supplierRole, log(supplier.HandleCRMRetailers(d.Spanner))))
+		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleCRMRetailers(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/crm/retailers/*",
-		auth.RequireRole(supplierRole, log(supplier.HandleCRMRetailerDetail(d.Spanner))))
+		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleCRMRetailerDetail(d.Spanner)))))
 }

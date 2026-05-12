@@ -162,7 +162,13 @@ func (ws *WebhookService) handleGlobalPayWebhookParsed(w http.ResponseWriter, r 
 		http.Error(w, "payment session not found", http.StatusNotFound)
 		return
 	}
-	if session.Gateway != "GLOBAL_PAY" {
+	sessionProvider, providerErr := NewProviderClient(session.Gateway)
+	if providerErr != nil {
+		http.Error(w, "payment session gateway mismatch", http.StatusConflict)
+		return
+	}
+	sessionGateway := sessionProvider.GatewayName()
+	if sessionGateway != "GLOBAL_PAY" {
 		http.Error(w, "payment session gateway mismatch", http.StatusConflict)
 		return
 	}
@@ -187,7 +193,7 @@ func (ws *WebhookService) handleGlobalPayWebhookParsed(w http.ResponseWriter, r 
 	}
 
 	if status.Paid {
-		_, settleErr := ws.settleInvoice(r.Context(), session.InvoiceID, session.LockedAmount, "GLOBAL_PAY")
+		_, settleErr := ws.settleInvoice(r.Context(), session.InvoiceID, session.LockedAmount, sessionGateway)
 		if settleErr != nil {
 			if strings.Contains(settleErr.Error(), "already settled") {
 				w.Header().Set("Content-Type", "application/json")
@@ -199,7 +205,7 @@ func (ws *WebhookService) handleGlobalPayWebhookParsed(w http.ResponseWriter, r 
 			return
 		}
 
-		ws.settlePaymentSession(r.Context(), session.InvoiceID, "GLOBAL_PAY", status.ProviderPaymentID)
+		ws.settlePaymentSession(r.Context(), session.InvoiceID, sessionGateway, status.ProviderPaymentID)
 		if session.OrderID != "" {
 			ws.notifyDriverPaymentSettled(session.OrderID, session.LockedAmount)
 		}
@@ -216,7 +222,7 @@ func (ws *WebhookService) handleGlobalPayWebhookParsed(w http.ResponseWriter, r 
 	}
 
 	if status.Failed() {
-		if failErr := ws.SessionSvc.FailSession(r.Context(), session.SessionID, firstNonEmpty(status.FailureCode, "GLOBAL_PAY_FAILED"), firstNonEmpty(status.FailureMessage, req.Status, status.RawStatus)); failErr != nil {
+		if failErr := ws.SessionSvc.FailSession(r.Context(), session.SessionID, firstNonEmpty(status.FailureCode, sessionGateway+"_FAILED"), firstNonEmpty(status.FailureMessage, req.Status, status.RawStatus)); failErr != nil {
 			slog.Error("global_pay_webhook.session_fail_mark_error", "session_id", session.SessionID, "err", failErr)
 		}
 
@@ -231,7 +237,7 @@ func (ws *WebhookService) handleGlobalPayWebhookParsed(w http.ResponseWriter, r 
 					"type":       wsEvents.EventPaymentFailed,
 					"order_id":   capturedOrderID,
 					"session_id": capturedSessionID,
-					"gateway":    "GLOBAL_PAY",
+					"gateway":    sessionGateway,
 					"reason":     capturedMsg,
 					"message":    "Payment failed — please try again or choose another method",
 				})

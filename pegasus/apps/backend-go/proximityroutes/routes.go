@@ -39,17 +39,18 @@ type Deps struct {
 func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	supplier := []string{"SUPPLIER", "ADMIN"}
+	withRegionScope := auth.RequireRegionScopeWithClient(d.Spanner)
 
 	r.HandleFunc("/v1/supplier/serving-warehouse",
-		auth.RequireRole(supplier, log(proximity.HandleGetServingWarehouse(d.Spanner, d.ReadRouter))))
+		auth.RequireRole(supplier, log(withRegionScope(proximity.HandleGetServingWarehouse(d.Spanner, d.ReadRouter)))))
 	r.HandleFunc("/v1/supplier/geo-report",
-		auth.RequireRole(supplier, log(proximity.HandleGeoReport(d.Spanner))))
+		auth.RequireRole(supplier, log(withRegionScope(proximity.HandleGeoReport(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/dispatch-audits",
-		auth.RequireRole(supplier, log(proximity.HandleDispatchAudits(d.Spanner))))
+		auth.RequireRole(supplier, log(withRegionScope(proximity.HandleDispatchAudits(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/zone-preview",
-		auth.RequireRole(supplier, log(proximity.HandleZonePreview(d.Spanner))))
+		auth.RequireRole(supplier, log(withRegionScope(proximity.HandleZonePreview(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/warehouses/validate-coverage",
-		auth.RequireRole(supplier, log(proximity.HandleValidateCoverage(d.Spanner))))
+		auth.RequireRole(supplier, log(withRegionScope(proximity.HandleValidateCoverage(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/warehouse-loads",
-		auth.RequireRole(supplier, log(proximity.HandleWarehouseLoads(d.Spanner))))
+		auth.RequireRole(supplier, log(withRegionScope(proximity.HandleWarehouseLoads(d.Spanner)))))
 }

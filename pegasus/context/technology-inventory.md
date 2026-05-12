@@ -53,6 +53,7 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 	- Unified checkout emits `ORDER_VALIDATION_FAILED`, `PAYMENT_CLEARED`, and `ORDER_FINALIZED` to canonical `kafka.TopicMain` through the transactional outbox, replacing the stale `topic.orders.v1` path.
 	- Unified checkout now resolves supplier-effective currency via `countrycfg.Service` and persists event-aligned currency across `MasterInvoices`, `Orders`, and `OrderLineItems`; current single-invoice semantics reject mixed-supplier-currency carts with `422` until invoice-split support lands.
 	- Payment sessions now honor request currency in `payment.CreateSession` and keep prior session currency during `RetryPaymentSession` gateway switches.
+	- Payment gateway client selection now routes through `payment.NewProviderClient` with normalized `GLOBAL_PAY`/`ADYEN`/`CASH` support; `ADYEN` remains intentionally fail-closed until direct adapter wiring lands.
 	- Refund and chargeback mutations now accept additive `amount`/`currency` compatibility input (while preserving `amount_uzs`), refund responses include additive `amount` + `currency`, and ledger-anomaly currency now resolves from runtime input/session currency instead of hardcoded UZS.
 	- Treasury anomaly read models now expose additive `currency`: `/v1/admin/reconciliation` returns row currency with legacy `UZS` fallback, `/v1/treasury/cash-holdings` returns report + row currency (default `UZS`), and admin-portal reconciliation/treasury pages consume the additive field while preserving legacy `amount_uzs` request compatibility.
 - Telemetry and legacy infra route split: `pegasus/apps/backend-go/telemetryroutes/routes.go`, `pegasus/apps/backend-go/catalogroutes/routes.go`, `pegasus/apps/backend-go/infraroutes/routes.go`, `pegasus/apps/backend-go/authroutes/routes.go`
@@ -86,6 +87,10 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 - Supplier self-service route composition: `pegasus/apps/backend-go/supplierroutes/routes.go`
 	- Owns `POST /v1/supplier/configure`, `POST /v1/supplier/billing/setup`, `GET/PUT /v1/supplier/profile`, `PATCH /v1/supplier/shift`, `GET/POST/DELETE /v1/supplier/payment-config`, `GET/POST/DELETE /v1/supplier/gateway-onboarding`, and `POST /v1/supplier/payment/recipient/register`
 	- Current portal consumers span `app/setup/billing/page.tsx`, `app/supplier/profile/page.tsx`, `app/supplier/payment-config/page.tsx`, `hooks/useSupplierShift.tsx`, and supplier profile readers in product-management screens
+	- Supplier gateway capability metadata now includes additive `ADYEN` manual-onboarding fields, and payment runtime gateway resolution is centralized in `payment.NewProviderClient`
+- Regional config substrate: `pegasus/apps/backend-go/schema/spanner.ddl`, `pegasus/apps/backend-go/migrations/migrations.go`, `pegasus/apps/backend-go/countrycfg/regions.go`, `pegasus/apps/backend-go/bootstrap/new.go`
+	- Adds `Regions` and `RegionalConfigs` tables plus additive nullable `RegionId` links/indexes on `Suppliers`, `Warehouses`, and `Retailers`
+	- `countrycfg.Service` now provides `GetDefaultRegionByCountry`, `ResolveSupplierRegion`, and `GetRegionalConfig`, while bootstrap startup seeds `UZ-DEFAULT` fallback region/config rows
 - Supplier warehouse-ops route composition: `pegasus/apps/backend-go/supplierroutes/routes.go`
 	- Owns `GET /v1/supplier/org/members`, `POST /v1/supplier/org/members/invite`, `PUT/DELETE /v1/supplier/org/members/{id}`, `GET/POST /v1/supplier/staff/payloader`, `POST /v1/supplier/staff/payloader/{id}/rotate-pin`, `GET /v1/supplier/warehouse-staff`, `PATCH /v1/supplier/warehouse-staff/{id}`, `GET/POST /v1/supplier/warehouses`, `GET/PUT/DELETE /v1/supplier/warehouses/{id}`, `POST /v1/supplier/warehouses/{id}/coverage`, and `GET /v1/supplier/warehouse-inflight-vu`
 	- Current portal consumers span `app/supplier/org/page.tsx`, `app/supplier/staff/page.tsx`, `app/supplier/warehouses/page.tsx`, `app/supplier/warehouses/WarehouseStaffPanel.tsx`, `app/supplier/warehouses/CoverageEditor.tsx`, and `components/factory/FactoryNetworkMap.tsx`
@@ -212,6 +217,7 @@ From Terraform under `pegasus/infra/terraform`:
 - Payme
 - Click
 - Global Pay
+- Adyen
 - Stripe
 - Telegram
 - Firebase

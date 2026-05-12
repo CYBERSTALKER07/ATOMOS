@@ -59,34 +59,35 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
 	supplierOrPayload := []string{"SUPPLIER", "PAYLOADER", "ADMIN"}
 	supplierOrPayloadException := []string{"SUPPLIER", "ADMIN", "PAYLOADER"}
+	withRegionScope := auth.RequireRegionScopeWithClient(d.Spanner)
 	withWarehouseScope := auth.RequireWarehouseScopeWithClient(d.Spanner)
 
 	r.HandleFunc("/v1/supplier/picking-manifests",
-		auth.RequireRole(supplierOrPayload, log(supplier.HandleManifests(d.Spanner))))
+		auth.RequireRole(supplierOrPayload, log(withRegionScope(supplier.HandleManifests(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/picking-manifests/orders",
-		auth.RequireRole(supplierOrPayload, log(supplier.HandleManifestOrders(d.Spanner))))
+		auth.RequireRole(supplierOrPayload, log(withRegionScope(supplier.HandleManifestOrders(d.Spanner)))))
 	r.HandleFunc("/v1/payload/manifest-exception",
-		auth.RequireRole(supplierOrPayloadException, log(idem(d.ManifestSvc.HandleManifestException()))))
+		auth.RequireRole(supplierOrPayloadException, log(withRegionScope(idem(d.ManifestSvc.HandleManifestException())))))
 	r.HandleFunc("/v1/supplier/manifest-exceptions",
-		auth.RequireRole(supplierRole, log(d.ManifestSvc.HandleListExceptions())))
+		auth.RequireRole(supplierRole, log(withRegionScope(d.ManifestSvc.HandleListExceptions()))))
 	r.HandleFunc("/v1/supplier/manifests",
-		auth.RequireRole(supplierOrPayload, log(manifestRootHandler(d.ManifestSvc))))
+		auth.RequireRole(supplierOrPayload, log(withRegionScope(manifestRootHandler(d.ManifestSvc)))))
 	r.HandleFunc("/v1/supplier/manifests/auto-dispatch",
-		auth.RequireRole(supplierRole, log(idem(supplier.HandleAutoDispatch(d.Spanner, d.ReadRouter, d.ManifestSvc, d.Optimizer, d.Counters)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(supplier.HandleAutoDispatch(d.Spanner, d.ReadRouter, d.ManifestSvc, d.Optimizer, d.Counters))))))
 	r.HandleFunc("/v1/supplier/manifests/dispatch-recommend",
-		auth.RequireRole(supplierRole, log(supplier.HandleDispatchRecommend(d.Spanner, d.ReadRouter))))
+		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleDispatchRecommend(d.Spanner, d.ReadRouter)))))
 	r.HandleFunc("/v1/supplier/manifests/manual-dispatch",
-		auth.RequireRole(supplierRole, log(idem(supplier.HandleManualDispatch(d.Spanner, d.ReadRouter, d.ManifestSvc)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(supplier.HandleManualDispatch(d.Spanner, d.ReadRouter, d.ManifestSvc))))))
 	r.HandleFunc("/v1/supplier/manifests/waiting-room",
-		auth.RequireRole(supplierRole, log(supplier.HandleWaitingRoom(d.Spanner))))
+		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleWaitingRoom(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/manifests/*",
-		auth.RequireRole(supplierOrPayload, log(manifestPathHandler(d.ManifestSvc, idem))))
+		auth.RequireRole(supplierOrPayload, log(withRegionScope(manifestPathHandler(d.ManifestSvc, idem)))))
 	r.HandleFunc("/v1/supplier/fleet-volumetrics",
-		auth.RequireRole(supplierRole, log(withWarehouseScope(supplier.HandleFleetVolumetrics(d.Spanner)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(withWarehouseScope(supplier.HandleFleetVolumetrics(d.Spanner))))))
 	r.HandleFunc("/v1/supplier/dispatch-queue",
-		auth.RequireRole(supplierRole, log(idem(withWarehouseScope(supplier.HandleDispatchQueue(d.Spanner, d.ReadRouter, d.ManifestSvc, d.Optimizer, d.Counters))))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(withWarehouseScope(supplier.HandleDispatchQueue(d.Spanner, d.ReadRouter, d.ManifestSvc, d.Optimizer, d.Counters)))))))
 	r.HandleFunc("/v1/supplier/dispatch-preview",
-		auth.RequireRole(supplierRole, log(withWarehouseScope(supplier.HandleH3RoutePreview(d.Spanner, d.ReadRouter)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(withWarehouseScope(supplier.HandleH3RoutePreview(d.Spanner, d.ReadRouter))))))
 }
 
 func manifestRootHandler(manifestSvc *supplier.ManifestService) http.HandlerFunc {

@@ -58,44 +58,45 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	idem := d.Idempotency
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
+	withRegionScope := auth.RequireRegionScopeWithClient(d.Spanner)
 	withWarehouseScope := auth.RequireWarehouseScopeWithClient(d.Spanner)
 
 	r.HandleFunc("/v1/supplier/delivery-zones/*",
-		auth.RequireRole(supplierRole, log(idem(supplier.HandleDeliveryZoneAction(d.Spanner)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(supplier.HandleDeliveryZoneAction(d.Spanner))))))
 	r.HandleFunc("/v1/supplier/delivery-zones",
-		auth.RequireRole(supplierRole, log(idem(supplier.HandleDeliveryZones(d.Spanner)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(supplier.HandleDeliveryZones(d.Spanner))))))
 	r.HandleFunc("/v1/supplier/factories",
-		auth.RequireRole(supplierRole, log(idem(withWarehouseScope(factory.HandleSupplierFactories(d.Spanner, d.Cache))))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(withWarehouseScope(factory.HandleSupplierFactories(d.Spanner, d.Cache)))))))
 	r.HandleFunc("/v1/supplier/factories/*",
-		auth.RequireRole(supplierRole, log(idem(withWarehouseScope(factory.HandleSupplierFactoryDetail(d.Spanner, d.Cache))))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(withWarehouseScope(factory.HandleSupplierFactoryDetail(d.Spanner, d.Cache)))))))
 	r.HandleFunc("/v1/supplier/factories/recommend-warehouses",
-		auth.RequireRole(supplierRole, log(factory.HandleRecommendWarehouses(d.Spanner))))
+		auth.RequireRole(supplierRole, log(withRegionScope(factory.HandleRecommendWarehouses(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/factories/optimal-assignments",
-		auth.RequireRole(supplierRole, log(factory.HandleOptimalAssignments(d.Spanner))))
+		auth.RequireRole(supplierRole, log(withRegionScope(factory.HandleOptimalAssignments(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/geocode/reverse",
-		auth.RequireRole(supplierRole, log(proximity.HandleReverseGeocode())))
+		auth.RequireRole(supplierRole, log(withRegionScope(proximity.HandleReverseGeocode()))))
 	r.HandleFunc("/v1/supplier/retailers/locations",
-		auth.RequireRole(supplierRole, log(supplier.HandleRetailerLocations(d.Spanner))))
+		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleRetailerLocations(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/supply-lanes",
-		auth.RequireRole(supplierRole, log(idem(d.SupplyLanes.HandleSupplyLanes))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(d.SupplyLanes.HandleSupplyLanes)))))
 	r.HandleFunc("/v1/supplier/supply-lanes/*",
-		auth.RequireRole(supplierRole, log(idem(d.SupplyLanes.HandleSupplyLaneAction))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(d.SupplyLanes.HandleSupplyLaneAction)))))
 	r.HandleFunc("/v1/supplier/network-mode",
-		auth.RequireRole(supplierRole, log(idem(networkModeHandler(d.NetworkOptimizer)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(networkModeHandler(d.NetworkOptimizer))))))
 	r.HandleFunc("/v1/supplier/network-analytics",
-		auth.RequireRole(supplierRole, log(d.NetworkOptimizer.HandleNetworkAnalytics)))
+		auth.RequireRole(supplierRole, log(withRegionScope(d.NetworkOptimizer.HandleNetworkAnalytics))))
 	r.HandleFunc("/v1/supplier/replenishment/kill-switch",
-		auth.RequireRole(supplierRole, log(idem(d.KillSwitch.HandleKillSwitch))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(d.KillSwitch.HandleKillSwitch)))))
 	r.HandleFunc("/v1/supplier/replenishment/audit",
-		auth.RequireRole(supplierRole, log(d.KillSwitch.HandleListKillSwitchAudit)))
+		auth.RequireRole(supplierRole, log(withRegionScope(d.KillSwitch.HandleListKillSwitchAudit))))
 	r.HandleFunc("/v1/supplier/replenishment/pull-matrix",
-		auth.RequireRole(supplierRole, log(idem(d.PullMatrix.HandleManualPullMatrix))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(d.PullMatrix.HandleManualPullMatrix)))))
 	r.HandleFunc("/v1/supplier/replenishment/predictive-push",
-		auth.RequireRole(supplierRole, log(idem(d.PredictivePush.HandleManualPredictivePush))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(d.PredictivePush.HandleManualPredictivePush)))))
 	r.HandleFunc("/v1/supplier/warehouses/territory-preview",
-		auth.RequireRole(supplierRole, log(proximity.HandlePreviewTerritories(d.Spanner))))
+		auth.RequireRole(supplierRole, log(withRegionScope(proximity.HandlePreviewTerritories(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/warehouses/apply-territory",
-		auth.RequireRole(supplierRole, log(idem(proximity.HandleApplyTerritory(d.Spanner, d.IsDispatchLocked)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(proximity.HandleApplyTerritory(d.Spanner, d.IsDispatchLocked))))))
 }
 
 func networkModeHandler(service *factory.NetworkOptimizerService) http.HandlerFunc {

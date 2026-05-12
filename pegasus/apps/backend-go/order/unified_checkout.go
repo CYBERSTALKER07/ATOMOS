@@ -37,7 +37,7 @@ import (
 // UnifiedCheckoutRequest is the single payload from the native app's checkout.
 type UnifiedCheckoutRequest struct {
 	RetailerID     string               `json:"retailer_id"`
-	PaymentGateway string               `json:"payment_gateway"` // "CASH" | "GLOBAL_PAY"
+	PaymentGateway string               `json:"payment_gateway"` // "CASH" | "GLOBAL_PAY" | "ADYEN" (fail-closed until adapter rollout)
 	Latitude       float64              `json:"latitude"`
 	Longitude      float64              `json:"longitude"`
 	Items          []cart.OrderLineItem `json:"items"`
@@ -122,7 +122,11 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	}
 	normalizedGateway := normalizeCardGateway(req.PaymentGateway)
 	if normalizedGateway == "" {
-		http.Error(w, `{"error":"payment_gateway must be GLOBAL_PAY or CASH"}`, http.StatusUnprocessableEntity)
+		http.Error(w, `{"error":"payment_gateway must be GLOBAL_PAY, ADYEN, or CASH"}`, http.StatusUnprocessableEntity)
+		return
+	}
+	if normalizedGateway == "ADYEN" {
+		http.Error(w, `{"error":"payment_gateway ADYEN is currently unavailable"}`, http.StatusServiceUnavailable)
 		return
 	}
 	req.PaymentGateway = normalizedGateway

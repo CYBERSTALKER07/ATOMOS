@@ -121,13 +121,18 @@ func (s *SessionService) CreateSession(ctx context.Context, req CreateSessionReq
 	sessionID := uuid.New().String()
 	now := time.Now().UTC()
 	currencyCode := normalizeCurrencyCode(req.Currency)
+	provider, providerErr := NewProviderClient(req.Gateway)
+	if providerErr != nil {
+		return nil, providerErr
+	}
+	resolvedGateway := provider.GatewayName()
 
 	session := &PaymentSession{
 		SessionID:    sessionID,
 		OrderID:      req.OrderID,
 		RetailerID:   req.RetailerID,
 		SupplierID:   req.SupplierID,
-		Gateway:      req.Gateway,
+		Gateway:      resolvedGateway,
 		LockedAmount: req.Amount,
 		Currency:     currencyCode,
 		Status:       SessionCreated,
@@ -163,7 +168,7 @@ func (s *SessionService) CreateSession(ctx context.Context, req CreateSessionReq
 			"InvoiceId", "RedirectUrl", "ExpiresAt", "CreatedAt",
 		}
 		vals := []interface{}{
-			sessionID, req.OrderID, req.RetailerID, req.SupplierID, req.Gateway,
+			sessionID, req.OrderID, req.RetailerID, req.SupplierID, resolvedGateway,
 			req.Amount, currencyCode, SessionCreated, int64(0),
 			nullStr(req.InvoiceID), nullStr(req.RedirectURL), nullTime(req.ExpiresAt),
 			spanner.CommitTimestamp,
@@ -183,7 +188,7 @@ func (s *SessionService) CreateSession(ctx context.Context, req CreateSessionReq
 	}
 
 	log.Printf("[PAYMENT_SESSION] Created session %s for order %s (%s, %d)",
-		sessionID, req.OrderID, req.Gateway, req.Amount)
+		sessionID, req.OrderID, resolvedGateway, req.Amount)
 	return session, nil
 }
 
@@ -193,6 +198,11 @@ func (s *SessionService) CreateSession(ctx context.Context, req CreateSessionReq
 func (s *SessionService) CreateAttempt(ctx context.Context, sessionID, gateway string) (*PaymentAttempt, error) {
 	attemptID := uuid.New().String()
 	var attempt PaymentAttempt
+	provider, providerErr := NewProviderClient(gateway)
+	if providerErr != nil {
+		return nil, providerErr
+	}
+	resolvedGateway := provider.GatewayName()
 
 	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// Read current session
@@ -217,7 +227,7 @@ func (s *SessionService) CreateAttempt(ctx context.Context, sessionID, gateway s
 			AttemptID: attemptID,
 			SessionID: sessionID,
 			AttemptNo: newAttemptNo,
-			Gateway:   gateway,
+			Gateway:   resolvedGateway,
 			Status:    AttemptInitiated,
 			StartedAt: time.Now().UTC(),
 		}
@@ -234,7 +244,7 @@ func (s *SessionService) CreateAttempt(ctx context.Context, sessionID, gateway s
 		return txn.BufferWrite([]*spanner.Mutation{
 			spanner.Insert("PaymentAttempts",
 				[]string{"AttemptId", "SessionId", "AttemptNo", "Gateway", "Status", "StartedAt"},
-				[]interface{}{attemptID, sessionID, newAttemptNo, gateway, AttemptInitiated, spanner.CommitTimestamp},
+				[]interface{}{attemptID, sessionID, newAttemptNo, resolvedGateway, AttemptInitiated, spanner.CommitTimestamp},
 			),
 		})
 	})
@@ -255,11 +265,17 @@ func (s *SessionService) CreateAttempt(ctx context.Context, sessionID, gateway s
 // BindProviderCheckout stores provider-created redirect metadata on the session
 // after a hosted checkout has been initialized.
 func (s *SessionService) BindProviderCheckout(ctx context.Context, sessionID, gateway, invoiceID, redirectURL, providerReference string, expiresAt *time.Time) error {
+	provider, providerErr := NewProviderClient(gateway)
+	if providerErr != nil {
+		return fmt.Errorf("bind provider checkout gateway %s: %w", strings.TrimSpace(gateway), providerErr)
+	}
+	resolvedGateway := provider.GatewayName()
+
 	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return txn.BufferWrite([]*spanner.Mutation{
 			spanner.Update("PaymentSessions",
 				[]string{"SessionId", "Gateway", "InvoiceId", "RedirectUrl", "ProviderReference", "ExpiresAt", "UpdatedAt"},
-				[]interface{}{sessionID, gateway, nullStr(invoiceID), nullStr(redirectURL), nullStr(providerReference), nullTime(expiresAt), spanner.CommitTimestamp},
+				[]interface{}{sessionID, resolvedGateway, nullStr(invoiceID), nullStr(redirectURL), nullStr(providerReference), nullTime(expiresAt), spanner.CommitTimestamp},
 			),
 		})
 	})
@@ -925,6 +941,11 @@ func (s *SessionService) PartialSettleSession(ctx context.Context, sessionID str
 // mid-route and the retailer/driver needs to switch (e.g., card → cash).
 func (s *SessionService) RetryPaymentSession(ctx context.Context, orderID string, newGateway string) (*PaymentSession, error) {
 	var newSession *PaymentSession
+	provider, providerErr := NewProviderClient(newGateway)
+	if providerErr != nil {
+		return nil, providerErr
+	}
+	resolvedGateway := provider.GatewayName()
 
 	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// 1. Find the current active/failed session for this order
@@ -981,7 +1002,7 @@ func (s *SessionService) RetryPaymentSession(ctx context.Context, orderID string
 				[]string{"SessionId", "OrderId", "RetailerId", "SupplierId", "Gateway",
 					"LockedAmount", "Currency", "Status", "CurrentAttemptNo",
 					"ExpiresAt", "CreatedAt"},
-				[]interface{}{newSessionID, orderID, retailerID, supplierID, newGateway,
+				[]interface{}{newSessionID, orderID, retailerID, supplierID, resolvedGateway,
 					lockedAmount, resolvedCurrency, SessionCreated, int64(0),
 					expiry, spanner.CommitTimestamp},
 			),
@@ -992,7 +1013,7 @@ func (s *SessionService) RetryPaymentSession(ctx context.Context, orderID string
 			OrderID:      orderID,
 			RetailerID:   retailerID,
 			SupplierID:   supplierID,
-			Gateway:      newGateway,
+			Gateway:      resolvedGateway,
 			LockedAmount: lockedAmount,
 			Currency:     resolvedCurrency,
 			Status:       SessionCreated,
@@ -1000,7 +1021,7 @@ func (s *SessionService) RetryPaymentSession(ctx context.Context, orderID string
 		}
 
 		log.Printf("[PAYMENT_SESSION] Payment retry: order %s switched from %s→%s (old=%s, new=%s)",
-			orderID, oldGateway, newGateway, oldSessionID, newSessionID)
+			orderID, oldGateway, resolvedGateway, oldSessionID, newSessionID)
 
 		return nil
 	})

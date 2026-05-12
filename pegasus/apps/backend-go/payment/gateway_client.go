@@ -141,13 +141,23 @@ func NewGatewayClient(gateway string) (GatewayClient, error) {
 
 // CheckoutURL builds a native deep-link URL for the given gateway so
 // mobile apps can open the payment experience directly in the provider surface.
-// Returns ("", nil) for gateways without an interactive checkout URL.
+// Returns ("", nil) only for CASH (no interactive checkout); unsupported or
+// unavailable gateways fail closed with an error.
 func CheckoutURL(gateway string, orderID string, amount int64) (string, error) {
-	switch gateway {
+	provider, err := NewProviderClient(gateway)
+	if err != nil {
+		return "", err
+	}
+
+	switch provider.GatewayName() {
 	case "GLOBAL_PAY":
 		return globalPayCheckoutURL(orderID, amount)
+	case "CASH":
+		return "", nil
+	case "ADYEN":
+		return "", fmt.Errorf("ADYEN checkout unavailable: provider adapter not configured")
 	default:
-		return "", nil // CASH or unsupported gateways have no deep link
+		return "", fmt.Errorf("unsupported payment gateway: %s", provider.GatewayName())
 	}
 }
 
@@ -315,10 +325,19 @@ func (s *SimulatedClient) Refund(orderID string, refundAmount int64) error {
 // CheckoutURLWithCredentials builds a deep-link URL using supplier-specific credentials
 // instead of global ENV vars. This is the multi-vendor path.
 func CheckoutURLWithCredentials(gateway, orderID string, amount int64, merchantId, serviceId string) (string, error) {
-	switch gateway {
+	provider, err := NewProviderClient(gateway)
+	if err != nil {
+		return "", err
+	}
+
+	switch provider.GatewayName() {
 	case "GLOBAL_PAY":
 		return globalPayCheckoutURLWithCreds(orderID, amount, merchantId)
-	default:
+	case "CASH":
 		return "", nil
+	case "ADYEN":
+		return "", fmt.Errorf("ADYEN checkout unavailable: provider adapter not configured")
+	default:
+		return "", fmt.Errorf("unsupported payment gateway: %s", provider.GatewayName())
 	}
 }

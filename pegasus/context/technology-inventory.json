@@ -121,6 +121,7 @@
         "Unified checkout emits ORDER_VALIDATION_FAILED, PAYMENT_CLEARED, and ORDER_FINALIZED to kafka.TopicMain through transactional outbox, replacing the stale topic.orders.v1 path.",
         "Unified checkout now resolves supplier-effective currency via countrycfg.Service and writes currency-consistent MasterInvoices, Orders, OrderLineItems, and checkout outbox payloads, with a temporary 422 guard for mixed-supplier-currency invoices.",
         "payment/session.go now honors CreateSessionRequest.Currency and preserves prior session currency across RetryPaymentSession gateway switches.",
+        "payment/provider.go now centralizes gateway selection through NewProviderClient with normalized GLOBAL_PAY, ADYEN, and CASH routing; ADYEN currently fails closed until adapter wiring is complete.",
         "payment/refund.go and paymentroutes/routes.go now accept additive amount+currency compatibility input (while preserving amount_uzs), and payment/chargeback.go writes LedgerAnomalies currency from runtime input/session currency instead of hardcoded UZS.",
         "Treasury/anomaly read models now expose additive currency compatibility: admin reconciliation rows return currency with UZS fallback, treasury cash-holdings report/rows expose default UZS currency, and admin-portal reconciliation/treasury pages consume currency while preserving legacy amount_uzs request compatibility."
       ]
@@ -332,6 +333,31 @@
       ]
     },
     {
+      "name": "Regional config substrate",
+      "path": "Regions + RegionalConfigs + Supplier/Warehouse/Retailer RegionId links",
+      "owner": "pegasus/apps/backend-go/schema/spanner.ddl + pegasus/apps/backend-go/migrations/migrations.go + pegasus/apps/backend-go/countrycfg/regions.go",
+      "delegatedFrom": "pegasus/apps/backend-go/bootstrap/new.go",
+      "methods": [
+        "Spanner table Regions",
+        "Spanner table RegionalConfigs",
+        "ALTER TABLE Suppliers ADD COLUMN RegionId",
+        "ALTER TABLE Warehouses ADD COLUMN RegionId",
+        "ALTER TABLE Retailers ADD COLUMN RegionId",
+        "countrycfg.Service.GetDefaultRegionByCountry",
+        "countrycfg.Service.ResolveSupplierRegion",
+        "countrycfg.Service.GetRegionalConfig",
+        "countrycfg.SeedDefaultRegions"
+      ],
+      "consumers": [
+        "backend-go unified checkout currency context resolution via countrycfg.Service",
+        "future supplier and warehouse region-filtered surfaces"
+      ],
+      "notes": [
+        "Phase-1 rollout is additive and backward-compatible: RegionId links are nullable and country defaults remain valid.",
+        "Bootstrap now seeds UZ-DEFAULT region/config rows so runtime region resolution has deterministic fallback behavior."
+      ]
+    },
+    {
       "name": "Supplier self-service setup surface",
       "path": "/v1/supplier/{configure,billing/setup,profile,shift,payment-config,gateway-onboarding,payment/recipient/register}",
       "owner": "pegasus/apps/backend-go/supplierroutes/routes.go",
@@ -359,7 +385,8 @@
       ],
       "notes": [
         "Route composition moved out of main.go into supplierroutes while preserving the existing supplier and vault handlers.",
-        "The portal currently consumes billing setup, profile, shift, and payment-config paths as one supplier self-service contract."
+        "The portal currently consumes billing setup, profile, shift, and payment-config paths as one supplier self-service contract.",
+        "Supplier gateway capability metadata now includes ADYEN manual-onboarding fields, and runtime gateway resolution is centralized in payment.NewProviderClient."
       ]
     },
     {
@@ -899,6 +926,7 @@
     "Payme",
     "Click",
     "Global Pay",
+    "Adyen",
     "Stripe",
     "Telegram",
     "Firebase",

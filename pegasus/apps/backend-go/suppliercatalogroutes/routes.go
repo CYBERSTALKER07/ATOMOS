@@ -38,22 +38,23 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	idem := d.Idempotency
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
+	withRegionScope := auth.RequireRegionScopeWithClient(d.Spanner)
 	withWarehouseScope := auth.RequireWarehouseScopeWithClient(d.Spanner)
 
 	r.HandleFunc("/v1/supplier/products/upload-ticket",
-		auth.RequireRole(supplierRole, log(supplierUploadTicketHandler())))
+		auth.RequireRole(supplierRole, log(withRegionScope(supplierUploadTicketHandler()))))
 	r.HandleFunc("/v1/supplier/products",
-		auth.RequireRole(supplierRole, log(withMethodIdempotency(supplierProductsHandler(d.Spanner), idem, http.MethodPost))))
+		auth.RequireRole(supplierRole, log(withRegionScope(withMethodIdempotency(supplierProductsHandler(d.Spanner), idem, http.MethodPost)))))
 	r.HandleFunc("/v1/supplier/products/*",
-		auth.RequireRole(supplierRole, log(withMethodIdempotency(supplierProductDetailHandler(d.Spanner), idem, http.MethodPut, http.MethodDelete))))
+		auth.RequireRole(supplierRole, log(withRegionScope(withMethodIdempotency(supplierProductDetailHandler(d.Spanner), idem, http.MethodPut, http.MethodDelete)))))
 	r.HandleFunc("/v1/supplier/pricing/rules",
-		auth.RequireRole(supplierRole, log(idem(d.Pricing.HandleUpsertPricingRule))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(d.Pricing.HandleUpsertPricingRule)))))
 	r.HandleFunc("/v1/supplier/pricing/rules/*",
-		auth.RequireRole(supplierRole, log(idem(d.Pricing.HandlePricingRuleAction))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(d.Pricing.HandlePricingRuleAction)))))
 	r.HandleFunc("/v1/supplier/pricing/retailer-overrides",
-		auth.RequireRole(supplierRole, log(idem(withWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrides)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(withWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrides))))))
 	r.HandleFunc("/v1/supplier/pricing/retailer-overrides/*",
-		auth.RequireRole(supplierRole, log(idem(withWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrideAction)))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(withWarehouseScope(d.RetailerPricing.HandleRetailerPricingOverrideAction))))))
 }
 
 func withMethodIdempotency(next http.HandlerFunc, middleware Middleware, methods ...string) http.HandlerFunc {

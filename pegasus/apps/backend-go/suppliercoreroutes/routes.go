@@ -42,19 +42,20 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	supplierRole := []string{"SUPPLIER", "ADMIN"}
 	log := d.Log
 	idem := d.Idempotency
+	withRegionScope := auth.RequireRegionScopeWithClient(d.Spanner)
 
 	r.HandleFunc("/v1/supplier/dashboard",
-		auth.RequireRole(supplierRole, log(dashboardHandler(d.Order))))
+		auth.RequireRole(supplierRole, log(withRegionScope(dashboardHandler(d.Order)))))
 	r.HandleFunc("/v1/supplier/earnings",
-		auth.RequireRole(supplierRole, log(analytics.HandleSupplierEarnings(d.Spanner, d.ReadRouter))))
+		auth.RequireRole(supplierRole, log(withRegionScope(analytics.HandleSupplierEarnings(d.Spanner, d.ReadRouter)))))
 	r.HandleFunc("/v1/supplier/inventory",
-		auth.RequireRole(supplierRole, log(withMethodIdempotency(supplier.HandleInventory(d.Spanner), idem, http.MethodPatch))))
+		auth.RequireRole(supplierRole, log(withRegionScope(withMethodIdempotency(supplier.HandleInventory(d.Spanner), idem, http.MethodPatch)))))
 	r.HandleFunc("/v1/supplier/inventory/audit",
-		auth.RequireRole(supplierRole, log(supplier.HandleInventoryAuditLog(d.Spanner))))
+		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleInventoryAuditLog(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/orders",
-		auth.RequireRole(supplierRole, log(d.Vetting.HandleSupplierOrders)))
+		auth.RequireRole(supplierRole, log(withRegionScope(d.Vetting.HandleSupplierOrders))))
 	r.HandleFunc("/v1/supplier/orders/vet",
-		auth.RequireRole(supplierRole, log(idem(d.Vetting.HandleVetOrder))))
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(d.Vetting.HandleVetOrder)))))
 }
 
 func withMethodIdempotency(next http.HandlerFunc, middleware Middleware, methods ...string) http.HandlerFunc {

@@ -107,45 +107,46 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	warehouseScoped := []string{"SUPPLIER", "ADMIN"}
 	warehouseTriad := []string{"WAREHOUSE", "SUPPLIER", "ADMIN"}
 	warehouseOnly := []string{"WAREHOUSE"}
+	withRegionScope := auth.RequireRegionScopeWithClient(d.Spanner)
 	withScope := auth.RequireWarehouseScopeWithClient(d.Spanner)
 
 	// whOps layers the WAREHOUSE role guard + RequireWarehouseOpsScope
 	// middleware for the WAREHOUSE_ADMIN operator surface.
 	whOps := func(next http.HandlerFunc) http.HandlerFunc {
-		return auth.RequireRole(warehouseOnly, log(auth.RequireWarehouseOpsScope(d.Spanner, next)))
+		return auth.RequireRole(warehouseOnly, log(withRegionScope(auth.RequireWarehouseOpsScope(d.Spanner, next))))
 	}
 
 	// 1. Emergency transfer request (exact path — wins over the
 	//    /v1/warehouse/transfers/ prefix dispatcher below).
 	r.HandleFunc("/v1/warehouse/transfers/emergency",
-		auth.RequireRole(warehouseScoped, log(withScope(d.EmergencySvc.HandleEmergencyTransfer))))
+		auth.RequireRole(warehouseScoped, log(withRegionScope(withScope(d.EmergencySvc.HandleEmergencyTransfer)))))
 
 	// 3. Force-receive DLQ reconciliation (exact path, registered before
 	//    the prefix dispatcher for clarity).
 	r.HandleFunc("/v1/warehouse/transfers/force-receive",
-		auth.RequireRole(warehouseScoped, log(withScope(d.ForceReceiveSvc.HandleForceReceive))))
+		auth.RequireRole(warehouseScoped, log(withRegionScope(withScope(d.ForceReceiveSvc.HandleForceReceive)))))
 
 	// 2. Standard inbound-transfer receive — wildcard dispatcher on
 	//    /v1/warehouse/transfers/{id}/receive.
 	r.HandleFunc("/v1/warehouse/transfers/*",
-		auth.RequireRole(warehouseScoped, log(withScope(d.TransferSvc.HandleWarehouseReceiveTransfer))))
+		auth.RequireRole(warehouseScoped, log(withRegionScope(withScope(d.TransferSvc.HandleWarehouseReceiveTransfer)))))
 
 	// 4. Replenishment insights (exact) + action dispatcher (wildcard).
 	r.HandleFunc("/v1/warehouse/replenishment/insights",
-		auth.RequireRole(warehouseScoped, log(withScope(replenishment.HandleInsights(d.Spanner)))))
+		auth.RequireRole(warehouseScoped, log(withRegionScope(withScope(replenishment.HandleInsights(d.Spanner))))))
 	r.HandleFunc("/v1/warehouse/replenishment/insights/*",
-		auth.RequireRole(warehouseScoped, log(withScope(replenishment.HandleInsightAction(d.Spanner, d.Producer)))))
+		auth.RequireRole(warehouseScoped, log(withRegionScope(withScope(replenishment.HandleInsightAction(d.Spanner, d.Producer))))))
 
 	// 6. Demand forecast.
 	r.HandleFunc("/v1/warehouse/demand/forecast",
-		auth.RequireRole(warehouseTriad, log(warehouse.HandleDemandForecast(d.Spanner, d.ReadRouter))))
+		auth.RequireRole(warehouseTriad, log(withRegionScope(warehouse.HandleDemandForecast(d.Spanner, d.ReadRouter)))))
 
 	// 7. Supply-request list + create (exact).
 	r.HandleFunc("/v1/warehouse/supply-requests",
-		auth.RequireRole(warehouseTriad, log(supplyRequestList(d.SupplyReqSvc))))
+		auth.RequireRole(warehouseTriad, log(withRegionScope(supplyRequestList(d.SupplyReqSvc)))))
 	// 8. Supply-request detail + transition (wildcard dispatcher).
 	r.HandleFunc("/v1/warehouse/supply-requests/*",
-		auth.RequireRole(warehouseTriad, log(supplyRequestByID(d.SupplyReqSvc))))
+		auth.RequireRole(warehouseTriad, log(withRegionScope(supplyRequestByID(d.SupplyReqSvc)))))
 
 	// 9-26. Warehouse Ops Portal (WAREHOUSE_ADMIN scope).
 	r.HandleFunc("/v1/warehouse/ops/dashboard", whOps(warehouse.HandleDashboard(d.Spanner)))
@@ -185,13 +186,13 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	// Idempotency-guarded: lock acquire/release are mutations whose retry must not produce
 	// duplicate locks or release a lock twice (race window with AI-worker).
 	r.HandleFunc("/v1/warehouse/dispatch-lock",
-		auth.RequireRole(warehouseTriad, log(idempotency.Guard(dispatchLockHandler(d.DispatchLockSvc)))))
+		auth.RequireRole(warehouseTriad, log(withRegionScope(idempotency.Guard(dispatchLockHandler(d.DispatchLockSvc))))))
 	r.HandleFunc("/v1/warehouse/dispatch-locks",
-		auth.RequireRole(warehouseTriad, log(d.DispatchLockSvc.HandleListDispatchLocks)))
+		auth.RequireRole(warehouseTriad, log(withRegionScope(d.DispatchLockSvc.HandleListDispatchLocks))))
 
 	if d.WarehouseHub != nil {
 		r.HandleFunc("/ws/warehouse",
-			auth.RequireRoleWithGrace([]string{"WAREHOUSE", "SUPPLIER", "ADMIN"}, 2*time.Hour, d.WarehouseHub.HandleConnection))
+			auth.RequireRoleWithGrace([]string{"WAREHOUSE", "SUPPLIER", "ADMIN"}, 2*time.Hour, withRegionScope(d.WarehouseHub.HandleConnection)))
 	}
 }
 

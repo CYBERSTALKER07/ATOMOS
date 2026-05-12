@@ -2651,7 +2651,7 @@ func (s *OrderService) resolveAvailableCardGateways(ctx context.Context, supplie
 
 func normalizeCardGateway(gateway string) string {
 	switch strings.ToUpper(strings.TrimSpace(gateway)) {
-	case "CASH", "GLOBAL_PAY":
+	case "CASH", "GLOBAL_PAY", "ADYEN":
 		return strings.ToUpper(strings.TrimSpace(gateway))
 	default:
 		return ""
@@ -2703,8 +2703,8 @@ func (s *OrderService) CompleteOrder(ctx context.Context, orderId string) (strin
 		}
 
 		// For electronic payments: verify payment is settled
-		gw := strings.ToUpper(gateway.StringVal)
-		if gw == "GLOBAL_PAY" || gw == "CASH" {
+		gw := normalizeCardGateway(gateway.StringVal)
+		if gw != "" {
 			settled := false
 
 			// Primary check: payment session
@@ -2827,9 +2827,13 @@ type CardCheckoutResponse struct {
 // CardCheckout transitions AWAITING_PAYMENT → keeps AWAITING_PAYMENT (no state change — webhook settles).
 // Creates a MasterInvoice for the gateway and returns a hosted checkout URL.
 func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callbackBaseURL string) (*CardCheckoutResponse, error) {
-	gateway = strings.ToUpper(gateway)
-	if gateway != "GLOBAL_PAY" && gateway != "CASH" {
-		return nil, fmt.Errorf("unsupported card gateway: %s (supported: GLOBAL_PAY, CASH)", gateway)
+	rawGateway := strings.ToUpper(strings.TrimSpace(gateway))
+	gateway = normalizeCardGateway(rawGateway)
+	if gateway == "" {
+		return nil, fmt.Errorf("unsupported card gateway: %s (supported: GLOBAL_PAY, ADYEN, CASH)", rawGateway)
+	}
+	if gateway == "ADYEN" {
+		return nil, fmt.Errorf("ADYEN checkout unavailable: provider adapter not configured")
 	}
 
 	var resp CardCheckoutResponse
