@@ -193,6 +193,53 @@ final class APIClient {
         let _: APIResponse<String> = try await post(path: "/v1/retailer/shop-closed-response", body: ShopClosedRequest(orderId: orderId, response: response))
     }
 
+    // MARK: - AI & Preorder Integrations
+    
+    struct ConfirmAiOrderRequest: Encodable {
+        let orderId: String
+        enum CodingKeys: String, CodingKey { case orderId = "order_id" }
+    }
+    
+    struct RejectAiOrderRequest: Encodable {
+        let orderId: String
+        let reason: String
+        enum CodingKeys: String, CodingKey { case orderId = "order_id"; case reason }
+    }
+    
+    struct ConfirmPreorderRequest: Encodable {
+        let orderId: String
+        enum CodingKeys: String, CodingKey { case orderId = "order_id" }
+    }
+    
+    struct EditPreorderItem: Encodable {
+        let lineItemId: String
+        let quantity: Int
+        enum CodingKeys: String, CodingKey { case lineItemId = "line_item_id"; case quantity }
+    }
+    
+    struct EditPreorderRequest: Encodable {
+        let orderId: String
+        let requestedDeliveryDate: String?
+        let items: [EditPreorderItem]?
+        enum CodingKeys: String, CodingKey { case orderId = "order_id"; case requestedDeliveryDate = "requested_delivery_date"; case items }
+    }
+
+    func confirmAiOrder(orderId: String) async throws {
+        let _: APIResponse<String> = try await post(path: "/v1/retailer/orders/confirm-ai", body: ConfirmAiOrderRequest(orderId: orderId))
+    }
+
+    func rejectAiOrder(orderId: String, reason: String) async throws {
+        let _: APIResponse<String> = try await post(path: "/v1/retailer/orders/reject-ai", body: RejectAiOrderRequest(orderId: orderId, reason: reason))
+    }
+
+    func confirmPreorder(orderId: String) async throws {
+        let _: APIResponse<String> = try await post(path: "/v1/orders/confirm-preorder", body: ConfirmPreorderRequest(orderId: orderId))
+    }
+
+    func editPreorder(orderId: String, deliveryDate: String?, items: [EditPreorderItem]?) async throws {
+        let _: APIResponse<String> = try await post(path: "/v1/orders/edit-preorder", body: EditPreorderRequest(orderId: orderId, requestedDeliveryDate: deliveryDate, items: items))
+    }
+
     // MARK: - Tracking
 
     func getTrackingOrders() async throws -> [TrackingOrder] {

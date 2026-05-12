@@ -3,6 +3,10 @@ import SwiftUI
 struct OrderCardView: View {
     let order: Order
     var onCancel: (() -> Void)?
+    var onConfirmAi: (() -> Void)? = nil
+    var onRejectAi: (() -> Void)? = nil
+    var onConfirmPreorder: (() -> Void)? = nil
+    var onEditPreorder: (() -> Void)? = nil
 
     @State private var appeared = false
 
@@ -90,28 +94,86 @@ struct OrderCardView: View {
             }
 
             // Footer
-            if order.status.canCancel, onCancel != nil {
+            if order.status == .pendingReview || order.status == .scheduled || (order.status.canCancel && onCancel != nil) {
                 Rectangle()
                     .fill(AppTheme.separator.opacity(0.5))
                     .frame(height: AppTheme.separatorHeight)
 
                 HStack {
-                    Spacer()
-                    Button {
-                        Haptics.medium()
-                        onCancel?()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 10, weight: .bold))
-                            Text("Cancel Order")
-                                .font(.system(.caption, design: .rounded, weight: .semibold))
+                    if order.status == .pendingReview {
+                        Button {
+                            Haptics.medium()
+                            onRejectAi?()
+                        } label: {
+                            Text("Reject")
+                                .font(.system(.caption, design: .rounded, weight: .bold))
+                                .foregroundStyle(AppTheme.destructive)
+                                .padding(.horizontal, AppTheme.spacingMD)
+                                .padding(.vertical, AppTheme.spacingSM)
+                                .background(AppTheme.destructiveSoft.opacity(0.5))
+                                .clipShape(.capsule)
                         }
-                        .foregroundStyle(AppTheme.destructive)
-                        .padding(.horizontal, AppTheme.spacingMD)
-                        .padding(.vertical, AppTheme.spacingSM)
-                        .background(AppTheme.destructiveSoft.opacity(0.5))
-                        .clipShape(.capsule)
+
+                        Spacer()
+
+                        Button {
+                            Haptics.success()
+                            onConfirmAi?()
+                        } label: {
+                            Text("Confirm Suggestion")
+                                .font(.system(.caption, design: .rounded, weight: .bold))
+                                .foregroundStyle(AppTheme.onPrimary)
+                                .padding(.horizontal, AppTheme.spacingMD)
+                                .padding(.vertical, AppTheme.spacingSM)
+                                .background(AppTheme.accent)
+                                .clipShape(.capsule)
+                        }
+                    } else if order.status == .scheduled {
+                        Button {
+                            Haptics.medium()
+                            onEditPreorder?()
+                        } label: {
+                            Text("Edit")
+                                .font(.system(.caption, design: .rounded, weight: .bold))
+                                .foregroundStyle(AppTheme.textSecondary)
+                                .padding(.horizontal, AppTheme.spacingMD)
+                                .padding(.vertical, AppTheme.spacingSM)
+                                .background(AppTheme.surfaceElevated)
+                                .clipShape(.capsule)
+                        }
+
+                        Spacer()
+
+                        Button {
+                            Haptics.success()
+                            onConfirmPreorder?()
+                        } label: {
+                            Text("Confirm Preorder")
+                                .font(.system(.caption, design: .rounded, weight: .bold))
+                                .foregroundStyle(AppTheme.onPrimary)
+                                .padding(.horizontal, AppTheme.spacingMD)
+                                .padding(.vertical, AppTheme.spacingSM)
+                                .background(AppTheme.accent)
+                                .clipShape(.capsule)
+                        }
+                    } else if order.status.canCancel, onCancel != nil {
+                        Spacer()
+                        Button {
+                            Haptics.medium()
+                            onCancel?()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 10, weight: .bold))
+                                Text("Cancel Order")
+                                    .font(.system(.caption, design: .rounded, weight: .semibold))
+                            }
+                            .foregroundStyle(AppTheme.destructive)
+                            .padding(.horizontal, AppTheme.spacingMD)
+                            .padding(.vertical, AppTheme.spacingSM)
+                            .background(AppTheme.destructiveSoft.opacity(0.5))
+                            .clipShape(.capsule)
+                        }
                     }
                 }
             }
