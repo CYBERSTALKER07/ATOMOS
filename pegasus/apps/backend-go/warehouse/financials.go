@@ -94,19 +94,20 @@ func queryWarehouseFinancials(ctx context.Context, client *spanner.Client, wareh
 	txn := client.Single().WithTimestampBound(spanner.MaxStaleness(15 * time.Second))
 
 	// Aggregate revenue + order count for completed orders
-	stmt := spanner.Statement{
-		SQL: `SELECT IFNULL(SUM(o.Amount), 0), COUNT(*), IFNULL(o.PaymentGateway, 'UNKNOWN')
-		      FROM Orders o
-		      WHERE o.WarehouseId = @wid
-		        AND o.State = 'COMPLETED'
-		        AND o.CreatedAt >= @start AND o.CreatedAt < @end
-		      GROUP BY o.PaymentGateway`,
-		Params: map[string]interface{}{
-			"wid":   warehouseID,
-			"start": startDate,
-			"end":   endDate,
-		},
+	orderRevenueSQL := `SELECT IFNULL(SUM(o.Amount), 0), COUNT(*), IFNULL(o.PaymentGateway, 'UNKNOWN')
+	      FROM Orders o
+	      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+	      WHERE o.WarehouseId = @wid
+	        AND o.State = 'COMPLETED'
+	        AND o.CreatedAt >= @start AND o.CreatedAt < @end`
+	orderRevenueParams := map[string]interface{}{
+		"wid":   warehouseID,
+		"start": startDate,
+		"end":   endDate,
 	}
+	orderRevenueSQL, orderRevenueParams = auth.AppendRegionFilter(ctx, orderRevenueSQL, orderRevenueParams, "rt")
+	orderRevenueSQL += ` GROUP BY o.PaymentGateway`
+	stmt := spanner.Statement{SQL: orderRevenueSQL, Params: orderRevenueParams}
 	iter := txn.Query(ctx, stmt)
 	defer iter.Stop()
 
@@ -135,18 +136,19 @@ func queryWarehouseFinancials(ctx context.Context, client *spanner.Client, wareh
 	}
 
 	// Daily revenue breakdown
-	dStmt := spanner.Statement{
-		SQL: `SELECT CAST(o.CreatedAt AS DATE) AS d, IFNULL(SUM(o.Amount), 0), COUNT(*)
-		      FROM Orders o
-		      WHERE o.WarehouseId = @wid AND o.State = 'COMPLETED'
-		        AND o.CreatedAt >= @start AND o.CreatedAt < @end
-		      GROUP BY d ORDER BY d`,
-		Params: map[string]interface{}{
-			"wid":   warehouseID,
-			"start": startDate,
-			"end":   endDate,
-		},
+	dailyRevenueSQL := `SELECT CAST(o.CreatedAt AS DATE) AS d, IFNULL(SUM(o.Amount), 0), COUNT(*)
+	      FROM Orders o
+	      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+	      WHERE o.WarehouseId = @wid AND o.State = 'COMPLETED'
+	        AND o.CreatedAt >= @start AND o.CreatedAt < @end`
+	dailyRevenueParams := map[string]interface{}{
+		"wid":   warehouseID,
+		"start": startDate,
+		"end":   endDate,
 	}
+	dailyRevenueSQL, dailyRevenueParams = auth.AppendRegionFilter(ctx, dailyRevenueSQL, dailyRevenueParams, "rt")
+	dailyRevenueSQL += ` GROUP BY d ORDER BY d`
+	dStmt := spanner.Statement{SQL: dailyRevenueSQL, Params: dailyRevenueParams}
 	dIter := txn.Query(ctx, dStmt)
 	defer dIter.Stop()
 
@@ -169,22 +171,23 @@ func queryWarehouseFinancials(ctx context.Context, client *spanner.Client, wareh
 	}
 
 	// Platform fee from LedgerEntries
-	fStmt := spanner.Statement{
-		SQL: `SELECT IFNULL(SUM(le.Amount), 0)
-		      FROM LedgerEntries le
-		      JOIN Orders o ON le.OrderId = o.OrderId
-		      WHERE o.WarehouseId = @wid
-		        AND le.AccountId IN UNNEST(@platformAccountIds)
-		        AND le.EntryType IN UNNEST(@platformCreditEntryTypes)
-		        AND o.CreatedAt >= @start AND o.CreatedAt < @end`,
-		Params: map[string]interface{}{
-			"wid":                      warehouseID,
-			"start":                    startDate,
-			"end":                      endDate,
-			"platformAccountIds":       finance.PlatformAccountIDsForQuery(),
-			"platformCreditEntryTypes": finance.PlatformCreditEntryTypesForQuery(),
-		},
+	platformFeeSQL := `SELECT IFNULL(SUM(le.Amount), 0)
+	      FROM LedgerEntries le
+	      JOIN Orders o ON le.OrderId = o.OrderId
+	      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+	      WHERE o.WarehouseId = @wid
+	        AND le.AccountId IN UNNEST(@platformAccountIds)
+	        AND le.EntryType IN UNNEST(@platformCreditEntryTypes)
+	        AND o.CreatedAt >= @start AND o.CreatedAt < @end`
+	platformFeeParams := map[string]interface{}{
+		"wid":                      warehouseID,
+		"start":                    startDate,
+		"end":                      endDate,
+		"platformAccountIds":       finance.PlatformAccountIDsForQuery(),
+		"platformCreditEntryTypes": finance.PlatformCreditEntryTypesForQuery(),
 	}
+	platformFeeSQL, platformFeeParams = auth.AppendRegionFilter(ctx, platformFeeSQL, platformFeeParams, "rt")
+	fStmt := spanner.Statement{SQL: platformFeeSQL, Params: platformFeeParams}
 	fRow, err := txn.Query(ctx, fStmt).Next()
 	if err == nil {
 		var fee int64
@@ -195,20 +198,21 @@ func queryWarehouseFinancials(ctx context.Context, client *spanner.Client, wareh
 	resp.NetPayout = resp.TotalRevenue - resp.PlatformFee
 
 	// Cash collection status
-	cStmt := spanner.Statement{
-		SQL: `SELECT
-		        IFNULL(SUM(CASE WHEN mi.CustodyStatus = 'HELD_BY_DRIVER' THEN mi.Total ELSE 0 END), 0),
-		        IFNULL(SUM(CASE WHEN mi.CustodyStatus = 'DEPOSITED' THEN mi.Total ELSE 0 END), 0)
-		      FROM MasterInvoices mi
-		      JOIN Orders o ON mi.OrderId = o.OrderId
-		      WHERE o.WarehouseId = @wid AND mi.PaymentMode = 'CASH'
-		        AND o.CreatedAt >= @start AND o.CreatedAt < @end`,
-		Params: map[string]interface{}{
-			"wid":   warehouseID,
-			"start": startDate,
-			"end":   endDate,
-		},
+	cashStatusSQL := `SELECT
+	        IFNULL(SUM(CASE WHEN mi.CustodyStatus = 'HELD_BY_DRIVER' THEN mi.Total ELSE 0 END), 0),
+	        IFNULL(SUM(CASE WHEN mi.CustodyStatus = 'DEPOSITED' THEN mi.Total ELSE 0 END), 0)
+	      FROM MasterInvoices mi
+	      JOIN Orders o ON mi.OrderId = o.OrderId
+	      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+	      WHERE o.WarehouseId = @wid AND mi.PaymentMode = 'CASH'
+	        AND o.CreatedAt >= @start AND o.CreatedAt < @end`
+	cashStatusParams := map[string]interface{}{
+		"wid":   warehouseID,
+		"start": startDate,
+		"end":   endDate,
 	}
+	cashStatusSQL, cashStatusParams = auth.AppendRegionFilter(ctx, cashStatusSQL, cashStatusParams, "rt")
+	cStmt := spanner.Statement{SQL: cashStatusSQL, Params: cashStatusParams}
 	cRow, err := txn.Query(ctx, cStmt).Next()
 	if err == nil {
 		var pending, collected int64

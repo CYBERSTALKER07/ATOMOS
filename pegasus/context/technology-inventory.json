@@ -1,5 +1,5 @@
 {
-  "version": "2026-05-12",
+  "version": "2026-05-13",
   "generatedFrom": {
     "manifests": [
       "pegasus/package.json",
@@ -358,7 +358,26 @@
       "notes": [
         "Phase-1 rollout is additive and backward-compatible: RegionId links are nullable and country defaults remain valid.",
         "Bootstrap now seeds UZ-DEFAULT region/config rows so runtime region resolution has deterministic fallback behavior.",
-        "auth/region_scope.go now provides RegionScope context injection and AppendRegionFilter helpers; supplier and warehouse role-route composers enforce region_id query compatibility for SUPPLIER/ADMIN/WAREHOUSE callers."
+        "auth/region_scope.go now provides RegionScope context injection and AppendRegionFilter helpers; supplier and warehouse role-route composers enforce region_id query compatibility for SUPPLIER/ADMIN/WAREHOUSE callers.",
+        "Region-scoped SQL helper adoption now covers supplier treasury reads (/v1/treasury/cash-holdings, /v1/supplier/settlement-report), supplier logistics picking-manifest reads (/v1/supplier/picking-manifests*), warehouse ops reads (/v1/warehouse/ops/{dashboard,orders,orders/{id},dispatch/preview,crm,returns,analytics,treasury,financials}), and warehouse demand-forecast order-side reads (/v1/warehouse/demand/forecast) via Retailers.RegionId when region_id scope is active."
+      ]
+    },
+    {
+      "name": "Webhook gateway ingress surface",
+      "path": "/v1/webhooks/{global-pay,stripe}",
+      "owner": "pegasus/apps/backend-go/webhookroutes/routes.go + pegasus/apps/backend-go/payment/{webhooks.go,stripe_webhook.go}",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "POST /v1/webhooks/global-pay",
+        "POST /v1/webhooks/stripe"
+      ],
+      "consumers": [
+        "Global Pay webhook sender",
+        "Stripe webhook sender"
+      ],
+      "notes": [
+        "webhookroutes now composes both gateway ingress routes behind shared priority and logging middleware wrappers.",
+        "Route-level coverage in webhookroutes/routes_test.go verifies mount and middleware wrapping behavior for both webhook paths."
       ]
     },
     {
@@ -496,7 +515,8 @@
       ],
       "notes": [
         "Route composition moved out of main.go into supplierlogisticsroutes while preserving the existing manifest service and supplier dispatch handlers.",
-        "Manifest path dispatch is explicitly tested so detail and action suffixes stay aligned with the old inline main.go behavior."
+        "Manifest path dispatch is explicitly tested so detail and action suffixes stay aligned with the old inline main.go behavior.",
+        "Supplier picking-manifest reads now apply auth.AppendRegionFilter against Retailers.RegionId for scoped region_id requests."
       ]
     },
     {
@@ -735,7 +755,9 @@
           "Vehicle availability is schema-backed with Vehicles.UnavailableReason and travels across the warehouse portal, iOS, and Android fleet clients.",
           "Warehouse fleet controls now share driver assign/reset and vehicle activate/deactivate mutations across portal, iOS, and Android.",
           "Warehouse dispatch preview excludes inactive vehicles from the available-driver list so vehicle availability mutations affect dispatch eligibility immediately.",
-          "Driver list payloads now carry assigned vehicle availability metadata, and dispatch preview publishes both available_drivers and unavailable_drivers so warehouse clients can explain blocked drivers."
+          "Driver list payloads now carry assigned vehicle availability metadata, and dispatch preview publishes both available_drivers and unavailable_drivers so warehouse clients can explain blocked drivers.",
+          "Warehouse ops read queries now apply auth.AppendRegionFilter through Retailers joins across dashboard, orders/detail, dispatch preview, CRM, returns, analytics, treasury, and financials when region scope is active.",
+          "Warehouse demand forecast order-side quantity and burn-rate reads also apply auth.AppendRegionFilter through Retailers joins when region scope is active."
         ]
       },
       {

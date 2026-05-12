@@ -40,22 +40,22 @@ func HandleOpsCRM(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		stmt := spanner.Statement{
-			SQL: `SELECT rt.RetailerId, COALESCE(rt.StoreName, ''),
-			             COALESCE(rt.ContactName, ''), COALESCE(rt.Phone, ''),
-			             COUNT(o.OrderId) as total_orders,
-			             COALESCE(SUM(CASE WHEN o.State = 'COMPLETED' THEN o.TotalAmount ELSE 0 END), 0) as revenue,
-			             MAX(o.CreatedAt) as last_order,
-			             COALESCE(rt.Address, '')
-			      FROM Orders o
-			      JOIN Retailers rt ON o.RetailerId = rt.RetailerId
-			      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
-			        AND o.State IN ('PENDING','LOADED','IN_TRANSIT','ARRIVED','COMPLETED','EN_ROUTE')
-			      GROUP BY rt.RetailerId, rt.StoreName, rt.ContactName, rt.Phone, rt.Address
-			      ORDER BY total_orders DESC
-			      LIMIT 200`,
-			Params: map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID},
-		}
+		sql := `SELECT rt.RetailerId, COALESCE(rt.StoreName, ''),
+		             COALESCE(rt.ContactName, ''), COALESCE(rt.Phone, ''),
+		             COUNT(o.OrderId) as total_orders,
+		             COALESCE(SUM(CASE WHEN o.State = 'COMPLETED' THEN o.TotalAmount ELSE 0 END), 0) as revenue,
+		             MAX(o.CreatedAt) as last_order,
+		             COALESCE(rt.Address, '')
+	      FROM Orders o
+	      JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+	      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
+	        AND o.State IN ('PENDING','LOADED','IN_TRANSIT','ARRIVED','COMPLETED','EN_ROUTE')`
+		params := map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID}
+		sql, params = auth.AppendRegionFilter(r.Context(), sql, params, "rt")
+		sql += ` GROUP BY rt.RetailerId, rt.StoreName, rt.ContactName, rt.Phone, rt.Address
+	      ORDER BY total_orders DESC
+	      LIMIT 200`
+		stmt := spanner.Statement{SQL: sql, Params: params}
 
 		iter := spannerx.StaleQuery(r.Context(), spannerClient, stmt)
 		defer iter.Stop()

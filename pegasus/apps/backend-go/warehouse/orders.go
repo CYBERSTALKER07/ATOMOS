@@ -92,6 +92,7 @@ func HandleOpsOrders(spannerClient *spanner.Client, readRouter proximity.ReadRou
 				params["toDate"] = t.Add(24 * time.Hour)
 			}
 		}
+		sql, params = auth.AppendRegionFilter(r.Context(), sql, params, "rt")
 
 		sql += " ORDER BY o.CreatedAt DESC LIMIT 200"
 
@@ -154,20 +155,21 @@ func HandleOpsOrderDetail(spannerClient *spanner.Client, readRouter proximity.Re
 		}
 
 		// Order header
-		stmt := spanner.Statement{
-			SQL: `SELECT o.OrderId, o.RetailerId, COALESCE(rt.StoreName, ''),
-			             o.State, COALESCE(o.TotalAmount, 0),
-			             (SELECT COUNT(*) FROM OrderLineItems li WHERE li.OrderId = o.OrderId),
-			             COALESCE(o.DriverId, ''), COALESCE(d.Name, ''),
-			             o.CreatedAt, COALESCE(o.UpdatedAt, o.CreatedAt),
-			             COALESCE(rt.Latitude, 0), COALESCE(rt.Longitude, 0),
-			             COALESCE(o.Notes, '')
-			      FROM Orders o
-			      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
-			      LEFT JOIN Drivers d ON o.DriverId = d.DriverId
-			      WHERE o.OrderId = @oid AND o.SupplierId = @sid AND o.WarehouseId = @whId`,
-			Params: map[string]interface{}{"oid": orderID, "sid": ops.SupplierID, "whId": ops.WarehouseID},
-		}
+		sql := `SELECT o.OrderId, o.RetailerId, COALESCE(rt.StoreName, ''),
+		             o.State, COALESCE(o.TotalAmount, 0),
+		             (SELECT COUNT(*) FROM OrderLineItems li WHERE li.OrderId = o.OrderId),
+		             COALESCE(o.DriverId, ''), COALESCE(d.Name, ''),
+		             o.CreatedAt, COALESCE(o.UpdatedAt, o.CreatedAt),
+		             COALESCE(rt.Latitude, 0), COALESCE(rt.Longitude, 0),
+		             COALESCE(o.Notes, '')
+	      FROM Orders o
+	      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+	      LEFT JOIN Drivers d ON o.DriverId = d.DriverId
+	      WHERE o.OrderId = @oid AND o.SupplierId = @sid AND o.WarehouseId = @whId`
+		params := map[string]interface{}{"oid": orderID, "sid": ops.SupplierID, "whId": ops.WarehouseID}
+		sql, params = auth.AppendRegionFilter(r.Context(), sql, params, "rt")
+
+		stmt := spanner.Statement{SQL: sql, Params: params}
 		readClient := proximity.WarehouseReadClient(r.Context(), spannerClient, readRouter, ops.WarehouseID)
 		iter := readClient.Single().Query(r.Context(), stmt)
 		defer iter.Stop()

@@ -79,23 +79,25 @@ func HandleSettlementReport(client *spanner.Client) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
 
-		stmt := spanner.Statement{
-			SQL: `SELECT mi.OrderId, mi.InvoiceId, o.RetailerId, mi.Total,
-				     COALESCE(o.DeliveryFee, 0) AS DeliveryFee,
-				     mi.PaymentMode, mi.CustodyStatus, mi.CollectedAt, mi.CreatedAt
-				FROM MasterInvoices mi
-				JOIN Orders o ON mi.OrderId = o.OrderId
-				WHERE o.SupplierId = @supplierId
-				  AND mi.CreatedAt >= @fromDate
-				  AND mi.CreatedAt <= @toDate
-				ORDER BY mi.CreatedAt DESC
-				LIMIT 500`,
-			Params: map[string]interface{}{
-				"supplierId": supplierID,
-				"fromDate":   from,
-				"toDate":     to,
-			},
+		sql := `SELECT mi.OrderId, mi.InvoiceId, o.RetailerId, mi.Total,
+			     COALESCE(o.DeliveryFee, 0) AS DeliveryFee,
+			     mi.PaymentMode, mi.CustodyStatus, mi.CollectedAt, mi.CreatedAt
+			FROM MasterInvoices mi
+			JOIN Orders o ON mi.OrderId = o.OrderId
+			LEFT JOIN Retailers ret ON o.RetailerId = ret.RetailerId
+			WHERE o.SupplierId = @supplierId
+			  AND mi.CreatedAt >= @fromDate
+			  AND mi.CreatedAt <= @toDate`
+		params := map[string]interface{}{
+			"supplierId": supplierID,
+			"fromDate":   from,
+			"toDate":     to,
 		}
+		sql, params = auth.AppendRegionFilter(r.Context(), sql, params, "ret")
+		sql += ` ORDER BY mi.CreatedAt DESC
+				LIMIT 500`
+
+		stmt := spanner.Statement{SQL: sql, Params: params}
 
 		resp := SettlementReportResponse{
 			Rows: []SettlementRow{},

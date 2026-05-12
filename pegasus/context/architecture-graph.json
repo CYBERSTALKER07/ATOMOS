@@ -1,6 +1,6 @@
 {
-  "version": "2026-05-12",
-  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer+supplier fanout parity with admin-portal hybrid invalidation, checkout supplier-effective currency resolution, payment-session currency normalization, refund/chargeback additive currency compatibility, treasury/reconciliation read-model currency parity for admin portal consumers, warehouse treasury invoice currency parity across portal and native clients, multitenant driver/factory login disambiguation plus supplier-scoped phone uniqueness in provisioning flows, phase-1 regional substrate plus provider-seam normalization for GLOBAL_PAY/ADYEN/CASH, provider execution-path gateway normalization, supplier/warehouse region query-scope middleware enforcement, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, and targeted workspace retrieval as the default codebase-retrieval path).",
+  "version": "2026-05-13",
+  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer+supplier fanout parity with admin-portal hybrid invalidation, checkout supplier-effective currency resolution, payment-session currency normalization, refund/chargeback additive currency compatibility, treasury/reconciliation read-model currency parity for admin portal consumers, warehouse treasury invoice currency parity across portal and native clients, multitenant driver/factory login disambiguation plus supplier-scoped phone uniqueness in provisioning flows, phase-1 regional substrate plus provider-seam normalization for GLOBAL_PAY/ADYEN/CASH, provider execution-path gateway normalization, supplier/warehouse region query-scope middleware enforcement, webhook route composition parity for Global Pay and Stripe ingress, region-filtered supplier reads and expanded warehouse ops plus demand read surfaces, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, and targeted workspace retrieval as the default codebase-retrieval path).",
   "agentContext": {
     "syncSet": [
       "../.github/ACT.md",
@@ -179,6 +179,81 @@
         "payment/session.go create/attempt/bind/retry paths now normalize gateway values through NewProviderClient, checkout URL generators fail closed for unsupported/unavailable providers, and payment/webhooks.go validates session gateway compatibility through the provider resolver before Global Pay settlement.",
         "order/service.go and order/unified_checkout.go now reject ADYEN checkout execution before mutation side effects while ADYEN adapter wiring remains unavailable.",
         "Refund and chargeback compatibility paths now accept additive amount+currency input while preserving amount_uzs contracts; refund responses include additive amount+currency fields, and anomaly currency writes now resolve from runtime/session currency rather than hardcoded UZS."
+      ]
+    },
+    {
+      "id": "webhook_gateway_ingress_surface",
+      "path": "/v1/webhooks/{global-pay,stripe}",
+      "owner": "pegasus/apps/backend-go/webhookroutes/routes.go + pegasus/apps/backend-go/payment/{webhooks.go,stripe_webhook.go}",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "POST /v1/webhooks/global-pay",
+        "POST /v1/webhooks/stripe"
+      ],
+      "consumers": [
+        "Global Pay gateway webhook callbacks",
+        "Stripe gateway webhook callbacks"
+      ],
+      "notes": [
+        "webhookroutes now mounts both gateway webhook ingress paths behind shared priority and logging middleware wrappers.",
+        "Gateway webhook handlers remain signature-first and role-unauthenticated by design."
+      ]
+    },
+    {
+      "id": "supplier_region_filtered_read_surface",
+      "path": "/v1/{treasury/cash-holdings,supplier/settlement-report,supplier/picking-manifests*}",
+      "owner": "pegasus/apps/backend-go/treasury/{service.go,settlement.go} + pegasus/apps/backend-go/supplier/manifests.go + pegasus/apps/backend-go/auth/region_scope.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/treasury/cash-holdings",
+        "GET /v1/supplier/settlement-report",
+        "GET /v1/supplier/picking-manifests",
+        "GET /v1/supplier/picking-manifests/orders"
+      ],
+      "consumers": [
+        "pegasus/apps/admin-portal/app/treasury/cash-holdings/page.tsx",
+        "pegasus/apps/admin-portal/app/supplier/dispatch/page.tsx",
+        "pegasus/apps/admin-portal/app/supplier/orders/page.tsx"
+      ],
+      "notes": [
+        "Read queries now join Retailers and apply auth.AppendRegionFilter on the retailer alias when region scope is active.",
+        "Route composers continue to validate region_id compatibility via auth.RequireRegionScopeWithClient before handler execution."
+      ]
+    },
+    {
+      "id": "warehouse_region_filtered_read_surface",
+      "path": "/v1/warehouse/{ops/{dashboard,orders,orders/{id},dispatch/preview,crm,returns,analytics,treasury,financials},demand/forecast}",
+      "owner": "pegasus/apps/backend-go/warehouse/{dashboard.go,orders.go,dispatch.go,crm.go,returns.go,analytics.go,treasury.go,financials.go,demand.go} + pegasus/apps/backend-go/auth/region_scope.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/warehouse/ops/dashboard",
+        "GET /v1/warehouse/ops/orders",
+        "GET /v1/warehouse/ops/orders/{id}",
+        "GET /v1/warehouse/ops/dispatch/preview",
+        "GET /v1/warehouse/ops/crm",
+        "GET /v1/warehouse/ops/returns",
+        "GET /v1/warehouse/ops/analytics",
+        "GET /v1/warehouse/ops/treasury?view=overview",
+        "GET /v1/warehouse/ops/treasury?view=invoices",
+        "GET /v1/warehouse/ops/financials",
+        "GET /v1/warehouse/demand/forecast"
+      ],
+      "consumers": [
+        "pegasus/apps/warehouse-portal/app/page.tsx",
+        "pegasus/apps/warehouse-portal/app/orders/page.tsx",
+        "pegasus/apps/warehouse-portal/app/dispatch/page.tsx",
+        "pegasus/apps/warehouse-portal/app/crm/page.tsx",
+        "pegasus/apps/warehouse-portal/app/returns/page.tsx",
+        "pegasus/apps/warehouse-portal/app/analytics/page.tsx",
+        "pegasus/apps/warehouse-portal/app/treasury/page.tsx",
+        "pegasus/apps/warehouse-portal/app/demand-forecast/page.tsx",
+        "pegasus/apps/warehouse-portal/app/supply-requests/new/page.tsx",
+        "pegasus/apps/warehouse-app-ios/WarehouseApp/Services/WarehouseService.swift",
+        "pegasus/apps/warehouse-app-android/app/src/main/java/com/pegasus/warehouse/data/remote/WarehouseApi.kt"
+      ],
+      "notes": [
+        "Warehouse ops reads and demand-forecast order-side reads now join Retailers and apply auth.AppendRegionFilter on the retailer alias when region scope is active.",
+        "Route composers continue to validate region_id compatibility via auth.RequireRegionScopeWithClient before handler execution."
       ]
     },
     {

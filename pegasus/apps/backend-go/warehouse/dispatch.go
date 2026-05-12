@@ -79,18 +79,18 @@ func HandleOpsDispatchPreview(spannerClient *spanner.Client, optimizer *optimize
 		ctx := r.Context()
 
 		// Undispatched orders
-		orderStmt := spanner.Statement{
-			SQL: `SELECT o.OrderId, COALESCE(rt.StoreName, ''), COALESCE(o.TotalAmount, 0),
-			             COALESCE(rt.Latitude, 0), COALESCE(rt.Longitude, 0),
-			             (SELECT COUNT(*) FROM OrderLineItems li WHERE li.OrderId = o.OrderId), o.CreatedAt
-			      FROM Orders o
-			      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
-			      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
-			        AND o.State = 'PENDING' AND o.DriverId IS NULL
-			      ORDER BY o.CreatedAt ASC
-			      LIMIT 100`,
-			Params: map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID},
-		}
+		orderSQL := `SELECT o.OrderId, COALESCE(rt.StoreName, ''), COALESCE(o.TotalAmount, 0),
+		             COALESCE(rt.Latitude, 0), COALESCE(rt.Longitude, 0),
+		             (SELECT COUNT(*) FROM OrderLineItems li WHERE li.OrderId = o.OrderId), o.CreatedAt
+	      FROM Orders o
+	      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+	      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
+	        AND o.State = 'PENDING' AND o.DriverId IS NULL`
+		orderParams := map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID}
+		orderSQL, orderParams = auth.AppendRegionFilter(ctx, orderSQL, orderParams, "rt")
+		orderSQL += ` ORDER BY o.CreatedAt ASC
+	      LIMIT 100`
+		orderStmt := spanner.Statement{SQL: orderSQL, Params: orderParams}
 		oIter := spannerx.StaleQuery(ctx, spannerClient, orderStmt)
 		defer oIter.Stop()
 

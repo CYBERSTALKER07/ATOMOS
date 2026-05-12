@@ -84,21 +84,30 @@ func HandleDashboard(spannerClient *spanner.Client) http.HandlerFunc {
 			"whId": ops.WarehouseID,
 			"sid":  ops.SupplierID,
 		}
+		orderParams := map[string]interface{}{"whId": ops.WarehouseID, "sid": ops.SupplierID}
 
-		resp.ActiveOrders = countQuery(
-			`SELECT COUNT(*) FROM Orders WHERE SupplierId = @sid AND WarehouseId = @whId
-			 AND State IN ('PENDING','LOADED','IN_TRANSIT','ARRIVING','ARRIVED','EN_ROUTE')`,
-			baseParams)
+		activeOrdersSQL := `SELECT COUNT(*) FROM Orders o
+			LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+			WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
+			AND o.State IN ('PENDING','LOADED','IN_TRANSIT','ARRIVING','ARRIVED','EN_ROUTE')`
+		activeOrdersSQL, orderParams = auth.AppendRegionFilter(ctx, activeOrdersSQL, orderParams, "rt")
+		resp.ActiveOrders = countQuery(activeOrdersSQL, orderParams)
 
-		resp.CompletedToday = countQuery(
-			`SELECT COUNT(*) FROM Orders WHERE SupplierId = @sid AND WarehouseId = @whId
-			 AND State = 'COMPLETED' AND UpdatedAt >= @dayStart AND UpdatedAt < @dayEnd`,
-			map[string]interface{}{"whId": ops.WarehouseID, "sid": ops.SupplierID, "dayStart": dayStart, "dayEnd": dayEnd})
+		completedTodaySQL := `SELECT COUNT(*) FROM Orders o
+			LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+			WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
+			AND o.State = 'COMPLETED' AND o.UpdatedAt >= @dayStart AND o.UpdatedAt < @dayEnd`
+		completedTodayParams := map[string]interface{}{"whId": ops.WarehouseID, "sid": ops.SupplierID, "dayStart": dayStart, "dayEnd": dayEnd}
+		completedTodaySQL, completedTodayParams = auth.AppendRegionFilter(ctx, completedTodaySQL, completedTodayParams, "rt")
+		resp.CompletedToday = countQuery(completedTodaySQL, completedTodayParams)
 
-		resp.PendingDispatch = countQuery(
-			`SELECT COUNT(*) FROM Orders WHERE SupplierId = @sid AND WarehouseId = @whId
-			 AND State = 'PENDING' AND DriverId IS NULL`,
-			baseParams)
+		pendingDispatchSQL := `SELECT COUNT(*) FROM Orders o
+			LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+			WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
+			AND o.State = 'PENDING' AND o.DriverId IS NULL`
+		pendingDispatchParams := map[string]interface{}{"whId": ops.WarehouseID, "sid": ops.SupplierID}
+		pendingDispatchSQL, pendingDispatchParams = auth.AppendRegionFilter(ctx, pendingDispatchSQL, pendingDispatchParams, "rt")
+		resp.PendingDispatch = countQuery(pendingDispatchSQL, pendingDispatchParams)
 
 		// Driver stats
 		resp.TotalDrivers = countQuery(
@@ -116,12 +125,13 @@ func HandleDashboard(spannerClient *spanner.Client) http.HandlerFunc {
 			baseParams)
 
 		// Revenue today
-		revStmt := spanner.Statement{
-			SQL: `SELECT COALESCE(SUM(o.TotalAmount), 0) FROM Orders o
-			      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
-			      AND o.State = 'COMPLETED' AND o.UpdatedAt >= @dayStart AND o.UpdatedAt < @dayEnd`,
-			Params: map[string]interface{}{"whId": ops.WarehouseID, "sid": ops.SupplierID, "dayStart": dayStart, "dayEnd": dayEnd},
-		}
+		revSQL := `SELECT COALESCE(SUM(o.TotalAmount), 0) FROM Orders o
+		      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+		      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
+		      AND o.State = 'COMPLETED' AND o.UpdatedAt >= @dayStart AND o.UpdatedAt < @dayEnd`
+		revParams := map[string]interface{}{"whId": ops.WarehouseID, "sid": ops.SupplierID, "dayStart": dayStart, "dayEnd": dayEnd}
+		revSQL, revParams = auth.AppendRegionFilter(ctx, revSQL, revParams, "rt")
+		revStmt := spanner.Statement{SQL: revSQL, Params: revParams}
 		revIter := spannerx.StaleQuery(ctx, spannerClient, revStmt)
 		defer revIter.Stop()
 		if row, err := revIter.Next(); err == nil {

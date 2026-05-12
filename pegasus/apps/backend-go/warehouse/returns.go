@@ -40,21 +40,21 @@ func HandleOpsReturns(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		stmt := spanner.Statement{
-			SQL: `SELECT li.OrderId, li.SkuId, COALESCE(sp.Name, ''), li.Quantity,
-			             COALESCE(ret.StoreName, ''), COALESCE(d.Name, ''),
-			             li.Status, o.CreatedAt
-			      FROM OrderLineItems li
-			      JOIN Orders o ON li.OrderId = o.OrderId
-			      LEFT JOIN SupplierProducts sp ON li.SkuId = sp.SkuId
-			      LEFT JOIN Retailers ret ON o.RetailerId = ret.RetailerId
-			      LEFT JOIN Drivers d ON o.DriverId = d.DriverId
-			      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
-			        AND li.Status IN ('REJECTED_DAMAGED','REJECTED_WRONG','RETURNED')
-			      ORDER BY o.CreatedAt DESC
-			      LIMIT 200`,
-			Params: map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID},
-		}
+		sql := `SELECT li.OrderId, li.SkuId, COALESCE(sp.Name, ''), li.Quantity,
+		             COALESCE(ret.StoreName, ''), COALESCE(d.Name, ''),
+		             li.Status, o.CreatedAt
+	      FROM OrderLineItems li
+	      JOIN Orders o ON li.OrderId = o.OrderId
+	      LEFT JOIN SupplierProducts sp ON li.SkuId = sp.SkuId
+	      LEFT JOIN Retailers ret ON o.RetailerId = ret.RetailerId
+	      LEFT JOIN Drivers d ON o.DriverId = d.DriverId
+	      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
+	        AND li.Status IN ('REJECTED_DAMAGED','REJECTED_WRONG','RETURNED')`
+		params := map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID}
+		sql, params = auth.AppendRegionFilter(r.Context(), sql, params, "ret")
+		sql += ` ORDER BY o.CreatedAt DESC
+	      LIMIT 200`
+		stmt := spanner.Statement{SQL: sql, Params: params}
 
 		iter := spannerClient.Single().Query(r.Context(), stmt)
 		defer iter.Stop()

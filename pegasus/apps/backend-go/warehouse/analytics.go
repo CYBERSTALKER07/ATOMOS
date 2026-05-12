@@ -77,12 +77,6 @@ func HandleOpsAnalytics(spannerClient *spanner.Client) http.HandlerFunc {
 		now := time.Now().UTC()
 		startDate := now.AddDate(0, 0, -days).Truncate(24 * time.Hour)
 
-		baseParams := map[string]interface{}{
-			"sid":   ops.SupplierID,
-			"whId":  ops.WarehouseID,
-			"start": startDate,
-		}
-
 		resp := AnalyticsResponse{
 			WarehouseID: ops.WarehouseID,
 			Period:      periodLabel,
@@ -92,14 +86,18 @@ func HandleOpsAnalytics(spannerClient *spanner.Client) http.HandlerFunc {
 
 		// Total + completed + cancelled orders
 		countQuery := func(states string) int64 {
-			sql := `SELECT COUNT(*) FROM Orders WHERE SupplierId = @sid AND WarehouseId = @whId AND CreatedAt >= @start`
+			sql := `SELECT COUNT(*)
+				FROM Orders o
+				LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+				WHERE o.SupplierId = @sid AND o.WarehouseId = @whId AND o.CreatedAt >= @start`
 			if states != "" {
-				sql += " AND State IN UNNEST(@states)"
+				sql += " AND o.State IN UNNEST(@states)"
 			}
 			p := map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID, "start": startDate}
 			if states != "" {
 				p["states"] = splitStates(states)
 			}
+			sql, p = auth.AppendRegionFilter(ctx, sql, p, "rt")
 			iter := spannerx.StaleQuery(ctx, spannerClient, spanner.Statement{SQL: sql, Params: p})
 			defer iter.Stop()
 			row, err := iter.Next()
@@ -116,12 +114,14 @@ func HandleOpsAnalytics(spannerClient *spanner.Client) http.HandlerFunc {
 		resp.CancelledOrders = countQuery("CANCELLED")
 
 		// Revenue
-		revStmt := spanner.Statement{
-			SQL: `SELECT COALESCE(SUM(TotalAmount), 0) FROM Orders
-			      WHERE SupplierId = @sid AND WarehouseId = @whId
-			      AND State = 'COMPLETED' AND CreatedAt >= @start`,
-			Params: baseParams,
-		}
+		revSQL := `SELECT COALESCE(SUM(o.TotalAmount), 0)
+			FROM Orders o
+			LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+			WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
+			  AND o.State = 'COMPLETED' AND o.CreatedAt >= @start`
+		revParams := map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID, "start": startDate}
+		revSQL, revParams = auth.AppendRegionFilter(ctx, revSQL, revParams, "rt")
+		revStmt := spanner.Statement{SQL: revSQL, Params: revParams}
 		revIter := spannerx.StaleQuery(ctx, spannerClient, revStmt)
 		defer revIter.Stop()
 		if row, err := revIter.Next(); err == nil {
@@ -133,18 +133,19 @@ func HandleOpsAnalytics(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		// Top products
-		topStmt := spanner.Statement{
-			SQL: `SELECT li.SkuId, COALESCE(sp.Name, ''), SUM(li.Quantity), SUM(li.Quantity * li.UnitPrice)
-			      FROM OrderLineItems li
-			      JOIN Orders o ON li.OrderId = o.OrderId
-			      LEFT JOIN SupplierProducts sp ON li.SkuId = sp.SkuId
-			      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
-			        AND o.State = 'COMPLETED' AND o.CreatedAt >= @start
-			      GROUP BY li.SkuId, sp.Name
-			      ORDER BY SUM(li.Quantity) DESC
-			      LIMIT 10`,
-			Params: baseParams,
-		}
+		topSQL := `SELECT li.SkuId, COALESCE(sp.Name, ''), SUM(li.Quantity), SUM(li.Quantity * li.UnitPrice)
+			FROM OrderLineItems li
+			JOIN Orders o ON li.OrderId = o.OrderId
+			LEFT JOIN SupplierProducts sp ON li.SkuId = sp.SkuId
+			LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+			WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
+			  AND o.State = 'COMPLETED' AND o.CreatedAt >= @start`
+		topParams := map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID, "start": startDate}
+		topSQL, topParams = auth.AppendRegionFilter(ctx, topSQL, topParams, "rt")
+		topSQL += ` GROUP BY li.SkuId, sp.Name
+			ORDER BY SUM(li.Quantity) DESC
+			LIMIT 10`
+		topStmt := spanner.Statement{SQL: topSQL, Params: topParams}
 		topIter := spannerx.StaleQuery(ctx, spannerClient, topStmt)
 		defer topIter.Stop()
 		for {
@@ -165,16 +166,17 @@ func HandleOpsAnalytics(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		// Daily breakdown
-		dailyStmt := spanner.Statement{
-			SQL: `SELECT CAST(DATE(o.CreatedAt) AS STRING) as day,
-			             COUNT(*) as total,
-			             COUNTIF(o.State = 'COMPLETED') as completed,
-			             COALESCE(SUM(CASE WHEN o.State = 'COMPLETED' THEN o.TotalAmount ELSE 0 END), 0) as rev
-			      FROM Orders o
-			      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId AND o.CreatedAt >= @start
-			      GROUP BY day ORDER BY day`,
-			Params: baseParams,
-		}
+		dailySQL := `SELECT CAST(DATE(o.CreatedAt) AS STRING) as day,
+		             COUNT(*) as total,
+		             COUNTIF(o.State = 'COMPLETED') as completed,
+		             COALESCE(SUM(CASE WHEN o.State = 'COMPLETED' THEN o.TotalAmount ELSE 0 END), 0) as rev
+		      FROM Orders o
+		      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+		      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId AND o.CreatedAt >= @start`
+		dailyParams := map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID, "start": startDate}
+		dailySQL, dailyParams = auth.AppendRegionFilter(ctx, dailySQL, dailyParams, "rt")
+		dailySQL += " GROUP BY day ORDER BY day"
+		dailyStmt := spanner.Statement{SQL: dailySQL, Params: dailyParams}
 		dailyIter := spannerx.StaleQuery(ctx, spannerClient, dailyStmt)
 		defer dailyIter.Stop()
 		for {

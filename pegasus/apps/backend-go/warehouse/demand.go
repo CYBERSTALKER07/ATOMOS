@@ -264,11 +264,13 @@ func getIncomingOrderQuantities(ctx context.Context, client *spanner.Client, sup
 		SQL: `SELECT oi.ProductId, SUM(oi.Quantity) AS qty
 		      FROM OrderItems oi
 		      JOIN Orders o ON oi.OrderId = o.OrderId
+		      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
 		      WHERE o.SupplierId = @sid AND o.WarehouseId = @wid
 		        AND o.State IN ('PENDING', 'PENDING_REVIEW', 'LOADED', 'DISPATCHED', 'IN_TRANSIT')
 		      GROUP BY oi.ProductId`,
 		Params: map[string]interface{}{"sid": supplierID, "wid": warehouseID},
 	}
+	stmt.SQL, stmt.Params = auth.AppendRegionFilter(ctx, stmt.SQL, stmt.Params, "rt")
 	return queryProductQuantityMap(ctx, client, stmt)
 }
 
@@ -293,12 +295,14 @@ func getPreOrderQuantities(ctx context.Context, client *spanner.Client, supplier
 		SQL: `SELECT oi.ProductId, SUM(oi.Quantity) AS qty
 		      FROM OrderItems oi
 		      JOIN Orders o ON oi.OrderId = o.OrderId
+		      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
 		      WHERE o.SupplierId = @sid AND o.WarehouseId = @wid
 		        AND o.State = 'SCHEDULED'
 		        AND o.RequestedDeliveryDate <= @cutoff
 		      GROUP BY oi.ProductId`,
 		Params: map[string]interface{}{"sid": supplierID, "wid": warehouseID, "cutoff": cutoff},
 	}
+	stmt.SQL, stmt.Params = auth.AppendRegionFilter(ctx, stmt.SQL, stmt.Params, "rt")
 	return queryProductQuantityMap(ctx, client, stmt)
 }
 
@@ -308,12 +312,14 @@ func getBurnRates(ctx context.Context, client *spanner.Client, supplierID, wareh
 		SQL: `SELECT oi.ProductId, SUM(oi.Quantity) AS total
 		      FROM OrderItems oi
 		      JOIN Orders o ON oi.OrderId = o.OrderId
+		      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
 		      WHERE o.SupplierId = @sid AND o.WarehouseId = @wid
 		        AND o.State = 'COMPLETED'
 		        AND o.CompletedAt >= @since
 		      GROUP BY oi.ProductId`,
 		Params: map[string]interface{}{"sid": supplierID, "wid": warehouseID, "since": thirtyDaysAgo},
 	}
+	stmt.SQL, stmt.Params = auth.AppendRegionFilter(ctx, stmt.SQL, stmt.Params, "rt")
 	iter := spannerx.StaleQuery(ctx, client, stmt)
 	defer iter.Stop()
 

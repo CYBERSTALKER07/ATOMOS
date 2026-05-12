@@ -69,6 +69,7 @@ func HandleManifests(client *spanner.Client) http.HandlerFunc {
 		        FROM OrderLineItems li
 		        JOIN Orders o ON li.OrderId = o.OrderId
 		        JOIN SupplierProducts sp ON li.SkuId = sp.SkuId
+		        LEFT JOIN Retailers ret ON o.RetailerId = ret.RetailerId
 		        WHERE o.SupplierId = @sid
 		          AND o.State IN ('LOADED', 'EN_ROUTE', 'IN_TRANSIT')
 		          AND o.CreatedAt >= @dayStart AND o.CreatedAt < @dayEnd`
@@ -84,6 +85,7 @@ func HandleManifests(client *spanner.Client) http.HandlerFunc {
 			sql += " AND o.WarehouseId = @warehouseId"
 			params["warehouseId"] = whID
 		}
+		sql, params = auth.AppendRegionFilter(r.Context(), sql, params, "ret")
 
 		sql += ` GROUP BY li.SkuId, sp.Name
 		        ORDER BY TotalQty DESC`
@@ -194,6 +196,7 @@ func HandleManifestOrders(client *spanner.Client) http.HandlerFunc {
 			sql += " AND o.WarehouseId = @warehouseId"
 			params["warehouseId"] = whID
 		}
+		sql, params = auth.AppendRegionFilter(r.Context(), sql, params, "ret")
 
 		sql += " ORDER BY o.CreatedAt ASC"
 

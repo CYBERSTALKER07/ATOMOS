@@ -107,17 +107,19 @@ type CashHoldingsReport struct {
 func GetCashHoldings(ctx context.Context, client *spanner.Client, supplierID string) (*CashHoldingsReport, error) {
 	report := &CashHoldingsReport{Currency: "UZS", Holdings: []CashHoldingRow{}}
 
-	stmt := spanner.Statement{
-		SQL: `SELECT mi.InvoiceId, mi.OrderId, mi.CollectorDriverId, o.RetailerId,
-		             mi.Total, mi.CustodyStatus, mi.CollectedAt, mi.GeofenceDistanceM
-		      FROM MasterInvoices mi
-		      JOIN Orders o ON mi.OrderId = o.OrderId
-		      WHERE mi.PaymentMode = 'CASH'
-		        AND o.SupplierId = @supplierId
-		      ORDER BY mi.CreatedAt DESC
-		      LIMIT 200`,
-		Params: map[string]interface{}{"supplierId": supplierID},
-	}
+	sql := `SELECT mi.InvoiceId, mi.OrderId, mi.CollectorDriverId, o.RetailerId,
+	             mi.Total, mi.CustodyStatus, mi.CollectedAt, mi.GeofenceDistanceM
+	      FROM MasterInvoices mi
+	      JOIN Orders o ON mi.OrderId = o.OrderId
+	      LEFT JOIN Retailers ret ON o.RetailerId = ret.RetailerId
+	      WHERE mi.PaymentMode = 'CASH'
+	        AND o.SupplierId = @supplierId`
+	params := map[string]interface{}{"supplierId": supplierID}
+	sql, params = auth.AppendRegionFilter(ctx, sql, params, "ret")
+	sql += ` ORDER BY mi.CreatedAt DESC
+	      LIMIT 200`
+
+	stmt := spanner.Statement{SQL: sql, Params: params}
 
 	iter := client.Single().Query(ctx, stmt)
 	defer iter.Stop()

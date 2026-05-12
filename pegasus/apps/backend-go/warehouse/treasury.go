@@ -63,17 +63,18 @@ func handleTreasuryOverview(w http.ResponseWriter, r *http.Request, client *span
 	overview := TreasuryOverview{}
 
 	// Aggregate from MasterInvoices joined with Orders
-	stmt := spanner.Statement{
-		SQL: `SELECT COALESCE(SUM(mi.TotalAmount), 0),
-		             COALESCE(SUM(CASE WHEN mi.Status = 'PENDING' THEN mi.TotalAmount ELSE 0 END), 0),
-		             COALESCE(SUM(CASE WHEN mi.Status = 'SETTLED' THEN mi.TotalAmount ELSE 0 END), 0),
-		             COUNT(*),
-		             COUNTIF(mi.Status = 'PENDING')
-		      FROM MasterInvoices mi
-		      JOIN Orders o ON mi.OrderId = o.OrderId
-		      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId`,
-		Params: map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID},
-	}
+	sql := `SELECT COALESCE(SUM(mi.TotalAmount), 0),
+	             COALESCE(SUM(CASE WHEN mi.Status = 'PENDING' THEN mi.TotalAmount ELSE 0 END), 0),
+	             COALESCE(SUM(CASE WHEN mi.Status = 'SETTLED' THEN mi.TotalAmount ELSE 0 END), 0),
+	             COUNT(*),
+	             COUNTIF(mi.Status = 'PENDING')
+	      FROM MasterInvoices mi
+	      JOIN Orders o ON mi.OrderId = o.OrderId
+	      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+	      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId`
+	params := map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID}
+	sql, params = auth.AppendRegionFilter(ctx, sql, params, "rt")
+	stmt := spanner.Statement{SQL: sql, Params: params}
 	iter := client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 	if row, err := iter.Next(); err == nil {
@@ -88,19 +89,20 @@ func handleTreasuryOverview(w http.ResponseWriter, r *http.Request, client *span
 func handleTreasuryInvoices(w http.ResponseWriter, r *http.Request, client *spanner.Client, ops *auth.WarehouseOps) {
 	ctx := r.Context()
 
-	stmt := spanner.Statement{
-		SQL: `SELECT mi.InvoiceId, mi.OrderId, mi.TotalAmount, mi.Status,
-		             COALESCE(o.RetailerId, ''), COALESCE(rt.StoreName, ''),
-		             COALESCE(o.Currency, 'UZS'),
-		             mi.CreatedAt
-		      FROM MasterInvoices mi
-		      JOIN Orders o ON mi.OrderId = o.OrderId
-		      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
-		      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId
-		      ORDER BY mi.CreatedAt DESC
-		      LIMIT 200`,
-		Params: map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID},
-	}
+	sql := `SELECT mi.InvoiceId, mi.OrderId, mi.TotalAmount, mi.Status,
+	             COALESCE(o.RetailerId, ''), COALESCE(rt.StoreName, ''),
+	             COALESCE(o.Currency, 'UZS'),
+	             mi.CreatedAt
+	      FROM MasterInvoices mi
+	      JOIN Orders o ON mi.OrderId = o.OrderId
+	      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
+	      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId`
+	params := map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID}
+	sql, params = auth.AppendRegionFilter(ctx, sql, params, "rt")
+	sql += ` ORDER BY mi.CreatedAt DESC
+	      LIMIT 200`
+
+	stmt := spanner.Statement{SQL: sql, Params: params}
 
 	iter := client.Single().Query(ctx, stmt)
 	defer iter.Stop()
