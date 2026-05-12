@@ -472,6 +472,36 @@ func handleOrderReassigned(deps NotificationDeps, data []byte) {
 		notif := notifications.FormatOrderReassignedAdded(orderLabel)
 		dispatchToRecipient(deps, event.NewDriverID, "DRIVER", EventOrderReassigned, notif)
 	}
+
+	// Notify affected retailers so desktop/iOS/Android can refresh reassigned order state.
+	retailerMap := notifications.LookupRetailerIDsForOrders(deps.SpannerClient, event.OrderIDs)
+	retailerRecipients := make(map[string]struct{})
+	for _, retailerID := range retailerMap {
+		if retailerID == "" {
+			continue
+		}
+		retailerRecipients[retailerID] = struct{}{}
+	}
+
+	if len(retailerRecipients) > 0 {
+		messageArgs := map[string]string{}
+		if len(event.OrderIDs) == 1 {
+			messageArgs["order_id"] = event.OrderIDs[0]
+		} else {
+			messageArgs["order_count"] = fmt.Sprintf("%d", len(event.OrderIDs))
+		}
+
+		retailerNotif := notifications.NewFormattedNotification(
+			"Order Reassigned",
+			fmt.Sprintf("%s reassigned to a new delivery route. ETA may shift.", orderLabel),
+			"notification.order_reassigned.title",
+			"notification.order_reassigned.body",
+			messageArgs,
+		)
+		for retailerID := range retailerRecipients {
+			dispatchToRecipient(deps, retailerID, "RETAILER", EventOrderReassigned, retailerNotif)
+		}
+	}
 }
 
 func handleOrderModified(deps NotificationDeps, data []byte) {

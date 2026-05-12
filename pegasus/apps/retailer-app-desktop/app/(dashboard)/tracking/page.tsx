@@ -150,6 +150,13 @@ export default function TrackingPage() {
     }, [refreshAll]),
   );
 
+  useWsEvent(
+    "ORDER_REASSIGNED",
+    useCallback(() => {
+      refreshAll();
+    }, [refreshAll]),
+  );
+
   const suppliers = useMemo(() => {
     const map = new Map<string, string>();
     for (const o of orders) {

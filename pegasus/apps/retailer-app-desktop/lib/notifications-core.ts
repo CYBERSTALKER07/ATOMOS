@@ -29,6 +29,7 @@ const retailerNotificationEventTypes = new Set([
   'PAYMENT_SETTLED',
   'PAYMENT_FAILED',
   'ORDER_MODIFIED',
+  'ORDER_REASSIGNED',
   'OUT_OF_STOCK',
   'RETAILER_PRICE_OVERRIDE',
   'CANCEL_APPROVED',

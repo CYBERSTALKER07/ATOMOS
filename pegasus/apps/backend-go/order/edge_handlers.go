@@ -17,7 +17,9 @@ import (
 	"backend-go/hotspot"
 	kafkaEvents "backend-go/kafka"
 	"backend-go/notifications"
+	"backend-go/outbox"
 	"backend-go/proximity"
+	"backend-go/telemetry"
 	"backend-go/workers"
 	"backend-go/ws"
 
@@ -1276,6 +1278,7 @@ func HandleConfirmAiOrder(svc *OrderService) http.HandlerFunc {
 
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
+		confirmedAt := time.Now().UTC()
 
 		_, err := svc.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			row, err := txn.ReadRow(ctx, "Orders", spanner.Key{req.OrderID},
@@ -1300,11 +1303,23 @@ func HandleConfirmAiOrder(svc *OrderService) http.HandlerFunc {
 				return fmt.Errorf("retailer mismatch")
 			}
 
-			txn.BufferWrite([]*spanner.Mutation{
+			if err := txn.BufferWrite([]*spanner.Mutation{
 				spanner.Update("Orders",
 					[]string{"OrderId", "AiPendingConfirmation", "Version"},
 					[]interface{}{req.OrderID, false, version + 1}),
-			})
+			}); err != nil {
+				return fmt.Errorf("update order ai confirmation state: %w", err)
+			}
+
+			if err := outbox.EmitJSON(txn, "Order", req.OrderID, kafkaEvents.EventAiOrderConfirmed, kafkaEvents.TopicMain, kafkaEvents.AiOrderEvent{
+				OrderID:    req.OrderID,
+				RetailerID: claims.UserID,
+				Action:     "CONFIRMED",
+				Timestamp:  confirmedAt,
+			}, telemetry.TraceIDFromContext(ctx)); err != nil {
+				return fmt.Errorf("emit ai order confirmed outbox event: %w", err)
+			}
+
 			return nil
 		})
 
@@ -1314,9 +1329,6 @@ func HandleConfirmAiOrder(svc *OrderService) http.HandlerFunc {
 			return
 		}
 
-		svc.PublishEvent(context.Background(), kafkaEvents.EventAiOrderConfirmed, kafkaEvents.AiOrderEvent{
-			OrderID: req.OrderID, RetailerID: claims.UserID, Action: "CONFIRMED", Timestamp: time.Now().UTC(),
-		})
 		writeOrderEvent(ctx, svc.Client, req.OrderID, claims.UserID, "RETAILER", "AI_ORDER_CONFIRMED", nil, 0, 0)
 
 		// Clear stale "Confirm your order" notifications — the retailer has already acted.
@@ -1355,6 +1367,7 @@ func HandleRejectAiOrder(svc *OrderService) http.HandlerFunc {
 
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
+		rejectedAt := time.Now().UTC()
 
 		_, err := svc.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			row, err := txn.ReadRow(ctx, "Orders", spanner.Key{req.OrderID},
@@ -1376,11 +1389,24 @@ func HandleRejectAiOrder(svc *OrderService) http.HandlerFunc {
 				return fmt.Errorf("retailer mismatch")
 			}
 
-			txn.BufferWrite([]*spanner.Mutation{
+			if err := txn.BufferWrite([]*spanner.Mutation{
 				spanner.Update("Orders",
 					[]string{"OrderId", "State", "AiPendingConfirmation", "Version", "CancelReason"},
 					[]interface{}{req.OrderID, "CANCELLED", false, version + 1, "AI_REJECTED:" + req.Reason}),
-			})
+			}); err != nil {
+				return fmt.Errorf("update order ai rejection state: %w", err)
+			}
+
+			if err := outbox.EmitJSON(txn, "Order", req.OrderID, kafkaEvents.EventAiOrderRejected, kafkaEvents.TopicMain, kafkaEvents.AiOrderEvent{
+				OrderID:    req.OrderID,
+				RetailerID: claims.UserID,
+				Action:     "REJECTED",
+				Reason:     req.Reason,
+				Timestamp:  rejectedAt,
+			}, telemetry.TraceIDFromContext(ctx)); err != nil {
+				return fmt.Errorf("emit ai order rejected outbox event: %w", err)
+			}
+
 			return nil
 		})
 
@@ -1390,10 +1416,6 @@ func HandleRejectAiOrder(svc *OrderService) http.HandlerFunc {
 			return
 		}
 
-		svc.PublishEvent(context.Background(), kafkaEvents.EventAiOrderRejected, kafkaEvents.AiOrderEvent{
-			OrderID: req.OrderID, RetailerID: claims.UserID, Action: "REJECTED",
-			Reason: req.Reason, Timestamp: time.Now().UTC(),
-		})
 		writeOrderEvent(ctx, svc.Client, req.OrderID, claims.UserID, "RETAILER", "AI_ORDER_REJECTED",
 			map[string]string{"reason": req.Reason}, 0, 0)
 

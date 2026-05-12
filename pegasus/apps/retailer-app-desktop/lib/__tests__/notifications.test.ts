@@ -32,6 +32,10 @@ describe('shouldRefreshNotificationInbox', () => {
     expect(shouldRefreshNotificationInbox({ type: 'ORDER_COMPLETED' })).toBe(true);
   });
 
+  it('refreshes on reassignment events that change delivery ownership', () => {
+    expect(shouldRefreshNotificationInbox({ type: 'ORDER_REASSIGNED' })).toBe(true);
+  });
+
   it('ignores unrelated retailer websocket payloads', () => {
     expect(shouldRefreshNotificationInbox({ type: 'TRACKING_POSITION' })).toBe(false);
     expect(shouldRefreshNotificationInbox(null)).toBe(false);

@@ -87,6 +87,10 @@ export default function OrdersPage() {
     useCallback(() => mutate(), [mutate]),
   );
   useWsEvent(
+    "ORDER_REASSIGNED",
+    useCallback(() => mutate(), [mutate]),
+  );
+  useWsEvent(
     "DRIVER_APPROACHING",
     useCallback(() => mutate(), [mutate]),
   );

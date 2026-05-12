@@ -67,7 +67,7 @@ interface SupplierGroup {
 /* ── Page ── */
 
 export default function DockPage() {
-  const { data, loading } = useLiveData<TrackingResponse>(
+  const { data, loading, mutate } = useLiveData<TrackingResponse>(
     "/v1/retailer/tracking",
     15_000,
   );
@@ -121,6 +121,13 @@ export default function DockPage() {
       if (!orderId) return;
       setOrders((prev) => prev.filter((o) => o.order_id !== orderId));
     }, []),
+  );
+
+  useWsEvent(
+    "ORDER_REASSIGNED",
+    useCallback(() => {
+      void mutate();
+    }, [mutate]),
   );
 
   const activeOrders = useMemo(
