@@ -1,6 +1,6 @@
 {
   "version": "2026-05-12",
-  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer fanout parity, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, and targeted workspace retrieval as the default codebase-retrieval path).",
+  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer+supplier fanout parity with admin-portal hybrid invalidation, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, and targeted workspace retrieval as the default codebase-retrieval path).",
   "agentContext": {
     "syncSet": [
       "../.github/ACT.md",
@@ -692,7 +692,8 @@
       "notes": [
         "Route composition moved out of main.go into suppliercoreroutes while preserving the existing order, analytics, and supplier handlers.",
         "After this extraction, backend-go/main.go no longer registers any /v1/supplier/* routes inline.",
-        "Supplier inventory now honors the mounted root PATCH /v1/supplier/inventory contract and returns additive sku_id/product_name aliases on inventory and audit rows for the admin-portal consumer."
+        "Supplier inventory now honors the mounted root PATCH /v1/supplier/inventory contract and returns additive sku_id/product_name aliases on inventory and audit rows for the admin-portal consumer.",
+        "ORDER_REASSIGNED now carries additive supplier_id from the reassign producer, dispatcher fanout resolves supplier recipients via payload plus order lookup fallback, and admin-portal supplier dashboard/orders/fleet views subscribe to ORDER_REASSIGNED invalidation for immediate refresh."
       ]
     },
     {

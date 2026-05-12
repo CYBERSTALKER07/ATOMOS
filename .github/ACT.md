@@ -3,6 +3,7 @@
 Use this protocol for every technical task. The agent is a companion engineer, not a blind executor.
 
 ## Context Sync Log
+- 2026-05-12: Supplier reassignment parity closed: `ORDER_REASSIGNED` outbox payloads now include additive `supplier_id`, dispatcher fanout resolves supplier recipients via payload + order lookup fallback, and admin-portal supplier dashboard/orders/fleet views now consume `ORDER_REASSIGNED` hybrid invalidation for immediate refresh.
 - 2026-05-12: Retailer AI confirmation mutations now emit `AI_ORDER_CONFIRMED`/`AI_ORDER_REJECTED` through transactional outbox inside the same `Orders` `ReadWriteTransaction`, and `ORDER_REASSIGNED` notification fanout now resolves affected retailer recipients for desktop/iOS/Android realtime refresh parity.
 - 2026-05-12: Retailer cart realtime convergence landed: `POST /v1/retailer/cart/sync` now emits `CART_SYNC_UPDATED` over `ws/retailer` after commit, and retailer desktop, iOS, and Android cart stores now rehydrate via `GET /v1/retailer/cart/sync` on that signal.
 - 2026-05-10: Closed production wiring drift for checkout and driver availability events: unified checkout now emits `ORDER_VALIDATION_FAILED`, `PAYMENT_CLEARED`, and `ORDER_FINALIZED` through canonical `kafka.TopicMain`, and `/v1/driver/availability` writes `DRIVER_AVAILABILITY_CHANGED` via transactional outbox before best-effort notification fanout.

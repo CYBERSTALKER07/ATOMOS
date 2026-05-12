@@ -17,6 +17,7 @@ import (
 
 	"backend-go/auth"
 	"backend-go/cache"
+	"backend-go/countrycfg"
 	"backend-go/hotspot"
 	kafkaEvents "backend-go/kafka"
 	"backend-go/outbox"
@@ -183,20 +184,41 @@ type ActiveMission struct {
 }
 
 type OrderService struct {
-	Producer     *kafka.Writer
-	Cache        *cache.Cache
-	Client       *spanner.Client
-	ReadRouter   proximity.ReadRouter           // Optional H3-aware read router for geo-scoped reads.
-	Vault        *vault.Service                 // Per-supplier credential vault (nil = ENV-only fallback)
-	SessionSvc   *payment.SessionService        // Payment session engine (nil = legacy mode)
-	CardTokenSvc *payment.CardTokenService      // Saved card token CRUD (nil = tokenization disabled)
-	DirectClient *payment.GlobalPayDirectClient // Global Pay Payments Service Public (nil = disabled)
-	FeeBP        int64                          // Platform fee in basis points (0 = zero-fee era)
+	Producer      *kafka.Writer
+	Cache         *cache.Cache
+	Client        *spanner.Client
+	CountryConfig *countrycfg.Service            // Country-level runtime config (currency/timezone defaults).
+	ReadRouter    proximity.ReadRouter           // Optional H3-aware read router for geo-scoped reads.
+	Vault         *vault.Service                 // Per-supplier credential vault (nil = ENV-only fallback)
+	SessionSvc    *payment.SessionService        // Payment session engine (nil = legacy mode)
+	CardTokenSvc  *payment.CardTokenService      // Saved card token CRUD (nil = tokenization disabled)
+	DirectClient  *payment.GlobalPayDirectClient // Global Pay Payments Service Public (nil = disabled)
+	FeeBP         int64                          // Platform fee in basis points (0 = zero-fee era)
 }
 
 // feeBasisPoints returns the configured platform fee. Zero-safe: defaults to 0.
 func (s *OrderService) feeBasisPoints() int64 {
 	return s.FeeBP
+}
+
+// resolveSupplierCurrency returns the supplier-effective currency code with a safe UZS fallback.
+func (s *OrderService) resolveSupplierCurrency(ctx context.Context, supplierID string) string {
+	if s == nil || s.CountryConfig == nil {
+		return "UZS"
+	}
+
+	countryCode := s.CountryConfig.ResolveSupplierCountryCode(ctx, supplierID)
+	cfg := s.CountryConfig.GetEffectiveConfig(ctx, supplierID, countryCode)
+	if cfg == nil {
+		return "UZS"
+	}
+
+	currencyCode := strings.ToUpper(strings.TrimSpace(cfg.CurrencyCode))
+	if currencyCode == "" {
+		return "UZS"
+	}
+
+	return currencyCode
 }
 
 // getDistance calculates Haversine distance between two coordinates in meters
@@ -2591,6 +2613,7 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 			SupplierID: supplierId,
 			Gateway:    strings.ToUpper(resp.PaymentMethod),
 			Amount:     resp.Amount,
+			Currency:   s.resolveSupplierCurrency(ctx, supplierId),
 			InvoiceID:  resp.InvoiceID,
 		})
 		if sessionErr != nil {
@@ -2895,6 +2918,7 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 				SupplierID: supplierId,
 				Gateway:    gateway,
 				Amount:     resp.Amount,
+				Currency:   s.resolveSupplierCurrency(ctx, supplierId),
 				InvoiceID:  resp.InvoiceID,
 			})
 			if sessErr != nil {
@@ -3385,18 +3409,19 @@ func (s *OrderService) ReassignRoute(ctx context.Context, orderIds []string, new
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// 1. Read all orders' current state
 		stmt := spanner.Statement{
-			SQL:    `SELECT OrderId, State, RouteId, Version, LockedUntil, DeliveryToken FROM Orders WHERE OrderId IN UNNEST(@ids)`,
+			SQL:    `SELECT OrderId, State, RouteId, Version, LockedUntil, DeliveryToken, SupplierId FROM Orders WHERE OrderId IN UNNEST(@ids)`,
 			Params: map[string]interface{}{"ids": orderIds},
 		}
 		iter := txn.Query(ctx, stmt)
 		defer iter.Stop()
 
 		type snap struct {
-			state   string
-			route   spanner.NullString
-			version int64
-			locked  spanner.NullTime
-			sealed  spanner.NullString
+			state    string
+			route    spanner.NullString
+			version  int64
+			locked   spanner.NullTime
+			sealed   spanner.NullString
+			supplier spanner.NullString
 		}
 		found := map[string]snap{}
 		for {
@@ -3408,13 +3433,13 @@ func (s *OrderService) ReassignRoute(ctx context.Context, orderIds []string, new
 				return fmt.Errorf("read orders for reassign: %w", err)
 			}
 			var id, state string
-			var route, token spanner.NullString
+			var route, token, supplier spanner.NullString
 			var version int64
 			var locked spanner.NullTime
-			if err := row.Columns(&id, &state, &route, &version, &locked, &token); err != nil {
+			if err := row.Columns(&id, &state, &route, &version, &locked, &token, &supplier); err != nil {
 				return fmt.Errorf("parse order: %w", err)
 			}
-			found[id] = snap{state: state, route: route, version: version, locked: locked, sealed: token}
+			found[id] = snap{state: state, route: route, version: version, locked: locked, sealed: token, supplier: supplier}
 		}
 
 		// 2. Validate each order
@@ -3469,6 +3494,7 @@ func (s *OrderService) ReassignRoute(ctx context.Context, orderIds []string, new
 		//    outbox emit below covers exactly the committed mutations.
 		freezeUntil := time.Now().Add(30 * time.Minute)
 		var publishedIds []string
+		supplierID := ""
 		for _, id := range validIds {
 			sn := found[id]
 			newVersion := sn.version + 1
@@ -3492,6 +3518,9 @@ func (s *OrderService) ReassignRoute(ctx context.Context, orderIds []string, new
 				continue
 			}
 			publishedIds = append(publishedIds, id)
+			if supplierID == "" && sn.supplier.Valid && sn.supplier.StringVal != "" {
+				supplierID = sn.supplier.StringVal
+			}
 		}
 
 		// 5. Outbox emit — ORDER_REASSIGNED. Atomic with the Orders UPDATEs:
@@ -3499,7 +3528,7 @@ func (s *OrderService) ReassignRoute(ctx context.Context, orderIds []string, new
 		//    The Relay publishes asynchronously onto pegasus-logistics-events.
 		//    RouteId == DriverId in this codebase (see validateTruckCapacity).
 		if len(publishedIds) > 0 {
-			if err := outbox.EmitJSON(txn, "Route", newRouteId, kafkaEvents.EventOrderReassigned, topicLogisticsEvents, map[string]interface{}{
+			payload := map[string]interface{}{
 				"type":          kafkaEvents.EventOrderReassigned,
 				"order_ids":     publishedIds,
 				"old_route_id":  oldRouteID,
@@ -3507,7 +3536,11 @@ func (s *OrderService) ReassignRoute(ctx context.Context, orderIds []string, new
 				"old_driver_id": oldRouteID,
 				"new_driver_id": newRouteId,
 				"timestamp":     time.Now().UTC().Format(time.RFC3339),
-			}, telemetry.TraceIDFromContext(ctx)); err != nil {
+			}
+			if supplierID != "" {
+				payload["supplier_id"] = supplierID
+			}
+			if err := outbox.EmitJSON(txn, "Route", newRouteId, kafkaEvents.EventOrderReassigned, topicLogisticsEvents, payload, telemetry.TraceIDFromContext(ctx)); err != nil {
 				return fmt.Errorf("emit ORDER_REASSIGNED outbox: %w", err)
 			}
 		}

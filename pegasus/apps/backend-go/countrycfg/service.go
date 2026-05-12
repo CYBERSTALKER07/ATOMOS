@@ -246,6 +246,30 @@ func (s *Service) GetEffectiveConfig(ctx context.Context, supplierID, countryCod
 	return mergeOverride(base, override)
 }
 
+// ResolveSupplierCountryCode returns the supplier's country code with a UZ fallback.
+func (s *Service) ResolveSupplierCountryCode(ctx context.Context, supplierID string) string {
+	if strings.TrimSpace(supplierID) == "" {
+		return "UZ"
+	}
+
+	row, err := s.Spanner.Single().ReadRow(ctx, "Suppliers", spanner.Key{supplierID}, []string{"CountryCode"})
+	if err != nil {
+		return "UZ"
+	}
+
+	var countryCode spanner.NullString
+	if err := row.Columns(&countryCode); err != nil || !countryCode.Valid {
+		return "UZ"
+	}
+
+	resolved := strings.ToUpper(strings.TrimSpace(countryCode.StringVal))
+	if resolved == "" {
+		return "UZ"
+	}
+
+	return resolved
+}
+
 // InvalidateCache removes cached entries for a country (called on admin updates).
 func (s *Service) InvalidateCache(countryCode string) {
 	s.cache.Delete(countryCode)

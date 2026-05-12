@@ -192,7 +192,7 @@ export default function OrdersPage() {
   }, [fetchOrders]);
 
   // Auto-refresh every 30s for active tabs
-  useSyncHub("POLL", "default", async (signal) => {
+  useSyncHub("HYBRID", "ORDER_REASSIGNED", async (signal) => {
     if (showHistory || !token) return;
     try {
       const params = new URLSearchParams({
@@ -220,7 +220,7 @@ export default function OrdersPage() {
   fetchOrdersRef.current = fetchOrders;
   useTelemetry(
     useCallback((data: TelemetryMessage) => {
-      if (data.type === 'ORDER_STATE_CHANGED') {
+      if (data.type === 'ORDER_STATE_CHANGED' || data.type === 'ORDER_REASSIGNED') {
         fetchOrdersRef.current();
       }
     }, []),

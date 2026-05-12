@@ -79,3 +79,37 @@ func LookupRetailerIDsForOrders(client *spanner.Client, orderIDs []string) map[s
 
 	return result
 }
+
+// LookupSupplierIDsForOrders resolves SupplierIds for a batch of order IDs.
+// Used by the notification dispatcher to target supplier recipients for dispatch events.
+func LookupSupplierIDsForOrders(client *spanner.Client, orderIDs []string) map[string]string {
+	if len(orderIDs) == 0 {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	stmt := spanner.Statement{
+		SQL:    `SELECT OrderId, SupplierId FROM Orders WHERE OrderId IN UNNEST(@ids)`,
+		Params: map[string]interface{}{"ids": orderIDs},
+	}
+
+	result := make(map[string]string)
+	iter := client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	for {
+		row, err := iter.Next()
+		if err != nil {
+			break
+		}
+		var orderID, supplierID string
+		if err := row.Columns(&orderID, &supplierID); err != nil {
+			continue
+		}
+		result[orderID] = supplierID
+	}
+
+	return result
+}

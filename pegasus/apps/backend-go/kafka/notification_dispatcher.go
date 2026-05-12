@@ -473,6 +473,13 @@ func handleOrderReassigned(deps NotificationDeps, data []byte) {
 		dispatchToRecipient(deps, event.NewDriverID, "DRIVER", EventOrderReassigned, notif)
 	}
 
+	messageArgs := map[string]string{}
+	if len(event.OrderIDs) == 1 {
+		messageArgs["order_id"] = event.OrderIDs[0]
+	} else {
+		messageArgs["order_count"] = fmt.Sprintf("%d", len(event.OrderIDs))
+	}
+
 	// Notify affected retailers so desktop/iOS/Android can refresh reassigned order state.
 	retailerMap := notifications.LookupRetailerIDsForOrders(deps.SpannerClient, event.OrderIDs)
 	retailerRecipients := make(map[string]struct{})
@@ -484,13 +491,6 @@ func handleOrderReassigned(deps NotificationDeps, data []byte) {
 	}
 
 	if len(retailerRecipients) > 0 {
-		messageArgs := map[string]string{}
-		if len(event.OrderIDs) == 1 {
-			messageArgs["order_id"] = event.OrderIDs[0]
-		} else {
-			messageArgs["order_count"] = fmt.Sprintf("%d", len(event.OrderIDs))
-		}
-
 		retailerNotif := notifications.NewFormattedNotification(
 			"Order Reassigned",
 			fmt.Sprintf("%s reassigned to a new delivery route. ETA may shift.", orderLabel),
@@ -500,6 +500,47 @@ func handleOrderReassigned(deps NotificationDeps, data []byte) {
 		)
 		for retailerID := range retailerRecipients {
 			dispatchToRecipient(deps, retailerID, "RETAILER", EventOrderReassigned, retailerNotif)
+		}
+	}
+
+	// Notify suppliers for supplier portal order and fleet dispatch parity.
+	supplierRecipients := make(map[string]struct{})
+	if event.SupplierID != "" {
+		supplierRecipients[event.SupplierID] = struct{}{}
+	}
+	supplierMap := notifications.LookupSupplierIDsForOrders(deps.SpannerClient, event.OrderIDs)
+	for _, supplierID := range supplierMap {
+		if supplierID == "" {
+			continue
+		}
+		supplierRecipients[supplierID] = struct{}{}
+	}
+
+	if len(supplierRecipients) > 0 {
+		supplierArgs := make(map[string]string, len(messageArgs)+2)
+		for k, v := range messageArgs {
+			supplierArgs[k] = v
+		}
+		oldRoute := "unassigned"
+		if event.OldRouteID != "" {
+			oldRoute = shortRecipientID(event.OldRouteID)
+			supplierArgs["old_route_id"] = oldRoute
+		}
+		newRoute := "unassigned"
+		if event.NewRouteID != "" {
+			newRoute = shortRecipientID(event.NewRouteID)
+			supplierArgs["new_route_id"] = newRoute
+		}
+
+		supplierNotif := notifications.NewFormattedNotification(
+			"Order Reassigned",
+			fmt.Sprintf("%s moved from route %s to %s.", orderLabel, oldRoute, newRoute),
+			"notification.order_reassigned_supplier.title",
+			"notification.order_reassigned_supplier.body",
+			supplierArgs,
+		)
+		for supplierID := range supplierRecipients {
+			dispatchToRecipient(deps, supplierID, "SUPPLIER", EventOrderReassigned, supplierNotif)
 		}
 	}
 }

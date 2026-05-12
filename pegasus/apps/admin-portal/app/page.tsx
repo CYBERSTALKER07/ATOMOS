@@ -187,14 +187,14 @@ export default function AdminDashboard() {
     [targetRoute],
   );
 
-  useSyncHub("POLL", "data", (signal: AbortSignal) => fetchOrders(signal), 5000, [fetchOrders]);
+  useSyncHub("HYBRID", "ORDER_REASSIGNED", (signal: AbortSignal) => fetchOrders(signal), 5000, [fetchOrders]);
 
   // ── WebSocket: instant order state change notifications ──────────────────
   const fetchOrdersRef = useRef(fetchOrders);
   fetchOrdersRef.current = fetchOrders;
   useTelemetry(
     useCallback((data: TelemetryMessage) => {
-      if (data.type === "ORDER_STATE_CHANGED") {
+      if (data.type === "ORDER_STATE_CHANGED" || data.type === "ORDER_REASSIGNED") {
         fetchOrdersRef.current();
       }
     }, []),

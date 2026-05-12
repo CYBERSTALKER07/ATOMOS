@@ -223,4 +223,5 @@ If any feature, dependency, service, or runtime changes, update all of:
 	- Owns `GET /v1/supplier/dashboard`, `GET /v1/supplier/earnings`, `GET/PATCH /v1/supplier/inventory`, `GET /v1/supplier/inventory/audit`, `GET /v1/supplier/orders`, and `POST /v1/supplier/orders/vet`
 	- Supports the supplier core portal loop: dashboard metrics, earnings analytics, inventory management, and supplier-side order approval
 	- Supplier inventory now honors the mounted root `PATCH /v1/supplier/inventory` contract and returns additive `sku_id`/`product_name` aliases on inventory and audit rows for the supplier portal
+	- `ORDER_REASSIGNED` now includes additive `supplier_id` at emission, dispatcher fanout resolves supplier recipients via payload plus order lookup fallback, and supplier dashboard/orders/fleet pages refresh through `ORDER_REASSIGNED` hybrid invalidation
 	- Removes the final inline `/v1/supplier/*` registrations from `backend-go/main.go`

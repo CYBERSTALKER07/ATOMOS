@@ -26,6 +26,7 @@ function timeAgo(iso: string): string {
 
 const typeIcons: Record<string, string> = {
   ORDER_DISPATCHED: 'dispatch',
+  ORDER_REASSIGNED: 'dispatch',
   DRIVER_ARRIVED: 'pin',
   ORDER_STATUS_CHANGED: 'refresh',
   PAYLOAD_READY_TO_SEAL: 'inventory',

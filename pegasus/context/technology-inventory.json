@@ -659,6 +659,7 @@
       "notes": [
         "Route composition moved out of main.go into suppliercoreroutes while preserving existing order, analytics, and supplier handlers.",
         "Supplier inventory now honors the mounted root PATCH /v1/supplier/inventory contract and returns additive sku_id/product_name aliases on inventory and audit rows for the supplier portal consumer.",
+        "ORDER_REASSIGNED now carries additive supplier_id from the reassign producer, dispatcher fanout resolves supplier recipients through payload plus order lookup fallback, and supplier dashboard/orders/fleet pages refresh on ORDER_REASSIGNED hybrid invalidation.",
         "This extraction removes the final inline /v1/supplier/* registrations from backend-go/main.go."
       ]
     },

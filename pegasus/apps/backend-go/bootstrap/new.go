@@ -136,14 +136,15 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 	supplierPricingSvc := supplier.NewPricingService(spannerClient)
 
 	orderSvc := &order.OrderService{
-		Client:       spannerClient,
-		ReadRouter:   spannerRouter,
-		Cache:        c,
-		Vault:        vaultSvc,
-		SessionSvc:   sessionSvc,
-		CardTokenSvc: cardTokenSvc,
-		DirectClient: directClient,
-		FeeBP:        platformCfg.PlatformFeeBasisPoints(),
+		Client:        spannerClient,
+		ReadRouter:    spannerRouter,
+		Cache:         c,
+		CountryConfig: countryCfgSvc,
+		Vault:         vaultSvc,
+		SessionSvc:    sessionSvc,
+		CardTokenSvc:  cardTokenSvc,
+		DirectClient:  directClient,
+		FeeBP:         platformCfg.PlatformFeeBasisPoints(),
 		Producer: &kafka.Writer{
 			Addr:     kafka.TCP(cfg.KafkaBrokerAddress),
 			Topic:    internalKafka.TopicMain,

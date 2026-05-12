@@ -2,8 +2,6 @@ package countrycfg
 
 import (
 	"context"
-
-	"cloud.google.com/go/spanner"
 )
 
 // ProximityConfigAdapter wraps Service to implement proximity.ConfigProvider.
@@ -25,17 +23,8 @@ func (a *ProximityConfigAdapter) GetBreachRadius(ctx context.Context, supplierID
 }
 
 func (a *ProximityConfigAdapter) resolveSupplierCountry(ctx context.Context, supplierID string) string {
-	if supplierID == "" {
+	if a == nil || a.Svc == nil {
 		return "UZ"
 	}
-	row, err := a.Svc.Spanner.Single().ReadRow(ctx, "Suppliers",
-		spanner.Key{supplierID}, []string{"CountryCode"})
-	if err != nil {
-		return "UZ"
-	}
-	var code spanner.NullString
-	if err := row.Columns(&code); err != nil || !code.Valid {
-		return "UZ"
-	}
-	return code.StringVal
+	return a.Svc.ResolveSupplierCountryCode(ctx, supplierID)
 }

@@ -190,7 +190,8 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 
 	// ── Step 3: Price each supplier group (with per-retailer overrides) ───
 	supplierTotals := make(map[string]int64, len(supplierGroups))
-	var grandTotal int64
+	supplierCurrencyByID := make(map[string]string, len(supplierGroups))
+	invoiceCurrency := ""
 
 	for sid, items := range supplierGroups {
 		var groupTotal int64
@@ -214,8 +215,20 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			groupTotal += effectivePrice * item.Quantity
 		}
 		supplierTotals[sid] = groupTotal
-		grandTotal += groupTotal
 		supplierGroups[sid] = items
+
+		supplierCurrency := s.resolveSupplierCurrency(ctx, sid)
+		supplierCurrencyByID[sid] = supplierCurrency
+		if invoiceCurrency == "" {
+			invoiceCurrency = supplierCurrency
+		} else if invoiceCurrency != supplierCurrency {
+			http.Error(w, fmt.Sprintf(`{"error":"MIXED_SUPPLIER_CURRENCIES_NOT_SUPPORTED","invoice_currency":"%s","supplier_currency":"%s","supplier_id":"%s"}`,
+				invoiceCurrency, supplierCurrency, sid), http.StatusUnprocessableEntity)
+			return
+		}
+	}
+	if invoiceCurrency == "" {
+		invoiceCurrency = "UZS"
 	}
 
 	// ── Step 3a: Stock pre-flight (read-only, non-blocking) ───────────────
@@ -280,6 +293,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		OrderID       string
 		SupplierID    string
 		SupplierName  string
+		Currency      string
 		WarehouseID   string
 		WarehouseName string
 		Total         int64
@@ -297,6 +311,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			OrderID:       hotspot.NewOrderID(),
 			SupplierID:    sid,
 			SupplierName:  supplierBySku[items[0].SkuId].SupplierName,
+			Currency:      supplierCurrencyByID[sid],
 			WarehouseID:   whID,
 			WarehouseName: whName,
 			Total:         supplierTotals[sid],
@@ -387,7 +402,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		// 4a. INSERT MasterInvoice (uses effective total)
 		mutations = append(mutations, spanner.Insert("MasterInvoices",
 			[]string{"InvoiceId", "RetailerId", "Total", "Currency", "State", "CreatedAt"},
-			[]interface{}{invoiceID, req.RetailerID, effectiveGrandTotal, "UZS", "PENDING", spanner.CommitTimestamp},
+			[]interface{}{invoiceID, req.RetailerID, effectiveGrandTotal, invoiceCurrency, "PENDING", spanner.CommitTimestamp},
 		))
 
 		// 4b. For each supplier group: INSERT Order + INSERT N OrderLineItems (effective qty only)
@@ -433,7 +448,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 				},
 				[]interface{}{
 					plan.OrderID, req.RetailerID, plan.SupplierID, invoiceID,
-					planEffectiveTotal, "UZS", req.PaymentGateway, "PENDING", hotspot.ShardForKey(plan.OrderID),
+					planEffectiveTotal, plan.Currency, req.PaymentGateway, "PENDING", hotspot.ShardForKey(plan.OrderID),
 					wkt, "UNIFIED_CHECKOUT",
 					spanner.NullString{Valid: false}, // JIT: token generated at dispatch, not checkout
 					plan.WarehouseID,
@@ -450,7 +465,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 				lineItemID := fmt.Sprintf("LI-%s", GenerateSecureToken())
 				mutations = append(mutations, spanner.Insert("OrderLineItems",
 					[]string{"LineItemId", "OrderId", "SkuId", "Quantity", "UnitPrice", "Currency", "Status"},
-					[]interface{}{lineItemID, plan.OrderID, item.SkuId, eq, item.UnitPrice, "UZS", "PENDING"},
+					[]interface{}{lineItemID, plan.OrderID, item.SkuId, eq, item.UnitPrice, plan.Currency, "PENDING"},
 				))
 			}
 		}
@@ -482,7 +497,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 				TIN:           retailerTIN,
 				TerminalID:    terminalID,
 				Total:         processedTotals[plan.OrderID],
-				Currency:      "UZS",
+				Currency:      plan.Currency,
 				Items:         plan.Items,
 				Timestamp:     now,
 			}
@@ -494,7 +509,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			InvoiceID:  invoiceID,
 			RetailerID: req.RetailerID,
 			Total:      effectiveGrandTotal,
-			Currency:   "UZS",
+			Currency:   invoiceCurrency,
 			OrderCount: len(processedPlans),
 			Timestamp:  now,
 		}, telemetry.TraceIDFromContext(ctx))
@@ -539,6 +554,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		type backorderPlan struct {
 			OrderID       string
 			SupplierID    string
+			Currency      string
 			WarehouseID   string
 			WarehouseName string
 			Total         int64
@@ -556,6 +572,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 					bp = &backorderPlan{
 						OrderID:       hotspot.NewOrderID(),
 						SupplierID:    plan.SupplierID,
+						Currency:      plan.Currency,
 						WarehouseID:   plan.WarehouseID,
 						WarehouseName: plan.WarehouseName,
 					}
@@ -590,7 +607,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 					},
 					[]interface{}{
 						bp.OrderID, req.RetailerID, bp.SupplierID, invoiceID,
-						bp.Total, "UZS", req.PaymentGateway, "BACKORDERED", hotspot.ShardForKey(bp.OrderID),
+						bp.Total, bp.Currency, req.PaymentGateway, "BACKORDERED", hotspot.ShardForKey(bp.OrderID),
 						wkt, "UNIFIED_CHECKOUT",
 						spanner.NullString{Valid: false},
 						bp.WarehouseID,
@@ -602,7 +619,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 					liID := fmt.Sprintf("LI-%s", GenerateSecureToken())
 					bMutations = append(bMutations, spanner.Insert("OrderLineItems",
 						[]string{"LineItemId", "OrderId", "SkuId", "Quantity", "UnitPrice", "Currency", "Status"},
-						[]interface{}{liID, bp.OrderID, item.SkuId, item.Quantity, item.UnitPrice, "UZS", "PENDING"},
+						[]interface{}{liID, bp.OrderID, item.SkuId, item.Quantity, item.UnitPrice, bp.Currency, "PENDING"},
 					))
 				}
 			}
@@ -621,7 +638,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 					WarehouseName:     bp.WarehouseName,
 					Items:             bp.Items,
 					Total:             bp.Total,
-					Currency:          "UZS",
+					Currency:          bp.Currency,
 					Timestamp:         now,
 				}
 				if err := outbox.EmitJSON(txn, "Order", bp.OrderID, string(kafkaEvents.EventStockBackordered), kafkaEvents.TopicMain, event, telemetry.TraceIDFromContext(ctx)); err != nil {
@@ -675,7 +692,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			WarehouseID:   plan.WarehouseID,
 			WarehouseName: plan.WarehouseName,
 			Total:         processedTotals[plan.OrderID],
-			Currency:      "UZS",
+			Currency:      plan.Currency,
 			ItemCount:     len(plan.Items),
 		})
 	}
@@ -686,7 +703,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		Status:               "CHECKOUT_LOCKED",
 		InvoiceID:            invoiceID,
 		Total:                effectiveGrandTotal,
-		Currency:             "UZS",
+		Currency:             invoiceCurrency,
 		SupplierOrders:       supplierResults,
 		BackorderedItemCount: totalBackorderedItems,
 	}); err != nil {
@@ -731,12 +748,14 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 
 	// Create a PaymentSession in AUTHORIZED state.
 	if s.SessionSvc != nil {
+		currencyCode := s.resolveSupplierCurrency(ctx, supplierID)
 		session, sessErr := s.SessionSvc.CreateSession(ctx, payment.CreateSessionRequest{
 			OrderID:    orderID,
 			RetailerID: retailerID,
 			SupplierID: supplierID,
 			Gateway:    "GLOBAL_PAY",
 			Amount:     amount,
+			Currency:   currencyCode,
 			InvoiceID:  invoiceID,
 		})
 		if sessErr != nil {

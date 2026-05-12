@@ -183,6 +183,7 @@ export default function FleetPage() {
         useCallback((message: TelemetryMessage) => {
             if (
                 message.type === "ORDER_STATE_CHANGED" ||
+                message.type === "ORDER_REASSIGNED" ||
                 message.type === "DRIVER_APPROACHING" ||
                 message.type === "ETA_UPDATED"
             ) {

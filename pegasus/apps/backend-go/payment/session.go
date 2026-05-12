@@ -13,6 +13,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"backend-go/cache"
@@ -119,6 +120,7 @@ func NewSessionService(client *spanner.Client, rc *cache.Cache) *SessionService 
 func (s *SessionService) CreateSession(ctx context.Context, req CreateSessionRequest) (*PaymentSession, error) {
 	sessionID := uuid.New().String()
 	now := time.Now().UTC()
+	currencyCode := normalizeCurrencyCode(req.Currency)
 
 	session := &PaymentSession{
 		SessionID:    sessionID,
@@ -127,7 +129,7 @@ func (s *SessionService) CreateSession(ctx context.Context, req CreateSessionReq
 		SupplierID:   req.SupplierID,
 		Gateway:      req.Gateway,
 		LockedAmount: req.Amount,
-		Currency:     "UZS",
+		Currency:     currencyCode,
 		Status:       SessionCreated,
 		InvoiceID:    req.InvoiceID,
 		RedirectURL:  req.RedirectURL,
@@ -162,7 +164,7 @@ func (s *SessionService) CreateSession(ctx context.Context, req CreateSessionReq
 		}
 		vals := []interface{}{
 			sessionID, req.OrderID, req.RetailerID, req.SupplierID, req.Gateway,
-			req.Amount, "UZS", SessionCreated, int64(0),
+			req.Amount, currencyCode, SessionCreated, int64(0),
 			nullStr(req.InvoiceID), nullStr(req.RedirectURL), nullTime(req.ExpiresAt),
 			spanner.CommitTimestamp,
 		}
@@ -927,7 +929,7 @@ func (s *SessionService) RetryPaymentSession(ctx context.Context, orderID string
 	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// 1. Find the current active/failed session for this order
 		stmt := spanner.Statement{
-			SQL: `SELECT SessionId, Status, LockedAmount, RetailerId, SupplierId, Gateway
+			SQL: `SELECT SessionId, Status, LockedAmount, RetailerId, SupplierId, Gateway, Currency
 			      FROM PaymentSessions
 			      WHERE OrderId = @oid
 			      ORDER BY CreatedAt DESC
@@ -943,9 +945,14 @@ func (s *SessionService) RetryPaymentSession(ctx context.Context, orderID string
 		}
 
 		var oldSessionID, oldStatus, oldGateway, retailerID, supplierID string
+		var oldCurrency spanner.NullString
 		var lockedAmount int64
-		if err := row.Columns(&oldSessionID, &oldStatus, &lockedAmount, &retailerID, &supplierID, &oldGateway); err != nil {
+		if err := row.Columns(&oldSessionID, &oldStatus, &lockedAmount, &retailerID, &supplierID, &oldGateway, &oldCurrency); err != nil {
 			return err
+		}
+		resolvedCurrency := normalizeCurrencyCode("")
+		if oldCurrency.Valid {
+			resolvedCurrency = normalizeCurrencyCode(oldCurrency.StringVal)
 		}
 
 		// Only allow retry from FAILED, EXPIRED, or CANCELLED states
@@ -975,7 +982,7 @@ func (s *SessionService) RetryPaymentSession(ctx context.Context, orderID string
 					"LockedAmount", "Currency", "Status", "CurrentAttemptNo",
 					"ExpiresAt", "CreatedAt"},
 				[]interface{}{newSessionID, orderID, retailerID, supplierID, newGateway,
-					lockedAmount, "UZS", SessionCreated, int64(0),
+					lockedAmount, resolvedCurrency, SessionCreated, int64(0),
 					expiry, spanner.CommitTimestamp},
 			),
 		})
@@ -987,7 +994,7 @@ func (s *SessionService) RetryPaymentSession(ctx context.Context, orderID string
 			SupplierID:   supplierID,
 			Gateway:      newGateway,
 			LockedAmount: lockedAmount,
-			Currency:     "UZS",
+			Currency:     resolvedCurrency,
 			Status:       SessionCreated,
 			ExpiresAt:    &expiry,
 		}
@@ -1021,4 +1028,12 @@ func nullTime(t *time.Time) spanner.NullTime {
 		return spanner.NullTime{}
 	}
 	return spanner.NullTime{Time: *t, Valid: true}
+}
+
+func normalizeCurrencyCode(code string) string {
+	normalized := strings.ToUpper(strings.TrimSpace(code))
+	if normalized == "" {
+		return "UZS"
+	}
+	return normalized
 }
