@@ -682,7 +682,9 @@
           "GET /v1/warehouse/ops/vehicles",
           "POST /v1/warehouse/ops/vehicles",
           "PATCH /v1/warehouse/ops/vehicles/{id}",
-          "GET /v1/warehouse/ops/vehicles/{id}"
+          "GET /v1/warehouse/ops/vehicles/{id}",
+          "GET /v1/warehouse/ops/treasury?view=overview",
+          "GET /v1/warehouse/ops/treasury?view=invoices"
         ],
         "consumers": [
           "warehouse-portal inventory/staff/drivers/vehicles pages",
@@ -694,6 +696,7 @@
           "Inventory responses expose both inventory and items collections plus sku_id and product_id aliases.",
           "Staff create accepts an optional pin and returns the effective one-time pin for native client parity.",
           "Vehicle responses expose both max_volume_vu and capacity_vu plus a derived availability status.",
+          "Warehouse treasury invoice responses now include additive per-invoice currency and amount_uzs compatibility aliasing so portal, iOS, and Android treasury views can render currency dynamically without breaking legacy amount contracts.",
           "Vehicle availability is schema-backed with Vehicles.UnavailableReason and travels across the warehouse portal, iOS, and Android fleet clients.",
           "Warehouse fleet controls now share driver assign/reset and vehicle activate/deactivate mutations across portal, iOS, and Android.",
           "Warehouse dispatch preview excludes inactive vehicles from the available-driver list so vehicle availability mutations affect dispatch eligibility immediately.",
