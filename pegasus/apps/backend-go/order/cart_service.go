@@ -3,14 +3,15 @@ package order
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"backend-go/auth"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
 )
 
@@ -76,12 +77,13 @@ func handleCartGet(w http.ResponseWriter, r *http.Request, client *spanner.Clien
 			break
 		}
 		if err != nil {
+			slog.ErrorContext(ctx, "cart sync query failed", "retailer_id", retailerID, "err", err)
 			http.Error(w, `{"error":"query_failed"}`, http.StatusInternalServerError)
 			return
 		}
 		var item CartItem
 		if err := row.Columns(&item.CartID, &item.SkuID, &item.SupplierID, &item.Quantity, &item.UnitPrice, &item.Currency); err != nil {
-			log.Printf("[CART] Decode error: %v", err)
+			slog.WarnContext(ctx, "cart sync decode row failed", "retailer_id", retailerID, "err", err)
 			continue
 		}
 		resp.Items = append(resp.Items, item)
@@ -113,23 +115,29 @@ func handleCartPut(w http.ResponseWriter, r *http.Request, client *spanner.Clien
 		}
 
 		// 2. Insert new items
-		now := time.Now()
-		for i, item := range req.Items {
+		now := time.Now().UTC()
+		for _, item := range req.Items {
 			if item.SkuID == "" || item.SupplierID == "" || item.Quantity <= 0 {
 				continue
 			}
-			cartID := fmt.Sprintf("%s-cart-%d-%d", retailerID, now.UnixNano(), i)
-			txn.BufferWrite([]*spanner.Mutation{
+			currency := strings.TrimSpace(item.Currency)
+			if currency == "" {
+				currency = "UZS"
+			}
+			cartID := uuid.NewString()
+			if err := txn.BufferWrite([]*spanner.Mutation{
 				spanner.Insert("RetailerCarts",
-					[]string{"CartId", "RetailerId", "SupplierId", "SkuId", "Quantity", "UnitPrice", "AddedAt"},
-					[]interface{}{cartID, retailerID, item.SupplierID, item.SkuID, item.Quantity, item.UnitPrice, now},
+					[]string{"CartId", "RetailerId", "SupplierId", "SkuId", "Quantity", "UnitPrice", "Currency", "AddedAt"},
+					[]interface{}{cartID, retailerID, item.SupplierID, item.SkuID, item.Quantity, item.UnitPrice, currency, now},
 				),
-			})
+			}); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
 	if err != nil {
-		log.Printf("[CART SYNC] Transaction failed: %v", err)
+		slog.ErrorContext(ctx, "cart sync transaction failed", "retailer_id", retailerID, "err", err)
 		http.Error(w, `{"error":"sync_failed"}`, http.StatusInternalServerError)
 		return
 	}

@@ -155,6 +155,10 @@ final class APIClient {
     func patch<T: Decodable>(path: String, body: (any Encodable)? = nil, headers: [String: String] = [:]) async throws -> T {
         try await request(method: "PATCH", path: path, body: body, headers: headers)
     }
+
+    func put<T: Decodable>(path: String, body: (any Encodable)? = nil, headers: [String: String] = [:]) async throws -> T {
+        try await request(method: "PUT", path: path, body: body, headers: headers)
+    }
     
     // MARK: - Card Management
     
@@ -248,7 +252,7 @@ final class APIClient {
     }
     
     func updateProfile(request: RetailerProfileRequest) async throws {
-        let _: APIResponse<String> = try await post(path: "/v1/retailer/profile", body: request)
+        let _: APIResponse<String> = try await put(path: "/v1/retailer/profile", body: request)
     }
 
     func getFamilyMembers() async throws -> [FamilyMemberResponse] {
@@ -279,11 +283,82 @@ final class APIClient {
     }
     
     func favoriteSupplier(supplierId: String) async throws {
-        let _: APIResponse<String> = try await post(path: "/v1/retailer/suppliers/\(supplierId)/favorite")
+        let _: APIResponse<String> = try await post(path: "/v1/retailer/suppliers/\(supplierId)/add")
     }
     
     func unfavoriteSupplier(supplierId: String) async throws {
-        let _: APIResponse<String> = try await post(path: "/v1/retailer/suppliers/\(supplierId)/unfavorite")
+        let _: APIResponse<String> = try await post(path: "/v1/retailer/suppliers/\(supplierId)/remove")
+    }
+
+    struct GlobalAutoOrderRequest: Encodable {
+        let globalAutoOrderEnabled: Bool
+        let useHistory: Bool?
+
+        enum CodingKeys: String, CodingKey {
+            case globalAutoOrderEnabled = "global_auto_order_enabled"
+            case useHistory = "use_history"
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(globalAutoOrderEnabled, forKey: .globalAutoOrderEnabled)
+            try container.encodeIfPresent(useHistory, forKey: .useHistory)
+        }
+    }
+
+    struct ScopedAutoOrderRequest: Encodable {
+        let autoOrderEnabled: Bool
+        let useHistory: Bool?
+
+        enum CodingKeys: String, CodingKey {
+            case autoOrderEnabled = "auto_order_enabled"
+            case useHistory = "use_history"
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(autoOrderEnabled, forKey: .autoOrderEnabled)
+            try container.encodeIfPresent(useHistory, forKey: .useHistory)
+        }
+    }
+
+    func getAutoOrderSettings() async throws -> AutoOrderSettings {
+        try await get(path: "/v1/retailer/settings/auto-order")
+    }
+
+    func setGlobalAutoOrder(enabled: Bool, useHistory: Bool? = nil) async throws -> [String: Bool] {
+        try await patch(
+            path: "/v1/retailer/settings/auto-order/global",
+            body: GlobalAutoOrderRequest(globalAutoOrderEnabled: enabled, useHistory: useHistory)
+        )
+    }
+
+    func setSupplierAutoOrder(supplierId: String, enabled: Bool, useHistory: Bool? = nil) async throws -> [String: Bool] {
+        try await patch(
+            path: "/v1/retailer/settings/auto-order/supplier/\(supplierId)",
+            body: ScopedAutoOrderRequest(autoOrderEnabled: enabled, useHistory: useHistory)
+        )
+    }
+
+    func setCategoryAutoOrder(categoryId: String, enabled: Bool, useHistory: Bool? = nil) async throws -> [String: Bool] {
+        try await patch(
+            path: "/v1/retailer/settings/auto-order/category/\(categoryId)",
+            body: ScopedAutoOrderRequest(autoOrderEnabled: enabled, useHistory: useHistory)
+        )
+    }
+
+    func setProductAutoOrder(productId: String, enabled: Bool, useHistory: Bool? = nil) async throws -> [String: Bool] {
+        try await patch(
+            path: "/v1/retailer/settings/auto-order/product/\(productId)",
+            body: ScopedAutoOrderRequest(autoOrderEnabled: enabled, useHistory: useHistory)
+        )
+    }
+
+    func setVariantAutoOrder(skuId: String, enabled: Bool, useHistory: Bool? = nil) async throws -> [String: Bool] {
+        try await patch(
+            path: "/v1/retailer/settings/auto-order/variant/\(skuId)",
+            body: ScopedAutoOrderRequest(autoOrderEnabled: enabled, useHistory: useHistory)
+        )
     }
 
     func getTrackingOrders() async throws -> [TrackingOrder] {

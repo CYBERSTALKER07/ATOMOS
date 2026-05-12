@@ -531,7 +531,7 @@ struct AutoOrderView: View {
 
     private func loadSettings() async -> AutoOrderSettings? {
         do {
-            return try await api.get(path: "/v1/retailer/settings/auto-order")
+            return try await api.getAutoOrderSettings()
         } catch {
             return nil
         }
@@ -548,11 +548,7 @@ struct AutoOrderView: View {
 
     private func enableGlobal(useHistory: Bool) async {
         do {
-            let body: [String: Any] = ["global_auto_order_enabled": true, "use_history": useHistory]
-            let _: [String: Bool] = try await api.patch(
-                path: "/v1/retailer/settings/auto-order/global",
-                body: AnyCodable(body)
-            )
+            let _: [String: Bool] = try await api.setGlobalAutoOrder(enabled: true, useHistory: useHistory)
             await loadAll()
         } catch {
             globalAutoOrder = false
@@ -561,10 +557,7 @@ struct AutoOrderView: View {
 
     private func disableGlobal() async {
         do {
-            let _: [String: Bool] = try await api.patch(
-                path: "/v1/retailer/settings/auto-order/global",
-                body: ["global_auto_order_enabled": false]
-            )
+            let _: [String: Bool] = try await api.setGlobalAutoOrder(enabled: false)
             await loadAll()
         } catch {
             globalAutoOrder = true
@@ -572,24 +565,18 @@ struct AutoOrderView: View {
     }
 
     private func toggleOverride(item: OverrideItem, enabled: Bool, useHistory: Bool) async {
-        let path: String
-        switch item.level {
-        case .supplier:
-            path = "/v1/retailer/settings/auto-order/supplier/\(item.id)"
-        case .category:
-            path = "/v1/retailer/settings/auto-order/category/\(item.id)"
-        case .product:
-            path = "/v1/retailer/settings/auto-order/product/\(item.id)"
-        case .variant:
-            path = "/v1/retailer/settings/auto-order/variant/\(item.id)"
-        }
         do {
-            var body: [String: Any] = ["auto_order_enabled": enabled]
-            if enabled { body["use_history"] = useHistory }
-            let _: [String: Bool] = try await api.patch(
-                path: path,
-                body: AnyCodable(body)
-            )
+            let historyFlag = enabled ? useHistory : nil
+            switch item.level {
+            case .supplier:
+                _ = try await api.setSupplierAutoOrder(supplierId: item.id, enabled: enabled, useHistory: historyFlag)
+            case .category:
+                _ = try await api.setCategoryAutoOrder(categoryId: item.id, enabled: enabled, useHistory: historyFlag)
+            case .product:
+                _ = try await api.setProductAutoOrder(productId: item.id, enabled: enabled, useHistory: historyFlag)
+            case .variant:
+                _ = try await api.setVariantAutoOrder(skuId: item.id, enabled: enabled, useHistory: historyFlag)
+            }
             await loadAll()
         } catch {
             await loadAll() // revert to server state on failure
