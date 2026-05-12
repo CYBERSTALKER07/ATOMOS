@@ -112,6 +112,10 @@ export function useWebSocket() {
   return ctx;
 }
 
+export function useOptionalWebSocket() {
+  return useContext(WebSocketContext);
+}
+
 /** Subscribe to a specific WS message type. Handler is called when msg.type matches. */
 export function useWsEvent(type: string, handler: WsEventHandler) {
   const { subscribe } = useWebSocket();

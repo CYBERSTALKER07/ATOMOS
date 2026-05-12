@@ -21,14 +21,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.JsonObject
 import javax.inject.Inject
 
 data class CartUiState(
@@ -77,10 +79,159 @@ class CartViewModel @Inject constructor(
     val uiState: StateFlow<CartUiState> = _uiState.asStateFlow()
 
     private var paymentListenerJob: Job? = null
+    private var cartSyncDebounceJob: Job? = null
+    private var cartSyncEventsJob: Job? = null
+    private var lastCartSignature: String = ""
 
 init { 
         flushPendingOrders()
         fetchPaymentOptions()
+        refreshCartFromServer()
+        observeCartSyncUpdates()
+    }
+
+    private fun cartSignature(items: List<CartItem>): String {
+        return items
+            .sortedBy { if (it.variant.id.isNotBlank()) it.variant.id else it.product.id }
+            .joinToString("|") { item ->
+                val skuId = if (item.variant.id.isNotBlank()) item.variant.id else item.product.id
+                val supplierId = item.product.supplierId.orEmpty()
+                "$skuId:$supplierId:${item.quantity}:${item.variant.price.toInt()}"
+            }
+    }
+
+    private fun JsonObject.stringField(name: String): String? {
+        return this[name]?.jsonPrimitive?.contentOrNull
+    }
+
+    private fun JsonObject.longField(name: String): Long {
+        val primitive = this[name]?.jsonPrimitive ?: return 0L
+        return primitive.longOrNull ?: primitive.contentOrNull?.toLongOrNull() ?: 0L
+    }
+
+    private fun mapServerCart(items: List<JsonObject>): List<CartItem> {
+        val existingBySku = mutableMapOf<String, CartItem>()
+        _uiState.value.items.forEach { item ->
+            existingBySku[item.product.id] = item
+            existingBySku[item.variant.id] = item
+        }
+
+        return items.mapNotNull { raw ->
+            val skuId = raw.stringField("sku_id") ?: return@mapNotNull null
+            val supplierId = raw.stringField("supplier_id") ?: ""
+            val quantity = raw.longField("quantity").toInt()
+            if (quantity <= 0) {
+                return@mapNotNull null
+            }
+            val unitPrice = raw.longField("unit_price").toDouble()
+
+            val existing = existingBySku[skuId]
+            if (existing != null) {
+                val variant = existing.variant.copy(price = unitPrice)
+                val product = existing.product.copy(
+                    variants = listOf(variant),
+                    supplierId = existing.product.supplierId ?: supplierId,
+                    price = unitPrice.toInt(),
+                )
+                return@mapNotNull CartItem(
+                    id = "${product.id}_${variant.id}",
+                    product = product,
+                    variant = variant,
+                    quantity = quantity,
+                )
+            }
+
+            val fallbackVariant = Variant(
+                id = skuId,
+                size = "Standard",
+                pack = "Per unit",
+                packCount = 1,
+                weightPerUnit = "1 unit",
+                price = unitPrice,
+            )
+            val fallbackProduct = Product(
+                id = skuId,
+                name = "Item",
+                variants = listOf(fallbackVariant),
+                supplierId = supplierId,
+                price = unitPrice.toInt(),
+            )
+            CartItem(
+                id = "${fallbackProduct.id}_${fallbackVariant.id}",
+                product = fallbackProduct,
+                variant = fallbackVariant,
+                quantity = quantity,
+            )
+        }
+    }
+
+    private fun refreshCartFromServer() = viewModelScope.launch {
+        try {
+            val payload = api.getCartSync().jsonObject
+            val rawItems = payload["items"]?.jsonArray?.map { it.jsonObject } ?: emptyList()
+            val merged = mapServerCart(rawItems)
+            val signature = cartSignature(merged)
+            if (signature == lastCartSignature) {
+                return@launch
+            }
+            _uiState.update { it.copy(items = merged) }
+            lastCartSignature = signature
+        } catch (_: Exception) {
+            // Keep local state when server cart fetch fails.
+        }
+    }
+
+    private fun observeCartSyncUpdates() {
+        retailerWebSocket.connect()
+        cartSyncEventsJob?.cancel()
+        cartSyncEventsJob = viewModelScope.launch {
+            retailerWebSocket.events
+                .filter { it.type == "CART_SYNC_UPDATED" }
+                .collect {
+                    refreshCartFromServer()
+                }
+        }
+    }
+
+    private fun scheduleCartSyncPush() {
+        val currentItems = _uiState.value.items
+        val signature = cartSignature(currentItems)
+        if (signature == lastCartSignature) {
+            return
+        }
+
+        cartSyncDebounceJob?.cancel()
+        cartSyncDebounceJob = viewModelScope.launch {
+            delay(250)
+            val snapshot = _uiState.value.items
+            val snapshotSignature = cartSignature(snapshot)
+            if (snapshotSignature == lastCartSignature) {
+                return@launch
+            }
+
+            val syncItems = snapshot.mapNotNull { item ->
+                val skuId = if (item.variant.id.isNotBlank()) item.variant.id else item.product.id
+                val supplierId = item.product.supplierId.orEmpty()
+                if (skuId.isBlank() || supplierId.isBlank() || item.quantity <= 0) {
+                    null
+                } else {
+                    mapOf(
+                        "sku_id" to skuId,
+                        "supplier_id" to supplierId,
+                        "quantity" to item.quantity,
+                        "unit_price" to item.variant.price.toLong(),
+                        "currency" to "UZS",
+                    )
+                }
+            }
+
+            try {
+                api.postCartSync(body = mapOf("items" to syncItems))
+                lastCartSignature = snapshotSignature
+            } catch (_: Exception) {
+                // Preserve local cart; next mutation or websocket delta will re-sync.
+            }
+        }
     }
 
     private fun fetchPaymentOptions() = viewModelScope.launch {
@@ -126,6 +277,7 @@ init {
                 state.copy(items = state.items + CartItem(id = itemId, product = product, variant = variant, quantity = 1))
             }
         }
+        scheduleCartSyncPush()
     }
 
     fun updateQuantity(itemId: String, quantity: Int) {
@@ -136,6 +288,7 @@ init {
         _uiState.update { state ->
             state.copy(items = state.items.map { if (it.id == itemId) it.copy(quantity = quantity) else it })
         }
+        scheduleCartSyncPush()
     }
 
     fun removeItem(itemId: String) {
@@ -146,6 +299,7 @@ init {
                 removedItemMessage = "$removedName removed from cart"
             )
         }
+        scheduleCartSyncPush()
     }
 
     fun clearRemovedItemMessage() {
@@ -154,6 +308,7 @@ init {
 
     fun clearCart() {
         _uiState.update { it.copy(items = emptyList()) }
+        scheduleCartSyncPush()
     }
 
     fun showCheckout() {
@@ -188,7 +343,7 @@ init {
                     )
                 }
                 var finalGateway = state.selectedPaymentGateway
-                if (finalGateway \!= "GLOBAL_PAY" && finalGateway \!= "CASH") {
+                if (finalGateway != "GLOBAL_PAY" && finalGateway != "CASH") {
                     try {
                         api.setDefaultCard(mapOf("token_id" to finalGateway))
                         finalGateway = "GLOBAL_PAY"
@@ -276,5 +431,7 @@ init {
     override fun onCleared() {
         super.onCleared()
         paymentListenerJob?.cancel()
+        cartSyncDebounceJob?.cancel()
+        cartSyncEventsJob?.cancel()
     }
 }

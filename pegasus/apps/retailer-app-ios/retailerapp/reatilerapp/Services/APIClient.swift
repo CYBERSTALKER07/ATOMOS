@@ -274,6 +274,10 @@ final class APIClient {
         _ = try await dataForRequestWithFallback(request)
     }
 
+    func getCartSync() async throws -> CartSyncResponse {
+        try await get(path: "/v1/retailer/cart/sync")
+    }
+
     func syncCart(request: CartSyncRequest) async throws -> CartSyncResponse {
         return try await post(path: "/v1/retailer/cart/sync", body: request)
     }

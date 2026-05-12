@@ -108,6 +108,20 @@ struct ShopClosedAlertEvent: Decodable {
     }
 }
 
+struct CartSyncUpdatedEvent: Decodable {
+    let type: String
+    let retailerId: String
+    let itemCount: Int?
+    let updatedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case retailerId = "retailer_id"
+        case itemCount = "item_count"
+        case updatedAt = "updated_at"
+    }
+}
+
 enum RetailerWSEvent {
     case paymentRequired(PaymentRequiredEvent)
     case orderCompleted(OrderCompletedEvent)
@@ -122,6 +136,7 @@ enum RetailerWSEvent {
     case preOrderNudge(orderId: String)
     case preOrderConfirmationPush(orderId: String)
     case shopClosedAlert(ShopClosedAlertEvent)
+    case cartSyncUpdated(CartSyncUpdatedEvent)
 }
 
 // MARK: - Retailer WebSocket
@@ -295,6 +310,10 @@ final class RetailerWebSocket {
         case "SHOP_CLOSED_ALERT":
             if let event = try? decoder.decode(ShopClosedAlertEvent.self, from: data) {
                 emit(.shopClosedAlert(event))
+            }
+        case "CART_SYNC_UPDATED":
+            if let event = try? decoder.decode(CartSyncUpdatedEvent.self, from: data) {
+                emit(.cartSyncUpdated(event))
             }
         default:
             break

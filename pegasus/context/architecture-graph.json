@@ -1,6 +1,6 @@
 {
-  "version": "2026-05-10",
-  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, and targeted workspace retrieval as the default codebase-retrieval path).",
+  "version": "2026-05-12",
+  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, and targeted workspace retrieval as the default codebase-retrieval path).",
   "agentContext": {
     "syncSet": [
       "../.github/ACT.md",
@@ -252,7 +252,8 @@
       "notes": [
         "Retailer role-row composition now includes idempotency-guarded legacy procurement create and cancel mutations while shared order list/detail/refund compatibility reads live in orderroutes.",
         "This extracted surface centralizes the shared retailer read, payment, settings, and realtime contract across desktop, iOS, and Android.",
-        "Retailer desktop and iOS order-list consumers now converge on GET /v1/retailers/{retailerID}/orders, and payment websocket clients handle both canonical PAYMENT_* and legacy GLOBAL_PAYNT_* aliases."
+        "Retailer desktop and iOS order-list consumers now converge on GET /v1/retailers/{retailerID}/orders, and payment websocket clients handle both canonical PAYMENT_* and legacy GLOBAL_PAYNT_* aliases.",
+        "POST /v1/retailer/cart/sync now emits CART_SYNC_UPDATED over ws/retailer post-commit, and desktop, iOS, and Android cart stores rehydrate from GET /v1/retailer/cart/sync when that signal arrives."
       ]
     },
     {

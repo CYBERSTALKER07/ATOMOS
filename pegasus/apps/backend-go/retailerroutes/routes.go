@@ -103,7 +103,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/orders/confirm-preorder",
 		auth.RequireRole(retailerRole, log(order.HandleConfirmPreorder(d.Order))))
 	r.HandleFunc("/v1/retailer/cart/sync",
-		auth.RequireRole(retailerRole, log(order.HandleCartSync(d.Spanner))))
+		auth.RequireRole(retailerRole, log(order.HandleCartSync(d.Spanner, d.RetailerHub))))
 	r.HandleFunc("/v1/retailer/suppliers",
 		auth.RequireRole(retailerRole, log(supplier.HandleRetailerSuppliers(d.Spanner))))
 	r.HandleFunc("/v1/retailer/suppliers/{supplierID}/{action}",

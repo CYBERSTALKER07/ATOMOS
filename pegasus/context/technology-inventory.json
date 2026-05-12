@@ -224,7 +224,8 @@
       "notes": [
         "Retailer role-row composition now includes idempotency-guarded legacy procurement create and cancel mutations while shared order list/detail/refund compatibility reads live in orderroutes.",
         "This extracted surface centralizes the shared retailer contract across desktop, iOS, and Android.",
-        "Retailer desktop and iOS order-list consumers now target GET /v1/retailers/{retailerID}/orders, and retailer websocket payment handlers accept both PAYMENT_* and GLOBAL_PAYNT_* aliases for settlement/failure continuity."
+        "Retailer desktop and iOS order-list consumers now target GET /v1/retailers/{retailerID}/orders, and retailer websocket payment handlers accept both PAYMENT_* and GLOBAL_PAYNT_* aliases for settlement/failure continuity.",
+        "POST /v1/retailer/cart/sync now emits CART_SYNC_UPDATED over ws/retailer post-commit, and retailer desktop, iOS, and Android cart stores rehydrate from GET /v1/retailer/cart/sync on that signal for cross-device cart convergence."
       ]
     },
     {

@@ -51,6 +51,16 @@ struct CartView: View {
             CheckoutView(supplierIsActive: cart.supplierIsActive)
                 .environment(cart)
         }
+        .task {
+            await cart.hydrateFromServer()
+        }
+        .task {
+            for await event in RetailerWebSocket.shared.eventStream() {
+                if case .cartSyncUpdated = event {
+                    await cart.hydrateFromServer()
+                }
+            }
+        }
     }
 
     // MARK: - Cart Item Card
@@ -201,9 +211,6 @@ struct CartView: View {
             }
             .padding(AppTheme.spacingLG)
             .background(.ultraThinMaterial)
-        }
-        .task {
-            await cart.sync()
         }
         .onChange(of: cart.items.count) { _ in
             Task {

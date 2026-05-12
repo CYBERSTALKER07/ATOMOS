@@ -29,6 +29,8 @@ const (
 const (
 	// EventPaymentRequired is pushed when offload is confirmed and payment is due.
 	EventPaymentRequired = "PAYMENT_REQUIRED"
+	// EventCartSyncUpdated is pushed when retailer server-side cart state is replaced.
+	EventCartSyncUpdated = "CART_SYNC_UPDATED"
 	// EventPaymentExpired is pushed when a payment session times out.
 	EventPaymentExpired = "PAYMENT_EXPIRED"
 	// EventPaymentFailed is pushed when a payment attempt fails.

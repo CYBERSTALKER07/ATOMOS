@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"backend-go/auth"
+	"backend-go/ws"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -37,7 +38,7 @@ type CartSyncResponse struct {
 	Total int        `json:"total"`
 }
 
-func HandleCartSync(client *spanner.Client) http.HandlerFunc {
+func HandleCartSync(client *spanner.Client, retailerHub *ws.RetailerHub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
 		if !ok || claims == nil || claims.UserID == "" {
@@ -49,7 +50,7 @@ func HandleCartSync(client *spanner.Client) http.HandlerFunc {
 		case http.MethodGet:
 			handleCartGet(w, r, client, claims.UserID)
 		case http.MethodPost:
-			handleCartPut(w, r, client, claims.UserID)
+			handleCartPut(w, r, client, retailerHub, claims.UserID)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
@@ -94,7 +95,7 @@ func handleCartGet(w http.ResponseWriter, r *http.Request, client *spanner.Clien
 	json.NewEncoder(w).Encode(resp)
 }
 
-func handleCartPut(w http.ResponseWriter, r *http.Request, client *spanner.Client, retailerID string) {
+func handleCartPut(w http.ResponseWriter, r *http.Request, client *spanner.Client, retailerHub *ws.RetailerHub, retailerID string) {
 	var req CartSyncRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid JSON"}`, http.StatusBadRequest)
@@ -103,6 +104,7 @@ func handleCartPut(w http.ResponseWriter, r *http.Request, client *spanner.Clien
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
+	insertedCount := 0
 
 	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// 1. Delete all existing cart items for this retailer
@@ -133,6 +135,7 @@ func handleCartPut(w http.ResponseWriter, r *http.Request, client *spanner.Clien
 			}); err != nil {
 				return err
 			}
+			insertedCount++
 		}
 		return nil
 	})
@@ -140,6 +143,15 @@ func handleCartPut(w http.ResponseWriter, r *http.Request, client *spanner.Clien
 		slog.ErrorContext(ctx, "cart sync transaction failed", "retailer_id", retailerID, "err", err)
 		http.Error(w, `{"error":"sync_failed"}`, http.StatusInternalServerError)
 		return
+	}
+
+	if retailerHub != nil {
+		retailerHub.PushToRetailer(retailerID, map[string]interface{}{
+			"type":        ws.EventCartSyncUpdated,
+			"retailer_id": retailerID,
+			"item_count":  insertedCount,
+			"updated_at":  time.Now().UTC().Format(time.RFC3339Nano),
+		})
 	}
 
 	// Return the synced cart
