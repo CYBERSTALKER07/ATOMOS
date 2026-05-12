@@ -76,17 +76,23 @@ func handleChargeback(cs *payment.ChargebackService) http.HandlerFunc {
 			OrderID    string `json:"order_id"`
 			RetailerID string `json:"retailer_id"`
 			Gateway    string `json:"gateway"`
+			Amount     int64  `json:"amount"`
+			Currency   string `json:"currency,omitempty"`
 			AmountUZS  int64  `json:"amount_uzs"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
 			return
 		}
-		if req.OrderID == "" || req.RetailerID == "" || req.Gateway == "" || req.AmountUZS <= 0 {
-			http.Error(w, `{"error":"order_id, retailer_id, gateway, amount_uzs are required"}`, http.StatusBadRequest)
+		amount := req.Amount
+		if amount <= 0 {
+			amount = req.AmountUZS
+		}
+		if req.OrderID == "" || req.RetailerID == "" || req.Gateway == "" || amount <= 0 {
+			http.Error(w, `{"error":"order_id, retailer_id, gateway, and amount (or amount_uzs) are required"}`, http.StatusBadRequest)
 			return
 		}
-		if err := cs.HandleChargeback(r.Context(), req.OrderID, req.RetailerID, req.Gateway, req.AmountUZS); err != nil {
+		if err := cs.HandleChargeback(r.Context(), req.OrderID, req.RetailerID, req.Gateway, amount, req.Currency); err != nil {
 			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
 			return
 		}

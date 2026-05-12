@@ -22,14 +22,15 @@ func NewChargebackService(sc *spanner.Client) *ChargebackService {
 
 // HandleChargeback records a provider-initiated chargeback as a LedgerAnomaly.
 // Uses the existing LedgerAnomalies table (PK=OrderId) with Status=CHARGEBACK.
-func (cs *ChargebackService) HandleChargeback(ctx context.Context, orderID, retailerID, gateway string, amountUZS int64) error {
+func (cs *ChargebackService) HandleChargeback(ctx context.Context, orderID, retailerID, gateway string, amount int64, currency string) error {
 	now := time.Now()
+	resolvedCurrency := normalizeCurrencyCode(currency)
 
 	// InsertOrUpdate because LedgerAnomalies PK is OrderId — one anomaly per order
 	_, err := cs.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		m := spanner.InsertOrUpdate("LedgerAnomalies",
 			[]string{"OrderId", "RetailerId", "SpannerAmount", "GatewayAmount", "Currency", "GatewayProvider", "Status", "DetectedAt"},
-			[]interface{}{orderID, retailerID, amountUZS, amountUZS, "UZS", gateway, "CHARGEBACK", now},
+			[]interface{}{orderID, retailerID, amount, amount, resolvedCurrency, gateway, "CHARGEBACK", now},
 		)
 		return txn.BufferWrite([]*spanner.Mutation{m})
 	})
@@ -38,7 +39,7 @@ func (cs *ChargebackService) HandleChargeback(ctx context.Context, orderID, reta
 		return fmt.Errorf("record chargeback: %w", err)
 	}
 
-	log.Printf("[CHARGEBACK] Recorded anomaly for order %s: %d UZS (gateway: %s)", orderID, amountUZS, gateway)
+	log.Printf("[CHARGEBACK] Recorded anomaly for order %s: %d %s (gateway: %s)", orderID, amount, resolvedCurrency, gateway)
 	return nil
 }
 
@@ -48,19 +49,20 @@ func (cs *ChargebackService) HandleChargeback(ctx context.Context, orderID, reta
 func (cs *ChargebackService) HandleReversal(ctx context.Context, sessionID string) error {
 	var orderID, retailerID, gateway string
 	var lockedAmount int64
+	var sessionCurrency spanner.NullString
 	now := time.Now()
 	alreadyReversed := false
 
 	_, err := cs.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "PaymentSessions",
 			spanner.Key{sessionID},
-			[]string{"SessionId", "OrderId", "RetailerId", "LockedAmount", "Status", "Gateway"})
+			[]string{"SessionId", "OrderId", "RetailerId", "LockedAmount", "Status", "Gateway", "Currency"})
 		if err != nil {
 			return fmt.Errorf("read session %s: %w", sessionID, err)
 		}
 
 		var sessID, status string
-		if err := row.Columns(&sessID, &orderID, &retailerID, &lockedAmount, &status, &gateway); err != nil {
+		if err := row.Columns(&sessID, &orderID, &retailerID, &lockedAmount, &status, &gateway, &sessionCurrency); err != nil {
 			return fmt.Errorf("parse session: %w", err)
 		}
 		if sessID == "" {
@@ -81,9 +83,13 @@ func (cs *ChargebackService) HandleReversal(ctx context.Context, sessionID strin
 		)
 
 		// Record anomaly
+		resolvedCurrency := normalizeCurrencyCode("")
+		if sessionCurrency.Valid {
+			resolvedCurrency = normalizeCurrencyCode(sessionCurrency.StringVal)
+		}
 		m2 := spanner.InsertOrUpdate("LedgerAnomalies",
 			[]string{"OrderId", "RetailerId", "SpannerAmount", "GatewayAmount", "Currency", "GatewayProvider", "Status", "DetectedAt"},
-			[]interface{}{orderID, retailerID, lockedAmount, int64(0), "UZS", gateway, "REVERSAL", now},
+			[]interface{}{orderID, retailerID, lockedAmount, int64(0), resolvedCurrency, gateway, "REVERSAL", now},
 		)
 
 		return txn.BufferWrite([]*spanner.Mutation{m1, m2})
@@ -95,7 +101,11 @@ func (cs *ChargebackService) HandleReversal(ctx context.Context, sessionID strin
 		log.Printf("[CHARGEBACK] Session %s already reversed", sessionID)
 		return nil
 	}
+	resolvedCurrency := normalizeCurrencyCode("")
+	if sessionCurrency.Valid {
+		resolvedCurrency = normalizeCurrencyCode(sessionCurrency.StringVal)
+	}
 
-	log.Printf("[CHARGEBACK] Session %s reversed for order %s: %d UZS", sessionID, orderID, lockedAmount)
+	log.Printf("[CHARGEBACK] Session %s reversed for order %s: %d %s", sessionID, orderID, lockedAmount, resolvedCurrency)
 	return nil
 }

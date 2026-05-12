@@ -28,6 +28,8 @@ const (
 type RefundRequest struct {
 	OrderID   string `json:"order_id"`
 	Reason    string `json:"reason"`
+	Amount    int64  `json:"amount,omitempty"`
+	Currency  string `json:"currency,omitempty"`
 	AmountUZS int64  `json:"amount_uzs"` // 0 = full refund (uses session LockedAmount)
 }
 
@@ -35,6 +37,8 @@ type RefundRequest struct {
 type RefundResult struct {
 	RefundID         string `json:"refund_id"`
 	Status           string `json:"status"`
+	Amount           int64  `json:"amount"`
+	Currency         string `json:"currency"`
 	AmountUZS        int64  `json:"amount_uzs"`
 	Gateway          string `json:"gateway"`
 	ProviderRefundID string `json:"provider_refund_id,omitempty"`
@@ -77,7 +81,7 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 
 	// 2. Find settled payment session for this order
 	stmt := spanner.Statement{
-		SQL:    `SELECT SessionId, Gateway, LockedAmount, PaidAmount FROM PaymentSessions WHERE OrderId = @orderID AND Status = 'SETTLED' LIMIT 1`,
+		SQL:    `SELECT SessionId, Gateway, LockedAmount, PaidAmount, Currency FROM PaymentSessions WHERE OrderId = @orderID AND Status = 'SETTLED' LIMIT 1`,
 		Params: map[string]interface{}{"orderID": orderID},
 	}
 	iter := rs.spanner.Single().Query(ctx, stmt)
@@ -91,12 +95,25 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 	var sessionID, sessGateway string
 	var lockedAmount spanner.NullInt64
 	var paidAmount spanner.NullInt64
-	if err := sessRow.Columns(&sessionID, &sessGateway, &lockedAmount, &paidAmount); err != nil {
+	var sessionCurrency spanner.NullString
+	if err := sessRow.Columns(&sessionID, &sessGateway, &lockedAmount, &paidAmount, &sessionCurrency); err != nil {
 		return nil, fmt.Errorf("parse session: %w", err)
 	}
 
+	resolvedCurrency := normalizeCurrencyCode("")
+	if sessionCurrency.Valid {
+		resolvedCurrency = normalizeCurrencyCode(sessionCurrency.StringVal)
+	}
+
+	if req.Currency != "" && normalizeCurrencyCode(req.Currency) != resolvedCurrency {
+		return nil, fmt.Errorf("refund currency %s does not match settled session currency %s", normalizeCurrencyCode(req.Currency), resolvedCurrency)
+	}
+
 	// Determine refund amount
-	refundAmount := req.AmountUZS
+	refundAmount := req.Amount
+	if refundAmount <= 0 {
+		refundAmount = req.AmountUZS
+	}
 	if refundAmount <= 0 {
 		if paidAmount.Valid && paidAmount.Int64 > 0 {
 			refundAmount = paidAmount.Int64
@@ -135,7 +152,7 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 			} else {
 				refundStatus = RefundSettled
 				providerRefundID = fmt.Sprintf("GW-%s-%s", sessGateway, refundID[:8])
-				log.Printf("[REFUND] Gateway refund succeeded for order %s via %s: %d UZS", orderID, sessGateway, refundAmount)
+				log.Printf("[REFUND] Gateway refund succeeded for order %s via %s: %d %s", orderID, sessGateway, refundAmount, resolvedCurrency)
 			}
 		}
 	}
@@ -192,6 +209,7 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 			"supplier_id": supplierID,
 			"refund_id":   refundID,
 			"amount":      refundAmount,
+			"currency":    resolvedCurrency,
 			"status":      refundStatus,
 			"timestamp":   now.Format(time.RFC3339),
 		}
@@ -210,11 +228,13 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 	// Cache invalidate
 	cache.Invalidate(ctx, cache.PrefixActiveOrders+retailerID, cache.SupplierProfile(supplierID))
 
-	log.Printf("[REFUND] Refund %s for order %s: %d UZS → %s", refundID, orderID, refundAmount, refundStatus)
+	log.Printf("[REFUND] Refund %s for order %s: %d %s → %s", refundID, orderID, refundAmount, resolvedCurrency, refundStatus)
 
 	return &RefundResult{
 		RefundID:         refundID,
 		Status:           refundStatus,
+		Amount:           refundAmount,
+		Currency:         resolvedCurrency,
 		AmountUZS:        refundAmount,
 		Gateway:          sessGateway,
 		ProviderRefundID: providerRefundID,
@@ -224,7 +244,11 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 // GetRefundsByOrder returns all refunds for a given order.
 func (rs *RefundService) GetRefundsByOrder(ctx context.Context, orderID string) ([]RefundResult, error) {
 	stmt := spanner.Statement{
-		SQL:    `SELECT RefundId, Status, AmountUZS, Gateway, ProviderRefundId FROM Refunds WHERE OrderId = @orderID ORDER BY CreatedAt DESC`,
+		SQL: `SELECT r.RefundId, r.Status, r.AmountUZS, r.Gateway, r.ProviderRefundId, ps.Currency
+		      FROM Refunds r
+		      LEFT JOIN PaymentSessions ps ON ps.SessionId = r.SessionId
+		      WHERE r.OrderId = @orderID
+		      ORDER BY r.CreatedAt DESC`,
 		Params: map[string]interface{}{"orderID": orderID},
 	}
 	iter := rs.spanner.Single().Query(ctx, stmt)
@@ -241,10 +265,16 @@ func (rs *RefundService) GetRefundsByOrder(ctx context.Context, orderID string) 
 		}
 		var r RefundResult
 		var providerRef spanner.NullString
-		if err := row.Columns(&r.RefundID, &r.Status, &r.AmountUZS, &r.Gateway, &providerRef); err != nil {
+		var currency spanner.NullString
+		if err := row.Columns(&r.RefundID, &r.Status, &r.AmountUZS, &r.Gateway, &providerRef, &currency); err != nil {
 			return nil, fmt.Errorf("parse refund for order %s: %w", orderID, err)
 		}
 		r.ProviderRefundID = providerRef.StringVal
+		r.Amount = r.AmountUZS
+		r.Currency = normalizeCurrencyCode("")
+		if currency.Valid {
+			r.Currency = normalizeCurrencyCode(currency.StringVal)
+		}
 		results = append(results, r)
 	}
 
