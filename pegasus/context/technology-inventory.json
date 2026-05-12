@@ -121,7 +121,8 @@
         "Unified checkout emits ORDER_VALIDATION_FAILED, PAYMENT_CLEARED, and ORDER_FINALIZED to kafka.TopicMain through transactional outbox, replacing the stale topic.orders.v1 path.",
         "Unified checkout now resolves supplier-effective currency via countrycfg.Service and writes currency-consistent MasterInvoices, Orders, OrderLineItems, and checkout outbox payloads, with a temporary 422 guard for mixed-supplier-currency invoices.",
         "payment/session.go now honors CreateSessionRequest.Currency and preserves prior session currency across RetryPaymentSession gateway switches.",
-        "payment/refund.go and paymentroutes/routes.go now accept additive amount+currency compatibility input (while preserving amount_uzs), and payment/chargeback.go writes LedgerAnomalies currency from runtime input/session currency instead of hardcoded UZS."
+        "payment/refund.go and paymentroutes/routes.go now accept additive amount+currency compatibility input (while preserving amount_uzs), and payment/chargeback.go writes LedgerAnomalies currency from runtime input/session currency instead of hardcoded UZS.",
+        "Treasury/anomaly read models now expose additive currency compatibility: admin reconciliation rows return currency with UZS fallback, treasury cash-holdings report/rows expose default UZS currency, and admin-portal reconciliation/treasury pages consume currency while preserving legacy amount_uzs request compatibility."
       ]
     },
     {

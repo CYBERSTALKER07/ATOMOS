@@ -89,6 +89,7 @@ type CashHoldingRow struct {
 	DriverID      string  `json:"driver_id"`
 	RetailerID    string  `json:"retailer_id"`
 	Amount        int64   `json:"amount"`
+	Currency      string  `json:"currency"`
 	CustodyStatus string  `json:"custody_status"`
 	CollectedAt   string  `json:"collected_at,omitempty"`
 	GeofenceDistM float64 `json:"geofence_dist_m"`
@@ -99,11 +100,12 @@ type CashHoldingsReport struct {
 	TotalCollected int64            `json:"total_collected"`
 	PendingCount   int              `json:"pending_count"`
 	CollectedCount int              `json:"collected_count"`
+	Currency       string           `json:"currency"`
 	Holdings       []CashHoldingRow `json:"holdings"`
 }
 
 func GetCashHoldings(ctx context.Context, client *spanner.Client, supplierID string) (*CashHoldingsReport, error) {
-	report := &CashHoldingsReport{Holdings: []CashHoldingRow{}}
+	report := &CashHoldingsReport{Currency: "UZS", Holdings: []CashHoldingRow{}}
 
 	stmt := spanner.Statement{
 		SQL: `SELECT mi.InvoiceId, mi.OrderId, mi.CollectorDriverId, o.RetailerId,
@@ -148,6 +150,7 @@ func GetCashHoldings(ctx context.Context, client *spanner.Client, supplierID str
 			DriverID:      driverID.StringVal,
 			RetailerID:    retailerID.StringVal,
 			Amount:        amount.Int64,
+			Currency:      report.Currency,
 			CustodyStatus: custodyStatus.StringVal,
 			GeofenceDistM: geoDist.Float64,
 		}

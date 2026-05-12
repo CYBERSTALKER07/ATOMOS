@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
@@ -17,6 +18,7 @@ type ReconciliationRecord struct {
 	RetailerID      string `json:"retailer_id"`
 	SpannerAmount   int64  `json:"spanner_amount"`
 	GatewayAmount   int64  `json:"gateway_amount"`
+	Currency        string `json:"currency"`
 	GatewayProvider string `json:"gateway_provider"`
 	Status          string `json:"status"`
 	Timestamp       string `json:"timestamp"`
@@ -61,7 +63,7 @@ func HandleGetReconciliation(client *spanner.Client) http.HandlerFunc {
 
 		// Fetch all unresolved anomalies
 		stmt := spanner.Statement{
-			SQL: `SELECT OrderId, RetailerId, SpannerAmount, GatewayAmount, GatewayProvider, Status, DetectedAt 
+			SQL: `SELECT OrderId, RetailerId, SpannerAmount, GatewayAmount, Currency, GatewayProvider, Status, DetectedAt 
 			      FROM LedgerAnomalies 
 			      WHERE Status != 'MATCH' 
 			      ORDER BY DetectedAt DESC LIMIT @limit OFFSET @offset`,
@@ -87,10 +89,15 @@ func HandleGetReconciliation(client *spanner.Client) http.HandlerFunc {
 
 			var rec ReconciliationRecord
 			var detectedAt time.Time
+			var currency spanner.NullString
 
-			if err := row.Columns(&rec.OrderID, &rec.RetailerID, &rec.SpannerAmount, &rec.GatewayAmount, &rec.GatewayProvider, &rec.Status, &detectedAt); err != nil {
+			if err := row.Columns(&rec.OrderID, &rec.RetailerID, &rec.SpannerAmount, &rec.GatewayAmount, &currency, &rec.GatewayProvider, &rec.Status, &detectedAt); err != nil {
 				http.Error(w, "Data extraction fault", http.StatusInternalServerError)
 				return
+			}
+			rec.Currency = "UZS"
+			if currency.Valid && strings.TrimSpace(currency.StringVal) != "" {
+				rec.Currency = strings.ToUpper(strings.TrimSpace(currency.StringVal))
 			}
 			rec.Timestamp = detectedAt.Format(time.RFC3339)
 			anomalies = append(anomalies, rec)

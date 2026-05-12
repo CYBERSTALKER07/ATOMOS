@@ -11,6 +11,7 @@ interface ReconciliationRecord {
   retailer_id: string;
   spanner_amount: number;
   gateway_amount: number;
+  currency?: string;
   gateway_provider: string;
   status: string;
   timestamp: string;
@@ -21,8 +22,8 @@ interface ReconciliationResponse {
   data: ReconciliationRecord[];
 }
 
-function buildChargebackIdempotencyKey(orderId: string, retailerId: string, gateway: string, amountUZS: number): string {
-  return ['chargeback', orderId.trim(), retailerId.trim(), gateway.trim().toUpperCase(), String(amountUZS)].join(':');
+function buildChargebackIdempotencyKey(orderId: string, retailerId: string, gateway: string, amount: number, currency: string): string {
+  return ['chargeback', orderId.trim(), retailerId.trim(), gateway.trim().toUpperCase(), String(amount), currency.trim().toUpperCase()].join(':');
 }
 
 function buildReversalIdempotencyKey(sessionId: string): string {
@@ -39,6 +40,7 @@ export default function ChargebacksPage() {
   const [retailerId, setRetailerId] = useState('');
   const [gateway, setGateway] = useState('CASH');
   const [amount, setAmount] = useState('0');
+  const [currency, setCurrency] = useState('UZS');
   const [sessionId, setSessionId] = useState('');
 
   const load = useCallback(async () => {
@@ -65,16 +67,19 @@ export default function ChargebacksPage() {
       toast('order_id, retailer_id and amount are required', 'error');
       return;
     }
+    const normalizedCurrency = (currency || 'UZS').trim().toUpperCase() || 'UZS';
     try {
       const res = await apiFetchNoQueue('/v1/payment/chargeback', {
         method: 'POST',
         headers: {
-          'Idempotency-Key': buildChargebackIdempotencyKey(orderId, retailerId, gateway, amountUZS),
+          'Idempotency-Key': buildChargebackIdempotencyKey(orderId, retailerId, gateway, amountUZS, normalizedCurrency),
         },
         body: JSON.stringify({
           order_id: orderId,
           retailer_id: retailerId,
           gateway,
+          amount: amountUZS,
+          currency: normalizedCurrency,
           amount_uzs: amountUZS,
         }),
       });
@@ -84,7 +89,7 @@ export default function ChargebacksPage() {
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Failed to record chargeback', 'error');
     }
-  }, [amount, gateway, load, orderId, retailerId, toast]);
+  }, [amount, currency, gateway, load, orderId, retailerId, toast]);
 
   const createReversal = useCallback(async () => {
     if (!sessionId) {
@@ -126,6 +131,7 @@ export default function ChargebacksPage() {
               <option value="CASH">CASH</option>
               <option value="GLOBAL_PAY">GLOBAL_PAY</option>
             </select>
+            <input className="md-input-outlined px-3 py-2" placeholder="Currency (e.g. UZS)" value={currency} onChange={(e) => setCurrency(e.target.value)} />
             <input className="md-input-outlined px-3 py-2" placeholder="Amount UZS" type="number" min="1" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </div>
           <Button variant="primary" className="mt-3" onPress={createChargeback}>Record</Button>
@@ -151,6 +157,7 @@ export default function ChargebacksPage() {
                 <th className="text-left px-4 py-3">Retailer</th>
                 <th className="text-right px-4 py-3">Spanner</th>
                 <th className="text-right px-4 py-3">Gateway</th>
+                <th className="text-left px-4 py-3">Currency</th>
                 <th className="text-left px-4 py-3">Provider</th>
                 <th className="text-left px-4 py-3">Status</th>
                 <th className="text-left px-4 py-3">Detected</th>
@@ -163,6 +170,7 @@ export default function ChargebacksPage() {
                   <td className="px-4 py-3 font-mono text-xs">{r.retailer_id}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{r.spanner_amount}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{r.gateway_amount}</td>
+                  <td className="px-4 py-3">{(r.currency || 'UZS').toUpperCase()}</td>
                   <td className="px-4 py-3">{r.gateway_provider}</td>
                   <td className="px-4 py-3">{r.status}</td>
                   <td className="px-4 py-3 text-xs">{new Date(r.timestamp).toLocaleString()}</td>

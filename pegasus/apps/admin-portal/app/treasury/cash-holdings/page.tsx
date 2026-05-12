@@ -14,6 +14,7 @@ interface CashHolding {
   driver_id: string;
   retailer_id: string;
   amount: number;
+  currency?: string;
   custody_status: string;
   collected_at: string;
   geofence_dist_m: number;
@@ -24,6 +25,7 @@ interface CashHoldingsData {
   total_collected: number;
   pending_count: number;
   collected_count: number;
+  currency?: string;
   holdings: CashHolding[];
 }
 
@@ -62,6 +64,7 @@ export default function CashHoldingsPage() {
   }) ?? [];
 
   const fmt = (n: number) => n.toLocaleString('en-US');
+  const defaultCurrency = (data?.currency || 'UZS').toUpperCase();
 
   return (
     <div className="min-h-full" style={{ background: 'var(--desk-bg)' }}>
@@ -98,21 +101,21 @@ export default function CashHoldingsPage() {
         <div className="px-6 pb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
           <SummaryCard
             label="Pending Collection"
-            value={`${fmt(data.total_pending)}`}
+              value={`${fmt(data.total_pending)} ${defaultCurrency}`}
             count={data.pending_count}
             accent="var(--desk-warning)"
             accentBg="var(--desk-warning-soft)"
           />
           <SummaryCard
             label="Collected (In Custody)"
-            value={`${fmt(data.total_collected)}`}
+              value={`${fmt(data.total_collected)} ${defaultCurrency}`}
             count={data.collected_count}
             accent="var(--desk-success)"
             accentBg="var(--desk-success-soft)"
           />
           <SummaryCard
             label="Total Cash Volume"
-            value={`${fmt(data.total_pending + data.total_collected)}`}
+              value={`${fmt(data.total_pending + data.total_collected)} ${defaultCurrency}`}
             count={data.pending_count + data.collected_count}
             accent="var(--desk-accent-strong)"
             accentBg="var(--desk-accent-soft)"
@@ -193,7 +196,7 @@ export default function CashHoldingsPage() {
                       {h.retailer_id ? h.retailer_id.slice(-6) : '—'}
                     </td>
                     <td className="px-4 py-3 text-right md-typescale-body-small font-semibold" style={{ color: 'var(--desk-text-primary)', fontVariantNumeric: 'tabular-nums' }}>
-                      {fmt(h.amount)}
+                      {fmt(h.amount)} {(h.currency || defaultCurrency).toUpperCase()}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <CustodyBadge status={h.custody_status} />

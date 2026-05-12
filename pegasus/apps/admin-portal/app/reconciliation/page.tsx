@@ -12,6 +12,7 @@ type ReconciliationRecord = {
   retailer_id: string;
   spanner_amount: number;
   gateway_amount: number;
+  currency?: string;
   gateway_provider: string;
   status: string;
   timestamp: string;
@@ -49,7 +50,15 @@ export default function ReconciliationPage() {
 
   const deltaCount = records.filter(r => r.status === "DELTA").length;
   const orphanedCount = records.filter(r => r.status === "ORPHANED").length;
-  const totalExposure = records.reduce((sum, r) => sum + Math.abs(r.spanner_amount - r.gateway_amount), 0);
+  const exposureByCurrency = records.reduce((acc, r) => {
+    const code = (r.currency || 'UZS').toUpperCase();
+    const exposure = Math.abs(r.spanner_amount - r.gateway_amount);
+    acc[code] = (acc[code] || 0) + exposure;
+    return acc;
+  }, {} as Record<string, number>);
+  const totalExposure = Object.entries(exposureByCurrency)
+    .map(([code, amount]) => `${amount.toLocaleString()} ${code}`)
+    .join(' · ') || '0 UZS';
 
   const getStatusBadge = (status: string) => {
     const normalized = status.toUpperCase();
@@ -118,6 +127,7 @@ export default function ReconciliationPage() {
                 <th>Retailer</th>
                 <th className="text-right">Spanner (Amount)</th>
                 <th className="text-right">Gateway (Amount)</th>
+                <th>Currency</th>
                 <th className="text-right">Delta</th>
                 <th>Provider</th>
                 <th>Detected</th>
@@ -132,6 +142,7 @@ export default function ReconciliationPage() {
                     <td><Skeleton className="w-20 h-4" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
                     <td><Skeleton className="w-20 h-4 ml-auto" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
                     <td><Skeleton className="w-20 h-4 ml-auto" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
+                    <td><Skeleton className="w-12 h-4" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
                     <td><Skeleton className="w-16 h-4 ml-auto" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
                     <td><Skeleton className="w-16 h-4" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
                     <td><Skeleton className="w-24 h-4" style={{ background: 'var(--desk-surface-subtle)' }} /></td>
@@ -140,7 +151,7 @@ export default function ReconciliationPage() {
                 ))
               ) : records.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-16 text-center">
+                  <td colSpan={9} className="p-16 text-center">
                     <EmptyState
                       icon="reconcile"
                       headline="No anomalies detected"
@@ -158,6 +169,7 @@ export default function ReconciliationPage() {
                       <td className="md-typescale-body-medium font-medium">{rec.retailer_id}</td>
                       <td className="text-right font-mono" style={{ fontVariantNumeric: 'tabular-nums' }}>{rec.spanner_amount.toLocaleString()}</td>
                       <td className="text-right font-mono" style={{ fontVariantNumeric: 'tabular-nums' }}>{rec.gateway_amount.toLocaleString()}</td>
+                      <td className="md-typescale-body-small" style={{ color: 'var(--desk-text-secondary)' }}>{(rec.currency || 'UZS').toUpperCase()}</td>
                       <td className="text-right font-mono font-medium" style={{ color: delta === 0 ? 'var(--desk-text-tertiary)' : isNegative ? 'var(--desk-danger)' : 'var(--desk-text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
                         {delta === 0 ? "—" : `${isNegative ? "" : "+"}${delta.toLocaleString()}`}
                       </td>
