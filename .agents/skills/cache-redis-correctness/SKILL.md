@@ -3,6 +3,11 @@
 ## Description
 Prevents stale data serving, cache poisoning, race conditions in cache operations, and Redis client access bugs. Activates when writing or reviewing code that touches `cache.Get`, `cache.Set`, `cache.Delete`, `cache.Invalidate`, Redis operations, TTL configuration, or any mutation handler that should invalidate cached data.
 
+**Key Rule Categories:**
+1. **Invalidation Timing:** Always invalidate after a transaction commits.
+2. **TTL Usage:** Do not rely on TTL for data correctness.
+3. **Redis Client Handling:** Avoid raw Redis client access.
+
 ## Trigger Keywords
 cache, redis, invalidate, TTL, stale, cache.Get, cache.Set, cache.Delete, cache.Invalidate, cache.Publish, PrefixSupplier, PrefixRetailer, PrefixDriver, PrefixCatalog, PrefixAnalytics, cached, memoize
 

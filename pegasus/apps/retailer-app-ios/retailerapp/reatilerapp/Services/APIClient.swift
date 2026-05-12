@@ -155,6 +155,29 @@ final class APIClient {
     func patch<T: Decodable>(path: String, body: (any Encodable)? = nil, headers: [String: String] = [:]) async throws -> T {
         try await request(method: "PATCH", path: path, body: body, headers: headers)
     }
+    
+    // MARK: - Card Management
+    
+    func getCards() async throws -> [RetailerCardToken] {
+        let response: RetailerCardsResponse = try await get(path: "/v1/retailer/cards")
+        return response.cards
+    }
+    
+    func initiateCardSave(gateway: String = "GLOBAL_PAY") async throws -> CardInitiateResponse {
+        return try await post(path: "/v1/retailer/card/initiate", body: CardInitiateRequest(gateway: gateway))
+    }
+    
+    func confirmCardSave(cardToken: String, otpCode: String) async throws -> CardConfirmResponse {
+        return try await post(path: "/v1/retailer/card/confirm", body: CardConfirmRequest(cardToken: cardToken, otpCode: otpCode))
+    }
+    
+    func deactivateCard(tokenId: String) async throws {
+        let _: APIResponse<String> = try await post(path: "/v1/retailer/card/deactivate", body: CardIdRequest(tokenId: tokenId))
+    }
+    
+    func setDefaultCard(tokenId: String) async throws {
+        let _: APIResponse<String> = try await post(path: "/v1/retailer/card/default", body: CardIdRequest(tokenId: tokenId))
+    }
 
     // MARK: - Tracking
 

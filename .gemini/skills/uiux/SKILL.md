@@ -1,6 +1,11 @@
 ---
 name: uiux
-description: always when user requests UI/UX work (design, build, create, implement, review, fix, improve), follow the workflow in this skill. Start with design system generation for comprehensive recommendations, then supplement with detailed domain searches as needed. Default to html-tailwind stack guidelines if no stack specified.
+description: >
+  Always when user requests UI/UX work (design, build, create, implement, review, fix, improve), follow the workflow in this skill:
+  1. Analyze user requirements.
+  2. Start with design system generation for comprehensive recommendations.
+  3. Supplement with detailed domain searches as needed.
+  4. Default to html-tailwind stack guidelines for all workflows unless the user explicitly specifies another stack.
 ---
 
 <!-- Tip: Use /create-skill in chat to generate content with agent assistance -->
