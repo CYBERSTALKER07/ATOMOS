@@ -38,6 +38,7 @@ struct ProfileView: View {
                     SettingsItem(icon: "building.2", title: "Company Info", subtitle: user.company),
                     SettingsItem(icon: "creditcard", title: "Billing", subtitle: "Manage payment methods"),
                     SettingsItem(icon: "key", title: "API Access", subtitle: "Developer settings"),
+                    SettingsItem(icon: "person.2.fill", title: "Family Members", subtitle: "Manage family/staff", view: "FamilyMembers"),
                 ]).slideIn(delay: 0.1)
 
                 preferencesSection.slideIn(delay: 0.15)
@@ -332,6 +333,20 @@ struct ProfileView: View {
     }
 
     private func settingsRow(_ item: SettingsItem) -> some View {
+        Group {
+            if item.view == "FamilyMembers" {
+                NavigationLink(destination: FamilyMembersView()) {
+                    settingsRowContent(item)
+                }
+            } else {
+                Button {} label: {
+                    settingsRowContent(item)
+                }
+            }
+        }
+    }
+    
+    private func settingsRowContent(_ item: SettingsItem) -> some View {
         Button {} label: {
             HStack(spacing: AppTheme.spacingMD) {
                 ZStack {
@@ -399,12 +414,14 @@ struct ProfileView: View {
 
     private func loadProfile() async {
         do {
-            let profile: [String: String] = try await api.get(path: "/v1/retailer/profile")
-            profileName = profile["name"] ?? ""
-            profileCompany = profile["company"] ?? ""
-            profilePhone = profile["phone"] ?? ""
-            profileLocation = profile["location"] ?? ""
-        } catch {}
+            let profile = try await api.getProfile()
+            profileName = profile.name
+            profileCompany = profile.company
+            profilePhone = profile.phone
+            profileLocation = profile.location ?? ""
+        } catch {
+            print("Failed to load profile: \(error)")
+        }
     }
 
     private func loadStats() async {
@@ -437,11 +454,121 @@ private struct SettingsItem: Identifiable {
     let icon: String
     let title: String
     let subtitle: String?
+    var view: String? = nil
 }
 
 #Preview {
     NavigationStack {
         ProfileView()
             .environment(AuthManager.shared)
+    }
+}
+
+
+// MARK: - Family Members
+struct FamilyMembersView: View {
+    @State private var members: [FamilyMemberResponse] = []
+    @State private var isLoading = false
+    @State private var showAddSheet = false
+
+    private let api = APIClient.shared
+
+    var body: some View {
+        List {
+            if isLoading && members.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .listRowBackground(Color.clear)
+            } else if members.isEmpty {
+                VStack(spacing: AppTheme.spacingMD) {
+                    Image(systemName: "person.2.badge.plus")
+                        .font(.system(size: 40))
+                        .foregroundStyle(AppTheme.textTertiary)
+                    Text("No Family Members")
+                        .font(.headline)
+                    Text("Add family members to allow them to place orders.")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+                .listRowBackground(Color.clear)
+            } else {
+                ForEach(members) { member in
+                    HStack(spacing: AppTheme.spacingMD) {
+                        ZStack {
+                            Circle().fill(AppTheme.surfaceElevated).frame(width: 40, height: 40)
+                            Image(systemName: "person.fill").foregroundStyle(AppTheme.accent)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(member.nickname).font(.system(.body, design: .rounded, weight: .semibold))
+                            Text("Added \(member.createdAt.prefix(10))").font(.caption).foregroundStyle(AppTheme.textTertiary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                .onDelete { offsets in
+                    let membersToDelete = offsets.map { members[$0] }
+                    for m in membersToDelete {
+                        Task {
+                            do { try await api.removeFamilyMember(memberId: m.id); await loadMembers() }
+                            catch { print("Delete failed") }
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("Family Members")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button { showAddSheet = true } label: { Image(systemName: "plus") }
+            }
+        }
+        .task { await loadMembers() }
+        .refreshable { await loadMembers() }
+        .sheet(isPresented: $showAddSheet) {
+            NavigationStack {
+                AddFamilyMemberView { request in
+                    Task {
+                        do { try await api.addFamilyMember(request: request); await loadMembers(); showAddSheet = false }
+                        catch { print("Add failed") }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
+    }
+    
+    private func loadMembers() async {
+        isLoading = true
+        do { members = try await api.getFamilyMembers() } catch { print("Load failed: \(error)") }
+        isLoading = false
+    }
+}
+
+struct AddFamilyMemberView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var nickname = ""
+    var onAdd: (FamilyMemberRequest) -> Void
+
+    var body: some View {
+        Form {
+            Section("Details") {
+                TextField("Nickname", text: $nickname)
+            }
+        }
+        .navigationTitle("Add Member")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    onAdd(FamilyMemberRequest(nickname: nickname, photoUrl: nil))
+                }
+                .disabled(nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
     }
 }

@@ -140,9 +140,24 @@ struct DashboardView: View {
                 emptyState(icon: "shippingbox", title: "All clear!", message: "No active deliveries right now")
             } else {
                 ForEach(Array(activeOrders.enumerated()), id: \.element.id) { index, order in
-                    OrderCardView(order: order) {
-                        Task { await cancelOrder(order.id) }
-                    }
+                    OrderCardView(
+                        order: order,
+                        onCancel: {
+                            Task { await cancelOrder(order.id) }
+                        },
+                        onConfirmAi: {
+                            Task { await confirmAiOrder(order.id) }
+                        },
+                        onRejectAi: {
+                            Task { await rejectAiOrder(order.id) }
+                        },
+                        onConfirmPreorder: {
+                            Task { await confirmPreorder(order.id) }
+                        },
+                        onEditPreorder: {
+                            Task { await editPreorder(order.id) }
+                        }
+                    )
                     .staggeredSlideIn(index: index)
                 }
             }
@@ -377,6 +392,44 @@ struct DashboardView: View {
                 activeOrders.removeAll { $0.id == orderId }
             }
         } catch {}
+    }
+
+    private func confirmAiOrder(_ orderId: String) async {
+        do {
+            try await APIClient.shared.confirmAiOrder(orderId: orderId)
+            await loadDashboardData()
+        } catch {
+            print("Failed to confirm AI order: \(error)")
+        }
+    }
+
+    private func rejectAiOrder(_ orderId: String) async {
+        do {
+            try await APIClient.shared.rejectAiOrder(orderId: orderId, reason: "Retailer rejected")
+            await loadDashboardData()
+        } catch {
+            print("Failed to reject AI order: \(error)")
+        }
+    }
+
+    private func confirmPreorder(_ orderId: String) async {
+        do {
+            try await APIClient.shared.confirmPreorder(orderId: orderId)
+            await loadDashboardData()
+        } catch {
+            print("Failed to confirm preorder: \(error)")
+        }
+    }
+
+    private func editPreorder(_ orderId: String) async {
+        // UI for editing the preorder would go here.
+        // For now we'll just demonstrate calling edit with no changes.
+        do {
+            try await APIClient.shared.editPreorder(orderId: orderId, deliveryDate: nil, items: nil)
+            await loadDashboardData()
+        } catch {
+            print("Failed to edit preorder: \(error)")
+        }
     }
 
     private func preorder(_ forecast: DemandForecast) async {

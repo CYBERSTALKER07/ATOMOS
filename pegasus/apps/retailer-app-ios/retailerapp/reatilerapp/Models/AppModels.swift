@@ -105,3 +105,111 @@ struct DeviceTokenPayload: Codable {
         case retailerId = "retailer_id"
     }
 }
+
+// MARK: - Phase 4 Retailer Ecosystem Data Sync
+
+struct RetailerProfileRequest: Encodable {
+    let name: String?
+    let company: String?
+    let location: String?
+    let receivingWindowOpen: String?
+    let receivingWindowClose: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case name, company, location
+        case receivingWindowOpen = "receiving_window_open"
+        case receivingWindowClose = "receiving_window_close"
+    }
+}
+
+struct RetailerProfileResponse: Codable, Identifiable {
+    let id: String
+    let name: String
+    let phone: String
+    let company: String
+    let location: String?
+    let taxId: String?
+    let status: String
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, phone, company, location, status
+        case taxId = "tax_id"
+    }
+}
+
+struct FamilyMemberRequest: Encodable {
+    let nickname: String
+    let photoUrl: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case nickname
+        case photoUrl = "photo_url"
+    }
+}
+
+struct FamilyMemberResponse: Codable, Identifiable {
+    let memberId: String
+    let retailerId: String
+    let nickname: String
+    let photoUrl: String?
+    let createdAt: String
+    
+    var id: String { memberId }
+    
+    enum CodingKeys: String, CodingKey {
+        case nickname
+        case memberId = "member_id"
+        case retailerId = "retailer_id"
+        case photoUrl = "photo_url"
+        case createdAt = "created_at"
+    }
+}
+
+struct CartSyncItem: Codable {
+    let cartId: String?
+    let skuId: String
+    let supplierId: String
+    let quantity: Int64
+    let unitPrice: Int64
+    let currency: String
+    
+    enum CodingKeys: String, CodingKey {
+        case cartId = "cart_id"
+        case skuId = "sku_id"
+        case supplierId = "supplier_id"
+        case quantity
+        case unitPrice = "unit_price"
+        case currency
+    }
+}
+
+struct CartSyncRequest: Encodable {
+    let items: [CartSyncItem]
+}
+
+struct CartSyncResponse: Codable {
+    let items: [CartSyncItem]
+    let total: Int
+}
+
+struct RetailerSupplierResponse: Codable, Identifiable {
+    let id: String
+    let name: String
+    let logoUrl: String
+    let category: String
+    let primaryCategoryId: String?
+    let operatingCategoryIds: [String]?
+    let operatingCategoryNames: [String]?
+    let orderCount: Int64
+    let isActive: Bool
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, category
+        case logoUrl = "logo_url"
+        case primaryCategoryId = "primary_category_id"
+        case operatingCategoryIds = "operating_category_ids"
+        case operatingCategoryNames = "operating_category_names"
+        case orderCount = "order_count"
+        case isActive = "is_active"
+    }
+}

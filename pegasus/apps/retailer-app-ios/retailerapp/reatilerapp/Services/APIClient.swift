@@ -241,6 +241,50 @@ final class APIClient {
     }
 
     // MARK: - Tracking
+    // MARK: - Phase 4: Retailer Ecosystem
+    
+    func getProfile() async throws -> RetailerProfileResponse {
+        return try await get(path: "/v1/retailer/profile")
+    }
+    
+    func updateProfile(request: RetailerProfileRequest) async throws {
+        let _: APIResponse<String> = try await post(path: "/v1/retailer/profile", body: request)
+    }
+
+    func getFamilyMembers() async throws -> [FamilyMemberResponse] {
+        return try await get(path: "/v1/retailer/family-members")
+    }
+    
+    func addFamilyMember(request: FamilyMemberRequest) async throws {
+        let _: APIResponse<String> = try await post(path: "/v1/retailer/family-members", body: request)
+    }
+    
+    func removeFamilyMember(memberId: String) async throws {
+        // DELETE requires custom wrapper or generic empty request. Reusing existing request helper:
+        var components = URLComponents(string: baseURL + "/v1/retailer/family-members/\(memberId)")\!
+        var request = URLRequest(url: components.url\!)
+        request.httpMethod = "DELETE"
+        if let token = APIClient.read(key: "auth_token") {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        _ = try await dataForRequestWithFallback(request)
+    }
+
+    func syncCart(request: CartSyncRequest) async throws -> CartSyncResponse {
+        return try await post(path: "/v1/retailer/cart/sync", body: request)
+    }
+
+    func getSuppliers() async throws -> [RetailerSupplierResponse] {
+        return try await get(path: "/v1/retailer/suppliers")
+    }
+    
+    func favoriteSupplier(supplierId: String) async throws {
+        let _: APIResponse<String> = try await post(path: "/v1/retailer/suppliers/\(supplierId)/favorite")
+    }
+    
+    func unfavoriteSupplier(supplierId: String) async throws {
+        let _: APIResponse<String> = try await post(path: "/v1/retailer/suppliers/\(supplierId)/unfavorite")
+    }
 
     func getTrackingOrders() async throws -> [TrackingOrder] {
         let response: TrackingResponse = try await get(path: "/v1/retailer/tracking")

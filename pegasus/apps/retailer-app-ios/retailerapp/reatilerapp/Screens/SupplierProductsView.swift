@@ -400,13 +400,11 @@ struct SupplierProductsView: View {
     private func toggleMySupplier() async {
         isTogglingMySupplier = true
         do {
-            let path = isMySupplier ? "/v1/retailer/suppliers/\(supplier.id)/add" : "/v1/retailer/suppliers/\(supplier.id)/remove"
-            let action = isMySupplier ? "add" : "remove"
-            let _: [String: Bool] = try await api.post(
-                path: path,
-                body: ["supplier_id": supplier.id],
-                headers: ["Idempotency-Key": "retailer-supplier-\(action):\(supplier.id)"]
-            )
+            if isMySupplier {
+                try await api.favoriteSupplier(supplierId: supplier.id)
+            } else {
+                try await api.unfavoriteSupplier(supplierId: supplier.id)
+            }
         } catch {
             withAnimation(AnimationConstants.express) { isMySupplier.toggle() }
         }

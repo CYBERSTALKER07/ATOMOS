@@ -206,6 +206,22 @@ struct CartView: View {
 
     // MARK: - Empty Cart
 
+
+        }
+        .task {
+            await cart.sync()
+        }
+        .onChange(of: cart.items.count) { _ in
+            Task {
+                await cart.sync()
+            }
+        }
+        .onChange(of: cart.totalItems) { _ in
+            Task {
+                await cart.sync()
+            }
+        }
+
     private var emptyCartView: some View {
         VStack(spacing: AppTheme.spacingXL) {
             Spacer()
