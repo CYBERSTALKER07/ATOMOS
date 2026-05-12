@@ -281,12 +281,14 @@ final class RetailerWebSocket {
                 let state = json["state"] as? String ?? ""
                 emit(.orderStatusChanged(orderId: orderId, state: state))
             }
-        case "PRE_ORDER_AUTO_ACCEPTED", "PRE_ORDER_CONFIRMED", "PRE_ORDER_EDITED":
+        case "PRE_ORDER_AUTO_ACCEPTED", "PRE_ORDER_CONFIRMED", "PRE_ORDER_EDITED", "PRE_ORDER_NUDGE", "PRE_ORDER_CONFIRMATION":
             if let orderId = json["order_id"] as? String {
                 switch type {
                 case "PRE_ORDER_AUTO_ACCEPTED": emit(.preOrderAutoAccepted(orderId: orderId))
                 case "PRE_ORDER_CONFIRMED": emit(.preOrderConfirmed(orderId: orderId))
                 case "PRE_ORDER_EDITED": emit(.preOrderEdited(orderId: orderId))
+                case "PRE_ORDER_NUDGE": emit(.preOrderNudge(orderId: orderId))
+                case "PRE_ORDER_CONFIRMATION": emit(.preOrderConfirmationPush(orderId: orderId))
                 default: break
                 }
             }
