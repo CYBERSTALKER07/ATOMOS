@@ -24,6 +24,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 import javax.inject.Inject
 
 data class CartUiState(
@@ -80,7 +85,7 @@ init {
 
     private fun fetchPaymentOptions() = viewModelScope.launch {
         try {
-            val cardsResp = api.getSavedCards()
+            val cardsResp = api.getCards()
             val dynamicOptions = cardsResp.cards.map { card ->
                 CheckoutPaymentOption(gateway = card.tokenId, label = "•••• " + card.panMask.takeLast(4))
             }
