@@ -372,28 +372,9 @@ func HandleSMSComplete(svc *OrderService) http.HandlerFunc {
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 
-		// Verify driver identity by phone
-		driverStmt := spanner.Statement{
-			SQL:    `SELECT DriverId FROM Drivers WHERE Phone = @phone LIMIT 1`,
-			Params: map[string]interface{}{"phone": req.DriverPhone},
-		}
-		driverIter := svc.Client.Single().Query(ctx, driverStmt)
-		driverRow, err := driverIter.Next()
-		if err != nil {
-			driverIter.Stop()
-			http.Error(w, `{"error":"driver not found"}`, http.StatusUnauthorized)
-			return
-		}
 		var driverID string
-		if err := driverRow.Columns(&driverID); err != nil {
-			driverIter.Stop()
-			http.Error(w, `{"error":"driver lookup failed"}`, http.StatusInternalServerError)
-			return
-		}
-		driverIter.Stop()
-
 		now := time.Now().UTC()
-		_, err = svc.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		_, err := svc.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			row, err := txn.ReadRow(ctx, "Orders", spanner.Key{req.OrderID},
 				[]string{"State", "DriverId", "Version"})
 			if err != nil {
@@ -408,7 +389,20 @@ func HandleSMSComplete(svc *OrderService) http.HandlerFunc {
 			if state != "ARRIVED" && state != "ARRIVED_SHOP_CLOSED" {
 				return fmt.Errorf("order must be ARRIVED or ARRIVED_SHOP_CLOSED, got %s", state)
 			}
-			if !assignedDriver.Valid || assignedDriver.StringVal != driverID {
+			if !assignedDriver.Valid || strings.TrimSpace(assignedDriver.StringVal) == "" {
+				return fmt.Errorf("driver mismatch")
+			}
+
+			driverID = strings.TrimSpace(assignedDriver.StringVal)
+			driverRow, err := txn.ReadRow(ctx, "Drivers", spanner.Key{driverID}, []string{"Phone"})
+			if err != nil {
+				return fmt.Errorf("driver not found: %w", err)
+			}
+			var driverPhone string
+			if err := driverRow.Columns(&driverPhone); err != nil {
+				return fmt.Errorf("driver lookup failed: %w", err)
+			}
+			if strings.TrimSpace(driverPhone) != strings.TrimSpace(req.DriverPhone) {
 				return fmt.Errorf("driver mismatch")
 			}
 			return txn.BufferWrite([]*spanner.Mutation{

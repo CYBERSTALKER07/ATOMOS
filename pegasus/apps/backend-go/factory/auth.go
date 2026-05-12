@@ -61,11 +61,11 @@ func HandleFactoryLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		defer iter.Stop()
 
 		type loginCandidate struct {
-			staffID    string
-			name       string
-			staffRole  string
-			factoryID  string
-			supplierID string
+			staffID     string
+			name        string
+			staffRole   string
+			factoryID   string
+			supplierID  string
 			factoryName string
 		}
 
