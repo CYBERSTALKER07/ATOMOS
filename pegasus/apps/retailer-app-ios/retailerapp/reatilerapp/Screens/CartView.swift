@@ -202,12 +202,6 @@ struct CartView: View {
             .padding(AppTheme.spacingLG)
             .background(.ultraThinMaterial)
         }
-    }
-
-    // MARK: - Empty Cart
-
-
-        }
         .task {
             await cart.sync()
         }
@@ -221,6 +215,9 @@ struct CartView: View {
                 await cart.sync()
             }
         }
+    }
+
+    // MARK: - Empty Cart
 
     private var emptyCartView: some View {
         VStack(spacing: AppTheme.spacingXL) {

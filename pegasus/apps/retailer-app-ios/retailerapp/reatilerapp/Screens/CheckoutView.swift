@@ -1,6 +1,13 @@
 import SwiftData
 import SwiftUI
 
+
+struct CheckoutPaymentOption: Identifiable, Hashable {
+    let id: String
+    let label: String
+    let isToken: Bool
+}
+
 struct CheckoutView: View {
     var supplierIsActive: Bool = true
 
@@ -8,7 +15,11 @@ struct CheckoutView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
-    @State private var selectedPayment = "GlobalPay"
+    @State private var selectedPaymentId = "GlobalPay"
+    @State private var paymentOptions: [CheckoutPaymentOption] = [
+        CheckoutPaymentOption(id: "GlobalPay", label: "GlobalPay", isToken: false),
+        CheckoutPaymentOption(id: "Cash", label: "Cash on Delivery", isToken: false)
+    ]
     @State private var showPaymentPicker = false
     @State private var isSubmitting = false
     @State private var showSuccess = false
@@ -18,13 +29,12 @@ struct CheckoutView: View {
     @State private var showSupplierClosedWarning = false
 
     private let api = APIClient.shared
-    private let paymentMethods = ["GlobalPay", "Cash on Delivery"]
 
     /// Map UI labels to backend gateway codes expected by /v1/checkout/unified
-    private func gatewayCode(for method: String) -> String {
-        switch method {
+    private func gatewayCode(for methodId: String) -> String {
+        switch methodId {
         case "GlobalPay": return "GLOBAL_PAY"
-        case "Cash on Delivery": return "CASH"
+        case "Cash": return "CASH"
         default: return "GLOBAL_PAY"
         }
     }
@@ -58,6 +68,9 @@ struct CheckoutView: View {
                             .clipShape(.circle)
                     }
                 }
+            }
+            .task {
+                await fetchCards()
             }
             .sheet(isPresented: $showPaymentPicker) {
                 paymentPickerSheet
@@ -271,28 +284,48 @@ struct CheckoutView: View {
 
     // MARK: - Payment Picker
 
+    private func fetchCards() async {
+        do {
+            let cards = try await api.getCards()
+            let tokenOptions = cards.map { card in
+                let suffix = card.cardLast4.isEmpty ? "****" : card.cardLast4
+                return CheckoutPaymentOption(
+                    id: card.tokenId,
+                    label: "•••• \(suffix) (\(card.cardType))",
+                    isToken: true
+                )
+            }
+            paymentOptions = tokenOptions + [
+                CheckoutPaymentOption(id: "GlobalPay", label: "GlobalPay", isToken: false),
+                CheckoutPaymentOption(id: "Cash", label: "Cash on Delivery", isToken: false)
+            ]
+        } catch {
+            print("Failed to fetch cards: \(error.localizedDescription)")
+        }
+    }
+
     private var paymentPickerSheet: some View {
         NavigationStack {
-            List(paymentMethods, id: \.self) { method in
+            List(paymentOptions, id: \.id) { option in
                 Button {
                     withAnimation(AnimationConstants.express) {
-                        selectedPayment = method
+                        selectedPaymentId = option.id
                     }
                     showPaymentPicker = false
                 } label: {
                     HStack(spacing: AppTheme.spacingMD) {
-                        Image(systemName: paymentIcon(method))
+                        Image(systemName: paymentIcon(option))
                             .font(.system(size: 16, weight: .medium))
                             .foregroundStyle(AppTheme.accent)
                             .frame(width: 24)
 
-                        Text(method)
+                        Text(option.label)
                             .font(.system(.body, design: .rounded))
                             .foregroundStyle(AppTheme.textPrimary)
 
                         Spacer()
 
-                        if method == selectedPayment {
+                        if option.id == selectedPaymentId {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(AppTheme.accent)
                         }
@@ -304,11 +337,12 @@ struct CheckoutView: View {
         }
     }
 
-    private func paymentIcon(_ method: String) -> String {
-        switch method {
-        case "GlobalPay": "wallet.pass"
-        case "Cash on Delivery": "banknote"
-        default: "creditcard"
+    private func paymentIcon(_ option: CheckoutPaymentOption) -> String {
+        if option.isToken { return "creditcard.fill" }
+        switch option.id {
+        case "GlobalPay": return "wallet.pass"
+        case "Cash": return "banknote"
+        default: return "creditcard"
         }
     }
 
@@ -357,9 +391,24 @@ struct CheckoutView: View {
     private func submitOrder() async {
         isSubmitting = true
         let rid = AuthManager.shared.currentUser?.id ?? ""
-        let gateway = gatewayCode(for: selectedPayment)
-        let payload = cart.buildCheckoutPayload(retailerId: rid, paymentGateway: gateway)
-        let idempotencyKey = checkoutIdempotencyKey(payload: payload, gateway: gateway)
+        
+        let option = paymentOptions.first(where: { $0.id == selectedPaymentId })
+        var finalGateway = gatewayCode(for: selectedPaymentId)
+        
+        if option?.isToken == true {
+            do {
+                try await api.setDefaultCard(tokenId: selectedPaymentId)
+                finalGateway = "GLOBAL_PAY"
+            } catch {
+                errorMessage = "Failed to select payment method: \(error.localizedDescription)"
+                showError = true
+                isSubmitting = false
+                return
+            }
+        }
+        
+        let payload = cart.buildCheckoutPayload(retailerId: rid, paymentGateway: finalGateway)
+        let idempotencyKey = checkoutIdempotencyKey(payload: payload, gateway: finalGateway)
         do {
             let _: CheckoutResponse = try await api.post(
                 path: "/v1/checkout/unified",

@@ -185,6 +185,18 @@ struct OrderLineItem: Codable, Identifiable, Hashable {
         let decodedTotal = try container.decodeDoubleLossy(forKey: .totalPrice)
         self.totalPrice = decodedTotal > 0 ? decodedTotal : basePrice * Double(self.quantity)
     }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .legacyID)
+        try container.encode(productId, forKey: .productID)
+        try container.encode(productName, forKey: .productName)
+        try container.encode(variantId, forKey: .variantId)
+        try container.encode(variantSize, forKey: .variantSize)
+        try container.encode(quantity, forKey: .quantity)
+        try container.encode(unitPrice, forKey: .unitPrice)
+        try container.encode(totalPrice, forKey: .totalPrice)
+    }
 }
 
 // MARK: - Order
