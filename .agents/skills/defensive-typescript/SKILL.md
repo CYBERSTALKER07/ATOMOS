@@ -8,7 +8,8 @@ typescript, react, next.js, nextjs, component, page, hook, useEffect, useState, 
 
 ## Anti-Pattern Catalog
 
-### 1. API Base URL Duplication (CONFIGURATION DRIFT)
+### Configuration Management
+#### 1. API Base URL Duplication (CONFIGURATION DRIFT)
 ```typescript
 // ❌ WRONG — copy-pasted in 20+ files
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
@@ -26,7 +27,8 @@ const res = await fetch(`${API_BASE}/v1/orders`);
 ```
 **Real finding**: `process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'` duplicated in `lib/auth.ts`, `hooks/useTelemetry.ts`, `app/page.tsx`, `app/fleet/page.tsx`, `app/treasury/*/page.tsx`, `app/auth/*/page.tsx`, and 15+ more files. CartoDB map style URL duplicated across 4 files.
 
-### 2. Silent Error Swallowing (.catch(() => {}))
+### Error Handling & Validation
+#### 2. Silent Error Swallowing (.catch(() => {}))
 ```typescript
 // ❌ WRONG — error silently swallowed, impossible to diagnose
 await updateShift(isActive).catch(() => {});
@@ -46,12 +48,12 @@ try {
 ```
 **Real findings**: 9 `.catch(() => {})` instances — `lib/auth.ts` (token storage), `lib/usePolling.ts`, `lib/useLiveData.ts`, `hooks/useSupplierShift.tsx`, `app/fleet/page.tsx` (telemetry disconnect), `app/supplier/orders/page.tsx` (order actions).
 
-**Rule**: Never `.catch(() => {})`. Acceptable patterns:
+**Rule**: Never `.catch(() => {})`. Only the following patterns are acceptable:
 - Background cleanup: `.catch((err) => console.error('cleanup:', err))`
 - User-facing mutation: `try/catch` with UI error state
 - AbortController cleanup: `.catch(() => {})` is OK only if the abort is the expected path
 
-### 3. Missing Route-Level Error Boundaries
+#### 3. Missing Route-Level Error Boundaries
 ```typescript
 // ❌ WRONG — only root error.tsx exists
 // app/error.tsx ← catches ALL errors, nukes entire app

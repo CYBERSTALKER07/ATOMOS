@@ -154,11 +154,13 @@ type ConnMap struct {
 }
 ```
 
-**Decision tree**:
-- Read-heavy, write-rare → `sync.Map`
-- Mixed read/write → `sync.RWMutex` guarded struct
-- Single-writer, many-readers → `sync.RWMutex`
-- Profile before choosing `RWMutex` over plain `Mutex` — `RWMutex` is slower for <4 readers
+**Decision Table**:
+| Scenario | Recommendation |
+| --- | --- |
+| Read-heavy, write-rare | `sync.Map` |
+| Mixed read/write | `sync.RWMutex` guarded map |
+| Single-writer, many-readers | `sync.RWMutex` guarded map |
+| Less than 4 concurrent readers | plain `sync.Mutex` (`RWMutex` is slower) |
 
 ### 8. Channel Buffer Sizing
 ```go
@@ -167,7 +169,7 @@ make(chan Event, 1)   // single-item buffer — comment WHY
 make(chan Event, 100) // backpressure buffer — comment the sizing rationale
 ```
 
-**Rule**: Every non-zero buffer size MUST have a comment explaining the sizing. `make(chan Event)` (unbuffered) is synchronous by design — use when you need rendezvous semantics. Large buffers hide backpressure problems.
+**Rule**: Every non-zero buffer size MUST have a comment explaining the rationale for the chosen size and its intended purpose. `make(chan Event)` (unbuffered) is synchronous by design — use when you need rendezvous semantics. Large buffers hide backpressure problems.
 
 ## Canonical Verification
 After writing concurrent Go code, verify:

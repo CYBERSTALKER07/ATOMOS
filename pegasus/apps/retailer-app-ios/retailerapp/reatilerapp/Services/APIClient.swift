@@ -179,6 +179,20 @@ final class APIClient {
         let _: APIResponse<String> = try await post(path: "/v1/retailer/card/default", body: CardIdRequest(tokenId: tokenId))
     }
 
+    // MARK: - Shop Closed
+
+    func respondToShopClosed(orderId: String, response: String) async throws {
+        struct ShopClosedRequest: Encodable {
+            let orderId: String
+            let response: String
+            enum CodingKeys: String, CodingKey {
+                case orderId = "order_id"
+                case response
+            }
+        }
+        let _: APIResponse<String> = try await post(path: "/v1/retailer/shop-closed-response", body: ShopClosedRequest(orderId: orderId, response: response))
+    }
+
     // MARK: - Tracking
 
     func getTrackingOrders() async throws -> [TrackingOrder] {

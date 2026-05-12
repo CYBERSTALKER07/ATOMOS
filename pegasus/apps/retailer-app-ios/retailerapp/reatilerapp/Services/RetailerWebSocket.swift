@@ -92,6 +92,22 @@ struct PaymentFailureEvent: Decodable {
     }
 }
 
+struct ShopClosedAlertEvent: Decodable {
+    let type: String
+    let orderId: String
+    let driverName: String
+    let options: [String]
+    let attemptId: String
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case orderId = "order_id"
+        case driverName = "driver_name"
+        case options
+        case attemptId = "attempt_id"
+    }
+}
+
 enum RetailerWSEvent {
     case paymentRequired(PaymentRequiredEvent)
     case orderCompleted(OrderCompletedEvent)
@@ -103,6 +119,7 @@ enum RetailerWSEvent {
     case preOrderAutoAccepted(orderId: String)
     case preOrderConfirmed(orderId: String)
     case preOrderEdited(orderId: String)
+    case shopClosedAlert(ShopClosedAlertEvent)
 }
 
 // MARK: - Retailer WebSocket
@@ -270,6 +287,10 @@ final class RetailerWebSocket {
                 case "PRE_ORDER_EDITED": emit(.preOrderEdited(orderId: orderId))
                 default: break
                 }
+            }
+        case "SHOP_CLOSED_ALERT":
+            if let event = try? decoder.decode(ShopClosedAlertEvent.self, from: data) {
+                emit(.shopClosedAlert(event))
             }
         default:
             break
