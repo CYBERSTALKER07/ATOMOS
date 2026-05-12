@@ -49,6 +49,8 @@ import com.pegasus.retailer.ui.screens.cart.CartScreen
 import com.pegasus.retailer.ui.screens.cart.CartViewModel
 import com.pegasus.retailer.ui.screens.profile.ProfileScreen
 import com.pegasus.retailer.ui.screens.profile.FamilyMembersScreen
+import com.pegasus.retailer.ui.screens.profile.SavedCardsScreen
+import com.pegasus.retailer.ui.screens.profile.AutoOrderScreen
 import com.pegasus.retailer.ui.screens.catalog.CatalogScreen
 import com.pegasus.retailer.ui.screens.catalog.CategorySuppliersScreen
 import com.pegasus.retailer.ui.screens.dashboard.DashboardScreen
