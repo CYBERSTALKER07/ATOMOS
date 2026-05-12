@@ -148,7 +148,7 @@ fun CartScreen(
                 total = uiState.displayTotal,
                 selectedPaymentGateway = uiState.selectedPaymentGateway,
                 paymentLabel = uiState.selectedPaymentLabel,
-                paymentOptions = DefaultCheckoutPaymentOptions,
+                paymentOptions = uiState.paymentOptions.ifEmpty { DefaultCheckoutPaymentOptions },
                 onBuy = viewModel::processPayment,
                 onSelectPayment = viewModel::setSelectedPaymentGateway,
                 onDismiss = viewModel::dismissCheckout,

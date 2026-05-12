@@ -13,6 +13,7 @@ import com.pegasus.retailer.data.model.Product
 import com.pegasus.retailer.data.model.UnifiedCheckoutRequest
 import com.pegasus.retailer.data.model.Variant
 import com.pegasus.retailer.ui.components.CheckoutPhase
+import com.pegasus.retailer.ui.components.CheckoutPaymentOption
 import retrofit2.HttpException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -35,6 +36,7 @@ data class CartUiState(
     val removedItemMessage: String? = null,
     val supplierIsActive: Boolean = true,
     val oosItems: List<String> = emptyList(),
+    val paymentOptions: List<CheckoutPaymentOption> = emptyList(),
 ) {
     val isEmpty: Boolean get() = items.isEmpty()
     val totalItems: Int get() = items.sumOf { it.quantity }
@@ -47,16 +49,14 @@ data class CartUiState(
     val displayDiscount: String get() = if (discount == 0.0) "0" else "-%,.0f".format(discount)
     val displayTotal: String get() = "%,.0f".format(total)
     val firstProductName: String get() = items.firstOrNull()?.product?.name ?: "Order"
-    val selectedPaymentLabel: String get() = checkoutPaymentLabel(selectedPaymentGateway)
+    val selectedPaymentLabel: String get() = checkoutPaymentLabel(selectedPaymentGateway, paymentOptions)
 }
 
-private fun checkoutPaymentLabel(gateway: String): String {
-    return when (gateway.trim().uppercase()) {
-        
-        "GLOBAL_PAY" -> "GlobalPay"
-        "GLOBAL_PAY" -> "GlobalPay"
+private fun checkoutPaymentLabel(gateway: String, options: List<CheckoutPaymentOption>): String {
+    return options.find { it.gateway == gateway }?.label ?: when (gateway.toUpperCase()) {
+        "GLOBAL_PAY" -> "Global Pay"
         "CASH" -> "Cash on Delivery"
-        else -> "Cash"
+        else -> gateway
     }
 }
 
@@ -73,7 +73,30 @@ class CartViewModel @Inject constructor(
 
     private var paymentListenerJob: Job? = null
 
-    init { flushPendingOrders() }
+init { 
+        flushPendingOrders()
+        fetchPaymentOptions()
+    }
+
+    private fun fetchPaymentOptions() = viewModelScope.launch {
+        try {
+            val cardsResp = api.getSavedCards()
+            val dynamicOptions = cardsResp.cards.map { card ->
+                CheckoutPaymentOption(gateway = card.tokenId, label = "•••• " + card.panMask.takeLast(4))
+            }
+            val standardOptions = listOf(
+                CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay (New)"),
+                CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery")
+            )
+            _uiState.update { it.copy(paymentOptions = dynamicOptions + standardOptions) }
+        } catch (e: Exception) {
+            val standardOptions = listOf(
+                CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay (New)"),
+                CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery")
+            )
+            _uiState.update { it.copy(paymentOptions = standardOptions) }
+        }
+    }
 
     private fun flushPendingOrders() = viewModelScope.launch {
         val pending = pendingOrderDao.getAll()
@@ -141,7 +164,9 @@ class CartViewModel @Inject constructor(
     }
 
     fun setSelectedPaymentGateway(gateway: String) {
-        _uiState.update { it.copy(selectedPaymentGateway = gateway.trim().uppercase()) }
+        // Only uppercase GLOBAL_PAY and CASH, otherwise it's a tokenId
+        val gw = if (gateway.equals("GLOBAL_PAY", ignoreCase=true) || gateway.equals("CASH", ignoreCase=true)) gateway.trim().uppercase() else gateway.trim()
+        _uiState.update { it.copy(selectedPaymentGateway = gw) }
     }
 
     fun processPayment() {
@@ -157,9 +182,20 @@ class CartViewModel @Inject constructor(
                         unitPrice = cartItem.variant.price.toLong(),
                     )
                 }
+                var finalGateway = state.selectedPaymentGateway
+                if (finalGateway \!= "GLOBAL_PAY" && finalGateway \!= "CASH") {
+                    try {
+                        api.setDefaultCard(mapOf("token_id" to finalGateway))
+                        finalGateway = "GLOBAL_PAY"
+                    } catch (e: Exception) {
+                        _uiState.update { it.copy(checkoutPhase = CheckoutPhase.REVIEW, checkoutError = "Failed to select payment method. " + e.message) }
+                        return@launch
+                    }
+                }
+
                 val request = UnifiedCheckoutRequest(
                     retailerId = retailerId,
-                    paymentGateway = state.selectedPaymentGateway,
+                    paymentGateway = finalGateway,
                     items = lineItems,
                 )
                 val response = api.unifiedCheckout(request, checkoutIdempotencyKey(request))
