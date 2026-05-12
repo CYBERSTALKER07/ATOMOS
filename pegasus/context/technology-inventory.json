@@ -260,7 +260,8 @@
         "Legacy GET /v1/fleet/manifest remains additive for compatibility while clients use GET /v1/driver/manifest.",
         "High-consequence driver mutations (/v1/order/deliver, /v1/order/confirm-offload, /v1/order/complete, /v1/order/collect-cash, /v1/delivery/arrive) now send deterministic Idempotency-Key headers from both Android and iOS clients for replay-safe retries.",
         "Driver availability toggles emit DRIVER_AVAILABILITY_CHANGED inside the same Spanner ReadWriteTransaction via outbox; kafka.EmitNotification remains post-commit best-effort fanout.",
-        "Driver login/profile payloads include additive dual-node fields (home_node_type, home_node_id, driver_mode, factory metadata) so one driver app role row can operate both factory-transfer and warehouse-delivery assignments."
+        "Driver login/profile payloads include additive dual-node fields (home_node_type, home_node_id, driver_mode, factory metadata) so one driver app role row can operate both factory-transfer and warehouse-delivery assignments.",
+        "/v1/auth/driver/login now supports tenant-safe same-phone disambiguation with optional supplier_id and returns explicit ambiguity when multiple tenant matches share valid credentials."
       ]
     },
     {
@@ -302,7 +303,8 @@
         "Android and iOS clients expose additive advanced-factory endpoint methods (transfers/create, manifests detail/transition, fleet split lists, staff detail) while preserving existing operator-loop behavior.",
         "Factory realtime contract is additive with GET /v1/ws/factory and typed events FACTORY_SUPPLY_REQUEST_UPDATE, FACTORY_TRANSFER_UPDATE, FACTORY_MANIFEST_UPDATE, and FACTORY_OUTBOX_FAILED.",
         "Factory realtime envelopes now include stable trace_id keys for supply request, transfer, manifest, and outbox-failure updates.",
-        "Portal, Android, and iOS now subscribe to websocket-triggered reloads, while polling/manual refresh remains fallback."
+        "Portal, Android, and iOS now subscribe to websocket-triggered reloads, while polling/manual refresh remains fallback.",
+        "/v1/auth/factory/login now supports tenant-safe same-phone disambiguation with optional supplier_id/factory_id and returns explicit ambiguity when multiple tenant matches share valid credentials."
       ]
     },
     {
@@ -394,6 +396,7 @@
       "notes": [
         "Route composition moved out of main.go into supplierroutes while preserving the existing supplier handlers.",
         "POST /v1/supplier/warehouses/{id}/coverage now persists polygon-derived H3 cells through the warehouse spatial outbox and cache refresh path instead of failing as an unwired portal mutation.",
+        "Driver and factory staff provisioning now enforce duplicate-phone checks within supplier scope (SupplierId) for POST /v1/supplier/fleet/drivers, POST /v1/warehouse/ops/drivers, POST /v1/factory/staff, and POST /v1/auth/factory/register.",
         "Warehouse-scoped supplier routes now inject auth.RequireWarehouseScopeWithClient(d.Spanner), constraining SupplierRole=FACTORY_ADMIN to warehouses linked through Warehouses.PrimaryFactoryId/SecondaryFactoryId; out-of-scope warehouse_id returns 403 and multi-link scope without explicit warehouse_id returns 400."
       ]
     },
@@ -697,6 +700,7 @@
           "Staff create accepts an optional pin and returns the effective one-time pin for native client parity.",
           "Vehicle responses expose both max_volume_vu and capacity_vu plus a derived availability status.",
           "Warehouse treasury invoice responses now include additive per-invoice currency and amount_uzs compatibility aliasing so portal, iOS, and Android treasury views can render currency dynamically without breaking legacy amount contracts.",
+          "Supplier warehouse aggregate stats now include explicit driver SupplierId predicates alongside warehouse/home-node filters to preserve strict multitenant isolation on derived counts.",
           "Vehicle availability is schema-backed with Vehicles.UnavailableReason and travels across the warehouse portal, iOS, and Android fleet clients.",
           "Warehouse fleet controls now share driver assign/reset and vehicle activate/deactivate mutations across portal, iOS, and Android.",
           "Warehouse dispatch preview excludes inactive vehicles from the available-driver list so vehicle availability mutations affect dispatch eligibility immediately.",
