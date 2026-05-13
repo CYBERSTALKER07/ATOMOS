@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	adyenwebhook "github.com/adyen/adyen-go-api-library/v21/src/webhook"
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -306,6 +308,60 @@ func TestApplyStripeIdempotencyKey_PreservesExistingHeader(t *testing.T) {
 func TestApplyStripeIdempotencyKey_EmptyEventID(t *testing.T) {
 	httpReq := httptest.NewRequest(http.MethodPost, "/v1/webhooks/stripe", nil)
 	applyStripeIdempotencyKey(httpReq, stripeEvent{})
+
+	if got := httpReq.Header.Get("Idempotency-Key"); got != "" {
+		t.Errorf("Idempotency-Key = %q, want empty", got)
+	}
+}
+
+func TestApplyAdyenIdempotencyKey_FromNotificationItems(t *testing.T) {
+	httpReq := httptest.NewRequest(http.MethodPost, "/v1/webhooks/adyen", nil)
+	items := []*adyenwebhook.NotificationRequestItem{
+		{
+			EventCode:         "capture",
+			PspReference:      "psp-2",
+			MerchantReference: "order-2",
+		},
+		{
+			EventCode:         "AUTHORISATION",
+			PspReference:      "psp-1",
+			MerchantReference: "order-1",
+		},
+	}
+
+	applyAdyenIdempotencyKey(httpReq, items)
+
+	want := "adyen:AUTHORISATION:psp-1:order-1,CAPTURE:psp-2:order-2"
+	if got := httpReq.Header.Get("Idempotency-Key"); got != want {
+		t.Errorf("Idempotency-Key = %q, want %q", got, want)
+	}
+}
+
+func TestApplyAdyenIdempotencyKey_PreservesExistingHeader(t *testing.T) {
+	httpReq := httptest.NewRequest(http.MethodPost, "/v1/webhooks/adyen", nil)
+	httpReq.Header.Set("Idempotency-Key", "existing-key")
+	items := []*adyenwebhook.NotificationRequestItem{
+		{
+			EventCode:         "AUTHORISATION",
+			PspReference:      "psp-1",
+			MerchantReference: "order-1",
+		},
+	}
+
+	applyAdyenIdempotencyKey(httpReq, items)
+
+	if got := httpReq.Header.Get("Idempotency-Key"); got != "existing-key" {
+		t.Errorf("Idempotency-Key = %q, want existing-key", got)
+	}
+}
+
+func TestApplyAdyenIdempotencyKey_EmptyItems(t *testing.T) {
+	httpReq := httptest.NewRequest(http.MethodPost, "/v1/webhooks/adyen", nil)
+	items := []*adyenwebhook.NotificationRequestItem{
+		{},
+	}
+
+	applyAdyenIdempotencyKey(httpReq, items)
 
 	if got := httpReq.Header.Get("Idempotency-Key"); got != "" {
 		t.Errorf("Idempotency-Key = %q, want empty", got)
