@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import EmptyState from '@/components/EmptyState';
+import FactoryPageState from '@/components/FactoryPageState';
 import { motion } from 'framer-motion';
 
 interface StaffMember {
@@ -19,15 +19,21 @@ interface StaffMember {
 export default function StaffPage() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
     try {
       const res = await apiFetch('/v1/factory/staff');
       if (res.ok) {
         const data = await res.json();
         setStaff(data.staff || []);
+      } else {
+        setError(`Unable to load staff (${res.status}).`);
       }
-    } catch { /* handled */ } finally {
+    } catch {
+      setError('Unable to load staff right now.');
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -66,11 +72,25 @@ export default function StaffPage() {
         </div>
 
         {loading ? (
-          <div className="space-y-1">
-            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="md-skeleton md-skeleton-row" />)}
-          </div>
+          <FactoryPageState
+            kind="loading"
+            skeleton={
+              <div className="space-y-1">
+                {Array.from({ length: 4 }).map((_, i) => <div key={i} className="md-skeleton md-skeleton-row" />)}
+              </div>
+            }
+          />
+        ) : error && staff.length === 0 ? (
+          <FactoryPageState
+            kind="error"
+            headline="Unable to load staff"
+            body={error}
+            actionLabel="Retry"
+            onAction={() => void load()}
+          />
         ) : staff.length === 0 ? (
-          <EmptyState
+          <FactoryPageState
+            kind="empty"
             imageUrl="/images/empty-products.png"
             headline="No staff registered"
             body="There are no staff members registered for this factory."

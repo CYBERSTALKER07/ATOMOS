@@ -49,6 +49,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pegasus.driver.data.model.Order
 import com.pegasus.driver.data.model.OrderState
+import com.pegasus.driver.ui.components.DriverLoadingStatePanel
+import com.pegasus.driver.ui.components.DriverStatePanel
 import com.pegasus.driver.ui.components.PegasusCard
 import com.pegasus.driver.ui.components.StateBadge
 import com.pegasus.driver.ui.components.StaggeredAppear
@@ -509,57 +511,33 @@ private fun InfoChip(
 
 @Composable
 private fun LoadingView() {
-    val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(colorScheme.surface),
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            CircularProgressIndicator(color = colorScheme.primary)
-            Text(
-                text = "Loading routes...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colorScheme.onSurfaceVariant,
-            )
-        }
+        DriverLoadingStatePanel(
+            title = "Loading routes",
+            message = "Checking manifest state, sequence, and delivery assignments.",
+        )
     }
 }
 
 @Composable
 private fun EmptyView() {
-    val colorScheme = MaterialTheme.colorScheme
-    val typography = MaterialTheme.typography
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(colorScheme.surface),
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.LocalShipping,
-                contentDescription = null,
-                tint = colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(48.dp)
-            )
-            Text(
-                text = "No upcoming rides",
-                style = typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = "Pull to refresh or check back later",
-                style = typography.bodyMedium,
-                color = colorScheme.onSurfaceVariant,
-            )
-        }
+        DriverStatePanel(
+            icon = Icons.Default.LocalShipping,
+            title = "No upcoming rides",
+            message = "Pull to refresh or check back later.",
+        )
     }
 }

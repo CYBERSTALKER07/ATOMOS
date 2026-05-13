@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.pegasus.retailer.ui.theme.SoftSquircleShape
 import com.pegasus.retailer.ui.theme.SquircleShape
 import androidx.compose.material.icons.Icons
@@ -87,6 +88,51 @@ fun ProfileScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
+        val syncMessage = when {
+            uiState.isLoading -> "Syncing profile and settings..."
+            uiState.error != null -> uiState.error
+            else -> uiState.syncMessage
+        }
+
+        if (syncMessage != null) {
+            item {
+                val loadIssue = uiState.loadIssue
+                val containerColor = when (loadIssue) {
+                    ProfileLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    ProfileLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                    ProfileLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                    null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                }
+                val contentColor = when (loadIssue) {
+                    ProfileLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
+                    ProfileLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
+                    ProfileLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
+                    null -> MaterialTheme.colorScheme.onPrimaryContainer
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(containerColor)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = syncMessage,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = contentColor,
+                    )
+                    if (!uiState.isLoading) {
+                        TextButton(onClick = viewModel::refresh) {
+                            Text("Retry", color = contentColor)
+                        }
+                    }
+                }
+            }
+        }
+
         // ── Profile Header Card ──
         item { ProfileHeaderCard(retailerName = uiState.retailerName, retailerId = uiState.retailerId) }
 

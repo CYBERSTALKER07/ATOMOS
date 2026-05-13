@@ -43,6 +43,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.pegasus.driver.ui.components.DriverLoadingStatePanel
+import com.pegasus.driver.ui.components.DriverStatePanel
 import java.time.Duration
 import java.time.Instant
 
@@ -80,16 +82,46 @@ fun DriverNotificationInboxScreen(
 
         when {
             state.loading -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    DriverLoadingStatePanel(
+                        title = "Loading notifications",
+                        message = "Checking route, payment, and dispatch updates.",
+                    )
+                }
+            }
+            state.error != null && state.items.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    DriverStatePanel(
+                        icon = Icons.Outlined.ErrorOutline,
+                        title = "Couldn't load notifications",
+                        message = state.error ?: "Unable to load notifications. Check your connection and try again.",
+                        actionLabel = "Retry",
+                        onAction = viewModel::reload,
+                    )
                 }
             }
             state.items.isEmpty() -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Outlined.Notifications, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.outlineVariant)
-                        Text("No notifications yet", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 12.dp))
-                    }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    DriverStatePanel(
+                        icon = Icons.Outlined.Notifications,
+                        title = "No notifications yet",
+                        message = "Dispatch, payment, and route updates will appear here.",
+                    )
                 }
             }
             else -> {

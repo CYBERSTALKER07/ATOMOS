@@ -2,6 +2,7 @@
 
 import { type ReactNode } from 'react';
 import { motion } from 'framer-motion';
+import { LoadingGlyph } from './Skeleton';
 
 // ── Bento Grid Container ────────────────────────────────────────────────────
 
@@ -66,8 +67,6 @@ export function BentoCard({
   span = 1,
   rowSpan = false,
   className = '',
-  interactive: _interactive = true,
-  delay: _delay,
 }: BentoCardProps) {
   // Build size class — semantic size takes priority over legacy span/rowSpan
   let sizeClass: string;
@@ -119,12 +118,17 @@ export function BentoSkeleton({ size, span = 1, rowSpan = false, className = '' 
 
   return (
     <div
-      className={`bento-skeleton animate-pulse ${sizeClass} ${className}`}
+      className={`bento-skeleton ${sizeClass} ${className} relative overflow-hidden`}
       style={{
         background: 'var(--desk-canvas)',
         border: '1px solid var(--desk-border)',
         borderRadius: 'var(--radius-lg)',
       }}
-    />
+    >
+      <div className="absolute inset-0 skeleton-shimmer opacity-70" />
+      <div className="relative z-10 flex h-full w-full items-center justify-center">
+        <LoadingGlyph className="h-16 w-16 opacity-80 md:h-20 md:w-20" />
+      </div>
+    </div>
   );
 }

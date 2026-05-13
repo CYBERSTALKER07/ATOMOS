@@ -79,7 +79,7 @@ export default function OrdersPage() {
           </div>
         ) : orders.length === 0 ? (
           <EmptyState
-            imageUrl="/images/empty-orders.png"
+            variant={filter ? 'no-results' : 'no-data'}
             headline="No orders found"
             body={filter ? `No orders found with state "${filter}".` : "There are no orders recorded in this warehouse yet."}
           />

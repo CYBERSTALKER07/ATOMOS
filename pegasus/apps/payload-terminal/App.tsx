@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as SecureStore from 'expo-secure-store';
 import "./global.css";
+import PayloadStatePanel from './components/PayloadStatePanel';
 import { useT, isIOS } from './theme';
 import { extractProblemMessage, getPayloadTranslator, resolvePayloadLocale } from './localization';
 import { buildManifest, type LiveOrder, type ManifestItem } from './utils/manifest';
@@ -128,6 +129,7 @@ export default function App() {
 
   // Truck selector
   const [trucks, setTrucks] = useState<{ id: string; label: string; license_plate: string; vehicle_class: string }[]>([]);
+  const [isLoadingTrucks, setIsLoadingTrucks] = useState(false);
   const [activeTruck, setActiveTruck] = useState<string | null>(null);
 
   // Orders for the active truck
@@ -240,6 +242,7 @@ export default function App() {
 
   const fetchTrucks = useCallback(async () => {
     if (!token) return;
+    setIsLoadingTrucks(true);
     try {
       const res = await fetch(`${API_BASE}/v1/payloader/trucks`, {
         headers: { 'Authorization': `Bearer ${token}` },
@@ -252,7 +255,10 @@ export default function App() {
         license_plate: v.license_plate,
         vehicle_class: v.vehicle_class,
       })));
-    } catch {}
+    } catch {
+    } finally {
+      setIsLoadingTrucks(false);
+    }
   }, [token]);
 
   // Fetch supplier's vehicles once authenticated
@@ -305,6 +311,7 @@ export default function App() {
     setSupplierId(null);
     setActiveTruck(null);
     setTrucks([]);
+    setIsLoadingTrucks(false);
   };
 
   // ── Notifications: WebSocket + fetch ───────────────────────────────────
@@ -1062,9 +1069,12 @@ export default function App() {
   if (authLoading) {
     return (
       <View style={{ flex: 1, backgroundColor: T.colors.background, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: T.colors.tertiaryLabel, fontSize: 13, letterSpacing: 0.3 }}>
-          {tx('common.status.restoring_session')}
-        </Text>
+        <PayloadStatePanel
+          theme={T}
+          variant="sync"
+          title={tx('common.status.restoring_session')}
+          message={isIOS ? 'Rehydrating the saved operator session and pending queue.' : 'REHYDRATING THE SAVED OPERATOR SESSION AND PENDING QUEUE.'}
+        />
         {renderUiToast()}
       </View>
     );
@@ -1299,52 +1309,63 @@ export default function App() {
 
         {/* Truck selector */}
         <View className="flex-1 items-center justify-center p-12">
-          <Text style={{ fontSize: 13, fontWeight: '500', color: T.colors.tertiaryLabel, marginBottom: 32, letterSpacing: 0.3 }}>
-            {tx('payload.vehicle.select_target')}
-          </Text>
-          <View className="flex-row gap-4">
-            {trucks.length === 0 ? (
-              <Text style={{ color: T.colors.tertiaryLabel, fontFamily: T.typography.mono.fontFamily, fontSize: 12 }}>
-                {tx('payload.vehicle.none_available')}
+          {isLoadingTrucks ? (
+            <PayloadStatePanel
+              theme={T}
+              variant="truck"
+              title={isIOS ? 'Loading vehicles...' : 'LOADING VEHICLES...'}
+              message={isIOS ? 'Refreshing supplier fleet availability for this shift.' : 'REFRESHING SUPPLIER FLEET AVAILABILITY FOR THIS SHIFT.'}
+            />
+          ) : trucks.length === 0 ? (
+            <PayloadStatePanel
+              theme={T}
+              variant="truck"
+              title={tx('payload.vehicle.none_available')}
+              message={isIOS ? 'No payload vehicle is currently ready for assignment.' : 'NO PAYLOAD VEHICLE IS CURRENTLY READY FOR ASSIGNMENT.'}
+              tone="warning"
+            />
+          ) : (
+            <>
+              <Text style={{ fontSize: 13, fontWeight: '500', color: T.colors.tertiaryLabel, marginBottom: 32, letterSpacing: 0.3 }}>
+                {tx('payload.vehicle.select_target')}
               </Text>
-            ) : (
-              trucks.map(truck => (
-                <Pressable
-                  key={truck.id}
-                  onPress={() => handleTruckSelect(truck.id)}
-                  style={({ pressed }) => ({
-                    borderWidth: isIOS ? 0.33 : 1,
-                    borderColor: T.colors.separator,
-                    backgroundColor: T.colors.cardBackground,
-                    paddingHorizontal: 40,
-                    paddingVertical: 32,
-                    alignItems: 'center' as const,
-                    borderRadius: T.radius.card,
-                    ...T.shadow.card,
-                    opacity: pressed ? 0.82 : 1,
-                    transform: [{ scale: pressed ? 0.96 : 1 }],
-                  })}
-                >
-                  <Text style={{ fontSize: 22, fontWeight: '700', color: T.colors.label, letterSpacing: isIOS ? -0.4 : 1 }}>
-                    {truck.label}
-                  </Text>
-                  {truck.license_plate ? (
-                    <Text style={{ fontSize: 11, fontFamily: T.typography.mono.fontFamily, color: T.colors.tertiaryLabel, marginTop: 6, letterSpacing: 0.5 }}>
-                      {truck.license_plate}
+              <View className="flex-row gap-4">
+                {trucks.map(truck => (
+                  <Pressable
+                    key={truck.id}
+                    onPress={() => handleTruckSelect(truck.id)}
+                    style={({ pressed }) => ({
+                      borderWidth: isIOS ? 0.33 : 1,
+                      borderColor: T.colors.separator,
+                      backgroundColor: T.colors.cardBackground,
+                      paddingHorizontal: 40,
+                      paddingVertical: 32,
+                      alignItems: 'center' as const,
+                      borderRadius: T.radius.card,
+                      ...T.shadow.card,
+                      opacity: pressed ? 0.82 : 1,
+                      transform: [{ scale: pressed ? 0.96 : 1 }],
+                    })}
+                  >
+                    <Text style={{ fontSize: 22, fontWeight: '700', color: T.colors.label, letterSpacing: isIOS ? -0.4 : 1 }}>
+                      {truck.label}
                     </Text>
-                  ) : null}
-                  <Text style={{ fontSize: 10, color: T.colors.tertiaryLabel, marginTop: 4, letterSpacing: 0.3 }}>
-                    {truck.vehicle_class}
-                  </Text>
-                </Pressable>
-              ))
-            )}
-          </View>
-          <Text style={{ fontSize: 12, color: T.colors.tertiaryLabel, marginTop: 40, letterSpacing: 0.3 }}>
-            {trucks.length === 0
-              ? (isIOS ? 'Loading vehicles...' : 'LOADING VEHICLES...')
-              : (isIOS ? 'Select target vehicle' : 'SELECT TARGET VEHICLE')}
-          </Text>
+                    {truck.license_plate ? (
+                      <Text style={{ fontSize: 11, fontFamily: T.typography.mono.fontFamily, color: T.colors.tertiaryLabel, marginTop: 6, letterSpacing: 0.5 }}>
+                        {truck.license_plate}
+                      </Text>
+                    ) : null}
+                    <Text style={{ fontSize: 10, color: T.colors.tertiaryLabel, marginTop: 4, letterSpacing: 0.3 }}>
+                      {truck.vehicle_class}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={{ fontSize: 12, color: T.colors.tertiaryLabel, marginTop: 40, letterSpacing: 0.3 }}>
+                {isIOS ? 'Select target vehicle' : 'SELECT TARGET VEHICLE'}
+              </Text>
+            </>
+          )}
         </View>
         {renderUiToast()}
       </View>
@@ -1446,16 +1467,24 @@ export default function App() {
         {/* Order list */}
         <ScrollView>
           {isLoading ? (
-            <View className="p-6">
-              <Text style={{ color: T.colors.sidebarSecondary, fontFamily: T.typography.mono.fontFamily, fontSize: 12, textAlign: 'center', letterSpacing: 0.3 }}>
-                Fetching manifest...
-              </Text>
+            <View className="p-6 items-center">
+              <PayloadStatePanel
+                theme={T}
+                variant="manifest"
+                title={isIOS ? 'Fetching manifest...' : 'FETCHING MANIFEST...'}
+                message={isIOS ? 'Loading the active checklist for this truck.' : 'LOADING THE ACTIVE CHECKLIST FOR THIS TRUCK.'}
+                compact
+              />
             </View>
           ) : orders.length === 0 ? (
-            <View className="p-6">
-              <Text style={{ color: T.colors.sidebarSecondary, fontFamily: T.typography.mono.fontFamily, fontSize: 12, textAlign: 'center' }}>
-                No pending orders
-              </Text>
+            <View className="p-6 items-center">
+              <PayloadStatePanel
+                theme={T}
+                variant="manifest"
+                title={isIOS ? 'No pending orders' : 'NO PENDING ORDERS'}
+                message={isIOS ? 'This truck has no checklist items waiting to load.' : 'THIS TRUCK HAS NO CHECKLIST ITEMS WAITING TO LOAD.'}
+                compact
+              />
             </View>
           ) : (
             orders.map(order => {
@@ -1848,16 +1877,24 @@ export default function App() {
             {/* Recommendation list */}
             {isLoadingRecs ? (
               <View style={{ padding: 48, alignItems: 'center' }}>
-                <Text style={{ color: T.colors.tertiaryLabel, fontFamily: T.typography.mono.fontFamily, fontSize: 12, letterSpacing: 0.3 }}>
-                  {isIOS ? 'Analyzing fleet positions...' : 'ANALYZING FLEET POSITIONS...'}
-                </Text>
+                <PayloadStatePanel
+                  theme={T}
+                  variant="dispatch"
+                  title={isIOS ? 'Analyzing fleet positions...' : 'ANALYZING FLEET POSITIONS...'}
+                  message={isIOS ? 'Scoring nearby trucks for the best reassignment path.' : 'SCORING NEARBY TRUCKS FOR THE BEST REASSIGNMENT PATH.'}
+                  compact
+                />
               </View>
             ) : recommendations.length === 0 ? (
               <View style={{ padding: 48, alignItems: 'center' }}>
-                <MaterialIcons name="warning" size={32} color={T.colors.tertiaryLabel} />
-                <Text style={{ color: T.colors.tertiaryLabel, fontSize: 13, marginTop: 12, textAlign: 'center' }}>
-                  {isIOS ? 'No available trucks found' : 'NO AVAILABLE TRUCKS FOUND'}
-                </Text>
+                <PayloadStatePanel
+                  theme={T}
+                  variant="dispatch"
+                  title={isIOS ? 'No available trucks found' : 'NO AVAILABLE TRUCKS FOUND'}
+                  message={isIOS ? 'No nearby fleet target can accept this order right now.' : 'NO NEARBY FLEET TARGET CAN ACCEPT THIS ORDER RIGHT NOW.'}
+                  compact
+                  tone="warning"
+                />
               </View>
             ) : (
               <FlatList
@@ -1990,7 +2027,13 @@ export default function App() {
               keyExtractor={item => item.id}
               ListEmptyComponent={
                 <View style={{ padding: 40, alignItems: 'center' }}>
-                  <Text style={{ color: T.colors.sidebarSecondary, fontSize: 13 }}>No notifications</Text>
+                  <PayloadStatePanel
+                    theme={T}
+                    variant="notifications"
+                    title={isIOS ? 'No notifications' : 'NO NOTIFICATIONS'}
+                    message={isIOS ? 'Payload alerts and sync events will appear here.' : 'PAYLOAD ALERTS AND SYNC EVENTS WILL APPEAR HERE.'}
+                    compact
+                  />
                 </View>
               }
               renderItem={({ item }) => {

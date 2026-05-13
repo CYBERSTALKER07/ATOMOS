@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import EmptyState from '@/components/EmptyState';
+import FactoryPageState from '@/components/FactoryPageState';
 import { motion } from 'framer-motion';
 
 interface Insight {
@@ -26,15 +26,21 @@ interface Insight {
 export default function InsightsPage() {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
     try {
       const res = await apiFetch('/v1/warehouse/replenishment/insights');
       if (res.ok) {
         const data = await res.json();
         setInsights(data.insights || []);
+      } else {
+        setError(`Unable to load replenishment insights (${res.status}).`);
       }
-    } catch { /* handled */ } finally {
+    } catch {
+      setError('Unable to load replenishment insights right now.');
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -82,11 +88,25 @@ export default function InsightsPage() {
         </div>
 
         {loading ? (
-          <div className="space-y-1">
-            {Array.from({ length: 6 }).map((_, i) => <div key={i} className="md-skeleton md-skeleton-row" />)}
-          </div>
+          <FactoryPageState
+            kind="loading"
+            skeleton={
+              <div className="space-y-1">
+                {Array.from({ length: 6 }).map((_, i) => <div key={i} className="md-skeleton md-skeleton-row" />)}
+              </div>
+            }
+          />
+        ) : error && insights.length === 0 ? (
+          <FactoryPageState
+            kind="error"
+            headline="Unable to load replenishment insights"
+            body={error}
+            actionLabel="Retry"
+            onAction={() => void load()}
+          />
         ) : insights.length === 0 ? (
-          <EmptyState
+          <FactoryPageState
+            kind="empty"
             imageUrl="/images/empty-predictions.png"
             headline="No replenishment insights"
             body="No replenishment insights at this time. Insights are generated based on stock velocity."

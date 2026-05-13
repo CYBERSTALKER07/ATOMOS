@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
-import EmptyState from '@/components/EmptyState';
+import FactoryPageState from '@/components/FactoryPageState';
 import { motion } from 'framer-motion';
 import PageTransition from '@/components/PageTransition';
 
@@ -107,14 +107,13 @@ export default function FactoryDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-6 p-6 md:p-8">
-        <div className="md-skeleton md-skeleton-title" />
-        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <div key={index} className="md-skeleton md-skeleton-card" />
-          ))}
-        </div>
-      </div>
+      <PageTransition className="p-6 md:p-8">
+        <FactoryPageState
+          kind="loading"
+          title="Factory Dashboard"
+          subtitle="Loading transfer, bay, fleet, and staffing metrics for this node."
+        />
+      </PageTransition>
     );
   }
 
@@ -138,11 +137,11 @@ export default function FactoryDashboard() {
 
     return (
       <PageTransition className="space-y-6 p-6 md:p-8">
-        <EmptyState
-          variant={loadIssue}
+        <FactoryPageState
+          kind={loadIssue}
           headline={content.headline}
           body={content.body}
-          action="Retry"
+          actionLabel="Retry"
           onAction={() => {
             setLoading(true);
             setLoadIssue(null);
@@ -156,11 +155,11 @@ export default function FactoryDashboard() {
   if (!stats) {
     return (
       <PageTransition className="space-y-6 p-6 md:p-8">
-        <EmptyState
-          variant="no-data"
+        <FactoryPageState
+          kind="empty"
           headline="No factory metrics yet"
           body="Once transfer and loading activity starts, operational metrics will appear here."
-          action="Refresh"
+          actionLabel="Refresh"
           onAction={() => {
             setLoading(true);
             setReloadToken(v => v + 1);

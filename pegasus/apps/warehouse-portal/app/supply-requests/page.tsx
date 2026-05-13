@@ -176,7 +176,7 @@ export default function SupplyRequestsPage() {
           </div>
         ) : filtered.length === 0 ? (
           <EmptyState
-            imageUrl="/images/empty-orders.png"
+            variant={filter !== 'ALL' ? 'no-results' : 'no-data'}
             headline="No supply requests found"
             body={filter !== 'ALL' ? `No requests found with state "${filter}".` : "You haven't made any supply requests yet."}
           />

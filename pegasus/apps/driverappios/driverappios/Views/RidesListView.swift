@@ -262,35 +262,25 @@ struct RidesListView: View {
     // MARK: - Loading
 
     private var loadingView: some View {
-        VStack(spacing: 16) {
-            ProgressView()
-                .tint(LabTheme.fg)
-                .controlSize(.large)
-            Text("Loading routes...")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(LabTheme.fgSecondary)
-        }
+        DriverLoadingStateCard(
+            title: "Loading routes",
+            message: "Checking manifest state, sequence, and delivery assignments."
+        )
         .frame(maxWidth: .infinity)
+        .padding(.horizontal, LabTheme.s16)
         .padding(.vertical, 60)
     }
 
     // MARK: - Empty
 
     private var emptyView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "road.lanes")
-                .font(.system(size: 40))
-                .foregroundStyle(LabTheme.fgTertiary)
-
-            Text("No upcoming rides")
-                .font(.headline)
-                .foregroundStyle(LabTheme.fgSecondary)
-
-            Text("Pull to refresh or check back later")
-                .font(.subheadline)
-                .foregroundStyle(LabTheme.fgTertiary)
-        }
+        DriverStateCard(
+            icon: "road.lanes",
+            title: "No upcoming rides",
+            message: "Pull to refresh or check back later."
+        )
         .frame(maxWidth: .infinity)
+        .padding(.horizontal, LabTheme.s16)
         .padding(.vertical, 60)
     }
 }

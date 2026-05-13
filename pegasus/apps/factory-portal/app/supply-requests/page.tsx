@@ -5,8 +5,8 @@ import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth'
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import { PageSkeleton } from '@/components/Skeleton';
-import EmptyState from '@/components/EmptyState';
+import FactoryPageState from '@/components/FactoryPageState';
+import FactoryRuntimeBanner from '@/components/FactoryRuntimeBanner';
 import { motion } from 'framer-motion';
 
 interface SupplyRequest {
@@ -199,6 +199,14 @@ export default function SupplyRequestsPage() {
         ? `Refreshing live queue — last sync ${formatSyncTime(lastSyncedAt)}`
         : `Live sync active — last sync ${formatSyncTime(lastSyncedAt)}`;
 
+  const runtimeTone = isOffline
+    ? 'offline'
+    : error && requests.length > 0
+      ? 'warning'
+      : refreshing
+        ? 'refreshing'
+        : 'live';
+
   const handleTransition = async (requestId: string, action: string) => {
     setTransitioning(requestId);
     try {
@@ -225,9 +233,12 @@ export default function SupplyRequestsPage() {
   if (loading) {
     return (
       <PageTransition>
-        <div className="p-6 space-y-4">
-          <h1 className="text-xl font-semibold">Supply Requests</h1>
-          <PageSkeleton />
+        <div className="p-6">
+          <FactoryPageState
+            kind="loading"
+            title="Supply Requests"
+            subtitle="Loading the current warehouse demand queue for this factory."
+          />
         </div>
       </PageTransition>
     );
@@ -236,26 +247,20 @@ export default function SupplyRequestsPage() {
   if (error && requests.length === 0) {
     return (
       <PageTransition>
-        <div className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold">Incoming Supply Requests</h1>
-            <button
-              onClick={() => void fetchRequests()}
-              className="button--secondary inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium"
-            >
-              <Icon name="refresh" size={16} /> Retry
-            </button>
-          </div>
-          <div
-            className="rounded-2xl border p-6 text-sm"
-            style={{
-              borderColor: 'var(--color-md-outline-variant)',
-              background: 'var(--color-md-surface-container-lowest)',
-              color: 'var(--color-md-on-surface-variant)',
-            }}
-          >
-            {error}
-          </div>
+        <div className="p-6">
+          <FactoryPageState
+            kind={isOffline ? 'offline' : 'error'}
+            title="Incoming Supply Requests"
+            subtitle="Factory operators review and advance warehouse demand from this queue."
+            headline={isOffline ? 'Supply queue unavailable offline' : 'Unable to load supply requests'}
+            body={
+              isOffline
+                ? 'Reconnect to fetch the first live sync for this factory queue.'
+                : error
+            }
+            actionLabel="Retry"
+            onAction={() => void fetchRequests()}
+          />
         </div>
       </PageTransition>
     );
@@ -281,16 +286,7 @@ export default function SupplyRequestsPage() {
           </motion.button>
         </div>
 
-        <div
-          className="rounded-2xl border px-4 py-3 text-sm"
-          style={{
-            borderColor: isOffline || error ? 'var(--color-md-warning)' : 'var(--color-md-outline-variant)',
-            background: isOffline || error ? 'var(--color-md-surface-container-high)' : 'var(--color-md-surface-container-low)',
-            color: 'var(--color-md-on-surface-variant)',
-          }}
-        >
-          {runtimeMessage}
-        </div>
+        <FactoryRuntimeBanner tone={runtimeTone} message={runtimeMessage} />
 
         <div className="flex gap-2 flex-wrap">
           {(['ALL', 'SUBMITTED', 'ACKNOWLEDGED', 'IN_PRODUCTION', 'READY', 'FULFILLED', 'CANCELLED'] as FilterState[]).map((value) => (
@@ -310,10 +306,17 @@ export default function SupplyRequestsPage() {
         </div>
 
         {filtered.length === 0 ? (
-          <EmptyState
+          <FactoryPageState
+            kind={filter === 'ALL' ? 'empty' : 'no-results'}
             imageUrl="/images/empty-orders.png"
-            headline="No supply requests found"
-            body="There are no supply requests matching the selected filter."
+            headline={filter === 'ALL' ? 'No supply requests found' : 'No requests match this filter'}
+            body={
+              filter === 'ALL'
+                ? 'Warehouse demand will appear here as soon as requests reach this factory queue.'
+                : `There are no ${filter.replace(/_/g, ' ').toLowerCase()} requests in the current view.`
+            }
+            actionLabel={filter === 'ALL' ? undefined : 'Clear Filter'}
+            onAction={filter === 'ALL' ? undefined : () => setFilter('ALL')}
           />
         ) : (
           <motion.div 

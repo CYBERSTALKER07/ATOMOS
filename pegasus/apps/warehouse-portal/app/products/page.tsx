@@ -69,7 +69,7 @@ export default function ProductsPage() {
           </div>
         ) : products.length === 0 ? (
           <EmptyState
-            imageUrl="/images/empty-products.png"
+            variant={search ? 'no-results' : 'no-data'}
             headline="No products found"
             body={search ? `No products matching "${search}" were found in the catalog.` : "The product catalog is currently empty."}
           />

@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/auth';
 import { useToast } from '@/components/Toast';
 import Icon from '@/components/Icon';
+import PageTransition from '@/components/PageTransition';
+import FactoryPageState from '@/components/FactoryPageState';
 
 interface TransferItem {
   sku_id: string;
@@ -54,15 +56,24 @@ export default function TransferDetailPage() {
   const [transfer, setTransfer] = useState<TransferDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [progressing, setProgressing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
 
   const load = useCallback(async () => {
+    setError(null);
+    setNotFound(false);
     try {
       const res = await apiFetch(`/v1/factory/transfers/${id}`);
       if (res.ok) {
         setTransfer(await res.json());
+      } else if (res.status === 404) {
+        setTransfer(null);
+        setNotFound(true);
+      } else {
+        setError(`Unable to load transfer detail (${res.status}).`);
       }
     } catch {
-      // handled by empty state
+      setError('Unable to load transfer detail right now.');
     } finally {
       setLoading(false);
     }
@@ -97,21 +108,49 @@ export default function TransferDetailPage() {
 
   if (loading) {
     return (
-      <div className="space-y-4 p-6 md:p-8">
-        <div className="md-skeleton" style={{ height: 24, width: '30%' }} />
-        <div className="md-skeleton md-skeleton-card" />
-      </div>
+      <PageTransition className="p-6 md:p-8">
+        <FactoryPageState
+          kind="loading"
+          title="Transfer Detail"
+          subtitle="Loading the current manifest and item breakdown for this transfer."
+          skeleton={
+            <div className="space-y-4">
+              <div className="md-skeleton" style={{ height: 24, width: '30%' }} />
+              <div className="md-skeleton md-skeleton-card" />
+            </div>
+          }
+        />
+      </PageTransition>
     );
   }
 
-  if (!transfer) {
+  if (error) {
     return (
-      <div className="p-6 md:p-8">
-        <p className="text-[var(--muted)]">Transfer not found.</p>
-        <button onClick={() => router.back()} className="button--secondary mt-4 rounded-lg px-3 py-1.5 text-sm">
-          <Icon name="arrowBack" size={16} /> Back
-        </button>
-      </div>
+      <PageTransition className="p-6 md:p-8">
+        <FactoryPageState
+          kind="error"
+          title="Transfer Detail"
+          headline="Unable to load transfer detail"
+          body={error}
+          actionLabel="Back"
+          onAction={() => router.back()}
+        />
+      </PageTransition>
+    );
+  }
+
+  if (notFound || !transfer) {
+    return (
+      <PageTransition className="p-6 md:p-8">
+        <FactoryPageState
+          kind="no-results"
+          title="Transfer Detail"
+          headline="Transfer not found"
+          body="The selected transfer is no longer available or could not be located for this factory."
+          actionLabel="Back"
+          onAction={() => router.back()}
+        />
+      </PageTransition>
     );
   }
 

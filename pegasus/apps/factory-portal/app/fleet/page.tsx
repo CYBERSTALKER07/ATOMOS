@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
-import EmptyState from '@/components/EmptyState';
+import FactoryPageState from '@/components/FactoryPageState';
 import { motion } from 'framer-motion';
 
 interface Vehicle {
@@ -19,15 +19,21 @@ interface Vehicle {
 export default function FleetPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    setError(null);
     try {
       const res = await apiFetch('/v1/factory/fleet');
       if (res.ok) {
         const data = await res.json();
         setVehicles(data.vehicles || []);
+      } else {
+        setError(`Unable to load fleet (${res.status}).`);
       }
-    } catch { /* handled */ } finally {
+    } catch {
+      setError('Unable to load fleet right now.');
+    } finally {
       setLoading(false);
     }
   }, []);
@@ -69,11 +75,25 @@ export default function FleetPage() {
         </div>
 
         {loading ? (
-          <div className="space-y-1">
-            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="md-skeleton md-skeleton-row" />)}
-          </div>
+          <FactoryPageState
+            kind="loading"
+            skeleton={
+              <div className="space-y-1">
+                {Array.from({ length: 4 }).map((_, i) => <div key={i} className="md-skeleton md-skeleton-row" />)}
+              </div>
+            }
+          />
+        ) : error && vehicles.length === 0 ? (
+          <FactoryPageState
+            kind="error"
+            headline="Unable to load fleet"
+            body={error}
+            actionLabel="Retry"
+            onAction={() => void load()}
+          />
         ) : vehicles.length === 0 ? (
-          <EmptyState
+          <FactoryPageState
+            kind="empty"
             imageUrl="/images/empty-suppliers.png"
             headline="No vehicles registered"
             body="There are no vehicles registered in the factory fleet yet."

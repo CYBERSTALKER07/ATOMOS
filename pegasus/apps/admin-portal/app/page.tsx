@@ -788,7 +788,7 @@ export default function AdminDashboard() {
       {filteredOrders.length === 0 ? (
         <div className="bento-card py-16">
           <EmptyState 
-            imageUrl="/images/empty-orders.png"
+            variant={!isApiOnline ? "offline" : orders.length === 0 ? "no-orders" : "no-results"}
             headline={orders.length === 0 ? (isApiOnline ? "No active orders" : "Awaiting connection...") : "No matching orders"}
             body="Adjust your filters or wait for new incoming requests."
           />

@@ -2,7 +2,6 @@ package com.pegasus.factory.ui.screens.supply
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -34,7 +33,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -48,10 +46,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.pegasus.factory.data.remote.FactoryRealtimeStatus
 import com.pegasus.factory.data.model.SupplyRequest
 import com.pegasus.factory.data.model.SupplyRequestTransitionRequest
 import com.pegasus.factory.data.remote.FactoryApi
 import com.pegasus.factory.data.remote.FactoryRealtimeEventType
+import com.pegasus.factory.ui.components.FactoryLoadingState
+import com.pegasus.factory.ui.components.FactoryRuntimeBanner
+import com.pegasus.factory.ui.components.FactoryRuntimeTone
+import com.pegasus.factory.ui.components.FactoryStateKind
+import com.pegasus.factory.ui.components.FactoryStatePane
 import com.pegasus.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasus.factory.ui.theme.PegasusSpacing
 import java.text.DateFormat
@@ -100,6 +104,7 @@ fun SupplyRequestsScreen(
     var refreshing by remember { mutableStateOf(false) }
     var staleMessage by remember { mutableStateOf<String?>(null) }
     var lastSyncedAt by remember { mutableStateOf<Long?>(null) }
+    var realtimeStatus by remember { mutableStateOf(FactoryRealtimeStatus.IDLE) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -188,6 +193,9 @@ fun SupplyRequestsScreen(
 
     FactoryRealtimeReloadEffect(
         eventTypes = setOf(FactoryRealtimeEventType.SupplyRequestUpdate),
+        onStatusChange = { status ->
+            realtimeStatus = status
+        },
     ) {
         if (transitioningId == null) {
             load(background = requests.isNotEmpty())
@@ -196,10 +204,21 @@ fun SupplyRequestsScreen(
 
     val filteredRequests = if (filter == "ALL") requests else requests.filter { it.state == filter }
     val runtimeStatus = when {
-        refreshing -> "Refreshing live queue — last sync ${formatSyncTime(lastSyncedAt)}"
         staleMessage != null -> staleMessage!!
+        realtimeStatus == FactoryRealtimeStatus.OFFLINE -> "Offline — showing last sync ${formatSyncTime(lastSyncedAt)}"
+        realtimeStatus == FactoryRealtimeStatus.RECONNECTING -> "Reconnecting live queue — last sync ${formatSyncTime(lastSyncedAt)}"
+        realtimeStatus == FactoryRealtimeStatus.CONNECTING -> "Connecting to the live supply queue…"
+        refreshing -> "Refreshing live queue — last sync ${formatSyncTime(lastSyncedAt)}"
         lastSyncedAt != null -> "Live sync active — last sync ${formatSyncTime(lastSyncedAt)}"
         else -> "Waiting for first sync"
+    }
+    val runtimeTone = when {
+        staleMessage != null && realtimeStatus == FactoryRealtimeStatus.OFFLINE -> FactoryRuntimeTone.Offline
+        staleMessage != null -> FactoryRuntimeTone.Warning
+        realtimeStatus == FactoryRealtimeStatus.OFFLINE -> FactoryRuntimeTone.Offline
+        realtimeStatus == FactoryRealtimeStatus.RECONNECTING || realtimeStatus == FactoryRealtimeStatus.CONNECTING -> FactoryRuntimeTone.Refreshing
+        refreshing -> FactoryRuntimeTone.Refreshing
+        else -> FactoryRuntimeTone.Live
     }
 
     Scaffold(
@@ -217,22 +236,37 @@ fun SupplyRequestsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.lg))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
-            filteredRequests.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Text(
-                    text = if (filter == "ALL") "No supply requests in queue." else "No $filter requests right now.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            loading -> FactoryLoadingState(
+                title = "Loading supply requests",
+                body = "Fetching the current warehouse demand queue for this factory.",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
+            error != null -> FactoryStatePane(
+                kind = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) FactoryStateKind.Offline else FactoryStateKind.Error,
+                headline = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) "Supply queue unavailable offline" else "Unable to load supply requests",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
+            filteredRequests.isEmpty() -> FactoryStatePane(
+                kind = if (filter == "ALL") FactoryStateKind.Empty else FactoryStateKind.NoResults,
+                headline = if (filter == "ALL") "No supply requests in queue" else "No ${filter.replace('_', ' ')} requests right now",
+                body = if (filter == "ALL") {
+                    "Warehouse demand will appear here as soon as requests reach this factory queue."
+                } else {
+                    "Adjust the active filter or wait for the next queue refresh."
+                },
+                actionLabel = if (filter == "ALL") null else "Clear Filter",
+                onAction = if (filter == "ALL") null else ({ filter = "ALL" }),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
             else -> LazyColumn(
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
@@ -249,7 +283,7 @@ fun SupplyRequestsScreen(
                         total = requests.size,
                         visible = filteredRequests.size,
                         runtimeStatus = runtimeStatus,
-                        stale = staleMessage != null,
+                        runtimeTone = runtimeTone,
                     )
                 }
                 items(filteredRequests, key = { it.id }) { request ->
@@ -290,7 +324,7 @@ private fun SupplySummaryCard(
     total: Int,
     visible: Int,
     runtimeStatus: String,
-    stale: Boolean,
+    runtimeTone: FactoryRuntimeTone,
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -311,17 +345,10 @@ private fun SupplySummaryCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                color = if (stale) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainer,
-            ) {
-                Text(
-                    text = runtimeStatus,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (stale) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = PegasusSpacing.md, vertical = PegasusSpacing.sm),
-                )
-            }
+            FactoryRuntimeBanner(
+                tone = runtimeTone,
+                message = runtimeStatus,
+            )
         }
     }
 }

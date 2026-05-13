@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -71,6 +72,13 @@ fun NotificationInboxScreen(
                 }
             },
             actions = {
+                IconButton(onClick = { viewModel.refresh() }) {
+                    if (state.isRefreshing) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Outlined.SyncAlt, contentDescription = "Refresh notifications")
+                    }
+                }
                 if (state.unreadCount > 0) {
                     TextButton(onClick = { viewModel.markAllRead() }) {
                         Icon(
@@ -91,8 +99,52 @@ fun NotificationInboxScreen(
             ),
         )
 
+        if (state.loadIssue != null || state.isRefreshing) {
+            val loadIssue = state.loadIssue
+            val issueMessage = when {
+                loadIssue != null -> state.error ?: state.syncMessage.orEmpty()
+                else -> "Syncing notifications..."
+            }
+            val containerColor = when (loadIssue) {
+                NotificationLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                NotificationLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                NotificationLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            }
+            val contentColor = when (loadIssue) {
+                NotificationLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
+                NotificationLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
+                NotificationLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
+                null -> MaterialTheme.colorScheme.onPrimaryContainer
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(containerColor)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = issueMessage,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = contentColor,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (loadIssue != null) {
+                    TextButton(onClick = { viewModel.refresh() }) {
+                        Text("Retry", color = contentColor)
+                    }
+                }
+            }
+        }
+
         when {
-            state.loading -> {
+            state.loading && state.items.isEmpty() -> {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
@@ -107,7 +159,12 @@ fun NotificationInboxScreen(
                             tint = MaterialTheme.colorScheme.outlineVariant,
                         )
                         Text(
-                            "No notifications yet",
+                            when (state.loadIssue) {
+                                NotificationLoadIssue.RESTRICTED -> "Notifications access restricted"
+                                NotificationLoadIssue.OFFLINE -> "Notifications are offline"
+                                NotificationLoadIssue.ERROR -> "Notifications unavailable"
+                                null -> "No notifications yet"
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 12.dp),

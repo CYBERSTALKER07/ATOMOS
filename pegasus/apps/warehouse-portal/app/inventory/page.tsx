@@ -90,7 +90,7 @@ export default function InventoryPage() {
           </div>
         ) : items.length === 0 ? (
           <EmptyState
-            imageUrl="/images/empty-products.png"
+            variant={search || lowOnly ? 'no-results' : 'no-data'}
             headline="No inventory items found"
             body={search || lowOnly ? "Try adjusting your search filters to find what you're looking for." : "There are no products in your inventory yet."}
           />

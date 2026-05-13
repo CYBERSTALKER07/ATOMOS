@@ -35,6 +35,7 @@ data class DriverNotificationInboxState(
     val items: List<DriverNotificationItem> = emptyList(),
     val unreadCount: Int = 0,
     val loading: Boolean = true,
+    val error: String? = null,
 )
 
 @HiltViewModel
@@ -49,13 +50,30 @@ class DriverNotificationInboxViewModel @Inject constructor(
         loadNotifications()
     }
 
+    fun reload() {
+        loadNotifications()
+    }
+
     private fun loadNotifications() {
         viewModelScope.launch {
+            _uiState.update { it.copy(loading = true, error = null) }
             try {
                 val resp = api.getNotifications(limit = 50)
-                _uiState.update { it.copy(items = resp.notifications, unreadCount = resp.unreadCount, loading = false) }
-            } catch (_: Exception) {
-                _uiState.update { it.copy(loading = false) }
+                _uiState.update {
+                    it.copy(
+                        items = resp.notifications,
+                        unreadCount = resp.unreadCount,
+                        loading = false,
+                        error = null,
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        loading = false,
+                        error = e.message ?: "Unable to load notifications. Check your connection and try again.",
+                    )
+                }
             }
         }
     }

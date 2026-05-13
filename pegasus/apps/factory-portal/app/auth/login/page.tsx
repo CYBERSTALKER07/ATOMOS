@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { isTauri, storeToken } from '@/lib/bridge';
 import { exchangeCustomToken } from '@/lib/firebase';
+import FactoryRuntimeBanner from '@/components/FactoryRuntimeBanner';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -66,14 +67,7 @@ export default function FactoryLoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div
-              className="px-4 py-3 rounded-lg text-sm"
-              style={{ background: 'var(--danger)', color: 'var(--danger-foreground)' }}
-            >
-              {error}
-            </div>
-          )}
+          {error && <FactoryRuntimeBanner tone="error" message={error} />}
 
           <div>
             <label className="block text-sm font-medium mb-1.5">Phone</label>

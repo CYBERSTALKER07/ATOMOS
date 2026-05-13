@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { apiFetch, parseFactoryLiveEvent, subscribeFactoryWS } from '@/lib/auth';
 import Icon from '@/components/Icon';
-import EmptyState from '@/components/EmptyState';
+import FactoryPageState from '@/components/FactoryPageState';
 import PageTransition from '@/components/PageTransition';
 import { motion } from 'framer-motion';
 
@@ -46,19 +46,23 @@ function priorityTone(priority: string): { background: string; color: string } {
 export default function TransfersPage() {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [stateFilter, setStateFilter] = useState('ALL');
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const query = stateFilter !== 'ALL' ? `?state=${stateFilter}` : '';
       const res = await apiFetch(`/v1/factory/transfers${query}`);
       if (res.ok) {
         const data = await res.json();
         setTransfers(data.transfers || []);
+      } else {
+        setError(`Unable to load transfers (${res.status}).`);
       }
     } catch {
-      // empty state handled below
+      setError('Unable to load transfers right now.');
     } finally {
       setLoading(false);
     }
@@ -161,14 +165,34 @@ export default function TransfersPage() {
       </section>
 
       {loading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, index) => <div key={index} className="md-skeleton md-skeleton-row" />)}
-        </div>
+        <FactoryPageState
+          kind="loading"
+          skeleton={
+            <div className="space-y-2">
+              {Array.from({ length: 6 }).map((_, index) => <div key={index} className="md-skeleton md-skeleton-row" />)}
+            </div>
+          }
+        />
+      ) : error && transfers.length === 0 ? (
+        <FactoryPageState
+          kind="error"
+          headline="Unable to load transfers"
+          body={error}
+          actionLabel="Retry"
+          onAction={() => void load()}
+        />
       ) : transfers.length === 0 ? (
-        <EmptyState
+        <FactoryPageState
+          kind={stateFilter === 'ALL' ? 'empty' : 'no-results'}
           imageUrl="/images/empty-production-line.png"
-          headline="No transfers found"
-          body="Adjust the state filter or wait for the next warehouse request cycle."
+          headline={stateFilter === 'ALL' ? 'No transfers found' : 'No transfers match this filter'}
+          body={
+            stateFilter === 'ALL'
+              ? 'Wait for the next warehouse request cycle to create new transfer work.'
+              : `There are no ${stateFilter.toLowerCase()} transfers in the current pipeline view.`
+          }
+          actionLabel={stateFilter === 'ALL' ? undefined : 'Clear Filter'}
+          onAction={stateFilter === 'ALL' ? undefined : () => setStateFilter('ALL')}
         />
       ) : (
         <section className="overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--background)]">

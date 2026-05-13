@@ -44,18 +44,36 @@ final class DriverNotificationInboxViewModel {
     var items: [DriverNotification] = []
     var unreadCount: Int = 0
     var isLoading = true
+    var errorMessage: String?
 
     private let api = APIClient.shared
 
     func load() async {
+        isLoading = true
+        errorMessage = nil
         do {
             let resp: DriverNotificationsResponse = try await api.get("/v1/user/notifications?limit=50")
             items = resp.notifications
             unreadCount = resp.unreadCount
         } catch {
-            // silent
+            errorMessage = Self.message(for: error)
         }
         isLoading = false
+    }
+
+    private static func message(for error: Error) -> String {
+        switch error {
+        case let APIError.problemDetail(problem):
+            return problem.detail ?? problem.title ?? "Unable to load notifications."
+        case APIError.networkError:
+            return "You appear to be offline. Check your connection and try again."
+        case APIError.forbidden:
+            return "You do not have permission to view notifications right now."
+        case APIError.unauthorized:
+            return "Your session expired. Sign in again and retry."
+        default:
+            return error.localizedDescription
+        }
     }
 
     func markRead(_ id: String) async {
@@ -98,14 +116,31 @@ struct DriverNotificationInboxView: View {
         NavigationStack {
             Group {
                 if vm.isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if vm.items.isEmpty {
-                    ContentUnavailableView(
-                        "No Notifications",
-                        systemImage: "bell.slash",
-                        description: Text("Dispatch updates will appear here")
+                    DriverLoadingStateCard(
+                        title: "Loading notifications",
+                        message: "Checking route, payment, and dispatch updates."
                     )
+                    .padding(.horizontal, LabTheme.s16)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if let error = vm.errorMessage, vm.items.isEmpty {
+                    DriverStateCard(
+                        icon: "wifi.exclamationmark",
+                        title: "Couldn't load notifications",
+                        message: error,
+                        actionTitle: "Retry"
+                    ) {
+                        Task { await vm.load() }
+                    }
+                    .padding(.horizontal, LabTheme.s16)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if vm.items.isEmpty {
+                    DriverStateCard(
+                        icon: "bell.slash",
+                        title: "No notifications yet",
+                        message: "Dispatch updates will appear here."
+                    )
+                    .padding(.horizontal, LabTheme.s16)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List(vm.items) { notif in
                         DriverNotifRow(notification: notif)
