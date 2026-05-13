@@ -182,6 +182,7 @@
         "POST /v1/delivery/verify-handshake",
         "POST /v1/delivery/update-order-during-delivery",
         "POST /v1/order/confirm-offload",
+        "CompleteOrder settlement-lock gate on DeliverySessions",
         "internal PaymentSession settle -> DeliverySessions FINAL_SETTLEMENT update",
         "internal cash collection completion -> DeliverySessions FINAL_SETTLEMENT update",
         "Outbox events DELIVERY_SESSION_UPDATED and SETTLEMENT_REQUIRED"
@@ -197,6 +198,7 @@
         "DeliverySessions and DeliverySessionAdjustments are additive schema surfaces keyed by SessionId with order/driver/retailer/supplier indexes for realtime and audit queries.",
         "VerifyHandshake supports signed JWT tokens with fallback to the existing delivery token path for compatibility while enforcing geofence and assignment checks.",
         "ConfirmOffload now transitions session state to SETTLEMENT_AWAIT and emits SETTLEMENT_REQUIRED; orderroutes websocket fanout emits additive SETTLEMENT_REQUIRED plus legacy PAYMENT_REQUIRED for deployed clients.",
+        "CompleteOrder now blocks completion while delivery-session settlement is still pending (uncleared PaymentClearedAt on active session states).",
         "Payment session settlement and cash collection completion now advance matching delivery sessions to FINAL_SETTLEMENT and record PaymentClearedAt to release delivery lock semantics."
       ]
     },
