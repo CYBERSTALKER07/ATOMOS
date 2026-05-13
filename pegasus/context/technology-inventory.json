@@ -118,10 +118,11 @@
       "notes": [
         "Schema and migrations now provision InventoryImportSessions and interleaved InventoryImportRows for supplier-scoped and warehouse-scoped staged inventory imports.",
         "Phase-2 compatibility substrate adds SupplierImportSessions, interleaved SupplierImportStagedRows, and SupplierImportMapping keyed by supplier_id/session_id for strict supplier data isolation.",
+        "Phase-3 signed-upload bridge now issues deterministic GCS PUT tickets on /v1/supplier/inventory/imports/ with object path imports/{supplier_id}/{session_id}/raw.xlsx, writes INITIALIZED before ingress, enforces a 50MB upload-size ceiling, and exposes POST /v1/supplier/inventory/imports/{id}/uploaded to transition UPLOADED + emit outbox INVENTORY_IMPORT_UPLOADED on inventory.import.events.",
         "Import handlers now persist session lifecycle and staged-row workflows (create, list, detail, rows, mapping, approve, apply, status) with storage-backed behavior.",
         "Supplier import sandbox stubs at /v1/supplier/inventory/imports initialize signed upload tickets without local file writes and enforce supplier scope from JWT claims only.",
         "Staged import apply audit writes now use BULK_IMPORT_STAGED in InventoryAuditLog.",
-        "Supplier portal now ships a bulk-import wizard shell routed at /supplier/inventory/import and linked from the supplier inventory page."
+        "Supplier portal now ships a bulk-import ingress shell routed at /supplier/inventory/import and linked from the supplier inventory page, including drag-drop direct upload, uploaded-signal bridge, and processing scanner/skeleton states."
       ]
     },
     {

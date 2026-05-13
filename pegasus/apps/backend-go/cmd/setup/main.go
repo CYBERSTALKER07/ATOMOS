@@ -594,6 +594,7 @@ func main() {
 	setupKafkaTopic(cfg.KafkaBrokerAddress, "orders.completed")
 	setupKafkaTopic(cfg.KafkaBrokerAddress, "orders.dispatched")
 	setupKafkaTopic(cfg.KafkaBrokerAddress, internalKafka.TopicTelemetryRaw)
+	setupKafkaTopic(cfg.KafkaBrokerAddress, internalKafka.TopicInventoryImportEvents)
 
 	log.Println("Setup and Seed Script execution complete. Environment is READY.")
 }

@@ -1627,7 +1627,10 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 				created_at     TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 				updated_at     TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
 				CONSTRAINT CHK_SupplierImportSessionStatus CHECK (
-					status IN ('uploaded', 'discovering', 'mapping_required', 'approved', 'applying', 'applied', 'failed')
+					status IN (
+						'initialized', 'uploaded', 'discovering', 'mapping_required', 'approved', 'applying', 'applied', 'failed',
+						'INITIALIZED', 'UPLOADED', 'DISCOVERING', 'MAPPING_REQUIRED', 'APPROVED', 'APPLYING', 'APPLIED', 'FAILED'
+					)
 				)
 			) PRIMARY KEY (supplier_id, session_id)`,
 			"CREATE INDEX Idx_SupplierImportSessions_BySupplierUpdated ON SupplierImportSessions(supplier_id, updated_at DESC)",

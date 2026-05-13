@@ -202,10 +202,11 @@
       "notes": [
         "Spanner schema now includes InventoryImportSessions and interleaved InventoryImportRows with supplier and warehouse filter indexes for staging and review flows.",
         "Phase-2 compatibility substrate also includes SupplierImportSessions, interleaved SupplierImportStagedRows, and SupplierImportMapping keyed by supplier_id/session_id for strict supplier data isolation.",
+        "Phase-3 signed-upload bridge now issues deterministic GCS PUT tickets (imports/{supplier_id}/{session_id}/raw.xlsx), writes SupplierImportSessions in INITIALIZED status pre-ingress, enforces a 50MB upload-size gate, and exposes POST /v1/supplier/inventory/imports/{id}/uploaded to transition UPLOADED + emit outbox INVENTORY_IMPORT_UPLOADED on inventory.import.events.",
         "Session mapping, approve, and apply handlers now persist staged-row lifecycle state and counters instead of returning not-implemented stubs.",
         "Suppliercoreroutes import sandbox stubs expose /v1/supplier/inventory/imports for session init/status/mapping/approve and enforce supplier_id from JWT scope only.",
         "Staged import inventory audit writes now use BULK_IMPORT_STAGED reason in InventoryAuditLog.",
-        "Admin portal now exposes a supplier bulk-import wizard shell at /supplier/inventory/import with upload-ticket, session, rows, mapping, approve, apply, and status actions."
+        "Admin portal now exposes a supplier bulk-import ingress shell at /supplier/inventory/import with upload-ticket, session, rows, mapping, approve, apply, status, direct signed-URL upload, uploaded bridge signal, and processing scanner/skeleton states."
       ]
     },
     {

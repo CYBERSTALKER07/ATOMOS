@@ -12,7 +12,10 @@ import (
 	"time"
 
 	"backend-go/auth"
+	kafkaEvents "backend-go/kafka"
+	"backend-go/outbox"
 	"backend-go/storage"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	gcs "cloud.google.com/go/storage"
@@ -21,51 +24,56 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-const supplierImportRoutePrefix = "/v1/supplier/inventory/imports"
+const (
+	supplierImportRoutePrefix   = "/v1/supplier/inventory/imports"
+	supplierImportMaxUploadSize = int64(50 * 1024 * 1024) // 50MB
+)
 
 var supplierImportAllowedUploadExtensions = map[string]string{
-	"csv":  "text/csv",
-	"tsv":  "text/tab-separated-values",
 	"xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 	"xls":  "application/vnd.ms-excel",
-	"json": "application/json",
 }
 
 var supplierImportAllowedStatuses = map[string]struct{}{
-	"uploaded":         {},
-	"discovering":      {},
-	"mapping_required": {},
-	"approved":         {},
-	"applying":         {},
-	"applied":          {},
-	"failed":           {},
+	"INITIALIZED":      {},
+	"UPLOADED":         {},
+	"DISCOVERING":      {},
+	"MAPPING_REQUIRED": {},
+	"APPROVED":         {},
+	"APPLYING":         {},
+	"APPLIED":          {},
+	"FAILED":           {},
 }
 
 var supplierImportTransitions = map[string]map[string]struct{}{
-	"uploaded": {
-		"discovering":      {},
-		"mapping_required": {},
-		"failed":           {},
+	"INITIALIZED": {
+		"UPLOADED": {},
+		"FAILED":   {},
 	},
-	"discovering": {
-		"mapping_required": {},
-		"failed":           {},
+	"UPLOADED": {
+		"DISCOVERING":      {},
+		"MAPPING_REQUIRED": {},
+		"FAILED":           {},
 	},
-	"mapping_required": {
-		"approved": {},
-		"failed":   {},
+	"DISCOVERING": {
+		"MAPPING_REQUIRED": {},
+		"FAILED":           {},
 	},
-	"approved": {
-		"applying": {},
-		"applied":  {},
-		"failed":   {},
+	"MAPPING_REQUIRED": {
+		"APPROVED": {},
+		"FAILED":   {},
 	},
-	"applying": {
-		"applied": {},
-		"failed":  {},
+	"APPROVED": {
+		"APPLYING": {},
+		"APPLIED":  {},
+		"FAILED":   {},
 	},
-	"applied": {},
-	"failed":  {},
+	"APPLYING": {
+		"APPLIED": {},
+		"FAILED":  {},
+	},
+	"APPLIED": {},
+	"FAILED":  {},
 }
 
 var (
@@ -124,16 +132,19 @@ func NewSupplierImportRepository(client *spanner.Client) *SupplierImportReposito
 	return &SupplierImportRepository{client: client}
 }
 
-func (r *SupplierImportRepository) CreateImportSession(ctx context.Context, supplierID string, fileName string) (SupplierImportSessionRecord, error) {
+func (r *SupplierImportRepository) CreateImportSession(ctx context.Context, supplierID string, sessionID string, fileName string, initialStatus string) (SupplierImportSessionRecord, error) {
 	if r.client == nil {
 		return SupplierImportSessionRecord{}, errors.New("spanner unavailable")
 	}
-	sessionID := uuid.NewString()
+	status := normalizeSupplierImportStatus(initialStatus)
+	if _, ok := supplierImportAllowedStatuses[status]; !ok {
+		return SupplierImportSessionRecord{}, errSupplierImportInvalidStatus
+	}
 	if _, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		return txn.BufferWrite([]*spanner.Mutation{spanner.Insert(
 			"SupplierImportSessions",
 			[]string{"supplier_id", "session_id", "status", "file_name", "total_rows", "error_summary", "created_at", "updated_at"},
-			[]interface{}{supplierID, sessionID, "uploaded", fileName, int64(0), nil, spanner.CommitTimestamp, spanner.CommitTimestamp},
+			[]interface{}{supplierID, sessionID, status, fileName, int64(0), nil, spanner.CommitTimestamp, spanner.CommitTimestamp},
 		)})
 	}); err != nil {
 		return SupplierImportSessionRecord{}, err
@@ -145,7 +156,7 @@ func (r *SupplierImportRepository) UpdateSessionStatus(ctx context.Context, supp
 	if r.client == nil {
 		return errors.New("spanner unavailable")
 	}
-	nextStatus = strings.TrimSpace(strings.ToLower(nextStatus))
+	nextStatus = normalizeSupplierImportStatus(nextStatus)
 	if _, ok := supplierImportAllowedStatuses[nextStatus]; !ok {
 		return errSupplierImportInvalidStatus
 	}
@@ -162,7 +173,7 @@ func (r *SupplierImportRepository) UpdateSessionStatus(ctx context.Context, supp
 		if err := row.Columns(&currentStatus); err != nil {
 			return err
 		}
-		currentStatus = strings.ToLower(strings.TrimSpace(currentStatus))
+		currentStatus = normalizeSupplierImportStatus(currentStatus)
 		if currentStatus == nextStatus {
 			return nil
 		}
@@ -179,6 +190,60 @@ func (r *SupplierImportRepository) UpdateSessionStatus(ctx context.Context, supp
 			[]interface{}{supplierID, sessionID, nextStatus, spanner.CommitTimestamp},
 		)})
 	})
+	return err
+}
+
+func (r *SupplierImportRepository) MarkSessionUploadedAndEmit(ctx context.Context, supplierID string, sessionID string, gcsPath string) error {
+	if r.client == nil {
+		return errors.New("spanner unavailable")
+	}
+
+	traceID := telemetry.TraceIDFromContext(ctx)
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, readErr := txn.ReadRow(ctx, "SupplierImportSessions", spanner.Key{supplierID, sessionID}, []string{"status"})
+		if readErr != nil {
+			if spanner.ErrCode(readErr) == codes.NotFound {
+				return errSupplierImportSessionNotFound
+			}
+			return readErr
+		}
+
+		var currentStatus string
+		if err := row.Columns(&currentStatus); err != nil {
+			return err
+		}
+		currentStatus = normalizeSupplierImportStatus(currentStatus)
+		if currentStatus == "UPLOADED" {
+			return nil
+		}
+		if currentStatus != "INITIALIZED" {
+			return errSupplierImportStateConflict
+		}
+
+		if err := txn.BufferWrite([]*spanner.Mutation{spanner.Update(
+			"SupplierImportSessions",
+			[]string{"supplier_id", "session_id", "status", "updated_at"},
+			[]interface{}{supplierID, sessionID, "UPLOADED", spanner.CommitTimestamp},
+		)}); err != nil {
+			return err
+		}
+
+		event := kafkaEvents.InventoryImportUploadedEvent{
+			SessionID:  sessionID,
+			SupplierID: supplierID,
+			GCSPath:    gcsPath,
+		}
+		return outbox.EmitJSON(
+			txn,
+			"SupplierImportSession",
+			sessionID,
+			kafkaEvents.EventInventoryImportUploaded,
+			kafkaEvents.TopicInventoryImportEvents,
+			event,
+			traceID,
+		)
+	})
+
 	return err
 }
 
@@ -262,7 +327,7 @@ func (r *SupplierImportRepository) SaveMapping(ctx context.Context, supplierID s
 			spanner.Update(
 				"SupplierImportSessions",
 				[]string{"supplier_id", "session_id", "status", "updated_at"},
-				[]interface{}{supplierID, sessionID, "mapping_required", spanner.CommitTimestamp},
+				[]interface{}{supplierID, sessionID, "MAPPING_REQUIRED", spanner.CommitTimestamp},
 			),
 		})
 	})
@@ -319,6 +384,7 @@ func registerImportRoutes(r chi.Router, d Deps, supplierRole []string, log Middl
 	repo := NewSupplierImportRepository(d.Spanner)
 
 	createHandler := withMethodIdempotency(handleCreateSupplierImportSession(repo), idem, http.MethodPost)
+	uploadedHandler := withMethodIdempotency(handlePostSupplierImportUploaded(repo), idem, http.MethodPost)
 	mappingHandler := withMethodIdempotency(handlePostSupplierImportMapping(repo), idem, http.MethodPost)
 	approveHandler := withMethodIdempotency(handlePostSupplierImportApprove(repo), idem, http.MethodPost)
 
@@ -327,6 +393,8 @@ func registerImportRoutes(r chi.Router, d Deps, supplierRole []string, log Middl
 			auth.RequireRole(supplierRole, log(withRegionScope(createHandler))))
 		imports.HandleFunc("/{id}",
 			auth.RequireRole(supplierRole, log(withRegionScope(handleGetSupplierImportSession(repo)))))
+		imports.HandleFunc("/{id}/uploaded",
+			auth.RequireRole(supplierRole, log(withRegionScope(uploadedHandler))))
 		imports.HandleFunc("/{id}/mapping",
 			auth.RequireRole(supplierRole, log(withRegionScope(mappingHandler))))
 		imports.HandleFunc("/{id}/approve",
@@ -336,7 +404,8 @@ func registerImportRoutes(r chi.Router, d Deps, supplierRole []string, log Middl
 
 func handleCreateSupplierImportSession(repo *SupplierImportRepository) http.HandlerFunc {
 	type request struct {
-		FileName string `json:"file_name"`
+		FileName      string `json:"file_name"`
+		FileSizeBytes int64  `json:"file_size_bytes"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -365,35 +434,45 @@ func handleCreateSupplierImportSession(repo *SupplierImportRepository) http.Hand
 			writeSupplierImportJSON(w, http.StatusBadRequest, map[string]string{"error": "file_name is required"})
 			return
 		}
+		if payload.FileSizeBytes <= 0 {
+			writeSupplierImportJSON(w, http.StatusBadRequest, map[string]string{"error": "file_size_bytes is required"})
+			return
+		}
+		if payload.FileSizeBytes > supplierImportMaxUploadSize {
+			writeSupplierImportJSON(w, http.StatusBadRequest, map[string]string{"error": "file exceeds max size (50MB)"})
+			return
+		}
 
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 
-		session, err := repo.CreateImportSession(ctx, supplierID, payload.FileName)
-		if err != nil {
-			writeSupplierImportJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create import session"})
-			return
-		}
-
-		uploadURL, objectPath, contentType, ticketErr := createSupplierImportUploadTicket(supplierID, payload.FileName)
+		sessionID := uuid.NewString()
+		uploadURL, gcsPath, contentType, ticketErr := createSupplierImportUploadTicket(supplierID, sessionID, payload.FileName, payload.FileSizeBytes)
 		if ticketErr != nil {
 			writeSupplierImportJSON(w, http.StatusBadRequest, map[string]string{"error": ticketErr.Error()})
 			return
 		}
 
+		session, err := repo.CreateImportSession(ctx, supplierID, sessionID, payload.FileName, "INITIALIZED")
+		if err != nil {
+			writeSupplierImportJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create import session"})
+			return
+		}
+
 		writeSupplierImportJSON(w, http.StatusCreated, map[string]interface{}{
-			"session_id":         session.SessionID,
-			"status":             session.Status,
-			"file_name":          session.FileName,
-			"upload_url":         uploadURL,
-			"object_path":        objectPath,
-			"content_type":       contentType,
-			"expires_in_seconds": int64((15 * time.Minute).Seconds()),
-			"route_prefix":       supplierImportRoutePrefix,
-			"supplier_id":        session.SupplierID,
-			"created_at":         session.CreatedAt.Format(time.RFC3339),
-			"updated_at":         session.UpdatedAtRFC3339,
-			"status_description": "uploaded",
+			"session_id":          session.SessionID,
+			"status":              session.Status,
+			"file_name":           session.FileName,
+			"upload_url":          uploadURL,
+			"gcs_path":            gcsPath,
+			"content_type":        contentType,
+			"expires_in_seconds":  int64((15 * time.Minute).Seconds()),
+			"max_file_size_bytes": supplierImportMaxUploadSize,
+			"route_prefix":        supplierImportRoutePrefix,
+			"supplier_id":         session.SupplierID,
+			"created_at":          session.CreatedAt.Format(time.RFC3339),
+			"updated_at":          session.UpdatedAtRFC3339,
+			"status_description":  "initialized",
 		})
 	}
 }
@@ -437,10 +516,76 @@ func handleGetSupplierImportSession(repo *SupplierImportRepository) http.Handler
 			"session_id":    session.SessionID,
 			"status":        session.Status,
 			"file_name":     session.FileName,
+			"gcs_path":      supplierImportObjectPath(session.SupplierID, session.SessionID),
 			"total_rows":    session.TotalRows,
 			"error_summary": jsonRawOrNull(session.ErrorSummary),
 			"created_at":    session.CreatedAt.Format(time.RFC3339),
 			"updated_at":    session.UpdatedAtRFC3339,
+		})
+	}
+}
+
+func handlePostSupplierImportUploaded(repo *SupplierImportRepository) http.HandlerFunc {
+	type request struct {
+		GCSPath string `json:"gcs_path"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		supplierID, err := supplierIDFromContext(r)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		sessionID := strings.TrimSpace(chi.URLParam(r, "id"))
+		if sessionID == "" {
+			writeSupplierImportJSON(w, http.StatusBadRequest, map[string]string{"error": "session id is required"})
+			return
+		}
+		if repo.client == nil {
+			writeSupplierImportJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "import storage unavailable"})
+			return
+		}
+
+		expectedGCSPath := supplierImportObjectPath(supplierID, sessionID)
+
+		var payload request
+		if r.Body != nil {
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil && !errors.Is(err, io.EOF) {
+				writeSupplierImportJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON body"})
+				return
+			}
+		}
+		payload.GCSPath = strings.TrimSpace(payload.GCSPath)
+		if payload.GCSPath != "" && payload.GCSPath != expectedGCSPath {
+			writeSupplierImportJSON(w, http.StatusBadRequest, map[string]string{"error": "gcs_path mismatch"})
+			return
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer cancel()
+
+		if err := repo.MarkSessionUploadedAndEmit(ctx, supplierID, sessionID, expectedGCSPath); err != nil {
+			switch {
+			case errors.Is(err, errSupplierImportSessionNotFound):
+				writeSupplierImportJSON(w, http.StatusNotFound, map[string]string{"error": "session not found"})
+			case errors.Is(err, errSupplierImportStateConflict):
+				writeSupplierImportJSON(w, http.StatusConflict, map[string]string{"error": "session not ready for uploaded transition"})
+			default:
+				writeSupplierImportJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to mark session uploaded"})
+			}
+			return
+		}
+
+		writeSupplierImportJSON(w, http.StatusAccepted, map[string]interface{}{
+			"session_id": sessionID,
+			"status":     "UPLOADED",
+			"gcs_path":   expectedGCSPath,
+			"event_type": kafkaEvents.EventInventoryImportUploaded,
+			"topic":      kafkaEvents.TopicInventoryImportEvents,
 		})
 	}
 }
@@ -501,7 +646,7 @@ func handlePostSupplierImportMapping(repo *SupplierImportRepository) http.Handle
 
 		writeSupplierImportJSON(w, http.StatusAccepted, map[string]interface{}{
 			"session_id": sessionID,
-			"status":     "mapping_required",
+			"status":     "MAPPING_REQUIRED",
 		})
 	}
 }
@@ -530,7 +675,7 @@ func handlePostSupplierImportApprove(repo *SupplierImportRepository) http.Handle
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 
-		if err := repo.UpdateSessionStatus(ctx, supplierID, sessionID, "approved"); err != nil {
+		if err := repo.UpdateSessionStatus(ctx, supplierID, sessionID, "APPROVED"); err != nil {
 			switch {
 			case errors.Is(err, errSupplierImportSessionNotFound):
 				writeSupplierImportJSON(w, http.StatusNotFound, map[string]string{"error": "session not found"})
@@ -546,7 +691,7 @@ func handlePostSupplierImportApprove(repo *SupplierImportRepository) http.Handle
 
 		writeSupplierImportJSON(w, http.StatusAccepted, map[string]interface{}{
 			"session_id": sessionID,
-			"status":     "approved",
+			"status":     "APPROVED",
 			"next_phase": "apply transition is triggered in phase 6",
 		})
 	}
@@ -564,18 +709,21 @@ func supplierIDFromContext(r *http.Request) (string, error) {
 	return supplierID, nil
 }
 
-func createSupplierImportUploadTicket(supplierID string, fileName string) (uploadURL string, objectPath string, contentType string, err error) {
+func createSupplierImportUploadTicket(supplierID string, sessionID string, fileName string, fileSizeBytes int64) (uploadURL string, objectPath string, contentType string, err error) {
 	ext := strings.TrimPrefix(strings.ToLower(filepath.Ext(strings.TrimSpace(fileName))), ".")
 	if ext == "" {
-		ext = "csv"
+		ext = "xlsx"
 	}
 	mime, ok := supplierImportAllowedUploadExtensions[ext]
 	if !ok {
-		return "", "", "", errors.New("unsupported file extension: use csv|tsv|xlsx|xls|json")
+		return "", "", "", errors.New("unsupported file extension: use xlsx|xls")
+	}
+	if fileSizeBytes <= 0 || fileSizeBytes > supplierImportMaxUploadSize {
+		return "", "", "", errors.New("file exceeds max size (50MB)")
 	}
 
 	now := time.Now().UTC()
-	objectPath = fmt.Sprintf("supplier-import/%s/%d-%s.%s", supplierID, now.UnixNano(), uuid.NewString(), ext)
+	objectPath = supplierImportObjectPath(supplierID, sessionID)
 	uploadURL = fmt.Sprintf("https://local.invalid/upload/%s", objectPath)
 	contentType = mime
 
@@ -585,6 +733,7 @@ func createSupplierImportUploadTicket(supplierID string, fileName string) (uploa
 			Method:      "PUT",
 			Expires:     now.Add(15 * time.Minute),
 			ContentType: mime,
+			Headers:     []string{fmt.Sprintf("content-length:%d", fileSizeBytes)},
 		}
 		signedURL, signErr := storage.Client.Bucket(storage.BucketName).SignedURL(objectPath, opts)
 		if signErr != nil {
@@ -594,6 +743,14 @@ func createSupplierImportUploadTicket(supplierID string, fileName string) (uploa
 	}
 
 	return uploadURL, objectPath, contentType, nil
+}
+
+func supplierImportObjectPath(supplierID string, sessionID string) string {
+	return fmt.Sprintf("imports/%s/%s/raw.xlsx", supplierID, sessionID)
+}
+
+func normalizeSupplierImportStatus(status string) string {
+	return strings.ToUpper(strings.TrimSpace(status))
 }
 
 func toNullJSON(raw json.RawMessage) (spanner.NullJSON, error) {

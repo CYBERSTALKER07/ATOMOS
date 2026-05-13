@@ -77,21 +77,23 @@ const (
 	EventFreezeLockReleased        = "FREEZE_LOCK_RELEASED"
 
 	// Dispatch Pipeline Events
-	EventRouteCreated           = "ROUTE_CREATED"
-	EventOrderAssigned          = "ORDER_ASSIGNED"
-	EventFactoryManifestCreated = "FACTORY_MANIFEST_CREATED"
-	EventDemandForecastReady    = "DEMAND_FORECAST_READY"
+	EventRouteCreated            = "ROUTE_CREATED"
+	EventOrderAssigned           = "ORDER_ASSIGNED"
+	EventFactoryManifestCreated  = "FACTORY_MANIFEST_CREATED"
+	EventDemandForecastReady     = "DEMAND_FORECAST_READY"
+	EventInventoryImportUploaded = "INVENTORY_IMPORT_UPLOADED"
 
 	// Outbox Observability
 	EventOutboxFailed = "OUTBOX_FAILED"
 
 	// Pegasus topic names.
-	TopicFreezeLocks    = "pegasus-freeze-locks"
-	TopicMain           = "pegasus-logistics-events"
-	TopicDemandForecast = "pegasus-demand-forecast"
-	TopicDriverSync     = "pegasus-driver-sync-events"
-	TopicTelemetryRaw   = "pegasus-telemetry-raw"
-	TopicMainDLQ        = "pegasus-logistics-events-dlq"
+	TopicFreezeLocks           = "pegasus-freeze-locks"
+	TopicMain                  = "pegasus-logistics-events"
+	TopicDemandForecast        = "pegasus-demand-forecast"
+	TopicDriverSync            = "pegasus-driver-sync-events"
+	TopicTelemetryRaw          = "pegasus-telemetry-raw"
+	TopicMainDLQ               = "pegasus-logistics-events-dlq"
+	TopicInventoryImportEvents = "inventory.import.events"
 
 	// Fleet Entity Lifecycle Events
 	EventDriverCreated  = "DRIVER_CREATED"
@@ -233,6 +235,15 @@ type PaymentFailedEvent struct {
 	Gateway     string    `json:"gateway"`
 	Reason      string    `json:"reason"`
 	Timestamp   time.Time `json:"timestamp"`
+}
+
+// InventoryImportUploadedEvent is emitted once a supplier import file has been
+// uploaded directly to GCS and is ready for discovery processing.
+// Recipients: AI mapping worker consumers on TopicInventoryImportEvents.
+type InventoryImportUploadedEvent struct {
+	SessionID  string `json:"session_id"`
+	SupplierID string `json:"supplier_id"`
+	GCSPath    string `json:"gcs_path"`
 }
 
 // DriverAvailabilityChangedEvent is emitted when a driver goes online or offline.

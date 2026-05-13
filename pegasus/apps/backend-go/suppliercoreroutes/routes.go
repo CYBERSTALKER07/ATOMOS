@@ -44,6 +44,7 @@ type Deps struct {
 //	GET /v1/supplier/inventory/import/{id}/status — import status
 //	POST /v1/supplier/inventory/imports/ — phase-2 sandbox session init + upload ticket
 //	GET /v1/supplier/inventory/imports/{id} — phase-2 sandbox session status
+//	POST /v1/supplier/inventory/imports/{id}/uploaded — phase-3 upload bridge signal + discovery event emit
 //	POST /v1/supplier/inventory/imports/{id}/mapping — phase-2 sandbox mapping submission
 //	POST /v1/supplier/inventory/imports/{id}/approve — phase-2 sandbox approve transition
 //	GET /v1/supplier/inventory/audit — inventory audit log
