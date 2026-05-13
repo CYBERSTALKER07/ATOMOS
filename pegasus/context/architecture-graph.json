@@ -443,7 +443,8 @@
         "Retailer desktop and iOS order-list consumers now converge on GET /v1/retailers/{retailerID}/orders, and payment websocket clients handle both canonical PAYMENT_* and legacy GLOBAL_PAYNT_* aliases.",
         "POST /v1/retailer/cart/sync now emits CART_SYNC_UPDATED over ws/retailer post-commit, and desktop, iOS, and Android cart stores rehydrate from GET /v1/retailer/cart/sync when that signal arrives.",
         "POST /v1/retailer/orders/{confirm-ai,reject-ai} now emits AI_ORDER_CONFIRMED/AI_ORDER_REJECTED through transactional outbox in the same Orders mutation transaction, and ORDER_REASSIGNED fanout now includes affected retailer recipients so desktop/iOS/Android order and tracking views refresh on reassignment.",
-        "Retailer desktop inbox refresh now includes SETTLEMENT_REQUIRED and DELIVERY_SESSION_UPDATED, iOS/Android inbox icon mappings include ORDER_REASSIGNED plus settlement/session-update event types, and packages/types/ws-events.ts now carries additive retailer ws-event contracts for ORDER_REASSIGNED, SETTLEMENT_REQUIRED, DELIVERY_SESSION_UPDATED, and CART_SYNC_UPDATED."
+        "Retailer desktop inbox refresh now includes SETTLEMENT_REQUIRED and DELIVERY_SESSION_UPDATED, iOS/Android inbox icon mappings include ORDER_REASSIGNED plus settlement/session-update event types, and packages/types/ws-events.ts now carries additive retailer ws-event contracts for ORDER_REASSIGNED, SETTLEMENT_REQUIRED, DELIVERY_SESSION_UPDATED, and CART_SYNC_UPDATED.",
+        "Retailer Android push fallback mapping now includes SETTLEMENT_REQUIRED and DELIVERY_SESSION_UPDATED in PegasusFirebaseMessagingService so settlement/session-update alerts remain visible while backgrounded or when websocket delivery is unavailable."
       ]
     },
     {

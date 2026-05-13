@@ -55,6 +55,8 @@ class PegasusFirebaseMessagingService : FirebaseMessagingService() {
         "DRIVER_ARRIVED" -> "Driver Has Arrived"
         "ORDER_STATUS_CHANGED" -> "Order Status Updated"
         "ORDER_REASSIGNED" -> "Order Reassigned"
+        "SETTLEMENT_REQUIRED" -> "Settlement Required"
+        "DELIVERY_SESSION_UPDATED" -> "Delivery Session Updated"
         "PAYMENT_SETTLED", "GLOBAL_PAYNT_SETTLED" -> "Payment Received"
         "PAYMENT_FAILED", "PAYMENT_EXPIRED", "GLOBAL_PAYNT_FAILED", "GLOBAL_PAYNT_EXPIRED" -> "Payment Failed"
         "ORDER_COMPLETED" -> "Order Completed"
@@ -69,6 +71,19 @@ class PegasusFirebaseMessagingService : FirebaseMessagingService() {
             "DRIVER_ARRIVED" -> "Driver has arrived for order #$orderId"
             "ORDER_STATUS_CHANGED" -> "Order #$orderId is now ${data["new_state"] ?: "updated"}"
             "ORDER_REASSIGNED" -> "Order #$orderId has been reassigned. ETA may shift"
+            "SETTLEMENT_REQUIRED" -> {
+                val amount = data["amount"]
+                val currency = data["currency"] ?: "UZS"
+                if (!amount.isNullOrBlank()) {
+                    "Settlement of $amount $currency is required for order #$orderId"
+                } else {
+                    "Settlement is required for order #$orderId"
+                }
+            }
+            "DELIVERY_SESSION_UPDATED" -> {
+                val state = data["state"] ?: "updated"
+                "Delivery session for order #$orderId is now $state"
+            }
             "PAYMENT_SETTLED", "GLOBAL_PAYNT_SETTLED" -> "Payment confirmed for order #$orderId"
             "PAYMENT_FAILED", "GLOBAL_PAYNT_FAILED" -> "Payment failed for order #$orderId"
             "PAYMENT_EXPIRED", "GLOBAL_PAYNT_EXPIRED" -> "Payment session expired for order #$orderId"
