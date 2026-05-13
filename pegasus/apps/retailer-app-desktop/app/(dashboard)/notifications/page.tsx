@@ -35,7 +35,7 @@ export default function NotificationsPage() {
 
         <div className="flex items-center gap-2">
           <Button
-            variant="flat"
+            variant="secondary"
             onPress={() => void refresh()}
             isIconOnly
             aria-label="Refresh"
@@ -43,8 +43,7 @@ export default function NotificationsPage() {
             <RefreshCw size={16} />
           </Button>
           <Button
-            variant="solid"
-            color="primary"
+            variant="primary"
             isDisabled={unreadCount === 0}
             onPress={() => void markAllRead()}
             className="flex items-center gap-2"
@@ -73,7 +72,7 @@ export default function NotificationsPage() {
             </span>
             <Button
               size="sm"
-              variant="flat"
+              variant="secondary"
               onPress={() => void refresh()}
               className="ml-auto"
             >

@@ -154,7 +154,7 @@ export default function ProcurementPage() {
           </p>
         </div>
         <Button
-          variant="solid"
+          variant="primary"
           onPress={() => setShowAddModal(true)}
           className="h-11 px-6 rounded-xl font-bold transition-all shadow-[var(--shadow-sm)]"
           style={{ background: "var(--desk-accent)", color: "white" }}
@@ -302,7 +302,7 @@ export default function ProcurementPage() {
                         <Chip
                           size="sm"
                           color={vendor.is_active ? "success" : "default"}
-                          variant="flat"
+                          variant="secondary"
                           className="font-bold text-[9px]"
                         >
                           {vendor.is_active ? "ACTIVE" : "INACTIVE"}
@@ -461,7 +461,7 @@ export default function ProcurementPage() {
                           </div>
                         </div>
                         <Button
-                          variant="solid"
+                          variant="primary"
                           size="sm"
                           onPress={() => addSupplier(s.id)}
                           className="bg-[var(--desk-text-primary)] text-white font-bold rounded-lg h-9 px-4"

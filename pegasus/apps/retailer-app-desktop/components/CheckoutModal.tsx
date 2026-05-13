@@ -318,7 +318,7 @@ export default function CheckoutModal({
 
               <Button
                 onClick={handleCheckout}
-                disabled={loading || items.length === 0}
+                isDisabled={loading || items.length === 0}
                 className="bg-[var(--desk-text-primary)] text-white font-bold h-12 px-10 rounded-xl shadow-xl transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100 flex items-center gap-3"
               >
                 {loading ? (

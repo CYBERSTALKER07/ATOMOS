@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getStoredToken, isTauri, storeToken } from "../lib/bridge";
 import { readToken } from "../lib/auth";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@heroui/react";
 import { ShieldCheck, Phone, Lock, Loader2, ChevronRight } from "lucide-react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
@@ -136,7 +137,7 @@ export default function Home() {
 
             <Button
               type="submit"
-              disabled={loading}
+              isDisabled={loading}
               className="w-full h-14 bg-[var(--desk-text-primary)] text-white font-bold rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30"
             >
               {loading ? (

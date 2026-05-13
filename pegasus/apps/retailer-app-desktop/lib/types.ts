@@ -119,7 +119,14 @@ export interface RetailerAnalytics {
 /* ── AI Predictions ── */
 export interface Prediction {
   id: string;
+  retailer_id?: string;
   retailerId: string;
+  product_id?: string;
+  product_name?: string;
+  predicted_amount?: number;
+  predicted_quantity?: number;
+  trigger_date?: string;
+  suggested_order_date?: string;
   predictedAmount: number;
   triggerDate: string;
   status: string;

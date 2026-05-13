@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ShoppingCart,
   Search,
@@ -11,8 +11,11 @@ import {
   TrendingUp,
   Building2,
   ChevronRight,
+  RefreshCw,
+  AlertTriangle,
+  WifiOff,
 } from "lucide-react";
-import { Button, Skeleton } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
@@ -30,13 +33,25 @@ const EMPTY_CATEGORIES: Category[] = [];
 const EMPTY_SUPPLIERS: Supplier[] = [];
 
 export default function CatalogPage() {
-  const { data: products, loading: loadingProducts } = useLiveData<Product[]>(
-    "/v1/catalog/products",
-  );
-  const { data: categories } = useLiveData<Category[]>(
-    "/v1/catalog/categories",
-  );
-  const { data: suppliers } = useLiveData<Supplier[]>("/v1/retailer/suppliers");
+  const {
+    data: products,
+    loading: loadingProducts,
+    error: productsError,
+    isRefreshing: isProductsRefreshing,
+    mutate: mutateProducts,
+  } = useLiveData<Product[]>("/v1/catalog/products");
+  const {
+    data: categories,
+    error: categoriesError,
+    isRefreshing: isCategoriesRefreshing,
+    mutate: mutateCategories,
+  } = useLiveData<Category[]>("/v1/catalog/categories");
+  const {
+    data: suppliers,
+    error: suppliersError,
+    isRefreshing: isSuppliersRefreshing,
+    mutate: mutateSuppliers,
+  } = useLiveData<Supplier[]>("/v1/retailer/suppliers");
   const { items, addToCart } = useCart();
 
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -50,6 +65,14 @@ export default function CatalogPage() {
   const categoryList = categories ?? EMPTY_CATEGORIES;
   const supplierList = suppliers ?? EMPTY_SUPPLIERS;
   const cartQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+  const isRefreshing =
+    isProductsRefreshing || isCategoriesRefreshing || isSuppliersRefreshing;
+
+  const refreshAll = useCallback(() => {
+    void mutateProducts();
+    void mutateCategories();
+    void mutateSuppliers();
+  }, [mutateCategories, mutateProducts, mutateSuppliers]);
 
   const sparkOrders = useMemo(
     () =>
@@ -68,6 +91,12 @@ export default function CatalogPage() {
     [],
   );
 
+  const clearFilters = useCallback(() => {
+    setActiveCategory("All");
+    setActiveSupplier("");
+    setSearchQuery("");
+  }, []);
+
   const filteredProducts = useMemo(() => {
     let list = productList;
     if (activeCategory !== "All") {
@@ -81,16 +110,123 @@ export default function CatalogPage() {
       list = list.filter(
         (product) =>
           product.name.toLowerCase().includes(query) ||
-          product.supplier_name.toLowerCase().includes(query),
+          (product.supplier_name || "").toLowerCase().includes(query),
       );
     }
     return list;
   }, [productList, activeCategory, activeSupplier, searchQuery]);
 
-  const categoryTabs = useMemo(
-    () => ["All", ...categoryList.map((category) => category.name)],
-    [categoryList],
-  );
+  const categoryTabs = useMemo(() => {
+    const unique = new Set<string>(["All"]);
+    categoryList.forEach((category) => {
+      if (category.name) unique.add(category.name);
+    });
+    return Array.from(unique);
+  }, [categoryList]);
+
+  const hasActiveFilters =
+    activeCategory !== "All" || activeSupplier !== "" || searchQuery.trim() !== "";
+
+  const loadIssue = useMemo<"restricted" | "offline" | "error" | null>(() => {
+    const errors = [productsError, categoriesError, suppliersError].filter(
+      Boolean,
+    ) as Array<Error & { status?: number }>;
+
+    if (errors.length === 0) return null;
+    if (errors.some((err) => err.status === 401 || err.status === 403)) {
+      return "restricted";
+    }
+    if (
+      (typeof navigator !== "undefined" && !navigator.onLine) ||
+      errors.some((err) => /Failed to fetch|NetworkError|Load failed/i.test(err.message))
+    ) {
+      return "offline";
+    }
+    return "error";
+  }, [categoriesError, productsError, suppliersError]);
+
+  const syncBanner = useMemo(() => {
+    if (loadIssue === "restricted") {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Catalog access restricted for this account.",
+      };
+    }
+    if (loadIssue === "offline") {
+      return {
+        kind: "warning" as const,
+        icon: WifiOff,
+        message: "Offline mode active. Showing the latest cached catalog.",
+      };
+    }
+    if (loadIssue === "error") {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Catalog sync degraded. Auto-retry is active.",
+      };
+    }
+    if (isRefreshing && !loadingProducts) {
+      return {
+        kind: "refreshing" as const,
+        icon: RefreshCw,
+        message: "Syncing catalog feeds...",
+      };
+    }
+    return null;
+  }, [isRefreshing, loadIssue, loadingProducts]);
+
+  const emptyStateConfig = useMemo(() => {
+    if (loadIssue === "restricted") {
+      return {
+        headline: "Catalog access restricted",
+        body: "Your account currently cannot load supplier catalog data.",
+        variant: "restricted" as const,
+      };
+    }
+    if (loadIssue === "offline") {
+      return {
+        headline: "Catalog is offline",
+        body: "Reconnect your network and retry to refresh product availability.",
+        variant: "offline" as const,
+      };
+    }
+    if (loadIssue === "error") {
+      return {
+        headline: "Catalog unavailable",
+        body: "Product feeds could not be loaded right now.",
+        variant: "error" as const,
+      };
+    }
+    if (productList.length === 0) {
+      return {
+        headline: "No approved products yet",
+        body: "Supplier catalogs are still syncing into your workspace.",
+        variant: "no-products" as const,
+      };
+    }
+    return {
+      headline: "No assets match criteria",
+      body: "Try adjusting the search query or node selection.",
+      variant: "no-results" as const,
+    };
+  }, [loadIssue, productList.length]);
+
+  useEffect(() => {
+    if (activeSupplier && !supplierList.some((supplier) => supplier.id === activeSupplier)) {
+      setActiveSupplier("");
+    }
+  }, [activeSupplier, supplierList]);
+
+  useEffect(() => {
+    if (
+      activeCategory !== "All" &&
+      !categoryList.some((category) => category.name === activeCategory)
+    ) {
+      setActiveCategory("All");
+    }
+  }, [activeCategory, categoryList]);
 
   return (
     <div
@@ -108,16 +244,58 @@ export default function CatalogPage() {
         </div>
         <div className="flex items-center gap-3">
           <Button
-            variant="solid"
+            variant="secondary"
+            isDisabled={isRefreshing}
+            onPress={refreshAll}
+            className="h-11 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
+          >
+            <RefreshCw
+              size={16}
+              className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+            {isRefreshing ? "Syncing" : "Sync"}
+          </Button>
+          <Button
+            variant="primary"
             onPress={() => setIsCartOpen(true)}
             className="h-11 px-6 rounded-xl font-bold transition-all active:scale-95 shadow-[var(--shadow-sm)]"
             style={{ background: "var(--desk-accent)", color: "white" }}
           >
             <ShoppingCart size={18} className="mr-2" />
-            Cart ({items.length})
+            Cart ({cartQuantity})
           </Button>
         </div>
       </header>
+
+      {syncBanner && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`mb-6 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
+            syncBanner.kind === "refreshing"
+              ? "border-[var(--desk-info)]/30 bg-[var(--desk-info)]/5 text-[var(--desk-info)]"
+              : "border-[var(--desk-warning)]/30 bg-[var(--desk-warning)]/10 text-[var(--desk-warning)]"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <syncBanner.icon
+              size={16}
+              className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
+            />
+            <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+              {syncBanner.message}
+            </span>
+          </div>
+          {syncBanner.kind !== "refreshing" && (
+            <button
+              onClick={refreshAll}
+              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+            >
+              Retry
+            </button>
+          )}
+        </motion.div>
+      )}
 
       <BentoGrid className="mb-8">
         <BentoCard interactive={false}>
@@ -211,12 +389,13 @@ export default function CatalogPage() {
 
           <div className="h-11 flex items-center gap-2">
             <button
-              onClick={() => {
-                setActiveCategory("All");
-                setActiveSupplier("");
-                setSearchQuery("");
-              }}
-              className="px-4 h-full rounded-xl hover:bg-[var(--desk-surface-subtle)] text-[var(--desk-text-secondary)] md-typescale-label-large transition-colors flex items-center gap-2"
+              onClick={clearFilters}
+              disabled={!hasActiveFilters}
+              className={`px-4 h-full rounded-xl md-typescale-label-large transition-colors flex items-center gap-2 ${
+                hasActiveFilters
+                  ? "hover:bg-[var(--desk-surface-subtle)] text-[var(--desk-text-secondary)]"
+                  : "text-[var(--desk-text-tertiary)] opacity-50 cursor-not-allowed"
+              }`}
             >
               <SlidersHorizontal size={16} />
               Reset
@@ -239,6 +418,34 @@ export default function CatalogPage() {
             </button>
           ))}
         </div>
+
+        {supplierList.length > 0 && (
+          <div className="lg:hidden flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setActiveSupplier("")}
+              className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all ${
+                activeSupplier === ""
+                  ? "bg-[var(--desk-accent-soft)] text-[var(--desk-accent)]"
+                  : "bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[var(--desk-text-secondary)]"
+              }`}
+            >
+              All Suppliers
+            </button>
+            {supplierList.slice(0, 6).map((supplier) => (
+              <button
+                key={supplier.id}
+                onClick={() => setActiveSupplier(supplier.id)}
+                className={`px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wide transition-all ${
+                  activeSupplier === supplier.id
+                    ? "bg-[var(--desk-accent-soft)] text-[var(--desk-accent)]"
+                    : "bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[var(--desk-text-secondary)]"
+                }`}
+              >
+                {supplier.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex gap-8">
@@ -301,9 +508,19 @@ export default function CatalogPage() {
                 className="py-20"
               >
                 <EmptyState
-                  headline="No assets match criteria"
-                  body="Try adjusting the search query or node selection."
-                  variant="no-results"
+                  headline={emptyStateConfig.headline}
+                  body={emptyStateConfig.body}
+                  variant={emptyStateConfig.variant}
+                  action={
+                    loadIssue ? "Retry Sync" : hasActiveFilters ? "Reset Filters" : undefined
+                  }
+                  onAction={
+                    loadIssue
+                      ? refreshAll
+                      : hasActiveFilters
+                        ? clearFilters
+                        : undefined
+                  }
                 />
               </motion.div>
             ) : (
@@ -362,7 +579,7 @@ export default function CatalogPage() {
                           </span>
                         </div>
                         <Button
-                          variant="solid"
+                          variant="primary"
                           size="sm"
                           className="rounded-lg h-9 px-4 font-bold shadow-[var(--shadow-sm)] transition-all active:scale-95"
                           style={{

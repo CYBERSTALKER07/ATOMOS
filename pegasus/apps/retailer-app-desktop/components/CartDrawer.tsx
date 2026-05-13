@@ -3,6 +3,7 @@
 import {
   X,
   ShoppingBag,
+  Package,
   CreditCard,
   ChevronRight,
   Minus,
@@ -10,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@heroui/react";
 import { useCart } from "../lib/cart";
 
 interface CartDrawerProps {
@@ -169,7 +171,7 @@ export default function CartDrawer({
               </div>
 
               <Button
-                disabled={items.length === 0}
+                isDisabled={items.length === 0}
                 onPress={() => onCheckout()}
                 className="w-full h-14 rounded-2xl flex items-center justify-center gap-3 bg-[var(--desk-text-primary)] text-white font-bold shadow-xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-30 disabled:hover:scale-100"
               >

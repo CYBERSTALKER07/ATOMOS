@@ -9,12 +9,14 @@ import {
   MapPin,
   X,
   RefreshCw,
+  AlertTriangle,
+  WifiOff,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import { useLiveData } from "../../../lib/hooks";
-import { useWsEvent, type WsMessage } from "../../../lib/ws";
+import { useWsEvent, useOptionalWebSocket, type WsMessage } from "../../../lib/ws";
 import type {
   ActiveFulfillmentsResponse,
   TrackingResponse,
@@ -82,16 +84,19 @@ export default function TrackingPage() {
     data: trackingData,
     loading,
     error: trackingError,
+    isRefreshing: isTrackingRefreshing,
     mutate: mutateTracking,
   } = useLiveData<TrackingResponse>("/v1/retailer/tracking", 15_000);
   const {
     data: fulfillmentData,
     error: fulfillmentError,
+    isRefreshing: isFulfillmentRefreshing,
     mutate: mutateFulfillments,
   } = useLiveData<ActiveFulfillmentsResponse>(
     "/v1/retailer/active-fulfillment",
     30_000,
   );
+  const ws = useOptionalWebSocket();
   const [orders, setOrders] = useState<TrackingOrder[]>([]);
   const [selectedSupplierIds, setSelectedSupplierIds] = useState<Set<string>>(
     new Set(),
@@ -101,6 +106,7 @@ export default function TrackingPage() {
   );
   const mapRef = useRef<maplibregl.Map | null>(null);
   const colorScheme = useColorScheme();
+  const isRefreshing = isTrackingRefreshing || isFulfillmentRefreshing;
   const refreshAll = useCallback(() => {
     void mutateTracking();
     void mutateFulfillments();
@@ -228,6 +234,45 @@ export default function TrackingPage() {
     return "No active deliveries with driver location";
   }, [activeFulfillmentCount, loadIssue]);
 
+  const syncBanner = useMemo(() => {
+    if (loadIssue === "restricted") {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Tracking access restricted for this account.",
+      };
+    }
+    if (loadIssue === "offline") {
+      return {
+        kind: "warning" as const,
+        icon: WifiOff,
+        message: "Offline mode active. Showing the latest known telemetry.",
+      };
+    }
+    if (loadIssue === "error") {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Telemetry sync degraded. Auto-retry is active.",
+      };
+    }
+    if (ws && !ws.isConnected) {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Live socket reconnecting. Event updates may be delayed.",
+      };
+    }
+    if (isRefreshing && !loading) {
+      return {
+        kind: "refreshing" as const,
+        icon: RefreshCw,
+        message: "Syncing live telemetry...",
+      };
+    }
+    return null;
+  }, [isRefreshing, loadIssue, loading, ws]);
+
   const approachingCount = useMemo(
     () => orders.filter((o) => o.is_approaching || o.state === "ARRIVED").length,
     [orders],
@@ -251,7 +296,11 @@ export default function TrackingPage() {
   const toggleSupplier = (id: string) => {
     setSelectedSupplierIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };
@@ -271,13 +320,48 @@ export default function TrackingPage() {
           </p>
         </div>
         <Button
-          variant="flat"
+          variant="secondary"
           onPress={refreshAll}
+          isDisabled={isRefreshing}
           className="h-10 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
         >
-          <RefreshCw size={16} className="mr-2" /> Sync GPS
+          <RefreshCw
+            size={16}
+            className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+          />
+          {isRefreshing ? "Syncing" : "Sync GPS"}
         </Button>
       </header>
+
+      {syncBanner && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
+            syncBanner.kind === "refreshing"
+              ? "border-[var(--desk-info)]/30 bg-[var(--desk-info)]/5 text-[var(--desk-info)]"
+              : "border-[var(--desk-warning)]/30 bg-[var(--desk-warning)]/10 text-[var(--desk-warning)]"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <syncBanner.icon
+              size={16}
+              className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
+            />
+            <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+              {syncBanner.message}
+            </span>
+          </div>
+          {syncBanner.kind !== "refreshing" && (
+            <button
+              onClick={refreshAll}
+              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+            >
+              Retry
+            </button>
+          )}
+        </motion.div>
+      )}
 
       <BentoGrid className="mb-2">
         <BentoCard interactive={false}>

@@ -83,7 +83,8 @@ export default function InsightsPage() {
       setSelected(new Set(predList.map((p) => p.id)));
       const qMap: Record<string, number> = {};
       predList.forEach((p) => {
-        qMap[p.id] = quantities[p.id] ?? p.predictedQuantity;
+        qMap[p.id] =
+          quantities[p.id] ?? p.predicted_quantity ?? p.predictedQuantity ?? 1;
       });
       setQuantities(qMap);
     }
@@ -142,8 +143,12 @@ export default function InsightsPage() {
       const orderItems = predList
         .filter((item) => selected.has(item.id))
         .map((item) => ({
-          product_id: item.productId,
-          quantity: quantities[item.id] ?? item.predictedQuantity,
+          product_id: item.product_id ?? item.id,
+          quantity:
+            quantities[item.id] ??
+            item.predicted_quantity ??
+            item.predictedQuantity ??
+            1,
         }));
 
       const idempotencyKey =
@@ -194,7 +199,7 @@ export default function InsightsPage() {
           </p>
         </div>
         <Button
-          variant="flat"
+          variant="secondary"
           onPress={() => refreshPred()}
           className="h-10 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
         >
@@ -206,7 +211,7 @@ export default function InsightsPage() {
         <div className="mb-6">
           <Chip
             color={orderResult === "success" ? "success" : "danger"}
-            variant="flat"
+            variant="secondary"
             className="font-bold"
           >
             {orderResult === "success"
@@ -329,7 +334,11 @@ export default function InsightsPage() {
                 {predList.map((item) => {
                   const cfg = urgencyCfg[item.status] || urgencyCfg.DORMANT;
                   const isSelected = selected.has(item.id);
-                  const qty = quantities[item.id] ?? item.predictedQuantity;
+                  const qty =
+                    quantities[item.id] ??
+                    item.predicted_quantity ??
+                    item.predictedQuantity ??
+                    1;
                   return (
                     <motion.div
                       key={item.id}
@@ -344,7 +353,12 @@ export default function InsightsPage() {
                     >
                       <button
                         onClick={() =>
-                          toggleSelect(item.id, item.predictedQuantity)
+                          toggleSelect(
+                            item.id,
+                            item.predicted_quantity ??
+                              item.predictedQuantity ??
+                              1,
+                          )
                         }
                         className="shrink-0 text-[var(--desk-text-tertiary)] hover:text-[var(--desk-accent)] transition-colors"
                       >
@@ -367,7 +381,9 @@ export default function InsightsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
                           <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)] truncate">
-                            {item.productName}
+                            {item.product_name ??
+                              item.productName ??
+                              "Predicted Item"}
                           </span>
                           <span
                             className={`text-[9px] font-black tracking-tighter px-2 py-0.5 rounded bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] text-[var(--desk-text-tertiary)]`}
@@ -401,10 +417,15 @@ export default function InsightsPage() {
                       ) : (
                         <div className="text-right">
                           <p className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
-                            {item.predictedAmount.toLocaleString()}
+                            {(item.predicted_amount ??
+                              item.predictedAmount ??
+                              0
+                            ).toLocaleString()}
                           </p>
                           <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
-                            {item.predictedQuantity} UNITS
+                            {item.predicted_quantity ??
+                              item.predictedQuantity ??
+                              1} UNITS
                           </p>
                         </div>
                       )}

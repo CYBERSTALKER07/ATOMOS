@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
-import { Chip, Skeleton } from "@heroui/react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { Chip } from "@heroui/react";
 import {
   Truck,
   Package,
@@ -11,13 +11,16 @@ import {
   ChevronDown,
   ChevronRight,
   Inbox,
+  RefreshCw,
+  AlertTriangle,
+  WifiOff,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import { useLiveData } from "../../../lib/hooks";
-import { useWsEvent, type WsMessage } from "../../../lib/ws";
+import { useWsEvent, useOptionalWebSocket, type WsMessage } from "../../../lib/ws";
 import type { TrackingResponse, TrackingOrder } from "../../../lib/types";
 
 /* ── Config ── */
@@ -49,6 +52,18 @@ const chipCfg: Record<
   DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
 };
 
+const EXPANDED_SUPPLIERS_KEY = "retailer_dock_expanded_suppliers";
+
+function getBrowserStorage(): Storage | null {
+  if (
+    typeof window === "undefined" ||
+    typeof window.localStorage?.getItem !== "function"
+  ) {
+    return null;
+  }
+  return window.localStorage;
+}
+
 function formatAmount(amount: number): string {
   return amount.toLocaleString("en-US").replace(/,/g, " ");
 }
@@ -67,19 +82,71 @@ interface SupplierGroup {
 /* ── Page ── */
 
 export default function DockPage() {
-  const { data, loading, mutate } = useLiveData<TrackingResponse>(
+  const { data, loading, error, isRefreshing, mutate } = useLiveData<TrackingResponse>(
     "/v1/retailer/tracking",
     15_000,
   );
+  const ws = useOptionalWebSocket();
   const [orders, setOrders] = useState<TrackingOrder[]>([]);
   const [expandedSuppliers, setExpandedSuppliers] = useState<Set<string>>(
     new Set(),
   );
   const [revealedTokens, setRevealedTokens] = useState<Set<string>>(new Set());
+  const expansionTouchedRef = useRef(false);
+
+  const syncStatus = useMemo(() => {
+    const offline = typeof navigator !== "undefined" && !navigator.onLine;
+    if (offline) {
+      return {
+        kind: "offline" as const,
+        icon: WifiOff,
+        message: "Network offline. Showing the latest cached dock queue.",
+      };
+    }
+    if (ws && !ws.isConnected) {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Live socket reconnecting. Updates may arrive with delay.",
+      };
+    }
+    if (error) {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Queue refresh failed. Retrying in the background.",
+      };
+    }
+    if (isRefreshing && !loading) {
+      return {
+        kind: "refreshing" as const,
+        icon: RefreshCw,
+        message: "Syncing live dock updates...",
+      };
+    }
+    return null;
+  }, [error, isRefreshing, loading, ws]);
 
   useEffect(() => {
     if (data?.orders) setOrders(data.orders);
   }, [data]);
+
+  useEffect(() => {
+    const storage = getBrowserStorage();
+    if (!storage) return;
+    try {
+      const raw = storage.getItem(EXPANDED_SUPPLIERS_KEY);
+      if (!raw) return;
+      const parsed: unknown = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      const ids = parsed.filter((item): item is string => typeof item === "string");
+      if (ids.length === 0) return;
+      expansionTouchedRef.current = true;
+      setExpandedSuppliers(new Set(ids));
+    } catch {
+      // Ignore malformed persisted expansion state.
+    }
+  }, []);
 
   useWsEvent(
     "DRIVER_APPROACHING",
@@ -173,13 +240,55 @@ export default function DockPage() {
   }, [activeOrders]);
 
   useEffect(() => {
-    setExpandedSuppliers(new Set(supplierGroups.map((g) => g.supplierId)));
-  }, [supplierGroups.length]);
+    const available = new Set(supplierGroups.map((g) => g.supplierId));
+    setExpandedSuppliers((prev) => {
+      if (available.size === 0) return prev;
+      const next = new Set(Array.from(prev).filter((id) => available.has(id)));
+      if (!expansionTouchedRef.current) {
+        available.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }, [supplierGroups]);
+
+  useEffect(() => {
+    const storage = getBrowserStorage();
+    if (!storage) return;
+    try {
+      storage.setItem(
+        EXPANDED_SUPPLIERS_KEY,
+        JSON.stringify(Array.from(expandedSuppliers)),
+      );
+    } catch {
+      // Ignore local storage write failures.
+    }
+  }, [expandedSuppliers]);
+
+  useEffect(() => {
+    const tokenEligible = new Set(
+      orders
+        .filter(
+          (order) =>
+            order.state === "ARRIVED" || order.state === "AWAITING_PAYMENT",
+        )
+        .map((order) => order.order_id),
+    );
+    setRevealedTokens((prev) => {
+      const next = new Set(Array.from(prev).filter((id) => tokenEligible.has(id)));
+      if (next.size === prev.size) return prev;
+      return next;
+    });
+  }, [orders]);
 
   const toggleSupplier = (id: string) => {
+    expansionTouchedRef.current = true;
     setExpandedSuppliers((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };
@@ -187,7 +296,11 @@ export default function DockPage() {
   const toggleToken = (orderId: string) => {
     setRevealedTokens((prev) => {
       const next = new Set(prev);
-      next.has(orderId) ? next.delete(orderId) : next.add(orderId);
+      if (next.has(orderId)) {
+        next.delete(orderId);
+      } else {
+        next.add(orderId);
+      }
       return next;
     });
   };
@@ -205,6 +318,36 @@ export default function DockPage() {
           Real-time arrival queue and proximity-locked secure verification.
         </p>
       </header>
+
+      {syncStatus && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`mb-6 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
+            syncStatus.kind === "refreshing"
+              ? "border-[var(--desk-info)]/30 bg-[var(--desk-info)]/5 text-[var(--desk-info)]"
+              : "border-[var(--desk-warning)]/30 bg-[var(--desk-warning)]/10 text-[var(--desk-warning)]"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <syncStatus.icon
+              size={16}
+              className={syncStatus.kind === "refreshing" ? "animate-spin" : ""}
+            />
+            <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+              {syncStatus.message}
+            </span>
+          </div>
+          {syncStatus.kind !== "refreshing" && (
+            <button
+              onClick={() => void mutate()}
+              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+            >
+              Retry
+            </button>
+          )}
+        </motion.div>
+      )}
 
       <BentoGrid className="mb-8">
         <BentoCard interactive={false}>
@@ -350,70 +493,85 @@ export default function DockPage() {
                       exit={{ height: 0, opacity: 0 }}
                       className="border-t border-[var(--desk-border)] divide-y divide-[var(--desk-border)]"
                     >
-                      {group.orders.map((order) => (
-                        <div
-                          key={order.order_id}
-                          className="p-5 flex items-center justify-between gap-6 hover:bg-[var(--desk-surface-subtle)] transition-colors"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 mb-1">
-                              <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
-                                #{order.order_id.slice(-8)}
-                              </span>
-                              <Chip
-                                size="sm"
-                                variant="flat"
-                                className="font-bold text-[10px]"
-                              >
-                                {order.state}
-                              </Chip>
-                            </div>
-                            <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase tracking-widest font-bold">
-                              {formatAmount(order.total_amount)} UZS ·{" "}
-                              {order.items.length} SKUS
-                            </p>
-                          </div>
+                      {group.orders.map((order) => {
+                        const status = chipCfg[order.state] || chipCfg.PENDING;
+                        const statusClass =
+                          status.color === "success"
+                            ? "text-[var(--desk-success)]"
+                            : status.color === "warning"
+                              ? "text-[var(--desk-warning)]"
+                              : status.color === "danger"
+                                ? "text-[var(--desk-danger)]"
+                                : status.color === "accent"
+                                  ? "text-[var(--desk-accent)]"
+                                  : "text-[var(--desk-text-secondary)]";
 
-                          <div className="flex items-center gap-4">
-                            {order.state === "ARRIVED" ||
-                            order.state === "AWAITING_PAYMENT" ? (
-                              <>
-                                <button
-                                  onClick={() => toggleToken(order.order_id)}
-                                  className={`flex items-center gap-2 px-4 h-10 rounded-xl font-bold transition-all active:scale-95 ${revealedTokens.has(order.order_id) ? "bg-[var(--desk-text-primary)] text-white" : "bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] text-[var(--desk-text-primary)]"}`}
-                                >
-                                  <QrCode size={18} />
-                                  {revealedTokens.has(order.order_id)
-                                    ? "Hide"
-                                    : "Reveal Token"}
-                                </button>
-                                {revealedTokens.has(order.order_id) &&
-                                  order.delivery_token && (
-                                    <motion.div
-                                      initial={{ scale: 0 }}
-                                      animate={{ scale: 1 }}
-                                      className="p-2 bg-white rounded-xl shadow-lg border border-[var(--desk-border)]"
-                                    >
-                                      <QRCodeSVG
-                                        value={order.delivery_token}
-                                        size={80}
-                                        bgColor="transparent"
-                                        fgColor="var(--desk-text-primary)"
-                                      />
-                                    </motion.div>
-                                  )}
-                              </>
-                            ) : (
-                              <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)] opacity-40">
-                                <Clock size={16} />
-                                <span className="text-[10px] font-bold uppercase tracking-widest">
-                                  Locked Until Proximity
+                        return (
+                          <motion.div
+                            key={order.order_id}
+                            layout
+                            className="p-5 flex items-center justify-between gap-6 hover:bg-[var(--desk-surface-subtle)] transition-colors"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-3 mb-1">
+                                <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
+                                  #{order.order_id.slice(-8)}
                                 </span>
+                                <Chip
+                                  size="sm"
+                                  variant="secondary"
+                                  className={`font-bold text-[10px] ${statusClass}`}
+                                >
+                                  {status.label}
+                                </Chip>
                               </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                              <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase tracking-widest font-bold">
+                                {formatAmount(order.total_amount)} UZS ·{" "}
+                                {order.items.length} SKUS
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                              {order.state === "ARRIVED" ||
+                              order.state === "AWAITING_PAYMENT" ? (
+                                <>
+                                  <button
+                                    onClick={() => toggleToken(order.order_id)}
+                                    className={`flex items-center gap-2 px-4 h-10 rounded-xl font-bold transition-all active:scale-95 ${revealedTokens.has(order.order_id) ? "bg-[var(--desk-text-primary)] text-white" : "bg-[var(--desk-surface-subtle)] border border-[var(--desk-border)] text-[var(--desk-text-primary)]"}`}
+                                  >
+                                    <QrCode size={18} />
+                                    {revealedTokens.has(order.order_id)
+                                      ? "Hide"
+                                      : "Reveal Token"}
+                                  </button>
+                                  {revealedTokens.has(order.order_id) &&
+                                    order.delivery_token && (
+                                      <motion.div
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
+                                        className="p-2 bg-white rounded-xl shadow-lg border border-[var(--desk-border)]"
+                                      >
+                                        <QRCodeSVG
+                                          value={order.delivery_token}
+                                          size={80}
+                                          bgColor="transparent"
+                                          fgColor="var(--desk-text-primary)"
+                                        />
+                                      </motion.div>
+                                    )}
+                                </>
+                              ) : (
+                                <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)] opacity-40">
+                                  <Clock size={16} />
+                                  <span className="text-[10px] font-bold uppercase tracking-widest">
+                                    Locked Until Proximity
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                     </motion.div>
                   )}
                 </AnimatePresence>

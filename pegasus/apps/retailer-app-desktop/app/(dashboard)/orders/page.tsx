@@ -10,6 +10,7 @@ import {
   PackageOpen,
   MoreVertical,
   Clock,
+  Layers3,
   ArrowUpRight,
   RefreshCw,
   AlertTriangle,
@@ -152,7 +153,7 @@ export default function OrdersPage() {
           </p>
         </div>
         <Button
-          variant="solid"
+          variant="primary"
           onPress={() => router.push("/catalog")}
           className="h-11 px-6 rounded-xl font-bold transition-all shadow-[var(--shadow-sm)]"
           style={{ background: "var(--desk-accent)", color: "white" }}
@@ -254,7 +255,7 @@ export default function OrdersPage() {
         ))}
         <div className="flex-1" />
         <Button
-          variant="light"
+          variant="tertiary"
           size="sm"
           isIconOnly
           onPress={() => mutate()}
@@ -355,7 +356,7 @@ export default function OrdersPage() {
                 </div>
                 <Button
                   isIconOnly
-                  variant="light"
+                  variant="tertiary"
                   className="text-[var(--desk-text-tertiary)]"
                 >
                   <MoreVertical size={20} />

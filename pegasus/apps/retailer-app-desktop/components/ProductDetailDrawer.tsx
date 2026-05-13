@@ -114,7 +114,7 @@ export default function ProductDetailDrawer({
                   <div className="flex items-center gap-2 mt-4">
                     <Chip
                       size="sm"
-                      variant="flat"
+                      variant="secondary"
                       className="font-bold text-[10px] tracking-widest"
                     >
                       {product.category_name?.toUpperCase()}
