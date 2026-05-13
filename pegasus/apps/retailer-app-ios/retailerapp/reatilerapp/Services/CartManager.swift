@@ -269,7 +269,7 @@ extension CartManager {
             items = mergedItems
             lastSyncedSignature = newSignature
         } catch {
-            print("Failed to hydrate cart from server: \(error)")
+            print("Failed to hydrate cart from server")
         }
     }
 
@@ -304,7 +304,7 @@ extension CartManager {
             lastSyncedSignature = currentSignature
             print("Cart synced. Items count: \(response.items.count)")
         } catch {
-            print("Failed to sync cart: \(error)")
+            print("Failed to sync cart")
         }
     }
 }

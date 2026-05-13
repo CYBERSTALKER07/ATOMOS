@@ -198,7 +198,9 @@
         "DeliverySessions and DeliverySessionAdjustments are additive schema surfaces keyed by SessionId with order/driver/retailer/supplier indexes for realtime and audit queries.",
         "VerifyHandshake supports signed JWT tokens with fallback to the existing delivery token path for compatibility while enforcing geofence and assignment checks.",
         "ConfirmOffload now transitions session state to SETTLEMENT_AWAIT and emits SETTLEMENT_REQUIRED; orderroutes websocket fanout emits additive SETTLEMENT_REQUIRED plus legacy PAYMENT_REQUIRED for deployed clients.",
+        "Kafka notification dispatcher now consumes DELIVERY_SESSION_UPDATED and projects settlement/session numeric fields onto websocket frames so retailer modal consumers receive amount/session parity during fanout delivery.",
         "Retailer desktop, iOS, and Android clients now consume SETTLEMENT_REQUIRED directly and treat DELIVERY_SESSION_UPDATED as additive amount or refresh signal to keep payment and order views converged during settlement.",
+        "Active fulfillment query now includes AWAITING_PAYMENT with legacy AWAITING_GLOBAL_PAYNT compatibility to prevent payment-waiting rows from dropping from retailer fulfillment surfaces.",
         "CompleteOrder now blocks completion while delivery-session settlement is still pending (uncleared PaymentClearedAt on active session states).",
         "Payment session settlement and cash collection completion now advance matching delivery sessions to FINAL_SETTLEMENT and record PaymentClearedAt to release delivery lock semantics."
       ]

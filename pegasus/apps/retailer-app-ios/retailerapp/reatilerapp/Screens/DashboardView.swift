@@ -399,7 +399,7 @@ struct DashboardView: View {
             try await APIClient.shared.confirmAiOrder(orderId: orderId)
             await loadData()
         } catch {
-            print("Failed to confirm AI order: \(error)")
+            print("Failed to confirm AI order")
         }
     }
 
@@ -408,7 +408,7 @@ struct DashboardView: View {
             try await APIClient.shared.rejectAiOrder(orderId: orderId, reason: "Retailer rejected")
             await loadData()
         } catch {
-            print("Failed to reject AI order: \(error)")
+            print("Failed to reject AI order")
         }
     }
 
@@ -417,7 +417,7 @@ struct DashboardView: View {
             try await APIClient.shared.confirmPreorder(orderId: orderId)
             await loadData()
         } catch {
-            print("Failed to confirm preorder: \(error)")
+            print("Failed to confirm preorder")
         }
     }
 
@@ -428,7 +428,7 @@ struct DashboardView: View {
             try await APIClient.shared.editPreorder(orderId: orderId, deliveryDate: nil, items: nil)
             await loadData()
         } catch {
-            print("Failed to edit preorder: \(error)")
+            print("Failed to edit preorder")
         }
     }
 

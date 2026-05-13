@@ -101,6 +101,7 @@ struct AutoOrderView: View {
     @State private var settings: AutoOrderSettings?
     @State private var forecasts: [DemandForecast] = []
     @State private var isLoading = true
+    @State private var syncMessage: String? = nil
     @AppStorage("globalAutoOrder") private var globalAutoOrder = false
     @State private var pendingTarget: EnableTarget?
     @State private var localToggleStates: [String: Bool] = [:]
@@ -133,6 +134,11 @@ struct AutoOrderView: View {
                     loadingState
                 } else {
                     VStack(spacing: AppTheme.spacingLG) {
+                        if let syncMessage, !syncMessage.isEmpty {
+                            syncStatusBanner(syncMessage)
+                                .slideIn(delay: 0)
+                        }
+
                         headerCard.slideIn(delay: 0)
                         globalToggleCard.slideIn(delay: 0.05)
 
@@ -256,6 +262,28 @@ struct AutoOrderView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func syncStatusBanner(_ message: String) -> some View {
+        HStack(spacing: AppTheme.spacingSM) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppTheme.warning)
+            Text(message)
+                .font(.system(.caption, design: .rounded, weight: .medium))
+                .foregroundStyle(AppTheme.textSecondary)
+                .lineLimit(3)
+            Spacer()
+            Button("Retry") {
+                Task { await loadAll() }
+            }
+            .font(.system(.caption, design: .rounded, weight: .semibold))
+            .foregroundStyle(AppTheme.accent)
+        }
+        .padding(.horizontal, AppTheme.spacingMD)
+        .padding(.vertical, AppTheme.spacingSM)
+        .background(AppTheme.warning.opacity(0.12))
+        .clipShape(.rect(cornerRadius: AppTheme.radiusMD))
     }
 
     // MARK: - Header
@@ -514,53 +542,84 @@ struct AutoOrderView: View {
 
     private func loadAll() async {
         if settings == nil { isLoading = true }
-        async let settingsReq: AutoOrderSettings? = loadSettings()
-        async let forecastsReq: [DemandForecast] = loadForecasts()
+        async let settingsReq: (AutoOrderSettings?, String?) = loadSettings()
+        async let forecastsReq: ([DemandForecast], String?) = loadForecasts()
         
-        let fetchedSettings = await settingsReq
-        let fetchedForecasts = await forecastsReq
+        let (fetchedSettings, settingsSyncMessage) = await settingsReq
+        let (fetchedForecasts, forecastSyncMessage) = await forecastsReq
         
         withAnimation(AnimationConstants.fluid) {
             settings = fetchedSettings
             forecasts = fetchedForecasts
             globalAutoOrder = fetchedSettings?.globalEnabled ?? false
             localToggleStates.removeAll()
+            syncMessage = settingsSyncMessage ?? forecastSyncMessage
             isLoading = false
         }
     }
 
-    private func loadSettings() async -> AutoOrderSettings? {
+    private func loadSettings() async -> (AutoOrderSettings?, String?) {
         do {
-            return try await api.getAutoOrderSettings()
+            return (try await api.getAutoOrderSettings(), nil)
         } catch {
-            return nil
+            return (
+                nil,
+                RetailerErrorSupport.message(
+                    for: error,
+                    restricted: "Auto-order settings access is restricted for this account.",
+                    offline: "Offline mode active. Showing latest auto-order settings.",
+                    fallback: "Auto-order settings sync is degraded. Retry is available.",
+                )
+            )
         }
     }
 
-    private func loadForecasts() async -> [DemandForecast] {
+    private func loadForecasts() async -> ([DemandForecast], String?) {
         let rid = AuthManager.shared.currentUser?.id ?? ""
         do {
-            return try await api.get(path: "/v1/ai/predictions?retailer_id=\(rid)")
+            return (try await api.get(path: "/v1/ai/predictions?retailer_id=\(rid)"), nil)
         } catch {
-            return []
+            return (
+                [],
+                RetailerErrorSupport.message(
+                    for: error,
+                    restricted: "Prediction access is restricted for this account.",
+                    offline: "Offline mode active. Predictions will resume after reconnect.",
+                    fallback: "Predictions sync is degraded. Retry is available.",
+                )
+            )
         }
     }
 
     private func enableGlobal(useHistory: Bool) async {
         do {
             let _: [String: Bool] = try await api.setGlobalAutoOrder(enabled: true, useHistory: useHistory)
+            syncMessage = nil
             await loadAll()
         } catch {
             globalAutoOrder = false
+            syncMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Global auto-order access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry global auto-order update.",
+                fallback: "Global auto-order update failed. Please try again.",
+            )
         }
     }
 
     private func disableGlobal() async {
         do {
             let _: [String: Bool] = try await api.setGlobalAutoOrder(enabled: false)
+            syncMessage = nil
             await loadAll()
         } catch {
             globalAutoOrder = true
+            syncMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Global auto-order access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry global auto-order update.",
+                fallback: "Global auto-order update failed. Please try again.",
+            )
         }
     }
 
@@ -577,9 +636,17 @@ struct AutoOrderView: View {
             case .variant:
                 _ = try await api.setVariantAutoOrder(skuId: item.id, enabled: enabled, useHistory: historyFlag)
             }
+            syncMessage = nil
             await loadAll()
         } catch {
+            let message = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Scoped auto-order access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry scoped auto-order update.",
+                fallback: "Scoped auto-order update failed. Please try again.",
+            )
             await loadAll() // revert to server state on failure
+            syncMessage = message
         }
     }
 

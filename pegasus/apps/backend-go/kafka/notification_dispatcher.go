@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"backend-go/kafka/workerpool"
@@ -39,9 +40,17 @@ type notificationWSFrame struct {
 	Title       string            `json:"title"`
 	Body        string            `json:"body"`
 	OrderID     string            `json:"order_id,omitempty"`
+	SessionID   string            `json:"session_id,omitempty"`
+	InvoiceID   string            `json:"invoice_id,omitempty"`
 	State       string            `json:"state,omitempty"`
 	NewState    string            `json:"new_state,omitempty"`
 	OldState    string            `json:"old_state,omitempty"`
+	Currency    string            `json:"currency,omitempty"`
+	Amount      int64             `json:"amount,omitempty"`
+	OriginalAmt int64             `json:"original_amount,omitempty"`
+	AdjustedAmt int64             `json:"adjusted_amount,omitempty"`
+	FeeBps      int64             `json:"fee_basis_points,omitempty"`
+	FeeAmount   int64             `json:"fee_amount,omitempty"`
 	Payload     string            `json:"payload,omitempty"`
 	Channel     string            `json:"channel"`
 	CreatedAt   string            `json:"created_at"`
@@ -64,11 +73,39 @@ func newNotificationWSFrame(notificationID, eventType string, notif notification
 		MessageArgs: notif.MessageArgs,
 	}
 	frame.OrderID = notif.MessageArgs["order_id"]
+	frame.SessionID = notif.MessageArgs["session_id"]
+	frame.InvoiceID = notif.MessageArgs["invoice_id"]
 	frame.NewState = notif.MessageArgs["new_state"]
 	frame.OldState = notif.MessageArgs["old_state"]
 	frame.State = frame.NewState
 	if frame.State == "" {
 		frame.State = notif.MessageArgs["state"]
+	}
+	frame.Currency = notif.MessageArgs["currency"]
+	if raw := notif.MessageArgs["amount"]; raw != "" {
+		if value, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			frame.Amount = value
+		}
+	}
+	if raw := notif.MessageArgs["original_amount"]; raw != "" {
+		if value, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			frame.OriginalAmt = value
+		}
+	}
+	if raw := notif.MessageArgs["adjusted_amount"]; raw != "" {
+		if value, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			frame.AdjustedAmt = value
+		}
+	}
+	if raw := notif.MessageArgs["fee_basis_points"]; raw != "" {
+		if value, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			frame.FeeBps = value
+		}
+	}
+	if raw := notif.MessageArgs["fee_amount"]; raw != "" {
+		if value, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			frame.FeeAmount = value
+		}
 	}
 	return frame
 }
@@ -106,6 +143,8 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handlePaymentSettled(deps, m.Value)
 			case EventSettlementRequired:
 				handleSettlementRequired(deps, m.Value)
+			case EventDeliverySessionUpdated:
+				handleDeliverySessionUpdated(deps, m.Value)
 			case EventPaymentFailed:
 				handlePaymentFailed(deps, m.Value)
 			case EventCashCollectionRequired:
@@ -424,7 +463,13 @@ func handleSettlementRequired(deps NotificationDeps, data []byte) {
 		"notification.settlement_required.retailer.title",
 		"notification.settlement_required.retailer.body",
 		map[string]string{
-			"order_id": event.OrderID,
+			"order_id":        event.OrderID,
+			"session_id":      event.SessionID,
+			"invoice_id":      event.InvoiceID,
+			"state":           event.State,
+			"currency":        event.Currency,
+			"amount":          strconv.FormatInt(event.Amount, 10),
+			"original_amount": strconv.FormatInt(event.OriginalAmount, 10),
 		},
 	)
 	dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventSettlementRequired, retailerNotif)
@@ -454,6 +499,36 @@ func handleSettlementRequired(deps NotificationDeps, data []byte) {
 		)
 		dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventSettlementRequired, supplierNotif)
 	}
+}
+
+func handleDeliverySessionUpdated(deps NotificationDeps, data []byte) {
+	var event DeliverySessionUpdatedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "DELIVERY_SESSION_UPDATED", "err", err)
+		return
+	}
+
+	if event.RetailerID == "" {
+		return
+	}
+
+	retailerNotif := notifications.NewFormattedNotification(
+		"Delivery Session Updated",
+		fmt.Sprintf("Order %s delivery session updated to %s.", event.OrderID, event.State),
+		"notification.delivery_session_updated.retailer.title",
+		"notification.delivery_session_updated.retailer.body",
+		map[string]string{
+			"order_id":         event.OrderID,
+			"session_id":       event.SessionID,
+			"state":            event.State,
+			"currency":         event.Currency,
+			"original_amount":  strconv.FormatInt(event.OriginalAmount, 10),
+			"adjusted_amount":  strconv.FormatInt(event.AdjustedAmount, 10),
+			"fee_basis_points": strconv.FormatInt(event.FeeBasisPoints, 10),
+			"fee_amount":       strconv.FormatInt(event.FeeAmount, 10),
+		},
+	)
+	dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventDeliverySessionUpdated, retailerNotif)
 }
 
 func handlePaymentFailed(deps NotificationDeps, data []byte) {

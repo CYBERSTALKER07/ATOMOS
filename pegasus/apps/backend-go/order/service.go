@@ -3895,7 +3895,7 @@ type ActiveFulfillmentItem struct {
 }
 
 // ActiveFulfillments returns all orders approaching or awaiting payment for a given retailer.
-// States: IN_TRANSIT, ARRIVED, AWAITING_GLOBAL_PAYNT, PENDING_CASH_COLLECTION.
+// States: IN_TRANSIT, ARRIVED, AWAITING_PAYMENT (plus legacy AWAITING_GLOBAL_PAYNT), PENDING_CASH_COLLECTION.
 func (s *OrderService) ActiveFulfillments(ctx context.Context, retailerID string) ([]ActiveFulfillmentItem, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT o.OrderId, o.SupplierId, COALESCE(s.Name, '') AS SupplierName, o.State,
@@ -3908,7 +3908,7 @@ func (s *OrderService) ActiveFulfillments(ctx context.Context, retailerID string
 		      FROM Orders o
 		      LEFT JOIN Suppliers s ON o.SupplierId = s.SupplierId
 		      WHERE o.RetailerId = @retailerId
-		        AND o.State IN ('IN_TRANSIT', 'ARRIVED', 'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION')
+		        AND o.State IN ('IN_TRANSIT', 'ARRIVED', 'AWAITING_PAYMENT', 'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION')
 		      ORDER BY o.CreatedAt DESC`,
 		Params: map[string]interface{}{
 			"retailerId": retailerID,

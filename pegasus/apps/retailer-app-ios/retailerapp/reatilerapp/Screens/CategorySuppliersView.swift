@@ -48,6 +48,10 @@ struct CategorySuppliersView: View {
                     }
                     .slideIn(delay: 0)
 
+                    if let errorMessage, !errorMessage.isEmpty {
+                        syncStatusBanner(errorMessage)
+                    }
+
                     // Supplier Cards
                     LazyVGrid(columns: columns, spacing: AppTheme.spacingLG) {
                         ForEach(Array(suppliers.enumerated()), id: \.element.id) { index, supplier in
@@ -152,6 +156,28 @@ struct CategorySuppliersView: View {
 
     // MARK: - Empty State
 
+    private func syncStatusBanner(_ message: String) -> some View {
+        HStack(spacing: AppTheme.spacingSM) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppTheme.warning)
+            Text(message)
+                .font(.system(.caption, design: .rounded, weight: .medium))
+                .foregroundStyle(AppTheme.textSecondary)
+                .lineLimit(3)
+            Spacer()
+            Button("Retry") {
+                Task { await loadSuppliers() }
+            }
+            .font(.system(.caption, design: .rounded, weight: .semibold))
+            .foregroundStyle(AppTheme.accent)
+        }
+        .padding(.horizontal, AppTheme.spacingMD)
+        .padding(.vertical, AppTheme.spacingSM)
+        .background(AppTheme.warning.opacity(0.12))
+        .clipShape(.rect(cornerRadius: AppTheme.radiusMD))
+    }
+
     private var emptyState: some View {
         VStack(spacing: AppTheme.spacingLG) {
             Spacer(minLength: 100)
@@ -189,8 +215,12 @@ struct CategorySuppliersView: View {
             let result: [Supplier] = try await api.get(path: "/v1/catalog/categories/\(category.id)/suppliers")
             suppliers = result
         } catch {
-            suppliers = []
-            errorMessage = "Suppliers are unavailable right now. Check your connection and try again."
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Category suppliers access is restricted for this account.",
+                offline: "Offline mode active. Showing latest category suppliers.",
+                fallback: "Suppliers are unavailable right now. Check your connection and try again.",
+            )
         }
         isLoading = false
     }
@@ -258,11 +288,18 @@ struct CategorySuppliersView: View {
                 path: "/v1/retailer/suppliers/\(supplier.id)/\(wasAdded ? "add" : "remove")",
                 body: ["supplier_id": supplier.id]
             )
+            errorMessage = nil
         } catch {
             withAnimation(AnimationConstants.express) {
                 if wasAdded { mySupplierIds.remove(supplier.id) }
                 else { mySupplierIds.insert(supplier.id) }
             }
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Category supplier favorites access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry category supplier favorites.",
+                fallback: "Category supplier favorites update failed. Please try again.",
+            )
         }
         togglingIds.remove(supplier.id)
     }

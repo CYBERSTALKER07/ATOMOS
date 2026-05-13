@@ -127,3 +127,98 @@ func TestNewNotificationWSFrame(t *testing.T) {
 		t.Fatalf("json state = %#v, want IN_TRANSIT", raw["state"])
 	}
 }
+
+func TestNewNotificationWSFrame_ProjectsSettlementFields(t *testing.T) {
+	ts := time.Date(2026, time.May, 3, 12, 30, 0, 0, time.UTC)
+	frame := newNotificationWSFrame(
+		"notif-settlement",
+		EventSettlementRequired,
+		notifications.NewFormattedNotification(
+			"Settlement Required",
+			"Settlement pending.",
+			"notification.settlement_required.retailer.title",
+			"notification.settlement_required.retailer.body",
+			map[string]string{
+				"order_id":        "ord-100",
+				"session_id":      "sess-100",
+				"invoice_id":      "inv-100",
+				"state":           "SETTLEMENT_AWAIT",
+				"currency":        "UZS",
+				"amount":          "47000",
+				"original_amount": "52000",
+			},
+		),
+		`{"event_type":"SETTLEMENT_REQUIRED"}`,
+		ts,
+	)
+
+	if frame.OrderID != "ord-100" {
+		t.Fatalf("order_id = %q, want ord-100", frame.OrderID)
+	}
+	if frame.SessionID != "sess-100" {
+		t.Fatalf("session_id = %q, want sess-100", frame.SessionID)
+	}
+	if frame.InvoiceID != "inv-100" {
+		t.Fatalf("invoice_id = %q, want inv-100", frame.InvoiceID)
+	}
+	if frame.State != "SETTLEMENT_AWAIT" {
+		t.Fatalf("state = %q, want SETTLEMENT_AWAIT", frame.State)
+	}
+	if frame.Currency != "UZS" {
+		t.Fatalf("currency = %q, want UZS", frame.Currency)
+	}
+	if frame.Amount != 47000 {
+		t.Fatalf("amount = %d, want 47000", frame.Amount)
+	}
+	if frame.OriginalAmt != 52000 {
+		t.Fatalf("original_amount = %d, want 52000", frame.OriginalAmt)
+	}
+}
+
+func TestNewNotificationWSFrame_ProjectsDeliverySessionAmounts(t *testing.T) {
+	ts := time.Date(2026, time.May, 3, 13, 0, 0, 0, time.UTC)
+	frame := newNotificationWSFrame(
+		"notif-session",
+		EventDeliverySessionUpdated,
+		notifications.NewFormattedNotification(
+			"Delivery Session Updated",
+			"Reconciliation applied.",
+			"notification.delivery_session_updated.retailer.title",
+			"notification.delivery_session_updated.retailer.body",
+			map[string]string{
+				"order_id":         "ord-200",
+				"session_id":       "sess-200",
+				"state":            "RECONCILIATION",
+				"currency":         "UZS",
+				"adjusted_amount":  "39000",
+				"original_amount":  "41000",
+				"fee_basis_points": "350",
+				"fee_amount":       "1365",
+			},
+		),
+		`{"event_type":"DELIVERY_SESSION_UPDATED"}`,
+		ts,
+	)
+
+	if frame.OrderID != "ord-200" {
+		t.Fatalf("order_id = %q, want ord-200", frame.OrderID)
+	}
+	if frame.SessionID != "sess-200" {
+		t.Fatalf("session_id = %q, want sess-200", frame.SessionID)
+	}
+	if frame.State != "RECONCILIATION" {
+		t.Fatalf("state = %q, want RECONCILIATION", frame.State)
+	}
+	if frame.AdjustedAmt != 39000 {
+		t.Fatalf("adjusted_amount = %d, want 39000", frame.AdjustedAmt)
+	}
+	if frame.OriginalAmt != 41000 {
+		t.Fatalf("original_amount = %d, want 41000", frame.OriginalAmt)
+	}
+	if frame.FeeBps != 350 {
+		t.Fatalf("fee_basis_points = %d, want 350", frame.FeeBps)
+	}
+	if frame.FeeAmount != 1365 {
+		t.Fatalf("fee_amount = %d, want 1365", frame.FeeAmount)
+	}
+}

@@ -17,15 +17,21 @@ struct MySuppliersView: View {
             } else if suppliers.isEmpty && !isLoading {
                 emptyState
             } else {
-                LazyVGrid(columns: columns, spacing: AppTheme.spacingLG) {
-                    ForEach(Array(suppliers.enumerated()), id: \.element.id) { index, supplier in
-                        NavigationLink {
-                            SupplierProductsView(supplier: supplier)
-                        } label: {
-                            supplierCard(supplier)
+                VStack(alignment: .leading, spacing: AppTheme.spacingLG) {
+                    if let errorMessage, !errorMessage.isEmpty {
+                        syncStatusBanner(errorMessage)
+                    }
+
+                    LazyVGrid(columns: columns, spacing: AppTheme.spacingLG) {
+                        ForEach(Array(suppliers.enumerated()), id: \.element.id) { index, supplier in
+                            NavigationLink {
+                                SupplierProductsView(supplier: supplier)
+                            } label: {
+                                supplierCard(supplier)
+                            }
+                            .buttonStyle(.plain)
+                            .staggeredSlideIn(index: index)
                         }
-                        .buttonStyle(.plain)
-                        .staggeredSlideIn(index: index)
                     }
                 }
                 .padding(.horizontal, AppTheme.spacingLG)
@@ -93,6 +99,28 @@ struct MySuppliersView: View {
 
     // MARK: - Empty State
 
+    private func syncStatusBanner(_ message: String) -> some View {
+        HStack(spacing: AppTheme.spacingSM) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppTheme.warning)
+            Text(message)
+                .font(.system(.caption, design: .rounded, weight: .medium))
+                .foregroundStyle(AppTheme.textSecondary)
+                .lineLimit(3)
+            Spacer()
+            Button("Retry") {
+                Task { await loadSuppliers() }
+            }
+            .font(.system(.caption, design: .rounded, weight: .semibold))
+            .foregroundStyle(AppTheme.accent)
+        }
+        .padding(.horizontal, AppTheme.spacingMD)
+        .padding(.vertical, AppTheme.spacingSM)
+        .background(AppTheme.warning.opacity(0.12))
+        .clipShape(.rect(cornerRadius: AppTheme.radiusMD))
+    }
+
     private var emptyState: some View {
         VStack(spacing: AppTheme.spacingLG) {
             Spacer(minLength: 100)
@@ -130,8 +158,12 @@ struct MySuppliersView: View {
             let result: [Supplier] = try await api.get(path: "/v1/retailer/suppliers")
             suppliers = result
         } catch {
-            suppliers = []
-            errorMessage = "Supplier list could not load. Check your connection and pull to refresh."
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "My suppliers access is restricted for this account.",
+                offline: "Offline mode active. Showing latest supplier list.",
+                fallback: "Supplier list could not load. Check your connection and pull to refresh.",
+            )
         }
         isLoading = false
     }
@@ -177,7 +209,15 @@ struct MySuppliersView: View {
                 path: "/v1/retailer/settings/auto-order/supplier/\(supplierId)",
                 body: ["auto_order_enabled": enabled]
             )
-        } catch {}
+            errorMessage = nil
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Supplier auto-order access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry supplier auto-order update.",
+                fallback: "Supplier auto-order update failed. Please try again.",
+            )
+        }
     }
 }
 
