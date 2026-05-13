@@ -93,6 +93,7 @@ fun LocationPickerScreen(
     }
 
     var selectedPosition by remember { mutableStateOf(startPosition) }
+    var mapError by remember { mutableStateOf<String?>(null) }
 
     // Track camera center as the selected position
     LaunchedEffect(cameraPositionState.isMoving) {
@@ -177,6 +178,15 @@ fun LocationPickerScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Black.copy(alpha = 0.4f),
             )
+            if (!mapError.isNullOrBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = mapError.orEmpty(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = com.pegasus.retailer.ui.theme.StatusRed,
+                    textAlign = TextAlign.Center,
+                )
+            }
             Spacer(Modifier.height(12.dp))
             Button(
                 onClick = {
@@ -213,7 +223,9 @@ fun LocationPickerScreen(
         // My-location FAB
         FloatingActionButton(
             onClick = {
+                mapError = null
                 if (!locationPermission.status.isGranted) {
+                    mapError = "Location permission is required to use GPS"
                     locationPermission.launchPermissionRequest()
                     return@FloatingActionButton
                 }
@@ -229,9 +241,12 @@ fun LocationPickerScreen(
                                 CameraUpdateFactory.newLatLngZoom(target, 17f),
                                 durationMs = 600,
                             )
+                            mapError = null
+                        } else {
+                            mapError = "Current location unavailable. Try again"
                         }
                     } catch (_: Exception) {
-                        // Location unavailable — ignore
+                        mapError = "Could not fetch current GPS location"
                     }
                 }
             },

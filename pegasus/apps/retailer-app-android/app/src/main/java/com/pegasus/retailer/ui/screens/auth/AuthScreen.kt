@@ -106,6 +106,7 @@ fun AuthScreen(
     val locationPermission = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
     val fusedClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     var locating by remember { mutableStateOf(false) }
+    var gpsError by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(state.isAuthenticated) {
         if (state.isAuthenticated) onAuthenticated()
@@ -126,6 +127,7 @@ fun AuthScreen(
                 latitude = picked.latitude
                 longitude = picked.longitude
                 locationLabel = picked.displayText
+                gpsError = null
                 showMapPicker = false
             },
             onBack = { showMapPicker = false },
@@ -269,7 +271,9 @@ fun AuthScreen(
                         }
                         OutlinedButton(
                             onClick = {
+                                gpsError = null
                                 if (!locationPermission.status.isGranted) {
+                                    gpsError = "Location permission is required to use GPS"
                                     locationPermission.launchPermissionRequest()
                                     return@OutlinedButton
                                 }
@@ -284,9 +288,12 @@ fun AuthScreen(
                                             latitude = loc.latitude
                                             longitude = loc.longitude
                                             locationLabel = "%.5f, %.5f".format(loc.latitude, loc.longitude)
+                                            gpsError = null
+                                        } else {
+                                            gpsError = "Current location unavailable. Try again in a few seconds"
                                         }
                                     } catch (_: Exception) {
-                                        // Ignore
+                                        gpsError = "Could not fetch current GPS location"
                                     } finally {
                                         locating = false
                                     }
@@ -311,6 +318,15 @@ fun AuthScreen(
                             text = "Selected: $locationLabel",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.Black.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                        )
+                    }
+
+                    if (!gpsError.isNullOrBlank()) {
+                        Text(
+                            text = gpsError.orEmpty(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = StatusRed,
                             modifier = Modifier.padding(horizontal = 4.dp),
                         )
                     }

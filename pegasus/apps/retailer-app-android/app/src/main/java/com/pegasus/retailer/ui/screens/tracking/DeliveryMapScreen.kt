@@ -41,6 +41,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -147,6 +148,49 @@ fun DeliveryMapScreen(
                 containerColor = MaterialTheme.colorScheme.surface,
             ),
         )
+
+        val syncMessage = when {
+            uiState.loadIssue != null -> uiState.error ?: uiState.emptyStateMessage
+            uiState.isLoading && uiState.orders.isNotEmpty() -> "Syncing live delivery positions..."
+            else -> null
+        }
+
+        if (syncMessage != null) {
+            val loadIssue = uiState.loadIssue
+            val containerColor = when (loadIssue) {
+                TrackingLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                TrackingLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                TrackingLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            }
+            val contentColor = when (loadIssue) {
+                TrackingLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
+                TrackingLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
+                TrackingLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
+                null -> MaterialTheme.colorScheme.onPrimaryContainer
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .background(containerColor, MaterialTheme.shapes.medium)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = syncMessage,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = contentColor,
+                )
+                if (loadIssue != null) {
+                    TextButton(onClick = viewModel::refresh) {
+                        Text("Retry", color = contentColor)
+                    }
+                }
+            }
+        }
 
         // Supplier filter chips
         if (uiState.suppliers.size > 1) {

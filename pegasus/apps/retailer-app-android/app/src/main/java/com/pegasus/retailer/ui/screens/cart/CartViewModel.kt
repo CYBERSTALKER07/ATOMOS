@@ -13,8 +13,8 @@ import com.pegasus.retailer.data.model.UnifiedCheckoutRequest
 import com.pegasus.retailer.data.model.Variant
 import com.pegasus.retailer.ui.components.CheckoutPhase
 import com.pegasus.retailer.ui.components.CheckoutPaymentOption
-import retrofit2.HttpException
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,7 +30,14 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.JsonObject
+import retrofit2.HttpException
 import javax.inject.Inject
+
+enum class CartLoadIssue {
+    RESTRICTED,
+    OFFLINE,
+    ERROR,
+}
 
 data class CartUiState(
     val items: List<CartItem> = emptyList(),
@@ -43,6 +50,9 @@ data class CartUiState(
     val supplierIsActive: Boolean = true,
     val oosItems: List<String> = emptyList(),
     val paymentOptions: List<CheckoutPaymentOption> = emptyList(),
+    val isRefreshing: Boolean = false,
+    val syncError: String? = null,
+    val loadIssue: CartLoadIssue? = null,
 ) {
     val isEmpty: Boolean get() = items.isEmpty()
     val totalItems: Int get() = items.sumOf { it.quantity }
@@ -56,6 +66,13 @@ data class CartUiState(
     val displayTotal: String get() = "%,.0f".format(total)
     val firstProductName: String get() = items.firstOrNull()?.product?.name ?: "Order"
     val selectedPaymentLabel: String get() = checkoutPaymentLabel(selectedPaymentGateway, paymentOptions)
+    val syncMessage: String?
+        get() = when (loadIssue) {
+            CartLoadIssue.RESTRICTED -> "Cart sync access is restricted for this account"
+            CartLoadIssue.OFFLINE -> "Offline mode active. Showing latest cart"
+            CartLoadIssue.ERROR -> "Cart sync degraded. Retry is available"
+            null -> null
+        }
 }
 
 private fun checkoutPaymentLabel(gateway: String, options: List<CheckoutPaymentOption>): String {
@@ -94,6 +111,11 @@ init {
         fetchPaymentOptions()
         refreshCartFromServer()
         observeCartSyncUpdates()
+    }
+
+    fun retrySync() {
+        refreshCartFromServer()
+        fetchPaymentOptions()
     }
 
     private fun cartSignature(items: List<CartItem>): String {
@@ -172,18 +194,40 @@ init {
     }
 
     private fun refreshCartFromServer() = viewModelScope.launch {
+        _uiState.update { it.copy(isRefreshing = true, syncError = null) }
         try {
             val payload = api.getCartSync().jsonObject
             val rawItems = payload["items"]?.jsonArray?.map { it.jsonObject } ?: emptyList()
             val merged = mapServerCart(rawItems)
             val signature = cartSignature(merged)
             if (signature == lastCartSignature) {
+                _uiState.update {
+                    it.copy(
+                        isRefreshing = false,
+                        syncError = null,
+                        loadIssue = null,
+                    )
+                }
                 return@launch
             }
-            _uiState.update { it.copy(items = merged) }
+            _uiState.update {
+                it.copy(
+                    items = merged,
+                    isRefreshing = false,
+                    syncError = null,
+                    loadIssue = null,
+                )
+            }
             lastCartSignature = signature
-        } catch (_: Exception) {
-            // Keep local state when server cart fetch fails.
+        } catch (e: Exception) {
+            val issue = resolveLoadIssue(e)
+            _uiState.update {
+                it.copy(
+                    isRefreshing = false,
+                    syncError = resolveErrorMessage(e, issue),
+                    loadIssue = issue,
+                )
+            }
         }
     }
 
@@ -234,8 +278,15 @@ init {
             try {
                 api.postCartSync(body = mapOf("items" to syncItems))
                 lastCartSignature = snapshotSignature
-            } catch (_: Exception) {
-                // Preserve local cart; next mutation or websocket delta will re-sync.
+                _uiState.update { it.copy(syncError = null, loadIssue = null) }
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(
+                        syncError = resolveErrorMessage(e, issue),
+                        loadIssue = issue,
+                    )
+                }
             }
         }
     }
@@ -265,8 +316,16 @@ init {
             }
 
             _uiState.update { it.copy(paymentOptions = dynamicOptions + standardPaymentOptions()) }
+            _uiState.update { it.copy(syncError = null, loadIssue = null) }
         } catch (e: Exception) {
-            _uiState.update { it.copy(paymentOptions = standardPaymentOptions()) }
+            val issue = resolveLoadIssue(e)
+            _uiState.update {
+                it.copy(
+                    paymentOptions = standardPaymentOptions(),
+                    syncError = resolveErrorMessage(e, issue),
+                    loadIssue = issue,
+                )
+            }
         }
     }
 
@@ -277,8 +336,16 @@ init {
                 val request = Json.decodeFromString<UnifiedCheckoutRequest>(order.payloadJson)
                 api.unifiedCheckout(request, order.idempotencyKey)
                 pendingOrderDao.deleteById(order.id)
+                _uiState.update { it.copy(syncError = null, loadIssue = null) }
             } catch (e: Exception) {
                 pendingOrderDao.incrementRetry(order.id, e.message ?: e::class.java.simpleName)
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(
+                        syncError = resolveErrorMessage(e, issue),
+                        loadIssue = issue,
+                    )
+                }
             }
         }
     }
@@ -442,6 +509,22 @@ init {
             .sortedBy { it.skuId }
             .joinToString("|") { "${it.skuId}:${it.quantity}:${it.unitPrice}" }
         return "retailer-checkout:${request.paymentGateway}:$itemKey"
+    }
+
+    private fun resolveLoadIssue(error: Exception): CartLoadIssue {
+        return when {
+            error is HttpException && (error.code() == 401 || error.code() == 403) -> CartLoadIssue.RESTRICTED
+            error is IOException -> CartLoadIssue.OFFLINE
+            else -> CartLoadIssue.ERROR
+        }
+    }
+
+    private fun resolveErrorMessage(error: Exception, issue: CartLoadIssue): String {
+        return when (issue) {
+            CartLoadIssue.RESTRICTED -> "Cart sync access is restricted for this account"
+            CartLoadIssue.OFFLINE -> "Offline mode active. Reconnect and retry"
+            CartLoadIssue.ERROR -> error.message ?: "Cart sync failed"
+        }
     }
 
     override fun onCleared() {

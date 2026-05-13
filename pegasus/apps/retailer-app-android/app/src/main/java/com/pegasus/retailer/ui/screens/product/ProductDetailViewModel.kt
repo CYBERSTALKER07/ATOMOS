@@ -8,12 +8,20 @@ import com.pegasus.retailer.data.model.Product
 import com.pegasus.retailer.data.model.UpdateSettingsRequest
 import com.pegasus.retailer.ui.screens.autoorder.EnableTarget
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import javax.inject.Inject
+
+enum class ProductDetailLoadIssue {
+    RESTRICTED,
+    OFFLINE,
+    ERROR,
+}
 
 data class ProductDetailUiState(
     val isLoading: Boolean = true,
@@ -21,7 +29,16 @@ data class ProductDetailUiState(
     val settings: AutoOrderSettings? = null,
     val pendingEnableTarget: EnableTarget? = null,
     val error: String? = null,
-)
+    val loadIssue: ProductDetailLoadIssue? = null,
+) {
+    val syncMessage: String?
+        get() = when (loadIssue) {
+            ProductDetailLoadIssue.RESTRICTED -> "Product detail access is restricted for this account"
+            ProductDetailLoadIssue.OFFLINE -> "Offline mode active. Showing latest product settings"
+            ProductDetailLoadIssue.ERROR -> "Product detail sync degraded. Retry is available"
+            null -> null
+        }
+}
 
 @HiltViewModel
 class ProductDetailViewModel @Inject constructor(
@@ -32,16 +49,50 @@ class ProductDetailViewModel @Inject constructor(
     val uiState: StateFlow<ProductDetailUiState> = _uiState.asStateFlow()
 
     fun load(productId: String) {
-        if (_uiState.value.product != null) return
+        if (
+            _uiState.value.product != null &&
+            _uiState.value.settings != null &&
+            _uiState.value.loadIssue == null &&
+            _uiState.value.error == null
+        ) return
+
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = it.product == null, error = null) }
+
+            var nextIssue: ProductDetailLoadIssue? = null
+            var nextError: String? = null
+            var nextProduct: Product? = null
+            var nextSettings: AutoOrderSettings? = null
+
             try {
                 val products = api.getCatalogProducts()
-                val product = products.firstOrNull { it.id == productId }
-                val settings = try { api.getAutoOrderSettings() } catch (_: Exception) { null }
-                _uiState.update { it.copy(isLoading = false, product = product, settings = settings) }
+                nextProduct = products.firstOrNull { it.id == productId }
+                if (nextProduct == null && _uiState.value.product == null) {
+                    nextIssue = ProductDetailLoadIssue.ERROR
+                    nextError = "Product not found"
+                }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                nextIssue = resolveLoadIssue(e)
+                nextError = resolveErrorMessage(e, nextIssue)
+            }
+
+            try {
+                nextSettings = api.getAutoOrderSettings()
+            } catch (e: Exception) {
+                if (nextIssue == null) {
+                    nextIssue = resolveLoadIssue(e)
+                    nextError = resolveErrorMessage(e, nextIssue)
+                }
+            }
+
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    product = nextProduct ?: it.product,
+                    settings = nextSettings ?: it.settings,
+                    error = nextError,
+                    loadIssue = nextIssue,
+                )
             }
         }
     }
@@ -99,9 +150,10 @@ class ProductDetailViewModel @Inject constructor(
                     else -> Unit
                 }
                 val refreshed = api.getAutoOrderSettings()
-                _uiState.update { it.copy(settings = refreshed) }
+                _uiState.update { it.copy(settings = refreshed, error = null, loadIssue = null) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                val issue = resolveLoadIssue(e)
+                _uiState.update { it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue) }
             }
         }
     }
@@ -117,10 +169,27 @@ class ProductDetailViewModel @Inject constructor(
                     else -> Unit
                 }
                 val refreshed = api.getAutoOrderSettings()
-                _uiState.update { it.copy(settings = refreshed) }
+                _uiState.update { it.copy(settings = refreshed, error = null, loadIssue = null) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                val issue = resolveLoadIssue(e)
+                _uiState.update { it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue) }
             }
+        }
+    }
+
+    private fun resolveLoadIssue(error: Exception): ProductDetailLoadIssue {
+        return when {
+            error is HttpException && (error.code() == 401 || error.code() == 403) -> ProductDetailLoadIssue.RESTRICTED
+            error is IOException -> ProductDetailLoadIssue.OFFLINE
+            else -> ProductDetailLoadIssue.ERROR
+        }
+    }
+
+    private fun resolveErrorMessage(error: Exception, issue: ProductDetailLoadIssue): String {
+        return when (issue) {
+            ProductDetailLoadIssue.RESTRICTED -> "Product detail access is restricted for this account"
+            ProductDetailLoadIssue.OFFLINE -> "Offline mode active. Reconnect and retry"
+            ProductDetailLoadIssue.ERROR -> error.message ?: "Product detail request failed"
         }
     }
 }

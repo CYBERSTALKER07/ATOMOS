@@ -12,13 +12,21 @@ import com.pegasus.retailer.data.model.formatRetailerAmount
 import com.pegasus.retailer.data.model.Order
 import com.pegasus.retailer.data.model.PendingPaymentSession
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import javax.inject.Inject
+
+enum class NavigationLoadIssue {
+    RESTRICTED,
+    OFFLINE,
+    ERROR,
+}
 
 data class CardCheckoutResult(
     val paymentUrl: String? = null,
@@ -37,6 +45,9 @@ data class NavigationUiState(
     val orderCompleted: Boolean = false,
     val paymentFailed: Boolean = false,
     val paymentFailureMessage: String = "",
+    val isRefreshing: Boolean = false,
+    val syncError: String? = null,
+    val loadIssue: NavigationLoadIssue? = null,
 ) {
     val activeOrderCount: Int get() = activeOrders.size
     val floatingStatusText: String
@@ -49,6 +60,13 @@ data class NavigationUiState(
         }
     val floatingCountdownIso: String?
         get() = activeOrders.firstOrNull()?.estimatedDelivery
+    val syncMessage: String?
+        get() = when (loadIssue) {
+            NavigationLoadIssue.RESTRICTED -> "Order feed access is restricted for this account"
+            NavigationLoadIssue.OFFLINE -> "Offline mode active. Showing latest active orders"
+            NavigationLoadIssue.ERROR -> "Order feed sync degraded. Retry is available"
+            null -> null
+        }
 }
 
 private fun PendingPaymentSession.toRetailerPaymentEvent(): RetailerWSMessage {
@@ -91,15 +109,35 @@ class NavigationViewModel @Inject constructor(
         connectWebSocket()
     }
 
+    fun retrySync() {
+        loadActiveOrders()
+        loadPendingPayments()
+    }
+
     fun loadActiveOrders() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, syncError = null) }
             try {
                 val rid = tokenManager.getUserId() ?: return@launch
                 val orders = api.getOrders(rid)
                 val active = orders.filter { it.status.isActive }
-                _uiState.update { it.copy(activeOrders = active) }
-            } catch (_: Exception) {
-                _uiState.update { it.copy(activeOrders = emptyList()) }
+                _uiState.update {
+                    it.copy(
+                        activeOrders = active,
+                        isRefreshing = false,
+                        syncError = null,
+                        loadIssue = null,
+                    )
+                }
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(
+                        isRefreshing = false,
+                        syncError = resolveErrorMessage(e, issue),
+                        loadIssue = issue,
+                    )
+                }
             }
         }
     }
@@ -116,10 +154,22 @@ class NavigationViewModel @Inject constructor(
                 val response = api.getPendingPayments()
                 val pending = response.pendingPayments.firstOrNull()
                 if (pending != null) {
-                    _uiState.update { it.copy(paymentEvent = pending.toRetailerPaymentEvent()) }
+                    _uiState.update {
+                        it.copy(
+                            paymentEvent = pending.toRetailerPaymentEvent(),
+                            syncError = null,
+                            loadIssue = null,
+                        )
+                    }
                 }
-            } catch (_: Exception) {
-                // WebSocket delivery remains the primary realtime path.
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(
+                        syncError = resolveErrorMessage(e, issue),
+                        loadIssue = issue,
+                    )
+                }
             }
         }
     }
@@ -268,5 +318,21 @@ class NavigationViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         retailerWebSocket.disconnect()
+    }
+
+    private fun resolveLoadIssue(error: Exception): NavigationLoadIssue {
+        return when {
+            error is HttpException && (error.code() == 401 || error.code() == 403) -> NavigationLoadIssue.RESTRICTED
+            error is IOException -> NavigationLoadIssue.OFFLINE
+            else -> NavigationLoadIssue.ERROR
+        }
+    }
+
+    private fun resolveErrorMessage(error: Exception, issue: NavigationLoadIssue): String {
+        return when (issue) {
+            NavigationLoadIssue.RESTRICTED -> "Order feed access is restricted for this account"
+            NavigationLoadIssue.OFFLINE -> "Offline mode active. Reconnect and retry"
+            NavigationLoadIssue.ERROR -> error.message ?: "Order feed request failed"
+        }
     }
 }

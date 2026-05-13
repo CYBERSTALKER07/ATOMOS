@@ -8,12 +8,18 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import com.pegasus.retailer.ui.theme.MotionTokens
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -25,7 +31,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -157,6 +165,12 @@ fun RetailerNavigation(
                     }
                 )
             }
+            val navSyncMessage = when {
+                navState.loadIssue != null -> navState.syncError ?: navState.syncMessage.orEmpty()
+                navState.isRefreshing -> "Syncing active orders..."
+                else -> null
+            }
+
             Scaffold(
             topBar = {
                 PegasusTopBar(
@@ -205,32 +219,71 @@ fun RetailerNavigation(
                 }
             },
         ) { innerPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = PegasusTab.HOME.name,
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                enterTransition = {
-                    slideInHorizontally(
-                        initialOffsetX = { (it * 0.20).toInt() },
-                        animationSpec = tween(MotionTokens.DurationMedium2, easing = MotionTokens.EasingEmphasizedDecelerate),
-                    ) + fadeIn(tween(MotionTokens.DurationShort4, easing = MotionTokens.EasingEmphasizedDecelerate))
-                },
-                exitTransition = {
-                    fadeOut(tween(MotionTokens.DurationShort2, easing = MotionTokens.EasingEmphasizedAccelerate))
-                },
-                popEnterTransition = {
-                    slideInHorizontally(
-                        initialOffsetX = { -(it * 0.20).toInt() },
-                        animationSpec = tween(MotionTokens.DurationMedium2, easing = MotionTokens.EasingEmphasizedDecelerate),
-                    ) + fadeIn(tween(MotionTokens.DurationShort4, easing = MotionTokens.EasingEmphasizedDecelerate))
-                },
-                popExitTransition = {
-                    slideOutHorizontally(
-                        targetOffsetX = { (it * 0.20).toInt() },
-                        animationSpec = tween(MotionTokens.DurationShort4, easing = MotionTokens.EasingEmphasizedAccelerate),
-                    ) + fadeOut(tween(MotionTokens.DurationShort2, easing = MotionTokens.EasingEmphasizedAccelerate))
-                },
-            ) {
+            Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+                if (navSyncMessage != null) {
+                    val loadIssue = navState.loadIssue
+                    val containerColor = when (loadIssue) {
+                        NavigationLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                        NavigationLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                        NavigationLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                        null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                    }
+                    val contentColor = when (loadIssue) {
+                        NavigationLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
+                        NavigationLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
+                        NavigationLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
+                        null -> MaterialTheme.colorScheme.onPrimaryContainer
+                    }
+
+                    androidx.compose.foundation.layout.Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(containerColor)
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = navSyncMessage,
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = contentColor,
+                        )
+                        if (loadIssue != null) {
+                            TextButton(onClick = navigationViewModel::retrySync) {
+                                Text("Retry", color = contentColor)
+                            }
+                        }
+                    }
+                }
+
+                NavHost(
+                    navController = navController,
+                    startDestination = PegasusTab.HOME.name,
+                    modifier = Modifier.fillMaxSize().weight(1f),
+                    enterTransition = {
+                        slideInHorizontally(
+                            initialOffsetX = { (it * 0.20).toInt() },
+                            animationSpec = tween(MotionTokens.DurationMedium2, easing = MotionTokens.EasingEmphasizedDecelerate),
+                        ) + fadeIn(tween(MotionTokens.DurationShort4, easing = MotionTokens.EasingEmphasizedDecelerate))
+                    },
+                    exitTransition = {
+                        fadeOut(tween(MotionTokens.DurationShort2, easing = MotionTokens.EasingEmphasizedAccelerate))
+                    },
+                    popEnterTransition = {
+                        slideInHorizontally(
+                            initialOffsetX = { -(it * 0.20).toInt() },
+                            animationSpec = tween(MotionTokens.DurationMedium2, easing = MotionTokens.EasingEmphasizedDecelerate),
+                        ) + fadeIn(tween(MotionTokens.DurationShort4, easing = MotionTokens.EasingEmphasizedDecelerate))
+                    },
+                    popExitTransition = {
+                        slideOutHorizontally(
+                            targetOffsetX = { (it * 0.20).toInt() },
+                            animationSpec = tween(MotionTokens.DurationShort4, easing = MotionTokens.EasingEmphasizedAccelerate),
+                        ) + fadeOut(tween(MotionTokens.DurationShort2, easing = MotionTokens.EasingEmphasizedAccelerate))
+                    },
+                ) {
                 composable(PegasusTab.HOME.name) {
                     Box(Modifier.fillMaxSize()) {
                         DashboardScreen(
@@ -369,6 +422,7 @@ fun RetailerNavigation(
                             },
                         )
                     }
+                }
                 }
             }
         }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.pegasus.retailer.ui.theme.PillShape
 import com.pegasus.retailer.ui.theme.SoftSquircleShape
 import com.pegasus.retailer.ui.theme.SquircleShape
@@ -91,11 +92,34 @@ fun CartScreen(
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
     Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        val syncMessage = when {
+            uiState.loadIssue != null -> uiState.syncError ?: uiState.syncMessage.orEmpty()
+            uiState.isRefreshing -> "Syncing cart..."
+            else -> null
+        }
+
         if (uiState.isEmpty) {
-            EmptyCartView()
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (syncMessage != null) {
+                    CartSyncBanner(
+                        message = syncMessage,
+                        issue = uiState.loadIssue,
+                        onRetry = viewModel::retrySync,
+                    )
+                }
+                EmptyCartView()
+            }
             return@Box
         }
         Column(modifier = Modifier.fillMaxSize()) {
+            if (syncMessage != null) {
+                CartSyncBanner(
+                    message = syncMessage,
+                    issue = uiState.loadIssue,
+                    onRetry = viewModel::retrySync,
+                )
+            }
+
             // ── Cart items ──
             LazyColumn(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -184,6 +208,48 @@ fun CartScreen(
         }
     }
     } // Scaffold
+}
+
+@Composable
+private fun CartSyncBanner(
+    message: String,
+    issue: CartLoadIssue?,
+    onRetry: () -> Unit,
+) {
+    val containerColor = when (issue) {
+        CartLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+        CartLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+        CartLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+        null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+    }
+    val contentColor = when (issue) {
+        CartLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
+        CartLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
+        CartLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
+        null -> MaterialTheme.colorScheme.onPrimaryContainer
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(containerColor)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = message,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.labelMedium,
+            color = contentColor,
+        )
+        if (issue != null) {
+            TextButton(onClick = onRetry) {
+                Text("Retry", color = contentColor)
+            }
+        }
+    }
 }
 
 @Composable

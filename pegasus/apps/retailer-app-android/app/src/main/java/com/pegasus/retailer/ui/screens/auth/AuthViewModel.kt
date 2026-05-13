@@ -9,10 +9,18 @@ import com.pegasus.retailer.data.model.LoginRequest
 import com.pegasus.retailer.data.model.RegisterRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import javax.inject.Inject
+
+enum class AuthLoadIssue {
+    RESTRICTED,
+    OFFLINE,
+    ERROR,
+}
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
@@ -31,15 +39,15 @@ class AuthViewModel @Inject constructor(
     fun login(phone: String, password: String) {
         val formatted = formatUzPhone(phone)
         if (formatted == null) {
-            _uiState.value = _uiState.value.copy(error = "Invalid number. Use +998 XX XXX XX XX.")
+            _uiState.value = _uiState.value.copy(error = "Invalid number. Use +998 XX XXX XX XX.", loadIssue = AuthLoadIssue.ERROR)
             return
         }
         if (password.length < 4) {
-            _uiState.value = _uiState.value.copy(error = "Password too short.")
+            _uiState.value = _uiState.value.copy(error = "Password too short.", loadIssue = AuthLoadIssue.ERROR)
             return
         }
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, loadIssue = null)
             try {
                 val response = api.login(LoginRequest(phoneNumber = formatted, password = password))
                 tokenManager.saveToken(response.token)
@@ -50,9 +58,14 @@ class AuthViewModel @Inject constructor(
                     val fbIdToken = com.pegasus.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
                     if (fbIdToken != null) tokenManager.saveFirebaseIdToken(fbIdToken)
                 }
-                _uiState.value = _uiState.value.copy(isLoading = false, isAuthenticated = true)
+                _uiState.value = _uiState.value.copy(isLoading = false, isAuthenticated = true, error = null, loadIssue = null)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message ?: "Login failed")
+                val issue = resolveLoadIssue(e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = resolveErrorMessage(e, issue, fallback = "Login failed"),
+                    loadIssue = issue,
+                )
             }
         }
     }
@@ -75,15 +88,15 @@ class AuthViewModel @Inject constructor(
     ) {
         val formatted = formatUzPhone(phone)
         if (formatted == null) {
-            _uiState.value = _uiState.value.copy(error = "Invalid number. Use +998 XX XXX XX XX.")
+            _uiState.value = _uiState.value.copy(error = "Invalid number. Use +998 XX XXX XX XX.", loadIssue = AuthLoadIssue.ERROR)
             return
         }
         if (password.length < 4) {
-            _uiState.value = _uiState.value.copy(error = "Password too short.")
+            _uiState.value = _uiState.value.copy(error = "Password too short.", loadIssue = AuthLoadIssue.ERROR)
             return
         }
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null, loadIssue = null)
             try {
                 val response = api.register(RegisterRequest(
                     phoneNumber = formatted, password = password,
@@ -103,9 +116,14 @@ class AuthViewModel @Inject constructor(
                     val fbIdToken = com.pegasus.retailer.data.auth.FirebaseAuthHelper.exchangeCustomToken(response.firebaseToken)
                     if (fbIdToken != null) tokenManager.saveFirebaseIdToken(fbIdToken)
                 }
-                _uiState.value = _uiState.value.copy(isLoading = false, isAuthenticated = true)
+                _uiState.value = _uiState.value.copy(isLoading = false, isAuthenticated = true, error = null, loadIssue = null)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = e.message ?: "Registration failed")
+                val issue = resolveLoadIssue(e)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = resolveErrorMessage(e, issue, fallback = "Registration failed"),
+                    loadIssue = issue,
+                )
             }
         }
     }
@@ -117,7 +135,23 @@ class AuthViewModel @Inject constructor(
     }
 
     fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+        _uiState.value = _uiState.value.copy(error = null, loadIssue = null)
+    }
+
+    private fun resolveLoadIssue(error: Exception): AuthLoadIssue {
+        return when {
+            error is HttpException && (error.code() == 401 || error.code() == 403) -> AuthLoadIssue.RESTRICTED
+            error is IOException -> AuthLoadIssue.OFFLINE
+            else -> AuthLoadIssue.ERROR
+        }
+    }
+
+    private fun resolveErrorMessage(error: Exception, issue: AuthLoadIssue, fallback: String): String {
+        return when (issue) {
+            AuthLoadIssue.RESTRICTED -> "Access is restricted for this account"
+            AuthLoadIssue.OFFLINE -> "Offline mode active. Reconnect and retry"
+            AuthLoadIssue.ERROR -> error.message ?: fallback
+        }
     }
 
     private fun formatUzPhone(raw: String): String? {
@@ -136,4 +170,13 @@ data class AuthUiState(
     val isLoading: Boolean = false,
     val isAuthenticated: Boolean = false,
     val error: String? = null,
-)
+    val loadIssue: AuthLoadIssue? = null,
+) {
+    val syncMessage: String?
+        get() = when (loadIssue) {
+            AuthLoadIssue.RESTRICTED -> "Access is restricted for this account"
+            AuthLoadIssue.OFFLINE -> "Offline mode active. Reconnect and retry"
+            AuthLoadIssue.ERROR -> "Authentication request failed"
+            null -> null
+        }
+}
