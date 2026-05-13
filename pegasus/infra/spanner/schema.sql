@@ -12,8 +12,8 @@ CREATE TABLE SupplierImportSessions (
     updated_at     TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
     CONSTRAINT CHK_SupplierImportSessionStatus CHECK (
         status IN (
-            'initialized', 'uploaded', 'discovering', 'mapping_required', 'approved', 'applying', 'applied', 'failed',
-            'INITIALIZED', 'UPLOADED', 'DISCOVERING', 'MAPPING_REQUIRED', 'APPROVED', 'APPLYING', 'APPLIED', 'FAILED'
+            'initialized', 'uploaded', 'discovering', 'discovered', 'mapping_required', 'approved', 'applying', 'applied', 'failed',
+            'INITIALIZED', 'UPLOADED', 'DISCOVERING', 'DISCOVERED', 'MAPPING_REQUIRED', 'APPROVED', 'APPLYING', 'APPLIED', 'FAILED'
         )
     )
 ) PRIMARY KEY (supplier_id, session_id);

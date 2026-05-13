@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 	"time"
 
 	"backend-go/kafka/workerpool"
@@ -147,6 +148,8 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handleDeliverySessionUpdated(deps, m.Value)
 			case EventDeliveryDisputed:
 				handleDeliveryDisputed(deps, m.Value)
+			case EventInventoryImportStatusUpdate:
+				handleInventoryImportStatusUpdate(deps, m.Value)
 			case EventPaymentFailed:
 				handlePaymentFailed(deps, m.Value)
 			case EventCashCollectionRequired:
@@ -2438,6 +2441,47 @@ func handleTransferUnassigned(deps NotificationDeps, data []byte) {
 			"notification.transfer_unassigned.body",
 			map[string]string{"transfer_id": event.TransferID, "manifest_id": event.ManifestID},
 		))
+}
+
+func handleInventoryImportStatusUpdate(deps NotificationDeps, data []byte) {
+	var event InventoryImportStatusUpdateEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", EventInventoryImportStatusUpdate, "err", err)
+		return
+	}
+	if strings.TrimSpace(event.SupplierID) == "" || strings.TrimSpace(event.SessionID) == "" {
+		return
+	}
+
+	payload, _ := json.Marshal(map[string]any{
+		"session_id":         event.SessionID,
+		"supplier_id":        event.SupplierID,
+		"status":             event.Status,
+		"suggested_mappings": event.SuggestedMappings,
+	})
+
+	if deps.SupplierHub != nil {
+		deps.SupplierHub.PushToSupplier(event.SupplierID, map[string]any{
+			"id":                 fmt.Sprintf("import-status-%d", time.Now().UTC().UnixNano()),
+			"type":               importStatusFrameType(event.Type),
+			"title":              "Inventory Import Status",
+			"body":               fmt.Sprintf("Session %s moved to %s with %d suggested mappings.", event.SessionID, event.Status, event.SuggestedMappings),
+			"payload":            string(payload),
+			"channel":            "PUSH",
+			"created_at":         time.Now().UTC().Format(time.RFC3339),
+			"session_id":         event.SessionID,
+			"status":             event.Status,
+			"suggested_mappings": event.SuggestedMappings,
+		})
+	}
+}
+
+func importStatusFrameType(raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return "IMPORT_STATUS"
+	}
+	return value
 }
 
 // ─── Dispatch Protocol ─────────────────────────────────────────────────────────

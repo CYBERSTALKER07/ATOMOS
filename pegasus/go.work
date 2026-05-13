@@ -4,6 +4,7 @@ use (
 	./adyen-go-api-library-main
 	./apps/ai-worker
 	./apps/backend-go
+	./packages/ai-bridge
 	./packages/config
 	./packages/optimizer-contract
 )

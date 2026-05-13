@@ -77,11 +77,12 @@ const (
 	EventFreezeLockReleased        = "FREEZE_LOCK_RELEASED"
 
 	// Dispatch Pipeline Events
-	EventRouteCreated            = "ROUTE_CREATED"
-	EventOrderAssigned           = "ORDER_ASSIGNED"
-	EventFactoryManifestCreated  = "FACTORY_MANIFEST_CREATED"
-	EventDemandForecastReady     = "DEMAND_FORECAST_READY"
-	EventInventoryImportUploaded = "INVENTORY_IMPORT_UPLOADED"
+	EventRouteCreated                = "ROUTE_CREATED"
+	EventOrderAssigned               = "ORDER_ASSIGNED"
+	EventFactoryManifestCreated      = "FACTORY_MANIFEST_CREATED"
+	EventDemandForecastReady         = "DEMAND_FORECAST_READY"
+	EventInventoryImportUploaded     = "INVENTORY_IMPORT_UPLOADED"
+	EventInventoryImportStatusUpdate = "INVENTORY_IMPORT_STATUS_UPDATE"
 
 	// Outbox Observability
 	EventOutboxFailed = "OUTBOX_FAILED"
@@ -244,6 +245,17 @@ type InventoryImportUploadedEvent struct {
 	SessionID  string `json:"session_id"`
 	SupplierID string `json:"supplier_id"`
 	GCSPath    string `json:"gcs_path"`
+}
+
+// InventoryImportStatusUpdateEvent is emitted by ai-worker after schema
+// discovery commits so supplier portals can refresh import session state.
+type InventoryImportStatusUpdateEvent struct {
+	Type              string    `json:"type"`
+	SessionID         string    `json:"session_id"`
+	SupplierID        string    `json:"supplier_id"`
+	Status            string    `json:"status"`
+	SuggestedMappings int       `json:"suggested_mappings"`
+	Timestamp         time.Time `json:"timestamp"`
 }
 
 // DriverAvailabilityChangedEvent is emitted when a driver goes online or offline.

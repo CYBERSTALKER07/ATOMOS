@@ -15,6 +15,7 @@ type ImportSessionStatus =
   | 'INITIALIZED'
   | 'UPLOADED'
   | 'DISCOVERING'
+  | 'DISCOVERED'
   | 'MAPPING_REQUIRED'
   | 'APPROVED'
   | 'APPLYING'
@@ -369,7 +370,11 @@ export default function InventoryImportWizardPage() {
       handledNotificationIds.current.add(notification.id);
 
       const normalizedType = notification.type.toUpperCase();
-      if (normalizedType !== 'STATUS_UPDATE' && normalizedType !== 'INVENTORY_IMPORT_STATUS_UPDATE') {
+      if (
+        normalizedType !== 'STATUS_UPDATE' &&
+        normalizedType !== 'INVENTORY_IMPORT_STATUS_UPDATE' &&
+        normalizedType !== 'IMPORT_STATUS'
+      ) {
         continue;
       }
 
@@ -510,7 +515,7 @@ export default function InventoryImportWizardPage() {
                 <span className="font-mono">inventory.import.events</span>
                 .
               </p>
-              {activeSession?.status === 'MAPPING_REQUIRED' ? (
+              {activeSession?.status === 'MAPPING_REQUIRED' || activeSession?.status === 'DISCOVERED' ? (
                 <div className="p-3 md-shape-md" style={{ border: '1px solid var(--accent)', background: 'var(--accent-soft)' }}>
                   <div className="md-typescale-label-medium">Discovery Complete</div>
                   <p className="md-typescale-body-small mt-1">

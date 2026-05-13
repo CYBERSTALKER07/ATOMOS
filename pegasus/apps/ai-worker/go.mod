@@ -3,11 +3,16 @@ module pegasus-ai-worker
 go 1.25.0
 
 require (
+	aibridge v0.0.0
+	cloud.google.com/go/storage v1.56.0
 	cloud.google.com/go/spanner v1.88.0
 	github.com/segmentio/kafka-go v0.4.50
+	github.com/xuri/excelize/v2 v2.10.0
 	google.golang.org/api v0.274.0
 	optimizercontract v0.0.0
 )
+
+replace aibridge => ../../packages/ai-bridge
 
 replace optimizercontract => ../../packages/optimizer-contract
 

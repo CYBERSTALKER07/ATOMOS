@@ -572,6 +572,18 @@ func main() {
 		cancel()
 	}()
 
+	var importRuntime *inventoryImportRuntime
+	if runtimeSlice, err := newInventoryImportRuntime(ctx, logger, brokerAddress, spannerClient); err != nil {
+		logger.Warn("inventory import worker slice disabled", "err", err)
+	} else {
+		importRuntime = runtimeSlice
+		defer importRuntime.Close()
+		logger.Info("inventory import worker slice enabled",
+			"topic", topicInventoryImportEvents,
+			"concurrency", importRuntime.concurrency,
+		)
+	}
+
 	// ── gRPC Optimizer Server (Phase 2 — internal mesh) ───────────────────
 	// Listens on :8082 for backend-go gRPC calls (xDS or direct dial).
 	// Uses the same in-process Solve() function as the HTTP handler above.
@@ -624,6 +636,14 @@ func main() {
 			frozenMu.Unlock()
 		})
 	}()
+
+	if importRuntime != nil {
+		consumerWg.Add(1)
+		go func() {
+			defer consumerWg.Done()
+			importRuntime.Run(ctx, consumerMetrics)
+		}()
+	}
 
 	// ── Emit demand forecast to Kafka after prediction ─────────────────
 	emitForecast := func(retailerID, warehouseID string, amount int64, triggerDate string) {

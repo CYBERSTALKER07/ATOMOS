@@ -38,6 +38,7 @@ var supplierImportAllowedStatuses = map[string]struct{}{
 	"INITIALIZED":      {},
 	"UPLOADED":         {},
 	"DISCOVERING":      {},
+	"DISCOVERED":       {},
 	"MAPPING_REQUIRED": {},
 	"APPROVED":         {},
 	"APPLYING":         {},
@@ -52,11 +53,18 @@ var supplierImportTransitions = map[string]map[string]struct{}{
 	},
 	"UPLOADED": {
 		"DISCOVERING":      {},
+		"DISCOVERED":       {},
 		"MAPPING_REQUIRED": {},
 		"FAILED":           {},
 	},
 	"DISCOVERING": {
+		"DISCOVERED":       {},
 		"MAPPING_REQUIRED": {},
+		"FAILED":           {},
+	},
+	"DISCOVERED": {
+		"MAPPING_REQUIRED": {},
+		"APPROVED":         {},
 		"FAILED":           {},
 	},
 	"MAPPING_REQUIRED": {
