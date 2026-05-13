@@ -169,6 +169,42 @@ fun OrdersScreen(
         modifier = Modifier.fillMaxSize(),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
+            if (uiState.loadIssue != null) {
+                val issueMessage = uiState.error ?: uiState.syncMessage.orEmpty()
+                val containerColor = when (uiState.loadIssue) {
+                    OrdersLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    OrdersLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                    OrdersLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                }
+                val contentColor = when (uiState.loadIssue) {
+                    OrdersLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
+                    OrdersLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
+                    OrdersLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(containerColor)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = issueMessage,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = contentColor,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    TextButton(onClick = viewModel::refresh) {
+                        Text("Retry", color = contentColor)
+                    }
+                }
+            }
+
             // ── M3 Icon Tabs ──
             TabRow(
                 selectedTabIndex = pagerState.currentPage,

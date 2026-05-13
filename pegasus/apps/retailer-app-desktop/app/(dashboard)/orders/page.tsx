@@ -14,6 +14,7 @@ import {
   ArrowUpRight,
   RefreshCw,
   AlertTriangle,
+  WifiOff,
   XCircle,
   Loader2,
 } from "lucide-react";
@@ -25,6 +26,7 @@ import MiniSparkline from "../../../components/MiniSparkline";
 import EmptyState from "../../../components/EmptyState";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
+import { useOptionalWebSocket } from "../../../lib/ws";
 import type { Order, RetailerProfile } from "../../../lib/types";
 
 const chipCfg: Record<
@@ -51,6 +53,8 @@ const chipCfg: Record<
   DELIVERED_ON_CREDIT: { color: "success", label: "Delivered (Credit)" },
 };
 
+type LoadIssue = "restricted" | "offline" | "error";
+
 export default function OrdersPage() {
   const getProfile = (): RetailerProfile | null => {
     if (typeof localStorage === "undefined") return null;
@@ -68,7 +72,9 @@ export default function OrdersPage() {
   const {
     data: orders,
     loading,
-    mutate,
+    error: ordersError,
+    isRefreshing: isOrdersRefreshing,
+    mutate: mutateOrders,
   } = useLiveData<Order[]>(ordersUrl, 30000);
   const [activeTab, setActiveTab] = useState<"ALL" | "ACTIVE" | "COMPLETED">(
     "ALL",
@@ -77,23 +83,28 @@ export default function OrdersPage() {
   const [cancelling, setCancelling] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const ws = useOptionalWebSocket();
   const router = useRouter();
+
+  const refreshAll = useCallback(() => {
+    void mutateOrders();
+  }, [mutateOrders]);
 
   useWsEvent(
     "ORDER_COMPLETED",
-    useCallback(() => mutate(), [mutate]),
+    useCallback(() => mutateOrders(), [mutateOrders]),
   );
   useWsEvent(
     "ORDER_STATUS_CHANGED",
-    useCallback(() => mutate(), [mutate]),
+    useCallback(() => mutateOrders(), [mutateOrders]),
   );
   useWsEvent(
     "ORDER_REASSIGNED",
-    useCallback(() => mutate(), [mutate]),
+    useCallback(() => mutateOrders(), [mutateOrders]),
   );
   useWsEvent(
     "DRIVER_APPROACHING",
-    useCallback(() => mutate(), [mutate]),
+    useCallback(() => mutateOrders(), [mutateOrders]),
   );
 
   const { data: orderDetail } = useLiveData<Order>(
@@ -137,6 +148,107 @@ export default function OrdersPage() {
     ? (list.find((o) => o.order_id === selectedId) ?? null)
     : (list[0] ?? null);
   const detail = orderDetail ?? selected;
+
+  const loadIssue = useMemo<LoadIssue | null>(() => {
+    const message = actionError ?? ordersError?.message;
+    const status = (ordersError as (Error & { status?: number }) | null)?.status;
+    if (!message && status == null) return null;
+    if (status === 401 || status === 403 || /forbidden|restricted|access/i.test(message ?? "")) {
+      return "restricted";
+    }
+    if (
+      (typeof navigator !== "undefined" && !navigator.onLine) ||
+      /failed to fetch|network|load failed|offline/i.test(message ?? "")
+    ) {
+      return "offline";
+    }
+    return "error";
+  }, [actionError, ordersError]);
+
+  const syncBanner = useMemo(() => {
+    if (loadIssue === "restricted") {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Orders access is partially restricted for this account.",
+      };
+    }
+    if (loadIssue === "offline") {
+      return {
+        kind: "warning" as const,
+        icon: WifiOff,
+        message: "Offline mode active. Showing latest cached order data.",
+      };
+    }
+    if (loadIssue === "error") {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Order sync degraded. Auto-retry is active.",
+      };
+    }
+    if (ws && !ws.isConnected) {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Live socket reconnecting. Event updates may be delayed.",
+      };
+    }
+    if (isOrdersRefreshing && !loading) {
+      return {
+        kind: "refreshing" as const,
+        icon: RefreshCw,
+        message: "Syncing order feeds...",
+      };
+    }
+    return null;
+  }, [isOrdersRefreshing, loadIssue, loading, ws]);
+
+  const listEmptyState = useMemo(() => {
+    if (loadIssue === "restricted") {
+      return {
+        headline: "Orders access restricted",
+        body: "Your account currently cannot load logistics orders.",
+        variant: "restricted" as const,
+        action: "Retry",
+        onAction: refreshAll,
+      };
+    }
+    if (loadIssue === "offline") {
+      return {
+        headline: "Orders are offline",
+        body: "Reconnect your network and retry to refresh order status.",
+        variant: "offline" as const,
+        action: "Retry",
+        onAction: refreshAll,
+      };
+    }
+    if (loadIssue === "error") {
+      return {
+        headline: "Orders unavailable",
+        body: "Order feeds could not be loaded right now.",
+        variant: "error" as const,
+        action: "Retry",
+        onAction: refreshAll,
+      };
+    }
+    if (list.length === 0) {
+      return {
+        headline: "No orders yet",
+        body: "New and active logistics orders will appear here.",
+        variant: "no-orders" as const,
+        action: "Refresh",
+        onAction: refreshAll,
+      };
+    }
+    return {
+      headline: `No ${activeTab.toLowerCase()} orders found`,
+      body: "Try switching tabs to inspect other workflow states.",
+      variant: "no-results" as const,
+      action: "Show All",
+      onAction: () => setActiveTab("ALL"),
+    };
+  }, [activeTab, list.length, loadIssue, refreshAll]);
 
   return (
     <div
@@ -258,12 +370,43 @@ export default function OrdersPage() {
           variant="tertiary"
           size="sm"
           isIconOnly
-          onPress={() => mutate()}
+          isDisabled={isOrdersRefreshing}
+          onPress={refreshAll}
           className="text-[var(--desk-text-tertiary)]"
         >
-          <RefreshCw size={16} />
+          <RefreshCw size={16} className={isOrdersRefreshing ? "animate-spin" : ""} />
         </Button>
       </div>
+
+      {syncBanner && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`mb-6 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
+            syncBanner.kind === "refreshing"
+              ? "border-[var(--desk-info)]/30 bg-[var(--desk-info)]/5 text-[var(--desk-info)]"
+              : "border-[var(--desk-warning)]/30 bg-[var(--desk-warning)]/10 text-[var(--desk-warning)]"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <syncBanner.icon
+              size={16}
+              className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
+            />
+            <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+              {syncBanner.message}
+            </span>
+          </div>
+          {syncBanner.kind !== "refreshing" && (
+            <button
+              onClick={refreshAll}
+              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+            >
+              Retry
+            </button>
+          )}
+        </motion.div>
+      )}
 
       <div className="flex gap-8 min-h-[520px]">
         {/* Order List */}
@@ -280,7 +423,13 @@ export default function OrdersPage() {
                 />
               ))
             ) : filtered.length === 0 ? (
-              <EmptyState headline="No orders found" variant="no-results" />
+              <EmptyState
+                headline={listEmptyState.headline}
+                body={listEmptyState.body}
+                variant={listEmptyState.variant}
+                action={listEmptyState.action}
+                onAction={listEmptyState.onAction}
+              />
             ) : (
               filtered.map((order) => {
                 const isSelected =

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   User,
   Mail,
@@ -19,11 +19,14 @@ import {
   ChevronRight,
   Info,
   CheckCircle2,
+  RefreshCw,
+  WifiOff,
 } from "lucide-react";
 import { Button, Chip, Skeleton } from "@heroui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
+import { useOptionalWebSocket } from "../../../lib/ws";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import type { AutoOrderSettings, RetailerProfile } from "../../../lib/types";
 
@@ -46,6 +49,8 @@ type SaveBanner = {
   kind: "success" | "error";
   message: string;
 };
+
+type LoadIssue = "restricted" | "offline" | "error";
 
 function normalizeErrorMessage(error: unknown, fallback: string): string {
   if (typeof error === "string" && error.trim().length > 0) {
@@ -265,8 +270,10 @@ export default function SettingsPage() {
     data: autoOrder,
     loading,
     error,
-    mutate,
+    isRefreshing,
+    mutate: mutateAutoOrder,
   } = useLiveData<AutoOrderSettings>("/v1/retailer/settings/auto-order");
+  const ws = useOptionalWebSocket();
   const [savingGlobal, setSavingGlobal] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [notifOn, setNotifOn] = useState(() => {
@@ -282,10 +289,43 @@ export default function SettingsPage() {
   const [profileErrors, setProfileErrors] = useState<ProfileFieldErrors>({});
   const [saveBanner, setSaveBanner] = useState<SaveBanner | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   const clearProfileFieldError = useCallback((field: keyof ProfileFieldErrors) => {
     setProfileErrors((prev) => ({ ...prev, [field]: undefined }));
   }, []);
+
+  const loadProfile = useCallback(async () => {
+    setProfileError(null);
+    setProfileLoading(true);
+    try {
+      const res = await apiFetch("/v1/retailer/profile");
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          throw new Error("Profile access restricted.");
+        }
+        const text = await res.text();
+        throw new Error(text || `Profile fetch failed (${res.status}).`);
+      }
+      const data = await res.json();
+      if (data.name) setProfileName(data.name);
+      if (data.company) setProfileCompany(data.company);
+      if (data.phone) setProfileEmail(data.phone);
+      if (data.location) setProfileLocation(data.location);
+    } catch (err) {
+      setProfileError(
+        normalizeErrorMessage(err, "Unable to load retailer profile."),
+      );
+    } finally {
+      setProfileLoading(false);
+    }
+  }, []);
+
+  const refreshAll = useCallback(() => {
+    void mutateAutoOrder();
+    void loadProfile();
+  }, [loadProfile, mutateAutoOrder]);
 
   useEffect(() => {
     const storage = getBrowserStorage();
@@ -301,17 +341,8 @@ export default function SettingsPage() {
         /* ignore */
       }
     }
-    apiFetch("/v1/retailer/profile")
-      .then(async (res) => {
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.name) setProfileName(data.name);
-        if (data.company) setProfileCompany(data.company);
-        if (data.phone) setProfileEmail(data.phone);
-        if (data.location) setProfileLocation(data.location);
-      })
-      .catch(() => {});
-  }, []);
+    void loadProfile();
+  }, [loadProfile]);
 
   const saveProfile = useCallback(async () => {
     const validation = validateProfileFields(profileName, profileCompany);
@@ -377,7 +408,7 @@ export default function SettingsPage() {
         method: "PATCH",
         body: JSON.stringify({ enabled: !autoOrder.global_enabled }),
       });
-      mutate();
+      mutateAutoOrder();
       setSaveBanner({ kind: "success", message: "Global AI settings updated." });
     } catch (err) {
       setSaveBanner({
@@ -387,7 +418,7 @@ export default function SettingsPage() {
     } finally {
       setSavingGlobal(false);
     }
-  }, [autoOrder, mutate]);
+  }, [autoOrder, mutateAutoOrder]);
 
   const toggleOverride = useCallback(
     async (level: string, id: string, enabled: boolean) => {
@@ -397,7 +428,7 @@ export default function SettingsPage() {
           method: "PATCH",
           body: JSON.stringify({ enabled }),
         });
-        mutate();
+        mutateAutoOrder();
       } catch (err) {
         setSaveBanner({
           kind: "error",
@@ -407,31 +438,121 @@ export default function SettingsPage() {
         setSavingId(null);
       }
     },
-    [mutate],
+    [mutateAutoOrder],
   );
+
+  const loadIssue = useMemo<LoadIssue | null>(() => {
+    const message = error?.message ?? profileError ?? "";
+    const status = (error as (Error & { status?: number }) | null)?.status;
+    if (!message && status == null) return null;
+    if (status === 401 || status === 403 || /forbidden|restricted|access/i.test(message)) {
+      return "restricted";
+    }
+    if (
+      (typeof navigator !== "undefined" && !navigator.onLine) ||
+      /failed to fetch|network|load failed|offline/i.test(message)
+    ) {
+      return "offline";
+    }
+    return "error";
+  }, [error, profileError]);
+
+  const isSyncing = isRefreshing || profileLoading;
+
+  const syncBanner = useMemo(() => {
+    if (loadIssue === "restricted") {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Settings access is partially restricted for this account.",
+      };
+    }
+    if (loadIssue === "offline") {
+      return {
+        kind: "warning" as const,
+        icon: WifiOff,
+        message: "Offline mode active. Showing latest cached configuration.",
+      };
+    }
+    if (loadIssue === "error") {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Settings sync degraded. Auto-retry is active.",
+      };
+    }
+    if (ws && !ws.isConnected) {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Live socket reconnecting. Setting events may be delayed.",
+      };
+    }
+    if (isSyncing && !loading) {
+      return {
+        kind: "refreshing" as const,
+        icon: RefreshCw,
+        message: "Syncing settings feeds...",
+      };
+    }
+    return null;
+  }, [isSyncing, loadIssue, loading, ws]);
 
   return (
     <div
       className="min-h-full p-6 md:p-8"
       style={{ background: "var(--desk-canvas)" }}
     >
-      <header className="mb-8 max-w-5xl mx-auto">
-        <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
-          System Configuration
-        </h1>
-        <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
-          Account identity, notification parameters, and AI-driven logic
-          controls.
-        </p>
+      <header className="mb-8 max-w-5xl mx-auto flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="md-typescale-display-small font-bold tracking-tight text-[var(--desk-text-primary)]">
+            System Configuration
+          </h1>
+          <p className="mt-1 md-typescale-body-large text-[var(--desk-text-secondary)]">
+            Account identity, notification parameters, and AI-driven logic
+            controls.
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          isDisabled={isSyncing}
+          onPress={refreshAll}
+          className="h-10 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
+        >
+          <RefreshCw
+            size={16}
+            className={`mr-2 ${isSyncing ? "animate-spin" : ""}`}
+          />
+          {isSyncing ? "Syncing" : "Sync"}
+        </Button>
       </header>
 
       <div className="max-w-5xl mx-auto mb-6 space-y-3">
-        {error && (
-          <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-red-700">
-            <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-            <p className="md-typescale-body-small font-bold">
-              {normalizeErrorMessage(error, "Unable to load AI settings.")}
-            </p>
+        {syncBanner && (
+          <div
+            className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
+              syncBanner.kind === "refreshing"
+                ? "border-[var(--desk-info)]/30 bg-[var(--desk-info)]/5 text-[var(--desk-info)]"
+                : "border-[var(--desk-warning)]/30 bg-[var(--desk-warning)]/10 text-[var(--desk-warning)]"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <syncBanner.icon
+                size={16}
+                className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
+              />
+              <p className="md-typescale-body-small font-bold uppercase tracking-wide">
+                {syncBanner.message}
+              </p>
+            </div>
+            {syncBanner.kind !== "refreshing" && (
+              <button
+                onClick={refreshAll}
+                className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+              >
+                Retry
+              </button>
+            )}
           </div>
         )}
         {saveBanner && (

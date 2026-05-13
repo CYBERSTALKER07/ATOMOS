@@ -3,33 +3,33 @@
 import { useState, useMemo, useCallback } from "react";
 import {
   TrendingUp,
-  TrendingDown,
   BarChart3,
   Brain,
   Zap,
   RefreshCw,
-  ShoppingCart,
-  Star,
   ArrowUpRight,
   Package,
   AlertTriangle,
+  WifiOff,
   CheckSquare,
   Square,
   Minus,
   Plus,
   Loader2,
-  XCircle,
   ChevronRight,
 } from "lucide-react";
-import { Button, Chip, Skeleton } from "@heroui/react";
+import { Button, Chip } from "@heroui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
 import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";
+import EmptyState from "../../../components/EmptyState";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
-import { useCart } from "../../../lib/cart";
+import { useOptionalWebSocket } from "../../../lib/ws";
 import type { Prediction, RetailerAnalytics } from "../../../lib/types";
+
+type LoadIssue = "restricted" | "offline" | "error";
 
 const urgencyCfg: Record<
   string,
@@ -44,11 +44,18 @@ export default function InsightsPage() {
   const {
     data: predictions,
     loading: loadingPred,
+    error: predictionsError,
+    isRefreshing: isPredictionsRefreshing,
     mutate: refreshPred,
   } = useLiveData<Prediction[]>("/v1/ai/predictions");
-  const { data: analytics, loading: loadingAnalytics } =
-    useLiveData<RetailerAnalytics>("/v1/retailer/analytics/expenses");
-  const { addToCart } = useCart();
+  const {
+    data: analytics,
+    loading: loadingAnalytics,
+    error: analyticsError,
+    isRefreshing: isAnalyticsRefreshing,
+    mutate: refreshAnalytics,
+  } = useLiveData<RetailerAnalytics>("/v1/retailer/analytics/expenses");
+  const ws = useOptionalWebSocket();
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -60,8 +67,100 @@ export default function InsightsPage() {
   const predList = predictions ?? [];
   const topProducts = analytics?.top_products ?? [];
   const totalThisMonth = analytics?.total_this_month ?? 0;
-  const totalLastMonth = analytics?.total_last_month ?? 0;
   const monthlyExpenses = analytics?.monthly_expenses ?? [];
+  const isRefreshing = isPredictionsRefreshing || isAnalyticsRefreshing;
+
+  const refreshAll = useCallback(() => {
+    void refreshPred();
+    void refreshAnalytics();
+  }, [refreshAnalytics, refreshPred]);
+
+  const loadIssue = useMemo<LoadIssue | null>(() => {
+    const errors = [predictionsError, analyticsError].filter(Boolean) as Array<
+      Error & { status?: number }
+    >;
+    if (errors.length === 0) return null;
+    if (errors.some((err) => err.status === 401 || err.status === 403)) {
+      return "restricted";
+    }
+    if (
+      (typeof navigator !== "undefined" && !navigator.onLine) ||
+      errors.some((err) =>
+        /Failed to fetch|NetworkError|Load failed/i.test(err.message),
+      )
+    ) {
+      return "offline";
+    }
+    return "error";
+  }, [analyticsError, predictionsError]);
+
+  const syncBanner = useMemo(() => {
+    if (loadIssue === "restricted") {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Insights access is partially restricted for this account.",
+      };
+    }
+    if (loadIssue === "offline") {
+      return {
+        kind: "warning" as const,
+        icon: WifiOff,
+        message: "Offline mode active. Showing latest cached intelligence signals.",
+      };
+    }
+    if (loadIssue === "error") {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Insights sync degraded. Auto-retry is active.",
+      };
+    }
+    if (ws && !ws.isConnected) {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Live socket reconnecting. New signals may be delayed.",
+      };
+    }
+    if (isRefreshing && !loadingPred && !loadingAnalytics) {
+      return {
+        kind: "refreshing" as const,
+        icon: RefreshCw,
+        message: "Syncing intelligence feeds...",
+      };
+    }
+    return null;
+  }, [isRefreshing, loadIssue, loadingAnalytics, loadingPred, ws]);
+
+  const aiEmptyState = useMemo(() => {
+    if (loadIssue === "restricted") {
+      return {
+        headline: "Insights access restricted",
+        body: "Your account cannot load replenishment signals right now.",
+        variant: "restricted" as const,
+      };
+    }
+    if (loadIssue === "offline") {
+      return {
+        headline: "Insights are offline",
+        body: "Reconnect to refresh prediction signals and analytics.",
+        variant: "offline" as const,
+      };
+    }
+    if (loadIssue === "error") {
+      return {
+        headline: "Signals unavailable",
+        body: "Prediction feeds could not be loaded right now.",
+        variant: "error" as const,
+      };
+    }
+    return {
+      headline: "No actionable signals detected",
+      body: "AI has no urgent replenishment recommendations for this cycle.",
+      variant: "no-predictions" as const,
+    };
+  }, [loadIssue]);
 
   const toggleSelect = useCallback((id: string, defaultQty: number) => {
     setSelected((prev) => {
@@ -200,12 +299,47 @@ export default function InsightsPage() {
         </div>
         <Button
           variant="secondary"
-          onPress={() => refreshPred()}
+          isDisabled={isRefreshing}
+          onPress={refreshAll}
           className="h-10 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
         >
-          <RefreshCw size={16} className="mr-2" /> Sync Signals
+          <RefreshCw
+            size={16}
+            className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+          />
+          {isRefreshing ? "Syncing" : "Sync Signals"}
         </Button>
       </header>
+
+      {syncBanner && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`mb-6 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
+            syncBanner.kind === "refreshing"
+              ? "border-[var(--desk-info)]/30 bg-[var(--desk-info)]/5 text-[var(--desk-info)]"
+              : "border-[var(--desk-warning)]/30 bg-[var(--desk-warning)]/10 text-[var(--desk-warning)]"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <syncBanner.icon
+              size={16}
+              className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
+            />
+            <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+              {syncBanner.message}
+            </span>
+          </div>
+          {syncBanner.kind !== "refreshing" && (
+            <button
+              onClick={refreshAll}
+              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+            >
+              Retry
+            </button>
+          )}
+        </motion.div>
+      )}
 
       {orderResult && (
         <div className="mb-6">
@@ -323,11 +457,14 @@ export default function InsightsPage() {
                 />
               ))
             ) : predList.length === 0 ? (
-              <div className="py-20 text-center opacity-40">
-                <Brain size={64} className="mx-auto mb-4" />
-                <p className="md-typescale-body-large">
-                  No actionable signals detected
-                </p>
+              <div className="rounded-2xl border border-[var(--desk-border)] bg-[var(--desk-surface)] p-6">
+                <EmptyState
+                  headline={aiEmptyState.headline}
+                  body={aiEmptyState.body}
+                  variant={aiEmptyState.variant}
+                  action="Sync Signals"
+                  onAction={refreshAll}
+                />
               </div>
             ) : (
               <div className="flex flex-col gap-2">
@@ -501,30 +638,38 @@ export default function InsightsPage() {
             <h3 className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-6">
               Top Resource Demand
             </h3>
-            <div className="space-y-4">
-              {topProducts.slice(0, 5).map((item, i) => (
-                <div
-                  key={item.product_id}
-                  className="flex items-center gap-4 group"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[10px] font-black text-[var(--desk-text-tertiary)] group-hover:bg-[var(--desk-accent-soft)] group-hover:text-[var(--desk-accent)] transition-colors">
-                    {i + 1}
+            {topProducts.length === 0 ? (
+              <div className="rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-4 text-center">
+                <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase font-bold tracking-widest">
+                  No product demand rankings available yet
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {topProducts.slice(0, 5).map((item, i) => (
+                  <div
+                    key={item.product_id}
+                    className="flex items-center gap-4 group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[10px] font-black text-[var(--desk-text-tertiary)] group-hover:bg-[var(--desk-accent-soft)] group-hover:text-[var(--desk-accent)] transition-colors">
+                      {i + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] truncate">
+                        {item.product_name}
+                      </p>
+                      <p className="text-[10px] text-[var(--desk-text-tertiary)] font-bold uppercase">
+                        {item.quantity} Units
+                      </p>
+                    </div>
+                    <ChevronRight
+                      size={14}
+                      className="text-[var(--desk-text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity"
+                    />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] truncate">
-                      {item.product_name}
-                    </p>
-                    <p className="text-[10px] text-[var(--desk-text-tertiary)] font-bold uppercase">
-                      {item.quantity} Units
-                    </p>
-                  </div>
-                  <ChevronRight
-                    size={14}
-                    className="text-[var(--desk-text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity"
-                  />
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </aside>
       </div>

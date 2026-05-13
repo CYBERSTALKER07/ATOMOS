@@ -221,7 +221,7 @@ export default function ProcurementPage() {
         setAddingId(null);
       }
     },
-    [mutate],
+    [mutateSuppliers],
   );
 
   const removeSupplier = useCallback(

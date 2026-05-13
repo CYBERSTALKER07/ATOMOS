@@ -9,18 +9,27 @@ import com.pegasus.retailer.data.model.DemandForecast
 import com.pegasus.retailer.data.model.Order
 import com.pegasus.retailer.data.model.OrderStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import javax.inject.Inject
+
+enum class OrdersLoadIssue {
+    RESTRICTED,
+    OFFLINE,
+    ERROR,
+}
 
 data class OrdersUiState(
     val isLoading: Boolean = false,
     val allOrders: List<Order> = emptyList(),
     val predictions: List<DemandForecast> = emptyList(),
     val error: String? = null,
+    val loadIssue: OrdersLoadIssue? = null,
 ) {
     val activeOrders: List<Order> get() = allOrders.filter {
         it.status == OrderStatus.LOADED || it.status == OrderStatus.DISPATCHED || it.status == OrderStatus.IN_TRANSIT || it.status == OrderStatus.ARRIVED
@@ -28,6 +37,14 @@ data class OrdersUiState(
     val pendingOrders: List<Order> get() = allOrders.filter {
         it.status == OrderStatus.PENDING
     }
+
+    val syncMessage: String?
+        get() = when (loadIssue) {
+            OrdersLoadIssue.RESTRICTED -> "Orders access is restricted for this account"
+            OrdersLoadIssue.OFFLINE -> "Offline mode active. Showing latest cached orders"
+            OrdersLoadIssue.ERROR -> "Orders sync degraded. Retry is available"
+            null -> null
+        }
 }
 
 @HiltViewModel
@@ -73,18 +90,40 @@ class OrdersViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
-            try {
-                val orders = api.getOrders(retailerId)
-                _uiState.update { it.copy(allOrders = orders) }
-            } catch (_: Exception) {}
+            _uiState.update { it.copy(isLoading = true, error = null) }
+
+            var nextOrders = _uiState.value.allOrders
+            var nextPredictions = _uiState.value.predictions
+            var nextIssue: OrdersLoadIssue? = null
+            var nextErrorMessage: String? = null
 
             try {
-                val forecasts = api.getPredictions(retailerId)
-                _uiState.update { it.copy(predictions = forecasts) }
-            } catch (_: Exception) {}
+                nextOrders = api.getOrders(retailerId)
+            } catch (e: Exception) {
+                nextIssue = resolveLoadIssue(e)
+                nextErrorMessage = resolveErrorMessage(e, nextIssue)
+            }
 
-            _uiState.update { it.copy(isLoading = false) }
+            try {
+                nextPredictions = api.getPredictions(retailerId)
+            } catch (e: Exception) {
+                if (nextIssue == null) {
+                    nextIssue = resolveLoadIssue(e)
+                    nextErrorMessage = resolveErrorMessage(e, nextIssue)
+                }
+            }
+
+            val hasData = nextOrders.isNotEmpty() || nextPredictions.isNotEmpty()
+
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    allOrders = nextOrders,
+                    predictions = nextPredictions,
+                    loadIssue = nextIssue,
+                    error = if (nextIssue != null && !hasData) nextErrorMessage else null,
+                )
+            }
         }
     }
 
@@ -97,7 +136,11 @@ class OrdersViewModel @Inject constructor(
                     idempotencyKey = "retailer-cancel:$orderId",
                 )
                 refresh()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
             } finally {
                 cancellingIds.remove(orderId)
             }
@@ -114,7 +157,12 @@ class OrdersViewModel @Inject constructor(
                     ),
                 )
                 refresh()
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
+            }
         }
     }
 
@@ -127,7 +175,12 @@ class OrdersViewModel @Inject constructor(
                     idempotencyKey = "retailer-prediction-correct:$predictionId:amount:$amount",
                 )
                 refresh()
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
+            }
         }
     }
 
@@ -140,7 +193,28 @@ class OrdersViewModel @Inject constructor(
                     idempotencyKey = "retailer-prediction-correct:$predictionId:rejected",
                 )
                 refresh()
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(error = resolveErrorMessage(e, issue), loadIssue = issue)
+                }
+            }
+        }
+    }
+
+    private fun resolveLoadIssue(error: Exception): OrdersLoadIssue {
+        return when {
+            error is HttpException && (error.code() == 401 || error.code() == 403) -> OrdersLoadIssue.RESTRICTED
+            error is IOException -> OrdersLoadIssue.OFFLINE
+            else -> OrdersLoadIssue.ERROR
+        }
+    }
+
+    private fun resolveErrorMessage(error: Exception, issue: OrdersLoadIssue): String {
+        return when (issue) {
+            OrdersLoadIssue.RESTRICTED -> "Orders access is restricted for this account"
+            OrdersLoadIssue.OFFLINE -> "Offline mode active. Reconnect and retry"
+            OrdersLoadIssue.ERROR -> error.message ?: "Orders request failed"
         }
     }
 }
