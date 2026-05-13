@@ -1534,6 +1534,59 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		}
 		adminClient.Close()
 	}
+
+	// ── MIGRATION: S-level dynamic billing metering substrate ─────────────────
+	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
+	if err == nil {
+		billingMeterDDL := []string{
+			`CREATE TABLE BillingMeterEvents (
+				OrderId        STRING(36)  NOT NULL,
+				SupplierId     STRING(36)  NOT NULL,
+				InvoiceId      STRING(36),
+				RetailerId     STRING(36),
+				PeriodMonth    STRING(7)   NOT NULL,
+				Currency       STRING(3)   NOT NULL,
+				Amount         INT64       NOT NULL,
+				FeeAmount      INT64       NOT NULL,
+				FeeBasisPts    INT64       NOT NULL,
+				EventTimestamp TIMESTAMP   NOT NULL,
+				ProcessedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (OrderId)`,
+			"CREATE INDEX Idx_BillingMeterEvents_BySupplierMonth ON BillingMeterEvents(SupplierId, PeriodMonth, ProcessedAt DESC)",
+			`CREATE TABLE BillingSupplierMeters (
+				SupplierId   STRING(36) NOT NULL,
+				PeriodMonth  STRING(7)  NOT NULL,
+				Currency     STRING(3)  NOT NULL,
+				ShardId      INT64      NOT NULL,
+				OrderCount   INT64      NOT NULL DEFAULT (0),
+				GrossAmount  INT64      NOT NULL DEFAULT (0),
+				FeeAmount    INT64      NOT NULL DEFAULT (0),
+				UpdatedAt    TIMESTAMP  OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (SupplierId, PeriodMonth, Currency, ShardId)`,
+			"CREATE INDEX Idx_BillingSupplierMeters_ByPeriod ON BillingSupplierMeters(PeriodMonth, SupplierId)",
+			`CREATE TABLE BillingGlobalMeters (
+				PeriodMonth  STRING(20) NOT NULL,
+				Currency     STRING(8)  NOT NULL,
+				ShardId      INT64      NOT NULL,
+				OrderCount   INT64      NOT NULL DEFAULT (0),
+				GrossAmount  INT64      NOT NULL DEFAULT (0),
+				FeeAmount    INT64      NOT NULL DEFAULT (0),
+				UpdatedAt    TIMESTAMP  OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (PeriodMonth, Currency, ShardId)`,
+			"CREATE INDEX Idx_BillingGlobalMeters_ByPeriod ON BillingGlobalMeters(PeriodMonth, Currency)",
+		}
+		for _, stmt := range billingMeterDDL {
+			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
+				Database:   dbName,
+				Statements: []string{stmt},
+			})
+			if ddlErr == nil {
+				op.Wait(ctx)
+				fmt.Println("DATABASE MIGRATION SUCCESS:", stmt[:minInt(80, len(stmt))])
+			}
+		}
+		adminClient.Close()
+	}
 }
 
 func minInt(a, b int) int {

@@ -99,14 +99,22 @@ func HandleSupplierEarnings(client *spanner.Client, readRouter proximity.ReadRou
 
 		resp.TotalGross = resp.TotalNet + resp.TotalFee
 
-		// Read platform fee percent from SystemConfig (default 0% — zero-fee era)
-		feePercent := int64(0)
+		// Read dynamic platform fee from SystemConfig (basis points preferred).
+		feeBasisPoints := int64(0)
 		if cfgRow, cfgErr := readClient.Single().ReadRow(ctx, "SystemConfig",
+			spanner.Key{"platform_fee_basis_points"}, []string{"ConfigValue"}); cfgErr == nil {
+			var cfgVal string
+			if cfgRow.Columns(&cfgVal) == nil {
+				if n, parseErr := strconv.ParseInt(cfgVal, 10, 64); parseErr == nil && n >= 0 {
+					feeBasisPoints = n
+				}
+			}
+		} else if cfgRow, cfgErr := readClient.Single().ReadRow(ctx, "SystemConfig",
 			spanner.Key{"platform_fee_percent"}, []string{"ConfigValue"}); cfgErr == nil {
 			var cfgVal string
 			if cfgRow.Columns(&cfgVal) == nil {
 				if n, parseErr := strconv.ParseInt(cfgVal, 10, 64); parseErr == nil && n >= 0 {
-					feePercent = n
+					feeBasisPoints = n * 100
 				}
 			}
 		}
@@ -145,7 +153,7 @@ func HandleSupplierEarnings(client *spanner.Client, readRouter proximity.ReadRou
 				continue
 			}
 			// Apply dynamic platform fee from SystemConfig
-			m.PlatformFee = m.GrossVolume * feePercent / 100
+			m.PlatformFee = m.GrossVolume * feeBasisPoints / 10000
 			m.NetPayout = m.GrossVolume - m.PlatformFee
 			resp.TotalOrders += m.CompletedOrders
 			resp.MonthlyBreakdown = append(resp.MonthlyBreakdown, m)

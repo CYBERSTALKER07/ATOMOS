@@ -23,6 +23,7 @@ import (
 	"backend-go/outbox"
 	"backend-go/payment"
 	"backend-go/proximity"
+	"backend-go/settings"
 	"backend-go/spannerx"
 	"backend-go/telemetry"
 	"backend-go/vault"
@@ -193,11 +194,18 @@ type OrderService struct {
 	SessionSvc    *payment.SessionService        // Payment session engine (nil = legacy mode)
 	CardTokenSvc  *payment.CardTokenService      // Saved card token CRUD (nil = tokenization disabled)
 	DirectClient  *payment.GlobalPayDirectClient // Global Pay Payments Service Public (nil = disabled)
+	PlatformCfg   *settings.PlatformConfig       // Runtime platform config cache (SystemConfig-backed)
 	FeeBP         int64                          // Platform fee in basis points (0 = zero-fee era)
 }
 
 // feeBasisPoints returns the configured platform fee. Zero-safe: defaults to 0.
 func (s *OrderService) feeBasisPoints() int64 {
+	if s != nil && s.PlatformCfg != nil {
+		if fee := s.PlatformCfg.PlatformFeeBasisPoints(); fee >= 0 && fee <= 10000 {
+			return fee
+		}
+	}
+
 	return s.FeeBP
 }
 

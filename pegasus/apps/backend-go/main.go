@@ -643,6 +643,9 @@ func main() {
 		Vault:         &vault.PaymentVaultAdapter{Svc: vaultSvc},
 		GPDirect:      directClient,
 	})
+	internalKafka.StartBillingTierWorker(ctx, internalKafka.BillingTierDeps{
+		SpannerClient: spannerClient,
+	}, cfg.KafkaBrokerAddress)
 	reconcilerSvc := payment.NewReconcilerService(cfg, spannerClient)
 	go reconcilerSvc.Start(ctx)
 

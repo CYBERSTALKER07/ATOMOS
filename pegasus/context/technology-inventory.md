@@ -43,6 +43,11 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 
 ## Runtime Contract Surfaces
 
+- S-level dynamic billing metering + fee milestones: `pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,kafka/billing_tier_worker.go,internal/services/billing/meter_worker.go,settings/platform_config.go,order/service.go,kafka/treasurer.go,treasury/service.go}` + `pegasus/apps/admin-portal/app/treasury/page.tsx`
+	- `ORDER_FINALIZED` is now consumed by the billing worker to update `BillingMeterEvents` idempotently and increment sharded `BillingSupplierMeters`/`BillingGlobalMeters` counters.
+	- Milestone crossings now atomically update `SystemConfig.platform_fee_basis_points` (with additive `billing_*` control keys) and emit `FEE_RATE_ADJUSTED` via transactional outbox on `kafka.TopicMain`.
+	- Split/ledger fee math now resolves runtime basis points; treasury ledger now returns additive `billing_history` + `billing_milestone` telemetry rendered by the supplier treasury dashboard.
+
 - InventoryV2 runtime activation: `pegasus/apps/backend-go/{supplier/inventory.go,warehouse/inventory.go,order/unified_checkout.go,supplier/{reconcile.go,returns.go,vetting.go},factory/{transfers.go,force_receive.go},replenishment/engine.go,factory/{look_ahead.go,predictive_push.go},warehouse/dashboard.go}`
 	- Supplier and warehouse inventory reads now prefer warehouse-scoped `SupplierInventoryV2` quantities with legacy `SupplierInventory` fallback.
 	- Unified checkout mirrors effective stock decrements into `SupplierInventoryV2` for warehouse-assigned plans while retaining existing `SupplierInventory` locking path.

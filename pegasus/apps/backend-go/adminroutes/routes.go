@@ -209,8 +209,12 @@ func platformFeeHandler(cfg *settings.PlatformConfig) http.HandlerFunc {
 		switch r.Method {
 		case http.MethodGet:
 			fee := cfg.PlatformFeePercent()
+			bps := cfg.PlatformFeeBasisPoints()
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]int64{"platform_fee_percent": fee})
+			json.NewEncoder(w).Encode(map[string]int64{
+				"platform_fee_percent":      fee,
+				"platform_fee_basis_points": bps,
+			})
 
 		case http.MethodPatch:
 			var body struct {
@@ -228,8 +232,15 @@ func platformFeeHandler(cfg *settings.PlatformConfig) http.HandlerFunc {
 				http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
 				return
 			}
+			if err := cfg.Set(r.Context(), "platform_fee_basis_points", fmt.Sprintf("%d", body.FeePercent*100)); err != nil {
+				http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+				return
+			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]int64{"platform_fee_percent": body.FeePercent})
+			json.NewEncoder(w).Encode(map[string]int64{
+				"platform_fee_percent":      body.FeePercent,
+				"platform_fee_basis_points": body.FeePercent * 100,
+			})
 
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)

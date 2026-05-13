@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	
+	"time"
+
+	"backend-go/internal/services/billing"
+
 	"cloud.google.com/go/spanner"
 	goKafka "github.com/segmentio/kafka-go"
-	
+
 	"backend-go/kafka/workerpool"
 )
 
@@ -16,9 +19,11 @@ type BillingTierDeps struct {
 	SpannerClient *spanner.Client
 }
 
-// StartBillingTierWorker starts the consumer that listens for ORDER_COMPLETED events
-// to adjust supplier take rates depending on monthly volume tiers.
+// StartBillingTierWorker starts the consumer that listens for ORDER_FINALIZED events
+// and maintains idempotent billing meters plus fee-milestone adjustments.
 func StartBillingTierWorker(ctx context.Context, deps BillingTierDeps, brokerAddress string) {
+	meterSvc := billing.NewMeterWorker(deps.SpannerClient)
+
 	reader := goKafka.NewReader(goKafka.ReaderConfig{
 		Brokers:  []string{brokerAddress},
 		Topic:    TopicMain,
@@ -28,15 +33,31 @@ func StartBillingTierWorker(ctx context.Context, deps BillingTierDeps, brokerAdd
 	})
 
 	pool, err := workerpool.New(workerpool.Config{
-		Source:  reader,
-		Name:    "billing-tier-worker",
-		Logger:  slog.Default(),
+		Source: reader,
+		Name:   "billing-tier-worker",
+		Logger: slog.Default(),
 		Handler: func(ctx context.Context, m goKafka.Message) error {
 			eventType := EventType(m.Headers, m.Key)
-			if eventType == EventOrderCompleted {
-				return handleOrderCompletedForBilling(ctx, deps, m.Value)
+			if eventType != EventOrderFinalized {
+				return nil
 			}
-			return nil
+			return handleOrderFinalizedForBilling(ctx, meterSvc, m.Value)
+		},
+		OnFailure: func(ctx context.Context, m goKafka.Message, handlerErr error) {
+			eventType := EventType(m.Headers, m.Key)
+			orderID := extractOrderID(m.Value)
+			slog.ErrorContext(ctx, "billing_tier_worker.handler_error",
+				"event", eventType,
+				"order_id", orderID,
+				"partition", m.Partition,
+				"offset", m.Offset,
+				"err", handlerErr,
+			)
+			RouteToDLQ(LogisticsEvent{
+				EventName: eventType,
+				OrderId:   orderID,
+				Timestamp: time.Now().UTC(),
+			}, handlerErr.Error())
 		},
 	})
 
@@ -47,30 +68,37 @@ func StartBillingTierWorker(ctx context.Context, deps BillingTierDeps, brokerAdd
 
 	go func() {
 		defer reader.Close()
-		if err := pool.Run(ctx); err != nil && ctx.Err() == nil { slog.ErrorContext(ctx, "billing_tier_worker: pool exited", "err", err) }
+		if err := pool.Run(ctx); err != nil && ctx.Err() == nil {
+			slog.ErrorContext(ctx, "billing_tier_worker: pool exited", "err", err)
+		}
 	}()
 }
 
-func handleOrderCompletedForBilling(ctx context.Context, deps BillingTierDeps, value []byte) error {
-	// Fast-fail if not an OrderCompletedEvent envelope, though we could unmarshal the exact struct
-	// Let's use the explicit OrderCompletedEvent struct from events.go
-	var ev OrderCompletedEvent
+func handleOrderFinalizedForBilling(ctx context.Context, meterSvc *billing.MeterWorker, value []byte) error {
+	var ev OrderFinalizedEvent
 	if err := json.Unmarshal(value, &ev); err != nil {
-		return fmt.Errorf("billing_tier: unmarshal event: %w", err)
+		return fmt.Errorf("billing_tier: unmarshal ORDER_FINALIZED: %w", err)
 	}
-	
-	if ev.SupplierId == "" || ev.Amount <= 0 {
+
+	if ev.OrderID == "" {
 		return nil
 	}
 
-	// This is a minimal blueprint. A full implementation would aggregate the supplier's
-	// rolling monthly volume, fetch their SupplierBillingTiers, and conditionally
-	// update their Suppliers.TakeRateBasisPts via a spanner.ReadWriteTransaction.
-	slog.InfoContext(ctx, "billing_tier_worker.evaluating_take_rate",
-		"supplier_id", ev.SupplierId,
-		"order_amount", ev.Amount,
-		"order_id", ev.OrderID,
-	)
+	return meterSvc.ProcessFinalizedOrder(ctx, billing.FinalizedOrderInput{
+		OrderID:    ev.OrderID,
+		InvoiceID:  ev.InvoiceID,
+		SupplierID: ev.SupplierID,
+		RetailerID: ev.RetailerID,
+		Timestamp:  ev.Timestamp,
+	})
+}
 
-	return nil
+func extractOrderID(payload []byte) string {
+	var body struct {
+		OrderID string `json:"order_id"`
+	}
+	if err := json.Unmarshal(payload, &body); err != nil {
+		return ""
+	}
+	return body.OrderID
 }

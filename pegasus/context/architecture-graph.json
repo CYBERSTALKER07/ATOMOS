@@ -1,6 +1,6 @@
 {
   "version": "2026-05-13",
-  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer+supplier fanout parity with admin-portal hybrid invalidation, checkout supplier-effective currency resolution, payment-session currency normalization, refund/chargeback additive currency compatibility, treasury/reconciliation read-model currency parity for admin portal consumers, warehouse treasury invoice currency parity across portal and native clients, multitenant driver/factory login disambiguation plus supplier-scoped phone uniqueness in provisioning flows, phase-1 regional substrate plus provider-seam normalization for GLOBAL_PAY/ADYEN/CASH with official Adyen Payment Links hosted-checkout wiring, provider execution-path gateway normalization, supplier/warehouse region query-scope middleware enforcement, webhook route composition parity for Global Pay, Stripe, and Adyen ingress, settlement-locality bootstrap for MasterInvoices/Warehouses/Vault precedence plus SupplierInventoryV2 warehouse-key inventory schema, active InventoryV2 runtime dual-read/write mirroring across checkout/restock plus replenishment and planning read convergence, autonomous nearest-factory routing fallback when no active SupplyLanes candidate exists, checkout warehouse equal-H3 tie round-robin balancing across resolver paths, region-filtered supplier reads and expanded warehouse ops plus demand read surfaces, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, and targeted workspace retrieval as the default codebase-retrieval path).",
+  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer+supplier fanout parity with admin-portal hybrid invalidation, checkout supplier-effective currency resolution, payment-session currency normalization, refund/chargeback additive currency compatibility, treasury/reconciliation read-model currency parity for admin portal consumers, warehouse treasury invoice currency parity across portal and native clients, multitenant driver/factory login disambiguation plus supplier-scoped phone uniqueness in provisioning flows, phase-1 regional substrate plus provider-seam normalization for GLOBAL_PAY/ADYEN/CASH with official Adyen Payment Links hosted-checkout wiring, provider execution-path gateway normalization, supplier/warehouse region query-scope middleware enforcement, webhook route composition parity for Global Pay, Stripe, and Adyen ingress, settlement-locality bootstrap for MasterInvoices/Warehouses/Vault precedence plus SupplierInventoryV2 warehouse-key inventory schema, active InventoryV2 runtime dual-read/write mirroring across checkout/restock plus replenishment and planning read convergence, autonomous nearest-factory routing fallback when no active SupplyLanes candidate exists, checkout warehouse equal-H3 tie round-robin balancing across resolver paths, region-filtered supplier reads and expanded warehouse ops plus demand read surfaces, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, targeted workspace retrieval as the default codebase-retrieval path, and S-level dynamic billing metering with milestone-driven platform fee adjustments plus treasury billing telemetry).",
   "agentContext": {
     "syncSet": [
       "../.github/ACT.md",
@@ -147,6 +147,32 @@
     { "from": "gemini_agent", "to": "tech_inventory", "relationship": "reads" }
   ],
   "runtimeContracts": [
+    {
+      "id": "billing_metering_and_fee_milestones",
+      "path": "ORDER_FINALIZED -> BillingMeterEvents/BillingSupplierMeters/BillingGlobalMeters -> SystemConfig.platform_fee_basis_points",
+      "owner": "pegasus/apps/backend-go/{kafka/billing_tier_worker.go,internal/services/billing/meter_worker.go,settings/platform_config.go,order/service.go,kafka/treasurer.go,treasury/service.go}",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "Kafka Event ORDER_FINALIZED (TopicMain consumer group pegasus-billing-tier-worker-group)",
+        "Spanner RWTxn upsert BillingMeterEvents by OrderId",
+        "Spanner RWTxn sharded increments on BillingSupplierMeters and BillingGlobalMeters",
+        "SystemConfig updates for platform_fee_basis_points and billing_* milestone keys",
+        "Transactional outbox emission of FEE_RATE_ADJUSTED",
+        "GET /v1/treasury/ledger additive billing_history + billing_milestone"
+      ],
+      "consumers": [
+        "pegasus/apps/backend-go/kafka/billing_tier_worker.go",
+        "pegasus/apps/backend-go/internal/services/billing/meter_worker.go",
+        "pegasus/apps/backend-go/treasury/service.go",
+        "pegasus/apps/admin-portal/app/treasury/page.tsx"
+      ],
+      "notes": [
+        "Metering is idempotent by OrderId to make ORDER_FINALIZED replay-safe under at-least-once Kafka delivery.",
+        "Counter rows are sharded to avoid Spanner write hotspots at scale.",
+        "Fee adjustments are milestone-driven and applied through SystemConfig basis points with additive compatibility fallback to percent-based keys.",
+        "Order split and ledger math now resolve runtime basis points to keep checkout and treasury views aligned with dynamic fee changes."
+      ]
+    },
     {
       "id": "shared_order_compatibility_surface",
       "path": "/v1/{orders,orders/{id},order/refunds}",

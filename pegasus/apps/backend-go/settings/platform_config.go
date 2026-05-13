@@ -46,7 +46,22 @@ func (pc *PlatformConfig) PlatformFeePercent() int64 {
 // PlatformFeeBasisPoints returns the current platform fee in basis points (0–10000).
 // This is the canonical value passed to ComputeSplitRecipients.
 func (pc *PlatformConfig) PlatformFeeBasisPoints() int64 {
-	return pc.PlatformFeePercent() * 100
+	pc.mu.RLock()
+	defer pc.mu.RUnlock()
+
+	if v, ok := pc.cache["platform_fee_basis_points"]; ok {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n >= 0 && n <= 10000 {
+			return n
+		}
+	}
+
+	if v, ok := pc.cache["platform_fee_percent"]; ok {
+		if n, err := strconv.ParseInt(v, 10, 64); err == nil && n >= 0 && n <= 100 {
+			return n * 100
+		}
+	}
+
+	return 0
 }
 
 // DispatchOptimizerTimeoutMs returns the per-call ceiling (milliseconds) the

@@ -66,6 +66,31 @@
   },
   "runtimeContracts": [
     {
+      "name": "S-level dynamic billing metering and fee milestones",
+      "path": "ORDER_FINALIZED metering substrate + treasury billing telemetry",
+      "owner": "pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,kafka/billing_tier_worker.go,internal/services/billing/meter_worker.go,settings/platform_config.go,order/service.go,kafka/treasurer.go,treasury/service.go} + pegasus/apps/admin-portal/app/treasury/page.tsx",
+      "methods": [
+        "Kafka consumer group pegasus-billing-tier-worker-group on TopicMain for ORDER_FINALIZED",
+        "Spanner RWTxn idempotency write to BillingMeterEvents keyed by OrderId",
+        "Spanner RWTxn sharded increments on BillingSupplierMeters and BillingGlobalMeters",
+        "SystemConfig billing controls: platform_fee_basis_points, billing_milestone_order_count, billing_milestone_step_basis_points, billing_min_fee_basis_points, billing_last_milestone_index",
+        "Transactional outbox emission of FEE_RATE_ADJUSTED",
+        "GET /v1/treasury/ledger additive billing_history and billing_milestone payload"
+      ],
+      "consumers": [
+        "backend-go internal/services/billing meter worker",
+        "backend-go order/service.go dynamic split fee resolution",
+        "backend-go kafka/treasurer.go basis-point ledger split",
+        "backend-go treasury/service.go billing telemetry projection",
+        "admin-portal app/treasury/page.tsx"
+      ],
+      "notes": [
+        "ORDER_FINALIZED replays are safe because BillingMeterEvents enforces one metering write per order.",
+        "Sharded counters reduce hotspot risk while preserving additive monthly and all-time observability.",
+        "Fee math now resolves runtime basis points to keep payout split and treasury UI aligned with milestone adjustments."
+      ]
+    },
+    {
       "name": "Replenishment event pipeline",
       "path": "TopicMain replenishment events",
       "owner": "pegasus/apps/backend-go/factory/{replenishment_lock.go,pull_matrix.go,look_ahead.go} + pegasus/apps/backend-go/kafka/notification_dispatcher.go",

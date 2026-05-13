@@ -178,9 +178,9 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 	}
 	supplierID = nullSupplierID.StringVal
 
-	// Strict integer math — dynamic commission from SystemConfig.
-	commissionRate := platformCfg.PlatformFeePercent()
-	platformCommission := (event.Amount * commissionRate) / 100
+	// Strict integer math — dynamic commission from SystemConfig (basis points).
+	commissionBps := platformCfg.PlatformFeeBasisPoints()
+	platformCommission := (event.Amount * commissionBps) / 10000
 	supplierPayout := event.Amount - platformCommission
 
 	txnIdA := GenerateTxnId(event.OrderId, finance.PlatformCreditEntryType, platformCommission)
@@ -216,7 +216,7 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 		}
 	}
 
-	slog.Info("treasurer.processing_order", "order_id", event.OrderId, "total", event.Amount, "platform_commission", platformCommission, "supplier_id", supplierID, "supplier_payout", supplierPayout, "gateway", paymentGateway, "status", status)
+	slog.Info("treasurer.processing_order", "order_id", event.OrderId, "total", event.Amount, "platform_commission", platformCommission, "commission_bps", commissionBps, "supplier_id", supplierID, "supplier_payout", supplierPayout, "gateway", paymentGateway, "status", status)
 
 	// Auth-Commit-Capture: write PENDING ledger entries + outbox event inside a single RWTxn.
 	// The gateway charge happens asynchronously in the Gateway Worker — never inline.

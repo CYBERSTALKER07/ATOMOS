@@ -631,6 +631,56 @@ CREATE TABLE SystemConfig (
     UpdatedAt   TIMESTAMP OPTIONS (allow_commit_timestamp=true)
 ) PRIMARY KEY (ConfigKey);
 
+-- ── BILLING METERING (S-LEVEL DYNAMIC METERING) ───────────────────────────
+-- BillingMeterEvents is the idempotency ledger keyed by OrderId so
+-- ORDER_FINALIZED replays do not double-increment counters.
+CREATE TABLE BillingMeterEvents (
+    OrderId        STRING(36)  NOT NULL,
+    SupplierId     STRING(36)  NOT NULL,
+    InvoiceId      STRING(36),
+    RetailerId     STRING(36),
+    PeriodMonth    STRING(7)   NOT NULL, -- YYYY-MM
+    Currency       STRING(3)   NOT NULL,
+    Amount         INT64       NOT NULL,
+    FeeAmount      INT64       NOT NULL,
+    FeeBasisPts    INT64       NOT NULL,
+    EventTimestamp TIMESTAMP   NOT NULL,
+    ProcessedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (OrderId);
+
+CREATE INDEX Idx_BillingMeterEvents_BySupplierMonth
+    ON BillingMeterEvents(SupplierId, PeriodMonth, ProcessedAt DESC);
+
+-- Supplier-scoped month meters are sharded by ShardId to avoid write hotspots.
+CREATE TABLE BillingSupplierMeters (
+    SupplierId   STRING(36) NOT NULL,
+    PeriodMonth  STRING(7)  NOT NULL,
+    Currency     STRING(3)  NOT NULL,
+    ShardId      INT64      NOT NULL,
+    OrderCount   INT64      NOT NULL DEFAULT (0),
+    GrossAmount  INT64      NOT NULL DEFAULT (0),
+    FeeAmount    INT64      NOT NULL DEFAULT (0),
+    UpdatedAt    TIMESTAMP  OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (SupplierId, PeriodMonth, Currency, ShardId);
+
+CREATE INDEX Idx_BillingSupplierMeters_ByPeriod
+    ON BillingSupplierMeters(PeriodMonth, SupplierId);
+
+-- Global month meters are also sharded; PeriodMonth='ALL_TIME', Currency='ALL'
+-- rows hold global order counters for milestone threshold checks.
+CREATE TABLE BillingGlobalMeters (
+    PeriodMonth  STRING(20) NOT NULL,
+    Currency     STRING(8)  NOT NULL,
+    ShardId      INT64      NOT NULL,
+    OrderCount   INT64      NOT NULL DEFAULT (0),
+    GrossAmount  INT64      NOT NULL DEFAULT (0),
+    FeeAmount    INT64      NOT NULL DEFAULT (0),
+    UpdatedAt    TIMESTAMP  OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (PeriodMonth, Currency, ShardId);
+
+CREATE INDEX Idx_BillingGlobalMeters_ByPeriod
+    ON BillingGlobalMeters(PeriodMonth, Currency);
+
 -- ── DEVICE TOKENS (FCM / APNs) ───────────────────────────────────────────
 CREATE TABLE DeviceTokens (
     TokenId   STRING(36)  NOT NULL,

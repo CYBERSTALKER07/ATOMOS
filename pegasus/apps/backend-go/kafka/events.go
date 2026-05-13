@@ -23,6 +23,7 @@ const (
 	EventPaymentCleared            = "PAYMENT_CLEARED"
 	EventOrderValidationFailed     = "ORDER_VALIDATION_FAILED"
 	EventOrderFinalized            = "ORDER_FINALIZED"
+	EventFeeRateAdjusted           = "FEE_RATE_ADJUSTED"
 	EventOrderCompleted            = "ORDER_COMPLETED"
 	EventDriverAvailabilityChanged = "DRIVER_AVAILABILITY_CHANGED"
 	EventOrderReassigned           = "ORDER_REASSIGNED"
@@ -1171,4 +1172,15 @@ type OrderFinalizedEvent struct {
 	RetailerID string    `json:"retailer_id,omitempty"`
 	FiscalSign string    `json:"fiscal_sign"`
 	Timestamp  time.Time `json:"timestamp"`
+}
+
+// FeeRateAdjustedEvent is emitted when billing milestones reduce platform fee.
+type FeeRateAdjustedEvent struct {
+	PreviousFeeBasisPoints int64     `json:"previous_fee_basis_points"`
+	NewFeeBasisPoints      int64     `json:"new_fee_basis_points"`
+	MilestoneOrderCount    int64     `json:"milestone_order_count"`
+	GlobalOrderCount       int64     `json:"global_order_count"`
+	MilestoneIndex         int64     `json:"milestone_index"`
+	TriggerOrderID         string    `json:"trigger_order_id"`
+	Timestamp              time.Time `json:"timestamp"`
 }

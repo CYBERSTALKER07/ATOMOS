@@ -141,6 +141,7 @@ func NewApp(ctx context.Context, cfg *config.EnvConfig) (*App, error) {
 		ReadRouter:    spannerRouter,
 		Cache:         c,
 		CountryConfig: countryCfgSvc,
+		PlatformCfg:   platformCfg,
 		Vault:         vaultSvc,
 		SessionSvc:    sessionSvc,
 		CardTokenSvc:  cardTokenSvc,

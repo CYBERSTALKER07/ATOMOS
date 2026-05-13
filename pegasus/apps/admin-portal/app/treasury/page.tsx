@@ -11,6 +11,29 @@ interface TreasuryData {
     platform_revenue: number;
     supplier_payout: number;
     total_volume: number;
+    billing_history?: BillingHistoryPoint[];
+    billing_milestone?: BillingMilestone;
+}
+
+interface BillingHistoryPoint {
+    period_month: string;
+    currency: string;
+    order_count: number;
+    gross_amount: number;
+    fee_amount: number;
+}
+
+interface BillingMilestone {
+    current_fee_basis_points: number;
+    current_fee_percent: number;
+    global_order_count: number;
+    milestone_order_count: number;
+    current_milestone_index: number;
+    last_milestone_index: number;
+    next_milestone_order_count: number;
+    orders_to_next_milestone: number;
+    milestone_step_basis_points: number;
+    min_fee_basis_points: number;
 }
 
 export default function TreasuryDashboard() {
@@ -37,6 +60,23 @@ export default function TreasuryDashboard() {
     }, 5000);
 
     const fmt = (n: number) => new Intl.NumberFormat('en-US').format(n);
+    const fmtMoney = (n: number, currency: string) => new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency || 'UZS',
+        maximumFractionDigits: currency === 'UZS' ? 0 : 2,
+    }).format(n);
+
+    const history = data?.billing_history ?? [];
+    const milestone = data?.billing_milestone;
+    const historyCurrencies = new Set(history.map((p) => p.currency));
+    const displayCurrency = historyCurrencies.size === 1 ? history[0]?.currency ?? 'UZS' : null;
+    const fmtLedger = (n: number) => displayCurrency ? fmtMoney(n, displayCurrency) : fmt(n);
+    const effectiveRate = milestone?.current_fee_percent
+        ?? (data && data.total_volume > 0 ? (data.platform_revenue / data.total_volume) * 100 : 0);
+    const maxGross = history.reduce((acc, point) => Math.max(acc, point.gross_amount), 0) || 1;
+    const milestoneProgress = milestone && milestone.milestone_order_count > 0
+        ? ((milestone.global_order_count % milestone.milestone_order_count) / milestone.milestone_order_count) * 100
+        : 0;
 
     return (
         <div className="min-h-full p-6 md:p-10" style={{ background: 'var(--desk-canvas)', color: 'var(--desk-text-primary)' }}>
@@ -81,9 +121,9 @@ export default function TreasuryDashboard() {
                     <>
                         <div className="desk-card md-kpi-card relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-1 h-full" style={{ background: 'var(--desk-success)' }} />
-                            <p className="md-kpi-label">Net Revenue (5% Commission)</p>
+                            <p className="md-kpi-label">Platform Revenue ({effectiveRate.toFixed(2)}% Fee)</p>
                             <p className="md-kpi-value" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                {fmt(data.platform_revenue)}
+                                {fmtLedger(data.platform_revenue)}
                             </p>
                             <p className="md-kpi-sub" style={{ color: 'var(--desk-success)' }}>Liquid — Settled</p>
                         </div>
@@ -92,7 +132,7 @@ export default function TreasuryDashboard() {
                             <div className="absolute top-0 right-0 w-1 h-full" style={{ background: 'var(--desk-warning)' }} />
                             <p className="md-kpi-label">Supplier Payout Liability</p>
                             <p className="md-kpi-value" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                {fmt(data.supplier_payout)}
+                                {fmtLedger(data.supplier_payout)}
                             </p>
                             <p className="md-kpi-sub" style={{ color: 'var(--desk-warning)' }}>Pending Clearing</p>
                         </div>
@@ -101,7 +141,7 @@ export default function TreasuryDashboard() {
                             <div className="absolute top-0 right-0 w-1 h-full" style={{ background: 'var(--desk-accent)' }} />
                             <p className="md-kpi-label">Gross System Volume</p>
                             <p className="md-kpi-value" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                {fmt(data.total_volume)}
+                                {fmtLedger(data.total_volume)}
                             </p>
                             <p className="md-kpi-sub">Total throughput</p>
                         </div>
@@ -124,7 +164,7 @@ export default function TreasuryDashboard() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                         <div>
                             <p className="md-kpi-label">Commission Rate</p>
-                            <p className="md-typescale-title-large mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>5.0%</p>
+                            <p className="md-typescale-title-large mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>{effectiveRate.toFixed(2)}%</p>
                         </div>
                         <div>
                             <p className="md-kpi-label">Revenue / Volume</p>
@@ -141,9 +181,84 @@ export default function TreasuryDashboard() {
                         <div>
                             <p className="md-kpi-label">Clearing Buffer</p>
                             <p className="md-typescale-title-large mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                                {fmt(data.total_volume - data.platform_revenue - data.supplier_payout)}
+                                {fmtLedger(data.total_volume - data.platform_revenue - data.supplier_payout)}
                             </p>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Billing Meter History ── */}
+            {history.length > 0 && (
+                <div className="desk-card p-6 mt-6">
+                    <h2 className="md-typescale-title-medium mb-4">Billing Meter History</h2>
+                    <div className="space-y-3">
+                        {history.map((point) => {
+                            const width = Math.max((point.gross_amount / maxGross) * 100, 2);
+                            return (
+                                <div key={`${point.period_month}-${point.currency}`}>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="md-typescale-label-large" style={{ color: 'var(--desk-text-secondary)' }}>
+                                            {point.period_month} · {point.currency}
+                                        </p>
+                                        <p className="md-typescale-label-medium" style={{ color: 'var(--desk-text-secondary)' }}>
+                                            Orders {fmt(point.order_count)} · Fee {fmtMoney(point.fee_amount, point.currency)}
+                                        </p>
+                                    </div>
+                                    <div className="h-2 rounded-full" style={{ background: 'var(--desk-surface-2)' }}>
+                                        <div
+                                            className="h-2 rounded-full"
+                                            style={{ width: `${width}%`, background: 'var(--desk-accent)' }}
+                                            title={`${fmtMoney(point.gross_amount, point.currency)} gross`}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Fee Milestone Tracker ── */}
+            {milestone && (
+                <div className="desk-card p-6 mt-6">
+                    <h2 className="md-typescale-title-medium mb-4">Fee Milestone Tracker</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div>
+                            <p className="md-kpi-label">Current Fee</p>
+                            <p className="md-typescale-title-large mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                                {milestone.current_fee_percent.toFixed(2)}%
+                            </p>
+                            <p className="md-kpi-sub">{fmt(milestone.current_fee_basis_points)} bps</p>
+                        </div>
+                        <div>
+                            <p className="md-kpi-label">Global Orders</p>
+                            <p className="md-typescale-title-large mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                                {fmt(milestone.global_order_count)}
+                            </p>
+                            <p className="md-kpi-sub">All-time metered</p>
+                        </div>
+                        <div>
+                            <p className="md-kpi-label">Next Milestone</p>
+                            <p className="md-typescale-title-large mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                                {fmt(milestone.next_milestone_order_count)}
+                            </p>
+                            <p className="md-kpi-sub">{fmt(milestone.orders_to_next_milestone)} orders remaining</p>
+                        </div>
+                        <div>
+                            <p className="md-kpi-label">Step / Floor</p>
+                            <p className="md-typescale-title-large mt-1" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                                {fmt(milestone.milestone_step_basis_points)} / {fmt(milestone.min_fee_basis_points)} bps
+                            </p>
+                            <p className="md-kpi-sub">Milestone index {fmt(milestone.current_milestone_index)}</p>
+                        </div>
+                    </div>
+
+                    <div className="h-2 rounded-full" style={{ background: 'var(--desk-surface-2)' }}>
+                        <div
+                            className="h-2 rounded-full"
+                            style={{ width: `${Math.min(Math.max(milestoneProgress, 0), 100)}%`, background: 'var(--desk-success)' }}
+                        />
                     </div>
                 </div>
             )}
