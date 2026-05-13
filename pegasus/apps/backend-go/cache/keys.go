@@ -32,6 +32,7 @@ const (
 	PrefixWarehouseCell   = "whcell:"   // SET per grid cell: whcell:<cellId> → {warehouseId, ...}
 	PrefixWarehouseDetail = "whdetail:" // HASH: whdetail:<warehouseId> → {...}
 	PrefixWarehouseQueue  = "wh:queue:" // STRING (counter): wh:queue:<warehouseId>
+	PrefixWarehouseTieRR  = "wh:rr:"    // STRING (counter): wh:rr:<supplierId>:<retailerCell>
 
 	// ── Order ──────────────────────────────────────────────────────────────
 	PrefixDeliveryToken  = "delivery_token:" // STRING: delivery_token:<orderId>
@@ -94,6 +95,7 @@ const (
 	TTLArrivingSet      = 24 * time.Hour
 	TTLWarehouseGeo     = 24 * time.Hour
 	TTLWarehouseQueue   = 24 * time.Hour
+	TTLWarehouseTieRR   = 24 * time.Hour
 	TTLIdempotency      = 24 * time.Hour
 	TTLIdempotencyLock  = 30 * time.Second
 	TTLDesertSync       = 24 * time.Hour

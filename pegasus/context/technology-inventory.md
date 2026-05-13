@@ -49,6 +49,16 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 	- Supplier/factory restock and receive flows now mirror additive stock restoration/increment mutations into `SupplierInventoryV2` when order or transfer warehouse context is present.
 	- Replenishment/planning/dashboard reads now also resolve `SupplierInventoryV2` first with legacy fallback in `getWarehouseStock`, `fetchWarehouseInventory`, predictive breach scans, and warehouse low-stock KPI counting.
 
+- Autonomous routing fallback: `pegasus/apps/backend-go/factory/network_optimizer.go`
+	- `SelectOptimalFactoryWithTelemetry` now falls back to nearest active supplier factory when no active `SupplyLanes` candidate exists for the supplier plus warehouse pair.
+	- Fallback selection applies additive product-aware `Factories.ProductTypes` preference when explicit product mappings exist, and uses warehouse `PrimaryFactoryId`/`SecondaryFactoryId` when warehouse coordinates are unavailable.
+	- Planning loops in `factory/look_ahead.go` and `factory/pull_matrix.go` now log missing routing candidates instead of lane-only misses.
+
+- Checkout warehouse tie-break determinism: `pegasus/apps/backend-go/proximity/warehouse_resolver.go`
+	- Candidate ranking now uses H3 grid distance in both Redis grid-cell and Spanner fallback resolver paths.
+	- Equal-ring candidates now use Redis-backed round-robin distribution via `wh:rr:<supplierId>:<retailerCell>` to avoid dense-cell hotspotting.
+	- Resolver tie handling falls back to deterministic lexical warehouse ordering when Redis is unavailable or round-robin state cannot be advanced.
+
 - Settlement-locality bootstrap: `pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,order/{unified_checkout.go,service.go},supplier/warehouses.go,warehouse/payment_config.go,vault/vault.go}`
 	- Adds additive `MasterInvoices.SettlementTarget`, `Warehouses.PaymentConfigId`, and `SupplierInventoryV2` (`SupplierId,WarehouseId,ProductId` + `H3Cell`) schema surfaces.
 	- Unified/card/cash checkout invoice writes now persist settlement target (`GLOBAL_SUPPLIER`/`LOCAL_WAREHOUSE`/`MIXED_WAREHOUSE`).

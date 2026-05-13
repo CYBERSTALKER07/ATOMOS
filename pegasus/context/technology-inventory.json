@@ -186,6 +186,46 @@
       ]
     },
     {
+      "name": "Autonomous factory routing fallback",
+      "path": "internal supplier planning optimizer selection",
+      "owner": "pegasus/apps/backend-go/factory/network_optimizer.go + pegasus/apps/backend-go/factory/{look_ahead.go,pull_matrix.go,predictive_push.go}",
+      "methods": [
+        "internal SelectOptimalFactoryWithTelemetry",
+        "internal nearest active-factory fallback selection",
+        "internal ProductTypes-aware compatibility preference"
+      ],
+      "consumers": [
+        "factory look-ahead transfer grouping",
+        "pull-matrix transfer planning",
+        "predictive-push projected breach planning"
+      ],
+      "notes": [
+        "When no active SupplyLanes candidate exists for supplier plus warehouse, optimizer selection now falls back to nearest active supplier factory instead of returning no candidate.",
+        "Fallback first prefers factories whose ProductTypes explicitly map the requested product, then relaxes to all active factories when no explicit mapping exists.",
+        "When warehouse coordinates are unavailable, fallback uses warehouse PrimaryFactoryId or SecondaryFactoryId before deterministic first-candidate selection."
+      ]
+    },
+    {
+      "name": "Checkout warehouse H3 tie-break determinism",
+      "path": "internal checkout warehouse resolver selection",
+      "owner": "pegasus/apps/backend-go/proximity/warehouse_resolver.go + pegasus/apps/backend-go/cache/keys.go",
+      "methods": [
+        "internal resolveViaGridCell",
+        "internal resolveViaSpanner",
+        "internal resolveWarehouseByH3Distance",
+        "internal roundRobinWarehouseTie"
+      ],
+      "consumers": [
+        "order unified checkout warehouse resolution",
+        "cart supplier-to-warehouse resolver"
+      ],
+      "notes": [
+        "Warehouse candidate ranking now uses H3 grid distance in both Redis grid-cell and Spanner fallback resolver paths.",
+        "Equal-ring candidate ties are distributed via Redis round-robin counters keyed by wh:rr:<supplierId>:<retailerCell>.",
+        "Resolver tie handling falls back to deterministic lexical warehouse ordering when Redis is unavailable or tie state cannot advance."
+      ]
+    },
+    {
       "name": "Telemetry websocket route composition",
       "path": "/ws/{telemetry,fleet}",
       "owner": "pegasus/apps/backend-go/telemetryroutes/routes.go",

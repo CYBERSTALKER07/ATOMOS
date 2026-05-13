@@ -272,7 +272,7 @@ func (s *PullMatrixService) processSupplierBreaches(ctx context.Context, supplie
 		// Find optimal factory for this SKU via SupplyLanes
 		factory, err := s.Optimizer.SelectOptimalFactory(ctx, supplierID, b.WarehouseId, b.ProductId, mode)
 		if err != nil || factory == "" {
-			log.Printf("[PULL_MATRIX] No supply lane for %s/%s/%s — skipping", supplierID, b.WarehouseId, b.ProductId)
+			log.Printf("[PULL_MATRIX] No routing candidate for %s/%s/%s — skipping", supplierID, b.WarehouseId, b.ProductId)
 			continue
 		}
 

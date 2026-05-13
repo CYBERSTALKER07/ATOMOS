@@ -1,6 +1,6 @@
 {
   "version": "2026-05-13",
-  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer+supplier fanout parity with admin-portal hybrid invalidation, checkout supplier-effective currency resolution, payment-session currency normalization, refund/chargeback additive currency compatibility, treasury/reconciliation read-model currency parity for admin portal consumers, warehouse treasury invoice currency parity across portal and native clients, multitenant driver/factory login disambiguation plus supplier-scoped phone uniqueness in provisioning flows, phase-1 regional substrate plus provider-seam normalization for GLOBAL_PAY/ADYEN/CASH with official Adyen Payment Links hosted-checkout wiring, provider execution-path gateway normalization, supplier/warehouse region query-scope middleware enforcement, webhook route composition parity for Global Pay, Stripe, and Adyen ingress, settlement-locality bootstrap for MasterInvoices/Warehouses/Vault precedence plus SupplierInventoryV2 warehouse-key inventory schema, active InventoryV2 runtime dual-read/write mirroring across checkout/restock plus replenishment and planning read convergence, region-filtered supplier reads and expanded warehouse ops plus demand read surfaces, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, and targeted workspace retrieval as the default codebase-retrieval path).",
+  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer+supplier fanout parity with admin-portal hybrid invalidation, checkout supplier-effective currency resolution, payment-session currency normalization, refund/chargeback additive currency compatibility, treasury/reconciliation read-model currency parity for admin portal consumers, warehouse treasury invoice currency parity across portal and native clients, multitenant driver/factory login disambiguation plus supplier-scoped phone uniqueness in provisioning flows, phase-1 regional substrate plus provider-seam normalization for GLOBAL_PAY/ADYEN/CASH with official Adyen Payment Links hosted-checkout wiring, provider execution-path gateway normalization, supplier/warehouse region query-scope middleware enforcement, webhook route composition parity for Global Pay, Stripe, and Adyen ingress, settlement-locality bootstrap for MasterInvoices/Warehouses/Vault precedence plus SupplierInventoryV2 warehouse-key inventory schema, active InventoryV2 runtime dual-read/write mirroring across checkout/restock plus replenishment and planning read convergence, autonomous nearest-factory routing fallback when no active SupplyLanes candidate exists, checkout warehouse equal-H3 tie round-robin balancing across resolver paths, region-filtered supplier reads and expanded warehouse ops plus demand read surfaces, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, and targeted workspace retrieval as the default codebase-retrieval path).",
   "agentContext": {
     "syncSet": [
       "../.github/ACT.md",
@@ -259,6 +259,48 @@
       "notes": [
         "Warehouse ops reads and demand-forecast order-side reads now join Retailers and apply auth.AppendRegionFilter on the retailer alias when region scope is active.",
         "Route composers continue to validate region_id compatibility via auth.RequireRegionScopeWithClient before handler execution."
+      ]
+    },
+    {
+      "id": "autonomous_factory_routing_fallback",
+      "path": "internal supplier planning optimizer selection",
+      "owner": "pegasus/apps/backend-go/factory/network_optimizer.go + pegasus/apps/backend-go/factory/{look_ahead.go,pull_matrix.go,predictive_push.go}",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "internal SelectOptimalFactoryWithTelemetry",
+        "internal nearest active-factory fallback selection",
+        "internal ProductTypes-aware compatibility preference"
+      ],
+      "consumers": [
+        "pegasus/apps/backend-go/factory/look_ahead.go createLookAheadTransfers",
+        "pegasus/apps/backend-go/factory/pull_matrix.go HandleRunPullMatrix",
+        "pegasus/apps/backend-go/factory/predictive_push.go HandleRunPredictivePush"
+      ],
+      "notes": [
+        "When no active SupplyLanes row exists for supplier plus warehouse, the optimizer now falls back to nearest active supplier factory instead of returning no candidate.",
+        "Fallback applies additive ProductTypes preference when explicit product mappings are present, and then relaxes to all active factories if no explicit mapping matches the requested product.",
+        "When warehouse coordinates are unavailable, fallback uses warehouse PrimaryFactoryId or SecondaryFactoryId before deterministic first-candidate selection."
+      ]
+    },
+    {
+      "id": "checkout_warehouse_h3_tiebreak",
+      "path": "internal checkout warehouse resolver selection",
+      "owner": "pegasus/apps/backend-go/proximity/warehouse_resolver.go + pegasus/apps/backend-go/cache/keys.go",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "internal resolveViaGridCell",
+        "internal resolveViaSpanner",
+        "internal resolveWarehouseByH3Distance",
+        "internal roundRobinWarehouseTie"
+      ],
+      "consumers": [
+        "pegasus/apps/backend-go/order/unified_checkout.go ResolveWarehouseWithRouter",
+        "internal proximity cart resolver ResolveWarehouseForCartWithRouter"
+      ],
+      "notes": [
+        "Warehouse candidates are now ranked by H3 grid distance, with equal-ring candidates tie-broken using Redis-backed round-robin counters keyed by wh:rr:<supplierId>:<retailerCell>.",
+        "Tie-break distribution applies to both Redis grid-cell and Spanner fallback resolver paths.",
+        "When Redis is unavailable or round-robin state cannot advance, selection falls back to deterministic lexical warehouse ordering."
       ]
     },
     {

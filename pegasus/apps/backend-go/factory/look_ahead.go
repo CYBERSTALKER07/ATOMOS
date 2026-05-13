@@ -277,7 +277,7 @@ func (s *PullMatrixService) createLookAheadTransfers(ctx context.Context, suppli
 	for _, d := range deficits {
 		factory, err := s.Optimizer.SelectOptimalFactory(ctx, supplierID, warehouseID, d.ProductId, mode)
 		if err != nil || factory == "" {
-			log.Printf("[LOOK_AHEAD] No supply lane for %s/%s/%s — skipping", supplierID, warehouseID, d.ProductId)
+			log.Printf("[LOOK_AHEAD] No routing candidate for %s/%s/%s — skipping", supplierID, warehouseID, d.ProductId)
 			continue
 		}
 

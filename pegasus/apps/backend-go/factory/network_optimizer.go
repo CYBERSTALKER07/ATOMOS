@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"backend-go/auth"
@@ -63,6 +64,7 @@ type FactorySelection struct {
 
 // SelectOptimalFactory returns the best factory ID for the given warehouse+SKU pair.
 // Uses SupplyLanes table filtered by IsActive=true, JOINed with Factories.
+// When no active lane exists, falls back to nearest active factory selection.
 //
 // OBSERVER PROTOCOL: Capacity is tracked but never blocks selection.
 // DailyOutputCapacity is a reference benchmark — overages are surfaced as
@@ -123,6 +125,9 @@ func (s *NetworkOptimizerService) SelectOptimalFactoryWithTelemetry(ctx context.
 	defer iter.Stop()
 
 	row, err := iter.Next()
+	if err == iterator.Done {
+		return s.selectFallbackFactoryWithTelemetry(ctx, supplierID, warehouseID, productID)
+	}
 	if err != nil {
 		return &FactorySelection{}, err
 	}
@@ -132,6 +137,19 @@ func (s *NetworkOptimizerService) SelectOptimalFactoryWithTelemetry(ctx context.
 		return &FactorySelection{}, err
 	}
 
+	return buildFactorySelection(factoryID, currentLoad, dailyCapacity), nil
+}
+
+type fallbackFactoryCandidate struct {
+	FactoryID           string
+	Lat                 float64
+	Lng                 float64
+	CurrentLoad         int64
+	DailyOutputCapacity int64
+	ProductTypes        []string
+}
+
+func buildFactorySelection(factoryID string, currentLoad, dailyCapacity int64) *FactorySelection {
 	sel := &FactorySelection{FactoryID: factoryID}
 	if dailyCapacity == 0 {
 		sel.CapacityLabel = "UNLIMITED"
@@ -146,8 +164,150 @@ func (s *NetworkOptimizerService) SelectOptimalFactoryWithTelemetry(ctx context.
 			sel.CapacityLabel = "OK"
 		}
 	}
+	return sel
+}
 
-	return sel, nil
+func factorySupportsProduct(productID string, productTypes []string) bool {
+	target := strings.TrimSpace(productID)
+	if target == "" {
+		return true
+	}
+	target = strings.ToUpper(target)
+	for _, value := range productTypes {
+		normalized := strings.ToUpper(strings.TrimSpace(value))
+		if normalized == "" {
+			continue
+		}
+		if normalized == "*" || normalized == "ALL" || normalized == "ANY" {
+			return true
+		}
+		if normalized == target {
+			return true
+		}
+	}
+	return false
+}
+
+func chooseFallbackFactory(productID string, warehouseLat, warehouseLng float64, primaryFactoryID, secondaryFactoryID string, candidates []fallbackFactoryCandidate) (fallbackFactoryCandidate, bool) {
+	if len(candidates) == 0 {
+		return fallbackFactoryCandidate{}, false
+	}
+
+	productScoped := make([]fallbackFactoryCandidate, 0, len(candidates))
+	for _, candidate := range candidates {
+		if factorySupportsProduct(productID, candidate.ProductTypes) {
+			productScoped = append(productScoped, candidate)
+		}
+	}
+
+	pool := candidates
+	if len(productScoped) > 0 {
+		pool = productScoped
+	}
+
+	hasCoordinates := warehouseLat != 0 || warehouseLng != 0
+	if hasCoordinates {
+		best := pool[0]
+		bestDist := proximity.HaversineKm(warehouseLat, warehouseLng, best.Lat, best.Lng)
+		for i := 1; i < len(pool); i++ {
+			candidate := pool[i]
+			distance := proximity.HaversineKm(warehouseLat, warehouseLng, candidate.Lat, candidate.Lng)
+			if distance < bestDist {
+				best = candidate
+				bestDist = distance
+			}
+		}
+		return best, true
+	}
+
+	trimmedPrimary := strings.TrimSpace(primaryFactoryID)
+	if trimmedPrimary != "" {
+		for _, candidate := range pool {
+			if candidate.FactoryID == trimmedPrimary {
+				return candidate, true
+			}
+		}
+	}
+
+	trimmedSecondary := strings.TrimSpace(secondaryFactoryID)
+	if trimmedSecondary != "" {
+		for _, candidate := range pool {
+			if candidate.FactoryID == trimmedSecondary {
+				return candidate, true
+			}
+		}
+	}
+
+	return pool[0], true
+}
+
+func (s *NetworkOptimizerService) selectFallbackFactoryWithTelemetry(ctx context.Context, supplierID, warehouseID, productID string) (*FactorySelection, error) {
+	warehouseStmt := spanner.Statement{
+		SQL: `SELECT IFNULL(Lat, 0), IFNULL(Lng, 0),
+		             COALESCE(PrimaryFactoryId, ''), COALESCE(SecondaryFactoryId, '')
+		      FROM Warehouses
+		      WHERE WarehouseId = @warehouseID AND SupplierId = @supplierID AND IsActive = TRUE
+		      LIMIT 1`,
+		Params: map[string]interface{}{"warehouseID": warehouseID, "supplierID": supplierID},
+	}
+	warehouseIter := s.Spanner.Single().Query(ctx, warehouseStmt)
+	defer warehouseIter.Stop()
+
+	warehouseRow, err := warehouseIter.Next()
+	if err == iterator.Done {
+		return &FactorySelection{}, nil
+	}
+	if err != nil {
+		return &FactorySelection{}, err
+	}
+
+	var warehouseLat, warehouseLng float64
+	var primaryFactoryID, secondaryFactoryID string
+	if err := warehouseRow.Columns(&warehouseLat, &warehouseLng, &primaryFactoryID, &secondaryFactoryID); err != nil {
+		return &FactorySelection{}, err
+	}
+
+	factoryStmt := spanner.Statement{
+		SQL: `SELECT FactoryId, IFNULL(Lat, 0), IFNULL(Lng, 0),
+		             IFNULL(CurrentLoad, 0), IFNULL(DailyOutputCapacity, 0), IFNULL(ProductTypes, ARRAY<STRING>[])
+		      FROM Factories
+		      WHERE SupplierId = @supplierID AND IsActive = TRUE
+		      ORDER BY FactoryId`,
+		Params: map[string]interface{}{"supplierID": supplierID},
+	}
+	factoryIter := s.Spanner.Single().Query(ctx, factoryStmt)
+	defer factoryIter.Stop()
+
+	candidates := make([]fallbackFactoryCandidate, 0, 8)
+	for {
+		row, iterErr := factoryIter.Next()
+		if iterErr == iterator.Done {
+			break
+		}
+		if iterErr != nil {
+			return &FactorySelection{}, iterErr
+		}
+
+		candidate := fallbackFactoryCandidate{}
+		if err := row.Columns(
+			&candidate.FactoryID,
+			&candidate.Lat,
+			&candidate.Lng,
+			&candidate.CurrentLoad,
+			&candidate.DailyOutputCapacity,
+			&candidate.ProductTypes,
+		); err != nil {
+			return &FactorySelection{}, err
+		}
+		candidates = append(candidates, candidate)
+	}
+
+	selected, ok := chooseFallbackFactory(productID, warehouseLat, warehouseLng, primaryFactoryID, secondaryFactoryID, candidates)
+	if !ok {
+		return &FactorySelection{}, nil
+	}
+
+	return buildFactorySelection(selected.FactoryID, selected.CurrentLoad, selected.DailyOutputCapacity), nil
 }
 
 // HandleGetNetworkMode returns the current network optimization mode.

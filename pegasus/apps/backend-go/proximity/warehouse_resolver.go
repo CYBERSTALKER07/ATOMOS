@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
+	"sort"
 
 	"backend-go/cache"
 
@@ -32,6 +34,13 @@ type WarehouseMatch struct {
 	Lat         float64
 	Lng         float64
 }
+
+type warehouseResolverCandidate struct {
+	match      *WarehouseMatch
+	h3Distance int
+}
+
+type roundRobinSequenceProvider func(ctx context.Context, key string) (int64, error)
 
 // ResolveWarehouse finds the best warehouse under a supplier to fulfill an order
 // for a retailer at the given coordinates. Returns nil if no warehouse covers the area.
@@ -77,9 +86,10 @@ func resolveViaGridCell(ctx context.Context, supplierID string, lat, lng float64
 		return nil, nil // no coverage at this cell
 	}
 
-	// Filter to warehouses belonging to this supplier
-	var bestMatch *WarehouseMatch
-	var bestDist float64
+	// Filter to warehouses belonging to this supplier.
+	// For equal H3 ring distances, selection is round-robin so one warehouse
+	// isn't repeatedly preferred by iteration order.
+	candidates := make([]warehouseResolverCandidate, 0, len(warehouseIDs))
 
 	for _, whID := range warehouseIDs {
 		detail, err := cache.GetWarehouseDetail(ctx, whID)
@@ -91,20 +101,20 @@ func resolveViaGridCell(ctx context.Context, supplierID string, lat, lng float64
 		}
 
 		dist := HaversineKm(lat, lng, detail.Lat, detail.Lng)
-		if bestMatch == nil || dist < bestDist {
-			bestMatch = &WarehouseMatch{
+		candidates = append(candidates, warehouseResolverCandidate{
+			match: &WarehouseMatch{
 				WarehouseId: detail.WarehouseId,
 				SupplierId:  detail.SupplierId,
 				Name:        detail.Name,
 				DistanceKm:  dist,
 				Lat:         detail.Lat,
 				Lng:         detail.Lng,
-			}
-			bestDist = dist
-		}
+			},
+			h3Distance: warehouseH3Distance(cellID, detail.Lat, detail.Lng),
+		})
 	}
 
-	return bestMatch, nil
+	return resolveWarehouseByH3Distance(ctx, supplierID, cellID, candidates, nextWarehouseTieSequence), nil
 }
 
 // resolveViaGeoSearch uses Redis GEOSEARCH to find nearest warehouses.
@@ -148,6 +158,8 @@ func resolveViaSpanner(ctx context.Context, client *spanner.Client, supplierID s
 		return nil, fmt.Errorf("spanner client is nil")
 	}
 
+	retailerCell := LookupCell(retailerLat, retailerLng)
+
 	stmt := spanner.Statement{
 		SQL: `SELECT WarehouseId, Name, Lat, Lng, CoverageRadiusKm
 		      FROM Warehouses
@@ -161,8 +173,7 @@ func resolveViaSpanner(ctx context.Context, client *spanner.Client, supplierID s
 	iter := client.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
-	var bestMatch *WarehouseMatch
-	var bestDist float64
+	candidates := make([]warehouseResolverCandidate, 0, 8)
 
 	for {
 		row, err := iter.Next()
@@ -190,20 +201,94 @@ func resolveViaSpanner(ctx context.Context, client *spanner.Client, supplierID s
 			continue // outside coverage
 		}
 
-		if bestMatch == nil || dist < bestDist {
-			bestMatch = &WarehouseMatch{
+		candidates = append(candidates, warehouseResolverCandidate{
+			match: &WarehouseMatch{
 				WarehouseId: warehouseID,
 				SupplierId:  supplierID,
 				Name:        name,
 				DistanceKm:  dist,
 				Lat:         lat.Float64,
 				Lng:         lng.Float64,
-			}
-			bestDist = dist
+			},
+			h3Distance: warehouseH3Distance(retailerCell, lat.Float64, lng.Float64),
+		})
+	}
+
+	return resolveWarehouseByH3Distance(ctx, supplierID, retailerCell, candidates, nextWarehouseTieSequence), nil
+}
+
+func resolveWarehouseByH3Distance(ctx context.Context, supplierID, retailerCell string, candidates []warehouseResolverCandidate, nextSequence roundRobinSequenceProvider) *WarehouseMatch {
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	minDistance := math.MaxInt32
+	tied := make([]warehouseResolverCandidate, 0, len(candidates))
+	for _, candidate := range candidates {
+		if candidate.h3Distance < minDistance {
+			minDistance = candidate.h3Distance
+			tied = tied[:0]
+			tied = append(tied, candidate)
+			continue
+		}
+		if candidate.h3Distance == minDistance {
+			tied = append(tied, candidate)
 		}
 	}
 
-	return bestMatch, nil
+	if len(tied) == 1 {
+		return tied[0].match
+	}
+
+	return roundRobinWarehouseTie(ctx, supplierID, retailerCell, tied, nextSequence)
+}
+
+func roundRobinWarehouseTie(ctx context.Context, supplierID, retailerCell string, tied []warehouseResolverCandidate, nextSequence roundRobinSequenceProvider) *WarehouseMatch {
+	if len(tied) == 0 {
+		return nil
+	}
+
+	sort.Slice(tied, func(i, j int) bool {
+		return tied[i].match.WarehouseId < tied[j].match.WarehouseId
+	})
+
+	if nextSequence == nil {
+		return tied[0].match
+	}
+
+	key := cache.PrefixWarehouseTieRR + supplierID + ":" + retailerCell
+	sequence, err := nextSequence(ctx, key)
+	if err != nil {
+		log.Printf("[RESOLVER] round-robin tie-break failed for %s: %v", key, err)
+		return tied[0].match
+	}
+	if sequence <= 0 {
+		return tied[0].match
+	}
+	index := int((sequence - 1) % int64(len(tied)))
+	return tied[index].match
+}
+
+func nextWarehouseTieSequence(ctx context.Context, key string) (int64, error) {
+	client := cache.GetClient()
+	if client == nil {
+		return 1, nil
+	}
+	sequence, err := client.Incr(ctx, key).Result()
+	if err != nil {
+		return 0, err
+	}
+	_ = client.Expire(ctx, key, cache.TTLWarehouseTieRR).Err()
+	return sequence, nil
+}
+
+func warehouseH3Distance(retailerCell string, warehouseLat, warehouseLng float64) int {
+	warehouseCell := LookupCell(warehouseLat, warehouseLng)
+	distance := H3GridDistance(retailerCell, warehouseCell)
+	if distance < 0 {
+		return math.MaxInt32
+	}
+	return distance
 }
 
 // ResolveWarehouseForCart resolves the warehouse for each supplier in a multi-supplier cart.
