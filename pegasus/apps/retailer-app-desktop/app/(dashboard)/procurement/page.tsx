@@ -17,7 +17,7 @@ import {
   Trash2,
   RefreshCw,
 } from "lucide-react";
-import { Button, Chip, Skeleton } from "@heroui/react";
+import { Button, Chip } from "@heroui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import EmptyState from "../../../components/EmptyState";
 import { BentoGrid, BentoCard } from "../../../components/BentoGrid";
@@ -25,23 +25,132 @@ import CountUp from "../../../components/CountUp";
 import MiniSparkline from "../../../components/MiniSparkline";
 import { useLiveData } from "../../../lib/hooks";
 import { apiFetch } from "../../../lib/auth";
+import { useOptionalWebSocket } from "../../../lib/ws";
 import type { Supplier, RetailerAnalytics } from "../../../lib/types";
+
+type LoadIssue = "restricted" | "offline" | "error";
 
 export default function ProcurementPage() {
   const {
     data: suppliers,
     loading: loadingSuppliers,
-    error,
-    mutate,
+    error: suppliersError,
+    isRefreshing: isSuppliersRefreshing,
+    mutate: mutateSuppliers,
   } = useLiveData<Supplier[]>("/v1/retailer/suppliers");
-  const { data: analytics } = useLiveData<RetailerAnalytics>(
-    "/v1/retailer/analytics/expenses",
-  );
+  const {
+    data: analytics,
+    error: analyticsError,
+    isRefreshing: isAnalyticsRefreshing,
+    mutate: mutateAnalytics,
+  } = useLiveData<RetailerAnalytics>("/v1/retailer/analytics/expenses");
+  const ws = useOptionalWebSocket();
 
   const supplierList = suppliers ?? [];
   const totalSpend = analytics?.total_this_month ?? 0;
   const lastMonthSpend = analytics?.total_last_month ?? 0;
   const topSuppliers = analytics?.top_suppliers ?? [];
+  const isRefreshing = isSuppliersRefreshing || isAnalyticsRefreshing;
+
+  const refreshAll = useCallback(() => {
+    void mutateSuppliers();
+    void mutateAnalytics();
+  }, [mutateAnalytics, mutateSuppliers]);
+
+  const loadIssue = useMemo<LoadIssue | null>(() => {
+    const errors = [suppliersError, analyticsError].filter(Boolean) as Array<
+      Error & { status?: number }
+    >;
+    if (errors.length === 0) return null;
+    if (errors.some((err) => err.status === 401 || err.status === 403)) {
+      return "restricted";
+    }
+    if (
+      (typeof navigator !== "undefined" && !navigator.onLine) ||
+      errors.some((err) =>
+        /Failed to fetch|NetworkError|Load failed/i.test(err.message),
+      )
+    ) {
+      return "offline";
+    }
+    return "error";
+  }, [analyticsError, suppliersError]);
+
+  const syncBanner = useMemo(() => {
+    if (loadIssue === "restricted") {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Procurement access is partially restricted for this account.",
+      };
+    }
+    if (loadIssue === "offline") {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Offline mode active. Showing latest procurement data.",
+      };
+    }
+    if (loadIssue === "error") {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Procurement sync degraded. Auto-retry is active.",
+      };
+    }
+    if (ws && !ws.isConnected) {
+      return {
+        kind: "warning" as const,
+        icon: AlertTriangle,
+        message: "Live socket reconnecting. Updates may arrive with delay.",
+      };
+    }
+    if (isRefreshing && !loadingSuppliers) {
+      return {
+        kind: "refreshing" as const,
+        icon: RefreshCw,
+        message: "Syncing procurement feeds...",
+      };
+    }
+    return null;
+  }, [isRefreshing, loadIssue, loadingSuppliers, ws]);
+
+  const suppliersEmptyState = useMemo(() => {
+    if (loadIssue === "restricted") {
+      return {
+        headline: "Procurement access restricted",
+        body: "Your account cannot load vendor connections right now.",
+        variant: "restricted" as const,
+        action: "Retry",
+        onAction: refreshAll,
+      };
+    }
+    if (loadIssue === "offline") {
+      return {
+        headline: "Procurement is offline",
+        body: "Reconnect to refresh vendor and spend feeds.",
+        variant: "offline" as const,
+        action: "Retry",
+        onAction: refreshAll,
+      };
+    }
+    if (loadIssue === "error") {
+      return {
+        headline: "Vendor feed unavailable",
+        body: "Connected vendor data could not be loaded right now.",
+        variant: "error" as const,
+        action: "Retry",
+        onAction: refreshAll,
+      };
+    }
+    return {
+      headline: "No vendors connected",
+      body: undefined,
+      variant: "no-data" as const,
+      action: "Connect Vendor",
+      onAction: () => setShowAddModal(true),
+    };
+  }, [loadIssue, refreshAll]);
 
   const sparkSpend = useMemo(() => {
     const monthly = analytics?.monthly_expenses ?? [];
@@ -103,7 +212,7 @@ export default function ProcurementPage() {
           headers: { "Idempotency-Key": `retailer-supplier-add:${supplierId}` },
         });
         if (res.ok) {
-          mutate();
+          mutateSuppliers();
           setSearchResults((prev) => prev.filter((s) => s.id !== supplierId));
         }
       } catch {
@@ -128,14 +237,14 @@ export default function ProcurementPage() {
             },
           },
         );
-        if (res.ok) mutate();
+        if (res.ok) mutateSuppliers();
       } catch {
         /* swallow */
       } finally {
         setRemovingId(null);
       }
     },
-    [mutate],
+    [mutateSuppliers],
   );
 
   return (
@@ -153,15 +262,59 @@ export default function ProcurementPage() {
             settlements.
           </p>
         </div>
-        <Button
-          variant="primary"
-          onPress={() => setShowAddModal(true)}
-          className="h-11 px-6 rounded-xl font-bold transition-all shadow-[var(--shadow-sm)]"
-          style={{ background: "var(--desk-accent)", color: "white" }}
-        >
-          <Plus size={18} className="mr-2" /> Connect Vendor
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            isDisabled={isRefreshing}
+            onPress={refreshAll}
+            className="h-11 px-5 rounded-xl font-bold text-[var(--desk-text-secondary)]"
+          >
+            <RefreshCw
+              size={16}
+              className={`mr-2 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+            {isRefreshing ? "Syncing" : "Sync"}
+          </Button>
+          <Button
+            variant="primary"
+            onPress={() => setShowAddModal(true)}
+            className="h-11 px-6 rounded-xl font-bold transition-all shadow-[var(--shadow-sm)]"
+            style={{ background: "var(--desk-accent)", color: "white" }}
+          >
+            <Plus size={18} className="mr-2" /> Connect Vendor
+          </Button>
+        </div>
       </header>
+
+      {syncBanner && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`mb-6 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
+            syncBanner.kind === "refreshing"
+              ? "border-[var(--desk-info)]/30 bg-[var(--desk-info)]/5 text-[var(--desk-info)]"
+              : "border-[var(--desk-warning)]/30 bg-[var(--desk-warning)]/10 text-[var(--desk-warning)]"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <syncBanner.icon
+              size={16}
+              className={syncBanner.kind === "refreshing" ? "animate-spin" : ""}
+            />
+            <span className="md-typescale-body-small font-bold uppercase tracking-wide">
+              {syncBanner.message}
+            </span>
+          </div>
+          {syncBanner.kind !== "refreshing" && (
+            <button
+              onClick={refreshAll}
+              className="rounded-lg border border-current/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide hover:bg-current/10"
+            >
+              Retry
+            </button>
+          )}
+        </motion.div>
+      )}
 
       <BentoGrid className="mb-8">
         <BentoCard interactive={false}>
@@ -265,10 +418,11 @@ export default function ProcurementPage() {
               ))
             ) : supplierList.length === 0 ? (
               <EmptyState
-                headline="No vendors connected"
-                variant="no-data"
-                action="Connect Vendor"
-                onAction={() => setShowAddModal(true)}
+                headline={suppliersEmptyState.headline}
+                body={suppliersEmptyState.body}
+                variant={suppliersEmptyState.variant}
+                action={suppliersEmptyState.action}
+                onAction={suppliersEmptyState.onAction}
               />
             ) : (
               <div className="flex flex-col gap-2">
@@ -361,26 +515,34 @@ export default function ProcurementPage() {
             <h3 className="md-typescale-label-small uppercase tracking-widest text-[var(--desk-text-tertiary)] mb-6">
               Trade Breakdown
             </h3>
-            <div className="space-y-4">
-              {topSuppliers.slice(0, 5).map((item, i) => (
-                <div key={item.supplier_id} className="flex items-center gap-4">
-                  <div className="w-8 h-8 rounded-lg bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[10px] font-black text-[var(--desk-text-tertiary)]">
-                    {i + 1}
+            {topSuppliers.length === 0 ? (
+              <div className="rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] p-4 text-center">
+                <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] uppercase font-bold tracking-widest">
+                  No spend breakdown data yet
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {topSuppliers.slice(0, 5).map((item, i) => (
+                  <div key={item.supplier_id} className="flex items-center gap-4">
+                    <div className="w-8 h-8 rounded-lg bg-[var(--desk-surface-subtle)] flex items-center justify-center text-[10px] font-black text-[var(--desk-text-tertiary)]">
+                      {i + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] truncate">
+                        {item.supplier_name}
+                      </p>
+                      <p className="text-[10px] text-[var(--desk-text-tertiary)] font-bold uppercase">
+                        {item.order_count} TRADES
+                      </p>
+                    </div>
+                    <span className="md-typescale-body-small font-bold text-[var(--desk-text-primary)]">
+                      {item.total.toLocaleString()}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="md-typescale-body-medium font-bold text-[var(--desk-text-primary)] truncate">
-                      {item.supplier_name}
-                    </p>
-                    <p className="text-[10px] text-[var(--desk-text-tertiary)] font-bold uppercase">
-                      {item.order_count} TRADES
-                    </p>
-                  </div>
-                  <span className="md-typescale-body-small font-bold text-[var(--desk-text-primary)]">
-                    {item.total.toLocaleString()}
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </aside>
       </div>
@@ -464,9 +626,17 @@ export default function ProcurementPage() {
                           variant="primary"
                           size="sm"
                           onPress={() => addSupplier(s.id)}
+                          isDisabled={addingId === s.id}
                           className="bg-[var(--desk-text-primary)] text-white font-bold rounded-lg h-9 px-4"
                         >
-                          Connect
+                          {addingId === s.id ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin mr-1" />
+                              Connecting
+                            </>
+                          ) : (
+                            "Connect"
+                          )}
                         </Button>
                       </div>
                     ))
