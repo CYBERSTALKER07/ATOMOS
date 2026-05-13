@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -24,7 +25,9 @@ import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material.icons.outlined.SyncAlt
+import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.Verified
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -267,8 +270,11 @@ private fun typeIcon(type: String): ImageVector = when (type) {
     "ORDER_DISPATCHED" -> Icons.Outlined.LocalShipping
     "DRIVER_ARRIVED" -> Icons.Outlined.Place
     "ORDER_STATUS_CHANGED" -> Icons.Outlined.SyncAlt
+    "ORDER_REASSIGNED" -> Icons.Outlined.SwapHoriz
     "PAYLOAD_READY_TO_SEAL" -> Icons.Outlined.Inventory2
     "PAYLOAD_SEALED" -> Icons.Outlined.Verified
+    "SETTLEMENT_REQUIRED" -> Icons.Outlined.AccountBalanceWallet
+    "DELIVERY_SESSION_UPDATED" -> Icons.Outlined.Update
     "PAYMENT_SETTLED", "GLOBAL_PAYNT_SETTLED" -> Icons.Outlined.Payments
     "PAYMENT_FAILED", "PAYMENT_EXPIRED", "GLOBAL_PAYNT_FAILED", "GLOBAL_PAYNT_EXPIRED" -> Icons.Outlined.ErrorOutline
     "ORDER_COMPLETED" -> Icons.Outlined.CheckCircle

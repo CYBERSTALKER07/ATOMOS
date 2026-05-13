@@ -36,6 +36,11 @@ describe('shouldRefreshNotificationInbox', () => {
     expect(shouldRefreshNotificationInbox({ type: 'ORDER_REASSIGNED' })).toBe(true);
   });
 
+  it('refreshes on settlement lifecycle notification events', () => {
+    expect(shouldRefreshNotificationInbox({ type: 'SETTLEMENT_REQUIRED' })).toBe(true);
+    expect(shouldRefreshNotificationInbox({ type: 'DELIVERY_SESSION_UPDATED' })).toBe(true);
+  });
+
   it('ignores unrelated retailer websocket payloads', () => {
     expect(shouldRefreshNotificationInbox({ type: 'TRACKING_POSITION' })).toBe(false);
     expect(shouldRefreshNotificationInbox(null)).toBe(false);

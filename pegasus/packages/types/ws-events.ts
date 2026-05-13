@@ -11,15 +11,19 @@ import type { FactoryLiveEvent } from './factory';
 export type WSEvent =
   | OrderStateChangedEvent
   | RetailerOrderStatusChangedEvent
+  | OrderReassignedWSEvent
   | DriverApproachingEvent
   | ETAUpdatedEvent
   | PaymentRequiredWSEvent
+  | SettlementRequiredWSEvent
+  | DeliverySessionUpdatedWSEvent
   | CashCollectionRequiredEvent
   | OrderCompletedWSEvent
   | PaymentSettledWSEvent
   | OrderAmendedEvent
   | PaymentFailedWSEvent
   | PaymentExpiredEvent
+  | CartSyncUpdatedWSEvent
   | FleetDispatchedWSEvent
   | DispatchLockAcquiredWSEvent
   | DispatchLockReleasedWSEvent
@@ -45,6 +49,15 @@ export interface RetailerOrderStatusChangedEvent {
   order_id: string;
   state: OrderState;
   timestamp: string;
+}
+
+export interface OrderReassignedWSEvent {
+  type: 'ORDER_REASSIGNED';
+  order_id?: string;
+  order_count?: string;
+  old_route_id?: string;
+  new_route_id?: string;
+  timestamp?: string;
 }
 
 // ─── Driver Approaching (Retailer + Supplier) ──────────────────────────────
@@ -79,6 +92,31 @@ export interface PaymentRequiredWSEvent {
   payment_method: string;
   gateway: PaymentGateway;
   message: string;
+}
+
+export interface SettlementRequiredWSEvent {
+  type: 'SETTLEMENT_REQUIRED';
+  order_id: string;
+  session_id: string;
+  invoice_id?: string;
+  state?: string;
+  currency?: string;
+  amount?: number;
+  original_amount?: number;
+  message?: string;
+}
+
+export interface DeliverySessionUpdatedWSEvent {
+  type: 'DELIVERY_SESSION_UPDATED';
+  order_id: string;
+  session_id: string;
+  state?: string;
+  currency?: string;
+  original_amount?: number;
+  adjusted_amount?: number;
+  fee_basis_points?: number;
+  fee_amount?: number;
+  message?: string;
 }
 
 // ─── Cash Collection Required (Driver + Retailer) ──────────────────────────
@@ -137,6 +175,13 @@ export interface PaymentExpiredEvent {
   session_id: string;
   gateway: string;
   message: string;
+}
+
+export interface CartSyncUpdatedWSEvent {
+  type: 'CART_SYNC_UPDATED';
+  retailer_id: string;
+  item_count: number;
+  updated_at: string;
 }
 
 // ─── Fleet Dispatched (Driver + Supplier) ──────────────────────────────────
