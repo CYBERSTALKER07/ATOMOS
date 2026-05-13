@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"testing"
 	"time"
 )
@@ -16,8 +17,9 @@ func TestClassifyRequest_P0Critical(t *testing.T) {
 		"/v1/orders/request-cancel",
 		"/v1/admin/orders/approve-cancel",
 		"/v1/order/cancel",
-		"/v1/webhooks/cash",
 		"/v1/webhooks/global-pay",
+		"/v1/webhooks/adyen",
+		"/v1/webhooks/stripe",
 		"/v1/payment/chargeback",
 	}
 	for _, path := range cases {
@@ -131,7 +133,7 @@ func TestCheckTokenBucket_NilRedis(t *testing.T) {
 	Client = nil
 	defer func() { Client = origClient }()
 
-	result := CheckTokenBucket(nil, "tb:test", 10, 60)
+	result := CheckTokenBucket(context.Background(), "tb:test", 10, 60)
 	if !result.Allowed {
 		t.Error("expected fail-open when Redis is nil")
 	}

@@ -115,38 +115,20 @@ func TestCrossRoleAuthDenial(t *testing.T) {
 	}
 }
 
-// ─── Cash Webhook Settlement (Live) ────────────────────────────────────────
+// ─── Deprecated Cash Webhook Contract (Live) ───────────────────────────────
 
-func TestCashWebhookSettlement(t *testing.T) {
+func TestCashWebhookEndpointIsNotMounted(t *testing.T) {
 	skipIfNoBackend(t)
 
-	// Create an order first so we have an invoice to settle
-	retailerToken := loginRetailer(t)
-	orderID := createB2BOrder(t, retailerToken)
-
-	// Send a Cash webhook with action=0 (prepare)
-	body := fmt.Sprintf(`{
-		"cash_trans_id": "CT-E2E-%d",
-		"service_id": "SVC-1",
-		"merchant_trans_id": "%s",
-		"amount": 250000,
-		"action": 0,
-		"sign_time": "2026-04-12 10:00:00",
-		"sign_string": "will-be-wrong-but-we-test-the-flow",
-		"error": 0
-	}`, time.Now().Unix(), orderID)
-
-	resp, err := http.Post(baseURL+"/v1/webhooks/cash", "application/json", strings.NewReader(body))
+	resp, err := http.Post(baseURL+"/v1/webhooks/cash", "application/json", strings.NewReader(`{"probe":true}`))
 	if err != nil {
-		t.Fatalf("Cash webhook request failed: %v", err)
+		t.Fatalf("cash webhook probe failed: %v", err)
 	}
-	// We expect an error response since the signature is wrong, but the endpoint should be reachable
-	if resp.StatusCode == 404 || resp.StatusCode == 405 {
-		t.Errorf("Cash webhook endpoint not found or wrong method: %d", resp.StatusCode)
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound && resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("status = %d, want 404 or 405 for deprecated cash webhook", resp.StatusCode)
 	}
-	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
-	t.Logf("Cash webhook response: %v", result)
 }
 
 // ─── GlobalPay Webhook Settlement (Live) ────────────────────────────────────────
