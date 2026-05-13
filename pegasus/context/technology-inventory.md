@@ -52,6 +52,7 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 	- Adds additive `DeliverySessions` and immutable `DeliverySessionAdjustments` audit rows with order, driver-state, retailer-state, and supplier-state indexes.
 	- `POST /v1/delivery/verify-handshake` validates signed JWT or compatibility token handshakes with assignment and geofence checks; `POST /v1/delivery/update-order-during-delivery` applies reconciliation edits through existing amend-order logic and writes immutable adjustment audits.
 	- `POST /v1/order/confirm-offload` now transitions session state to `SETTLEMENT_AWAIT` and emits outbox `SETTLEMENT_REQUIRED` + `DELIVERY_SESSION_UPDATED`; settlement notifications fan out over retailer websocket as additive `SETTLEMENT_REQUIRED` plus legacy `PAYMENT_REQUIRED`.
+	- `order/service.go#CompleteOrder` now enforces delivery-session settlement lock state and blocks completion while an active session remains uncleared.
 	- Settlement clear paths in `payment/session.go` and `order/service.go#CollectCash` now advance matching delivery sessions to `FINAL_SETTLEMENT`, set `PaymentClearedAt`, and preserve lock-release semantics for both card and cash settlement paths.
 
 - InventoryV2 runtime activation: `pegasus/apps/backend-go/{supplier/inventory.go,warehouse/inventory.go,order/unified_checkout.go,supplier/{reconcile.go,returns.go,vetting.go},factory/{transfers.go,force_receive.go},replenishment/engine.go,factory/{look_ahead.go,predictive_push.go},warehouse/dashboard.go}`
