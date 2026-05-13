@@ -58,6 +58,12 @@ import com.pegasus.factory.data.model.ManifestRebalanceRequest
 import com.pegasus.factory.data.model.ManifestTransfer
 import com.pegasus.factory.data.remote.FactoryApi
 import com.pegasus.factory.data.remote.FactoryRealtimeEventType
+import com.pegasus.factory.data.remote.FactoryRealtimeStatus
+import com.pegasus.factory.ui.components.FactoryLoadingState
+import com.pegasus.factory.ui.components.FactoryRuntimeBanner
+import com.pegasus.factory.ui.components.FactoryRuntimeTone
+import com.pegasus.factory.ui.components.FactoryStateKind
+import com.pegasus.factory.ui.components.FactoryStatePane
 import com.pegasus.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasus.factory.ui.theme.PegasusSpacing
 import java.text.DateFormat
@@ -89,6 +95,7 @@ fun PayloadOverrideScreen(
     var refreshing by remember { mutableStateOf(false) }
     var staleMessage by remember { mutableStateOf<String?>(null) }
     var lastSyncedAt by remember { mutableStateOf<Long?>(null) }
+    var realtimeStatus by remember { mutableStateOf(FactoryRealtimeStatus.IDLE) }
     var moveCandidate by remember { mutableStateOf<MoveTransferCandidate?>(null) }
     var cancelTransferCandidate by remember { mutableStateOf<CancelTransferCandidate?>(null) }
     var cancelManifestCandidate by remember { mutableStateOf<Manifest?>(null) }
@@ -235,6 +242,9 @@ fun PayloadOverrideScreen(
             FactoryRealtimeEventType.TransferUpdate,
             FactoryRealtimeEventType.ManifestUpdate,
         ),
+        onStatusChange = { status ->
+            realtimeStatus = status
+        },
     ) {
         if (actingKey == null) {
             load(background = manifests.isNotEmpty())
@@ -242,10 +252,21 @@ fun PayloadOverrideScreen(
     }
 
     val runtimeStatus = when {
-        refreshing -> "Refreshing live manifests — last sync ${formatOverrideSyncTime(lastSyncedAt)}"
         staleMessage != null -> staleMessage!!
+        realtimeStatus == FactoryRealtimeStatus.OFFLINE -> "Offline — showing last sync ${formatOverrideSyncTime(lastSyncedAt)}"
+        realtimeStatus == FactoryRealtimeStatus.RECONNECTING -> "Reconnecting live manifests — last sync ${formatOverrideSyncTime(lastSyncedAt)}"
+        realtimeStatus == FactoryRealtimeStatus.CONNECTING -> "Connecting to live manifests…"
+        refreshing -> "Refreshing live manifests — last sync ${formatOverrideSyncTime(lastSyncedAt)}"
         lastSyncedAt != null -> "Live sync active — last sync ${formatOverrideSyncTime(lastSyncedAt)}"
         else -> "Waiting for first sync"
+    }
+    val runtimeTone = when {
+        staleMessage != null && realtimeStatus == FactoryRealtimeStatus.OFFLINE -> FactoryRuntimeTone.Offline
+        staleMessage != null -> FactoryRuntimeTone.Warning
+        realtimeStatus == FactoryRealtimeStatus.OFFLINE -> FactoryRuntimeTone.Offline
+        realtimeStatus == FactoryRealtimeStatus.RECONNECTING || realtimeStatus == FactoryRealtimeStatus.CONNECTING -> FactoryRuntimeTone.Refreshing
+        refreshing -> FactoryRuntimeTone.Refreshing
+        else -> FactoryRuntimeTone.Live
     }
 
     Scaffold(
@@ -263,22 +284,31 @@ fun PayloadOverrideScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.lg))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
-            manifests.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Text(
-                    text = "No manifests are currently loading.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            loading -> FactoryLoadingState(
+                title = "Loading payload override",
+                body = "Fetching live loading manifests that can be rebalanced or released.",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
+            error != null -> FactoryStatePane(
+                kind = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) FactoryStateKind.Offline else FactoryStateKind.Error,
+                headline = if (realtimeStatus == FactoryRealtimeStatus.OFFLINE) "Payload override unavailable offline" else "Unable to load loading manifests",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
+            manifests.isEmpty() -> FactoryStatePane(
+                kind = FactoryStateKind.Empty,
+                headline = "No manifests are currently loading",
+                body = "Payload override becomes available when at least one manifest reaches the loading state.",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
             else -> LazyColumn(
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
@@ -288,7 +318,7 @@ fun PayloadOverrideScreen(
                     OverrideSummaryCard(
                         manifests = manifests,
                         runtimeStatus = runtimeStatus,
-                        stale = staleMessage != null,
+                        runtimeTone = runtimeTone,
                     )
                 }
                 items(manifests, key = { it.id }) { manifest ->
@@ -397,7 +427,7 @@ fun PayloadOverrideScreen(
 private fun OverrideSummaryCard(
     manifests: List<Manifest>,
     runtimeStatus: String,
-    stale: Boolean,
+    runtimeTone: FactoryRuntimeTone,
 ) {
     val transferCount = manifests.sumOf { it.transfers.size }
     ElevatedCard(
@@ -419,17 +449,10 @@ private fun OverrideSummaryCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                color = if (stale) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainer,
-            ) {
-                Text(
-                    text = runtimeStatus,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (stale) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = PegasusSpacing.md, vertical = PegasusSpacing.sm),
-                )
-            }
+            FactoryRuntimeBanner(
+                tone = runtimeTone,
+                message = runtimeStatus,
+            )
         }
     }
 }

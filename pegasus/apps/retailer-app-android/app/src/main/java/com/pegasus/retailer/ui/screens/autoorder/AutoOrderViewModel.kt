@@ -8,12 +8,20 @@ import com.pegasus.retailer.data.model.DemandForecast
 import com.pegasus.retailer.data.model.UpdateGlobalSettingsRequest
 import com.pegasus.retailer.data.model.UpdateSettingsRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import javax.inject.Inject
+
+enum class AutoOrderLoadIssue {
+    RESTRICTED,
+    OFFLINE,
+    ERROR,
+}
 
 /** Represents which entity the pending enable/history-choice dialog is for. */
 sealed class EnableTarget {
@@ -32,7 +40,16 @@ data class AutoOrderUiState(
     /** Non-null when the "Use past history or start fresh?" dialog should be shown. */
     val pendingEnableTarget: EnableTarget? = null,
     val error: String? = null,
-)
+    val loadIssue: AutoOrderLoadIssue? = null,
+) {
+    val syncMessage: String?
+        get() = when (loadIssue) {
+            AutoOrderLoadIssue.RESTRICTED -> "Auto-order access is restricted for this account"
+            AutoOrderLoadIssue.OFFLINE -> "Offline mode active. Showing latest auto-order settings"
+            AutoOrderLoadIssue.ERROR -> "Auto-order sync degraded. Retry is available"
+            null -> null
+        }
+}
 
 @HiltViewModel
 class AutoOrderViewModel @Inject constructor(
@@ -49,21 +66,40 @@ class AutoOrderViewModel @Inject constructor(
 
     fun loadAll() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, error = null) }
+
+            var nextIssue: AutoOrderLoadIssue? = null
+            var nextError: String? = null
+            var nextSettings: AutoOrderSettings? = null
+
             try {
-                val settings = api.getAutoOrderSettings()
-                val rid = tokenManager.getUserId() ?: ""
-                val forecasts = try { api.getPredictions(rid) } catch (_: Exception) { emptyList() }
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        settings = settings,
-                        forecasts = forecasts,
-                        globalEnabled = settings.globalEnabled,
-                    )
-                }
+                nextSettings = api.getAutoOrderSettings()
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                nextIssue = resolveLoadIssue(e)
+                nextError = resolveErrorMessage(e, nextIssue)
+            }
+
+            val rid = tokenManager.getUserId().orEmpty()
+            val nextForecasts = try {
+                api.getPredictions(rid)
+            } catch (e: Exception) {
+                if (nextIssue == null) {
+                    nextIssue = resolveLoadIssue(e)
+                    nextError = resolveErrorMessage(e, nextIssue)
+                }
+                _uiState.value.forecasts
+            }
+
+            _uiState.update {
+                val effectiveSettings = nextSettings ?: it.settings
+                it.copy(
+                    isLoading = false,
+                    settings = effectiveSettings,
+                    forecasts = nextForecasts,
+                    globalEnabled = effectiveSettings?.globalEnabled ?: it.globalEnabled,
+                    error = nextError,
+                    loadIssue = nextIssue,
+                )
             }
         }
     }
@@ -129,6 +165,7 @@ class AutoOrderViewModel @Inject constructor(
 
     private fun enableTarget(target: EnableTarget, useHistory: Boolean) {
         viewModelScope.launch {
+            _uiState.update { it.copy(error = null) }
             try {
                 when (target) {
                     is EnableTarget.Global -> {
@@ -148,14 +185,21 @@ class AutoOrderViewModel @Inject constructor(
                 }
                 loadAll()
             } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
                 if (target is EnableTarget.Global) _uiState.update { it.copy(globalEnabled = false) }
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update {
+                    it.copy(
+                        error = resolveErrorMessage(e, issue),
+                        loadIssue = issue,
+                    )
+                }
             }
         }
     }
 
     private fun disableTarget(target: EnableTarget) {
         viewModelScope.launch {
+            _uiState.update { it.copy(error = null) }
             try {
                 when (target) {
                     is EnableTarget.Global -> {
@@ -173,9 +217,31 @@ class AutoOrderViewModel @Inject constructor(
                 }
                 loadAll()
             } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
                 if (target is EnableTarget.Global) _uiState.update { it.copy(globalEnabled = true) }
-                _uiState.update { it.copy(error = e.message) }
+                _uiState.update {
+                    it.copy(
+                        error = resolveErrorMessage(e, issue),
+                        loadIssue = issue,
+                    )
+                }
             }
+        }
+    }
+
+    private fun resolveLoadIssue(error: Exception): AutoOrderLoadIssue {
+        return when {
+            error is HttpException && (error.code() == 401 || error.code() == 403) -> AutoOrderLoadIssue.RESTRICTED
+            error is IOException -> AutoOrderLoadIssue.OFFLINE
+            else -> AutoOrderLoadIssue.ERROR
+        }
+    }
+
+    private fun resolveErrorMessage(error: Exception, issue: AutoOrderLoadIssue): String {
+        return when (issue) {
+            AutoOrderLoadIssue.RESTRICTED -> "Auto-order access is restricted for this account"
+            AutoOrderLoadIssue.OFFLINE -> "Offline mode active. Reconnect and retry"
+            AutoOrderLoadIssue.ERROR -> error.message ?: "Auto-order request failed"
         }
     }
 }

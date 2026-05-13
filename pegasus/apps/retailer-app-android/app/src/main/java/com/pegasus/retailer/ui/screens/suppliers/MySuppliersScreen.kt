@@ -29,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -56,29 +57,78 @@ fun MySuppliersScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     PullToRefreshBox(
-        isRefreshing = uiState.isLoading,
+        isRefreshing = uiState.isLoading || uiState.isRefreshing,
         onRefresh = viewModel::refresh,
         modifier = Modifier.fillMaxSize(),
     ) {
-        if (uiState.isLoading && uiState.suppliers.isEmpty()) {
-            SupplierSkeletonGrid()
-        } else if (uiState.suppliers.isEmpty() && !uiState.isLoading) {
-            PegasusEmptyState(
-                icon = Icons.Rounded.Business,
-                title = if (uiState.error != null) "Suppliers Unavailable" else "No Suppliers Yet",
-                message = uiState.error ?: "Suppliers with repeated orders will appear here automatically",
-                actionLabel = if (uiState.error != null) "Retry" else "Refresh",
-                onAction = viewModel::refresh,
-            )
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                itemsIndexed(uiState.suppliers, key = { _, s -> s.id }) { _, supplier ->
-                    SupplierCard(supplier, onClick = { onSupplierCash(supplier) })
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (uiState.loadIssue != null || uiState.isRefreshing) {
+                val loadIssue = uiState.loadIssue
+                val syncMessage = when {
+                    loadIssue != null -> uiState.error ?: uiState.syncMessage.orEmpty()
+                    else -> "Syncing suppliers..."
+                }
+                val containerColor = when (loadIssue) {
+                    SuppliersLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    SuppliersLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                    SuppliersLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                    null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                }
+                val contentColor = when (loadIssue) {
+                    SuppliersLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
+                    SuppliersLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
+                    SuppliersLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
+                    null -> MaterialTheme.colorScheme.onPrimaryContainer
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(containerColor)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = syncMessage,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = contentColor,
+                    )
+                    if (loadIssue != null) {
+                        TextButton(onClick = viewModel::refresh) {
+                            Text("Retry", color = contentColor)
+                        }
+                    }
+                }
+            }
+
+            if (uiState.isLoading && uiState.suppliers.isEmpty()) {
+                SupplierSkeletonGrid()
+            } else if (uiState.suppliers.isEmpty() && !uiState.isLoading && !uiState.isRefreshing) {
+                PegasusEmptyState(
+                    icon = Icons.Rounded.Business,
+                    title = when (uiState.loadIssue) {
+                        SuppliersLoadIssue.RESTRICTED -> "Supplier Access Restricted"
+                        SuppliersLoadIssue.OFFLINE -> "Suppliers Offline"
+                        SuppliersLoadIssue.ERROR -> "Suppliers Unavailable"
+                        null -> "No Suppliers Yet"
+                    },
+                    message = uiState.error ?: "Suppliers with repeated orders will appear here automatically",
+                    actionLabel = if (uiState.loadIssue != null) "Retry" else "Refresh",
+                    onAction = viewModel::refresh,
+                )
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    itemsIndexed(uiState.suppliers, key = { _, s -> s.id }) { _, supplier ->
+                        SupplierCard(supplier, onClick = { onSupplierCash(supplier) })
+                    }
                 }
             }
         }

@@ -210,14 +210,20 @@ private struct TruckSidebar: View {
     var body: some View {
         Group {
             if viewModel.loadingTrucks && viewModel.trucks.isEmpty {
-                ProgressView().controlSize(.large)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.trucks.isEmpty {
-                ContentUnavailableView(
-                    "No vehicles",
-                    systemImage: "truck.box",
-                    description: Text("Pull to refresh once dispatch assigns trucks.")
+                PayloadStateView(
+                    variant: .truck,
+                    title: "LOADING_VEHICLES",
+                    message: "Refreshing supplier fleet availability for this shift."
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if viewModel.trucks.isEmpty {
+                PayloadStateView(
+                    variant: .truck,
+                    title: "NO_VEHICLES",
+                    message: "Pull to refresh once dispatch assigns trucks.",
+                    tone: .warning
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(viewModel.trucks, selection: Binding(
                     get: { viewModel.selectedTruckId },
@@ -289,10 +295,11 @@ private struct ManifestDetailView: View {
     var body: some View {
         Group {
             if viewModel.selectedTruckId == nil {
-                ContentUnavailableView(
-                    "Select a vehicle",
-                    systemImage: "arrow.left",
-                    description: Text("Pick a truck from the sidebar to load its manifest.")
+                PayloadStateView(
+                    variant: .truck,
+                    title: "SELECT_A_VEHICLE",
+                    message: "Pick a truck from the sidebar to load its manifest.",
+                    compact: false
                 )
             } else if viewModel.manifestSealed {
                 AllSealedSuccessView(
@@ -300,8 +307,12 @@ private struct ManifestDetailView: View {
                     onStartNew: { Task { await viewModel.startNewManifest() } }
                 )
             } else if viewModel.loadingManifest && viewModel.manifest == nil {
-                ProgressView().controlSize(.large)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                PayloadStateView(
+                    variant: .manifest,
+                    title: "LOADING_MANIFEST",
+                    message: "Loading the active checklist for this truck."
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if let m = viewModel.manifest {
                 ManifestWorkflow(
                     manifest: m,
@@ -311,10 +322,11 @@ private struct ManifestDetailView: View {
                     onShowReDispatch: onShowReDispatch
                 )
             } else {
-                ContentUnavailableView(
-                    "No open manifest",
-                    systemImage: "tray",
-                    description: Text("This vehicle has no DRAFT or LOADING manifest. Wait for dispatch.")
+                PayloadStateView(
+                    variant: .manifest,
+                    title: "NO_OPEN_MANIFEST",
+                    message: "This vehicle has no DRAFT or LOADING manifest. Wait for dispatch.",
+                    tone: .warning
                 )
             }
         }
@@ -477,16 +489,24 @@ private struct OrderChecklistSection: View {
             .padding(.horizontal, 4)
 
             if viewModel.loadingOrders {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-                    .padding()
+                PayloadStateView(
+                    variant: .manifest,
+                    title: "FETCHING_MANIFEST",
+                    message: "Loading the checklist items assigned to this vehicle.",
+                    compact: true
+                )
+                .frame(maxWidth: .infinity)
+                .padding()
             } else if viewModel.orders.isEmpty {
-                Text("NO_ORDERS_ASSIGNED")
-                    .font(.system(size: 14, weight: .bold, design: .monospaced))
-                    .foregroundStyle(TermTheme.tertiary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(32)
-                    .tacticalCard()
+                PayloadStateView(
+                    variant: .manifest,
+                    title: "NO_ORDERS_ASSIGNED",
+                    message: "This truck has no checklist items waiting to load.",
+                    compact: true
+                )
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(32)
+                .tacticalCard()
             } else {
                 VStack(spacing: 8) {
                     ForEach(viewModel.orders) { order in
@@ -716,6 +736,14 @@ private struct PostSealCountdownView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            PayloadStateView(
+                variant: .warning,
+                title: "ORDER_SEALED",
+                message: "Double-check the load before dispatch.",
+                compact: true,
+                tone: .warning
+            )
+
             HStack {
                 Image(systemName: "lock.shield.fill")
                     .foregroundStyle(TermTheme.live)
@@ -779,20 +807,12 @@ private struct AllSealedSuccessView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 32) {
-                VStack(spacing: 16) {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 80))
-                        .foregroundStyle(TermTheme.live)
-                    
-                    Text("MANIFEST_LOCKED")
-                        .font(.system(size: 24, weight: .black, design: .monospaced))
-                        .foregroundStyle(TermTheme.accent)
-                    
-                    Text("All items verified and sealed for transport.")
-                        .font(.system(size: 16, weight: .medium, design: .monospaced))
-                        .foregroundStyle(TermTheme.secondary)
-                        .multilineTextAlignment(.center)
-                }
+                PayloadStateView(
+                    variant: .success,
+                    title: "MANIFEST_LOCKED",
+                    message: "All items verified and sealed for transport.",
+                    tone: .success
+                )
                 .padding(.top, 40)
 
                 VStack(alignment: .leading, spacing: 16) {
@@ -1139,13 +1159,12 @@ private struct ReDispatchSheet: View {
 
                 Group {
                     if loading {
-                        VStack(spacing: 20) {
-                            ProgressView()
-                                .tint(TermTheme.accent)
-                            Text("SOLVING_CONSTRAINTS...")
-                                .font(.system(size: 12, weight: .black, design: .monospaced))
-                                .foregroundStyle(TermTheme.secondary)
-                        }
+                        PayloadStateView(
+                            variant: .dispatch,
+                            title: "SOLVING_CONSTRAINTS...",
+                            message: "Scoring nearby trucks for the best reassignment path.",
+                            compact: true
+                        )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if let resp = response {
                         ScrollView {
@@ -1172,14 +1191,13 @@ private struct ReDispatchSheet: View {
                                 .tacticalCard()
 
                                 if (resp.recommendations).isEmpty {
-                                    VStack(spacing: 12) {
-                                        Image(systemName: "exclamationmark.triangle.fill")
-                                            .font(.title)
-                                            .foregroundStyle(TermTheme.warn)
-                                        Text("NO_SUITABLE_CARRIERS_FOUND")
-                                            .font(.system(size: 14, weight: .black, design: .monospaced))
-                                            .foregroundStyle(TermTheme.secondary)
-                                    }
+                                    PayloadStateView(
+                                        variant: .dispatch,
+                                        title: "NO_SUITABLE_CARRIERS_FOUND",
+                                        message: "No nearby fleet target can accept this order right now.",
+                                        compact: true,
+                                        tone: .warning
+                                    )
                                     .padding(40)
                                     .frame(maxWidth: .infinity)
                                     .background(TermTheme.card)
@@ -1207,14 +1225,13 @@ private struct ReDispatchSheet: View {
                             }
                         }
                     } else {
-                        VStack(spacing: 16) {
-                            Image(systemName: "tray.fill")
-                                .font(.system(size: 40))
-                                .foregroundStyle(TermTheme.tertiary)
-                            Text("NO_DATA_AVAILABLE")
-                                .font(.system(size: 14, weight: .black, design: .monospaced))
-                                .foregroundStyle(TermTheme.secondary)
-                        }
+                        PayloadStateView(
+                            variant: .dispatch,
+                            title: "NO_DATA_AVAILABLE",
+                            message: "The optimizer response is not available yet.",
+                            compact: true,
+                            tone: .warning
+                        )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
@@ -1345,10 +1362,11 @@ private struct NotificationsSheet: View {
         NavigationStack {
             Group {
                 if viewModel.notifications.isEmpty {
-                    ContentUnavailableView(
-                        "No notifications",
-                        systemImage: "bell.slash",
-                        description: Text("New events appear here in real time.")
+                    PayloadStateView(
+                        variant: .notifications,
+                        title: "NO_NOTIFICATIONS",
+                        message: "New events appear here in real time.",
+                        compact: false
                     )
                 } else {
                     List {

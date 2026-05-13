@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import com.pegasus.factory.data.model.LoginRequest
 import com.pegasus.factory.data.remote.FactoryApi
 import com.pegasus.factory.data.remote.TokenHolder
+import com.pegasus.factory.ui.components.FactoryRuntimeBanner
+import com.pegasus.factory.ui.components.FactoryRuntimeTone
 import com.pegasus.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 
@@ -107,10 +109,10 @@ fun LoginScreen(
 
             if (error != null) {
                 Spacer(Modifier.height(PegasusSpacing.sm))
-                Text(
-                    text = error!!,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
+                FactoryRuntimeBanner(
+                    tone = FactoryRuntimeTone.Warning,
+                    message = error!!,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
 

@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.AddShoppingCart
@@ -35,21 +36,19 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -86,17 +85,8 @@ fun DashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedRange by rememberSaveable { mutableIntStateOf(0) }
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(uiState.error) {
-        uiState.error?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearError()
-        }
-    }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         PullToRefreshBox(
@@ -111,6 +101,49 @@ fun DashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(24.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
+                if (uiState.loadIssue != null || uiState.isLoading) {
+                    item {
+                        val loadIssue = uiState.loadIssue
+                        val syncMessage = when {
+                            loadIssue != null -> uiState.error ?: uiState.syncMessage.orEmpty()
+                            else -> "Syncing dashboard data..."
+                        }
+                        val containerColor = when (loadIssue) {
+                            DashboardLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                            DashboardLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                            DashboardLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                            null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                        }
+                        val contentColor = when (loadIssue) {
+                            DashboardLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
+                            DashboardLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
+                            DashboardLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
+                            null -> MaterialTheme.colorScheme.onPrimaryContainer
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(containerColor)
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = syncMessage,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = contentColor,
+                            )
+                            if (loadIssue != null) {
+                                TextButton(onClick = viewModel::refresh) {
+                                    Text("Retry", color = contentColor)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 item {
                     DashboardOverviewCard(
                         activeOrderCount = uiState.activeOrders.size,

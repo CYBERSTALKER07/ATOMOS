@@ -42,9 +42,13 @@ struct LoginView: View {
                 .disabled(viewModel.loading)
 
                 if let error = viewModel.error {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
+                    PayloadStateView(
+                        variant: .warning,
+                        title: "LOGIN_FAILED",
+                        message: error,
+                        compact: true,
+                        tone: .warning
+                    )
                 }
 
                 Button {

@@ -38,6 +38,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -118,14 +119,63 @@ fun AnalyticsScreen(
         if (analytics == null && !uiState.isLoading) {
             PegasusEmptyState(
                 icon = Icons.Rounded.Insights,
-                title = "No Analytics Data",
-                message = "Complete a few orders and your expense insights will appear here",
+                title = when (uiState.loadIssue) {
+                    AnalyticsLoadIssue.RESTRICTED -> "Analytics Access Restricted"
+                    AnalyticsLoadIssue.OFFLINE -> "Analytics Offline"
+                    AnalyticsLoadIssue.ERROR -> "Analytics Unavailable"
+                    null -> "No Analytics Data"
+                },
+                message = uiState.error ?: "Complete a few orders and your expense insights will appear here",
             )
         } else if (analytics != null) {
             LazyColumn(
                 contentPadding = PaddingValues(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                if (uiState.loadIssue != null || uiState.isLoading) {
+                    item {
+                        val loadIssue = uiState.loadIssue
+                        val syncMessage = when {
+                            loadIssue != null -> uiState.error ?: uiState.syncMessage.orEmpty()
+                            else -> "Syncing analytics..."
+                        }
+                        val containerColor = when (loadIssue) {
+                            AnalyticsLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                            AnalyticsLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                            AnalyticsLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                            null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                        }
+                        val contentColor = when (loadIssue) {
+                            AnalyticsLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
+                            AnalyticsLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
+                            AnalyticsLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
+                            null -> MaterialTheme.colorScheme.onPrimaryContainer
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(containerColor)
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = syncMessage,
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = contentColor,
+                            )
+                            if (loadIssue != null) {
+                                TextButton(onClick = viewModel::refresh) {
+                                    Text("Retry", color = contentColor)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // ── Weekly Spend Tracker (Health Connect style) ──
                 item {
                     WeeklySpendCard(

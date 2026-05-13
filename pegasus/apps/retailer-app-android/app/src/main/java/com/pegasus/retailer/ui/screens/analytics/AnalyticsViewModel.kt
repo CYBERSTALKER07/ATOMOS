@@ -9,13 +9,21 @@ import com.pegasus.retailer.data.model.RetailerDetailedAnalytics
 import com.pegasus.retailer.data.model.TopProductExpense
 import com.pegasus.retailer.data.model.TopSupplierExpense
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import javax.inject.Inject
+
+enum class AnalyticsLoadIssue {
+    RESTRICTED,
+    OFFLINE,
+    ERROR,
+}
 
 data class DailySpend(
     val dayLabel: String,   // "M", "T", "W", etc.
@@ -33,7 +41,17 @@ data class AnalyticsUiState(
     val avgPerDayUzs: Long = 0,
     val totalWeekUzs: Long = 0,
     val daysOnBudget: Int = 0,
-)
+    val error: String? = null,
+    val loadIssue: AnalyticsLoadIssue? = null,
+) {
+    val syncMessage: String?
+        get() = when (loadIssue) {
+            AnalyticsLoadIssue.RESTRICTED -> "Analytics access is restricted for this account"
+            AnalyticsLoadIssue.OFFLINE -> "Offline mode active. Showing latest analytics"
+            AnalyticsLoadIssue.ERROR -> "Analytics sync degraded. Retry is available"
+            null -> null
+        }
+}
 
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
@@ -49,7 +67,7 @@ class AnalyticsViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val expensesDeferred = async { api.getRetailerExpenses() }
                 val detailedDeferred = async {
@@ -60,9 +78,24 @@ class AnalyticsViewModel @Inject constructor(
                 }
                 val analytics = expensesDeferred.await()
                 val detailed = detailedDeferred.await()
-                _uiState.update { it.copy(isLoading = false, analytics = analytics, detailed = detailed) }
-            } catch (_: Exception) {
-                _uiState.update { it.copy(isLoading = false) }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        analytics = analytics,
+                        detailed = detailed,
+                        error = null,
+                        loadIssue = null,
+                    )
+                }
+            } catch (e: Exception) {
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = resolveErrorMessage(e, issue),
+                        loadIssue = issue,
+                    )
+                }
             }
         }
     }
@@ -80,5 +113,21 @@ class AnalyticsViewModel @Inject constructor(
         "6M" -> 180
         "1Y" -> 365
         else -> 30
+    }
+
+    private fun resolveLoadIssue(error: Exception): AnalyticsLoadIssue {
+        return when {
+            error is HttpException && (error.code() == 401 || error.code() == 403) -> AnalyticsLoadIssue.RESTRICTED
+            error is IOException -> AnalyticsLoadIssue.OFFLINE
+            else -> AnalyticsLoadIssue.ERROR
+        }
+    }
+
+    private fun resolveErrorMessage(error: Exception, issue: AnalyticsLoadIssue): String {
+        return when (issue) {
+            AnalyticsLoadIssue.RESTRICTED -> "Analytics access is restricted for this account"
+            AnalyticsLoadIssue.OFFLINE -> "Offline mode active. Reconnect and retry"
+            AnalyticsLoadIssue.ERROR -> error.message ?: "Analytics request failed"
+        }
     }
 }

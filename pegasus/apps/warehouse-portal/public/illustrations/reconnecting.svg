@@ -1,0 +1,17 @@
+<svg width="640" height="420" viewBox="0 0 640 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="420" rx="28" fill="#F3F4F6"/>
+  <rect x="124" y="92" width="392" height="236" rx="28" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="2"/>
+  <rect x="160" y="126" width="132" height="18" rx="9" fill="#E5E7EB"/>
+  <rect x="160" y="160" width="140" height="14" rx="7" fill="#CBD5E1"/>
+  <rect x="160" y="184" width="100" height="14" rx="7" fill="#E5E7EB"/>
+  <g>
+    <circle cx="394" cy="224" r="34" fill="#DBEAFE"/>
+    <circle cx="456" cy="224" r="34" fill="#FFF3EA"/>
+    <circle cx="394" cy="224" r="10" fill="#2563EB"/>
+    <circle cx="456" cy="224" r="10" fill="#FF7A1A"/>
+    <path d="M410 224H440" stroke="#94A3B8" stroke-width="8" stroke-linecap="round" stroke-dasharray="12 12">
+      <animate attributeName="stroke-dashoffset" values="0;-24" dur="1.2s" repeatCount="indefinite"/>
+    </path>
+    <animateTransform attributeName="transform" type="translate" values="0 0; 0 -6; 0 0" dur="3.1s" repeatCount="indefinite"/>
+  </g>
+</svg>

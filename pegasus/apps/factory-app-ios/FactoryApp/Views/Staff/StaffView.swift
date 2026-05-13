@@ -142,18 +142,30 @@ struct SupplyRequestsView: View {
     @State private var refreshing = false
     @State private var staleMessage: String?
     @State private var lastSyncedAt: Date?
+    @State private var realtimeStatus: FactoryRealtimeStatus = .idle
 
     private var filteredRequests: [SupplyRequest] {
         selectedFilter == "ALL" ? requests : requests.filter { $0.state == selectedFilter }
     }
 
     private var runtimeStatus: String {
-        if refreshing {
-            return "Refreshing live queue — last sync \(supplySyncText(lastSyncedAt))"
-        }
-
         if let staleMessage {
             return staleMessage
+        }
+
+        switch realtimeStatus {
+        case .offline:
+            return "Offline — showing last sync \(supplySyncText(lastSyncedAt))"
+        case .reconnecting:
+            return "Reconnecting live queue — last sync \(supplySyncText(lastSyncedAt))"
+        case .connecting:
+            return "Connecting to the live supply queue…"
+        case .idle, .live:
+            break
+        }
+
+        if refreshing {
+            return "Refreshing live queue — last sync \(supplySyncText(lastSyncedAt))"
         }
 
         if lastSyncedAt != nil {
@@ -163,25 +175,54 @@ struct SupplyRequestsView: View {
         return "Waiting for first sync"
     }
 
+    private var runtimeTone: FactoryRuntimeTone {
+        if staleMessage != nil && realtimeStatus == .offline {
+            return .offline
+        }
+
+        if staleMessage != nil {
+            return .warning
+        }
+
+        switch realtimeStatus {
+        case .offline:
+            return .offline
+        case .reconnecting, .connecting:
+            return .refreshing
+        case .idle, .live:
+            break
+        }
+
+        return refreshing ? .refreshing : .live
+    }
+
     var body: some View {
         NavigationStack {
             Group {
                 if loading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    FactoryLoadingState(
+                        title: "Loading supply requests",
+                        body: "Fetching the live warehouse demand queue for this factory."
+                    )
                 } else if let error {
-                    ContentUnavailableView {
-                        Label("Error", systemImage: "exclamationmark.triangle")
-                    } description: {
-                        Text(error)
-                    } actions: {
-                        Button("Retry") { Task { await load() } }
-                    }
+                    FactoryStateView(
+                        kind: realtimeStatus == .offline ? .offline : .error,
+                        headline: realtimeStatus == .offline ? "Supply queue unavailable offline" : "Unable to load supply requests",
+                        body: error,
+                        actionTitle: "Retry",
+                        action: { Task { await load() } }
+                    )
                 } else if filteredRequests.isEmpty {
-                    ContentUnavailableView(
-                        selectedFilter == "ALL" ? "No Supply Requests" : "No \(selectedFilter.replacingOccurrences(of: "_", with: " ")) Requests",
-                        systemImage: "checklist",
-                        description: Text("Warehouse demand will appear here as soon as requests reach this factory queue.")
+                    FactoryStateView(
+                        kind: selectedFilter == "ALL" ? .empty : .noResults,
+                        headline: selectedFilter == "ALL"
+                            ? "No supply requests"
+                            : "No \(selectedFilter.replacingOccurrences(of: "_", with: " ").lowercased()) requests",
+                        body: selectedFilter == "ALL"
+                            ? "Warehouse demand will appear here as soon as requests reach this factory queue."
+                            : "Adjust the active filter or wait for the next queue refresh.",
+                        actionTitle: selectedFilter == "ALL" ? nil : "Clear Filter",
+                        action: selectedFilter == "ALL" ? nil : { selectedFilter = "ALL" }
                     )
                 } else {
                     ScrollView {
@@ -190,7 +231,7 @@ struct SupplyRequestsView: View {
                                 total: requests.count,
                                 visible: filteredRequests.count,
                                 runtimeStatus: runtimeStatus,
-                                stale: staleMessage != nil
+                                runtimeTone: runtimeTone
                             )
                             SupplyFilterRow(selectedFilter: $selectedFilter)
 
@@ -237,7 +278,9 @@ struct SupplyRequestsView: View {
             }
             .onAppear {
                 realtimeClient.connect(
-                    onStateChange: { _ in },
+                    onStateChange: { status in
+                        realtimeStatus = status
+                    },
                     onEvent: { event in
                         guard event.eventType == .supplyRequestUpdate else { return }
                         if transitioningID == nil {
@@ -298,7 +341,7 @@ private struct SupplySummaryCard: View {
     let total: Int
     let visible: Int
     let runtimeStatus: String
-    let stale: Bool
+    let runtimeTone: FactoryRuntimeTone
 
     var body: some View {
         VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
@@ -307,13 +350,7 @@ private struct SupplySummaryCard: View {
             Text("\(visible) requests in view, \(total) total across the factory queue.")
                 .font(.body)
                 .foregroundStyle(.secondary)
-            Text(runtimeStatus)
-                .font(.footnote.weight(.medium))
-                .foregroundStyle(stale ? Color.red : .secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, LabTheme.spacingMD)
-                .padding(.vertical, LabTheme.spacingSM)
-                .background(stale ? Color.red.opacity(0.1) : LabTheme.tertiaryBackground, in: RoundedRectangle(cornerRadius: LabTheme.radiusMD))
+            FactoryRuntimeBanner(tone: runtimeTone, message: runtimeStatus)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .labCard()

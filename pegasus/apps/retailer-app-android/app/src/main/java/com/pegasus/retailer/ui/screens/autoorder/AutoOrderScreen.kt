@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Info
@@ -87,7 +88,7 @@ fun AutoOrderScreen(
         )
     }
 
-    if (uiState.isLoading) {
+    if (uiState.isLoading && uiState.settings == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
         }
@@ -99,6 +100,51 @@ fun AutoOrderScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
+        val syncMessage = when {
+            uiState.loadIssue != null -> uiState.error ?: uiState.syncMessage.orEmpty()
+            uiState.isLoading -> "Syncing auto-order settings..."
+            else -> null
+        }
+
+        if (syncMessage != null) {
+            item {
+                val loadIssue = uiState.loadIssue
+                val containerColor = when (loadIssue) {
+                    AutoOrderLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    AutoOrderLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                    AutoOrderLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                    null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                }
+                val contentColor = when (loadIssue) {
+                    AutoOrderLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
+                    AutoOrderLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
+                    AutoOrderLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
+                    null -> MaterialTheme.colorScheme.onPrimaryContainer
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(containerColor)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = syncMessage,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = contentColor,
+                    )
+                    if (loadIssue != null) {
+                        TextButton(onClick = viewModel::loadAll) {
+                            Text("Retry", color = contentColor)
+                        }
+                    }
+                }
+            }
+        }
+
         // ── Header ──
         item {
             HeaderCard(
