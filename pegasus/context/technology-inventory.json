@@ -92,8 +92,8 @@
     },
     {
       "name": "Supplier inventory import staging surface",
-      "path": "/v1/supplier/inventory/import*",
-      "owner": "pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,supplier/imports.go} + pegasus/apps/admin-portal/app/supplier/inventory/{page.tsx,import/page.tsx}",
+      "path": "/v1/supplier/inventory/{import*,imports*}",
+      "owner": "pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,supplier/imports.go,suppliercoreroutes/imports.go} + pegasus/apps/admin-portal/app/supplier/inventory/{page.tsx,import/page.tsx} + pegasus/infra/spanner/schema.sql",
       "methods": [
         "GET /v1/supplier/inventory/import",
         "POST /v1/supplier/inventory/import",
@@ -103,16 +103,24 @@
         "PATCH /v1/supplier/inventory/import/{session}/mapping",
         "POST /v1/supplier/inventory/import/{session}/approve",
         "POST /v1/supplier/inventory/import/{session}/apply",
-        "GET /v1/supplier/inventory/import/{session}/status"
+        "GET /v1/supplier/inventory/import/{session}/status",
+        "POST /v1/supplier/inventory/imports/",
+        "GET /v1/supplier/inventory/imports/{id}",
+        "POST /v1/supplier/inventory/imports/{id}/mapping",
+        "POST /v1/supplier/inventory/imports/{id}/approve"
       ],
       "consumers": [
         "backend-go supplier/imports.go",
+        "backend-go suppliercoreroutes/imports.go",
         "admin-portal app/supplier/inventory/import/page.tsx",
         "admin-portal app/supplier/inventory/page.tsx"
       ],
       "notes": [
         "Schema and migrations now provision InventoryImportSessions and interleaved InventoryImportRows for supplier-scoped and warehouse-scoped staged inventory imports.",
+        "Phase-2 compatibility substrate adds SupplierImportSessions, interleaved SupplierImportStagedRows, and SupplierImportMapping keyed by supplier_id/session_id for strict supplier data isolation.",
         "Import handlers now persist session lifecycle and staged-row workflows (create, list, detail, rows, mapping, approve, apply, status) with storage-backed behavior.",
+        "Supplier import sandbox stubs at /v1/supplier/inventory/imports initialize signed upload tickets without local file writes and enforce supplier scope from JWT claims only.",
+        "Staged import apply audit writes now use BULK_IMPORT_STAGED in InventoryAuditLog.",
         "Supplier portal now ships a bulk-import wizard shell routed at /supplier/inventory/import and linked from the supplier inventory page."
       ]
     },

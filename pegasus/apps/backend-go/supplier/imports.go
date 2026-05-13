@@ -957,7 +957,7 @@ func handleApplyInventoryImportSession(w http.ResponseWriter, r *http.Request, c
 
 			if quantityDelta != 0 {
 				auditCols := []string{"AuditId", "ProductId", "SupplierId", "AdjustedBy", "PreviousQty", "NewQty", "Delta", "Reason", "AdjustedAt"}
-				auditVals := []interface{}{fmt.Sprintf("AUD-%s", uuid.NewString()[:8]), targetSKU, supplierID, supplierID, legacyQty, newLegacyQty, quantityDelta, "CORRECTION", spanner.CommitTimestamp}
+				auditVals := []interface{}{fmt.Sprintf("AUD-%s", uuid.NewString()[:8]), targetSKU, supplierID, supplierID, legacyQty, newLegacyQty, quantityDelta, "BULK_IMPORT_STAGED", spanner.CommitTimestamp}
 				if targetWarehouseID != "" {
 					auditCols = append(auditCols, "WarehouseId")
 					auditVals = append(auditVals, targetWarehouseID)

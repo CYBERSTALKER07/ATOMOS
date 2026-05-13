@@ -42,6 +42,10 @@ type Deps struct {
 //	PATCH /v1/supplier/inventory/import/{id}/mapping — mapping updates
 //	POST /v1/supplier/inventory/import/{id}/{approve,apply} — import actions
 //	GET /v1/supplier/inventory/import/{id}/status — import status
+//	POST /v1/supplier/inventory/imports/ — phase-2 sandbox session init + upload ticket
+//	GET /v1/supplier/inventory/imports/{id} — phase-2 sandbox session status
+//	POST /v1/supplier/inventory/imports/{id}/mapping — phase-2 sandbox mapping submission
+//	POST /v1/supplier/inventory/imports/{id}/approve — phase-2 sandbox approve transition
 //	GET /v1/supplier/inventory/audit — inventory audit log
 //	GET /v1/supplier/orders          — supplier order queue
 //	POST /v1/supplier/orders/vet     — approve/reject supplier order
@@ -62,6 +66,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierRole, log(withRegionScope(importHandler))))
 	r.HandleFunc("/v1/supplier/inventory/import/*",
 		auth.RequireRole(supplierRole, log(withRegionScope(importHandler))))
+	registerImportRoutes(r, d, supplierRole, log, withRegionScope, idem)
 	r.HandleFunc("/v1/supplier/inventory/audit",
 		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleInventoryAuditLog(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/orders",

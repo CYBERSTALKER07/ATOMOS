@@ -25,7 +25,7 @@ import (
 
 type InventoryAdjustRequest struct {
 	Adjustment int64  `json:"adjustment"` // positive = restock, negative = write-off
-	Reason     string `json:"reason"`     // PRODUCTION_RECEIPT | DAMAGE_WRITEOFF | CORRECTION | RETURN_TO_STOCK
+	Reason     string `json:"reason"`     // PRODUCTION_RECEIPT | DAMAGE_WRITEOFF | CORRECTION | RETURN_TO_STOCK | BULK_IMPORT_STAGED
 }
 
 type InventoryItem struct {
@@ -58,6 +58,7 @@ var validReasons = map[string]bool{
 	"DAMAGE_WRITEOFF":    true,
 	"CORRECTION":         true,
 	"RETURN_TO_STOCK":    true,
+	"BULK_IMPORT_STAGED": true,
 }
 
 var (
@@ -263,7 +264,7 @@ func handleAdjustInventory(w http.ResponseWriter, r *http.Request, client *spann
 		return
 	}
 	if !validReasons[req.Reason] {
-		http.Error(w, `{"error":"invalid reason. Must be PRODUCTION_RECEIPT|DAMAGE_WRITEOFF|CORRECTION|RETURN_TO_STOCK"}`, http.StatusBadRequest)
+		http.Error(w, `{"error":"invalid reason. Must be PRODUCTION_RECEIPT|DAMAGE_WRITEOFF|CORRECTION|RETURN_TO_STOCK|BULK_IMPORT_STAGED"}`, http.StatusBadRequest)
 		return
 	}
 
