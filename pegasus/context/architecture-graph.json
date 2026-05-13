@@ -1,6 +1,6 @@
 {
   "version": "2026-05-14",
-  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer+supplier fanout parity with admin-portal hybrid invalidation, retailer inbox settlement/session refresh parity with shared ws-event contract coverage, checkout supplier-effective currency resolution, payment-session currency normalization, refund/chargeback additive currency compatibility, treasury/reconciliation read-model currency parity for admin portal consumers, warehouse treasury invoice currency parity across portal and native clients, multitenant driver/factory login disambiguation plus supplier-scoped phone uniqueness in provisioning flows, phase-1 regional substrate plus provider-seam normalization for GLOBAL_PAY/ADYEN/CASH with official Adyen Payment Links hosted-checkout wiring, provider execution-path gateway normalization, supplier/warehouse region query-scope middleware enforcement, webhook route composition parity for Global Pay, Stripe, and Adyen ingress, settlement-locality bootstrap for MasterInvoices/Warehouses/Vault precedence plus SupplierInventoryV2 warehouse-key inventory schema, active InventoryV2 runtime dual-read/write mirroring across checkout/restock plus replenishment and planning read convergence, autonomous nearest-factory routing fallback when no active SupplyLanes candidate exists, checkout warehouse equal-H3 tie round-robin balancing across resolver paths, region-filtered supplier reads and expanded warehouse ops plus demand read surfaces, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, targeted workspace retrieval as the default codebase-retrieval path, S-level dynamic billing metering with milestone-driven platform fee adjustments plus treasury billing telemetry, and dynamic delivery handshake settlement orchestration with DeliverySessions audit trails, settlement-required fanout, dispute escalation outbox/dispatcher closure, and retailer role-row consumption parity).",
+  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer+supplier fanout parity with admin-portal hybrid invalidation, retailer inbox settlement/session refresh parity with shared ws-event contract coverage, checkout supplier-effective currency resolution, payment-session currency normalization, refund/chargeback additive currency compatibility, treasury/reconciliation read-model currency parity for admin portal consumers, warehouse treasury invoice currency parity across portal and native clients, multitenant driver/factory login disambiguation plus supplier-scoped phone uniqueness in provisioning flows, phase-1 regional substrate plus provider-seam normalization for GLOBAL_PAY/ADYEN/CASH with official Adyen Payment Links hosted-checkout wiring, provider execution-path gateway normalization, supplier/warehouse region query-scope middleware enforcement, webhook route composition parity for Global Pay, Stripe, and Adyen ingress, settlement-locality bootstrap for MasterInvoices/Warehouses/Vault precedence plus SupplierInventoryV2 warehouse-key inventory schema, supplier inventory import staging substrate and admin-portal wizard shell routing, active InventoryV2 runtime dual-read/write mirroring across checkout/restock plus replenishment and planning read convergence, autonomous nearest-factory routing fallback when no active SupplyLanes candidate exists, checkout warehouse equal-H3 tie round-robin balancing across resolver paths, region-filtered supplier reads and expanded warehouse ops plus demand read surfaces, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, targeted workspace retrieval as the default codebase-retrieval path, S-level dynamic billing metering with milestone-driven platform fee adjustments plus treasury billing telemetry, and dynamic delivery handshake settlement orchestration with DeliverySessions audit trails, settlement-required fanout, dispute escalation outbox/dispatcher closure, and retailer role-row consumption parity).",
   "agentContext": {
     "syncSet": [
       "../.github/ACT.md",
@@ -171,6 +171,33 @@
         "Counter rows are sharded to avoid Spanner write hotspots at scale.",
         "Fee adjustments are milestone-driven and applied through SystemConfig basis points with additive compatibility fallback to percent-based keys.",
         "Order split and ledger math now resolve runtime basis points to keep checkout and treasury views aligned with dynamic fee changes."
+      ]
+    },
+    {
+      "id": "supplier_inventory_import_staging_surface",
+      "path": "/v1/supplier/inventory/import*",
+      "owner": "pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,supplier/imports.go} + pegasus/apps/admin-portal/app/supplier/inventory/{page.tsx,import/page.tsx}",
+      "delegatedFrom": "pegasus/apps/backend-go/main.go",
+      "methods": [
+        "GET /v1/supplier/inventory/import",
+        "POST /v1/supplier/inventory/import",
+        "GET /v1/supplier/inventory/import/upload-ticket",
+        "GET /v1/supplier/inventory/import/{session}",
+        "GET /v1/supplier/inventory/import/{session}/rows",
+        "PATCH /v1/supplier/inventory/import/{session}/mapping",
+        "POST /v1/supplier/inventory/import/{session}/approve",
+        "POST /v1/supplier/inventory/import/{session}/apply",
+        "GET /v1/supplier/inventory/import/{session}/status"
+      ],
+      "consumers": [
+        "pegasus/apps/backend-go/supplier/imports.go",
+        "pegasus/apps/admin-portal/app/supplier/inventory/import/page.tsx",
+        "pegasus/apps/admin-portal/app/supplier/inventory/page.tsx"
+      ],
+      "notes": [
+        "Spanner schema now includes InventoryImportSessions and interleaved InventoryImportRows with supplier and warehouse filter indexes for staging and review flows.",
+        "Session mapping, approve, and apply handlers now persist staged-row lifecycle state and counters instead of returning not-implemented stubs.",
+        "Admin portal now exposes a supplier bulk-import wizard shell at /supplier/inventory/import with upload-ticket, session, rows, mapping, approve, apply, and status actions."
       ]
     },
     {

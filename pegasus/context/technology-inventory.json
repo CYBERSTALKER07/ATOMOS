@@ -91,6 +91,32 @@
       ]
     },
     {
+      "name": "Supplier inventory import staging surface",
+      "path": "/v1/supplier/inventory/import*",
+      "owner": "pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,supplier/imports.go} + pegasus/apps/admin-portal/app/supplier/inventory/{page.tsx,import/page.tsx}",
+      "methods": [
+        "GET /v1/supplier/inventory/import",
+        "POST /v1/supplier/inventory/import",
+        "GET /v1/supplier/inventory/import/upload-ticket",
+        "GET /v1/supplier/inventory/import/{session}",
+        "GET /v1/supplier/inventory/import/{session}/rows",
+        "PATCH /v1/supplier/inventory/import/{session}/mapping",
+        "POST /v1/supplier/inventory/import/{session}/approve",
+        "POST /v1/supplier/inventory/import/{session}/apply",
+        "GET /v1/supplier/inventory/import/{session}/status"
+      ],
+      "consumers": [
+        "backend-go supplier/imports.go",
+        "admin-portal app/supplier/inventory/import/page.tsx",
+        "admin-portal app/supplier/inventory/page.tsx"
+      ],
+      "notes": [
+        "Schema and migrations now provision InventoryImportSessions and interleaved InventoryImportRows for supplier-scoped and warehouse-scoped staged inventory imports.",
+        "Import handlers now persist session lifecycle and staged-row workflows (create, list, detail, rows, mapping, approve, apply, status) with storage-backed behavior.",
+        "Supplier portal now ships a bulk-import wizard shell routed at /supplier/inventory/import and linked from the supplier inventory page."
+      ]
+    },
+    {
       "name": "Dynamic delivery handshake settlement surface",
       "path": "/v1/delivery/{verify-handshake,update-order-during-delivery} + /v1/order/confirm-offload + settlement clear hooks",
       "owner": "pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,order/delivery_handshake.go,order/service.go,deliveryroutes/routes.go,payment/session.go,orderroutes/routes.go}",
