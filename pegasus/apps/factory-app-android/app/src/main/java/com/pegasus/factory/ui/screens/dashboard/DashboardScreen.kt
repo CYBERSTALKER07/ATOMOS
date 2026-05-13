@@ -18,6 +18,9 @@ import androidx.compose.ui.unit.dp
 import com.pegasus.factory.data.model.DashboardStats
 import com.pegasus.factory.data.remote.FactoryApi
 import com.pegasus.factory.data.remote.FactoryRealtimeEventType
+import com.pegasus.factory.ui.components.FactoryLoadingState
+import com.pegasus.factory.ui.components.FactoryStateKind
+import com.pegasus.factory.ui.components.FactoryStatePane
 import com.pegasus.factory.ui.navigation.FactoryRoutes
 import com.pegasus.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasus.factory.ui.theme.PegasusSpacing
@@ -122,16 +125,23 @@ fun DashboardScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.lg))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
+            loading -> FactoryLoadingState(
+                title = "Loading dashboard",
+                body = "Fetching live factory metrics for loading, fleet, and staffing.",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
+            error != null -> FactoryStatePane(
+                kind = FactoryStateKind.Error,
+                headline = "Unable to load dashboard",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
             else -> LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 168.dp),
                 contentPadding = PaddingValues(PegasusSpacing.lg),

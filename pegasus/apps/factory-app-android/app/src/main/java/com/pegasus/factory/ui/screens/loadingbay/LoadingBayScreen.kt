@@ -16,6 +16,9 @@ import com.pegasus.factory.data.model.DispatchRequest
 import com.pegasus.factory.data.model.Transfer
 import com.pegasus.factory.data.remote.FactoryApi
 import com.pegasus.factory.data.remote.FactoryRealtimeEventType
+import com.pegasus.factory.ui.components.FactoryLoadingState
+import com.pegasus.factory.ui.components.FactoryStateKind
+import com.pegasus.factory.ui.components.FactoryStatePane
 import com.pegasus.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasus.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -113,16 +116,23 @@ fun LoadingBayScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.lg))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
+            loading -> FactoryLoadingState(
+                title = "Loading bay status",
+                body = "Fetching approved, loading, and dispatched transfer groups for the bay.",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
+            error != null -> FactoryStatePane(
+                kind = FactoryStateKind.Error,
+                headline = "Unable to load loading bay",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
             else -> LazyColumn(
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),

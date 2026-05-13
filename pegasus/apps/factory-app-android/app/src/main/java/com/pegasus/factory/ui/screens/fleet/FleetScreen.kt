@@ -15,6 +15,9 @@ import androidx.compose.ui.unit.dp
 import com.pegasus.factory.data.model.Vehicle
 import com.pegasus.factory.data.remote.FactoryApi
 import com.pegasus.factory.data.remote.FactoryRealtimeEventType
+import com.pegasus.factory.ui.components.FactoryLoadingState
+import com.pegasus.factory.ui.components.FactoryStateKind
+import com.pegasus.factory.ui.components.FactoryStatePane
 import com.pegasus.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasus.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -74,19 +77,31 @@ fun FleetScreen(
         },
     ) { innerPadding ->
         when {
-            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(error!!, color = MaterialTheme.colorScheme.error)
-                    Spacer(Modifier.height(PegasusSpacing.lg))
-                    Button(onClick = { load() }) { Text("Retry") }
-                }
-            }
-            vehicles.isEmpty() -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
-                Text("No vehicles", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            loading -> FactoryLoadingState(
+                title = "Loading fleet",
+                body = "Fetching the current factory vehicle roster and assignments.",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
+            error != null -> FactoryStatePane(
+                kind = FactoryStateKind.Error,
+                headline = "Unable to load fleet",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
+            vehicles.isEmpty() -> FactoryStatePane(
+                kind = FactoryStateKind.Empty,
+                headline = "No vehicles registered",
+                body = "There are no vehicles registered in the factory fleet yet.",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
             else -> LazyColumn(
                 contentPadding = PaddingValues(PegasusSpacing.lg),
                 verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),

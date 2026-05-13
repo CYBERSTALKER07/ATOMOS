@@ -15,6 +15,9 @@ import androidx.compose.ui.Modifier
 import com.pegasus.factory.data.model.Transfer
 import com.pegasus.factory.data.remote.FactoryApi
 import com.pegasus.factory.data.remote.FactoryRealtimeEventType
+import com.pegasus.factory.ui.components.FactoryLoadingState
+import com.pegasus.factory.ui.components.FactoryStateKind
+import com.pegasus.factory.ui.components.FactoryStatePane
 import com.pegasus.factory.ui.realtime.FactoryRealtimeReloadEffect
 import com.pegasus.factory.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
@@ -100,19 +103,31 @@ fun TransferListScreen(
             }
 
             when {
-                loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-                error != null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(error!!, color = MaterialTheme.colorScheme.error)
-                        Spacer(Modifier.height(PegasusSpacing.lg))
-                        Button(onClick = { load() }) { Text("Retry") }
-                    }
-                }
-                transfers.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    EmptyTransferListState(selectedFilter = selectedFilter)
-                }
+                loading -> FactoryLoadingState(
+                    title = "Loading transfers",
+                    body = "Fetching the current transfer pipeline for this factory.",
+                    modifier = Modifier.fillMaxSize(),
+                )
+                error != null -> FactoryStatePane(
+                    kind = FactoryStateKind.Error,
+                    headline = "Unable to load transfers",
+                    body = error!!,
+                    actionLabel = "Retry",
+                    onAction = { load() },
+                    modifier = Modifier.fillMaxSize(),
+                )
+                transfers.isEmpty() -> FactoryStatePane(
+                    kind = if (selectedFilter == "ALL") FactoryStateKind.Empty else FactoryStateKind.NoResults,
+                    headline = if (selectedFilter == "ALL") "No transfers available" else "No ${selectedFilter.replace('_', ' ')} transfers",
+                    body = if (selectedFilter == "ALL") {
+                        "Transfers will appear here as soon as warehouse demand enters the factory pipeline."
+                    } else {
+                        "Adjust the active state filter or wait for the next transfer update."
+                    },
+                    actionLabel = if (selectedFilter == "ALL") null else "Clear Filter",
+                    onAction = if (selectedFilter == "ALL") null else ({ selectedFilter = "ALL" }),
+                    modifier = Modifier.fillMaxSize(),
+                )
                 else -> LazyColumn(
                     contentPadding = PaddingValues(PegasusSpacing.lg),
                     verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
