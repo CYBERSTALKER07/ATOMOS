@@ -3894,22 +3894,24 @@ type ActiveFulfillmentItem struct {
 	ItemCount      int    `json:"item_count"`
 }
 
+const activeFulfillmentsSQL = `SELECT o.OrderId, o.SupplierId, COALESCE(s.Name, '') AS SupplierName, o.State,
+	             COALESCE((SELECT SUM(li.UnitPrice * li.Quantity)
+	                       FROM OrderLineItems li
+	                       WHERE li.OrderId = o.OrderId), 0) AS AdjustedAmount,
+	             COALESCE((SELECT COUNT(*)
+	                       FROM OrderLineItems li2
+	                       WHERE li2.OrderId = o.OrderId), 0) AS ItemCount
+	      FROM Orders o
+	      LEFT JOIN Suppliers s ON o.SupplierId = s.SupplierId
+	      WHERE o.RetailerId = @retailerId
+	        AND o.State IN ('IN_TRANSIT', 'ARRIVED', 'AWAITING_PAYMENT', 'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION')
+	      ORDER BY o.CreatedAt DESC`
+
 // ActiveFulfillments returns all orders approaching or awaiting payment for a given retailer.
 // States: IN_TRANSIT, ARRIVED, AWAITING_PAYMENT (plus legacy AWAITING_GLOBAL_PAYNT), PENDING_CASH_COLLECTION.
 func (s *OrderService) ActiveFulfillments(ctx context.Context, retailerID string) ([]ActiveFulfillmentItem, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT o.OrderId, o.SupplierId, COALESCE(s.Name, '') AS SupplierName, o.State,
-		             COALESCE((SELECT SUM(li.UnitPrice * li.Quantity)
-		                       FROM OrderLineItems li
-		                       WHERE li.OrderId = o.OrderId), 0) AS AdjustedAmount,
-		             COALESCE((SELECT COUNT(*)
-		                       FROM OrderLineItems li2
-		                       WHERE li2.OrderId = o.OrderId), 0) AS ItemCount
-		      FROM Orders o
-		      LEFT JOIN Suppliers s ON o.SupplierId = s.SupplierId
-		      WHERE o.RetailerId = @retailerId
-		        AND o.State IN ('IN_TRANSIT', 'ARRIVED', 'AWAITING_PAYMENT', 'AWAITING_GLOBAL_PAYNT', 'PENDING_CASH_COLLECTION')
-		      ORDER BY o.CreatedAt DESC`,
+		SQL: activeFulfillmentsSQL,
 		Params: map[string]interface{}{
 			"retailerId": retailerID,
 		},

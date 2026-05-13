@@ -145,6 +145,8 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handleSettlementRequired(deps, m.Value)
 			case EventDeliverySessionUpdated:
 				handleDeliverySessionUpdated(deps, m.Value)
+			case EventDeliveryDisputed:
+				handleDeliveryDisputed(deps, m.Value)
 			case EventPaymentFailed:
 				handlePaymentFailed(deps, m.Value)
 			case EventCashCollectionRequired:
@@ -529,6 +531,49 @@ func handleDeliverySessionUpdated(deps NotificationDeps, data []byte) {
 		},
 	)
 	dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventDeliverySessionUpdated, retailerNotif)
+}
+
+func handleDeliveryDisputed(deps NotificationDeps, data []byte) {
+	var event DeliveryDisputedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "DELIVERY_DISPUTED", "err", err)
+		return
+	}
+
+	supplierID := event.SupplierID
+	if supplierID == "" && event.OrderID != "" && deps.SpannerClient != nil {
+		ctx := context.Background()
+		row, err := deps.SpannerClient.Single().ReadRow(ctx, "Orders", spanner.Key{event.OrderID}, []string{"SupplierId"})
+		if err == nil {
+			var supplier spanner.NullString
+			if err := row.Columns(&supplier); err == nil {
+				supplierID = supplier.StringVal
+			}
+		}
+	}
+
+	if supplierID == "" {
+		return
+	}
+
+	body := fmt.Sprintf("Order %s settlement was marked as disputed and needs manual review.", event.OrderID)
+	if event.Reason != "" {
+		body = fmt.Sprintf("Order %s settlement was marked as disputed. Reason: %s", event.OrderID, event.Reason)
+	}
+
+	notif := notifications.NewFormattedNotification(
+		"Delivery Settlement Disputed",
+		body,
+		"notification.delivery_disputed.supplier.title",
+		"notification.delivery_disputed.supplier.body",
+		map[string]string{
+			"order_id":   event.OrderID,
+			"session_id": event.SessionID,
+			"state":      "DISPUTED",
+			"reason":     event.Reason,
+		},
+	)
+	dispatchToRecipient(deps, supplierID, "SUPPLIER", EventDeliveryDisputed, notif)
 }
 
 func handlePaymentFailed(deps NotificationDeps, data []byte) {
@@ -2421,11 +2466,16 @@ func dispatchToRecipient(deps NotificationDeps, recipientID, role, eventType str
 	payloadJSON, _ := json.Marshal(payloadData)
 
 	// 1. Persistent inbox
-	notificationID, err := notifications.InsertNotification(ctx, deps.SpannerClient,
-		recipientID, role, eventType, notif.Title, notif.Body, string(payloadJSON), "PUSH",
-	)
-	if err != nil {
-		slog.Error("notification_dispatcher.inbox_insert", "role", role, "recipient_id", recipientID, "err", err)
+	notificationID := fmt.Sprintf("ephemeral-%d", createdAt.UnixNano())
+	if deps.SpannerClient != nil {
+		storedID, err := notifications.InsertNotification(ctx, deps.SpannerClient,
+			recipientID, role, eventType, notif.Title, notif.Body, string(payloadJSON), "PUSH",
+		)
+		if err != nil {
+			slog.Error("notification_dispatcher.inbox_insert", "role", role, "recipient_id", recipientID, "err", err)
+		} else if storedID != "" {
+			notificationID = storedID
+		}
 	}
 
 	// 2. WebSocket push
@@ -2452,7 +2502,7 @@ func dispatchToRecipient(deps NotificationDeps, recipientID, role, eventType str
 	}
 
 	// 3. FCM fallback (retailer only, when WS missed)
-	if !wsDelivered && role == "RETAILER" && deps.FCM != nil {
+	if !wsDelivered && role == "RETAILER" && deps.FCM != nil && deps.SpannerClient != nil {
 		token, _ := lookupRetailerDeviceToken(context.Background(), deps.SpannerClient, recipientID)
 		if token != "" {
 			fcmPayload := map[string]string{
@@ -2478,7 +2528,7 @@ func dispatchToRecipient(deps NotificationDeps, recipientID, role, eventType str
 	}
 
 	// 4. Telegram (if configured)
-	if deps.Telegram != nil {
+	if deps.Telegram != nil && deps.SpannerClient != nil {
 		chatID := notifications.LookupTelegramChatID(deps.SpannerClient, recipientID, role)
 		if chatID != "" {
 			text := notifications.FormatTelegram(notif)

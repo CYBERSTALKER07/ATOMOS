@@ -3,11 +3,16 @@ package treasury
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"backend-go/auth"
+	kafkaEvents "backend-go/kafka"
+	"backend-go/outbox"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
@@ -205,6 +210,10 @@ func HandleBatchSettle(client *spanner.Client) http.HandlerFunc {
 		_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			var mutations []*spanner.Mutation
 			for _, invoiceID := range req.InvoiceIDs {
+				invoiceSuffix := invoiceID
+				if len(invoiceSuffix) > 8 {
+					invoiceSuffix = invoiceSuffix[:8]
+				}
 				mutations = append(mutations,
 					spanner.Update("MasterInvoices",
 						[]string{"InvoiceId", "CustodyStatus", "CollectedAt"},
@@ -216,7 +225,7 @@ func HandleBatchSettle(client *spanner.Client) http.HandlerFunc {
 					spanner.Insert("AuditLog",
 						[]string{"LogId", "ActorId", "ActorRole", "Action", "ResourceType", "ResourceId", "Metadata", "CreatedAt"},
 						[]interface{}{
-							"AUDIT-" + now.Format("20060102150405") + "-" + invoiceID[:8],
+							"AUDIT-" + now.Format("20060102150405") + "-" + invoiceSuffix,
 							claims.UserID, claims.Role, "STATE_CHANGE", "INVOICE", invoiceID,
 							`{"old_status":"PENDING","new_status":"SETTLED","reference":"` + req.Reference + `"}`,
 							spanner.CommitTimestamp,
@@ -287,14 +296,21 @@ func HandleInvoiceStatusOverride(client *spanner.Client) http.HandlerFunc {
 		defer cancel()
 
 		now := time.Now()
+		invoiceSuffix := req.InvoiceID
+		if len(invoiceSuffix) > 8 {
+			invoiceSuffix = invoiceSuffix[:8]
+		}
+
 		_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			// Read current status for audit
-			row, err := txn.ReadRow(ctx, "MasterInvoices", spanner.Key{req.InvoiceID}, []string{"CustodyStatus"})
+			row, err := txn.ReadRow(ctx, "MasterInvoices", spanner.Key{req.InvoiceID}, []string{"CustodyStatus", "OrderId", "RetailerId"})
 			if err != nil {
 				return err
 			}
 			var oldStatus spanner.NullString
-			if err := row.Columns(&oldStatus); err != nil {
+			var orderID spanner.NullString
+			var retailerID spanner.NullString
+			if err := row.Columns(&oldStatus, &orderID, &retailerID); err != nil {
 				return err
 			}
 
@@ -306,14 +322,105 @@ func HandleInvoiceStatusOverride(client *spanner.Client) http.HandlerFunc {
 				spanner.Insert("AuditLog",
 					[]string{"LogId", "ActorId", "ActorRole", "Action", "ResourceType", "ResourceId", "Metadata", "CreatedAt"},
 					[]interface{}{
-						"AUDIT-ISO-" + now.Format("20060102150405") + "-" + req.InvoiceID[:8],
+						"AUDIT-ISO-" + now.Format("20060102150405") + "-" + invoiceSuffix,
 						claims.UserID, claims.Role, "STATE_CHANGE", "INVOICE", req.InvoiceID,
 						`{"old_status":"` + oldStatus.StringVal + `","new_status":"` + req.Status + `","reason":"` + req.Reason + `"}`,
 						spanner.CommitTimestamp,
 					},
 				),
 			}
-			return txn.BufferWrite(mutations)
+			if err := txn.BufferWrite(mutations); err != nil {
+				return err
+			}
+
+			if req.Status != "DISPUTED" || oldStatus.StringVal == "DISPUTED" {
+				return nil
+			}
+
+			orderIDVal := strings.TrimSpace(orderID.StringVal)
+			retailerIDVal := strings.TrimSpace(retailerID.StringVal)
+			var supplierIDVal string
+			var driverIDVal string
+			var sessionIDVal string
+
+			if orderIDVal != "" {
+				orderIter := txn.Query(ctx, spanner.Statement{
+					SQL: `SELECT SupplierId, DriverId
+					      FROM Orders
+					      WHERE OrderId = @orderId
+					      LIMIT 1`,
+					Params: map[string]interface{}{"orderId": orderIDVal},
+				})
+				defer orderIter.Stop()
+				orow, oerr := orderIter.Next()
+				if oerr != nil && oerr != iterator.Done {
+					return fmt.Errorf("load order context for invoice dispute: %w", oerr)
+				}
+				if oerr == nil {
+					var supplierID spanner.NullString
+					var driverID spanner.NullString
+					if err := orow.Columns(&supplierID, &driverID); err != nil {
+						return fmt.Errorf("decode order context for invoice dispute: %w", err)
+					}
+					supplierIDVal = strings.TrimSpace(supplierID.StringVal)
+					driverIDVal = strings.TrimSpace(driverID.StringVal)
+				}
+
+				sessionIter := txn.Query(ctx, spanner.Statement{
+					SQL: `SELECT SessionId
+					      FROM DeliverySessions
+					      WHERE OrderId = @orderId
+					      ORDER BY UpdatedAt DESC
+					      LIMIT 1`,
+					Params: map[string]interface{}{"orderId": orderIDVal},
+				})
+				defer sessionIter.Stop()
+				srow, serr := sessionIter.Next()
+				if serr != nil && serr != iterator.Done {
+					return fmt.Errorf("load delivery session context for invoice dispute: %w", serr)
+				}
+				if serr == nil {
+					var sessionID spanner.NullString
+					if err := srow.Columns(&sessionID); err != nil {
+						return fmt.Errorf("decode delivery session context for invoice dispute: %w", err)
+					}
+					sessionIDVal = strings.TrimSpace(sessionID.StringVal)
+				}
+			}
+
+			aggregateType := "DeliverySession"
+			aggregateID := sessionIDVal
+			if aggregateID == "" {
+				aggregateType = "Order"
+				aggregateID = orderIDVal
+			}
+			if aggregateID == "" {
+				aggregateType = "Invoice"
+				aggregateID = req.InvoiceID
+			}
+
+			if err := outbox.EmitJSON(
+				txn,
+				aggregateType,
+				aggregateID,
+				kafkaEvents.EventDeliveryDisputed,
+				kafkaEvents.TopicMain,
+				kafkaEvents.DeliveryDisputedEvent{
+					SessionID:  sessionIDVal,
+					OrderID:    orderIDVal,
+					RetailerID: retailerIDVal,
+					DriverID:   driverIDVal,
+					SupplierID: supplierIDVal,
+					Reason:     req.Reason,
+					DisputedBy: claims.UserID,
+					Timestamp:  now.UTC(),
+				},
+				telemetry.TraceIDFromContext(ctx),
+			); err != nil {
+				return fmt.Errorf("outbox emit DELIVERY_DISPUTED: %w", err)
+			}
+
+			return nil
 		})
 
 		if err != nil {
