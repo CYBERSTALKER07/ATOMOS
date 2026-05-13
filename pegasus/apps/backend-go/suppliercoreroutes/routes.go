@@ -35,6 +35,13 @@ type Deps struct {
 //	GET /v1/supplier/dashboard       — supplier dashboard metrics
 //	GET /v1/supplier/earnings        — supplier earnings analytics
 //	GET/PATCH /v1/supplier/inventory — inventory list/adjustment
+//	GET/POST /v1/supplier/inventory/import — import session list/create
+//	GET /v1/supplier/inventory/import/upload-ticket — spreadsheet upload ticket
+//	GET /v1/supplier/inventory/import/{id} — import session detail
+//	GET /v1/supplier/inventory/import/{id}/rows — staged row pagination
+//	PATCH /v1/supplier/inventory/import/{id}/mapping — mapping updates
+//	POST /v1/supplier/inventory/import/{id}/{approve,apply} — import actions
+//	GET /v1/supplier/inventory/import/{id}/status — import status
 //	GET /v1/supplier/inventory/audit — inventory audit log
 //	GET /v1/supplier/orders          — supplier order queue
 //	POST /v1/supplier/orders/vet     — approve/reject supplier order
@@ -43,6 +50,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	idem := d.Idempotency
 	withRegionScope := auth.RequireRegionScopeWithClient(d.Spanner)
+	importHandler := withMethodIdempotency(supplier.HandleInventoryImports(d.Spanner), idem, http.MethodPost, http.MethodPatch)
 
 	r.HandleFunc("/v1/supplier/dashboard",
 		auth.RequireRole(supplierRole, log(withRegionScope(dashboardHandler(d.Order)))))
@@ -50,6 +58,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierRole, log(withRegionScope(analytics.HandleSupplierEarnings(d.Spanner, d.ReadRouter)))))
 	r.HandleFunc("/v1/supplier/inventory",
 		auth.RequireRole(supplierRole, log(withRegionScope(withMethodIdempotency(supplier.HandleInventory(d.Spanner), idem, http.MethodPatch)))))
+	r.HandleFunc("/v1/supplier/inventory/import",
+		auth.RequireRole(supplierRole, log(withRegionScope(importHandler))))
+	r.HandleFunc("/v1/supplier/inventory/import/*",
+		auth.RequireRole(supplierRole, log(withRegionScope(importHandler))))
 	r.HandleFunc("/v1/supplier/inventory/audit",
 		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleInventoryAuditLog(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/orders",

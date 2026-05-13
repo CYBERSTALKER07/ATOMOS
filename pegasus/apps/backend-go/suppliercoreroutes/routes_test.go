@@ -7,6 +7,7 @@ import (
 
 	"backend-go/auth"
 	"backend-go/supplier"
+
 	"github.com/go-chi/chi/v5"
 )
 
@@ -62,6 +63,60 @@ func TestRegisterRoutes_InventoryAdjustUsesIdempotency(t *testing.T) {
 	}
 	if got := rec.Header().Get("X-Idempotency-Guard"); got != "inventory-adjust" {
 		t.Fatalf("idempotency guard header = %q, want inventory-adjust", got)
+	}
+}
+
+func TestRegisterRoutes_InventoryImportCreateUsesIdempotency(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
+	if err != nil {
+		t.Fatalf("GenerateSupplierToken() error = %v", err)
+	}
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "inventory-import-create"),
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/supplier/inventory/import", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "inventory-import-create" {
+		t.Fatalf("idempotency guard header = %q, want inventory-import-create", got)
+	}
+}
+
+func TestRegisterRoutes_InventoryImportActionUsesIdempotency(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
+	if err != nil {
+		t.Fatalf("GenerateSupplierToken() error = %v", err)
+	}
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "inventory-import-apply"),
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/supplier/inventory/import/session-1/apply", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "inventory-import-apply" {
+		t.Fatalf("idempotency guard header = %q, want inventory-import-apply", got)
 	}
 }
 

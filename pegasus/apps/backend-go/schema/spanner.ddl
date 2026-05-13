@@ -493,6 +493,79 @@ CREATE TABLE InventoryAuditLog (
 CREATE INDEX Idx_AuditLog_BySupplier ON InventoryAuditLog(SupplierId);
 CREATE INDEX Idx_AuditLog_ByProduct  ON InventoryAuditLog(ProductId);
 
+-- ── INVENTORY IMPORT STAGING (PHASE: SUPPLIER BULK IMPORT) ─────────────────
+-- Sessions track supplier bulk-import lifecycle and aggregate counters.
+CREATE TABLE InventoryImportSessions (
+    SessionId           STRING(36)  NOT NULL,
+    SupplierId          STRING(36)  NOT NULL,
+    WarehouseId         STRING(36),
+    FileName            STRING(255) NOT NULL,
+    ContentType         STRING(120),
+    ObjectPath          STRING(MAX) NOT NULL,
+    State               STRING(30)  NOT NULL,
+    TotalRows           INT64       NOT NULL DEFAULT (0),
+    ProcessedRows       INT64       NOT NULL DEFAULT (0),
+    FailedRows          INT64       NOT NULL DEFAULT (0),
+    PendingCreationRows INT64       NOT NULL DEFAULT (0),
+    ApprovedBy          STRING(36),
+    ApprovedAt          TIMESTAMP,
+    ApplyStartedAt      TIMESTAMP,
+    AppliedAt           TIMESTAMP,
+    ExpiresAt           TIMESTAMP,
+    CreatedAt           TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+    UpdatedAt           TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
+    CONSTRAINT CHK_InventoryImportSessionState CHECK (
+        State IN ('UPLOADED', 'DISCOVERING', 'MAPPING_REQUIRED', 'READY_FOR_REVIEW', 'APPROVED', 'APPLYING', 'APPLIED', 'FAILED', 'EXPIRED')
+    )
+) PRIMARY KEY (SessionId);
+
+CREATE INDEX Idx_InventoryImportSessions_BySupplierUpdated
+    ON InventoryImportSessions(SupplierId, UpdatedAt DESC);
+CREATE INDEX Idx_InventoryImportSessions_BySupplierState
+    ON InventoryImportSessions(SupplierId, State, UpdatedAt DESC);
+CREATE INDEX Idx_InventoryImportSessions_ByWarehouse
+    ON InventoryImportSessions(SupplierId, WarehouseId, UpdatedAt DESC);
+
+-- Staged rows are interleaved under a session for fast session-scoped pagination.
+CREATE TABLE InventoryImportRows (
+    SessionId        STRING(36)  NOT NULL,
+    RowId            STRING(36)  NOT NULL,
+    SupplierId       STRING(36)  NOT NULL,
+    WarehouseId      STRING(36),
+    RowNumber        INT64       NOT NULL,
+    Status           STRING(30)  NOT NULL,
+    SourceJson       STRING(MAX),
+    SkuId            STRING(36),
+    ProductName      STRING(MAX),
+    CategoryId       STRING(36),
+    Currency         STRING(3),
+    BasePrice        INT64,
+    QuantityDelta    INT64       NOT NULL DEFAULT (0),
+    MinimumOrderQty  INT64,
+    StepSize         INT64,
+    VolumetricUnit   FLOAT64,
+    LengthCM         FLOAT64,
+    WidthCM          FLOAT64,
+    HeightCM         FLOAT64,
+    ErrorsJson       STRING(MAX),
+    SuggestionsJson  STRING(MAX),
+    ValidationStatus STRING(30),
+    CreatedAt        TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+    UpdatedAt        TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
+    AppliedAt        TIMESTAMP,
+    CONSTRAINT CHK_InventoryImportRowStatus CHECK (
+        Status IN ('UNMAPPED', 'MAPPED_EXISTING', 'PENDING_CREATION', 'INVALID', 'READY_FOR_REVIEW', 'APPROVED', 'APPLIED', 'FAILED')
+    )
+) PRIMARY KEY (SessionId, RowId),
+  INTERLEAVE IN PARENT InventoryImportSessions ON DELETE CASCADE;
+
+CREATE INDEX Idx_InventoryImportRows_BySessionRow
+    ON InventoryImportRows(SessionId, RowNumber);
+CREATE INDEX Idx_InventoryImportRows_BySessionStatus
+    ON InventoryImportRows(SessionId, Status, RowNumber);
+CREATE INDEX Idx_InventoryImportRows_BySupplierStatus
+    ON InventoryImportRows(SupplierId, Status, UpdatedAt DESC);
+
 -- ── SUPPLIER RETURNS (PHASE 9: PARTIAL-QTY RECONCILIATION) ────────────────
 -- Every rejected item from driver delivery correction inserts a row here.
 -- Warehouse managers process returns via /v1/supplier/returns endpoints.

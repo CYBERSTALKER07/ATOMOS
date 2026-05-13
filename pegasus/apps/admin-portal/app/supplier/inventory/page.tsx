@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@heroui/react';
 import { apiFetch, useToken } from '@/lib/auth';
@@ -184,10 +185,17 @@ export default function InventoryPage() {
   return (
     <div className="min-h-full p-6 md:p-8" style={{ background: 'var(--background)', color: 'var(--foreground)' }}>
       <header className="mb-6 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
-        <h1 className="md-typescale-headline-medium">Inventory Management</h1>
-        <p className="md-typescale-body-small mt-2" style={{ color: 'var(--muted)' }}>
-          Stock levels, replenishment controls, and audit trail
-        </p>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="md-typescale-headline-medium">Inventory Management</h1>
+            <p className="md-typescale-body-small mt-2" style={{ color: 'var(--muted)' }}>
+              Stock levels, replenishment controls, and audit trail
+            </p>
+          </div>
+          <Link href="/supplier/inventory/import">
+            <Button variant="outline">Bulk Import Wizard</Button>
+          </Link>
+        </div>
       </header>
 
       {/* Tab Switcher */}
