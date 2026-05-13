@@ -1,6 +1,7 @@
 go 1.25.0
 
 use (
+	./adyen-go-api-library-main
 	./apps/ai-worker
 	./apps/backend-go
 	./packages/config

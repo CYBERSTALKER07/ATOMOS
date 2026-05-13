@@ -1,7 +1,9 @@
 import SwiftUI
+import SwiftData
 
 struct ProcurementView: View {
     @Environment(CartManager.self) private var cart
+    @Environment(\.modelContext) private var modelContext
     @State private var refreshCenter = RetailerRefreshCenter.shared
     @State private var forecasts: [DemandForecast] = []
     @State private var selectedItems: Set<String> = []

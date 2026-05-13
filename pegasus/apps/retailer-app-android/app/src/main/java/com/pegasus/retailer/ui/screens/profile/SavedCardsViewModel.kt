@@ -2,7 +2,6 @@ package com.pegasus.retailer.ui.screens.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.gson.JsonElement
 import com.pegasus.retailer.data.api.PegasusApi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,6 +9,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 
 data class SavedCard(
@@ -46,19 +51,24 @@ class SavedCardsViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val element = api.getCards()
-                val cardsList = mutableListOf<SavedCard>()
-                if (element.isJsonObject && element.asJsonObject.has("cards")) {
-                    element.asJsonObject.getAsJsonArray("cards").forEach {
-                        val obj = it.asJsonObject
-                        cardsList.add(
-                            SavedCard(
-                                id = obj.get("id")?.asString ?: "",
-                                pan = obj.get("pan")?.asString ?: "",
-                                isDefault = obj.get("is_default")?.asBoolean ?: false,
-                                type = obj.get("type")?.asString ?: "UNKNOWN"
-                            )
-                        )
-                    }
+                val cardsArray = when {
+                    element is JsonObject -> element["cards"]?.let { json ->
+                        runCatching { json.jsonArray }.getOrNull()
+                    } ?: emptyList()
+                    else -> runCatching { element.jsonArray }.getOrElse { emptyList() }
+                }
+                val cardsList = cardsArray.mapNotNull { item ->
+                    val obj = runCatching { item.jsonObject }.getOrNull() ?: return@mapNotNull null
+                    SavedCard(
+                        id = obj["id"]?.jsonPrimitive?.contentOrNull
+                            ?: obj["token_id"]?.jsonPrimitive?.contentOrNull
+                            ?: "",
+                        pan = obj["pan"]?.jsonPrimitive?.contentOrNull
+                            ?: obj["pan_mask"]?.jsonPrimitive?.contentOrNull
+                            ?: "",
+                        isDefault = obj["is_default"]?.jsonPrimitive?.booleanOrNull ?: false,
+                        type = obj["type"]?.jsonPrimitive?.contentOrNull ?: "UNKNOWN",
+                    )
                 }
                 _uiState.update { it.copy(isLoading = false, cards = cardsList) }
             } catch (e: Exception) {
@@ -75,9 +85,9 @@ class SavedCardsViewModel @Inject constructor(
                     "card_number" to cardNumber,
                     "expire" to expire
                 ))
-                if (res.isJsonObject) {
-                    val session = res.asJsonObject.get("session")?.asString
-                    val phone = res.asJsonObject.get("phone")?.asString
+                if (res is JsonObject) {
+                    val session = res["session"]?.jsonPrimitive?.contentOrNull
+                    val phone = res["phone"]?.jsonPrimitive?.contentOrNull
                     _uiState.update { it.copy(initiateSession = session, otpPhone = phone, isAddingCard = true) }
                 }
             } catch (e: Exception) {

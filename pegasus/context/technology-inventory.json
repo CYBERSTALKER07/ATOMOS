@@ -121,9 +121,9 @@
         "Unified checkout emits ORDER_VALIDATION_FAILED, PAYMENT_CLEARED, and ORDER_FINALIZED to kafka.TopicMain through transactional outbox, replacing the stale topic.orders.v1 path.",
         "Unified checkout now resolves supplier-effective currency via countrycfg.Service and writes currency-consistent MasterInvoices, Orders, OrderLineItems, and checkout outbox payloads, with a temporary 422 guard for mixed-supplier-currency invoices.",
         "payment/session.go now honors CreateSessionRequest.Currency and preserves prior session currency across RetryPaymentSession gateway switches.",
-        "payment/provider.go now centralizes gateway selection through NewProviderClient with normalized GLOBAL_PAY, ADYEN, and CASH routing; ADYEN currently fails closed until adapter wiring is complete.",
+        "payment/provider.go now centralizes gateway selection through NewProviderClient with normalized GLOBAL_PAY, ADYEN, and CASH routing; ADYEN resolves to payment/adyen.go (official adyen-go-api-library/v21 Payment Links hosted checkout adapter).",
         "payment/session.go create/attempt/bind/retry paths now normalize gateway values through NewProviderClient, checkout URL generators fail closed for unsupported/unavailable providers, and payment/webhooks.go validates session gateway compatibility through the provider resolver before Global Pay settlement.",
-        "order/service.go and order/unified_checkout.go now reject ADYEN checkout execution before mutation side effects while ADYEN adapter wiring remains unavailable.",
+        "order/service.go now initializes Adyen hosted checkout links and binds provider references through SessionService.BindProviderCheckout; direct Adyen charge/refund operations remain explicitly unsupported via ErrAdyenDirectOperationUnsupported.",
         "payment/refund.go and paymentroutes/routes.go now accept additive amount+currency compatibility input (while preserving amount_uzs), and payment/chargeback.go writes LedgerAnomalies currency from runtime input/session currency instead of hardcoded UZS.",
         "Treasury/anomaly read models now expose additive currency compatibility: admin reconciliation rows return currency with UZS fallback, treasury cash-holdings report/rows expose default UZS currency, and admin-portal reconciliation/treasury pages consume currency while preserving legacy amount_uzs request compatibility."
       ]
@@ -364,20 +364,23 @@
     },
     {
       "name": "Webhook gateway ingress surface",
-      "path": "/v1/webhooks/{global-pay,stripe}",
-      "owner": "pegasus/apps/backend-go/webhookroutes/routes.go + pegasus/apps/backend-go/payment/{webhooks.go,stripe_webhook.go}",
+      "path": "/v1/webhooks/{global-pay,stripe,adyen}",
+      "owner": "pegasus/apps/backend-go/webhookroutes/routes.go + pegasus/apps/backend-go/payment/{webhooks.go,stripe_webhook.go,adyen_webhook.go}",
       "delegatedFrom": "pegasus/apps/backend-go/main.go",
       "methods": [
         "POST /v1/webhooks/global-pay",
-        "POST /v1/webhooks/stripe"
+        "POST /v1/webhooks/stripe",
+        "POST /v1/webhooks/adyen"
       ],
       "consumers": [
         "Global Pay webhook sender",
-        "Stripe webhook sender"
+        "Stripe webhook sender",
+        "Adyen webhook sender"
       ],
       "notes": [
-        "webhookroutes now composes both gateway ingress routes behind shared priority and logging middleware wrappers.",
-        "Route-level coverage in webhookroutes/routes_test.go verifies mount and middleware wrapping behavior for both webhook paths."
+        "webhookroutes now composes all gateway ingress routes behind shared priority and logging middleware wrappers.",
+        "payment/adyen_webhook.go enforces signature-first per-item HMAC verification and idempotency guards before settlement/failure mutation paths.",
+        "Route-level coverage in webhookroutes/routes_test.go verifies mount and middleware wrapping behavior for all webhook paths."
       ]
     },
     {

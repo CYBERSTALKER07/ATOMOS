@@ -26,6 +26,7 @@ type Deps struct {
 // RegisterRoutes mounts the payment gateway webhook surface:
 //
 //	POST /v1/webhooks/global-pay — Global Pay HPP return
+//	POST /v1/webhooks/adyen — Adyen notifications
 //	POST /v1/webhooks/stripe — Stripe payment webhooks
 func RegisterRoutes(r chi.Router, d Deps) {
 	guard := d.PriorityGuard
@@ -33,5 +34,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	svc := d.WebhookSvc
 
 	r.HandleFunc("/v1/webhooks/global-pay", guard(log(svc.HandleGlobalPayWebhook)))
+	r.HandleFunc("/v1/webhooks/adyen", guard(log(svc.HandleAdyenWebhook)))
 	r.HandleFunc("/v1/webhooks/stripe", guard(log(svc.HandleStripeWebhook)))
 }

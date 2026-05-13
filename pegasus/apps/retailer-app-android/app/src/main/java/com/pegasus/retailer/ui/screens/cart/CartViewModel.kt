@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.pegasus.retailer.data.api.PegasusApi
 import com.pegasus.retailer.data.api.RetailerWebSocket
 import com.pegasus.retailer.data.local.PendingOrderDao
-import com.pegasus.retailer.data.local.PendingOrderEntity
 import com.pegasus.retailer.data.local.TokenManager
 import com.pegasus.retailer.data.model.CartItem
 import com.pegasus.retailer.data.model.CheckoutLineItem
@@ -60,12 +59,19 @@ data class CartUiState(
 }
 
 private fun checkoutPaymentLabel(gateway: String, options: List<CheckoutPaymentOption>): String {
-    return options.find { it.gateway == gateway }?.label ?: when (gateway.toUpperCase()) {
+    return options.find { it.gateway == gateway }?.label ?: when (gateway.uppercase()) {
         "GLOBAL_PAY" -> "Global Pay"
+        "ADYEN" -> "Adyen"
         "CASH" -> "Cash on Delivery"
         else -> gateway
     }
 }
+
+private fun standardPaymentOptions(): List<CheckoutPaymentOption> = listOf(
+    CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay (New)"),
+    CheckoutPaymentOption(gateway = "ADYEN", label = "Adyen"),
+    CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery"),
+)
 
 @HiltViewModel
 class CartViewModel @Inject constructor(
@@ -236,21 +242,31 @@ init {
 
     private fun fetchPaymentOptions() = viewModelScope.launch {
         try {
-            val cardsResp = api.getCards()
-            val dynamicOptions = cardsResp.cards.map { card ->
-                CheckoutPaymentOption(gateway = card.tokenId, label = "•••• " + card.panMask.takeLast(4))
+            val cardsElement = api.getCards()
+            val cardsArray = when {
+                cardsElement is JsonObject -> cardsElement["cards"]?.let { element ->
+                    runCatching { element.jsonArray }.getOrNull()
+                } ?: emptyList()
+                else -> runCatching { cardsElement.jsonArray }.getOrElse { emptyList() }
             }
-            val standardOptions = listOf(
-                CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay (New)"),
-                CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery")
-            )
-            _uiState.update { it.copy(paymentOptions = dynamicOptions + standardOptions) }
+            val dynamicOptions = cardsArray.mapNotNull { cardElement ->
+                val cardObject = runCatching { cardElement.jsonObject }.getOrNull() ?: return@mapNotNull null
+                val tokenId = cardObject["token_id"]?.jsonPrimitive?.contentOrNull
+                    ?: cardObject["id"]?.jsonPrimitive?.contentOrNull
+                if (tokenId.isNullOrBlank()) return@mapNotNull null
+
+                val panMask = cardObject["pan_mask"]?.jsonPrimitive?.contentOrNull
+                    ?: cardObject["pan"]?.jsonPrimitive?.contentOrNull
+                    ?: "Card"
+                val lastFour = panMask.filter(Char::isDigit).takeLast(4)
+                val label = if (lastFour.length == 4) "•••• $lastFour" else panMask
+
+                CheckoutPaymentOption(gateway = tokenId, label = label)
+            }
+
+            _uiState.update { it.copy(paymentOptions = dynamicOptions + standardPaymentOptions()) }
         } catch (e: Exception) {
-            val standardOptions = listOf(
-                CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay (New)"),
-                CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery")
-            )
-            _uiState.update { it.copy(paymentOptions = standardOptions) }
+            _uiState.update { it.copy(paymentOptions = standardPaymentOptions()) }
         }
     }
 
@@ -324,8 +340,8 @@ init {
     }
 
     fun setSelectedPaymentGateway(gateway: String) {
-        // Only uppercase GLOBAL_PAY and CASH, otherwise it's a tokenId
-        val gw = if (gateway.equals("GLOBAL_PAY", ignoreCase=true) || gateway.equals("CASH", ignoreCase=true)) gateway.trim().uppercase() else gateway.trim()
+        // Uppercase known gateways, otherwise keep token IDs untouched.
+        val gw = if (gateway.equals("GLOBAL_PAY", ignoreCase=true) || gateway.equals("ADYEN", ignoreCase=true) || gateway.equals("CASH", ignoreCase=true)) gateway.trim().uppercase() else gateway.trim()
         _uiState.update { it.copy(selectedPaymentGateway = gw) }
     }
 
@@ -343,7 +359,7 @@ init {
                     )
                 }
                 var finalGateway = state.selectedPaymentGateway
-                if (finalGateway != "GLOBAL_PAY" && finalGateway != "CASH") {
+                if (finalGateway != "GLOBAL_PAY" && finalGateway != "ADYEN" && finalGateway != "CASH") {
                     try {
                         api.setDefaultCard(mapOf("token_id" to finalGateway))
                         finalGateway = "GLOBAL_PAY"

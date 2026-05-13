@@ -33,6 +33,29 @@ func TestRegisterRoutes_GlobalPayUsesPriorityAndLog(t *testing.T) {
 	}
 }
 
+func TestRegisterRoutes_AdyenUsesPriorityAndLog(t *testing.T) {
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		WebhookSvc:    &payment.WebhookService{},
+		Log:           markerMiddleware("X-Log", "adyen"),
+		PriorityGuard: markerMiddleware("X-Priority", "adyen"),
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/webhooks/adyen", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusNotFound {
+		t.Fatalf("status = %d, expected route to be mounted", rec.Code)
+	}
+	if got := rec.Header().Get("X-Log"); got != "adyen" {
+		t.Fatalf("log middleware header = %q, want adyen", got)
+	}
+	if got := rec.Header().Get("X-Priority"); got != "adyen" {
+		t.Fatalf("priority middleware header = %q, want adyen", got)
+	}
+}
+
 func TestRegisterRoutes_StripeUsesPriorityAndLog(t *testing.T) {
 	r := chi.NewRouter()
 	RegisterRoutes(r, Deps{

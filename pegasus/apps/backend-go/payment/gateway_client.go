@@ -155,7 +155,7 @@ func CheckoutURL(gateway string, orderID string, amount int64) (string, error) {
 	case "CASH":
 		return "", nil
 	case "ADYEN":
-		return "", fmt.Errorf("ADYEN checkout unavailable: provider adapter not configured")
+		return "", fmt.Errorf("ADYEN checkout requires payment session context")
 	default:
 		return "", fmt.Errorf("unsupported payment gateway: %s", provider.GatewayName())
 	}
@@ -336,7 +336,7 @@ func CheckoutURLWithCredentials(gateway, orderID string, amount int64, merchantI
 	case "CASH":
 		return "", nil
 	case "ADYEN":
-		return "", fmt.Errorf("ADYEN checkout unavailable: provider adapter not configured")
+		return "", fmt.Errorf("ADYEN checkout requires payment session context")
 	default:
 		return "", fmt.Errorf("unsupported payment gateway: %s", provider.GatewayName())
 	}

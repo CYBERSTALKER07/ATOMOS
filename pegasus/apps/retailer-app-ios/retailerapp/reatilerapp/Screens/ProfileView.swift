@@ -254,10 +254,19 @@ struct ProfileView: View {
     @State private var totalSpent: Int64 = 0
     @State private var totalSpentCurrency: String = "UZS"
 
+    private func formatSpent(_ amount: Int64, currency: String) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = " "
+        formatter.maximumFractionDigits = 0
+        let formatted = formatter.string(from: NSNumber(value: amount)) ?? "\(amount)"
+        return "\(formatted) \(currency.isEmpty ? "UZS" : currency)"
+    }
+
     private var statsRow: some View {
         HStack(spacing: AppTheme.spacingMD) {
             miniStat(value: "\(orderCount)", label: "Orders", icon: "shippingbox.fill", color: AppTheme.accent)
-            miniStat(value: formatRetailerMoney(totalSpent, currency: totalSpentCurrency), label: "Spent", icon: "dollarsign.circle.fill", color: AppTheme.success)
+            miniStat(value: formatSpent(totalSpent, currency: totalSpentCurrency), label: "Spent", icon: "dollarsign.circle.fill", color: AppTheme.success)
             miniStat(value: "4.9", label: "Rating", icon: "star.fill", color: AppTheme.warning)
         }
     }

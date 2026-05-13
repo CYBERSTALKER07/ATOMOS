@@ -1,0 +1,21 @@
+name: SonarQube Scan
+on:
+  schedule:
+    - cron: '0 6 * * 6'
+  workflow_dispatch: {}
+
+jobs:
+  sonarqube:
+    name: SonarQube
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 0
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@7295c1147079e6e3a7838f3e4ce5ffc6a861a89e # v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -52,9 +52,9 @@ fun SavedCardsScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (uiState.error \!= null) {
+            } else if (uiState.error != null) {
                 Text(
-                    text = uiState.error\!\!,
+                    text = uiState.error!!,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center).padding(16.dp)
                 )
@@ -62,7 +62,7 @@ fun SavedCardsScreen(
                 PegasusEmptyState(
                     icon = Icons.Rounded.CreditCard,
                     title = "No Saved Cards",
-                    description = "Add a payment method for faster checkout",
+                    message = "Add a payment method for faster checkout",
                     modifier = Modifier.align(Alignment.Center)
                 )
             } else {
@@ -114,8 +114,8 @@ fun SavedCardsScreen(
             title = { Text("Add Card") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (uiState.addError \!= null) {
-                        Text(uiState.addError\!\!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    if (uiState.addError != null) {
+                        Text(uiState.addError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                     OutlinedTextField(
                         value = cardNumber,
@@ -147,7 +147,7 @@ fun SavedCardsScreen(
         )
     }
 
-    if (uiState.initiateSession \!= null) {
+    if (uiState.initiateSession != null) {
         var otp by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { viewModel.cancelAdd() },
@@ -155,8 +155,8 @@ fun SavedCardsScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Sent to ${uiState.otpPhone ?: "phone"}")
-                    if (uiState.addError \!= null) {
-                        Text(uiState.addError\!\!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    if (uiState.addError != null) {
+                        Text(uiState.addError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                     OutlinedTextField(
                         value = otp,

@@ -397,7 +397,7 @@ struct DashboardView: View {
     private func confirmAiOrder(_ orderId: String) async {
         do {
             try await APIClient.shared.confirmAiOrder(orderId: orderId)
-            await loadDashboardData()
+            await loadData()
         } catch {
             print("Failed to confirm AI order: \(error)")
         }
@@ -406,7 +406,7 @@ struct DashboardView: View {
     private func rejectAiOrder(_ orderId: String) async {
         do {
             try await APIClient.shared.rejectAiOrder(orderId: orderId, reason: "Retailer rejected")
-            await loadDashboardData()
+            await loadData()
         } catch {
             print("Failed to reject AI order: \(error)")
         }
@@ -415,7 +415,7 @@ struct DashboardView: View {
     private func confirmPreorder(_ orderId: String) async {
         do {
             try await APIClient.shared.confirmPreorder(orderId: orderId)
-            await loadDashboardData()
+            await loadData()
         } catch {
             print("Failed to confirm preorder: \(error)")
         }
@@ -426,7 +426,7 @@ struct DashboardView: View {
         // For now we'll just demonstrate calling edit with no changes.
         do {
             try await APIClient.shared.editPreorder(orderId: orderId, deliveryDate: nil, items: nil)
-            await loadDashboardData()
+            await loadData()
         } catch {
             print("Failed to edit preorder: \(error)")
         }

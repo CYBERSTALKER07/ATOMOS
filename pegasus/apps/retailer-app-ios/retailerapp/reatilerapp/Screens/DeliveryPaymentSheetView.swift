@@ -366,14 +366,16 @@ struct DeliveryPaymentSheetView: View {
     private var cardGatewayOptions: [CardGatewayOption] {
         let configuredGateways = event.availableCardGateways
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() }
-            .filter { ["GLOBAL_PAY", "CASH"].contains($0) }
+            .filter { ["GLOBAL_PAY", "ADYEN"].contains($0) }
 
-        let gateways = configuredGateways.isEmpty ? ["GLOBAL_PAY", "CASH"] : Array(NSOrderedSet(array: configuredGateways)) as? [String] ?? configuredGateways
+        let gateways = configuredGateways.isEmpty ? ["GLOBAL_PAY", "ADYEN"] : Array(NSOrderedSet(array: configuredGateways)) as? [String] ?? configuredGateways
 
         return gateways.compactMap { gateway in
             switch gateway {
             case "GLOBAL_PAY":
                 CardGatewayOption(gateway: gateway, label: "GlobalPay", description: "Pay via GlobalPay checkout")
+            case "ADYEN":
+                CardGatewayOption(gateway: gateway, label: "Adyen", description: "Pay via Adyen checkout")
             default:
                 nil
             }

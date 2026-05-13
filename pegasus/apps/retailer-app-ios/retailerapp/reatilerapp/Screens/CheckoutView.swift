@@ -18,6 +18,7 @@ struct CheckoutView: View {
     @State private var selectedPaymentId = "GlobalPay"
     @State private var paymentOptions: [CheckoutPaymentOption] = [
         CheckoutPaymentOption(id: "GlobalPay", label: "GlobalPay", isToken: false),
+        CheckoutPaymentOption(id: "Adyen", label: "Adyen", isToken: false),
         CheckoutPaymentOption(id: "Cash", label: "Cash on Delivery", isToken: false)
     ]
     @State private var showPaymentPicker = false
@@ -30,10 +31,15 @@ struct CheckoutView: View {
 
     private let api = APIClient.shared
 
+    private var selectedPaymentLabel: String {
+        paymentOptions.first(where: { $0.id == selectedPaymentId })?.label ?? "GlobalPay"
+    }
+
     /// Map UI labels to backend gateway codes expected by /v1/checkout/unified
     private func gatewayCode(for methodId: String) -> String {
         switch methodId {
         case "GlobalPay": return "GLOBAL_PAY"
+        case "Adyen": return "ADYEN"
         case "Cash": return "CASH"
         default: return "GLOBAL_PAY"
         }
@@ -210,7 +216,7 @@ struct CheckoutView: View {
                             .foregroundStyle(AppTheme.info)
                     }
 
-                    Text(selectedPayment)
+                    Text(selectedPaymentLabel)
                         .font(.system(.subheadline, design: .rounded, weight: .medium))
                         .foregroundStyle(AppTheme.textPrimary)
 
@@ -297,6 +303,7 @@ struct CheckoutView: View {
             }
             paymentOptions = tokenOptions + [
                 CheckoutPaymentOption(id: "GlobalPay", label: "GlobalPay", isToken: false),
+                CheckoutPaymentOption(id: "Adyen", label: "Adyen", isToken: false),
                 CheckoutPaymentOption(id: "Cash", label: "Cash on Delivery", isToken: false)
             ]
         } catch {
@@ -341,6 +348,7 @@ struct CheckoutView: View {
         if option.isToken { return "creditcard.fill" }
         switch option.id {
         case "GlobalPay": return "wallet.pass"
+        case "Adyen": return "creditcard.and.123"
         case "Cash": return "banknote"
         default: return "creditcard"
         }

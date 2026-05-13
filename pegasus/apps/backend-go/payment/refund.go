@@ -2,6 +2,7 @@ package payment
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -147,8 +148,13 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 			log.Printf("[REFUND] Cannot create gateway client (%s) for refund on order %s: %v", sessGateway, orderID, gwErr)
 		} else {
 			if refErr := gw.Refund(orderID, refundAmount); refErr != nil {
-				refundStatus = RefundFailed
-				log.Printf("[REFUND] Gateway refund failed for order %s via %s: %v", orderID, sessGateway, refErr)
+				if errors.Is(refErr, ErrAdyenDirectOperationUnsupported) {
+					refundStatus = RefundManualRequired
+					log.Printf("[REFUND] Gateway refund requires manual handling for order %s via %s: %v", orderID, sessGateway, refErr)
+				} else {
+					refundStatus = RefundFailed
+					log.Printf("[REFUND] Gateway refund failed for order %s via %s: %v", orderID, sessGateway, refErr)
+				}
 			} else {
 				refundStatus = RefundSettled
 				providerRefundID = fmt.Sprintf("GW-%s-%s", sessGateway, refundID[:8])

@@ -9,6 +9,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 
 data class FamilyMember(
@@ -40,18 +45,23 @@ class FamilyMembersViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
                 val element = api.getFamilyMembers()
-                val membersList = mutableListOf<FamilyMember>()
-                if (element.isJsonArray) {
-                    element.asJsonArray.forEach { 
-                        val obj = it.asJsonObject
-                        membersList.add(
-                            FamilyMember(
-                                id = obj.get("id")?.asString ?: "",
-                                name = obj.get("name")?.asString ?: "Unknown",
-                                phone = obj.get("phone")?.asString ?: ""
-                            )
-                        )
-                    }
+                val membersArray = when {
+                    element is JsonObject -> element["members"]?.let { json ->
+                        runCatching { json.jsonArray }.getOrNull()
+                    } ?: emptyList()
+                    else -> runCatching { element.jsonArray }.getOrElse { emptyList() }
+                }
+                val membersList = membersArray.mapNotNull { item ->
+                    val obj = runCatching { item.jsonObject }.getOrNull() ?: return@mapNotNull null
+                    FamilyMember(
+                        id = obj["member_id"]?.jsonPrimitive?.contentOrNull
+                            ?: obj["id"]?.jsonPrimitive?.contentOrNull
+                            ?: "",
+                        name = obj["nickname"]?.jsonPrimitive?.contentOrNull
+                            ?: obj["name"]?.jsonPrimitive?.contentOrNull
+                            ?: "Unknown",
+                        phone = obj["phone"]?.jsonPrimitive?.contentOrNull ?: "",
+                    )
                 }
                 _uiState.update { it.copy(isLoading = false, members = membersList) }
             } catch (e: Exception) {
@@ -63,8 +73,7 @@ class FamilyMembersViewModel @Inject constructor(
     fun addMember(name: String, phone: String) {
         viewModelScope.launch {
             try {
-                // The endpoint takes {"name": "...", "phone": "..."}
-                val map = mapOf("name" to name, "phone" to phone)
+                val map = mapOf("nickname" to name, "phone" to phone)
                 api.createFamilyMember(map)
                 loadData()
             } catch (e: Exception) {

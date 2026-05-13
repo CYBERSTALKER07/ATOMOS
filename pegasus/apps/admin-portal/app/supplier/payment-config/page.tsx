@@ -41,7 +41,7 @@ type ProviderCapability = {
   manual_hint: string;
 };
 
-type GatewayName = 'CASH' | 'GLOBAL_PAY';
+type GatewayName = 'CASH' | 'GLOBAL_PAY' | 'ADYEN';
 
 const DEFAULT_CAPABILITIES: ProviderCapability[] = [
   {
@@ -78,6 +78,18 @@ const DEFAULT_CAPABILITIES: ProviderCapability[] = [
       { name: 'secret_key', label: 'OAuth Password', placeholder: 'Enter your Global Pay OAuth password', input_type: 'password', helper_text: 'Stored encrypted and used for Checkout Service authentication.' },
     ],
     manual_hint: 'Enter the Global Pay Checkout Service OAuth username, OAuth password, and service ID issued for your supplier account.',
+  },
+  {
+    gateway: 'ADYEN',
+    display_name: 'Adyen',
+    onboarding_mode: 'MANUAL_ONLY',
+    required_fields: ['merchant_id', 'secret_key'],
+    manual_fields: [
+      { name: 'merchant_id', label: 'Merchant Account', placeholder: 'e.g. PegasusECOM' },
+      { name: 'service_id', label: 'Live Endpoint Prefix (Optional)', placeholder: 'e.g. 1797a841fbb37ca7-AdyenDemo', helper_text: 'Required only when ADYEN_ENVIRONMENT=LIVE. Stored in service_id for compatibility.' },
+      { name: 'secret_key', label: 'API Key', placeholder: 'Enter your Adyen API key', input_type: 'password' },
+    ],
+    manual_hint: 'Enter Adyen merchant account and API key. Configure webhook HMAC via ADYEN_HMAC_KEY in backend runtime.',
   },
 ];
 
@@ -243,10 +255,10 @@ export default function GlobalPayntConfigPage() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="md-typescale-headline-medium" style={{ color: 'var(--foreground)' }}>
-          GlobalPaynt Gateways
+          Payment Gateways
         </h1>
         <p className="md-typescale-body-medium mt-1" style={{ color: 'var(--muted)' }}>
-          Configure Cash, GlobalPay, and Global Pay credentials for your global_paynt processing.
+          Configure Cash, GlobalPay, Global Pay, and Adyen credentials for supplier checkout processing.
         </p>
       </div>
 
@@ -511,7 +523,7 @@ function CreditCardIcon({ gateway, configured }: { gateway: GatewayName; configu
       </svg>
     );
   }
-  if ((gateway as string) === 'GLOBAL_PAY') {
+  if ((gateway as string) === 'ADYEN') {
     return (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="5" width="20" height="14" rx="2" />

@@ -231,13 +231,12 @@ private fun resolveCardGatewayOptions(event: RetailerWSMessage): List<CardGatewa
     val gateways = event.availableCardGateways
         .mapNotNull(::normalizeCardGateway)
         .distinct()
-        .ifEmpty { listOf("GLOBAL_PAY", "CASH") }
+        .ifEmpty { listOf("GLOBAL_PAY", "ADYEN") }
 
     return gateways.mapNotNull { gateway ->
         when (gateway) {
-            
-            
             "GLOBAL_PAY" -> CardGatewayOption(gateway, "GlobalPay", "Pay via GlobalPay checkout")
+            "ADYEN" -> CardGatewayOption(gateway, "Adyen", "Pay via Adyen checkout")
             else -> null
         }
     }
@@ -245,7 +244,7 @@ private fun resolveCardGatewayOptions(event: RetailerWSMessage): List<CardGatewa
 
 private fun normalizeCardGateway(gateway: String): String? {
     return when (gateway.trim().uppercase()) {
-        "GLOBAL_PAY", "CASH" -> gateway.trim().uppercase()
+        "GLOBAL_PAY", "ADYEN" -> gateway.trim().uppercase()
         else -> null
     }
 }

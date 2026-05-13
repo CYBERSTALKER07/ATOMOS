@@ -1,0 +1,18 @@
+name: 'Format Go Code'
+description: 'Runs make fmt'
+inputs:
+  path:
+    description: 'Path to the go repository'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Go
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+      with:
+          go-version: 1.26
+
+    - name: Format Code
+      run: make fmt
+      shell: bash
+      working-directory: ${{ inputs.path }}

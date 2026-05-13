@@ -49,9 +49,9 @@ fun FamilyMembersScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (uiState.error \!= null) {
+            } else if (uiState.error != null) {
                 Text(
-                    text = uiState.error\!\!,
+                    text = uiState.error!!,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center).padding(16.dp)
                 )
@@ -59,7 +59,7 @@ fun FamilyMembersScreen(
                 PegasusEmptyState(
                     icon = Icons.Rounded.Person,
                     title = "No Staff/Family",
-                    description = "Add members to allow them to manage operations",
+                    message = "Add members to allow them to manage operations",
                     modifier = Modifier.align(Alignment.Center)
                 )
             } else {

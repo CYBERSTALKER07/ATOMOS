@@ -2832,30 +2832,34 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 	if gateway == "" {
 		return nil, fmt.Errorf("unsupported card gateway: %s (supported: GLOBAL_PAY, ADYEN, CASH)", rawGateway)
 	}
-	if gateway == "ADYEN" {
-		return nil, fmt.Errorf("ADYEN checkout unavailable: provider adapter not configured")
-	}
 
 	var resp CardCheckoutResponse
 	var retailerId string
 	var supplierId string
+	orderCurrency := "UZS"
 
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderId},
-			[]string{"State", "RetailerId", "SupplierId", "Amount", "PaymentGateway", "Version"})
+			[]string{"State", "RetailerId", "SupplierId", "Amount", "Currency", "PaymentGateway", "Version"})
 		if err != nil {
 			return fmt.Errorf("order %s not found: %w", orderId, err)
 		}
 
 		var state string
 		var supplierIdNull spanner.NullString
+		var currencyNull spanner.NullString
 		var existingGateway spanner.NullString
 		var version int64
-		if err := row.Columns(&state, &retailerId, &supplierIdNull, &resp.Amount, &existingGateway, &version); err != nil {
+		if err := row.Columns(&state, &retailerId, &supplierIdNull, &resp.Amount, &currencyNull, &existingGateway, &version); err != nil {
 			return err
 		}
 		if supplierIdNull.Valid {
 			supplierId = supplierIdNull.StringVal
+		}
+		if currencyNull.Valid {
+			if normalizedCurrency := strings.ToUpper(strings.TrimSpace(currencyNull.StringVal)); normalizedCurrency != "" {
+				orderCurrency = normalizedCurrency
+			}
 		}
 
 		if state != "AWAITING_PAYMENT" {
@@ -3064,6 +3068,36 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 			urlErr = checkoutErr
 			if s.SessionSvc != nil {
 				if failErr := s.SessionSvc.FailSession(ctx, resp.SessionID, "GLOBAL_PAY_INIT_FAILED", checkoutErr.Error()); failErr != nil {
+					slog.Error("order.card_checkout_session_fail_failed", "session_id", resp.SessionID, "err", failErr)
+				}
+			}
+		} else {
+			paymentURL = checkoutResult.RedirectURL
+			providerReference = checkoutResult.ProviderReference
+			expiresAt = checkoutResult.ExpiresAt
+		}
+	} else if gateway == "ADYEN" {
+		if resp.SessionID == "" {
+			return nil, fmt.Errorf("adyen checkout requires a payment session")
+		}
+		creds, credErr := payment.ResolveAdyenCredentials(merchantID, serviceID, secretKey)
+		if credErr != nil {
+			return nil, credErr
+		}
+
+		checkoutResult, checkoutErr := payment.CreateAdyenHostedCheckout(ctx, creds, payment.AdyenCheckoutRequest{
+			OrderID:   orderId,
+			InvoiceID: resp.InvoiceID,
+			SessionID: resp.SessionID,
+			AttemptID: resp.AttemptID,
+			Amount:    resp.Amount,
+			Currency:  orderCurrency,
+			ReturnURL: strings.TrimSpace(callbackBaseURL),
+		})
+		if checkoutErr != nil {
+			urlErr = checkoutErr
+			if s.SessionSvc != nil {
+				if failErr := s.SessionSvc.FailSession(ctx, resp.SessionID, "ADYEN_INIT_FAILED", checkoutErr.Error()); failErr != nil {
 					slog.Error("order.card_checkout_session_fail_failed", "session_id", resp.SessionID, "err", failErr)
 				}
 			}

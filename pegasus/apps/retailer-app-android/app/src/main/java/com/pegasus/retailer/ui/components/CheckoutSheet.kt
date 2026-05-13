@@ -58,9 +58,8 @@ data class CheckoutPaymentOption(
 )
 
 val DefaultCheckoutPaymentOptions = listOf(
-    
-    
     CheckoutPaymentOption(gateway = "GLOBAL_PAY", label = "GlobalPay"),
+    CheckoutPaymentOption(gateway = "ADYEN", label = "Adyen"),
     CheckoutPaymentOption(gateway = "CASH", label = "Cash on Delivery"),
 )
 

@@ -11,6 +11,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@heroui/react";
 import { useCart } from "../lib/cart";
 import { apiFetch } from "../lib/auth";
 import { useRouter } from "next/navigation";
@@ -43,7 +44,7 @@ export default function CheckoutModal({
   total,
 }: CheckoutModalProps) {
   const { items, clearCart } = useCart();
-  const [method, setMethod] = useState<"global_pay" | "cash">("global_pay");
+  const [method, setMethod] = useState<"global_pay" | "adyen" | "cash">("global_pay");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [oosItems, setOosItems] = useState<string[]>([]);
@@ -63,6 +64,7 @@ export default function CheckoutModal({
       const gatewayMap: Record<string, string> = {
         cash: "CASH",
         global_pay: "GLOBAL_PAY",
+        adyen: "ADYEN",
       };
 
       const lineItems = items.map((item) => ({
@@ -105,7 +107,7 @@ export default function CheckoutModal({
       const cartData: UnifiedCheckoutResponse = await cartRes.json();
       const supplierOrders = cartData.supplier_orders || [];
 
-      if (["global_pay"].includes(method)) {
+      if (["global_pay", "adyen"].includes(method)) {
         for (const so of supplierOrders) {
           const payRes = await apiFetch("/v1/order/card-checkout", {
             method: "POST",
@@ -280,6 +282,25 @@ export default function CheckoutModal({
                     </h4>
                     <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">
                       Instant digital credit settlement.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => setMethod("adyen")}
+                    className={`p-5 rounded-2xl border-2 transition-all cursor-pointer group ${method === "adyen" ? "border-[var(--desk-accent)] bg-[var(--desk-accent-soft)] shadow-md" : "border-[var(--desk-border)] hover:border-[var(--desk-border-strong)] bg-[var(--desk-surface)]"}`}
+                  >
+                    <div
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors ${method === "adyen" ? "bg-[var(--desk-accent)] text-white" : "bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)] group-hover:text-[var(--desk-text-primary)]"}`}
+                    >
+                      <CreditCard size={24} />
+                    </div>
+                    <h4
+                      className={`md-typescale-title-small font-bold transition-colors ${method === "adyen" ? "text-[var(--desk-accent)]" : "text-[var(--desk-text-primary)]"}`}
+                    >
+                      Adyen Checkout
+                    </h4>
+                    <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">
+                      International card settlement via Adyen.
                     </p>
                   </div>
                 </div>

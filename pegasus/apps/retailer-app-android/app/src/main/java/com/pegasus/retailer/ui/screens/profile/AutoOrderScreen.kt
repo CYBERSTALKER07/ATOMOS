@@ -39,14 +39,14 @@ fun AutoOrderScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (uiState.isLoading && uiState.settings == null) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (uiState.error \!= null && uiState.settings == null) {
+            } else if (uiState.error != null && uiState.settings == null) {
                 Text(
-                    text = uiState.error\!\!,
+                    text = uiState.error!!,
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center).padding(16.dp)
                 )
-            } else if (uiState.settings \!= null) {
-                val settings = uiState.settings\!\!
+            } else if (uiState.settings != null) {
+                val settings = uiState.settings!!
                 Column(
                     modifier = Modifier.fillMaxSize().padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -90,7 +90,7 @@ fun AutoOrderScreen(
                         PegasusEmptyState(
                             icon = Icons.Rounded.AutoAwesome,
                             title = "Auto-Ordering Active",
-                            description = "The AI agent is now optimizing your inventory restocking schedule.",
+                            message = "The AI agent is now optimizing your inventory restocking schedule.",
                         )
                     }
                 }

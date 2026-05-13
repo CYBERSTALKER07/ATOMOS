@@ -122,7 +122,7 @@ struct OrderCardView: View {
                         } label: {
                             Text("Confirm Suggestion")
                                 .font(.system(.caption, design: .rounded, weight: .bold))
-                                .foregroundStyle(AppTheme.onPrimary)
+                                .foregroundStyle(AppTheme.cardBackground)
                                 .padding(.horizontal, AppTheme.spacingMD)
                                 .padding(.vertical, AppTheme.spacingSM)
                                 .background(AppTheme.accent)
@@ -150,7 +150,7 @@ struct OrderCardView: View {
                         } label: {
                             Text("Confirm Preorder")
                                 .font(.system(.caption, design: .rounded, weight: .bold))
-                                .foregroundStyle(AppTheme.onPrimary)
+                                .foregroundStyle(AppTheme.cardBackground)
                                 .padding(.horizontal, AppTheme.spacingMD)
                                 .padding(.vertical, AppTheme.spacingSM)
                                 .background(AppTheme.accent)
