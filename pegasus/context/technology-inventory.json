@@ -157,26 +157,32 @@
     },
     {
       "name": "InventoryV2 runtime dual-read-write activation",
-      "path": "SupplierInventoryV2 quantity mirroring across inventory, checkout, and restock paths",
-      "owner": "pegasus/apps/backend-go/{supplier/inventory.go,warehouse/inventory.go,order/unified_checkout.go,supplier/{reconcile.go,returns.go,vetting.go},factory/{transfers.go,force_receive.go}}",
+      "path": "SupplierInventoryV2 quantity mirroring across inventory, checkout, restock, and replenishment/planning read paths",
+      "owner": "pegasus/apps/backend-go/{supplier/inventory.go,warehouse/inventory.go,order/unified_checkout.go,supplier/{reconcile.go,returns.go,vetting.go},factory/{transfers.go,force_receive.go,look_ahead.go,predictive_push.go},replenishment/engine.go,warehouse/dashboard.go}",
       "methods": [
         "GET /v1/supplier/inventory warehouse-scoped V2-first quantity reads",
         "PATCH /v1/supplier/inventory dual-write SupplierInventory + SupplierInventoryV2 when warehouse scope exists",
         "GET /v1/warehouse/ops/inventory V2-first quantity reads",
         "PATCH /v1/warehouse/ops/inventory quantity dual-write to SupplierInventoryV2",
         "RWTxn unified checkout decrement mirror into SupplierInventoryV2",
-        "RWTxn restock/receive mirror updates in supplier reconcile/returns/vetting and factory transfer receive paths"
+        "RWTxn restock/receive mirror updates in supplier reconcile/returns/vetting and factory transfer receive paths",
+        "Replenishment engine warehouse-stock reads now query SupplierInventoryV2 first then legacy fallback",
+        "Factory look-ahead and predictive-push inventory scans now query SupplierInventoryV2 first then legacy fallback",
+        "Warehouse dashboard low-stock KPI now computes against SupplierInventoryV2-first quantity/threshold with legacy fallback"
       ],
       "consumers": [
         "supplier inventory API consumers",
         "warehouse ops inventory API consumers",
         "checkout stock decrement path",
-        "supplier and factory reverse-logistics stock restoration flows"
+        "supplier and factory reverse-logistics stock restoration flows",
+        "replenishment cron and supplier planning/predictive transfer flows",
+        "warehouse operations dashboard low-stock alerts"
       ],
       "notes": [
         "Warehouse-scoped read paths now prefer SupplierInventoryV2 quantities and fallback to legacy SupplierInventory during migration.",
         "Legacy SupplierInventory writes remain active for backward compatibility while InventoryV2 receives mirrored updates.",
-        "Restock/receive mirrors apply to flows where warehouse context is available; non-scoped legacy flows continue on SupplierInventory only."
+        "Restock/receive mirrors apply to flows where warehouse context is available; non-scoped legacy flows continue on SupplierInventory only.",
+        "Read convergence now includes replenishment and predictive planning paths so transfer recommendation logic consumes the same V2-first stock source as inventory APIs."
       ]
     },
     {
