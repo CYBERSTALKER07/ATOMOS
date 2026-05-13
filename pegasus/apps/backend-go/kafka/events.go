@@ -24,6 +24,9 @@ const (
 	EventOrderValidationFailed     = "ORDER_VALIDATION_FAILED"
 	EventOrderFinalized            = "ORDER_FINALIZED"
 	EventFeeRateAdjusted           = "FEE_RATE_ADJUSTED"
+	EventSettlementRequired        = "SETTLEMENT_REQUIRED"
+	EventDeliverySessionUpdated    = "DELIVERY_SESSION_UPDATED"
+	EventDeliveryDisputed          = "DELIVERY_DISPUTED"
 	EventOrderCompleted            = "ORDER_COMPLETED"
 	EventDriverAvailabilityChanged = "DRIVER_AVAILABILITY_CHANGED"
 	EventOrderReassigned           = "ORDER_REASSIGNED"
@@ -1183,4 +1186,50 @@ type FeeRateAdjustedEvent struct {
 	MilestoneIndex         int64     `json:"milestone_index"`
 	TriggerOrderID         string    `json:"trigger_order_id"`
 	Timestamp              time.Time `json:"timestamp"`
+}
+
+// SettlementRequiredEvent is emitted when offload is finalized and the
+// retailer must complete cash/card settlement before the driver can proceed.
+type SettlementRequiredEvent struct {
+	SessionID        string    `json:"session_id"`
+	OrderID          string    `json:"order_id"`
+	RetailerID       string    `json:"retailer_id"`
+	DriverID         string    `json:"driver_id,omitempty"`
+	SupplierID       string    `json:"supplier_id,omitempty"`
+	PaymentSessionID string    `json:"payment_session_id,omitempty"`
+	InvoiceID        string    `json:"invoice_id,omitempty"`
+	State            string    `json:"state"`
+	Amount           int64     `json:"amount"`
+	OriginalAmount   int64     `json:"original_amount"`
+	Currency         string    `json:"currency"`
+	Timestamp        time.Time `json:"timestamp"`
+}
+
+// DeliverySessionUpdatedEvent is emitted on handshake or reconciliation
+// session updates to keep realtime consumers synchronized.
+type DeliverySessionUpdatedEvent struct {
+	SessionID      string    `json:"session_id"`
+	OrderID        string    `json:"order_id"`
+	RetailerID     string    `json:"retailer_id"`
+	DriverID       string    `json:"driver_id,omitempty"`
+	State          string    `json:"state"`
+	OriginalAmount int64     `json:"original_amount"`
+	AdjustedAmount int64     `json:"adjusted_amount"`
+	FeeBasisPoints int64     `json:"fee_basis_points"`
+	FeeAmount      int64     `json:"fee_amount"`
+	Currency       string    `json:"currency"`
+	Timestamp      time.Time `json:"timestamp"`
+}
+
+// DeliveryDisputedEvent is emitted when retailer rejects driver reconciliation
+// edits and manual supplier override is required.
+type DeliveryDisputedEvent struct {
+	SessionID  string    `json:"session_id"`
+	OrderID    string    `json:"order_id"`
+	RetailerID string    `json:"retailer_id"`
+	DriverID   string    `json:"driver_id,omitempty"`
+	SupplierID string    `json:"supplier_id,omitempty"`
+	Reason     string    `json:"reason,omitempty"`
+	DisputedBy string    `json:"disputed_by,omitempty"`
+	Timestamp  time.Time `json:"timestamp"`
 }

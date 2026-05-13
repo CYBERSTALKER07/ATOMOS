@@ -48,6 +48,12 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 	- Milestone crossings now atomically update `SystemConfig.platform_fee_basis_points` (with additive `billing_*` control keys) and emit `FEE_RATE_ADJUSTED` via transactional outbox on `kafka.TopicMain`.
 	- Split/ledger fee math now resolves runtime basis points; treasury ledger now returns additive `billing_history` + `billing_milestone` telemetry rendered by the supplier treasury dashboard.
 
+- Dynamic delivery handshake settlement surface: `pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,order/delivery_handshake.go,order/service.go,deliveryroutes/routes.go,payment/session.go,orderroutes/routes.go}`
+	- Adds additive `DeliverySessions` and immutable `DeliverySessionAdjustments` audit rows with order, driver-state, retailer-state, and supplier-state indexes.
+	- `POST /v1/delivery/verify-handshake` validates signed JWT or compatibility token handshakes with assignment and geofence checks; `POST /v1/delivery/update-order-during-delivery` applies reconciliation edits through existing amend-order logic and writes immutable adjustment audits.
+	- `POST /v1/order/confirm-offload` now transitions session state to `SETTLEMENT_AWAIT` and emits outbox `SETTLEMENT_REQUIRED` + `DELIVERY_SESSION_UPDATED`; settlement notifications fan out over retailer websocket as additive `SETTLEMENT_REQUIRED` plus legacy `PAYMENT_REQUIRED`.
+	- Settlement clear paths in `payment/session.go` and `order/service.go#CollectCash` now advance matching delivery sessions to `FINAL_SETTLEMENT`, set `PaymentClearedAt`, and preserve lock-release semantics for both card and cash settlement paths.
+
 - InventoryV2 runtime activation: `pegasus/apps/backend-go/{supplier/inventory.go,warehouse/inventory.go,order/unified_checkout.go,supplier/{reconcile.go,returns.go,vetting.go},factory/{transfers.go,force_receive.go},replenishment/engine.go,factory/{look_ahead.go,predictive_push.go},warehouse/dashboard.go}`
 	- Supplier and warehouse inventory reads now prefer warehouse-scoped `SupplierInventoryV2` quantities with legacy `SupplierInventory` fallback.
 	- Unified checkout mirrors effective stock decrements into `SupplierInventoryV2` for warehouse-assigned plans while retaining existing `SupplierInventory` locking path.

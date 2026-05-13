@@ -104,6 +104,8 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handlePayloadSealed(deps, m.Value)
 			case EventPaymentSettled:
 				handlePaymentSettled(deps, m.Value)
+			case EventSettlementRequired:
+				handleSettlementRequired(deps, m.Value)
 			case EventPaymentFailed:
 				handlePaymentFailed(deps, m.Value)
 			case EventCashCollectionRequired:
@@ -405,6 +407,52 @@ func handlePaymentSettled(deps NotificationDeps, data []byte) {
 			nil,
 		)
 		dispatchToRecipient(deps, event.DriverID, "DRIVER", EventPaymentSettled, driverNotif)
+	}
+}
+
+func handleSettlementRequired(deps NotificationDeps, data []byte) {
+	var event SettlementRequiredEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "SETTLEMENT_REQUIRED", "err", err)
+		return
+	}
+
+	retailerBody := fmt.Sprintf("Settlement of %d %s is required for order %s.", event.Amount, event.Currency, event.OrderID)
+	retailerNotif := notifications.NewFormattedNotification(
+		"Settlement Required",
+		retailerBody,
+		"notification.settlement_required.retailer.title",
+		"notification.settlement_required.retailer.body",
+		map[string]string{
+			"order_id": event.OrderID,
+		},
+	)
+	dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventSettlementRequired, retailerNotif)
+
+	if event.DriverID != "" {
+		driverNotif := notifications.NewFormattedNotification(
+			"Retailer Settlement Pending",
+			fmt.Sprintf("Order %s is waiting for retailer settlement confirmation.", event.OrderID),
+			"notification.settlement_required.driver.title",
+			"notification.settlement_required.driver.body",
+			map[string]string{
+				"order_id": event.OrderID,
+			},
+		)
+		dispatchToRecipient(deps, event.DriverID, "DRIVER", EventSettlementRequired, driverNotif)
+	}
+
+	if event.SupplierID != "" {
+		supplierNotif := notifications.NewFormattedNotification(
+			"Delivery Settlement Awaiting Payment",
+			fmt.Sprintf("Order %s is waiting for settlement in the handoff session.", event.OrderID),
+			"notification.settlement_required.supplier.title",
+			"notification.settlement_required.supplier.body",
+			map[string]string{
+				"order_id": event.OrderID,
+			},
+		)
+		dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventSettlementRequired, supplierNotif)
 	}
 }
 

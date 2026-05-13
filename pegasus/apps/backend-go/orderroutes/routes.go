@@ -372,8 +372,8 @@ func handleOrderConfirmOffload(d Deps) http.HandlerFunc {
 		}
 
 		if d.RetailerHub != nil {
-			d.RetailerHub.PushToRetailer(resp.RetailerID, map[string]interface{}{
-				"type":                    ws.EventPaymentRequired,
+			settlementPayload := map[string]interface{}{
+				"type":                    ws.EventSettlementRequired,
 				"order_id":                resp.OrderID,
 				"invoice_id":              resp.InvoiceID,
 				"session_id":              resp.SessionID,
@@ -381,8 +381,17 @@ func handleOrderConfirmOffload(d Deps) http.HandlerFunc {
 				"original_amount":         resp.OriginalAmount,
 				"payment_method":          resp.PaymentMethod,
 				"available_card_gateways": resp.AvailableCardGateways,
-				"message":                 fmt.Sprintf("Payment of %d required for order %s", resp.Amount, resp.OrderID),
-			})
+				"message":                 fmt.Sprintf("Settlement required for order %s", resp.OrderID),
+			}
+			d.RetailerHub.PushToRetailer(resp.RetailerID, settlementPayload)
+
+			// Backward-compatible alias for currently deployed retailer clients.
+			paymentPayload := map[string]interface{}{}
+			for k, v := range settlementPayload {
+				paymentPayload[k] = v
+			}
+			paymentPayload["type"] = ws.EventPaymentRequired
+			d.RetailerHub.PushToRetailer(resp.RetailerID, paymentPayload)
 		}
 
 		if d.FleetHub != nil && resp.SupplierID != "" {

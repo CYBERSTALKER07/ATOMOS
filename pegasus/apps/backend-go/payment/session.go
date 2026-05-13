@@ -357,6 +357,25 @@ func (s *SessionService) SettleSession(ctx context.Context, sessionID string, pr
 			log.Printf("[PAYMENT_SESSION] Failed to update PaymentStatus for order %s: %v", orderID, updateErr)
 		}
 
+		// Best-effort: advance the delivery handshake session into FINAL_SETTLEMENT.
+		_, deliverySessionErr := txn.Update(ctx, spanner.Statement{
+			SQL: `UPDATE DeliverySessions
+			      SET State = 'FINAL_SETTLEMENT',
+			          PaymentSessionId = COALESCE(PaymentSessionId, @sessionID),
+			          PaymentClearedAt = @clearedAt,
+			          UpdatedAt = CURRENT_TIMESTAMP(),
+			          Version = Version + 1
+			      WHERE OrderId = @orderID`,
+			Params: map[string]interface{}{
+				"sessionID": sessionID,
+				"clearedAt": now,
+				"orderID":   orderID,
+			},
+		})
+		if deliverySessionErr != nil {
+			log.Printf("[PAYMENT_SESSION] Failed to update DeliverySessions for order %s: %v", orderID, deliverySessionErr)
+		}
+
 		return nil
 	})
 

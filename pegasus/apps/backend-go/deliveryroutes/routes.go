@@ -1,4 +1,4 @@
-// Package deliveryroutes owns the /v1/delivery/* surface — nine driver-facing
+// Package deliveryroutes owns the /v1/delivery/* surface — driver-facing
 // endpoints that run at the retailer handoff: arrival marker, QR/offload
 // handshake variants, shop-closed protocol, negotiation, credit-delivery,
 // missing-items claim, split-payment, and the SMS fallback confirmation.
@@ -24,9 +24,11 @@ package deliveryroutes
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -57,6 +59,8 @@ type Deps struct {
 // RegisterRoutes mounts the delivery surface:
 //
 //	POST /v1/delivery/arrive                  — mark arrival at shop
+//	POST /v1/delivery/verify-handshake        — validate signed handshake token + proximity
+//	POST /v1/delivery/update-order-during-delivery — apply reconciliation quantity edits
 //	POST /v1/delivery/confirm-payment-bypass  — driver confirms with bypass token
 //	POST /v1/delivery/sms-complete            — SMS-gateway dead-phone fallback
 //	POST /v1/delivery/shop-closed             — driver reports shop closed
@@ -74,6 +78,14 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	// Arrival orchestration lives inline — it spans three collaborators.
 	r.HandleFunc("/v1/delivery/arrive",
 		auth.RequireRole(driver, log(handleArrive(d))))
+
+	// Dynamic handshake verification (signed JWT/plain token + geofence).
+	r.HandleFunc("/v1/delivery/verify-handshake",
+		auth.RequireRole(driver, log(handleVerifyHandshake(d))))
+
+	// Driver reconciliation mutation during offload.
+	r.HandleFunc("/v1/delivery/update-order-during-delivery",
+		auth.RequireRole(driver, log(handleUpdateOrderDuringDelivery(d))))
 
 	// Edge 5: Driver confirms with bypass token
 	r.HandleFunc("/v1/delivery/confirm-payment-bypass",
@@ -149,4 +161,99 @@ func handleArrive(d Deps) http.HandlerFunc {
 // traceID extracts the correlation token stashed by TraceMiddleware.
 func traceID(r *http.Request) string {
 	return telemetry.TraceIDFromContext(r.Context())
+}
+
+func handleVerifyHandshake(d Deps) http.HandlerFunc {
+	svc := d.Order
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if svc == nil {
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
+		if !ok || claims == nil || strings.TrimSpace(claims.UserID) == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		var req order.VerifyHandshakeRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		req.DriverID = strings.TrimSpace(claims.UserID)
+
+		resp, err := svc.VerifyHandshake(r.Context(), req)
+		if err != nil {
+			switch {
+			case strings.Contains(strings.ToLower(err.Error()), "invalid handshake token"):
+				http.Error(w, err.Error(), http.StatusForbidden)
+			case strings.Contains(strings.ToLower(err.Error()), "not assigned"):
+				http.Error(w, err.Error(), http.StatusForbidden)
+			case strings.Contains(strings.ToLower(err.Error()), "must be arrived") || strings.Contains(strings.ToLower(err.Error()), "must be arrived or awaiting_payment"):
+				http.Error(w, err.Error(), http.StatusConflict)
+			default:
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			}
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(resp)
+	}
+}
+
+func handleUpdateOrderDuringDelivery(d Deps) http.HandlerFunc {
+	svc := d.Order
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if svc == nil {
+			http.Error(w, "service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims)
+		if !ok || claims == nil || strings.TrimSpace(claims.UserID) == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		var req order.UpdateOrderDuringDeliveryRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid JSON body", http.StatusBadRequest)
+			return
+		}
+		req.DriverID = strings.TrimSpace(claims.UserID)
+
+		resp, err := svc.UpdateOrderDuringDelivery(r.Context(), req)
+		if err != nil {
+			var versionConflict *order.ErrVersionConflict
+			if errors.As(err, &versionConflict) {
+				http.Error(w, err.Error(), http.StatusConflict)
+				return
+			}
+
+			var freezeLock *order.ErrFreezeLock
+			if errors.As(err, &freezeLock) {
+				http.Error(w, err.Error(), 423)
+				return
+			}
+
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(resp)
+	}
 }

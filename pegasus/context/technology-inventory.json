@@ -91,6 +91,32 @@
       ]
     },
     {
+      "name": "Dynamic delivery handshake settlement surface",
+      "path": "/v1/delivery/{verify-handshake,update-order-during-delivery} + /v1/order/confirm-offload + settlement clear hooks",
+      "owner": "pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,order/delivery_handshake.go,order/service.go,deliveryroutes/routes.go,payment/session.go,orderroutes/routes.go}",
+      "methods": [
+        "POST /v1/delivery/verify-handshake",
+        "POST /v1/delivery/update-order-during-delivery",
+        "POST /v1/order/confirm-offload",
+        "Outbox events DELIVERY_SESSION_UPDATED and SETTLEMENT_REQUIRED",
+        "Payment settle hook to advance DeliverySessions -> FINAL_SETTLEMENT",
+        "Cash collection completion hook to advance DeliverySessions -> FINAL_SETTLEMENT"
+      ],
+      "consumers": [
+        "backend-go order/delivery_handshake.go",
+        "backend-go deliveryroutes/routes.go",
+        "backend-go order/service.go",
+        "backend-go payment/session.go",
+        "retailer realtime consumers via ws settlement-required fanout"
+      ],
+      "notes": [
+        "DeliverySessions and DeliverySessionAdjustments are additive schema surfaces for handshake state + immutable adjustment audit.",
+        "VerifyHandshake enforces assignment/geofence while preserving JWT and legacy token compatibility paths.",
+        "ConfirmOffload now transitions the delivery session to SETTLEMENT_AWAIT and emits settlement-required outbox events.",
+        "Payment settlement and cash collection completion mark delivery sessions FINAL_SETTLEMENT and timestamp PaymentClearedAt to close the handshake lock."
+      ]
+    },
+    {
       "name": "Replenishment event pipeline",
       "path": "TopicMain replenishment events",
       "owner": "pegasus/apps/backend-go/factory/{replenishment_lock.go,pull_matrix.go,look_ahead.go} + pegasus/apps/backend-go/kafka/notification_dispatcher.go",

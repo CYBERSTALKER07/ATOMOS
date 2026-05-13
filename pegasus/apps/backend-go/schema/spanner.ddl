@@ -681,6 +681,77 @@ CREATE TABLE BillingGlobalMeters (
 CREATE INDEX Idx_BillingGlobalMeters_ByPeriod
     ON BillingGlobalMeters(PeriodMonth, Currency);
 
+-- ── DELIVERY HANDSHAKE SESSIONS (DYNAMIC SETTLEMENT PROTOCOL) ─────────────
+-- DeliverySessions tracks the reconciled handoff lifecycle without forcing
+-- non-additive changes to Orders.State.
+CREATE TABLE DeliverySessions (
+    SessionId             STRING(36)  NOT NULL,
+    OrderId               STRING(36)  NOT NULL,
+    RetailerId            STRING(36)  NOT NULL,
+    DriverId              STRING(36)  NOT NULL,
+    SupplierId            STRING(36),
+    State                 STRING(30)  NOT NULL,
+    OriginalAmount        INT64       NOT NULL DEFAULT (0),
+    AdjustedAmount        INT64       NOT NULL DEFAULT (0),
+    FeeBasisPts           INT64       NOT NULL DEFAULT (0),
+    FeeAmount             INT64       NOT NULL DEFAULT (0),
+    Currency              STRING(3)   NOT NULL DEFAULT ('UZS'),
+    HandshakeTokenHash    STRING(MAX),
+    RetailerLat           FLOAT64,
+    RetailerLng           FLOAT64,
+    DriverLat             FLOAT64,
+    DriverLng             FLOAT64,
+    DistanceM             FLOAT64,
+    LastErrorCode         STRING(64),
+    LastErrorMessage      STRING(MAX),
+    PaymentSessionId      STRING(36),
+    InvoiceId             STRING(36),
+    HandshakeVerifiedAt   TIMESTAMP,
+    SettlementRequiredAt  TIMESTAMP,
+    PaymentClearedAt      TIMESTAMP,
+    DisputedAt            TIMESTAMP,
+    Version               INT64       NOT NULL DEFAULT (1),
+    CreatedAt             TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+    UpdatedAt             TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
+    CONSTRAINT CHK_DeliverySessionState CHECK (
+        State IN ('PROXIMITY_LOCK', 'HANDSHAKE_START', 'RECONCILIATION', 'SETTLEMENT_AWAIT', 'FINAL_SETTLEMENT', 'DISPUTED')
+    )
+) PRIMARY KEY (SessionId);
+
+CREATE INDEX Idx_DeliverySessions_ByOrderId
+    ON DeliverySessions(OrderId, UpdatedAt DESC);
+
+CREATE INDEX Idx_DeliverySessions_ByDriverState
+    ON DeliverySessions(DriverId, State, UpdatedAt DESC);
+
+CREATE INDEX Idx_DeliverySessions_ByRetailerState
+    ON DeliverySessions(RetailerId, State, UpdatedAt DESC);
+
+CREATE INDEX Idx_DeliverySessions_BySupplierState
+    ON DeliverySessions(SupplierId, State, UpdatedAt DESC);
+
+-- DeliverySessionAdjustments is an immutable audit stream for every
+-- reconciliation quantity mutation accepted during offload.
+CREATE TABLE DeliverySessionAdjustments (
+    AdjustmentId          STRING(36)  NOT NULL,
+    SessionId             STRING(36)  NOT NULL,
+    OrderId               STRING(36)  NOT NULL,
+    LineItemId            STRING(36),
+    SkuId                 STRING(36)  NOT NULL,
+    OriginalQty           INT64       NOT NULL,
+    AcceptedQty           INT64       NOT NULL,
+    RejectedQty           INT64       NOT NULL,
+    UnitPrice             INT64       NOT NULL,
+    Reason                STRING(40),
+    CreatedAt             TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (AdjustmentId);
+
+CREATE INDEX Idx_DeliverySessionAdjustments_BySessionId
+    ON DeliverySessionAdjustments(SessionId, CreatedAt DESC);
+
+CREATE INDEX Idx_DeliverySessionAdjustments_ByOrderId
+    ON DeliverySessionAdjustments(OrderId, CreatedAt DESC);
+
 -- ── DEVICE TOKENS (FCM / APNs) ───────────────────────────────────────────
 CREATE TABLE DeviceTokens (
     TokenId   STRING(36)  NOT NULL,

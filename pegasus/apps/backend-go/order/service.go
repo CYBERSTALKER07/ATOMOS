@@ -2492,10 +2492,11 @@ type ConfirmOffloadResponse struct {
 func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*ConfirmOffloadResponse, error) {
 	var resp ConfirmOffloadResponse
 	var supplierId string
+	var deliverySessionID string
 
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderId},
-			[]string{"State", "QRValidatedAt", "RetailerId", "Amount", "PaymentGateway", "SupplierId", "WarehouseId", "Version"})
+			[]string{"State", "QRValidatedAt", "RetailerId", "Amount", "PaymentGateway", "SupplierId", "WarehouseId", "DriverId", "Currency", "Version"})
 		if err != nil {
 			return fmt.Errorf("order %s not found: %w", orderId, err)
 		}
@@ -2505,8 +2506,10 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 		var gateway spanner.NullString
 		var supplierIdNull spanner.NullString
 		var warehouseIdNull spanner.NullString
+		var driverIdNull spanner.NullString
+		var orderCurrency string
 		var version int64
-		if err := row.Columns(&state, &qrValidatedAt, &resp.RetailerID, &resp.Amount, &gateway, &supplierIdNull, &warehouseIdNull, &version); err != nil {
+		if err := row.Columns(&state, &qrValidatedAt, &resp.RetailerID, &resp.Amount, &gateway, &supplierIdNull, &warehouseIdNull, &driverIdNull, &orderCurrency, &version); err != nil {
 			return err
 		}
 		if supplierIdNull.Valid {
@@ -2580,6 +2583,65 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 
 		now := time.Now().UTC()
 		traceID := telemetry.TraceIDFromContext(ctx)
+		driverID := strings.TrimSpace(driverIdNull.StringVal)
+		if driverID == "" {
+			return fmt.Errorf("order %s has no assigned driver for delivery settlement", orderId)
+		}
+
+		feeBasisPoints := s.feeBasisPoints()
+		feeAmount := (resp.Amount * feeBasisPoints) / 10000
+		settlementRequiredAt := now
+		currencyCode := normalizeHandshakeCurrency(orderCurrency)
+
+		deliverySessionID, err = s.upsertDeliverySessionTxn(ctx, txn, deliverySessionUpsertInput{
+			OrderID:              orderId,
+			RetailerID:           resp.RetailerID,
+			DriverID:             driverID,
+			SupplierID:           supplierId,
+			State:                DeliverySessionStateSettlementAwait,
+			OriginalAmount:       resp.OriginalAmount,
+			AdjustedAmount:       resp.Amount,
+			FeeBasisPoints:       feeBasisPoints,
+			FeeAmount:            feeAmount,
+			Currency:             currencyCode,
+			InvoiceID:            resp.InvoiceID,
+			SettlementRequiredAt: &settlementRequiredAt,
+		})
+		if err != nil {
+			return fmt.Errorf("upsert delivery session settlement await: %w", err)
+		}
+
+		if err := outbox.EmitJSON(txn, "DeliverySession", deliverySessionID, kafkaEvents.EventDeliverySessionUpdated, topicLogisticsEvents, kafkaEvents.DeliverySessionUpdatedEvent{
+			SessionID:      deliverySessionID,
+			OrderID:        orderId,
+			RetailerID:     resp.RetailerID,
+			DriverID:       driverID,
+			State:          DeliverySessionStateSettlementAwait,
+			OriginalAmount: resp.OriginalAmount,
+			AdjustedAmount: resp.Amount,
+			FeeBasisPoints: feeBasisPoints,
+			FeeAmount:      feeAmount,
+			Currency:       currencyCode,
+			Timestamp:      now,
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit DELIVERY_SESSION_UPDATED (settlement await): %w", err)
+		}
+
+		if err := outbox.EmitJSON(txn, "DeliverySession", deliverySessionID, kafkaEvents.EventSettlementRequired, topicLogisticsEvents, kafkaEvents.SettlementRequiredEvent{
+			SessionID:      deliverySessionID,
+			OrderID:        orderId,
+			RetailerID:     resp.RetailerID,
+			DriverID:       driverID,
+			SupplierID:     supplierId,
+			InvoiceID:      resp.InvoiceID,
+			State:          DeliverySessionStateSettlementAwait,
+			Amount:         resp.Amount,
+			OriginalAmount: resp.OriginalAmount,
+			Currency:       currencyCode,
+			Timestamp:      now,
+		}, traceID); err != nil {
+			return fmt.Errorf("outbox emit SETTLEMENT_REQUIRED: %w", err)
+		}
 
 		if err := outbox.EmitJSON(txn, "Order", orderId, kafkaEvents.EventOffloadConfirmed, topicLogisticsEvents, kafkaEvents.OffloadConfirmedEvent{
 			OrderID:        orderId,
@@ -2633,6 +2695,11 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 			slog.Error("order.confirm_offload_session_failed", "order_id", orderId, "err", sessionErr)
 		} else {
 			resp.SessionID = session.SessionID
+			if deliverySessionID != "" {
+				if bindErr := s.BindDeliverySessionPaymentLink(ctx, orderId, resp.SessionID, resp.InvoiceID); bindErr != nil {
+					slog.Warn("order.confirm_offload_bind_delivery_session_payment_failed", "order_id", orderId, "session_id", deliverySessionID, "err", bindErr)
+				}
+			}
 		}
 	}
 
@@ -2751,6 +2818,39 @@ func (s *OrderService) CompleteOrder(ctx context.Context, orderId string) (strin
 
 			if !settled {
 				return fmt.Errorf("payment not yet settled for order %s (gateway: %s)", orderId, gw)
+			}
+		}
+
+		// Delivery handshake lock: if a session exists and settlement is not yet
+		// cleared, the driver must remain blocked from completing the order.
+		sessionStmt := spanner.Statement{
+			SQL: `SELECT State, PaymentClearedAt FROM DeliverySessions
+			      WHERE OrderId = @orderId
+			      ORDER BY UpdatedAt DESC
+			      LIMIT 1`,
+			Params: map[string]interface{}{"orderId": orderId},
+		}
+		sessionIter := txn.Query(ctx, sessionStmt)
+		sessionRow, sessionErr := sessionIter.Next()
+		sessionIter.Stop()
+		if sessionErr != nil && !errors.Is(sessionErr, iterator.Done) {
+			return fmt.Errorf("read delivery session lock for order %s: %w", orderId, sessionErr)
+		}
+		if sessionErr == nil {
+			var sessionState string
+			var paymentClearedAt spanner.NullTime
+			if err := sessionRow.Columns(&sessionState, &paymentClearedAt); err != nil {
+				return fmt.Errorf("scan delivery session lock for order %s: %w", orderId, err)
+			}
+			if !paymentClearedAt.Valid {
+				switch sessionState {
+				case DeliverySessionStateProximityLock,
+					DeliverySessionStateHandshakeStart,
+					DeliverySessionStateReconciliation,
+					DeliverySessionStateSettlementAwait,
+					DeliverySessionStateDisputed:
+					return fmt.Errorf("delivery session settlement pending for order %s", orderId)
+				}
 			}
 		}
 
@@ -3383,6 +3483,22 @@ func (s *OrderService) CollectCash(ctx context.Context, req CollectCashRequest) 
 		}
 		if rowCount == 0 {
 			return &ErrVersionConflict{OrderID: req.OrderID, ExpectedVersion: version, ActualVersion: -1}
+		}
+
+		// Keep delivery handshake lock semantics aligned for cash settlements.
+		_, deliverySessionErr := txn.Update(ctx, spanner.Statement{
+			SQL: `UPDATE DeliverySessions
+			      SET State = 'FINAL_SETTLEMENT',
+			          PaymentClearedAt = CURRENT_TIMESTAMP(),
+			          UpdatedAt = CURRENT_TIMESTAMP(),
+			          Version = Version + 1
+			      WHERE OrderId = @orderID`,
+			Params: map[string]interface{}{
+				"orderID": req.OrderID,
+			},
+		})
+		if deliverySessionErr != nil {
+			return fmt.Errorf("update delivery session after cash collection: %w", deliverySessionErr)
 		}
 
 		// Update the cash-custody MasterInvoice with collection details

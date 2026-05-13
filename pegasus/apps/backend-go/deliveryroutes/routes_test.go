@@ -64,3 +64,41 @@ func TestRegisterRoutes_MissingItemsRejectsRetailerRole(t *testing.T) {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusForbidden)
 	}
 }
+
+func TestRegisterRoutes_HandshakeEndpointsMounted(t *testing.T) {
+	router := chi.NewRouter()
+	RegisterRoutes(router, Deps{
+		Log: func(next http.HandlerFunc) http.HandlerFunc { return next },
+	})
+
+	tests := []struct {
+		name string
+		path string
+		body string
+	}{
+		{
+			name: "verify handshake",
+			path: "/v1/delivery/verify-handshake",
+			body: `{"order_id":"o-1","handshake_token":"token","driver_latitude":41.31,"driver_longitude":69.24}`,
+		},
+		{
+			name: "update order during delivery",
+			path: "/v1/delivery/update-order-during-delivery",
+			body: `{"order_id":"o-1","items":[{"product_id":"sku-1","accepted_qty":1,"rejected_qty":0}]}`,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, tc.path, strings.NewReader(tc.body))
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+
+			router.ServeHTTP(w, req)
+
+			if w.Code != http.StatusUnauthorized {
+				t.Fatalf("status = %d, want %d", w.Code, http.StatusUnauthorized)
+			}
+		})
+	}
+}

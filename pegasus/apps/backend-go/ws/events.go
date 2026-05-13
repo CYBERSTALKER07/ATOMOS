@@ -29,6 +29,10 @@ const (
 const (
 	// EventPaymentRequired is pushed when offload is confirmed and payment is due.
 	EventPaymentRequired = "PAYMENT_REQUIRED"
+	// EventSettlementRequired is pushed when a delivery session enters settlement wait.
+	EventSettlementRequired = "SETTLEMENT_REQUIRED"
+	// EventDeliverySessionUpdated is pushed when handshake or reconciliation updates session totals/state.
+	EventDeliverySessionUpdated = "DELIVERY_SESSION_UPDATED"
 	// EventCartSyncUpdated is pushed when retailer server-side cart state is replaced.
 	EventCartSyncUpdated = "CART_SYNC_UPDATED"
 	// EventPaymentExpired is pushed when a payment session times out.
