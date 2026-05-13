@@ -17,6 +17,7 @@ import (
 	"cloud.google.com/go/spanner"
 	kafka "github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 // ReconcileService handles depot-level reverse-logistics reconciliation.
@@ -239,7 +240,7 @@ func (s *ReconcileService) HandleReconcile(w http.ResponseWriter, r *http.Reques
 	_, txnErr := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// Verify supplier ownership and collect records for mutation building
 		verifyStmt := spanner.Statement{
-			SQL: `SELECT li.LineItemId, li.OrderId, li.SkuId, li.Quantity, o.SupplierId
+			SQL: `SELECT li.LineItemId, li.OrderId, li.SkuId, li.Quantity, o.SupplierId, o.WarehouseId
 			      FROM OrderLineItems li
 			      JOIN Orders o ON li.OrderId = o.OrderId
 			      WHERE li.LineItemId IN UNNEST(@ids)
@@ -250,10 +251,11 @@ func (s *ReconcileService) HandleReconcile(w http.ResponseWriter, r *http.Reques
 		defer verifyIter.Stop()
 
 		type itemRecord struct {
-			lineItemID string
-			orderID    string
-			skuID      string
-			qty        int64
+			lineItemID  string
+			orderID     string
+			skuID       string
+			qty         int64
+			warehouseID string
 		}
 		var records []itemRecord
 
@@ -267,11 +269,15 @@ func (s *ReconcileService) HandleReconcile(w http.ResponseWriter, r *http.Reques
 			}
 			var rec itemRecord
 			var ownerSupplier string
-			if err := row.Columns(&rec.lineItemID, &rec.orderID, &rec.skuID, &rec.qty, &ownerSupplier); err != nil {
+			var warehouseID spanner.NullString
+			if err := row.Columns(&rec.lineItemID, &rec.orderID, &rec.skuID, &rec.qty, &ownerSupplier, &warehouseID); err != nil {
 				return err
 			}
 			if ownerSupplier != supplierID {
 				return fmt.Errorf("access denied: item %s belongs to a different supplier", rec.lineItemID)
+			}
+			if warehouseID.Valid {
+				rec.warehouseID = warehouseID.StringVal
 			}
 			records = append(records, rec)
 		}
@@ -290,24 +296,43 @@ func (s *ReconcileService) HandleReconcile(w http.ResponseWriter, r *http.Reques
 
 		// For RESTOCK, restore inventory quantities on the SupplierInventory table
 		if restock {
-			skuQtyMap := make(map[string]int64)
-			for _, rec := range records {
-				skuQtyMap[rec.skuID] += rec.qty
+			type skuWarehouseKey struct {
+				skuID       string
+				warehouseID string
 			}
-			for skuID, qty := range skuQtyMap {
-				invRow, err := txn.ReadRow(ctx, "SupplierInventory", spanner.Key{skuID}, []string{"QuantityAvailable"})
+			skuQtyMap := make(map[skuWarehouseKey]int64)
+			for _, rec := range records {
+				skuQtyMap[skuWarehouseKey{skuID: rec.skuID, warehouseID: rec.warehouseID}] += rec.qty
+			}
+			for key, qty := range skuQtyMap {
+				invRow, err := txn.ReadRow(ctx, "SupplierInventory", spanner.Key{key.skuID}, []string{"QuantityAvailable"})
 				if err != nil {
-					return fmt.Errorf("RESTOCK blocked: cannot read inventory for SKU %s: %w", skuID, err)
+					return fmt.Errorf("RESTOCK blocked: cannot read inventory for SKU %s: %w", key.skuID, err)
 				}
 				var current int64
 				if err := invRow.Columns(&current); err != nil {
 					return err
 				}
-				auditEntry := newReturnRestockAuditEntry(skuID, supplierID, adjustedBy, current, qty)
+				auditEntry := newReturnRestockAuditEntry(key.skuID, supplierID, adjustedBy, current, qty)
 				muts = append(muts, spanner.Update("SupplierInventory",
 					[]string{"ProductId", "QuantityAvailable", "UpdatedAt"},
-					[]interface{}{skuID, current + qty, spanner.CommitTimestamp},
+					[]interface{}{key.skuID, current + qty, spanner.CommitTimestamp},
 				), auditEntry.Mutation())
+				if key.warehouseID != "" {
+					var currentV2 int64
+					invV2Row, invV2Err := txn.ReadRow(ctx, "SupplierInventoryV2", spanner.Key{supplierID, key.warehouseID, key.skuID}, []string{"QuantityAvailable"})
+					if invV2Err == nil {
+						if err := invV2Row.Columns(&currentV2); err != nil {
+							return err
+						}
+					} else if spanner.ErrCode(invV2Err) != codes.NotFound {
+						return fmt.Errorf("RESTOCK blocked: cannot read inventory v2 for SKU %s: %w", key.skuID, invV2Err)
+					}
+					muts = append(muts, spanner.InsertOrUpdate("SupplierInventoryV2",
+						[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityAvailable", "UpdatedAt"},
+						[]interface{}{supplierID, key.warehouseID, key.skuID, currentV2 + qty, spanner.CommitTimestamp},
+					))
+				}
 			}
 		}
 

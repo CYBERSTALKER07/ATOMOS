@@ -88,10 +88,12 @@ func listOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.Cl
 		return
 	}
 
-	sql := `SELECT sp.SkuId, sp.Name, COALESCE(si.Quantity, 0),
+	sql := `SELECT sp.SkuId, sp.Name, COALESCE(si2.QuantityAvailable, si.Quantity, 0),
 	               COALESCE(si.ReorderThreshold, 0), COALESCE(sp.VolumeVU, 0),
-	               COALESCE(sp.CategoryId, ''), COALESCE(si.UpdatedAt, sp.CreatedAt)
+	               COALESCE(sp.CategoryId, ''), COALESCE(si2.UpdatedAt, COALESCE(si.UpdatedAt, sp.CreatedAt))
 	        FROM SupplierProducts sp
+	        LEFT JOIN SupplierInventoryV2 si2 ON sp.SkuId = si2.ProductId
+	             AND si2.SupplierId = @sid AND si2.WarehouseId = @whId
 	        LEFT JOIN SupplierInventory si ON sp.SkuId = si.ProductId
 	             AND si.SupplierId = @sid AND si.WarehouseId = @whId
 	        WHERE sp.SupplierId = @sid`
@@ -105,7 +107,7 @@ func listOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.Cl
 	}
 	// Low stock filter
 	if r.URL.Query().Get("low_stock") == "true" {
-		sql += " AND si.Quantity <= si.ReorderThreshold"
+		sql += " AND COALESCE(si2.QuantityAvailable, si.Quantity, 0) <= COALESCE(si.ReorderThreshold, 0)"
 	}
 
 	sql += " ORDER BY sp.Name LIMIT 500"
@@ -177,6 +179,8 @@ func adjustOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.
 	if req.Quantity != nil {
 		cols = append(cols, "Quantity")
 		vals = append(vals, *req.Quantity)
+		cols = append(cols, "QuantityAvailable")
+		vals = append(vals, *req.Quantity)
 	}
 	if req.ReorderThreshold != nil {
 		cols = append(cols, "ReorderThreshold")
@@ -185,9 +189,15 @@ func adjustOpsInventory(w http.ResponseWriter, r *http.Request, client *spanner.
 	cols = append(cols, "UpdatedAt")
 	vals = append(vals, spanner.CommitTimestamp)
 
-	m := spanner.InsertOrUpdate("SupplierInventory", cols, vals)
+	mutations := []*spanner.Mutation{spanner.InsertOrUpdate("SupplierInventory", cols, vals)}
+	if req.Quantity != nil {
+		mutations = append(mutations, spanner.InsertOrUpdate("SupplierInventoryV2",
+			[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityAvailable", "UpdatedAt"},
+			[]interface{}{ops.SupplierID, ops.WarehouseID, skuID, *req.Quantity, spanner.CommitTimestamp},
+		))
+	}
 	if _, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{m})
+		return txn.BufferWrite(mutations)
 	}); err != nil {
 		log.Printf("[WH INVENTORY] upsert error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)

@@ -1496,6 +1496,44 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		}
 		adminClient.Close()
 	}
+
+	// ── MIGRATION: Autonomous settlement locality + Inventory V2 bootstrap ─────
+	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
+	if err == nil {
+		settlementLocalityDDL := []string{
+			"ALTER TABLE MasterInvoices ADD COLUMN SettlementTarget STRING(30)",
+			"ALTER TABLE MasterInvoices ADD CONSTRAINT CHK_MasterInvoiceSettlementTarget CHECK (SettlementTarget IS NULL OR SettlementTarget IN ('GLOBAL_SUPPLIER', 'LOCAL_WAREHOUSE', 'MIXED_WAREHOUSE'))",
+			"ALTER TABLE Warehouses ADD COLUMN PaymentConfigId STRING(36)",
+			"CREATE INDEX Idx_Warehouses_ByPaymentConfigId ON Warehouses(PaymentConfigId)",
+			"ALTER TABLE SupplierInventory ADD COLUMN H3Cell STRING(15)",
+			"CREATE INDEX Idx_Inventory_ByH3Cell ON SupplierInventory(H3Cell)",
+			`CREATE TABLE SupplierInventoryV2 (
+				SupplierId         STRING(36) NOT NULL,
+				WarehouseId        STRING(36) NOT NULL,
+				ProductId          STRING(36) NOT NULL,
+				QuantityAvailable  INT64      NOT NULL,
+				SafetyStockLevel   INT64      NOT NULL DEFAULT (0),
+				MinStockLevel      INT64      NOT NULL DEFAULT (0),
+				MaxStockLevel      INT64,
+				H3Cell             STRING(15),
+				UpdatedAt          TIMESTAMP  OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (SupplierId, WarehouseId, ProductId)`,
+			"CREATE INDEX Idx_InventoryV2_ByWarehouse ON SupplierInventoryV2(SupplierId, WarehouseId)",
+			"CREATE INDEX Idx_InventoryV2_ByProduct ON SupplierInventoryV2(ProductId)",
+			"CREATE INDEX Idx_InventoryV2_ByH3Cell ON SupplierInventoryV2(H3Cell, SupplierId)",
+		}
+		for _, stmt := range settlementLocalityDDL {
+			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
+				Database:   dbName,
+				Statements: []string{stmt},
+			})
+			if ddlErr == nil {
+				op.Wait(ctx)
+				fmt.Println("DATABASE MIGRATION SUCCESS:", stmt[:minInt(80, len(stmt))])
+			}
+		}
+		adminClient.Close()
+	}
 }
 
 func minInt(a, b int) int {

@@ -20,6 +20,7 @@ import (
 	"cloud.google.com/go/spanner"
 	kafkago "github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 // ── ORDER VETTING ENGINE ────────────────────────────────────────────────────
@@ -280,19 +281,24 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 	var retailerId string
 	var amount int64
 	var gateway string
+	var warehouseID string
 
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// Read current order state + verify supplier ownership
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{req.OrderID},
-			[]string{"State", "SupplierId", "RetailerId", "Amount", "PaymentGateway"})
+			[]string{"State", "SupplierId", "RetailerId", "Amount", "PaymentGateway", "WarehouseId"})
 		if err != nil {
 			return fmt.Errorf("order not found: %s", req.OrderID)
 		}
 		var currentState, orderSupplier string
 		var nullAmount spanner.NullInt64
 		var nullGateway spanner.NullString
-		if err := row.Columns(&currentState, &orderSupplier, &retailerId, &nullAmount, &nullGateway); err != nil {
+		var warehouseIDNull spanner.NullString
+		if err := row.Columns(&currentState, &orderSupplier, &retailerId, &nullAmount, &nullGateway, &warehouseIDNull); err != nil {
 			return err
+		}
+		if warehouseIDNull.Valid {
+			warehouseID = warehouseIDNull.StringVal
 		}
 		if orderSupplier != supplierId {
 			return fmt.Errorf("access denied: order belongs to another supplier")
@@ -371,13 +377,29 @@ func (s *OrderVettingService) HandleVetOrder(w http.ResponseWriter, r *http.Requ
 					return fmt.Errorf("parse supplier inventory for rejected order %s sku %s: %w", req.OrderID, skuId, err)
 				}
 				auditEntry := newReturnRestockAuditEntry(skuId, supplierId, adjustedBy, currentQty, qty)
-				if err := txn.BufferWrite([]*spanner.Mutation{
+				restockMutations := []*spanner.Mutation{
 					spanner.Update("SupplierInventory",
 						[]string{"ProductId", "QuantityAvailable", "UpdatedAt"},
 						[]interface{}{skuId, currentQty + qty, spanner.CommitTimestamp},
 					),
 					auditEntry.Mutation(),
-				}); err != nil {
+				}
+				if warehouseID != "" {
+					var currentV2 int64
+					invV2Row, invV2Err := txn.ReadRow(ctx, "SupplierInventoryV2", spanner.Key{supplierId, warehouseID, skuId}, []string{"QuantityAvailable"})
+					if invV2Err == nil {
+						if err := invV2Row.Columns(&currentV2); err != nil {
+							return fmt.Errorf("parse supplier inventory v2 for rejected order %s sku %s: %w", req.OrderID, skuId, err)
+						}
+					} else if spanner.ErrCode(invV2Err) != codes.NotFound {
+						return fmt.Errorf("read supplier inventory v2 for rejected order %s sku %s: %w", req.OrderID, skuId, invV2Err)
+					}
+					restockMutations = append(restockMutations, spanner.InsertOrUpdate("SupplierInventoryV2",
+						[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityAvailable", "UpdatedAt"},
+						[]interface{}{supplierId, warehouseID, skuId, currentV2 + qty, spanner.CommitTimestamp},
+					))
+				}
+				if err := txn.BufferWrite(restockMutations); err != nil {
 					return fmt.Errorf("buffer rejected-order inventory release for %s sku %s: %w", req.OrderID, skuId, err)
 				}
 			}

@@ -23,6 +23,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 // ── Internal Transfer Order State Machine ─────────────────────────────────────
@@ -1060,11 +1061,28 @@ func (s *TransferService) HandleWarehouseReceiveTransfer(w http.ResponseWriter, 
 				spanner.Key{item.ProductId}, []string{"QuantityAvailable"})
 			var currentQty int64
 			if stockErr == nil {
-				_ = stockRow.Columns(&currentQty)
+				if err := stockRow.Columns(&currentQty); err != nil {
+					return err
+				}
+			} else if spanner.ErrCode(stockErr) != codes.NotFound {
+				return stockErr
+			}
+			stockV2Row, stockV2Err := txn.ReadRow(ctx, "SupplierInventoryV2",
+				spanner.Key{supplierID, whID, item.ProductId}, []string{"QuantityAvailable"})
+			var currentQtyV2 int64
+			if stockV2Err == nil {
+				if err := stockV2Row.Columns(&currentQtyV2); err != nil {
+					return err
+				}
+			} else if spanner.ErrCode(stockV2Err) != codes.NotFound {
+				return stockV2Err
 			}
 			mutations = append(mutations, spanner.InsertOrUpdate("SupplierInventory",
 				[]string{"ProductId", "SupplierId", "WarehouseId", "QuantityAvailable", "UpdatedAt"},
 				[]interface{}{item.ProductId, supplierID, whID, currentQty + item.Quantity, spanner.CommitTimestamp},
+			), spanner.InsertOrUpdate("SupplierInventoryV2",
+				[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityAvailable", "UpdatedAt"},
+				[]interface{}{supplierID, whID, item.ProductId, currentQtyV2 + item.Quantity, spanner.CommitTimestamp},
 			))
 		}
 

@@ -18,6 +18,7 @@ import (
 	"cloud.google.com/go/spanner"
 	kafkago "github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
 )
 
 // ── DISPUTE & RETURNS QUEUE ─────────────────────────────────────────────────
@@ -186,11 +187,12 @@ func (s *ReturnsService) HandleResolveReturn(w http.ResponseWriter, r *http.Requ
 	var skuId string
 	var qty int64
 	var orderId string
+	var warehouseId string
 
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// Read line item + verify supplier ownership
 		liStmt := spanner.Statement{
-			SQL: `SELECT li.LineItemId, li.OrderId, li.SkuId, li.Quantity, li.Status, o.SupplierId
+			SQL: `SELECT li.LineItemId, li.OrderId, li.SkuId, li.Quantity, li.Status, o.SupplierId, o.WarehouseId
 			      FROM OrderLineItems li
 			      JOIN Orders o ON li.OrderId = o.OrderId
 			      WHERE li.LineItemId = @lid`,
@@ -204,8 +206,12 @@ func (s *ReturnsService) HandleResolveReturn(w http.ResponseWriter, r *http.Requ
 			return fmt.Errorf("line item not found: %s", req.LineItemID)
 		}
 		var liId, liStatus, liSupplierId string
-		if err := row.Columns(&liId, &orderId, &skuId, &qty, &liStatus, &liSupplierId); err != nil {
+		var warehouseIdNull spanner.NullString
+		if err := row.Columns(&liId, &orderId, &skuId, &qty, &liStatus, &liSupplierId, &warehouseIdNull); err != nil {
 			return err
+		}
+		if warehouseIdNull.Valid {
+			warehouseId = warehouseIdNull.StringVal
 		}
 		if liSupplierId != supplierId {
 			return fmt.Errorf("access denied: line item belongs to another supplier")
@@ -240,13 +246,29 @@ func (s *ReturnsService) HandleResolveReturn(w http.ResponseWriter, r *http.Requ
 				return err
 			}
 			auditEntry := newReturnRestockAuditEntry(skuId, supplierId, adjustedBy, currentQty, qty)
-			if err := txn.BufferWrite([]*spanner.Mutation{
+			restockMutations := []*spanner.Mutation{
 				spanner.Update("SupplierInventory",
 					[]string{"ProductId", "QuantityAvailable", "UpdatedAt"},
 					[]interface{}{skuId, currentQty + qty, spanner.CommitTimestamp},
 				),
 				auditEntry.Mutation(),
-			}); err != nil {
+			}
+			if warehouseId != "" {
+				var currentV2 int64
+				invV2Row, invV2Err := txn.ReadRow(ctx, "SupplierInventoryV2", spanner.Key{supplierId, warehouseId, skuId}, []string{"QuantityAvailable"})
+				if invV2Err == nil {
+					if err := invV2Row.Columns(&currentV2); err != nil {
+						return err
+					}
+				} else if spanner.ErrCode(invV2Err) != codes.NotFound {
+					return fmt.Errorf("inventory v2 read failed for SKU %s: %w", skuId, invV2Err)
+				}
+				restockMutations = append(restockMutations, spanner.InsertOrUpdate("SupplierInventoryV2",
+					[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityAvailable", "UpdatedAt"},
+					[]interface{}{supplierId, warehouseId, skuId, currentV2 + qty, spanner.CommitTimestamp},
+				))
+			}
+			if err := txn.BufferWrite(restockMutations); err != nil {
 				return err
 			}
 		}

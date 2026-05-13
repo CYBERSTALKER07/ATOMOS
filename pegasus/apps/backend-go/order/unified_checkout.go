@@ -319,6 +319,12 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		})
 	}
 
+	warehouseIDs := make([]string, 0, len(plans))
+	for _, plan := range plans {
+		warehouseIDs = append(warehouseIDs, plan.WarehouseID)
+	}
+	invoiceSettlementTarget := settlementTargetForWarehouseIDs(warehouseIDs)
+
 	// Partial-fill state: populated inside the transaction, read after commit.
 	effectiveQtyBySku := make(map[string]int64, len(req.Items))
 	shortfallBySku := make(map[string]int64, len(req.Items))
@@ -366,6 +372,48 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			currentStock[productID] = qty
 		}
 
+		type inventoryV2Key struct {
+			supplierID  string
+			warehouseID string
+			productID   string
+		}
+		v2Keys := make(map[inventoryV2Key]struct{})
+		v2Stock := make(map[inventoryV2Key]int64)
+		for _, plan := range plans {
+			if plan.WarehouseID == "" {
+				continue
+			}
+			for _, item := range plan.Items {
+				v2Keys[inventoryV2Key{supplierID: plan.SupplierID, warehouseID: plan.WarehouseID, productID: item.SkuId}] = struct{}{}
+			}
+		}
+		if len(v2Keys) > 0 {
+			v2KeySets := make([]spanner.KeySet, 0, len(v2Keys))
+			for key := range v2Keys {
+				v2KeySets = append(v2KeySets, spanner.Key{key.supplierID, key.warehouseID, key.productID})
+			}
+			invV2Iter := txn.Read(ctx, "SupplierInventoryV2",
+				spanner.KeySets(v2KeySets...),
+				[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityAvailable"},
+			)
+			defer invV2Iter.Stop()
+			for {
+				row, iterErr := invV2Iter.Next()
+				if iterErr == iterator.Done {
+					break
+				}
+				if iterErr != nil {
+					return fmt.Errorf("inventory v2 read failed: %w", iterErr)
+				}
+				var supplierID, warehouseID, productID string
+				var qty int64
+				if colErr := row.Columns(&supplierID, &warehouseID, &productID, &qty); colErr != nil {
+					return fmt.Errorf("inventory v2 row parse failed: %w", colErr)
+				}
+				v2Stock[inventoryV2Key{supplierID: supplierID, warehouseID: warehouseID, productID: productID}] = qty
+			}
+		}
+
 		// ── Partial-fill: cap each SKU to available stock ───────────────────
 		// Shortfall quantities become BACKORDERED orders in a second transaction.
 		for sku, requested := range skuQtyRequested {
@@ -392,6 +440,26 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			))
 		}
 
+		for key := range v2Keys {
+			effective := effectiveQtyBySku[key.productID]
+			if effective == 0 {
+				continue
+			}
+			baseline, ok := v2Stock[key]
+			if !ok {
+				baseline = currentStock[key.productID]
+			}
+			nextQty := baseline - effective
+			if nextQty < 0 {
+				nextQty = 0
+			}
+			mutations = append(mutations, spanner.InsertOrUpdate("SupplierInventoryV2",
+				[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityAvailable", "UpdatedAt"},
+				[]interface{}{key.supplierID, key.warehouseID, key.productID, nextQty, spanner.CommitTimestamp},
+			))
+			v2Stock[key] = nextQty
+		}
+
 		// Compute effective grand total from capped quantities
 		for _, plan := range plans {
 			for _, item := range plan.Items {
@@ -401,8 +469,8 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 
 		// 4a. INSERT MasterInvoice (uses effective total)
 		mutations = append(mutations, spanner.Insert("MasterInvoices",
-			[]string{"InvoiceId", "RetailerId", "Total", "Currency", "State", "CreatedAt"},
-			[]interface{}{invoiceID, req.RetailerID, effectiveGrandTotal, invoiceCurrency, "PENDING", spanner.CommitTimestamp},
+			[]string{"InvoiceId", "RetailerId", "Total", "Currency", "SettlementTarget", "State", "CreatedAt"},
+			[]interface{}{invoiceID, req.RetailerID, effectiveGrandTotal, invoiceCurrency, invoiceSettlementTarget, "PENDING", spanner.CommitTimestamp},
 		))
 
 		// 4b. For each supplier group: INSERT Order + INSERT N OrderLineItems (effective qty only)

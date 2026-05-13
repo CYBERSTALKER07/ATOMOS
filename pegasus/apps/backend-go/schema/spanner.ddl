@@ -141,6 +141,7 @@ CREATE TABLE MasterInvoices (
     RetailerId          STRING(36)  NOT NULL,
     Total               INT64       NOT NULL,
     Currency            STRING(3)   NOT NULL DEFAULT ('UZS'),
+    SettlementTarget    STRING(30),
     State               STRING(20)  NOT NULL,
     OrderId             STRING(36),
     GlobalPayTransactionId  STRING(64),
@@ -151,7 +152,10 @@ CREATE TABLE MasterInvoices (
     CollectionLng       FLOAT64,                 -- GPS lng at cash collection
     GeofenceDistanceM   FLOAT64,                 -- Distance to retailer at collection (meters)
     CustodyStatus       STRING(20),              -- HELD_BY_DRIVER | DEPOSITED | null for electronic
-    CreatedAt           TIMESTAMP   OPTIONS (allow_commit_timestamp=true)
+    CreatedAt           TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
+    CONSTRAINT CHK_MasterInvoiceSettlementTarget CHECK (
+        SettlementTarget IS NULL OR SettlementTarget IN ('GLOBAL_SUPPLIER', 'LOCAL_WAREHOUSE', 'MIXED_WAREHOUSE')
+    )
 ) PRIMARY KEY (InvoiceId);
 
 CREATE INDEX Idx_MasterInvoice_Retailer ON MasterInvoices(RetailerId);
@@ -445,10 +449,30 @@ CREATE TABLE SupplierInventory (
     ProductId          STRING(36) NOT NULL,
     SupplierId         STRING(36) NOT NULL,
     QuantityAvailable  INT64      NOT NULL,
+    H3Cell             STRING(15),
     UpdatedAt          TIMESTAMP  OPTIONS (allow_commit_timestamp=true)
 ) PRIMARY KEY (ProductId);
 
 CREATE INDEX Idx_Inventory_BySupplier ON SupplierInventory(SupplierId);
+CREATE INDEX Idx_Inventory_ByH3Cell ON SupplierInventory(H3Cell);
+
+-- ── INVENTORY V2 (PHASE 1: warehouse-scoped primary key) ───────────────────
+-- Canonical key model: one stock row per (SupplierId, WarehouseId, ProductId).
+CREATE TABLE SupplierInventoryV2 (
+    SupplierId         STRING(36) NOT NULL,
+    WarehouseId        STRING(36) NOT NULL,
+    ProductId          STRING(36) NOT NULL,
+    QuantityAvailable  INT64      NOT NULL,
+    SafetyStockLevel   INT64      NOT NULL DEFAULT (0),
+    MinStockLevel      INT64      NOT NULL DEFAULT (0),
+    MaxStockLevel      INT64,
+    H3Cell             STRING(15),
+    UpdatedAt          TIMESTAMP  OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (SupplierId, WarehouseId, ProductId);
+
+CREATE INDEX Idx_InventoryV2_ByWarehouse ON SupplierInventoryV2(SupplierId, WarehouseId);
+CREATE INDEX Idx_InventoryV2_ByProduct ON SupplierInventoryV2(ProductId);
+CREATE INDEX Idx_InventoryV2_ByH3Cell ON SupplierInventoryV2(H3Cell, SupplierId);
 
 -- ── INVENTORY AUDIT LOG (PHASE 8: SUPPLIER OPS) ──────────────────────────────
 -- Every stock adjustment (restock, damage write-off, correction, return) is
@@ -748,6 +772,7 @@ CREATE TABLE Warehouses (
     Lng              FLOAT64,
     H3Indexes        ARRAY<STRING(MAX)>,       -- H3 hex IDs at resolution 7 covering the service area
     CoverageRadiusKm FLOAT64     NOT NULL DEFAULT (50.0),
+    PaymentConfigId  STRING(36),
     IsActive         BOOL        NOT NULL DEFAULT (true),
     IsDefault        BOOL        NOT NULL DEFAULT (false),
     IsOnShift        BOOL        NOT NULL DEFAULT (true),
@@ -756,6 +781,7 @@ CREATE TABLE Warehouses (
 ) PRIMARY KEY (WarehouseId);
 
 CREATE INDEX Idx_Warehouses_BySupplierId ON Warehouses(SupplierId);
+CREATE INDEX Idx_Warehouses_ByPaymentConfigId ON Warehouses(PaymentConfigId);
 
 -- ── SUPPLIER USERS (RBAC: GLOBAL_ADMIN vs NODE_ADMIN) ────────────────────────
 -- Universal identity table for the supplier organization pyramid.

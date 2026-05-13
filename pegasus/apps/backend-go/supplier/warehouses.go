@@ -33,6 +33,7 @@ type CreateWarehouseRequest struct {
 	Lat              float64 `json:"lat"`
 	Lng              float64 `json:"lng"`
 	CoverageRadiusKm float64 `json:"coverage_radius_km"`
+	PaymentConfigID  string  `json:"payment_config_id,omitempty"`
 }
 
 type UpdateWarehouseRequest struct {
@@ -41,6 +42,7 @@ type UpdateWarehouseRequest struct {
 	Lat               *float64 `json:"lat,omitempty"`
 	Lng               *float64 `json:"lng,omitempty"`
 	CoverageRadiusKm  *float64 `json:"coverage_radius_km,omitempty"`
+	PaymentConfigID   *string  `json:"payment_config_id,omitempty"`
 	IsActive          *bool    `json:"is_active,omitempty"`
 	IsOnShift         *bool    `json:"is_on_shift,omitempty"`
 	OperatingSchedule *string  `json:"operating_schedule,omitempty"` // JSON: {"mon":{"open":"09:00","close":"18:00"}, ...}
@@ -57,6 +59,7 @@ type WarehouseResponse struct {
 	Lng              float64  `json:"lng"`
 	H3Indexes        []string `json:"h3_indexes"`
 	CoverageRadiusKm float64  `json:"coverage_radius_km"`
+	PaymentConfigID  string   `json:"payment_config_id,omitempty"`
 	IsActive         bool     `json:"is_active"`
 	IsDefault        bool     `json:"is_default"`
 	IsOnShift        bool     `json:"is_on_shift"`
@@ -193,7 +196,7 @@ func listWarehouses(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 
 	stmt := spanner.Statement{
 		SQL: `SELECT w.WarehouseId, w.Name, w.Address, w.Lat, w.Lng, w.H3Indexes,
-		             w.CoverageRadiusKm, w.IsActive, w.IsDefault, w.IsOnShift, w.CreatedAt,
+		             w.CoverageRadiusKm, w.PaymentConfigId, w.IsActive, w.IsDefault, w.IsOnShift, w.CreatedAt,
 		             (SELECT COUNT(*) FROM Drivers d WHERE d.SupplierId = w.SupplierId AND (d.WarehouseId = w.WarehouseId OR (d.HomeNodeType = 'WAREHOUSE' AND d.HomeNodeId = w.WarehouseId))) AS DriverCount,
 		             (SELECT COUNT(*) FROM Orders o
 		               WHERE o.WarehouseId = w.WarehouseId
@@ -227,11 +230,12 @@ func listWarehouses(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 
 		var wh WarehouseResponse
 		var lat, lng spanner.NullFloat64
+		var paymentConfigID spanner.NullString
 		var h3Indexes []string
 		var createdAt spanner.NullTime
 
 		if err := row.Columns(&wh.WarehouseId, &wh.Name, &wh.Address, &lat, &lng,
-			&h3Indexes, &wh.CoverageRadiusKm, &wh.IsActive, &wh.IsDefault, &wh.IsOnShift,
+			&h3Indexes, &wh.CoverageRadiusKm, &paymentConfigID, &wh.IsActive, &wh.IsDefault, &wh.IsOnShift,
 			&createdAt, &wh.DriverCount, &wh.OrderCount, &wh.StaffCount); err != nil {
 			log.Printf("[WAREHOUSE] Row parse error: %v", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -244,6 +248,9 @@ func listWarehouses(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 		}
 		if lng.Valid {
 			wh.Lng = lng.Float64
+		}
+		if paymentConfigID.Valid {
+			wh.PaymentConfigID = paymentConfigID.StringVal
 		}
 		wh.H3Indexes = h3Indexes
 		if createdAt.Valid {
@@ -283,7 +290,7 @@ func getWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Client
 	row, err := client.Single().ReadRow(r.Context(), "Warehouses",
 		spanner.Key{warehouseID},
 		[]string{"WarehouseId", "SupplierId", "Name", "Address", "Lat", "Lng",
-			"H3Indexes", "CoverageRadiusKm", "IsActive", "IsDefault", "IsOnShift", "CreatedAt"})
+			"H3Indexes", "CoverageRadiusKm", "PaymentConfigId", "IsActive", "IsDefault", "IsOnShift", "CreatedAt"})
 	if err != nil {
 		http.Error(w, "Warehouse not found", http.StatusNotFound)
 		return
@@ -292,11 +299,12 @@ func getWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Client
 	var wh WarehouseResponse
 	var whSupplierId string
 	var lat, lng spanner.NullFloat64
+	var paymentConfigID spanner.NullString
 	var h3Indexes []string
 	var createdAt spanner.NullTime
 
 	if err := row.Columns(&wh.WarehouseId, &whSupplierId, &wh.Name, &wh.Address, &lat, &lng,
-		&h3Indexes, &wh.CoverageRadiusKm, &wh.IsActive, &wh.IsDefault, &wh.IsOnShift, &createdAt); err != nil {
+		&h3Indexes, &wh.CoverageRadiusKm, &paymentConfigID, &wh.IsActive, &wh.IsDefault, &wh.IsOnShift, &createdAt); err != nil {
 		log.Printf("[WAREHOUSE] Parse error: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -313,6 +321,9 @@ func getWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Client
 	}
 	if lng.Valid {
 		wh.Lng = lng.Float64
+	}
+	if paymentConfigID.Valid {
+		wh.PaymentConfigID = paymentConfigID.StringVal
 	}
 	wh.H3Indexes = h3Indexes
 	if createdAt.Valid {
@@ -369,13 +380,15 @@ func createWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 
 	warehouseID := uuid.New().String()
 	h3Cells := proximity.ComputeGridCoverage(req.Lat, req.Lng, req.CoverageRadiusKm)
+	paymentConfigID := strings.TrimSpace(req.PaymentConfigID)
+	paymentConfigRef := spanner.NullString{StringVal: paymentConfigID, Valid: paymentConfigID != ""}
 
 	_, err := client.ReadWriteTransaction(r.Context(), func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		m := spanner.Insert("Warehouses",
 			[]string{"WarehouseId", "SupplierId", "Name", "Address", "Lat", "Lng",
-				"H3Indexes", "CoverageRadiusKm", "IsActive", "IsDefault", "IsOnShift", "CreatedAt"},
+				"H3Indexes", "CoverageRadiusKm", "PaymentConfigId", "IsActive", "IsDefault", "IsOnShift", "CreatedAt"},
 			[]interface{}{warehouseID, supplierID, req.Name, req.Address, req.Lat, req.Lng,
-				h3Cells, req.CoverageRadiusKm, true, false, true, spanner.CommitTimestamp},
+				h3Cells, req.CoverageRadiusKm, paymentConfigRef, true, false, true, spanner.CommitTimestamp},
 		)
 		if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
 			return err
@@ -437,6 +450,7 @@ func createWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		Lng:              req.Lng,
 		H3Indexes:        h3Cells,
 		CoverageRadiusKm: req.CoverageRadiusKm,
+		PaymentConfigID:  paymentConfigID,
 		IsActive:         true,
 		IsDefault:        false,
 		IsOnShift:        true,
@@ -505,7 +519,7 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 
 		// Verify ownership — also read current status fields for change detection
 		row, err := txn.ReadRow(ctx, "Warehouses", spanner.Key{warehouseID},
-			[]string{"SupplierId", "Name", "Lat", "Lng", "CoverageRadiusKm", "H3Indexes", "IsActive", "IsOnShift"})
+			[]string{"SupplierId", "Name", "Lat", "Lng", "CoverageRadiusKm", "PaymentConfigId", "H3Indexes", "IsActive", "IsOnShift"})
 		if err != nil {
 			return fmt.Errorf("warehouse not found: %w", err)
 		}
@@ -513,12 +527,14 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		var existingName string
 		var existingLat, existingLng spanner.NullFloat64
 		var existingRadius float64
+		var existingPaymentConfigID spanner.NullString
 		var existingH3Cells []string
 		var curActive bool
 		var curOnShift spanner.NullBool
-		if err := row.Columns(&existingSupplierId, &existingName, &existingLat, &existingLng, &existingRadius, &existingH3Cells, &curActive, &curOnShift); err != nil {
+		if err := row.Columns(&existingSupplierId, &existingName, &existingLat, &existingLng, &existingRadius, &existingPaymentConfigID, &existingH3Cells, &curActive, &curOnShift); err != nil {
 			return fmt.Errorf("scan warehouse %s: %w", warehouseID, err)
 		}
+		_ = existingPaymentConfigID
 		if existingSupplierId != supplierID {
 			return errWarehouseAccessDenied
 		}
@@ -550,6 +566,11 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		if req.CoverageRadiusKm != nil {
 			cols = append(cols, "CoverageRadiusKm")
 			vals = append(vals, *req.CoverageRadiusKm)
+		}
+		if req.PaymentConfigID != nil {
+			trimmed := strings.TrimSpace(*req.PaymentConfigID)
+			cols = append(cols, "PaymentConfigId")
+			vals = append(vals, spanner.NullString{StringVal: trimmed, Valid: trimmed != ""})
 		}
 		if req.IsActive != nil {
 			cols = append(cols, "IsActive")

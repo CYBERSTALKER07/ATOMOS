@@ -2487,7 +2487,7 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderId},
-			[]string{"State", "QRValidatedAt", "RetailerId", "Amount", "PaymentGateway", "SupplierId", "Version"})
+			[]string{"State", "QRValidatedAt", "RetailerId", "Amount", "PaymentGateway", "SupplierId", "WarehouseId", "Version"})
 		if err != nil {
 			return fmt.Errorf("order %s not found: %w", orderId, err)
 		}
@@ -2496,12 +2496,17 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 		var qrValidatedAt spanner.NullTime
 		var gateway spanner.NullString
 		var supplierIdNull spanner.NullString
+		var warehouseIdNull spanner.NullString
 		var version int64
-		if err := row.Columns(&state, &qrValidatedAt, &resp.RetailerID, &resp.Amount, &gateway, &supplierIdNull, &version); err != nil {
+		if err := row.Columns(&state, &qrValidatedAt, &resp.RetailerID, &resp.Amount, &gateway, &supplierIdNull, &warehouseIdNull, &version); err != nil {
 			return err
 		}
 		if supplierIdNull.Valid {
 			supplierId = supplierIdNull.StringVal
+		}
+		warehouseID := ""
+		if warehouseIdNull.Valid {
+			warehouseID = warehouseIdNull.StringVal
 		}
 
 		if state != "ARRIVED" {
@@ -2557,8 +2562,8 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 			resp.InvoiceID = invoiceID
 			if err := txn.BufferWrite([]*spanner.Mutation{
 				spanner.Insert("MasterInvoices",
-					[]string{"InvoiceId", "RetailerId", "Total", "State", "OrderId", "CreatedAt"},
-					[]interface{}{invoiceID, resp.RetailerID, resp.Amount, "PENDING", orderId, spanner.CommitTimestamp},
+					[]string{"InvoiceId", "RetailerId", "Total", "SettlementTarget", "State", "OrderId", "CreatedAt"},
+					[]interface{}{invoiceID, resp.RetailerID, resp.Amount, settlementTargetForWarehouseID(warehouseID), "PENDING", orderId, spanner.CommitTimestamp},
 				),
 			}); err != nil {
 				return fmt.Errorf("create master invoice: %w", err)
@@ -2836,25 +2841,30 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 	var resp CardCheckoutResponse
 	var retailerId string
 	var supplierId string
+	var warehouseID string
 	orderCurrency := "UZS"
 
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderId},
-			[]string{"State", "RetailerId", "SupplierId", "Amount", "Currency", "PaymentGateway", "Version"})
+			[]string{"State", "RetailerId", "SupplierId", "WarehouseId", "Amount", "Currency", "PaymentGateway", "Version"})
 		if err != nil {
 			return fmt.Errorf("order %s not found: %w", orderId, err)
 		}
 
 		var state string
 		var supplierIdNull spanner.NullString
+		var warehouseIdNull spanner.NullString
 		var currencyNull spanner.NullString
 		var existingGateway spanner.NullString
 		var version int64
-		if err := row.Columns(&state, &retailerId, &supplierIdNull, &resp.Amount, &currencyNull, &existingGateway, &version); err != nil {
+		if err := row.Columns(&state, &retailerId, &supplierIdNull, &warehouseIdNull, &resp.Amount, &currencyNull, &existingGateway, &version); err != nil {
 			return err
 		}
 		if supplierIdNull.Valid {
 			supplierId = supplierIdNull.StringVal
+		}
+		if warehouseIdNull.Valid {
+			warehouseID = warehouseIdNull.StringVal
 		}
 		if currencyNull.Valid {
 			if normalizedCurrency := strings.ToUpper(strings.TrimSpace(currencyNull.StringVal)); normalizedCurrency != "" {
@@ -2903,8 +2913,8 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		resp.InvoiceID = invoiceID
 		txn.BufferWrite([]*spanner.Mutation{
 			spanner.Insert("MasterInvoices",
-				[]string{"InvoiceId", "RetailerId", "Total", "State", "OrderId", "PaymentMode", "CreatedAt"},
-				[]interface{}{invoiceID, retailerId, resp.Amount, "PENDING", orderId, gateway, spanner.CommitTimestamp},
+				[]string{"InvoiceId", "RetailerId", "Total", "SettlementTarget", "State", "OrderId", "PaymentMode", "CreatedAt"},
+				[]interface{}{invoiceID, retailerId, resp.Amount, settlementTargetForWarehouseID(warehouseID), "PENDING", orderId, gateway, spanner.CommitTimestamp},
 			),
 		})
 
@@ -3171,19 +3181,20 @@ type CashCheckoutResponse struct {
 // Creates a cash-custody MasterInvoice record for reconciliation.
 func (s *OrderService) CashCheckout(ctx context.Context, orderId string) (*CashCheckoutResponse, error) {
 	var resp CashCheckoutResponse
-	var retailerId, supplierID string
+	var retailerId, supplierID, warehouseID string
 
 	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderId},
-			[]string{"State", "RetailerId", "Amount", "DriverId", "Version", "SupplierId"})
+			[]string{"State", "RetailerId", "Amount", "DriverId", "Version", "SupplierId", "WarehouseId"})
 		if err != nil {
 			return fmt.Errorf("order %s not found: %w", orderId, err)
 		}
 
 		var state string
 		var driverId, sid spanner.NullString
+		var warehouseIdNull spanner.NullString
 		var version int64
-		if err := row.Columns(&state, &retailerId, &resp.Amount, &driverId, &version, &sid); err != nil {
+		if err := row.Columns(&state, &retailerId, &resp.Amount, &driverId, &version, &sid, &warehouseIdNull); err != nil {
 			return err
 		}
 
@@ -3193,6 +3204,9 @@ func (s *OrderService) CashCheckout(ctx context.Context, orderId string) (*CashC
 		}
 		if sid.Valid {
 			supplierID = sid.StringVal
+		}
+		if warehouseIdNull.Valid {
+			warehouseID = warehouseIdNull.StringVal
 		}
 
 		if state == "PENDING_CASH_COLLECTION" {
@@ -3227,8 +3241,8 @@ func (s *OrderService) CashCheckout(ctx context.Context, orderId string) (*CashC
 		invoiceID := fmt.Sprintf("INV-%s", GenerateSecureToken())
 		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.Insert("MasterInvoices",
-				[]string{"InvoiceId", "RetailerId", "Total", "State", "OrderId", "PaymentMode", "CustodyStatus", "CreatedAt"},
-				[]interface{}{invoiceID, retailerId, resp.Amount, "PENDING", orderId, "CASH", "PENDING", spanner.CommitTimestamp},
+				[]string{"InvoiceId", "RetailerId", "Total", "SettlementTarget", "State", "OrderId", "PaymentMode", "CustodyStatus", "CreatedAt"},
+				[]interface{}{invoiceID, retailerId, resp.Amount, settlementTargetForWarehouseID(warehouseID), "PENDING", orderId, "CASH", "PENDING", spanner.CommitTimestamp},
 			),
 		}); err != nil {
 			return fmt.Errorf("create cash custody invoice: %w", err)

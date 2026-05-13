@@ -15,6 +15,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	kafkago "github.com/segmentio/kafka-go"
+	"google.golang.org/grpc/codes"
 )
 
 // ── Force-Receive — DLQ Reconciliation Handler ────────────────────────────────
@@ -146,23 +147,37 @@ func (s *ForceReceiveService) HandleForceReceive(w http.ResponseWriter, r *http.
 		// Update inventory for each item
 		for _, item := range req.Items {
 			invRow, err := txn.ReadRow(ctx, "SupplierInventory",
-				spanner.Key{supplierID, item.ProductId},
+				spanner.Key{item.ProductId},
 				[]string{"QuantityAvailable"})
-			if err != nil {
-				// Inventory row doesn't exist — skip (warehouse manager should add it separately)
-				log.Printf("[FORCE_RECEIVE] No inventory row for %s/%s — skipping stock update", supplierID, item.ProductId)
-				continue
+			if err != nil && spanner.ErrCode(err) != codes.NotFound {
+				return err
 			}
 
 			var currentQty int64
-			if err := invRow.Columns(&currentQty); err != nil {
-				continue
+			if err == nil {
+				if err := invRow.Columns(&currentQty); err != nil {
+					return err
+				}
+			}
+
+			var currentQtyV2 int64
+			invV2Row, invV2Err := txn.ReadRow(ctx, "SupplierInventoryV2", spanner.Key{supplierID, whID, item.ProductId}, []string{"QuantityAvailable"})
+			if invV2Err == nil {
+				if err := invV2Row.Columns(&currentQtyV2); err != nil {
+					return err
+				}
+			} else if spanner.ErrCode(invV2Err) != codes.NotFound {
+				return invV2Err
 			}
 
 			if err := txn.BufferWrite([]*spanner.Mutation{
-				spanner.Update("SupplierInventory",
-					[]string{"SupplierId", "ProductId", "QuantityAvailable"},
-					[]interface{}{supplierID, item.ProductId, currentQty + item.Quantity},
+				spanner.InsertOrUpdate("SupplierInventory",
+					[]string{"ProductId", "SupplierId", "WarehouseId", "QuantityAvailable", "UpdatedAt"},
+					[]interface{}{item.ProductId, supplierID, whID, currentQty + item.Quantity, spanner.CommitTimestamp},
+				),
+				spanner.InsertOrUpdate("SupplierInventoryV2",
+					[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityAvailable", "UpdatedAt"},
+					[]interface{}{supplierID, whID, item.ProductId, currentQtyV2 + item.Quantity, spanner.CommitTimestamp},
 				),
 			}); err != nil {
 				return err

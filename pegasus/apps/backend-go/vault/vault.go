@@ -137,6 +137,7 @@ func decryptWithKey(key, ciphertext []byte) ([]byte, error) {
 type GatewayConfig struct {
 	ConfigID    string    `json:"config_id"`
 	SupplierId  string    `json:"supplier_id"`
+	WarehouseId string    `json:"warehouse_id,omitempty"`
 	GatewayName string    `json:"gateway_name"`
 	MerchantId  string    `json:"merchant_id"`
 	ServiceId   string    `json:"service_id,omitempty"`   // Cash only
@@ -386,12 +387,19 @@ func (s *Service) DeactivateConfig(ctx context.Context, supplierId, configId str
 // INTERNAL ONLY — never expose the result to HTTP responses.
 func (s *Service) GetDecryptedConfig(ctx context.Context, supplierId, gatewayName string) (*GatewayConfig, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT ConfigId, MerchantId, ServiceId, SecretKey, IsActive, CreatedAt, RecipientId
+		SQL: `SELECT ConfigId, MerchantId, ServiceId, SecretKey, IsActive, CreatedAt, RecipientId, WarehouseId
 		      FROM SupplierPaymentConfigs
 		      WHERE SupplierId = @sid AND GatewayName = @gw AND IsActive = TRUE
+		      ORDER BY CASE WHEN WarehouseId IS NULL THEN 0 ELSE 1 END,
+		               UpdatedAt DESC,
+		               CreatedAt DESC
 		      LIMIT 1`,
 		Params: map[string]interface{}{"sid": supplierId, "gw": gatewayName},
 	}
+	return s.getDecryptedConfigFromStatement(ctx, stmt, supplierId, gatewayName)
+}
+
+func (s *Service) getDecryptedConfigFromStatement(ctx context.Context, stmt spanner.Statement, supplierId, gatewayName string) (*GatewayConfig, error) {
 	iter := s.Spanner.Single().Query(ctx, stmt)
 	defer iter.Stop()
 
@@ -407,7 +415,8 @@ func (s *Service) GetDecryptedConfig(ctx context.Context, supplierId, gatewayNam
 	var encryptedKey []byte
 	var serviceId spanner.NullString
 	var recipientId spanner.NullString
-	if err := row.Columns(&cfg.ConfigID, &cfg.MerchantId, &serviceId, &encryptedKey, &cfg.IsActive, &cfg.CreatedAt, &recipientId); err != nil {
+	var warehouseId spanner.NullString
+	if err := row.Columns(&cfg.ConfigID, &cfg.MerchantId, &serviceId, &encryptedKey, &cfg.IsActive, &cfg.CreatedAt, &recipientId, &warehouseId); err != nil {
 		return nil, err
 	}
 	if serviceId.Valid {
@@ -415,6 +424,9 @@ func (s *Service) GetDecryptedConfig(ctx context.Context, supplierId, gatewayNam
 	}
 	if recipientId.Valid {
 		cfg.RecipientId = recipientId.StringVal
+	}
+	if warehouseId.Valid {
+		cfg.WarehouseId = warehouseId.StringVal
 	}
 
 	decrypted, err := Decrypt(encryptedKey)
@@ -429,6 +441,49 @@ func (s *Service) GetDecryptedConfig(ctx context.Context, supplierId, gatewayNam
 	cfg.GatewayName = gatewayName
 	cfg.SecretKey = string(decrypted)
 	return &cfg, nil
+}
+
+func (s *Service) getDecryptedConfigByConfigID(ctx context.Context, supplierId, gatewayName, configID string) (*GatewayConfig, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT ConfigId, MerchantId, ServiceId, SecretKey, IsActive, CreatedAt, RecipientId, WarehouseId
+		      FROM SupplierPaymentConfigs
+		      WHERE ConfigId = @cid AND SupplierId = @sid AND GatewayName = @gw AND IsActive = TRUE
+		      LIMIT 1`,
+		Params: map[string]interface{}{"cid": configID, "sid": supplierId, "gw": gatewayName},
+	}
+	return s.getDecryptedConfigFromStatement(ctx, stmt, supplierId, gatewayName)
+}
+
+func (s *Service) getDecryptedConfigForWarehouse(ctx context.Context, supplierId, gatewayName, warehouseID string) (*GatewayConfig, error) {
+	trimmedWarehouseID := strings.TrimSpace(warehouseID)
+	if trimmedWarehouseID == "" {
+		return s.GetDecryptedConfig(ctx, supplierId, gatewayName)
+	}
+
+	warehouseRow, warehouseErr := s.Spanner.Single().ReadRow(ctx, "Warehouses", spanner.Key{trimmedWarehouseID}, []string{"SupplierId", "PaymentConfigId"})
+	if warehouseErr == nil {
+		var ownerSupplierID string
+		var paymentConfigID spanner.NullString
+		if err := warehouseRow.Columns(&ownerSupplierID, &paymentConfigID); err == nil && ownerSupplierID == supplierId && paymentConfigID.Valid {
+			if cfg, err := s.getDecryptedConfigByConfigID(ctx, supplierId, gatewayName, paymentConfigID.StringVal); err == nil {
+				return cfg, nil
+			}
+		}
+	}
+
+	warehouseScopedStmt := spanner.Statement{
+		SQL: `SELECT ConfigId, MerchantId, ServiceId, SecretKey, IsActive, CreatedAt, RecipientId, WarehouseId
+		      FROM SupplierPaymentConfigs
+		      WHERE SupplierId = @sid AND GatewayName = @gw AND WarehouseId = @wid AND IsActive = TRUE
+		      ORDER BY UpdatedAt DESC, CreatedAt DESC
+		      LIMIT 1`,
+		Params: map[string]interface{}{"sid": supplierId, "gw": gatewayName, "wid": trimmedWarehouseID},
+	}
+	if cfg, err := s.getDecryptedConfigFromStatement(ctx, warehouseScopedStmt, supplierId, gatewayName); err == nil {
+		return cfg, nil
+	}
+
+	return s.GetDecryptedConfig(ctx, supplierId, gatewayName)
 }
 
 // logDecryptAccess writes a decrypt audit event to the AuditLog table.
@@ -455,16 +510,20 @@ func logDecryptAccess(client *spanner.Client, supplierID, gatewayName, configID 
 // GetDecryptedConfigByOrder resolves supplier credentials from an order ID.
 // Path: OrderId -> Orders.SupplierId -> SupplierPaymentConfigs
 func (s *Service) GetDecryptedConfigByOrder(ctx context.Context, orderId, gatewayName string) (*GatewayConfig, error) {
-	row, err := s.Spanner.Single().ReadRow(ctx, "Orders", spanner.Key{orderId}, []string{"SupplierId"})
+	row, err := s.Spanner.Single().ReadRow(ctx, "Orders", spanner.Key{orderId}, []string{"SupplierId", "WarehouseId"})
 	if err != nil {
 		return nil, fmt.Errorf("order %s not found: %w", orderId, err)
 	}
 	var supplierId spanner.NullString
-	if err := row.Columns(&supplierId); err != nil {
+	var warehouseId spanner.NullString
+	if err := row.Columns(&supplierId, &warehouseId); err != nil {
 		return nil, err
 	}
 	if !supplierId.Valid || supplierId.StringVal == "" {
 		return nil, fmt.Errorf("order %s has no supplier assignment", orderId)
+	}
+	if warehouseId.Valid && strings.TrimSpace(warehouseId.StringVal) != "" {
+		return s.getDecryptedConfigForWarehouse(ctx, supplierId.StringVal, gatewayName, warehouseId.StringVal)
 	}
 	return s.GetDecryptedConfig(ctx, supplierId.StringVal, gatewayName)
 }

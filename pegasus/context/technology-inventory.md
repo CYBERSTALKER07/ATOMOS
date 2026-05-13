@@ -43,6 +43,16 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 
 ## Runtime Contract Surfaces
 
+- InventoryV2 runtime activation: `pegasus/apps/backend-go/{supplier/inventory.go,warehouse/inventory.go,order/unified_checkout.go,supplier/{reconcile.go,returns.go,vetting.go},factory/{transfers.go,force_receive.go}}`
+	- Supplier and warehouse inventory reads now prefer warehouse-scoped `SupplierInventoryV2` quantities with legacy `SupplierInventory` fallback.
+	- Unified checkout mirrors effective stock decrements into `SupplierInventoryV2` for warehouse-assigned plans while retaining existing `SupplierInventory` locking path.
+	- Supplier/factory restock and receive flows now mirror additive stock restoration/increment mutations into `SupplierInventoryV2` when order or transfer warehouse context is present.
+
+- Settlement-locality bootstrap: `pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,order/{unified_checkout.go,service.go},supplier/warehouses.go,warehouse/payment_config.go,vault/vault.go}`
+	- Adds additive `MasterInvoices.SettlementTarget`, `Warehouses.PaymentConfigId`, and `SupplierInventoryV2` (`SupplierId,WarehouseId,ProductId` + `H3Cell`) schema surfaces.
+	- Unified/card/cash checkout invoice writes now persist settlement target (`GLOBAL_SUPPLIER`/`LOCAL_WAREHOUSE`/`MIXED_WAREHOUSE`).
+	- Warehouse CRUD now carries `payment_config_id`, warehouse ops payment-config reads prefer warehouse-scoped entries, and vault order credential resolution now applies precedence `Warehouses.PaymentConfigId -> SupplierPaymentConfigs.WarehouseId -> supplier default`.
+
 - Replenishment event notification consumer coverage: `pegasus/apps/backend-go/kafka/notification_dispatcher.go`
 	- Consumes `REPLENISHMENT_LOCK_ACQUIRED`, `REPLENISHMENT_LOCK_RELEASED`, `STOCK_THRESHOLD_BREACH`, and `LOOK_AHEAD_COMPLETED`
 	- Producer coverage is complete: lock events in `pegasus/apps/backend-go/factory/replenishment_lock.go`, stock-threshold events in `pegasus/apps/backend-go/factory/pull_matrix.go`, and look-ahead completion events in `pegasus/apps/backend-go/factory/look_ahead.go`

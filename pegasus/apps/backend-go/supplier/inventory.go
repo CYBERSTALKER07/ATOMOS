@@ -154,18 +154,40 @@ func handleListInventory(w http.ResponseWriter, r *http.Request, client *spanner
 		}
 	}
 
-	sql := `SELECT sp.SkuId, sp.Name, sp.SupplierId,
-		             COALESCE(si.QuantityAvailable, 0) AS QuantityAvailable,
-		             si.UpdatedAt
-		      FROM SupplierProducts sp
-		      LEFT JOIN SupplierInventory si ON si.ProductId = sp.SkuId
-		      WHERE sp.SupplierId = @sid`
+	warehouseID := strings.TrimSpace(auth.EffectiveWarehouseID(r.Context()))
 	params := map[string]interface{}{"sid": supplierId}
-
-	// Apply warehouse scope if present
-	if whID := auth.EffectiveWarehouseID(r.Context()); whID != "" {
-		sql += " AND si.WarehouseId = @warehouseId"
-		params["warehouseId"] = whID
+	var sql string
+	if warehouseID != "" {
+		params["warehouseId"] = warehouseID
+		sql = `SELECT sp.SkuId, sp.Name, sp.SupplierId,
+		             COALESCE(si2.QuantityAvailable, si.QuantityAvailable, 0) AS QuantityAvailable,
+		             COALESCE(si2.UpdatedAt, si.UpdatedAt)
+		      FROM SupplierProducts sp
+		      LEFT JOIN SupplierInventoryV2 si2
+		        ON si2.SupplierId = @sid
+		       AND si2.WarehouseId = @warehouseId
+		       AND si2.ProductId = sp.SkuId
+		      LEFT JOIN SupplierInventory si
+		        ON si.SupplierId = @sid
+		       AND si.ProductId = sp.SkuId
+		      WHERE sp.SupplierId = @sid`
+	} else {
+		sql = `SELECT sp.SkuId, sp.Name, sp.SupplierId,
+		             COALESCE(si2.TotalQty, si.QuantityAvailable, 0) AS QuantityAvailable,
+		             COALESCE(si2.LastUpdated, si.UpdatedAt)
+		      FROM SupplierProducts sp
+		      LEFT JOIN (
+		        SELECT ProductId,
+		               SUM(QuantityAvailable) AS TotalQty,
+		               MAX(UpdatedAt) AS LastUpdated
+		        FROM SupplierInventoryV2
+		        WHERE SupplierId = @sid
+		        GROUP BY ProductId
+		      ) si2 ON si2.ProductId = sp.SkuId
+		      LEFT JOIN SupplierInventory si
+		        ON si.SupplierId = @sid
+		       AND si.ProductId = sp.SkuId
+		      WHERE sp.SupplierId = @sid`
 	}
 
 	sql += fmt.Sprintf(" ORDER BY sp.Name LIMIT %d OFFSET %d", limit+1, offset)
@@ -247,6 +269,7 @@ func handleAdjustInventory(w http.ResponseWriter, r *http.Request, client *spann
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
+	warehouseID := strings.TrimSpace(auth.EffectiveWarehouseID(r.Context()))
 
 	var previousQty, newQty int64
 
@@ -268,13 +291,26 @@ func handleAdjustInventory(w http.ResponseWriter, r *http.Request, client *spann
 		}
 
 		// Read existing inventory (may not exist for legacy products)
+		var previousQtyLegacy int64
 		invRow, invErr := txn.ReadRow(ctx, "SupplierInventory", spanner.Key{targetSKU}, []string{"QuantityAvailable"})
 		if invErr == nil {
-			if err := invRow.Columns(&previousQty); err != nil {
+			if err := invRow.Columns(&previousQtyLegacy); err != nil {
 				return fmt.Errorf("parse inventory %s quantity: %w", targetSKU, err)
 			}
 		} else if spanner.ErrCode(invErr) != codes.NotFound {
 			return fmt.Errorf("read inventory %s: %w", targetSKU, invErr)
+		}
+
+		previousQty = previousQtyLegacy
+		if warehouseID != "" {
+			invV2Row, invV2Err := txn.ReadRow(ctx, "SupplierInventoryV2", spanner.Key{supplierId, warehouseID, targetSKU}, []string{"QuantityAvailable"})
+			if invV2Err == nil {
+				if err := invV2Row.Columns(&previousQty); err != nil {
+					return fmt.Errorf("parse inventory v2 %s quantity: %w", targetSKU, err)
+				}
+			} else if spanner.ErrCode(invV2Err) != codes.NotFound {
+				return fmt.Errorf("read inventory v2 %s: %w", targetSKU, invV2Err)
+			}
 		}
 
 		newQty = previousQty + req.Adjustment
@@ -282,22 +318,40 @@ func handleAdjustInventory(w http.ResponseWriter, r *http.Request, client *spann
 			return errInventoryInsufficientStock{current: previousQty, adjustment: req.Adjustment}
 		}
 
+		newQtyLegacy := previousQtyLegacy + req.Adjustment
+		if newQtyLegacy < 0 {
+			newQtyLegacy = 0
+		}
+
 		// Upsert inventory (InsertOrUpdate creates missing rows)
-		if err := txn.BufferWrite([]*spanner.Mutation{
+		inventoryMutations := []*spanner.Mutation{
 			spanner.InsertOrUpdate("SupplierInventory",
 				[]string{"ProductId", "SupplierId", "QuantityAvailable", "UpdatedAt"},
-				[]interface{}{targetSKU, supplierId, newQty, spanner.CommitTimestamp},
+				[]interface{}{targetSKU, supplierId, newQtyLegacy, spanner.CommitTimestamp},
 			),
-		}); err != nil {
+		}
+		if warehouseID != "" {
+			inventoryMutations = append(inventoryMutations, spanner.InsertOrUpdate("SupplierInventoryV2",
+				[]string{"SupplierId", "WarehouseId", "ProductId", "QuantityAvailable", "UpdatedAt"},
+				[]interface{}{supplierId, warehouseID, targetSKU, newQty, spanner.CommitTimestamp},
+			))
+		}
+		if err := txn.BufferWrite(inventoryMutations); err != nil {
 			return fmt.Errorf("buffer inventory %s update: %w", targetSKU, err)
 		}
 
 		// Write audit log
 		auditId := fmt.Sprintf("AUD-%s", uuid.New().String()[:8])
+		auditCols := []string{"AuditId", "ProductId", "SupplierId", "AdjustedBy", "PreviousQty", "NewQty", "Delta", "Reason", "AdjustedAt"}
+		auditVals := []interface{}{auditId, targetSKU, supplierId, supplierId, previousQty, newQty, req.Adjustment, req.Reason, spanner.CommitTimestamp}
+		if warehouseID != "" {
+			auditCols = append(auditCols, "WarehouseId")
+			auditVals = append(auditVals, warehouseID)
+		}
 		if err := txn.BufferWrite([]*spanner.Mutation{
 			spanner.Insert("InventoryAuditLog",
-				[]string{"AuditId", "ProductId", "SupplierId", "AdjustedBy", "PreviousQty", "NewQty", "Delta", "Reason", "AdjustedAt"},
-				[]interface{}{auditId, targetSKU, supplierId, supplierId, previousQty, newQty, req.Adjustment, req.Reason, spanner.CommitTimestamp},
+				auditCols,
+				auditVals,
 			),
 		}); err != nil {
 			return fmt.Errorf("buffer inventory %s audit: %w", targetSKU, err)

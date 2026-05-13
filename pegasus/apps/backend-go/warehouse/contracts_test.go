@@ -114,7 +114,7 @@ func TestOpsPaymentConfigQueryTargetsSupplierConfigs(t *testing.T) {
 
 func TestBuildOpsPaymentGatewayItem(t *testing.T) {
 	updatedAt := time.Date(2026, time.May, 9, 7, 30, 0, 0, time.UTC)
-	item := buildOpsPaymentGatewayItem("cfg-1", "GLOBAL_PAY", "merchant-1", "service-7", true, updatedAt)
+	item := buildOpsPaymentGatewayItem("cfg-1", "GLOBAL_PAY", "merchant-1", "service-7", "wh-1", true, updatedAt)
 
 	if item.ConfigID != "cfg-1" {
 		t.Fatalf("ConfigID = %q, want cfg-1", item.ConfigID)
@@ -127,6 +127,12 @@ func TestBuildOpsPaymentGatewayItem(t *testing.T) {
 	}
 	if item.Provider != "GLOBAL_PAY" {
 		t.Fatalf("Provider = %q, want GLOBAL_PAY", item.Provider)
+	}
+	if item.ConfigScope != "WAREHOUSE" {
+		t.Fatalf("ConfigScope = %q, want WAREHOUSE", item.ConfigScope)
+	}
+	if item.WarehouseID != "wh-1" {
+		t.Fatalf("WarehouseID = %q, want wh-1", item.WarehouseID)
 	}
 	if item.Mode != "MANUAL_ONLY" {
 		t.Fatalf("Mode = %q, want MANUAL_ONLY", item.Mode)

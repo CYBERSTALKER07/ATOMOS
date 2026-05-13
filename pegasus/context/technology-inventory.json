@@ -120,12 +120,63 @@
         "PATCH accepts either status or state request keys for legacy compatibility.",
         "Unified checkout emits ORDER_VALIDATION_FAILED, PAYMENT_CLEARED, and ORDER_FINALIZED to kafka.TopicMain through transactional outbox, replacing the stale topic.orders.v1 path.",
         "Unified checkout now resolves supplier-effective currency via countrycfg.Service and writes currency-consistent MasterInvoices, Orders, OrderLineItems, and checkout outbox payloads, with a temporary 422 guard for mixed-supplier-currency invoices.",
+        "MasterInvoices writes now persist additive SettlementTarget values (GLOBAL_SUPPLIER, LOCAL_WAREHOUSE, MIXED_WAREHOUSE) across unified, card, and cash checkout invoice flows.",
+        "Unified checkout now mirrors effective stock decrements into SupplierInventoryV2 for warehouse-assigned plans while preserving SupplierInventory lock semantics.",
         "payment/session.go now honors CreateSessionRequest.Currency and preserves prior session currency across RetryPaymentSession gateway switches.",
         "payment/provider.go now centralizes gateway selection through NewProviderClient with normalized GLOBAL_PAY, ADYEN, and CASH routing; ADYEN resolves to payment/adyen.go (official adyen-go-api-library/v21 Payment Links hosted checkout adapter).",
         "payment/session.go create/attempt/bind/retry paths now normalize gateway values through NewProviderClient, checkout URL generators fail closed for unsupported/unavailable providers, and payment/webhooks.go validates session gateway compatibility through the provider resolver before Global Pay settlement.",
         "order/service.go now initializes Adyen hosted checkout links and binds provider references through SessionService.BindProviderCheckout; direct Adyen charge/refund operations remain explicitly unsupported via ErrAdyenDirectOperationUnsupported.",
         "payment/refund.go and paymentroutes/routes.go now accept additive amount+currency compatibility input (while preserving amount_uzs), and payment/chargeback.go writes LedgerAnomalies currency from runtime input/session currency instead of hardcoded UZS.",
         "Treasury/anomaly read models now expose additive currency compatibility: admin reconciliation rows return currency with UZS fallback, treasury cash-holdings report/rows expose default UZS currency, and admin-portal reconciliation/treasury pages consume currency while preserving legacy amount_uzs request compatibility."
+      ]
+    },
+    {
+      "name": "Settlement-locality and vault precedence substrate",
+      "path": "MasterInvoices.SettlementTarget + Warehouses.PaymentConfigId + SupplierInventoryV2 + vault order resolution",
+      "owner": "pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,order/{unified_checkout.go,service.go},supplier/warehouses.go,warehouse/payment_config.go,vault/vault.go}",
+      "methods": [
+        "DDL ADD COLUMN MasterInvoices.SettlementTarget",
+        "DDL ADD COLUMN Warehouses.PaymentConfigId",
+        "DDL CREATE TABLE SupplierInventoryV2 (SupplierId,WarehouseId,ProductId,H3Cell)",
+        "RWTxn unified/card/cash checkout invoice settlement-target writes",
+        "GET/POST/PUT /v1/supplier/warehouses* payment_config_id compatibility",
+        "GET /v1/warehouse/ops/payment-config effective warehouse-first gateway config",
+        "vault.GetDecryptedConfigByOrder warehouse-local precedence"
+      ],
+      "consumers": [
+        "backend checkout and invoice settlement flows",
+        "supplier warehouse CRUD consumers",
+        "warehouse ops payment-config read consumers",
+        "vault-backed provider credential resolution for order payment operations"
+      ],
+      "notes": [
+        "SettlementTarget values are additive and constrained to GLOBAL_SUPPLIER, LOCAL_WAREHOUSE, and MIXED_WAREHOUSE.",
+        "Warehouse payment config precedence now resolves in order: Warehouses.PaymentConfigId -> SupplierPaymentConfigs.WarehouseId -> supplier default.",
+        "SupplierInventoryV2 and SupplierInventory.H3Cell were added as schema substrate for upcoming warehouse-local inventory/runtime routing integration."
+      ]
+    },
+    {
+      "name": "InventoryV2 runtime dual-read-write activation",
+      "path": "SupplierInventoryV2 quantity mirroring across inventory, checkout, and restock paths",
+      "owner": "pegasus/apps/backend-go/{supplier/inventory.go,warehouse/inventory.go,order/unified_checkout.go,supplier/{reconcile.go,returns.go,vetting.go},factory/{transfers.go,force_receive.go}}",
+      "methods": [
+        "GET /v1/supplier/inventory warehouse-scoped V2-first quantity reads",
+        "PATCH /v1/supplier/inventory dual-write SupplierInventory + SupplierInventoryV2 when warehouse scope exists",
+        "GET /v1/warehouse/ops/inventory V2-first quantity reads",
+        "PATCH /v1/warehouse/ops/inventory quantity dual-write to SupplierInventoryV2",
+        "RWTxn unified checkout decrement mirror into SupplierInventoryV2",
+        "RWTxn restock/receive mirror updates in supplier reconcile/returns/vetting and factory transfer receive paths"
+      ],
+      "consumers": [
+        "supplier inventory API consumers",
+        "warehouse ops inventory API consumers",
+        "checkout stock decrement path",
+        "supplier and factory reverse-logistics stock restoration flows"
+      ],
+      "notes": [
+        "Warehouse-scoped read paths now prefer SupplierInventoryV2 quantities and fallback to legacy SupplierInventory during migration.",
+        "Legacy SupplierInventory writes remain active for backward compatibility while InventoryV2 receives mirrored updates.",
+        "Restock/receive mirrors apply to flows where warehouse context is available; non-scoped legacy flows continue on SupplierInventory only."
       ]
     },
     {
