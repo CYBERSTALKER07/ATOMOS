@@ -37,6 +37,45 @@ function getBrowserStorage(): Storage | null {
   return window.localStorage;
 }
 
+type ProfileFieldErrors = {
+  name?: string;
+  company?: string;
+};
+
+type SaveBanner = {
+  kind: "success" | "error";
+  message: string;
+};
+
+function normalizeErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === "string" && error.trim().length > 0) {
+    return error;
+  }
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+  return fallback;
+}
+
+function validateProfileFields(
+  name: string,
+  company: string,
+): ProfileFieldErrors {
+  const errors: ProfileFieldErrors = {};
+  const trimmedName = name.trim();
+  const trimmedCompany = company.trim();
+
+  if (trimmedName.length < 2) {
+    errors.name = "Entity name must be at least 2 characters.";
+  }
+
+  if (trimmedCompany.length < 2) {
+    errors.company = "Company name must be at least 2 characters.";
+  }
+
+  return errors;
+}
+
 /* ── Toggle Switch ── */
 function Toggle({
   on,
@@ -129,6 +168,7 @@ function OverrideSection<T extends { enabled: boolean }>({
   rowIcon,
   onToggle,
   savingId,
+  storageKey,
 }: {
   title: string;
   icon: React.ElementType;
@@ -140,8 +180,20 @@ function OverrideSection<T extends { enabled: boolean }>({
   rowIcon: React.ElementType;
   onToggle: (id: string, enabled: boolean) => void;
   savingId: string | null;
+  storageKey?: string;
 }) {
-  const [open, setOpen] = useState(items.length <= 6);
+  const [open, setOpen] = useState(() => {
+    if (!storageKey) return items.length <= 6;
+    const saved = getBrowserStorage()?.getItem(storageKey);
+    if (saved === "1") return true;
+    if (saved === "0") return false;
+    return items.length <= 6;
+  });
+
+  useEffect(() => {
+    if (!storageKey) return;
+    getBrowserStorage()?.setItem(storageKey, open ? "1" : "0");
+  }, [open, storageKey]);
 
   if (items.length === 0) return null;
 
@@ -160,7 +212,11 @@ function OverrideSection<T extends { enabled: boolean }>({
           <span className="md-typescale-title-small font-bold text-[var(--desk-text-primary)]">
             {title}
           </span>
-          <Chip size="sm" variant="flat" className="font-bold text-[10px] ml-1">
+          <Chip
+            size="sm"
+            variant="secondary"
+            className="font-bold text-[10px] ml-1"
+          >
             {enabledCount}/{items.length} ACTIVE
           </Chip>
         </div>
@@ -223,7 +279,13 @@ export default function SettingsPage() {
   const [profileEmail, setProfileEmail] = useState("");
   const [profileLocation, setProfileLocation] = useState("");
   const [profileCompany, setProfileCompany] = useState("");
+  const [profileErrors, setProfileErrors] = useState<ProfileFieldErrors>({});
+  const [saveBanner, setSaveBanner] = useState<SaveBanner | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
+
+  const clearProfileFieldError = useCallback((field: keyof ProfileFieldErrors) => {
+    setProfileErrors((prev) => ({ ...prev, [field]: undefined }));
+  }, []);
 
   useEffect(() => {
     const storage = getBrowserStorage();
@@ -252,6 +314,18 @@ export default function SettingsPage() {
   }, []);
 
   const saveProfile = useCallback(async () => {
+    const validation = validateProfileFields(profileName, profileCompany);
+    if (validation.name || validation.company) {
+      setProfileErrors(validation);
+      setSaveBanner({
+        kind: "error",
+        message: "Fix validation errors before saving profile changes.",
+      });
+      return;
+    }
+
+    setProfileErrors({});
+    setSaveBanner(null);
     setSavingProfile(true);
     try {
       const res = await apiFetch("/v1/retailer/profile", {
@@ -262,29 +336,34 @@ export default function SettingsPage() {
           location: profileLocation,
         }),
       });
-      if (res.ok) {
-        setProfileEditing(false);
-        const storage = getBrowserStorage();
-        if (storage) {
-          try {
-            const existing = JSON.parse(
-              storage.getItem("retailer_profile") || "{}",
-            );
-            storage.setItem(
-              "retailer_profile",
-              JSON.stringify({
-                ...existing,
-                name: profileName,
-                company: profileCompany,
-              }),
-            );
-          } catch {
-            /* ignore */
-          }
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Profile update failed.");
+      }
+
+      setProfileEditing(false);
+      setSaveBanner({ kind: "success", message: "Profile saved successfully." });
+      const storage = getBrowserStorage();
+      if (storage) {
+        try {
+          const existing = JSON.parse(storage.getItem("retailer_profile") || "{}");
+          storage.setItem(
+            "retailer_profile",
+            JSON.stringify({
+              ...existing,
+              name: profileName,
+              company: profileCompany,
+            }),
+          );
+        } catch {
+          /* ignore */
         }
       }
-    } catch {
-      /* swallow */
+    } catch (err) {
+      setSaveBanner({
+        kind: "error",
+        message: normalizeErrorMessage(err, "Failed to save profile. Please retry."),
+      });
     } finally {
       setSavingProfile(false);
     }
@@ -299,8 +378,12 @@ export default function SettingsPage() {
         body: JSON.stringify({ enabled: !autoOrder.global_enabled }),
       });
       mutate();
-    } catch {
-      /* ignore */
+      setSaveBanner({ kind: "success", message: "Global AI settings updated." });
+    } catch (err) {
+      setSaveBanner({
+        kind: "error",
+        message: normalizeErrorMessage(err, "Failed to update global AI settings."),
+      });
     } finally {
       setSavingGlobal(false);
     }
@@ -315,8 +398,11 @@ export default function SettingsPage() {
           body: JSON.stringify({ enabled }),
         });
         mutate();
-      } catch {
-        /* ignore */
+      } catch (err) {
+        setSaveBanner({
+          kind: "error",
+          message: normalizeErrorMessage(err, "Failed to update override settings."),
+        });
       } finally {
         setSavingId(null);
       }
@@ -338,6 +424,33 @@ export default function SettingsPage() {
           controls.
         </p>
       </header>
+
+      <div className="max-w-5xl mx-auto mb-6 space-y-3">
+        {error && (
+          <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-red-700">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+            <p className="md-typescale-body-small font-bold">
+              {normalizeErrorMessage(error, "Unable to load AI settings.")}
+            </p>
+          </div>
+        )}
+        {saveBanner && (
+          <div
+            className={`flex items-start gap-2 rounded-xl border p-3 ${
+              saveBanner.kind === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-red-200 bg-red-50 text-red-700"
+            }`}
+          >
+            {saveBanner.kind === "success" ? (
+              <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+            ) : (
+              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+            )}
+            <p className="md-typescale-body-small font-bold">{saveBanner.message}</p>
+          </div>
+        )}
+      </div>
 
       <AnimatePresence mode="popLayout">
         {loading ? (
@@ -378,13 +491,28 @@ export default function SettingsPage() {
                       value={profileName}
                       icon={User}
                       editing={profileEditing}
-                      onChange={setProfileName}
+                      errorMessage={profileErrors.name}
+                      onChange={(value) => {
+                        setProfileName(value);
+                        clearProfileFieldError("name");
+                      }}
+                    />
+                    <ProfileField
+                      label="Company"
+                      value={profileCompany}
+                      icon={Building2}
+                      editing={profileEditing}
+                      errorMessage={profileErrors.company}
+                      onChange={(value) => {
+                        setProfileCompany(value);
+                        clearProfileFieldError("company");
+                      }}
                     />
                     <ProfileField
                       label="Primary Contact"
                       value={profileEmail}
                       icon={Mail}
-                      editing={profileEditing}
+                      editing={false}
                       onChange={setProfileEmail}
                     />
                     <ProfileField
@@ -397,7 +525,7 @@ export default function SettingsPage() {
                   </div>
                   {profileEditing && (
                     <Button
-                      variant="solid"
+                      variant="primary"
                       onPress={saveProfile}
                       isDisabled={savingProfile}
                       className="w-full bg-[var(--desk-text-primary)] text-white font-bold h-11 rounded-xl shadow-lg transition-all active:scale-95"
@@ -458,11 +586,11 @@ export default function SettingsPage() {
                           Settlement Priority
                         </span>
                         <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
-                          Global override
+                          Managed by payment policy
                         </span>
                       </div>
                     </div>
-                    <Toggle on={true} onToggle={() => {}} />
+                    <Toggle on={true} onToggle={() => {}} disabled={true} />
                   </div>
                 </div>
               </section>
@@ -521,6 +649,7 @@ export default function SettingsPage() {
                       getHasHistory={(s) => s.has_history}
                       getAnalyticsDate={(s) => s.analytics_start_date}
                       rowIcon={Building2}
+                      storageKey="retailer_settings_section_supplier_overrides"
                       onToggle={(id, enabled) =>
                         toggleOverride("supplier", id, enabled)
                       }
@@ -535,6 +664,7 @@ export default function SettingsPage() {
                       getHasHistory={(c) => c.has_history}
                       getAnalyticsDate={(c) => c.analytics_start_date}
                       rowIcon={Layers}
+                      storageKey="retailer_settings_section_category_overrides"
                       onToggle={(id, enabled) =>
                         toggleOverride("category", id, enabled)
                       }
@@ -556,12 +686,14 @@ function ProfileField({
   value,
   icon: Icon,
   editing,
+  errorMessage,
   onChange,
 }: {
   label: string;
   value: string;
-  icon: any;
+  icon: React.ElementType;
   editing: boolean;
+  errorMessage?: string;
   onChange: (v: string) => void;
 }) {
   return (
@@ -573,11 +705,24 @@ function ProfileField({
         </span>
       </div>
       {editing ? (
-        <input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full h-11 px-4 bg-[var(--desk-canvas)] rounded-xl outline-none focus:ring-2 focus:ring-[var(--desk-accent-soft)] transition-all md-typescale-body-medium font-bold text-[var(--desk-text-primary)]"
-        />
+        <>
+          <input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            aria-invalid={Boolean(errorMessage)}
+            className={`w-full h-11 px-4 bg-[var(--desk-canvas)] rounded-xl outline-none transition-all md-typescale-body-medium font-bold text-[var(--desk-text-primary)] ${
+              errorMessage
+                ? "ring-2 ring-red-200 border border-red-300"
+                : "focus:ring-2 focus:ring-[var(--desk-accent-soft)]"
+            }`}
+          />
+          {errorMessage && (
+            <p className="mt-1 flex items-center gap-1 text-[11px] font-bold text-red-600 uppercase tracking-wide">
+              <AlertTriangle size={10} />
+              {errorMessage}
+            </p>
+          )}
+        </>
       ) : (
         <p className="md-typescale-body-large font-bold text-[var(--desk-text-primary)] pl-0.5">
           {value || "UNSET"}

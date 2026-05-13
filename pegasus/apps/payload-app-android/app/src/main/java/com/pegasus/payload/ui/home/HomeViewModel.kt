@@ -20,6 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -87,6 +88,10 @@ class HomeViewModel @Inject constructor(
     private val notificationBus: com.pegasus.payload.services.NotificationBus,
     private val json: Json,
 ) : ViewModel() {
+    private companion object {
+        const val MAX_LIVE_NOTIFICATIONS = 200
+    }
+
     private fun deterministicQueueActionId(action: String, entityId: String): String =
         "payload-$action-$entityId"
 
@@ -142,13 +147,16 @@ class HomeViewModel @Inject constructor(
                     channel = frame.channel.orEmpty(),
                     createdAt = "",
                 )
-                _state.update { it.copy(notifications = listOf(item) + it.notifications, unreadCount = it.unreadCount + 1) }
+                _state.update {
+                    val next = (listOf(item) + it.notifications).take(MAX_LIVE_NOTIFICATIONS)
+                    it.copy(notifications = next, unreadCount = it.unreadCount + 1)
+                }
             }
             .launchInVm()
     }
 
     private fun <T> kotlinx.coroutines.flow.Flow<T>.launchInVm() {
-        viewModelScope.launch { collect {} }
+        launchIn(viewModelScope)
     }
 
     private fun registerFcmToken() {
