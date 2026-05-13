@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -73,60 +74,111 @@ fun CategorySuppliersScreen(
             )
         },
     ) { innerPadding ->
-        when {
-            uiState.isLoading -> {
-                LazyColumn(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
+            val syncMessage = when {
+                uiState.loadIssue != null -> uiState.error ?: uiState.syncMessage.orEmpty()
+                uiState.isLoading && uiState.suppliers.isNotEmpty() -> "Syncing category suppliers..."
+                else -> null
+            }
+
+            if (syncMessage != null) {
+                val loadIssue = uiState.loadIssue
+                val containerColor = when (loadIssue) {
+                    CategorySuppliersLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    CategorySuppliersLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                    CategorySuppliersLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                    null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                }
+                val contentColor = when (loadIssue) {
+                    CategorySuppliersLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
+                    CategorySuppliersLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
+                    CategorySuppliersLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
+                    null -> MaterialTheme.colorScheme.onPrimaryContainer
+                }
+
+                Row(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(containerColor)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.52f)
-                                .height(14.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                        )
-                    }
-                    items(5) {
-                        SupplierCategorySkeletonCard()
+                    Text(
+                        text = syncMessage,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = contentColor,
+                    )
+                    if (loadIssue != null) {
+                        TextButton(onClick = { viewModel.load(categoryId) }) {
+                            Text("Retry", color = contentColor)
+                        }
                     }
                 }
             }
 
-            uiState.suppliers.isEmpty() -> {
-                PegasusEmptyState(
-                    icon = Icons.Rounded.Storefront,
-                    title = "No Suppliers in $categoryName",
-                    message = uiState.error ?: "No suppliers currently list products in this category.",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    actionLabel = if (uiState.error != null) "Retry" else "Refresh",
-                    onAction = { viewModel.load(categoryId) },
-                )
-            }
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    uiState.isLoading && uiState.suppliers.isEmpty() -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.52f)
+                                        .height(14.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                                )
+                            }
+                            items(5) {
+                                SupplierCategorySkeletonCard()
+                            }
+                        }
+                    }
 
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    item {
-                        Text(
-                            text = "${uiState.suppliers.size} suppliers carry $categoryName",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    uiState.suppliers.isEmpty() -> {
+                        PegasusEmptyState(
+                            icon = Icons.Rounded.Storefront,
+                            title = when (uiState.loadIssue) {
+                                CategorySuppliersLoadIssue.RESTRICTED -> "Category Suppliers Access Restricted"
+                                CategorySuppliersLoadIssue.OFFLINE -> "Category Suppliers Offline"
+                                CategorySuppliersLoadIssue.ERROR -> "Category Suppliers Unavailable"
+                                null -> "No Suppliers in $categoryName"
+                            },
+                            message = uiState.error ?: "No suppliers currently list products in this category.",
+                            modifier = Modifier.fillMaxSize(),
+                            actionLabel = if (uiState.error != null) "Retry" else "Refresh",
+                            onAction = { viewModel.load(categoryId) },
                         )
                     }
-                    items(uiState.suppliers, key = { it.id }) { supplier ->
-                        SupplierCategoryCard(supplier = supplier, onClick = { onSupplierCash(supplier) })
+
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            item {
+                                Text(
+                                    text = "${uiState.suppliers.size} suppliers carry $categoryName",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                )
+                            }
+                            items(uiState.suppliers, key = { it.id }) { supplier ->
+                                SupplierCategoryCard(supplier = supplier, onClick = { onSupplierCash(supplier) })
+                            }
+                        }
                     }
                 }
             }

@@ -429,7 +429,7 @@ struct ProfileView: View {
             profilePhone = profile.phone
             profileLocation = profile.location ?? ""
         } catch {
-            print("Failed to load profile: \(error)")
+            print("Failed to load profile")
         }
     }
 
@@ -479,6 +479,7 @@ struct FamilyMembersView: View {
     @State private var members: [FamilyMemberResponse] = []
     @State private var isLoading = false
     @State private var showAddSheet = false
+    @State private var errorMessage: String? = nil
 
     private let api = APIClient.shared
 
@@ -488,6 +489,21 @@ struct FamilyMembersView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity, alignment: .center)
                     .listRowBackground(Color.clear)
+            } else if let errorMessage, members.isEmpty {
+                VStack(spacing: AppTheme.spacingMD) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.orange)
+                    Text("Family Members Unavailable")
+                        .font(.headline)
+                    Text(errorMessage)
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+                .listRowBackground(Color.clear)
             } else if members.isEmpty {
                 VStack(spacing: AppTheme.spacingMD) {
                     Image(systemName: "person.2.badge.plus")
@@ -521,8 +537,18 @@ struct FamilyMembersView: View {
                     let membersToDelete = offsets.map { members[$0] }
                     for m in membersToDelete {
                         Task {
-                            do { try await api.removeFamilyMember(memberId: m.id); await loadMembers() }
-                            catch { print("Delete failed") }
+                            do {
+                                try await api.removeFamilyMember(memberId: m.id)
+                                errorMessage = nil
+                                await loadMembers()
+                            } catch {
+                                errorMessage = RetailerErrorSupport.message(
+                                    for: error,
+                                    restricted: "Family member removal is restricted for this account.",
+                                    offline: "Offline mode active. Reconnect and retry family member removal.",
+                                    fallback: "Could not remove family member. Please try again.",
+                                )
+                            }
                         }
                     }
                 }
@@ -541,8 +567,19 @@ struct FamilyMembersView: View {
             NavigationStack {
                 AddFamilyMemberView { request in
                     Task {
-                        do { try await api.addFamilyMember(request: request); await loadMembers(); showAddSheet = false }
-                        catch { print("Add failed") }
+                        do {
+                            try await api.addFamilyMember(request: request)
+                            errorMessage = nil
+                            await loadMembers()
+                            showAddSheet = false
+                        } catch {
+                            errorMessage = RetailerErrorSupport.message(
+                                for: error,
+                                restricted: "Family member creation is restricted for this account.",
+                                offline: "Offline mode active. Reconnect and retry family member creation.",
+                                fallback: "Could not add family member. Please try again.",
+                            )
+                        }
                     }
                 }
             }
@@ -552,7 +589,17 @@ struct FamilyMembersView: View {
     
     private func loadMembers() async {
         isLoading = true
-        do { members = try await api.getFamilyMembers() } catch { print("Load failed: \(error)") }
+        errorMessage = nil
+        do {
+            members = try await api.getFamilyMembers()
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Family members access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry loading family members.",
+                fallback: "Family members could not be loaded. Please try again.",
+            )
+        }
         isLoading = false
     }
 }

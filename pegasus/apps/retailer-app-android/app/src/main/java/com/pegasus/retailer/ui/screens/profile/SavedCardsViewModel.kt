@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasus.retailer.data.api.PegasusApi
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,7 +16,14 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import retrofit2.HttpException
 import javax.inject.Inject
+
+enum class SavedCardsLoadIssue {
+    RESTRICTED,
+    OFFLINE,
+    ERROR,
+}
 
 data class SavedCard(
     val id: String,
@@ -31,8 +39,17 @@ data class SavedCardsUiState(
     val isAddingCard: Boolean = false,
     val initiateSession: String? = null,
     val otpPhone: String? = null,
-    val addError: String? = null
-)
+    val addError: String? = null,
+    val loadIssue: SavedCardsLoadIssue? = null,
+) {
+    val syncMessage: String?
+        get() = when (loadIssue) {
+            SavedCardsLoadIssue.RESTRICTED -> "Saved cards access is restricted for this account"
+            SavedCardsLoadIssue.OFFLINE -> "Offline mode active. Showing latest saved cards"
+            SavedCardsLoadIssue.ERROR -> "Saved cards sync degraded. Retry is available"
+            null -> null
+        }
+}
 
 @HiltViewModel
 class SavedCardsViewModel @Inject constructor(
@@ -48,7 +65,7 @@ class SavedCardsViewModel @Inject constructor(
 
     fun loadCards() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, loadIssue = null) }
             try {
                 val element = api.getCards()
                 val cardsArray = when {
@@ -70,16 +87,23 @@ class SavedCardsViewModel @Inject constructor(
                         type = obj["type"]?.jsonPrimitive?.contentOrNull ?: "UNKNOWN",
                     )
                 }
-                _uiState.update { it.copy(isLoading = false, cards = cardsList) }
+                _uiState.update { it.copy(isLoading = false, cards = cardsList, error = null, loadIssue = null) }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message) }
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        error = resolveErrorMessage(e, issue, "Could not load saved cards"),
+                        loadIssue = issue,
+                    )
+                }
             }
         }
     }
 
     fun initiateCard(cardNumber: String, expire: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(addError = null) }
+            _uiState.update { it.copy(addError = null, loadIssue = null) }
             try {
                 val res = api.initiateCard(mapOf(
                     "card_number" to cardNumber,
@@ -91,7 +115,13 @@ class SavedCardsViewModel @Inject constructor(
                     _uiState.update { it.copy(initiateSession = session, otpPhone = phone, isAddingCard = true) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(addError = e.message) }
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(
+                        addError = resolveErrorMessage(e, issue, "Could not initiate card verification"),
+                        loadIssue = issue,
+                    )
+                }
             }
         }
     }
@@ -99,7 +129,7 @@ class SavedCardsViewModel @Inject constructor(
     fun confirmCard(otp: String) {
         val session = _uiState.value.initiateSession ?: return
         viewModelScope.launch {
-            _uiState.update { it.copy(addError = null) }
+            _uiState.update { it.copy(addError = null, loadIssue = null) }
             try {
                 api.confirmCard(mapOf(
                     "session" to session,
@@ -108,13 +138,19 @@ class SavedCardsViewModel @Inject constructor(
                 _uiState.update { it.copy(isAddingCard = false, initiateSession = null, otpPhone = null) }
                 loadCards()
             } catch (e: Exception) {
-                _uiState.update { it.copy(addError = e.message) }
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(
+                        addError = resolveErrorMessage(e, issue, "Could not confirm card"),
+                        loadIssue = issue,
+                    )
+                }
             }
         }
     }
 
     fun cancelAdd() {
-        _uiState.update { it.copy(isAddingCard = false, initiateSession = null, otpPhone = null, addError = null) }
+        _uiState.update { it.copy(isAddingCard = false, initiateSession = null, otpPhone = null, addError = null, loadIssue = null) }
     }
 
     fun setDefault(cardId: String) {
@@ -123,7 +159,13 @@ class SavedCardsViewModel @Inject constructor(
                 api.setDefaultCard(mapOf("card_id" to cardId))
                 loadCards()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(
+                        error = resolveErrorMessage(e, issue, "Could not set default card"),
+                        loadIssue = issue,
+                    )
+                }
             }
         }
     }
@@ -134,8 +176,30 @@ class SavedCardsViewModel @Inject constructor(
                 api.deactivateCard(mapOf("card_id" to cardId))
                 loadCards()
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message) }
+                val issue = resolveLoadIssue(e)
+                _uiState.update {
+                    it.copy(
+                        error = resolveErrorMessage(e, issue, "Could not delete card"),
+                        loadIssue = issue,
+                    )
+                }
             }
+        }
+    }
+
+    private fun resolveLoadIssue(error: Exception): SavedCardsLoadIssue {
+        return when {
+            error is HttpException && (error.code() == 401 || error.code() == 403) -> SavedCardsLoadIssue.RESTRICTED
+            error is IOException -> SavedCardsLoadIssue.OFFLINE
+            else -> SavedCardsLoadIssue.ERROR
+        }
+    }
+
+    private fun resolveErrorMessage(error: Exception, issue: SavedCardsLoadIssue, fallback: String): String {
+        return when (issue) {
+            SavedCardsLoadIssue.RESTRICTED -> "Saved cards access is restricted for this account"
+            SavedCardsLoadIssue.OFFLINE -> "Offline mode active. Reconnect and retry"
+            SavedCardsLoadIssue.ERROR -> error.message ?: fallback
         }
     }
 }

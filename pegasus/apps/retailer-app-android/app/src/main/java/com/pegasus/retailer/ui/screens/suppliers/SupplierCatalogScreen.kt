@@ -23,8 +23,6 @@ import com.pegasus.retailer.ui.theme.StatusRed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Inventory2
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -43,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.pegasus.retailer.data.model.Product
 import com.pegasus.retailer.ui.components.PegasusEmptyState
 import com.pegasus.retailer.ui.components.ProductCard
 
@@ -109,80 +107,131 @@ fun SupplierCatalogScreen(
             )
         },
     ) { innerPadding ->
-        when {
-            uiState.isLoading -> {
-                LazyColumn(
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
+            val syncMessage = when {
+                uiState.loadIssue != null -> uiState.error ?: uiState.syncMessage.orEmpty()
+                uiState.isLoading && uiState.products.isNotEmpty() -> "Syncing supplier catalog..."
+                else -> null
+            }
+
+            if (syncMessage != null) {
+                val loadIssue = uiState.loadIssue
+                val containerColor = when (loadIssue) {
+                    SupplierCatalogLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    SupplierCatalogLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                    SupplierCatalogLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                    null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                }
+                val contentColor = when (loadIssue) {
+                    SupplierCatalogLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
+                    SupplierCatalogLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
+                    SupplierCatalogLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
+                    null -> MaterialTheme.colorScheme.onPrimaryContainer
+                }
+
+                Row(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(containerColor)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    item {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(0.44f)
-                                    .height(18.dp)
-                                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(0.28f)
-                                    .height(12.dp)
-                                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                            )
+                    Text(
+                        text = syncMessage,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = contentColor,
+                    )
+                    if (loadIssue != null) {
+                        TextButton(onClick = { viewModel.load(supplierId) }) {
+                            Text("Retry", color = contentColor)
                         }
-                    }
-                    items(5) {
-                        SupplierCatalogSkeletonCard()
                     }
                 }
             }
 
-            uiState.products.isEmpty() -> {
-                PegasusEmptyState(
-                    icon = Icons.Rounded.Inventory2,
-                    title = "No Products Yet",
-                    message = uiState.error ?: "This supplier has no active products in the catalog.",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    actionLabel = if (uiState.error != null) "Retry" else "Refresh Catalog",
-                    onAction = { viewModel.load(supplierId) },
-                )
-            }
-
-            else -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    groupedProducts.forEach { (categoryName, products) ->
-                        item(key = "header-$categoryName") {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(
-                                    categoryName,
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                )
-                                Text(
-                                    "${products.size} products",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                )
+            Box(modifier = Modifier.fillMaxSize()) {
+                when {
+                    uiState.isLoading && uiState.products.isEmpty() -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(0.44f)
+                                            .height(18.dp)
+                                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(0.28f)
+                                            .height(12.dp)
+                                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                                    )
+                                }
+                            }
+                            items(5) {
+                                SupplierCatalogSkeletonCard()
                             }
                         }
-                        items(products, key = { it.id }) { product ->
-                            ProductCard(
-                                product = product,
-                                onClick = { onProductCash(product.id) },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                    }
+
+                    uiState.products.isEmpty() -> {
+                        PegasusEmptyState(
+                            icon = Icons.Rounded.Inventory2,
+                            title = when (uiState.loadIssue) {
+                                SupplierCatalogLoadIssue.RESTRICTED -> "Supplier Catalog Access Restricted"
+                                SupplierCatalogLoadIssue.OFFLINE -> "Supplier Catalog Offline"
+                                SupplierCatalogLoadIssue.ERROR -> "Supplier Catalog Unavailable"
+                                null -> "No Products Yet"
+                            },
+                            message = uiState.error ?: "This supplier has no active products in the catalog.",
+                            modifier = Modifier.fillMaxSize(),
+                            actionLabel = if (uiState.error != null) "Retry" else "Refresh Catalog",
+                            onAction = { viewModel.load(supplierId) },
+                        )
+                    }
+
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            groupedProducts.forEach { (categoryName, products) ->
+                                item(key = "header-$categoryName") {
+                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            categoryName,
+                                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                        )
+                                        Text(
+                                            "${products.size} products",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                        )
+                                    }
+                                }
+                                items(products, key = { it.id }) { product ->
+                                    ProductCard(
+                                        product = product,
+                                        onClick = { onProductCash(product.id) },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                            }
                         }
                     }
                 }

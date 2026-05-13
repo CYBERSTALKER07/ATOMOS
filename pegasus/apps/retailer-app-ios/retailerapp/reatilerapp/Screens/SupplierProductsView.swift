@@ -31,6 +31,10 @@ struct SupplierProductsView: View {
                 supplierHeader
                     .slideIn(delay: 0)
 
+                if let errorMessage, !errorMessage.isEmpty {
+                    syncStatusBanner(errorMessage)
+                }
+
                 // Products list
                 if isLoading && products.isEmpty {
                     loadingProductsSection
@@ -210,6 +214,32 @@ struct SupplierProductsView: View {
     }
     */
 
+    private func syncStatusBanner(_ message: String) -> some View {
+        HStack(spacing: AppTheme.spacingSM) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AppTheme.warning)
+            Text(message)
+                .font(.system(.caption, design: .rounded, weight: .medium))
+                .foregroundStyle(AppTheme.textSecondary)
+                .lineLimit(3)
+            Spacer()
+            Button("Retry") {
+                Task {
+                    await loadProducts()
+                    await loadAutoOrderState()
+                }
+            }
+            .font(.system(.caption, design: .rounded, weight: .semibold))
+            .foregroundStyle(AppTheme.accent)
+        }
+        .padding(.horizontal, AppTheme.spacingMD)
+        .padding(.vertical, AppTheme.spacingSM)
+        .background(AppTheme.warning.opacity(0.12))
+        .clipShape(.rect(cornerRadius: AppTheme.radiusMD))
+        .slideIn(delay: 0.03)
+    }
+
     // MARK: - Products List
 
     private var productsSection: some View {
@@ -379,8 +409,12 @@ struct SupplierProductsView: View {
             let result: [Product] = try await api.get(path: "/v1/catalog/products?supplier_id=\(supplier.id)")
             products = result
         } catch {
-            products = []
-            errorMessage = "Products are unavailable right now. Check your connection and try again."
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Supplier catalog access is restricted for this account.",
+                offline: "Offline mode active. Showing latest supplier catalog.",
+                fallback: "Products are unavailable right now. Check your connection and try again.",
+            )
         }
         isLoading = false
     }
@@ -394,7 +428,15 @@ struct SupplierProductsView: View {
             for pov in s.productOverrides {
                 autoOrderSettings[pov.productID] = pov.enabled
             }
-        } catch {}
+            errorMessage = nil
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Auto-order settings access is restricted for this account.",
+                offline: "Offline mode active. Showing latest auto-order settings.",
+                fallback: "Auto-order settings sync is degraded. Retry is available.",
+            )
+        }
     }
 
     private func toggleMySupplier() async {
@@ -405,8 +447,15 @@ struct SupplierProductsView: View {
             } else {
                 try await api.unfavoriteSupplier(supplierId: supplier.id)
             }
+            errorMessage = nil
         } catch {
             withAnimation(AnimationConstants.express) { isMySupplier.toggle() }
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Supplier favorites access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry supplier favorites.",
+                fallback: "Supplier favorites update failed. Please try again.",
+            )
         }
         isTogglingMySupplier = false
     }
@@ -418,8 +467,15 @@ struct SupplierProductsView: View {
                 path: "/v1/retailer/settings/auto-order/supplier/\(supplier.id)",
                 body: ["auto_order_enabled": supplierAutoOrder]
             )
+            errorMessage = nil
         } catch {
             withAnimation { supplierAutoOrder.toggle() }
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Supplier auto-order access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry supplier auto-order update.",
+                fallback: "Supplier auto-order update failed. Please try again.",
+            )
         }
         isTogglingSupplierAutoOrder = false
     }
@@ -431,8 +487,15 @@ struct SupplierProductsView: View {
                 path: "/v1/retailer/settings/auto-order/product/\(productId)",
                 body: ["auto_order_enabled": enabled]
             )
+            errorMessage = nil
         } catch {
             withAnimation { autoOrderSettings[productId] = !enabled }
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Product auto-order access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry product auto-order update.",
+                fallback: "Product auto-order update failed. Please try again.",
+            )
         }
         togglingProductIds.remove(productId)
     }

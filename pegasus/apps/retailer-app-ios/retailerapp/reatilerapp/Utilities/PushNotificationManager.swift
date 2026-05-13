@@ -42,7 +42,12 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
                 }
             }
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Notification permission is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry notification setup.",
+                fallback: "Notification permission request failed. Please try again.",
+            )
         }
     }
 
@@ -57,7 +62,12 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
     }
 
     func didFailToRegisterForRemoteNotifications(error: Error) {
-        errorMessage = error.localizedDescription
+        errorMessage = RetailerErrorSupport.message(
+            for: error,
+            restricted: "Push registration is restricted for this account.",
+            offline: "Offline mode active. Reconnect and retry push registration.",
+            fallback: "Push registration failed. Please try again.",
+        )
     }
 
     // MARK: - Send Token to Server
@@ -71,7 +81,12 @@ final class PushNotificationManager: NSObject, UNUserNotificationCenterDelegate 
         do {
             let _: APIResponse<String> = try await api.post(path: "/v1/user/device-token", body: payload)
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Device registration is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry device registration.",
+                fallback: "Device registration failed. Please try again.",
+            )
         }
     }
 }

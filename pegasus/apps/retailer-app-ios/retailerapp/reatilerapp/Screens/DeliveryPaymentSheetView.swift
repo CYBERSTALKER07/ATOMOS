@@ -301,7 +301,12 @@ struct DeliveryPaymentSheetView: View {
             )
             phase = .cashPending
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Payment access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry payment.",
+                fallback: "Payment could not be completed. Please try again.",
+            )
             phase = .failed
         }
     }
@@ -325,7 +330,12 @@ struct DeliveryPaymentSheetView: View {
             }
             // Stay on processing — webhook settlement triggers ORDER_COMPLETED via WS
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Payment access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry payment.",
+                fallback: "Payment could not be completed. Please try again.",
+            )
             phase = .failed
         }
     }

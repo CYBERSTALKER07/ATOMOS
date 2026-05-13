@@ -307,7 +307,7 @@ struct CheckoutView: View {
                 CheckoutPaymentOption(id: "Cash", label: "Cash on Delivery", isToken: false)
             ]
         } catch {
-            print("Failed to fetch cards: \(error.localizedDescription)")
+            print("Failed to fetch cards")
         }
     }
 
@@ -408,7 +408,12 @@ struct CheckoutView: View {
                 try await api.setDefaultCard(tokenId: selectedPaymentId)
                 finalGateway = "GLOBAL_PAY"
             } catch {
-                errorMessage = "Failed to select payment method: \(error.localizedDescription)"
+                errorMessage = RetailerErrorSupport.message(
+                    for: error,
+                    restricted: "Payment method selection is restricted for this account.",
+                    offline: "Offline mode active. Reconnect and retry payment method selection.",
+                    fallback: "Failed to select payment method. Please try again.",
+                )
                 showError = true
                 isSubmitting = false
                 return
@@ -453,7 +458,10 @@ struct CheckoutView: View {
                     try? modelContext.save()
                 }
                 Haptics.error()
-                errorMessage = "Saved for retry — \(apiError.localizedDescription)"
+                errorMessage = RetailerErrorSupport.retryQueuedMessage(
+                    for: apiError,
+                    fallback: "Saved for retry. Payment status is degraded.",
+                )
                 showError = true
             }
         } catch {
@@ -467,7 +475,10 @@ struct CheckoutView: View {
                 try? modelContext.save()
             }
             Haptics.error()
-            errorMessage = "Saved for retry — \(error.localizedDescription)"
+            errorMessage = RetailerErrorSupport.retryQueuedMessage(
+                for: error,
+                fallback: "Saved for retry. Payment status is degraded.",
+            )
             showError = true
         }
         isSubmitting = false

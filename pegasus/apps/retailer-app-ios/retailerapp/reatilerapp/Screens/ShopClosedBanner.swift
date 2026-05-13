@@ -66,7 +66,12 @@ struct ShopClosedBanner: View {
                 try await APIClient.shared.respondToShopClosed(orderId: event.orderId, response: option)
                 onRespond(option)
             } catch {
-                errorText = error.localizedDescription
+                errorText = RetailerErrorSupport.message(
+                    for: error,
+                    restricted: "Shop status confirmation is restricted for this account.",
+                    offline: "Offline mode active. Reconnect and retry your response.",
+                    fallback: "Could not submit response. Please try again.",
+                )
                 isSubmitting = false
             }
         }

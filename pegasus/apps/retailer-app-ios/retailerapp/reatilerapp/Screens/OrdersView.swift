@@ -464,7 +464,10 @@ struct OrdersView: View {
                     modelContext.delete(order)
                 }
             } catch {
-                order.lastError = error.localizedDescription
+                order.lastError = RetailerErrorSupport.retryQueuedMessage(
+                    for: error,
+                    fallback: "Pending order retry failed.",
+                )
                 order.retryCount += 1
             }
         }

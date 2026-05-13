@@ -122,28 +122,41 @@ struct SavedCardsView: View {
     
     private func loadCards() async {
         isLoading = true
+        errorMessage = nil
         do {
             let fetched = try await APIClient.shared.getCards()
             cards = fetched.filter { $0.isActive }
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Saved cards access is restricted for this account.",
+                offline: "Offline mode active. Showing latest saved cards.",
+                fallback: "Saved cards could not be loaded. Please try again.",
+            )
         }
         isLoading = false
     }
     
     private func initiateSave() async {
         isAddingCard = true
+        errorMessage = nil
         do {
             let response = try await APIClient.shared.initiateCardSave()
             pendingCardToken = response.cardToken
         } catch {
-            // Handle error logic
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Card setup access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry card setup.",
+                fallback: "Card setup could not be started. Please try again.",
+            )
         }
         isAddingCard = false
     }
     
     private func confirmCard(token: String) async {
         isAddingCard = true
+        errorMessage = nil
         do {
             let _ = try await APIClient.shared.confirmCardSave(cardToken: token, otpCode: optCode)
             showingAddCard = false
@@ -151,7 +164,12 @@ struct SavedCardsView: View {
             optCode = ""
             await loadCards()
         } catch {
-            // Error logic
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Card confirmation access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry card confirmation.",
+                fallback: "Card confirmation failed. Please verify OTP and try again.",
+            )
         }
         isAddingCard = false
     }
@@ -159,14 +177,30 @@ struct SavedCardsView: View {
     private func setDefault(_ tokenId: String) async {
         do {
             try await APIClient.shared.setDefaultCard(tokenId: tokenId)
+            errorMessage = nil
             await loadCards()
-        } catch {}
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Default card update is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry default card update.",
+                fallback: "Default card could not be updated. Please try again.",
+            )
+        }
     }
     
     private func deactivate(_ tokenId: String) async {
         do {
             try await APIClient.shared.deactivateCard(tokenId: tokenId)
+            errorMessage = nil
             await loadCards()
-        } catch {}
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Card removal is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry card removal.",
+                fallback: "Card could not be removed. Please try again.",
+            )
+        }
     }
 }

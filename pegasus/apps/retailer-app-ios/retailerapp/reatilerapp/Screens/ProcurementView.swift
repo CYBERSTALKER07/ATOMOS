@@ -264,12 +264,20 @@ struct ProcurementView: View {
             showSuccess = true
         } catch let apiError as APIError {
             isSubmitting = false
-            errorMessage = apiError.localizedDescription
+            errorMessage = RetailerErrorSupport.message(
+                for: apiError,
+                restricted: "Procurement order access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry procurement order.",
+                fallback: "Procurement order could not be submitted. Please try again.",
+            )
             showError = true
         } catch {
             queuePendingProcurementOrder(body: body, idempotencyKey: idempotencyKey)
             isSubmitting = false
-            errorMessage = "Saved for retry — \(error.localizedDescription)"
+            errorMessage = RetailerErrorSupport.retryQueuedMessage(
+                for: error,
+                fallback: "Saved for retry. Procurement submission is degraded.",
+            )
             showError = true
         }
     }

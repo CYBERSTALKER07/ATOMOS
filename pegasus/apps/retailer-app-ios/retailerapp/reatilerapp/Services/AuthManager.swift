@@ -74,7 +74,12 @@ final class AuthManager {
             currentUser = response.user
             isLoggedIn = true
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Sign-in access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry sign in.",
+                fallback: "Sign in failed. Please try again.",
+            )
         }
 
         isLoading = false
@@ -131,7 +136,12 @@ final class AuthManager {
             currentUser = response.user
             isLoggedIn = true
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Registration access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry registration.",
+                fallback: "Registration failed. Please try again.",
+            )
         }
 
         isLoading = false

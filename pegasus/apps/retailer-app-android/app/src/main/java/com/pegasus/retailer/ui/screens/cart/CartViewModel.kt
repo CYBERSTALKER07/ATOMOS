@@ -338,11 +338,12 @@ init {
                 pendingOrderDao.deleteById(order.id)
                 _uiState.update { it.copy(syncError = null, loadIssue = null) }
             } catch (e: Exception) {
-                pendingOrderDao.incrementRetry(order.id, e.message ?: e::class.java.simpleName)
                 val issue = resolveLoadIssue(e)
+                val reason = resolveErrorMessage(e, issue)
+                pendingOrderDao.incrementRetry(order.id, reason)
                 _uiState.update {
                     it.copy(
-                        syncError = resolveErrorMessage(e, issue),
+                        syncError = reason,
                         loadIssue = issue,
                     )
                 }
@@ -431,7 +432,12 @@ init {
                         api.setDefaultCard(mapOf("token_id" to finalGateway))
                         finalGateway = "GLOBAL_PAY"
                     } catch (e: Exception) {
-                        _uiState.update { it.copy(checkoutPhase = CheckoutPhase.REVIEW, checkoutError = "Failed to select payment method. " + e.message) }
+                        _uiState.update {
+                            it.copy(
+                                checkoutPhase = CheckoutPhase.REVIEW,
+                                checkoutError = resolveCheckoutErrorMessage(e, "Failed to select payment method"),
+                            )
+                        }
                         return@launch
                     }
                 }
@@ -493,7 +499,7 @@ init {
                 _uiState.update {
                     it.copy(
                         checkoutPhase = CheckoutPhase.REVIEW,
-                        checkoutError = e.message ?: "Checkout failed",
+                        checkoutError = resolveCheckoutErrorMessage(e, "Checkout failed"),
                     )
                 }
             }
@@ -524,6 +530,14 @@ init {
             CartLoadIssue.RESTRICTED -> "Cart sync access is restricted for this account"
             CartLoadIssue.OFFLINE -> "Offline mode active. Reconnect and retry"
             CartLoadIssue.ERROR -> error.message ?: "Cart sync failed"
+        }
+    }
+
+    private fun resolveCheckoutErrorMessage(error: Exception, fallback: String): String {
+        return when (resolveLoadIssue(error)) {
+            CartLoadIssue.RESTRICTED -> "Checkout access is restricted for this account"
+            CartLoadIssue.OFFLINE -> "Offline mode active. Reconnect and retry checkout"
+            CartLoadIssue.ERROR -> error.message ?: fallback
         }
     }
 
