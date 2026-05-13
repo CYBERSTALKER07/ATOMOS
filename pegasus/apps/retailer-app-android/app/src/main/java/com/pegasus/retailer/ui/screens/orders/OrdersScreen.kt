@@ -170,13 +170,14 @@ fun OrdersScreen(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             if (uiState.loadIssue != null) {
+                val loadIssue = requireNotNull(uiState.loadIssue)
                 val issueMessage = uiState.error ?: uiState.syncMessage.orEmpty()
-                val containerColor = when (uiState.loadIssue) {
+                val containerColor = when (loadIssue) {
                     OrdersLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
                     OrdersLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
                     OrdersLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
                 }
-                val contentColor = when (uiState.loadIssue) {
+                val contentColor = when (loadIssue) {
                     OrdersLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
                     OrdersLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
                     OrdersLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
