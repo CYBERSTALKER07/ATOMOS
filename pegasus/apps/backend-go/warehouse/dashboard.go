@@ -140,8 +140,15 @@ func HandleDashboard(spannerClient *spanner.Client) http.HandlerFunc {
 
 		// Low stock alerts
 		resp.LowStockCount = countQuery(
-			`SELECT COUNT(*) FROM SupplierInventory
-			 WHERE SupplierId = @sid AND WarehouseId = @whId AND Quantity <= ReorderThreshold`,
+			`SELECT COUNT(*)
+			 FROM SupplierProducts sp
+			 LEFT JOIN SupplierInventoryV2 si2
+			   ON si2.SupplierId = @sid AND si2.WarehouseId = @whId AND si2.ProductId = sp.SkuId
+			 LEFT JOIN SupplierInventory si
+			   ON si.SupplierId = @sid AND si.WarehouseId = @whId AND si.ProductId = sp.SkuId
+			 WHERE sp.SupplierId = @sid
+			   AND COALESCE(si2.QuantityAvailable, si.Quantity, 0) <= COALESCE(NULLIF(si2.SafetyStockLevel, 0), si.ReorderThreshold, 0)
+			   AND COALESCE(NULLIF(si2.SafetyStockLevel, 0), si.ReorderThreshold, 0) > 0`,
 			baseParams)
 
 		// Staff count

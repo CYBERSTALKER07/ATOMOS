@@ -513,18 +513,20 @@ func (s *PullMatrixService) fetchActiveWarehousePairs(ctx context.Context) ([]wa
 }
 
 func (s *PullMatrixService) fetchWarehouseInventory(ctx context.Context, warehouseID, supplierID string) ([]inventoryRow, error) {
-	stmt := spanner.Statement{
+	var result []inventoryRow
+	seenV2 := make(map[string]struct{})
+
+	v2Stmt := spanner.Statement{
 		SQL: `SELECT ProductId, QuantityAvailable, SafetyStockLevel
-		      FROM SupplierInventory
-		      WHERE SupplierId = @sid AND WarehouseId = @whId AND QuantityAvailable > 0`,
+		      FROM SupplierInventoryV2
+		      WHERE SupplierId = @sid AND WarehouseId = @whId`,
 		Params: map[string]interface{}{"sid": supplierID, "whId": warehouseID},
 	}
-	iter := s.Spanner.Single().Query(ctx, stmt)
-	defer iter.Stop()
+	v2Iter := s.Spanner.Single().Query(ctx, v2Stmt)
+	defer v2Iter.Stop()
 
-	var result []inventoryRow
 	for {
-		row, err := iter.Next()
+		row, err := v2Iter.Next()
 		if err == iterator.Done {
 			break
 		}
@@ -533,6 +535,36 @@ func (s *PullMatrixService) fetchWarehouseInventory(ctx context.Context, warehou
 		}
 		var inv inventoryRow
 		if err := row.Columns(&inv.ProductId, &inv.CurrentQty, &inv.SafetyLevel); err != nil {
+			continue
+		}
+		seenV2[inv.ProductId] = struct{}{}
+		if inv.CurrentQty > 0 {
+			result = append(result, inv)
+		}
+	}
+
+	legacyStmt := spanner.Statement{
+		SQL: `SELECT ProductId, QuantityAvailable, SafetyStockLevel
+		      FROM SupplierInventory
+		      WHERE SupplierId = @sid AND WarehouseId = @whId AND QuantityAvailable > 0`,
+		Params: map[string]interface{}{"sid": supplierID, "whId": warehouseID},
+	}
+	legacyIter := s.Spanner.Single().Query(ctx, legacyStmt)
+	defer legacyIter.Stop()
+
+	for {
+		row, err := legacyIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var inv inventoryRow
+		if err := row.Columns(&inv.ProductId, &inv.CurrentQty, &inv.SafetyLevel); err != nil {
+			continue
+		}
+		if _, hasV2 := seenV2[inv.ProductId]; hasV2 {
 			continue
 		}
 		result = append(result, inv)

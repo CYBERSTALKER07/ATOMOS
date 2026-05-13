@@ -330,17 +330,17 @@ func (e *ReplenishmentEngine) getFactoryLeadTime(ctx context.Context, factoryID 
 }
 
 func (e *ReplenishmentEngine) getWarehouseStock(ctx context.Context, whID, supplierID string) (map[string]int64, error) {
-	stmt := spanner.Statement{
-		SQL: `SELECT ProductId, QuantityAvailable FROM SupplierInventory
+	result := make(map[string]int64)
+	v2Stmt := spanner.Statement{
+		SQL: `SELECT ProductId, QuantityAvailable FROM SupplierInventoryV2
 		      WHERE SupplierId = @sid AND WarehouseId = @whId`,
 		Params: map[string]interface{}{"sid": supplierID, "whId": whID},
 	}
-	iter := e.Spanner.Single().Query(ctx, stmt)
-	defer iter.Stop()
+	v2Iter := e.Spanner.Single().Query(ctx, v2Stmt)
+	defer v2Iter.Stop()
 
-	result := make(map[string]int64)
 	for {
-		row, err := iter.Next()
+		row, err := v2Iter.Next()
 		if err == iterator.Done {
 			break
 		}
@@ -354,6 +354,34 @@ func (e *ReplenishmentEngine) getWarehouseStock(ctx context.Context, whID, suppl
 		}
 		result[pid] = qty
 	}
+
+	legacyStmt := spanner.Statement{
+		SQL: `SELECT ProductId, QuantityAvailable FROM SupplierInventory
+		      WHERE SupplierId = @sid AND WarehouseId = @whId`,
+		Params: map[string]interface{}{"sid": supplierID, "whId": whID},
+	}
+	legacyIter := e.Spanner.Single().Query(ctx, legacyStmt)
+	defer legacyIter.Stop()
+
+	for {
+		row, err := legacyIter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var pid string
+		var qty int64
+		if err := row.Columns(&pid, &qty); err != nil {
+			continue
+		}
+		if _, hasV2 := result[pid]; hasV2 {
+			continue
+		}
+		result[pid] = qty
+	}
+
 	return result, nil
 }
 

@@ -118,7 +118,102 @@ func (s *PredictivePushService) RunPredictivePush(ctx context.Context, supplierI
 	// 3. Cross-reference with current inventory to find projected breaches
 	var transferCount int64
 	for skuID, demand := range demandBySKU {
-		// Find warehouses with this product
+		processProjectedBreach := func(whID string, currentQty, safetyLevel int64) {
+			if whID == "" {
+				return
+			}
+
+			// Project: after predicted demand, will stock breach safety level?
+			projectedQty := currentQty - demand.TotalQty
+			if projectedQty > safetyLevel {
+				return // Still above safety — no action needed
+			}
+
+			deficit := safetyLevel - projectedQty
+			if deficit <= 0 {
+				deficit = demand.TotalQty // At minimum, replenish predicted demand
+			}
+
+			// Get optimal factory
+			mode, _ := s.Optimizer.GetNetworkMode(ctx, supplierID)
+			if mode == "MANUAL_ONLY" {
+				return
+			}
+			factory, err := s.Optimizer.SelectOptimalFactory(ctx, supplierID, whID, skuID, mode)
+			if err != nil || factory == "" {
+				return
+			}
+
+			// Create preemptive transfer
+			transferID := uuid.New().String()
+			itemID := uuid.New().String()
+			volVU := float64(deficit) * 0.01
+
+			_, err = s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+				return txn.BufferWrite([]*spanner.Mutation{
+					spanner.Insert("InternalTransferOrders",
+						[]string{"TransferId", "FactoryId", "WarehouseId", "SupplierId", "State",
+							"TotalVolumeVU", "Source", "CreatedAt"},
+						[]interface{}{transferID, factory, whID, supplierID, "DRAFT",
+							volVU, "SYSTEM_PREDICTED", spanner.CommitTimestamp},
+					),
+					spanner.Insert("InternalTransferItems",
+						[]string{"TransferId", "ItemId", "ProductId", "Quantity", "VolumeVU"},
+						[]interface{}{transferID, itemID, skuID, deficit, volVU},
+					),
+				})
+			})
+			if err != nil {
+				log.Printf("[PREDICTIVE_PUSH] Failed to create transfer for %s: %v", skuID, err)
+				return
+			}
+
+			// Increment factory CurrentLoad via JIT self-healing (date-aware reset)
+			if err := AtomicIncrementLoad(ctx, s.Spanner, factory, 1); err != nil {
+				log.Printf("[PREDICTIVE_PUSH] CurrentLoad increment failed for factory %s: %v", factory, err)
+			}
+
+			transferCount++
+			log.Printf("[PREDICTIVE_PUSH] Created preemptive transfer %s: factory=%s → WH=%s for SKU=%s (deficit=%d)",
+				transferID[:8], factory[:8], whID[:8], skuID, deficit)
+		}
+
+		seenWarehouses := make(map[string]struct{})
+
+		invV2Stmt := spanner.Statement{
+			SQL: `SELECT WarehouseId, QuantityAvailable, SafetyStockLevel
+			      FROM SupplierInventoryV2
+			      WHERE SupplierId = @supplierID AND ProductId = @productID
+			        AND SafetyStockLevel > 0`,
+			Params: map[string]interface{}{
+				"supplierID": supplierID,
+				"productID":  skuID,
+			},
+		}
+
+		invV2Iter := s.Spanner.Single().Query(ctx, invV2Stmt)
+		for {
+			invRow, err := invV2Iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				break
+			}
+
+			var warehouseID string
+			var currentQty, safetyLevel int64
+			if err := invRow.Columns(&warehouseID, &currentQty, &safetyLevel); err != nil {
+				continue
+			}
+			if warehouseID == "" {
+				continue
+			}
+			seenWarehouses[warehouseID] = struct{}{}
+			processProjectedBreach(warehouseID, currentQty, safetyLevel)
+		}
+		invV2Iter.Stop()
+
 		invStmt := spanner.Statement{
 			SQL: `SELECT WarehouseId, QuantityAvailable, SafetyStockLevel
 			      FROM SupplierInventory
@@ -149,60 +244,10 @@ func (s *PredictivePushService) RunPredictivePush(ctx context.Context, supplierI
 			if whID == "" {
 				continue
 			}
-
-			// Project: after predicted demand, will stock breach safety level?
-			projectedQty := currentQty - demand.TotalQty
-			if projectedQty > safetyLevel {
-				continue // Still above safety — no action needed
-			}
-
-			deficit := safetyLevel - projectedQty
-			if deficit <= 0 {
-				deficit = demand.TotalQty // At minimum, replenish predicted demand
-			}
-
-			// Get optimal factory
-			mode, _ := s.Optimizer.GetNetworkMode(ctx, supplierID)
-			if mode == "MANUAL_ONLY" {
+			if _, hasV2 := seenWarehouses[whID]; hasV2 {
 				continue
 			}
-			factory, err := s.Optimizer.SelectOptimalFactory(ctx, supplierID, whID, skuID, mode)
-			if err != nil || factory == "" {
-				continue
-			}
-
-			// Create preemptive transfer
-			transferID := uuid.New().String()
-			itemID := uuid.New().String()
-			volVU := float64(deficit) * 0.01
-
-			_, err = s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-				return txn.BufferWrite([]*spanner.Mutation{
-					spanner.Insert("InternalTransferOrders",
-						[]string{"TransferId", "FactoryId", "WarehouseId", "SupplierId", "State",
-							"TotalVolumeVU", "Source", "CreatedAt"},
-						[]interface{}{transferID, factory, whID, supplierID, "DRAFT",
-							volVU, "SYSTEM_PREDICTED", spanner.CommitTimestamp},
-					),
-					spanner.Insert("InternalTransferItems",
-						[]string{"TransferId", "ItemId", "ProductId", "Quantity", "VolumeVU"},
-						[]interface{}{transferID, itemID, skuID, deficit, volVU},
-					),
-				})
-			})
-			if err != nil {
-				log.Printf("[PREDICTIVE_PUSH] Failed to create transfer for %s: %v", skuID, err)
-				continue
-			}
-
-			// Increment factory CurrentLoad via JIT self-healing (date-aware reset)
-			if err := AtomicIncrementLoad(ctx, s.Spanner, factory, 1); err != nil {
-				log.Printf("[PREDICTIVE_PUSH] CurrentLoad increment failed for factory %s: %v", factory, err)
-			}
-
-			transferCount++
-			log.Printf("[PREDICTIVE_PUSH] Created preemptive transfer %s: factory=%s → WH=%s for SKU=%s (deficit=%d)",
-				transferID[:8], factory[:8], whID[:8], skuID, deficit)
+			processProjectedBreach(whID, currentQty, safetyLevel)
 		}
 		invIter.Stop()
 	}
