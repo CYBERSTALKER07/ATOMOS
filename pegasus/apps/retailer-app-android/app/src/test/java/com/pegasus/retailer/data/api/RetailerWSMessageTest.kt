@@ -26,6 +26,7 @@ class RetailerWSMessageTest {
                 "delivery_token": "tok_abc",
                 "payment_method": "CARD",
                 "gateway": "GLOBAL_PAY",
+                "adjusted_amount": 140000,
                 "driver_latitude": 41.2995,
                 "driver_longitude": 69.2401,
                 "supplier_id": "SUP-001",
@@ -45,6 +46,7 @@ class RetailerWSMessageTest {
         assertEquals("Payment required", msg.message)
         assertEquals("tok_abc", msg.deliveryToken)
         assertEquals("GLOBAL_PAY", msg.gateway)
+        assertEquals(140000L, msg.adjustedAmount)
         assertEquals(41.2995, msg.driverLatitude!!, 0.001)
         assertEquals(69.2401, msg.driverLongitude!!, 0.001)
         assertEquals("SUP-001", msg.supplierId)
@@ -72,7 +74,8 @@ class RetailerWSMessageTest {
     fun `type field preserves exact value`() {
         val types = listOf(
             "PAYMENT_REQUIRED", "PAYMENT_SETTLED", "PAYMENT_FAILED",
-            "PAYMENT_EXPIRED", "DRIVER_APPROACHING", "ORDER_COMPLETED"
+            "PAYMENT_EXPIRED", "SETTLEMENT_REQUIRED", "DELIVERY_SESSION_UPDATED",
+            "DRIVER_APPROACHING", "ORDER_COMPLETED"
         )
         for (typeName in types) {
             val raw = """{"type":"$typeName"}"""

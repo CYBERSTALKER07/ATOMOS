@@ -36,6 +36,7 @@ data class RetailerWSMessage(
     @SerialName("delivery_token") val deliveryToken: String = "",
     @SerialName("payment_method") val paymentMethod: String = "",
     @SerialName("gateway") val gateway: String = "",
+    @SerialName("adjusted_amount") val adjustedAmount: Long = 0,
     @SerialName("driver_latitude") val driverLatitude: Double? = null,
     @SerialName("driver_longitude") val driverLongitude: Double? = null,
     @SerialName("supplier_id") val supplierId: String = "",

@@ -263,7 +263,7 @@ final class RetailerWebSocket {
         let decoder = JSONDecoder()
 
         switch type {
-        case "PAYMENT_REQUIRED", "GLOBAL_PAYNT_REQUIRED":
+        case "PAYMENT_REQUIRED", "GLOBAL_PAYNT_REQUIRED", "SETTLEMENT_REQUIRED":
             if let event = try? decoder.decode(PaymentRequiredEvent.self, from: data) {
                 emit(.paymentRequired(event))
             }
@@ -293,6 +293,11 @@ final class RetailerWebSocket {
                 emit(.driverApproaching(orderId: orderId, deliveryToken: token, driverLatitude: driverLat, driverLongitude: driverLng, supplierId: supplierId, supplierName: supplierName))
             }
         case "ORDER_STATUS_CHANGED":
+            if let orderId = json["order_id"] as? String {
+                let state = json["state"] as? String ?? ""
+                emit(.orderStatusChanged(orderId: orderId, state: state))
+            }
+        case "DELIVERY_SESSION_UPDATED":
             if let orderId = json["order_id"] as? String {
                 let state = json["state"] as? String ?? ""
                 emit(.orderStatusChanged(orderId: orderId, state: state))

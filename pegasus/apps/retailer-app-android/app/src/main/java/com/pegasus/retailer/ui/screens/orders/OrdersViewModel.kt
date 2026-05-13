@@ -57,6 +57,7 @@ class OrdersViewModel @Inject constructor(
                     "ORDER_ARRIVING", "DELIVERY_TOKEN",
                     "PAYMENT_REQUIRED", "PAYMENT_SETTLED", "PAYMENT_FAILED",
                     "PAYMENT_EXPIRED",
+                    "SETTLEMENT_REQUIRED", "DELIVERY_SESSION_UPDATED",
                     "GLOBAL_PAYNT_REQUIRED", "GLOBAL_PAYNT_SETTLED", "GLOBAL_PAYNT_FAILED",
                     "GLOBAL_PAYNT_EXPIRED", "ORDER_AMENDED", "ORDER_COMPLETED", "ORDER_REASSIGNED",
                     "PRE_ORDER_AUTO_ACCEPTED", "PRE_ORDER_CONFIRMED", "PRE_ORDER_EDITED" -> refresh()

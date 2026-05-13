@@ -155,9 +155,39 @@ class NavigationViewModel @Inject constructor(
         retailerWebSocket.connect()
         viewModelScope.launch {
             retailerWebSocket.events
-                .filter { it.type == "PAYMENT_REQUIRED" || it.type == "GLOBAL_PAYNT_REQUIRED" }
+                .filter {
+                    it.type == "PAYMENT_REQUIRED" ||
+                        it.type == "GLOBAL_PAYNT_REQUIRED" ||
+                        it.type == "SETTLEMENT_REQUIRED"
+                }
                 .collect { msg ->
                     _uiState.update { it.copy(paymentEvent = msg) }
+                }
+        }
+        viewModelScope.launch {
+            retailerWebSocket.events
+                .filter { it.type == "DELIVERY_SESSION_UPDATED" }
+                .collect { msg ->
+                    val current = _uiState.value.paymentEvent
+                    if (current != null && current.orderId == msg.orderId) {
+                        val updatedAmount = if (msg.adjustedAmount > 0) msg.adjustedAmount else current.amount
+                        val updatedOriginalAmount = when {
+                            msg.originalAmount > 0 -> msg.originalAmount
+                            current.originalAmount > 0 -> current.originalAmount
+                            else -> updatedAmount
+                        }
+                        val updatedState = if (msg.state.isNotBlank()) msg.state else current.state
+                        _uiState.update {
+                            it.copy(
+                                paymentEvent = current.copy(
+                                    amount = updatedAmount,
+                                    originalAmount = updatedOriginalAmount,
+                                    state = updatedState,
+                                ),
+                            )
+                        }
+                    }
+                    loadActiveOrders()
                 }
         }
         viewModelScope.launch {

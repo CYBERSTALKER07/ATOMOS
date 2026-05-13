@@ -84,6 +84,8 @@ struct RetailerServiceTests {
         let expected = [
             "ORDER_STATUS_CHANGED",
             "PAYMENT_REQUIRED",
+            "SETTLEMENT_REQUIRED",
+            "DELIVERY_SESSION_UPDATED",
             "PAYMENT_SETTLED",
             "PAYMENT_FAILED",
             "PAYMENT_EXPIRED",

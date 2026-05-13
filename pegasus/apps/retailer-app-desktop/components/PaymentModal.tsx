@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   CreditCard,
   Banknote,
@@ -9,6 +9,7 @@ import {
   ExternalLink,
   ShieldCheck,
   CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { PaymentRequiredEvent } from "@pegasus/types";
@@ -28,6 +29,54 @@ function formatAmount(amount: number): string {
   return amount.toLocaleString("en-US").replace(/,/g, " ");
 }
 
+function toFiniteNumber(value: unknown, fallback: number): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  return fallback;
+}
+
+function sessionToPaymentEvent(session: PendingPaymentSession): PaymentEvent {
+  const gateway = session.gateway || "GLOBAL_PAY";
+  return {
+    type: "PAYMENT_REQUIRED",
+    order_id: session.order_id,
+    invoice_id: session.invoice_id ?? null,
+    session_id: session.session_id,
+    amount: session.locked_amount,
+    original_amount: session.locked_amount,
+    payment_method: gateway === "CASH" ? "CASH" : "CARD",
+    gateway: gateway as PaymentRequiredEvent["gateway"],
+    currency: session.currency || "UZS",
+    available_card_gateways: gateway === "CASH" ? [] : [gateway],
+    message: "Pending payment requires completion.",
+  };
+}
+
+function wsMessageToPaymentEvent(msg: WsMessage): PaymentEvent {
+  const rawGateways = msg.available_card_gateways;
+  const gateways = Array.isArray(rawGateways)
+    ? rawGateways.filter((value): value is string => typeof value === "string")
+    : undefined;
+
+  const amount = toFiniteNumber(msg.amount, 0);
+  const originalAmount = toFiniteNumber(msg.original_amount, amount);
+
+  return {
+    order_id: (msg.order_id as string) || "",
+    type: "PAYMENT_REQUIRED",
+    invoice_id: (msg.invoice_id as string | null | undefined) ?? null,
+    session_id: (msg.session_id as string) || "",
+    amount,
+    original_amount: originalAmount,
+    payment_method: (msg.payment_method as string) || "CARD",
+    gateway: ((msg.gateway as string) || "GLOBAL_PAY") as PaymentRequiredEvent["gateway"],
+    currency: (msg.currency as string) || "UZS",
+    available_card_gateways: gateways,
+    message: (msg.message as string | undefined) ?? "",
+  };
+}
+
 /* ── Component ── */
 
 export default function PaymentModal() {
@@ -36,53 +85,60 @@ export default function PaymentModal() {
   const [error, setError] = useState<string | null>(null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
+  const openPaymentEvent = useCallback((msg: WsMessage) => {
+    const evt = wsMessageToPaymentEvent(msg);
+    setEvent(evt);
+    setState("choosing");
+    setError(null);
+    setCheckoutUrl(null);
+  }, []);
+
   useWsEvent(
     "PAYMENT_REQUIRED",
     useCallback((msg: WsMessage) => {
-      const evt: PaymentEvent = {
-        order_id: msg.order_id as string,
-        type: "PAYMENT_REQUIRED",
-        invoice_id: (msg.invoice_id as string | null | undefined) ?? null,
-        session_id: msg.session_id as string,
-        amount: msg.amount as number,
-        original_amount: msg.original_amount as number,
-        payment_method: msg.payment_method as string,
-        gateway: msg.gateway as PaymentRequiredEvent["gateway"],
-        currency: msg.currency as string,
-        available_card_gateways: msg.available_card_gateways as
-          | string[]
-          | undefined,
-        message: (msg.message as string | undefined) ?? "",
-      };
-      setEvent(evt);
-      setState("choosing");
-      setError(null);
-      setCheckoutUrl(null);
-    }, []),
+      openPaymentEvent(msg);
+    }, [openPaymentEvent]),
   );
 
   useWsEvent(
     "GLOBAL_PAYNT_REQUIRED",
     useCallback((msg: WsMessage) => {
-      const evt: PaymentEvent = {
-        order_id: msg.order_id as string,
-        type: "PAYMENT_REQUIRED",
-        invoice_id: (msg.invoice_id as string | null | undefined) ?? null,
-        session_id: msg.session_id as string,
-        amount: msg.amount as number,
-        original_amount: msg.original_amount as number,
-        payment_method: msg.payment_method as string,
-        gateway: msg.gateway as PaymentRequiredEvent["gateway"],
-        currency: msg.currency as string,
-        available_card_gateways: msg.available_card_gateways as
-          | string[]
-          | undefined,
-        message: (msg.message as string | undefined) ?? "",
-      };
-      setEvent(evt);
-      setState("choosing");
-      setError(null);
-      setCheckoutUrl(null);
+      openPaymentEvent(msg);
+    }, [openPaymentEvent]),
+  );
+
+  useWsEvent(
+    "SETTLEMENT_REQUIRED",
+    useCallback((msg: WsMessage) => {
+      openPaymentEvent(msg);
+    }, [openPaymentEvent]),
+  );
+
+  useWsEvent(
+    "DELIVERY_SESSION_UPDATED",
+    useCallback((msg: WsMessage) => {
+      const orderId = typeof msg.order_id === "string" ? msg.order_id : "";
+      setEvent((prev) => {
+        if (!prev || !orderId || prev.order_id !== orderId) {
+          return prev;
+        }
+
+        const adjustedAmount = toFiniteNumber(msg.adjusted_amount, prev.amount);
+        const originalAmount = toFiniteNumber(
+          msg.original_amount,
+          prev.original_amount || adjustedAmount,
+        );
+
+        return {
+          ...prev,
+          amount: adjustedAmount,
+          original_amount: originalAmount,
+          message:
+            typeof msg.message === "string" && msg.message.length > 0
+              ? msg.message
+              : prev.message,
+        };
+      });
     }, []),
   );
 
@@ -125,6 +181,33 @@ export default function PaymentModal() {
     setCheckoutUrl(null);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPendingPayments() {
+      if (event) return;
+      try {
+        const res = await apiFetch("/v1/retailer/pending-payments");
+        if (!res.ok) return;
+        const data: PendingPaymentsResponse = await res.json();
+        const pending = data.pending_payments?.[0];
+        if (!cancelled && pending) {
+          setEvent(sessionToPaymentEvent(pending));
+          setState("choosing");
+          setError(null);
+          setCheckoutUrl(null);
+        }
+      } catch {
+        // WebSocket delivery remains the primary realtime path.
+      }
+    }
+
+    void loadPendingPayments();
+    return () => {
+      cancelled = true;
+    };
+  }, [event]);
+
   const handleCash = useCallback(async () => {
     if (!event) return;
     setState("processing");
@@ -141,56 +224,12 @@ export default function PaymentModal() {
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || "Cash checkout failed");
-
-      function sessionToPaymentEvent(session: PendingPaymentSession): PaymentEvent {
-        const gateway = session.gateway || "GLOBAL_PAY";
-        return {
-          type: "PAYMENT_REQUIRED",
-          order_id: session.order_id,
-          invoice_id: session.invoice_id ?? null,
-          session_id: session.session_id,
-          amount: session.locked_amount,
-          original_amount: session.locked_amount,
-          payment_method: gateway === "CASH" ? "CASH" : "CARD",
-          gateway: gateway as PaymentRequiredEvent["gateway"],
-          currency: session.currency || "UZS",
-          available_card_gateways: gateway === "CASH" ? [] : [gateway],
-          message: "Pending payment requires completion.",
-        };
-      }
       }
       setState("success");
       setTimeout(dismiss, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Cash checkout failed");
       setState("choosing");
-
-        useEffect(() => {
-          let cancelled = false;
-
-          async function loadPendingPayments() {
-            try {
-              const res = await apiFetch("/v1/retailer/pending-payments");
-              if (!res.ok) return;
-              const data: PendingPaymentsResponse = await res.json();
-              const pending = data.pending_payments?.[0];
-              if (!cancelled && pending && !event) {
-                setEvent(sessionToPaymentEvent(pending));
-                setState("choosing");
-                setError(null);
-                setCheckoutUrl(null);
-              }
-            } catch {
-              // WebSocket delivery remains the primary realtime path.
-            }
-          }
-
-          void loadPendingPayments();
-
-          return () => {
-            cancelled = true;
-          };
-        }, [event]);
     }
   }, [event, dismiss]);
 
