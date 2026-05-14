@@ -24,6 +24,7 @@ export type WSEvent =
   | PaymentFailedWSEvent
   | PaymentExpiredEvent
   | CartSyncUpdatedWSEvent
+  | InventorySyncCompleteWSEvent
   | FleetDispatchedWSEvent
   | DispatchLockAcquiredWSEvent
   | DispatchLockReleasedWSEvent
@@ -182,6 +183,18 @@ export interface CartSyncUpdatedWSEvent {
   retailer_id: string;
   item_count: number;
   updated_at: string;
+}
+
+export interface InventorySyncCompleteWSEvent {
+  type: 'INVENTORY_SYNC_COMPLETE';
+  supplier_id: string;
+  warehouse_id?: string;
+  session_id: string;
+  rows_affected: number;
+  affected_warehouses?: number;
+  product_ids?: string[];
+  source?: string;
+  timestamp: string;
 }
 
 // ─── Fleet Dispatched (Driver + Supplier) ──────────────────────────────────

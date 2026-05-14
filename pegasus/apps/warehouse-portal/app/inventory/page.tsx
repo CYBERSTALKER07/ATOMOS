@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { apiFetch } from '@/lib/auth';
+import { useEffect, useEffectEvent, useState, useCallback, useRef } from 'react';
+import { apiFetch, subscribeWarehouseWS, type WarehouseSocketStatus } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import PageTransition from '@/components/PageTransition';
 import EmptyState from '@/components/EmptyState';
+import { useToast } from '@/components/Toast';
 import { motion } from 'framer-motion';
+import type { WarehouseLiveEvent } from '@pegasus/types';
 
 interface InventoryItem {
   product_id: string;
@@ -16,14 +18,41 @@ interface InventoryItem {
 }
 
 export default function InventoryPage() {
+  const { toast } = useToast();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [lowOnly, setLowOnly] = useState(false);
   const [adjusting, setAdjusting] = useState<string | null>(null);
   const [adjustVal, setAdjustVal] = useState('');
+  const [socketStatus, setSocketStatus] = useState<WarehouseSocketStatus>('connecting');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [pulsedProductIds, setPulsedProductIds] = useState<string[]>([]);
 
-  const load = useCallback(async () => {
+  const inventorySnapshotRef = useRef<InventoryItem[]>([]);
+  const pendingSyncEventRef = useRef<Extract<WarehouseLiveEvent, { type: 'INVENTORY_SYNC_COMPLETE' }> | null>(null);
+  const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const pulseRows = useCallback((ids: string[]) => {
+    const normalized = Array.from(new Set(ids.map((id) => String(id).trim()).filter(Boolean)));
+    if (pulseTimerRef.current) {
+      clearTimeout(pulseTimerRef.current);
+      pulseTimerRef.current = null;
+    }
+    setPulsedProductIds(normalized);
+    if (normalized.length > 0) {
+      pulseTimerRef.current = setTimeout(() => {
+        setPulsedProductIds([]);
+        pulseTimerRef.current = null;
+      }, 3000);
+    }
+  }, []);
+
+  const load = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setLoading(true);
+    }
+    setLoadError(null);
     try {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
@@ -32,13 +61,79 @@ export default function InventoryPage() {
       const res = await apiFetch(`/v1/warehouse/ops/inventory${q}`);
       if (res.ok) {
         const data = await res.json();
-        setItems(data.items || []);
-      }
-    } catch { /* handled */ }
-    finally { setLoading(false); }
-  }, [search, lowOnly]);
+        const nextItems = data.items || [];
+        const previousItems = inventorySnapshotRef.current;
+        setItems(nextItems);
+        inventorySnapshotRef.current = nextItems;
 
-  useEffect(() => { load(); }, [load]);
+        const pendingSync = pendingSyncEventRef.current;
+        if (pendingSync && pendingSync.type === 'INVENTORY_SYNC_COMPLETE') {
+          pendingSyncEventRef.current = null;
+
+          let highlighted = Array.isArray(pendingSync.product_ids)
+            ? pendingSync.product_ids.map((id) => String(id).trim()).filter(Boolean)
+            : [];
+
+          if (highlighted.length === 0) {
+            const previousById = new Map(previousItems.map((item) => [item.product_id, item.quantity]));
+            highlighted = nextItems
+              .filter((item: InventoryItem) => previousById.get(item.product_id) !== item.quantity)
+              .map((item: InventoryItem) => item.product_id);
+          }
+
+          pulseRows(highlighted);
+
+          const rows = Number(pendingSync.rows_affected || highlighted.length || 0);
+          const session = typeof pendingSync.session_id === 'string' ? pendingSync.session_id.slice(0, 8) : '';
+          if (rows > 0) {
+            toast(`Inventory sync complete: ${rows} rows applied${session ? ` (session ${session})` : ''}.`, 'success');
+          } else {
+            toast(`Inventory sync complete${session ? ` (session ${session})` : ''}.`, 'success');
+          }
+        }
+      } else {
+        const data = await res.json().catch(() => ({} as { error?: string }));
+        setLoadError(data.error || 'Failed to load inventory');
+      }
+    } catch {
+      setLoadError('Failed to load inventory');
+    } finally {
+      if (!options?.silent) {
+        setLoading(false);
+      }
+    }
+  }, [search, lowOnly, pulseRows, toast]);
+
+  const handleWarehouseLiveEvent = useEffectEvent((event: WarehouseLiveEvent) => {
+    if (event.type !== 'INVENTORY_SYNC_COMPLETE') {
+      return;
+    }
+    pendingSyncEventRef.current = event;
+    void load({ silent: true });
+  });
+
+  useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    return subscribeWarehouseWS({
+      onStatusChange: setSocketStatus,
+      onMessage: payload => {
+        try {
+          handleWarehouseLiveEvent(JSON.parse(payload) as WarehouseLiveEvent);
+        } catch {
+          // Ignore unrelated frames.
+        }
+      },
+    });
+  }, [handleWarehouseLiveEvent]);
+
+  useEffect(() => {
+    return () => {
+      if (pulseTimerRef.current) {
+        clearTimeout(pulseTimerRef.current);
+      }
+    };
+  }, []);
 
   async function handleAdjust(productId: string) {
     const qty = parseInt(adjustVal, 10);
@@ -51,7 +146,7 @@ export default function InventoryPage() {
       if (res.ok) {
         setAdjusting(null);
         setAdjustVal('');
-        load();
+        void load();
       }
     } catch { /* handled */ }
   }
@@ -76,13 +171,38 @@ export default function InventoryPage() {
             <motion.button 
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => { setLoading(true); load(); }} 
+              onClick={() => { void load(); }} 
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm button--secondary active-press"
             >
               <Icon name="refresh" size={16} />
             </motion.button>
           </div>
         </div>
+
+        {socketStatus !== 'idle' && socketStatus !== 'live' && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`rounded-xl border px-4 py-3 text-sm shadow-sm ${socketStatus === 'offline'
+              ? 'border-[var(--danger)]/30 bg-[var(--danger)]/8 text-[var(--danger)]'
+              : 'border-[var(--warning)]/30 bg-[var(--warning)]/8 text-[var(--warning)]'}`}
+          >
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full animate-pulse ${socketStatus === 'offline' ? 'bg-[var(--danger)]' : 'bg-[var(--warning)]'}`} />
+              {socketStatus === 'offline'
+                ? 'Offline. Live inventory sync is paused.'
+                : socketStatus === 'reconnecting'
+                  ? 'Reconnecting live inventory sync...'
+                  : 'Connecting live inventory sync...'}
+            </div>
+          </motion.div>
+        )}
+
+        {loadError && (
+          <div className="rounded-xl border border-[var(--warning)]/30 bg-[var(--warning)]/8 p-4 text-sm text-[var(--warning)]">
+            {loadError}
+          </div>
+        )}
 
         {loading ? (
           <div className="space-y-1">
@@ -120,7 +240,7 @@ export default function InventoryPage() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.03 }}
-                      className="table__row border-b border-[var(--border)] last:border-0 hover:bg-[var(--default)]/50 transition-colors"
+                      className={`table__row border-b border-[var(--border)] last:border-0 hover:bg-[var(--default)]/50 transition-colors ${pulsedProductIds.includes(item.product_id) ? 'warehouse-inventory-sync-pulse' : ''}`}
                     >
                       <td className="py-3 px-4 font-medium">{item.product_name}</td>
                       <td className="py-3 px-4 font-mono text-xs text-[var(--muted)]">{item.sku || '—'}</td>

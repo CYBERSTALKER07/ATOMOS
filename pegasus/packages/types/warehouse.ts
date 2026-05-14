@@ -218,7 +218,20 @@ export interface WarehouseOutboxFailureEvent {
   timestamp: string;
 }
 
+export interface WarehouseInventorySyncCompleteEvent {
+  type: 'INVENTORY_SYNC_COMPLETE';
+  supplier_id: string;
+  warehouse_id?: string;
+  session_id: string;
+  rows_affected: number;
+  affected_warehouses?: number;
+  product_ids?: string[];
+  source?: string;
+  timestamp: string;
+}
+
 export type WarehouseLiveEvent =
   | WarehouseSupplyRequestUpdateEvent
   | WarehouseDispatchLockChangeEvent
-  | WarehouseOutboxFailureEvent;
+  | WarehouseOutboxFailureEvent
+  | WarehouseInventorySyncCompleteEvent;

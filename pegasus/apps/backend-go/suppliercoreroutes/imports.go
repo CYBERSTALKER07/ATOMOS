@@ -6,11 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"net/http"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"backend-go/auth"
@@ -18,6 +21,7 @@ import (
 	"backend-go/outbox"
 	"backend-go/storage"
 	"backend-go/telemetry"
+	"backend-go/ws"
 
 	"cloud.google.com/go/spanner"
 	gcs "cloud.google.com/go/storage"
@@ -143,21 +147,64 @@ type SupplierImportMappingRecord struct {
 
 // SupplierImportApplySummary captures the terminal summary of sandbox->production apply.
 type SupplierImportApplySummary struct {
-	SessionID          string `json:"session_id"`
-	Status             string `json:"status"`
-	AppliedRows        int64  `json:"applied_rows"`
-	CreatedProducts    int64  `json:"created_products"`
-	AffectedWarehouses int64  `json:"affected_warehouses"`
-	Idempotent         bool   `json:"idempotent"`
+	SessionID          string   `json:"session_id"`
+	Status             string   `json:"status"`
+	AppliedRows        int64    `json:"applied_rows"`
+	CreatedProducts    int64    `json:"created_products"`
+	AffectedWarehouses int64    `json:"affected_warehouses"`
+	WarehouseIDs       []string `json:"warehouse_ids,omitempty"`
+	AppliedProductIDs  []string `json:"product_ids,omitempty"`
+	Timestamp          string   `json:"timestamp,omitempty"`
+	Idempotent         bool     `json:"idempotent"`
 }
 
 // SupplierImportRepository encapsulates supplier-scoped import sandbox persistence.
 type SupplierImportRepository struct {
 	client *spanner.Client
+
+	auditMetadataColumnOnce   sync.Once
+	auditMetadataColumnExists bool
+	auditMetadataColumnType   string
 }
 
 func NewSupplierImportRepository(client *spanner.Client) *SupplierImportRepository {
 	return &SupplierImportRepository{client: client}
+}
+
+func (r *SupplierImportRepository) detectInventoryAuditMetadataColumn(ctx context.Context) (bool, string) {
+	if r.client == nil {
+		return false, ""
+	}
+
+	r.auditMetadataColumnOnce.Do(func() {
+		stmt := spanner.Statement{
+			SQL: `SELECT SPANNER_TYPE
+			      FROM INFORMATION_SCHEMA.COLUMNS
+			      WHERE TABLE_NAME = 'InventoryAuditLog'
+			        AND COLUMN_NAME = 'Metadata'
+			      LIMIT 1`,
+		}
+
+		iter := r.client.Single().Query(ctx, stmt)
+		defer iter.Stop()
+
+		row, err := iter.Next()
+		if err != nil {
+			if err != iterator.Done {
+				slog.Warn("supplier import metadata detection failed", "err", err)
+			}
+			return
+		}
+
+		if err := row.Columns(&r.auditMetadataColumnType); err != nil {
+			slog.Warn("supplier import metadata column parse failed", "err", err)
+			return
+		}
+
+		r.auditMetadataColumnExists = true
+	})
+
+	return r.auditMetadataColumnExists, strings.ToUpper(strings.TrimSpace(r.auditMetadataColumnType))
 }
 
 func (r *SupplierImportRepository) CreateImportSession(ctx context.Context, supplierID string, sessionID string, fileName string, initialStatus string) (SupplierImportSessionRecord, error) {
@@ -589,7 +636,9 @@ func (r *SupplierImportRepository) applyImportSessionTxn(ctx context.Context, su
 		SessionID: sessionID,
 		Status:    "APPLIED",
 	}
+	auditMetadataColumnExists, auditMetadataColumnType := r.detectInventoryAuditMetadataColumn(ctx)
 	affectedWarehouses := map[string]struct{}{}
+	affectedProducts := map[string]struct{}{}
 
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		sessionRow, readErr := txn.ReadRow(ctx, "SupplierImportSessions", spanner.Key{supplierID, sessionID}, []string{"status"})
@@ -852,10 +901,32 @@ func (r *SupplierImportRepository) applyImportSessionTxn(ctx context.Context, su
 
 			auditCols := []string{"AuditId", "ProductId", "SupplierId", "AdjustedBy", "PreviousQty", "NewQty", "Delta", "Reason", "AdjustedAt", "WarehouseId"}
 			auditVals := []interface{}{supplierImportAuditID(sessionID, rowIndex), targetSKU, supplierID, supplierID, legacyQty, newLegacyQty, delta, supplierImportReasonBulk, spanner.CommitTimestamp, warehouseID}
+			if auditMetadataColumnExists {
+				auditMetadata, err := json.Marshal(map[string]interface{}{
+					"source":      "SUPPLIER_IMPORT_SANDBOX_APPLY",
+					"session_id":  sessionID,
+					"batch_index": rowIndex,
+				})
+				if err != nil {
+					return fmt.Errorf("marshal inventory audit metadata: %w", err)
+				}
+
+				auditCols = append(auditCols, "Metadata")
+				if strings.HasPrefix(auditMetadataColumnType, "JSON") {
+					metadataJSON, parseErr := toNullJSON(auditMetadata)
+					if parseErr != nil {
+						return fmt.Errorf("parse inventory audit metadata json: %w", parseErr)
+					}
+					auditVals = append(auditVals, metadataJSON)
+				} else {
+					auditVals = append(auditVals, string(auditMetadata))
+				}
+			}
 			batchMutations = append(batchMutations, spanner.InsertOrUpdate("InventoryAuditLog", auditCols, auditVals))
 
 			summary.AppliedRows++
 			affectedWarehouses[warehouseID] = struct{}{}
+			affectedProducts[targetSKU] = struct{}{}
 
 			if len(batchMutations) >= supplierImportMutationBatch {
 				if err := flush(); err != nil {
@@ -877,14 +948,31 @@ func (r *SupplierImportRepository) applyImportSessionTxn(ctx context.Context, su
 		if err := flush(); err != nil {
 			return fmt.Errorf("flush final apply mutations: %w", err)
 		}
-
-		summary.AffectedWarehouses = int64(len(affectedWarehouses))
 		return nil
 	})
 
 	if err != nil {
 		return summary, err
 	}
+
+	if len(affectedWarehouses) > 0 {
+		summary.WarehouseIDs = make([]string, 0, len(affectedWarehouses))
+		for warehouseID := range affectedWarehouses {
+			summary.WarehouseIDs = append(summary.WarehouseIDs, warehouseID)
+		}
+		sort.Strings(summary.WarehouseIDs)
+	}
+
+	if len(affectedProducts) > 0 {
+		summary.AppliedProductIDs = make([]string, 0, len(affectedProducts))
+		for productID := range affectedProducts {
+			summary.AppliedProductIDs = append(summary.AppliedProductIDs, productID)
+		}
+		sort.Strings(summary.AppliedProductIDs)
+	}
+
+	summary.AffectedWarehouses = int64(len(summary.WarehouseIDs))
+	summary.Timestamp = time.Now().UTC().Format(time.RFC3339Nano)
 
 	return summary, nil
 }
@@ -1107,7 +1195,7 @@ func registerImportRoutes(r chi.Router, d Deps, supplierRole []string, log Middl
 	uploadedHandler := withMethodIdempotency(handlePostSupplierImportUploaded(repo), idem, http.MethodPost)
 	mappingHandler := withMethodIdempotency(handlePostSupplierImportMapping(repo), idem, http.MethodPost)
 	approveHandler := withMethodIdempotency(handlePostSupplierImportApprove(repo), idem, http.MethodPost)
-	applyHandler := withMethodIdempotency(handlePostSupplierImportApply(repo), idem, http.MethodPost)
+	applyHandler := withMethodIdempotency(handlePostSupplierImportApply(repo, d.SupplierHub, d.WarehouseHub), idem, http.MethodPost)
 	mappingReadHandler := handleGetSupplierImportMapping(repo)
 	rowsReadHandler := handleGetSupplierImportRows(repo)
 	mappingRouteHandler := func(w http.ResponseWriter, r *http.Request) {
@@ -1134,6 +1222,58 @@ func registerImportRoutes(r chi.Router, d Deps, supplierRole []string, log Middl
 		imports.HandleFunc("/{id}/apply",
 			auth.RequireRole(supplierRole, log(withRegionScope(applyHandler))))
 	})
+}
+
+type inventorySyncCompleteFrame struct {
+	Type               string   `json:"type"`
+	SupplierID         string   `json:"supplier_id"`
+	WarehouseID        string   `json:"warehouse_id,omitempty"`
+	SessionID          string   `json:"session_id"`
+	RowsAffected       int64    `json:"rows_affected"`
+	AffectedWarehouses int64    `json:"affected_warehouses"`
+	ProductIDs         []string `json:"product_ids,omitempty"`
+	Source             string   `json:"source"`
+	Timestamp          string   `json:"timestamp"`
+}
+
+func broadcastInventorySyncComplete(
+	supplierID string,
+	summary SupplierImportApplySummary,
+	supplierHub *ws.SupplierHub,
+	warehouseHub *ws.WarehouseHub,
+) {
+	timestamp := strings.TrimSpace(summary.Timestamp)
+	if timestamp == "" {
+		timestamp = time.Now().UTC().Format(time.RFC3339Nano)
+	}
+
+	baseFrame := inventorySyncCompleteFrame{
+		Type:               ws.EventInventorySyncComplete,
+		SupplierID:         supplierID,
+		SessionID:          summary.SessionID,
+		RowsAffected:       summary.AppliedRows,
+		AffectedWarehouses: summary.AffectedWarehouses,
+		ProductIDs:         summary.AppliedProductIDs,
+		Source:             "SUPPLIER_IMPORT_SANDBOX_APPLY",
+		Timestamp:          timestamp,
+	}
+
+	if supplierHub != nil {
+		supplierHub.PushToSupplier(supplierID, baseFrame)
+	}
+
+	if warehouseHub == nil {
+		return
+	}
+
+	for _, warehouseID := range summary.WarehouseIDs {
+		if strings.TrimSpace(warehouseID) == "" {
+			continue
+		}
+		frame := baseFrame
+		frame.WarehouseID = warehouseID
+		warehouseHub.PushToWarehouse(warehouseID, frame)
+	}
 }
 
 func handleCreateSupplierImportSession(repo *SupplierImportRepository) http.HandlerFunc {
@@ -1529,7 +1669,7 @@ func handlePostSupplierImportApprove(repo *SupplierImportRepository) http.Handle
 	}
 }
 
-func handlePostSupplierImportApply(repo *SupplierImportRepository) http.HandlerFunc {
+func handlePostSupplierImportApply(repo *SupplierImportRepository, supplierHub *ws.SupplierHub, warehouseHub *ws.WarehouseHub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -1568,6 +1708,10 @@ func handlePostSupplierImportApply(repo *SupplierImportRepository) http.HandlerF
 			return
 		}
 
+		if !summary.Idempotent {
+			broadcastInventorySyncComplete(supplierID, summary, supplierHub, warehouseHub)
+		}
+
 		writeSupplierImportJSON(w, http.StatusOK, map[string]interface{}{
 			"session_id":          summary.SessionID,
 			"status":              summary.Status,
@@ -1575,6 +1719,9 @@ func handlePostSupplierImportApply(repo *SupplierImportRepository) http.HandlerF
 			"applied_rows":        summary.AppliedRows,
 			"created_products":    summary.CreatedProducts,
 			"affected_warehouses": summary.AffectedWarehouses,
+			"warehouse_ids":       summary.WarehouseIDs,
+			"product_ids":         summary.AppliedProductIDs,
+			"timestamp":           summary.Timestamp,
 			"source":              "SUPPLIER_IMPORT_SANDBOX_APPLY",
 			"journal_reason":      supplierImportReasonBulk,
 		})

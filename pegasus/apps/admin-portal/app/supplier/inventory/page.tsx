@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@heroui/react';
 import { apiFetch, useToken } from '@/lib/auth';
 import type { PaginationState } from '@/lib/usePagination';
@@ -32,6 +32,14 @@ interface AuditEntry {
   adjusted_at: string;
 }
 
+interface SupplierInventorySyncEvent {
+  type?: string;
+  session_id?: string;
+  rows_affected?: number;
+  product_ids?: string[];
+  timestamp?: string;
+}
+
 type Tab = 'stock' | 'audit';
 type Reason = 'PRODUCTION_RECEIPT' | 'DAMAGE_WRITEOFF' | 'CORRECTION' | 'RETURN_TO_STOCK';
 
@@ -56,27 +64,81 @@ export default function InventoryPage() {
   const [adjusting, setAdjusting] = useState<string | null>(null);
   const [adjustDelta, setAdjustDelta] = useState('');
   const [adjustReason, setAdjustReason] = useState<Reason>('PRODUCTION_RECEIPT');
+  const [pulsedProductIds, setPulsedProductIds] = useState<string[]>([]);
   const { toast } = useToast();
+
+  const inventorySnapshotRef = useRef<InventoryItem[]>([]);
+  const pendingSyncEventRef = useRef<SupplierInventorySyncEvent | null>(null);
+  const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const token = useToken();
   const stockOffset = (stockPage - 1) * stockPageSize;
   const auditOffset = (auditPage - 1) * auditPageSize;
 
-  const fetchInventory = useCallback(async () => {
-    setLoading(true);
+  const pulseRows = useCallback((ids: string[]) => {
+    const normalized = Array.from(new Set(ids.map((id) => String(id).trim()).filter(Boolean)));
+    if (pulseTimerRef.current) {
+      clearTimeout(pulseTimerRef.current);
+      pulseTimerRef.current = null;
+    }
+    setPulsedProductIds(normalized);
+    if (normalized.length > 0) {
+      pulseTimerRef.current = setTimeout(() => {
+        setPulsedProductIds([]);
+        pulseTimerRef.current = null;
+      }, 3000);
+    }
+  }, []);
+
+  const fetchInventory = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) {
+      setLoading(true);
+    }
     try {
       const params = new URLSearchParams({ limit: String(stockPageSize), offset: String(stockOffset) });
       const res = await apiFetch(`/v1/supplier/inventory?${params}`);
       if (!res.ok) throw new Error('Failed to load inventory');
       const json = await res.json();
-      setItems(json.data || []);
+      const nextItems = json.data || [];
+      const previousItems = inventorySnapshotRef.current;
+
+      setItems(nextItems);
+      inventorySnapshotRef.current = nextItems;
       setStockHasMore(Boolean(json.has_more));
+
+      const pendingSync = pendingSyncEventRef.current;
+      if (pendingSync && pendingSync.type === 'INVENTORY_SYNC_COMPLETE') {
+        pendingSyncEventRef.current = null;
+
+        let highlighted = Array.isArray(pendingSync.product_ids)
+          ? pendingSync.product_ids.map((id) => String(id).trim()).filter(Boolean)
+          : [];
+
+        if (highlighted.length === 0) {
+          const previousById = new Map(previousItems.map((item) => [item.product_id, item.quantity_available]));
+          highlighted = nextItems
+            .filter((item: InventoryItem) => previousById.get(item.product_id) !== item.quantity_available)
+            .map((item: InventoryItem) => item.product_id);
+        }
+
+        pulseRows(highlighted);
+
+        const rows = Number(pendingSync.rows_affected || highlighted.length || 0);
+        const session = typeof pendingSync.session_id === 'string' ? pendingSync.session_id.slice(0, 8) : '';
+        if (rows > 0) {
+          toast(`Inventory sync complete: ${rows} rows applied${session ? ` (session ${session})` : ''}.`, 'success');
+        } else {
+          toast(`Inventory sync complete${session ? ` (session ${session})` : ''}.`, 'success');
+        }
+      }
     } catch (e) {
       toast((e as Error).message , 'error');
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
-  }, [stockPageSize, stockOffset, toast]);
+  }, [stockPageSize, stockOffset, pulseRows, toast]);
 
   const fetchAudit = useCallback(async () => {
     try {
@@ -91,9 +153,34 @@ export default function InventoryPage() {
 
   useEffect(() => {
     if (!token) return;
-    fetchInventory();
-    fetchAudit();
+    void fetchInventory();
+    void fetchAudit();
   }, [token, fetchInventory, fetchAudit]);
+
+  useEffect(() => {
+    const onSupplierLiveEvent = (event: Event) => {
+      const frame = (event as CustomEvent<SupplierInventorySyncEvent>).detail;
+      if (!frame || frame.type !== 'INVENTORY_SYNC_COMPLETE') {
+        return;
+      }
+      pendingSyncEventRef.current = frame;
+      void fetchInventory({ silent: true });
+      void fetchAudit();
+    };
+
+    window.addEventListener('supplier-live-event', onSupplierLiveEvent);
+    return () => {
+      window.removeEventListener('supplier-live-event', onSupplierLiveEvent);
+    };
+  }, [fetchAudit, fetchInventory]);
+
+  useEffect(() => {
+    return () => {
+      if (pulseTimerRef.current) {
+        clearTimeout(pulseTimerRef.current);
+      }
+    };
+  }, []);
 
   const stockTotalItems = stockHasMore ? stockOffset + items.length + 1 : stockOffset + items.length;
   const stockTotalPages = Math.max(1, Math.ceil(stockTotalItems / stockPageSize));
@@ -165,8 +252,8 @@ export default function InventoryPage() {
       toast(`Stock adjusted by ${delta > 0 ? '+' : ''}${delta}`, 'success');
       setAdjusting(null);
       setAdjustDelta('');
-      fetchInventory();
-      fetchAudit();
+      void fetchInventory();
+      void fetchAudit();
     } catch (e) {
       toast((e as Error).message , 'error');
     }
@@ -217,7 +304,7 @@ export default function InventoryPage() {
             <span className="md-typescale-label-small uppercase" style={{ color: 'var(--muted)' }}>
               {items.length} SKUs
             </span>
-            <Button variant="outline" onPress={fetchInventory}>
+            <Button variant="outline" onPress={() => { void fetchInventory(); }}>
               Refresh
             </Button>
           </div>
@@ -244,7 +331,7 @@ export default function InventoryPage() {
               </thead>
               <tbody>
                 {stockPagination.pageItems.map(item => (
-                  <tr key={item.product_id}>
+                  <tr key={item.product_id} className={pulsedProductIds.includes(item.product_id) ? 'inventory-sync-pulse' : undefined}>
                     <td>{item.product_name}</td>
                     <td className="font-mono md-typescale-body-small" style={{ color: 'var(--muted)' }}>{item.sku_id}</td>
                     <td className="text-right font-mono" style={{

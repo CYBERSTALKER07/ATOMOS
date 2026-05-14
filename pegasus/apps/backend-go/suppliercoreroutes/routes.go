@@ -15,6 +15,7 @@ import (
 	"backend-go/order"
 	"backend-go/proximity"
 	"backend-go/supplier"
+	"backend-go/ws"
 )
 
 // Middleware is the handler-wrap contract supplied by the caller.
@@ -22,12 +23,14 @@ type Middleware func(http.HandlerFunc) http.HandlerFunc
 
 // Deps bundles collaborators needed to mount the supplier core routes.
 type Deps struct {
-	Spanner     *spanner.Client
-	ReadRouter  proximity.ReadRouter
-	Order       *order.OrderService
-	Vetting     *supplier.OrderVettingService
-	Log         Middleware
-	Idempotency Middleware
+	Spanner      *spanner.Client
+	ReadRouter   proximity.ReadRouter
+	Order        *order.OrderService
+	Vetting      *supplier.OrderVettingService
+	SupplierHub  *ws.SupplierHub
+	WarehouseHub *ws.WarehouseHub
+	Log          Middleware
+	Idempotency  Middleware
 }
 
 // RegisterRoutes mounts the supplier core surface:

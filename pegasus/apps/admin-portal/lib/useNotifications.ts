@@ -27,6 +27,22 @@ interface RealtimeNotificationFrame {
   created_at?: string;
 }
 
+function parseRealtimePayload(raw?: string): Record<string, unknown> {
+  const trimmed = (raw || '').trim();
+  if (!trimmed) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+  } catch {
+    // Ignore malformed payload JSON and keep a safe empty payload object.
+  }
+  return {};
+}
+
 function normalizeNotification(item: BackendNotification): Notification {
   return {
     id: item.notification_id,
@@ -158,6 +174,15 @@ export function useNotifications() {
         // Dispatch hybrid sync event globally
         if (msg.type && typeof window !== "undefined") {
            window.dispatchEvent(new CustomEvent("sync-invalidate", { detail: msg.type }));
+
+          const payload = parseRealtimePayload(msg.payload);
+          window.dispatchEvent(new CustomEvent("supplier-live-event", {
+            detail: {
+              ...payload,
+              ...msg,
+              type: msg.type,
+            },
+          }));
         }
 
         if (msg.type && msg.title) {

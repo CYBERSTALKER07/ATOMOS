@@ -107,6 +107,8 @@ const (
 	EventSupplyRequestUpdate = "SUPPLY_REQUEST_UPDATE"
 	// EventDispatchLockChange is pushed when a dispatch lock is acquired/released.
 	EventDispatchLockChange = "DISPATCH_LOCK_CHANGE"
+	// EventInventorySyncComplete is pushed when supplier import apply commits inventory updates.
+	EventInventorySyncComplete = "INVENTORY_SYNC_COMPLETE"
 )
 
 // ─── Factory Hub → Factory Portal & Native Apps ──────────────────────────────
