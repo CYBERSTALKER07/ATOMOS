@@ -5449,6 +5449,25 @@
         {
           "properties": {
             "type": {
+              "const": "SYSTEM_APP_OUTDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SystemAppOutdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "SYSTEM_BROADCAST"
             }
           },
@@ -5789,6 +5808,7 @@
         "SUPPLY_REQUEST_READY",
         "SUPPLY_REQUEST_SUBMITTED",
         "SUPPLY_REQUEST_UPDATE",
+        "SYSTEM_APP_OUTDATED",
         "SYSTEM_BROADCAST",
         "TOKEN_REFRESH_NEEDED",
         "TRANSFER_APPROVED",
@@ -5945,6 +5965,7 @@
     "SUPPLY_REQUEST_READY": "UnknownEventPayload",
     "SUPPLY_REQUEST_SUBMITTED": "UnknownEventPayload",
     "SUPPLY_REQUEST_UPDATE": "UnknownEventPayload",
+    "SYSTEM_APP_OUTDATED": "UnknownEventPayload",
     "SYSTEM_BROADCAST": "UnknownEventPayload",
     "TOKEN_REFRESH_NEEDED": "UnknownEventPayload",
     "TRANSFER_APPROVED": "UnknownEventPayload",
