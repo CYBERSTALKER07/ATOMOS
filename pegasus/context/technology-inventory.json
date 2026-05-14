@@ -26,7 +26,9 @@
   ],
   "tooling": [
     "Vite",
-    "ESLint"
+    "ESLint",
+    "quicktype",
+    "go run ./apps/backend-go/cmd/gen-contracts"
   ],
   "codeRetrieval": {
     "preferredTools": [
@@ -65,6 +67,81 @@
     ]
   },
   "runtimeContracts": [
+    {
+      "name": "Task 1.3 native contract bridge",
+      "path": "apps/backend-go/cmd/gen-contracts -> contracts/events.schema.json -> native pre-build quicktype generation",
+      "owner": "pegasus/apps/backend-go/cmd/gen-contracts/main.go + pegasus/contracts/events.schema.json + pegasus/apps/*-{android,ios} build wiring",
+      "methods": [
+        "go run ./apps/backend-go/cmd/gen-contracts -mode json-schema -schema-out ./contracts/events.schema.json",
+        "Android preBuild tasks generateEventSchema and generateWsEventModels in driver, retailer, factory, warehouse, and payload modules",
+        "iOS pre-build shell phases in driver and retailer Xcode projects generating Generated/PegasusWSEventEnvelope.swift",
+        "XcodeGen preBuildScripts in payload and warehouse iOS projects generating Generated/PegasusWSEventEnvelope.swift"
+      ],
+      "consumers": [
+        "pegasus/apps/driver-app-android",
+        "pegasus/apps/retailer-app-android",
+        "pegasus/apps/factory-app-android",
+        "pegasus/apps/warehouse-app-android",
+        "pegasus/apps/payload-app-android",
+        "pegasus/apps/driverappios",
+        "pegasus/apps/retailer-app-ios",
+        "pegasus/apps/payload-app-ios",
+        "pegasus/apps/warehouse-app-ios"
+      ],
+      "notes": [
+        "Backend gen-contracts now supports mode-selectable JSON-Schema output without changing existing TS generation workflows.",
+        "contracts/events.schema.json is the canonical cross-platform contract artifact for native generation.",
+        "Native codegen is build-time additive and preserves backward-compatible websocket payload handling for deployed clients."
+      ]
+    },
+    {
+      "name": "Task 1.4 desktop-to-native handshake bridge",
+      "path": "/v1/ws/command/dispatch -> driver websocket envelope -> /v1/ws/ack -> supplier command lifecycle fanout",
+      "owner": "pegasus/apps/backend-go/{ws/command_registry.go,ws/driver_hub.go,userroutes/routes.go,cache/keys.go} + pegasus/apps/{driver-app-android,driverappios}",
+      "methods": [
+        "POST /v1/ws/command/dispatch",
+        "POST /v1/ws/ack",
+        "Redis command registry keyspace ws:cmdreg:* with TTLWSCommandRegistry=24h",
+        "Driver websocket envelope additive metadata: command_id, command_state, trace_id",
+        "Supplier lifecycle fanout events: COMMAND_DISPATCHED, COMMAND_RECEIVED, COMMAND_SETTLED",
+        "Native ACK emitters: DriverWebSocket.kt and iOS waiting views through APIClient.ackWebSocketCommand"
+      ],
+      "consumers": [
+        "backend-go ws hubs and userroutes",
+        "admin-portal supplier websocket command listeners",
+        "driver-app-android DriverWebSocket",
+        "driverappios PaymentWaitingView and ShopClosedWaitingView"
+      ],
+      "notes": [
+        "Lifecycle persistence is fail-open: Redis is primary with in-process fallback for degraded mode.",
+        "Command state transitions are explicit and monotonic: INITIATED -> DISPATCHED -> RECEIVED -> SETTLED.",
+        "Contract artifacts now include typed command lifecycle payloads in contracts/events.schema.json and packages/types/ws-events.ts."
+      ]
+    },
+    {
+      "name": "Phase 2.1 websocket envelope guard",
+      "path": "ws role hubs -> ws/envelope_guard -> schema-safe websocket delivery",
+      "owner": "pegasus/apps/backend-go/{ws/envelope_guard.go,ws/{driver,retailer,supplier,payloader,warehouse,factory}_hub.go,kafka/notification_dispatcher.go} + pegasus/apps/{driver-app-android,driverappios}",
+      "methods": [
+        "Per-connection schema negotiation via sv query param and X-Schema-Version/X-Client-Schema-Version headers",
+        "Guarded websocket write path via writeGuardedPayload in role hubs",
+        "Event minimum schema matrix with additive v2->v1 downgrade for compatible payloads",
+        "Incompatible downgrade fallback envelope SYSTEM_APP_OUTDATED",
+        "notification_dispatcher websocket frame stamping of additive schema_version metadata",
+        "Driver native clients declare sv=2 and wait-state flows block on SYSTEM_APP_OUTDATED"
+      ],
+      "consumers": [
+        "backend-go ws envelope guard and role hubs",
+        "backend-go kafka/notification_dispatcher.go",
+        "driver-app-android DriverWebSocket + offload wait-state view models",
+        "driverappios PaymentWaitingView + ShopClosedWaitingView"
+      ],
+      "notes": [
+        "Browser websocket clients default to latest schema while unversioned native clients default to legacy schema until sv is declared.",
+        "Guarded delivery runs on local fanout and Redis-relayed fanout so mixed-version clients remain crash-safe.",
+        "SYSTEM_APP_OUTDATED payloads include required_schema_version, client_schema_version, and blocked_event_type metadata for explicit upgrade messaging."
+      ]
+    },
     {
       "name": "S-level dynamic billing metering and fee milestones",
       "path": "ORDER_FINALIZED metering substrate + treasury billing telemetry",

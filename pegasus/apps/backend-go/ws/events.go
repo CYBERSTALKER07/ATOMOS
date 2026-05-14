@@ -131,6 +131,14 @@ const (
 	EventAIPrediction = "AI_PREDICTION"
 	// EventSystemBroadcast is used for system-wide broadcast messages.
 	EventSystemBroadcast = "SYSTEM_BROADCAST"
+	// EventSystemAppOutdated is pushed when payload translation fails for an old client.
+	EventSystemAppOutdated = "SYSTEM_APP_OUTDATED"
+	// EventCommandDispatched is pushed when a verified desktop command is sent to native.
+	EventCommandDispatched = "COMMAND_DISPATCHED"
+	// EventCommandReceived is pushed when native acknowledges receipt of a command.
+	EventCommandReceived = "COMMAND_RECEIVED"
+	// EventCommandSettled is pushed when command settlement completes.
+	EventCommandSettled = "COMMAND_SETTLED"
 )
 
 // ─── Delta-Sync Protocol ───────────────────────────────────────────────────────

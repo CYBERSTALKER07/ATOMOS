@@ -193,6 +193,37 @@ final class APIClient: @unchecked Sendable {
         return try await post("v1/delivery/confirm-payment-bypass", body: body)
     }
 
+    // MARK: - WebSocket Command Handshake
+
+    /// POST /v1/ws/ack — confirms native receipt/settlement of a verified command.
+    func ackWebSocketCommand(commandId: String, traceId: String?, eventType: String) async throws {
+        struct AckRequest: Encodable {
+            let commandId: String
+            let traceId: String?
+            let eventType: String
+
+            enum CodingKeys: String, CodingKey {
+                case commandId = "command_id"
+                case traceId = "trace_id"
+                case eventType = "event_type"
+            }
+        }
+        struct AckResponse: Decodable {
+            let status: String
+            let commandId: String
+
+            enum CodingKeys: String, CodingKey {
+                case status
+                case commandId = "command_id"
+            }
+        }
+
+        let _: AckResponse = try await post(
+            "v1/ws/ack",
+            body: AckRequest(commandId: commandId, traceId: traceId, eventType: eventType)
+        )
+    }
+
     // MARK: - Fleet Dispatch
 
     func depart(truckId: String) async throws -> [String: String] {

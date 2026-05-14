@@ -39,13 +39,15 @@ type RetailerHub struct {
 	mu         sync.RWMutex
 	writeMu    sync.Mutex
 	clients    map[string][]*websocket.Conn // Key: RetailerId → active connections
-	subscribed map[string]bool              // retailerID → relay subscription active
+	schemaVers map[*websocket.Conn]int
+	subscribed map[string]bool // retailerID → relay subscription active
 }
 
 // NewRetailerHub creates a fresh hub instance.
 func NewRetailerHub() *RetailerHub {
 	return &RetailerHub{
 		clients:    make(map[string][]*websocket.Conn),
+		schemaVers: make(map[*websocket.Conn]int),
 		subscribed: make(map[string]bool),
 	}
 }
@@ -64,6 +66,7 @@ func (h *RetailerHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	if traceID == "" {
 		traceID = r.Header.Get("X-Request-Id")
 	}
+	schemaVersion := resolveClientSchemaVersion(r)
 
 	if retailerID == "" {
 		http.Error(w, "retailer_id could not be determined from auth token", http.StatusUnauthorized)
@@ -82,12 +85,14 @@ func (h *RetailerHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	}
 	h.mu.Lock()
 	h.clients[retailerID] = append(h.clients[retailerID], conn)
+	h.schemaVers[conn] = schemaVersion
 	total := len(h.clients[retailerID])
 	h.mu.Unlock()
 
 	slog.InfoContext(r.Context(), "retailer hub client connected",
 		"hub", "retailer",
 		"retailer_id", retailerID,
+		"schema_version", schemaVersion,
 		"active_pipes", total,
 		"trace_id", traceID,
 	)
@@ -115,6 +120,7 @@ func (h *RetailerHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 				cache.Unsubscribe("ws:retailer:" + retailerID)
 			}
 		}
+		delete(h.schemaVers, conn)
 		h.mu.Unlock()
 		conn.Close()
 		slog.InfoContext(r.Context(), "retailer hub client disconnected",
@@ -135,30 +141,6 @@ func (h *RetailerHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 // this pod AND publishes to Redis Pub/Sub for cross-pod relay.
 // Returns true if at least one LOCAL connection received the payload.
 func (h *RetailerHub) PushToRetailer(retailerID string, payload interface{}) bool {
-	local := h.pushToRetailerLocal(retailerID, payload)
-
-	// Cross-pod relay (non-blocking, fail-open)
-	data, err := json.Marshal(payload)
-	if err == nil {
-		cache.Publish(context.Background(), "ws:retailer:"+retailerID, data)
-	}
-
-	return local
-}
-
-// pushToRetailerLocal sends to local connections only.
-func (h *RetailerHub) pushToRetailerLocal(retailerID string, payload interface{}) bool {
-	h.mu.RLock()
-	conns, exists := h.clients[retailerID]
-	if !exists || len(conns) == 0 {
-		h.mu.RUnlock()
-		return false
-	}
-	// Snapshot the connections under read lock
-	snapshot := make([]*websocket.Conn, len(conns))
-	copy(snapshot, conns)
-	h.mu.RUnlock()
-
 	data, err := json.Marshal(payload)
 	if err != nil {
 		slog.Error("retailer hub payload marshal failed",
@@ -169,23 +151,30 @@ func (h *RetailerHub) pushToRetailerLocal(retailerID string, payload interface{}
 		return false
 	}
 
-	delivered := false
-	h.writeMu.Lock()
-	defer h.writeMu.Unlock()
-	for _, conn := range snapshot {
-		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			slog.Warn("retailer hub write failed; evicting dead connection",
-				"hub", "retailer",
-				"retailer_id", retailerID,
-				"error", err,
-			)
-			conn.Close()
-		} else {
-			delivered = true
-		}
-	}
+	local := h.pushToRetailerLocal(retailerID, data)
 
-	return delivered
+	// Cross-pod relay (non-blocking, fail-open)
+	cache.Publish(context.Background(), "ws:retailer:"+retailerID, data)
+
+	return local
+}
+
+// pushToRetailerLocal sends to local connections only.
+func (h *RetailerHub) pushToRetailerLocal(retailerID string, data []byte) bool {
+	h.mu.RLock()
+	conns, exists := h.clients[retailerID]
+	if !exists || len(conns) == 0 {
+		h.mu.RUnlock()
+		return false
+	}
+	snapshot := make([]guardedConnTarget, 0, len(conns))
+	for _, conn := range conns {
+		schemaVersion := h.schemaVers[conn]
+		snapshot = append(snapshot, guardedConnTarget{conn: conn, schemaVersion: schemaVersion})
+	}
+	h.mu.RUnlock()
+
+	return writeGuardedPayload("retailer", "retailer_id", retailerID, snapshot, &h.writeMu, data)
 }
 
 // subscribeRelay registers a Redis Pub/Sub handler so messages from other pods
@@ -201,12 +190,7 @@ func (h *RetailerHub) subscribeRelay(retailerID string) {
 
 	channel := "ws:retailer:" + retailerID
 	cache.Subscribe(channel, func(_ string, payload []byte) {
-		// Decode and relay to local connections only
-		var msg interface{}
-		if err := json.Unmarshal(payload, &msg); err != nil {
-			return
-		}
-		h.pushToRetailerLocal(retailerID, msg)
+		h.pushToRetailerLocal(retailerID, payload)
 	})
 }
 

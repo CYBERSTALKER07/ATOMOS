@@ -1,6 +1,6 @@
 {
   "version": "2026-05-14",
-  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer+supplier fanout parity with admin-portal hybrid invalidation, retailer inbox settlement/session refresh parity with shared ws-event contract coverage, checkout supplier-effective currency resolution, payment-session currency normalization, refund/chargeback additive currency compatibility, treasury/reconciliation read-model currency parity for admin portal consumers, warehouse treasury invoice currency parity across portal and native clients, multitenant driver/factory login disambiguation plus supplier-scoped phone uniqueness in provisioning flows, phase-1 regional substrate plus provider-seam normalization for GLOBAL_PAY/ADYEN/CASH with official Adyen Payment Links hosted-checkout wiring, provider execution-path gateway normalization, supplier/warehouse region query-scope middleware enforcement, webhook route composition parity for Global Pay, Stripe, and Adyen ingress, settlement-locality bootstrap for MasterInvoices/Warehouses/Vault precedence plus SupplierInventoryV2 warehouse-key inventory schema, supplier inventory import staging substrate and admin-portal wizard shell routing, active InventoryV2 runtime dual-read/write mirroring across checkout/restock plus replenishment and planning read convergence, autonomous nearest-factory routing fallback when no active SupplyLanes candidate exists, checkout warehouse equal-H3 tie round-robin balancing across resolver paths, region-filtered supplier reads and expanded warehouse ops plus demand read surfaces, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, targeted workspace retrieval as the default codebase-retrieval path, S-level dynamic billing metering with milestone-driven platform fee adjustments plus treasury billing telemetry, and dynamic delivery handshake settlement orchestration with DeliverySessions audit trails, settlement-required fanout, dispute escalation outbox/dispatcher closure, and retailer role-row consumption parity).",
+  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer+supplier fanout parity with admin-portal hybrid invalidation, retailer inbox settlement/session refresh parity with shared ws-event contract coverage, checkout supplier-effective currency resolution, payment-session currency normalization, refund/chargeback additive currency compatibility, treasury/reconciliation read-model currency parity for admin portal consumers, warehouse treasury invoice currency parity across portal and native clients, multitenant driver/factory login disambiguation plus supplier-scoped phone uniqueness in provisioning flows, phase-1 regional substrate plus provider-seam normalization for GLOBAL_PAY/ADYEN/CASH with official Adyen Payment Links hosted-checkout wiring, provider execution-path gateway normalization, supplier/warehouse region query-scope middleware enforcement, webhook route composition parity for Global Pay, Stripe, and Adyen ingress, settlement-locality bootstrap for MasterInvoices/Warehouses/Vault precedence plus SupplierInventoryV2 warehouse-key inventory schema, supplier inventory import staging substrate and admin-portal wizard shell routing, active InventoryV2 runtime dual-read/write mirroring across checkout/restock plus replenishment and planning read convergence, autonomous nearest-factory routing fallback when no active SupplyLanes candidate exists, checkout warehouse equal-H3 tie round-robin balancing across resolver paths, region-filtered supplier reads and expanded warehouse ops plus demand read surfaces, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, targeted workspace retrieval as the default codebase-retrieval path, S-level dynamic billing metering with milestone-driven platform fee adjustments plus treasury billing telemetry, dynamic delivery handshake settlement orchestration with DeliverySessions audit trails, settlement-required fanout, dispute escalation outbox/dispatcher closure, retailer role-row consumption parity, Task 1.4 desktop-to-native verified command handshake lifecycle bridging with Redis-backed ws command registry plus native ACK settlement, and Phase 2.1 websocket envelope guard schema negotiation with guarded downgrade and SYSTEM_APP_OUTDATED fallback).",
   "agentContext": {
     "syncSet": [
       "../.github/ACT.md",
@@ -106,7 +106,12 @@
     { "id": "workspace_retrieval", "type": "agent_tool", "label": "Workspace Search + Language Server Retrieval" },
     { "id": "arch_docs", "type": "docs", "label": "Architecture Docs + Graph" },
     { "id": "tech_inventory", "type": "docs", "label": "Technology Inventory" },
-    { "id": "one_eye_guards", "type": "policy_guard", "label": "One-Eye Guard Suite" }
+    { "id": "gen_contracts_tool", "type": "build_tool", "label": "gen-contracts Tool" },
+    { "id": "events_schema_artifact", "type": "contract", "label": "events.schema.json Artifact" },
+    { "id": "native_codegen_bridge", "type": "build_tool", "label": "Quicktype Native Codegen" },
+    { "id": "one_eye_guards", "type": "policy_guard", "label": "One-Eye Guard Suite" },
+    { "id": "ws_command_registry", "type": "backend", "label": "WebSocket Command Registry" },
+    { "id": "ws_envelope_guard", "type": "backend", "label": "WebSocket Envelope Guard" }
   ],
   "edges": [
     { "from": "admin_portal", "to": "maglev", "relationship": "calls" },
@@ -121,6 +126,9 @@
     { "from": "handlers", "to": "spanner", "relationship": "rwtxn_outbox_emit" },
     { "from": "handlers", "to": "redis", "relationship": "cache_invalidate" },
     { "from": "ws_hubs", "to": "redis", "relationship": "pubsub_fanout" },
+    { "from": "ws_hubs", "to": "ws_envelope_guard", "relationship": "guards_payloads" },
+    { "from": "ws_hubs", "to": "ws_command_registry", "relationship": "tracks_command_lifecycle" },
+    { "from": "ws_command_registry", "to": "redis", "relationship": "persists_command_state" },
     { "from": "ws_hubs", "to": "telemetry_audit_journal", "relationship": "best_effort_journal" },
     { "from": "telemetry_audit_journal", "to": "kafka", "relationship": "publishes" },
     { "from": "spanner", "to": "outbox_relay", "relationship": "tailed_by" },
@@ -144,9 +152,90 @@
     { "from": "copilot_agent", "to": "arch_docs", "relationship": "reads" },
     { "from": "gemini_agent", "to": "arch_docs", "relationship": "reads" },
     { "from": "copilot_agent", "to": "tech_inventory", "relationship": "reads" },
-    { "from": "gemini_agent", "to": "tech_inventory", "relationship": "reads" }
+    { "from": "gemini_agent", "to": "tech_inventory", "relationship": "reads" },
+    { "from": "gen_contracts_tool", "to": "events_schema_artifact", "relationship": "emits_json_schema" },
+    { "from": "gen_contracts_tool", "to": "handlers", "relationship": "reads_event_contracts_from" },
+    { "from": "native_codegen_bridge", "to": "events_schema_artifact", "relationship": "consumes_schema" },
+    { "from": "native_codegen_bridge", "to": "android_clients", "relationship": "generates_native_models_for" },
+    { "from": "native_codegen_bridge", "to": "ios_clients", "relationship": "generates_native_models_for" }
   ],
   "runtimeContracts": [
+    {
+      "id": "task_1_3_native_contract_bridge",
+      "path": "apps/backend-go/cmd/gen-contracts -> contracts/events.schema.json -> native pre-build quicktype generation",
+      "owner": "pegasus/apps/backend-go/cmd/gen-contracts/main.go + pegasus/contracts/events.schema.json + pegasus/apps/*-{android,ios} build wiring",
+      "methods": [
+        "go run ./apps/backend-go/cmd/gen-contracts -mode json-schema -schema-out ./contracts/events.schema.json",
+        "Android preBuild tasks generateEventSchema and generateWsEventModels in driver, retailer, factory, warehouse, and payload modules",
+        "iOS pre-build shell phases in driver and retailer Xcode projects emitting Generated/PegasusWSEventEnvelope.swift",
+        "XcodeGen preBuildScripts in payload and warehouse iOS projects emitting Generated/PegasusWSEventEnvelope.swift"
+      ],
+      "consumers": [
+        "pegasus/apps/driver-app-android",
+        "pegasus/apps/retailer-app-android",
+        "pegasus/apps/factory-app-android",
+        "pegasus/apps/warehouse-app-android",
+        "pegasus/apps/payload-app-android",
+        "pegasus/apps/driverappios",
+        "pegasus/apps/retailer-app-ios",
+        "pegasus/apps/payload-app-ios",
+        "pegasus/apps/warehouse-app-ios"
+      ],
+      "notes": [
+        "Backend gen-contracts now supports mode-selectable JSON-Schema emission without breaking existing TypeScript registry output.",
+        "contracts/events.schema.json is the canonical schema bridge artifact used by native model generation.",
+        "Native generation is additive and build-time only; websocket runtime contracts remain backward compatible across deployed clients."
+      ]
+    },
+    {
+      "id": "task_1_4_desktop_native_handshake_bridge",
+      "path": "/v1/ws/command/dispatch -> ws.DriverHub payload envelope -> /v1/ws/ack -> supplier lifecycle fanout",
+      "owner": "pegasus/apps/backend-go/{ws/command_registry.go,ws/driver_hub.go,userroutes/routes.go,cache/keys.go} + pegasus/apps/{driver-app-android,driverappios}",
+      "methods": [
+        "POST /v1/ws/command/dispatch",
+        "POST /v1/ws/ack",
+        "Redis keyspace ws:cmdreg:* with TTLWSCommandRegistry=24h",
+        "DriverHub command envelope metadata injection (command_id, command_state, trace_id)",
+        "Supplier websocket lifecycle fanout COMMAND_DISPATCHED/COMMAND_RECEIVED/COMMAND_SETTLED",
+        "Native ACK emitters in DriverWebSocket.kt and iOS waiting views via APIClient.ackWebSocketCommand"
+      ],
+      "consumers": [
+        "pegasus/apps/admin-portal websocket supplier consumers",
+        "pegasus/apps/driver-app-android/app/src/main/java/com/pegasus/driver/data/remote/DriverWebSocket.kt",
+        "pegasus/apps/driverappios/driverappios/Views/{PaymentWaitingView.swift,ShopClosedWaitingView.swift}"
+      ],
+      "notes": [
+        "Lifecycle state is persisted as INITIATED -> DISPATCHED -> RECEIVED -> SETTLED with fail-open local fallback when Redis is degraded.",
+        "Driver payload enrichment is additive and backward-compatible for existing websocket consumers.",
+        "Contract artifacts now include typed command lifecycle events in ws-events.ts and events.schema.json for cross-platform parity."
+      ]
+    },
+    {
+      "id": "phase_2_1_envelope_guard",
+      "path": "ws role hubs -> ws/envelope_guard -> schema-safe websocket delivery",
+      "owner": "pegasus/apps/backend-go/{ws/envelope_guard.go,ws/{driver,retailer,supplier,payloader,warehouse,factory}_hub.go,kafka/notification_dispatcher.go} + pegasus/apps/{driver-app-android,driverappios}",
+      "methods": [
+        "Per-connection schema negotiation via sv query and X-Schema-Version/X-Client-Schema-Version headers",
+        "Guarded write path via writeGuardedPayload on local hub fanout",
+        "Event minimum schema matrix with additive v2->v1 downgrade for compatible payloads",
+        "Incompatible downgrade fallback to SYSTEM_APP_OUTDATED envelope",
+        "notification_dispatcher websocket frame stamping of additive schema_version metadata",
+        "Driver native clients declare sv=2 and wait-state flows block on SYSTEM_APP_OUTDATED"
+      ],
+      "consumers": [
+        "pegasus/apps/backend-go/ws/envelope_guard.go",
+        "pegasus/apps/backend-go/ws/{driver,retailer,supplier,payloader,warehouse,factory}_hub.go",
+        "pegasus/apps/backend-go/kafka/notification_dispatcher.go",
+        "pegasus/apps/driver-app-android/app/src/main/java/com/pegasus/driver/data/remote/DriverWebSocket.kt",
+        "pegasus/apps/driver-app-android/app/src/main/java/com/pegasus/driver/ui/screens/offload/{PaymentWaitingViewModel.kt,ShopClosedWaitingViewModel.kt}",
+        "pegasus/apps/driverappios/driverappios/Views/{PaymentWaitingView.swift,ShopClosedWaitingView.swift}"
+      ],
+      "notes": [
+        "Browser websocket clients default to latest schema while unversioned native clients default to legacy schema until they declare sv.",
+        "Guarded delivery runs before and after Redis relay so mixed-version clients remain crash-safe during fanout.",
+        "SYSTEM_APP_OUTDATED payloads include required_schema_version, client_schema_version, and blocked_event_type metadata for explicit upgrade messaging."
+      ]
+    },
     {
       "id": "billing_metering_and_fee_milestones",
       "path": "ORDER_FINALIZED -> BillingMeterEvents/BillingSupplierMeters/BillingGlobalMeters -> SystemConfig.platform_fee_basis_points",

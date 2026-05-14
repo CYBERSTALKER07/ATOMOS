@@ -3,7 +3,7 @@
 //  driverappios
 //
 //  Shown when driver reports shop closed.
-//  Connects to /v1/ws/driver and waits for retailer response or bypass token.
+//  Subscribes to shared /v1/ws/driver state and waits for retailer response or bypass token.
 //
 
 import SwiftUI
@@ -24,10 +24,8 @@ struct ShopClosedWaitingView: View {
     @State private var bypassError: String?
     @State private var isEscalated = false
     @State private var countdown: Int = 180
-    @State private var webSocketTask: URLSessionWebSocketTask?
     @State private var timer: Timer?
-    @State private var shouldReconnect = false
-    @State private var reconnectWorkItem: DispatchWorkItem?
+    @State private var driverSocketState = DriverSocketState.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -155,16 +153,16 @@ struct ShopClosedWaitingView: View {
         .background(LabTheme.bg)
         .task {
             await reportShopClosed()
-            shouldReconnect = true
-            connectWebSocket()
+            if let notice = DriverSocketState.shared.outdatedNotice {
+                reportError = notice.message
+                return
+            }
             startCountdown()
         }
+        .task(id: driverSocketState.eventSequence) {
+            handleDriverSocketEvent(driverSocketState.lastEvent)
+        }
         .onDisappear {
-            shouldReconnect = false
-            reconnectWorkItem?.cancel()
-            reconnectWorkItem = nil
-            webSocketTask?.cancel(with: .goingAway, reason: nil)
-            webSocketTask = nil
             timer?.invalidate()
         }
     }
@@ -263,71 +261,28 @@ struct ShopClosedWaitingView: View {
         }
     }
 
-    // MARK: - WebSocket
-
-    private func connectWebSocket() {
-        guard shouldReconnect else { return }
-        let baseURL = APIClient.shared.apiBaseURL
-        let wsURL = baseURL
-            .replacingOccurrences(of: "https://", with: "wss://")
-            .replacingOccurrences(of: "http://", with: "ws://")
-        guard let url = URL(string: "\(wsURL)/v1/ws/driver"),
-              let token = TokenStore.shared.token else { return }
-
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-
-        let task = URLSession.shared.webSocketTask(with: request)
-        webSocketTask = task
-        task.resume()
-        listenForMessages()
-    }
-
-    private func listenForMessages() {
-        webSocketTask?.receive { [self] result in
-            switch result {
-            case .success(let message):
-                if case .string(let text) = message,
-                   let data = text.data(using: .utf8) {
-                    handleWSMessage(data)
-                }
-                listenForMessages()
-            case .failure:
-                guard shouldReconnect else { return }
-                reconnectWorkItem?.cancel()
-                let work = DispatchWorkItem { connectWebSocket() }
-                reconnectWorkItem = work
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: work)
-            }
-        }
-    }
-
-    private func handleWSMessage(_ data: Data) {
-        struct WSPayload: Decodable {
-            let type: String
-            let order_id: String?
-            let response: String?
-            let bypass_token: String?
-            let attempt_id: String?
+    private func handleDriverSocketEvent(_ event: DriverSocketState.DriverEvent?) {
+        if let notice = DriverSocketState.shared.outdatedNotice {
+            reportError = notice.message
+            Haptics.warning()
+            return
         }
 
-        guard let payload = try? JSONDecoder().decode(WSPayload.self, from: data),
-              payload.order_id == orderId else { return }
+        guard let event else { return }
+        guard event.orderId == orderId else { return }
 
-        DispatchQueue.main.async {
-            switch payload.type {
-            case "SHOP_CLOSED_RESPONSE":
-                retailerResponse = payload.response
-                Haptics.medium()
-            case "BYPASS_TOKEN_ISSUED":
-                bypassToken = payload.bypass_token
-                Haptics.medium()
-            case "SHOP_CLOSED_ESCALATED":
-                isEscalated = true
-                Haptics.warning()
-            default:
-                break
-            }
+        switch event.type {
+        case "SHOP_CLOSED_RESPONSE":
+            retailerResponse = event.response
+            Haptics.medium()
+        case "BYPASS_TOKEN_ISSUED":
+            bypassToken = event.bypassToken
+            Haptics.medium()
+        case "SHOP_CLOSED_ESCALATED":
+            isEscalated = true
+            Haptics.warning()
+        default:
+            break
         }
     }
 }

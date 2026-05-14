@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.pegasus.driver.data.remote.DriverApi
+import com.pegasus.driver.data.remote.DriverWebSocket
 import com.pegasus.driver.ui.navigation.DriverNavigation
 import com.pegasus.driver.ui.theme.PegasusDriverTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -15,6 +16,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
 
     @Inject lateinit var driverApi: DriverApi
+    @Inject lateinit var driverWebSocket: DriverWebSocket
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -22,7 +24,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PegasusDriverTheme {
-                DriverNavigation(api = driverApi)
+                DriverNavigation(api = driverApi, driverWebSocket = driverWebSocket)
             }
         }
     }

@@ -3,7 +3,7 @@
 //  driverappios
 //
 //  Shown after driver confirms offload for card-payment orders.
-//  Connects to /v1/ws/driver and waits for PAYMENT_SETTLED push.
+//  Subscribes to shared /v1/ws/driver state and waits for PAYMENT_SETTLED push.
 //  Once settled, driver can tap "Complete" to finalize delivery.
 //
 
@@ -19,9 +19,7 @@ struct PaymentWaitingView: View {
     @State private var isSettled = false
     @State private var isCompleting = false
     @State private var errorMessage: String?
-    @State private var webSocketTask: URLSessionWebSocketTask?
-    @State private var shouldReconnect = false
-    @State private var reconnectWorkItem: DispatchWorkItem?
+    @State private var driverSocketState = DriverSocketState.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -92,70 +90,28 @@ struct PaymentWaitingView: View {
         }
         .background(LabTheme.bg)
         .task {
-            shouldReconnect = true
-            connectWebSocket()
-        }
-        .onDisappear {
-            shouldReconnect = false
-            reconnectWorkItem?.cancel()
-            reconnectWorkItem = nil
-            webSocketTask?.cancel(with: .goingAway, reason: nil)
-            webSocketTask = nil
-        }
-    }
-
-    // MARK: - WebSocket
-
-    private func connectWebSocket() {
-        guard shouldReconnect else { return }
-        let baseURL = APIClient.shared.apiBaseURL
-        let wsURL = baseURL
-            .replacingOccurrences(of: "https://", with: "wss://")
-            .replacingOccurrences(of: "http://", with: "ws://")
-        guard let url = URL(string: "\(wsURL)/v1/ws/driver"),
-              let token = TokenStore.shared.token else { return }
-
-        var request = URLRequest(url: url)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-
-        let task = URLSession.shared.webSocketTask(with: request)
-        webSocketTask = task
-        task.resume()
-        listenForMessages()
-    }
-
-    private func listenForMessages() {
-        webSocketTask?.receive { [self] result in
-            switch result {
-            case .success(let message):
-                if case .string(let text) = message,
-                   let data = text.data(using: .utf8) {
-                    handleWSMessage(data)
-                }
-                listenForMessages()
-            case .failure:
-                guard shouldReconnect else { return }
-                reconnectWorkItem?.cancel()
-                let work = DispatchWorkItem { connectWebSocket() }
-                reconnectWorkItem = work
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: work)
+            if let notice = DriverSocketState.shared.outdatedNotice {
+                errorMessage = notice.message
+                return
             }
         }
+        .task(id: driverSocketState.eventSequence) {
+            handleDriverSocketEvent(driverSocketState.lastEvent)
+        }
     }
 
-    private func handleWSMessage(_ data: Data) {
-        struct WSPayload: Decodable {
-            let type: String
-            let order_id: String?
+    private func handleDriverSocketEvent(_ event: DriverSocketState.DriverEvent?) {
+        if let notice = DriverSocketState.shared.outdatedNotice {
+            errorMessage = notice.message
+            Haptics.warning()
+            return
         }
-        guard let payload = try? JSONDecoder().decode(WSPayload.self, from: data),
-              payload.type == "PAYMENT_SETTLED",
-              payload.order_id == orderId else { return }
 
-        DispatchQueue.main.async {
-            isSettled = true
-            Haptics.success()
-        }
+        guard let event else { return }
+        guard event.type == "PAYMENT_SETTLED", event.orderId == orderId else { return }
+
+        isSettled = true
+        Haptics.success()
     }
 
     // MARK: - Complete

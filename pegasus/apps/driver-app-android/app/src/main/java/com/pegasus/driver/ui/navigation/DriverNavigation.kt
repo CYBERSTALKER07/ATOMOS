@@ -6,13 +6,21 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Handler
 import android.os.Looper
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -20,6 +28,8 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -30,7 +40,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import java.net.URLEncoder
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.unit.dp
+import com.pegasus.driver.BuildConfig
 import com.pegasus.driver.data.remote.DriverApi
+import com.pegasus.driver.data.remote.DriverOutdatedState
+import com.pegasus.driver.data.remote.DriverWebSocket
 import com.pegasus.driver.data.remote.TokenHolder
 import com.pegasus.driver.ui.screens.auth.LoginScreen
 import com.pegasus.driver.ui.screens.home.HomeScreen
@@ -79,18 +96,28 @@ object DriverRoutes {
 }
 
 @Composable
-fun DriverNavigation(api: DriverApi) {
+fun DriverNavigation(api: DriverApi, driverWebSocket: DriverWebSocket) {
     val navController = rememberNavController()
     val startDest = if (TokenHolder.token != null) DriverRoutes.MAIN else DriverRoutes.LOGIN
     val lifecycleOwner = LocalLifecycleOwner.current
     val context = LocalContext.current
+    val outdatedState by driverWebSocket.outdatedState.collectAsState()
     var refreshEpoch by remember { mutableIntStateOf(0) }
     var networkAvailable by remember { mutableStateOf(true) }
+
+    DisposableEffect(Unit) {
+        connectDriverSocketIfPossible(driverWebSocket)
+        onDispose {
+            driverWebSocket.disconnect()
+            driverWebSocket.clearOutdatedState()
+        }
+    }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 refreshEpoch += 1
+                connectDriverSocketIfPossible(driverWebSocket)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -126,32 +153,33 @@ fun DriverNavigation(api: DriverApi) {
         }
     }
 
-    key(refreshEpoch) {
-        NavHost(
-            navController = navController,
-            startDestination = startDest,
-            enterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { it / 5 },
-                    animationSpec = tween(MotionTokens.DurationMedium4, easing = MotionTokens.EasingEmphasizedDecelerate)
-                ) + fadeIn(tween(MotionTokens.DurationMedium2, easing = MotionTokens.EasingEmphasizedDecelerate))
-            },
-            exitTransition = {
-                fadeOut(tween(MotionTokens.DurationShort3, easing = MotionTokens.EasingEmphasizedAccelerate))
-            },
-            popEnterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { -it / 5 },
-                    animationSpec = tween(MotionTokens.DurationMedium4, easing = MotionTokens.EasingEmphasizedDecelerate)
-                ) + fadeIn(tween(MotionTokens.DurationMedium2, easing = MotionTokens.EasingEmphasizedDecelerate))
-            },
-            popExitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { it / 5 },
-                    animationSpec = tween(MotionTokens.DurationShort4, easing = MotionTokens.EasingEmphasizedAccelerate)
-                ) + fadeOut(tween(MotionTokens.DurationShort3, easing = MotionTokens.EasingEmphasizedAccelerate))
-            },
-        ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        key(refreshEpoch) {
+            NavHost(
+                navController = navController,
+                startDestination = startDest,
+                enterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { it / 5 },
+                        animationSpec = tween(MotionTokens.DurationMedium4, easing = MotionTokens.EasingEmphasizedDecelerate)
+                    ) + fadeIn(tween(MotionTokens.DurationMedium2, easing = MotionTokens.EasingEmphasizedDecelerate))
+                },
+                exitTransition = {
+                    fadeOut(tween(MotionTokens.DurationShort3, easing = MotionTokens.EasingEmphasizedAccelerate))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(
+                        initialOffsetX = { -it / 5 },
+                        animationSpec = tween(MotionTokens.DurationMedium4, easing = MotionTokens.EasingEmphasizedDecelerate)
+                    ) + fadeIn(tween(MotionTokens.DurationMedium2, easing = MotionTokens.EasingEmphasizedDecelerate))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(
+                        targetOffsetX = { it / 5 },
+                        animationSpec = tween(MotionTokens.DurationShort4, easing = MotionTokens.EasingEmphasizedAccelerate)
+                    ) + fadeOut(tween(MotionTokens.DurationShort3, easing = MotionTokens.EasingEmphasizedAccelerate))
+                },
+            ) {
         composable(DriverRoutes.LOGIN) {
             LoginScreen(
                 api = api,
@@ -291,6 +319,72 @@ fun DriverNavigation(api: DriverApi) {
                 }
             )
         }
+            }
+        }
+
+        if (TokenHolder.token != null && outdatedState != null) {
+            DriverOutdatedOverlay(
+                outdatedState = outdatedState!!,
+                onSignOut = {
+                    TokenHolder.clear()
+                    driverWebSocket.disconnect()
+                    driverWebSocket.clearOutdatedState()
+                    navController.navigate(DriverRoutes.LOGIN) {
+                        popUpTo(navController.graph.startDestinationId) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+    }
+}
+
+private fun connectDriverSocketIfPossible(driverWebSocket: DriverWebSocket) {
+    val token = TokenHolder.token
+    val driverId = TokenHolder.userId
+    if (!token.isNullOrBlank() && !driverId.isNullOrBlank()) {
+        driverWebSocket.connect(BuildConfig.API_BASE_URL, driverId, token)
+    }
+}
+
+@Composable
+private fun DriverOutdatedOverlay(
+    outdatedState: DriverOutdatedState,
+    onSignOut: () -> Unit
+) {
+    val blocked = outdatedState.blockedEventType ?: "this operation"
+    val required = outdatedState.requiredSchemaVersion?.toString() ?: "latest"
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.98f))
+            .padding(24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = "App Update Required",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = outdatedState.message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "Blocked event: $blocked | Required schema: $required",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(onClick = onSignOut) {
+                Text(text = "Sign Out")
+            }
         }
     }
 }

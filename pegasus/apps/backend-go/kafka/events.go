@@ -55,6 +55,9 @@ const (
 	EventAiOrderConfirmed       = "AI_ORDER_CONFIRMED"
 	EventAiOrderRejected        = "AI_ORDER_REJECTED"
 	EventSplitPaymentCreated    = "SPLIT_PAYMENT_CREATED"
+	EventCommandDispatched      = "COMMAND_DISPATCHED"
+	EventCommandReceived        = "COMMAND_RECEIVED"
+	EventCommandSettled         = "COMMAND_SETTLED"
 
 	// Phase IV: Warehouse Supply Chain & Pre-Order Policy
 	EventSupplyRequestSubmitted    = "SUPPLY_REQUEST_SUBMITTED"
@@ -236,6 +239,43 @@ type PaymentFailedEvent struct {
 	Gateway     string    `json:"gateway"`
 	Reason      string    `json:"reason"`
 	Timestamp   time.Time `json:"timestamp"`
+}
+
+// CommandDispatchedEvent is emitted when a verified desktop/native command is dispatched.
+type CommandDispatchedEvent struct {
+	CommandID    string    `json:"command_id"`
+	CommandState string    `json:"command_state"`
+	EventType    string    `json:"event_type"`
+	TargetRole   string    `json:"target_role"`
+	TargetID     string    `json:"target_id"`
+	TraceID      string    `json:"trace_id"`
+	Timestamp    time.Time `json:"timestamp"`
+}
+
+// CommandReceivedEvent is emitted when native acknowledges command receipt.
+type CommandReceivedEvent struct {
+	CommandID    string    `json:"command_id"`
+	CommandState string    `json:"command_state"`
+	EventType    string    `json:"event_type"`
+	TargetRole   string    `json:"target_role"`
+	TargetID     string    `json:"target_id"`
+	AckByUserID  string    `json:"ack_by_user_id,omitempty"`
+	AckByRole    string    `json:"ack_by_role,omitempty"`
+	TraceID      string    `json:"trace_id"`
+	Timestamp    time.Time `json:"timestamp"`
+}
+
+// CommandSettledEvent is emitted when the command lifecycle reaches SETTLED.
+type CommandSettledEvent struct {
+	CommandID    string    `json:"command_id"`
+	CommandState string    `json:"command_state"`
+	EventType    string    `json:"event_type"`
+	TargetRole   string    `json:"target_role"`
+	TargetID     string    `json:"target_id"`
+	AckByUserID  string    `json:"ack_by_user_id,omitempty"`
+	AckByRole    string    `json:"ack_by_role,omitempty"`
+	TraceID      string    `json:"trace_id"`
+	Timestamp    time.Time `json:"timestamp"`
 }
 
 // InventoryImportUploadedEvent is emitted once a supplier import file has been

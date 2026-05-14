@@ -23,13 +23,15 @@ type WarehouseHub struct {
 	mu         sync.RWMutex
 	writeMu    sync.Mutex
 	clients    map[string][]*websocket.Conn // Key: WarehouseId → active connections
-	subscribed map[string]bool              // warehouseID → relay subscription active
+	schemaVers map[*websocket.Conn]int
+	subscribed map[string]bool // warehouseID → relay subscription active
 }
 
 // NewWarehouseHub creates a fresh hub instance.
 func NewWarehouseHub() *WarehouseHub {
 	return &WarehouseHub{
 		clients:    make(map[string][]*websocket.Conn),
+		schemaVers: make(map[*websocket.Conn]int),
 		subscribed: make(map[string]bool),
 	}
 }
@@ -49,6 +51,7 @@ func (h *WarehouseHub) HandleConnection(w http.ResponseWriter, r *http.Request) 
 	if traceID == "" {
 		traceID = r.Header.Get("X-Request-Id")
 	}
+	schemaVersion := resolveClientSchemaVersion(r)
 
 	if warehouseID == "" {
 		http.Error(w, "warehouse_id could not be determined from auth token", http.StatusUnauthorized)
@@ -67,6 +70,7 @@ func (h *WarehouseHub) HandleConnection(w http.ResponseWriter, r *http.Request) 
 	}
 	h.mu.Lock()
 	h.clients[warehouseID] = append(h.clients[warehouseID], conn)
+	h.schemaVers[conn] = schemaVersion
 	total := len(h.clients[warehouseID])
 	h.mu.Unlock()
 	h.subscribeRelay(warehouseID)
@@ -74,6 +78,7 @@ func (h *WarehouseHub) HandleConnection(w http.ResponseWriter, r *http.Request) 
 	slog.InfoContext(r.Context(), "warehouse hub client connected",
 		"hub", "warehouse",
 		"warehouse_id", warehouseID,
+		"schema_version", schemaVersion,
 		"active_pipes", total,
 		"trace_id", traceID,
 	)
@@ -98,6 +103,7 @@ func (h *WarehouseHub) HandleConnection(w http.ResponseWriter, r *http.Request) 
 				cache.Unsubscribe("ws:warehouse:" + warehouseID)
 			}
 		}
+		delete(h.schemaVers, conn)
 		h.mu.Unlock()
 		conn.Close()
 		slog.InfoContext(r.Context(), "warehouse hub client disconnected",
@@ -138,27 +144,14 @@ func (h *WarehouseHub) pushToWarehouseLocal(warehouseID string, data []byte) boo
 		h.mu.RUnlock()
 		return false
 	}
-	snapshot := make([]*websocket.Conn, len(conns))
-	copy(snapshot, conns)
+	snapshot := make([]guardedConnTarget, 0, len(conns))
+	for _, conn := range conns {
+		schemaVersion := h.schemaVers[conn]
+		snapshot = append(snapshot, guardedConnTarget{conn: conn, schemaVersion: schemaVersion})
+	}
 	h.mu.RUnlock()
 
-	delivered := false
-	h.writeMu.Lock()
-	defer h.writeMu.Unlock()
-	for _, conn := range snapshot {
-		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			slog.Warn("warehouse hub write failed; evicting dead connection",
-				"hub", "warehouse",
-				"warehouse_id", warehouseID,
-				"error", err,
-			)
-			conn.Close()
-		} else {
-			delivered = true
-		}
-	}
-
-	return delivered
+	return writeGuardedPayload("warehouse", "warehouse_id", warehouseID, snapshot, &h.writeMu, data)
 }
 
 func (h *WarehouseHub) subscribeRelay(warehouseID string) {

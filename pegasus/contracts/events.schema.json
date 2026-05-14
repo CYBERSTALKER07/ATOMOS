@@ -1,0 +1,5960 @@
+{
+  "$defs": {
+    "CommandDispatchedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "command_id": {
+          "type": "string"
+        },
+        "command_state": {
+          "type": "string"
+        },
+        "event_type": {
+          "type": "string"
+        },
+        "target_id": {
+          "type": "string"
+        },
+        "target_role": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "trace_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "command_id",
+        "command_state",
+        "event_type",
+        "target_id",
+        "target_role",
+        "timestamp",
+        "trace_id"
+      ],
+      "title": "CommandDispatchedPayload",
+      "type": "object"
+    },
+    "CommandReceivedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "ack_by_role": {
+          "type": "string"
+        },
+        "ack_by_user_id": {
+          "type": "string"
+        },
+        "command_id": {
+          "type": "string"
+        },
+        "command_state": {
+          "type": "string"
+        },
+        "event_type": {
+          "type": "string"
+        },
+        "target_id": {
+          "type": "string"
+        },
+        "target_role": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "trace_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "command_id",
+        "command_state",
+        "event_type",
+        "target_id",
+        "target_role",
+        "timestamp",
+        "trace_id"
+      ],
+      "title": "CommandReceivedPayload",
+      "type": "object"
+    },
+    "CommandSettledPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "ack_by_role": {
+          "type": "string"
+        },
+        "ack_by_user_id": {
+          "type": "string"
+        },
+        "command_id": {
+          "type": "string"
+        },
+        "command_state": {
+          "type": "string"
+        },
+        "event_type": {
+          "type": "string"
+        },
+        "target_id": {
+          "type": "string"
+        },
+        "target_role": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "trace_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "command_id",
+        "command_state",
+        "event_type",
+        "target_id",
+        "target_role",
+        "timestamp",
+        "trace_id"
+      ],
+      "title": "CommandSettledPayload",
+      "type": "object"
+    },
+    "DeliveryDisputedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "disputed_by": {
+          "type": "string"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "retailer_id",
+        "session_id",
+        "timestamp"
+      ],
+      "title": "DeliveryDisputedPayload",
+      "type": "object"
+    },
+    "DeliverySessionUpdatedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "adjusted_amount": {
+          "type": "integer"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "fee_amount": {
+          "type": "integer"
+        },
+        "fee_basis_points": {
+          "type": "integer"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "original_amount": {
+          "type": "integer"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "adjusted_amount",
+        "currency",
+        "fee_amount",
+        "fee_basis_points",
+        "order_id",
+        "original_amount",
+        "retailer_id",
+        "session_id",
+        "state",
+        "timestamp"
+      ],
+      "title": "DeliverySessionUpdatedPayload",
+      "type": "object"
+    },
+    "DemandForecastReadyPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "retailer_id": {
+          "type": "string"
+        },
+        "sku_count": {
+          "type": "integer"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "retailer_id",
+        "sku_count",
+        "supplier_id",
+        "timestamp",
+        "warehouse_id"
+      ],
+      "title": "DemandForecastReadyPayload",
+      "type": "object"
+    },
+    "DriverArrivedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "driver_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "driver_id",
+        "order_id",
+        "retailer_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "DriverArrivedPayload",
+      "type": "object"
+    },
+    "DriverAvailabilityChangedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "truck_id": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "available",
+        "driver_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "DriverAvailabilityChangedPayload",
+      "type": "object"
+    },
+    "DriverCreatedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "created_by": {
+          "type": "string"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "driver_type": {
+          "type": "string"
+        },
+        "home_node_id": {
+          "type": "string"
+        },
+        "home_node_type": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "created_by",
+        "driver_id",
+        "driver_type",
+        "name",
+        "phone",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "DriverCreatedPayload",
+      "type": "object"
+    },
+    "EarlyCompleteRequestedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "driver_id": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        },
+        "order_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "route_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "driver_id",
+        "reason",
+        "route_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "EarlyCompleteRequestedPayload",
+      "type": "object"
+    },
+    "FactoryCreatedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "factory_id": {
+          "type": "string"
+        },
+        "h3_index": {
+          "type": "string"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lead_time_days": {
+          "type": "integer"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "product_types": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "production_capacity_vu": {
+          "type": "number"
+        },
+        "region_code": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouses_linked": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "factory_id",
+        "lat",
+        "lead_time_days",
+        "lng",
+        "name",
+        "production_capacity_vu",
+        "region_code",
+        "supplier_id",
+        "timestamp",
+        "warehouses_linked"
+      ],
+      "title": "FactoryCreatedPayload",
+      "type": "object"
+    },
+    "FactorySLABreachPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "escalation_level": {
+          "type": "string"
+        },
+        "factory_id": {
+          "type": "string"
+        },
+        "replacement_transfer_id": {
+          "type": "string"
+        },
+        "sla_breach_minutes": {
+          "type": "integer"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "transfer_id": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "escalation_level",
+        "factory_id",
+        "sla_breach_minutes",
+        "supplier_id",
+        "timestamp",
+        "transfer_id",
+        "warehouse_id"
+      ],
+      "title": "FactorySLABreachPayload",
+      "type": "object"
+    },
+    "FeeRateAdjustedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "global_order_count": {
+          "type": "integer"
+        },
+        "milestone_index": {
+          "type": "integer"
+        },
+        "milestone_order_count": {
+          "type": "integer"
+        },
+        "new_fee_basis_points": {
+          "type": "integer"
+        },
+        "previous_fee_basis_points": {
+          "type": "integer"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "trigger_order_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "global_order_count",
+        "milestone_index",
+        "milestone_order_count",
+        "new_fee_basis_points",
+        "previous_fee_basis_points",
+        "timestamp",
+        "trigger_order_id"
+      ],
+      "title": "FeeRateAdjustedPayload",
+      "type": "object"
+    },
+    "FleetDispatchedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "driver_id": {
+          "type": "string"
+        },
+        "geo_zone": {
+          "type": "string"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "order_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "route_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "route_id",
+        "timestamp"
+      ],
+      "title": "FleetDispatchedPayload",
+      "type": "object"
+    },
+    "ForceSealAlertPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "count_24h": {
+          "type": "integer"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "quota": {
+          "type": "integer"
+        },
+        "sealed_by": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "count_24h",
+        "manifest_id",
+        "quota",
+        "sealed_by",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "ForceSealAlertPayload",
+      "type": "object"
+    },
+    "InboundFreightUnannouncedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "items_count": {
+          "type": "integer"
+        },
+        "received_by": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "transfer_id": {
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "items_count",
+        "received_by",
+        "supplier_id",
+        "timestamp",
+        "transfer_id",
+        "warehouse_id"
+      ],
+      "title": "InboundFreightUnannouncedPayload",
+      "type": "object"
+    },
+    "InternalLoadConfirmedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "confirmed_by": {
+          "type": "string"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "truck_id": {
+          "type": "string"
+        },
+        "volume_vu": {
+          "type": "number"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "confirmed_by",
+        "manifest_id",
+        "order_id",
+        "supplier_id",
+        "timestamp",
+        "volume_vu"
+      ],
+      "title": "InternalLoadConfirmedPayload",
+      "type": "object"
+    },
+    "InventoryImportStatusUpdatePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "session_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "suggested_mappings": {
+          "type": "integer"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id",
+        "status",
+        "suggested_mappings",
+        "supplier_id",
+        "timestamp",
+        "type"
+      ],
+      "title": "InventoryImportStatusUpdatePayload",
+      "type": "object"
+    },
+    "InventoryImportUploadedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "gcs_path": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "gcs_path",
+        "session_id",
+        "supplier_id"
+      ],
+      "title": "InventoryImportUploadedPayload",
+      "type": "object"
+    },
+    "LookAheadCompletedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "duration_ms": {
+          "type": "integer"
+        },
+        "horizon_days": {
+          "type": "integer"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "duration_ms",
+        "run_id",
+        "source",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "LookAheadCompletedPayload",
+      "type": "object"
+    },
+    "ManifestCancelledPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "cancelled_by": {
+          "type": "string"
+        },
+        "factory_id": {
+          "type": "string"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "released_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "released_kind": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "cancelled_by",
+        "manifest_id",
+        "reason",
+        "released_kind",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "ManifestCancelledPayload",
+      "type": "object"
+    },
+    "ManifestOrderExceptionPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "attempt_count": {
+          "type": "integer"
+        },
+        "escalated": {
+          "type": "boolean"
+        },
+        "exception_id": {
+          "type": "string"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attempt_count",
+        "escalated",
+        "exception_id",
+        "manifest_id",
+        "order_id",
+        "reason",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "ManifestOrderExceptionPayload",
+      "type": "object"
+    },
+    "ManifestOrderInjectedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "injected_by": {
+          "type": "string"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "new_total_volume_vu": {
+          "type": "number"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "injected_by",
+        "manifest_id",
+        "new_total_volume_vu",
+        "order_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "ManifestOrderInjectedPayload",
+      "type": "object"
+    },
+    "ManifestOrderReassignedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "new_driver_id": {
+          "type": "string"
+        },
+        "old_driver_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "reassigned_by": {
+          "type": "string"
+        },
+        "source_manifest_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "target_manifest_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "reassigned_by",
+        "source_manifest_id",
+        "supplier_id",
+        "target_manifest_id",
+        "timestamp"
+      ],
+      "title": "ManifestOrderReassignedPayload",
+      "type": "object"
+    },
+    "ManifestRebalancedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "factory_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "rebalanced_by": {
+          "type": "string"
+        },
+        "source_manifest_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "target_manifest_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "transfer_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "factory_id",
+        "reason",
+        "rebalanced_by",
+        "source_manifest_id",
+        "supplier_id",
+        "target_manifest_id",
+        "timestamp"
+      ],
+      "title": "ManifestRebalancedPayload",
+      "type": "object"
+    },
+    "NegotiationProposedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "driver_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "driver_id",
+        "order_id",
+        "proposal_id",
+        "retailer_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "NegotiationProposedPayload",
+      "type": "object"
+    },
+    "NegotiationResolvedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "proposal_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "order_id",
+        "proposal_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "NegotiationResolvedPayload",
+      "type": "object"
+    },
+    "NetworkModeChangedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "changed_by": {
+          "type": "string"
+        },
+        "new_mode": {
+          "type": "string"
+        },
+        "old_mode": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "changed_by",
+        "new_mode",
+        "old_mode",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "NetworkModeChangedPayload",
+      "type": "object"
+    },
+    "OffloadConfirmedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "amount": {
+          "type": "integer"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "original_amount": {
+          "type": "integer"
+        },
+        "payment_method": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "order_id",
+        "original_amount",
+        "payment_method",
+        "retailer_id",
+        "timestamp"
+      ],
+      "title": "OffloadConfirmedPayload",
+      "type": "object"
+    },
+    "OrderAssignedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "driver_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "route_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "driver_id",
+        "order_id",
+        "route_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "OrderAssignedPayload",
+      "type": "object"
+    },
+    "OrderCancelLockedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "order_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "reason",
+        "retailer_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "OrderCancelLockedPayload",
+      "type": "object"
+    },
+    "OrderCancelledByOriginPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "amount": {
+          "type": "integer"
+        },
+        "cancelled_by": {
+          "type": "string"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "cancelled_by",
+        "order_id",
+        "reason",
+        "retailer_id",
+        "supplier_id",
+        "timestamp",
+        "warehouse_id"
+      ],
+      "title": "OrderCancelledByOriginPayload",
+      "type": "object"
+    },
+    "OrderCompletedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "amount": {
+          "type": "integer"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "retailer_id",
+        "timestamp"
+      ],
+      "title": "OrderCompletedPayload",
+      "type": "object"
+    },
+    "OrderCreatedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "currency": {
+          "type": "string"
+        },
+        "fiscal_sign": {
+          "type": "string"
+        },
+        "invoice_id": {
+          "type": "string"
+        },
+        "items": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "receipt_type": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "terminal_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "tin": {
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "warehouse_id": {
+          "type": "string"
+        },
+        "warehouse_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "currency",
+        "order_id",
+        "timestamp",
+        "total"
+      ],
+      "title": "OrderCreatedPayload",
+      "type": "object"
+    },
+    "OrderDelayedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "manifest_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "reason",
+        "retailer_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "OrderDelayedPayload",
+      "type": "object"
+    },
+    "OrderDispatchedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "driver_id": {
+          "type": "string"
+        },
+        "order_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "route_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "driver_id",
+        "route_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "OrderDispatchedPayload",
+      "type": "object"
+    },
+    "OrderFinalizedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "fiscal_sign": {
+          "type": "string"
+        },
+        "invoice_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "fiscal_sign",
+        "order_id",
+        "timestamp"
+      ],
+      "title": "OrderFinalizedPayload",
+      "type": "object"
+    },
+    "OrderModifiedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "amendment_id": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "new_amount": {
+          "type": "integer"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "refunded": {
+          "type": "integer"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "amendment_id",
+        "currency",
+        "driver_id",
+        "new_amount",
+        "order_id",
+        "refunded",
+        "retailer_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "OrderModifiedPayload",
+      "type": "object"
+    },
+    "OrderReassignedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "new_driver_id": {
+          "type": "string"
+        },
+        "new_route_id": {
+          "type": "string"
+        },
+        "old_driver_id": {
+          "type": "string"
+        },
+        "old_route_id": {
+          "type": "string"
+        },
+        "order_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "new_route_id",
+        "old_route_id",
+        "timestamp"
+      ],
+      "title": "OrderReassignedPayload",
+      "type": "object"
+    },
+    "OrderReroutedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "distance_km": {
+          "type": "number"
+        },
+        "new_load_percent": {
+          "type": "number"
+        },
+        "new_warehouse_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "original_load_percent": {
+          "type": "number"
+        },
+        "original_warehouse_id": {
+          "type": "string"
+        },
+        "retailer_lat": {
+          "type": "number"
+        },
+        "retailer_lng": {
+          "type": "number"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "distance_km",
+        "new_load_percent",
+        "new_warehouse_id",
+        "original_load_percent",
+        "original_warehouse_id",
+        "retailer_lat",
+        "retailer_lng",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "OrderReroutedPayload",
+      "type": "object"
+    },
+    "OrderStatusChangedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "new_state": {
+          "type": "string"
+        },
+        "old_state": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "new_state",
+        "old_state",
+        "order_id",
+        "retailer_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "OrderStatusChangedPayload",
+      "type": "object"
+    },
+    "OrderValidationFailedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "invoice_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "order_id",
+        "reason",
+        "timestamp"
+      ],
+      "title": "OrderValidationFailedPayload",
+      "type": "object"
+    },
+    "OutOfStockPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "shortfall_map": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "retailer_id",
+        "supplier_id",
+        "timestamp",
+        "warehouse_id"
+      ],
+      "title": "OutOfStockPayload",
+      "type": "object"
+    },
+    "PayloadOverflowPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "attempt_count": {
+          "type": "integer"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "attempt_count",
+        "manifest_id",
+        "order_id",
+        "reason",
+        "supplier_id",
+        "timestamp",
+        "warehouse_id"
+      ],
+      "title": "PayloadOverflowPayload",
+      "type": "object"
+    },
+    "PayloadReadyToSealPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "order_ids": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "route_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "route_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "PayloadReadyToSealPayload",
+      "type": "object"
+    },
+    "PayloadSealedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "delivery_token": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "terminal_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "delivery_token",
+        "order_id",
+        "terminal_id",
+        "timestamp"
+      ],
+      "title": "PayloadSealedPayload",
+      "type": "object"
+    },
+    "PayloadSyncPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "manifest_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "manifest_id",
+        "reason",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "PayloadSyncPayload",
+      "type": "object"
+    },
+    "PaymentClearedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "invoice_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "invoice_id",
+        "order_id",
+        "status",
+        "timestamp"
+      ],
+      "title": "PaymentClearedPayload",
+      "type": "object"
+    },
+    "PaymentFailedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "gateway": {
+          "type": "string"
+        },
+        "invoice_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "gateway",
+        "invoice_id",
+        "order_id",
+        "reason",
+        "retailer_id",
+        "timestamp"
+      ],
+      "title": "PaymentFailedPayload",
+      "type": "object"
+    },
+    "PaymentSettledPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "amount": {
+          "type": "integer"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "gateway": {
+          "type": "string"
+        },
+        "invoice_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "currency",
+        "driver_id",
+        "gateway",
+        "invoice_id",
+        "order_id",
+        "retailer_id",
+        "timestamp"
+      ],
+      "title": "PaymentSettledPayload",
+      "type": "object"
+    },
+    "PreOrderAutoAcceptedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "delivery_date": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "delivery_date",
+        "order_id",
+        "retailer_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "PreOrderAutoAcceptedPayload",
+      "type": "object"
+    },
+    "PreOrderCancelledPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "cancelled_by": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "cancelled_by",
+        "order_id",
+        "reason",
+        "timestamp"
+      ],
+      "title": "PreOrderCancelledPayload",
+      "type": "object"
+    },
+    "PreOrderConfirmedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "confirmed_by": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "confirmed_by",
+        "order_id",
+        "timestamp"
+      ],
+      "title": "PreOrderConfirmedPayload",
+      "type": "object"
+    },
+    "PreOrderEditedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "edited_by": {
+          "type": "string"
+        },
+        "new_date": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "edited_by",
+        "order_id",
+        "timestamp"
+      ],
+      "title": "PreOrderEditedPayload",
+      "type": "object"
+    },
+    "PreOrderNotifiedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "delivery_date": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "delivery_date",
+        "order_id",
+        "retailer_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "PreOrderNotifiedPayload",
+      "type": "object"
+    },
+    "PullMatrixCompletedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "duration_ms": {
+          "type": "integer"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "skus_processed": {
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "transfers_generated": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "duration_ms",
+        "run_id",
+        "skus_processed",
+        "source",
+        "supplier_id",
+        "timestamp",
+        "transfers_generated"
+      ],
+      "title": "PullMatrixCompletedPayload",
+      "type": "object"
+    },
+    "RetailerPriceOverridePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "override_id": {
+          "type": "string"
+        },
+        "price": {
+          "type": "integer"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "set_by": {
+          "type": "string"
+        },
+        "set_by_role": {
+          "type": "string"
+        },
+        "sku_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "override_id",
+        "price",
+        "retailer_id",
+        "set_by",
+        "set_by_role",
+        "sku_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "RetailerPriceOverridePayload",
+      "type": "object"
+    },
+    "RetailerRegisteredPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "h3_cell": {
+          "type": "string"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "owner_name": {
+          "type": "string"
+        },
+        "phone_number": {
+          "type": "string"
+        },
+        "region_code": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "shop_name": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "h3_cell",
+        "lat",
+        "lng",
+        "owner_name",
+        "phone_number",
+        "region_code",
+        "retailer_id",
+        "shop_name",
+        "timestamp"
+      ],
+      "title": "RetailerRegisteredPayload",
+      "type": "object"
+    },
+    "RouteCreatedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "driver_id": {
+          "type": "string"
+        },
+        "factory_id": {
+          "type": "string"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "route_id": {
+          "type": "string"
+        },
+        "stop_count": {
+          "type": "integer"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "truck_id": {
+          "type": "string"
+        },
+        "volume_vu": {
+          "type": "number"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "driver_id",
+        "route_id",
+        "stop_count",
+        "supplier_id",
+        "timestamp",
+        "truck_id",
+        "volume_vu"
+      ],
+      "title": "RouteCreatedPayload",
+      "type": "object"
+    },
+    "RouteFinalizedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "driver_id": {
+          "type": "string"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "route_json": {
+          "type": "string"
+        },
+        "stop_count": {
+          "type": "integer"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "driver_id",
+        "manifest_id",
+        "stop_count",
+        "timestamp"
+      ],
+      "title": "RouteFinalizedPayload",
+      "type": "object"
+    },
+    "SettlementRequiredPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "amount": {
+          "type": "integer"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "invoice_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "original_amount": {
+          "type": "integer"
+        },
+        "payment_session_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "amount",
+        "currency",
+        "order_id",
+        "original_amount",
+        "retailer_id",
+        "session_id",
+        "state",
+        "timestamp"
+      ],
+      "title": "SettlementRequiredPayload",
+      "type": "object"
+    },
+    "ShopClosedEscalatedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "attempt_id": {
+          "type": "string"
+        },
+        "escalated_to": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attempt_id",
+        "escalated_to",
+        "order_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "ShopClosedEscalatedPayload",
+      "type": "object"
+    },
+    "ShopClosedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "attempt_id": {
+          "type": "string"
+        },
+        "driver_id": {
+          "type": "string"
+        },
+        "gps_lat": {
+          "type": "number"
+        },
+        "gps_lng": {
+          "type": "number"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attempt_id",
+        "driver_id",
+        "gps_lat",
+        "gps_lng",
+        "order_id",
+        "retailer_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "ShopClosedPayload",
+      "type": "object"
+    },
+    "ShopClosedResolvedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "attempt_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "resolution": {
+          "type": "string"
+        },
+        "resolved_by": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attempt_id",
+        "order_id",
+        "resolution",
+        "resolved_by",
+        "timestamp"
+      ],
+      "title": "ShopClosedResolvedPayload",
+      "type": "object"
+    },
+    "ShopClosedResponsePayload": {
+      "additionalProperties": true,
+      "properties": {
+        "attempt_id": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "response": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attempt_id",
+        "order_id",
+        "response",
+        "retailer_id",
+        "timestamp"
+      ],
+      "title": "ShopClosedResponsePayload",
+      "type": "object"
+    },
+    "StockBackorderedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "backorder_id": {
+          "type": "string"
+        },
+        "backorder_order_id": {
+          "type": "string"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "invoice_id": {
+          "type": "string"
+        },
+        "items": {
+          "anyOf": [
+            {
+              "items": {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        },
+        "warehouse_id": {
+          "type": "string"
+        },
+        "warehouse_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "backorder_order_id",
+        "currency",
+        "invoice_id",
+        "retailer_id",
+        "supplier_id",
+        "timestamp",
+        "total"
+      ],
+      "title": "StockBackorderedPayload",
+      "type": "object"
+    },
+    "StockThresholdBreachPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "current_stock": {
+          "type": "integer"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "safety_level": {
+          "type": "integer"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "current_stock",
+        "product_id",
+        "safety_level",
+        "supplier_id",
+        "timestamp",
+        "warehouse_id"
+      ],
+      "title": "StockThresholdBreachPayload",
+      "type": "object"
+    },
+    "SupplyLaneTransitUpdatedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "factory_id": {
+          "type": "string"
+        },
+        "lane_id": {
+          "type": "string"
+        },
+        "new_dampened_hours": {
+          "type": "number"
+        },
+        "old_dampened_hours": {
+          "type": "number"
+        },
+        "raw_transit_hours": {
+          "type": "number"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "factory_id",
+        "lane_id",
+        "new_dampened_hours",
+        "old_dampened_hours",
+        "raw_transit_hours",
+        "supplier_id",
+        "timestamp",
+        "warehouse_id"
+      ],
+      "title": "SupplyLaneTransitUpdatedPayload",
+      "type": "object"
+    },
+    "TransferUnassignedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "factory_id": {
+          "type": "string"
+        },
+        "manifest_id": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "transfer_id": {
+          "type": "string"
+        },
+        "unassigned_by": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "factory_id",
+        "manifest_id",
+        "supplier_id",
+        "timestamp",
+        "transfer_id",
+        "unassigned_by"
+      ],
+      "title": "TransferUnassignedPayload",
+      "type": "object"
+    },
+    "UnifiedCheckoutCompletedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "currency": {
+          "type": "string"
+        },
+        "invoice_id": {
+          "type": "string"
+        },
+        "order_count": {
+          "type": "integer"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "total": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "currency",
+        "invoice_id",
+        "order_count",
+        "retailer_id",
+        "timestamp",
+        "total"
+      ],
+      "title": "UnifiedCheckoutCompletedPayload",
+      "type": "object"
+    },
+    "UnknownEventPayload": {
+      "additionalProperties": true,
+      "title": "UnknownEventPayload",
+      "type": "object"
+    },
+    "VehicleCreatedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "created_by": {
+          "type": "string"
+        },
+        "home_node_id": {
+          "type": "string"
+        },
+        "home_node_type": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "license_plate": {
+          "type": "string"
+        },
+        "max_volume_vu": {
+          "type": "number"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "vehicle_class": {
+          "type": "string"
+        },
+        "vehicle_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "created_by",
+        "label",
+        "license_plate",
+        "max_volume_vu",
+        "supplier_id",
+        "timestamp",
+        "vehicle_class",
+        "vehicle_id"
+      ],
+      "title": "VehicleCreatedPayload",
+      "type": "object"
+    },
+    "WarehouseCreatedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "coverage_radius_km": {
+          "type": "number"
+        },
+        "h3_count": {
+          "type": "integer"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "coverage_radius_km",
+        "h3_count",
+        "lat",
+        "lng",
+        "name",
+        "supplier_id",
+        "timestamp",
+        "warehouse_id"
+      ],
+      "title": "WarehouseCreatedPayload",
+      "type": "object"
+    },
+    "WarehouseSpatialUpdatedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "coverage_radius_km": {
+          "type": "number"
+        },
+        "new_h3_count": {
+          "type": "integer"
+        },
+        "old_h3_count": {
+          "type": "integer"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "coverage_radius_km",
+        "new_h3_count",
+        "old_h3_count",
+        "supplier_id",
+        "timestamp",
+        "warehouse_id"
+      ],
+      "title": "WarehouseSpatialUpdatedPayload",
+      "type": "object"
+    },
+    "WarehouseStatusChangedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "field": {
+          "type": "string"
+        },
+        "new_value": {
+          "type": "boolean"
+        },
+        "old_value": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "field",
+        "new_value",
+        "old_value",
+        "supplier_id",
+        "timestamp",
+        "warehouse_id"
+      ],
+      "title": "WarehouseStatusChangedPayload",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AI_ORDER_CONFIRMED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "AiOrderConfirmedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AI_ORDER_REJECTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "AiOrderRejectedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AI_PLAN_DATE_SHIFT"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "AiPlanDateShiftEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AI_PLAN_SKU_MODIFIED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "AiPlanSkuModifiedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AI_PREDICTION"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "AiPredictionEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AI_PREDICTION_CORRECTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "AiPredictionCorrectedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "BYPASS_TOKEN_ISSUED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "BypassTokenIssuedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CANCEL_APPROVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CancelApprovedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CANCEL_REQUESTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CancelRequestedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CART_SYNC_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CartSyncUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CASH_COLLECTION_REQUIRED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CashCollectionRequiredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CommandDispatchedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "COMMAND_DISPATCHED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CommandDispatchedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CommandReceivedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "COMMAND_RECEIVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CommandReceivedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/CommandSettledPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "COMMAND_SETTLED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CommandSettledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CREDIT_DELIVERY_MARKED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CreditDeliveryMarkedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CREDIT_DELIVERY_RESOLVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CreditDeliveryResolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/DeliveryDisputedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DELIVERY_DISPUTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DeliveryDisputedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/DeliverySessionUpdatedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DELIVERY_SESSION_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DeliverySessionUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/DemandForecastReadyPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DEMAND_FORECAST_READY"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DemandForecastReadyEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DISPATCH_LOCK_ACQUIRED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DispatchLockAcquiredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DISPATCH_LOCK_CHANGE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DispatchLockChangeEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DISPATCH_LOCK_RELEASED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DispatchLockReleasedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DRIVER_APPROACHING"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DriverApproachingEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/DriverArrivedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DRIVER_ARRIVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DriverArrivedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/DriverAvailabilityChangedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DRIVER_AVAILABILITY_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DriverAvailabilityChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/DriverCreatedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DRIVER_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DriverCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "EARLY_COMPLETE_APPROVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "EarlyCompleteApprovedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/EarlyCompleteRequestedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "EARLY_COMPLETE_REQUESTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "EarlyCompleteRequestedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ETA_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "EtaUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FactoryCreatedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FACTORY_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FactoryCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FACTORY_MANIFEST_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FactoryManifestCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FACTORY_MANIFEST_UPDATE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FactoryManifestUpdateEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FACTORY_OUTBOX_FAILED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FactoryOutboxFailedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FactorySLABreachPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FACTORY_SLA_BREACH"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FactorySlaBreachEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FACTORY_SUPPLY_REQUEST_UPDATE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FactorySupplyRequestUpdateEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FACTORY_TRANSFER_UPDATE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FactoryTransferUpdateEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FeeRateAdjustedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FEE_RATE_ADJUSTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FeeRateAdjustedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/FleetDispatchedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FLEET_DISPATCHED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FleetDispatchedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ForceSealAlertPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FORCE_SEAL_ALERT"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ForceSealAlertEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FREEZE_LOCK_ACQUIRED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FreezeLockAcquiredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FREEZE_LOCK_RELEASED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FreezeLockReleasedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FULFILLMENT_PAID"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FulfillmentPaidEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FULFILLMENT_PAYMENT_COMPLETED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FulfillmentPaymentCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/InboundFreightUnannouncedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "INBOUND_FREIGHT_UNANNOUNCED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "InboundFreightUnannouncedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "INSIGHT_APPROVED_TRANSFER_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "InsightApprovedTransferCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/InternalLoadConfirmedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "INTERNAL_LOAD_CONFIRMED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "InternalLoadConfirmedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/InventoryImportStatusUpdatePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "INVENTORY_IMPORT_STATUS_UPDATE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "InventoryImportStatusUpdateEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/InventoryImportUploadedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "INVENTORY_IMPORT_UPLOADED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "InventoryImportUploadedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "INVENTORY_SYNC_COMPLETE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "InventorySyncCompleteEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/LookAheadCompletedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "LOOK_AHEAD_COMPLETED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "LookAheadCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ManifestCancelledPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_CANCELLED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestCancelledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_COMPLETED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_DISPATCHED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestDispatchedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_DLQ_ESCALATION"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestDlqEscalationEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_DRAFT_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestDraftCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_FORCE_SEALED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestForceSealedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_LOADING_STARTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestLoadingStartedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ManifestOrderExceptionPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_ORDER_EXCEPTION"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestOrderExceptionEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ManifestOrderInjectedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_ORDER_INJECTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestOrderInjectedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ManifestOrderReassignedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_ORDER_REASSIGNED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestOrderReassignedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ManifestRebalancedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_REBALANCED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestRebalancedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_SEALED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestSealedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_SETTLED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestSettledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MISSING_ITEMS_REPORTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "MissingItemsReportedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/NegotiationProposedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "NEGOTIATION_PROPOSED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "NegotiationProposedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/NegotiationResolvedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "NEGOTIATION_RESOLVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "NegotiationResolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/NetworkModeChangedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "NETWORK_MODE_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "NetworkModeChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OffloadConfirmedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "OFFLOAD_CONFIRMED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OffloadConfirmedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_AMENDED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderAmendedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderAssignedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_ASSIGNED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderAssignedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_CANCELLED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderCancelledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderCancelledByOriginPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_CANCELLED_BY_ORIGIN"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderCancelledByOriginEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderCancelLockedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_CANCEL_LOCKED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderCancelLockedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderCompletedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_COMPLETED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderCreatedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderDelayedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_DELAYED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderDelayedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderDispatchedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_DISPATCHED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderDispatchedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderFinalizedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_FINALIZED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderFinalizedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderModifiedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_MODIFIED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderModifiedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderReassignedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_REASSIGNED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderReassignedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_REJECTED_BY_SUPPLIER"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderRejectedBySupplierEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderReroutedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_REROUTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderReroutedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_STATE_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderStateChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderStatusChangedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_STATUS_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderStatusChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_SYNC"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderSyncEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OrderValidationFailedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_VALIDATION_FAILED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderValidationFailedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "OUTBOX_FAILED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OutboxFailedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OutOfStockPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "OUT_OF_STOCK"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OutOfStockEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PayloadOverflowPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYLOAD_OVERFLOW"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PayloadOverflowEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PayloadReadyToSealPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYLOAD_READY_TO_SEAL"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PayloadReadyToSealEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PayloadSealedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYLOAD_SEALED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PayloadSealedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PayloadSyncPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYLOAD_SYNC"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PayloadSyncEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYMENT_BYPASS_COMPLETED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PaymentBypassCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYMENT_BYPASS_ISSUED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PaymentBypassIssuedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PaymentClearedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYMENT_CLEARED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PaymentClearedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYMENT_EXPIRED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PaymentExpiredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PaymentFailedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYMENT_FAILED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PaymentFailedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYMENT_INTENT_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PaymentIntentCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYMENT_REFUNDED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PaymentRefundedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYMENT_REQUIRED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PaymentRequiredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PaymentSettledPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYMENT_SETTLED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PaymentSettledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "POWER_OUTAGE_REPORTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PowerOutageReportedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PreOrderAutoAcceptedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PRE_ORDER_AUTO_ACCEPTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PreOrderAutoAcceptedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PreOrderCancelledPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PRE_ORDER_CANCELLED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PreOrderCancelledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PRE_ORDER_CONFIRMATION"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PreOrderConfirmationEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PreOrderConfirmedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PRE_ORDER_CONFIRMED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PreOrderConfirmedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PreOrderEditedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PRE_ORDER_EDITED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PreOrderEditedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PreOrderNotifiedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PRE_ORDER_NOTIFIED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PreOrderNotifiedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PRE_ORDER_NUDGE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PreOrderNudgeEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/PullMatrixCompletedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PULL_MATRIX_COMPLETED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PullMatrixCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "REPLENISHMENT_LOCK_ACQUIRED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ReplenishmentLockAcquiredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "REPLENISHMENT_LOCK_RELEASED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ReplenishmentLockReleasedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "REPLENISHMENT_TRANSFER_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ReplenishmentTransferCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerPriceOverridePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_PRICE_OVERRIDE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerPriceOverrideEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RetailerRegisteredPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_REGISTERED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerRegisteredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETURN_RESOLVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ReturnResolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RouteCreatedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ROUTE_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RouteCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/RouteFinalizedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ROUTE_FINALIZED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RouteFinalizedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/SettlementRequiredPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SETTLEMENT_REQUIRED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SettlementRequiredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ShopClosedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SHOP_CLOSED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ShopClosedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SHOP_CLOSED_ALERT"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ShopClosedAlertEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ShopClosedEscalatedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SHOP_CLOSED_ESCALATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ShopClosedEscalatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ShopClosedResolvedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SHOP_CLOSED_RESOLVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ShopClosedResolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/ShopClosedResponsePayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SHOP_CLOSED_RESPONSE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ShopClosedResponseEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SMS_QUICK_COMPLETE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SmsQuickCompleteEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SPLIT_PAYMENT_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SplitPaymentCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/StockBackorderedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "STOCK_BACKORDERED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "StockBackorderedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/StockThresholdBreachPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "STOCK_THRESHOLD_BREACH"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "StockThresholdBreachEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/SupplyLaneTransitUpdatedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLY_LANE_TRANSIT_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplyLaneTransitUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLY_REQUEST_ACKNOWLEDGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplyRequestAcknowledgedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLY_REQUEST_CANCELLED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplyRequestCancelledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLY_REQUEST_FULFILLED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplyRequestFulfilledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLY_REQUEST_READY"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplyRequestReadyEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLY_REQUEST_SUBMITTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplyRequestSubmittedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLY_REQUEST_UPDATE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplyRequestUpdateEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SYSTEM_BROADCAST"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SystemBroadcastEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "TOKEN_REFRESH_NEEDED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "TokenRefreshNeededEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "TRANSFER_APPROVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "TransferApprovedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "TRANSFER_RECEIVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "TransferReceivedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "TRANSFER_STATE_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "TransferStateChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/TransferUnassignedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "TRANSFER_UNASSIGNED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "TransferUnassignedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnifiedCheckoutCompletedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "UNIFIED_CHECKOUT_COMPLETED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "UnifiedCheckoutCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/VehicleCreatedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "VEHICLE_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "VehicleCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/WarehouseCreatedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "WAREHOUSE_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "WarehouseCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/WarehouseSpatialUpdatedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "WAREHOUSE_SPATIAL_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "WarehouseSpatialUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/WarehouseStatusChangedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "WAREHOUSE_STATUS_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "WarehouseStatusChangedEnvelope"
+    }
+  ],
+  "properties": {
+    "type": {
+      "enum": [
+        "AI_ORDER_CONFIRMED",
+        "AI_ORDER_REJECTED",
+        "AI_PLAN_DATE_SHIFT",
+        "AI_PLAN_SKU_MODIFIED",
+        "AI_PREDICTION",
+        "AI_PREDICTION_CORRECTED",
+        "BYPASS_TOKEN_ISSUED",
+        "CANCEL_APPROVED",
+        "CANCEL_REQUESTED",
+        "CART_SYNC_UPDATED",
+        "CASH_COLLECTION_REQUIRED",
+        "COMMAND_DISPATCHED",
+        "COMMAND_RECEIVED",
+        "COMMAND_SETTLED",
+        "CREDIT_DELIVERY_MARKED",
+        "CREDIT_DELIVERY_RESOLVED",
+        "DELIVERY_DISPUTED",
+        "DELIVERY_SESSION_UPDATED",
+        "DEMAND_FORECAST_READY",
+        "DISPATCH_LOCK_ACQUIRED",
+        "DISPATCH_LOCK_CHANGE",
+        "DISPATCH_LOCK_RELEASED",
+        "DRIVER_APPROACHING",
+        "DRIVER_ARRIVED",
+        "DRIVER_AVAILABILITY_CHANGED",
+        "DRIVER_CREATED",
+        "EARLY_COMPLETE_APPROVED",
+        "EARLY_COMPLETE_REQUESTED",
+        "ETA_UPDATED",
+        "FACTORY_CREATED",
+        "FACTORY_MANIFEST_CREATED",
+        "FACTORY_MANIFEST_UPDATE",
+        "FACTORY_OUTBOX_FAILED",
+        "FACTORY_SLA_BREACH",
+        "FACTORY_SUPPLY_REQUEST_UPDATE",
+        "FACTORY_TRANSFER_UPDATE",
+        "FEE_RATE_ADJUSTED",
+        "FLEET_DISPATCHED",
+        "FORCE_SEAL_ALERT",
+        "FREEZE_LOCK_ACQUIRED",
+        "FREEZE_LOCK_RELEASED",
+        "FULFILLMENT_PAID",
+        "FULFILLMENT_PAYMENT_COMPLETED",
+        "INBOUND_FREIGHT_UNANNOUNCED",
+        "INSIGHT_APPROVED_TRANSFER_CREATED",
+        "INTERNAL_LOAD_CONFIRMED",
+        "INVENTORY_IMPORT_STATUS_UPDATE",
+        "INVENTORY_IMPORT_UPLOADED",
+        "INVENTORY_SYNC_COMPLETE",
+        "LOOK_AHEAD_COMPLETED",
+        "MANIFEST_CANCELLED",
+        "MANIFEST_COMPLETED",
+        "MANIFEST_DISPATCHED",
+        "MANIFEST_DLQ_ESCALATION",
+        "MANIFEST_DRAFT_CREATED",
+        "MANIFEST_FORCE_SEALED",
+        "MANIFEST_LOADING_STARTED",
+        "MANIFEST_ORDER_EXCEPTION",
+        "MANIFEST_ORDER_INJECTED",
+        "MANIFEST_ORDER_REASSIGNED",
+        "MANIFEST_REBALANCED",
+        "MANIFEST_SEALED",
+        "MANIFEST_SETTLED",
+        "MISSING_ITEMS_REPORTED",
+        "NEGOTIATION_PROPOSED",
+        "NEGOTIATION_RESOLVED",
+        "NETWORK_MODE_CHANGED",
+        "OFFLOAD_CONFIRMED",
+        "ORDER_AMENDED",
+        "ORDER_ASSIGNED",
+        "ORDER_CANCELLED",
+        "ORDER_CANCELLED_BY_ORIGIN",
+        "ORDER_CANCEL_LOCKED",
+        "ORDER_COMPLETED",
+        "ORDER_CREATED",
+        "ORDER_DELAYED",
+        "ORDER_DISPATCHED",
+        "ORDER_FINALIZED",
+        "ORDER_MODIFIED",
+        "ORDER_REASSIGNED",
+        "ORDER_REJECTED_BY_SUPPLIER",
+        "ORDER_REROUTED",
+        "ORDER_STATE_CHANGED",
+        "ORDER_STATUS_CHANGED",
+        "ORDER_SYNC",
+        "ORDER_VALIDATION_FAILED",
+        "OUTBOX_FAILED",
+        "OUT_OF_STOCK",
+        "PAYLOAD_OVERFLOW",
+        "PAYLOAD_READY_TO_SEAL",
+        "PAYLOAD_SEALED",
+        "PAYLOAD_SYNC",
+        "PAYMENT_BYPASS_COMPLETED",
+        "PAYMENT_BYPASS_ISSUED",
+        "PAYMENT_CLEARED",
+        "PAYMENT_EXPIRED",
+        "PAYMENT_FAILED",
+        "PAYMENT_INTENT_CREATED",
+        "PAYMENT_REFUNDED",
+        "PAYMENT_REQUIRED",
+        "PAYMENT_SETTLED",
+        "POWER_OUTAGE_REPORTED",
+        "PRE_ORDER_AUTO_ACCEPTED",
+        "PRE_ORDER_CANCELLED",
+        "PRE_ORDER_CONFIRMATION",
+        "PRE_ORDER_CONFIRMED",
+        "PRE_ORDER_EDITED",
+        "PRE_ORDER_NOTIFIED",
+        "PRE_ORDER_NUDGE",
+        "PULL_MATRIX_COMPLETED",
+        "REPLENISHMENT_LOCK_ACQUIRED",
+        "REPLENISHMENT_LOCK_RELEASED",
+        "REPLENISHMENT_TRANSFER_CREATED",
+        "RETAILER_PRICE_OVERRIDE",
+        "RETAILER_REGISTERED",
+        "RETURN_RESOLVED",
+        "ROUTE_CREATED",
+        "ROUTE_FINALIZED",
+        "SETTLEMENT_REQUIRED",
+        "SHOP_CLOSED",
+        "SHOP_CLOSED_ALERT",
+        "SHOP_CLOSED_ESCALATED",
+        "SHOP_CLOSED_RESOLVED",
+        "SHOP_CLOSED_RESPONSE",
+        "SMS_QUICK_COMPLETE",
+        "SPLIT_PAYMENT_CREATED",
+        "STOCK_BACKORDERED",
+        "STOCK_THRESHOLD_BREACH",
+        "SUPPLY_LANE_TRANSIT_UPDATED",
+        "SUPPLY_REQUEST_ACKNOWLEDGED",
+        "SUPPLY_REQUEST_CANCELLED",
+        "SUPPLY_REQUEST_FULFILLED",
+        "SUPPLY_REQUEST_READY",
+        "SUPPLY_REQUEST_SUBMITTED",
+        "SUPPLY_REQUEST_UPDATE",
+        "SYSTEM_BROADCAST",
+        "TOKEN_REFRESH_NEEDED",
+        "TRANSFER_APPROVED",
+        "TRANSFER_RECEIVED",
+        "TRANSFER_STATE_CHANGED",
+        "TRANSFER_UNASSIGNED",
+        "UNIFIED_CHECKOUT_COMPLETED",
+        "VEHICLE_CREATED",
+        "WAREHOUSE_CREATED",
+        "WAREHOUSE_SPATIAL_UPDATED",
+        "WAREHOUSE_STATUS_CHANGED"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "type"
+  ],
+  "title": "PegasusWSEventEnvelope",
+  "type": "object",
+  "x-event-payload-map": {
+    "AI_ORDER_CONFIRMED": "UnknownEventPayload",
+    "AI_ORDER_REJECTED": "UnknownEventPayload",
+    "AI_PLAN_DATE_SHIFT": "UnknownEventPayload",
+    "AI_PLAN_SKU_MODIFIED": "UnknownEventPayload",
+    "AI_PREDICTION": "UnknownEventPayload",
+    "AI_PREDICTION_CORRECTED": "UnknownEventPayload",
+    "BYPASS_TOKEN_ISSUED": "UnknownEventPayload",
+    "CANCEL_APPROVED": "UnknownEventPayload",
+    "CANCEL_REQUESTED": "UnknownEventPayload",
+    "CART_SYNC_UPDATED": "UnknownEventPayload",
+    "CASH_COLLECTION_REQUIRED": "UnknownEventPayload",
+    "COMMAND_DISPATCHED": "CommandDispatchedPayload",
+    "COMMAND_RECEIVED": "CommandReceivedPayload",
+    "COMMAND_SETTLED": "CommandSettledPayload",
+    "CREDIT_DELIVERY_MARKED": "UnknownEventPayload",
+    "CREDIT_DELIVERY_RESOLVED": "UnknownEventPayload",
+    "DELIVERY_DISPUTED": "DeliveryDisputedPayload",
+    "DELIVERY_SESSION_UPDATED": "DeliverySessionUpdatedPayload",
+    "DEMAND_FORECAST_READY": "DemandForecastReadyPayload",
+    "DISPATCH_LOCK_ACQUIRED": "UnknownEventPayload",
+    "DISPATCH_LOCK_CHANGE": "UnknownEventPayload",
+    "DISPATCH_LOCK_RELEASED": "UnknownEventPayload",
+    "DRIVER_APPROACHING": "UnknownEventPayload",
+    "DRIVER_ARRIVED": "DriverArrivedPayload",
+    "DRIVER_AVAILABILITY_CHANGED": "DriverAvailabilityChangedPayload",
+    "DRIVER_CREATED": "DriverCreatedPayload",
+    "EARLY_COMPLETE_APPROVED": "UnknownEventPayload",
+    "EARLY_COMPLETE_REQUESTED": "EarlyCompleteRequestedPayload",
+    "ETA_UPDATED": "UnknownEventPayload",
+    "FACTORY_CREATED": "FactoryCreatedPayload",
+    "FACTORY_MANIFEST_CREATED": "UnknownEventPayload",
+    "FACTORY_MANIFEST_UPDATE": "UnknownEventPayload",
+    "FACTORY_OUTBOX_FAILED": "UnknownEventPayload",
+    "FACTORY_SLA_BREACH": "FactorySLABreachPayload",
+    "FACTORY_SUPPLY_REQUEST_UPDATE": "UnknownEventPayload",
+    "FACTORY_TRANSFER_UPDATE": "UnknownEventPayload",
+    "FEE_RATE_ADJUSTED": "FeeRateAdjustedPayload",
+    "FLEET_DISPATCHED": "FleetDispatchedPayload",
+    "FORCE_SEAL_ALERT": "ForceSealAlertPayload",
+    "FREEZE_LOCK_ACQUIRED": "UnknownEventPayload",
+    "FREEZE_LOCK_RELEASED": "UnknownEventPayload",
+    "FULFILLMENT_PAID": "UnknownEventPayload",
+    "FULFILLMENT_PAYMENT_COMPLETED": "UnknownEventPayload",
+    "INBOUND_FREIGHT_UNANNOUNCED": "InboundFreightUnannouncedPayload",
+    "INSIGHT_APPROVED_TRANSFER_CREATED": "UnknownEventPayload",
+    "INTERNAL_LOAD_CONFIRMED": "InternalLoadConfirmedPayload",
+    "INVENTORY_IMPORT_STATUS_UPDATE": "InventoryImportStatusUpdatePayload",
+    "INVENTORY_IMPORT_UPLOADED": "InventoryImportUploadedPayload",
+    "INVENTORY_SYNC_COMPLETE": "UnknownEventPayload",
+    "LOOK_AHEAD_COMPLETED": "LookAheadCompletedPayload",
+    "MANIFEST_CANCELLED": "ManifestCancelledPayload",
+    "MANIFEST_COMPLETED": "UnknownEventPayload",
+    "MANIFEST_DISPATCHED": "UnknownEventPayload",
+    "MANIFEST_DLQ_ESCALATION": "UnknownEventPayload",
+    "MANIFEST_DRAFT_CREATED": "UnknownEventPayload",
+    "MANIFEST_FORCE_SEALED": "UnknownEventPayload",
+    "MANIFEST_LOADING_STARTED": "UnknownEventPayload",
+    "MANIFEST_ORDER_EXCEPTION": "ManifestOrderExceptionPayload",
+    "MANIFEST_ORDER_INJECTED": "ManifestOrderInjectedPayload",
+    "MANIFEST_ORDER_REASSIGNED": "ManifestOrderReassignedPayload",
+    "MANIFEST_REBALANCED": "ManifestRebalancedPayload",
+    "MANIFEST_SEALED": "UnknownEventPayload",
+    "MANIFEST_SETTLED": "UnknownEventPayload",
+    "MISSING_ITEMS_REPORTED": "UnknownEventPayload",
+    "NEGOTIATION_PROPOSED": "NegotiationProposedPayload",
+    "NEGOTIATION_RESOLVED": "NegotiationResolvedPayload",
+    "NETWORK_MODE_CHANGED": "NetworkModeChangedPayload",
+    "OFFLOAD_CONFIRMED": "OffloadConfirmedPayload",
+    "ORDER_AMENDED": "UnknownEventPayload",
+    "ORDER_ASSIGNED": "OrderAssignedPayload",
+    "ORDER_CANCELLED": "UnknownEventPayload",
+    "ORDER_CANCELLED_BY_ORIGIN": "OrderCancelledByOriginPayload",
+    "ORDER_CANCEL_LOCKED": "OrderCancelLockedPayload",
+    "ORDER_COMPLETED": "OrderCompletedPayload",
+    "ORDER_CREATED": "OrderCreatedPayload",
+    "ORDER_DELAYED": "OrderDelayedPayload",
+    "ORDER_DISPATCHED": "OrderDispatchedPayload",
+    "ORDER_FINALIZED": "OrderFinalizedPayload",
+    "ORDER_MODIFIED": "OrderModifiedPayload",
+    "ORDER_REASSIGNED": "OrderReassignedPayload",
+    "ORDER_REJECTED_BY_SUPPLIER": "UnknownEventPayload",
+    "ORDER_REROUTED": "OrderReroutedPayload",
+    "ORDER_STATE_CHANGED": "UnknownEventPayload",
+    "ORDER_STATUS_CHANGED": "OrderStatusChangedPayload",
+    "ORDER_SYNC": "UnknownEventPayload",
+    "ORDER_VALIDATION_FAILED": "OrderValidationFailedPayload",
+    "OUTBOX_FAILED": "UnknownEventPayload",
+    "OUT_OF_STOCK": "OutOfStockPayload",
+    "PAYLOAD_OVERFLOW": "PayloadOverflowPayload",
+    "PAYLOAD_READY_TO_SEAL": "PayloadReadyToSealPayload",
+    "PAYLOAD_SEALED": "PayloadSealedPayload",
+    "PAYLOAD_SYNC": "PayloadSyncPayload",
+    "PAYMENT_BYPASS_COMPLETED": "UnknownEventPayload",
+    "PAYMENT_BYPASS_ISSUED": "UnknownEventPayload",
+    "PAYMENT_CLEARED": "PaymentClearedPayload",
+    "PAYMENT_EXPIRED": "UnknownEventPayload",
+    "PAYMENT_FAILED": "PaymentFailedPayload",
+    "PAYMENT_INTENT_CREATED": "UnknownEventPayload",
+    "PAYMENT_REFUNDED": "UnknownEventPayload",
+    "PAYMENT_REQUIRED": "UnknownEventPayload",
+    "PAYMENT_SETTLED": "PaymentSettledPayload",
+    "POWER_OUTAGE_REPORTED": "UnknownEventPayload",
+    "PRE_ORDER_AUTO_ACCEPTED": "PreOrderAutoAcceptedPayload",
+    "PRE_ORDER_CANCELLED": "PreOrderCancelledPayload",
+    "PRE_ORDER_CONFIRMATION": "UnknownEventPayload",
+    "PRE_ORDER_CONFIRMED": "PreOrderConfirmedPayload",
+    "PRE_ORDER_EDITED": "PreOrderEditedPayload",
+    "PRE_ORDER_NOTIFIED": "PreOrderNotifiedPayload",
+    "PRE_ORDER_NUDGE": "UnknownEventPayload",
+    "PULL_MATRIX_COMPLETED": "PullMatrixCompletedPayload",
+    "REPLENISHMENT_LOCK_ACQUIRED": "UnknownEventPayload",
+    "REPLENISHMENT_LOCK_RELEASED": "UnknownEventPayload",
+    "REPLENISHMENT_TRANSFER_CREATED": "UnknownEventPayload",
+    "RETAILER_PRICE_OVERRIDE": "RetailerPriceOverridePayload",
+    "RETAILER_REGISTERED": "RetailerRegisteredPayload",
+    "RETURN_RESOLVED": "UnknownEventPayload",
+    "ROUTE_CREATED": "RouteCreatedPayload",
+    "ROUTE_FINALIZED": "RouteFinalizedPayload",
+    "SETTLEMENT_REQUIRED": "SettlementRequiredPayload",
+    "SHOP_CLOSED": "ShopClosedPayload",
+    "SHOP_CLOSED_ALERT": "UnknownEventPayload",
+    "SHOP_CLOSED_ESCALATED": "ShopClosedEscalatedPayload",
+    "SHOP_CLOSED_RESOLVED": "ShopClosedResolvedPayload",
+    "SHOP_CLOSED_RESPONSE": "ShopClosedResponsePayload",
+    "SMS_QUICK_COMPLETE": "UnknownEventPayload",
+    "SPLIT_PAYMENT_CREATED": "UnknownEventPayload",
+    "STOCK_BACKORDERED": "StockBackorderedPayload",
+    "STOCK_THRESHOLD_BREACH": "StockThresholdBreachPayload",
+    "SUPPLY_LANE_TRANSIT_UPDATED": "SupplyLaneTransitUpdatedPayload",
+    "SUPPLY_REQUEST_ACKNOWLEDGED": "UnknownEventPayload",
+    "SUPPLY_REQUEST_CANCELLED": "UnknownEventPayload",
+    "SUPPLY_REQUEST_FULFILLED": "UnknownEventPayload",
+    "SUPPLY_REQUEST_READY": "UnknownEventPayload",
+    "SUPPLY_REQUEST_SUBMITTED": "UnknownEventPayload",
+    "SUPPLY_REQUEST_UPDATE": "UnknownEventPayload",
+    "SYSTEM_BROADCAST": "UnknownEventPayload",
+    "TOKEN_REFRESH_NEEDED": "UnknownEventPayload",
+    "TRANSFER_APPROVED": "UnknownEventPayload",
+    "TRANSFER_RECEIVED": "UnknownEventPayload",
+    "TRANSFER_STATE_CHANGED": "UnknownEventPayload",
+    "TRANSFER_UNASSIGNED": "TransferUnassignedPayload",
+    "UNIFIED_CHECKOUT_COMPLETED": "UnifiedCheckoutCompletedPayload",
+    "VEHICLE_CREATED": "VehicleCreatedPayload",
+    "WAREHOUSE_CREATED": "WarehouseCreatedPayload",
+    "WAREHOUSE_SPATIAL_UPDATED": "WarehouseSpatialUpdatedPayload",
+    "WAREHOUSE_STATUS_CHANGED": "WarehouseStatusChangedPayload"
+  }
+}

@@ -33,6 +33,13 @@ class ShopClosedWaitingViewModel @Inject constructor(
     val state: StateFlow<ShopClosedUiState> = _state.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            webSocket.outdatedState.collect { outdated ->
+                if (outdated == null) return@collect
+                _state.update { it.copy(error = outdated.message) }
+            }
+        }
+
         // Listen for WebSocket messages related to shop-closed flow
         viewModelScope.launch {
             webSocket.messages.collect { msg ->

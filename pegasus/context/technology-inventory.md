@@ -43,6 +43,25 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 
 ## Runtime Contract Surfaces
 
+- Task 1.3 native contract bridge: `pegasus/apps/backend-go/cmd/gen-contracts/main.go` + `pegasus/contracts/events.schema.json` + native build hooks in `pegasus/apps/{driver-app-android,retailer-app-android,factory-app-android,warehouse-app-android,payload-app-android}/app/build.gradle.kts`, `pegasus/apps/{driverappios,retailer-app-ios}/*.xcodeproj/project.pbxproj`, and `pegasus/apps/{payload-app-ios,warehouse-app-ios}/project.yml`
+	- `gen-contracts` now supports mode-selectable JSON-Schema emission (`-mode json-schema|all`, `-schema-out`) so one backend-owned artifact can drive both TS and native generation workflows.
+	- Android role-row modules now run preBuild `generateEventSchema` + `generateWsEventModels` tasks and emit Kotlin websocket envelope models via quicktype.
+	- iOS role-row projects now run pre-build schema->Swift generation and emit `Generated/PegasusWSEventEnvelope.swift` via shell script phases (driver/retailer pbxproj) and XcodeGen preBuildScripts (payload/warehouse).
+
+- Task 1.4 desktop-to-native handshake bridge: `pegasus/apps/backend-go/{ws/command_registry.go,userroutes/routes.go,ws/driver_hub.go}` + driver native ACK clients in `pegasus/apps/{driver-app-android,driverappios}`
+	- Verified command lifecycle state (`INITIATED -> DISPATCHED -> RECEIVED -> SETTLED`) is now persisted on Redis keyspace `ws:cmdreg:*` with additive 24h TTL (`cache.TTLWSCommandRegistry`) and local fail-open fallback.
+	- Shared command APIs now mount `POST /v1/ws/command/dispatch` (desktop initiation) and `POST /v1/ws/ack` (native ACK settlement) via `userroutes` with role-scoped guards.
+	- Driver websocket payloads now include additive `command_id` and `command_state`; supplier realtime receives lifecycle frames `COMMAND_DISPATCHED`, `COMMAND_RECEIVED`, and `COMMAND_SETTLED` for desktop spinner/state closure.
+	- Driver Android `DriverWebSocket.kt` and driver iOS waiting screens (`PaymentWaitingView.swift`, `ShopClosedWaitingView.swift`) now emit best-effort ACKs through `APIClient.ackWebSocketCommand`.
+	- Contract artifacts now include command lifecycle payload definitions in `pegasus/contracts/events.schema.json` and `pegasus/packages/types/ws-events.ts`.
+
+- Phase 2.1 websocket envelope guard: `pegasus/apps/backend-go/{ws/envelope_guard.go,ws/driver_hub.go,ws/retailer_hub.go,ws/supplier_hub.go,ws/payloader_hub.go,ws/warehouse_hub.go,ws/factory_hub.go,kafka/notification_dispatcher.go}` + driver native wait-state clients in `pegasus/apps/{driver-app-android,driverappios}`
+	- Role websocket hubs now resolve per-connection schema dialect via `sv` query param and `X-Schema-Version` / `X-Client-Schema-Version` headers (browser-latest fallback, native-legacy fallback).
+	- `ws/envelope_guard.go` now centralizes event minimum schema requirements, additive v2->v1 downgrade rules, and incompatible fallback substitution to `SYSTEM_APP_OUTDATED`.
+	- Guarded delivery now runs on local hub writes before Redis fanout consumption, so mixed-version websocket clients receive safe payloads instead of crash-prone envelopes.
+	- `kafka/notification_dispatcher.go` websocket frame projection now stamps additive `schema_version` metadata for v2 event payloads.
+	- Driver Android (`DriverWebSocket.kt`, `PaymentWaitingViewModel.kt`, `ShopClosedWaitingViewModel.kt`) and driver iOS (`PaymentWaitingView.swift`, `ShopClosedWaitingView.swift`) now connect with `sv=2` and treat `SYSTEM_APP_OUTDATED` as a blocking upgrade-required state.
+
 - S-level dynamic billing metering + fee milestones: `pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,kafka/billing_tier_worker.go,internal/services/billing/meter_worker.go,settings/platform_config.go,order/service.go,kafka/treasurer.go,treasury/service.go}` + `pegasus/apps/admin-portal/app/treasury/page.tsx`
 	- `ORDER_FINALIZED` is now consumed by the billing worker to update `BillingMeterEvents` idempotently and increment sharded `BillingSupplierMeters`/`BillingGlobalMeters` counters.
 	- Milestone crossings now atomically update `SystemConfig.platform_fee_basis_points` (with additive `billing_*` control keys) and emit `FEE_RATE_ADJUSTED` via transactional outbox on `kafka.TopicMain`.

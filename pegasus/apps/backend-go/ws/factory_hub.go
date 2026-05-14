@@ -19,6 +19,7 @@ type FactoryHub struct {
 	mu         sync.RWMutex
 	writeMu    sync.Mutex
 	clients    map[string][]*websocket.Conn
+	schemaVers map[*websocket.Conn]int
 	subscribed map[string]bool
 }
 
@@ -26,6 +27,7 @@ type FactoryHub struct {
 func NewFactoryHub() *FactoryHub {
 	return &FactoryHub{
 		clients:    make(map[string][]*websocket.Conn),
+		schemaVers: make(map[*websocket.Conn]int),
 		subscribed: make(map[string]bool),
 	}
 }
@@ -47,6 +49,7 @@ func (h *FactoryHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	if traceID == "" {
 		traceID = r.Header.Get("X-Request-Id")
 	}
+	schemaVersion := resolveClientSchemaVersion(r)
 	if factoryID == "" {
 		http.Error(w, "factory_id could not be determined from auth token", http.StatusUnauthorized)
 		return
@@ -65,6 +68,7 @@ func (h *FactoryHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 
 	h.mu.Lock()
 	h.clients[factoryID] = append(h.clients[factoryID], conn)
+	h.schemaVers[conn] = schemaVersion
 	total := len(h.clients[factoryID])
 	h.mu.Unlock()
 	h.subscribeRelay(factoryID)
@@ -72,6 +76,7 @@ func (h *FactoryHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	slog.InfoContext(r.Context(), "factory hub client connected",
 		"hub", "factory",
 		"factory_id", factoryID,
+		"schema_version", schemaVersion,
 		"active_pipes", total,
 		"trace_id", traceID,
 	)
@@ -95,6 +100,7 @@ func (h *FactoryHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 				cache.Unsubscribe("ws:factory:" + factoryID)
 			}
 		}
+		delete(h.schemaVers, conn)
 		h.mu.Unlock()
 		conn.Close()
 		slog.InfoContext(r.Context(), "factory hub client disconnected",
@@ -140,27 +146,14 @@ func (h *FactoryHub) pushToFactoryLocal(factoryID string, data []byte) bool {
 		h.mu.RUnlock()
 		return false
 	}
-	snapshot := make([]*websocket.Conn, len(conns))
-	copy(snapshot, conns)
+	snapshot := make([]guardedConnTarget, 0, len(conns))
+	for _, conn := range conns {
+		schemaVersion := h.schemaVers[conn]
+		snapshot = append(snapshot, guardedConnTarget{conn: conn, schemaVersion: schemaVersion})
+	}
 	h.mu.RUnlock()
 
-	delivered := false
-	h.writeMu.Lock()
-	defer h.writeMu.Unlock()
-	for _, conn := range snapshot {
-		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			slog.Warn("factory hub write failed; evicting dead connection",
-				"hub", "factory",
-				"factory_id", factoryID,
-				"error", err,
-			)
-			conn.Close()
-		} else {
-			delivered = true
-		}
-	}
-
-	return delivered
+	return writeGuardedPayload("factory", "factory_id", factoryID, snapshot, &h.writeMu, data)
 }
 
 func (h *FactoryHub) subscribeRelay(factoryID string) {

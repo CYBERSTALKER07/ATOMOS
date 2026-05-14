@@ -3,16 +3,13 @@ package com.pegasus.driver.ui.screens.offload
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pegasus.driver.BuildConfig
 import com.pegasus.driver.data.model.CompleteOrderRequest
 import com.pegasus.driver.data.remote.DriverApi
 import com.pegasus.driver.data.remote.DriverWebSocket
-import com.pegasus.driver.data.remote.TokenHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -44,15 +41,21 @@ class PaymentWaitingViewModel @Inject constructor(
     }
 
     private fun connectAndListen() {
-        val driverId = TokenHolder.userId ?: return
-        val token = TokenHolder.token ?: return
-        driverWS.connect(BuildConfig.API_BASE_URL, driverId, token)
+        viewModelScope.launch {
+            driverWS.outdatedState.collect { outdated ->
+                if (outdated == null) return@collect
+                _state.update { it.copy(error = outdated.message) }
+            }
+        }
 
         viewModelScope.launch {
             driverWS.messages
-                .filter { it.type == "PAYMENT_SETTLED" && it.orderId == orderId }
-                .collect {
-                    _state.update { s -> s.copy(paymentSettled = true) }
+                .collect { msg ->
+                    when {
+                        msg.type == "PAYMENT_SETTLED" && msg.orderId == orderId -> {
+                            _state.update { s -> s.copy(paymentSettled = true) }
+                        }
+                    }
                 }
         }
     }
@@ -73,7 +76,6 @@ class PaymentWaitingViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        driverWS.disconnect()
         super.onCleared()
     }
 }

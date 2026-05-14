@@ -36,6 +36,11 @@ func websocketURL(srv *httptest.Server) string {
 
 func dialWebSocket(t *testing.T, url string) *websocket.Conn {
 	t.Helper()
+	if strings.Contains(url, "?") {
+		url += "&sv=2"
+	} else {
+		url += "?sv=2"
+	}
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		t.Fatalf("ws dial failed: %v", err)

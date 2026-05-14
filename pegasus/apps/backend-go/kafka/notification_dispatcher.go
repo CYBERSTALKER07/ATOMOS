@@ -38,6 +38,7 @@ type NotificationDeps struct {
 type notificationWSFrame struct {
 	ID          string            `json:"id"`
 	Type        string            `json:"type"`
+	SchemaVer   int               `json:"schema_version,omitempty"`
 	Title       string            `json:"title"`
 	Body        string            `json:"body"`
 	OrderID     string            `json:"order_id,omitempty"`
@@ -72,6 +73,9 @@ func newNotificationWSFrame(notificationID, eventType string, notif notification
 		TitleKey:    notif.TitleKey,
 		BodyKey:     notif.BodyKey,
 		MessageArgs: notif.MessageArgs,
+	}
+	if schemaVersion := ws.EnvelopeSchemaVersion(eventType, nil); schemaVersion > ws.SchemaVersionV1 {
+		frame.SchemaVer = schemaVersion
 	}
 	frame.OrderID = notif.MessageArgs["order_id"]
 	frame.SessionID = notif.MessageArgs["session_id"]

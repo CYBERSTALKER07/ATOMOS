@@ -1,4 +1,6 @@
 import java.util.Properties
+import org.gradle.api.GradleException
+import org.gradle.api.tasks.Exec
 
 plugins {
     id("com.android.application")
@@ -17,6 +19,79 @@ val localProps = Properties().also { props ->
 val devHost: String = localProps.getProperty("dev.host", "10.0.2.2")
 val mapsApiKey: String = localProps.getProperty("MAPS_API_KEY", "")
 val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
+val quicktypeBinary: String = localProps.getProperty("quicktype.path", "quicktype")
+
+val contractsSchemaFile = rootProject.file("../../contracts/events.schema.json")
+val backendGoDir = rootProject.file("../../apps/backend-go")
+val generatedWsModelFile = rootProject.file(
+    "app/src/main/java/com/pegasus/driver/generated/contracts/PegasusWSEventEnvelope.kt"
+)
+
+fun assertCommandAvailable(command: String) {
+    val process = ProcessBuilder("sh", "-c", "command -v \"$command\" >/dev/null 2>&1").start()
+    val exitCode = process.waitFor()
+    if (exitCode != 0) {
+        throw GradleException(
+            "quicktype not found (binary: $command). Install quicktype or set quicktype.path in local.properties",
+        )
+    }
+}
+
+val generateEventSchema by tasks.registering(Exec::class) {
+    group = "codegen"
+    description = "Generate websocket JSON schema from backend Go contracts"
+    workingDir = backendGoDir
+    commandLine(
+        "go",
+        "run",
+        "./cmd/gen-contracts",
+        "-source",
+        "kafka/events.go",
+        "-mode",
+        "json-schema",
+        "-schema-out",
+        contractsSchemaFile.absolutePath,
+        "-pretty=true",
+    )
+    outputs.file(contractsSchemaFile)
+}
+
+val generateWsEventModels by tasks.registering(Exec::class) {
+    group = "codegen"
+    description = "Generate Kotlin websocket contract models from shared schema"
+    dependsOn(generateEventSchema)
+
+    inputs.file(contractsSchemaFile)
+    outputs.file(generatedWsModelFile)
+
+    doFirst {
+        generatedWsModelFile.parentFile.mkdirs()
+        assertCommandAvailable(quicktypeBinary)
+    }
+
+    commandLine(
+        quicktypeBinary,
+        "--lang",
+        "kotlin",
+        "--src-lang",
+        "schema",
+        "--src",
+        contractsSchemaFile.absolutePath,
+        "--package",
+        "com.pegasus.driver.generated.contracts",
+        "--framework",
+        "kotlinx",
+        "--top-level",
+        "PegasusWSEventEnvelope",
+        "--just-types",
+        "--out",
+        generatedWsModelFile.absolutePath,
+    )
+}
+
+tasks.named("preBuild") {
+    dependsOn(generateWsEventModels)
+}
 
 android {
     namespace = "com.pegasus.driver"

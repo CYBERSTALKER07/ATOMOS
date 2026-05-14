@@ -171,6 +171,7 @@ func main() {
 	payloaderHub := app.PayloaderHub
 	supplierHub := app.SupplierHub
 	warehouseHub := app.WarehouseHub
+	commandRegistry := app.CommandRegistry
 	priorityGuard := app.PriorityGuard
 	shopClosedDeps := app.ShopClosedDeps
 	earlyCompleteDeps := app.EarlyCompleteDeps
@@ -291,9 +292,14 @@ func main() {
 	// Ownership lives in backend-go/userroutes/routes.go.
 	deviceTokenSvc := &notifications.DeviceTokenService{Spanner: spannerClient}
 	userroutes.RegisterRoutes(r, userroutes.Deps{
-		Spanner:        spannerClient,
-		DeviceTokenSvc: deviceTokenSvc,
-		Log:            loggingMiddleware,
+		Spanner:         spannerClient,
+		DeviceTokenSvc:  deviceTokenSvc,
+		DriverHub:       driverHub,
+		RetailerHub:     retailerHub,
+		PayloaderHub:    payloaderHub,
+		SupplierHub:     supplierHub,
+		CommandRegistry: commandRegistry,
+		Log:             loggingMiddleware,
 	})
 
 	// /v1/treasury/* + /v1/supplier/settlement-report → treasury package.

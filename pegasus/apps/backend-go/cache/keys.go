@@ -21,6 +21,7 @@ import "time"
 //   desert:    — Desert Protocol (offline sync)
 //   lb:        — load balancer
 //   dlq:       — dead letter queue
+//   ws:cmdreg: — websocket verified command lifecycle registry
 
 const (
 	// ── GEO & Proximity ────────────────────────────────────────────────────
@@ -65,6 +66,9 @@ const (
 	// ── DLQ Resolution Ledger ──────────────────────────────────────────────
 	KeyDLQResolved = "dlq:resolved_offsets" // SET: resolved DLQ offsets
 
+	// ── WebSocket Command Registry ─────────────────────────────────────────
+	PrefixWSCommandRegistry = "ws:cmdreg:" // STRING (JSON): ws:cmdreg:<commandId>
+
 	// ── HTTP Cache ─────────────────────────────────────────────────────────
 	PrefixCacheCategories = "cache:categories" // STRING (JSON): cache:categories:<query>
 	PrefixCacheProducts   = "cache:products"   // STRING (JSON): cache:products:<query>
@@ -91,21 +95,22 @@ const (
 
 // ─── TTL Constants ─────────────────────────────────────────────────────────────
 const (
-	TTLDeliveryToken    = 4 * time.Hour
-	TTLArrivingSet      = 24 * time.Hour
-	TTLWarehouseGeo     = 24 * time.Hour
-	TTLWarehouseQueue   = 24 * time.Hour
-	TTLWarehouseTieRR   = 24 * time.Hour
-	TTLIdempotency      = 24 * time.Hour
-	TTLIdempotencyLock  = 30 * time.Second
-	TTLDesertSync       = 24 * time.Hour
-	TTLWebhookSigFail   = 1 * time.Hour
-	TTLLBCooldown       = 5 * time.Minute
-	TTLEarlyComplete    = 2 * time.Hour
-	TTLPowerOutage      = 2 * time.Hour
-	TTLDLQResolved      = 7 * 24 * time.Hour // 7 days — auto-evict old DLQ offsets
-	TTLRateLimitAuth    = 1 * time.Minute
-	TTLRateLimitDefault = 1 * time.Minute
+	TTLDeliveryToken     = 4 * time.Hour
+	TTLArrivingSet       = 24 * time.Hour
+	TTLWarehouseGeo      = 24 * time.Hour
+	TTLWarehouseQueue    = 24 * time.Hour
+	TTLWarehouseTieRR    = 24 * time.Hour
+	TTLIdempotency       = 24 * time.Hour
+	TTLIdempotencyLock   = 30 * time.Second
+	TTLDesertSync        = 24 * time.Hour
+	TTLWebhookSigFail    = 1 * time.Hour
+	TTLLBCooldown        = 5 * time.Minute
+	TTLEarlyComplete     = 2 * time.Hour
+	TTLPowerOutage       = 2 * time.Hour
+	TTLDLQResolved       = 7 * 24 * time.Hour // 7 days — auto-evict old DLQ offsets
+	TTLRateLimitAuth     = 1 * time.Minute
+	TTLRateLimitDefault  = 1 * time.Minute
+	TTLWSCommandRegistry = 24 * time.Hour
 
 	// ── Profile + settings + analytics cache TTLs ──────────────────────
 	TTLProfile           = 5 * time.Minute  // profile reads change infrequently

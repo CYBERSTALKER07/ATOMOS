@@ -112,13 +112,14 @@ type App struct {
 	Telegram *notifications.TelegramClient
 
 	// ── WebSocket hubs ──────────────────────────────────────────────────
-	RetailerHub  *ws.RetailerHub
-	DriverHub    *ws.DriverHub
-	PayloaderHub *ws.PayloaderHub
-	SupplierHub  *ws.SupplierHub
-	WarehouseHub *ws.WarehouseHub
-	FactoryHub   *ws.FactoryHub
-	FleetHub     *telemetry.Hub // shared package-level hub; field is a convenience alias
+	RetailerHub     *ws.RetailerHub
+	DriverHub       *ws.DriverHub
+	PayloaderHub    *ws.PayloaderHub
+	SupplierHub     *ws.SupplierHub
+	WarehouseHub    *ws.WarehouseHub
+	FactoryHub      *ws.FactoryHub
+	FleetHub        *telemetry.Hub // shared package-level hub; field is a convenience alias
+	CommandRegistry *ws.CommandRegistry
 
 	// ── Transactional Outbox relay (V.O.I.D. Phase VII) ─────────────────
 	// Outbox tails OutboxEvents and publishes to Kafka. The relay goroutine

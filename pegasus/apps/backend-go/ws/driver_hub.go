@@ -33,15 +33,24 @@ type DriverHub struct {
 	mu         sync.RWMutex
 	writeMu    sync.Mutex
 	clients    map[string][]*websocket.Conn // Key: DriverId → active connections
-	subscribed map[string]bool              // driverID → relay subscription active
+	schemaVers map[*websocket.Conn]int
+	subscribed map[string]bool // driverID → relay subscription active
+	registry   *CommandRegistry
 }
 
 // NewDriverHub creates a fresh hub instance.
 func NewDriverHub() *DriverHub {
 	return &DriverHub{
 		clients:    make(map[string][]*websocket.Conn),
+		schemaVers: make(map[*websocket.Conn]int),
 		subscribed: make(map[string]bool),
 	}
+}
+
+// SetCommandRegistry wires the verified command lifecycle registry used to
+// decorate outgoing payloads with command metadata.
+func (h *DriverHub) SetCommandRegistry(registry *CommandRegistry) {
+	h.registry = registry
 }
 
 // HandleConnection upgrades the HTTP request and registers the driver.
@@ -58,6 +67,7 @@ func (h *DriverHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	if traceID == "" {
 		traceID = r.Header.Get("X-Request-Id")
 	}
+	schemaVersion := resolveClientSchemaVersion(r)
 
 	if driverID == "" {
 		http.Error(w, "driver_id could not be determined from auth token", http.StatusUnauthorized)
@@ -76,6 +86,7 @@ func (h *DriverHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	}
 	h.mu.Lock()
 	h.clients[driverID] = append(h.clients[driverID], conn)
+	h.schemaVers[conn] = schemaVersion
 	total := len(h.clients[driverID])
 	h.mu.Unlock()
 	h.subscribeRelay(driverID)
@@ -83,6 +94,7 @@ func (h *DriverHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 	slog.InfoContext(r.Context(), "driver hub client connected",
 		"hub", "driver",
 		"driver_id", driverID,
+		"schema_version", schemaVersion,
 		"active_pipes", total,
 		"trace_id", traceID,
 	)
@@ -107,6 +119,7 @@ func (h *DriverHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 				cache.Unsubscribe("ws:driver:" + driverID)
 			}
 		}
+		delete(h.schemaVers, conn)
 		h.mu.Unlock()
 		conn.Close()
 		slog.InfoContext(r.Context(), "driver hub client disconnected",
@@ -126,7 +139,16 @@ func (h *DriverHub) HandleConnection(w http.ResponseWriter, r *http.Request) {
 // PushToDriver sends a DriverPayload to all active connections for a driver.
 // Returns true if at least one connection received the payload.
 func (h *DriverHub) PushToDriver(driverID string, payload interface{}) bool {
-	data, err := json.Marshal(payload)
+	preparedPayload, err := h.decoratePayload(driverID, payload)
+	if err != nil {
+		slog.Warn("driver hub command envelope skipped",
+			"hub", "driver",
+			"driver_id", driverID,
+			"error", err,
+		)
+		preparedPayload = payload
+	}
+	data, err := json.Marshal(preparedPayload)
 	if err != nil {
 		slog.Error("driver hub payload marshal failed",
 			"hub", "driver",
@@ -140,6 +162,74 @@ func (h *DriverHub) PushToDriver(driverID string, payload interface{}) bool {
 	return local
 }
 
+func (h *DriverHub) decoratePayload(driverID string, payload interface{}) (interface{}, error) {
+	if h.registry == nil {
+		return payload, nil
+	}
+	obj, ok, err := toObjectMap(payload)
+	if err != nil || !ok {
+		return payload, err
+	}
+	if existingCommandID := stringify(obj["command_id"]); existingCommandID != "" {
+		return obj, nil
+	}
+	eventType := stringify(obj["type"])
+	if eventType == "" {
+		return obj, nil
+	}
+	traceID := stringify(obj["trace_id"])
+	supplierID := stringify(obj["supplier_id"])
+	cmd, err := h.registry.RegisterDispatch(context.Background(), "DRIVER", driverID, supplierID, eventType, traceID, obj)
+	if err != nil {
+		return obj, err
+	}
+	cmd, err = h.registry.MarkDispatched(context.Background(), cmd.CommandID, cmd.TraceID)
+	if err != nil {
+		return obj, err
+	}
+	obj["command_id"] = cmd.CommandID
+	obj["command_state"] = cmd.State
+	obj["initiated_at"] = cmd.InitiatedAt.Format(time.RFC3339Nano)
+	obj["dispatched_at"] = cmd.DispatchedAt.Format(time.RFC3339Nano)
+	if stringify(obj["trace_id"]) == "" {
+		obj["trace_id"] = cmd.TraceID
+	}
+	if stringify(obj["supplier_id"]) == "" && cmd.SupplierID != "" {
+		obj["supplier_id"] = cmd.SupplierID
+	}
+	return obj, nil
+}
+
+func toObjectMap(payload interface{}) (map[string]interface{}, bool, error) {
+	if m, ok := payload.(map[string]interface{}); ok {
+		copyMap := make(map[string]interface{}, len(m))
+		for k, v := range m {
+			copyMap[k] = v
+		}
+		return copyMap, true, nil
+	}
+	bytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, false, err
+	}
+	var obj map[string]interface{}
+	if err := json.Unmarshal(bytes, &obj); err != nil {
+		return nil, false, nil
+	}
+	if obj == nil {
+		return nil, false, nil
+	}
+	return obj, true, nil
+}
+
+func stringify(v interface{}) string {
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return s
+}
+
 func (h *DriverHub) pushToDriverLocal(driverID string, data []byte) bool {
 	h.mu.RLock()
 	conns, exists := h.clients[driverID]
@@ -147,27 +237,14 @@ func (h *DriverHub) pushToDriverLocal(driverID string, data []byte) bool {
 		h.mu.RUnlock()
 		return false
 	}
-	snapshot := make([]*websocket.Conn, len(conns))
-	copy(snapshot, conns)
+	snapshot := make([]guardedConnTarget, 0, len(conns))
+	for _, conn := range conns {
+		schemaVersion := h.schemaVers[conn]
+		snapshot = append(snapshot, guardedConnTarget{conn: conn, schemaVersion: schemaVersion})
+	}
 	h.mu.RUnlock()
 
-	delivered := false
-	h.writeMu.Lock()
-	defer h.writeMu.Unlock()
-	for _, conn := range snapshot {
-		if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
-			slog.Warn("driver hub write failed; evicting dead connection",
-				"hub", "driver",
-				"driver_id", driverID,
-				"error", err,
-			)
-			conn.Close()
-		} else {
-			delivered = true
-		}
-	}
-
-	return delivered
+	return writeGuardedPayload("driver", "driver_id", driverID, snapshot, &h.writeMu, data)
 }
 
 func (h *DriverHub) subscribeRelay(driverID string) {

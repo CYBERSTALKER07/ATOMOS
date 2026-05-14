@@ -24,6 +24,26 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
+    preBuildScripts:
+      - name: Generate Native Event Contracts
+        script: |
+          set -euo pipefail
+          REPO_ROOT="$SRCROOT/../../.."
+          BACKEND_DIR="$REPO_ROOT/apps/backend-go"
+          SCHEMA_PATH="$REPO_ROOT/contracts/events.schema.json"
+          OUTPUT_PATH="$SRCROOT/payload-app-ios/Generated/PegasusWSEventEnvelope.swift"
+
+          if ! command -v quicktype >/dev/null 2>&1; then
+            echo "error: quicktype not found. Install quicktype and ensure it is on PATH." >&2
+            exit 1
+          fi
+
+          mkdir -p "$SRCROOT/payload-app-ios/Generated"
+          cd "$BACKEND_DIR"
+          go run ./cmd/gen-contracts -source kafka/events.go -mode json-schema -schema-out "$SCHEMA_PATH" -pretty=true
+          quicktype --lang swift --src-lang schema --src "$SCHEMA_PATH" --top-level PegasusWSEventEnvelope --just-types --out "$OUTPUT_PATH"
+        outputFiles:
+          - "$(SRCROOT)/payload-app-ios/Generated/PegasusWSEventEnvelope.swift"
     sources:
       - path: payload-app-ios
         excludes:

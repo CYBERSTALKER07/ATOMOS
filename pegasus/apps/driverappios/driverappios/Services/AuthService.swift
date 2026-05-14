@@ -283,6 +283,201 @@ final class TokenStore {
         KeychainHelper.delete(forKey: factoryNameKey)
         KeychainHelper.delete(forKey: factoryLatKey)
         KeychainHelper.delete(forKey: factoryLngKey)
+        DriverSocketState.shared.clearOutdatedNotice()
+    }
+}
+
+@Observable
+@MainActor
+final class DriverSocketState {
+    struct OutdatedNotice {
+        let message: String
+        let blockedEventType: String?
+        let requiredSchemaVersion: Int?
+        let clientSchemaVersion: Int?
+    }
+
+    struct DriverEvent {
+        let type: String
+        let orderId: String?
+        let response: String?
+        let bypassToken: String?
+        let attemptId: String?
+    }
+
+    private struct DriverEnvelope: Decodable {
+        let type: String
+        let order_id: String?
+        let response: String?
+        let bypass_token: String?
+        let attempt_id: String?
+        let command_id: String?
+        let trace_id: String?
+        let required_schema_version: Int?
+        let client_schema_version: Int?
+        let blocked_event_type: String?
+        let message: String?
+    }
+
+    static let shared = DriverSocketState()
+
+    var outdatedNotice: OutdatedNotice?
+    var lastEvent: DriverEvent?
+    var eventSequence = 0
+
+    private let wsSchemaVersion = 2
+    private var webSocketTask: URLSessionWebSocketTask?
+    private var reconnectWorkItem: DispatchWorkItem?
+    private var shouldReconnect = false
+    private var currentBaseURL: String?
+    private var currentToken: String?
+
+    private init() {}
+
+    func startMonitoring(baseURL: String, token: String) {
+        if webSocketTask != nil, currentBaseURL == baseURL, currentToken == token {
+            return
+        }
+
+        stopMonitoring()
+        shouldReconnect = true
+        currentBaseURL = baseURL
+        currentToken = token
+        establishConnection()
+    }
+
+    func stopMonitoring() {
+        shouldReconnect = false
+        reconnectWorkItem?.cancel()
+        reconnectWorkItem = nil
+        webSocketTask?.cancel(with: .goingAway, reason: nil)
+        webSocketTask = nil
+    }
+
+    func publishOutdatedEvent(
+        message: String?,
+        blockedEventType: String?,
+        requiredSchemaVersion: Int?,
+        clientSchemaVersion: Int?
+    ) {
+        let blocked = blockedEventType ?? "this operation"
+        let required = requiredSchemaVersion.map(String.init) ?? "latest"
+        let fallback = "A critical update is required for \(blocked) (required schema: \(required))."
+
+        outdatedNotice = OutdatedNotice(
+            message: message ?? fallback,
+            blockedEventType: blockedEventType,
+            requiredSchemaVersion: requiredSchemaVersion,
+            clientSchemaVersion: clientSchemaVersion
+        )
+    }
+
+    func clearOutdatedNotice() {
+        outdatedNotice = nil
+    }
+
+    private func establishConnection() {
+        guard shouldReconnect,
+              let baseURL = currentBaseURL,
+              let token = currentToken
+        else {
+            return
+        }
+
+        let wsBase = baseURL
+            .replacingOccurrences(of: "https://", with: "wss://")
+            .replacingOccurrences(of: "http://", with: "ws://")
+
+        guard let url = URL(string: "\(wsBase)/v1/ws/driver?sv=\(wsSchemaVersion)") else {
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let task = URLSession.shared.webSocketTask(with: request)
+        webSocketTask = task
+        task.resume()
+        listenForMessages()
+    }
+
+    private func listenForMessages() {
+        webSocketTask?.receive { [weak self] result in
+            Task { @MainActor in
+                guard let self else { return }
+
+                switch result {
+                case .success(let message):
+                    self.handleIncoming(message)
+                    self.listenForMessages()
+                case .failure:
+                    self.scheduleReconnect()
+                }
+            }
+        }
+    }
+
+    private func handleIncoming(_ message: URLSessionWebSocketTask.Message) {
+        let data: Data
+        switch message {
+        case .string(let text):
+            guard let payloadData = text.data(using: .utf8) else { return }
+            data = payloadData
+        case .data(let payloadData):
+            data = payloadData
+        @unknown default:
+            return
+        }
+
+        guard let envelope = try? JSONDecoder().decode(DriverEnvelope.self, from: data) else {
+            return
+        }
+
+        if envelope.type == "SYSTEM_APP_OUTDATED" {
+            publishOutdatedEvent(
+                message: envelope.message,
+                blockedEventType: envelope.blocked_event_type,
+                requiredSchemaVersion: envelope.required_schema_version,
+                clientSchemaVersion: envelope.client_schema_version
+            )
+            stopMonitoring()
+            return
+        }
+
+        if let commandId = envelope.command_id {
+            Task {
+                try? await APIClient.shared.ackWebSocketCommand(
+                    commandId: commandId,
+                    traceId: envelope.trace_id,
+                    eventType: envelope.type
+                )
+            }
+        }
+
+        publishDriverEvent(envelope)
+    }
+
+    private func publishDriverEvent(_ envelope: DriverEnvelope) {
+        lastEvent = DriverEvent(
+            type: envelope.type,
+            orderId: envelope.order_id,
+            response: envelope.response,
+            bypassToken: envelope.bypass_token,
+            attemptId: envelope.attempt_id
+        )
+        eventSequence += 1
+    }
+
+    private func scheduleReconnect() {
+        guard shouldReconnect, outdatedNotice == nil else { return }
+        reconnectWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            Task { @MainActor in
+                self?.establishConnection()
+            }
+        }
+        reconnectWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: work)
     }
 }
 
