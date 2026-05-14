@@ -1,5 +1,4 @@
 package aibridge
-package aibridge
 
 import "context"
 
@@ -25,11 +24,11 @@ type FieldDefinition struct {
 
 // MappingCandidate is one source-column to target-field match.
 type MappingCandidate struct {
-	SourceColumn string  `json:"source_column"`
-	TargetField  string  `json:"target_field"`
-	Confidence   float64 `json:"confidence"`
-	Reason       string  `json:"reason,omitempty"`
-	Deterministic bool   `json:"deterministic,omitempty"`
+	SourceColumn  string  `json:"source_column"`
+	TargetField   string  `json:"target_field"`
+	Confidence    float64 `json:"confidence"`
+	Reason        string  `json:"reason,omitempty"`
+	Deterministic bool    `json:"deterministic,omitempty"`
 }
 
 // Anomaly describes one suspicious data pattern detected in the sample.
