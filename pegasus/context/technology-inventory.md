@@ -43,6 +43,11 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 
 ## Runtime Contract Surfaces
 
+- Warehouse import anomaly queue analytics parity: `pegasus/apps/backend-go/warehouse/analytics.go` + `pegasus/apps/warehouse-portal/app/analytics/page.tsx` + `pegasus/apps/{warehouse-app-android,warehouse-app-ios}`
+	- `GET /v1/warehouse/ops/analytics` now projects additive `import_anomaly_queue` by scanning warehouse-scoped staged import validation errors from `SupplierImportStagedRows` over the selected period.
+	- Warehouse portal analytics now renders Import Anomaly Queue beside Import Freshness for warehouse-scoped operational triage.
+	- Warehouse Android and iOS analytics models/views now consume both `import_freshness` and `import_anomaly_queue` with additive top-product quantity alias compatibility (`total_qty` and `total_sold`).
+
 - Task 1.3 native contract bridge: `pegasus/apps/backend-go/cmd/gen-contracts/main.go` + `pegasus/contracts/events.schema.json` + native build hooks in `pegasus/apps/{driver-app-android,retailer-app-android,factory-app-android,warehouse-app-android,payload-app-android}/app/build.gradle.kts`, `pegasus/apps/{driverappios,retailer-app-ios}/*.xcodeproj/project.pbxproj`, and `pegasus/apps/{payload-app-ios,warehouse-app-ios}/project.yml`
 	- `gen-contracts` now supports mode-selectable JSON-Schema emission (`-mode json-schema|all`, `-schema-out`) so one backend-owned artifact can drive both TS and native generation workflows.
 	- Android role-row modules now run preBuild `generateEventSchema` + `generateWsEventModels` tasks and emit Kotlin websocket envelope models via quicktype.

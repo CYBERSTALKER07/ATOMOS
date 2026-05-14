@@ -22,6 +22,13 @@ interface AnalyticsData {
     last_session_id?: string;
     last_applied_at?: string;
   };
+  import_anomaly_queue?: {
+    open_rows_30d: number;
+    affected_sessions_30d: number;
+    last_session_id?: string;
+    last_detected_at?: string;
+    last_detail?: string;
+  };
 }
 
 export default function AnalyticsPage() {
@@ -67,6 +74,17 @@ export default function AnalyticsPage() {
   const lastImportAppliedAt = parsedImportTime && !Number.isNaN(parsedImportTime.getTime())
     ? parsedImportTime.toLocaleString('uz-UZ')
     : 'No imports applied yet';
+  const importAnomalyQueue = d.import_anomaly_queue || {
+    open_rows_30d: 0,
+    affected_sessions_30d: 0,
+    last_session_id: '',
+    last_detected_at: '',
+    last_detail: '',
+  };
+  const parsedAnomalyTime = importAnomalyQueue.last_detected_at ? new Date(importAnomalyQueue.last_detected_at) : null;
+  const lastAnomalyDetectedAt = parsedAnomalyTime && !Number.isNaN(parsedAnomalyTime.getTime())
+    ? parsedAnomalyTime.toLocaleString('uz-UZ')
+    : 'No anomalies detected';
 
   return (
     <div className="p-6 space-y-6 md-animate-in">
@@ -127,6 +145,29 @@ export default function AnalyticsPage() {
         <div className="mt-3 text-xs text-[var(--muted)]">
           Last Session: {importFreshness.last_session_id || 'N/A'} • {lastImportAppliedAt}
         </div>
+      </div>
+
+      <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <Icon name="warning" size={16} className="text-[var(--warning)]" />
+          <h2 className="text-sm font-semibold">Import Anomaly Queue</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <div className="text-xs text-[var(--muted)]">Open Anomaly Rows (30d)</div>
+            <div className="text-xl font-bold">{fmt(importAnomalyQueue.open_rows_30d)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-[var(--muted)]">Affected Sessions (30d)</div>
+            <div className="text-xl font-bold">{fmt(importAnomalyQueue.affected_sessions_30d)}</div>
+          </div>
+        </div>
+        <div className="mt-3 text-xs text-[var(--muted)]">
+          Last Session: {importAnomalyQueue.last_session_id || 'N/A'} • {lastAnomalyDetectedAt}
+        </div>
+        {importAnomalyQueue.last_detail ? (
+          <div className="mt-2 text-xs text-[var(--muted)]">Latest Detail: {importAnomalyQueue.last_detail}</div>
+        ) : null}
       </div>
 
       {/* Daily Revenue Chart */}

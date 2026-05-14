@@ -68,6 +68,26 @@
   },
   "runtimeContracts": [
     {
+      "name": "Warehouse import anomaly queue analytics parity",
+      "path": "GET /v1/warehouse/ops/analytics -> import_anomaly_queue projection",
+      "owner": "pegasus/apps/backend-go/warehouse/analytics.go + pegasus/apps/warehouse-portal/app/analytics/page.tsx + pegasus/apps/{warehouse-app-android,warehouse-app-ios}",
+      "methods": [
+        "GET /v1/warehouse/ops/analytics",
+        "Stale-read projection from SupplierImportStagedRows validation_errors scoped by supplier_id + warehouse_id + period start",
+        "Additive response block import_anomaly_queue { open_rows_30d, affected_sessions_30d, last_session_id, last_detected_at, last_detail }"
+      ],
+      "consumers": [
+        "backend-go warehouse analytics handler",
+        "warehouse-portal analytics page",
+        "warehouse-app-android analytics models and screen",
+        "warehouse-app-ios analytics models and view"
+      ],
+      "notes": [
+        "Projection is additive and backward-compatible with existing analytics consumers.",
+        "Native top-product parsing now supports both total_qty and total_sold to prevent contract drift."
+      ]
+    },
+    {
       "name": "Task 1.3 native contract bridge",
       "path": "apps/backend-go/cmd/gen-contracts -> contracts/events.schema.json -> native pre-build quicktype generation",
       "owner": "pegasus/apps/backend-go/cmd/gen-contracts/main.go + pegasus/contracts/events.schema.json + pegasus/apps/*-{android,ios} build wiring",

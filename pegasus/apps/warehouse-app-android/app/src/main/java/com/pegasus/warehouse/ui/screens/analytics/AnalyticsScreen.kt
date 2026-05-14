@@ -17,6 +17,7 @@ import com.pegasus.warehouse.ui.theme.PegasusSpacing
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
+import kotlin.math.roundToLong
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,8 +82,14 @@ fun AnalyticsScreen(
                 }
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
-                        KpiCard("Avg Order", "${fmt.format(data!!.avgOrderValue)} UZS", Modifier.weight(1f))
-                        KpiCard("Utilization", "${data!!.fleetUtilizationPct}%", Modifier.weight(1f))
+                        KpiCard("Avg Order", "${fmt.format(data!!.avgOrderValue.roundToLong())} UZS", Modifier.weight(1f))
+                        KpiCard("Utilization", "${data!!.fleetUtilizationPct.roundToLong()}%", Modifier.weight(1f))
+                    }
+                }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md), modifier = Modifier.fillMaxWidth()) {
+                        KpiCard("Imported Rows", data!!.importFreshness.appliedRows30d.toString(), Modifier.weight(1f))
+                        KpiCard("Anomaly Rows", data!!.importAnomalyQueue.openRows30d.toString(), Modifier.weight(1f))
                     }
                 }
                 // Top products
@@ -94,7 +101,7 @@ fun AnalyticsScreen(
                     ElevatedCard(modifier = Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.padding(PegasusSpacing.lg), verticalAlignment = Alignment.CenterVertically) {
                             Text(tp.productName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                            Text("${tp.totalSold} units · ${fmt.format(tp.revenue)} UZS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("${tp.displayUnits} units · ${fmt.format(tp.revenue)} UZS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

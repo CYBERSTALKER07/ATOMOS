@@ -207,25 +207,72 @@ data class ManifestListResponse(
 data class AnalyticsData(
     val period: String = "",
     @SerialName("total_revenue") val totalRevenue: Long = 0,
-    @SerialName("total_orders") val totalOrders: Int = 0,
-    @SerialName("avg_order_value") val avgOrderValue: Long = 0,
-    @SerialName("fleet_utilization_pct") val fleetUtilizationPct: Double = 0.0,
+    @SerialName("total_orders") val totalOrders: Long = 0,
+    @SerialName("completed_orders") val completedOrders: Long = 0,
+    @SerialName("cancelled_orders") val cancelledOrders: Long = 0,
+    @SerialName("avg_order_value") val avgOrderValue: Double = 0.0,
+    @SerialName("fleet_utilization") val fleetUtilization: FleetUtilization = FleetUtilization(),
+    @SerialName("fleet_utilization_pct") val fleetUtilizationPctLegacy: Double = 0.0,
+    @SerialName("import_freshness") val importFreshness: ImportFreshness = ImportFreshness(),
+    @SerialName("import_anomaly_queue") val importAnomalyQueue: ImportAnomalyQueue = ImportAnomalyQueue(),
     @SerialName("top_products") val topProducts: List<TopProduct> = emptyList(),
+    @SerialName("daily_breakdown") val dailyBreakdown: List<DailyMetric> = emptyList(),
     val daily: List<DailyMetric> = emptyList(),
+) {
+    val fleetUtilizationPct: Double
+        get() = if (fleetUtilization.utilizationPct > 0.0) {
+            fleetUtilization.utilizationPct
+        } else {
+            fleetUtilizationPctLegacy
+        }
+
+    val chartDaily: List<DailyMetric>
+        get() = if (dailyBreakdown.isNotEmpty()) dailyBreakdown else daily
+}
+
+@Serializable
+data class FleetUtilization(
+    @SerialName("total_drivers") val totalDrivers: Long = 0,
+    @SerialName("active_drivers") val activeDrivers: Long = 0,
+    @SerialName("utilization_pct") val utilizationPct: Double = 0.0,
+    @SerialName("avg_stops_per_day") val avgStopsPerDay: Double = 0.0,
+)
+
+@Serializable
+data class ImportFreshness(
+    @SerialName("applied_rows_30d") val appliedRows30d: Long = 0,
+    @SerialName("applied_skus_30d") val appliedSkus30d: Long = 0,
+    @SerialName("quantity_delta_30d") val quantityDelta30d: Long = 0,
+    @SerialName("last_session_id") val lastSessionId: String = "",
+    @SerialName("last_applied_at") val lastAppliedAt: String = "",
+)
+
+@Serializable
+data class ImportAnomalyQueue(
+    @SerialName("open_rows_30d") val openRows30d: Long = 0,
+    @SerialName("affected_sessions_30d") val affectedSessions30d: Long = 0,
+    @SerialName("last_session_id") val lastSessionId: String = "",
+    @SerialName("last_detected_at") val lastDetectedAt: String = "",
+    @SerialName("last_detail") val lastDetail: String = "",
 )
 
 @Serializable
 data class TopProduct(
     @SerialName("product_name") val productName: String = "",
-    @SerialName("total_sold") val totalSold: Int = 0,
+    @SerialName("total_sold") val totalSold: Long = 0,
+    @SerialName("total_qty") val totalQty: Long = 0,
     val revenue: Long = 0,
-)
+) {
+    val displayUnits: Long
+        get() = if (totalQty > 0) totalQty else totalSold
+}
 
 @Serializable
 data class DailyMetric(
     val date: String = "",
     val revenue: Long = 0,
-    val orders: Int = 0,
+    val orders: Long = 0,
+    @SerialName("completed") val completed: Long = 0,
 )
 
 // ── CRM ──

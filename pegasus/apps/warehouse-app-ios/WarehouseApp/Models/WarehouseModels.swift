@@ -446,38 +446,141 @@ struct ManifestListResponse: Decodable {
 // MARK: - Analytics
 
 struct AnalyticsData: Decodable {
+    let period: String
     let totalOrders: Int
     let totalRevenue: Int
-    let avgDeliveryMinutes: Int
-    let completionRate: Int
+    let completedOrders: Int
+    let cancelledOrders: Int
+    let avgOrderValue: Double
+    let fleetUtilizationPct: Double
     let topProducts: [TopProduct]
+    let importFreshness: ImportFreshness
+    let importAnomalyQueue: ImportAnomalyQueue
 
     enum CodingKeys: String, CodingKey {
+        case period
         case totalOrders = "total_orders"
         case totalRevenue = "total_revenue"
-        case avgDeliveryMinutes = "avg_delivery_minutes"
-        case completionRate = "completion_rate"
+        case completedOrders = "completed_orders"
+        case cancelledOrders = "cancelled_orders"
+        case avgOrderValue = "avg_order_value"
+        case fleetUtilization = "fleet_utilization"
+        case fleetUtilizationPct = "fleet_utilization_pct"
         case topProducts = "top_products"
+        case importFreshness = "import_freshness"
+        case importAnomalyQueue = "import_anomaly_queue"
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        period = try c.decodeIfPresent(String.self, forKey: .period) ?? ""
         totalOrders = try c.decodeIfPresent(Int.self, forKey: .totalOrders) ?? 0
         totalRevenue = try c.decodeIfPresent(Int.self, forKey: .totalRevenue) ?? 0
-        avgDeliveryMinutes = try c.decodeIfPresent(Int.self, forKey: .avgDeliveryMinutes) ?? 0
-        completionRate = try c.decodeIfPresent(Int.self, forKey: .completionRate) ?? 0
+        completedOrders = try c.decodeIfPresent(Int.self, forKey: .completedOrders) ?? 0
+        cancelledOrders = try c.decodeIfPresent(Int.self, forKey: .cancelledOrders) ?? 0
+        avgOrderValue = try c.decodeIfPresent(Double.self, forKey: .avgOrderValue) ?? 0
+        let fleetUtilization = try c.decodeIfPresent(FleetUtilization.self, forKey: .fleetUtilization) ?? .empty
+        let fleetUtilizationPctLegacy = try c.decodeIfPresent(Double.self, forKey: .fleetUtilizationPct) ?? 0
+        fleetUtilizationPct = fleetUtilization.utilizationPct > 0 ? fleetUtilization.utilizationPct : fleetUtilizationPctLegacy
         topProducts = try c.decodeIfPresent([TopProduct].self, forKey: .topProducts) ?? []
+        importFreshness = try c.decodeIfPresent(ImportFreshness.self, forKey: .importFreshness) ?? .empty
+        importAnomalyQueue = try c.decodeIfPresent(ImportAnomalyQueue.self, forKey: .importAnomalyQueue) ?? .empty
     }
 
-    static let empty = AnalyticsData(totalOrders: 0, totalRevenue: 0, avgDeliveryMinutes: 0, completionRate: 0, topProducts: [])
+    static let empty = AnalyticsData(
+        period: "",
+        totalOrders: 0,
+        totalRevenue: 0,
+        completedOrders: 0,
+        cancelledOrders: 0,
+        avgOrderValue: 0,
+        fleetUtilizationPct: 0,
+        topProducts: [],
+        importFreshness: .empty,
+        importAnomalyQueue: .empty
+    )
 
-    init(totalOrders: Int, totalRevenue: Int, avgDeliveryMinutes: Int, completionRate: Int, topProducts: [TopProduct]) {
+    init(
+        period: String,
+        totalOrders: Int,
+        totalRevenue: Int,
+        completedOrders: Int,
+        cancelledOrders: Int,
+        avgOrderValue: Double,
+        fleetUtilizationPct: Double,
+        topProducts: [TopProduct],
+        importFreshness: ImportFreshness,
+        importAnomalyQueue: ImportAnomalyQueue
+    ) {
+        self.period = period
         self.totalOrders = totalOrders
         self.totalRevenue = totalRevenue
-        self.avgDeliveryMinutes = avgDeliveryMinutes
-        self.completionRate = completionRate
+        self.completedOrders = completedOrders
+        self.cancelledOrders = cancelledOrders
+        self.avgOrderValue = avgOrderValue
+        self.fleetUtilizationPct = fleetUtilizationPct
         self.topProducts = topProducts
+        self.importFreshness = importFreshness
+        self.importAnomalyQueue = importAnomalyQueue
     }
+}
+
+struct FleetUtilization: Decodable {
+    let utilizationPct: Double
+
+    enum CodingKeys: String, CodingKey {
+        case utilizationPct = "utilization_pct"
+    }
+
+    static let empty = FleetUtilization(utilizationPct: 0)
+}
+
+struct ImportFreshness: Decodable {
+    let appliedRows30d: Int
+    let appliedSkus30d: Int
+    let quantityDelta30d: Int
+    let lastSessionId: String
+    let lastAppliedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case appliedRows30d = "applied_rows_30d"
+        case appliedSkus30d = "applied_skus_30d"
+        case quantityDelta30d = "quantity_delta_30d"
+        case lastSessionId = "last_session_id"
+        case lastAppliedAt = "last_applied_at"
+    }
+
+    static let empty = ImportFreshness(
+        appliedRows30d: 0,
+        appliedSkus30d: 0,
+        quantityDelta30d: 0,
+        lastSessionId: "",
+        lastAppliedAt: ""
+    )
+}
+
+struct ImportAnomalyQueue: Decodable {
+    let openRows30d: Int
+    let affectedSessions30d: Int
+    let lastSessionId: String
+    let lastDetectedAt: String
+    let lastDetail: String
+
+    enum CodingKeys: String, CodingKey {
+        case openRows30d = "open_rows_30d"
+        case affectedSessions30d = "affected_sessions_30d"
+        case lastSessionId = "last_session_id"
+        case lastDetectedAt = "last_detected_at"
+        case lastDetail = "last_detail"
+    }
+
+    static let empty = ImportAnomalyQueue(
+        openRows30d: 0,
+        affectedSessions30d: 0,
+        lastSessionId: "",
+        lastDetectedAt: "",
+        lastDetail: ""
+    )
 }
 
 struct TopProduct: Decodable, Identifiable {
@@ -488,6 +591,8 @@ struct TopProduct: Decodable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case productName = "product_name"
+        case totalQty = "total_qty"
+        case totalSold = "total_sold"
         case unitsSold = "units_sold"
         case revenue
     }
@@ -495,7 +600,10 @@ struct TopProduct: Decodable, Identifiable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         productName = try c.decodeIfPresent(String.self, forKey: .productName) ?? ""
-        unitsSold = try c.decodeIfPresent(Int.self, forKey: .unitsSold) ?? 0
+        unitsSold =
+            try c.decodeIfPresent(Int.self, forKey: .totalQty) ??
+            (try c.decodeIfPresent(Int.self, forKey: .totalSold)) ??
+            (try c.decodeIfPresent(Int.self, forKey: .unitsSold)) ?? 0
         revenue = try c.decodeIfPresent(Int.self, forKey: .revenue) ?? 0
     }
 }

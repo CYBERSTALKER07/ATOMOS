@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"backend-go/auth"
@@ -29,6 +30,7 @@ type AnalyticsResponse struct {
 	DailyBreakdown  []DailyMetric   `json:"daily_breakdown"`
 	FleetUtil       FleetUtilMetric `json:"fleet_utilization"`
 	ImportFreshness ImportFreshness `json:"import_freshness"`
+	ImportAnomalyQ  ImportAnomalyQ  `json:"import_anomaly_queue"`
 }
 
 type ImportFreshness struct {
@@ -37,6 +39,14 @@ type ImportFreshness struct {
 	QuantityDelta30D int64  `json:"quantity_delta_30d"`
 	LastSessionID    string `json:"last_session_id,omitempty"`
 	LastAppliedAt    string `json:"last_applied_at,omitempty"`
+}
+
+type ImportAnomalyQ struct {
+	OpenRows30D        int64  `json:"open_rows_30d"`
+	AffectedSessions30 int64  `json:"affected_sessions_30d"`
+	LastSessionID      string `json:"last_session_id,omitempty"`
+	LastDetectedAt     string `json:"last_detected_at,omitempty"`
+	LastDetail         string `json:"last_detail,omitempty"`
 }
 
 type TopProduct struct {
@@ -214,6 +224,7 @@ func HandleOpsAnalytics(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		resp.ImportFreshness = loadImportFreshness(ctx, spannerClient, ops.SupplierID, ops.WarehouseID, startDate)
+		resp.ImportAnomalyQ = loadImportAnomalyQueue(ctx, spannerClient, ops.SupplierID, ops.WarehouseID, startDate)
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
@@ -291,6 +302,123 @@ func loadImportFreshness(ctx context.Context, client *spanner.Client, supplierID
 	}
 
 	return freshness
+}
+
+func loadImportAnomalyQueue(ctx context.Context, client *spanner.Client, supplierID string, warehouseID string, startDate time.Time) ImportAnomalyQ {
+	queue := ImportAnomalyQ{}
+	affectedSessions := make(map[string]struct{})
+
+	stmt := spanner.Statement{
+		SQL: `SELECT session_id, row_index, raw_data, cleaned_data, validation_errors, updated_at
+		      FROM SupplierImportStagedRows
+		      WHERE supplier_id = @sid
+		        AND created_at >= @start
+		        AND validation_errors IS NOT NULL
+		        AND ARRAY_LENGTH(validation_errors) > 0
+		      ORDER BY updated_at DESC
+		      LIMIT 5000`,
+		Params: map[string]interface{}{
+			"sid":   supplierID,
+			"start": startDate,
+		},
+	}
+
+	iter := spannerx.StaleQuery(ctx, client, stmt)
+	defer iter.Stop()
+
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			break
+		}
+
+		var sessionID string
+		var rowIndex int64
+		var rawDataJSON spanner.NullJSON
+		var cleanedDataJSON spanner.NullJSON
+		var validationErrors []string
+		var updatedAt spanner.NullTime
+		if err := row.Columns(&sessionID, &rowIndex, &rawDataJSON, &cleanedDataJSON, &validationErrors, &updatedAt); err != nil {
+			continue
+		}
+
+		rawData := importAnomalyJSONMap(rawDataJSON)
+		cleanedData := importAnomalyJSONMap(cleanedDataJSON)
+		rowWarehouseID := strings.TrimSpace(importAnomalyStringValue(cleanedData, rawData, "warehouse_id", "warehouse"))
+		if rowWarehouseID == "" || rowWarehouseID != warehouseID {
+			continue
+		}
+
+		queue.OpenRows30D++
+		affectedSessions[sessionID] = struct{}{}
+		if queue.LastSessionID == "" {
+			queue.LastSessionID = sessionID
+			if updatedAt.Valid {
+				queue.LastDetectedAt = updatedAt.Time.UTC().Format(time.RFC3339)
+			}
+			if len(validationErrors) > 0 {
+				queue.LastDetail = validationErrors[0]
+			} else {
+				queue.LastDetail = "Validation error detected"
+			}
+		}
+	}
+
+	queue.AffectedSessions30 = int64(len(affectedSessions))
+	return queue
+}
+
+func importAnomalyJSONMap(value spanner.NullJSON) map[string]any {
+	if !value.Valid {
+		return nil
+	}
+	mapped, ok := value.Value.(map[string]any)
+	if ok {
+		return mapped
+	}
+	if value.Value == nil {
+		return nil
+	}
+	encoded, err := json.Marshal(value.Value)
+	if err != nil {
+		return nil
+	}
+	decoded := make(map[string]any)
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		return nil
+	}
+	return decoded
+}
+
+func importAnomalyStringValue(primary map[string]any, fallback map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if value := importAnomalyAnyString(primary, key); value != "" {
+			return value
+		}
+		if value := importAnomalyAnyString(fallback, key); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func importAnomalyAnyString(values map[string]any, key string) string {
+	if values == nil {
+		return ""
+	}
+	raw, ok := values[key]
+	if !ok || raw == nil {
+		return ""
+	}
+	switch value := raw.(type) {
+	case string:
+		return value
+	default:
+		return ""
+	}
 }
 
 func splitStates(s string) []string {

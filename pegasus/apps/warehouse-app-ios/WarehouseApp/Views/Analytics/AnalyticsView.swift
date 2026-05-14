@@ -38,8 +38,27 @@ struct AnalyticsView: View {
                         LazyVGrid(columns: columns, spacing: LabTheme.spacingMD) {
                             AnalyticsKpiCard(title: "Total Orders", value: "\(data.totalOrders)", icon: "cart", index: 0)
                             AnalyticsKpiCard(title: "Revenue", value: "\(data.totalRevenue.formatted()) UZS", icon: "banknote", index: 1)
-                            AnalyticsKpiCard(title: "Avg Delivery", value: "\(data.avgDeliveryMinutes) min", icon: "clock", index: 2)
-                            AnalyticsKpiCard(title: "Completion", value: "\(data.completionRate)%", icon: "checkmark.circle", index: 3)
+                            AnalyticsKpiCard(title: "Avg Order", value: "\(Int(data.avgOrderValue.rounded()).formatted()) UZS", icon: "clock", index: 2)
+                            AnalyticsKpiCard(title: "Fleet Utilization", value: "\(Int(data.fleetUtilizationPct.rounded()))%", icon: "checkmark.circle", index: 3)
+                        }
+
+                        // Import health
+                        LazyVGrid(columns: columns, spacing: LabTheme.spacingMD) {
+                            AnalyticsKpiCard(title: "Imported Rows (30d)", value: "\(data.importFreshness.appliedRows30d)", icon: "tray.and.arrow.down", index: 4)
+                            AnalyticsKpiCard(title: "Anomaly Rows (30d)", value: "\(data.importAnomalyQueue.openRows30d)", icon: "exclamationmark.triangle", index: 5)
+                        }
+
+                        if !data.importAnomalyQueue.lastDetail.isEmpty {
+                            VStack(alignment: .leading, spacing: LabTheme.spacingSM) {
+                                Text("Latest anomaly")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text(data.importAnomalyQueue.lastDetail)
+                                    .font(.footnote)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .labCard()
+                            .staggeredAppear(index: 6)
                         }
 
                         // Top products
@@ -57,7 +76,7 @@ struct AnalyticsView: View {
                                             .foregroundStyle(.secondary)
                                     }
                                     .labCard()
-                                    .staggeredAppear(index: index + 4)
+                                    .staggeredAppear(index: index + 7)
                                 }
                             }
                         }
