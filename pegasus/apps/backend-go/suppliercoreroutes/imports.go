@@ -23,6 +23,7 @@ import (
 	"backend-go/telemetry"
 	"backend-go/ws"
 
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	gcs "cloud.google.com/go/storage"
 	"github.com/go-chi/chi/v5"
@@ -158,6 +159,20 @@ type SupplierImportApplySummary struct {
 	Idempotent         bool     `json:"idempotent"`
 }
 
+type supplierImportFactKey struct {
+	WarehouseID string
+	SKU         string
+	FactDate    civil.Date
+}
+
+type supplierImportFactAggregate struct {
+	AppliedRows   int64
+	QuantityDelta int64
+	SessionCount  int64
+	LastSessionID string
+	LastAppliedAt time.Time
+}
+
 // SupplierImportRepository encapsulates supplier-scoped import sandbox persistence.
 type SupplierImportRepository struct {
 	client *spanner.Client
@@ -165,10 +180,48 @@ type SupplierImportRepository struct {
 	auditMetadataColumnOnce   sync.Once
 	auditMetadataColumnExists bool
 	auditMetadataColumnType   string
+
+	importFactTableOnce   sync.Once
+	importFactTableExists bool
 }
 
 func NewSupplierImportRepository(client *spanner.Client) *SupplierImportRepository {
 	return &SupplierImportRepository{client: client}
+}
+
+func (r *SupplierImportRepository) detectImportAnalyticsFactTable(ctx context.Context) bool {
+	if r.client == nil {
+		return false
+	}
+
+	r.importFactTableOnce.Do(func() {
+		stmt := spanner.Statement{
+			SQL: `SELECT COUNT(1)
+			      FROM INFORMATION_SCHEMA.TABLES
+			      WHERE TABLE_NAME = 'SupplierImportAnalyticsFacts'`,
+		}
+
+		iter := r.client.Single().Query(ctx, stmt)
+		defer iter.Stop()
+
+		row, err := iter.Next()
+		if err != nil {
+			if err != iterator.Done {
+				slog.Warn("supplier import analytics fact detection failed", "err", err)
+			}
+			return
+		}
+
+		var tableCount int64
+		if err := row.Columns(&tableCount); err != nil {
+			slog.Warn("supplier import analytics fact count parse failed", "err", err)
+			return
+		}
+
+		r.importFactTableExists = tableCount > 0
+	})
+
+	return r.importFactTableExists
 }
 
 func (r *SupplierImportRepository) detectInventoryAuditMetadataColumn(ctx context.Context) (bool, string) {
@@ -637,8 +690,13 @@ func (r *SupplierImportRepository) applyImportSessionTxn(ctx context.Context, su
 		Status:    "APPLIED",
 	}
 	auditMetadataColumnExists, auditMetadataColumnType := r.detectInventoryAuditMetadataColumn(ctx)
+	importFactTableExists := r.detectImportAnalyticsFactTable(ctx)
 	affectedWarehouses := map[string]struct{}{}
 	affectedProducts := map[string]struct{}{}
+	factAggregates := map[supplierImportFactKey]*supplierImportFactAggregate{}
+	seenRowKeys := map[string]struct{}{}
+	applyTimestamp := time.Now().UTC()
+	applyFactDate := civil.DateOf(applyTimestamp)
 
 	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		sessionRow, readErr := txn.ReadRow(ctx, "SupplierImportSessions", spanner.Key{supplierID, sessionID}, []string{"status"})
@@ -886,6 +944,12 @@ func (r *SupplierImportRepository) applyImportSessionTxn(ctx context.Context, su
 				return fmt.Errorf("row %d would make supplier quantity negative", rowIndex)
 			}
 
+			rowDeterministicKey := fmt.Sprintf("%s|%s|%s|%d", supplierID, warehouseID, targetSKU, rowIndex)
+			if _, alreadySeen := seenRowKeys[rowDeterministicKey]; alreadySeen {
+				return fmt.Errorf("row %d duplicate deterministic key", rowIndex)
+			}
+			seenRowKeys[rowDeterministicKey] = struct{}{}
+
 			batchMutations = append(batchMutations,
 				spanner.InsertOrUpdate(
 					"SupplierInventory",
@@ -924,6 +988,25 @@ func (r *SupplierImportRepository) applyImportSessionTxn(ctx context.Context, su
 			}
 			batchMutations = append(batchMutations, spanner.InsertOrUpdate("InventoryAuditLog", auditCols, auditVals))
 
+			if importFactTableExists {
+				factKey := supplierImportFactKey{
+					WarehouseID: warehouseID,
+					SKU:         targetSKU,
+					FactDate:    applyFactDate,
+				}
+				aggregate, exists := factAggregates[factKey]
+				if !exists {
+					aggregate = &supplierImportFactAggregate{
+						SessionCount:  1,
+						LastSessionID: sessionID,
+						LastAppliedAt: applyTimestamp,
+					}
+					factAggregates[factKey] = aggregate
+				}
+				aggregate.AppliedRows++
+				aggregate.QuantityDelta += delta
+			}
+
 			summary.AppliedRows++
 			affectedWarehouses[warehouseID] = struct{}{}
 			affectedProducts[targetSKU] = struct{}{}
@@ -937,6 +1020,62 @@ func (r *SupplierImportRepository) applyImportSessionTxn(ctx context.Context, su
 
 		if summary.AppliedRows == 0 {
 			return errSupplierImportNoApplicableRows
+		}
+
+		if importFactTableExists && len(factAggregates) > 0 {
+			for factKey, aggregate := range factAggregates {
+				existingAppliedRows := int64(0)
+				existingQuantityDelta := int64(0)
+				existingSessionCount := int64(0)
+
+				factRow, factErr := txn.ReadRow(
+					ctx,
+					"SupplierImportAnalyticsFacts",
+					spanner.Key{supplierID, factKey.WarehouseID, factKey.FactDate, factKey.SKU},
+					[]string{"applied_rows", "quantity_delta", "session_count"},
+				)
+				if factErr == nil {
+					if err := factRow.Columns(&existingAppliedRows, &existingQuantityDelta, &existingSessionCount); err != nil {
+						return fmt.Errorf("parse import analytics fact row: %w", err)
+					}
+				} else if spanner.ErrCode(factErr) != codes.NotFound {
+					return fmt.Errorf("read import analytics fact row: %w", factErr)
+				}
+
+				batchMutations = append(batchMutations, spanner.InsertOrUpdate(
+					"SupplierImportAnalyticsFacts",
+					[]string{
+						"supplier_id",
+						"warehouse_id",
+						"fact_date",
+						"sku_id",
+						"applied_rows",
+						"quantity_delta",
+						"session_count",
+						"last_session_id",
+						"last_applied_at",
+						"updated_at",
+					},
+					[]interface{}{
+						supplierID,
+						factKey.WarehouseID,
+						factKey.FactDate,
+						factKey.SKU,
+						existingAppliedRows + aggregate.AppliedRows,
+						existingQuantityDelta + aggregate.QuantityDelta,
+						existingSessionCount + aggregate.SessionCount,
+						aggregate.LastSessionID,
+						aggregate.LastAppliedAt,
+						spanner.CommitTimestamp,
+					},
+				))
+
+				if len(batchMutations) >= supplierImportMutationBatch {
+					if err := flush(); err != nil {
+						return fmt.Errorf("flush import analytics fact mutations: %w", err)
+					}
+				}
+			}
 		}
 
 		batchMutations = append(batchMutations, spanner.Update(

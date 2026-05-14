@@ -207,6 +207,32 @@
       ]
     },
     {
+      "name": "Supplier import analytics attribution convergence",
+      "path": "/v1/supplier/inventory/import* deprecation + /v1/supplier/analytics/revenue warehouse scope",
+      "owner": "pegasus/apps/backend-go/suppliercoreroutes/routes.go + pegasus/apps/admin-portal/app/{supplier/analytics/page.tsx,inventory/import/page.tsx}",
+      "methods": [
+        "POST /v1/supplier/inventory/import -> 410 Gone with canonical /v1/supplier/inventory/imports guidance",
+        "POST /v1/supplier/inventory/import/{session}/apply -> 410 Gone with canonical /v1/supplier/inventory/imports/{id}/apply guidance",
+        "GET /v1/supplier/warehouses for analytics warehouse selector hydration",
+        "GET /v1/supplier/analytics/revenue?warehouse_id=<id> scoped warehouse revenue attribution",
+        "Client redirect /inventory/import -> /supplier/analytics?import_session=<id>&warehouse_id=<id?> after apply",
+        "ApplyImportSession transactional fact upsert into SupplierImportAnalyticsFacts keyed by supplier_id+warehouse_id+fact_date+sku_id",
+        "GET /v1/warehouse/ops/analytics additive import_freshness projection for warehouse-scoped attribution"
+      ],
+      "consumers": [
+        "backend-go suppliercoreroutes/routes.go",
+        "admin-portal app/supplier/analytics/page.tsx",
+        "admin-portal app/inventory/import/page.tsx"
+      ],
+      "notes": [
+        "Legacy /import aliases now fail closed with structured replacement guidance to eliminate split contract drift against /imports.",
+        "Supplier analytics now supports all-warehouse and single-warehouse revenue attribution through optional warehouse_id query scope.",
+        "Import finalize now carries import_session context and optional single-warehouse focus into analytics review.",
+        "SupplierImportAnalyticsFacts now stores additive per-apply counters (applied_rows, quantity_delta, session_count, last_session_id, last_applied_at) in the same transaction as inventory dual-writes.",
+        "Warehouse analytics and portal now surface import freshness telemetry without changing existing warehouse revenue/order KPI contract fields."
+      ]
+    },
+    {
       "name": "Dynamic delivery handshake settlement surface",
       "path": "/v1/delivery/{verify-handshake,update-order-during-delivery} + /v1/order/confirm-offload + settlement clear hooks",
       "owner": "pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,order/delivery_handshake.go,order/service.go,deliveryroutes/routes.go,payment/session.go,orderroutes/routes.go}",

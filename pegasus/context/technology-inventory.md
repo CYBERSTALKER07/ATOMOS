@@ -91,6 +91,13 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 	- Staged import mapping audit writes use `BULK_IMPORT_STAGED` in `InventoryAuditLog`; phase-6 atomic apply journals production quantity mutations with reason `BULK_IMPORT`.
 	- Admin portal now exposes bulk-import ingress surfaces at `app/supplier/inventory/import/page.tsx` and `app/inventory/import/page.tsx`, linked from inventory entry points with drag-drop direct upload, uploaded-signal bridge, and processing scanner/skeleton states.
 
+- Supplier import analytics attribution convergence: `pegasus/apps/backend-go/suppliercoreroutes/routes.go` + `pegasus/apps/admin-portal/app/{supplier/analytics/page.tsx,inventory/import/page.tsx}`
+	- Legacy `/v1/supplier/inventory/import*` aliases now fail closed with structured `410 Gone` responses that point to canonical `/v1/supplier/inventory/imports` routes.
+	- Supplier analytics now hydrates warehouses through `GET /v1/supplier/warehouses` and scopes `GET /v1/supplier/analytics/revenue` by optional `warehouse_id` for global-versus-warehouse attribution.
+	- Import apply finalize now redirects to `/supplier/analytics` with `import_session` and optional single-warehouse focus so post-import attribution review opens in-context.
+	- Supplier import fact attribution now persists additive warehouse/date/SKU facts in `SupplierImportAnalyticsFacts` (schema + migration), and `ApplyImportSession` now performs deterministic per-apply upserts (`applied_rows`, `quantity_delta`, `session_count`, `last_session_id`, `last_applied_at`) in the same transaction as inventory writes.
+	- Warehouse analytics now projects additive `import_freshness` on `GET /v1/warehouse/ops/analytics`, and the warehouse portal analytics screen now renders the Import Freshness card for warehouse-scoped attribution visibility.
+
 - InventoryV2 runtime activation: `pegasus/apps/backend-go/{supplier/inventory.go,warehouse/inventory.go,order/unified_checkout.go,supplier/{reconcile.go,returns.go,vetting.go},factory/{transfers.go,force_receive.go},replenishment/engine.go,factory/{look_ahead.go,predictive_push.go},warehouse/dashboard.go}`
 	- Supplier and warehouse inventory reads now prefer warehouse-scoped `SupplierInventoryV2` quantities with legacy `SupplierInventory` fallback.
 	- Unified checkout mirrors effective stock decrements into `SupplierInventoryV2` for warehouse-assigned plans while retaining existing `SupplierInventory` locking path.

@@ -9,6 +9,7 @@ import (
 	"backend-go/auth"
 	"backend-go/spannerx"
 
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 )
@@ -27,6 +28,15 @@ type AnalyticsResponse struct {
 	TopProducts     []TopProduct    `json:"top_products"`
 	DailyBreakdown  []DailyMetric   `json:"daily_breakdown"`
 	FleetUtil       FleetUtilMetric `json:"fleet_utilization"`
+	ImportFreshness ImportFreshness `json:"import_freshness"`
+}
+
+type ImportFreshness struct {
+	AppliedRows30D   int64  `json:"applied_rows_30d"`
+	AppliedSKUs30D   int64  `json:"applied_skus_30d"`
+	QuantityDelta30D int64  `json:"quantity_delta_30d"`
+	LastSessionID    string `json:"last_session_id,omitempty"`
+	LastAppliedAt    string `json:"last_applied_at,omitempty"`
 }
 
 type TopProduct struct {
@@ -203,6 +213,8 @@ func HandleOpsAnalytics(spannerClient *spanner.Client) http.HandlerFunc {
 			resp.FleetUtil.UtilizationPct = float64(resp.FleetUtil.ActiveDrivers) / float64(resp.FleetUtil.TotalDrivers) * 100
 		}
 
+		resp.ImportFreshness = loadImportFreshness(ctx, spannerClient, ops.SupplierID, ops.WarehouseID, startDate)
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	}
@@ -222,6 +234,63 @@ func countDrivers(ctx context.Context, client *spanner.Client, sid, whId string,
 	var c int64
 	row.Columns(&c)
 	return c
+}
+
+func loadImportFreshness(ctx context.Context, client *spanner.Client, supplierID string, warehouseID string, startDate time.Time) ImportFreshness {
+	freshness := ImportFreshness{}
+	factStartDate := civil.DateOf(startDate)
+
+	summaryStmt := spanner.Statement{
+		SQL: `SELECT
+				COALESCE(SUM(applied_rows), 0),
+				COUNT(DISTINCT sku_id),
+				COALESCE(SUM(quantity_delta), 0)
+			  FROM SupplierImportAnalyticsFacts
+			  WHERE supplier_id = @sid
+			    AND warehouse_id = @whId
+			    AND fact_date >= @factStart`,
+		Params: map[string]interface{}{
+			"sid":       supplierID,
+			"whId":      warehouseID,
+			"factStart": factStartDate,
+		},
+	}
+
+	summaryIter := spannerx.StaleQuery(ctx, client, summaryStmt)
+	defer summaryIter.Stop()
+	if row, err := summaryIter.Next(); err == nil {
+		_ = row.Columns(&freshness.AppliedRows30D, &freshness.AppliedSKUs30D, &freshness.QuantityDelta30D)
+	}
+
+	latestStmt := spanner.Statement{
+		SQL: `SELECT last_session_id, last_applied_at
+		      FROM SupplierImportAnalyticsFacts
+		      WHERE supplier_id = @sid
+		        AND warehouse_id = @whId
+		      ORDER BY last_applied_at DESC
+		      LIMIT 1`,
+		Params: map[string]interface{}{
+			"sid":  supplierID,
+			"whId": warehouseID,
+		},
+	}
+
+	latestIter := spannerx.StaleQuery(ctx, client, latestStmt)
+	defer latestIter.Stop()
+	if row, err := latestIter.Next(); err == nil {
+		var lastSessionID spanner.NullString
+		var lastAppliedAt spanner.NullTime
+		if parseErr := row.Columns(&lastSessionID, &lastAppliedAt); parseErr == nil {
+			if lastSessionID.Valid {
+				freshness.LastSessionID = lastSessionID.StringVal
+			}
+			if lastAppliedAt.Valid {
+				freshness.LastAppliedAt = lastAppliedAt.Time.UTC().Format(time.RFC3339)
+			}
+		}
+	}
+
+	return freshness
 }
 
 func splitStates(s string) []string {

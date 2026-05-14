@@ -568,14 +568,28 @@ export default function InventoryImportCommandCenterPage() {
       if (!res.ok) {
         throw new Error(body.error || 'Failed to apply import');
       }
+
+      const warehouseIDs = Array.isArray((body as { warehouse_ids?: unknown }).warehouse_ids)
+        ? (body as { warehouse_ids: unknown[] }).warehouse_ids
+            .map((value) => String(value || '').trim())
+            .filter(Boolean)
+        : [];
+
       await refreshAll(sessionID);
       toast('Import applied to production inventory.', 'success');
+
+      const params = new URLSearchParams();
+      params.set('import_session', sessionID);
+      if (warehouseIDs.length == 1) {
+        params.set('warehouse_id', warehouseIDs[0]);
+      }
+      router.push(`/supplier/analytics?${params.toString()}`);
     } catch (error) {
       toast((error as Error).message, 'error');
     } finally {
       setFinalizing(false);
     }
-  }, [refreshAll, sessionID, toast]);
+  }, [refreshAll, router, sessionID, toast]);
 
   const handleLoadMoreRows = useCallback(() => {
     if (!sessionID || !rowsHasMore || loadingRows) return;

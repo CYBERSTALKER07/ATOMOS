@@ -38,13 +38,7 @@ type Deps struct {
 //	GET /v1/supplier/dashboard       — supplier dashboard metrics
 //	GET /v1/supplier/earnings        — supplier earnings analytics
 //	GET/PATCH /v1/supplier/inventory — inventory list/adjustment
-//	GET/POST /v1/supplier/inventory/import — import session list/create
-//	GET /v1/supplier/inventory/import/upload-ticket — spreadsheet upload ticket
-//	GET /v1/supplier/inventory/import/{id} — import session detail
-//	GET /v1/supplier/inventory/import/{id}/rows — staged row pagination
-//	PATCH /v1/supplier/inventory/import/{id}/mapping — mapping updates
-//	POST /v1/supplier/inventory/import/{id}/{approve,apply} — import actions
-//	GET /v1/supplier/inventory/import/{id}/status — import status
+//	/v1/supplier/inventory/import* — deprecated legacy alias surface (410 -> /imports)
 //	POST /v1/supplier/inventory/imports/ — phase-2 sandbox session init + upload ticket
 //	GET /v1/supplier/inventory/imports/{id} — phase-2 sandbox session status
 //	POST /v1/supplier/inventory/imports/{id}/uploaded — phase-3 upload bridge signal + discovery event emit
@@ -61,7 +55,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	idem := d.Idempotency
 	withRegionScope := auth.RequireRegionScopeWithClient(d.Spanner)
-	importHandler := withMethodIdempotency(supplier.HandleInventoryImports(d.Spanner), idem, http.MethodPost, http.MethodPatch)
 
 	r.HandleFunc("/v1/supplier/dashboard",
 		auth.RequireRole(supplierRole, log(withRegionScope(dashboardHandler(d.Order)))))
@@ -70,9 +63,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.HandleFunc("/v1/supplier/inventory",
 		auth.RequireRole(supplierRole, log(withRegionScope(withMethodIdempotency(supplier.HandleInventory(d.Spanner), idem, http.MethodPatch)))))
 	r.HandleFunc("/v1/supplier/inventory/import",
-		auth.RequireRole(supplierRole, log(withRegionScope(importHandler))))
+		auth.RequireRole(supplierRole, log(withRegionScope(legacyImportDeprecatedHandler()))))
 	r.HandleFunc("/v1/supplier/inventory/import/*",
-		auth.RequireRole(supplierRole, log(withRegionScope(importHandler))))
+		auth.RequireRole(supplierRole, log(withRegionScope(legacyImportDeprecatedHandler()))))
 	registerImportRoutes(r, d, supplierRole, log, withRegionScope, idem)
 	r.HandleFunc("/v1/supplier/inventory/audit",
 		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleInventoryAuditLog(d.Spanner)))))
@@ -99,6 +92,27 @@ func withMethodIdempotency(next http.HandlerFunc, middleware Middleware, methods
 			return
 		}
 		next(w, r)
+	}
+}
+
+func legacyImportDeprecatedHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Warning", `299 - "Deprecated API. Use /v1/supplier/inventory/imports"`)
+		w.WriteHeader(http.StatusGone)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":              "legacy import route has been deprecated",
+			"replacement_prefix": "/v1/supplier/inventory/imports",
+			"replacement_routes": []string{
+				"POST /v1/supplier/inventory/imports/",
+				"GET /v1/supplier/inventory/imports/{id}",
+				"POST /v1/supplier/inventory/imports/{id}/uploaded",
+				"GET /v1/supplier/inventory/imports/{id}/rows",
+				"GET|POST /v1/supplier/inventory/imports/{id}/mapping",
+				"POST /v1/supplier/inventory/imports/{id}/approve",
+				"POST /v1/supplier/inventory/imports/{id}/apply",
+			},
+		})
 	}
 }
 

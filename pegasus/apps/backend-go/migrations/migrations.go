@@ -1670,6 +1670,39 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		adminClient.Close()
 	}
 
+	// ── MIGRATION: Supplier import analytics fact substrate ──────────────────
+	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
+	if err == nil {
+		supplierImportAnalyticsDDL := []string{
+			`CREATE TABLE SupplierImportAnalyticsFacts (
+				supplier_id      STRING(36)  NOT NULL,
+				warehouse_id     STRING(36)  NOT NULL,
+				fact_date        DATE        NOT NULL,
+				sku_id           STRING(36)  NOT NULL,
+				applied_rows     INT64       NOT NULL DEFAULT (0),
+				quantity_delta   INT64       NOT NULL DEFAULT (0),
+				session_count    INT64       NOT NULL DEFAULT (0),
+				last_session_id  STRING(36),
+				last_applied_at  TIMESTAMP,
+				updated_at       TIMESTAMP   OPTIONS (allow_commit_timestamp=true)
+			) PRIMARY KEY (supplier_id, warehouse_id, fact_date, sku_id)`,
+			"CREATE INDEX Idx_SupplierImportAnalyticsFacts_BySupplierDate ON SupplierImportAnalyticsFacts(supplier_id, fact_date DESC, warehouse_id)",
+			"CREATE INDEX Idx_SupplierImportAnalyticsFacts_ByWarehouseDate ON SupplierImportAnalyticsFacts(supplier_id, warehouse_id, fact_date DESC)",
+			"CREATE INDEX Idx_SupplierImportAnalyticsFacts_ByWarehouseAppliedAt ON SupplierImportAnalyticsFacts(supplier_id, warehouse_id, last_applied_at DESC)",
+		}
+		for _, stmt := range supplierImportAnalyticsDDL {
+			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
+				Database:   dbName,
+				Statements: []string{stmt},
+			})
+			if ddlErr == nil {
+				op.Wait(ctx)
+				fmt.Println("DATABASE MIGRATION SUCCESS:", stmt[:minInt(80, len(stmt))])
+			}
+		}
+		adminClient.Close()
+	}
+
 	// ── MIGRATION: S-level dynamic billing metering substrate ─────────────────
 	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
 	if err == nil {

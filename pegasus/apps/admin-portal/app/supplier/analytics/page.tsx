@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { apiFetch } from '@/lib/auth';
 import VelocityChart from '@/components/VelocityChart';
 import Icon from '@/components/Icon';
@@ -21,11 +22,29 @@ interface DemandSummary {
   generated_at: string;
 }
 
+interface WarehouseOption {
+  warehouse_id: string;
+  name: string;
+}
+
+interface SupplierRevenueResponse {
+  time_series?: Array<{ date: string; total: number }>;
+}
+
 export default function AnalyticsHub() {
+  const searchParams = useSearchParams();
   const [velocity, setVelocity] = useState<SkuVelocity[]>([]);
   const [demand, setDemand] = useState<DemandSummary | null>(null);
+  const [warehouses, setWarehouses] = useState<WarehouseOption[]>([]);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>(() => {
+    const queryValue = (searchParams.get('warehouse_id') || '').trim();
+    return queryValue || 'ALL';
+  });
+  const [scopedRevenue, setScopedRevenue] = useState<number>(0);
+  const [revenueLoading, setRevenueLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const importSessionID = (searchParams.get('import_session') || '').trim();
 
   useEffect(() => {
     Promise.all([
@@ -35,10 +54,57 @@ export default function AnalyticsHub() {
       apiFetch('/v1/supplier/analytics/demand/today')
         .then(r => r.ok ? r.json() : null)
         .then(j => { if (j) setDemand(j); }),
+      apiFetch('/v1/supplier/warehouses')
+        .then(r => r.ok ? r.json() : null)
+        .then(j => {
+          if (!j) return;
+          const items = Array.isArray(j.warehouses) ? j.warehouses : [];
+          setWarehouses(items.map((item: WarehouseOption) => ({
+            warehouse_id: item.warehouse_id,
+            name: item.name,
+          })));
+        }),
     ])
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (selectedWarehouse !== 'ALL' && !warehouses.some(warehouse => warehouse.warehouse_id === selectedWarehouse)) {
+      setSelectedWarehouse('ALL');
+    }
+  }, [selectedWarehouse, warehouses]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const query = new URLSearchParams();
+    if (selectedWarehouse !== 'ALL') {
+      query.set('warehouse_id', selectedWarehouse);
+    }
+    const suffix = query.toString();
+
+    setRevenueLoading(true);
+    apiFetch(`/v1/supplier/analytics/revenue${suffix ? `?${suffix}` : ''}`)
+      .then(r => r.ok ? r.json() as Promise<SupplierRevenueResponse> : null)
+      .then(payload => {
+        if (cancelled) return;
+        const total = (payload?.time_series || []).reduce((sum, point) => sum + Number(point.total || 0), 0);
+        setScopedRevenue(total);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setScopedRevenue(0);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setRevenueLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedWarehouse]);
 
   const totalVolume = velocity.reduce((s, i) => s + i.gross_volume, 0);
   const totalPallets = velocity.reduce((s, i) => s + i.total_pallets, 0);
@@ -81,7 +147,23 @@ export default function AnalyticsHub() {
             Financial overview and operational intelligence
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center flex-wrap justify-end">
+          <label className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>
+            Warehouse
+          </label>
+          <select
+            value={selectedWarehouse}
+            onChange={(event) => setSelectedWarehouse(event.target.value)}
+            className="md-input-outlined px-3 py-2"
+            aria-label="Filter analytics by warehouse"
+          >
+            <option value="ALL">All Warehouses</option>
+            {warehouses.map((warehouse) => (
+              <option key={warehouse.warehouse_id} value={warehouse.warehouse_id}>
+                {warehouse.name}
+              </option>
+            ))}
+          </select>
           <Link href="/supplier/analytics/demand" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-soft text-accent-soft-foreground hover:opacity-80 transition-opacity">
             <Icon name="analytics" className="w-5 h-5" /> Demand Forecast
           </Link>
@@ -90,6 +172,23 @@ export default function AnalyticsHub() {
           </Link>
         </div>
       </header>
+
+      {importSessionID ? (
+        <div className="mb-6 p-4 md-shape-lg" style={{ border: '1px solid var(--color-md-primary)', background: 'var(--color-md-primary-container)' }}>
+          <p className="md-typescale-body-small">
+            Import session <span className="font-mono">{importSessionID}</span> applied successfully. Analytics scope now reflects latest inventory ingestion.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="mb-8 md-card md-card-elevated p-5">
+        <p className="md-typescale-label-small mb-2" style={{ color: 'var(--muted)' }}>
+          Revenue Scope (30D) — {selectedWarehouse === 'ALL' ? 'All Warehouses' : 'Selected Warehouse'}
+        </p>
+        <p className="md-typescale-headline-small" style={{ fontVariantNumeric: 'tabular-nums' }}>
+          {revenueLoading ? 'Loading…' : new Intl.NumberFormat('uz-UZ').format(scopedRevenue)}
+        </p>
+      </div>
 
       {/* AI Future Demand Card */}
       {demand && demand.prediction_count > 0 && (

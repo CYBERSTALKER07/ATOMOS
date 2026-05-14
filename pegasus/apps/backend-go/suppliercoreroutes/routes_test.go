@@ -66,7 +66,7 @@ func TestRegisterRoutes_InventoryAdjustUsesIdempotency(t *testing.T) {
 	}
 }
 
-func TestRegisterRoutes_InventoryImportCreateUsesIdempotency(t *testing.T) {
+func TestRegisterRoutes_InventoryImportCreateIsDeprecated(t *testing.T) {
 	auth.Init("test-jwt-secret", "test-internal-key")
 	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
 	if err != nil {
@@ -85,15 +85,15 @@ func TestRegisterRoutes_InventoryImportCreateUsesIdempotency(t *testing.T) {
 
 	r.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+	if rec.Code != http.StatusGone {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusGone)
 	}
-	if got := rec.Header().Get("X-Idempotency-Guard"); got != "inventory-import-create" {
-		t.Fatalf("idempotency guard header = %q, want inventory-import-create", got)
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "" {
+		t.Fatalf("idempotency guard should not apply to deprecated import alias, got %q", got)
 	}
 }
 
-func TestRegisterRoutes_InventoryImportActionUsesIdempotency(t *testing.T) {
+func TestRegisterRoutes_InventoryImportActionIsDeprecated(t *testing.T) {
 	auth.Init("test-jwt-secret", "test-internal-key")
 	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
 	if err != nil {
@@ -112,11 +112,11 @@ func TestRegisterRoutes_InventoryImportActionUsesIdempotency(t *testing.T) {
 
 	r.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+	if rec.Code != http.StatusGone {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusGone)
 	}
-	if got := rec.Header().Get("X-Idempotency-Guard"); got != "inventory-import-apply" {
-		t.Fatalf("idempotency guard header = %q, want inventory-import-apply", got)
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "" {
+		t.Fatalf("idempotency guard should not apply to deprecated import alias, got %q", got)
 	}
 }
 

@@ -10,9 +10,18 @@ interface AnalyticsData {
   total_revenue: number;
   total_orders: number;
   avg_order_value: number;
-  top_products: { product_name: string; total_sold: number; revenue: number }[];
+  top_products: { product_name: string; total_sold?: number; total_qty?: number; revenue: number }[];
   daily: { date: string; revenue: number; orders: number }[];
+  daily_breakdown?: { date: string; revenue: number; orders: number }[];
   fleet_utilization_pct: number;
+  fleet_utilization?: { utilization_pct: number };
+  import_freshness?: {
+    applied_rows_30d: number;
+    applied_skus_30d: number;
+    quantity_delta_30d: number;
+    last_session_id?: string;
+    last_applied_at?: string;
+  };
 }
 
 export default function AnalyticsPage() {
@@ -45,6 +54,19 @@ export default function AnalyticsPage() {
   }
 
   const d = data || { period: '30d', total_revenue: 0, total_orders: 0, avg_order_value: 0, top_products: [], daily: [], fleet_utilization_pct: 0 };
+  const dailySeries = d.daily_breakdown || d.daily || [];
+  const fleetUtilizationPct = d.fleet_utilization?.utilization_pct ?? d.fleet_utilization_pct ?? 0;
+  const importFreshness = d.import_freshness || {
+    applied_rows_30d: 0,
+    applied_skus_30d: 0,
+    quantity_delta_30d: 0,
+    last_session_id: '',
+    last_applied_at: '',
+  };
+  const parsedImportTime = importFreshness.last_applied_at ? new Date(importFreshness.last_applied_at) : null;
+  const lastImportAppliedAt = parsedImportTime && !Number.isNaN(parsedImportTime.getTime())
+    ? parsedImportTime.toLocaleString('uz-UZ')
+    : 'No imports applied yet';
 
   return (
     <div className="p-6 space-y-6 md-animate-in">
@@ -79,16 +101,40 @@ export default function AnalyticsPage() {
         </div>
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
           <div className="text-xs text-[var(--muted)] mb-1">Fleet Utilization</div>
-          <div className="text-2xl font-bold">{d.fleet_utilization_pct.toFixed(0)}%</div>
+          <div className="text-2xl font-bold">{fleetUtilizationPct.toFixed(0)}%</div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
+        <div className="flex items-center gap-2 mb-3">
+          <Icon name="refresh" size={16} className="text-[var(--accent)]" />
+          <h2 className="text-sm font-semibold">Import Freshness</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <div className="text-xs text-[var(--muted)]">Rows Imported (30d)</div>
+            <div className="text-xl font-bold">{fmt(importFreshness.applied_rows_30d)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-[var(--muted)]">SKUs Updated (30d)</div>
+            <div className="text-xl font-bold">{fmt(importFreshness.applied_skus_30d)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-[var(--muted)]">Quantity Delta (30d)</div>
+            <div className="text-xl font-bold">{fmt(importFreshness.quantity_delta_30d)}</div>
+          </div>
+        </div>
+        <div className="mt-3 text-xs text-[var(--muted)]">
+          Last Session: {importFreshness.last_session_id || 'N/A'} • {lastImportAppliedAt}
         </div>
       </div>
 
       {/* Daily Revenue Chart */}
-      {d.daily.length > 0 && (
+      {dailySeries.length > 0 && (
         <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
           <h2 className="text-sm font-semibold mb-4">Daily Revenue</h2>
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={d.daily}>
+            <BarChart data={dailySeries}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="var(--muted)" />
               <YAxis tick={{ fontSize: 11 }} stroke="var(--muted)" />
@@ -116,7 +162,7 @@ export default function AnalyticsPage() {
                 {d.top_products.map((p, i) => (
                   <tr key={i} className="border-b border-[var(--border)]">
                     <td className="py-2 px-3">{p.product_name}</td>
-                    <td className="py-2 px-3 text-right font-mono">{fmt(p.total_sold)}</td>
+                    <td className="py-2 px-3 text-right font-mono">{fmt(p.total_sold ?? p.total_qty ?? 0)}</td>
                     <td className="py-2 px-3 text-right font-mono">{fmtCurrency(p.revenue)}</td>
                   </tr>
                 ))}

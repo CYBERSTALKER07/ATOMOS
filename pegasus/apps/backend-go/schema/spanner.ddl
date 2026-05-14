@@ -616,6 +616,29 @@ CREATE TABLE SupplierImportMapping (
 ) PRIMARY KEY (supplier_id, session_id),
   INTERLEAVE IN PARENT SupplierImportSessions ON DELETE CASCADE;
 
+-- ── SUPPLIER IMPORT ANALYTICS FACTS (PHASE: IMPORT ATTRIBUTION) ───────────
+-- Additive fact rows keyed by supplier+warehouse+date+sku to support
+-- global-vs-warehouse inventory import analytics without rewriting order facts.
+CREATE TABLE SupplierImportAnalyticsFacts (
+    supplier_id      STRING(36)  NOT NULL,
+    warehouse_id     STRING(36)  NOT NULL,
+    fact_date        DATE        NOT NULL,
+    sku_id           STRING(36)  NOT NULL,
+    applied_rows     INT64       NOT NULL DEFAULT (0),
+    quantity_delta   INT64       NOT NULL DEFAULT (0),
+    session_count    INT64       NOT NULL DEFAULT (0),
+    last_session_id  STRING(36),
+    last_applied_at  TIMESTAMP,
+    updated_at       TIMESTAMP   OPTIONS (allow_commit_timestamp=true)
+) PRIMARY KEY (supplier_id, warehouse_id, fact_date, sku_id);
+
+CREATE INDEX Idx_SupplierImportAnalyticsFacts_BySupplierDate
+    ON SupplierImportAnalyticsFacts(supplier_id, fact_date DESC, warehouse_id);
+CREATE INDEX Idx_SupplierImportAnalyticsFacts_ByWarehouseDate
+    ON SupplierImportAnalyticsFacts(supplier_id, warehouse_id, fact_date DESC);
+CREATE INDEX Idx_SupplierImportAnalyticsFacts_ByWarehouseAppliedAt
+    ON SupplierImportAnalyticsFacts(supplier_id, warehouse_id, last_applied_at DESC);
+
 -- ── SUPPLIER RETURNS (PHASE 9: PARTIAL-QTY RECONCILIATION) ────────────────
 -- Every rejected item from driver delivery correction inserts a row here.
 -- Warehouse managers process returns via /v1/supplier/returns endpoints.
