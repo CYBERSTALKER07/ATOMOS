@@ -192,7 +192,7 @@ export default function InventoryPage() {
               Stock levels, replenishment controls, and audit trail
             </p>
           </div>
-          <Link href="/supplier/inventory/import">
+          <Link href="/inventory/import">
             <Button variant="outline">Bulk Import Wizard</Button>
           </Link>
         </div>

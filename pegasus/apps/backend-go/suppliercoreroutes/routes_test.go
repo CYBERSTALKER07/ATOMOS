@@ -174,6 +174,33 @@ func TestRegisterRoutes_InventoryImportsSandboxApproveUsesIdempotency(t *testing
 	}
 }
 
+func TestRegisterRoutes_InventoryImportsSandboxApplyUsesIdempotency(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
+	if err != nil {
+		t.Fatalf("GenerateSupplierToken() error = %v", err)
+	}
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "inventory-imports-sandbox-apply"),
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/supplier/inventory/imports/session-1/apply", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "inventory-imports-sandbox-apply" {
+		t.Fatalf("idempotency guard header = %q, want inventory-imports-sandbox-apply", got)
+	}
+}
+
 func TestRegisterRoutes_InventoryImportsSandboxUploadedUsesIdempotency(t *testing.T) {
 	auth.Init("test-jwt-secret", "test-internal-key")
 	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
@@ -198,6 +225,60 @@ func TestRegisterRoutes_InventoryImportsSandboxUploadedUsesIdempotency(t *testin
 	}
 	if got := rec.Header().Get("X-Idempotency-Guard"); got != "inventory-imports-sandbox-uploaded" {
 		t.Fatalf("idempotency guard header = %q, want inventory-imports-sandbox-uploaded", got)
+	}
+}
+
+func TestRegisterRoutes_InventoryImportsSandboxRowsReadRoute(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
+	if err != nil {
+		t.Fatalf("GenerateSupplierToken() error = %v", err)
+	}
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "inventory-imports-sandbox-rows"),
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/supplier/inventory/imports/session-1/rows", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "" {
+		t.Fatalf("idempotency guard should not apply to GET rows, got %q", got)
+	}
+}
+
+func TestRegisterRoutes_InventoryImportsSandboxMappingReadRoute(t *testing.T) {
+	auth.Init("test-jwt-secret", "test-internal-key")
+	token, err := auth.GenerateSupplierToken("supplier-user", "SUPPLIER", "GLOBAL_ADMIN", "")
+	if err != nil {
+		t.Fatalf("GenerateSupplierToken() error = %v", err)
+	}
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "inventory-imports-sandbox-mapping-read"),
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/supplier/inventory/imports/session-1/mapping", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "" {
+		t.Fatalf("idempotency guard should not apply to GET mapping, got %q", got)
 	}
 }
 

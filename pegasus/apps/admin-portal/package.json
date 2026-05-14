@@ -22,8 +22,8 @@
     "@heroui/styles": "^3.0.2",
     "@pegasus/api-client": "file:../../packages/api-client",
     "@pegasus/i18n": "file:../../packages/i18n",
-    "@pegasus/ui-kit": "file:../../packages/ui-kit",
     "@pegasus/types": "file:../../packages/types",
+    "@pegasus/ui-kit": "file:../../packages/ui-kit",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.7.0",
     "@tauri-apps/plugin-fs": "^2.5.0",
@@ -37,6 +37,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-map-gl": "^8.1.0",
+    "react-window": "^1.8.11",
     "recharts": "^3.8.0"
   },
   "devDependencies": {

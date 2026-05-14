@@ -123,6 +123,7 @@ export const config = {
     '/supplier/settings/:path*',
     '/supplier/analytics/:path*',
     '/supplier/products/:path*',
+    '/inventory/:path*',
     // Admin routes
     '/',
     '/dashboard/:path*',
