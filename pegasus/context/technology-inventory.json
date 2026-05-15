@@ -102,6 +102,28 @@
       ]
     },
     {
+      "name": "Regional degressive checkout fee policy",
+      "path": "RegionalConfigs fee defaults -> order/fee_policy.go -> immutable InvoiceSettlementSlices outputs",
+      "owner": "pegasus/apps/backend-go/{countrycfg/regions.go,schema/spanner.ddl,migrations/migrations.go,order/{fee_policy.go,settlement_target.go,unified_checkout.go,service_test.go}}",
+      "methods": [
+        "RegionalConfigs now persists DegressiveFeeGrowthThresholdAmount, DegressiveFeeScaleThresholdAmount, and DegressiveFeeCapAmount keyed by RegionId",
+        "countrycfg/regions.go seeds per-currency default thresholds and cap values and resolves supplier region defaults through ResolveSupplierRegion plus GetRegionalConfig",
+        "order/fee_policy.go centralizes computeCheckoutFee with explicit REGIONAL_DEGRESSIVE_V1 policy versioning and tier keys REGIONAL_DEGRESSIVE_BASE, REGIONAL_DEGRESSIVE_GROWTH, and REGIONAL_DEGRESSIVE_SCALE",
+        "Regional degressive evaluation activates only when supplier-effective currency matches region currency; otherwise checkout falls back to LEGACY_PLATFORM_FEE_BPS_V1 flat basis-point math",
+        "order/unified_checkout.go persists immutable per-slice fee outputs SelectedTierKey, FeeBasisPoints, FeeCapApplied, FeeAmount, and NetPayoutAmount into InvoiceSettlementSlices and rolls invoice fee summaries into MasterInvoices"
+      ],
+      "consumers": [
+        "backend-go countrycfg/regions.go",
+        "backend-go order/fee_policy.go",
+        "backend-go order/unified_checkout.go",
+        "backend-go order/service_test.go"
+      ],
+      "notes": [
+        "Regional defaults are additive and rollout-safe because legacy flat-bps evaluation remains available when policy version or defaults are absent.",
+        "Threshold and cap amounts are stored in supplier-effective-currency minor units on RegionalConfigs instead of a second fee configuration table."
+      ]
+    },
+    {
       "name": "Supplier payout-policy control plane and authority gate",
       "path": "/v1/supplier/payout-policy + /v1/internal/treasury/supplier-payout-policy + fee_snapshot_authoritative_read",
       "owner": "pegasus/apps/backend-go/{supplier/payout_policy.go,treasury/payout_policy_override.go,supplierroutes/routes.go,treasury/routes.go,settings/platform_config.go,kafka/treasurer.go}",

@@ -51,6 +51,13 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 	- Treasury read models now expose additive payout snapshot fields via `treasury/settlement.go` and `warehouse/treasury.go`, consumed in supplier/warehouse treasury web and native clients.
 	- Missing supplier policy rows default to `HQ_SUPPLIER`, and `WAREHOUSE_LOCAL` policy mode fails closed when participating warehouses do not resolve active credentials for the selected gateway.
 
+- Regional degressive checkout fee policy: `pegasus/apps/backend-go/{countrycfg/regions.go,schema/spanner.ddl,migrations/migrations.go,order/{fee_policy.go,settlement_target.go,unified_checkout.go}}`
+	- `RegionalConfigs` now stores additive supplier-effective-currency defaults `DegressiveFeeGrowthThresholdAmount`, `DegressiveFeeScaleThresholdAmount`, and `DegressiveFeeCapAmount` keyed by `RegionId`.
+	- `countrycfg/regions.go` seeds per-currency default thresholds and cap values and resolves supplier region defaults through `ResolveSupplierRegion` plus `GetRegionalConfig`.
+	- `order/fee_policy.go` now centralizes `computeCheckoutFee` with explicit `REGIONAL_DEGRESSIVE_V1` versioning and tier keys `REGIONAL_DEGRESSIVE_BASE`, `REGIONAL_DEGRESSIVE_GROWTH`, and `REGIONAL_DEGRESSIVE_SCALE`.
+	- Regional degressive evaluation activates only when the checkout currency matches the supplier-effective region currency; otherwise checkout falls back to legacy `LEGACY_PLATFORM_FEE_BPS_V1` flat basis-point math.
+	- `order/unified_checkout.go` now persists immutable per-slice fee outputs (`SelectedTierKey`, `FeeBasisPoints`, `FeeCapApplied`, `FeeAmount`, `NetPayoutAmount`) into `InvoiceSettlementSlices` and rolls invoice fee summaries into `MasterInvoices`.
+
 - Supplier payout-policy control plane and authority gate: `pegasus/apps/backend-go/{supplier/payout_policy.go,treasury/payout_policy_override.go,settings/platform_config.go,kafka/treasurer.go}`
 	- Supplier self-service endpoint now exposes `GET|PATCH /v1/supplier/payout-policy`, and internal support override now exposes `PATCH /v1/internal/treasury/supplier-payout-policy` with INTERNAL-only access guard.
 	- Both mutation paths persist audited before/after metadata into `AuditLog` and invalidate supplier profile cache keys after commit.
