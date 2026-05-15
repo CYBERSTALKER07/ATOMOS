@@ -25,7 +25,7 @@ type Deps struct {
 // RegisterRoutes mounts the /v1/treasury/* surface plus the supplier
 // settlement-report endpoint (which is read-mostly treasury data, served
 // under /v1/supplier/settlement-report for UI routing symmetry with the
-// Supplier Cockpit).
+// Supplier Cockpit), and the internal-only payout-policy override surface.
 func RegisterRoutes(r chi.Router, d Deps) {
 	supplierAdmin := []string{"SUPPLIER", "ADMIN"}
 	idem := d.Idempotency

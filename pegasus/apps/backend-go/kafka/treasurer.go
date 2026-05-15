@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"backend-go/finance"
@@ -178,10 +179,43 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 	}
 	supplierID = nullSupplierID.StringVal
 
-	// Strict integer math — dynamic commission from SystemConfig (basis points).
-	commissionBps := platformCfg.PlatformFeeBasisPoints()
+	// Strict integer math — default path reads dynamic commission from
+	// SystemConfig basis points. The authoritative snapshot path is gated.
+	commissionBps := int64(0)
+	if platformCfg != nil {
+		commissionBps = platformCfg.PlatformFeeBasisPoints()
+	}
 	platformCommission := (event.Amount * commissionBps) / 10000
 	supplierPayout := event.Amount - platformCommission
+
+	if platformCfg != nil && platformCfg.FeeSnapshotAuthoritativeRead() {
+		snapshot, hasSnapshot, snapshotErr := loadSupplierFeeSnapshotForOrder(ctx, client, event.OrderId, supplierID)
+		if snapshotErr != nil {
+			slog.Warn("treasurer.snapshot_fee_lookup_failed", "order_id", event.OrderId, "supplier_id", supplierID, "err", snapshotErr)
+		} else if hasSnapshot {
+			if snapshot.GrossAmount > 0 && snapshot.GrossAmount != event.Amount {
+				slog.Warn("treasurer.snapshot_gross_mismatch",
+					"order_id", event.OrderId,
+					"supplier_id", supplierID,
+					"order_amount", event.Amount,
+					"snapshot_gross_amount", snapshot.GrossAmount,
+					"invoice_id", snapshot.InvoiceID,
+				)
+				event.Amount = snapshot.GrossAmount
+			}
+
+			platformCommission = snapshot.FeeAmount
+			supplierPayout = snapshot.NetPayoutAmount
+
+			grossForBps := event.Amount
+			if snapshot.GrossAmount > 0 {
+				grossForBps = snapshot.GrossAmount
+			}
+			if grossForBps > 0 {
+				commissionBps = (snapshot.FeeAmount * 10000) / grossForBps
+			}
+		}
+	}
 
 	txnIdA := GenerateTxnId(event.OrderId, finance.PlatformCreditEntryType, platformCommission)
 	txnIdB := GenerateTxnId(event.OrderId, "CREDIT_SUPPLIER", supplierPayout)
@@ -267,6 +301,80 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 	} else {
 		slog.Info("treasurer.ledger_committed", "order_id", event.OrderId, "status", status)
 	}
+}
+
+type supplierFeeSnapshot struct {
+	InvoiceID       string
+	GrossAmount     int64
+	FeeAmount       int64
+	NetPayoutAmount int64
+}
+
+func loadSupplierFeeSnapshotForOrder(ctx context.Context, client *spanner.Client, orderID, supplierID string) (supplierFeeSnapshot, bool, error) {
+	if strings.TrimSpace(orderID) == "" || strings.TrimSpace(supplierID) == "" {
+		return supplierFeeSnapshot{}, false, nil
+	}
+
+	invoiceStmt := spanner.Statement{
+		SQL:    `SELECT InvoiceId FROM MasterInvoices WHERE OrderId = @orderId LIMIT 1`,
+		Params: map[string]interface{}{"orderId": orderID},
+	}
+	invoiceIter := client.Single().Query(ctx, invoiceStmt)
+	invoiceRow, invoiceErr := invoiceIter.Next()
+	invoiceIter.Stop()
+	if invoiceErr == iterator.Done {
+		return supplierFeeSnapshot{}, false, nil
+	}
+	if invoiceErr != nil {
+		return supplierFeeSnapshot{}, false, fmt.Errorf("read invoice for order %s: %w", orderID, invoiceErr)
+	}
+
+	var invoiceID string
+	if err := invoiceRow.Columns(&invoiceID); err != nil {
+		return supplierFeeSnapshot{}, false, fmt.Errorf("decode invoice for order %s: %w", orderID, err)
+	}
+	if strings.TrimSpace(invoiceID) == "" {
+		return supplierFeeSnapshot{}, false, nil
+	}
+
+	sliceStmt := spanner.Statement{
+		SQL: `SELECT COALESCE(SUM(GrossAmount), 0),
+		             COALESCE(SUM(FeeAmount), 0),
+		             COALESCE(SUM(NetPayoutAmount), 0)
+		      FROM InvoiceSettlementSlices
+		      WHERE InvoiceId = @invoiceId AND SupplierId = @supplierId`,
+		Params: map[string]interface{}{
+			"invoiceId":  invoiceID,
+			"supplierId": supplierID,
+		},
+	}
+	sliceIter := client.Single().Query(ctx, sliceStmt)
+	sliceRow, sliceErr := sliceIter.Next()
+	sliceIter.Stop()
+	if sliceErr == iterator.Done {
+		return supplierFeeSnapshot{}, false, nil
+	}
+	if sliceErr != nil {
+		return supplierFeeSnapshot{}, false, fmt.Errorf("read settlement slices for invoice %s: %w", invoiceID, sliceErr)
+	}
+
+	var grossAmount int64
+	var feeAmount int64
+	var netPayoutAmount int64
+	if err := sliceRow.Columns(&grossAmount, &feeAmount, &netPayoutAmount); err != nil {
+		return supplierFeeSnapshot{}, false, fmt.Errorf("decode settlement slices for invoice %s: %w", invoiceID, err)
+	}
+
+	if grossAmount <= 0 && feeAmount <= 0 && netPayoutAmount <= 0 {
+		return supplierFeeSnapshot{}, false, nil
+	}
+
+	return supplierFeeSnapshot{
+		InvoiceID:       invoiceID,
+		GrossAmount:     grossAmount,
+		FeeAmount:       feeAmount,
+		NetPayoutAmount: netPayoutAmount,
+	}, true, nil
 }
 
 // executeManifestSettlement performs manifest-level financial reconciliation.

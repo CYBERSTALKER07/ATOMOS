@@ -1,5 +1,5 @@
 {
-  "version": "2026-05-14",
+  "version": "2026-05-15",
   "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer+supplier fanout parity with admin-portal hybrid invalidation, retailer inbox settlement/session refresh parity with shared ws-event contract coverage, checkout supplier-effective currency resolution, payment-session currency normalization, refund/chargeback additive currency compatibility, treasury/reconciliation read-model currency parity for admin portal consumers, warehouse treasury invoice currency parity across portal and native clients, warehouse analytics additive import anomaly queue projection with portal/native parity, multitenant driver/factory login disambiguation plus supplier-scoped phone uniqueness in provisioning flows, phase-1 regional substrate plus provider-seam normalization for GLOBAL_PAY/ADYEN/CASH with official Adyen Payment Links hosted-checkout wiring, provider execution-path gateway normalization, supplier/warehouse region query-scope middleware enforcement, webhook route composition parity for Global Pay, Stripe, and Adyen ingress, settlement-locality bootstrap for MasterInvoices/Warehouses/Vault precedence plus SupplierInventoryV2 warehouse-key inventory schema, supplier inventory import staging substrate and admin-portal wizard shell routing, supplier import alias deprecation plus warehouse-scoped analytics attribution convergence, active InventoryV2 runtime dual-read/write mirroring across checkout/restock plus replenishment and planning read convergence, autonomous nearest-factory routing fallback when no active SupplyLanes candidate exists, checkout warehouse equal-H3 tie round-robin balancing across resolver paths, region-filtered supplier reads and expanded warehouse ops plus demand read surfaces, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, targeted workspace retrieval as the default codebase-retrieval path, S-level dynamic billing metering with milestone-driven platform fee adjustments plus treasury billing telemetry, dynamic delivery handshake settlement orchestration with DeliverySessions audit trails, settlement-required fanout, dispute escalation outbox/dispatcher closure, retailer role-row consumption parity, Task 1.4 desktop-to-native verified command handshake lifecycle bridging with Redis-backed ws command registry plus native ACK settlement, and Phase 2.1 websocket envelope guard schema negotiation with guarded downgrade and SYSTEM_APP_OUTDATED fallback).",
   "agentContext": {
     "syncSet": [
@@ -179,6 +179,29 @@
       "notes": [
         "This slice introduces additive persistence only; live authority cutover to snapshot reads is a later phase.",
         "Settlement slices capture gross, fee policy version, fee basis points, fee amount, net payout, and payout owner metadata per supplier slice."
+      ]
+    },
+    {
+      "id": "supplier_payout_policy_control_plane",
+      "path": "/v1/supplier/payout-policy + /v1/internal/treasury/supplier-payout-policy + fee_snapshot_authoritative_read",
+      "owner": "pegasus/apps/backend-go/{supplier/payout_policy.go,treasury/payout_policy_override.go,supplierroutes/routes.go,treasury/routes.go,settings/platform_config.go,kafka/treasurer.go}",
+      "methods": [
+        "GET /v1/supplier/payout-policy",
+        "PATCH /v1/supplier/payout-policy",
+        "PATCH /v1/internal/treasury/supplier-payout-policy",
+        "SystemConfig key fee_snapshot_authoritative_read",
+        "Treasurer snapshot-authoritative split path with fallback to platform_fee_basis_points"
+      ],
+      "consumers": [
+        "pegasus/apps/backend-go/supplier/payout_policy.go",
+        "pegasus/apps/backend-go/treasury/payout_policy_override.go",
+        "pegasus/apps/backend-go/settings/platform_config.go",
+        "pegasus/apps/backend-go/kafka/treasurer.go"
+      ],
+      "notes": [
+        "Supplier and internal override mutations write audited before/after metadata rows to AuditLog and invalidate supplier profile cache keys post-commit.",
+        "Internal override route is restricted to INTERNAL claims/internal-key path and is not exposed on supplier-scoped route groups.",
+        "When snapshot authority is disabled or slice reads are unavailable, treasurer split math safely falls back to legacy platform_fee_basis_points to preserve settlement continuity."
       ]
     },
     {

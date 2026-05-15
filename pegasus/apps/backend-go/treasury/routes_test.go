@@ -110,8 +110,8 @@ func TestRegisterRoutes_InternalPayoutPolicyOverrideRejectsSupplierRole(t *testi
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 	}
-	if got := rec.Header().Get("X-Idempotency-Guard"); got != "internal-payout-policy" {
-		t.Fatalf("idempotency guard header = %q, want internal-payout-policy", got)
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "" {
+		t.Fatalf("idempotency guard header = %q, want empty when auth gate blocks request", got)
 	}
 }
 

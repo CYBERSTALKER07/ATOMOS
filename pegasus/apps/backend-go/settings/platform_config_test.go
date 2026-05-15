@@ -1,5 +1,4 @@
 package settings
-package settings
 
 import "testing"
 

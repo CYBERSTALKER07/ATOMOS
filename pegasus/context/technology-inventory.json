@@ -1,5 +1,5 @@
 {
-  "version": "2026-05-14",
+  "version": "2026-05-15",
   "generatedFrom": {
     "manifests": [
       "pegasus/package.json",
@@ -86,6 +86,30 @@
       "notes": [
         "This phase is additive write-path persistence; authoritative downstream read-path cutover is deferred to shadow-read and authority-switch phases.",
         "Settlement slices reuse existing settlement-locality seams and avoid introducing a second payout system."
+      ]
+    },
+    {
+      "name": "Supplier payout-policy control plane and authority gate",
+      "path": "/v1/supplier/payout-policy + /v1/internal/treasury/supplier-payout-policy + fee_snapshot_authoritative_read",
+      "owner": "pegasus/apps/backend-go/{supplier/payout_policy.go,treasury/payout_policy_override.go,supplierroutes/routes.go,treasury/routes.go,settings/platform_config.go,kafka/treasurer.go}",
+      "methods": [
+        "GET /v1/supplier/payout-policy",
+        "PATCH /v1/supplier/payout-policy",
+        "PATCH /v1/internal/treasury/supplier-payout-policy",
+        "AuditLog before/after metadata journaling on policy mutations",
+        "SystemConfig lookup fee_snapshot_authoritative_read",
+        "Treasurer snapshot-authoritative split path with fallback to platform_fee_basis_points"
+      ],
+      "consumers": [
+        "backend-go supplier/payout_policy.go",
+        "backend-go treasury/payout_policy_override.go",
+        "backend-go settings/platform_config.go",
+        "backend-go kafka/treasurer.go"
+      ],
+      "notes": [
+        "Supplier and internal override mutation paths both invalidate supplier profile cache keys after commit.",
+        "Internal override path is constrained to INTERNAL claims/internal-key-authenticated callers.",
+        "Fallback to legacy platform_fee_basis_points preserves payout continuity when snapshot authority is disabled or slice reads are unavailable."
       ]
     },
     {
