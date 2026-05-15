@@ -853,6 +853,8 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 				SessionId             STRING(36)  NOT NULL,
 				AttemptNo             INT64       NOT NULL,
 				Gateway               STRING(20)  NOT NULL,
+				ExecutionAction       STRING(40),
+				ExecutionMode         STRING(30),
 				ProviderTransactionId STRING(64),
 				Status                STRING(30)  NOT NULL DEFAULT ('INITIATED'),
 				FailureCode           STRING(50),
@@ -864,6 +866,8 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 			) PRIMARY KEY (AttemptId)`,
 			"CREATE INDEX Idx_PaymentAttempts_BySessionId ON PaymentAttempts(SessionId)",
 			"CREATE INDEX Idx_PaymentAttempts_ByProviderTxn ON PaymentAttempts(ProviderTransactionId)",
+			"ALTER TABLE PaymentAttempts ADD COLUMN ExecutionAction STRING(40)",
+			"ALTER TABLE PaymentAttempts ADD COLUMN ExecutionMode STRING(30)",
 		}
 		for _, stmt := range paymentSessionDDL {
 			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{

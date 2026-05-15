@@ -2548,6 +2548,22 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 		SessionID:  sessionID,
 	}
 
+	attemptID := ""
+	if s.SessionSvc != nil && sessionID != "" {
+		attempt, attemptErr := s.SessionSvc.CreateAttempt(
+			ctx,
+			sessionID,
+			"GLOBAL_PAY",
+			payment.AttemptExecutionActionCheckoutInit,
+			payment.AttemptExecutionModeAuto,
+		)
+		if attemptErr != nil {
+			slog.Warn("order.fulfillment_pay_attempt_init_failed", "order_id", orderID, "session_id", sessionID, "err", attemptErr)
+		} else {
+			attemptID = attempt.AttemptID
+		}
+	}
+
 	// Try saved card → direct charge (no redirect needed)
 	var directPaymentID string
 	var directPaid bool
@@ -2556,6 +2572,11 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 		savedCard, _ := s.CardTokenSvc.GetDefaultCard(ctx, retailerID, "GLOBAL_PAY")
 		if savedCard != nil {
 			slog.Info("order.fulfillment_pay_saved_card", "retailer_id", retailerID, "token_id", savedCard.TokenID, "amount", adjustedAmount)
+			if s.SessionSvc != nil && strings.TrimSpace(attemptID) != "" {
+				if metaErr := s.SessionSvc.UpdateAttemptExecutionMetadata(ctx, attemptID, payment.AttemptExecutionActionCheckoutInit, payment.AttemptExecutionModeDirectStoredMethod); metaErr != nil {
+					slog.Warn("order.fulfillment_pay_attempt_metadata_direct_failed", "order_id", orderID, "attempt_id", attemptID, "err", metaErr)
+				}
+			}
 
 			externalID := "fulfill-" + orderID
 			if sessionID != "" {
@@ -2584,6 +2605,11 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 					}
 
 					if executionResult.Action != nil && strings.TrimSpace(executionResult.Action.RedirectURL) != "" {
+						if s.SessionSvc != nil && strings.TrimSpace(attemptID) != "" {
+							if metaErr := s.SessionSvc.UpdateAttemptExecutionMetadata(ctx, attemptID, payment.AttemptExecutionActionCheckoutInit, payment.AttemptExecutionModeDirect3DSRedirect); metaErr != nil {
+								slog.Warn("order.fulfillment_pay_attempt_metadata_direct_3ds_failed", "order_id", orderID, "attempt_id", attemptID, "err", metaErr)
+							}
+						}
 						result.PaymentID = directPaymentID
 						result.CheckoutURL = strings.TrimSpace(executionResult.Action.RedirectURL)
 						result.Status = "3DS_REQUIRED"
@@ -2611,13 +2637,9 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 		if accountErr != nil {
 			return nil, fmt.Errorf("retailer payment account lookup failed for order %s: %w", orderID, accountErr)
 		}
-
-		// Create attempt for the hosted session
-		attemptID := ""
-		if s.SessionSvc != nil && sessionID != "" {
-			attempt, attemptErr := s.SessionSvc.CreateAttempt(ctx, sessionID, "GLOBAL_PAY")
-			if attemptErr == nil {
-				attemptID = attempt.AttemptID
+		if s.SessionSvc != nil && strings.TrimSpace(attemptID) != "" {
+			if metaErr := s.SessionSvc.UpdateAttemptExecutionMetadata(ctx, attemptID, payment.AttemptExecutionActionHostedCheckoutInit, payment.AttemptExecutionModeHostedRedirect); metaErr != nil {
+				slog.Warn("order.fulfillment_pay_attempt_metadata_hosted_failed", "order_id", orderID, "attempt_id", attemptID, "err", metaErr)
 			}
 		}
 
@@ -3473,7 +3495,13 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		}
 		if activeSession != nil {
 			resp.SessionID = activeSession.SessionID
-			attempt, attemptErr := s.SessionSvc.CreateAttempt(ctx, activeSession.SessionID, gateway)
+			attempt, attemptErr := s.SessionSvc.CreateAttempt(
+				ctx,
+				activeSession.SessionID,
+				gateway,
+				payment.AttemptExecutionActionCheckoutInit,
+				payment.AttemptExecutionModeAuto,
+			)
 			if attemptErr != nil {
 				slog.Error("order.card_checkout_attempt_failed", "session_id", activeSession.SessionID, "err", attemptErr)
 			} else {
@@ -3535,6 +3563,11 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 			// provider execution seam so direct execution stops leaking provider-specific
 			// logic into checkout callers.
 			slog.Info("order.card_checkout_saved_card", "retailer_id", retailerId, "token_id", savedCard.TokenID)
+			if s.SessionSvc != nil && strings.TrimSpace(resp.AttemptID) != "" {
+				if metaErr := s.SessionSvc.UpdateAttemptExecutionMetadata(ctx, resp.AttemptID, payment.AttemptExecutionActionCheckoutInit, payment.AttemptExecutionModeDirectStoredMethod); metaErr != nil {
+					slog.Warn("order.card_checkout_attempt_metadata_direct_failed", "attempt_id", resp.AttemptID, "err", metaErr)
+				}
+			}
 			executionRouter := payment.NewProviderExecutionRouter(s.DirectClient)
 			executionClient, execClientErr := executionRouter.Resolve(gateway, payment.NewGlobalPayExecutionCredentials(creds))
 			if execClientErr != nil {
@@ -3559,6 +3592,11 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 					}
 
 					if executionResult.Action != nil && strings.TrimSpace(executionResult.Action.RedirectURL) != "" {
+						if s.SessionSvc != nil && strings.TrimSpace(resp.AttemptID) != "" {
+							if metaErr := s.SessionSvc.UpdateAttemptExecutionMetadata(ctx, resp.AttemptID, payment.AttemptExecutionActionCheckoutInit, payment.AttemptExecutionModeDirect3DSRedirect); metaErr != nil {
+								slog.Warn("order.card_checkout_attempt_metadata_direct_3ds_failed", "attempt_id", resp.AttemptID, "err", metaErr)
+							}
+						}
 						paymentURL = strings.TrimSpace(executionResult.Action.RedirectURL)
 						resp.Message = fmt.Sprintf("3D Secure verification required for %d", resp.Amount)
 						if s.SessionSvc != nil && resp.SessionID != "" {
@@ -3600,6 +3638,11 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		if accountErr != nil {
 			return nil, fmt.Errorf("global pay account lookup failed: %w", accountErr)
 		}
+		if s.SessionSvc != nil && strings.TrimSpace(resp.AttemptID) != "" {
+			if metaErr := s.SessionSvc.UpdateAttemptExecutionMetadata(ctx, resp.AttemptID, payment.AttemptExecutionActionHostedCheckoutInit, payment.AttemptExecutionModeHostedRedirect); metaErr != nil {
+				slog.Warn("order.card_checkout_attempt_metadata_hosted_failed", "attempt_id", resp.AttemptID, "err", metaErr)
+			}
+		}
 		checkoutReq := payment.GlobalPayCheckoutRequest{
 			OrderID:         orderId,
 			InvoiceID:       resp.InvoiceID,
@@ -3631,6 +3674,11 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		if credErr != nil {
 			return nil, credErr
 		}
+		if s.SessionSvc != nil && strings.TrimSpace(resp.AttemptID) != "" {
+			if metaErr := s.SessionSvc.UpdateAttemptExecutionMetadata(ctx, resp.AttemptID, payment.AttemptExecutionActionHostedCheckoutInit, payment.AttemptExecutionModeHostedRedirect); metaErr != nil {
+				slog.Warn("order.card_checkout_attempt_metadata_adyen_hosted_failed", "attempt_id", resp.AttemptID, "err", metaErr)
+			}
+		}
 
 		checkoutResult, checkoutErr := payment.CreateAdyenHostedCheckout(ctx, creds, payment.AdyenCheckoutRequest{
 			OrderID:   orderId,
@@ -3654,6 +3702,11 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 			expiresAt = checkoutResult.ExpiresAt
 		}
 	} else {
+		if s.SessionSvc != nil && strings.TrimSpace(resp.AttemptID) != "" {
+			if metaErr := s.SessionSvc.UpdateAttemptExecutionMetadata(ctx, resp.AttemptID, payment.AttemptExecutionActionHostedCheckoutInit, payment.AttemptExecutionModeHostedRedirect); metaErr != nil {
+				slog.Warn("order.card_checkout_attempt_metadata_generic_hosted_failed", "attempt_id", resp.AttemptID, "gateway", gateway, "err", metaErr)
+			}
+		}
 		if merchantID != "" || serviceID != "" {
 			paymentURL, urlErr = payment.CheckoutURLWithCredentials(gateway, orderId, resp.Amount, merchantID, serviceID)
 		} else {

@@ -805,6 +805,8 @@ CREATE TABLE GlobalPayntAttempts (
     SessionId            STRING(36)  NOT NULL,
     AttemptNo            INT64       NOT NULL,
     Gateway              STRING(20)  NOT NULL,
+    ExecutionAction      STRING(40),            -- CHECKOUT_INIT | HOSTED_CHECKOUT_INIT | ...
+    ExecutionMode        STRING(30),            -- AUTO | HOSTED_REDIRECT | DIRECT_STORED_METHOD | ...
     ProviderTransactionId STRING(64),           -- Cash trans_id or GlobalPay transaction ID
     Status               STRING(30)  NOT NULL DEFAULT ('INITIATED'),
     -- INITIATED | REDIRECTED | PROCESSING | SUCCESS | FAILED | CANCELLED | TIMED_OUT

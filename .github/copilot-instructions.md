@@ -35,6 +35,7 @@ Runtime additive note (2026-05-15): supplier country override mutations in `coun
 Runtime additive note (2026-05-15): payment direct execution now has its own normalized seam in `payment/execution.go`: `ProviderExecutionRouter` resolves provider-specific stored-method charge, authorize, capture, void, and refund behavior behind additive request/result contracts; `order/service.go` now routes retailer card checkout, fulfillment saved-card charge, and authorization void through that seam, `order/unified_checkout.go#authorizeAtCheckout` now uses it for Global Pay authorization holds, and `payment/refund.go` now resolves per-order credentials through `VaultResolver` and refunds against durable `PaymentSessions.ProviderReference` with `PaymentAttempts.ProviderTransactionId` fallback. Adyen direct/refund execution remains fail-closed through `ErrAdyenDirectOperationUnsupported` until the Adyen direct adapter lands.
 Runtime additive note (2026-05-15): checkout policy metadata surfacing now lands additively across `order/{service.go,checkout.go,unified_checkout.go}`: gateway resolution now returns `resolved_gateway`, `policy_source`, `allowed_gateways`, and `policy_reason` on card/B2B/unified checkout responses while preserving legacy gateway/payment_url contracts; structured `ErrGatewayPolicy` metadata now powers policy-violation JSON payloads in B2B/unified checkout and retailer card-checkout route handling (`retailerroutes/payments.go`) (`error=payment_gateway_policy_violation` with requested/resolved/policy fields) instead of message-only strings.
 Runtime additive note (2026-05-15): payment-route compatibility hardening now updates `paymentroutes/routes.go` so `POST /v1/payment/{chargeback,chargeback/reversal}` emits structured `application/json` error envelopes (`error`, `code`, `message`, `endpoint`, `deprecated`) and deprecated `POST /v1/payment/global_pay/initiate` emits the same envelope style plus `migrate_to` guidance to `/v1/order/card-checkout`, while preserving legacy success payload shape.
+Runtime additive note (2026-05-16): payment attempt execution metadata now persists and transitions additively through `payment/session.go` (`CreateAttempt` plus `UpdateAttemptExecutionMetadata` on `PaymentAttempts`), and `order/service.go` now updates attempts branch-accurately across card checkout and fulfillment flows: card checkout updates existing attempts post-branch selection to direct (`CHECKOUT_INIT`/`DIRECT_STORED_METHOD`), direct 3DS redirect (`CHECKOUT_INIT`/`DIRECT_3DS_REDIRECT`), or hosted (`HOSTED_CHECKOUT_INIT`/`HOSTED_REDIRECT`), while fulfillment now creates one attempt as (`CHECKOUT_INIT`/`AUTO`) and then updates it to direct, direct 3DS redirect, or hosted mode before provider execution; schema sources include matching additive columns in `migrations/migrations.go`, `cmd/setup/main.go`, and canonical `schema/spanner.ddl` (`GlobalPayntAttempts`).
 
 ## Primary Directive & Role
 - **F.R.I.D.A.Y. Protocol**: You are an advanced tactical engineering AI assistant overseeing the "Leviathan" logistics monorepo for Pegasus.
@@ -638,6 +639,13 @@ The V.O.I.D. backend is built for high-concurrency logistics. These standards ar
 - Indexes: every query filter MUST hit an index. Add a secondary index rather than accepting a full-scan query. Declare new indexes in `migrations/` not inline in `main.go`.
 - Batch inserts / updates use `spanner.InsertOrUpdateMap` inside a single txn; cap mutations at 1000 per txn (Spanner hard limit is 20k cell mutations).
 
+### 5. Reliability-By-Default Execution Overlay
+- Every production-facing feature must include bounded retry logic with explicit attempt counters and retryable-error classification; infinite retries or circular retry loops are forbidden.
+- Retries require timeout budgets plus exponential backoff with jitter; reconnect loops without jitter are forbidden.
+- Mutations must be idempotent (`X-Idempotency-Key` or equivalent guard) so retries cannot duplicate financial or order-state side effects.
+- Cross-stack coherence must be verified before completion: Kafka outbox/event path, Redis invalidation timing, Spanner consistency/index usage, Kubernetes stateless pod behavior, and Terraform-managed dependency compatibility.
+- A feature is not "done" unless these reliability checks pass or are explicitly marked as blocked with owner and follow-up.
+
 
 ## Enterprise Algorithm Patterns (V.O.I.D. Building Blocks)
 These are the named, reusable algorithmic patterns the system relies on. Each has a canonical implementation and a canonical failure mode — know both before reusing.
@@ -925,6 +933,13 @@ Before `git add`, every touched file is scanned for:
 ## Agent Operating Protocol (How the Assistant Must Think & Work)
 This protocol is not optional guidance — it is the operational discipline that keeps the ecosystem coherent when changes cross package, language, and role boundaries. Every non-trivial task must pass through these five phases. Skipping a phase is how ghost entities, stale caches, and silent-failure contract drift are born.
 
+### Session-Memory Reconciliation Protocol (Mandatory)
+1. Treat session memory as the execution ledger for non-trivial tasks, especially in `PHASED` mode.
+2. After every execution chunk (tool batch, phase boundary, validation pass, or resumed run), record a checkpoint with plan-anchor IDs touched, actions completed, verification performed, and open blockers.
+3. Before every interim status update and final response, reconcile the latest session-memory checkpoints against the active plan and report delta per plan-anchor ID (`implemented`, `in progress`, `blocked`, `deferred`).
+4. `ONE_PASS` work still requires a terminal checkpoint and reconciliation summary before task close.
+5. If session memory is unavailable, provide the same reconciliation explicitly in the response and mark memory unavailable.
+
 ### Phase I — Task Ingestion (Understand Before Touching)
 1. Parse the request literally. Distinguish between:
    - a **specific ask** (one route, one bug, one rename) — execute narrowly;
@@ -968,6 +983,7 @@ This protocol is not optional guidance — it is the operational discipline that
 6. **Never silence a test failure** by changing the test's assertion. The test is the contract. Either the code is wrong, the test was wrong (confirm with the user), or the acceptance criterion changed (update the test WITH explicit reasoning in the reply, not in a code comment).
 7. **Fail loudly in code.** Every error path gets a structured `slog.Error` with `trace_id`, the operation name, and enough identifier fields (order_id, driver_id, etc.) to stitch a timeline from pod logs.
 8. **Phase handoff record (mandatory for phased work).** At each phase boundary, report what changed, what remains, and blockers mapped by Plan Anchor ID; never close a phase with unresolved untracked items.
+9. **Session-memory checkpoint (mandatory).** After each significant execution step, update session memory and capture plan-anchor progress before proceeding.
 
 ### Phase V — Completion Check (Downstream Sweep Before Declaring Done)
 After the primary edit compiles, run this checklist — the user will penalise missed downstream work more than any other failure mode:
@@ -982,6 +998,7 @@ After the primary edit compiles, run this checklist — the user will penalise m
 9. **Reply honestly.** If scope was narrowed, list what was NOT done and why. If tests were not added, say so. If a downstream consumer was left stale, flag it as a P1 follow-up. Silent narrowing is dishonesty.
 10. **Plan reconciliation report (mandatory).** Before finalizing, map every Plan Anchor ID to `completed`, `deferred`, or `blocked` with a brief reason and validation evidence.
 11. **Recommendation discipline.** Final next-step suggestions must be split into `Required to finish requested plan` (only unresolved Plan Anchor IDs) and `Optional improvements` (explicitly out-of-scope).
+12. **Session-memory-to-plan reconciliation (mandatory).** Final output must explicitly confirm the latest session-memory checkpoints match the reported plan-anchor statuses.
 
 ### Project Structuring Discipline (File & Folder Creation Rules)
 A new file or folder is a commitment. Wrong placement metastasizes across every future grep. Follow these rules.

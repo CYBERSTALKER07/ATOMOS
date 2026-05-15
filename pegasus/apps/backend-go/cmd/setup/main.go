@@ -181,6 +181,8 @@ func main() {
 				SessionId             STRING(36)  NOT NULL,
 				AttemptNo             INT64       NOT NULL,
 				Gateway               STRING(20)  NOT NULL,
+				ExecutionAction       STRING(40),
+				ExecutionMode         STRING(30),
 				ProviderTransactionId STRING(64),
 				Status                STRING(30)  NOT NULL DEFAULT ('INITIATED'),
 				FailureCode           STRING(50),

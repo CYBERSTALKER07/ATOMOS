@@ -48,6 +48,18 @@ const (
 	AttemptTimedOut   = "TIMED_OUT"
 )
 
+const (
+	AttemptExecutionActionCheckoutInit       = "CHECKOUT_INIT"
+	AttemptExecutionActionHostedCheckoutInit = "HOSTED_CHECKOUT_INIT"
+)
+
+const (
+	AttemptExecutionModeAuto               = "AUTO"
+	AttemptExecutionModeHostedRedirect     = "HOSTED_REDIRECT"
+	AttemptExecutionModeDirectStoredMethod = "DIRECT_STORED_METHOD"
+	AttemptExecutionModeDirect3DSRedirect  = "DIRECT_3DS_REDIRECT"
+)
+
 // ─── Domain Types ────────────────────────────────────────────────────────────
 
 // PaymentSession is the Go representation of the PaymentSessions Spanner table.
@@ -81,6 +93,8 @@ type PaymentAttempt struct {
 	SessionID             string     `json:"session_id"`
 	AttemptNo             int64      `json:"attempt_no"`
 	Gateway               string     `json:"gateway"`
+	ExecutionAction       string     `json:"execution_action,omitempty"`
+	ExecutionMode         string     `json:"execution_mode,omitempty"`
 	ProviderTransactionID string     `json:"provider_transaction_id,omitempty"`
 	Status                string     `json:"status"`
 	FailureCode           string     `json:"failure_code,omitempty"`
@@ -194,8 +208,9 @@ func (s *SessionService) CreateSession(ctx context.Context, req CreateSessionReq
 
 // ─── Create Attempt ──────────────────────────────────────────────────────────
 
-// CreateAttempt creates a new payment attempt within a session and advances the attempt counter.
-func (s *SessionService) CreateAttempt(ctx context.Context, sessionID, gateway string) (*PaymentAttempt, error) {
+// CreateAttempt creates a new payment attempt within a session and advances the
+// attempt counter.
+func (s *SessionService) CreateAttempt(ctx context.Context, sessionID, gateway, executionAction, executionMode string) (*PaymentAttempt, error) {
 	attemptID := uuid.New().String()
 	var attempt PaymentAttempt
 	provider, providerErr := NewProviderClient(gateway)
@@ -203,6 +218,8 @@ func (s *SessionService) CreateAttempt(ctx context.Context, sessionID, gateway s
 		return nil, providerErr
 	}
 	resolvedGateway := provider.GatewayName()
+	resolvedExecutionAction := normalizeExecutionAction(executionAction)
+	resolvedExecutionMode := normalizeExecutionMode(executionMode)
 
 	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// Read current session
@@ -224,12 +241,14 @@ func (s *SessionService) CreateAttempt(ctx context.Context, sessionID, gateway s
 
 		newAttemptNo := currentAttemptNo + 1
 		attempt = PaymentAttempt{
-			AttemptID: attemptID,
-			SessionID: sessionID,
-			AttemptNo: newAttemptNo,
-			Gateway:   resolvedGateway,
-			Status:    AttemptInitiated,
-			StartedAt: time.Now().UTC(),
+			AttemptID:       attemptID,
+			SessionID:       sessionID,
+			AttemptNo:       newAttemptNo,
+			Gateway:         resolvedGateway,
+			ExecutionAction: resolvedExecutionAction,
+			ExecutionMode:   resolvedExecutionMode,
+			Status:          AttemptInitiated,
+			StartedAt:       time.Now().UTC(),
 		}
 
 		// Update session
@@ -243,8 +262,8 @@ func (s *SessionService) CreateAttempt(ctx context.Context, sessionID, gateway s
 		// Insert attempt
 		return txn.BufferWrite([]*spanner.Mutation{
 			spanner.Insert("PaymentAttempts",
-				[]string{"AttemptId", "SessionId", "AttemptNo", "Gateway", "Status", "StartedAt"},
-				[]interface{}{attemptID, sessionID, newAttemptNo, resolvedGateway, AttemptInitiated, spanner.CommitTimestamp},
+				[]string{"AttemptId", "SessionId", "AttemptNo", "Gateway", "ExecutionAction", "ExecutionMode", "Status", "StartedAt"},
+				[]interface{}{attemptID, sessionID, newAttemptNo, resolvedGateway, resolvedExecutionAction, resolvedExecutionMode, AttemptInitiated, spanner.CommitTimestamp},
 			),
 		})
 	})
@@ -257,9 +276,44 @@ func (s *SessionService) CreateAttempt(ctx context.Context, sessionID, gateway s
 		s.Cache.Invalidate(ctx, "session:"+sessionID, "attempt:"+attemptID)
 	}
 
-	log.Printf("[PAYMENT_SESSION] Created attempt %s (#%d) for session %s",
-		attemptID, attempt.AttemptNo, sessionID)
+	log.Printf("[PAYMENT_SESSION] Created attempt %s (#%d) for session %s (action=%s, mode=%s)",
+		attemptID, attempt.AttemptNo, sessionID, resolvedExecutionAction, resolvedExecutionMode)
 	return &attempt, nil
+}
+
+// UpdateAttemptExecutionMetadata updates additive execution metadata for an
+// existing attempt after checkout branch selection has been resolved.
+func (s *SessionService) UpdateAttemptExecutionMetadata(ctx context.Context, attemptID, executionAction, executionMode string) error {
+	trimmedAttemptID := strings.TrimSpace(attemptID)
+	if trimmedAttemptID == "" {
+		return nil
+	}
+
+	resolvedExecutionAction := normalizeExecutionAction(executionAction)
+	resolvedExecutionMode := normalizeExecutionMode(executionMode)
+
+	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		_, readErr := txn.ReadRow(ctx, "PaymentAttempts", spanner.Key{trimmedAttemptID}, []string{"AttemptId"})
+		if readErr != nil {
+			return fmt.Errorf("attempt %s not found: %w", trimmedAttemptID, readErr)
+		}
+
+		return txn.BufferWrite([]*spanner.Mutation{
+			spanner.Update("PaymentAttempts",
+				[]string{"AttemptId", "ExecutionAction", "ExecutionMode"},
+				[]interface{}{trimmedAttemptID, resolvedExecutionAction, resolvedExecutionMode},
+			),
+		})
+	})
+	if err != nil {
+		return err
+	}
+
+	if s.Cache != nil {
+		s.Cache.Invalidate(ctx, "attempt:"+trimmedAttemptID)
+	}
+
+	return nil
 }
 
 // BindProviderCheckout stores provider-created redirect metadata on the session
@@ -711,6 +765,7 @@ func (s *SessionService) GetSession(ctx context.Context, sessionID string) (*Pay
 func (s *SessionService) GetAttemptsBySession(ctx context.Context, sessionID string) ([]PaymentAttempt, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT AttemptId, SessionId, AttemptNo, Gateway,
+		             ExecutionAction, ExecutionMode,
 		             ProviderTransactionId, Status, FailureCode, FailureMessage,
 		             StartedAt, FinishedAt
 		      FROM PaymentAttempts
@@ -854,17 +909,21 @@ func scanSession(row *spanner.Row) (*PaymentSession, error) {
 
 func scanAttempt(row *spanner.Row) (*PaymentAttempt, error) {
 	var a PaymentAttempt
+	var executionAction, executionMode spanner.NullString
 	var providerTxnID, failureCode, failureMsg spanner.NullString
 	var finishedAt spanner.NullTime
 
 	if err := row.Columns(
 		&a.AttemptID, &a.SessionID, &a.AttemptNo, &a.Gateway,
+		&executionAction, &executionMode,
 		&providerTxnID, &a.Status, &failureCode, &failureMsg,
 		&a.StartedAt, &finishedAt,
 	); err != nil {
 		return nil, fmt.Errorf("failed to scan payment attempt: %w", err)
 	}
 
+	a.ExecutionAction = executionAction.StringVal
+	a.ExecutionMode = executionMode.StringVal
 	a.ProviderTransactionID = providerTxnID.StringVal
 	a.FailureCode = failureCode.StringVal
 	a.FailureMessage = failureMsg.StringVal
@@ -1074,6 +1133,22 @@ func normalizeCurrencyCode(code string) string {
 	normalized := strings.ToUpper(strings.TrimSpace(code))
 	if normalized == "" {
 		return "UZS"
+	}
+	return normalized
+}
+
+func normalizeExecutionAction(action string) string {
+	normalized := strings.ToUpper(strings.TrimSpace(action))
+	if normalized == "" {
+		return AttemptExecutionActionCheckoutInit
+	}
+	return normalized
+}
+
+func normalizeExecutionMode(mode string) string {
+	normalized := strings.ToUpper(strings.TrimSpace(mode))
+	if normalized == "" {
+		return AttemptExecutionModeAuto
 	}
 	return normalized
 }
