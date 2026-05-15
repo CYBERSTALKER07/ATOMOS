@@ -46,12 +46,16 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 - Checkout fee snapshot substrate: `pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,order/unified_checkout.go,order/settlement_target.go}`
 	- Schema now provisions additive `SupplierPayoutPolicies`, `InvoiceSettlementSlices`, and `MasterInvoices` fee summary fields (`FeePolicyVersion`, `FeeAmount`, `NetPayoutAmount`, `SettlementSliceCount`).
 	- Unified checkout now writes immutable per-supplier settlement slices (gross, fee policy version, fee basis points, fee amount, net payout, payout owner metadata) in the same `ReadWriteTransaction` as invoice and order writes.
+	- Downstream payment execution now resolves snapshots through `payment/settlement_snapshot.go`; `order/{unified_checkout.go,service.go}` compute Global Pay split recipients from persisted fee amounts via `ComputeSplitRecipientsWithFeeAmount` when snapshots are available.
+	- Downstream settlement execution now applies snapshot authority: `payment/refund.go` computes reversals from snapshot fee ratios/payout owners, `kafka/treasurer.go` credits payout-owner ledger accounts from snapshot metadata, and `internal/services/billing/meter_worker.go` now keeps billing milestones without mutating live `platform_fee_*` authority keys.
+	- Treasury read models now expose additive payout snapshot fields via `treasury/settlement.go` and `warehouse/treasury.go`, consumed in supplier/warehouse treasury web and native clients.
 	- Missing supplier policy rows default to `HQ_SUPPLIER`, and `WAREHOUSE_LOCAL` policy mode fails closed when participating warehouses do not resolve active credentials for the selected gateway.
 
 - Supplier payout-policy control plane and authority gate: `pegasus/apps/backend-go/{supplier/payout_policy.go,treasury/payout_policy_override.go,settings/platform_config.go,kafka/treasurer.go}`
 	- Supplier self-service endpoint now exposes `GET|PATCH /v1/supplier/payout-policy`, and internal support override now exposes `PATCH /v1/internal/treasury/supplier-payout-policy` with INTERNAL-only access guard.
 	- Both mutation paths persist audited before/after metadata into `AuditLog` and invalidate supplier profile cache keys after commit.
 	- Runtime key `fee_snapshot_authoritative_read` now gates treasurer snapshot-authoritative fee math; when disabled or snapshot reads fail, treasurer logic falls back to legacy `platform_fee_basis_points`.
+	- Supplier payment-config UI now includes payout-mode controls and writes policy changes through the same supplier endpoint contract.
 
 - Warehouse import anomaly queue analytics parity: `pegasus/apps/backend-go/warehouse/analytics.go` + `pegasus/apps/warehouse-portal/app/analytics/page.tsx` + `pegasus/apps/{warehouse-app-android,warehouse-app-ios}`
 	- `GET /v1/warehouse/ops/analytics` now projects additive `import_anomaly_queue` by scanning warehouse-scoped staged import validation errors from `SupplierImportStagedRows` over the selected period.

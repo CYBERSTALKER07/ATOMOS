@@ -70,21 +70,34 @@
     {
       "name": "Checkout fee snapshot substrate",
       "path": "Unified checkout transactional fee snapshots",
-      "owner": "pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,order/unified_checkout.go,order/settlement_target.go}",
+      "owner": "pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,order/{unified_checkout.go,service.go,settlement_target.go},payment/{settlement_snapshot.go,global_pay_direct.go,refund.go},kafka/treasurer.go,internal/services/billing/meter_worker.go,treasury/settlement.go,warehouse/treasury.go}",
       "methods": [
         "Spanner schema now provisions SupplierPayoutPolicies and InvoiceSettlementSlices with additive MasterInvoices fee summary fields",
         "Unified checkout writes immutable settlement slices (gross, fee policy version, fee basis points, fee amount, net payout, payout owner metadata) in the same ReadWriteTransaction as invoice and order writes",
+        "Order payment entry points now resolve settlement snapshots and compute Global Pay split recipients from persisted fee amounts when available",
+        "Refund and treasurer ledger paths now apply snapshot fee ratios and payout-owner attribution with legacy fallback when snapshots are unavailable",
+        "Billing meter worker now tracks milestones without mutating live SystemConfig platform_fee authority keys",
+        "Supplier and warehouse treasury read models now return additive payout snapshot fields for web and native parity",
         "Missing supplier policy rows default to HQ_SUPPLIER payout mode",
         "WAREHOUSE_LOCAL policy mode fails closed when participating warehouses do not resolve active credentials for the selected gateway"
       ],
       "consumers": [
         "backend-go order/unified_checkout.go",
+        "backend-go order/service.go",
+        "backend-go payment/settlement_snapshot.go",
+        "backend-go payment/refund.go",
         "backend-go kafka/treasurer.go",
         "backend-go payment/global_pay_direct.go",
-        "backend-go treasury/service.go"
+        "backend-go internal/services/billing/meter_worker.go",
+        "backend-go treasury/settlement.go",
+        "backend-go warehouse/treasury.go",
+        "admin-portal supplier settlement and payment config pages",
+        "warehouse-portal treasury page",
+        "warehouse-app-android treasury model and screen",
+        "warehouse-app-ios treasury model and view"
       ],
       "notes": [
-        "This phase is additive write-path persistence; authoritative downstream read-path cutover is deferred to shadow-read and authority-switch phases.",
+        "Runtime downstream paths now consume settlement snapshots for split/refund/ledger math where available, while preserving fallback behavior when snapshots are absent.",
         "Settlement slices reuse existing settlement-locality seams and avoid introducing a second payout system."
       ]
     },
@@ -109,7 +122,8 @@
       "notes": [
         "Supplier and internal override mutation paths both invalidate supplier profile cache keys after commit.",
         "Internal override path is constrained to INTERNAL claims/internal-key-authenticated callers.",
-        "Fallback to legacy platform_fee_basis_points preserves payout continuity when snapshot authority is disabled or slice reads are unavailable."
+        "Fallback to legacy platform_fee_basis_points preserves payout continuity when snapshot authority is disabled or slice reads are unavailable.",
+        "Supplier payment configuration UI now surfaces payout-mode controls through this contract."
       ]
     },
     {
