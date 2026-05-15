@@ -492,6 +492,7 @@
         "PATCH accepts either status or state in the request body for legacy compatibility.",
         "Unified checkout emits ORDER_VALIDATION_FAILED, PAYMENT_CLEARED, and ORDER_FINALIZED to kafka.TopicMain through transactional outbox, replacing the stale topic.orders.v1 path.",
         "Unified checkout now resolves supplier-effective currency through countrycfg.Service and applies that currency to MasterInvoices, Orders, OrderLineItems, and checkout outbox payloads, with a temporary 422 guard when one checkout payload spans mixed supplier currencies.",
+        "Unified checkout, B2B checkout, and retailer card checkout now resolve supplier-effective gateway lists from region defaults plus supplier country override exceptions with vault-backed credential readiness filtering, so payment_gateway is treated as an optional client hint instead of the source of truth.",
         "MasterInvoices writes now persist additive SettlementTarget values (GLOBAL_SUPPLIER, LOCAL_WAREHOUSE, MIXED_WAREHOUSE) across unified/card/cash checkout flows.",
         "Unified checkout now mirrors effective stock decrements into SupplierInventoryV2 for warehouse-assigned plans while preserving SupplierInventory locks for backward-compatible contention control.",
         "payment/session.go now honors CreateSessionRequest.Currency and preserves the prior session currency during RetryPaymentSession gateway switches.",
@@ -864,7 +865,8 @@
       "notes": [
         "Route composition moved out of main.go into supplierroutes while preserving the existing supplier and vault handlers.",
         "Portal consumers currently span setup billing, profile, shift, and payment configuration as one supplier self-service contract.",
-        "Supplier gateway capability metadata now includes ADYEN manual-onboarding fields, while runtime gateway resolution is centralized in payment.NewProviderClient."
+        "Supplier gateway capability metadata now includes ADYEN manual-onboarding fields, while runtime gateway resolution is centralized in payment.NewProviderClient.",
+        "The supplier payment-config fallback now dedupes duplicate capability cards by gateway so backend capability payload drift does not render two GLOBAL_PAY setup cards in the portal."
       ]
     },
     {

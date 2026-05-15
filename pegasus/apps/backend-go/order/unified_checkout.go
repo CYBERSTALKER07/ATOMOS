@@ -10,6 +10,7 @@ package order
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -38,7 +39,7 @@ import (
 // UnifiedCheckoutRequest is the single payload from the native app's checkout.
 type UnifiedCheckoutRequest struct {
 	RetailerID     string               `json:"retailer_id"`
-	PaymentGateway string               `json:"payment_gateway"` // "CASH" | "GLOBAL_PAY" | "ADYEN"
+	PaymentGateway string               `json:"payment_gateway"` // optional client hint; backend resolves the effective gateway
 	Latitude       float64              `json:"latitude"`
 	Longitude      float64              `json:"longitude"`
 	Items          []cart.OrderLineItem `json:"items"`
@@ -117,16 +118,6 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		http.Error(w, `{"error":"items must not be empty"}`, http.StatusUnprocessableEntity)
 		return
 	}
-	if req.PaymentGateway == "" {
-		http.Error(w, `{"error":"payment_gateway is required"}`, http.StatusUnprocessableEntity)
-		return
-	}
-	normalizedGateway := normalizeCardGateway(req.PaymentGateway)
-	if normalizedGateway == "" {
-		http.Error(w, `{"error":"payment_gateway must be GLOBAL_PAY, ADYEN, or CASH"}`, http.StatusUnprocessableEntity)
-		return
-	}
-	req.PaymentGateway = normalizedGateway
 	for _, item := range req.Items {
 		if item.SkuId == "" || item.Quantity <= 0 {
 			http.Error(w, `{"error":"each item must have sku_id and positive quantity"}`, http.StatusUnprocessableEntity)
@@ -188,6 +179,23 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		sid := supplierBySku[item.SkuId].SupplierID
 		supplierGroups[sid] = append(supplierGroups[sid], item)
 	}
+
+	supplierIDs := make([]string, 0, len(supplierGroups))
+	for supplierID := range supplierGroups {
+		supplierIDs = append(supplierIDs, supplierID)
+	}
+	resolvedGateway, gatewayErr := s.resolveCheckoutGateway(ctx, supplierIDs, req.PaymentGateway)
+	if gatewayErr != nil {
+		var policyErr *ErrGatewayPolicy
+		if errors.As(gatewayErr, &policyErr) {
+			http.Error(w, fmt.Sprintf(`{"error":%s}`, mustJSON(policyErr.Error())), http.StatusUnprocessableEntity)
+			return
+		}
+		log.Printf("[UNIFIED_CHECKOUT] Gateway resolution failed: %v", gatewayErr)
+		apierrors.InternalError(w, r, "Failed to resolve payment gateway policy.")
+		return
+	}
+	req.PaymentGateway = resolvedGateway
 
 	// ── Step 3: Price each supplier group (with per-retailer overrides) ───
 	supplierTotals := make(map[string]int64, len(supplierGroups))

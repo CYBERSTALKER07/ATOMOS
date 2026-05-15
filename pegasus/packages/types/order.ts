@@ -29,7 +29,7 @@ export type OrderState =
   | 'DELIVERED_ON_CREDIT';
 
 // ─── Payment Gateways ───────────────────────────────────────────────────────
-export type PaymentGateway = 'GLOBAL_PAY' | 'CASH';
+export type PaymentGateway = 'GLOBAL_PAY' | 'ADYEN' | 'CASH';
 
 // ─── Payment Status ─────────────────────────────────────────────────────────
 // Maps 1:1 to the Orders.PaymentStatus column in Spanner.
@@ -116,6 +116,7 @@ export interface PaymentRequiredEvent {
   currency: string;
   payment_method: string;
   gateway: PaymentGateway;
+  available_card_gateways?: PaymentGateway[];
   message: string;
 }
 

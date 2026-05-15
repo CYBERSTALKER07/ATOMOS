@@ -109,8 +109,8 @@ func handleRetailerCardCheckout(d Deps) http.HandlerFunc {
 			OrderID string `json:"order_id"`
 			Gateway string `json:"gateway"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" || req.Gateway == "" {
-			http.Error(w, "order_id and gateway required", http.StatusBadRequest)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" {
+			http.Error(w, "order_id required", http.StatusBadRequest)
 			return
 		}
 

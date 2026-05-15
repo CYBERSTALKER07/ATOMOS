@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -76,6 +77,14 @@ type ErrFreezeLock struct {
 
 func (e *ErrFreezeLock) Error() string {
 	return fmt.Sprintf("order %s is locked for physical dispatch until %s", e.OrderID, e.LockedUntil.Format(time.RFC3339))
+}
+
+// ErrGatewayPolicy is returned when a checkout gateway request violates the
+// supplier-effective payment policy or there is no policy-compatible option.
+type ErrGatewayPolicy struct{ Message string }
+
+func (e *ErrGatewayPolicy) Error() string {
+	return e.Message
 }
 
 type Location struct {
@@ -227,6 +236,222 @@ func (s *OrderService) resolveSupplierCurrency(ctx context.Context, supplierID s
 	}
 
 	return currencyCode
+}
+
+func asGatewayPolicyError(err error) (*ErrGatewayPolicy, bool) {
+	var policyErr *ErrGatewayPolicy
+	if errors.As(err, &policyErr) {
+		return policyErr, true
+	}
+	return nil, false
+}
+
+func normalizeCardGateways(gateways []string) []string {
+	if len(gateways) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(gateways))
+	normalized := make([]string, 0, len(gateways))
+	for _, gateway := range gateways {
+		normalizedGateway := normalizeCardGateway(gateway)
+		if normalizedGateway == "" {
+			continue
+		}
+		if _, ok := seen[normalizedGateway]; ok {
+			continue
+		}
+		seen[normalizedGateway] = struct{}{}
+		normalized = append(normalized, normalizedGateway)
+	}
+
+	return normalized
+}
+
+func gatewayAllowed(gateways []string, gateway string) bool {
+	for _, allowedGateway := range gateways {
+		if allowedGateway == gateway {
+			return true
+		}
+	}
+	return false
+}
+
+func intersectCardGateways(base, candidate []string) []string {
+	if len(base) == 0 || len(candidate) == 0 {
+		return nil
+	}
+
+	candidateSet := make(map[string]struct{}, len(candidate))
+	for _, gateway := range candidate {
+		candidateSet[gateway] = struct{}{}
+	}
+
+	intersection := make([]string, 0, len(base))
+	for _, gateway := range base {
+		if _, ok := candidateSet[gateway]; ok {
+			intersection = append(intersection, gateway)
+		}
+	}
+
+	return intersection
+}
+
+func (s *OrderService) resolveSupplierPolicyPaymentGateways(ctx context.Context, supplierID string) ([]string, error) {
+	trimmedSupplierID := strings.TrimSpace(supplierID)
+	if trimmedSupplierID == "" {
+		return nil, &ErrGatewayPolicy{Message: "supplier_id is required for payment gateway resolution"}
+	}
+
+	if s == nil || s.CountryConfig == nil {
+		return []string{"GLOBAL_PAY", "CASH"}, nil
+	}
+
+	countryCode := s.CountryConfig.ResolveSupplierCountryCode(ctx, trimmedSupplierID)
+	baseConfig := s.CountryConfig.GetConfig(ctx, countryCode)
+	policyGateways := []string{"GLOBAL_PAY", "CASH"}
+	if baseConfig != nil && len(baseConfig.PaymentGateways) > 0 {
+		policyGateways = baseConfig.PaymentGateways
+	}
+
+	region, err := s.CountryConfig.ResolveSupplierRegion(ctx, trimmedSupplierID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve supplier %s region: %w", trimmedSupplierID, err)
+	}
+	if region != nil {
+		regionalConfig, err := s.CountryConfig.GetRegionalConfig(ctx, region.RegionID)
+		if err != nil {
+			return nil, fmt.Errorf("read regional config %s: %w", region.RegionID, err)
+		}
+		if regionalConfig != nil && len(regionalConfig.PaymentGateways) > 0 {
+			policyGateways = regionalConfig.PaymentGateways
+		}
+	}
+
+	override, err := s.CountryConfig.GetSupplierOverride(ctx, trimmedSupplierID, countryCode)
+	if err != nil {
+		return nil, fmt.Errorf("read supplier override %s/%s: %w", trimmedSupplierID, countryCode, err)
+	}
+	if override != nil && len(override.PaymentGateways) > 0 {
+		policyGateways = override.PaymentGateways
+	}
+
+	normalized := normalizeCardGateways(policyGateways)
+	if len(normalized) == 0 {
+		return nil, &ErrGatewayPolicy{Message: fmt.Sprintf("supplier %s has no allowed payment gateways", trimmedSupplierID)}
+	}
+
+	return normalized, nil
+}
+
+func (s *OrderService) filterConfiguredPaymentGateways(ctx context.Context, supplierID string, gateways []string) ([]string, error) {
+	normalized := normalizeCardGateways(gateways)
+	if len(normalized) == 0 {
+		return nil, nil
+	}
+
+	trimmedSupplierID := strings.TrimSpace(supplierID)
+	if s == nil || s.Vault == nil || trimmedSupplierID == "" {
+		return normalized, nil
+	}
+
+	activeGatewayNames, err := s.Vault.ListActiveGatewayNames(ctx, trimmedSupplierID)
+	if err != nil {
+		return nil, fmt.Errorf("list active gateway names for supplier %s: %w", trimmedSupplierID, err)
+	}
+
+	activeGatewaySet := make(map[string]struct{}, len(activeGatewayNames))
+	for _, gateway := range activeGatewayNames {
+		normalizedGateway := normalizeCardGateway(gateway)
+		if normalizedGateway == "" {
+			continue
+		}
+		activeGatewaySet[normalizedGateway] = struct{}{}
+	}
+
+	filtered := make([]string, 0, len(normalized))
+	for _, gateway := range normalized {
+		if gateway == "CASH" {
+			filtered = append(filtered, gateway)
+			continue
+		}
+		if _, ok := activeGatewaySet[gateway]; ok {
+			filtered = append(filtered, gateway)
+		}
+	}
+
+	if len(filtered) == 0 {
+		return nil, &ErrGatewayPolicy{Message: fmt.Sprintf("supplier %s has no credential-ready payment gateways", trimmedSupplierID)}
+	}
+
+	return filtered, nil
+}
+
+func (s *OrderService) resolveSupplierCheckoutGateways(ctx context.Context, supplierID string) ([]string, error) {
+	policyGateways, err := s.resolveSupplierPolicyPaymentGateways(ctx, supplierID)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.filterConfiguredPaymentGateways(ctx, supplierID, policyGateways)
+}
+
+func (s *OrderService) resolveCheckoutGateway(ctx context.Context, supplierIDs []string, requestedGateway string) (string, error) {
+	uniqueSupplierIDs := make([]string, 0, len(supplierIDs))
+	seenSupplierIDs := make(map[string]struct{}, len(supplierIDs))
+	for _, supplierID := range supplierIDs {
+		trimmedSupplierID := strings.TrimSpace(supplierID)
+		if trimmedSupplierID == "" {
+			continue
+		}
+		if _, ok := seenSupplierIDs[trimmedSupplierID]; ok {
+			continue
+		}
+		seenSupplierIDs[trimmedSupplierID] = struct{}{}
+		uniqueSupplierIDs = append(uniqueSupplierIDs, trimmedSupplierID)
+	}
+	if len(uniqueSupplierIDs) == 0 {
+		return "", &ErrGatewayPolicy{Message: "supplier resolution required for payment gateway selection"}
+	}
+	sort.Strings(uniqueSupplierIDs)
+
+	var normalizedRequested string
+	if strings.TrimSpace(requestedGateway) != "" {
+		normalizedRequested = normalizeCardGateway(requestedGateway)
+		if normalizedRequested == "" {
+			return "", &ErrGatewayPolicy{Message: "payment_gateway must be GLOBAL_PAY, ADYEN, or CASH"}
+		}
+	}
+
+	allowedGateways := make([]string, 0)
+	for _, supplierID := range uniqueSupplierIDs {
+		supplierGateways, err := s.resolveSupplierCheckoutGateways(ctx, supplierID)
+		if err != nil {
+			return "", err
+		}
+		if len(supplierGateways) == 0 {
+			return "", &ErrGatewayPolicy{Message: fmt.Sprintf("supplier %s has no usable payment gateways", supplierID)}
+		}
+
+		if len(allowedGateways) == 0 {
+			allowedGateways = append(allowedGateways, supplierGateways...)
+			continue
+		}
+
+		allowedGateways = intersectCardGateways(allowedGateways, supplierGateways)
+		if len(allowedGateways) == 0 {
+			return "", &ErrGatewayPolicy{Message: "MIXED_SUPPLIER_PAYMENT_GATEWAYS_NOT_SUPPORTED"}
+		}
+	}
+
+	if normalizedRequested != "" {
+		if !gatewayAllowed(allowedGateways, normalizedRequested) {
+			return "", &ErrGatewayPolicy{Message: fmt.Sprintf("payment_gateway %s is not allowed by supplier policy", normalizedRequested)}
+		}
+		return normalizedRequested, nil
+	}
+
+	return allowedGateways[0], nil
 }
 
 // getDistance calculates Haversine distance between two coordinates in meters
@@ -2716,20 +2941,12 @@ func (s *OrderService) ConfirmOffload(ctx context.Context, orderId string) (*Con
 }
 
 func (s *OrderService) resolveAvailableCardGateways(ctx context.Context, supplierId, fallbackGateway string) []string {
-	if s.Vault != nil && strings.TrimSpace(supplierId) != "" {
-		gateways, err := s.Vault.ListActiveGatewayNames(ctx, supplierId)
+	if strings.TrimSpace(supplierId) != "" {
+		gateways, err := s.resolveSupplierCheckoutGateways(ctx, supplierId)
 		if err != nil {
 			slog.Error("order.confirm_offload_list_gateways_failed", "supplier_id", supplierId, "err", err)
 		} else if len(gateways) > 0 {
-			filtered := make([]string, 0, len(gateways))
-			for _, gateway := range gateways {
-				if normalized := normalizeCardGateway(gateway); normalized != "" {
-					filtered = append(filtered, normalized)
-				}
-			}
-			if len(filtered) > 0 {
-				return filtered
-			}
+			return gateways
 		}
 	}
 	if normalized := normalizeCardGateway(fallbackGateway); normalized != "" {
@@ -2949,19 +3166,36 @@ type CardCheckoutResponse struct {
 // CardCheckout transitions AWAITING_PAYMENT → keeps AWAITING_PAYMENT (no state change — webhook settles).
 // Creates a MasterInvoice for the gateway and returns a hosted checkout URL.
 func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callbackBaseURL string) (*CardCheckoutResponse, error) {
-	rawGateway := strings.ToUpper(strings.TrimSpace(gateway))
-	gateway = normalizeCardGateway(rawGateway)
-	if gateway == "" {
-		return nil, fmt.Errorf("unsupported card gateway: %s (supported: GLOBAL_PAY, ADYEN, CASH)", rawGateway)
+	row, err := s.Client.Single().ReadRow(ctx, "Orders", spanner.Key{orderId}, []string{"SupplierId"})
+	if err != nil {
+		return nil, fmt.Errorf("order %s not found: %w", orderId, err)
 	}
+
+	var supplierIdNull spanner.NullString
+	if err := row.Columns(&supplierIdNull); err != nil {
+		return nil, fmt.Errorf("read order %s supplier scope: %w", orderId, err)
+	}
+
+	supplierId := ""
+	if supplierIdNull.Valid {
+		supplierId = supplierIdNull.StringVal
+	}
+
+	resolvedGateway, err := s.resolveCheckoutGateway(ctx, []string{supplierId}, gateway)
+	if err != nil {
+		if policyErr, ok := asGatewayPolicyError(err); ok {
+			return nil, policyErr
+		}
+		return nil, fmt.Errorf("resolve checkout gateway for order %s: %w", orderId, err)
+	}
+	gateway = resolvedGateway
 
 	var resp CardCheckoutResponse
 	var retailerId string
-	var supplierId string
 	var warehouseID string
 	orderCurrency := "UZS"
 
-	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	_, err = s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderId},
 			[]string{"State", "RetailerId", "SupplierId", "WarehouseId", "Amount", "Currency", "PaymentGateway", "Version"})
 		if err != nil {

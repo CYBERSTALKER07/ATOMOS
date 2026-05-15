@@ -66,17 +66,6 @@ const DEFAULT_CAPABILITIES: ProviderCapability[] = [
   },
   {
     gateway: 'GLOBAL_PAY',
-    display_name: 'GlobalPay',
-    onboarding_mode: 'MANUAL_ONLY',
-    required_fields: ['merchant_id', 'secret_key'],
-    manual_fields: [
-      { name: 'merchant_id', label: 'Merchant ID', placeholder: 'e.g. 6241a1234567890abc...' },
-      { name: 'secret_key', label: 'Secret Key', placeholder: 'Enter your GlobalPay secret key', input_type: 'password' },
-    ],
-    manual_hint: 'Enter your GlobalPay merchant credentials from the GlobalPay Business cabinet.',
-  },
-  {
-    gateway: 'GLOBAL_PAY',
     display_name: 'Global Pay',
     onboarding_mode: 'MANUAL_ONLY',
     required_fields: ['merchant_id', 'service_id', 'secret_key'],
@@ -100,6 +89,14 @@ const DEFAULT_CAPABILITIES: ProviderCapability[] = [
     manual_hint: 'Enter Adyen merchant account and API key. Configure webhook HMAC via ADYEN_HMAC_KEY in backend runtime.',
   },
 ];
+
+function dedupeCapabilities(caps: ProviderCapability[]): ProviderCapability[] {
+  const byGateway = new Map<string, ProviderCapability>();
+  for (const cap of caps) {
+    byGateway.set(cap.gateway, cap);
+  }
+  return Array.from(byGateway.values());
+}
 
 function getManualFields(cap: ProviderCapability): ManualField[] {
   return cap.manual_fields && cap.manual_fields.length > 0
@@ -128,7 +125,7 @@ export default function GlobalPayntConfigPage() {
   const [capabilities, setCapabilities] = useState<ProviderCapability[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const resolvedCaps: ProviderCapability[] = capabilities.length > 0 ? capabilities : DEFAULT_CAPABILITIES;
+  const resolvedCaps: ProviderCapability[] = dedupeCapabilities(capabilities.length > 0 ? capabilities : DEFAULT_CAPABILITIES);
   const capabilityByGateway = resolvedCaps.reduce<Record<string, ProviderCapability>>((acc, cap) => {
     acc[cap.gateway] = cap;
     return acc;
@@ -322,7 +319,7 @@ export default function GlobalPayntConfigPage() {
           Payment Gateways
         </h1>
         <p className="md-typescale-body-medium mt-1" style={{ color: 'var(--muted)' }}>
-          Configure Cash, GlobalPay, Global Pay, and Adyen credentials for supplier checkout processing.
+          Configure Cash, Global Pay, and Adyen credentials for supplier checkout processing.
         </p>
       </div>
 

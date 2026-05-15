@@ -4,6 +4,7 @@ package order
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 
@@ -13,7 +14,7 @@ import (
 // B2BCheckoutRequest is the payload from the Retailer App's [ AUTHORIZE PROCUREMENT ] button.
 type B2BCheckoutRequest struct {
 	RetailerID     string               `json:"retailer_id"`
-	PaymentGateway string               `json:"payment_gateway"` // "CASH" | "GLOBAL_PAY"
+	PaymentGateway string               `json:"payment_gateway"` // optional client hint; backend resolves the effective gateway
 	Latitude       float64              `json:"latitude"`
 	Longitude      float64              `json:"longitude"`
 	Items          []cart.OrderLineItem `json:"items"`
@@ -50,19 +51,56 @@ func (s *OrderService) HandleB2BCheckout(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	for _, item := range req.Items {
-		if item.Quantity <= 0 || item.UnitPrice <= 0 {
-			http.Error(w, "each item must have positive quantity and unit_price", http.StatusUnprocessableEntity)
+		if item.SkuId == "" || item.Quantity <= 0 || item.UnitPrice <= 0 {
+			http.Error(w, "each item must have sku_id, positive quantity, and positive unit_price", http.StatusUnprocessableEntity)
 			return
 		}
 	}
-	normalizedGateway := normalizeCardGateway(req.PaymentGateway)
-	if normalizedGateway == "" {
-		http.Error(w, "payment_gateway must be GLOBAL_PAY or CASH", http.StatusUnprocessableEntity)
-		return
-	}
-	req.PaymentGateway = normalizedGateway
 
 	ctx := r.Context()
+	skuIDs := make([]string, 0, len(req.Items))
+	for _, item := range req.Items {
+		skuIDs = append(skuIDs, item.SkuId)
+	}
+
+	supplierBySku, err := s.resolveSuppliers(ctx, skuIDs)
+	if err != nil {
+		log.Printf("[ERROR] resolveSuppliers (B2B): %v", err)
+		http.Error(w, "Failed to resolve product suppliers", http.StatusInternalServerError)
+		return
+	}
+
+	supplierIDs := make([]string, 0, len(req.Items))
+	seenSuppliers := make(map[string]struct{}, len(req.Items))
+	for _, item := range req.Items {
+		supplierMeta, ok := supplierBySku[item.SkuId]
+		if !ok {
+			http.Error(w, "all items must have supplier assignment", http.StatusUnprocessableEntity)
+			return
+		}
+		if _, ok := seenSuppliers[supplierMeta.SupplierID]; ok {
+			continue
+		}
+		seenSuppliers[supplierMeta.SupplierID] = struct{}{}
+		supplierIDs = append(supplierIDs, supplierMeta.SupplierID)
+	}
+	if len(supplierIDs) > 1 {
+		http.Error(w, "MIXED_SUPPLIER_CHECKOUT_NOT_SUPPORTED", http.StatusUnprocessableEntity)
+		return
+	}
+
+	resolvedGateway, err := s.resolveCheckoutGateway(ctx, supplierIDs, req.PaymentGateway)
+	if err != nil {
+		var policyErr *ErrGatewayPolicy
+		if errors.As(err, &policyErr) {
+			http.Error(w, policyErr.Error(), http.StatusUnprocessableEntity)
+			return
+		}
+		log.Printf("[ERROR] resolveCheckoutGateway (B2B): %v", err)
+		http.Error(w, "Failed to resolve payment gateway policy", http.StatusInternalServerError)
+		return
+	}
+	req.PaymentGateway = resolvedGateway
 
 	// ── Step 1: Price the cart ─────────────────────────────────────────────
 	total, err := cart.CalculateB2BTotal(ctx, s.Client, req.Items)
