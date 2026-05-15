@@ -306,12 +306,14 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	}
 
 	plans := make([]supplierOrderPlan, 0, len(supplierGroups))
+	planSupplierIDs := make([]string, 0, len(supplierGroups))
 	for sid, items := range supplierGroups {
 		var whID, whName string
 		if m := warehouseBySupplier[sid]; m != nil {
 			whID = m.WarehouseId
 			whName = m.Name
 		}
+		planSupplierIDs = append(planSupplierIDs, sid)
 		plans = append(plans, supplierOrderPlan{
 			OrderID:       hotspot.NewOrderID(),
 			SupplierID:    sid,
@@ -327,6 +329,11 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	warehouseIDs := make([]string, 0, len(plans))
 	for _, plan := range plans {
 		warehouseIDs = append(warehouseIDs, plan.WarehouseID)
+	}
+	regionalFeeDefaultsBySupplier, regionalFeeDefaultsErr := s.resolveRegionalDegressiveFeeDefaults(ctx, planSupplierIDs)
+	if regionalFeeDefaultsErr != nil {
+		log.Printf("[UNIFIED_CHECKOUT] regional fee defaults unavailable; falling back to legacy fee policy: %v", regionalFeeDefaultsErr)
+		regionalFeeDefaultsBySupplier = nil
 	}
 	invoiceSettlementTarget := settlementTargetForWarehouseIDs(warehouseIDs)
 
@@ -617,6 +624,11 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			policy := supplierPolicies[plan.SupplierID]
 			payoutMode := normalizePayoutMode(policy.PayoutMode)
 			feePolicyVersion := normalizeFeePolicyVersion(policy.FeePolicyVersion)
+			var regionalFeeDefaults *regionalDegressiveFeeDefaults
+			if defaults, ok := regionalFeeDefaultsBySupplier[plan.SupplierID]; ok {
+				regionalFeeDefaults = &defaults
+			}
+			feeComputation := computeCheckoutFee(planEffectiveTotal, plan.Currency, feeBasisPoints, feePolicyVersion, regionalFeeDefaults)
 			sliceSettlementTarget := settlementTargetForWarehouseID(plan.WarehouseID)
 			payoutOwnerType := PayoutOwnerTypeSupplier
 			payoutOwnerID := plan.SupplierID
@@ -634,21 +646,12 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 				return fmt.Errorf("missing payout owner id for supplier %s", plan.SupplierID)
 			}
 
-			feeAmount := (planEffectiveTotal * feeBasisPoints) / 10000
-			if feeAmount < 0 {
-				feeAmount = 0
-			}
-			netPayoutAmount := planEffectiveTotal - feeAmount
-			if netPayoutAmount < 0 {
-				netPayoutAmount = 0
-			}
-
-			invoiceFeeAmount += feeAmount
-			invoiceNetPayoutAmount += netPayoutAmount
+			invoiceFeeAmount += feeComputation.FeeAmount
+			invoiceNetPayoutAmount += feeComputation.NetPayoutAmount
 			settlementSliceCount++
 			if settlementSliceCount == 1 {
-				invoiceFeePolicyVersion = feePolicyVersion
-			} else if invoiceFeePolicyVersion != feePolicyVersion {
+				invoiceFeePolicyVersion = feeComputation.PolicyVersion
+			} else if invoiceFeePolicyVersion != feeComputation.PolicyVersion {
 				invoiceFeePolicyVersion = FeePolicyVersionMixed
 			}
 
@@ -664,8 +667,8 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 				[]interface{}{
 					invoiceID, sliceID, plan.SupplierID, spanner.NullString{StringVal: plan.WarehouseID, Valid: strings.TrimSpace(plan.WarehouseID) != ""},
 					sliceSettlementTarget, payoutOwnerType, payoutOwnerID,
-					planEffectiveTotal, plan.Currency, feePolicyVersion, FeeTierLegacyFlat,
-					feeBasisPoints, false, feeAmount, netPayoutAmount,
+					planEffectiveTotal, plan.Currency, feeComputation.PolicyVersion, feeComputation.SelectedTierKey,
+					feeComputation.BasisPoints, feeComputation.CapApplied, feeComputation.FeeAmount, feeComputation.NetPayoutAmount,
 					spanner.CommitTimestamp, spanner.CommitTimestamp,
 				},
 			))

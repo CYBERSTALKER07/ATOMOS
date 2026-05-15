@@ -222,6 +222,94 @@ func TestErrVersionConflict_Error(t *testing.T) {
 	}
 }
 
+func TestComputeCheckoutFee_LegacyFlatPolicy(t *testing.T) {
+	computation := computeCheckoutFee(200_000, "UZS", 500, FeePolicyVersionLegacyCheckout, nil)
+
+	if computation.PolicyVersion != FeePolicyVersionLegacyCheckout {
+		t.Fatalf("PolicyVersion = %q, want %q", computation.PolicyVersion, FeePolicyVersionLegacyCheckout)
+	}
+	if computation.SelectedTierKey != FeeTierLegacyFlat {
+		t.Fatalf("SelectedTierKey = %q, want %q", computation.SelectedTierKey, FeeTierLegacyFlat)
+	}
+	if computation.BasisPoints != 500 {
+		t.Fatalf("BasisPoints = %d, want 500", computation.BasisPoints)
+	}
+	if computation.CapApplied {
+		t.Fatal("CapApplied = true, want false")
+	}
+	if computation.FeeAmount != 10_000 {
+		t.Fatalf("FeeAmount = %d, want 10000", computation.FeeAmount)
+	}
+	if computation.NetPayoutAmount != 190_000 {
+		t.Fatalf("NetPayoutAmount = %d, want 190000", computation.NetPayoutAmount)
+	}
+}
+
+func TestComputeCheckoutFee_RegionalDegressiveTierSelection(t *testing.T) {
+	defaults := &regionalDegressiveFeeDefaults{
+		CurrencyCode:          "UZS",
+		GrowthThresholdAmount: 100_000,
+		ScaleThresholdAmount:  300_000,
+		CapAmount:             0,
+	}
+
+	growthComputation := computeCheckoutFee(200_000, "UZS", 500, FeePolicyVersionRegionalDegressiveV1, defaults)
+	if growthComputation.PolicyVersion != FeePolicyVersionRegionalDegressiveV1 {
+		t.Fatalf("growth PolicyVersion = %q, want %q", growthComputation.PolicyVersion, FeePolicyVersionRegionalDegressiveV1)
+	}
+	if growthComputation.SelectedTierKey != regionalDegressiveFeeTierGrowth {
+		t.Fatalf("growth SelectedTierKey = %q, want %q", growthComputation.SelectedTierKey, regionalDegressiveFeeTierGrowth)
+	}
+	if growthComputation.BasisPoints != 450 {
+		t.Fatalf("growth BasisPoints = %d, want 450", growthComputation.BasisPoints)
+	}
+	if growthComputation.FeeAmount != 9_000 {
+		t.Fatalf("growth FeeAmount = %d, want 9000", growthComputation.FeeAmount)
+	}
+
+	scaleComputation := computeCheckoutFee(500_000, "UZS", 500, FeePolicyVersionRegionalDegressiveV1, defaults)
+	if scaleComputation.SelectedTierKey != regionalDegressiveFeeTierScale {
+		t.Fatalf("scale SelectedTierKey = %q, want %q", scaleComputation.SelectedTierKey, regionalDegressiveFeeTierScale)
+	}
+	if scaleComputation.BasisPoints != 400 {
+		t.Fatalf("scale BasisPoints = %d, want 400", scaleComputation.BasisPoints)
+	}
+	if scaleComputation.FeeAmount != 20_000 {
+		t.Fatalf("scale FeeAmount = %d, want 20000", scaleComputation.FeeAmount)
+	}
+}
+
+func TestComputeCheckoutFee_RegionalDegressiveCapAndCurrencyFallback(t *testing.T) {
+	defaults := &regionalDegressiveFeeDefaults{
+		CurrencyCode:          "UZS",
+		GrowthThresholdAmount: 100_000,
+		ScaleThresholdAmount:  300_000,
+		CapAmount:             12_000,
+	}
+
+	capComputation := computeCheckoutFee(500_000, "UZS", 500, FeePolicyVersionRegionalDegressiveV1, defaults)
+	if !capComputation.CapApplied {
+		t.Fatal("CapApplied = false, want true")
+	}
+	if capComputation.FeeAmount != 12_000 {
+		t.Fatalf("FeeAmount = %d, want 12000", capComputation.FeeAmount)
+	}
+	if capComputation.NetPayoutAmount != 488_000 {
+		t.Fatalf("NetPayoutAmount = %d, want 488000", capComputation.NetPayoutAmount)
+	}
+
+	fallbackComputation := computeCheckoutFee(500_000, "USD", 500, FeePolicyVersionRegionalDegressiveV1, defaults)
+	if fallbackComputation.PolicyVersion != FeePolicyVersionLegacyCheckout {
+		t.Fatalf("fallback PolicyVersion = %q, want %q", fallbackComputation.PolicyVersion, FeePolicyVersionLegacyCheckout)
+	}
+	if fallbackComputation.SelectedTierKey != FeeTierLegacyFlat {
+		t.Fatalf("fallback SelectedTierKey = %q, want %q", fallbackComputation.SelectedTierKey, FeeTierLegacyFlat)
+	}
+	if fallbackComputation.FeeAmount != 25_000 {
+		t.Fatalf("fallback FeeAmount = %d, want 25000", fallbackComputation.FeeAmount)
+	}
+}
+
 func TestErrFreezeLock_Error(t *testing.T) {
 	ts := time.Date(2026, 4, 12, 14, 0, 0, 0, time.UTC)
 	e := &ErrFreezeLock{OrderID: "ORD-3", LockedUntil: ts}

@@ -1429,6 +1429,9 @@ CREATE TABLE RegionalConfigs (
     ShopClosedEscalationMinutes INT64        NOT NULL DEFAULT (3),
     OfflineModeDurationMinutes  INT64        NOT NULL DEFAULT (30),
     CashCustodyAlertHours       INT64        NOT NULL DEFAULT (4),
+    DegressiveFeeGrowthThresholdAmount INT64,
+    DegressiveFeeScaleThresholdAmount  INT64,
+    DegressiveFeeCapAmount             INT64,
     CreatedAt                   TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
     UpdatedAt                   TIMESTAMP    OPTIONS (allow_commit_timestamp=true)
 ) PRIMARY KEY (RegionId);

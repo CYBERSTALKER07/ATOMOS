@@ -28,18 +28,21 @@ type Region struct {
 
 // RegionalConfig holds region-scoped operational overrides.
 type RegionalConfig struct {
-	RegionID                    string   `json:"region_id"`
-	PaymentGateways             []string `json:"payment_gateways"`
-	NotificationFallbackOrder   []string `json:"notification_fallback_order"`
-	SMSProvider                 string   `json:"sms_provider,omitempty"`
-	MapsProvider                string   `json:"maps_provider,omitempty"`
-	LLMProvider                 string   `json:"llm_provider,omitempty"`
-	DefaultVUConversion         float64  `json:"default_vu_conversion"`
-	BreachRadiusMeters          float64  `json:"breach_radius_meters"`
-	ShopClosedGraceMinutes      int64    `json:"shop_closed_grace_minutes"`
-	ShopClosedEscalationMinutes int64    `json:"shop_closed_escalation_minutes"`
-	OfflineModeDurationMinutes  int64    `json:"offline_mode_duration_minutes"`
-	CashCustodyAlertHours       int64    `json:"cash_custody_alert_hours"`
+	RegionID                           string   `json:"region_id"`
+	PaymentGateways                    []string `json:"payment_gateways"`
+	NotificationFallbackOrder          []string `json:"notification_fallback_order"`
+	SMSProvider                        string   `json:"sms_provider,omitempty"`
+	MapsProvider                       string   `json:"maps_provider,omitempty"`
+	LLMProvider                        string   `json:"llm_provider,omitempty"`
+	DefaultVUConversion                float64  `json:"default_vu_conversion"`
+	BreachRadiusMeters                 float64  `json:"breach_radius_meters"`
+	ShopClosedGraceMinutes             int64    `json:"shop_closed_grace_minutes"`
+	ShopClosedEscalationMinutes        int64    `json:"shop_closed_escalation_minutes"`
+	OfflineModeDurationMinutes         int64    `json:"offline_mode_duration_minutes"`
+	CashCustodyAlertHours              int64    `json:"cash_custody_alert_hours"`
+	DegressiveFeeGrowthThresholdAmount int64    `json:"degressive_fee_growth_threshold_amount"`
+	DegressiveFeeScaleThresholdAmount  int64    `json:"degressive_fee_scale_threshold_amount"`
+	DegressiveFeeCapAmount             int64    `json:"degressive_fee_cap_amount"`
 }
 
 // GetRegionByID fetches region metadata by stable region ID.
@@ -153,11 +156,33 @@ func (s *Service) GetRegionalConfig(ctx context.Context, regionID string) (*Regi
 		"RegionId", "PaymentGateways", "NotificationFallbackOrder", "SMSProvider", "MapsProvider", "LLMProvider",
 		"DefaultVUConversion", "BreachRadiusMeters", "ShopClosedGraceMinutes", "ShopClosedEscalationMinutes",
 		"OfflineModeDurationMinutes", "CashCustodyAlertHours",
+		"DegressiveFeeGrowthThresholdAmount", "DegressiveFeeScaleThresholdAmount", "DegressiveFeeCapAmount",
+	})
+	if err != nil {
+		lowerErr := strings.ToLower(err.Error())
+		if strings.Contains(lowerErr, "degressivefee") && strings.Contains(lowerErr, "column") {
+			return s.getRegionalConfigLegacy(ctx, regionID)
+		}
+		return nil, nil
+	}
+
+	return parseRegionalConfigRow(row, regionID, true)
+}
+
+func (s *Service) getRegionalConfigLegacy(ctx context.Context, regionID string) (*RegionalConfig, error) {
+	row, err := s.Spanner.Single().ReadRow(ctx, "RegionalConfigs", spanner.Key{regionID}, []string{
+		"RegionId", "PaymentGateways", "NotificationFallbackOrder", "SMSProvider", "MapsProvider", "LLMProvider",
+		"DefaultVUConversion", "BreachRadiusMeters", "ShopClosedGraceMinutes", "ShopClosedEscalationMinutes",
+		"OfflineModeDurationMinutes", "CashCustodyAlertHours",
 	})
 	if err != nil {
 		return nil, nil
 	}
 
+	return parseRegionalConfigRow(row, regionID, false)
+}
+
+func parseRegionalConfigRow(row *spanner.Row, regionID string, includeDegressiveFeeFields bool) (*RegionalConfig, error) {
 	cfg := &RegionalConfig{}
 	var paymentGatewaysJSON spanner.NullString
 	var notificationJSON spanner.NullString
@@ -165,21 +190,55 @@ func (s *Service) GetRegionalConfig(ctx context.Context, regionID string) (*Regi
 	var mapsProvider spanner.NullString
 	var llmProvider spanner.NullString
 
-	if err := row.Columns(
-		&cfg.RegionID,
-		&paymentGatewaysJSON,
-		&notificationJSON,
-		&smsProvider,
-		&mapsProvider,
-		&llmProvider,
-		&cfg.DefaultVUConversion,
-		&cfg.BreachRadiusMeters,
-		&cfg.ShopClosedGraceMinutes,
-		&cfg.ShopClosedEscalationMinutes,
-		&cfg.OfflineModeDurationMinutes,
-		&cfg.CashCustodyAlertHours,
-	); err != nil {
-		return nil, fmt.Errorf("parse regional config %s: %w", regionID, err)
+	if includeDegressiveFeeFields {
+		var growthThreshold spanner.NullInt64
+		var scaleThreshold spanner.NullInt64
+		var capAmount spanner.NullInt64
+		if err := row.Columns(
+			&cfg.RegionID,
+			&paymentGatewaysJSON,
+			&notificationJSON,
+			&smsProvider,
+			&mapsProvider,
+			&llmProvider,
+			&cfg.DefaultVUConversion,
+			&cfg.BreachRadiusMeters,
+			&cfg.ShopClosedGraceMinutes,
+			&cfg.ShopClosedEscalationMinutes,
+			&cfg.OfflineModeDurationMinutes,
+			&cfg.CashCustodyAlertHours,
+			&growthThreshold,
+			&scaleThreshold,
+			&capAmount,
+		); err != nil {
+			return nil, fmt.Errorf("parse regional config %s: %w", regionID, err)
+		}
+		if growthThreshold.Valid {
+			cfg.DegressiveFeeGrowthThresholdAmount = growthThreshold.Int64
+		}
+		if scaleThreshold.Valid {
+			cfg.DegressiveFeeScaleThresholdAmount = scaleThreshold.Int64
+		}
+		if capAmount.Valid {
+			cfg.DegressiveFeeCapAmount = capAmount.Int64
+		}
+	} else {
+		if err := row.Columns(
+			&cfg.RegionID,
+			&paymentGatewaysJSON,
+			&notificationJSON,
+			&smsProvider,
+			&mapsProvider,
+			&llmProvider,
+			&cfg.DefaultVUConversion,
+			&cfg.BreachRadiusMeters,
+			&cfg.ShopClosedGraceMinutes,
+			&cfg.ShopClosedEscalationMinutes,
+			&cfg.OfflineModeDurationMinutes,
+			&cfg.CashCustodyAlertHours,
+		); err != nil {
+			return nil, fmt.Errorf("parse regional config %s: %w", regionID, err)
+		}
 	}
 
 	if paymentGatewaysJSON.Valid {
@@ -235,22 +294,46 @@ func SeedDefaultRegions(ctx context.Context, client *spanner.Client) {
 	}
 
 	for _, region := range seed {
+		growthThresholdAmount, scaleThresholdAmount, capAmount := defaultRegionalDegressiveFeeThresholds(region.CurrencyCode)
 		_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-			_, readErr := txn.ReadRow(ctx, "Regions", spanner.Key{region.RegionID}, []string{"RegionId"})
-			if readErr == nil {
-				return nil
-			}
+			mutations := make([]*spanner.Mutation, 0, 2)
 
-			if err := txn.BufferWrite([]*spanner.Mutation{
-				spanner.Insert("Regions",
+			_, regionReadErr := txn.ReadRow(ctx, "Regions", spanner.Key{region.RegionID}, []string{"RegionId"})
+			if regionReadErr != nil {
+				mutations = append(mutations, spanner.Insert("Regions",
 					[]string{"RegionId", "RegionCode", "RegionName", "CountryCode", "Timezone", "CurrencyCode", "DistanceUnit", "IsDefault", "IsActive", "CreatedAt"},
 					[]interface{}{region.RegionID, region.RegionCode, region.RegionName, region.CountryCode, region.Timezone, region.CurrencyCode, region.DistanceUnit, region.IsDefault, true, spanner.CommitTimestamp},
-				),
-				spanner.Insert("RegionalConfigs",
-					[]string{"RegionId", "PaymentGateways", "NotificationFallbackOrder", "MapsProvider", "LLMProvider", "DefaultVUConversion", "BreachRadiusMeters", "ShopClosedGraceMinutes", "ShopClosedEscalationMinutes", "OfflineModeDurationMinutes", "CashCustodyAlertHours", "CreatedAt"},
-					[]interface{}{region.RegionID, string(paymentGatewaysJSON), string(notifJSON), "GOOGLE", "GEMINI", 1.0, 100.0, int64(5), int64(3), int64(30), int64(4), spanner.CommitTimestamp},
-				),
-			}); err != nil {
+				))
+			}
+
+			configRow, configReadErr := txn.ReadRow(ctx, "RegionalConfigs", spanner.Key{region.RegionID}, []string{
+				"RegionId", "DegressiveFeeGrowthThresholdAmount", "DegressiveFeeScaleThresholdAmount", "DegressiveFeeCapAmount",
+			})
+			if configReadErr == nil {
+				var existingRegionID string
+				var existingGrowthThreshold spanner.NullInt64
+				var existingScaleThreshold spanner.NullInt64
+				var existingCapAmount spanner.NullInt64
+				if err := configRow.Columns(&existingRegionID, &existingGrowthThreshold, &existingScaleThreshold, &existingCapAmount); err != nil {
+					return err
+				}
+				if !existingGrowthThreshold.Valid || !existingScaleThreshold.Valid || !existingCapAmount.Valid {
+					mutations = append(mutations, spanner.InsertOrUpdate("RegionalConfigs",
+						[]string{"RegionId", "DegressiveFeeGrowthThresholdAmount", "DegressiveFeeScaleThresholdAmount", "DegressiveFeeCapAmount"},
+						[]interface{}{region.RegionID, growthThresholdAmount, scaleThresholdAmount, capAmount},
+					))
+				}
+			} else {
+				mutations = append(mutations, spanner.Insert("RegionalConfigs",
+					[]string{"RegionId", "PaymentGateways", "NotificationFallbackOrder", "MapsProvider", "LLMProvider", "DefaultVUConversion", "BreachRadiusMeters", "ShopClosedGraceMinutes", "ShopClosedEscalationMinutes", "OfflineModeDurationMinutes", "CashCustodyAlertHours", "DegressiveFeeGrowthThresholdAmount", "DegressiveFeeScaleThresholdAmount", "DegressiveFeeCapAmount", "CreatedAt"},
+					[]interface{}{region.RegionID, string(paymentGatewaysJSON), string(notifJSON), "GOOGLE", "GEMINI", 1.0, 100.0, int64(5), int64(3), int64(30), int64(4), growthThresholdAmount, scaleThresholdAmount, capAmount, spanner.CommitTimestamp},
+				))
+			}
+
+			if len(mutations) == 0 {
+				return nil
+			}
+			if err := txn.BufferWrite(mutations); err != nil {
 				return err
 			}
 
@@ -261,5 +344,14 @@ func SeedDefaultRegions(ctx context.Context, client *spanner.Client) {
 		} else {
 			log.Printf("[CountryCfg] Seed region %s: OK", region.RegionCode)
 		}
+	}
+}
+
+func defaultRegionalDegressiveFeeThresholds(currencyCode string) (int64, int64, int64) {
+	switch strings.ToUpper(strings.TrimSpace(currencyCode)) {
+	case "UZS":
+		return 5_000_000, 20_000_000, 1_000_000
+	default:
+		return 50_000, 250_000, 25_000
 	}
 }
