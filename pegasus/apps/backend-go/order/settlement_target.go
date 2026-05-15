@@ -6,6 +6,13 @@ const (
 	SettlementTargetGlobalSupplier = "GLOBAL_SUPPLIER"
 	SettlementTargetLocalWarehouse = "LOCAL_WAREHOUSE"
 	SettlementTargetMixedWarehouse = "MIXED_WAREHOUSE"
+	PayoutModeHQSupplier           = "HQ_SUPPLIER"
+	PayoutModeWarehouseLocal       = "WAREHOUSE_LOCAL"
+	PayoutOwnerTypeSupplier        = "SUPPLIER"
+	PayoutOwnerTypeWarehouse       = "WAREHOUSE"
+	FeePolicyVersionLegacyCheckout = "LEGACY_PLATFORM_FEE_BPS_V1"
+	FeeTierLegacyFlat              = "LEGACY_FLAT_BPS"
+	FeePolicyVersionMixed          = "MIXED"
 )
 
 func settlementTargetForWarehouseID(warehouseID string) string {
@@ -38,4 +45,21 @@ func settlementTargetForWarehouseIDs(warehouseIDs []string) string {
 		return SettlementTargetLocalWarehouse
 	}
 	return SettlementTargetMixedWarehouse
+}
+
+func normalizePayoutMode(mode string) string {
+	switch strings.TrimSpace(mode) {
+	case PayoutModeWarehouseLocal:
+		return PayoutModeWarehouseLocal
+	default:
+		return PayoutModeHQSupplier
+	}
+}
+
+func normalizeFeePolicyVersion(version string) string {
+	trimmed := strings.TrimSpace(version)
+	if trimmed == "" {
+		return FeePolicyVersionLegacyCheckout
+	}
+	return trimmed
 }

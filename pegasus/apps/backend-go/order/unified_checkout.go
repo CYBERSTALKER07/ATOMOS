@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"backend-go/auth"
@@ -299,6 +300,10 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		Total         int64
 		Items         []cart.OrderLineItem
 	}
+	type supplierPayoutPolicySnapshot struct {
+		PayoutMode       string
+		FeePolicyVersion string
+	}
 
 	plans := make([]supplierOrderPlan, 0, len(supplierGroups))
 	for sid, items := range supplierGroups {
@@ -414,6 +419,53 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			}
 		}
 
+		supplierPolicies := make(map[string]supplierPayoutPolicySnapshot, len(supplierGroups))
+		supplierIDs := make([]string, 0, len(supplierGroups))
+		for sid := range supplierGroups {
+			supplierIDs = append(supplierIDs, sid)
+			supplierPolicies[sid] = supplierPayoutPolicySnapshot{
+				PayoutMode:       PayoutModeHQSupplier,
+				FeePolicyVersion: FeePolicyVersionLegacyCheckout,
+			}
+		}
+		if len(supplierIDs) > 0 {
+			policyIter := txn.Query(ctx, spanner.Statement{
+				SQL: `SELECT SupplierId, PayoutMode, FeePolicyVersion
+				      FROM SupplierPayoutPolicies
+				      WHERE SupplierId IN UNNEST(@supplierIds)
+				        AND IsActive = TRUE`,
+				Params: map[string]interface{}{"supplierIds": supplierIDs},
+			})
+			defer policyIter.Stop()
+
+			for {
+				row, iterErr := policyIter.Next()
+				if iterErr == iterator.Done {
+					break
+				}
+				if iterErr != nil {
+					lowerErr := strings.ToLower(iterErr.Error())
+					if strings.Contains(lowerErr, "supplierpayoutpolicies") && strings.Contains(lowerErr, "not found") {
+						log.Printf("[UNIFIED_CHECKOUT] SupplierPayoutPolicies unavailable; defaulting to HQ payout mode: %v", iterErr)
+						break
+					}
+					return fmt.Errorf("supplier payout policy lookup failed: %w", iterErr)
+				}
+
+				var supplierID string
+				var payoutMode string
+				var feePolicyVersion spanner.NullString
+				if err := row.Columns(&supplierID, &payoutMode, &feePolicyVersion); err != nil {
+					return fmt.Errorf("supplier payout policy row parse failed: %w", err)
+				}
+
+				supplierPolicies[supplierID] = supplierPayoutPolicySnapshot{
+					PayoutMode:       normalizePayoutMode(payoutMode),
+					FeePolicyVersion: normalizeFeePolicyVersion(feePolicyVersion.StringVal),
+				}
+			}
+		}
+
 		// ── Partial-fill: cap each SKU to available stock ───────────────────
 		// Shortfall quantities become BACKORDERED orders in a second transaction.
 		for sku, requested := range skuQtyRequested {
@@ -473,6 +525,79 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			[]interface{}{invoiceID, req.RetailerID, effectiveGrandTotal, invoiceCurrency, invoiceSettlementTarget, "PENDING", spanner.CommitTimestamp},
 		))
 
+		feeBasisPoints := s.feeBasisPoints()
+		invoiceFeePolicyVersion := FeePolicyVersionLegacyCheckout
+		var invoiceFeeAmount int64
+		var invoiceNetPayoutAmount int64
+		var settlementSliceCount int64
+		validatedWarehouseGateway := make(map[string]struct{})
+
+		ensureWarehouseLocalGateway := func(supplierID, warehouseID string) error {
+			trimmedWarehouseID := strings.TrimSpace(warehouseID)
+			if trimmedWarehouseID == "" {
+				return fmt.Errorf("warehouse-local payout requires warehouse assignment for supplier %s", supplierID)
+			}
+
+			cacheKey := supplierID + "|" + trimmedWarehouseID + "|" + req.PaymentGateway
+			if _, ok := validatedWarehouseGateway[cacheKey]; ok {
+				return nil
+			}
+
+			warehouseRow, warehouseErr := txn.ReadRow(ctx, "Warehouses", spanner.Key{trimmedWarehouseID}, []string{"SupplierId", "PaymentConfigId"})
+			if warehouseErr != nil {
+				return fmt.Errorf("warehouse-local payout config lookup failed for warehouse %s: %w", trimmedWarehouseID, warehouseErr)
+			}
+
+			var ownerSupplierID string
+			var paymentConfigID spanner.NullString
+			if err := warehouseRow.Columns(&ownerSupplierID, &paymentConfigID); err != nil {
+				return fmt.Errorf("warehouse-local payout config row parse failed for warehouse %s: %w", trimmedWarehouseID, err)
+			}
+			if ownerSupplierID != supplierID {
+				return fmt.Errorf("warehouse %s does not belong to supplier %s", trimmedWarehouseID, supplierID)
+			}
+			if !paymentConfigID.Valid || strings.TrimSpace(paymentConfigID.StringVal) == "" {
+				return fmt.Errorf("warehouse-local payout requires active payment config for warehouse %s", trimmedWarehouseID)
+			}
+
+			cfgIter := txn.Query(ctx, spanner.Statement{
+				SQL: `SELECT ConfigId, MerchantId, SecretKey
+				      FROM SupplierPaymentConfigs
+				      WHERE ConfigId = @configId
+				        AND SupplierId = @supplierId
+				        AND GatewayName = @gateway
+				        AND IsActive = TRUE
+				      LIMIT 1`,
+				Params: map[string]interface{}{
+					"configId":   paymentConfigID.StringVal,
+					"supplierId": supplierID,
+					"gateway":    req.PaymentGateway,
+				},
+			})
+			defer cfgIter.Stop()
+
+			cfgRow, cfgErr := cfgIter.Next()
+			if cfgErr == iterator.Done {
+				return fmt.Errorf("warehouse-local payout requires active %s credentials for warehouse %s", req.PaymentGateway, trimmedWarehouseID)
+			}
+			if cfgErr != nil {
+				return fmt.Errorf("warehouse-local gateway credential lookup failed for warehouse %s: %w", trimmedWarehouseID, cfgErr)
+			}
+
+			var configID string
+			var merchantID string
+			var secretKey []byte
+			if err := cfgRow.Columns(&configID, &merchantID, &secretKey); err != nil {
+				return fmt.Errorf("warehouse-local gateway credential parse failed for warehouse %s: %w", trimmedWarehouseID, err)
+			}
+			if strings.TrimSpace(merchantID) == "" || len(secretKey) == 0 {
+				return fmt.Errorf("warehouse-local gateway credentials incomplete for warehouse %s", trimmedWarehouseID)
+			}
+
+			validatedWarehouseGateway[cacheKey] = struct{}{}
+			return nil
+		}
+
 		// 4b. For each supplier group: INSERT Order + INSERT N OrderLineItems (effective qty only)
 		for _, plan := range plans {
 			// Compute effective supplier total and check if any items are fulfillable
@@ -488,6 +613,62 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			if !hasEffectiveItems {
 				continue // All items for this supplier are backordered — skip primary order
 			}
+
+			policy := supplierPolicies[plan.SupplierID]
+			payoutMode := normalizePayoutMode(policy.PayoutMode)
+			feePolicyVersion := normalizeFeePolicyVersion(policy.FeePolicyVersion)
+			sliceSettlementTarget := settlementTargetForWarehouseID(plan.WarehouseID)
+			payoutOwnerType := PayoutOwnerTypeSupplier
+			payoutOwnerID := plan.SupplierID
+
+			if payoutMode == PayoutModeWarehouseLocal {
+				if err := ensureWarehouseLocalGateway(plan.SupplierID, plan.WarehouseID); err != nil {
+					return err
+				}
+				payoutOwnerType = PayoutOwnerTypeWarehouse
+				payoutOwnerID = plan.WarehouseID
+				sliceSettlementTarget = SettlementTargetLocalWarehouse
+			}
+
+			if strings.TrimSpace(payoutOwnerID) == "" {
+				return fmt.Errorf("missing payout owner id for supplier %s", plan.SupplierID)
+			}
+
+			feeAmount := (planEffectiveTotal * feeBasisPoints) / 10000
+			if feeAmount < 0 {
+				feeAmount = 0
+			}
+			netPayoutAmount := planEffectiveTotal - feeAmount
+			if netPayoutAmount < 0 {
+				netPayoutAmount = 0
+			}
+
+			invoiceFeeAmount += feeAmount
+			invoiceNetPayoutAmount += netPayoutAmount
+			settlementSliceCount++
+			if settlementSliceCount == 1 {
+				invoiceFeePolicyVersion = feePolicyVersion
+			} else if invoiceFeePolicyVersion != feePolicyVersion {
+				invoiceFeePolicyVersion = FeePolicyVersionMixed
+			}
+
+			sliceID := hotspot.NewOrderID()
+			mutations = append(mutations, spanner.Insert("InvoiceSettlementSlices",
+				[]string{
+					"InvoiceId", "SliceId", "SupplierId", "WarehouseId",
+					"SettlementTarget", "PayoutOwnerType", "PayoutOwnerId",
+					"GrossAmount", "Currency", "FeePolicyVersion", "SelectedTierKey",
+					"FeeBasisPoints", "FeeCapApplied", "FeeAmount", "NetPayoutAmount",
+					"CreatedAt", "UpdatedAt",
+				},
+				[]interface{}{
+					invoiceID, sliceID, plan.SupplierID, spanner.NullString{StringVal: plan.WarehouseID, Valid: strings.TrimSpace(plan.WarehouseID) != ""},
+					sliceSettlementTarget, payoutOwnerType, payoutOwnerID,
+					planEffectiveTotal, plan.Currency, feePolicyVersion, FeeTierLegacyFlat,
+					feeBasisPoints, false, feeAmount, netPayoutAmount,
+					spanner.CommitTimestamp, spanner.CommitTimestamp,
+				},
+			))
 
 			processedPlans = append(processedPlans, plan)
 			processedTotals[plan.OrderID] = planEffectiveTotal
@@ -537,6 +718,14 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 				))
 			}
 		}
+
+		if settlementSliceCount == 0 {
+			invoiceFeePolicyVersion = FeePolicyVersionLegacyCheckout
+		}
+		mutations = append(mutations, spanner.Update("MasterInvoices",
+			[]string{"InvoiceId", "FeePolicyVersion", "FeeAmount", "NetPayoutAmount", "SettlementSliceCount"},
+			[]interface{}{invoiceID, invoiceFeePolicyVersion, invoiceFeeAmount, invoiceNetPayoutAmount, settlementSliceCount},
+		))
 
 		// ── Spanner mutation count guard ─────────────────────────────────────
 		// Spanner enforces a 20,000 mutation limit per transaction. Each mutation

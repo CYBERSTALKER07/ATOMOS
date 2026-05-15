@@ -1825,6 +1825,70 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		}
 		adminClient.Close()
 	}
+
+	// ── MIGRATION: Checkout fee snapshots + payout policy substrate ──────────
+	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
+	if err == nil {
+		payoutSnapshotDDL := []string{
+			"ALTER TABLE MasterInvoices ADD COLUMN FeePolicyVersion STRING(40)",
+			"ALTER TABLE MasterInvoices ADD COLUMN FeeAmount INT64",
+			"ALTER TABLE MasterInvoices ADD COLUMN NetPayoutAmount INT64",
+			"ALTER TABLE MasterInvoices ADD COLUMN SettlementSliceCount INT64",
+			`CREATE TABLE SupplierPayoutPolicies (
+				SupplierId       STRING(36)  NOT NULL,
+				PayoutMode       STRING(30)  NOT NULL,
+				FeePolicyVersion STRING(40)  NOT NULL,
+				EffectiveAt      TIMESTAMP   NOT NULL,
+				UpdatedBy        STRING(64),
+				UpdatedByType    STRING(20),
+				Reason           STRING(MAX),
+				IsActive         BOOL        NOT NULL DEFAULT (true),
+				CreatedAt        TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+				UpdatedAt        TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
+				CONSTRAINT CHK_SupplierPayoutPolicyMode CHECK (PayoutMode IN ('HQ_SUPPLIER', 'WAREHOUSE_LOCAL')),
+				CONSTRAINT CHK_SupplierPayoutPolicyActor CHECK (UpdatedByType IS NULL OR UpdatedByType IN ('SUPPLIER', 'INTERNAL', 'SYSTEM'))
+			) PRIMARY KEY (SupplierId)`,
+			"CREATE INDEX Idx_SupplierPayoutPolicies_ByMode ON SupplierPayoutPolicies(PayoutMode, UpdatedAt DESC)",
+			`CREATE TABLE InvoiceSettlementSlices (
+				InvoiceId         STRING(36)  NOT NULL,
+				SliceId           STRING(36)  NOT NULL,
+				SupplierId        STRING(36)  NOT NULL,
+				WarehouseId       STRING(36),
+				SettlementTarget  STRING(30)  NOT NULL,
+				PayoutOwnerType   STRING(20)  NOT NULL,
+				PayoutOwnerId     STRING(36)  NOT NULL,
+				GrossAmount       INT64       NOT NULL,
+				Currency          STRING(3)   NOT NULL DEFAULT ('UZS'),
+				FeePolicyVersion  STRING(40)  NOT NULL,
+				SelectedTierKey   STRING(64),
+				FeeBasisPoints    INT64       NOT NULL,
+				FeeCapApplied     BOOL        NOT NULL DEFAULT (false),
+				FeeAmount         INT64       NOT NULL,
+				NetPayoutAmount   INT64       NOT NULL,
+				CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
+				UpdatedAt         TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
+				CONSTRAINT CHK_InvoiceSliceSettlementTarget CHECK (
+					SettlementTarget IN ('GLOBAL_SUPPLIER', 'LOCAL_WAREHOUSE', 'MIXED_WAREHOUSE')
+				),
+				CONSTRAINT CHK_InvoiceSlicePayoutOwnerType CHECK (PayoutOwnerType IN ('SUPPLIER', 'WAREHOUSE'))
+			) PRIMARY KEY (InvoiceId, SliceId)`,
+			"CREATE INDEX Idx_InvoiceSettlementSlices_ByInvoice ON InvoiceSettlementSlices(InvoiceId, CreatedAt DESC)",
+			"CREATE INDEX Idx_InvoiceSettlementSlices_BySupplierDate ON InvoiceSettlementSlices(SupplierId, CreatedAt DESC)",
+			"CREATE INDEX Idx_InvoiceSettlementSlices_ByWarehouseDate ON InvoiceSettlementSlices(WarehouseId, CreatedAt DESC)",
+			"CREATE INDEX Idx_InvoiceSettlementSlices_ByPayoutOwner ON InvoiceSettlementSlices(PayoutOwnerType, PayoutOwnerId, CreatedAt DESC)",
+		}
+		for _, stmt := range payoutSnapshotDDL {
+			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
+				Database:   dbName,
+				Statements: []string{stmt},
+			})
+			if ddlErr == nil {
+				op.Wait(ctx)
+				fmt.Println("DATABASE MIGRATION SUCCESS:", stmt[:minInt(80, len(stmt))])
+			}
+		}
+		adminClient.Close()
+	}
 }
 
 func minInt(a, b int) int {

@@ -161,6 +161,27 @@
   ],
   "runtimeContracts": [
     {
+      "id": "checkout_fee_snapshot_substrate",
+      "path": "Unified checkout transactional fee snapshots",
+      "owner": "pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,order/unified_checkout.go,order/settlement_target.go}",
+      "methods": [
+        "Spanner schema adds SupplierPayoutPolicies and InvoiceSettlementSlices with additive MasterInvoices fee summary fields",
+        "Unified checkout writes immutable settlement slices in the same ReadWriteTransaction as MasterInvoices and Orders",
+        "Missing supplier policy rows default to HQ_SUPPLIER payout mode",
+        "WAREHOUSE_LOCAL payout mode fails closed when participating warehouses do not resolve active gateway credentials"
+      ],
+      "consumers": [
+        "pegasus/apps/backend-go/order/unified_checkout.go",
+        "pegasus/apps/backend-go/kafka/treasurer.go",
+        "pegasus/apps/backend-go/payment/global_pay_direct.go",
+        "pegasus/apps/backend-go/treasury/service.go"
+      ],
+      "notes": [
+        "This slice introduces additive persistence only; live authority cutover to snapshot reads is a later phase.",
+        "Settlement slices capture gross, fee policy version, fee basis points, fee amount, net payout, and payout owner metadata per supplier slice."
+      ]
+    },
+    {
       "id": "warehouse_import_anomaly_queue_analytics",
       "path": "GET /v1/warehouse/ops/analytics -> import_anomaly_queue projection",
       "owner": "pegasus/apps/backend-go/warehouse/analytics.go + pegasus/apps/warehouse-portal/app/analytics/page.tsx + pegasus/apps/{warehouse-app-android,warehouse-app-ios}",

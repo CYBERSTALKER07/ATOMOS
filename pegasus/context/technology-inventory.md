@@ -43,6 +43,11 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 
 ## Runtime Contract Surfaces
 
+- Checkout fee snapshot substrate: `pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,order/unified_checkout.go,order/settlement_target.go}`
+	- Schema now provisions additive `SupplierPayoutPolicies`, `InvoiceSettlementSlices`, and `MasterInvoices` fee summary fields (`FeePolicyVersion`, `FeeAmount`, `NetPayoutAmount`, `SettlementSliceCount`).
+	- Unified checkout now writes immutable per-supplier settlement slices (gross, fee policy version, fee basis points, fee amount, net payout, payout owner metadata) in the same `ReadWriteTransaction` as invoice and order writes.
+	- Missing supplier policy rows default to `HQ_SUPPLIER`, and `WAREHOUSE_LOCAL` policy mode fails closed when participating warehouses do not resolve active credentials for the selected gateway.
+
 - Warehouse import anomaly queue analytics parity: `pegasus/apps/backend-go/warehouse/analytics.go` + `pegasus/apps/warehouse-portal/app/analytics/page.tsx` + `pegasus/apps/{warehouse-app-android,warehouse-app-ios}`
 	- `GET /v1/warehouse/ops/analytics` now projects additive `import_anomaly_queue` by scanning warehouse-scoped staged import validation errors from `SupplierImportStagedRows` over the selected period.
 	- Warehouse portal analytics now renders Import Anomaly Queue beside Import Freshness for warehouse-scoped operational triage.
