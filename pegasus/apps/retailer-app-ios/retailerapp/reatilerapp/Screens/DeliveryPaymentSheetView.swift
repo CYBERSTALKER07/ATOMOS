@@ -447,6 +447,10 @@ private struct CardCheckoutResponse: Decodable {
     let state: String
     let amountUzs: Int
     let gateway: String
+    let resolvedGateway: String?
+    let policySource: String?
+    let allowedGateways: [String]?
+    let policyReason: String?
     let paymentUrl: String
     let invoiceId: String
     let sessionId: String?
@@ -459,6 +463,10 @@ private struct CardCheckoutResponse: Decodable {
         case state
         case amountUzs = "amount"
         case gateway
+        case resolvedGateway = "resolved_gateway"
+        case policySource = "policy_source"
+        case allowedGateways = "allowed_gateways"
+        case policyReason = "policy_reason"
         case paymentUrl = "payment_url"
         case invoiceId = "invoice_id"
         case sessionId = "session_id"

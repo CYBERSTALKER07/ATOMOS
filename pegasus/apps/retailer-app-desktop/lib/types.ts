@@ -199,6 +199,10 @@ export interface CardCheckoutResponse {
   state: string;
   amount: number;
   gateway: string;
+  resolved_gateway?: string;
+  policy_source?: string;
+  allowed_gateways?: string[];
+  policy_reason?: string;
   payment_url: string;
   invoice_id: string;
   session_id?: string;

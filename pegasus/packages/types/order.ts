@@ -61,6 +61,16 @@ export type PaymentAttemptStatus =
   | 'CANCELLED'
   | 'TIMED_OUT';
 
+export type PaymentAttemptExecutionAction =
+  | 'CHECKOUT_INIT'
+  | 'HOSTED_CHECKOUT_INIT';
+
+export type PaymentAttemptExecutionMode =
+  | 'AUTO'
+  | 'HOSTED_REDIRECT'
+  | 'DIRECT_STORED_METHOD'
+  | 'DIRECT_3DS_REDIRECT';
+
 // ─── Payment Session ────────────────────────────────────────────────────────
 // Canonical session record returned by POST /v1/order/card-checkout
 // and GET /v1/payment/sessions/:sessionId.
@@ -91,6 +101,8 @@ export interface PaymentAttempt {
   session_id: string;
   attempt_no: number;
   gateway: PaymentGateway;
+  execution_action?: PaymentAttemptExecutionAction | string | null;
+  execution_mode?: PaymentAttemptExecutionMode | string | null;
   provider_transaction_id: string | null;
   status: PaymentAttemptStatus;
   failure_code: string | null;
