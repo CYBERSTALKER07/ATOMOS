@@ -328,6 +328,7 @@ func main() {
 		SessionSvc:     sessionSvc,
 		CardTokenSvc:   cardTokenSvc,
 		CardsClient:    cardsClient,
+		CountryCfg:     countryCfgSvc,
 		Empathy:        app.Empathy,
 		RetailerHub:    retailerHub,
 		DriverHub:      driverHub,
@@ -494,6 +495,10 @@ func main() {
 		&vault.PaymentVaultAdapter{Svc: vaultSvc},
 		payment.NewProviderExecutionRouter(directClient),
 	)
+	// Inject refund engine onto OrderService so delivery_handshake.go can
+	// trigger DELIVERY_DELTA_REFUND on downward edits against SETTLED direct
+	// (non-hosted) saved-card sessions.
+	svc.RefundSvc = refundSvc
 	chargebackSvc := payment.NewChargebackService(spannerClient)
 	orderroutes.RegisterRoutes(r, orderroutes.Deps{
 		Spanner:     spannerClient,

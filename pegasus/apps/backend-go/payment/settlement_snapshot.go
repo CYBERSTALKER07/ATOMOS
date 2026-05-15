@@ -55,12 +55,19 @@ func LoadSupplierSettlementSnapshot(ctx context.Context, client *spanner.Client,
 		return SupplierSettlementSnapshot{}, false, fmt.Errorf("parse invoice for order %s: %w", orderID, err)
 	}
 
+	// Revision precedence: ignore slices that have been superseded by a newer
+	// revision row (i.e. SliceId is referenced by another row's RevisionOf in
+	// the same invoice). Legacy invoices without revisions are unaffected.
 	aggStmt := spanner.Statement{
 		SQL: `SELECT COALESCE(SUM(GrossAmount), 0),
 		             COALESCE(SUM(FeeAmount), 0),
 		             COALESCE(SUM(NetPayoutAmount), 0)
 		      FROM InvoiceSettlementSlices
-		      WHERE InvoiceId = @invoiceId AND SupplierId = @supplierId`,
+		      WHERE InvoiceId = @invoiceId AND SupplierId = @supplierId
+		        AND SliceId NOT IN (
+		          SELECT RevisionOf FROM InvoiceSettlementSlices
+		          WHERE InvoiceId = @invoiceId AND RevisionOf IS NOT NULL
+		        )`,
 		Params: map[string]interface{}{
 			"invoiceId":  invoiceID,
 			"supplierId": supplierID,
@@ -92,6 +99,10 @@ func LoadSupplierSettlementSnapshot(ctx context.Context, client *spanner.Client,
 		SQL: `SELECT PayoutOwnerType, PayoutOwnerId, FeePolicyVersion, Currency
 		      FROM InvoiceSettlementSlices
 		      WHERE InvoiceId = @invoiceId AND SupplierId = @supplierId
+		        AND SliceId NOT IN (
+		          SELECT RevisionOf FROM InvoiceSettlementSlices
+		          WHERE InvoiceId = @invoiceId AND RevisionOf IS NOT NULL
+		        )
 		      ORDER BY CreatedAt DESC
 		      LIMIT 1`,
 		Params: map[string]interface{}{

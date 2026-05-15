@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"backend-go/auth"
 	kafkaEvents "backend-go/kafka"
 	"backend-go/outbox"
+	"backend-go/payment"
 	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
@@ -68,18 +70,22 @@ type UpdateOrderDuringDeliveryRequest struct {
 
 // UpdateOrderDuringDeliveryResponse returns amended settlement totals.
 type UpdateOrderDuringDeliveryResponse struct {
-	SessionID      string `json:"session_id"`
-	OrderID        string `json:"order_id"`
-	State          string `json:"state"`
-	AmendmentID    string `json:"amendment_id"`
-	OriginalAmount int64  `json:"original_amount"`
-	AdjustedAmount int64  `json:"adjusted_amount"`
-	FeeBasisPoints int64  `json:"fee_basis_points"`
-	FeeAmount      int64  `json:"fee_amount"`
-	Currency       string `json:"currency"`
-	RetailerID     string `json:"retailer_id,omitempty"`
-	DriverID       string `json:"driver_id,omitempty"`
-	SupplierID     string `json:"supplier_id,omitempty"`
+	SessionID        string `json:"session_id"`
+	OrderID          string `json:"order_id"`
+	State            string `json:"state"`
+	AmendmentID      string `json:"amendment_id"`
+	OriginalAmount   int64  `json:"original_amount"`
+	AdjustedAmount   int64  `json:"adjusted_amount"`
+	FeeBasisPoints   int64  `json:"fee_basis_points"`
+	FeeAmount        int64  `json:"fee_amount"`
+	NetPayoutAmount  int64  `json:"net_payout_amount,omitempty"`
+	FeePolicyVersion string `json:"fee_policy_version,omitempty"`
+	SelectedTierKey  string `json:"selected_tier_key,omitempty"`
+	FeeCapApplied    bool   `json:"fee_cap_applied,omitempty"`
+	Currency         string `json:"currency"`
+	RetailerID       string `json:"retailer_id,omitempty"`
+	DriverID         string `json:"driver_id,omitempty"`
+	SupplierID       string `json:"supplier_id,omitempty"`
 }
 
 type deliveryHandshakeClaims struct {
@@ -327,8 +333,19 @@ func (s *OrderService) UpdateOrderDuringDelivery(ctx context.Context, req Update
 		resp.SupplierID = supplierID
 		resp.AdjustedAmount = adjustedAmount
 		resp.Currency = normalizeHandshakeCurrency(currency)
-		resp.FeeBasisPoints = s.feeBasisPoints()
-		resp.FeeAmount = (adjustedAmount * resp.FeeBasisPoints) / 10000
+
+		// Recompute fee under the same policy that was applied at checkout.
+		// Falls back to the platform-wide flat basis points when no settlement
+		// snapshot exists (legacy orders) or when regional defaults are absent.
+		baseFeeBPS := s.feeBasisPoints()
+		policyVersion, regionalDefaults, sliceSnapshot := s.resolveAdjustmentFeePolicy(ctx, txn, req.OrderID, supplierID, baseFeeBPS)
+		feeComputation := computeCheckoutFee(adjustedAmount, resp.Currency, baseFeeBPS, policyVersion, regionalDefaults)
+		resp.FeeBasisPoints = feeComputation.BasisPoints
+		resp.FeeAmount = feeComputation.FeeAmount
+		resp.NetPayoutAmount = feeComputation.NetPayoutAmount
+		resp.FeePolicyVersion = feeComputation.PolicyVersion
+		resp.SelectedTierKey = feeComputation.SelectedTierKey
+		resp.FeeCapApplied = feeComputation.CapApplied
 
 		prevStmt := spanner.Statement{
 			SQL: `SELECT OriginalAmount FROM DeliverySessions
@@ -443,18 +460,82 @@ func (s *OrderService) UpdateOrderDuringDelivery(ctx context.Context, req Update
 		}
 
 		now := time.Now().UTC()
+
+		// Write an immutable revision row in InvoiceSettlementSlices that
+		// supersedes the original checkout-time slice. No-op for legacy orders
+		// without a snapshot. The revision row carries the recomputed fee math
+		// and is linked to the original via RevisionOf so treasury readers
+		// honor the latest revision precedence.
+		const settlementRevisionReason = "DELIVERY_RECONCILIATION"
+		revisionSliceID, revisionErr := writeSettlementSliceRevision(
+			txn, sliceSnapshot, supplierID, sessionID,
+			settlementRevisionReason, feeComputation,
+			resp.AdjustedAmount, resp.Currency,
+		)
+		if revisionErr != nil {
+			return revisionErr
+		}
+		if sliceSnapshot != nil && revisionSliceID != "" {
+			if err := outbox.EmitJSON(txn, "InvoiceSettlementSlice", revisionSliceID, kafkaEvents.EventSettlementRevised, topicLogisticsEvents, kafkaEvents.SettlementRevisedEvent{
+				InvoiceID:        sliceSnapshot.InvoiceID,
+				OrderID:          req.OrderID,
+				SupplierID:       supplierID,
+				WarehouseID:      sliceSnapshot.WarehouseID,
+				SessionID:        sessionID,
+				OriginalSliceID:  sliceSnapshot.OriginalSliceID,
+				RevisionSliceID:  revisionSliceID,
+				RevisionReason:   settlementRevisionReason,
+				GrossAmount:      resp.AdjustedAmount,
+				FeeAmount:        feeComputation.FeeAmount,
+				NetPayoutAmount:  feeComputation.NetPayoutAmount,
+				FeeBasisPoints:   feeComputation.BasisPoints,
+				FeeCapApplied:    feeComputation.CapApplied,
+				FeePolicyVersion: feeComputation.PolicyVersion,
+				SelectedTierKey:  feeComputation.SelectedTierKey,
+				SettlementTarget: sliceSnapshot.SettlementTarget,
+				PayoutOwnerType:  sliceSnapshot.PayoutOwnerType,
+				PayoutOwnerID:    sliceSnapshot.PayoutOwnerID,
+				Currency:         resp.Currency,
+				Timestamp:        now,
+			}, telemetry.TraceIDFromContext(ctx)); err != nil {
+				return fmt.Errorf("outbox emit SETTLEMENT_REVISED (reconciliation): %w", err)
+			}
+		}
+
+		// Persist the post-edit captured amount on PaymentSessions so the
+		// gateway worker captures the revised total instead of the original
+		// authorized amount. Bounded to capturable states; no-op for legacy
+		// orders or non-gateway flows.
+		paymentFinalAmountUpdate := spanner.Statement{
+			SQL: `UPDATE PaymentSessions
+			      SET FinalAmount = @finalAmount, UpdatedAt = PENDING_COMMIT_TIMESTAMP()
+			      WHERE OrderId = @orderId
+			        AND Status IN ('CREATED', 'PENDING', 'AUTHORIZED')`,
+			Params: map[string]interface{}{
+				"orderId":     req.OrderID,
+				"finalAmount": resp.AdjustedAmount,
+			},
+		}
+		if _, err := txn.Update(ctx, paymentFinalAmountUpdate); err != nil {
+			return fmt.Errorf("update payment session final amount: %w", err)
+		}
+
 		if err := outbox.EmitJSON(txn, "DeliverySession", sessionID, kafkaEvents.EventDeliverySessionUpdated, topicLogisticsEvents, kafkaEvents.DeliverySessionUpdatedEvent{
-			SessionID:      sessionID,
-			OrderID:        req.OrderID,
-			RetailerID:     retailerID,
-			DriverID:       strings.TrimSpace(resp.DriverID),
-			State:          DeliverySessionStateReconciliation,
-			OriginalAmount: resp.OriginalAmount,
-			AdjustedAmount: resp.AdjustedAmount,
-			FeeBasisPoints: resp.FeeBasisPoints,
-			FeeAmount:      resp.FeeAmount,
-			Currency:       resp.Currency,
-			Timestamp:      now,
+			SessionID:        sessionID,
+			OrderID:          req.OrderID,
+			RetailerID:       retailerID,
+			DriverID:         strings.TrimSpace(resp.DriverID),
+			State:            DeliverySessionStateReconciliation,
+			OriginalAmount:   resp.OriginalAmount,
+			AdjustedAmount:   resp.AdjustedAmount,
+			FeeBasisPoints:   resp.FeeBasisPoints,
+			FeeAmount:        resp.FeeAmount,
+			NetPayoutAmount:  resp.NetPayoutAmount,
+			FeePolicyVersion: resp.FeePolicyVersion,
+			SelectedTierKey:  resp.SelectedTierKey,
+			FeeCapApplied:    resp.FeeCapApplied,
+			Currency:         resp.Currency,
+			Timestamp:        now,
 		}, telemetry.TraceIDFromContext(ctx)); err != nil {
 			return fmt.Errorf("outbox emit DELIVERY_SESSION_UPDATED (reconciliation): %w", err)
 		}
@@ -463,6 +544,30 @@ func (s *OrderService) UpdateOrderDuringDelivery(ctx context.Context, req Update
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// Post-commit: trigger DELIVERY_DELTA_REFUND for downward edits on
+	// SETTLED direct (non-hosted) saved-card sessions. The refund engine is
+	// idempotent (RefundId derived from delivery session id) and short-circuits
+	// when the session is not SETTLED, the gateway is CASH, or no delta exists.
+	// Failures here MUST NOT break the driver flow — the operator settlement
+	// queue catches MANUAL_REQUIRED/FAILED outcomes downstream.
+	if s.RefundSvc != nil && resp != nil && resp.AdjustedAmount < resp.OriginalAmount {
+		if _, refundErr := s.RefundSvc.InitiateDeliveryDeltaRefund(ctx, payment.DeliveryDeltaRefundRequest{
+			OrderID:           req.OrderID,
+			DeliverySessionID: resp.SessionID,
+			OriginalAmount:    resp.OriginalAmount,
+			AdjustedAmount:    resp.AdjustedAmount,
+		}); refundErr != nil {
+			slog.ErrorContext(ctx, "delivery delta refund post-commit hook failed",
+				"order_id", req.OrderID,
+				"session_id", resp.SessionID,
+				"original_amount", resp.OriginalAmount,
+				"adjusted_amount", resp.AdjustedAmount,
+				"trace_id", telemetry.TraceIDFromContext(ctx),
+				"err", refundErr,
+			)
+		}
 	}
 
 	return resp, nil
@@ -702,6 +807,171 @@ func normalizeHandshakeCurrency(value string) string {
 		return "UZS"
 	}
 	return normalized
+}
+
+// settlementSliceSnapshot is the minimal projection of an InvoiceSettlementSlices
+// row required to write a revision row that supersedes it. It carries the
+// payout-owner attribution and target so revisions stay attributable to the
+// same payee under the same locality regime.
+type settlementSliceSnapshot struct {
+	InvoiceID        string
+	OriginalSliceID  string
+	WarehouseID      string
+	SettlementTarget string
+	PayoutOwnerType  string
+	PayoutOwnerID    string
+	GrossAmount      int64
+	Currency         string
+}
+
+// resolveAdjustmentFeePolicy recovers the fee policy that was applied at
+// checkout for an order so reconciliation edits compute their fee under the
+// same regime. It prefers the InvoiceSettlementSlices snapshot for the order's
+// supplier slice (single source of truth) and falls back to resolving regional
+// degressive defaults from the supplier's region. When neither is available the
+// caller will land on legacy flat-bps semantics inside computeCheckoutFee.
+//
+// All reads here are read-only config / snapshot reads; they intentionally use
+// the existing RW transaction so the recovered policy is consistent with the
+// other reads inside UpdateOrderDuringDelivery.
+//
+// The returned snapshot (third value) is non-nil when an authoritative
+// non-superseded settlement slice was found; callers may use it to write an
+// immutable revision row that supersedes the original. Snapshot is intentionally
+// nil for legacy orders so callers can safely skip revision writes.
+func (s *OrderService) resolveAdjustmentFeePolicy(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID, supplierID string, baseFeeBPS int64) (string, *regionalDegressiveFeeDefaults, *settlementSliceSnapshot) {
+	policyVersion := FeePolicyVersionLegacyCheckout
+	var snapshot *settlementSliceSnapshot
+
+	if strings.TrimSpace(orderID) != "" && strings.TrimSpace(supplierID) != "" {
+		// Prefer the latest non-superseded slice (i.e. SliceId NOT referenced by
+		// any RevisionOf in the same invoice). NULL-safe via COALESCE on the
+		// nested aggregate so legacy invoices with no revisions still match.
+		sliceStmt := spanner.Statement{
+			SQL: `SELECT s.InvoiceId, s.SliceId, s.FeePolicyVersion,
+			             s.SettlementTarget, s.PayoutOwnerType, s.PayoutOwnerId,
+			             s.GrossAmount, s.Currency, s.WarehouseId
+			      FROM InvoiceSettlementSlices s
+			      JOIN MasterInvoices m ON m.InvoiceId = s.InvoiceId
+			      WHERE m.OrderId = @orderId AND s.SupplierId = @supplierId
+			        AND s.SliceId NOT IN (
+			          SELECT RevisionOf FROM InvoiceSettlementSlices
+			          WHERE InvoiceId = s.InvoiceId AND RevisionOf IS NOT NULL
+			        )
+			      ORDER BY s.CreatedAt DESC
+			      LIMIT 1`,
+			Params: map[string]interface{}{
+				"orderId":    orderID,
+				"supplierId": supplierID,
+			},
+		}
+		sliceIter := txn.Query(ctx, sliceStmt)
+		row, err := sliceIter.Next()
+		sliceIter.Stop()
+		if err == nil {
+			var invoiceID, sliceID string
+			var sliceVersion spanner.NullString
+			var settlementTarget, payoutOwnerType, payoutOwnerID, currency string
+			var warehouseID spanner.NullString
+			var grossAmount int64
+			if scanErr := row.Columns(&invoiceID, &sliceID, &sliceVersion,
+				&settlementTarget, &payoutOwnerType, &payoutOwnerID,
+				&grossAmount, &currency, &warehouseID); scanErr == nil {
+				if sliceVersion.Valid {
+					policyVersion = normalizeFeePolicyVersion(sliceVersion.StringVal)
+				}
+				snap := settlementSliceSnapshot{
+					InvoiceID:        invoiceID,
+					OriginalSliceID:  sliceID,
+					SettlementTarget: settlementTarget,
+					PayoutOwnerType:  payoutOwnerType,
+					PayoutOwnerID:    payoutOwnerID,
+					GrossAmount:      grossAmount,
+					Currency:         currency,
+				}
+				if warehouseID.Valid {
+					snap.WarehouseID = warehouseID.StringVal
+				}
+				snapshot = &snap
+			}
+		}
+		// errors.Is(err, iterator.Done) and other read errors fall through to
+		// the regional-defaults fallback below; a stale read is preferred over
+		// blocking the retailer-facing reconciliation path on a config lookup.
+	}
+
+	var regionalDefaults *regionalDegressiveFeeDefaults
+	if strings.TrimSpace(supplierID) != "" {
+		defaultsBySupplier, err := s.resolveRegionalDegressiveFeeDefaults(ctx, []string{supplierID})
+		if err == nil {
+			if d, ok := defaultsBySupplier[strings.TrimSpace(supplierID)]; ok {
+				localCopy := d
+				regionalDefaults = &localCopy
+			}
+		}
+	}
+
+	// If the snapshot did not pin a policy, prefer regional degressive when
+	// defaults are present so existing checkout behavior is mirrored exactly.
+	if policyVersion == FeePolicyVersionLegacyCheckout && regionalDefaults != nil {
+		policyVersion = FeePolicyVersionRegionalDegressiveV1
+	}
+	_ = baseFeeBPS // reserved for future per-supplier base override.
+	return policyVersion, regionalDefaults, snapshot
+}
+
+// writeSettlementSliceRevision inserts an immutable revision row in
+// InvoiceSettlementSlices that supersedes the original slice for the given
+// supplier on the order's invoice. It is a no-op when snapshot is nil (legacy
+// order without a checkout-time slice). Returns the new SliceId.
+func writeSettlementSliceRevision(txn *spanner.ReadWriteTransaction, snapshot *settlementSliceSnapshot, supplierID, sessionID, reason string, fee checkoutFeeComputation, adjustedAmount int64, currency string) (string, error) {
+	if snapshot == nil {
+		return "", nil
+	}
+	revisionSliceID := uuid.NewString()
+	resolvedCurrency := strings.TrimSpace(currency)
+	if resolvedCurrency == "" {
+		resolvedCurrency = strings.TrimSpace(snapshot.Currency)
+	}
+	if resolvedCurrency == "" {
+		resolvedCurrency = "UZS"
+	}
+	mut := spanner.Insert("InvoiceSettlementSlices",
+		[]string{
+			"InvoiceId", "SliceId", "SupplierId", "WarehouseId",
+			"SettlementTarget", "PayoutOwnerType", "PayoutOwnerId",
+			"GrossAmount", "Currency", "FeePolicyVersion", "SelectedTierKey",
+			"FeeBasisPoints", "FeeCapApplied", "FeeAmount", "NetPayoutAmount",
+			"RevisionOf", "DeliverySessionId", "RevisionReason",
+			"CreatedAt", "UpdatedAt",
+		},
+		[]interface{}{
+			snapshot.InvoiceID,
+			revisionSliceID,
+			supplierID,
+			nullableStringValue(snapshot.WarehouseID),
+			snapshot.SettlementTarget,
+			snapshot.PayoutOwnerType,
+			snapshot.PayoutOwnerID,
+			adjustedAmount,
+			resolvedCurrency,
+			fee.PolicyVersion,
+			nullableStringValue(fee.SelectedTierKey),
+			fee.BasisPoints,
+			fee.CapApplied,
+			fee.FeeAmount,
+			fee.NetPayoutAmount,
+			snapshot.OriginalSliceID,
+			nullableStringValue(sessionID),
+			nullableStringValue(reason),
+			spanner.CommitTimestamp,
+			spanner.CommitTimestamp,
+		},
+	)
+	if err := txn.BufferWrite([]*spanner.Mutation{mut}); err != nil {
+		return "", fmt.Errorf("buffer settlement slice revision: %w", err)
+	}
+	return revisionSliceID, nil
 }
 
 func nullableStringValue(value string) spanner.NullString {

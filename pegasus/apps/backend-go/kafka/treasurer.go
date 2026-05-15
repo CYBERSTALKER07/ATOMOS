@@ -236,9 +236,10 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 	// For Global Pay auth-capture: read the authorization from PaymentSessions.
 	var authorizationID string
 	var authorizedAmount int64
+	var sessionFinalAmount int64
 	if paymentGateway == "GLOBAL_PAY" {
 		authStmt := spanner.Statement{
-			SQL:    `SELECT AuthorizationId, AuthorizedAmount FROM PaymentSessions WHERE OrderId = @oid AND Status = 'AUTHORIZED' LIMIT 1`,
+			SQL:    `SELECT AuthorizationId, AuthorizedAmount, FinalAmount FROM PaymentSessions WHERE OrderId = @oid AND Status = 'AUTHORIZED' LIMIT 1`,
 			Params: map[string]interface{}{"oid": event.OrderId},
 		}
 		authIter := client.Single().Query(ctx, authStmt)
@@ -247,11 +248,22 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 		if authErr == nil {
 			var nullAuthID spanner.NullString
 			var nullAuthAmt spanner.NullInt64
-			if colErr := authRow.Columns(&nullAuthID, &nullAuthAmt); colErr == nil {
+			var nullFinalAmt spanner.NullInt64
+			if colErr := authRow.Columns(&nullAuthID, &nullAuthAmt, &nullFinalAmt); colErr == nil {
 				authorizationID = nullAuthID.StringVal
 				authorizedAmount = nullAuthAmt.Int64
+				if nullFinalAmt.Valid {
+					sessionFinalAmount = nullFinalAmt.Int64
+				}
 			}
 		}
+	}
+
+	// Capture authority precedence: PaymentSessions.FinalAmount (post-edit) >
+	// event.Amount (Orders snapshot, may already be edited) > AuthorizedAmount.
+	finalAmount := event.Amount
+	if sessionFinalAmount > 0 {
+		finalAmount = sessionFinalAmount
 	}
 
 	slog.Info("treasurer.processing_order", "order_id", event.OrderId, "total", event.Amount, "platform_commission", platformCommission, "commission_bps", commissionBps, "supplier_id", supplierID, "payout_account_id", payoutAccountID, "supplier_payout", supplierPayout, "gateway", paymentGateway, "status", status)
@@ -293,7 +305,7 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 				SupplierTxnId:      txnIdB,
 				AuthorizationID:    authorizationID,
 				AuthorizedAmount:   authorizedAmount,
-				FinalAmount:        event.Amount, // Post-amendment amount (driver's tablet is source of truth)
+				FinalAmount:        finalAmount, // Post-edit capture amount (PaymentSessions.FinalAmount preferred)
 			}, telemetry.TraceIDFromContext(ctx))
 		}
 		return nil
@@ -349,7 +361,11 @@ func loadSupplierFeeSnapshotForOrder(ctx context.Context, client *spanner.Client
 		             COALESCE(SUM(FeeAmount), 0),
 		             COALESCE(SUM(NetPayoutAmount), 0)
 		      FROM InvoiceSettlementSlices
-		      WHERE InvoiceId = @invoiceId AND SupplierId = @supplierId`,
+		      WHERE InvoiceId = @invoiceId AND SupplierId = @supplierId
+		        AND SliceId NOT IN (
+		          SELECT RevisionOf FROM InvoiceSettlementSlices
+		          WHERE InvoiceId = @invoiceId AND RevisionOf IS NOT NULL
+		        )`,
 		Params: map[string]interface{}{
 			"invoiceId":  invoiceID,
 			"supplierId": supplierID,
@@ -380,6 +396,10 @@ func loadSupplierFeeSnapshotForOrder(ctx context.Context, client *spanner.Client
 		SQL: `SELECT PayoutOwnerType, PayoutOwnerId, FeePolicyVersion
 		      FROM InvoiceSettlementSlices
 		      WHERE InvoiceId = @invoiceId AND SupplierId = @supplierId
+		        AND SliceId NOT IN (
+		          SELECT RevisionOf FROM InvoiceSettlementSlices
+		          WHERE InvoiceId = @invoiceId AND RevisionOf IS NOT NULL
+		        )
 		      ORDER BY CreatedAt DESC
 		      LIMIT 1`,
 		Params: map[string]interface{}{

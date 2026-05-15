@@ -200,6 +200,12 @@ CREATE TABLE InvoiceSettlementSlices (
     FeeCapApplied     BOOL        NOT NULL DEFAULT (false),
     FeeAmount         INT64       NOT NULL,
     NetPayoutAmount   INT64       NOT NULL,
+    -- Revision lineage (delivery-time reconciliation): RevisionOf points to
+    -- the SliceId this row supersedes; treasury readers prefer the latest
+    -- revision (i.e. rows whose SliceId is not present in any RevisionOf).
+    RevisionOf        STRING(36),
+    DeliverySessionId STRING(36),
+    RevisionReason    STRING(64),
     CreatedAt         TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
     UpdatedAt         TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
     CONSTRAINT CHK_InvoiceSliceSettlementTarget CHECK (
@@ -212,6 +218,8 @@ CREATE INDEX Idx_InvoiceSettlementSlices_ByInvoice ON InvoiceSettlementSlices(In
 CREATE INDEX Idx_InvoiceSettlementSlices_BySupplierDate ON InvoiceSettlementSlices(SupplierId, CreatedAt DESC);
 CREATE INDEX Idx_InvoiceSettlementSlices_ByWarehouseDate ON InvoiceSettlementSlices(WarehouseId, CreatedAt DESC);
 CREATE INDEX Idx_InvoiceSettlementSlices_ByPayoutOwner ON InvoiceSettlementSlices(PayoutOwnerType, PayoutOwnerId, CreatedAt DESC);
+CREATE INDEX Idx_InvoiceSettlementSlices_ByRevisionOf ON InvoiceSettlementSlices(RevisionOf);
+CREATE INDEX Idx_InvoiceSettlementSlices_ByDeliverySession ON InvoiceSettlementSlices(DeliverySessionId, CreatedAt DESC);
 
 CREATE TABLE Products (
     ProductId    STRING(36)  NOT NULL,

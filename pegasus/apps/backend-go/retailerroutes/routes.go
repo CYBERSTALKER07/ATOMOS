@@ -15,6 +15,7 @@ import (
 	"backend-go/analytics"
 	"backend-go/auth"
 	"backend-go/cache"
+	"backend-go/countrycfg"
 	"backend-go/idempotency"
 	"backend-go/order"
 	"backend-go/payment"
@@ -37,6 +38,7 @@ type Deps struct {
 	SessionSvc     *payment.SessionService
 	CardTokenSvc   *payment.CardTokenService
 	CardsClient    *payment.GlobalPayCardsClient
+	CountryCfg     *countrycfg.Service // Country/region resolver for default card-tokenization gateway (nil = GLOBAL_PAY default)
 	Empathy        *settings.EmpathyService
 	RetailerHub    *ws.RetailerHub
 	DriverHub      *ws.DriverHub

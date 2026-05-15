@@ -6,8 +6,6 @@ package paymentroutes
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
 
 	"cloud.google.com/go/spanner"
@@ -60,8 +58,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		guard(auth.RequireRole(adminSupplier, log(idem(handleChargeback(d.Chargeback))))))
 	r.HandleFunc("/v1/payment/chargeback/reversal",
 		guard(auth.RequireRole(adminSupplier, log(idem(handleReversal(d.Chargeback))))))
-	r.HandleFunc("/v1/payment/global_pay/initiate",
-		auth.RequireRole(retailer, log(handleGlobalPayInitiate(d.Spanner))))
 }
 
 // handleChargeback — POST /v1/payment/chargeback. Behaviour preserved
@@ -126,65 +122,6 @@ func handleReversal(cs *payment.ChargebackService) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "reversal_recorded"})
 	}
-}
-
-// handleGlobalPayInitiate — DEPRECATED POST /v1/payment/global_pay/initiate. Clients
-// should migrate to POST /v1/order/card-checkout. Retained for backward
-// compatibility with older iOS/Android builds.
-func handleGlobalPayInitiate(sc *spanner.Client) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			writeDeprecatedGlobalPayError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method Not Allowed")
-			return
-		}
-		log.Printf("[DEPRECATED] /v1/payment/global_pay/initiate called — clients should migrate to /v1/order/card-checkout")
-
-		var req struct {
-			OrderID   string `json:"order_id"`
-			InvoiceID string `json:"invoice_id"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" {
-			writeDeprecatedGlobalPayError(w, http.StatusBadRequest, "invalid_request", "order_id is required")
-			return
-		}
-
-		row, err := sc.Single().ReadRow(r.Context(), "Orders", spanner.Key{req.OrderID}, []string{"Amount", "State"})
-		if err != nil {
-			log.Printf("[PAYMENT INITIATE] Order %s not found: %v", req.OrderID, err)
-			writeDeprecatedGlobalPayError(w, http.StatusNotFound, "order_not_found", "order not found")
-			return
-		}
-		var amount spanner.NullInt64
-		var state string
-		if err := row.Columns(&amount, &state); err != nil {
-			writeDeprecatedGlobalPayError(w, http.StatusInternalServerError, "order_read_failed", "failed to read order")
-			return
-		}
-
-		gw, err := payment.NewGatewayClient("GLOBAL_PAY")
-		if err != nil {
-			log.Printf("[PAYMENT INITIATE] GlobalPay client init failed: %v", err)
-			writeDeprecatedGlobalPayError(w, http.StatusServiceUnavailable, "gateway_unavailable", "payment gateway unavailable")
-			return
-		}
-
-		if err := gw.Charge(req.OrderID, amount.Int64); err != nil {
-			log.Printf("[PAYMENT INITIATE] GlobalPay charge failed for %s: %v", req.OrderID, err)
-			writeDeprecatedGlobalPayError(w, http.StatusBadGateway, "charge_failed", fmt.Sprintf("charge failed: %s", err.Error()))
-			return
-		}
-
-		log.Printf("[PAYMENT INITIATE] GlobalPay charge initiated for order %s: %d", req.OrderID, amount.Int64)
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"status":   "INITIATED",
-			"order_id": req.OrderID,
-		})
-	}
-}
-
-func writeDeprecatedGlobalPayError(w http.ResponseWriter, status int, code, message string) {
-	writePaymentRouteError(w, status, code, message, "/v1/payment/global_pay/initiate", true, "/v1/order/card-checkout")
 }
 
 func writePaymentRouteError(w http.ResponseWriter, status int, code, message, endpoint string, deprecated bool, migrateTo string) {

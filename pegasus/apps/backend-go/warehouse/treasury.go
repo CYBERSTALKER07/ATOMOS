@@ -114,7 +114,12 @@ func handleTreasuryInvoices(w http.ResponseWriter, r *http.Request, client *span
 	                    MAX(PayoutOwnerType) AS PayoutOwnerType,
 	                    MAX(PayoutOwnerId) AS PayoutOwnerId,
 	                    MAX(FeePolicyVersion) AS FeePolicyVersion
-	             FROM InvoiceSettlementSlices
+	             FROM InvoiceSettlementSlices iss_outer
+	             WHERE NOT EXISTS (
+	               SELECT 1 FROM InvoiceSettlementSlices iss_rev
+	               WHERE iss_rev.InvoiceId = iss_outer.InvoiceId
+	                 AND iss_rev.RevisionOf = iss_outer.SliceId
+	             )
 	             GROUP BY InvoiceId, SupplierId
 	      ) iss ON iss.InvoiceId = mi.InvoiceId AND iss.SupplierId = o.SupplierId
 	      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId

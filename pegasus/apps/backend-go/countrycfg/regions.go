@@ -260,6 +260,60 @@ func parseRegionalConfigRow(row *spanner.Row, regionID string, includeDegressive
 	return cfg, nil
 }
 
+// adyenSupportedCountries enumerates the country codes (ISO 3166-1 alpha-2)
+// for which ADYEN is the default card-tokenization gateway. UZ is intentionally
+// EXCLUDED — Uzbekistan stays on GLOBAL_PAY for Uzcard/Humo coverage.
+// Callers MUST treat this list as additive; new countries appended here
+// silently shift their retailer card-initiate default to ADYEN.
+var adyenSupportedCountries = map[string]struct{}{
+	"AT": {}, "AU": {}, "BE": {}, "BR": {}, "CA": {}, "CH": {}, "CZ": {},
+	"DE": {}, "DK": {}, "ES": {}, "FI": {}, "FR": {}, "GB": {}, "HK": {},
+	"IE": {}, "IT": {}, "JP": {}, "MX": {}, "NL": {}, "NO": {}, "NZ": {},
+	"PL": {}, "PT": {}, "SE": {}, "SG": {}, "US": {},
+}
+
+// ResolveDefaultGatewayForCountry returns the default card-tokenization gateway
+// for a given country code per Workstream J policy:
+//
+//	UZ              -> GLOBAL_PAY (Uzcard / HUMO)
+//	adyen-list      -> ADYEN     (Adyen-supported markets)
+//	everywhere else -> AIRWALLEX (global fallback)
+//
+// The function is pure (no I/O) so it is safe to call from hot paths.
+func ResolveDefaultGatewayForCountry(countryCode string) string {
+	country := strings.ToUpper(strings.TrimSpace(countryCode))
+	if country == "" || country == "UZ" {
+		return "GLOBAL_PAY"
+	}
+	if _, ok := adyenSupportedCountries[country]; ok {
+		return "ADYEN"
+	}
+	return "AIRWALLEX"
+}
+
+// ResolveDefaultGatewayForRetailer resolves the default card-tokenization
+// gateway for a retailer based on their region's country code. Falls back to
+// UZ semantics ("GLOBAL_PAY") when the retailer has no region binding or the
+// region lookup fails — never returns an empty gateway.
+func (s *Service) ResolveDefaultGatewayForRetailer(ctx context.Context, retailerID string) string {
+	if s == nil || s.Spanner == nil || strings.TrimSpace(retailerID) == "" {
+		return "GLOBAL_PAY"
+	}
+	row, err := s.Spanner.Single().ReadRow(ctx, "Retailers", spanner.Key{retailerID}, []string{"RegionId"})
+	if err != nil {
+		return "GLOBAL_PAY"
+	}
+	var regionID spanner.NullString
+	if scanErr := row.Columns(&regionID); scanErr != nil || !regionID.Valid || strings.TrimSpace(regionID.StringVal) == "" {
+		return "GLOBAL_PAY"
+	}
+	region, regionErr := s.GetRegionByID(ctx, regionID.StringVal)
+	if regionErr != nil || region == nil {
+		return "GLOBAL_PAY"
+	}
+	return ResolveDefaultGatewayForCountry(region.CountryCode)
+}
+
 // SeedDefaultRegions inserts baseline region and config rows when absent.
 // This keeps rollout additive: existing country-level behavior remains active
 // while region-scoped lookups gain a deterministic fallback target.

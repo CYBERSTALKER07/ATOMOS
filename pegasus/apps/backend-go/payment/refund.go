@@ -368,7 +368,273 @@ func (rs *RefundService) lookupProviderPaymentID(ctx context.Context, sessionID 
 	return strings.TrimSpace(providerTxn.StringVal), nil
 }
 
-// GetRefundsByOrder returns all refunds for a given order.
+// DeliveryDeltaRefundRequest is the input for InitiateDeliveryDeltaRefund.
+// SupplierID/RetailerID are optional context (best-effort populated for the
+// outbox event); resolution falls back to the Orders row.
+type DeliveryDeltaRefundRequest struct {
+	OrderID           string
+	DeliverySessionID string
+	OriginalAmount    int64
+	AdjustedAmount    int64
+	SupplierID        string
+	RetailerID        string
+}
+
+// InitiateDeliveryDeltaRefund issues a partial refund for the price delta
+// (OriginalAmount - AdjustedAmount) on an already-SETTLED direct (non-hosted)
+// saved-card session. Skipped for hosted/AUTH-CAPTURE flows because those
+// capture against PaymentSessions.FinalAmount instead.
+//
+// Idempotency: RefundId is derived deterministically from DeliverySessionID,
+// so replays return the cached result via Spanner PK conflict semantics.
+//
+// State guard: skipped (returns nil, nil) for orders whose payment session is
+// not SETTLED, for CASH gateway, or for non-positive deltas.
+func (rs *RefundService) InitiateDeliveryDeltaRefund(ctx context.Context, req DeliveryDeltaRefundRequest) (*RefundResult, error) {
+	delta := req.OriginalAmount - req.AdjustedAmount
+	if delta <= 0 {
+		return nil, nil
+	}
+	dsid := strings.TrimSpace(req.DeliverySessionID)
+	if dsid == "" {
+		return nil, fmt.Errorf("delivery session id required")
+	}
+	if len(dsid) > 32 {
+		dsid = dsid[:32]
+	}
+	deltaRefundID := "DDR-" + dsid
+
+	// Idempotency replay: if a Refunds row already exists for this delivery
+	// session, return the cached outcome without retrying the provider.
+	if row, err := rs.spanner.Single().ReadRow(ctx, "Refunds",
+		spanner.Key{deltaRefundID},
+		[]string{"RefundId", "Status", "AmountUZS", "Gateway", "ProviderRefundId"},
+	); err == nil {
+		var rid, status, gateway string
+		var amt int64
+		var providerRef spanner.NullString
+		if scanErr := row.Columns(&rid, &status, &amt, &gateway, &providerRef); scanErr == nil {
+			return &RefundResult{
+				RefundID:         rid,
+				Status:           status,
+				Amount:           amt,
+				AmountUZS:        amt,
+				Gateway:          gateway,
+				ProviderRefundID: providerRef.StringVal,
+			}, nil
+		}
+	} else if spanner.ErrCode(err) != 5 {
+		return nil, fmt.Errorf("delivery delta refund idempotency lookup: %w", err)
+	}
+
+	// Read order context (supplier/retailer for ledger + event payload).
+	supplierID := strings.TrimSpace(req.SupplierID)
+	retailerID := strings.TrimSpace(req.RetailerID)
+	if supplierID == "" || retailerID == "" {
+		if orderRow, err := rs.spanner.Single().ReadRow(ctx, "Orders",
+			spanner.Key{req.OrderID},
+			[]string{"SupplierId", "RetailerId"},
+		); err == nil {
+			var s, r string
+			if scanErr := orderRow.Columns(&s, &r); scanErr == nil {
+				if supplierID == "" {
+					supplierID = s
+				}
+				if retailerID == "" {
+					retailerID = r
+				}
+			}
+		}
+	}
+
+	// Find SETTLED session. If none, this is a hosted/AUTH-CAPTURE flow and
+	// the gateway worker will capture FinalAmount instead — no-op.
+	stmt := spanner.Statement{
+		SQL:    `SELECT SessionId, Gateway, LockedAmount, PaidAmount, Currency, ProviderReference FROM PaymentSessions WHERE OrderId = @orderID AND Status = 'SETTLED' LIMIT 1`,
+		Params: map[string]interface{}{"orderID": req.OrderID},
+	}
+	iter := rs.spanner.Single().Query(ctx, stmt)
+	sessRow, err := iter.Next()
+	iter.Stop()
+	if err != nil {
+		if errors.Is(err, iterator.Done) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("delivery delta refund settled session lookup: %w", err)
+	}
+
+	var sessionID, sessGateway string
+	var lockedAmount spanner.NullInt64
+	var paidAmount spanner.NullInt64
+	var sessionCurrency spanner.NullString
+	var providerReference spanner.NullString
+	if err := sessRow.Columns(&sessionID, &sessGateway, &lockedAmount, &paidAmount, &sessionCurrency, &providerReference); err != nil {
+		return nil, fmt.Errorf("delivery delta refund parse session: %w", err)
+	}
+
+	// Cash gateway has no programmatic refund path.
+	if sessGateway == "CASH" {
+		return nil, nil
+	}
+
+	resolvedCurrency := normalizeCurrencyCode("")
+	if sessionCurrency.Valid {
+		resolvedCurrency = normalizeCurrencyCode(sessionCurrency.StringVal)
+	}
+
+	// Guard: refund cannot exceed paid amount.
+	maxRefundable := lockedAmount.Int64
+	if paidAmount.Valid && paidAmount.Int64 > 0 {
+		maxRefundable = paidAmount.Int64
+	}
+	if delta > maxRefundable {
+		return nil, fmt.Errorf("delivery delta refund amount %d exceeds maximum refundable %d", delta, maxRefundable)
+	}
+
+	// Snapshot-authoritative fee split for reversal ledger math.
+	snapshot, hasSnapshot, snapshotErr := LoadSupplierSettlementSnapshot(ctx, rs.spanner, req.OrderID, supplierID)
+	if snapshotErr != nil {
+		log.Printf("[REFUND.DELTA] settlement snapshot lookup failed for order %s supplier %s: %v", req.OrderID, supplierID, snapshotErr)
+	}
+
+	// Provider call. Failures fall back to MANUAL_REQUIRED so operators can
+	// reconcile out-of-band; we still persist the Refunds row to anchor
+	// idempotency and downstream visibility.
+	providerRefundID := ""
+	refundStatus := RefundPending
+	executionClient, executionErr := rs.resolveExecutionClient(ctx, req.OrderID, sessGateway)
+	if executionErr != nil {
+		refundStatus = RefundManualRequired
+		log.Printf("[REFUND.DELTA] provider execution unavailable order=%s gateway=%s: %v", req.OrderID, sessGateway, executionErr)
+	} else {
+		providerPaymentID, refLookupErr := rs.lookupProviderPaymentID(ctx, sessionID, providerReference)
+		switch {
+		case refLookupErr != nil:
+			refundStatus = RefundManualRequired
+			log.Printf("[REFUND.DELTA] provider payment ref lookup failed order=%s: %v", req.OrderID, refLookupErr)
+		case providerPaymentID == "":
+			refundStatus = RefundManualRequired
+			log.Printf("[REFUND.DELTA] provider payment ref missing order=%s", req.OrderID)
+		default:
+			refundResult, refErr := executionClient.RefundPayment(ctx, ProviderRefundRequest{
+				OrderID:   req.OrderID,
+				PaymentID: providerPaymentID,
+				Amount:    delta,
+				Currency:  resolvedCurrency,
+			})
+			if refErr != nil {
+				if errors.Is(refErr, ErrAdyenDirectOperationUnsupported) {
+					refundStatus = RefundManualRequired
+				} else {
+					refundStatus = RefundFailed
+				}
+				log.Printf("[REFUND.DELTA] provider refund failed order=%s gateway=%s: %v", req.OrderID, sessGateway, refErr)
+			} else {
+				refundStatus = RefundSettled
+				providerRefundID = strings.TrimSpace(refundResult.ProviderRefundID)
+				if providerRefundID == "" {
+					providerRefundID = strings.TrimSpace(refundResult.ProviderReference)
+				}
+				if providerRefundID == "" {
+					providerRefundID = providerPaymentID
+				}
+			}
+		}
+	}
+
+	now := time.Now()
+	_, txErr := rs.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		mutations := []*spanner.Mutation{
+			spanner.Insert("Refunds",
+				[]string{"RefundId", "OrderId", "SessionId", "Gateway", "AmountUZS", "Reason", "Status", "ProviderRefundId", "InitiatedBy", "CreatedAt"},
+				[]interface{}{deltaRefundID, req.OrderID, sessionID, sessGateway, delta, "DELIVERY_DELTA_REFUND", refundStatus, providerRefundID, "DELIVERY_RECONCILIATION", now},
+			),
+		}
+
+		if refundStatus == RefundSettled {
+			totalTiyin := delta * 100
+			platformReversal := int64(0)
+			payoutAccountID := supplierID
+
+			if hasSnapshot {
+				effectiveGross := snapshot.GrossAmount
+				if effectiveGross <= 0 {
+					effectiveGross = maxRefundable
+				}
+				if effectiveGross > 0 {
+					platformReversal = totalTiyin * snapshot.FeeAmount / effectiveGross
+				}
+				if snapshot.PayoutOwnerID != "" {
+					payoutAccountID = snapshot.PayoutOwnerID
+				}
+			} else {
+				platformReversal = totalTiyin * rs.feeBP / 10000
+			}
+			if platformReversal < 0 {
+				platformReversal = 0
+			}
+			if platformReversal > totalTiyin {
+				platformReversal = totalTiyin
+			}
+			supplierReversal := totalTiyin - platformReversal
+
+			platformTxnID := fmt.Sprintf("TXN-DDR-PEGASUS-%s", deltaRefundID[len(deltaRefundID)-8:])
+			supTxnID := fmt.Sprintf("TXN-DDR-SUP-%s", deltaRefundID[len(deltaRefundID)-8:])
+
+			mutations = append(mutations, spanner.Insert("LedgerEntries",
+				[]string{"TransactionId", "OrderId", "AccountId", "Amount", "EntryType", "CreatedAt"},
+				[]interface{}{platformTxnID, req.OrderID, finance.PlatformAccountID, -platformReversal, "DEBIT_REFUND", now},
+			))
+			mutations = append(mutations, spanner.Insert("LedgerEntries",
+				[]string{"TransactionId", "OrderId", "AccountId", "Amount", "EntryType", "CreatedAt"},
+				[]interface{}{supTxnID, req.OrderID, payoutAccountID, -supplierReversal, "DEBIT_REFUND", now},
+			))
+		}
+
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+
+		// Outbox emit. NOTE: kafka import would create a cycle (kafka imports
+		// payment), so we emit by literal event name. notification_dispatcher
+		// resolves DELIVERY_DELTA_REFUNDED via its switch table.
+		payload := map[string]interface{}{
+			"order_id":            req.OrderID,
+			"session_id":          sessionID,
+			"delivery_session_id": req.DeliverySessionID,
+			"refund_id":           deltaRefundID,
+			"original_amount":     req.OriginalAmount,
+			"adjusted_amount":     req.AdjustedAmount,
+			"delta_amount":        delta,
+			"currency":            resolvedCurrency,
+			"gateway":             sessGateway,
+			"status":              refundStatus,
+			"provider_refund_id":  providerRefundID,
+			"supplier_id":         supplierID,
+			"retailer_id":         retailerID,
+			"timestamp":           now.Format(time.RFC3339),
+		}
+		return outbox.EmitJSON(txn, "Refund", deltaRefundID, "DELIVERY_DELTA_REFUNDED", "pegasus-logistics-events", payload, telemetry.TraceIDFromContext(ctx))
+	})
+
+	if txErr != nil {
+		return nil, fmt.Errorf("delivery delta refund persistence: %w", txErr)
+	}
+
+	cache.Invalidate(ctx, cache.PrefixActiveOrders+retailerID, cache.SupplierProfile(supplierID))
+
+	log.Printf("[REFUND.DELTA] order=%s session=%s delta=%d %s status=%s", req.OrderID, sessionID, delta, resolvedCurrency, refundStatus)
+
+	return &RefundResult{
+		RefundID:         deltaRefundID,
+		Status:           refundStatus,
+		Amount:           delta,
+		AmountUZS:        delta,
+		Currency:         resolvedCurrency,
+		Gateway:          sessGateway,
+		ProviderRefundID: providerRefundID,
+	}, nil
+}
 func (rs *RefundService) GetRefundsByOrder(ctx context.Context, orderID string) ([]RefundResult, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT r.RefundId, r.Status, r.AmountUZS, r.Gateway, r.ProviderRefundId, ps.Currency

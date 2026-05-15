@@ -79,6 +79,7 @@ type PaymentSession struct {
 	AuthorizationID   string     `json:"authorization_id,omitempty"`
 	AuthorizedAmount  int64      `json:"authorized_amount,omitempty"`
 	CapturedAmount    int64      `json:"captured_amount,omitempty"`
+	FinalAmount       int64      `json:"final_amount,omitempty"`
 	ExpiresAt         *time.Time `json:"expires_at,omitempty"`
 	LastErrorCode     string     `json:"last_error_code,omitempty"`
 	LastErrorMessage  string     `json:"last_error_message,omitempty"`

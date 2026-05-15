@@ -15,6 +15,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	goKafka "github.com/segmentio/kafka-go"
+	"google.golang.org/api/iterator"
 )
 
 // ─── Notification Dispatcher Consumer ──────────────────────────────────────────
@@ -156,6 +157,8 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handleInventoryImportStatusUpdate(deps, m.Value)
 			case EventPaymentFailed:
 				handlePaymentFailed(deps, m.Value)
+			case EventPaymentGatewayDegraded:
+				handlePaymentGatewayDegraded(deps, m.Value)
 			case EventCashCollectionRequired:
 				handleCashCollectionRequired(deps, m.Value)
 			case EventFulfillmentPaymentCompleted:
@@ -521,21 +524,34 @@ func handleDeliverySessionUpdated(deps NotificationDeps, data []byte) {
 		return
 	}
 
+	retailerData := map[string]string{
+		"order_id":         event.OrderID,
+		"session_id":       event.SessionID,
+		"state":            event.State,
+		"currency":         event.Currency,
+		"original_amount":  strconv.FormatInt(event.OriginalAmount, 10),
+		"adjusted_amount":  strconv.FormatInt(event.AdjustedAmount, 10),
+		"fee_basis_points": strconv.FormatInt(event.FeeBasisPoints, 10),
+		"fee_amount":       strconv.FormatInt(event.FeeAmount, 10),
+	}
+	if event.NetPayoutAmount != 0 {
+		retailerData["net_payout_amount"] = strconv.FormatInt(event.NetPayoutAmount, 10)
+	}
+	if event.FeePolicyVersion != "" {
+		retailerData["fee_policy_version"] = event.FeePolicyVersion
+	}
+	if event.SelectedTierKey != "" {
+		retailerData["selected_tier_key"] = event.SelectedTierKey
+	}
+	if event.FeeCapApplied {
+		retailerData["fee_cap_applied"] = "true"
+	}
 	retailerNotif := notifications.NewFormattedNotification(
 		"Delivery Session Updated",
 		fmt.Sprintf("Order %s delivery session updated to %s.", event.OrderID, event.State),
 		"notification.delivery_session_updated.retailer.title",
 		"notification.delivery_session_updated.retailer.body",
-		map[string]string{
-			"order_id":         event.OrderID,
-			"session_id":       event.SessionID,
-			"state":            event.State,
-			"currency":         event.Currency,
-			"original_amount":  strconv.FormatInt(event.OriginalAmount, 10),
-			"adjusted_amount":  strconv.FormatInt(event.AdjustedAmount, 10),
-			"fee_basis_points": strconv.FormatInt(event.FeeBasisPoints, 10),
-			"fee_amount":       strconv.FormatInt(event.FeeAmount, 10),
-		},
+		retailerData,
 	)
 	dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventDeliverySessionUpdated, retailerNotif)
 }
@@ -592,6 +608,67 @@ func handlePaymentFailed(deps NotificationDeps, data []byte) {
 
 	notif := notifications.FormatPaymentFailed(event.OrderID, event.Gateway, event.Reason)
 	dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventPaymentFailed, notif)
+}
+
+func handlePaymentGatewayDegraded(deps NotificationDeps, data []byte) {
+	var event PaymentGatewayDegradedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", EventPaymentGatewayDegraded, "err", err)
+		return
+	}
+
+	// 1. Notify Retailer
+	retailerNotif := notifications.NewFormattedNotification(
+		"Card Payments Degraded",
+		fmt.Sprintf("%s payments are temporarily unavailable. Please use cash.", event.Gateway),
+		"notification.payment_degraded.retailer.title",
+		"notification.payment_degraded.retailer.body",
+		map[string]string{
+			"gateway": event.Gateway,
+			"reason":  event.Reason,
+			"type":    "payment_gateway_degraded",
+		},
+	)
+	dispatchToRecipient(deps, event.RetailerID, "RETAILER", EventPaymentGatewayDegraded, retailerNotif)
+
+	// 2. Find connected suppliers and notify them
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	stmt := spanner.Statement{
+		SQL:    `SELECT SupplierId FROM RetailerSuppliers WHERE RetailerId = @rid AND IsActive = true`,
+		Params: map[string]interface{}{"rid": event.RetailerID},
+	}
+	iter := deps.SpannerClient.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	supplierNotif := notifications.NewFormattedNotification(
+		"Retailer Card Payments Blocked",
+		fmt.Sprintf("Card payments for Retailer %s have been temporarily blocked on %s due to an outage or policy error.", shortRecipientID(event.RetailerID), event.Gateway),
+		"notification.payment_degraded.supplier.title",
+		"notification.payment_degraded.supplier.body",
+		map[string]string{
+			"retailer_id": event.RetailerID,
+			"gateway":     event.Gateway,
+			"reason":      event.Reason,
+			"type":        "retailer_payment_gateway_degraded",
+		},
+	)
+
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			slog.Error("notification_dispatcher.supplier_lookup_failed", "retailer_id", event.RetailerID, "err", err)
+			break
+		}
+		var supplierID string
+		if err := row.Columns(&supplierID); err == nil && supplierID != "" {
+			dispatchToRecipient(deps, supplierID, "SUPPLIER", EventPaymentGatewayDegraded, supplierNotif)
+		}
+	}
 }
 
 func handleDriverAvailabilityChanged(deps NotificationDeps, data []byte) {

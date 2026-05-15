@@ -1920,6 +1920,55 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		}
 		adminClient.Close()
 	}
+
+	// ── MIGRATION: InvoiceSettlementSlices revision lineage ──────────────────
+	// Additive revision columns let delivery-time reconciliation write a NEW
+	// slice row that supersedes the original (RevisionOf=originalSliceId).
+	// Treasury readers prefer the latest revision (rows whose SliceId is not
+	// referenced by any RevisionOf).
+	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
+	if err == nil {
+		settlementRevisionDDL := []string{
+			"ALTER TABLE InvoiceSettlementSlices ADD COLUMN RevisionOf STRING(36)",
+			"ALTER TABLE InvoiceSettlementSlices ADD COLUMN DeliverySessionId STRING(36)",
+			"ALTER TABLE InvoiceSettlementSlices ADD COLUMN RevisionReason STRING(64)",
+			"CREATE INDEX Idx_InvoiceSettlementSlices_ByRevisionOf ON InvoiceSettlementSlices(RevisionOf)",
+			"CREATE INDEX Idx_InvoiceSettlementSlices_ByDeliverySession ON InvoiceSettlementSlices(DeliverySessionId, CreatedAt DESC)",
+		}
+		for _, stmt := range settlementRevisionDDL {
+			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
+				Database:   dbName,
+				Statements: []string{stmt},
+			})
+			if ddlErr == nil {
+				op.Wait(ctx)
+				fmt.Println("DATABASE MIGRATION SUCCESS:", stmt)
+			}
+		}
+		adminClient.Close()
+	}
+
+	// ── MIGRATION: PaymentSessions FinalAmount (delivery-edit capture authority) ──
+	// Additive nullable column. Written by UpdateOrderDuringDelivery to record
+	// the post-edit captured amount; read by treasurer to set FinalAmount on
+	// PaymentIntentCreated so the gateway worker captures the revised total.
+	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
+	if err == nil {
+		paymentFinalAmountDDL := []string{
+			"ALTER TABLE PaymentSessions ADD COLUMN FinalAmount INT64",
+		}
+		for _, stmt := range paymentFinalAmountDDL {
+			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
+				Database:   dbName,
+				Statements: []string{stmt},
+			})
+			if ddlErr == nil {
+				op.Wait(ctx)
+				fmt.Println("DATABASE MIGRATION SUCCESS:", stmt)
+			}
+		}
+		adminClient.Close()
+	}
 }
 
 func minInt(a, b int) int {

@@ -19,12 +19,15 @@ const (
 	EventPayloadSealed             = "PAYLOAD_SEALED"
 	EventPaymentSettled            = "PAYMENT_SETTLED"
 	EventPaymentFailed             = "PAYMENT_FAILED"
+	EventPaymentGatewayDegraded    = "PAYMENT_GATEWAY_DEGRADED"
 	EventPaymentIntentCreated      = "PAYMENT_INTENT_CREATED"
 	EventPaymentCleared            = "PAYMENT_CLEARED"
 	EventOrderValidationFailed     = "ORDER_VALIDATION_FAILED"
 	EventOrderFinalized            = "ORDER_FINALIZED"
 	EventFeeRateAdjusted           = "FEE_RATE_ADJUSTED"
 	EventSettlementRequired        = "SETTLEMENT_REQUIRED"
+	EventSettlementRevised         = "SETTLEMENT_REVISED"
+	EventDeliveryDeltaRefunded     = "DELIVERY_DELTA_REFUNDED"
 	EventDeliverySessionUpdated    = "DELIVERY_SESSION_UPDATED"
 	EventDeliveryDisputed          = "DELIVERY_DISPUTED"
 	EventOrderCompleted            = "ORDER_COMPLETED"
@@ -1224,8 +1227,18 @@ type PaymentClearedEvent struct {
 // OrderValidationFailedEvent is emitted when an order fails to construct (e.g. inventory lock).
 type OrderValidationFailedEvent struct {
 	OrderID    string    `json:"order_id"`
-	InvoiceID  string    `json:"invoice_id,omitempty"`
-	RetailerID string    `json:"retailer_id,omitempty"`
+	InvoiceID  string    `json:"invoice_id"`
+	RetailerID string    `json:"retailer_id"`
+	Reason     string    `json:"reason"`
+	Timestamp  time.Time `json:"timestamp"`
+}
+
+// PaymentGatewayDegradedEvent is emitted when a checkout or card operation
+// fails due to an upstream gateway outage or policy block, triggering a 3C
+// fallback (block card, force cash, alert stakeholders).
+type PaymentGatewayDegradedEvent struct {
+	RetailerID string    `json:"retailer_id"`
+	Gateway    string    `json:"gateway"`
 	Reason     string    `json:"reason"`
 	Timestamp  time.Time `json:"timestamp"`
 }
@@ -1271,17 +1284,67 @@ type SettlementRequiredEvent struct {
 // DeliverySessionUpdatedEvent is emitted on handshake or reconciliation
 // session updates to keep realtime consumers synchronized.
 type DeliverySessionUpdatedEvent struct {
-	SessionID      string    `json:"session_id"`
-	OrderID        string    `json:"order_id"`
-	RetailerID     string    `json:"retailer_id"`
-	DriverID       string    `json:"driver_id,omitempty"`
-	State          string    `json:"state"`
-	OriginalAmount int64     `json:"original_amount"`
-	AdjustedAmount int64     `json:"adjusted_amount"`
-	FeeBasisPoints int64     `json:"fee_basis_points"`
-	FeeAmount      int64     `json:"fee_amount"`
-	Currency       string    `json:"currency"`
-	Timestamp      time.Time `json:"timestamp"`
+	SessionID        string    `json:"session_id"`
+	OrderID          string    `json:"order_id"`
+	RetailerID       string    `json:"retailer_id"`
+	DriverID         string    `json:"driver_id,omitempty"`
+	State            string    `json:"state"`
+	OriginalAmount   int64     `json:"original_amount"`
+	AdjustedAmount   int64     `json:"adjusted_amount"`
+	FeeBasisPoints   int64     `json:"fee_basis_points"`
+	FeeAmount        int64     `json:"fee_amount"`
+	NetPayoutAmount  int64     `json:"net_payout_amount,omitempty"`
+	FeePolicyVersion string    `json:"fee_policy_version,omitempty"`
+	SelectedTierKey  string    `json:"selected_tier_key,omitempty"`
+	FeeCapApplied    bool      `json:"fee_cap_applied,omitempty"`
+	Currency         string    `json:"currency"`
+	Timestamp        time.Time `json:"timestamp"`
+}
+
+// SettlementRevisedEvent is emitted when delivery-time reconciliation writes
+// an immutable revision row in InvoiceSettlementSlices superseding the
+// checkout-time slice for a given supplier on the order's invoice.
+type SettlementRevisedEvent struct {
+	InvoiceID        string    `json:"invoice_id"`
+	OrderID          string    `json:"order_id"`
+	SupplierID       string    `json:"supplier_id"`
+	WarehouseID      string    `json:"warehouse_id,omitempty"`
+	SessionID        string    `json:"session_id,omitempty"`
+	OriginalSliceID  string    `json:"original_slice_id"`
+	RevisionSliceID  string    `json:"revision_slice_id"`
+	RevisionReason   string    `json:"revision_reason"`
+	GrossAmount      int64     `json:"gross_amount"`
+	FeeAmount        int64     `json:"fee_amount"`
+	NetPayoutAmount  int64     `json:"net_payout_amount"`
+	FeeBasisPoints   int64     `json:"fee_basis_points"`
+	FeeCapApplied    bool      `json:"fee_cap_applied,omitempty"`
+	FeePolicyVersion string    `json:"fee_policy_version"`
+	SelectedTierKey  string    `json:"selected_tier_key,omitempty"`
+	SettlementTarget string    `json:"settlement_target,omitempty"`
+	PayoutOwnerType  string    `json:"payout_owner_type,omitempty"`
+	PayoutOwnerID    string    `json:"payout_owner_id,omitempty"`
+	Currency         string    `json:"currency"`
+	Timestamp        time.Time `json:"timestamp"`
+}
+
+// DeliveryDeltaRefundedEvent is emitted after a downward delivery edit on an
+// already-SETTLED direct (non-hosted) saved-card session triggers a partial
+// refund of the price delta back to the retailer's card.
+type DeliveryDeltaRefundedEvent struct {
+	OrderID           string    `json:"order_id"`
+	SessionID         string    `json:"session_id"`
+	DeliverySessionID string    `json:"delivery_session_id"`
+	RefundID          string    `json:"refund_id"`
+	OriginalAmount    int64     `json:"original_amount"`
+	AdjustedAmount    int64     `json:"adjusted_amount"`
+	DeltaAmount       int64     `json:"delta_amount"`
+	Currency          string    `json:"currency"`
+	Gateway           string    `json:"gateway"`
+	Status            string    `json:"status"`
+	ProviderRefundID  string    `json:"provider_refund_id,omitempty"`
+	SupplierID        string    `json:"supplier_id,omitempty"`
+	RetailerID        string    `json:"retailer_id,omitempty"`
+	Timestamp         time.Time `json:"timestamp"`
 }
 
 // DeliveryDisputedEvent is emitted when retailer rejects driver reconciliation

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"log/slog"
 	"math"
 	"net/http"
@@ -220,6 +221,7 @@ type OrderService struct {
 	SessionSvc    *payment.SessionService        // Payment session engine (nil = legacy mode)
 	CardTokenSvc  *payment.CardTokenService      // Saved card token CRUD (nil = tokenization disabled)
 	DirectClient  *payment.GlobalPayDirectClient // Global Pay Payments Service Public (nil = disabled)
+	RefundSvc     *payment.RefundService         // Refund engine; required for delivery delta refunds (nil = skipped)
 	PlatformCfg   *settings.PlatformConfig       // Runtime platform config cache (SystemConfig-backed)
 	FeeBP         int64                          // Platform fee in basis points (0 = zero-fee era)
 }
@@ -493,7 +495,7 @@ func (s *OrderService) resolveSupplierCheckoutGatewayPolicy(ctx context.Context,
 	return policy, nil
 }
 
-func (s *OrderService) resolveCheckoutGatewayWithMetadata(ctx context.Context, supplierIDs []string, requestedGateway string) (*CheckoutGatewayResolution, error) {
+func (s *OrderService) ResolveCheckoutGatewayWithMetadata(ctx context.Context, supplierIDs []string, requestedGateway string) (*CheckoutGatewayResolution, error) {
 	uniqueSupplierIDs := make([]string, 0, len(supplierIDs))
 	seenSupplierIDs := make(map[string]struct{}, len(supplierIDs))
 	for _, supplierID := range supplierIDs {
@@ -606,7 +608,7 @@ func (s *OrderService) resolveCheckoutGatewayWithMetadata(ctx context.Context, s
 }
 
 func (s *OrderService) resolveCheckoutGateway(ctx context.Context, supplierIDs []string, requestedGateway string) (string, error) {
-	resolution, err := s.resolveCheckoutGatewayWithMetadata(ctx, supplierIDs, requestedGateway)
+	resolution, err := s.ResolveCheckoutGatewayWithMetadata(ctx, supplierIDs, requestedGateway)
 	if err != nil {
 		return "", err
 	}
@@ -3360,14 +3362,15 @@ type CardCheckoutResponse struct {
 // CardCheckout transitions AWAITING_PAYMENT → keeps AWAITING_PAYMENT (no state change — webhook settles).
 // Creates a MasterInvoice for the gateway and returns a hosted checkout URL.
 func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callbackBaseURL string) (*CardCheckoutResponse, error) {
-	row, err := s.Client.Single().ReadRow(ctx, "Orders", spanner.Key{orderId}, []string{"SupplierId"})
+	row, err := s.Client.Single().ReadRow(ctx, "Orders", spanner.Key{orderId}, []string{"SupplierId", "RetailerId"})
 	if err != nil {
 		return nil, fmt.Errorf("order %s not found: %w", orderId, err)
 	}
 
 	var supplierIdNull spanner.NullString
-	if err := row.Columns(&supplierIdNull); err != nil {
-		return nil, fmt.Errorf("read order %s supplier scope: %w", orderId, err)
+	var retailerIdNull spanner.NullString
+	if err := row.Columns(&supplierIdNull, &retailerIdNull); err != nil {
+		return nil, fmt.Errorf("read order %s supplier/retailer scope: %w", orderId, err)
 	}
 
 	supplierId := ""
@@ -3375,9 +3378,17 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		supplierId = supplierIdNull.StringVal
 	}
 
-	gatewayResolution, err := s.resolveCheckoutGatewayWithMetadata(ctx, []string{supplierId}, gateway)
+	retailerId := ""
+	if retailerIdNull.Valid {
+		retailerId = retailerIdNull.StringVal
+	}
+
+	gatewayResolution, err := s.ResolveCheckoutGatewayWithMetadata(ctx, []string{supplierId}, gateway)
 	if err != nil {
 		if policyErr, ok := asGatewayPolicyError(err); ok {
+			if retailerId != "" {
+				s.Trigger3CFallback(ctx, retailerId, gateway, policyErr.Message)
+			}
 			return nil, policyErr
 		}
 		return nil, fmt.Errorf("resolve checkout gateway for order %s: %w", orderId, err)
@@ -3385,7 +3396,6 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 	gateway = gatewayResolution.ResolvedGateway
 
 	var resp CardCheckoutResponse
-	var retailerId string
 	var warehouseID string
 	orderCurrency := "UZS"
 	resp.ResolvedGateway = gatewayResolution.ResolvedGateway
@@ -3553,9 +3563,12 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		}
 
 		// ── Dual-mode: check for saved card → direct charge, else hosted checkout ──
+		// Card-bound gateway authority: query the saved card under the gateway the
+		// checkout has resolved (Workstream J), so retailers that saved a card on
+		// ADYEN/AIRWALLEX charge the same provider on subsequent checkouts.
 		var savedCard *payment.RetailerCardToken
 		if s.CardTokenSvc != nil && s.DirectClient != nil {
-			savedCard, _ = s.CardTokenSvc.GetDefaultCard(ctx, retailerId, "GLOBAL_PAY")
+			savedCard, _ = s.CardTokenSvc.GetDefaultCard(ctx, retailerId, gateway)
 		}
 
 		if savedCard != nil {
@@ -3585,6 +3598,7 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 				})
 				if execErr != nil {
 					slog.Warn("order.card_checkout_direct_init_failed", "order_id", orderId, "gateway", gateway, "err", execErr)
+					s.Trigger3CFallback(ctx, retailerId, gateway, fmt.Sprintf("direct payment init failed: %v", execErr))
 				} else {
 					providerReference = strings.TrimSpace(executionResult.ProviderReference)
 					if providerReference == "" {
@@ -3752,6 +3766,43 @@ func (s *OrderService) lookupRetailerPaymentAccount(ctx context.Context, retaile
 // for use by card management endpoints in main.go.
 func (s *OrderService) LookupRetailerPhone(ctx context.Context, retailerID string) (string, error) {
 	return s.lookupRetailerPaymentAccount(ctx, retailerID)
+}
+
+// Trigger3CFallback acts as the 3C actuator when a payment gateway encounters an outage
+// or policy block. It soft-deletes all retailer card tokens for the affected gateway
+// and emits a PaymentGatewayDegradedEvent via the transactional outbox to notify
+// both the retailer and connected suppliers.
+func (s *OrderService) Trigger3CFallback(ctx context.Context, retailerID, gateway, reason string) {
+	if s == nil {
+		return
+	}
+
+	// 1. Block card tokens for this gateway
+	if s.CardTokenSvc != nil {
+		if err := s.CardTokenSvc.DeactivateAllRetailerCardsForGateway(ctx, retailerID, gateway); err != nil {
+			log.Printf("[3C_FALLBACK] Failed to deactivate cards for retailer %s gateway %s: %v", retailerID, gateway, err)
+		} else {
+			log.Printf("[3C_FALLBACK] Deactivated %s cards for retailer %s (Reason: %s)", gateway, retailerID, reason)
+		}
+	}
+
+	// 2. Emit degradation event via outbox
+	if s.Client != nil {
+		_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			event := kafkaEvents.PaymentGatewayDegradedEvent{
+				RetailerID: retailerID,
+				Gateway:    gateway,
+				Reason:     reason,
+				Timestamp:  time.Now().UTC(),
+			}
+			// Emit using a pseudo orderID since this is retailer-level, not tied to a single order.
+			// The outbox will route it to TopicMain.
+			return outbox.EmitJSON(txn, "Retailer", retailerID, kafkaEvents.EventPaymentGatewayDegraded, kafkaEvents.TopicMain, event, "")
+		})
+		if err != nil {
+			log.Printf("[3C_FALLBACK] Failed to emit degradation event for retailer %s: %v", retailerID, err)
+		}
+	}
 }
 
 // ─── CASH CHECKOUT (Retailer selects cash after offload) ──────────────────────

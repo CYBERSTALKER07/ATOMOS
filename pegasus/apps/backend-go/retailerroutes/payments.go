@@ -11,6 +11,9 @@ import (
 	"backend-go/order"
 	"backend-go/payment"
 	"backend-go/ws"
+
+	"cloud.google.com/go/spanner"
+	"google.golang.org/api/iterator"
 )
 
 type retailerCardConfirmRequest struct {
@@ -42,8 +45,58 @@ func handleRetailerCardInitiate(d Deps) http.HandlerFunc {
 		var req struct {
 			Gateway string `json:"gateway"`
 		}
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Gateway == "" {
-			req.Gateway = "GLOBAL_PAY"
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		req.Gateway = strings.ToUpper(strings.TrimSpace(req.Gateway))
+		if req.Gateway == "" {
+			// Country-default resolver (UZ -> GLOBAL_PAY, Adyen-list -> ADYEN, else -> AIRWALLEX).
+			// Falls back to GLOBAL_PAY when the retailer has no region binding.
+			if d.CountryCfg != nil {
+				req.Gateway = d.CountryCfg.ResolveDefaultGatewayForRetailer(r.Context(), claims.UserID)
+			}
+			if req.Gateway == "" {
+				req.Gateway = "GLOBAL_PAY"
+			}
+		}
+
+		// Gateway-policy authority: enforce against retailer's connected suppliers
+		stmt := spanner.Statement{
+			SQL:    `SELECT SupplierId FROM RetailerSuppliers WHERE RetailerId = @rid`,
+			Params: map[string]interface{}{"rid": claims.UserID},
+		}
+		iter := d.Spanner.Single().Query(r.Context(), stmt)
+		var supplierIDs []string
+		for {
+			row, err := iter.Next()
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				http.Error(w, "failed to query retailer suppliers", http.StatusInternalServerError)
+				return
+			}
+			var sid string
+			if err := row.Columns(&sid); err == nil && sid != "" {
+				supplierIDs = append(supplierIDs, sid)
+			}
+		}
+
+		if len(supplierIDs) > 0 {
+			_, err := d.Order.ResolveCheckoutGatewayWithMetadata(r.Context(), supplierIDs, req.Gateway)
+			if err != nil {
+				var policyErr *order.ErrGatewayPolicy
+				if errors.As(err, &policyErr) {
+					d.Order.Trigger3CFallback(r.Context(), claims.UserID, req.Gateway, policyErr.Message)
+					writeJSONStatus(w, http.StatusUnprocessableEntity, retailerGatewayPolicyErrorPayload(policyErr))
+					return
+				}
+				http.Error(w, "payment gateway policy validation failed", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		if req.Gateway != "GLOBAL_PAY" {
+			http.Error(w, "direct card tokenization is only supported for GLOBAL_PAY", http.StatusBadRequest)
+			return
 		}
 
 		phone, err := d.Order.LookupRetailerPhone(r.Context(), claims.UserID)
@@ -60,6 +113,7 @@ func handleRetailerCardInitiate(d Deps) http.HandlerFunc {
 
 		result, err := d.CardsClient.InitiateCardSave(r.Context(), creds, phone)
 		if err != nil {
+			d.Order.Trigger3CFallback(r.Context(), claims.UserID, req.Gateway, fmt.Sprintf("provider error: %v", err))
 			http.Error(w, err.Error(), http.StatusBadGateway)
 			return
 		}
@@ -161,6 +215,7 @@ func handleRetailerCardConfirm(d Deps) http.HandlerFunc {
 
 		result, err := d.CardsClient.ConfirmCardOTP(r.Context(), creds, req.CardToken, req.OTPCode)
 		if err != nil {
+			d.Order.Trigger3CFallback(r.Context(), claims.UserID, "GLOBAL_PAY", fmt.Sprintf("provider error: %v", err))
 			http.Error(w, err.Error(), http.StatusBadGateway)
 			return
 		}

@@ -93,7 +93,7 @@ func (s *OrderService) HandleB2BCheckout(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	gatewayResolution, err := s.resolveCheckoutGatewayWithMetadata(ctx, supplierIDs, req.PaymentGateway)
+	gatewayResolution, err := s.ResolveCheckoutGatewayWithMetadata(ctx, supplierIDs, req.PaymentGateway)
 	if err != nil {
 		var policyErr *ErrGatewayPolicy
 		if errors.As(err, &policyErr) {
