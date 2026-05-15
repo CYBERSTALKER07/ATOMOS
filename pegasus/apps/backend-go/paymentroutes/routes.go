@@ -69,7 +69,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 func handleChargeback(cs *payment.ChargebackService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			writePaymentRouteError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method Not Allowed", "/v1/payment/chargeback", false, "")
 			return
 		}
 		var req struct {
@@ -81,7 +81,7 @@ func handleChargeback(cs *payment.ChargebackService) http.HandlerFunc {
 			AmountUZS  int64  `json:"amount_uzs"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			writePaymentRouteError(w, http.StatusBadRequest, "invalid_json_payload", "Invalid JSON payload", "/v1/payment/chargeback", false, "")
 			return
 		}
 		amount := req.Amount
@@ -89,11 +89,11 @@ func handleChargeback(cs *payment.ChargebackService) http.HandlerFunc {
 			amount = req.AmountUZS
 		}
 		if req.OrderID == "" || req.RetailerID == "" || req.Gateway == "" || amount <= 0 {
-			http.Error(w, `{"error":"order_id, retailer_id, gateway, and amount (or amount_uzs) are required"}`, http.StatusBadRequest)
+			writePaymentRouteError(w, http.StatusBadRequest, "invalid_request", "order_id, retailer_id, gateway, and amount (or amount_uzs) are required", "/v1/payment/chargeback", false, "")
 			return
 		}
 		if err := cs.HandleChargeback(r.Context(), req.OrderID, req.RetailerID, req.Gateway, amount, req.Currency); err != nil {
-			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusInternalServerError)
+			writePaymentRouteError(w, http.StatusInternalServerError, "chargeback_record_failed", err.Error(), "/v1/payment/chargeback", false, "")
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -105,22 +105,22 @@ func handleChargeback(cs *payment.ChargebackService) http.HandlerFunc {
 func handleReversal(cs *payment.ChargebackService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			writePaymentRouteError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method Not Allowed", "/v1/payment/chargeback/reversal", false, "")
 			return
 		}
 		var req struct {
 			SessionID string `json:"session_id"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			writePaymentRouteError(w, http.StatusBadRequest, "invalid_json_payload", "Invalid JSON payload", "/v1/payment/chargeback/reversal", false, "")
 			return
 		}
 		if req.SessionID == "" {
-			http.Error(w, `{"error":"session_id is required"}`, http.StatusBadRequest)
+			writePaymentRouteError(w, http.StatusBadRequest, "invalid_request", "session_id is required", "/v1/payment/chargeback/reversal", false, "")
 			return
 		}
 		if err := cs.HandleReversal(r.Context(), req.SessionID); err != nil {
-			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusBadRequest)
+			writePaymentRouteError(w, http.StatusBadRequest, "reversal_record_failed", err.Error(), "/v1/payment/chargeback/reversal", false, "")
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -134,7 +134,7 @@ func handleReversal(cs *payment.ChargebackService) http.HandlerFunc {
 func handleGlobalPayInitiate(sc *spanner.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			writeDeprecatedGlobalPayError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method Not Allowed")
 			return
 		}
 		log.Printf("[DEPRECATED] /v1/payment/global_pay/initiate called — clients should migrate to /v1/order/card-checkout")
@@ -144,33 +144,33 @@ func handleGlobalPayInitiate(sc *spanner.Client) http.HandlerFunc {
 			InvoiceID string `json:"invoice_id"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.OrderID == "" {
-			http.Error(w, `{"error":"order_id is required"}`, http.StatusBadRequest)
+			writeDeprecatedGlobalPayError(w, http.StatusBadRequest, "invalid_request", "order_id is required")
 			return
 		}
 
 		row, err := sc.Single().ReadRow(r.Context(), "Orders", spanner.Key{req.OrderID}, []string{"Amount", "State"})
 		if err != nil {
 			log.Printf("[PAYMENT INITIATE] Order %s not found: %v", req.OrderID, err)
-			http.Error(w, `{"error":"order not found"}`, http.StatusNotFound)
+			writeDeprecatedGlobalPayError(w, http.StatusNotFound, "order_not_found", "order not found")
 			return
 		}
 		var amount spanner.NullInt64
 		var state string
 		if err := row.Columns(&amount, &state); err != nil {
-			http.Error(w, `{"error":"failed to read order"}`, http.StatusInternalServerError)
+			writeDeprecatedGlobalPayError(w, http.StatusInternalServerError, "order_read_failed", "failed to read order")
 			return
 		}
 
 		gw, err := payment.NewGatewayClient("GLOBAL_PAY")
 		if err != nil {
 			log.Printf("[PAYMENT INITIATE] GlobalPay client init failed: %v", err)
-			http.Error(w, `{"error":"payment gateway unavailable"}`, http.StatusServiceUnavailable)
+			writeDeprecatedGlobalPayError(w, http.StatusServiceUnavailable, "gateway_unavailable", "payment gateway unavailable")
 			return
 		}
 
 		if err := gw.Charge(req.OrderID, amount.Int64); err != nil {
 			log.Printf("[PAYMENT INITIATE] GlobalPay charge failed for %s: %v", req.OrderID, err)
-			http.Error(w, fmt.Sprintf(`{"error":"charge failed: %s"}`, err.Error()), http.StatusBadGateway)
+			writeDeprecatedGlobalPayError(w, http.StatusBadGateway, "charge_failed", fmt.Sprintf("charge failed: %s", err.Error()))
 			return
 		}
 
@@ -181,4 +181,25 @@ func handleGlobalPayInitiate(sc *spanner.Client) http.HandlerFunc {
 			"order_id": req.OrderID,
 		})
 	}
+}
+
+func writeDeprecatedGlobalPayError(w http.ResponseWriter, status int, code, message string) {
+	writePaymentRouteError(w, status, code, message, "/v1/payment/global_pay/initiate", true, "/v1/order/card-checkout")
+}
+
+func writePaymentRouteError(w http.ResponseWriter, status int, code, message, endpoint string, deprecated bool, migrateTo string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	payload := map[string]interface{}{
+		// Keep "error" as human-readable text for backward compatibility.
+		"error":      message,
+		"code":       code,
+		"message":    message,
+		"endpoint":   endpoint,
+		"deprecated": deprecated,
+	}
+	if migrateTo != "" {
+		payload["migrate_to"] = migrateTo
+	}
+	_ = json.NewEncoder(w).Encode(payload)
 }

@@ -504,7 +504,8 @@
         "payment/session.go create/attempt/bind/retry paths now normalize gateway values through NewProviderClient, checkout URL generators fail closed for unsupported/unavailable providers, and payment/webhooks.go validates session gateway compatibility through the provider resolver before Global Pay settlement.",
         "payment/execution.go now adds ProviderExecutionRouter plus normalized stored-method charge, authorize, capture, void, and refund contracts so order/service.go, order/unified_checkout.go, and payment/refund.go can reuse one direct-execution seam instead of embedding Global Pay logic inline.",
         "order/service.go now initializes Adyen hosted checkout links and routes Global Pay retailer checkout, fulfillment saved-card charge, and authorization-void release through the provider execution seam, while direct Adyen charge/refund paths remain explicitly unsupported via ErrAdyenDirectOperationUnsupported.",
-        "Refund and chargeback compatibility paths now accept additive amount+currency input while preserving amount_uzs contracts; refund responses include additive amount+currency fields, and anomaly currency writes now resolve from runtime/session currency rather than hardcoded UZS."
+        "Refund and chargeback compatibility paths now accept additive amount+currency input while preserving amount_uzs contracts; refund responses include additive amount+currency fields, and anomaly currency writes now resolve from runtime/session currency rather than hardcoded UZS.",
+        "paymentroutes chargeback and chargeback-reversal handlers now emit structured application/json error envelopes (error, code, message, endpoint, deprecated), and deprecated POST /v1/payment/global_pay/initiate uses the same envelope with migrate_to guidance to /v1/order/card-checkout."
       ]
     },
     {
