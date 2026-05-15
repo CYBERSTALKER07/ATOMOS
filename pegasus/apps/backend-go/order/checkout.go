@@ -22,9 +22,13 @@ type B2BCheckoutRequest struct {
 
 // B2BCheckoutResponse is returned on HTTP 201.
 type B2BCheckoutResponse struct {
-	Status  string `json:"status"`
-	OrderID string `json:"order_id"`
-	Total   int64  `json:"total"`
+	Status          string   `json:"status"`
+	OrderID         string   `json:"order_id"`
+	Total           int64    `json:"total"`
+	ResolvedGateway string   `json:"resolved_gateway,omitempty"`
+	PolicySource    string   `json:"policy_source,omitempty"`
+	AllowedGateways []string `json:"allowed_gateways,omitempty"`
+	PolicyReason    string   `json:"policy_reason,omitempty"`
 }
 
 // HandleB2BCheckout handles POST /v1/checkout/b2b.
@@ -89,18 +93,18 @@ func (s *OrderService) HandleB2BCheckout(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	resolvedGateway, err := s.resolveCheckoutGateway(ctx, supplierIDs, req.PaymentGateway)
+	gatewayResolution, err := s.resolveCheckoutGatewayWithMetadata(ctx, supplierIDs, req.PaymentGateway)
 	if err != nil {
 		var policyErr *ErrGatewayPolicy
 		if errors.As(err, &policyErr) {
-			http.Error(w, policyErr.Error(), http.StatusUnprocessableEntity)
+			writeJSONError(w, http.StatusUnprocessableEntity, gatewayPolicyErrorPayload(policyErr))
 			return
 		}
 		log.Printf("[ERROR] resolveCheckoutGateway (B2B): %v", err)
 		http.Error(w, "Failed to resolve payment gateway policy", http.StatusInternalServerError)
 		return
 	}
-	req.PaymentGateway = resolvedGateway
+	req.PaymentGateway = gatewayResolution.ResolvedGateway
 
 	// ── Step 1: Price the cart ─────────────────────────────────────────────
 	total, err := cart.CalculateB2BTotal(ctx, s.Client, req.Items)
@@ -133,10 +137,20 @@ func (s *OrderService) HandleB2BCheckout(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(B2BCheckoutResponse{
-		Status:  "CHECKOUT_LOCKED",
-		OrderID: orderID,
-		Total:   total,
+		Status:          "CHECKOUT_LOCKED",
+		OrderID:         orderID,
+		Total:           total,
+		ResolvedGateway: gatewayResolution.ResolvedGateway,
+		PolicySource:    gatewayResolution.PolicySource,
+		AllowedGateways: append([]string(nil), gatewayResolution.AllowedGateways...),
+		PolicyReason:    gatewayResolution.PolicyReason,
 	}); err != nil {
 		log.Printf("[ERROR] B2B response encode: %v", err)
 	}
+}
+
+func writeJSONError(w http.ResponseWriter, statusCode int, payload map[string]interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(payload)
 }

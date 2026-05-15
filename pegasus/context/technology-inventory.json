@@ -425,6 +425,8 @@
         "Unified checkout emits ORDER_VALIDATION_FAILED, PAYMENT_CLEARED, and ORDER_FINALIZED to kafka.TopicMain through transactional outbox, replacing the stale topic.orders.v1 path.",
         "Unified checkout now resolves supplier-effective currency via countrycfg.Service and writes currency-consistent MasterInvoices, Orders, OrderLineItems, and checkout outbox payloads, with a temporary 422 guard for mixed-supplier-currency invoices.",
         "Unified checkout, B2B checkout, and retailer card checkout now resolve supplier-effective gateway lists from region defaults plus supplier country override exceptions with vault-backed credential readiness filtering, so payment_gateway is treated as an optional client hint instead of the source of truth.",
+        "Card checkout, B2B checkout, and unified checkout now return additive policy metadata fields (resolved_gateway, policy_source, allowed_gateways, policy_reason) while preserving legacy gateway/payment_url compatibility.",
+        "B2B, unified, and retailer card-checkout policy violations now return structured JSON metadata (error, message, requested_gateway, resolved_gateway, policy_source, allowed_gateways, policy_reason) instead of message-only strings.",
         "MasterInvoices writes now persist additive SettlementTarget values (GLOBAL_SUPPLIER, LOCAL_WAREHOUSE, MIXED_WAREHOUSE) across unified, card, and cash checkout invoice flows.",
         "Unified checkout now mirrors effective stock decrements into SupplierInventoryV2 for warehouse-assigned plans while preserving SupplierInventory lock semantics.",
         "payment/session.go now honors CreateSessionRequest.Currency and preserves prior session currency across RetryPaymentSession gateway switches.",

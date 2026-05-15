@@ -63,6 +63,10 @@ type UnifiedCheckoutResponse struct {
 	InvoiceID            string                `json:"invoice_id"`
 	Total                int64                 `json:"total"`
 	Currency             string                `json:"currency"`
+	ResolvedGateway      string                `json:"resolved_gateway,omitempty"`
+	PolicySource         string                `json:"policy_source,omitempty"`
+	AllowedGateways      []string              `json:"allowed_gateways,omitempty"`
+	PolicyReason         string                `json:"policy_reason,omitempty"`
 	SupplierOrders       []SupplierOrderResult `json:"supplier_orders"`
 	BackorderedItemCount int                   `json:"backordered_item_count,omitempty"`
 }
@@ -184,18 +188,21 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	for supplierID := range supplierGroups {
 		supplierIDs = append(supplierIDs, supplierID)
 	}
-	resolvedGateway, gatewayErr := s.resolveCheckoutGateway(ctx, supplierIDs, req.PaymentGateway)
+	gatewayResolution, gatewayErr := s.resolveCheckoutGatewayWithMetadata(ctx, supplierIDs, req.PaymentGateway)
 	if gatewayErr != nil {
 		var policyErr *ErrGatewayPolicy
 		if errors.As(gatewayErr, &policyErr) {
-			http.Error(w, fmt.Sprintf(`{"error":%s}`, mustJSON(policyErr.Error())), http.StatusUnprocessableEntity)
+			payload := gatewayPolicyErrorPayload(policyErr)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_ = json.NewEncoder(w).Encode(payload)
 			return
 		}
 		log.Printf("[UNIFIED_CHECKOUT] Gateway resolution failed: %v", gatewayErr)
 		apierrors.InternalError(w, r, "Failed to resolve payment gateway policy.")
 		return
 	}
-	req.PaymentGateway = resolvedGateway
+	req.PaymentGateway = gatewayResolution.ResolvedGateway
 
 	// ── Step 3: Price each supplier group (with per-retailer overrides) ───
 	supplierTotals := make(map[string]int64, len(supplierGroups))
@@ -972,6 +979,10 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		InvoiceID:            invoiceID,
 		Total:                effectiveGrandTotal,
 		Currency:             invoiceCurrency,
+		ResolvedGateway:      gatewayResolution.ResolvedGateway,
+		PolicySource:         gatewayResolution.PolicySource,
+		AllowedGateways:      append([]string(nil), gatewayResolution.AllowedGateways...),
+		PolicyReason:         gatewayResolution.PolicyReason,
 		SupplierOrders:       supplierResults,
 		BackorderedItemCount: totalBackorderedItems,
 	}); err != nil {

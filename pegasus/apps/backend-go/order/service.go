@@ -81,10 +81,27 @@ func (e *ErrFreezeLock) Error() string {
 
 // ErrGatewayPolicy is returned when a checkout gateway request violates the
 // supplier-effective payment policy or there is no policy-compatible option.
-type ErrGatewayPolicy struct{ Message string }
+type ErrGatewayPolicy struct {
+	Message          string
+	RequestedGateway string
+	ResolvedGateway  string
+	Source           string
+	AllowedGateways  []string
+	Reason           string
+}
 
 func (e *ErrGatewayPolicy) Error() string {
 	return e.Message
+}
+
+// CheckoutGatewayResolution carries additive policy metadata so clients can
+// migrate from free-form gateway requests to backend-authoritative routing.
+type CheckoutGatewayResolution struct {
+	RequestedGateway string   `json:"requested_gateway,omitempty"`
+	ResolvedGateway  string   `json:"resolved_gateway"`
+	PolicySource     string   `json:"policy_source,omitempty"`
+	AllowedGateways  []string `json:"allowed_gateways,omitempty"`
+	PolicyReason     string   `json:"policy_reason,omitempty"`
 }
 
 type Location struct {
@@ -244,6 +261,35 @@ func asGatewayPolicyError(err error) (*ErrGatewayPolicy, bool) {
 		return policyErr, true
 	}
 	return nil, false
+}
+
+func gatewayPolicyErrorPayload(policyErr *ErrGatewayPolicy) map[string]interface{} {
+	payload := map[string]interface{}{
+		"error":   "payment_gateway_policy_violation",
+		"message": "payment gateway policy violation",
+	}
+	if policyErr == nil {
+		return payload
+	}
+
+	payload["message"] = policyErr.Message
+	if requestedGateway := strings.TrimSpace(policyErr.RequestedGateway); requestedGateway != "" {
+		payload["requested_gateway"] = requestedGateway
+	}
+	if resolvedGateway := strings.TrimSpace(policyErr.ResolvedGateway); resolvedGateway != "" {
+		payload["resolved_gateway"] = resolvedGateway
+	}
+	if policySource := strings.TrimSpace(policyErr.Source); policySource != "" {
+		payload["policy_source"] = policySource
+	}
+	if len(policyErr.AllowedGateways) > 0 {
+		payload["allowed_gateways"] = append([]string(nil), policyErr.AllowedGateways...)
+	}
+	if policyReason := strings.TrimSpace(policyErr.Reason); policyReason != "" {
+		payload["policy_reason"] = policyReason
+	}
+
+	return payload
 }
 
 func normalizeCardGateways(gateways []string) []string {
@@ -409,7 +455,45 @@ func (s *OrderService) resolveSupplierCheckoutGateways(ctx context.Context, supp
 	return resolvedGateways, nil
 }
 
-func (s *OrderService) resolveCheckoutGateway(ctx context.Context, supplierIDs []string, requestedGateway string) (string, error) {
+func (s *OrderService) resolveSupplierCheckoutGatewayPolicy(ctx context.Context, supplierID string) (*countrycfg.SupplierPaymentGatewayPolicy, error) {
+	trimmedSupplierID := strings.TrimSpace(supplierID)
+	if trimmedSupplierID == "" {
+		return nil, &ErrGatewayPolicy{Message: "supplier_id is required for payment gateway resolution"}
+	}
+
+	if s == nil || s.CountryConfig == nil {
+		fallbackGateways := []string{"GLOBAL_PAY", "CASH"}
+		return &countrycfg.SupplierPaymentGatewayPolicy{
+			SupplierId:         trimmedSupplierID,
+			Source:             "COUNTRY_DEFAULT",
+			AllowedGateways:    append([]string(nil), fallbackGateways...),
+			ConfiguredGateways: append([]string(nil), fallbackGateways...),
+			EffectiveGateways:  append([]string(nil), fallbackGateways...),
+		}, nil
+	}
+
+	policy, err := s.CountryConfig.ResolveSupplierPaymentGatewayPolicy(ctx, trimmedSupplierID, "")
+	if err != nil {
+		var policyErr *countrycfg.PaymentGatewayPolicyError
+		if errors.As(err, &policyErr) {
+			wrapped := &ErrGatewayPolicy{Message: policyErr.Message}
+			if policyErr.Policy != nil {
+				wrapped.Source = strings.TrimSpace(policyErr.Policy.Source)
+				wrapped.AllowedGateways = append([]string(nil), policyErr.Policy.EffectiveGateways...)
+				wrapped.Reason = strings.TrimSpace(policyErr.Policy.ValidationError)
+				if wrapped.Reason == "" {
+					wrapped.Reason = strings.TrimSpace(policyErr.Message)
+				}
+			}
+			return policyErr.Policy, wrapped
+		}
+		return nil, fmt.Errorf("resolve supplier %s checkout policy: %w", trimmedSupplierID, err)
+	}
+
+	return policy, nil
+}
+
+func (s *OrderService) resolveCheckoutGatewayWithMetadata(ctx context.Context, supplierIDs []string, requestedGateway string) (*CheckoutGatewayResolution, error) {
 	uniqueSupplierIDs := make([]string, 0, len(supplierIDs))
 	seenSupplierIDs := make(map[string]struct{}, len(supplierIDs))
 	for _, supplierID := range supplierIDs {
@@ -424,7 +508,7 @@ func (s *OrderService) resolveCheckoutGateway(ctx context.Context, supplierIDs [
 		uniqueSupplierIDs = append(uniqueSupplierIDs, trimmedSupplierID)
 	}
 	if len(uniqueSupplierIDs) == 0 {
-		return "", &ErrGatewayPolicy{Message: "supplier resolution required for payment gateway selection"}
+		return nil, &ErrGatewayPolicy{Message: "supplier resolution required for payment gateway selection"}
 	}
 	sort.Strings(uniqueSupplierIDs)
 
@@ -432,39 +516,101 @@ func (s *OrderService) resolveCheckoutGateway(ctx context.Context, supplierIDs [
 	if strings.TrimSpace(requestedGateway) != "" {
 		normalizedRequested = normalizeCardGateway(requestedGateway)
 		if normalizedRequested == "" {
-			return "", &ErrGatewayPolicy{Message: "payment_gateway must be GLOBAL_PAY, ADYEN, or CASH"}
+			return nil, &ErrGatewayPolicy{
+				Message:          "payment_gateway must be GLOBAL_PAY, ADYEN, or CASH",
+				RequestedGateway: strings.ToUpper(strings.TrimSpace(requestedGateway)),
+				Reason:           "unsupported gateway requested",
+			}
 		}
 	}
 
+	resolution := &CheckoutGatewayResolution{RequestedGateway: normalizedRequested}
 	allowedGateways := make([]string, 0)
+	policySources := make(map[string]struct{}, len(uniqueSupplierIDs))
+
 	for _, supplierID := range uniqueSupplierIDs {
-		supplierGateways, err := s.resolveSupplierCheckoutGateways(ctx, supplierID)
+		policy, err := s.resolveSupplierCheckoutGatewayPolicy(ctx, supplierID)
 		if err != nil {
-			return "", err
+			if policyErr, ok := asGatewayPolicyError(err); ok {
+				if policyErr.RequestedGateway == "" {
+					policyErr.RequestedGateway = normalizedRequested
+				}
+				return nil, policyErr
+			}
+			return nil, err
 		}
+
+		supplierGateways := normalizeCardGateways(policy.EffectiveGateways)
 		if len(supplierGateways) == 0 {
-			return "", &ErrGatewayPolicy{Message: fmt.Sprintf("supplier %s has no usable payment gateways", supplierID)}
+			return nil, &ErrGatewayPolicy{
+				Message:          fmt.Sprintf("supplier %s has no credential-ready payment gateways", supplierID),
+				RequestedGateway: normalizedRequested,
+				Source:           strings.TrimSpace(policy.Source),
+				AllowedGateways:  append([]string(nil), supplierGateways...),
+				Reason:           "no credential-ready gateways",
+			}
 		}
 
 		if len(allowedGateways) == 0 {
 			allowedGateways = append(allowedGateways, supplierGateways...)
-			continue
+		} else {
+			allowedGateways = intersectCardGateways(allowedGateways, supplierGateways)
+			if len(allowedGateways) == 0 {
+				return nil, &ErrGatewayPolicy{
+					Message:          "MIXED_SUPPLIER_PAYMENT_GATEWAYS_NOT_SUPPORTED",
+					RequestedGateway: normalizedRequested,
+					Reason:           "mixed suppliers have no common credential-ready gateway",
+				}
+			}
 		}
 
-		allowedGateways = intersectCardGateways(allowedGateways, supplierGateways)
-		if len(allowedGateways) == 0 {
-			return "", &ErrGatewayPolicy{Message: "MIXED_SUPPLIER_PAYMENT_GATEWAYS_NOT_SUPPORTED"}
+		if source := strings.ToUpper(strings.TrimSpace(policy.Source)); source != "" {
+			policySources[source] = struct{}{}
 		}
+	}
+
+	if len(allowedGateways) == 0 {
+		return nil, &ErrGatewayPolicy{
+			Message:          "no usable payment gateways resolved",
+			RequestedGateway: normalizedRequested,
+			Reason:           "gateway intersection is empty",
+		}
+	}
+
+	resolution.AllowedGateways = append([]string(nil), allowedGateways...)
+	if len(policySources) == 1 {
+		for source := range policySources {
+			resolution.PolicySource = source
+		}
+	} else if len(policySources) > 1 {
+		resolution.PolicySource = "MULTI_SUPPLIER"
 	}
 
 	if normalizedRequested != "" {
 		if !gatewayAllowed(allowedGateways, normalizedRequested) {
-			return "", &ErrGatewayPolicy{Message: fmt.Sprintf("payment_gateway %s is not allowed by supplier policy", normalizedRequested)}
+			return nil, &ErrGatewayPolicy{
+				Message:          fmt.Sprintf("payment_gateway %s is not allowed by supplier policy", normalizedRequested),
+				RequestedGateway: normalizedRequested,
+				Source:           resolution.PolicySource,
+				AllowedGateways:  append([]string(nil), allowedGateways...),
+				Reason:           "requested gateway not in policy-allowed credential-ready set",
+			}
 		}
-		return normalizedRequested, nil
+		resolution.ResolvedGateway = normalizedRequested
+		return resolution, nil
 	}
 
-	return allowedGateways[0], nil
+	resolution.ResolvedGateway = allowedGateways[0]
+	resolution.PolicyReason = "AUTO_SELECTED_BY_POLICY"
+	return resolution, nil
+}
+
+func (s *OrderService) resolveCheckoutGateway(ctx context.Context, supplierIDs []string, requestedGateway string) (string, error) {
+	resolution, err := s.resolveCheckoutGatewayWithMetadata(ctx, supplierIDs, requestedGateway)
+	if err != nil {
+		return "", err
+	}
+	return resolution.ResolvedGateway, nil
 }
 
 // getDistance calculates Haversine distance between two coordinates in meters
@@ -3172,17 +3318,21 @@ func (s *OrderService) CompleteOrder(ctx context.Context, orderId string) (strin
 
 // CardCheckoutResponse is returned when the retailer selects a card gateway.
 type CardCheckoutResponse struct {
-	OrderID    string `json:"order_id"`
-	State      string `json:"state"`
-	Amount     int64  `json:"amount"`
-	Gateway    string `json:"gateway"`
-	PaymentURL string `json:"payment_url"`
-	InvoiceID  string `json:"invoice_id"`
-	SessionID  string `json:"session_id,omitempty"`
-	AttemptID  string `json:"attempt_id,omitempty"`
-	AttemptNo  int64  `json:"attempt_no,omitempty"`
-	RetailerID string `json:"retailer_id"`
-	Message    string `json:"message"`
+	OrderID         string   `json:"order_id"`
+	State           string   `json:"state"`
+	Amount          int64    `json:"amount"`
+	Gateway         string   `json:"gateway"`
+	ResolvedGateway string   `json:"resolved_gateway,omitempty"`
+	PolicySource    string   `json:"policy_source,omitempty"`
+	AllowedGateways []string `json:"allowed_gateways,omitempty"`
+	PolicyReason    string   `json:"policy_reason,omitempty"`
+	PaymentURL      string   `json:"payment_url"`
+	InvoiceID       string   `json:"invoice_id"`
+	SessionID       string   `json:"session_id,omitempty"`
+	AttemptID       string   `json:"attempt_id,omitempty"`
+	AttemptNo       int64    `json:"attempt_no,omitempty"`
+	RetailerID      string   `json:"retailer_id"`
+	Message         string   `json:"message"`
 }
 
 // CardCheckout transitions AWAITING_PAYMENT → keeps AWAITING_PAYMENT (no state change — webhook settles).
@@ -3203,19 +3353,23 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		supplierId = supplierIdNull.StringVal
 	}
 
-	resolvedGateway, err := s.resolveCheckoutGateway(ctx, []string{supplierId}, gateway)
+	gatewayResolution, err := s.resolveCheckoutGatewayWithMetadata(ctx, []string{supplierId}, gateway)
 	if err != nil {
 		if policyErr, ok := asGatewayPolicyError(err); ok {
 			return nil, policyErr
 		}
 		return nil, fmt.Errorf("resolve checkout gateway for order %s: %w", orderId, err)
 	}
-	gateway = resolvedGateway
+	gateway = gatewayResolution.ResolvedGateway
 
 	var resp CardCheckoutResponse
 	var retailerId string
 	var warehouseID string
 	orderCurrency := "UZS"
+	resp.ResolvedGateway = gatewayResolution.ResolvedGateway
+	resp.PolicySource = gatewayResolution.PolicySource
+	resp.AllowedGateways = append([]string(nil), gatewayResolution.AllowedGateways...)
+	resp.PolicyReason = gatewayResolution.PolicyReason
 
 	_, err = s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderId},

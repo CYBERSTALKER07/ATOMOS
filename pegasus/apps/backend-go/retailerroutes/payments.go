@@ -2,6 +2,7 @@ package retailerroutes
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -116,6 +117,11 @@ func handleRetailerCardCheckout(d Deps) http.HandlerFunc {
 
 		resp, err := d.Order.CardCheckout(r.Context(), req.OrderID, req.Gateway, requestBaseURL(r))
 		if err != nil {
+			var policyErr *order.ErrGatewayPolicy
+			if errors.As(err, &policyErr) {
+				writeJSONStatus(w, http.StatusUnprocessableEntity, retailerGatewayPolicyErrorPayload(policyErr))
+				return
+			}
 			http.Error(w, err.Error(), http.StatusConflict)
 			return
 		}
@@ -327,8 +333,41 @@ func retailerClaims(r *http.Request) (*auth.PegasusClaims, bool) {
 }
 
 func writeJSON(w http.ResponseWriter, payload interface{}) {
+	writeJSONStatus(w, http.StatusOK, payload)
+}
+
+func writeJSONStatus(w http.ResponseWriter, status int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func retailerGatewayPolicyErrorPayload(policyErr *order.ErrGatewayPolicy) map[string]interface{} {
+	payload := map[string]interface{}{
+		"error": "payment_gateway_policy_violation",
+	}
+	if policyErr == nil {
+		return payload
+	}
+	if msg := strings.TrimSpace(policyErr.Message); msg != "" {
+		payload["message"] = msg
+	}
+	if requested := strings.TrimSpace(policyErr.RequestedGateway); requested != "" {
+		payload["requested_gateway"] = requested
+	}
+	if resolved := strings.TrimSpace(policyErr.ResolvedGateway); resolved != "" {
+		payload["resolved_gateway"] = resolved
+	}
+	if source := strings.TrimSpace(policyErr.Source); source != "" {
+		payload["policy_source"] = source
+	}
+	if reason := strings.TrimSpace(policyErr.Reason); reason != "" {
+		payload["policy_reason"] = reason
+	}
+	if len(policyErr.AllowedGateways) > 0 {
+		payload["allowed_gateways"] = append([]string(nil), policyErr.AllowedGateways...)
+	}
+	return payload
 }
 
 func requestBaseURL(r *http.Request) string {
