@@ -60,6 +60,42 @@ func (p *testRetailerPusher) PushToRetailer(retailerID string, payload interface
 	return true
 }
 
+type testChargebackRecorder struct {
+	chargebackCalls []chargebackCall
+	reversalCalls   []string
+	err             error
+}
+
+type chargebackCall struct {
+	OrderID    string
+	RetailerID string
+	Gateway    string
+	Amount     int64
+	Currency   string
+}
+
+func (r *testChargebackRecorder) HandleChargeback(ctx context.Context, orderID, retailerID, gateway string, amount int64, currency string) error {
+	if r.err != nil {
+		return r.err
+	}
+	r.chargebackCalls = append(r.chargebackCalls, chargebackCall{
+		OrderID:    orderID,
+		RetailerID: retailerID,
+		Gateway:    gateway,
+		Amount:     amount,
+		Currency:   currency,
+	})
+	return nil
+}
+
+func (r *testChargebackRecorder) HandleReversal(ctx context.Context, sessionID string) error {
+	if r.err != nil {
+		return r.err
+	}
+	r.reversalCalls = append(r.reversalCalls, sessionID)
+	return nil
+}
+
 // newTestWebhookService returns a WebhookService with no Spanner/Kafka,
 // suitable for testing pre-Spanner validation gates.
 func newTestWebhookService() *WebhookService {
@@ -365,5 +401,59 @@ func TestApplyAdyenIdempotencyKey_EmptyItems(t *testing.T) {
 
 	if got := httpReq.Header.Get("Idempotency-Key"); got != "" {
 		t.Errorf("Idempotency-Key = %q, want empty", got)
+	}
+}
+
+func TestHandleAdyenChargebackEvent_RecordsChargeback(t *testing.T) {
+	recorder := &testChargebackRecorder{}
+	ws := &WebhookService{ChargebackSvc: recorder}
+	session := &PaymentSession{SessionID: "sess-1", OrderID: "ord-1", RetailerID: "ret-1", LockedAmount: 2000, Currency: "UZS"}
+	item := &adyenwebhook.NotificationRequestItem{
+		Amount: adyenwebhook.Amount{Currency: "USD", Value: 1500},
+	}
+
+	handled, err := ws.handleAdyenChargebackEvent(context.Background(), session, item, adyenwebhook.EventCodeChargeback)
+	if err != nil {
+		t.Fatalf("handleAdyenChargebackEvent error: %v", err)
+	}
+	if !handled {
+		t.Fatal("expected handled=true for chargeback event")
+	}
+	if len(recorder.chargebackCalls) != 1 {
+		t.Fatalf("chargeback calls = %d, want 1", len(recorder.chargebackCalls))
+	}
+	call := recorder.chargebackCalls[0]
+	if call.Gateway != "ADYEN" || call.Amount != 1500 || call.Currency != "USD" {
+		t.Fatalf("unexpected chargeback call: %+v", call)
+	}
+}
+
+func TestHandleAdyenChargebackEvent_ReversalUsesSessionID(t *testing.T) {
+	recorder := &testChargebackRecorder{}
+	ws := &WebhookService{ChargebackSvc: recorder}
+	session := &PaymentSession{SessionID: "sess-2", OrderID: "ord-2", RetailerID: "ret-2", LockedAmount: 2500, Currency: "UZS"}
+
+	handled, err := ws.handleAdyenChargebackEvent(context.Background(), session, nil, adyenwebhook.EventCodeChargebackReversed)
+	if err != nil {
+		t.Fatalf("handleAdyenChargebackEvent error: %v", err)
+	}
+	if !handled {
+		t.Fatal("expected handled=true for chargeback reversed event")
+	}
+	if len(recorder.reversalCalls) != 1 || recorder.reversalCalls[0] != "sess-2" {
+		t.Fatalf("unexpected reversal calls: %+v", recorder.reversalCalls)
+	}
+}
+
+func TestHandleAdyenChargebackEvent_MissingRecorderFailsLoud(t *testing.T) {
+	ws := &WebhookService{}
+	session := &PaymentSession{SessionID: "sess-3", OrderID: "ord-3", RetailerID: "ret-3", LockedAmount: 1000, Currency: "UZS"}
+
+	handled, err := ws.handleAdyenChargebackEvent(context.Background(), session, nil, adyenwebhook.EventCodeNotificationOfChargeback)
+	if !handled {
+		t.Fatal("expected handled=true for chargeback-class event")
+	}
+	if err == nil {
+		t.Fatal("expected error when chargeback recorder is missing")
 	}
 }

@@ -163,6 +163,34 @@
   ],
   "runtimeContracts": [
     {
+      "id": "workstream_fgh_delivery_policy_and_chargeback_hardening",
+      "path": "Delivery adjustment fail-closed policy + Adyen chargeback/reversal persistence seam wiring",
+      "owner": "pegasus/apps/backend-go/{order/delivery_handshake.go,deliveryroutes/{routes.go,routes_test.go},order/{unified_checkout.go,service_test.go},payment/{webhooks.go,adyen_webhook.go,webhook_contract_test.go},main.go}",
+      "methods": [
+        "order/delivery_handshake.go now rejects upward UpdateOrderDuringDelivery edits via ErrUpwardDeliveryEditForbidden",
+        "deliveryroutes/routes.go maps ErrUpwardDeliveryEditForbidden to structured 422 upward_delivery_edit_forbidden payloads with order_id, original_amount, and adjusted_amount",
+        "order/unified_checkout.go now reuses validateWarehouseLocalGatewayCredentialRecord in warehouse-local fail-closed credential checks",
+        "order/service_test.go adds ADYEN + LOCAL_WAREHOUSE credential regression coverage for missing/incomplete/success paths",
+        "payment/webhooks.go adds WebhookService.ChargebackSvc seam for webhook chargeback persistence delegation",
+        "payment/adyen_webhook.go now classifies NOTIFICATION_OF_CHARGEBACK, CHARGEBACK, SECOND_CHARGEBACK, and CHARGEBACK_REVERSED and routes to HandleChargeback/HandleReversal",
+        "main.go now injects chargebackSvc into webhook service wiring and payment/webhook_contract_test.go verifies chargeback routing plus fail-loud nil-recorder behavior"
+      ],
+      "consumers": [
+        "pegasus/apps/backend-go/deliveryroutes/routes.go",
+        "pegasus/apps/backend-go/order/delivery_handshake.go",
+        "pegasus/apps/backend-go/order/unified_checkout.go",
+        "pegasus/apps/backend-go/order/service_test.go",
+        "pegasus/apps/backend-go/payment/webhooks.go",
+        "pegasus/apps/backend-go/payment/adyen_webhook.go",
+        "pegasus/apps/backend-go/payment/webhook_contract_test.go",
+        "pegasus/apps/backend-go/main.go"
+      ],
+      "notes": [
+        "Delivery reconciliation now fails closed on upward amount edits with explicit typed error mapping instead of generic validation drift.",
+        "Chargeback lifecycle handling is now fail-loud when the recorder seam is absent to prevent silent anomaly and ledger persistence gaps."
+      ]
+    },
+    {
       "id": "workstream_i_airwallex_gateway_convergence",
       "path": "AIRWALLEX additive provider/policy/schema/client compatibility",
       "owner": "pegasus/apps/backend-go/{payment/{provider.go,execution.go,airwallex_client.go,gateway_client.go,refund.go},countrycfg/service.go,order/service.go,retailerroutes/payments.go,vault/{capabilities.go,vault.go},schema/spanner.ddl,migrations/migrations.go,cmd/setup/main.go} + pegasus/packages/types/order.ts + pegasus/apps/admin-portal/app/supplier/{payment-config/page.tsx,country-overrides/page.tsx}",

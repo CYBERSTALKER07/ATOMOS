@@ -79,6 +79,18 @@ type supplierMeta struct {
 	BasePrice    int64
 }
 
+func validateWarehouseLocalGatewayCredentialRecord(gateway, warehouseID string, foundConfig bool, merchantID string, secretKey []byte) error {
+	trimmedWarehouseID := strings.TrimSpace(warehouseID)
+	trimmedGateway := strings.TrimSpace(gateway)
+	if !foundConfig {
+		return fmt.Errorf("warehouse-local payout requires active %s credentials for warehouse %s", trimmedGateway, trimmedWarehouseID)
+	}
+	if strings.TrimSpace(merchantID) == "" || len(secretKey) == 0 {
+		return fmt.Errorf("warehouse-local gateway credentials incomplete for warehouse %s", trimmedWarehouseID)
+	}
+	return nil
+}
+
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
 // HandleUnifiedCheckout handles POST /v1/checkout/unified.
@@ -601,7 +613,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 
 			cfgRow, cfgErr := cfgIter.Next()
 			if cfgErr == iterator.Done {
-				return fmt.Errorf("warehouse-local payout requires active %s credentials for warehouse %s", req.PaymentGateway, trimmedWarehouseID)
+				return validateWarehouseLocalGatewayCredentialRecord(req.PaymentGateway, trimmedWarehouseID, false, "", nil)
 			}
 			if cfgErr != nil {
 				return fmt.Errorf("warehouse-local gateway credential lookup failed for warehouse %s: %w", trimmedWarehouseID, cfgErr)
@@ -613,8 +625,8 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			if err := cfgRow.Columns(&configID, &merchantID, &secretKey); err != nil {
 				return fmt.Errorf("warehouse-local gateway credential parse failed for warehouse %s: %w", trimmedWarehouseID, err)
 			}
-			if strings.TrimSpace(merchantID) == "" || len(secretKey) == 0 {
-				return fmt.Errorf("warehouse-local gateway credentials incomplete for warehouse %s", trimmedWarehouseID)
+			if err := validateWarehouseLocalGatewayCredentialRecord(req.PaymentGateway, trimmedWarehouseID, true, merchantID, secretKey); err != nil {
+				return err
 			}
 
 			validatedWarehouseGateway[cacheKey] = struct{}{}

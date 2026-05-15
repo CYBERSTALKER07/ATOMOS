@@ -43,6 +43,13 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 
 ## Runtime Contract Surfaces
 
+- Delivery adjustment fail-closed policy and Adyen chargeback persistence hardening: `pegasus/apps/backend-go/{order/delivery_handshake.go,deliveryroutes/{routes.go,routes_test.go},order/{unified_checkout.go,service_test.go},payment/{webhooks.go,adyen_webhook.go,webhook_contract_test.go},main.go}`
+	- `order/delivery_handshake.go` now rejects upward delivery edits in `UpdateOrderDuringDelivery` via typed `ErrUpwardDeliveryEditForbidden`.
+	- `deliveryroutes/routes.go` now maps the typed error to structured `422 upward_delivery_edit_forbidden` responses with additive fields `order_id`, `original_amount`, and `adjusted_amount`.
+	- `order/unified_checkout.go` now centralizes warehouse-local gateway credential validation through `validateWarehouseLocalGatewayCredentialRecord`, and `order/service_test.go` now includes explicit ADYEN local-warehouse fail-closed regression coverage.
+	- `payment/webhooks.go` now exposes additive `WebhookService.ChargebackSvc`, `payment/adyen_webhook.go` now routes chargeback lifecycle event codes (`NOTIFICATION_OF_CHARGEBACK`, `CHARGEBACK`, `SECOND_CHARGEBACK`, `CHARGEBACK_REVERSED`) into `HandleChargeback`/`HandleReversal`, and `main.go` now injects the recorder seam.
+	- `payment/webhook_contract_test.go` now verifies chargeback/reversal routing and fail-loud behavior when the chargeback recorder seam is missing.
+
 - AIRWALLEX gateway convergence: `pegasus/apps/backend-go/{payment/{provider.go,execution.go,airwallex_client.go,gateway_client.go,refund.go},countrycfg/service.go,order/service.go,retailerroutes/payments.go,vault/{capabilities.go,vault.go},schema/spanner.ddl,migrations/migrations.go,cmd/setup/main.go}` + `pegasus/packages/types/order.ts` + `pegasus/apps/admin-portal/app/supplier/{payment-config/page.tsx,country-overrides/page.tsx}`
 	- Provider/runtime contract now includes additive AIRWALLEX support for gateway normalization, checkout URL generation, provider execution credential routing, and refund resolver branching.
 	- Country policy normalization now includes AIRWALLEX and guards against non-UZ fallback inheriting UZ default gateway config.

@@ -68,6 +68,34 @@
   },
   "runtimeContracts": [
     {
+      "name": "Workstream F/G/H delivery and payment hardening",
+      "path": "Delivery adjustment fail-closed policy + Adyen chargeback/reversal persistence seam wiring",
+      "owner": "pegasus/apps/backend-go/{order/delivery_handshake.go,deliveryroutes/{routes.go,routes_test.go},order/{unified_checkout.go,service_test.go},payment/{webhooks.go,adyen_webhook.go,webhook_contract_test.go},main.go}",
+      "methods": [
+        "order/delivery_handshake.go now rejects upward UpdateOrderDuringDelivery edits using ErrUpwardDeliveryEditForbidden",
+        "deliveryroutes/routes.go now maps ErrUpwardDeliveryEditForbidden to structured 422 upward_delivery_edit_forbidden responses with order_id, original_amount, and adjusted_amount",
+        "order/unified_checkout.go now reuses validateWarehouseLocalGatewayCredentialRecord for warehouse-local gateway fail-closed credential checks",
+        "order/service_test.go now covers ADYEN + LOCAL_WAREHOUSE credential missing/incomplete/success branches explicitly",
+        "payment/webhooks.go now includes WebhookService.ChargebackSvc and payment/adyen_webhook.go routes NOTIFICATION_OF_CHARGEBACK/CHARGEBACK/SECOND_CHARGEBACK/CHARGEBACK_REVERSED into HandleChargeback/HandleReversal",
+        "main.go now injects chargebackSvc into webhook service wiring",
+        "payment/webhook_contract_test.go now validates chargeback/reversal routing and fail-loud behavior when ChargebackSvc is nil"
+      ],
+      "consumers": [
+        "backend-go order/delivery_handshake.go",
+        "backend-go deliveryroutes/routes.go",
+        "backend-go order/unified_checkout.go",
+        "backend-go order/service_test.go",
+        "backend-go payment/webhooks.go",
+        "backend-go payment/adyen_webhook.go",
+        "backend-go payment/webhook_contract_test.go",
+        "backend-go main.go"
+      ],
+      "notes": [
+        "Delivery reconciliation now has explicit fail-closed upward-adjustment policy with stable structured 422 contract output.",
+        "Adyen chargeback lifecycle events now persist through a dedicated chargeback recorder seam and fail loud when that seam is missing."
+      ]
+    },
+    {
       "name": "Workstream I AIRWALLEX gateway convergence",
       "path": "AIRWALLEX additive provider/policy/schema/client compatibility",
       "owner": "pegasus/apps/backend-go/{payment/{provider.go,execution.go,airwallex_client.go,gateway_client.go,refund.go},countrycfg/service.go,order/service.go,retailerroutes/payments.go,vault/{capabilities.go,vault.go},schema/spanner.ddl,migrations/migrations.go,cmd/setup/main.go} + pegasus/packages/types/order.ts + pegasus/apps/admin-portal/app/supplier/{payment-config/page.tsx,country-overrides/page.tsx}",

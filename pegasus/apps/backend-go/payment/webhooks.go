@@ -54,6 +54,7 @@ type WebhookService struct {
 	RetailerHub   RetailerPusher  // Push PAYMENT_FAILED/PAYMENT_SETTLED to retailer
 	VaultResolver VaultResolver   // Per-supplier credential vault (nil = ENV-only fallback)
 	SessionSvc    *SessionService // Durable payment session engine (nil = legacy-only mode)
+	ChargebackSvc ChargebackRecorder
 }
 
 // VaultResolver fetches decrypted supplier credentials for webhook verification.
@@ -73,6 +74,13 @@ type VaultConfig struct {
 // DriverPusher abstracts the driver WebSocket hub for testability.
 type DriverPusher interface {
 	PushToDriver(driverID string, payload interface{}) bool
+}
+
+// ChargebackRecorder abstracts provider-initiated chargeback persistence so
+// webhook handlers can stay testable without a live Spanner dependency.
+type ChargebackRecorder interface {
+	HandleChargeback(ctx context.Context, orderID, retailerID, gateway string, amount int64, currency string) error
+	HandleReversal(ctx context.Context, sessionID string) error
 }
 
 // InvoiceSettledEvent is emitted through the outbox after a successful settlement.

@@ -236,19 +236,7 @@ func handleUpdateOrderDuringDelivery(d Deps) http.HandlerFunc {
 
 		resp, err := svc.UpdateOrderDuringDelivery(r.Context(), req)
 		if err != nil {
-			var versionConflict *order.ErrVersionConflict
-			if errors.As(err, &versionConflict) {
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			}
-
-			var freezeLock *order.ErrFreezeLock
-			if errors.As(err, &freezeLock) {
-				http.Error(w, err.Error(), 423)
-				return
-			}
-
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeUpdateOrderDuringDeliveryError(w, err)
 			return
 		}
 
@@ -256,4 +244,34 @@ func handleUpdateOrderDuringDelivery(d Deps) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(resp)
 	}
+}
+
+func writeUpdateOrderDuringDeliveryError(w http.ResponseWriter, err error) {
+	var upward *order.ErrUpwardDeliveryEditForbidden
+	if errors.As(err, &upward) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":           "upward_delivery_edit_forbidden",
+			"message":         err.Error(),
+			"order_id":        upward.OrderID,
+			"original_amount": upward.OriginalAmount,
+			"adjusted_amount": upward.AdjustedAmount,
+		})
+		return
+	}
+
+	var versionConflict *order.ErrVersionConflict
+	if errors.As(err, &versionConflict) {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+
+	var freezeLock *order.ErrFreezeLock
+	if errors.As(err, &freezeLock) {
+		http.Error(w, err.Error(), 423)
+		return
+	}
+
+	http.Error(w, err.Error(), http.StatusBadRequest)
 }

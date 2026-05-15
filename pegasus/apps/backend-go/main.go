@@ -770,6 +770,7 @@ func main() {
 		RetailerHub:   retailerHub,
 		VaultResolver: &vault.PaymentVaultAdapter{Svc: vaultSvc},
 		SessionSvc:    sessionSvc,
+		ChargebackSvc: chargebackSvc,
 	}
 	// /v1/webhooks/* — 3 gateway callbacks. Ownership lives in backend-go/webhookroutes.
 	webhookroutes.RegisterRoutes(r, webhookroutes.Deps{

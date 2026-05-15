@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -320,6 +321,17 @@ func TestErrFreezeLock_Error(t *testing.T) {
 	}
 }
 
+func TestErrUpwardDeliveryEditForbidden_Error(t *testing.T) {
+	e := &ErrUpwardDeliveryEditForbidden{OrderID: "ORD-4", OriginalAmount: 1000, AdjustedAmount: 1200}
+	got := e.Error()
+	if !strings.Contains(got, "upward delivery edit forbidden") {
+		t.Fatalf("unexpected error message: %q", got)
+	}
+	if !strings.Contains(got, "ORD-4") {
+		t.Fatalf("order id missing in error message: %q", got)
+	}
+}
+
 // ─── Haversine (getDistance) ─────────────────────────────────────────────────
 
 func TestGetDistance_SamePoint(t *testing.T) {
@@ -439,6 +451,33 @@ func TestNormalizeCardGateway_Invalid(t *testing.T) {
 func TestNormalizeCardGateway_Whitespace(t *testing.T) {
 	if got := normalizeCardGateway("  CASH  "); got != "CASH" {
 		t.Errorf("got %q, want CASH (should trim)", got)
+	}
+}
+
+func TestValidateWarehouseLocalGatewayCredentialRecord_AdyenMissingConfigFailsClosed(t *testing.T) {
+	err := validateWarehouseLocalGatewayCredentialRecord("ADYEN", "wh-1", false, "", nil)
+	if err == nil {
+		t.Fatal("expected fail-closed error for missing ADYEN warehouse credentials")
+	}
+	if !strings.Contains(err.Error(), "active ADYEN credentials") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateWarehouseLocalGatewayCredentialRecord_AdyenIncompleteConfigFailsClosed(t *testing.T) {
+	err := validateWarehouseLocalGatewayCredentialRecord("ADYEN", "wh-2", true, "", []byte("secret"))
+	if err == nil {
+		t.Fatal("expected fail-closed error for incomplete ADYEN warehouse credentials")
+	}
+	if !strings.Contains(err.Error(), "credentials incomplete") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateWarehouseLocalGatewayCredentialRecord_AdyenCompleteConfigPasses(t *testing.T) {
+	err := validateWarehouseLocalGatewayCredentialRecord("ADYEN", "wh-3", true, "merchant-adyen", []byte("secret"))
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
 	}
 }
 

@@ -129,6 +129,13 @@ func (ws *WebhookService) processAdyenNotificationItem(ctx context.Context, item
 
 	ws.applyAdyenAttemptExecutionMetadata(ctx, session.SessionID, eventCode, providerTxnID)
 
+	if handled, chargebackErr := ws.handleAdyenChargebackEvent(ctx, session, item, eventCode); handled {
+		if chargebackErr != nil {
+			return true, chargebackErr
+		}
+		return true, nil
+	}
+
 	if isAdyenSettlementEvent(eventCode) && success {
 		if session.InvoiceID == "" {
 			return true, fmt.Errorf("payment session %s missing invoice binding", session.SessionID)
@@ -159,6 +166,38 @@ func (ws *WebhookService) processAdyenNotificationItem(ctx context.Context, item
 	}
 
 	return false, nil
+}
+
+func (ws *WebhookService) handleAdyenChargebackEvent(ctx context.Context, session *PaymentSession, item *adyenwebhook.NotificationRequestItem, eventCode string) (bool, error) {
+	if !isAdyenChargebackEvent(eventCode) && !isAdyenChargebackReversalEvent(eventCode) {
+		return false, nil
+	}
+	if ws.ChargebackSvc == nil {
+		return true, fmt.Errorf("chargeback service unavailable for adyen %s", eventCode)
+	}
+
+	if isAdyenChargebackReversalEvent(eventCode) {
+		if err := ws.ChargebackSvc.HandleReversal(ctx, session.SessionID); err != nil {
+			return true, fmt.Errorf("adyen chargeback reversal handling failed: %w", err)
+		}
+		return true, nil
+	}
+
+	amount := session.LockedAmount
+	currency := strings.TrimSpace(session.Currency)
+	if item != nil {
+		if item.Amount.Value > 0 {
+			amount = item.Amount.Value
+		}
+		if trimmed := strings.TrimSpace(item.Amount.Currency); trimmed != "" {
+			currency = trimmed
+		}
+	}
+
+	if err := ws.ChargebackSvc.HandleChargeback(ctx, session.OrderID, session.RetailerID, "ADYEN", amount, currency); err != nil {
+		return true, fmt.Errorf("adyen chargeback handling failed: %w", err)
+	}
+	return true, nil
 }
 
 func (ws *WebhookService) applyAdyenAttemptExecutionMetadata(ctx context.Context, sessionID, eventCode, providerTxnID string) {
@@ -322,4 +361,19 @@ func isAdyenFailureEvent(eventCode string) bool {
 	default:
 		return false
 	}
+}
+
+func isAdyenChargebackEvent(eventCode string) bool {
+	switch eventCode {
+	case adyenwebhook.EventCodeNotificationOfChargeback,
+		adyenwebhook.EventCodeChargeback,
+		adyenwebhook.EventCodeSecondChargeback:
+		return true
+	default:
+		return false
+	}
+}
+
+func isAdyenChargebackReversalEvent(eventCode string) bool {
+	return eventCode == adyenwebhook.EventCodeChargebackReversed
 }

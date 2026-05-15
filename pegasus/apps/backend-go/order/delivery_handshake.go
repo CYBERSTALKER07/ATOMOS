@@ -88,6 +88,18 @@ type UpdateOrderDuringDeliveryResponse struct {
 	SupplierID       string `json:"supplier_id,omitempty"`
 }
 
+// ErrUpwardDeliveryEditForbidden is returned when reconciliation attempts to
+// increase the payable total above the handshake baseline.
+type ErrUpwardDeliveryEditForbidden struct {
+	OrderID        string
+	OriginalAmount int64
+	AdjustedAmount int64
+}
+
+func (e *ErrUpwardDeliveryEditForbidden) Error() string {
+	return fmt.Sprintf("upward delivery edit forbidden for order %s: adjusted_amount=%d original_amount=%d", e.OrderID, e.AdjustedAmount, e.OriginalAmount)
+}
+
 type deliveryHandshakeClaims struct {
 	OrderID    string `json:"order_id"`
 	RetailerID string `json:"retailer_id"`
@@ -366,6 +378,13 @@ func (s *OrderService) UpdateOrderDuringDelivery(ctx context.Context, req Update
 		}
 		if resp.OriginalAmount == 0 {
 			resp.OriginalAmount = resp.AdjustedAmount
+		}
+		if resp.AdjustedAmount > resp.OriginalAmount {
+			return &ErrUpwardDeliveryEditForbidden{
+				OrderID:        req.OrderID,
+				OriginalAmount: resp.OriginalAmount,
+				AdjustedAmount: resp.AdjustedAmount,
+			}
 		}
 
 		sessionID, err := s.upsertDeliverySessionTxn(ctx, txn, deliverySessionUpsertInput{

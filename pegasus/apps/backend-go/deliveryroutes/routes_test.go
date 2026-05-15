@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"backend-go/auth"
+	"backend-go/order"
 )
 
 func TestRegisterRoutes_MissingItemsAllowsPayloaderRole(t *testing.T) {
@@ -100,5 +101,41 @@ func TestRegisterRoutes_HandshakeEndpointsMounted(t *testing.T) {
 				t.Fatalf("status = %d, want %d", w.Code, http.StatusUnauthorized)
 			}
 		})
+	}
+}
+
+func TestWriteUpdateOrderDuringDeliveryError_UpwardForbidden(t *testing.T) {
+	w := httptest.NewRecorder()
+	err := &order.ErrUpwardDeliveryEditForbidden{
+		OrderID:        "ord-1",
+		OriginalAmount: 1000,
+		AdjustedAmount: 1200,
+	}
+
+	writeUpdateOrderDuringDeliveryError(w, err)
+
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusUnprocessableEntity)
+	}
+	var body map[string]interface{}
+	if decodeErr := json.NewDecoder(w.Body).Decode(&body); decodeErr != nil {
+		t.Fatalf("decode response: %v", decodeErr)
+	}
+	if got := body["error"]; got != "upward_delivery_edit_forbidden" {
+		t.Fatalf("error field = %v, want upward_delivery_edit_forbidden", got)
+	}
+	if got := body["order_id"]; got != "ord-1" {
+		t.Fatalf("order_id = %v, want ord-1", got)
+	}
+}
+
+func TestWriteUpdateOrderDuringDeliveryError_VersionConflict(t *testing.T) {
+	w := httptest.NewRecorder()
+	err := &order.ErrVersionConflict{OrderID: "ord-2", ExpectedVersion: 1, ActualVersion: 2}
+
+	writeUpdateOrderDuringDeliveryError(w, err)
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusConflict)
 	}
 }
