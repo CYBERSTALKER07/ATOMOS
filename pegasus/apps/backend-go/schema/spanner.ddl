@@ -1389,6 +1389,9 @@ CREATE TABLE SupplierCountryOverrides (
     SMSProvider                 STRING(30),
     MapsProvider                STRING(20),
     LLMProvider                 STRING(20),
+    OverrideReason              STRING(MAX),
+    UpdatedBy                   STRING(64),
+    UpdatedByType               STRING(20),
     CreatedAt                   TIMESTAMP NOT NULL OPTIONS (allow_commit_timestamp=true),
     UpdatedAt                   TIMESTAMP OPTIONS (allow_commit_timestamp=true)
 ) PRIMARY KEY (SupplierId, CountryCode);

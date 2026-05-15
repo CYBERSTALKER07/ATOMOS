@@ -22,7 +22,7 @@ interface CountryConfig {
   shop_closed_escalation_minutes: number;
   offline_mode_duration_minutes: number;
   cash_custody_alert_hours: number;
-  global_paynt_gateways: string[];
+  payment_gateways: string[];
   notification_fallback_order: string[];
   sms_provider: string;
   maps_provider: string;
@@ -37,16 +37,31 @@ interface SupplierOverride {
   shop_closed_escalation_minutes: number | null;
   offline_mode_duration_minutes: number | null;
   cash_custody_alert_hours: number | null;
-  global_paynt_gateways: string[] | null;
+  payment_gateways: string[] | null;
   notification_fallback_order: string[] | null;
   sms_provider: string | null;
   maps_provider: string | null;
   llm_provider: string | null;
 }
 
+interface CountryConfigResponse extends Omit<CountryConfig, 'payment_gateways'> {
+  payment_gateways?: string[];
+  global_paynt_gateways?: string[];
+}
+
+interface SupplierOverrideResponse extends Omit<SupplierOverride, 'payment_gateways'> {
+  payment_gateways?: string[] | null;
+  global_paynt_gateways?: string[] | null;
+}
+
 interface OverrideEntry {
   override: SupplierOverride;
   effective: CountryConfig;
+}
+
+interface OverrideEntryResponse {
+  override: SupplierOverrideResponse;
+  effective: CountryConfigResponse;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -57,12 +72,33 @@ const BLANK_OVERRIDE: Omit<SupplierOverride, 'country_code'> = {
   shop_closed_escalation_minutes: null,
   offline_mode_duration_minutes: null,
   cash_custody_alert_hours: null,
-  global_paynt_gateways: null,
+  payment_gateways: null,
   notification_fallback_order: null,
   sms_provider: null,
   maps_provider: null,
   llm_provider: null,
 };
+
+function normalizeCountryConfig(config: CountryConfigResponse): CountryConfig {
+  return {
+    ...config,
+    payment_gateways: config.payment_gateways ?? config.global_paynt_gateways ?? [],
+  };
+}
+
+function normalizeSupplierOverride(override: SupplierOverrideResponse): SupplierOverride {
+  return {
+    ...override,
+    payment_gateways: override.payment_gateways ?? override.global_paynt_gateways ?? null,
+  };
+}
+
+function normalizeOverrideEntry(entry: OverrideEntryResponse): OverrideEntry {
+  return {
+    override: normalizeSupplierOverride(entry.override),
+    effective: normalizeCountryConfig(entry.effective),
+  };
+}
 
 function overrideFromEntry(entry: OverrideEntry | null, code: string): SupplierOverride {
   if (!entry) return { country_code: code, ...BLANK_OVERRIDE };
@@ -95,15 +131,16 @@ export default function CountryOverridesPage() {
       ]);
 
       if (cfgRes.ok) {
-        const cfgData = await cfgRes.json() as { status: string; data: CountryConfig[] };
-        setCountries(cfgData.data || []);
-        if ((cfgData.data || []).length > 0 && !selectedCode) {
-          setSelectedCode(cfgData.data[0].country_code);
+        const cfgData = await cfgRes.json() as { status: string; data: CountryConfigResponse[] };
+        const nextCountries = (cfgData.data || []).map(normalizeCountryConfig);
+        setCountries(nextCountries);
+        if (nextCountries.length > 0 && !selectedCode) {
+          setSelectedCode(nextCountries[0].country_code);
         }
       }
       if (overrideRes.ok) {
-        const ovData = await overrideRes.json() as { status: string; data: OverrideEntry[] };
-        setEntries(ovData.data || []);
+        const ovData = await overrideRes.json() as { status: string; data: OverrideEntryResponse[] };
+        setEntries((ovData.data || []).map(normalizeOverrideEntry));
       }
     } catch (e) {
       toast(e instanceof Error ? e.message : 'Failed to load data', 'error');
@@ -321,7 +358,7 @@ export default function CountryOverridesPage() {
                 ['Shop Closed Escalation', `${selectedCountryConfig.shop_closed_escalation_minutes} min`],
                 ['Offline Mode Duration', `${selectedCountryConfig.offline_mode_duration_minutes} min`],
                 ['Cash Custody Alert', `${selectedCountryConfig.cash_custody_alert_hours} h`],
-                ['GlobalPaynt Gateways', (selectedCountryConfig.global_paynt_gateways || []).join(', ')],
+                ['Payment Gateways', (selectedCountryConfig.payment_gateways || []).join(', ')],
                 ['SMS Provider', selectedCountryConfig.sms_provider],
                 ['Maps Provider', selectedCountryConfig.maps_provider],
                 ['LLM Provider', selectedCountryConfig.llm_provider],
@@ -422,28 +459,28 @@ export default function CountryOverridesPage() {
                   />
                 </section>
 
-                {/* ── GlobalPaynt Gateways ──────────────────────────────────── */}
+                {/* ── Payment Gateways ──────────────────────────────────── */}
                 <section>
                   <h3 className="md-typescale-label-large mb-3" style={mutedColor}>GlobalPaynt & Notifications</h3>
 
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
-                      <label className={labelClass} style={mutedColor}>GlobalPaynt Gateways (comma-separated)</label>
+                      <label className={labelClass} style={mutedColor}>Payment Gateways (comma-separated)</label>
                       <UseDefaultToggle
-                        isNull={isNull('global_paynt_gateways')}
-                        onToggle={() => toggleNull('global_paynt_gateways')}
-                        platformDefault={(selectedCountryConfig?.global_paynt_gateways || []).join(', ')}
+                        isNull={isNull('payment_gateways')}
+                        onToggle={() => toggleNull('payment_gateways')}
+                        platformDefault={(selectedCountryConfig?.payment_gateways || []).join(', ')}
                       />
                     </div>
-                    {!isNull('global_paynt_gateways') && (
+                    {!isNull('payment_gateways') && (
                       <input
                         type="text"
                         className={inputClass}
-                        value={(draft.global_paynt_gateways || []).join(', ')}
-                        placeholder="e.g. GLOBAL_PAY, CASH, CASH"
+                        value={(draft.payment_gateways || []).join(', ')}
+                        placeholder="e.g. GLOBAL_PAY, ADYEN, CASH"
                         onChange={(e) =>
                           setNullable(
-                            'global_paynt_gateways',
+                            'payment_gateways',
                             e.target.value
                               .split(',')
                               .map((s) => s.trim().toUpperCase())
@@ -452,7 +489,7 @@ export default function CountryOverridesPage() {
                         }
                       />
                     )}
-                    {isNull('global_paynt_gateways') && platformDefault((selectedCountryConfig?.global_paynt_gateways || []).join(', '))}
+                    {isNull('payment_gateways') && platformDefault((selectedCountryConfig?.payment_gateways || []).join(', '))}
                   </div>
 
                   <div className="mb-4">
@@ -569,7 +606,7 @@ export default function CountryOverridesPage() {
                     o.shop_closed_escalation_minutes !== null ? o.shop_closed_escalation_minutes : `${eff.shop_closed_escalation_minutes} ↓`,
                     o.offline_mode_duration_minutes !== null ? o.offline_mode_duration_minutes : `${eff.offline_mode_duration_minutes} ↓`,
                     o.cash_custody_alert_hours !== null ? o.cash_custody_alert_hours : `${eff.cash_custody_alert_hours} ↓`,
-                    (o.global_paynt_gateways || eff.global_paynt_gateways || []).join(', '),
+                    (o.payment_gateways || eff.payment_gateways || []).join(', '),
                   ];
                   return (
                     <tr

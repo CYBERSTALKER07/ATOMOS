@@ -1895,6 +1895,27 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		}
 		adminClient.Close()
 	}
+
+	// ── MIGRATION: Supplier country override audit metadata ──────────────────
+	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
+	if err == nil {
+		overrideAuditDDL := []string{
+			"ALTER TABLE SupplierCountryOverrides ADD COLUMN OverrideReason STRING(MAX)",
+			"ALTER TABLE SupplierCountryOverrides ADD COLUMN UpdatedBy STRING(64)",
+			"ALTER TABLE SupplierCountryOverrides ADD COLUMN UpdatedByType STRING(20)",
+		}
+		for _, stmt := range overrideAuditDDL {
+			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
+				Database:   dbName,
+				Statements: []string{stmt},
+			})
+			if ddlErr == nil {
+				op.Wait(ctx)
+				fmt.Println("DATABASE MIGRATION SUCCESS:", stmt)
+			}
+		}
+		adminClient.Close()
+	}
 }
 
 func minInt(a, b int) int {

@@ -3,6 +3,7 @@ package countrycfg
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"backend-go/cache"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
 )
 
@@ -53,6 +55,46 @@ type SupplierOverride struct {
 	SMSProvider                 *string  `json:"sms_provider"`
 	MapsProvider                *string  `json:"maps_provider"`
 	LLMProvider                 *string  `json:"llm_provider"`
+	Reason                      string   `json:"reason,omitempty"`
+	UpdatedBy                   string   `json:"updated_by,omitempty"`
+	UpdatedByType               string   `json:"updated_by_type,omitempty"`
+}
+
+const (
+	paymentGatewaySourceCountryDefault   = "COUNTRY_DEFAULT"
+	paymentGatewaySourceRegionalDefault  = "REGIONAL_DEFAULT"
+	paymentGatewaySourceSupplierOverride = "SUPPLIER_OVERRIDE"
+	supplierOverrideReasonDefault        = "SUPPLIER_SELF_SERVICE_OVERRIDE"
+	supplierOverrideDeleteReason         = "SUPPLIER_REVERT_TO_POLICY"
+)
+
+var paymentGatewayProviderOrder = []string{"GLOBAL_PAY", "ADYEN", "CASH"}
+
+// SupplierPaymentGatewayPolicy describes the region/country policy and runtime
+// gateway readiness that apply to a supplier checkout path.
+type SupplierPaymentGatewayPolicy struct {
+	SupplierId         string   `json:"supplier_id"`
+	CountryCode        string   `json:"country_code"`
+	RegionId           string   `json:"region_id,omitempty"`
+	Source             string   `json:"source"`
+	AllowedGateways    []string `json:"allowed_gateways,omitempty"`
+	ConfiguredGateways []string `json:"configured_gateways,omitempty"`
+	RequestedGateways  []string `json:"requested_gateways,omitempty"`
+	EffectiveGateways  []string `json:"effective_gateways,omitempty"`
+	ValidationError    string   `json:"validation_error,omitempty"`
+}
+
+// PaymentGatewayPolicyError reports a supplier policy/credential mismatch.
+type PaymentGatewayPolicyError struct {
+	Message string
+	Policy  *SupplierPaymentGatewayPolicy
+}
+
+func (e *PaymentGatewayPolicyError) Error() string {
+	if e == nil {
+		return "payment gateway policy error"
+	}
+	return e.Message
 }
 
 type cacheEntry struct {
@@ -80,6 +122,102 @@ func NewService(client *spanner.Client) *Service {
 	return &Service{
 		Spanner:  client,
 		cacheTTL: 5 * time.Minute,
+	}
+}
+
+func normalizePaymentGateway(gateway string) string {
+	switch strings.ToUpper(strings.TrimSpace(gateway)) {
+	case "GLOBAL_PAY":
+		return "GLOBAL_PAY"
+	case "ADYEN":
+		return "ADYEN"
+	case "CASH":
+		return "CASH"
+	default:
+		return ""
+	}
+}
+
+func normalizePaymentGateways(gateways []string) []string {
+	if len(gateways) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(gateways))
+	normalized := make([]string, 0, len(gateways))
+	for _, gateway := range gateways {
+		normalizedGateway := normalizePaymentGateway(gateway)
+		if normalizedGateway == "" {
+			continue
+		}
+		if _, ok := seen[normalizedGateway]; ok {
+			continue
+		}
+		seen[normalizedGateway] = struct{}{}
+		normalized = append(normalized, normalizedGateway)
+	}
+
+	return normalized
+}
+
+func filterPaymentGatewaysByActive(gateways, activeGateways []string) []string {
+	normalizedGateways := normalizePaymentGateways(gateways)
+	if len(normalizedGateways) == 0 {
+		return nil
+	}
+
+	activeSet := make(map[string]struct{}, len(activeGateways))
+	for _, gateway := range activeGateways {
+		normalizedGateway := normalizePaymentGateway(gateway)
+		if normalizedGateway == "" {
+			continue
+		}
+		activeSet[normalizedGateway] = struct{}{}
+	}
+
+	filtered := make([]string, 0, len(normalizedGateways))
+	for _, gateway := range normalizedGateways {
+		if gateway == "CASH" {
+			filtered = append(filtered, gateway)
+			continue
+		}
+		if _, ok := activeSet[gateway]; ok {
+			filtered = append(filtered, gateway)
+		}
+	}
+
+	return filtered
+}
+
+func isPaymentGatewaySubset(allowedGateways, requestedGateways []string) bool {
+	if len(requestedGateways) == 0 {
+		return true
+	}
+
+	allowedSet := make(map[string]struct{}, len(allowedGateways))
+	for _, gateway := range normalizePaymentGateways(allowedGateways) {
+		allowedSet[gateway] = struct{}{}
+	}
+
+	for _, gateway := range normalizePaymentGateways(requestedGateways) {
+		if _, ok := allowedSet[gateway]; !ok {
+			return false
+		}
+	}
+
+	return true
+}
+
+func normalizeSupplierOverrideActorType(actorRole string) string {
+	switch strings.ToUpper(strings.TrimSpace(actorRole)) {
+	case "ADMIN", "SUPPLIER":
+		return "SUPPLIER"
+	case "INTERNAL":
+		return "INTERNAL"
+	case "SYSTEM":
+		return "SYSTEM"
+	default:
+		return strings.ToUpper(strings.TrimSpace(actorRole))
 	}
 }
 
@@ -270,6 +408,188 @@ func (s *Service) ResolveSupplierCountryCode(ctx context.Context, supplierID str
 	return resolved
 }
 
+// ResolveSupplierCheckoutGateways returns the effective supplier gateway list
+// after region/country policy, override exceptions, and runtime readiness are applied.
+func (s *Service) ResolveSupplierCheckoutGateways(ctx context.Context, supplierID string) ([]string, error) {
+	policy, err := s.ResolveSupplierPaymentGatewayPolicy(ctx, supplierID, "")
+	if err != nil {
+		return nil, err
+	}
+	return append([]string(nil), policy.EffectiveGateways...), nil
+}
+
+// ResolveSupplierPaymentGatewayPolicy resolves the effective supplier gateway
+// policy and the currently credential-ready gateways for checkout.
+func (s *Service) ResolveSupplierPaymentGatewayPolicy(ctx context.Context, supplierID, countryCode string) (*SupplierPaymentGatewayPolicy, error) {
+	return s.resolveSupplierPaymentGatewayPolicy(ctx, supplierID, countryCode, nil)
+}
+
+// ValidateSupplierOverride checks whether the requested supplier override stays
+// within region/country policy and runtime credential readiness.
+func (s *Service) ValidateSupplierOverride(ctx context.Context, o *SupplierOverride) (*SupplierPaymentGatewayPolicy, error) {
+	if o == nil {
+		return nil, &PaymentGatewayPolicyError{Message: "supplier override is required"}
+	}
+	return s.resolveSupplierPaymentGatewayPolicy(ctx, o.SupplierId, o.CountryCode, o)
+}
+
+func (s *Service) resolveSupplierPaymentGatewayPolicy(ctx context.Context, supplierID, countryCode string, override *SupplierOverride) (*SupplierPaymentGatewayPolicy, error) {
+	trimmedSupplierID := strings.TrimSpace(supplierID)
+	if trimmedSupplierID == "" {
+		return nil, &PaymentGatewayPolicyError{Message: "supplier_id is required for payment gateway resolution"}
+	}
+
+	resolvedCountryCode := strings.ToUpper(strings.TrimSpace(countryCode))
+	if resolvedCountryCode == "" {
+		if s != nil && s.Spanner != nil {
+			resolvedCountryCode = s.ResolveSupplierCountryCode(ctx, trimmedSupplierID)
+		} else {
+			resolvedCountryCode = "UZ"
+		}
+	}
+
+	allowedGateways := []string{"GLOBAL_PAY", "CASH"}
+	policy := &SupplierPaymentGatewayPolicy{
+		SupplierId:  trimmedSupplierID,
+		CountryCode: resolvedCountryCode,
+		Source:      paymentGatewaySourceCountryDefault,
+	}
+
+	if s != nil {
+		baseConfig := defaultUZ()
+		if s.Spanner != nil {
+			if cfg := s.GetConfig(ctx, resolvedCountryCode); cfg != nil {
+				baseConfig = cfg
+			}
+		}
+		if baseConfig != nil && len(baseConfig.PaymentGateways) > 0 {
+			allowedGateways = baseConfig.PaymentGateways
+		}
+		if s.Spanner != nil {
+			region, err := s.ResolveSupplierRegion(ctx, trimmedSupplierID)
+			if err != nil {
+				return nil, fmt.Errorf("resolve supplier %s region: %w", trimmedSupplierID, err)
+			}
+			if region != nil {
+				policy.RegionId = region.RegionID
+				regionalConfig, err := s.GetRegionalConfig(ctx, region.RegionID)
+				if err != nil {
+					return nil, fmt.Errorf("read regional config %s: %w", region.RegionID, err)
+				}
+				if regionalConfig != nil && len(regionalConfig.PaymentGateways) > 0 {
+					allowedGateways = regionalConfig.PaymentGateways
+					policy.Source = paymentGatewaySourceRegionalDefault
+				}
+			}
+		}
+	}
+
+	allowedGateways = normalizePaymentGateways(allowedGateways)
+	policy.AllowedGateways = append([]string(nil), allowedGateways...)
+	if len(allowedGateways) == 0 {
+		policy.ValidationError = fmt.Sprintf("supplier %s has no policy-allowed payment gateways", trimmedSupplierID)
+		return policy, &PaymentGatewayPolicyError{Message: policy.ValidationError, Policy: policy}
+	}
+
+	var activeGateways []string
+	if s != nil && s.Spanner != nil {
+		var err error
+		activeGateways, err = s.listActiveGatewayNames(ctx, trimmedSupplierID)
+		if err != nil {
+			return nil, fmt.Errorf("list active gateway names for supplier %s: %w", trimmedSupplierID, err)
+		}
+	}
+
+	configuredGateways := append([]string(nil), allowedGateways...)
+	if s != nil && s.Spanner != nil {
+		configuredGateways = filterPaymentGatewaysByActive(allowedGateways, activeGateways)
+	}
+	policy.ConfiguredGateways = append([]string(nil), configuredGateways...)
+
+	requestedOverride := override
+	if requestedOverride == nil && s != nil && s.Spanner != nil {
+		storedOverride, err := s.GetSupplierOverride(ctx, trimmedSupplierID, resolvedCountryCode)
+		if err != nil {
+			return nil, fmt.Errorf("read supplier override %s/%s: %w", trimmedSupplierID, resolvedCountryCode, err)
+		}
+		requestedOverride = storedOverride
+	}
+
+	effectiveGateways := append([]string(nil), configuredGateways...)
+	if requestedOverride != nil {
+		requestedGateways := normalizePaymentGateways(requestedOverride.PaymentGateways)
+		if len(requestedGateways) > 0 {
+			policy.Source = paymentGatewaySourceSupplierOverride
+			policy.RequestedGateways = append([]string(nil), requestedGateways...)
+			if !isPaymentGatewaySubset(allowedGateways, requestedGateways) {
+				policy.ValidationError = fmt.Sprintf("payment_gateways must stay within the policy-allowed set: %s", strings.Join(allowedGateways, ", "))
+				return policy, &PaymentGatewayPolicyError{Message: policy.ValidationError, Policy: policy}
+			}
+
+			effectiveGateways = append([]string(nil), requestedGateways...)
+			if s != nil && s.Spanner != nil {
+				effectiveGateways = filterPaymentGatewaysByActive(requestedGateways, activeGateways)
+			}
+		}
+	}
+
+	if len(effectiveGateways) == 0 {
+		if len(policy.RequestedGateways) > 0 {
+			policy.ValidationError = "payment_gateways override has no credential-ready gateways"
+		} else {
+			policy.ValidationError = fmt.Sprintf("supplier %s has no credential-ready payment gateways", trimmedSupplierID)
+		}
+		return policy, &PaymentGatewayPolicyError{Message: policy.ValidationError, Policy: policy}
+	}
+
+	policy.EffectiveGateways = append([]string(nil), effectiveGateways...)
+	return policy, nil
+}
+
+func (s *Service) listActiveGatewayNames(ctx context.Context, supplierID string) ([]string, error) {
+	if s == nil || s.Spanner == nil || strings.TrimSpace(supplierID) == "" {
+		return nil, nil
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT GatewayName
+		      FROM SupplierPaymentConfigs
+		      WHERE SupplierId = @sid AND IsActive = TRUE`,
+		Params: map[string]interface{}{"sid": supplierID},
+	}
+	iter := s.Spanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	activeSet := make(map[string]struct{}, len(paymentGatewayProviderOrder))
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var gatewayName string
+		if err := row.Columns(&gatewayName); err != nil {
+			return nil, err
+		}
+		normalizedGateway := normalizePaymentGateway(gatewayName)
+		if normalizedGateway == "" {
+			continue
+		}
+		activeSet[normalizedGateway] = struct{}{}
+	}
+
+	activeGateways := make([]string, 0, len(activeSet))
+	for _, gateway := range paymentGatewayProviderOrder {
+		if _, ok := activeSet[gateway]; ok {
+			activeGateways = append(activeGateways, gateway)
+		}
+	}
+
+	return activeGateways, nil
+}
+
 // InvalidateCache removes cached entries for a country (called on admin updates).
 func (s *Service) InvalidateCache(countryCode string) {
 	s.cache.Delete(countryCode)
@@ -393,6 +713,7 @@ func (s *Service) readSupplierOverride(ctx context.Context, supplierID, countryC
 			"OfflineModeDurationMinutes", "CashCustodyAlertHours",
 			"GlobalPayntGateways", "NotificationFallbackOrder",
 			"SMSProvider", "MapsProvider", "LLMProvider",
+			"OverrideReason", "UpdatedBy", "UpdatedByType",
 		})
 	if err != nil {
 		return nil
@@ -401,12 +722,13 @@ func (s *Service) readSupplierOverride(ctx context.Context, supplierID, countryC
 	o := &SupplierOverride{}
 	var breach spanner.NullFloat64
 	var shopGrace, shopEsc, offlineDur, cashAlert spanner.NullInt64
-	var payGW, notifOrder, sms, maps, llm spanner.NullString
+	var payGW, notifOrder, sms, maps, llm, reason, updatedBy, updatedByType spanner.NullString
 
 	if err := row.Columns(
 		&o.SupplierId, &o.CountryCode, &breach,
 		&shopGrace, &shopEsc, &offlineDur, &cashAlert,
 		&payGW, &notifOrder, &sms, &maps, &llm,
+		&reason, &updatedBy, &updatedByType,
 	); err != nil {
 		log.Printf("[CountryCfg] Error scanning supplier override for %s/%s: %v", supplierID, countryCode, err)
 		return nil
@@ -441,6 +763,15 @@ func (s *Service) readSupplierOverride(ctx context.Context, supplierID, countryC
 	}
 	if llm.Valid {
 		o.LLMProvider = &llm.StringVal
+	}
+	if reason.Valid {
+		o.Reason = strings.TrimSpace(reason.StringVal)
+	}
+	if updatedBy.Valid {
+		o.UpdatedBy = strings.TrimSpace(updatedBy.StringVal)
+	}
+	if updatedByType.Valid {
+		o.UpdatedByType = strings.TrimSpace(updatedByType.StringVal)
 	}
 
 	return o
@@ -482,10 +813,100 @@ func (s *Service) ListSupplierOverrides(ctx context.Context, supplierID string) 
 	return result, nil
 }
 
+func (s *Service) readSupplierOverrideForWrite(ctx context.Context, txn *spanner.ReadWriteTransaction, supplierID, countryCode string) (*SupplierOverride, spanner.NullTime, error) {
+	row, err := txn.ReadRow(ctx, "SupplierCountryOverrides",
+		spanner.Key{supplierID, countryCode},
+		[]string{
+			"SupplierId", "CountryCode", "BreachRadiusMeters",
+			"ShopClosedGraceMinutes", "ShopClosedEscalationMinutes",
+			"OfflineModeDurationMinutes", "CashCustodyAlertHours",
+			"GlobalPayntGateways", "NotificationFallbackOrder",
+			"SMSProvider", "MapsProvider", "LLMProvider",
+			"OverrideReason", "UpdatedBy", "UpdatedByType", "CreatedAt",
+		})
+	if err != nil {
+		if errors.Is(err, spanner.ErrRowNotFound) {
+			return nil, spanner.NullTime{}, nil
+		}
+		return nil, spanner.NullTime{}, err
+	}
+
+	o := &SupplierOverride{}
+	var breach spanner.NullFloat64
+	var shopGrace, shopEsc, offlineDur, cashAlert spanner.NullInt64
+	var payGW, notifOrder, sms, maps, llm, reason, updatedBy, updatedByType spanner.NullString
+	var createdAt spanner.NullTime
+
+	if err := row.Columns(
+		&o.SupplierId, &o.CountryCode, &breach,
+		&shopGrace, &shopEsc, &offlineDur, &cashAlert,
+		&payGW, &notifOrder, &sms, &maps, &llm,
+		&reason, &updatedBy, &updatedByType, &createdAt,
+	); err != nil {
+		return nil, spanner.NullTime{}, err
+	}
+
+	if breach.Valid {
+		o.BreachRadiusMeters = &breach.Float64
+	}
+	if shopGrace.Valid {
+		o.ShopClosedGraceMinutes = &shopGrace.Int64
+	}
+	if shopEsc.Valid {
+		o.ShopClosedEscalationMinutes = &shopEsc.Int64
+	}
+	if offlineDur.Valid {
+		o.OfflineModeDurationMinutes = &offlineDur.Int64
+	}
+	if cashAlert.Valid {
+		o.CashCustodyAlertHours = &cashAlert.Int64
+	}
+	if payGW.Valid {
+		_ = json.Unmarshal([]byte(payGW.StringVal), &o.PaymentGateways)
+	}
+	if notifOrder.Valid {
+		_ = json.Unmarshal([]byte(notifOrder.StringVal), &o.NotificationFallbackOrder)
+	}
+	if sms.Valid {
+		o.SMSProvider = &sms.StringVal
+	}
+	if maps.Valid {
+		o.MapsProvider = &maps.StringVal
+	}
+	if llm.Valid {
+		o.LLMProvider = &llm.StringVal
+	}
+	if reason.Valid {
+		o.Reason = strings.TrimSpace(reason.StringVal)
+	}
+	if updatedBy.Valid {
+		o.UpdatedBy = strings.TrimSpace(updatedBy.StringVal)
+	}
+	if updatedByType.Valid {
+		o.UpdatedByType = strings.TrimSpace(updatedByType.StringVal)
+	}
+
+	return o, createdAt, nil
+}
+
 // UpsertSupplierOverride creates or replaces the supplier's country override row.
-func (s *Service) UpsertSupplierOverride(ctx context.Context, o *SupplierOverride) error {
+func (s *Service) UpsertSupplierOverride(ctx context.Context, o *SupplierOverride, actorID, actorRole string) (*SupplierPaymentGatewayPolicy, error) {
 	if o == nil || o.SupplierId == "" || o.CountryCode == "" {
-		return fmt.Errorf("supplier_id and country_code are required")
+		return nil, fmt.Errorf("supplier_id and country_code are required")
+	}
+
+	o.SupplierId = strings.TrimSpace(o.SupplierId)
+	o.CountryCode = strings.ToUpper(strings.TrimSpace(o.CountryCode))
+	o.Reason = strings.TrimSpace(o.Reason)
+	if o.Reason == "" {
+		o.Reason = supplierOverrideReasonDefault
+	}
+	o.UpdatedBy = strings.TrimSpace(actorID)
+	o.UpdatedByType = normalizeSupplierOverrideActorType(actorRole)
+
+	policy, err := s.ValidateSupplierOverride(ctx, o)
+	if err != nil {
+		return policy, err
 	}
 
 	var payGWJSON, notifOrderJSON []byte
@@ -496,13 +917,29 @@ func (s *Service) UpsertSupplierOverride(ctx context.Context, o *SupplierOverrid
 		notifOrderJSON, _ = json.Marshal(o.NotificationFallbackOrder)
 	}
 
-	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+	_, err = s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		before, createdAt, err := s.readSupplierOverrideForWrite(ctx, txn, o.SupplierId, o.CountryCode)
+		if err != nil {
+			return fmt.Errorf("read supplier override before write: %w", err)
+		}
+
+		metadata, err := json.Marshal(map[string]interface{}{
+			"source":                 "SUPPLIER_SELF_SERVICE",
+			"payment_gateway_policy": policy,
+			"before":                 before,
+			"after":                  o,
+		})
+		if err != nil {
+			return fmt.Errorf("encode supplier override audit metadata: %w", err)
+		}
+
 		cols := []string{
 			"SupplierId", "CountryCode",
 			"BreachRadiusMeters", "ShopClosedGraceMinutes", "ShopClosedEscalationMinutes",
 			"OfflineModeDurationMinutes", "CashCustodyAlertHours",
 			"GlobalPayntGateways", "NotificationFallbackOrder",
 			"SMSProvider", "MapsProvider", "LLMProvider",
+			"OverrideReason", "UpdatedBy", "UpdatedByType",
 			"UpdatedAt",
 		}
 
@@ -543,50 +980,101 @@ func (s *Service) UpsertSupplierOverride(ctx context.Context, o *SupplierOverrid
 			toNullString(o.SMSProvider),
 			toNullString(o.MapsProvider),
 			toNullString(o.LLMProvider),
+			toNullString(&o.Reason),
+			toNullString(&o.UpdatedBy),
+			toNullString(&o.UpdatedByType),
 			spanner.CommitTimestamp,
 		}
 
 		// Set CreatedAt only on first insert.
-		existRow, readErr := txn.ReadRow(ctx, "SupplierCountryOverrides",
-			spanner.Key{o.SupplierId, o.CountryCode}, []string{"CreatedAt"})
-		if readErr != nil {
+		if !createdAt.Valid {
 			cols = append(cols, "CreatedAt")
 			vals = append(vals, spanner.CommitTimestamp)
 		} else {
-			var createdAt spanner.NullTime
-			_ = existRow.Columns(&createdAt)
 			cols = append(cols, "CreatedAt")
 			vals = append(vals, createdAt.Time)
 		}
 
-		m := spanner.InsertOrUpdate("SupplierCountryOverrides", cols, vals)
-		return txn.BufferWrite([]*spanner.Mutation{m})
+		mutations := []*spanner.Mutation{
+			spanner.InsertOrUpdate("SupplierCountryOverrides", cols, vals),
+			spanner.Insert("AuditLog",
+				[]string{"LogId", "ActorId", "ActorRole", "Action", "ResourceType", "ResourceId", "Metadata", "CreatedAt"},
+				[]interface{}{
+					uuid.NewString(),
+					o.UpdatedBy,
+					o.UpdatedByType,
+					"SUPPLIER_COUNTRY_OVERRIDE_UPSERTED",
+					"SUPPLIER_COUNTRY_OVERRIDE",
+					fmt.Sprintf("%s:%s", o.SupplierId, o.CountryCode),
+					string(metadata),
+					spanner.CommitTimestamp,
+				},
+			),
+		}
+
+		return txn.BufferWrite(mutations)
 	})
 	if err != nil {
-		return fmt.Errorf("upsert supplier override %s/%s: %w", o.SupplierId, o.CountryCode, err)
+		return policy, fmt.Errorf("upsert supplier override %s/%s: %w", o.SupplierId, o.CountryCode, err)
 	}
 
 	s.invalidateSupplierOverride(ctx, o.SupplierId, o.CountryCode)
 	log.Printf("[CountryCfg] Upserted override %s/%s", o.SupplierId, o.CountryCode)
-	return nil
+	return policy, nil
 }
 
 // DeleteSupplierOverride removes the supplier's override for a country (reverts to platform defaults).
-func (s *Service) DeleteSupplierOverride(ctx context.Context, supplierID, countryCode string) error {
+func (s *Service) DeleteSupplierOverride(ctx context.Context, supplierID, countryCode, actorID, actorRole string) error {
 	if supplierID == "" || countryCode == "" {
 		return fmt.Errorf("supplier_id and country_code are required")
 	}
 
+	trimmedSupplierID := strings.TrimSpace(supplierID)
+	normalizedCountryCode := strings.ToUpper(strings.TrimSpace(countryCode))
+	actor := strings.TrimSpace(actorID)
+	actorType := normalizeSupplierOverrideActorType(actorRole)
+
 	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		m := spanner.Delete("SupplierCountryOverrides", spanner.Key{supplierID, countryCode})
-		return txn.BufferWrite([]*spanner.Mutation{m})
+		before, _, err := s.readSupplierOverrideForWrite(ctx, txn, trimmedSupplierID, normalizedCountryCode)
+		if err != nil {
+			return fmt.Errorf("read supplier override before delete: %w", err)
+		}
+
+		metadata, err := json.Marshal(map[string]interface{}{
+			"source":       "SUPPLIER_SELF_SERVICE",
+			"reason":       supplierOverrideDeleteReason,
+			"before":       before,
+			"after":        nil,
+			"country_code": normalizedCountryCode,
+		})
+		if err != nil {
+			return fmt.Errorf("encode supplier override delete audit metadata: %w", err)
+		}
+
+		mutations := []*spanner.Mutation{
+			spanner.Delete("SupplierCountryOverrides", spanner.Key{trimmedSupplierID, normalizedCountryCode}),
+			spanner.Insert("AuditLog",
+				[]string{"LogId", "ActorId", "ActorRole", "Action", "ResourceType", "ResourceId", "Metadata", "CreatedAt"},
+				[]interface{}{
+					uuid.NewString(),
+					actor,
+					actorType,
+					"SUPPLIER_COUNTRY_OVERRIDE_DELETED",
+					"SUPPLIER_COUNTRY_OVERRIDE",
+					fmt.Sprintf("%s:%s", trimmedSupplierID, normalizedCountryCode),
+					string(metadata),
+					spanner.CommitTimestamp,
+				},
+			),
+		}
+		return txn.BufferWrite(mutations)
 	})
 	if err != nil {
-		return fmt.Errorf("delete supplier override %s/%s: %w", supplierID, countryCode, err)
+		return fmt.Errorf("delete supplier override %s/%s: %w", trimmedSupplierID, normalizedCountryCode, err)
 	}
 
-	s.invalidateSupplierOverride(ctx, supplierID, countryCode)
-	log.Printf("[CountryCfg] Deleted override %s/%s", supplierID, countryCode)
+	s.invalidateSupplierOverride(ctx, trimmedSupplierID, normalizedCountryCode)
+	log.Printf("[CountryCfg] Deleted override %s/%s", trimmedSupplierID, normalizedCountryCode)
 	return nil
 }
 

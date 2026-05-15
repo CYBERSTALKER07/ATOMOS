@@ -1,6 +1,7 @@
 package countrycfg
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -78,6 +79,31 @@ func TestMergeCountryConfigForUpsertFallsBackToDefaultWhenMissing(t *testing.T) 
 	}
 	if merged.ShopClosedGraceMinutes != 5 {
 		t.Fatalf("ShopClosedGraceMinutes = %d, want default fallback", merged.ShopClosedGraceMinutes)
+	}
+}
+
+func TestNormalizePaymentGatewaysDedupesAndFiltersUnsupported(t *testing.T) {
+	got := normalizePaymentGateways([]string{"global_pay", "ADYEN", "cash", "GLOBAL_PAY", "INVALID"})
+	want := []string{"GLOBAL_PAY", "ADYEN", "CASH"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("normalizePaymentGateways() = %#v, want %#v", got, want)
+	}
+}
+
+func TestFilterPaymentGatewaysByActivePreservesCash(t *testing.T) {
+	got := filterPaymentGatewaysByActive([]string{"ADYEN", "GLOBAL_PAY", "CASH"}, []string{"adyen"})
+	want := []string{"ADYEN", "CASH"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("filterPaymentGatewaysByActive() = %#v, want %#v", got, want)
+	}
+}
+
+func TestIsPaymentGatewaySubsetRejectsOutOfPolicyValues(t *testing.T) {
+	if isPaymentGatewaySubset([]string{"GLOBAL_PAY", "CASH"}, []string{"ADYEN"}) {
+		t.Fatal("expected ADYEN override to be rejected when policy allows only GLOBAL_PAY and CASH")
+	}
+	if !isPaymentGatewaySubset([]string{"GLOBAL_PAY", "ADYEN", "CASH"}, []string{"ADYEN"}) {
+		t.Fatal("expected ADYEN override to be allowed when policy includes ADYEN")
 	}
 }
 

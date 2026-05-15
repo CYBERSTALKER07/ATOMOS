@@ -1067,7 +1067,8 @@
       "notes": [
         "Route composition moved out of main.go into supplierinsightsroutes while preserving the existing countrycfg, analytics, and supplier handlers.",
         "The extracted composer keeps the warehouse-scoped analytics middleware for transit, throughput, load-distribution, node-efficiency, SLA, revenue, and top-retailers via auth.RequireWarehouseScopeWithClient(d.Spanner).",
-        "Supplier CRM list/detail payloads now include additive retailer email for the admin-portal contact drawer consumer."
+        "Supplier CRM list/detail payloads now include additive retailer email for the admin-portal contact drawer consumer.",
+        "Supplier country overrides now validate requested payment_gateways against region/country policy plus active supplier credential readiness before persistence, return additive payment_gateway_policy context from /v1/supplier/country-overrides*, and persist OverrideReason/UpdatedBy/UpdatedByType plus AuditLog rows for upsert/delete actions."
       ]
     },
     {

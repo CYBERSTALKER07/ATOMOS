@@ -388,12 +388,25 @@ func (s *OrderService) filterConfiguredPaymentGateways(ctx context.Context, supp
 }
 
 func (s *OrderService) resolveSupplierCheckoutGateways(ctx context.Context, supplierID string) ([]string, error) {
-	policyGateways, err := s.resolveSupplierPolicyPaymentGateways(ctx, supplierID)
-	if err != nil {
-		return nil, err
+	trimmedSupplierID := strings.TrimSpace(supplierID)
+	if trimmedSupplierID == "" {
+		return nil, &ErrGatewayPolicy{Message: "supplier_id is required for payment gateway resolution"}
 	}
 
-	return s.filterConfiguredPaymentGateways(ctx, supplierID, policyGateways)
+	if s == nil || s.CountryConfig == nil {
+		return s.filterConfiguredPaymentGateways(ctx, trimmedSupplierID, []string{"GLOBAL_PAY", "CASH"})
+	}
+
+	resolvedGateways, err := s.CountryConfig.ResolveSupplierCheckoutGateways(ctx, trimmedSupplierID)
+	if err != nil {
+		var policyErr *countrycfg.PaymentGatewayPolicyError
+		if errors.As(err, &policyErr) {
+			return nil, &ErrGatewayPolicy{Message: policyErr.Message}
+		}
+		return nil, fmt.Errorf("resolve supplier %s checkout gateways: %w", trimmedSupplierID, err)
+	}
+
+	return resolvedGateways, nil
 }
 
 func (s *OrderService) resolveCheckoutGateway(ctx context.Context, supplierIDs []string, requestedGateway string) (string, error) {

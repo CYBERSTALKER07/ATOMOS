@@ -2,11 +2,32 @@ package countrycfg
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 
 	"backend-go/auth"
 )
+
+type supplierOverrideEnvelope struct {
+	Override             *SupplierOverride             `json:"override"`
+	Effective            *CountryConfig                `json:"effective"`
+	PaymentGatewayPolicy *SupplierPaymentGatewayPolicy `json:"payment_gateway_policy,omitempty"`
+}
+
+func buildSupplierOverrideEnvelope(r *http.Request, svc *Service, supplierID, countryCode string, override *SupplierOverride) (supplierOverrideEnvelope, error) {
+	effective := svc.GetEffectiveConfig(r.Context(), supplierID, countryCode)
+	policy, err := svc.resolveSupplierPaymentGatewayPolicy(r.Context(), supplierID, countryCode, override)
+	if err != nil {
+		var policyErr *PaymentGatewayPolicyError
+		if errors.As(err, &policyErr) {
+			return supplierOverrideEnvelope{Override: override, Effective: effective, PaymentGatewayPolicy: policyErr.Policy}, nil
+		}
+		return supplierOverrideEnvelope{}, err
+	}
+
+	return supplierOverrideEnvelope{Override: override, Effective: effective, PaymentGatewayPolicy: policy}, nil
+}
 
 // HandleCountryConfigs exposes admin CRUD for country-level operational config.
 // GET  /v1/admin/country-configs        -> list all active configs
@@ -100,15 +121,14 @@ func HandleSupplierCountryOverrides(svc *Service) http.HandlerFunc {
 			if overrides == nil {
 				overrides = []*SupplierOverride{}
 			}
-			// Enrich with base country config so the frontend can show effective values.
-			type enriched struct {
-				Override  *SupplierOverride `json:"override"`
-				Effective *CountryConfig    `json:"effective"`
-			}
-			out := make([]enriched, 0, len(overrides))
+			out := make([]supplierOverrideEnvelope, 0, len(overrides))
 			for _, o := range overrides {
-				eff := svc.GetEffectiveConfig(r.Context(), o.SupplierId, o.CountryCode)
-				out = append(out, enriched{Override: o, Effective: eff})
+				envelope, err := buildSupplierOverrideEnvelope(r, svc, o.SupplierId, o.CountryCode, o)
+				if err != nil {
+					http.Error(w, `{"error":"failed_to_resolve_override_policy"}`, http.StatusInternalServerError)
+					return
+				}
+				out = append(out, envelope)
 			}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]interface{}{
@@ -129,16 +149,29 @@ func HandleSupplierCountryOverrides(svc *Service) http.HandlerFunc {
 				return
 			}
 			o.CountryCode = strings.ToUpper(strings.TrimSpace(o.CountryCode))
-			if err := svc.UpsertSupplierOverride(r.Context(), &o); err != nil {
+			policy, err := svc.UpsertSupplierOverride(r.Context(), &o, claims.UserID, claims.Role)
+			if err != nil {
+				var policyErr *PaymentGatewayPolicyError
+				if errors.As(err, &policyErr) {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusUnprocessableEntity)
+					json.NewEncoder(w).Encode(map[string]interface{}{
+						"error":                  "invalid_payment_gateway_override",
+						"message":                policyErr.Message,
+						"payment_gateway_policy": policyErr.Policy,
+					})
+					return
+				}
 				http.Error(w, `{"error":"failed_to_upsert_override"}`, http.StatusInternalServerError)
 				return
 			}
 			eff := svc.GetEffectiveConfig(r.Context(), supplierID, o.CountryCode)
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"status":    "SUCCESS",
-				"override":  o,
-				"effective": eff,
+				"status":                 "SUCCESS",
+				"override":               o,
+				"effective":              eff,
+				"payment_gateway_policy": policy,
 			})
 
 		default:
@@ -169,16 +202,16 @@ func HandleSupplierCountryOverrideByCode(svc *Service) http.HandlerFunc {
 		switch r.Method {
 		case http.MethodGet:
 			o, _ := svc.GetSupplierOverride(r.Context(), supplierID, code)
-			eff := svc.GetEffectiveConfig(r.Context(), supplierID, code)
+			envelope, err := buildSupplierOverrideEnvelope(r, svc, supplierID, code, o)
+			if err != nil {
+				http.Error(w, `{"error":"failed_to_resolve_override_policy"}`, http.StatusInternalServerError)
+				return
+			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"status":    "SUCCESS",
-				"override":  o,
-				"effective": eff,
-			})
+			json.NewEncoder(w).Encode(map[string]interface{}{"status": "SUCCESS", "data": envelope})
 
 		case http.MethodDelete:
-			if err := svc.DeleteSupplierOverride(r.Context(), supplierID, code); err != nil {
+			if err := svc.DeleteSupplierOverride(r.Context(), supplierID, code, claims.UserID, claims.Role); err != nil {
 				http.Error(w, `{"error":"failed_to_delete_override"}`, http.StatusInternalServerError)
 				return
 			}

@@ -1020,7 +1020,8 @@
       "notes": [
         "Route composition moved out of main.go into supplierinsightsroutes while preserving the existing countrycfg, analytics, and supplier handlers.",
         "Supplier CRM list/detail payloads now include additive retailer email for the supplier portal contact drawer consumer.",
-        "Warehouse-scoped analytics routes in this composer now use auth.RequireWarehouseScopeWithClient(d.Spanner), applying FACTORY_ADMIN factory-linked warehouse validation before handler execution."
+        "Warehouse-scoped analytics routes in this composer now use auth.RequireWarehouseScopeWithClient(d.Spanner), applying FACTORY_ADMIN factory-linked warehouse validation before handler execution.",
+        "Supplier country overrides now validate requested payment_gateways against region/country policy plus active supplier credential readiness before persistence, return additive payment_gateway_policy context from /v1/supplier/country-overrides*, and persist OverrideReason/UpdatedBy/UpdatedByType plus AuditLog rows for upsert/delete actions."
       ]
     },
     {
