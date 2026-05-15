@@ -49,8 +49,11 @@ const (
 )
 
 const (
-	AttemptExecutionActionCheckoutInit       = "CHECKOUT_INIT"
-	AttemptExecutionActionHostedCheckoutInit = "HOSTED_CHECKOUT_INIT"
+	AttemptExecutionActionCheckoutInit         = "CHECKOUT_INIT"
+	AttemptExecutionActionHostedCheckoutInit   = "HOSTED_CHECKOUT_INIT"
+	AttemptExecutionActionAuthorizationCapture = "AUTHORIZATION_CAPTURE"
+	AttemptExecutionActionAuthorizationVoid    = "AUTHORIZATION_VOID"
+	AttemptExecutionActionRefund               = "REFUND"
 )
 
 const (
@@ -58,6 +61,7 @@ const (
 	AttemptExecutionModeHostedRedirect     = "HOSTED_REDIRECT"
 	AttemptExecutionModeDirectStoredMethod = "DIRECT_STORED_METHOD"
 	AttemptExecutionModeDirect3DSRedirect  = "DIRECT_3DS_REDIRECT"
+	AttemptExecutionModeWebhookEvent       = "WEBHOOK_EVENT"
 )
 
 // ─── Domain Types ────────────────────────────────────────────────────────────

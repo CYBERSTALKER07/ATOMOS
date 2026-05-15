@@ -335,28 +335,44 @@ func (c *adyenExecutionClient) ChargeStoredMethod(ctx context.Context, req Store
 	if !c.creds.DirectExecutionEnabled {
 		return nil, fmt.Errorf("%w for order %s", ErrAdyenDirectOperationUnsupported, strings.TrimSpace(req.OrderID))
 	}
-	return nil, fmt.Errorf("adyen direct charge not yet implemented")
+	directClient, err := CreateAdyenDirectClient(c.creds)
+	if err != nil {
+		return nil, err
+	}
+	return directClient.ChargeStoredMethod(ctx, req)
 }
 
 func (c *adyenExecutionClient) AuthorizeStoredMethod(ctx context.Context, req StoredMethodAuthorizationRequest) (*StoredMethodAuthorizationResult, error) {
 	if !c.creds.DirectExecutionEnabled {
 		return nil, fmt.Errorf("%w for order %s", ErrAdyenDirectOperationUnsupported, strings.TrimSpace(req.OrderID))
 	}
-	return nil, fmt.Errorf("adyen direct authorize not yet implemented")
+	directClient, err := CreateAdyenDirectClient(c.creds)
+	if err != nil {
+		return nil, err
+	}
+	return directClient.AuthorizeStoredMethod(ctx, req)
 }
 
 func (c *adyenExecutionClient) CaptureAuthorization(ctx context.Context, req CaptureAuthorizationRequest) (*CaptureAuthorizationResult, error) {
 	if !c.creds.DirectExecutionEnabled {
 		return nil, fmt.Errorf("%w for authorization %s", ErrAdyenDirectOperationUnsupported, strings.TrimSpace(req.AuthorizationID))
 	}
-	return nil, fmt.Errorf("adyen direct capture not yet implemented")
+	directClient, err := CreateAdyenDirectClient(c.creds)
+	if err != nil {
+		return nil, err
+	}
+	return directClient.CaptureAuthorization(ctx, req)
 }
 
 func (c *adyenExecutionClient) VoidAuthorization(ctx context.Context, authorizationID string) error {
 	if !c.creds.DirectExecutionEnabled {
 		return fmt.Errorf("%w for authorization %s", ErrAdyenDirectOperationUnsupported, strings.TrimSpace(authorizationID))
 	}
-	return fmt.Errorf("adyen direct void not yet implemented")
+	directClient, err := CreateAdyenDirectClient(c.creds)
+	if err != nil {
+		return err
+	}
+	return directClient.VoidAuthorization(ctx, authorizationID)
 }
 
 func (c *adyenExecutionClient) RefundPayment(ctx context.Context, req ProviderRefundRequest) (*ProviderRefundResult, error) {

@@ -127,6 +127,8 @@ func (ws *WebhookService) processAdyenNotificationItem(ctx context.Context, item
 	success := strings.EqualFold(strings.TrimSpace(item.Success), "true")
 	providerTxnID := strings.TrimSpace(item.PspReference)
 
+	ws.applyAdyenAttemptExecutionMetadata(ctx, session.SessionID, eventCode, providerTxnID)
+
 	if isAdyenSettlementEvent(eventCode) && success {
 		if session.InvoiceID == "" {
 			return true, fmt.Errorf("payment session %s missing invoice binding", session.SessionID)
@@ -157,6 +159,47 @@ func (ws *WebhookService) processAdyenNotificationItem(ctx context.Context, item
 	}
 
 	return false, nil
+}
+
+func (ws *WebhookService) applyAdyenAttemptExecutionMetadata(ctx context.Context, sessionID, eventCode, providerTxnID string) {
+	action, mode, ok := adyenAttemptMetadataForEvent(eventCode)
+	if !ok || ws.SessionSvc == nil {
+		return
+	}
+
+	attempts, err := ws.SessionSvc.GetAttemptsBySession(ctx, sessionID)
+	if err != nil {
+		slog.Warn("adyen_webhook.attempt_lookup_failed", "session_id", sessionID, "event_code", eventCode, "provider_txn_id", providerTxnID, "err", err)
+		return
+	}
+	if len(attempts) == 0 {
+		return
+	}
+
+	latestAttemptID := strings.TrimSpace(attempts[len(attempts)-1].AttemptID)
+	if latestAttemptID == "" {
+		return
+	}
+
+	if err := ws.SessionSvc.UpdateAttemptExecutionMetadata(ctx, latestAttemptID, action, mode); err != nil {
+		slog.Warn("adyen_webhook.attempt_metadata_update_failed", "session_id", sessionID, "attempt_id", latestAttemptID, "event_code", eventCode, "provider_txn_id", providerTxnID, "err", err)
+	}
+}
+
+func adyenAttemptMetadataForEvent(eventCode string) (string, string, bool) {
+	switch eventCode {
+	case adyenwebhook.EventCodeCapture, adyenwebhook.EventCodeCaptureFailed:
+		return AttemptExecutionActionAuthorizationCapture, AttemptExecutionModeWebhookEvent, true
+	case adyenwebhook.EventCodeCancellation:
+		return AttemptExecutionActionAuthorizationVoid, AttemptExecutionModeWebhookEvent, true
+	case adyenwebhook.EventCodeRefund,
+		adyenwebhook.EventCodeRefundFailed,
+		adyenwebhook.EventCodeRefundWithData,
+		adyenwebhook.EventCodeRefundedReversed:
+		return AttemptExecutionActionRefund, AttemptExecutionModeWebhookEvent, true
+	default:
+		return "", "", false
+	}
 }
 
 func applyAdyenIdempotencyKey(r *http.Request, items []*adyenwebhook.NotificationRequestItem) {
