@@ -43,6 +43,13 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 
 ## Runtime Contract Surfaces
 
+- AIRWALLEX gateway convergence: `pegasus/apps/backend-go/{payment/{provider.go,execution.go,airwallex_client.go,gateway_client.go,refund.go},countrycfg/service.go,order/service.go,retailerroutes/payments.go,vault/{capabilities.go,vault.go},schema/spanner.ddl,migrations/migrations.go,cmd/setup/main.go}` + `pegasus/packages/types/order.ts` + `pegasus/apps/admin-portal/app/supplier/{payment-config/page.tsx,country-overrides/page.tsx}`
+	- Provider/runtime contract now includes additive AIRWALLEX support for gateway normalization, checkout URL generation, provider execution credential routing, and refund resolver branching.
+	- Country policy normalization now includes AIRWALLEX and guards against non-UZ fallback inheriting UZ default gateway config.
+	- `/v1/retailer/card/initiate` remains explicitly GLOBAL_PAY-only and now returns structured `422 card_tokenization_gateway_unsupported` for non-GLOBAL_PAY requests.
+	- AIRWALLEX direct execution remains fail-closed behind `AIRWALLEX_DIRECT_EXECUTION_ENABLED`; when disabled, refund flows classify as manual-required instead of hard failure.
+	- Schema/migration/setup gateway constraints and supplier capability metadata now include AIRWALLEX; shared TS gateway unions and supplier portal metadata placeholders are aligned.
+
 - Checkout fee snapshot substrate: `pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,order/unified_checkout.go,order/settlement_target.go}`
 	- Schema now provisions additive `SupplierPayoutPolicies`, `InvoiceSettlementSlices`, and `MasterInvoices` fee summary fields (`FeePolicyVersion`, `FeeAmount`, `NetPayoutAmount`, `SettlementSliceCount`).
 	- Unified checkout now writes immutable per-supplier settlement slices (gross, fee policy version, fee basis points, fee amount, net payout, payout owner metadata) in the same `ReadWriteTransaction` as invoice and order writes.

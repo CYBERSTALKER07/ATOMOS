@@ -68,7 +68,7 @@ const (
 	supplierOverrideDeleteReason         = "SUPPLIER_REVERT_TO_POLICY"
 )
 
-var paymentGatewayProviderOrder = []string{"GLOBAL_PAY", "ADYEN", "CASH"}
+var paymentGatewayProviderOrder = []string{"GLOBAL_PAY", "ADYEN", "AIRWALLEX", "CASH"}
 
 // SupplierPaymentGatewayPolicy describes the region/country policy and runtime
 // gateway readiness that apply to a supplier checkout path.
@@ -131,10 +131,28 @@ func normalizePaymentGateway(gateway string) string {
 		return "GLOBAL_PAY"
 	case "ADYEN":
 		return "ADYEN"
+	case "AIRWALLEX":
+		return "AIRWALLEX"
 	case "CASH":
 		return "CASH"
 	default:
 		return ""
+	}
+}
+
+func defaultPolicyGatewaysForCountry(countryCode string) []string {
+	normalizedCountry := strings.ToUpper(strings.TrimSpace(countryCode))
+	if normalizedCountry == "" || normalizedCountry == "UZ" {
+		return []string{"GLOBAL_PAY", "CASH"}
+	}
+
+	switch normalizePaymentGateway(ResolveDefaultGatewayForCountry(normalizedCountry)) {
+	case "ADYEN":
+		return []string{"ADYEN", "CASH"}
+	case "AIRWALLEX":
+		return []string{"AIRWALLEX", "CASH"}
+	default:
+		return []string{"GLOBAL_PAY", "CASH"}
 	}
 }
 
@@ -448,7 +466,7 @@ func (s *Service) resolveSupplierPaymentGatewayPolicy(ctx context.Context, suppl
 		}
 	}
 
-	allowedGateways := []string{"GLOBAL_PAY", "CASH"}
+	allowedGateways := defaultPolicyGatewaysForCountry(resolvedCountryCode)
 	policy := &SupplierPaymentGatewayPolicy{
 		SupplierId:  trimmedSupplierID,
 		CountryCode: resolvedCountryCode,
@@ -456,14 +474,12 @@ func (s *Service) resolveSupplierPaymentGatewayPolicy(ctx context.Context, suppl
 	}
 
 	if s != nil {
-		baseConfig := defaultUZ()
 		if s.Spanner != nil {
 			if cfg := s.GetConfig(ctx, resolvedCountryCode); cfg != nil {
-				baseConfig = cfg
+				if strings.EqualFold(strings.TrimSpace(cfg.CountryCode), resolvedCountryCode) && len(cfg.PaymentGateways) > 0 {
+					allowedGateways = cfg.PaymentGateways
+				}
 			}
-		}
-		if baseConfig != nil && len(baseConfig.PaymentGateways) > 0 {
-			allowedGateways = baseConfig.PaymentGateways
 		}
 		if s.Spanner != nil {
 			region, err := s.ResolveSupplierRegion(ctx, trimmedSupplierID)

@@ -477,7 +477,7 @@ export default function CountryOverridesPage() {
                         type="text"
                         className={inputClass}
                         value={(draft.payment_gateways || []).join(', ')}
-                        placeholder="e.g. GLOBAL_PAY, ADYEN, CASH"
+                        placeholder="e.g. GLOBAL_PAY, ADYEN, AIRWALLEX, CASH"
                         onChange={(e) =>
                           setNullable(
                             'payment_gateways',

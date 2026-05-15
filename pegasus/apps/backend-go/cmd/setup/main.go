@@ -127,7 +127,7 @@ func main() {
 				IsActive     BOOL        NOT NULL DEFAULT (true),
 				CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 				UpdatedAt    TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
-				CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'GLOBAL_PAY'))
+				CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN', 'AIRWALLEX'))
 			) PRIMARY KEY (ConfigId)`,
 			`CREATE INDEX Idx_SupplierPaymentConfigs_BySupplierId ON SupplierPaymentConfigs(SupplierId)`,
 			`CREATE UNIQUE INDEX Idx_SupplierPaymentConfigs_Unique ON SupplierPaymentConfigs(SupplierId, GatewayName)`,

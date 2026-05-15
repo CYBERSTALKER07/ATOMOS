@@ -95,7 +95,12 @@ func handleRetailerCardInitiate(d Deps) http.HandlerFunc {
 		}
 
 		if req.Gateway != "GLOBAL_PAY" {
-			http.Error(w, "direct card tokenization is only supported for GLOBAL_PAY", http.StatusBadRequest)
+			writeJSONStatus(w, http.StatusUnprocessableEntity, map[string]interface{}{
+				"error":             "card_tokenization_gateway_unsupported",
+				"message":           "card tokenization is currently supported only for GLOBAL_PAY",
+				"requested_gateway": req.Gateway,
+				"allowed_gateways":  []string{"GLOBAL_PAY"},
+			})
 			return
 		}
 

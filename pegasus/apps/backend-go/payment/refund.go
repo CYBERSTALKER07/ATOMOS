@@ -172,7 +172,7 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 					Currency:  resolvedCurrency,
 				})
 				if refErr != nil {
-					if errors.Is(refErr, ErrAdyenDirectOperationUnsupported) {
+					if errors.Is(refErr, ErrAdyenDirectOperationUnsupported) || errors.Is(refErr, ErrAirwallexDirectOperationUnsupported) {
 						refundStatus = RefundManualRequired
 						log.Printf("[REFUND] Gateway refund requires manual handling for order %s via %s: %v", orderID, sessGateway, refErr)
 					} else {
@@ -331,6 +331,19 @@ func (rs *RefundService) resolveExecutionClient(ctx context.Context, orderID, ga
 			return nil, err
 		}
 		return rs.execution.Resolve(gateway, NewAdyenExecutionCredentials(creds))
+	case "AIRWALLEX":
+		if rs.vaultResolver == nil {
+			return nil, fmt.Errorf("vault resolver not configured for gateway %s", gateway)
+		}
+		cfg, err := rs.vaultResolver.GetDecryptedConfigByOrder(ctx, orderID, gateway)
+		if err != nil {
+			return nil, fmt.Errorf("resolve %s credentials for order %s: %w", gateway, orderID, err)
+		}
+		creds, err := ResolveAirwallexCredentials(cfg.MerchantId, cfg.ServiceId, cfg.SecretKey)
+		if err != nil {
+			return nil, err
+		}
+		return rs.execution.Resolve(gateway, NewAirwallexExecutionCredentials(creds))
 	default:
 		return rs.execution.Resolve(gateway, ProviderExecutionCredentials{})
 	}
@@ -523,7 +536,7 @@ func (rs *RefundService) InitiateDeliveryDeltaRefund(ctx context.Context, req De
 				Currency:  resolvedCurrency,
 			})
 			if refErr != nil {
-				if errors.Is(refErr, ErrAdyenDirectOperationUnsupported) {
+				if errors.Is(refErr, ErrAdyenDirectOperationUnsupported) || errors.Is(refErr, ErrAirwallexDirectOperationUnsupported) {
 					refundStatus = RefundManualRequired
 				} else {
 					refundStatus = RefundFailed

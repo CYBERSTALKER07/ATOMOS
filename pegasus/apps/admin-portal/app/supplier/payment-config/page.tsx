@@ -41,7 +41,7 @@ type ProviderCapability = {
   manual_hint: string;
 };
 
-type GatewayName = 'CASH' | 'GLOBAL_PAY' | 'ADYEN';
+type GatewayName = 'CASH' | 'GLOBAL_PAY' | 'ADYEN' | 'AIRWALLEX';
 
 type SupplierPayoutMode = 'HQ_SUPPLIER' | 'WAREHOUSE_LOCAL';
 
@@ -87,6 +87,18 @@ const DEFAULT_CAPABILITIES: ProviderCapability[] = [
       { name: 'secret_key', label: 'API Key', placeholder: 'Enter your Adyen API key', input_type: 'password' },
     ],
     manual_hint: 'Enter Adyen merchant account and API key. Configure webhook HMAC via ADYEN_HMAC_KEY in backend runtime.',
+  },
+  {
+    gateway: 'AIRWALLEX',
+    display_name: 'Airwallex',
+    onboarding_mode: 'MANUAL_ONLY',
+    required_fields: ['merchant_id', 'secret_key'],
+    manual_fields: [
+      { name: 'merchant_id', label: 'Client ID', placeholder: 'e.g. prod-client-id', helper_text: 'Stored in merchant_id for backward compatibility.' },
+      { name: 'service_id', label: 'Environment (Optional)', placeholder: 'DEMO or PROD', helper_text: 'Stored in service_id for compatibility; defaults to DEMO.' },
+      { name: 'secret_key', label: 'API Key', placeholder: 'Enter your Airwallex API key', input_type: 'password' },
+    ],
+    manual_hint: 'Enter your Airwallex client ID and API key for this supplier region.',
   },
 ];
 
@@ -319,7 +331,7 @@ export default function GlobalPayntConfigPage() {
           Payment Gateways
         </h1>
         <p className="md-typescale-body-medium mt-1" style={{ color: 'var(--muted)' }}>
-          Configure Cash, Global Pay, and Adyen credentials for supplier checkout processing.
+          Configure Cash, Global Pay, Adyen, and Airwallex credentials for supplier checkout processing.
         </p>
       </div>
 

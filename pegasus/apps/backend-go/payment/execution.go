@@ -113,6 +113,7 @@ type ProviderExecutionClient interface {
 type ProviderExecutionCredentials struct {
 	globalPay *GlobalPayCredentials
 	adyen     *AdyenCredentials
+	airwallex *AirwallexCredentials
 }
 
 // NewGlobalPayExecutionCredentials wraps Global Pay credentials for the
@@ -124,6 +125,12 @@ func NewGlobalPayExecutionCredentials(creds GlobalPayCredentials) ProviderExecut
 // NewAdyenExecutionCredentials wraps Adyen credentials for the execution resolver.
 func NewAdyenExecutionCredentials(creds AdyenCredentials) ProviderExecutionCredentials {
 	return ProviderExecutionCredentials{adyen: &creds}
+}
+
+// NewAirwallexExecutionCredentials wraps Airwallex credentials for the
+// execution resolver.
+func NewAirwallexExecutionCredentials(creds AirwallexCredentials) ProviderExecutionCredentials {
+	return ProviderExecutionCredentials{airwallex: &creds}
 }
 
 // ProviderExecutionRouter resolves a normalized execution client for a gateway.
@@ -156,6 +163,12 @@ func (r *ProviderExecutionRouter) Resolve(gateway string, creds ProviderExecutio
 			return nil, err
 		}
 		return &adyenExecutionClient{creds: adyenCreds}, nil
+	case "AIRWALLEX":
+		airwallexCreds, err := creds.airwallexCredentials()
+		if err != nil {
+			return nil, err
+		}
+		return &airwallexExecutionClient{creds: airwallexCreds}, nil
 	case "CASH":
 		return &unsupportedProviderExecutionClient{gateway: normalized}, nil
 	default:
@@ -175,6 +188,13 @@ func (c ProviderExecutionCredentials) adyenCredentials() (AdyenCredentials, erro
 		return AdyenCredentials{}, fmt.Errorf("adyen execution credentials missing")
 	}
 	return *c.adyen, nil
+}
+
+func (c ProviderExecutionCredentials) airwallexCredentials() (AirwallexCredentials, error) {
+	if c.airwallex == nil {
+		return AirwallexCredentials{}, fmt.Errorf("airwallex execution credentials missing")
+	}
+	return *c.airwallex, nil
 }
 
 type unsupportedProviderExecutionClient struct {
@@ -388,4 +408,111 @@ func (c *adyenExecutionClient) RefundPayment(ctx context.Context, req ProviderRe
 		return nil, err
 	}
 	return res, nil
+}
+
+type airwallexExecutionClient struct {
+	creds AirwallexCredentials
+}
+
+func (c *airwallexExecutionClient) GatewayName() string {
+	return "AIRWALLEX"
+}
+
+func (c *airwallexExecutionClient) ChargeStoredMethod(_ context.Context, req StoredMethodChargeRequest) (*StoredMethodChargeResult, error) {
+	if !c.creds.DirectExecutionEnabled {
+		return nil, fmt.Errorf("%w for order %s", ErrAirwallexDirectOperationUnsupported, strings.TrimSpace(req.OrderID))
+	}
+	if strings.TrimSpace(req.CardToken) == "" {
+		return nil, fmt.Errorf("stored-method charge requires card token")
+	}
+	client := NewAirwallexClient(c.creds.ClientID, c.creds.APIKey, c.creds.Environment)
+	if err := client.Charge(req.OrderID, req.Amount); err != nil {
+		return nil, err
+	}
+	providerRef := firstNonEmpty(strings.TrimSpace(req.ExternalID), strings.TrimSpace(req.AttemptID), strings.TrimSpace(req.SessionID), strings.TrimSpace(req.OrderID))
+	return &StoredMethodChargeResult{
+		ProviderPaymentID: providerRef,
+		ProviderReference: providerRef,
+		Status:            "PAID",
+		Paid:              true,
+		StoredMethodRef:   strings.TrimSpace(req.CardToken),
+		RecurringCapable:  strings.TrimSpace(req.CardToken) != "",
+	}, nil
+}
+
+func (c *airwallexExecutionClient) AuthorizeStoredMethod(_ context.Context, req StoredMethodAuthorizationRequest) (*StoredMethodAuthorizationResult, error) {
+	if !c.creds.DirectExecutionEnabled {
+		return nil, fmt.Errorf("%w for order %s", ErrAirwallexDirectOperationUnsupported, strings.TrimSpace(req.OrderID))
+	}
+	if strings.TrimSpace(req.CardToken) == "" {
+		return nil, fmt.Errorf("stored-method authorization requires card token")
+	}
+	client := NewAirwallexClient(c.creds.ClientID, c.creds.APIKey, c.creds.Environment)
+	authorizationID, err := client.Authorize(req.OrderID, req.Amount)
+	if err != nil {
+		return nil, err
+	}
+	providerRef := firstNonEmpty(strings.TrimSpace(authorizationID), strings.TrimSpace(req.ExternalID), strings.TrimSpace(req.AttemptID), strings.TrimSpace(req.SessionID), strings.TrimSpace(req.OrderID))
+	return &StoredMethodAuthorizationResult{
+		AuthorizationID:   providerRef,
+		ProviderReference: providerRef,
+		Status:            "AUTHORIZED",
+		Authorized:        providerRef != "",
+	}, nil
+}
+
+func (c *airwallexExecutionClient) CaptureAuthorization(_ context.Context, req CaptureAuthorizationRequest) (*CaptureAuthorizationResult, error) {
+	if !c.creds.DirectExecutionEnabled {
+		return nil, fmt.Errorf("%w for authorization %s", ErrAirwallexDirectOperationUnsupported, strings.TrimSpace(req.AuthorizationID))
+	}
+	if strings.TrimSpace(req.AuthorizationID) == "" {
+		return nil, fmt.Errorf("capture requires authorization id")
+	}
+	if req.Amount <= 0 {
+		return nil, fmt.Errorf("capture requires positive amount")
+	}
+	client := NewAirwallexClient(c.creds.ClientID, c.creds.APIKey, c.creds.Environment)
+	if err := client.Capture(req.AuthorizationID, req.Amount); err != nil {
+		return nil, err
+	}
+	providerRef := strings.TrimSpace(req.AuthorizationID)
+	return &CaptureAuthorizationResult{
+		ProviderPaymentID: providerRef,
+		ProviderReference: providerRef,
+		Status:            "CAPTURED",
+		Captured:          true,
+	}, nil
+}
+
+func (c *airwallexExecutionClient) VoidAuthorization(_ context.Context, authorizationID string) error {
+	if !c.creds.DirectExecutionEnabled {
+		return fmt.Errorf("%w for authorization %s", ErrAirwallexDirectOperationUnsupported, strings.TrimSpace(authorizationID))
+	}
+	if strings.TrimSpace(authorizationID) == "" {
+		return fmt.Errorf("void authorization requires authorization id")
+	}
+	client := NewAirwallexClient(c.creds.ClientID, c.creds.APIKey, c.creds.Environment)
+	return client.Void(authorizationID)
+}
+
+func (c *airwallexExecutionClient) RefundPayment(_ context.Context, req ProviderRefundRequest) (*ProviderRefundResult, error) {
+	if !c.creds.DirectExecutionEnabled {
+		return nil, fmt.Errorf("%w for order %s", ErrAirwallexDirectOperationUnsupported, strings.TrimSpace(req.OrderID))
+	}
+	if strings.TrimSpace(req.OrderID) == "" {
+		return nil, fmt.Errorf("refund requires order id")
+	}
+	if req.Amount <= 0 {
+		return nil, fmt.Errorf("refund requires positive amount")
+	}
+	client := NewAirwallexClient(c.creds.ClientID, c.creds.APIKey, c.creds.Environment)
+	if err := client.Refund(req.OrderID, req.Amount); err != nil {
+		return nil, err
+	}
+	providerRef := firstNonEmpty(strings.TrimSpace(req.PaymentID), strings.TrimSpace(req.OrderID))
+	return &ProviderRefundResult{
+		ProviderRefundID:  providerRef,
+		ProviderReference: providerRef,
+		Status:            "REFUNDED",
+	}, nil
 }

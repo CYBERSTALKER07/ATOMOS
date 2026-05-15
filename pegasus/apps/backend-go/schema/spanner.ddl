@@ -757,7 +757,7 @@ CREATE TABLE SupplierGlobalPayntConfigs (
     IsActive     BOOL        NOT NULL DEFAULT (true),
     CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
     UpdatedAt    TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
-    CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN'))
+    CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN', 'AIRWALLEX'))
 ) PRIMARY KEY (ConfigId);
 
 CREATE INDEX Idx_SupplierGlobalPayntConfigs_BySupplierId ON SupplierGlobalPayntConfigs(SupplierId);

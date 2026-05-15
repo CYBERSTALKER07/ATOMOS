@@ -29,7 +29,7 @@ export type OrderState =
   | 'DELIVERED_ON_CREDIT';
 
 // ─── Payment Gateways ───────────────────────────────────────────────────────
-export type PaymentGateway = 'GLOBAL_PAY' | 'ADYEN' | 'CASH';
+export type PaymentGateway = 'GLOBAL_PAY' | 'ADYEN' | 'AIRWALLEX' | 'CASH';
 
 // ─── Payment Status ─────────────────────────────────────────────────────────
 // Maps 1:1 to the Orders.PaymentStatus column in Spanner.

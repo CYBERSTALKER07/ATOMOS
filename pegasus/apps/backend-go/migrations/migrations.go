@@ -788,7 +788,7 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 				IsActive     BOOL        NOT NULL DEFAULT (true),
 				CreatedAt    TIMESTAMP   NOT NULL OPTIONS (allow_commit_timestamp=true),
 				UpdatedAt    TIMESTAMP   OPTIONS (allow_commit_timestamp=true),
-				CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN'))
+				CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN', 'AIRWALLEX'))
 			) PRIMARY KEY (ConfigId)`,
 			"CREATE INDEX Idx_SupplierPaymentConfigs_BySupplierId ON SupplierPaymentConfigs(SupplierId)",
 			"CREATE INDEX Idx_SupplierPaymentConfigs_ByWarehouseId ON SupplierPaymentConfigs(WarehouseId)",
@@ -804,7 +804,7 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 			// Phase 2 addendum: ServiceId for Cash gateway
 			"ALTER TABLE SupplierPaymentConfigs ADD COLUMN ServiceId STRING(MAX)",
 			"ALTER TABLE SupplierPaymentConfigs DROP CONSTRAINT CHK_GatewayName",
-			"ALTER TABLE SupplierPaymentConfigs ADD CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN'))",
+			"ALTER TABLE SupplierPaymentConfigs ADD CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN', 'AIRWALLEX'))",
 		}
 		for _, stmt := range multiVendorPaymentDDL {
 			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
@@ -1490,9 +1490,9 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 			"CREATE INDEX Idx_Warehouses_ByRegionId ON Warehouses(RegionId)",
 			"CREATE INDEX Idx_Retailers_ByRegionId ON Retailers(RegionId)",
 			"ALTER TABLE SupplierPaymentConfigs DROP CONSTRAINT CHK_GatewayName",
-			"ALTER TABLE SupplierPaymentConfigs ADD CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN'))",
+			"ALTER TABLE SupplierPaymentConfigs ADD CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN', 'AIRWALLEX'))",
 			"ALTER TABLE SupplierGlobalPayntConfigs DROP CONSTRAINT CHK_GatewayName",
-			"ALTER TABLE SupplierGlobalPayntConfigs ADD CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN'))",
+			"ALTER TABLE SupplierGlobalPayntConfigs ADD CONSTRAINT CHK_GatewayName CHECK (GatewayName IN ('CASH', 'GLOBAL_PAY', 'ADYEN', 'AIRWALLEX'))",
 		}
 		for _, stmt := range regionalDDL {
 			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{

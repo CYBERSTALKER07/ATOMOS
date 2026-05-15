@@ -125,7 +125,7 @@ type cashInvoiceRequest struct {
 
 // NewGatewayClient returns the correct GatewayClient implementation based on
 // the PaymentGateway column value stored in Spanner.
-// Supported values: "GLOBAL_PAY", "ADYEN", and "CASH".
+// Supported values: "GLOBAL_PAY", "ADYEN", "AIRWALLEX", and "CASH".
 func NewGatewayClient(gateway string) (GatewayClient, error) {
 	provider, err := NewProviderClient(gateway)
 	if err != nil {
@@ -152,6 +152,8 @@ func CheckoutURL(gateway string, orderID string, amount int64) (string, error) {
 	switch provider.GatewayName() {
 	case "GLOBAL_PAY":
 		return globalPayCheckoutURL(orderID, amount)
+	case "AIRWALLEX":
+		return airwallexCheckoutURL(orderID, amount)
 	case "CASH":
 		return "", nil
 	case "ADYEN":
@@ -195,6 +197,36 @@ func renderGlobalPayCheckoutURL(template, merchantId, orderID string, amount int
 		"{order_id}", url.QueryEscape(orderID),
 		"{amount}", strconv.FormatInt(amount, 10),
 		"{amount_tiyin}", strconv.FormatInt(amountTiyin, 10),
+	)
+	return replacer.Replace(template)
+}
+
+func airwallexCheckoutURL(orderID string, amount int64) (string, error) {
+	clientID := firstNonEmpty(strings.TrimSpace(os.Getenv("AIRWALLEX_CLIENT_ID")), strings.TrimSpace(os.Getenv("AIRWALLEX_MERCHANT_ID")))
+	if clientID == "" {
+		return "", fmt.Errorf("AIRWALLEX_CLIENT_ID not set")
+	}
+	return airwallexCheckoutURLWithCreds(orderID, amount, clientID)
+}
+
+func airwallexCheckoutURLWithCreds(orderID string, amount int64, clientID string) (string, error) {
+	if strings.TrimSpace(clientID) == "" {
+		return "", fmt.Errorf("airwallex client_id required")
+	}
+	checkoutTemplate := strings.TrimSpace(os.Getenv("AIRWALLEX_CHECKOUT_URL"))
+	if checkoutTemplate == "" {
+		return "", fmt.Errorf("AIRWALLEX_CHECKOUT_URL not set (expected template with {client_id}, {order_id}, {amount}, {amount_minor})")
+	}
+	return renderAirwallexCheckoutURL(checkoutTemplate, clientID, orderID, amount), nil
+}
+
+func renderAirwallexCheckoutURL(template, clientID, orderID string, amount int64) string {
+	amountMinor := amount * 100
+	replacer := strings.NewReplacer(
+		"{client_id}", url.QueryEscape(clientID),
+		"{order_id}", url.QueryEscape(orderID),
+		"{amount}", strconv.FormatInt(amount, 10),
+		"{amount_minor}", strconv.FormatInt(amountMinor, 10),
 	)
 	return replacer.Replace(template)
 }
@@ -333,6 +365,8 @@ func CheckoutURLWithCredentials(gateway, orderID string, amount int64, merchantI
 	switch provider.GatewayName() {
 	case "GLOBAL_PAY":
 		return globalPayCheckoutURLWithCreds(orderID, amount, merchantId)
+	case "AIRWALLEX":
+		return airwallexCheckoutURLWithCreds(orderID, amount, merchantId)
 	case "CASH":
 		return "", nil
 	case "ADYEN":

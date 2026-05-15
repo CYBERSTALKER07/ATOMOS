@@ -35,7 +35,7 @@ func normalizeGateway(gateway string) string {
 // SupportedProviderGateways returns the normalized gateway names accepted by
 // the provider resolver.
 func SupportedProviderGateways() []string {
-	return []string{"GLOBAL_PAY", "ADYEN", "CASH"}
+	return []string{"GLOBAL_PAY", "ADYEN", "AIRWALLEX", "CASH"}
 }
 
 // IsSupportedProviderGateway reports whether a gateway can be resolved by the
@@ -58,7 +58,9 @@ func NewProviderClient(gateway string) (ProviderClient, error) {
 		return &staticProviderClient{name: normalized, client: &noopGateway{gateway: normalized}}, nil
 	case "ADYEN":
 		return &staticProviderClient{name: normalized, client: &adyenGateway{}}, nil
+	case "AIRWALLEX":
+		return &staticProviderClient{name: normalized, client: &AirwallexClient{}}, nil
 	default:
-		return nil, fmt.Errorf("unsupported payment gateway: %s (supported: GLOBAL_PAY, ADYEN, CASH)", strings.TrimSpace(gateway))
+		return nil, fmt.Errorf("unsupported payment gateway: %s (supported: GLOBAL_PAY, ADYEN, AIRWALLEX, CASH)", strings.TrimSpace(gateway))
 	}
 }

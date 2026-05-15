@@ -68,6 +68,35 @@
   },
   "runtimeContracts": [
     {
+      "name": "Workstream I AIRWALLEX gateway convergence",
+      "path": "AIRWALLEX additive provider/policy/schema/client compatibility",
+      "owner": "pegasus/apps/backend-go/{payment/{provider.go,execution.go,airwallex_client.go,gateway_client.go,refund.go},countrycfg/service.go,order/service.go,retailerroutes/payments.go,vault/{capabilities.go,vault.go},schema/spanner.ddl,migrations/migrations.go,cmd/setup/main.go} + pegasus/packages/types/order.ts + pegasus/apps/admin-portal/app/supplier/{payment-config/page.tsx,country-overrides/page.tsx}",
+      "methods": [
+        "payment/provider.go and payment/execution.go now include AIRWALLEX provider routing and credential contract support",
+        "payment/gateway_client.go now supports AIRWALLEX checkout URL resolution with environment-template guards",
+        "countrycfg/service.go now normalizes AIRWALLEX in gateway policy order and guards non-UZ fallback from inheriting UZ default policy gateways",
+        "order/service.go now accepts AIRWALLEX during card gateway normalization for policy-authoritative checkout",
+        "retailerroutes/payments.go keeps /v1/retailer/card/initiate GLOBAL_PAY-only and returns structured 422 card_tokenization_gateway_unsupported for non-GLOBAL_PAY gateways",
+        "vault capability metadata and gateway allowlists now include AIRWALLEX",
+        "Schema/migration/setup GatewayName constraints and shared TS PaymentGateway union now include AIRWALLEX",
+        "AIRWALLEX direct execution remains fail-closed behind AIRWALLEX_DIRECT_EXECUTION_ENABLED and refunds classify as manual-required when disabled"
+      ],
+      "consumers": [
+        "backend-go payment provider/execution/gateway/refund flows",
+        "backend-go order card-checkout policy normalization",
+        "backend-go retailer card tokenization route",
+        "backend-go countrycfg supplier gateway policy resolver",
+        "backend-go vault capability + configuration API",
+        "backend-go schema/migrations/setup gateway constraints",
+        "packages/types/order.ts",
+        "admin-portal supplier payment-config and country-overrides pages"
+      ],
+      "notes": [
+        "Gateway enablement is additive: card tokenization remains explicitly GLOBAL_PAY-only to avoid false AIRWALLEX tokenization assumptions.",
+        "Direct execution stays feature-flag gated to preserve rollout safety while checkout policy and schema compatibility are in place."
+      ]
+    },
+    {
       "name": "Checkout fee snapshot substrate",
       "path": "Unified checkout transactional fee snapshots",
       "owner": "pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,order/{unified_checkout.go,service.go,settlement_target.go},payment/{settlement_snapshot.go,global_pay_direct.go,refund.go},kafka/treasurer.go,internal/services/billing/meter_worker.go,treasury/settlement.go,warehouse/treasury.go}",

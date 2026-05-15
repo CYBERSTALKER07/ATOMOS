@@ -67,10 +67,22 @@ var providerRegistry = map[string]ProviderCapability{
 		},
 		ManualHint: "Enter your Adyen merchant account and API key for this supplier region.",
 	},
+	"AIRWALLEX": {
+		Gateway:        "AIRWALLEX",
+		DisplayName:    "Airwallex",
+		OnboardingMode: ManualOnly,
+		RequiredFields: []string{"merchant_id", "secret_key"},
+		ManualFields: []ManualField{
+			{Name: "merchant_id", Label: "Client ID", Placeholder: "e.g. prod-client-id", HelperText: "Mapped to merchant_id for backward compatibility with existing storage."},
+			{Name: "service_id", Label: "Environment", Placeholder: "DEMO or PROD", HelperText: "Optional. Defaults to DEMO when omitted."},
+			{Name: "secret_key", Label: "API Key", Placeholder: "Enter your Airwallex API key", InputType: "password"},
+		},
+		ManualHint: "Enter your Airwallex client ID and API key for this supplier region.",
+	},
 }
 
 // providerOrder enforces display order in the UI.
-var providerOrder = []string{"CASH", "GLOBAL_PAY", "ADYEN"}
+var providerOrder = []string{"CASH", "GLOBAL_PAY", "ADYEN", "AIRWALLEX"}
 
 // GetProviderCapabilities returns the capability metadata for all supported gateways.
 func GetProviderCapabilities() []ProviderCapability {

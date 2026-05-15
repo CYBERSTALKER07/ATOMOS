@@ -413,6 +413,8 @@ func TestNormalizeCardGateway_Valid(t *testing.T) {
 		"cash":       "CASH",
 		"GLOBAL_PAY": "GLOBAL_PAY",
 		"global_pay": "GLOBAL_PAY",
+		"AIRWALLEX":  "AIRWALLEX",
+		"airwallex":  "AIRWALLEX",
 	}
 	for input, want := range cases {
 		t.Run(input, func(t *testing.T) {

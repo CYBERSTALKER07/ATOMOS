@@ -519,7 +519,7 @@ func (s *OrderService) ResolveCheckoutGatewayWithMetadata(ctx context.Context, s
 		normalizedRequested = normalizeCardGateway(requestedGateway)
 		if normalizedRequested == "" {
 			return nil, &ErrGatewayPolicy{
-				Message:          "payment_gateway must be GLOBAL_PAY, ADYEN, or CASH",
+				Message:          "payment_gateway must be GLOBAL_PAY, ADYEN, AIRWALLEX, or CASH",
 				RequestedGateway: strings.ToUpper(strings.TrimSpace(requestedGateway)),
 				Reason:           "unsupported gateway requested",
 			}
@@ -3149,7 +3149,7 @@ func (s *OrderService) resolveAvailableCardGateways(ctx context.Context, supplie
 
 func normalizeCardGateway(gateway string) string {
 	switch strings.ToUpper(strings.TrimSpace(gateway)) {
-	case "CASH", "GLOBAL_PAY", "ADYEN":
+	case "CASH", "GLOBAL_PAY", "ADYEN", "AIRWALLEX":
 		return strings.ToUpper(strings.TrimSpace(gateway))
 	default:
 		return ""
