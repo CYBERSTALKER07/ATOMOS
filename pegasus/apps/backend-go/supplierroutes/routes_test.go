@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"backend-go/auth"
+
 	"github.com/go-chi/chi/v5"
 )
 
@@ -130,6 +131,29 @@ func TestRegisterRoutes_ShiftUsesIdempotency(t *testing.T) {
 	}
 	if got := rec.Header().Get("X-Idempotency-Guard"); got != "shift" {
 		t.Fatalf("idempotency guard header = %q, want shift", got)
+	}
+}
+
+func TestRegisterRoutes_PayoutPolicyUsesIdempotency(t *testing.T) {
+	token := supplierTestToken(t)
+
+	r := chi.NewRouter()
+	RegisterRoutes(r, Deps{
+		Log:         passthroughMiddleware,
+		Idempotency: markerMiddleware("X-Idempotency-Guard", "payout-policy"),
+	})
+
+	req := httptest.NewRequest(http.MethodTrace, "/v1/supplier/payout-policy", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+	}
+	if got := rec.Header().Get("X-Idempotency-Guard"); got != "payout-policy" {
+		t.Fatalf("idempotency guard header = %q, want payout-policy", got)
 	}
 }
 

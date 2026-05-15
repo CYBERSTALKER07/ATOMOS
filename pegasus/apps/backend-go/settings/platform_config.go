@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -62,6 +63,33 @@ func (pc *PlatformConfig) PlatformFeeBasisPoints() int64 {
 	}
 
 	return 0
+}
+
+// FeeSnapshotAuthoritativeRead returns whether payout math should prefer
+// persisted settlement-slice fee snapshots over legacy dynamic basis-point
+// reads. Operator override key: "fee_snapshot_authoritative_read".
+func (pc *PlatformConfig) FeeSnapshotAuthoritativeRead() bool {
+	pc.mu.RLock()
+	defer pc.mu.RUnlock()
+
+	value, ok := pc.cache["fee_snapshot_authoritative_read"]
+	if !ok {
+		return false
+	}
+
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	switch normalized {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off", "":
+		return false
+	}
+
+	parsed, err := strconv.ParseBool(normalized)
+	if err != nil {
+		return false
+	}
+	return parsed
 }
 
 // DispatchOptimizerTimeoutMs returns the per-call ceiling (milliseconds) the

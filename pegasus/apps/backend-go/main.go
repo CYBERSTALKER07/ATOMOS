@@ -305,6 +305,7 @@ func main() {
 	// /v1/treasury/* + /v1/supplier/settlement-report → treasury package.
 	treasury.RegisterRoutes(r, treasury.Deps{
 		Spanner:     spannerClient,
+		Cache:       app.Cache,
 		Log:         loggingMiddleware,
 		Idempotency: idempotency.Guard,
 	})

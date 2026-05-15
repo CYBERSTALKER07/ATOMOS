@@ -3,6 +3,8 @@ package treasury
 import (
 	"net/http"
 
+	"backend-go/cache"
+
 	"cloud.google.com/go/spanner"
 	"github.com/go-chi/chi/v5"
 
@@ -15,6 +17,7 @@ type Middleware func(http.HandlerFunc) http.HandlerFunc
 // Deps bundles the collaborators required to register the treasury surface.
 type Deps struct {
 	Spanner     *spanner.Client
+	Cache       *cache.Cache
 	Log         Middleware
 	Idempotency Middleware
 }
@@ -37,4 +40,6 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierAdmin, d.Log(idem(HandleInvoiceStatusOverride(d.Spanner)))))
 	r.HandleFunc("/v1/supplier/settlement-report",
 		auth.RequireRole(supplierAdmin, d.Log(HandleSettlementReport(d.Spanner))))
+	r.HandleFunc("/v1/internal/treasury/supplier-payout-policy",
+		auth.RequireRole([]string{"INTERNAL"}, d.Log(idem(HandleInternalSupplierPayoutPolicyOverride(d.Spanner, d.Cache)))))
 }

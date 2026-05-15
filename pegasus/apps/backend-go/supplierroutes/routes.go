@@ -44,6 +44,7 @@ type Deps struct {
 //	POST /v1/supplier/billing/setup              — bank + gateway setup
 //	GET/PUT /v1/supplier/profile                 — supplier profile
 //	PATCH /v1/supplier/shift                     — shift settings
+//	GET/PATCH /v1/supplier/payout-policy         — supplier payout policy
 //	GET/POST/DELETE /v1/supplier/payment-config  — gateway vault configs
 //	GET/POST/DELETE /v1/supplier/gateway-onboarding — gateway connect sessions
 //	POST /v1/supplier/payment/recipient/register — Global Pay recipient onboarding
@@ -73,6 +74,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierRole, log(withRegionScope(idem(supplierProfileHandler(d))))))
 	r.HandleFunc("/v1/supplier/shift",
 		auth.RequireRole(supplierRole, log(withRegionScope(idem(supplier.HandleSupplierShift(d.Spanner))))))
+	r.HandleFunc("/v1/supplier/payout-policy",
+		auth.RequireRole(supplierRole, log(withRegionScope(idem(supplier.HandleSupplierPayoutPolicy(d.Spanner, d.Cache))))))
 	r.HandleFunc("/v1/supplier/payment-config",
 		auth.RequireRole(supplierRole, log(withRegionScope(idem(vault.HandlePaymentConfigs(d.Spanner))))))
 	r.HandleFunc("/v1/supplier/gateway-onboarding",
