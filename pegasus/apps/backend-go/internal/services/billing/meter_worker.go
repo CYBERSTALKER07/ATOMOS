@@ -9,9 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"backend-go/outbox"
-	"backend-go/telemetry"
-
 	"cloud.google.com/go/spanner"
 	"google.golang.org/api/iterator"
 )
@@ -33,9 +30,6 @@ const (
 	defaultBillingMilestoneStepBP int64 = 25
 	defaultBillingMinFeeBP        int64 = 25
 	defaultBillingLastIndex       int64 = 0
-
-	kafkaTopicMain       string = "pegasus-logistics-events"
-	eventFeeRateAdjusted string = "FEE_RATE_ADJUSTED"
 )
 
 // FinalizedOrderInput is the normalized payload the Kafka worker passes to metering.
@@ -67,18 +61,8 @@ type orderSnapshot struct {
 	Month      string
 }
 
-type feeRateAdjustedEvent struct {
-	PreviousFeeBasisPoints int64     `json:"previous_fee_basis_points"`
-	NewFeeBasisPoints      int64     `json:"new_fee_basis_points"`
-	MilestoneOrderCount    int64     `json:"milestone_order_count"`
-	GlobalOrderCount       int64     `json:"global_order_count"`
-	MilestoneIndex         int64     `json:"milestone_index"`
-	TriggerOrderID         string    `json:"trigger_order_id"`
-	Timestamp              time.Time `json:"timestamp"`
-}
-
-// ProcessFinalizedOrder consumes one ORDER_FINALIZED event, updates sharded meters,
-// and emits FEE_RATE_ADJUSTED when milestone thresholds are crossed.
+// ProcessFinalizedOrder consumes one ORDER_FINALIZED event and updates sharded meters.
+// Milestones are tracked for telemetry/history only; fee authority is snapshot-based.
 func (w *MeterWorker) ProcessFinalizedOrder(ctx context.Context, input FinalizedOrderInput) error {
 	if w == nil || w.Spanner == nil {
 		return fmt.Errorf("billing meter worker: nil spanner client")
@@ -418,29 +402,13 @@ func readGlobalOrderCount(ctx context.Context, txn *spanner.ReadWriteTransaction
 	return total.Int64, nil
 }
 
-func maybeAdjustFee(ctx context.Context, txn *spanner.ReadWriteTransaction, orderID string, currentFeeBP int64, nextGlobalOrders int64, eventTime time.Time) error {
+func maybeAdjustFee(ctx context.Context, txn *spanner.ReadWriteTransaction, _ string, _ int64, nextGlobalOrders int64, _ time.Time) error {
 	milestoneOrders, err := readConfigInt64OrDefault(ctx, txn, systemKeyBillingMilestoneOrderCnt, defaultBillingMilestoneOrders)
 	if err != nil {
 		return err
 	}
 	if milestoneOrders <= 0 {
 		return nil
-	}
-
-	stepBP, err := readConfigInt64OrDefault(ctx, txn, systemKeyBillingMilestoneStepBP, defaultBillingMilestoneStepBP)
-	if err != nil {
-		return err
-	}
-	if stepBP <= 0 {
-		return nil
-	}
-
-	minFeeBP, err := readConfigInt64OrDefault(ctx, txn, systemKeyBillingMinFeeBP, defaultBillingMinFeeBP)
-	if err != nil {
-		return err
-	}
-	if minFeeBP < 0 {
-		minFeeBP = 0
 	}
 
 	lastIndex, err := readConfigInt64OrDefault(ctx, txn, systemKeyBillingLastMilestoneIndex, defaultBillingLastIndex)
@@ -453,46 +421,13 @@ func maybeAdjustFee(ctx context.Context, txn *spanner.ReadWriteTransaction, orde
 		return nil
 	}
 
-	reduction := (nextIndex - lastIndex) * stepBP
-	newFeeBP := currentFeeBP - reduction
-	if newFeeBP < minFeeBP {
-		newFeeBP = minFeeBP
-	}
-	if newFeeBP < 0 {
-		newFeeBP = 0
-	}
-
 	if err := upsertSystemConfigInt64(txn, systemKeyBillingLastMilestoneIndex, nextIndex); err != nil {
 		return err
 	}
 
-	if newFeeBP == currentFeeBP {
-		return nil
-	}
-
-	if err := upsertSystemConfigInt64(txn, systemKeyPlatformFeeBasisPoints, newFeeBP); err != nil {
-		return err
-	}
-	if err := upsertSystemConfigInt64(txn, systemKeyPlatformFeePercent, newFeeBP/100); err != nil {
-		return err
-	}
-
-	return outbox.EmitJSON(txn,
-		"BillingConfig",
-		"platform_fee",
-		eventFeeRateAdjusted,
-		kafkaTopicMain,
-		feeRateAdjustedEvent{
-			PreviousFeeBasisPoints: currentFeeBP,
-			NewFeeBasisPoints:      newFeeBP,
-			MilestoneOrderCount:    milestoneOrders,
-			GlobalOrderCount:       nextGlobalOrders,
-			MilestoneIndex:         nextIndex,
-			TriggerOrderID:         orderID,
-			Timestamp:              eventTime,
-		},
-		telemetry.TraceIDFromContext(ctx),
-	)
+	// Fee authority has moved to per-invoice settlement snapshots. Metering keeps
+	// milestone bookkeeping only and no longer mutates live platform fee keys.
+	return nil
 }
 
 func readConfigInt64OrDefault(ctx context.Context, txn *spanner.ReadWriteTransaction, key string, fallback int64) (int64, error) {

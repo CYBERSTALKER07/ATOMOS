@@ -17,6 +17,13 @@ interface SettlementRow {
   invoice_id: string;
   retailer_id: string;
   amount: number;
+  currency?: string;
+  fee_amount?: number;
+  net_payout_amount?: number;
+  payout_owner_type?: string;
+  payout_owner_id?: string;
+  fee_policy_version?: string;
+  settlement_target?: string;
   payment_mode: string;
   invoice_status: string;
   paid_at: string | null;
@@ -292,7 +299,20 @@ export default function SettlementPage() {
                         <td className="px-4 py-3 font-mono text-xs">{shortId(r.invoice_id)}</td>
                         <td className="px-4 py-3 text-xs">{shortId(r.retailer_id)}</td>
                         <td className="px-4 py-3 text-right tabular-nums font-medium">{formatAmount(r.amount)}</td>
-                        <td className="px-4 py-3 text-xs">{r.payment_mode}</td>
+                        <td className="px-4 py-3 text-right text-[11px]" style={{ color: 'var(--desk-text-secondary)' }}>
+                          {(r.currency || 'UZS').toUpperCase()}
+                          {typeof r.fee_amount === 'number' ? ` · Fee ${formatAmount(r.fee_amount)}` : ''}
+                          {typeof r.net_payout_amount === 'number' ? ` · Net ${formatAmount(r.net_payout_amount)}` : ''}
+                        </td>
+                        <td className="px-4 py-3 text-xs">
+                          <div>{r.payment_mode}</div>
+                          <div style={{ color: 'var(--desk-text-secondary)' }}>
+                            {(r.settlement_target || '—')} · {(r.fee_policy_version || '—')}
+                          </div>
+                          <div style={{ color: 'var(--desk-text-secondary)' }}>
+                            Owner {(r.payout_owner_type || 'SUPPLIER')}:{r.payout_owner_id ? shortId(r.payout_owner_id) : '—'}
+                          </div>
+                        </td>
                         <td className="px-4 py-3">
                           <span
                             className="md-shape-full px-2 py-0.5 text-xs font-medium inline-block"

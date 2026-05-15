@@ -2138,8 +2138,17 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 		return nil, fmt.Errorf("payment credentials unavailable for order %s: %w", orderID, credErr)
 	}
 
-	// Supplier passthrough + platform fee split
+	// Supplier/warehouse payout + platform fee split (snapshot-authoritative when available)
 	splitRecipients := payment.ComputeSplitRecipients(adjustedAmount, recipientID, s.feeBasisPoints())
+	if snapshot, ok, snapErr := payment.LoadSupplierSettlementSnapshot(ctx, s.Client, orderID, supplierID); snapErr != nil {
+		slog.Warn("order.fulfillment_pay_snapshot_lookup_failed", "order_id", orderID, "supplier_id", supplierID, "err", snapErr)
+	} else if ok {
+		effectiveAmount := snapshot.GrossAmount
+		if effectiveAmount <= 0 {
+			effectiveAmount = adjustedAmount
+		}
+		splitRecipients = payment.ComputeSplitRecipientsWithFeeAmount(effectiveAmount, recipientID, snapshot.FeeAmount)
+	}
 
 	result := &FulfillmentPaymentResult{
 		OrderID:    orderID,
@@ -3093,8 +3102,17 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 			return nil, credErr
 		}
 
-		// Compute split recipients if configured
+		// Compute split recipients if configured (snapshot-authoritative when available)
 		splitRecipients := payment.ComputeSplitRecipients(resp.Amount, recipientID, s.feeBasisPoints())
+		if snapshot, ok, snapErr := payment.LoadSupplierSettlementSnapshot(ctx, s.Client, orderId, supplierId); snapErr != nil {
+			slog.Warn("order.card_checkout_snapshot_lookup_failed", "order_id", orderId, "supplier_id", supplierId, "err", snapErr)
+		} else if ok {
+			effectiveAmount := snapshot.GrossAmount
+			if effectiveAmount <= 0 {
+				effectiveAmount = resp.Amount
+			}
+			splitRecipients = payment.ComputeSplitRecipientsWithFeeAmount(effectiveAmount, recipientID, snapshot.FeeAmount)
+		}
 
 		// ── Dual-mode: check for saved card → direct charge, else hosted checkout ──
 		var savedCard *payment.RetailerCardToken

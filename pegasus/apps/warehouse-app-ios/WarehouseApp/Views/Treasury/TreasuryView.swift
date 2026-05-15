@@ -58,6 +58,11 @@ struct TreasuryView: View {
                                         Text("\(inv.amountUzs.formatted()) \(inv.currency) · Due: \(inv.dueDate)")
                                             .font(.subheadline)
                                             .foregroundStyle(.secondary)
+                                        let ownerType = inv.payoutOwnerType.isEmpty ? "SUPPLIER" : inv.payoutOwnerType
+                                        let ownerID = inv.payoutOwnerId.isEmpty ? "" : String(inv.payoutOwnerId.prefix(8))
+                                        Text("Owner \(ownerType)\(ownerID.isEmpty ? "" : ":\(ownerID)") · Fee \(inv.feeAmount.formatted()) · Net \(inv.netPayoutAmount.formatted())")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
                                     }
                                     Spacer()
                                     Text(inv.status)

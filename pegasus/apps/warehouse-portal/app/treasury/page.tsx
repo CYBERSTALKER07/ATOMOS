@@ -17,6 +17,12 @@ interface Invoice {
   amount_uzs?: number;
   currency?: string;
   status: string;
+  fee_amount?: number;
+  net_payout_amount?: number;
+  payout_owner_type?: string;
+  payout_owner_id?: string;
+  fee_policy_version?: string;
+  settlement_target?: string;
   due_date: string;
   created_at: string;
 }
@@ -51,6 +57,13 @@ export default function TreasuryPage() {
     return 0;
   };
   const resolveCurrency = (inv: Invoice) => (inv.currency || 'UZS').toUpperCase();
+  const formatPayoutOwner = (inv: Invoice) => {
+    const ownerType = (inv.payout_owner_type || '').trim();
+    const ownerID = (inv.payout_owner_id || '').trim();
+    if (!ownerType && !ownerID) return 'Supplier';
+    if (!ownerID) return ownerType;
+    return `${ownerType}:${ownerID.slice(0, 8)}`;
+  };
 
   if (loading) {
     return (
@@ -129,6 +142,11 @@ export default function TreasuryPage() {
                       <span className={`status-chip ${inv.status === 'PAID' ? 'status-chip--stable' : inv.status === 'OVERDUE' ? 'status-chip--critical' : 'status-chip--draft'}`}>
                         {inv.status}
                       </span>
+                      <div className="text-[11px] mt-1 text-[var(--muted)]">
+                        Owner {formatPayoutOwner(inv)}
+                        {typeof inv.fee_amount === 'number' ? ` · Fee ${fmt(inv.fee_amount)}` : ''}
+                        {typeof inv.net_payout_amount === 'number' ? ` · Net ${fmt(inv.net_payout_amount)}` : ''}
+                      </div>
                     </td>
                     <td className="py-2.5 px-3 text-right text-[var(--muted)]">
                       {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '—'}

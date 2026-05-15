@@ -117,6 +117,9 @@ Transform weak plans into safe, phased execution:
 4. Frontend-context validation for UI work: verify the backend contract is represented across every affected client surface for the role (web, desktop, Android, iOS, Expo as applicable), or explicitly gate hidden clients behind a rollout flag.
 5. Cutover readiness: keep local code production-compatible so real server migration is wiring/config only.
 6. Rollback readiness: additive schema and event changes, version-safe clients, and explicit rollback path.
+7. Plan-anchor continuity: start with one stable plan anchor (`P1`, `P2`, ...), preserve IDs across all phases, and avoid creating detached phase-only tasks.
+8. Phase handoff integrity: when phased execution is used, every phase exit must include remaining work and blockers mapped to plan-anchor IDs.
+9. Final reconciliation: completion output must map each plan-anchor ID to `completed`, `deferred`, or `blocked`, and next steps must list unresolved plan-anchor IDs before optional extras.
 
 ## One-Eye Guard Suite (Mandatory On PR)
 Run and pass all six guard scripts for pull requests:

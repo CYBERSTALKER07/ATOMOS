@@ -16,15 +16,21 @@ import (
 // Warehouse-scoped settlement and ledger view.
 
 type SettlementItem struct {
-	InvoiceID    string `json:"invoice_id"`
-	OrderID      string `json:"order_id"`
-	Amount       int64  `json:"amount"`
-	AmountUZS    int64  `json:"amount_uzs"`
-	Currency     string `json:"currency"`
-	Status       string `json:"status"`
-	RetailerID   string `json:"retailer_id"`
-	RetailerName string `json:"retailer_name,omitempty"`
-	CreatedAt    string `json:"created_at"`
+	InvoiceID        string `json:"invoice_id"`
+	OrderID          string `json:"order_id"`
+	Amount           int64  `json:"amount"`
+	AmountUZS        int64  `json:"amount_uzs"`
+	Currency         string `json:"currency"`
+	Status           string `json:"status"`
+	RetailerID       string `json:"retailer_id"`
+	RetailerName     string `json:"retailer_name,omitempty"`
+	FeeAmount        int64  `json:"fee_amount,omitempty"`
+	NetPayoutAmount  int64  `json:"net_payout_amount,omitempty"`
+	PayoutOwnerType  string `json:"payout_owner_type,omitempty"`
+	PayoutOwnerID    string `json:"payout_owner_id,omitempty"`
+	FeePolicyVersion string `json:"fee_policy_version,omitempty"`
+	SettlementTarget string `json:"settlement_target,omitempty"`
+	CreatedAt        string `json:"created_at"`
 }
 
 type TreasuryOverview struct {
@@ -92,9 +98,25 @@ func handleTreasuryInvoices(w http.ResponseWriter, r *http.Request, client *span
 	sql := `SELECT mi.InvoiceId, mi.OrderId, mi.TotalAmount, mi.Status,
 	             COALESCE(o.RetailerId, ''), COALESCE(rt.StoreName, ''),
 	             COALESCE(o.Currency, 'UZS'),
+	             COALESCE(iss.FeeAmount, 0),
+	             COALESCE(iss.NetPayoutAmount, 0),
+	             COALESCE(iss.PayoutOwnerType, ''),
+	             COALESCE(iss.PayoutOwnerId, ''),
+	             COALESCE(iss.FeePolicyVersion, ''),
+	             COALESCE(mi.SettlementTarget, ''),
 	             mi.CreatedAt
 	      FROM MasterInvoices mi
 	      JOIN Orders o ON mi.OrderId = o.OrderId
+	      LEFT JOIN (
+	             SELECT InvoiceId, SupplierId,
+	                    COALESCE(SUM(FeeAmount), 0) AS FeeAmount,
+	                    COALESCE(SUM(NetPayoutAmount), 0) AS NetPayoutAmount,
+	                    MAX(PayoutOwnerType) AS PayoutOwnerType,
+	                    MAX(PayoutOwnerId) AS PayoutOwnerId,
+	                    MAX(FeePolicyVersion) AS FeePolicyVersion
+	             FROM InvoiceSettlementSlices
+	             GROUP BY InvoiceId, SupplierId
+	      ) iss ON iss.InvoiceId = mi.InvoiceId AND iss.SupplierId = o.SupplierId
 	      LEFT JOIN Retailers rt ON o.RetailerId = rt.RetailerId
 	      WHERE o.SupplierId = @sid AND o.WarehouseId = @whId`
 	params := map[string]interface{}{"sid": ops.SupplierID, "whId": ops.WarehouseID}
@@ -121,13 +143,27 @@ func handleTreasuryInvoices(w http.ResponseWriter, r *http.Request, client *span
 		var si SettlementItem
 		var createdAt time.Time
 		var currency spanner.NullString
+		var feeAmount spanner.NullInt64
+		var netPayoutAmount spanner.NullInt64
+		var payoutOwnerType spanner.NullString
+		var payoutOwnerID spanner.NullString
+		var feePolicyVersion spanner.NullString
+		var settlementTarget spanner.NullString
 		if err := row.Columns(&si.InvoiceID, &si.OrderID, &si.Amount,
-			&si.Status, &si.RetailerID, &si.RetailerName, &currency, &createdAt); err != nil {
+			&si.Status, &si.RetailerID, &si.RetailerName, &currency,
+			&feeAmount, &netPayoutAmount, &payoutOwnerType, &payoutOwnerID,
+			&feePolicyVersion, &settlementTarget, &createdAt); err != nil {
 			log.Printf("[WH TREASURY] parse: %v", err)
 			continue
 		}
 		si.AmountUZS = si.Amount
 		si.Currency = "UZS"
+		si.FeeAmount = feeAmount.Int64
+		si.NetPayoutAmount = netPayoutAmount.Int64
+		si.PayoutOwnerType = payoutOwnerType.StringVal
+		si.PayoutOwnerID = payoutOwnerID.StringVal
+		si.FeePolicyVersion = feePolicyVersion.StringVal
+		si.SettlementTarget = settlementTarget.StringVal
 		if currency.Valid && currency.StringVal != "" {
 			si.Currency = currency.StringVal
 		}

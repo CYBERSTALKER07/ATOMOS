@@ -104,6 +104,18 @@ fun TreasuryScreen(
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(inv.retailerName, style = MaterialTheme.typography.titleSmall)
                                                 Text("${fmt.format(displayAmount)} $displayCurrency · ${inv.dueDate}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                                val payoutOwner = buildString {
+                                                    append(if (inv.payoutOwnerType.isBlank()) "SUPPLIER" else inv.payoutOwnerType)
+                                                    if (inv.payoutOwnerId.isNotBlank()) {
+                                                        append(":")
+                                                        append(inv.payoutOwnerId.take(8))
+                                                    }
+                                                }
+                                                Text(
+                                                    "Owner $payoutOwner · Fee ${fmt.format(inv.feeAmount)} · Net ${fmt.format(inv.netPayoutAmount)}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
                                             }
                                             AssistChip(onClick = {}, label = { Text(inv.status, style = MaterialTheme.typography.labelSmall) })
                                         }

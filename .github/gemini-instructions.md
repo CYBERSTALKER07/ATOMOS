@@ -898,6 +898,8 @@ This protocol is not optional guidance — it is the operational discipline that
 2. Identify the **blast radius** up front: backend packages, Spanner tables, Kafka topics, WebSocket rooms, frontend surfaces, mobile apps, shared types. If blast radius is unknown, the first tool call is `codebase-retrieval` — never guess.
 3. Refuse invisible scope creep. If the directive implies touching payments, AI worker, and mobile in one pass, execute all required connected work in the same pass whenever feasible; ask for staged execution only when blocked by risk, tooling, or explicit user preference.
 4. When a single user message contains ≥3 distinct asks, write them into the task list in the same reply that begins execution.
+5. Establish one persistent Plan Anchor at execution start: enumerate requested outcomes as stable IDs (`P1`, `P2`, ...), and never renumber or replace those IDs mid-task.
+6. Choose execution mode explicitly: prefer `ONE_PASS` completion when feasible; use `PHASED` only when constrained by risk, tooling, runtime, or scope, and carry unresolved Plan Anchor IDs forward unchanged across phase boundaries.
 
 ### Phase II — Context Gathering (Ground Truth Over Assumption)
 1. The local filesystem is the only source of truth. Training-data memory of route names, field names, or library signatures is **never** authoritative.
@@ -920,6 +922,8 @@ This protocol is not optional guidance — it is the operational discipline that
 3. Before the first edit of an API-breaking refactor, write down all call sites. The plan is not "change signature then fix what breaks"; the plan is "change signature AND these 12 call sites atomically".
 4. If a proposed plan would create a file with no caller, or a package with one symbol, simplify the plan instead.
 5. For ambiguous scope, pause and ask. Asking a clarifying question costs ~30 s; unwinding a wrong refactor costs hours.
+6. Plan continuity invariant: every task-list item must map to exactly one Plan Anchor ID; do not create orphan tasks or detached phase work.
+7. Recommendation relevance gate: proposed next actions must prioritize unresolved Plan Anchor IDs first; non-plan ideas belong only in an explicitly labeled optional section.
 
 ### Phase IV — Execution (Conservative, Verifiable, Repeatable)
 1. **Edit, don't rewrite.** `str-replace-editor` with targeted `old_str`/`new_str` blocks is the default. Full-file rewrite via `save-file` is for new files only.
@@ -929,6 +933,7 @@ This protocol is not optional guidance — it is the operational discipline that
 5. **Run targeted tests** for the touched package. `go test ./order/... ./kafka/...` etc. If tests require the Spanner emulator, use the `test-with-spanner` skill — do not invent a mock that the production path would not exercise.
 6. **Never silence a test failure** by changing the test's assertion. The test is the contract. Either the code is wrong, the test was wrong (confirm with the user), or the acceptance criterion changed (update the test WITH explicit reasoning in the reply, not in a code comment).
 7. **Fail loudly in code.** Every error path gets a structured `slog.Error` with `trace_id`, the operation name, and enough identifier fields (order_id, driver_id, etc.) to stitch a timeline from pod logs.
+8. **Phase handoff record (mandatory for phased work).** At each phase boundary, report what changed, what remains, and blockers mapped by Plan Anchor ID; never close a phase with unresolved untracked items.
 
 ### Phase V — Completion Check (Downstream Sweep Before Declaring Done)
 After the primary edit compiles, run this checklist — the user will penalise missed downstream work more than any other failure mode:
@@ -941,6 +946,8 @@ After the primary edit compiles, run this checklist — the user will penalise m
 7. **`trace_id` threaded?** Every log line and every emitted event carries the request's trace_id.
 8. **Leftovers swept?** No unused imports, no `// TODO` from the work just done, no `interface{}` where `any` is idiomatic, no print-debug lines.
 9. **Reply honestly.** If scope was narrowed, list what was NOT done and why. If tests were not added, say so. If a downstream consumer was left stale, flag it as a P1 follow-up. Silent narrowing is dishonesty.
+10. **Plan reconciliation report (mandatory).** Before finalizing, map every Plan Anchor ID to `completed`, `deferred`, or `blocked` with a brief reason and validation evidence.
+11. **Recommendation discipline.** Final next-step suggestions must be split into `Required to finish requested plan` (only unresolved Plan Anchor IDs) and `Optional improvements` (explicitly out-of-scope).
 
 ### Project Structuring Discipline (File & Folder Creation Rules)
 A new file or folder is a commitment. Wrong placement metastasizes across every future grep. Follow these rules.

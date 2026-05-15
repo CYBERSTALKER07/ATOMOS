@@ -430,6 +430,39 @@ func ComputeSplitRecipients(amount int64, supplierRecipientID string, feePercent
 	}
 }
 
+// ComputeSplitRecipientsWithFeeAmount builds split recipients from persisted
+// fee snapshot values instead of dynamic basis points. The amount and feeAmount
+// are in major units (UZS); provider payloads require tiyins.
+func ComputeSplitRecipientsWithFeeAmount(amount int64, payoutRecipientID string, feeAmount int64) []SplitRecipient {
+	platformMerchantID := strings.TrimSpace(os.Getenv("GLOBAL_PAY_PLATFORM_MERCHANT_ID"))
+	payoutRecipientID = strings.TrimSpace(payoutRecipientID)
+	if payoutRecipientID == "" || platformMerchantID == "" {
+		return nil
+	}
+	if amount <= 0 {
+		return nil
+	}
+
+	if feeAmount < 0 {
+		feeAmount = 0
+	}
+	if feeAmount > amount {
+		feeAmount = amount
+	}
+
+	totalTiyin := amount * 100
+	platformTiyin := feeAmount * 100
+	if platformTiyin > totalTiyin {
+		platformTiyin = totalTiyin
+	}
+	payoutTiyin := totalTiyin - platformTiyin
+
+	return []SplitRecipient{
+		{MerchantID: payoutRecipientID, Amount: payoutTiyin},
+		{MerchantID: platformMerchantID, Amount: platformTiyin},
+	}
+}
+
 // authenticate obtains an OAuth access token from the gateway.
 func (c *GlobalPayDirectClient) authenticate(ctx context.Context, creds GlobalPayCredentials) (string, error) {
 	authURL := c.gatewayBaseURL + "/payments/v1/merchant/auth" // DOCS: validate with sandbox

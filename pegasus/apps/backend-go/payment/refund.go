@@ -132,6 +132,12 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 		return nil, fmt.Errorf("refund amount %d exceeds maximum refundable %d", refundAmount, maxRefundable)
 	}
 
+	// Snapshot-authoritative fee split for reversal ledger math.
+	snapshot, hasSnapshot, snapshotErr := LoadSupplierSettlementSnapshot(ctx, rs.spanner, orderID, supplierID)
+	if snapshotErr != nil {
+		log.Printf("[REFUND] Settlement snapshot lookup failed for order %s supplier %s: %v", orderID, supplierID, snapshotErr)
+	}
+
 	// 3. Call payment gateway for refund
 	refundID := uuid.New().String()
 	providerRefundID := ""
@@ -176,10 +182,31 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 
 		// Only create reversal ledger entries if gateway actually refunded
 		if refundStatus == RefundSettled {
-			// Reversal: debit supplier account + debit platform commission account
-			// Compute in tiyin using basis-point math — matches ComputeSplitRecipients exactly
+			// Reversal: debit payout owner account + debit platform commission account.
 			totalTiyin := refundAmount * 100
-			platformReversal := totalTiyin * rs.feeBP / 10000
+			platformReversal := int64(0)
+			payoutAccountID := supplierID
+
+			if hasSnapshot {
+				effectiveGross := snapshot.GrossAmount
+				if effectiveGross <= 0 {
+					effectiveGross = maxRefundable
+				}
+				if effectiveGross > 0 {
+					platformReversal = totalTiyin * snapshot.FeeAmount / effectiveGross
+				}
+				if snapshot.PayoutOwnerID != "" {
+					payoutAccountID = snapshot.PayoutOwnerID
+				}
+			} else {
+				platformReversal = totalTiyin * rs.feeBP / 10000
+			}
+			if platformReversal < 0 {
+				platformReversal = 0
+			}
+			if platformReversal > totalTiyin {
+				platformReversal = totalTiyin
+			}
 			supplierReversal := totalTiyin - platformReversal
 
 			platformTxnID := fmt.Sprintf("TXN-REFUND-PEGASUS-%s", refundID[:8])
@@ -191,10 +218,10 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 				[]interface{}{platformTxnID, orderID, finance.PlatformAccountID, -platformReversal, "DEBIT_REFUND", now},
 			))
 
-			// Debit the supplier (reverse the payout)
+			// Debit payout owner (supplier or warehouse-local owner)
 			mutations = append(mutations, spanner.Insert("LedgerEntries",
 				[]string{"TransactionId", "OrderId", "AccountId", "Amount", "EntryType", "CreatedAt"},
-				[]interface{}{supTxnID, orderID, supplierID, -supplierReversal, "DEBIT_REFUND", now},
+				[]interface{}{supTxnID, orderID, payoutAccountID, -supplierReversal, "DEBIT_REFUND", now},
 			))
 
 			// Update session status to reflect refund

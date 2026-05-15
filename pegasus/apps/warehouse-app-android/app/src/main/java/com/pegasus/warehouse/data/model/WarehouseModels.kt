@@ -322,6 +322,12 @@ data class Invoice(
     @SerialName("amount_uzs") val amountUzs: Long = 0,
     val currency: String = "UZS",
     val status: String = "",
+    @SerialName("fee_amount") val feeAmount: Long = 0,
+    @SerialName("net_payout_amount") val netPayoutAmount: Long = 0,
+    @SerialName("payout_owner_type") val payoutOwnerType: String = "",
+    @SerialName("payout_owner_id") val payoutOwnerId: String = "",
+    @SerialName("fee_policy_version") val feePolicyVersion: String = "",
+    @SerialName("settlement_target") val settlementTarget: String = "",
     @SerialName("due_date") val dueDate: String = "",
 )
 

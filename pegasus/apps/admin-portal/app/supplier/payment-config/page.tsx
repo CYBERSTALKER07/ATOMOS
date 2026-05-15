@@ -43,6 +43,14 @@ type ProviderCapability = {
 
 type GatewayName = 'CASH' | 'GLOBAL_PAY' | 'ADYEN';
 
+type SupplierPayoutMode = 'HQ_SUPPLIER' | 'WAREHOUSE_LOCAL';
+
+type SupplierPayoutPolicy = {
+  supplier_id: string;
+  payout_mode: SupplierPayoutMode;
+  updated_at: string;
+};
+
 const DEFAULT_CAPABILITIES: ProviderCapability[] = [
   {
     gateway: 'CASH',
@@ -133,6 +141,11 @@ export default function GlobalPayntConfigPage() {
   const [secretKey, setSecretKey] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [policy, setPolicy] = useState<SupplierPayoutPolicy | null>(null);
+  const [policyMode, setPolicyMode] = useState<SupplierPayoutMode>('HQ_SUPPLIER');
+  const [policyReason, setPolicyReason] = useState('');
+  const [isPolicyLoading, setIsPolicyLoading] = useState(true);
+  const [isPolicySaving, setIsPolicySaving] = useState(false);
 
   const fetchConfigs = useCallback(async () => {
     try {
@@ -155,6 +168,57 @@ export default function GlobalPayntConfigPage() {
   useEffect(() => {
     fetchConfigs();
   }, [fetchConfigs]);
+
+  const fetchPayoutPolicy = useCallback(async () => {
+    setIsPolicyLoading(true);
+    try {
+      const res = await apiFetch('/v1/supplier/payout-policy');
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Failed to load payout policy.' }));
+        setToast({ type: 'error', message: data.error || 'Failed to load payout policy.' });
+        return;
+      }
+      const data = await res.json();
+      setPolicy(data);
+      setPolicyMode((data?.payout_mode as SupplierPayoutMode) || 'HQ_SUPPLIER');
+    } catch {
+      setToast({ type: 'error', message: 'Network error while loading payout policy.' });
+    } finally {
+      setIsPolicyLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPayoutPolicy();
+  }, [fetchPayoutPolicy]);
+
+  const handlePolicySave = useCallback(async () => {
+    if (isPolicySaving) return;
+    setIsPolicySaving(true);
+    try {
+      const res = await apiFetch('/v1/supplier/payout-policy', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          payout_mode: policyMode,
+          reason: policyReason.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Failed to update payout policy.' }));
+        setToast({ type: 'error', message: data.error || 'Failed to update payout policy.' });
+        return;
+      }
+      const data = await res.json();
+      setPolicy(data);
+      setPolicyMode((data?.payout_mode as SupplierPayoutMode) || policyMode);
+      setPolicyReason('');
+      setToast({ type: 'success', message: 'Payout policy updated.' });
+    } catch {
+      setToast({ type: 'error', message: 'Network error while updating payout policy.' });
+    } finally {
+      setIsPolicySaving(false);
+    }
+  }, [isPolicySaving, policyMode, policyReason]);
 
   const resetForm = useCallback(() => {
     setMerchantId('');
@@ -260,6 +324,58 @@ export default function GlobalPayntConfigPage() {
         <p className="md-typescale-body-medium mt-1" style={{ color: 'var(--muted)' }}>
           Configure Cash, GlobalPay, Global Pay, and Adyen credentials for supplier checkout processing.
         </p>
+      </div>
+
+      <div className="mb-6 md-card md-elevation-1 md-shape-md p-5" style={{ background: 'var(--surface)' }}>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="md-typescale-title-medium" style={{ color: 'var(--foreground)' }}>
+              Payout Policy
+            </h2>
+            <p className="md-typescale-body-small mt-1" style={{ color: 'var(--muted)' }}>
+              Controls settlement slice payout owner used for fee-snapshot-authoritative settlement.
+            </p>
+          </div>
+          {policy?.updated_at && (
+            <span className="md-typescale-label-small" style={{ color: 'var(--muted)' }}>
+              Updated: {new Date(policy.updated_at).toLocaleString()}
+            </span>
+          )}
+        </div>
+
+        {isPolicyLoading ? (
+          <div className="mt-4 md-typescale-body-small" style={{ color: 'var(--muted)' }}>Loading payout policy…</div>
+        ) : (
+          <>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <label className="md-typescale-label-medium" style={{ color: 'var(--muted)' }}>
+                Payout mode
+                <select
+                  value={policyMode}
+                  onChange={(e) => setPolicyMode(e.target.value as SupplierPayoutMode)}
+                  className="md-input-outlined w-full mt-1"
+                >
+                  <option value="HQ_SUPPLIER">HQ Supplier</option>
+                  <option value="WAREHOUSE_LOCAL">Warehouse Local</option>
+                </select>
+              </label>
+              <label className="md-typescale-label-medium" style={{ color: 'var(--muted)' }}>
+                Change reason (optional)
+                <input
+                  value={policyReason}
+                  onChange={(e) => setPolicyReason(e.target.value)}
+                  placeholder="e.g. Region warehouse settlement go-live"
+                  className="md-input-outlined w-full mt-1"
+                />
+              </label>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button variant="primary" onPress={handlePolicySave} isDisabled={isPolicySaving}>
+                {isPolicySaving ? 'Saving…' : 'Save payout policy'}
+              </Button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Toast */}

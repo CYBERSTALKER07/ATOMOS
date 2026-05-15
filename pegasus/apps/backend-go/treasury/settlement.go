@@ -23,15 +23,22 @@ import (
 //   Query params: ?from=2025-01-01&to=2025-12-31&status=PAID
 
 type SettlementRow struct {
-	OrderID       string `json:"order_id"`
-	InvoiceID     string `json:"invoice_id"`
-	RetailerID    string `json:"retailer_id"`
-	Amount        int64  `json:"amount"`
-	DeliveryFee   int64  `json:"delivery_fee"`
-	PaymentMode   string `json:"payment_mode"`
-	InvoiceStatus string `json:"invoice_status"`
-	PaidAt        string `json:"paid_at,omitempty"`
-	CreatedAt     string `json:"created_at"`
+	OrderID          string `json:"order_id"`
+	InvoiceID        string `json:"invoice_id"`
+	RetailerID       string `json:"retailer_id"`
+	Amount           int64  `json:"amount"`
+	DeliveryFee      int64  `json:"delivery_fee"`
+	PaymentMode      string `json:"payment_mode"`
+	InvoiceStatus    string `json:"invoice_status"`
+	FeeAmount        int64  `json:"fee_amount,omitempty"`
+	NetPayoutAmount  int64  `json:"net_payout_amount,omitempty"`
+	PayoutOwnerType  string `json:"payout_owner_type,omitempty"`
+	PayoutOwnerID    string `json:"payout_owner_id,omitempty"`
+	FeePolicy        string `json:"fee_policy_version,omitempty"`
+	SettlementTarget string `json:"settlement_target,omitempty"`
+	Currency         string `json:"currency"`
+	PaidAt           string `json:"paid_at,omitempty"`
+	CreatedAt        string `json:"created_at"`
 }
 
 type SettlementSummary struct {
@@ -86,9 +93,26 @@ func HandleSettlementReport(client *spanner.Client) http.HandlerFunc {
 
 		sql := `SELECT mi.OrderId, mi.InvoiceId, o.RetailerId, mi.Total,
 			     COALESCE(o.DeliveryFee, 0) AS DeliveryFee,
-			     mi.PaymentMode, mi.CustodyStatus, mi.CollectedAt, mi.CreatedAt
+			     mi.PaymentMode, mi.CustodyStatus, mi.CollectedAt, mi.CreatedAt,
+			     COALESCE(iss.FeeAmount, 0),
+			     COALESCE(iss.NetPayoutAmount, 0),
+			     COALESCE(iss.PayoutOwnerType, ''),
+			     COALESCE(iss.PayoutOwnerId, ''),
+			     COALESCE(iss.FeePolicyVersion, ''),
+			     COALESCE(mi.SettlementTarget, ''),
+			     COALESCE(o.Currency, 'UZS')
 			FROM MasterInvoices mi
 			JOIN Orders o ON mi.OrderId = o.OrderId
+			LEFT JOIN (
+				SELECT InvoiceId, SupplierId,
+				       COALESCE(SUM(FeeAmount), 0) AS FeeAmount,
+				       COALESCE(SUM(NetPayoutAmount), 0) AS NetPayoutAmount,
+				       MAX(PayoutOwnerType) AS PayoutOwnerType,
+				       MAX(PayoutOwnerId) AS PayoutOwnerId,
+				       MAX(FeePolicyVersion) AS FeePolicyVersion
+				FROM InvoiceSettlementSlices
+				GROUP BY InvoiceId, SupplierId
+			) iss ON iss.InvoiceId = mi.InvoiceId AND iss.SupplierId = o.SupplierId
 			LEFT JOIN Retailers ret ON o.RetailerId = ret.RetailerId
 			WHERE o.SupplierId = @supplierId
 			  AND mi.CreatedAt >= @fromDate
@@ -127,13 +151,37 @@ func HandleSettlementReport(client *spanner.Client) http.HandlerFunc {
 			var sr SettlementRow
 			var amount spanner.NullInt64
 			var deliveryFee spanner.NullInt64
+			var feeAmount spanner.NullInt64
+			var netPayoutAmount spanner.NullInt64
 			var invoiceID spanner.NullString
 			var paymentMode spanner.NullString
 			var custodyStatus spanner.NullString
+			var payoutOwnerType spanner.NullString
+			var payoutOwnerID spanner.NullString
+			var feePolicyVersion spanner.NullString
+			var settlementTarget spanner.NullString
+			var currency spanner.NullString
 			var collectedAt spanner.NullTime
 			var createdAt time.Time
 
-			if err := row.Columns(&sr.OrderID, &invoiceID, &sr.RetailerID, &amount, &deliveryFee, &paymentMode, &custodyStatus, &collectedAt, &createdAt); err != nil {
+			if err := row.Columns(
+				&sr.OrderID,
+				&invoiceID,
+				&sr.RetailerID,
+				&amount,
+				&deliveryFee,
+				&paymentMode,
+				&custodyStatus,
+				&collectedAt,
+				&createdAt,
+				&feeAmount,
+				&netPayoutAmount,
+				&payoutOwnerType,
+				&payoutOwnerID,
+				&feePolicyVersion,
+				&settlementTarget,
+				&currency,
+			); err != nil {
 				slog.Error("treasury.settlement.decode_failed", "supplier_id", supplierID, "err", err)
 				continue
 			}
@@ -143,6 +191,16 @@ func HandleSettlementReport(client *spanner.Client) http.HandlerFunc {
 			sr.DeliveryFee = deliveryFee.Int64
 			sr.PaymentMode = paymentMode.StringVal
 			sr.InvoiceStatus = custodyStatus.StringVal
+			sr.FeeAmount = feeAmount.Int64
+			sr.NetPayoutAmount = netPayoutAmount.Int64
+			sr.PayoutOwnerType = payoutOwnerType.StringVal
+			sr.PayoutOwnerID = payoutOwnerID.StringVal
+			sr.FeePolicy = feePolicyVersion.StringVal
+			sr.SettlementTarget = settlementTarget.StringVal
+			sr.Currency = "UZS"
+			if currency.Valid && strings.TrimSpace(currency.StringVal) != "" {
+				sr.Currency = strings.ToUpper(strings.TrimSpace(currency.StringVal))
+			}
 			sr.CreatedAt = createdAt.Format(time.RFC3339)
 			if collectedAt.Valid {
 				sr.PaidAt = collectedAt.Time.Format(time.RFC3339)

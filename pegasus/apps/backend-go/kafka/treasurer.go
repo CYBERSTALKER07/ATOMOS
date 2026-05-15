@@ -187,6 +187,7 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 	}
 	platformCommission := (event.Amount * commissionBps) / 10000
 	supplierPayout := event.Amount - platformCommission
+	payoutAccountID := supplierID
 
 	if platformCfg != nil && platformCfg.FeeSnapshotAuthoritativeRead() {
 		snapshot, hasSnapshot, snapshotErr := loadSupplierFeeSnapshotForOrder(ctx, client, event.OrderId, supplierID)
@@ -206,6 +207,9 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 
 			platformCommission = snapshot.FeeAmount
 			supplierPayout = snapshot.NetPayoutAmount
+			if strings.TrimSpace(snapshot.PayoutOwnerID) != "" {
+				payoutAccountID = strings.TrimSpace(snapshot.PayoutOwnerID)
+			}
 
 			grossForBps := event.Amount
 			if snapshot.GrossAmount > 0 {
@@ -250,7 +254,7 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 		}
 	}
 
-	slog.Info("treasurer.processing_order", "order_id", event.OrderId, "total", event.Amount, "platform_commission", platformCommission, "commission_bps", commissionBps, "supplier_id", supplierID, "supplier_payout", supplierPayout, "gateway", paymentGateway, "status", status)
+	slog.Info("treasurer.processing_order", "order_id", event.OrderId, "total", event.Amount, "platform_commission", platformCommission, "commission_bps", commissionBps, "supplier_id", supplierID, "payout_account_id", payoutAccountID, "supplier_payout", supplierPayout, "gateway", paymentGateway, "status", status)
 
 	// Auth-Commit-Capture: write PENDING ledger entries + outbox event inside a single RWTxn.
 	// The gateway charge happens asynchronously in the Gateway Worker — never inline.
@@ -264,10 +268,10 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 			[]interface{}{txnIdA, event.OrderId, finance.PlatformAccountID, platformCommission, finance.PlatformCreditEntryType, status, idempotencyKey, now},
 		)
 
-		// Entry B: Credit the Supplier (Supplier Payout)
+		// Entry B: Credit payout owner (supplier or warehouse-local owner)
 		m2 := spanner.Insert("LedgerEntries",
 			[]string{"TransactionId", "OrderId", "AccountId", "Amount", "EntryType", "Status", "IdempotencyKey", "CreatedAt"},
-			[]interface{}{txnIdB, event.OrderId, supplierID, supplierPayout, "CREDIT_SUPPLIER", status, idempotencyKey, now},
+			[]interface{}{txnIdB, event.OrderId, payoutAccountID, supplierPayout, "CREDIT_SUPPLIER", status, idempotencyKey, now},
 		)
 
 		if err := txn.BufferWrite([]*spanner.Mutation{m1, m2}); err != nil {
@@ -304,10 +308,13 @@ func executeLedgerSplit(client *spanner.Client, event LogisticsEvent, platformCf
 }
 
 type supplierFeeSnapshot struct {
-	InvoiceID       string
-	GrossAmount     int64
-	FeeAmount       int64
-	NetPayoutAmount int64
+	InvoiceID        string
+	GrossAmount      int64
+	FeeAmount        int64
+	NetPayoutAmount  int64
+	PayoutOwnerType  string
+	PayoutOwnerID    string
+	FeePolicyVersion string
 }
 
 func loadSupplierFeeSnapshotForOrder(ctx context.Context, client *spanner.Client, orderID, supplierID string) (supplierFeeSnapshot, bool, error) {
@@ -369,11 +376,40 @@ func loadSupplierFeeSnapshotForOrder(ctx context.Context, client *spanner.Client
 		return supplierFeeSnapshot{}, false, nil
 	}
 
+	detailStmt := spanner.Statement{
+		SQL: `SELECT PayoutOwnerType, PayoutOwnerId, FeePolicyVersion
+		      FROM InvoiceSettlementSlices
+		      WHERE InvoiceId = @invoiceId AND SupplierId = @supplierId
+		      ORDER BY CreatedAt DESC
+		      LIMIT 1`,
+		Params: map[string]interface{}{
+			"invoiceId":  invoiceID,
+			"supplierId": supplierID,
+		},
+	}
+	detailIter := client.Single().Query(ctx, detailStmt)
+	detailRow, detailErr := detailIter.Next()
+	detailIter.Stop()
+
+	var payoutOwnerType spanner.NullString
+	var payoutOwnerID spanner.NullString
+	var feePolicyVersion spanner.NullString
+	if detailErr == nil {
+		if err := detailRow.Columns(&payoutOwnerType, &payoutOwnerID, &feePolicyVersion); err != nil {
+			return supplierFeeSnapshot{}, false, fmt.Errorf("decode settlement owner detail for invoice %s: %w", invoiceID, err)
+		}
+	} else if detailErr != iterator.Done {
+		return supplierFeeSnapshot{}, false, fmt.Errorf("read settlement owner detail for invoice %s: %w", invoiceID, detailErr)
+	}
+
 	return supplierFeeSnapshot{
-		InvoiceID:       invoiceID,
-		GrossAmount:     grossAmount,
-		FeeAmount:       feeAmount,
-		NetPayoutAmount: netPayoutAmount,
+		InvoiceID:        invoiceID,
+		GrossAmount:      grossAmount,
+		FeeAmount:        feeAmount,
+		NetPayoutAmount:  netPayoutAmount,
+		PayoutOwnerType:  strings.TrimSpace(payoutOwnerType.StringVal),
+		PayoutOwnerID:    strings.TrimSpace(payoutOwnerID.StringVal),
+		FeePolicyVersion: strings.TrimSpace(feePolicyVersion.StringVal),
 	}, true, nil
 }
 

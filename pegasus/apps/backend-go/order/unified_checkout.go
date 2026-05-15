@@ -990,6 +990,15 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 	}
 
 	splitRecipients := payment.ComputeSplitRecipients(amount, recipientID, s.feeBasisPoints())
+	if snapshot, ok, snapErr := payment.LoadSupplierSettlementSnapshot(ctx, s.Client, orderID, supplierID); snapErr != nil {
+		log.Printf("[UNIFIED_CHECKOUT] snapshot lookup failed for order %s supplier %s: %v", orderID, supplierID, snapErr)
+	} else if ok {
+		effectiveAmount := snapshot.GrossAmount
+		if effectiveAmount <= 0 {
+			effectiveAmount = amount
+		}
+		splitRecipients = payment.ComputeSplitRecipientsWithFeeAmount(effectiveAmount, recipientID, snapshot.FeeAmount)
+	}
 
 	authResult, authErr := s.DirectClient.AuthorizePayment(ctx, creds, payment.DirectPaymentInitRequest{
 		CardToken:  cardToken,

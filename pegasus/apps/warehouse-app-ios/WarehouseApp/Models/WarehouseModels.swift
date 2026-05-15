@@ -712,6 +712,12 @@ struct Invoice: Decodable, Identifiable {
     let currency: String
     let status: String
     let dueDate: String
+    let feeAmount: Int
+    let netPayoutAmount: Int
+    let payoutOwnerType: String
+    let payoutOwnerId: String
+    let feePolicyVersion: String
+    let settlementTarget: String
 
     enum CodingKeys: String, CodingKey {
         case invoiceId = "invoice_id"
@@ -721,6 +727,12 @@ struct Invoice: Decodable, Identifiable {
         case currency
         case status
         case dueDate = "due_date"
+        case feeAmount = "fee_amount"
+        case netPayoutAmount = "net_payout_amount"
+        case payoutOwnerType = "payout_owner_type"
+        case payoutOwnerId = "payout_owner_id"
+        case feePolicyVersion = "fee_policy_version"
+        case settlementTarget = "settlement_target"
     }
 
     init(from decoder: Decoder) throws {
@@ -733,6 +745,12 @@ struct Invoice: Decodable, Identifiable {
         currency = (try c.decodeIfPresent(String.self, forKey: .currency) ?? "UZS").uppercased()
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? ""
         dueDate = try c.decodeIfPresent(String.self, forKey: .dueDate) ?? ""
+        feeAmount = try c.decodeIfPresent(Int.self, forKey: .feeAmount) ?? 0
+        netPayoutAmount = try c.decodeIfPresent(Int.self, forKey: .netPayoutAmount) ?? 0
+        payoutOwnerType = try c.decodeIfPresent(String.self, forKey: .payoutOwnerType) ?? ""
+        payoutOwnerId = try c.decodeIfPresent(String.self, forKey: .payoutOwnerId) ?? ""
+        feePolicyVersion = try c.decodeIfPresent(String.self, forKey: .feePolicyVersion) ?? ""
+        settlementTarget = try c.decodeIfPresent(String.self, forKey: .settlementTarget) ?? ""
     }
 }
 
