@@ -21,10 +21,11 @@ var (
 
 // AdyenCredentials stores the minimal merchant credentials required for API calls.
 type AdyenCredentials struct {
-	MerchantAccount       string
-	APIKey                string
-	LiveEndpointURLPrefix string
-	Environment           adyencommon.Environment
+	MerchantAccount        string
+	APIKey                 string
+	LiveEndpointURLPrefix  string
+	Environment            adyencommon.Environment
+	DirectExecutionEnabled bool
 }
 
 // AdyenCheckoutRequest is the hosted checkout init payload.
@@ -62,10 +63,11 @@ func (a *adyenGateway) Refund(orderID string, refundAmount int64) error {
 func ResolveAdyenCredentials(merchantID, liveEndpointPrefix, secretKey string) (AdyenCredentials, error) {
 	envRaw := firstNonEmpty(os.Getenv("ADYEN_ENVIRONMENT"), "TEST")
 	creds := AdyenCredentials{
-		MerchantAccount:       firstNonEmpty(merchantID, os.Getenv("ADYEN_MERCHANT_ACCOUNT")),
-		APIKey:                firstNonEmpty(secretKey, os.Getenv("ADYEN_API_KEY")),
-		LiveEndpointURLPrefix: firstNonEmpty(liveEndpointPrefix, os.Getenv("ADYEN_LIVE_ENDPOINT_PREFIX")),
-		Environment:           resolveAdyenEnvironment(envRaw),
+		MerchantAccount:        firstNonEmpty(merchantID, os.Getenv("ADYEN_MERCHANT_ACCOUNT")),
+		APIKey:                 firstNonEmpty(secretKey, os.Getenv("ADYEN_API_KEY")),
+		LiveEndpointURLPrefix:  firstNonEmpty(liveEndpointPrefix, os.Getenv("ADYEN_LIVE_ENDPOINT_PREFIX")),
+		Environment:            resolveAdyenEnvironment(envRaw),
+		DirectExecutionEnabled: strings.ToLower(firstNonEmpty(os.Getenv("ADYEN_DIRECT_EXECUTION_ENABLED"), "false")) == "true",
 	}
 
 	if creds.MerchantAccount == "" || creds.APIKey == "" {
@@ -160,4 +162,71 @@ func resolveAdyenEnvironment(raw string) adyencommon.Environment {
 	default:
 		return adyencommon.TestEnv
 	}
+}
+
+// AdyenDirectClient wraps strict execution endpoints for the direct execution path.
+type AdyenDirectClient struct {
+	client          *adyen.APIClient
+	merchantAccount string
+}
+
+// CreateAdyenDirectClient creates an AdyenClient equipped for Refunds and direct charges.
+func CreateAdyenDirectClient(creds AdyenCredentials) (*AdyenDirectClient, error) {
+	client := adyen.NewClient(&adyencommon.Config{
+		ApiKey:                creds.APIKey,
+		Environment:           creds.Environment,
+		LiveEndpointURLPrefix: creds.LiveEndpointURLPrefix,
+		Log4XXError:           true,
+		Log5XXError:           true,
+	})
+	return &AdyenDirectClient{
+		client:          client,
+		merchantAccount: creds.MerchantAccount,
+	}, nil
+}
+
+// Refund calls Adyen's Modifications API to refund a captured payment.
+func (a *AdyenDirectClient) Refund(ctx context.Context, req ProviderRefundRequest) (*ProviderRefundResult, error) {
+	if strings.TrimSpace(req.PaymentID) == "" {
+		return nil, fmt.Errorf("adyen refund requires provider payment id (psp reference)")
+	}
+	if req.Amount <= 0 {
+		return nil, fmt.Errorf("adyen refund requires positive amount")
+	}
+
+	currency := normalizeCurrencyCode(req.Currency)
+	if currency == "" {
+		currency = "UZS"
+	}
+
+	service := a.client.Checkout()
+	amountMinor := req.Amount * 100
+	refundReq := checkout.NewPaymentRefundRequest(checkout.Amount{
+		Currency: currency,
+		Value:    amountMinor,
+	}, a.merchantAccount)
+
+	// In Adyen, the original payment ID is the pspReference of the payment to refund.
+	pspReference := strings.TrimSpace(req.PaymentID)
+	input := service.ModificationsApi.RefundCapturedPaymentInput(pspReference).PaymentRefundRequest(*refundReq)
+
+	// Ensure idempotency for the refund
+	if req.OrderID != "" {
+		key := "refund_" + req.OrderID + "_" + pspReference
+		if len(key) > 64 {
+			key = key[:64]
+		}
+		input = input.IdempotencyKey(key)
+	}
+
+	res, _, err := service.ModificationsApi.RefundCapturedPayment(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("adyen refund request failed: %w", err)
+	}
+
+	return &ProviderRefundResult{
+		ProviderRefundID:  res.PspReference,
+		ProviderReference: res.PaymentPspReference,
+		Status:            res.Status,
+	}, nil
 }

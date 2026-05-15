@@ -151,10 +151,11 @@ func (r *ProviderExecutionRouter) Resolve(gateway string, creds ProviderExecutio
 		}
 		return &globalPayExecutionClient{client: r.GlobalPayDirect, creds: globalPayCreds}, nil
 	case "ADYEN":
-		if _, err := creds.adyenCredentials(); err != nil {
+		adyenCreds, err := creds.adyenCredentials()
+		if err != nil {
 			return nil, err
 		}
-		return &adyenExecutionClient{}, nil
+		return &adyenExecutionClient{creds: adyenCreds}, nil
 	case "CASH":
 		return &unsupportedProviderExecutionClient{gateway: normalized}, nil
 	default:
@@ -322,28 +323,53 @@ func (c *globalPayExecutionClient) RefundPayment(ctx context.Context, req Provid
 	}, nil
 }
 
-type adyenExecutionClient struct{}
+type adyenExecutionClient struct {
+	creds AdyenCredentials
+}
 
 func (c *adyenExecutionClient) GatewayName() string {
 	return "ADYEN"
 }
 
 func (c *adyenExecutionClient) ChargeStoredMethod(ctx context.Context, req StoredMethodChargeRequest) (*StoredMethodChargeResult, error) {
-	return nil, fmt.Errorf("%w for order %s", ErrAdyenDirectOperationUnsupported, strings.TrimSpace(req.OrderID))
+	if !c.creds.DirectExecutionEnabled {
+		return nil, fmt.Errorf("%w for order %s", ErrAdyenDirectOperationUnsupported, strings.TrimSpace(req.OrderID))
+	}
+	return nil, fmt.Errorf("adyen direct charge not yet implemented")
 }
 
 func (c *adyenExecutionClient) AuthorizeStoredMethod(ctx context.Context, req StoredMethodAuthorizationRequest) (*StoredMethodAuthorizationResult, error) {
-	return nil, fmt.Errorf("%w for order %s", ErrAdyenDirectOperationUnsupported, strings.TrimSpace(req.OrderID))
+	if !c.creds.DirectExecutionEnabled {
+		return nil, fmt.Errorf("%w for order %s", ErrAdyenDirectOperationUnsupported, strings.TrimSpace(req.OrderID))
+	}
+	return nil, fmt.Errorf("adyen direct authorize not yet implemented")
 }
 
 func (c *adyenExecutionClient) CaptureAuthorization(ctx context.Context, req CaptureAuthorizationRequest) (*CaptureAuthorizationResult, error) {
-	return nil, fmt.Errorf("%w for authorization %s", ErrAdyenDirectOperationUnsupported, strings.TrimSpace(req.AuthorizationID))
+	if !c.creds.DirectExecutionEnabled {
+		return nil, fmt.Errorf("%w for authorization %s", ErrAdyenDirectOperationUnsupported, strings.TrimSpace(req.AuthorizationID))
+	}
+	return nil, fmt.Errorf("adyen direct capture not yet implemented")
 }
 
 func (c *adyenExecutionClient) VoidAuthorization(ctx context.Context, authorizationID string) error {
-	return fmt.Errorf("%w for authorization %s", ErrAdyenDirectOperationUnsupported, strings.TrimSpace(authorizationID))
+	if !c.creds.DirectExecutionEnabled {
+		return fmt.Errorf("%w for authorization %s", ErrAdyenDirectOperationUnsupported, strings.TrimSpace(authorizationID))
+	}
+	return fmt.Errorf("adyen direct void not yet implemented")
 }
 
 func (c *adyenExecutionClient) RefundPayment(ctx context.Context, req ProviderRefundRequest) (*ProviderRefundResult, error) {
-	return nil, fmt.Errorf("%w for order %s", ErrAdyenDirectOperationUnsupported, strings.TrimSpace(req.OrderID))
+	if !c.creds.DirectExecutionEnabled {
+		return nil, fmt.Errorf("%w for order %s", ErrAdyenDirectOperationUnsupported, strings.TrimSpace(req.OrderID))
+	}
+	client, err := CreateAdyenDirectClient(c.creds)
+	if err != nil {
+		return nil, err
+	}
+	res, err := client.Refund(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
