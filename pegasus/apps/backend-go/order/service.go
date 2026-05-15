@@ -1559,7 +1559,13 @@ func (s *OrderService) voidAuthorizationForOrder(ctx context.Context, orderID st
 		return
 	}
 
-	if voidErr := s.DirectClient.VoidAuthorization(ctx, creds, session.AuthorizationID); voidErr != nil {
+	executionClient, execClientErr := payment.NewProviderExecutionRouter(s.DirectClient).Resolve("GLOBAL_PAY", payment.NewGlobalPayExecutionCredentials(creds))
+	if execClientErr != nil {
+		slog.Error("order.void_auth_client_failed", "order_id", orderID, "err", execClientErr)
+		return
+	}
+
+	if voidErr := executionClient.VoidAuthorization(ctx, session.AuthorizationID); voidErr != nil {
 		slog.Warn("order.void_auth_failed", "order_id", orderID, "authorization_id", session.AuthorizationID, "err", voidErr)
 		return
 	}
@@ -2410,44 +2416,44 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 				externalID = sessionID // Use session as idempotency key if available
 			}
 
-			initResult, initErr := s.DirectClient.InitPayment(ctx, creds, payment.DirectPaymentInitRequest{
-				CardToken:  savedCard.ProviderCardToken,
-				Amount:     adjustedAmount,
-				OrderID:    orderID,
-				SessionID:  sessionID,
-				ExternalID: externalID,
-				Recipients: splitRecipients,
-			})
-			if initErr != nil {
-				slog.Warn("order.fulfillment_pay_direct_init_failed", "order_id", orderID, "err", initErr)
-				// Fall through to hosted checkout below
+			executionClient, execClientErr := payment.NewProviderExecutionRouter(s.DirectClient).Resolve("GLOBAL_PAY", payment.NewGlobalPayExecutionCredentials(creds))
+			if execClientErr != nil {
+				slog.Warn("order.fulfillment_pay_direct_client_unavailable", "order_id", orderID, "err", execClientErr)
 			} else {
-				directPaymentID = initResult.PaymentID
-
-				if initResult.SecurityCheckURL != "" {
-					// 3DS verification required — return URL for retailer
-					result.PaymentID = directPaymentID
-					result.CheckoutURL = initResult.SecurityCheckURL
-					result.Status = "3DS_REQUIRED"
-					result.Message = fmt.Sprintf("3D Secure verification required for %d", adjustedAmount)
-
-					// Bind the direct payment to the session for webhook reconciliation
-					if s.SessionSvc != nil && sessionID != "" {
-						_ = s.SessionSvc.BindProviderCheckout(ctx, sessionID, "GLOBAL_PAY", "", initResult.SecurityCheckURL, directPaymentID, nil)
-					}
-					return result, nil
-				}
-
-				// No 3DS — perform charge immediately
-				performResult, performErr := s.DirectClient.PerformPayment(ctx, creds, directPaymentID)
-				if performErr != nil {
-					slog.Warn("order.fulfillment_pay_direct_perform_failed", "order_id", orderID, "err", performErr)
-					// Fall through to hosted checkout
-				} else if performResult.Paid {
-					directPaid = true
-					// Continue to Phase 3 below
+				executionResult, execErr := executionClient.ChargeStoredMethod(ctx, payment.StoredMethodChargeRequest{
+					CardToken:  savedCard.ProviderCardToken,
+					Amount:     adjustedAmount,
+					Currency:   s.resolveSupplierCurrency(ctx, supplierID),
+					OrderID:    orderID,
+					SessionID:  sessionID,
+					ExternalID: externalID,
+					Recipients: splitRecipients,
+				})
+				if execErr != nil {
+					slog.Warn("order.fulfillment_pay_direct_init_failed", "order_id", orderID, "err", execErr)
 				} else {
-					slog.Warn("order.fulfillment_pay_direct_unpaid", "order_id", orderID, "status", performResult.Status)
+					directPaymentID = strings.TrimSpace(executionResult.ProviderReference)
+					if directPaymentID == "" {
+						directPaymentID = strings.TrimSpace(executionResult.ProviderPaymentID)
+					}
+
+					if executionResult.Action != nil && strings.TrimSpace(executionResult.Action.RedirectURL) != "" {
+						result.PaymentID = directPaymentID
+						result.CheckoutURL = strings.TrimSpace(executionResult.Action.RedirectURL)
+						result.Status = "3DS_REQUIRED"
+						result.Message = fmt.Sprintf("3D Secure verification required for %d", adjustedAmount)
+
+						if s.SessionSvc != nil && sessionID != "" {
+							_ = s.SessionSvc.BindProviderCheckout(ctx, sessionID, "GLOBAL_PAY", "", result.CheckoutURL, directPaymentID, nil)
+						}
+						return result, nil
+					}
+
+					if executionResult.Paid {
+						directPaid = true
+					} else {
+						slog.Warn("order.fulfillment_pay_direct_unpaid", "order_id", orderID, "status", executionResult.Status)
+					}
 				}
 			}
 		}
@@ -2582,6 +2588,9 @@ func (s *OrderService) TriggerSupplierFulfillmentPayment(ctx context.Context, or
 
 	// Settle the payment session
 	if s.SessionSvc != nil && sessionID != "" {
+		if bindErr := s.SessionSvc.BindProviderCheckout(ctx, sessionID, "GLOBAL_PAY", "", "", directPaymentID, nil); bindErr != nil {
+			slog.Warn("order.fulfillment_pay_bind_failed", "session_id", sessionID, "payment_id", directPaymentID, "err", bindErr)
+		}
 		if settleErr := s.SessionSvc.SettleSession(ctx, sessionID, directPaymentID); settleErr != nil {
 			slog.Warn("order.fulfillment_pay_settle_failed", "session_id", sessionID, "payment_id", directPaymentID, "err", settleErr)
 		}
@@ -3368,66 +3377,67 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		}
 
 		if savedCard != nil {
-			// DIRECT GATEWAY PATH: charge the saved card immediately
+			// DIRECT GATEWAY PATH: charge the saved card immediately through the
+			// provider execution seam so direct execution stops leaking provider-specific
+			// logic into checkout callers.
 			slog.Info("order.card_checkout_saved_card", "retailer_id", retailerId, "token_id", savedCard.TokenID)
-			initResult, initErr := s.DirectClient.InitPayment(ctx, creds, payment.DirectPaymentInitRequest{
-				CardToken:  savedCard.ProviderCardToken,
-				Amount:     resp.Amount,
-				OrderID:    orderId,
-				SessionID:  resp.SessionID,
-				ExternalID: resp.AttemptID,
-				Recipients: splitRecipients,
-			})
-			if initErr != nil {
-				slog.Warn("order.card_checkout_direct_init_failed", "order_id", orderId, "err", initErr)
-				// Fall through to hosted checkout below
+			executionRouter := payment.NewProviderExecutionRouter(s.DirectClient)
+			executionClient, execClientErr := executionRouter.Resolve(gateway, payment.NewGlobalPayExecutionCredentials(creds))
+			if execClientErr != nil {
+				slog.Warn("order.card_checkout_direct_client_unavailable", "order_id", orderId, "gateway", gateway, "err", execClientErr)
 			} else {
-				providerReference = initResult.PaymentID
-
-				if initResult.SecurityCheckURL != "" {
-					// 3DS required — return the URL for retailer to complete verification
-					paymentURL = initResult.SecurityCheckURL
-					resp.Message = fmt.Sprintf("3D Secure verification required for %d", resp.Amount)
+				executionResult, execErr := executionClient.ChargeStoredMethod(ctx, payment.StoredMethodChargeRequest{
+					CardToken:  savedCard.ProviderCardToken,
+					Amount:     resp.Amount,
+					Currency:   orderCurrency,
+					OrderID:    orderId,
+					SessionID:  resp.SessionID,
+					AttemptID:  resp.AttemptID,
+					ExternalID: resp.AttemptID,
+					Recipients: splitRecipients,
+				})
+				if execErr != nil {
+					slog.Warn("order.card_checkout_direct_init_failed", "order_id", orderId, "gateway", gateway, "err", execErr)
 				} else {
-					// No 3DS — perform the charge immediately
-					performResult, performErr := s.DirectClient.PerformPayment(ctx, creds, initResult.PaymentID)
-					if performErr != nil {
-						urlErr = performErr
-					} else if performResult.Paid {
-						// Payment complete — settle immediately
+					providerReference = strings.TrimSpace(executionResult.ProviderReference)
+					if providerReference == "" {
+						providerReference = strings.TrimSpace(executionResult.ProviderPaymentID)
+					}
+
+					if executionResult.Action != nil && strings.TrimSpace(executionResult.Action.RedirectURL) != "" {
+						paymentURL = strings.TrimSpace(executionResult.Action.RedirectURL)
+						resp.Message = fmt.Sprintf("3D Secure verification required for %d", resp.Amount)
 						if s.SessionSvc != nil && resp.SessionID != "" {
-							if settleErr := s.SessionSvc.SettleSession(ctx, resp.SessionID, initResult.PaymentID); settleErr != nil {
+							if bindErr := s.SessionSvc.BindProviderCheckout(ctx, resp.SessionID, gateway, resp.InvoiceID, paymentURL, providerReference, nil); bindErr != nil {
+								slog.Error("order.card_checkout_bind_direct_failed", "session_id", resp.SessionID, "err", bindErr)
+							}
+						}
+						resp.PaymentURL = paymentURL
+						resp.OrderID = orderId
+						resp.State = "AWAITING_PAYMENT"
+						resp.Gateway = gateway
+						return &resp, nil
+					}
+
+					if executionResult.Paid {
+						if s.SessionSvc != nil && resp.SessionID != "" {
+							if bindErr := s.SessionSvc.BindProviderCheckout(ctx, resp.SessionID, gateway, resp.InvoiceID, "", providerReference, nil); bindErr != nil {
+								slog.Error("order.card_checkout_bind_direct_failed", "session_id", resp.SessionID, "err", bindErr)
+							}
+							if settleErr := s.SessionSvc.SettleSession(ctx, resp.SessionID, providerReference); settleErr != nil {
 								slog.Error("order.card_checkout_settle_failed", "session_id", resp.SessionID, "err", settleErr)
 							}
 						}
 						resp.PaymentURL = ""
 						resp.Message = fmt.Sprintf("Payment of %d completed via saved card", resp.Amount)
 						resp.OrderID = orderId
-						resp.State = "AWAITING_PAYMENT" // Webhook or reconciler will transition to COMPLETED
+						resp.State = "AWAITING_PAYMENT"
 						resp.Gateway = gateway
 						return &resp, nil
-					} else {
-						urlErr = fmt.Errorf("direct payment perform returned unpaid status: %s", performResult.Status)
 					}
-				}
 
-				if urlErr == nil {
-					// Bind the direct payment reference to the session
-					if s.SessionSvc != nil && resp.SessionID != "" {
-						if bindErr := s.SessionSvc.BindProviderCheckout(ctx, resp.SessionID, gateway, resp.InvoiceID, paymentURL, providerReference, nil); bindErr != nil {
-							slog.Error("order.card_checkout_bind_direct_failed", "session_id", resp.SessionID, "err", bindErr)
-						}
-					}
-					resp.PaymentURL = paymentURL
-					resp.OrderID = orderId
-					resp.State = "AWAITING_PAYMENT"
-					resp.Gateway = gateway
-					return &resp, nil
+					slog.Warn("order.card_checkout_direct_failed", "order_id", orderId, "gateway", gateway, "status", executionResult.Status)
 				}
-
-				// Direct payment failed — fall through to hosted checkout
-				slog.Warn("order.card_checkout_direct_failed", "order_id", orderId, "err", urlErr)
-				urlErr = nil
 			}
 		}
 

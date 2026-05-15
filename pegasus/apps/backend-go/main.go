@@ -488,7 +488,12 @@ func main() {
 	platformCfg := settings.NewPlatformConfig(spannerClient)
 
 	// ── Refund Endpoint (Phase 3.1) ──
-	refundSvc := payment.NewRefundService(spannerClient, platformCfg.PlatformFeeBasisPoints())
+	refundSvc := payment.NewRefundService(
+		spannerClient,
+		platformCfg.PlatformFeeBasisPoints(),
+		&vault.PaymentVaultAdapter{Svc: vaultSvc},
+		payment.NewProviderExecutionRouter(directClient),
+	)
 	chargebackSvc := payment.NewChargebackService(spannerClient)
 	orderroutes.RegisterRoutes(r, orderroutes.Deps{
 		Spanner:     spannerClient,

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"backend-go/cache"
@@ -48,14 +49,16 @@ type RefundResult struct {
 // RefundService handles the refund lifecycle: validation, gateway call,
 // ledger reversal, and Kafka event emission.
 type RefundService struct {
-	spanner *spanner.Client
-	feeBP   int64 // Platform fee in basis points (0 = zero-fee era)
+	spanner       *spanner.Client
+	feeBP         int64 // Platform fee in basis points (0 = zero-fee era)
+	vaultResolver VaultResolver
+	execution     *ProviderExecutionRouter
 }
 
 // NewRefundService creates a refund service. feeBP is the platform commission
 // in basis points (e.g., 500 = 5%). Pass 0 for zero-fee era.
-func NewRefundService(sc *spanner.Client, feeBP int64) *RefundService {
-	return &RefundService{spanner: sc, feeBP: feeBP}
+func NewRefundService(sc *spanner.Client, feeBP int64, vaultResolver VaultResolver, execution *ProviderExecutionRouter) *RefundService {
+	return &RefundService{spanner: sc, feeBP: feeBP, vaultResolver: vaultResolver, execution: execution}
 }
 
 // InitiateRefund validates the order state, calls the gateway, creates the
@@ -82,7 +85,7 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 
 	// 2. Find settled payment session for this order
 	stmt := spanner.Statement{
-		SQL:    `SELECT SessionId, Gateway, LockedAmount, PaidAmount, Currency FROM PaymentSessions WHERE OrderId = @orderID AND Status = 'SETTLED' LIMIT 1`,
+		SQL:    `SELECT SessionId, Gateway, LockedAmount, PaidAmount, Currency, ProviderReference FROM PaymentSessions WHERE OrderId = @orderID AND Status = 'SETTLED' LIMIT 1`,
 		Params: map[string]interface{}{"orderID": orderID},
 	}
 	iter := rs.spanner.Single().Query(ctx, stmt)
@@ -97,7 +100,8 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 	var lockedAmount spanner.NullInt64
 	var paidAmount spanner.NullInt64
 	var sessionCurrency spanner.NullString
-	if err := sessRow.Columns(&sessionID, &sessGateway, &lockedAmount, &paidAmount, &sessionCurrency); err != nil {
+	var providerReference spanner.NullString
+	if err := sessRow.Columns(&sessionID, &sessGateway, &lockedAmount, &paidAmount, &sessionCurrency, &providerReference); err != nil {
 		return nil, fmt.Errorf("parse session: %w", err)
 	}
 
@@ -148,23 +152,44 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 		refundStatus = RefundManualRequired
 		log.Printf("[REFUND] Cash refund for order %s — requires manual processing", orderID)
 	} else {
-		gw, gwErr := NewGatewayClient(sessGateway)
-		if gwErr != nil {
+		executionClient, executionErr := rs.resolveExecutionClient(ctx, orderID, sessGateway)
+		if executionErr != nil {
 			refundStatus = RefundManualRequired
-			log.Printf("[REFUND] Cannot create gateway client (%s) for refund on order %s: %v", sessGateway, orderID, gwErr)
+			log.Printf("[REFUND] Provider execution unavailable for refund on order %s via %s: %v", orderID, sessGateway, executionErr)
 		} else {
-			if refErr := gw.Refund(orderID, refundAmount); refErr != nil {
-				if errors.Is(refErr, ErrAdyenDirectOperationUnsupported) {
-					refundStatus = RefundManualRequired
-					log.Printf("[REFUND] Gateway refund requires manual handling for order %s via %s: %v", orderID, sessGateway, refErr)
-				} else {
-					refundStatus = RefundFailed
-					log.Printf("[REFUND] Gateway refund failed for order %s via %s: %v", orderID, sessGateway, refErr)
-				}
+			providerPaymentID, refLookupErr := rs.lookupProviderPaymentID(ctx, sessionID, providerReference)
+			if refLookupErr != nil {
+				refundStatus = RefundManualRequired
+				log.Printf("[REFUND] Provider payment reference lookup failed for order %s via %s: %v", orderID, sessGateway, refLookupErr)
+			} else if providerPaymentID == "" {
+				refundStatus = RefundManualRequired
+				log.Printf("[REFUND] Provider payment reference missing for order %s via %s; refund requires manual handling", orderID, sessGateway)
 			} else {
-				refundStatus = RefundSettled
-				providerRefundID = fmt.Sprintf("GW-%s-%s", sessGateway, refundID[:8])
-				log.Printf("[REFUND] Gateway refund succeeded for order %s via %s: %d %s", orderID, sessGateway, refundAmount, resolvedCurrency)
+				refundResult, refErr := executionClient.RefundPayment(ctx, ProviderRefundRequest{
+					OrderID:   orderID,
+					PaymentID: providerPaymentID,
+					Amount:    refundAmount,
+					Currency:  resolvedCurrency,
+				})
+				if refErr != nil {
+					if errors.Is(refErr, ErrAdyenDirectOperationUnsupported) {
+						refundStatus = RefundManualRequired
+						log.Printf("[REFUND] Gateway refund requires manual handling for order %s via %s: %v", orderID, sessGateway, refErr)
+					} else {
+						refundStatus = RefundFailed
+						log.Printf("[REFUND] Gateway refund failed for order %s via %s: %v", orderID, sessGateway, refErr)
+					}
+				} else {
+					refundStatus = RefundSettled
+					providerRefundID = strings.TrimSpace(refundResult.ProviderRefundID)
+					if providerRefundID == "" {
+						providerRefundID = strings.TrimSpace(refundResult.ProviderReference)
+					}
+					if providerRefundID == "" {
+						providerRefundID = providerPaymentID
+					}
+					log.Printf("[REFUND] Gateway refund succeeded for order %s via %s: %d %s", orderID, sessGateway, refundAmount, resolvedCurrency)
+				}
 			}
 		}
 	}
@@ -272,6 +297,75 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 		Gateway:          sessGateway,
 		ProviderRefundID: providerRefundID,
 	}, nil
+}
+
+func (rs *RefundService) resolveExecutionClient(ctx context.Context, orderID, gateway string) (ProviderExecutionClient, error) {
+	if rs.execution == nil {
+		return nil, fmt.Errorf("provider execution router not configured")
+	}
+
+	switch normalizeGateway(gateway) {
+	case "GLOBAL_PAY":
+		if rs.vaultResolver == nil {
+			return nil, fmt.Errorf("vault resolver not configured for gateway %s", gateway)
+		}
+		cfg, err := rs.vaultResolver.GetDecryptedConfigByOrder(ctx, orderID, gateway)
+		if err != nil {
+			return nil, fmt.Errorf("resolve %s credentials for order %s: %w", gateway, orderID, err)
+		}
+		creds, err := ResolveGlobalPayCredentials(cfg.MerchantId, cfg.ServiceId, cfg.SecretKey)
+		if err != nil {
+			return nil, err
+		}
+		return rs.execution.Resolve(gateway, NewGlobalPayExecutionCredentials(creds))
+	case "ADYEN":
+		if rs.vaultResolver == nil {
+			return nil, fmt.Errorf("vault resolver not configured for gateway %s", gateway)
+		}
+		cfg, err := rs.vaultResolver.GetDecryptedConfigByOrder(ctx, orderID, gateway)
+		if err != nil {
+			return nil, fmt.Errorf("resolve %s credentials for order %s: %w", gateway, orderID, err)
+		}
+		creds, err := ResolveAdyenCredentials(cfg.MerchantId, cfg.ServiceId, cfg.SecretKey)
+		if err != nil {
+			return nil, err
+		}
+		return rs.execution.Resolve(gateway, NewAdyenExecutionCredentials(creds))
+	default:
+		return rs.execution.Resolve(gateway, ProviderExecutionCredentials{})
+	}
+}
+
+func (rs *RefundService) lookupProviderPaymentID(ctx context.Context, sessionID string, providerReference spanner.NullString) (string, error) {
+	resolvedReference := strings.TrimSpace(providerReference.StringVal)
+	if resolvedReference != "" {
+		return resolvedReference, nil
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT ProviderTransactionId
+		      FROM PaymentAttempts
+		      WHERE SessionId = @sessionID AND ProviderTransactionId IS NOT NULL
+		      ORDER BY FinishedAt DESC, StartedAt DESC
+		      LIMIT 1`,
+		Params: map[string]interface{}{"sessionID": sessionID},
+	}
+	iter := rs.spanner.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("query provider transaction for session %s: %w", sessionID, err)
+	}
+
+	var providerTxn spanner.NullString
+	if err := row.Columns(&providerTxn); err != nil {
+		return "", fmt.Errorf("parse provider transaction for session %s: %w", sessionID, err)
+	}
+	return strings.TrimSpace(providerTxn.StringVal), nil
 }
 
 // GetRefundsByOrder returns all refunds for a given order.

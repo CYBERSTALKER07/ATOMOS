@@ -1011,16 +1011,25 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 		splitRecipients = payment.ComputeSplitRecipientsWithFeeAmount(effectiveAmount, recipientID, snapshot.FeeAmount)
 	}
 
-	authResult, authErr := s.DirectClient.AuthorizePayment(ctx, creds, payment.DirectPaymentInitRequest{
+	executionClient, execClientErr := payment.NewProviderExecutionRouter(s.DirectClient).Resolve("GLOBAL_PAY", payment.NewGlobalPayExecutionCredentials(creds))
+	if execClientErr != nil {
+		return fmt.Errorf("authorize execution client: %w", execClientErr)
+	}
+
+	authResult, authErr := executionClient.AuthorizeStoredMethod(ctx, payment.StoredMethodAuthorizationRequest{
 		CardToken:  cardToken,
 		Amount:     amount,
+		Currency:   s.resolveSupplierCurrency(ctx, supplierID),
 		OrderID:    orderID,
-		SessionID:  "", // Session created below after auth succeeds.
+		SessionID:  "",
 		ExternalID: fmt.Sprintf("AUTH-%s", GenerateSecureToken()),
 		Recipients: splitRecipients,
 	})
 	if authErr != nil {
 		return fmt.Errorf("authorize call: %w", authErr)
+	}
+	if authResult.Action != nil && strings.TrimSpace(authResult.Action.RedirectURL) != "" {
+		return fmt.Errorf("authorize call requires verification redirect for order %s", orderID)
 	}
 
 	// Create a PaymentSession in AUTHORIZED state.
@@ -1039,11 +1048,15 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 			log.Printf("[CHECKOUT-AUTH] Session creation failed for order %s after auth: %v", orderID, sessErr)
 		} else {
 			// Transition session to AUTHORIZED with auth metadata.
+			providerReference := strings.TrimSpace(authResult.ProviderReference)
+			if providerReference == "" {
+				providerReference = strings.TrimSpace(authResult.AuthorizationID)
+			}
 			_, updateErr := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 				return txn.BufferWrite([]*spanner.Mutation{
 					spanner.Update("PaymentSessions",
 						[]string{"SessionId", "Status", "AuthorizationId", "AuthorizedAmount", "ProviderReference"},
-						[]interface{}{session.SessionID, payment.SessionAuthorized, authResult.PaymentID, amount, authResult.PaymentID},
+						[]interface{}{session.SessionID, payment.SessionAuthorized, authResult.AuthorizationID, amount, providerReference},
 					),
 				})
 			})
