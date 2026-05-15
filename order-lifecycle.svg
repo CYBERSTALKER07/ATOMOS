@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1720" font-family="Inter, Helvetica, Arial, sans-serif">
+  <rect width="1600" height="1720" fill="#FAFAFA"/>
+
+  <text x="800" y="56" text-anchor="middle" font-size="28" font-weight="700" fill="#111">Жизненный цикл заказа</text>
+  <text x="800" y="84" text-anchor="middle" font-size="15" fill="#555">Flowchart с основным потоком и ветками исключений</text>
+
+  <defs>
+    <marker id="arrGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2E7D32"/>
+    </marker>
+    <marker id="arrAmber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#E08E0B"/>
+    </marker>
+    <marker id="arrRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#C62828"/>
+    </marker>
+    <style>
+      .terminal { rx: 30; ry: 30; stroke-width: 2; fill: #E8F5E9; stroke: #2E7D32; }
+      .process  { rx: 12; ry: 12; stroke-width: 2; fill: #E8F5E9; stroke: #2E7D32; }
+      .warn     { rx: 12; ry: 12; stroke-width: 2; fill: #FFF4E0; stroke: #E08E0B; }
+      .fail     { rx: 12; ry: 12; stroke-width: 2; fill: #FDECEA; stroke: #C62828; }
+      .decision { stroke-width: 2; fill: #FFF4E0; stroke: #E08E0B; }
+      .label { font-size: 14px; fill: #111; font-weight: 600; text-anchor: middle; }
+      .sub   { font-size: 12px; fill: #555; text-anchor: middle; }
+      .edgeLabel { font-size: 12px; fill: #555; font-weight: 600; }
+      .flowGreen { stroke: #2E7D32; stroke-width: 2.5; fill: none; }
+      .flowAmber { stroke: #E08E0B; stroke-width: 2.5; fill: none; }
+      .flowRed   { stroke: #C62828; stroke-width: 2.5; fill: none; }
+      .dashed { stroke-dasharray: 6 5; }
+    </style>
+  </defs>
+
+  <!-- Main flow nodes -->
+  <g>
+    <rect class="terminal" x="660" y="100" width="280" height="64"/>
+    <text class="label" x="800" y="138">Автосоздание заказа</text>
+
+    <rect class="process" x="660" y="190" width="280" height="64"/>
+    <text class="label" x="800" y="228">Проверка</text>
+    <text class="sub" x="800" y="246">Запасы и правила</text>
+
+    <polygon class="decision" points="800,270 960,318 800,366 640,318"/>
+    <text class="label" x="800" y="314">Проверка OK?</text>
+
+    <rect class="process" x="660" y="400" width="280" height="64"/>
+    <text class="label" x="800" y="438">Оплата</text>
+    <text class="sub" x="800" y="456">Ожидание подтверждения</text>
+
+    <polygon class="decision" points="800,480 960,528 800,576 640,528"/>
+    <text class="label" x="800" y="524">Оплата подтверждена?</text>
+
+    <rect class="process" x="660" y="610" width="280" height="64"/>
+    <text class="label" x="800" y="648">Подтвержден</text>
+
+    <rect class="process" x="660" y="700" width="280" height="64"/>
+    <text class="label" x="800" y="738">Водитель назначен</text>
+
+    <polygon class="decision" points="800,780 960,828 800,876 640,828"/>
+    <text class="label" x="800" y="824">Водитель доступен?</text>
+
+    <rect class="process" x="660" y="910" width="280" height="64"/>
+    <text class="label" x="800" y="948">Загружен</text>
+
+    <rect class="process" x="660" y="1000" width="280" height="64"/>
+    <text class="label" x="800" y="1038">В пути</text>
+
+    <rect class="process" x="660" y="1090" width="280" height="64"/>
+    <text class="label" x="800" y="1128">Прибыл к клиенту</text>
+
+    <polygon class="decision" points="800,1170 960,1218 800,1266 640,1218"/>
+    <text class="label" x="800" y="1214">Доставка успешна?</text>
+
+    <rect class="process" x="660" y="1300" width="280" height="64"/>
+    <text class="label" x="800" y="1338">Доставлен</text>
+
+    <rect class="process" x="660" y="1390" width="280" height="64"/>
+    <text class="label" x="800" y="1428">Расчет проведен</text>
+
+    <polygon class="decision" points="800,1470 960,1518 800,1566 640,1518"/>
+    <text class="label" x="800" y="1514">Есть спор/проблема?</text>
+
+    <rect class="terminal" x="660" y="1600" width="280" height="64"/>
+    <text class="label" x="800" y="1638">Финализирован</text>
+  </g>
+
+  <!-- Exception branch nodes -->
+  <g>
+    <rect class="fail" x="170" y="286" width="300" height="64"/>
+    <text class="label" x="320" y="324">Заказ отклонен</text>
+
+    <rect class="warn" x="1130" y="286" width="300" height="64"/>
+    <text class="label" x="1280" y="324">Частично / предзаказ</text>
+
+    <rect class="warn" x="170" y="496" width="300" height="64"/>
+    <text class="label" x="320" y="534">Оплата в ожидании</text>
+
+    <rect class="fail" x="170" y="586" width="300" height="64"/>
+    <text class="label" x="320" y="624">Таймаут / отмена</text>
+
+    <rect class="warn" x="1130" y="796" width="300" height="64"/>
+    <text class="label" x="1280" y="834">Переназначить водителя</text>
+
+    <rect class="warn" x="1130" y="1186" width="300" height="64"/>
+    <text class="label" x="1280" y="1224">Перенос / возврат</text>
+
+    <rect class="warn" x="1130" y="1486" width="300" height="64"/>
+    <text class="label" x="1280" y="1524">Спор клиента</text>
+
+    <rect class="warn" x="1130" y="1576" width="300" height="64"/>
+    <text class="label" x="1280" y="1614">Ручное решение</text>
+  </g>
+
+  <!-- Main vertical connectors -->
+  <g>
+    <line class="flowGreen" x1="800" y1="164" x2="800" y2="190" marker-end="url(#arrGreen)"/>
+    <line class="flowGreen" x1="800" y1="254" x2="800" y2="270" marker-end="url(#arrGreen)"/>
+    <line class="flowGreen" x1="800" y1="366" x2="800" y2="400" marker-end="url(#arrGreen)"/>
+    <line class="flowGreen" x1="800" y1="464" x2="800" y2="480" marker-end="url(#arrGreen)"/>
+    <line class="flowGreen" x1="800" y1="576" x2="800" y2="610" marker-end="url(#arrGreen)"/>
+    <line class="flowGreen" x1="800" y1="674" x2="800" y2="700" marker-end="url(#arrGreen)"/>
+    <line class="flowGreen" x1="800" y1="764" x2="800" y2="780" marker-end="url(#arrGreen)"/>
+    <line class="flowGreen" x1="800" y1="876" x2="800" y2="910" marker-end="url(#arrGreen)"/>
+    <line class="flowGreen" x1="800" y1="974" x2="800" y2="1000" marker-end="url(#arrGreen)"/>
+    <line class="flowGreen" x1="800" y1="1064" x2="800" y2="1090" marker-end="url(#arrGreen)"/>
+    <line class="flowGreen" x1="800" y1="1154" x2="800" y2="1170" marker-end="url(#arrGreen)"/>
+    <line class="flowGreen" x1="800" y1="1266" x2="800" y2="1300" marker-end="url(#arrGreen)"/>
+    <line class="flowGreen" x1="800" y1="1364" x2="800" y2="1390" marker-end="url(#arrGreen)"/>
+    <line class="flowGreen" x1="800" y1="1454" x2="800" y2="1470" marker-end="url(#arrGreen)"/>
+    <line class="flowGreen" x1="800" y1="1566" x2="800" y2="1600" marker-end="url(#arrGreen)"/>
+  </g>
+
+  <!-- Branch connectors -->
+  <g>
+    <line class="flowRed" x1="640" y1="318" x2="470" y2="318" marker-end="url(#arrRed)"/>
+    <text class="edgeLabel" x="540" y="304">Нет</text>
+
+    <line class="flowAmber" x1="960" y1="318" x2="1130" y2="318" marker-end="url(#arrAmber)"/>
+    <text class="edgeLabel" x="1030" y="304">Частично</text>
+    <path class="flowGreen dashed" d="M 1280 350 C 1280 382 980 382 860 400" marker-end="url(#arrGreen)"/>
+
+    <line class="flowAmber" x1="640" y1="528" x2="470" y2="528" marker-end="url(#arrAmber)"/>
+    <text class="edgeLabel" x="540" y="514">Нет</text>
+    <line class="flowRed" x1="320" y1="560" x2="320" y2="586" marker-end="url(#arrRed)"/>
+    <path class="flowGreen dashed" d="M 470 528 C 560 528 560 430 660 430" marker-end="url(#arrGreen)"/>
+
+    <line class="flowAmber" x1="960" y1="828" x2="1130" y2="828" marker-end="url(#arrAmber)"/>
+    <text class="edgeLabel" x="1030" y="814">Нет</text>
+    <path class="flowGreen dashed" d="M 1130 828 C 1030 828 1010 732 940 732" marker-end="url(#arrGreen)"/>
+
+    <line class="flowAmber" x1="960" y1="1218" x2="1130" y2="1218" marker-end="url(#arrAmber)"/>
+    <text class="edgeLabel" x="1030" y="1204">Нет</text>
+    <path class="flowGreen dashed" d="M 1130 1218 C 1010 1218 1010 1032 940 1032" marker-end="url(#arrGreen)"/>
+
+    <line class="flowAmber" x1="960" y1="1518" x2="1130" y2="1518" marker-end="url(#arrAmber)"/>
+    <text class="edgeLabel" x="1030" y="1504">Да</text>
+    <line class="flowAmber" x1="1280" y1="1550" x2="1280" y2="1576" marker-end="url(#arrAmber)"/>
+    <path class="flowGreen dashed" d="M 1130 1608 C 1040 1608 980 1632 940 1632" marker-end="url(#arrGreen)"/>
+  </g>
+
+  <!-- Yes/No hints for straight-through decisions -->
+  <g>
+    <text class="edgeLabel" x="820" y="388">Да</text>
+    <text class="edgeLabel" x="820" y="598">Да</text>
+    <text class="edgeLabel" x="820" y="898">Да</text>
+    <text class="edgeLabel" x="820" y="1288">Да</text>
+    <text class="edgeLabel" x="820" y="1588">Нет</text>
+  </g>
+</svg>
