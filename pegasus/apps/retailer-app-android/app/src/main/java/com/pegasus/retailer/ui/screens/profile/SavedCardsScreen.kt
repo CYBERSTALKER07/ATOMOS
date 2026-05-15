@@ -153,9 +153,6 @@ fun SavedCardsScreen(
     }
 
     if (showAddDialog) {
-        var cardNumber by remember { mutableStateOf("") }
-        var expire by remember { mutableStateOf("") }
-        
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
             title = { Text("Add Card") },
@@ -164,28 +161,19 @@ fun SavedCardsScreen(
                     if (uiState.addError != null) {
                         Text(uiState.addError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
-                    OutlinedTextField(
-                        value = cardNumber,
-                        onValueChange = { cardNumber = it },
-                        label = { Text("Card Number") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = expire,
-                        onValueChange = { expire = it },
-                        label = { Text("MMYY") },
-                        modifier = Modifier.fillMaxWidth()
+                    Text(
+                        "This will initiate tokenization securely via GlobalPay.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    if (cardNumber.isNotBlank() && expire.isNotBlank()) {
-                        viewModel.initiateCard(cardNumber, expire)
-                        showAddDialog = false
-                    }
+                    viewModel.initiateCard()
+                    showAddDialog = false
                 }) {
-                    Text("Next")
+                    Text("Start Tokenization")
                 }
             },
             dismissButton = {

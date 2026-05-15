@@ -101,18 +101,16 @@ class SavedCardsViewModel @Inject constructor(
         }
     }
 
-    fun initiateCard(cardNumber: String, expire: String) {
+    fun initiateCard() {
         viewModelScope.launch {
             _uiState.update { it.copy(addError = null, loadIssue = null) }
             try {
                 val res = api.initiateCard(mapOf(
-                    "card_number" to cardNumber,
-                    "expire" to expire
+                    "gateway" to "GLOBAL_PAY"
                 ))
                 if (res is JsonObject) {
-                    val session = res["session"]?.jsonPrimitive?.contentOrNull
-                    val phone = res["phone"]?.jsonPrimitive?.contentOrNull
-                    _uiState.update { it.copy(initiateSession = session, otpPhone = phone, isAddingCard = true) }
+                    val session = res["card_token"]?.jsonPrimitive?.contentOrNull
+                    _uiState.update { it.copy(initiateSession = session, otpPhone = null, isAddingCard = true) }
                 }
             } catch (e: Exception) {
                 val issue = resolveLoadIssue(e)
@@ -132,8 +130,8 @@ class SavedCardsViewModel @Inject constructor(
             _uiState.update { it.copy(addError = null, loadIssue = null) }
             try {
                 api.confirmCard(mapOf(
-                    "session" to session,
-                    "otp" to otp
+                    "card_token" to session,
+                    "otp_code" to otp
                 ))
                 _uiState.update { it.copy(isAddingCard = false, initiateSession = null, otpPhone = null) }
                 loadCards()
