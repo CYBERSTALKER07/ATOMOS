@@ -3670,6 +3670,7 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		checkoutResult, checkoutErr := payment.CreateGlobalPayHostedCheckout(ctx, creds, checkoutReq)
 		if checkoutErr != nil {
 			urlErr = checkoutErr
+			s.Trigger3CFallback(ctx, retailerId, gateway, fmt.Sprintf("hosted checkout init failed: %v", checkoutErr))
 			if s.SessionSvc != nil {
 				if failErr := s.SessionSvc.FailSession(ctx, resp.SessionID, "GLOBAL_PAY_INIT_FAILED", checkoutErr.Error()); failErr != nil {
 					slog.Error("order.card_checkout_session_fail_failed", "session_id", resp.SessionID, "err", failErr)
@@ -3705,6 +3706,7 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		})
 		if checkoutErr != nil {
 			urlErr = checkoutErr
+			s.Trigger3CFallback(ctx, retailerId, gateway, fmt.Sprintf("hosted checkout init failed: %v", checkoutErr))
 			if s.SessionSvc != nil {
 				if failErr := s.SessionSvc.FailSession(ctx, resp.SessionID, "ADYEN_INIT_FAILED", checkoutErr.Error()); failErr != nil {
 					slog.Error("order.card_checkout_session_fail_failed", "session_id", resp.SessionID, "err", failErr)

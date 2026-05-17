@@ -1050,6 +1050,7 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 		Recipients: splitRecipients,
 	})
 	if authErr != nil {
+		s.Trigger3CFallback(ctx, retailerID, "GLOBAL_PAY", fmt.Sprintf("authorize call failed: %v", authErr))
 		return fmt.Errorf("authorize call: %w", authErr)
 	}
 	if authResult.Action != nil && strings.TrimSpace(authResult.Action.RedirectURL) != "" {
