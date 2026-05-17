@@ -29,6 +29,7 @@ CREATE TABLE Retailers (
     ReceivingWindowClose    STRING(10),               -- HH:MM — end of receiving window (e.g. "18:00")
     AccessType              STRING(30),               -- STREET_PARKING | ALLEYWAY | LOADING_DOCK
     StorageCeilingHeightCM  FLOAT64,                  -- Maximum ceiling height in cm (for tall pallets/vehicles)
+    CountryCode             STRING(2),                -- ISO 3166-1 alpha-2 (e.g. "UZ"). Nullable to avoid breaking existing rows.
     CreatedAt               TIMESTAMP OPTIONS (allow_commit_timestamp=true)
 ) PRIMARY KEY (RetailerId);
 

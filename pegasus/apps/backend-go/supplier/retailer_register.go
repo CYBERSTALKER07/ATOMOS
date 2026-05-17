@@ -40,10 +40,14 @@ func HandleRetailerRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			ReceivingWindowClose   string  `json:"receiving_window_close"`    // e.g. "17:00"
 			AccessType             string  `json:"access_type"`               // STREET_PARKING | ALLEYWAY | LOADING_DOCK
 			StorageCeilingHeightCM float64 `json:"storage_ceiling_height_cm"` // 0 means not provided
+			CountryCode            string  `json:"country_code"`              // e.g. "UZ"
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, `{"error":"invalid JSON body"}`, http.StatusBadRequest)
 			return
+		}
+		if req.CountryCode == "" {
+			req.CountryCode = "UZ"
 		}
 		if req.PhoneNumber == "" || req.Password == "" || req.OwnerName == "" {
 			http.Error(w, `{"error":"phone_number, password, and owner_name are required"}`, http.StatusBadRequest)
@@ -87,12 +91,13 @@ func HandleRetailerRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			"RetailerId":              retailerId,
 			"Name":                    req.OwnerName,
 			"Phone":                   req.PhoneNumber,
-			"ShopName":                shopName,
-			"ShopLocation":            req.AddressText,
-			"TaxIdentificationNumber": req.TaxId,
 			"PasswordHash":            string(hash),
 			"Status":                  "VERIFIED",
+			"TaxIdentificationNumber": req.TaxId,
 			"CreatedAt":               spanner.CommitTimestamp,
+			"ShopName":                shopName,
+			"ShopLocation":            req.AddressText,
+			"CountryCode":             req.CountryCode,
 		}
 		if req.Latitude != 0 || req.Longitude != 0 {
 			insertMap["Latitude"] = req.Latitude
@@ -143,6 +148,7 @@ func HandleRetailerRegister(spannerClient *spanner.Client) http.HandlerFunc {
 				Lat:         lat,
 				Lng:         lng,
 				H3Cell:      h3Cell,
+				RegionCode:  req.CountryCode,
 				Timestamp:   time.Now().UTC(),
 			}
 			return outbox.EmitJSON(txn, "Retailer", retailerId,

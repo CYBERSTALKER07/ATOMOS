@@ -487,7 +487,7 @@ func getRetailerProfileCached(w http.ResponseWriter, r *http.Request, client *sp
 
 func fetchRetailerProfile(ctx context.Context, client *spanner.Client, retailerID string) ([]byte, error) {
 	stmt := spanner.Statement{
-		SQL: `SELECT RetailerId, Name, Phone, ShopName, ShopLocation, TaxIdentificationNumber, Status
+		SQL: `SELECT RetailerId, Name, Phone, ShopName, ShopLocation, TaxIdentificationNumber, Status, CountryCode
 		      FROM Retailers WHERE RetailerId = @id`,
 		Params: map[string]interface{}{"id": retailerID},
 	}
@@ -504,19 +504,20 @@ func fetchRetailerProfile(ctx context.Context, client *spanner.Client, retailerI
 	}
 
 	var id, name string
-	var phone, shopName, shopLocation, taxID, status spanner.NullString
-	if err := row.Columns(&id, &name, &phone, &shopName, &shopLocation, &taxID, &status); err != nil {
+	var phone, shopName, shopLocation, taxID, status, countryCode spanner.NullString
+	if err := row.Columns(&id, &name, &phone, &shopName, &shopLocation, &taxID, &status, &countryCode); err != nil {
 		return nil, fmt.Errorf("parse retailer %s: %w", retailerID, err)
 	}
 
 	return json.Marshal(map[string]interface{}{
-		"id":       id,
-		"name":     name,
-		"phone":    phone.StringVal,
-		"company":  shopName.StringVal,
-		"location": shopLocation.StringVal,
-		"tax_id":   taxID.StringVal,
-		"status":   status.StringVal,
+		"id":           id,
+		"name":         name,
+		"phone":        phone.StringVal,
+		"company":      shopName.StringVal,
+		"location":     shopLocation.StringVal,
+		"tax_id":       taxID.StringVal,
+		"status":       status.StringVal,
+		"country_code": countryCode.StringVal,
 	})
 }
 
@@ -527,6 +528,7 @@ func putRetailerProfile(w http.ResponseWriter, r *http.Request, client *spanner.
 		Location             string `json:"location"`
 		ReceivingWindowOpen  string `json:"receiving_window_open"`
 		ReceivingWindowClose string `json:"receiving_window_close"`
+		CountryCode          string `json:"country_code"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
@@ -547,6 +549,10 @@ func putRetailerProfile(w http.ResponseWriter, r *http.Request, client *spanner.
 	if req.Location != "" {
 		cols = append(cols, "ShopLocation")
 		vals = append(vals, req.Location)
+	}
+	if req.CountryCode != "" {
+		cols = append(cols, "CountryCode")
+		vals = append(vals, req.CountryCode)
 	}
 	if req.ReceivingWindowOpen != "" {
 		canon, err := proximity.ValidateReceivingWindow(req.ReceivingWindowOpen)

@@ -1486,6 +1486,7 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 			"ALTER TABLE Suppliers ADD COLUMN RegionId STRING(36)",
 			"ALTER TABLE Warehouses ADD COLUMN RegionId STRING(36)",
 			"ALTER TABLE Retailers ADD COLUMN RegionId STRING(36)",
+			"ALTER TABLE Retailers ADD COLUMN CountryCode STRING(2)",
 			"CREATE INDEX Idx_Suppliers_ByRegionId ON Suppliers(RegionId)",
 			"CREATE INDEX Idx_Warehouses_ByRegionId ON Warehouses(RegionId)",
 			"CREATE INDEX Idx_Retailers_ByRegionId ON Retailers(RegionId)",
