@@ -3,6 +3,7 @@ package warehouse
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -270,7 +271,9 @@ func loadImportFreshness(ctx context.Context, client *spanner.Client, supplierID
 	summaryIter := spannerx.StaleQuery(ctx, client, summaryStmt)
 	defer summaryIter.Stop()
 	if row, err := summaryIter.Next(); err == nil {
-		_ = row.Columns(&freshness.AppliedRows30D, &freshness.AppliedSKUs30D, &freshness.QuantityDelta30D)
+		if err := row.Columns(&freshness.AppliedRows30D, &freshness.AppliedSKUs30D, &freshness.QuantityDelta30D); err != nil {
+			slog.WarnContext(ctx, "warehouse analytics column read failed", "error", err)
+		}
 	}
 
 	latestStmt := spanner.Statement{

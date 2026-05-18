@@ -109,6 +109,71 @@ spec:
               More than 20% of dispatch cycles are using the KMeans Phase-1 fallback
               instead of the gRPC Phase-2 VRP optimizer. Check ai-worker health.
 
+    # ── Optimizer canary scorecard (Phase-7 hard gates) ───────────────────
+    - name: void.optimizer_canary
+      interval: 60s
+      rules:
+        # p99 solver duration over 5 minutes; strict canary pass threshold is <= 100 ms.
+        - record: void_optimizer_solver_duration_seconds
+          expr: |
+            histogram_quantile(0.99,
+              sum(rate(void_grpc_optimizer_latency_seconds_bucket[5m])) by (le)
+            )
+
+        # Canary error-rate signal built from timeout/error/fallback outcomes.
+        - record: void_optimizer_error_rate
+          expr: |
+            (
+              sum(rate(void_grpc_optimizer_calls_total{result=~"timeout|error|fallback"}[5m]))
+              /
+              clamp_min(sum(rate(void_grpc_optimizer_calls_total[5m])), 1)
+            )
+
+        # Until a dedicated optimizer breaker gauge is exported, use the
+        # shared breaker state as the canary hard-stop proxy.
+        - record: void_optimizer_circuit_breaker_state
+          expr: |
+            max(void_redis_circuit_breaker_state)
+
+        - alert: OptimizerCanaryFailSolverDuration
+          expr: void_optimizer_solver_duration_seconds > 0.1
+          for: 15m
+          labels:
+            severity: critical
+            team: platform
+            gate: optimizer-canary
+          annotations:
+            summary: "Optimizer canary FAIL: p99 solver duration > 100 ms"
+            description: |
+              Phase-7 hard gate violated. p99 solver duration is {{ $value }}s (> 0.1s)
+              for 15m. Roll back canary traffic until latency returns to threshold.
+
+        - alert: OptimizerCanaryFailErrorRate
+          expr: void_optimizer_error_rate > 0.01
+          for: 15m
+          labels:
+            severity: critical
+            team: platform
+            gate: optimizer-canary
+          annotations:
+            summary: "Optimizer canary FAIL: error rate > 1%"
+            description: |
+              Phase-7 hard gate violated. Optimizer error-rate (timeout+error+fallback)
+              is {{ $value | humanizePercentage }} (> 1%) for 15m.
+
+        - alert: OptimizerCanaryFailCircuitBreaker
+          expr: void_optimizer_circuit_breaker_state > 0
+          for: 5m
+          labels:
+            severity: critical
+            team: platform
+            gate: optimizer-canary
+          annotations:
+            summary: "Optimizer canary FAIL: circuit breaker is not CLOSED"
+            description: |
+              Phase-7 hard gate violated. Optimizer circuit breaker state is {{ $value }}
+              (expected 0=CLOSED). Roll back canary immediately.
+
     # ── WebSocket Pub/Sub ─────────────────────────────────────────────────
     - name: void.ws
       interval: 60s

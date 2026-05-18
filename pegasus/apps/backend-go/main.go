@@ -22,6 +22,7 @@ import (
 	"backend-go/catalogroutes"
 	"backend-go/deliveryroutes"
 	"backend-go/driverroutes"
+	"backend-go/entityresolutionroutes"
 	"backend-go/factory"
 	"backend-go/factoryroutes"
 	"backend-go/fleetroutes"
@@ -316,6 +317,11 @@ func main() {
 		Spanner:     spannerClient,
 		ReadRouter:  app.SpannerRouter,
 		CountryCfg:  countryCfgSvc,
+		Log:         loggingMiddleware,
+		Idempotency: idempotency.Guard,
+	})
+	entityresolutionroutes.RegisterRoutes(r, entityresolutionroutes.Deps{
+		Spanner:     spannerClient,
 		Log:         loggingMiddleware,
 		Idempotency: idempotency.Guard,
 	})

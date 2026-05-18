@@ -126,6 +126,69 @@
       "title": "CommandSettledPayload",
       "type": "object"
     },
+    "DeliveryDeltaRefundedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "adjusted_amount": {
+          "type": "integer"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "delivery_session_id": {
+          "type": "string"
+        },
+        "delta_amount": {
+          "type": "integer"
+        },
+        "gateway": {
+          "type": "string"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "original_amount": {
+          "type": "integer"
+        },
+        "provider_refund_id": {
+          "type": "string"
+        },
+        "refund_id": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "adjusted_amount",
+        "currency",
+        "delivery_session_id",
+        "delta_amount",
+        "gateway",
+        "order_id",
+        "original_amount",
+        "refund_id",
+        "session_id",
+        "status",
+        "timestamp"
+      ],
+      "title": "DeliveryDeltaRefundedPayload",
+      "type": "object"
+    },
     "DeliveryDisputedPayload": {
       "additionalProperties": true,
       "properties": {
@@ -182,6 +245,15 @@
         "fee_basis_points": {
           "type": "integer"
         },
+        "fee_cap_applied": {
+          "type": "boolean"
+        },
+        "fee_policy_version": {
+          "type": "string"
+        },
+        "net_payout_amount": {
+          "type": "integer"
+        },
         "order_id": {
           "type": "string"
         },
@@ -189,6 +261,9 @@
           "type": "integer"
         },
         "retailer_id": {
+          "type": "string"
+        },
+        "selected_tier_key": {
           "type": "string"
         },
         "session_id": {
@@ -1679,8 +1754,10 @@
         }
       },
       "required": [
+        "invoice_id",
         "order_id",
         "reason",
+        "retailer_id",
         "timestamp"
       ],
       "title": "OrderValidationFailedPayload",
@@ -1926,6 +2003,32 @@
         "timestamp"
       ],
       "title": "PaymentFailedPayload",
+      "type": "object"
+    },
+    "PaymentGatewayDegradedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "gateway": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "retailer_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "gateway",
+        "reason",
+        "retailer_id",
+        "timestamp"
+      ],
+      "title": "PaymentGatewayDegradedPayload",
       "type": "object"
     },
     "PaymentSettledPayload": {
@@ -2224,7 +2327,6 @@
         }
       },
       "required": [
-        "h3_cell",
         "lat",
         "lng",
         "owner_name",
@@ -2365,6 +2467,89 @@
         "timestamp"
       ],
       "title": "SettlementRequiredPayload",
+      "type": "object"
+    },
+    "SettlementRevisedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "currency": {
+          "type": "string"
+        },
+        "fee_amount": {
+          "type": "integer"
+        },
+        "fee_basis_points": {
+          "type": "integer"
+        },
+        "fee_cap_applied": {
+          "type": "boolean"
+        },
+        "fee_policy_version": {
+          "type": "string"
+        },
+        "gross_amount": {
+          "type": "integer"
+        },
+        "invoice_id": {
+          "type": "string"
+        },
+        "net_payout_amount": {
+          "type": "integer"
+        },
+        "order_id": {
+          "type": "string"
+        },
+        "original_slice_id": {
+          "type": "string"
+        },
+        "payout_owner_id": {
+          "type": "string"
+        },
+        "payout_owner_type": {
+          "type": "string"
+        },
+        "revision_reason": {
+          "type": "string"
+        },
+        "revision_slice_id": {
+          "type": "string"
+        },
+        "selected_tier_key": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "settlement_target": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "warehouse_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "currency",
+        "fee_amount",
+        "fee_basis_points",
+        "fee_policy_version",
+        "gross_amount",
+        "invoice_id",
+        "net_payout_amount",
+        "order_id",
+        "original_slice_id",
+        "revision_reason",
+        "revision_slice_id",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "SettlementRevisedPayload",
       "type": "object"
     },
     "ShopClosedEscalatedPayload": {
@@ -2592,6 +2777,73 @@
         "warehouse_id"
       ],
       "title": "StockThresholdBreachPayload",
+      "type": "object"
+    },
+    "SupplierConfiguredPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "operating_categories": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "tax_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "SupplierConfiguredPayload",
+      "type": "object"
+    },
+    "SupplierRegisteredPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "company_name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "phone_number": {
+          "type": "string"
+        },
+        "region_code": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timestamp": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "company_name",
+        "phone_number",
+        "region_code",
+        "supplier_id",
+        "timestamp"
+      ],
+      "title": "SupplierRegisteredPayload",
       "type": "object"
     },
     "SupplyLaneTransitUpdatedPayload": {
@@ -3179,6 +3431,25 @@
         }
       ],
       "title": "CreditDeliveryResolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/DeliveryDeltaRefundedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DELIVERY_DELTA_REFUNDED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DeliveryDeltaRefundedEnvelope"
     },
     {
       "allOf": [
@@ -4722,6 +4993,25 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/PaymentGatewayDegradedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYMENT_GATEWAY_DEGRADED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PaymentGatewayDegradedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/UnknownEventPayload"
         },
         {
@@ -5140,6 +5430,25 @@
     {
       "allOf": [
         {
+          "$ref": "#/$defs/SettlementRevisedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SETTLEMENT_REVISED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SettlementRevisedEnvelope"
+    },
+    {
+      "allOf": [
+        {
           "$ref": "#/$defs/ShopClosedPayload"
         },
         {
@@ -5307,6 +5616,44 @@
         }
       ],
       "title": "StockThresholdBreachEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/SupplierConfiguredPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_CONFIGURED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierConfiguredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/SupplierRegisteredPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_REGISTERED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierRegisteredEnvelope"
     },
     {
       "allOf": [
@@ -5689,6 +6036,7 @@
         "COMMAND_SETTLED",
         "CREDIT_DELIVERY_MARKED",
         "CREDIT_DELIVERY_RESOLVED",
+        "DELIVERY_DELTA_REFUNDED",
         "DELIVERY_DISPUTED",
         "DELIVERY_SESSION_UPDATED",
         "DEMAND_FORECAST_READY",
@@ -5770,6 +6118,7 @@
         "PAYMENT_CLEARED",
         "PAYMENT_EXPIRED",
         "PAYMENT_FAILED",
+        "PAYMENT_GATEWAY_DEGRADED",
         "PAYMENT_INTENT_CREATED",
         "PAYMENT_REFUNDED",
         "PAYMENT_REQUIRED",
@@ -5792,6 +6141,7 @@
         "ROUTE_CREATED",
         "ROUTE_FINALIZED",
         "SETTLEMENT_REQUIRED",
+        "SETTLEMENT_REVISED",
         "SHOP_CLOSED",
         "SHOP_CLOSED_ALERT",
         "SHOP_CLOSED_ESCALATED",
@@ -5801,6 +6151,8 @@
         "SPLIT_PAYMENT_CREATED",
         "STOCK_BACKORDERED",
         "STOCK_THRESHOLD_BREACH",
+        "SUPPLIER_CONFIGURED",
+        "SUPPLIER_REGISTERED",
         "SUPPLY_LANE_TRANSIT_UPDATED",
         "SUPPLY_REQUEST_ACKNOWLEDGED",
         "SUPPLY_REQUEST_CANCELLED",
@@ -5846,6 +6198,7 @@
     "COMMAND_SETTLED": "CommandSettledPayload",
     "CREDIT_DELIVERY_MARKED": "UnknownEventPayload",
     "CREDIT_DELIVERY_RESOLVED": "UnknownEventPayload",
+    "DELIVERY_DELTA_REFUNDED": "DeliveryDeltaRefundedPayload",
     "DELIVERY_DISPUTED": "DeliveryDisputedPayload",
     "DELIVERY_SESSION_UPDATED": "DeliverySessionUpdatedPayload",
     "DEMAND_FORECAST_READY": "DemandForecastReadyPayload",
@@ -5927,6 +6280,7 @@
     "PAYMENT_CLEARED": "PaymentClearedPayload",
     "PAYMENT_EXPIRED": "UnknownEventPayload",
     "PAYMENT_FAILED": "PaymentFailedPayload",
+    "PAYMENT_GATEWAY_DEGRADED": "PaymentGatewayDegradedPayload",
     "PAYMENT_INTENT_CREATED": "UnknownEventPayload",
     "PAYMENT_REFUNDED": "UnknownEventPayload",
     "PAYMENT_REQUIRED": "UnknownEventPayload",
@@ -5949,6 +6303,7 @@
     "ROUTE_CREATED": "RouteCreatedPayload",
     "ROUTE_FINALIZED": "RouteFinalizedPayload",
     "SETTLEMENT_REQUIRED": "SettlementRequiredPayload",
+    "SETTLEMENT_REVISED": "SettlementRevisedPayload",
     "SHOP_CLOSED": "ShopClosedPayload",
     "SHOP_CLOSED_ALERT": "UnknownEventPayload",
     "SHOP_CLOSED_ESCALATED": "ShopClosedEscalatedPayload",
@@ -5958,6 +6313,8 @@
     "SPLIT_PAYMENT_CREATED": "UnknownEventPayload",
     "STOCK_BACKORDERED": "StockBackorderedPayload",
     "STOCK_THRESHOLD_BREACH": "StockThresholdBreachPayload",
+    "SUPPLIER_CONFIGURED": "SupplierConfiguredPayload",
+    "SUPPLIER_REGISTERED": "SupplierRegisteredPayload",
     "SUPPLY_LANE_TRANSIT_UPDATED": "SupplyLaneTransitUpdatedPayload",
     "SUPPLY_REQUEST_ACKNOWLEDGED": "UnknownEventPayload",
     "SUPPLY_REQUEST_CANCELLED": "UnknownEventPayload",

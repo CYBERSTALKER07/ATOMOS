@@ -19,6 +19,8 @@ import (
 	"os"
 	"time"
 
+	"backend-go/cache"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
 	"google.golang.org/grpc"
@@ -38,24 +40,36 @@ import (
 const (
 	// DefaultTimeout matches the HTTP client's 2.5 s budget.
 	DefaultTimeout = 2500 * time.Millisecond
+	dialTimeout    = 3 * time.Second
 
 	// xDS service name — must match the mesh resource name in the
 	// TrafficDirector / Cloud Service Mesh configuration.
 	xdsTarget = "xds:///ai-worker"
 
 	// Direct target used when xDS is not configured (dev / CI).
-	envGRPCAddr = "OPTIMIZER_GRPC_ADDR"
+	envGRPCAddr      = "OPTIMIZER_GRPC_ADDR"
+	envSidecarTarget = "OPTIMIZER_SIDE_ENDPOINT"
+
+	// Trip quickly on transport degradation so callers can fall back without
+	// burning the full timeout budget on repeated failing dials/calls.
+	breakerFailureThreshold = 3
+	breakerOpenDuration     = 5 * time.Second
 )
 
 var tracer = otel.Tracer("backend-go/internal/rpc/optimizergrpc")
+
+type solverStub interface {
+	Solve(ctx context.Context, req *contract.SolveRequest, opts ...grpc.CallOption) (*contract.SolveResponse, error)
+}
 
 // GRPCClient wraps the optimizer.Client with a managed *grpc.ClientConn.
 // It is the replacement for dispatch/optimizerclient.Client when
 // OPTIMIZER_GRPC_ADDR is set.
 type GRPCClient struct {
 	conn   *grpc.ClientConn
-	stub   *optimizer.Client
+	stub   solverStub
 	apiKey string
+	cb     *cache.CircuitBreaker
 }
 
 // New dials the optimizer service. addr should be:
@@ -63,7 +77,10 @@ type GRPCClient struct {
 //   - "xds:///ai-worker" → service-mesh routing
 //   - "host:port" → direct dial (dev/test)
 func New(apiKey string) (*GRPCClient, error) {
-	addr := os.Getenv(envGRPCAddr)
+	addr := os.Getenv(envSidecarTarget)
+	if addr == "" {
+		addr = os.Getenv(envGRPCAddr)
+	}
 	if addr == "" {
 		return nil, nil // Signal: use HTTP fallback
 	}
@@ -73,8 +90,12 @@ func New(apiKey string) (*GRPCClient, error) {
 
 	// Use insecure credentials within the cluster mesh (mTLS is handled by
 	// the service mesh sidecar, not the application layer).
-	conn, err := grpc.NewClient(addr,
+	dialCtx, cancelDial := context.WithTimeout(context.Background(), dialTimeout)
+	defer cancelDial()
+
+	conn, err := grpc.DialContext(dialCtx, addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
 		grpc.WithDefaultCallOptions(
 			grpc.ForceCodec(rpc.JSONCodec{}),
 		),
@@ -104,16 +125,21 @@ func New(apiKey string) (*GRPCClient, error) {
 		return nil, fmt.Errorf("optimizer grpc dial %s: %w", addr, err)
 	}
 
+	breaker := cache.NewCircuitBreaker("optimizer_grpc")
+	breaker.FailureThreshold = breakerFailureThreshold
+	breaker.OpenDuration = breakerOpenDuration
+
 	return &GRPCClient{
 		conn:   conn,
 		stub:   optimizer.NewClient(conn),
 		apiKey: apiKey,
+		cb:     breaker,
 	}, nil
 }
 
 // Solve calls the remote optimiser over gRPC with the shared timeout.
-// On any error it returns (nil, err); the caller (dispatch.orchestrate) falls
-// back to KMEANS_BINPACK identically to the HTTP fallback path.
+// On any error it returns (nil, err); callers can route through the existing
+// optimizer fallback path (KMEANS_BINPACK) identically to HTTP degradation.
 func (c *GRPCClient) Solve(ctx context.Context, req *contract.SolveRequest) (*contract.SolveResponse, error) {
 	ctx, span := tracer.Start(ctx, "optimizer.Solve")
 	defer span.End()
@@ -128,7 +154,22 @@ func (c *GRPCClient) Solve(ctx context.Context, req *contract.SolveRequest) (*co
 		"x-trace-id", req.TraceID,
 	)
 
-	resp, err := c.stub.Solve(ctx, req)
+	var resp *contract.SolveResponse
+	call := func() error {
+		result, solveErr := c.stub.Solve(ctx, req)
+		if solveErr != nil {
+			return solveErr
+		}
+		resp = result
+		return nil
+	}
+
+	var err error
+	if c.cb != nil {
+		err = c.cb.Do(call)
+	} else {
+		err = call()
+	}
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("optimizer grpc solve: %w", err)

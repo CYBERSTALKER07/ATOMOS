@@ -15,3 +15,4 @@ export * from './factory';
 export * from './ws-events';
 export * from './pricing';
 export * from './problem';
+export * from './entity-resolution';

@@ -119,6 +119,8 @@ const (
 	// supplier portal real-time list refresh (external, via WS hub).
 	EventFactoryCreated     = "FACTORY_CREATED"
 	EventRetailerRegistered = "RETAILER_REGISTERED"
+	EventSupplierRegistered = "SUPPLIER_REGISTERED"
+	EventSupplierConfigured = "SUPPLIER_CONFIGURED"
 
 	// Internal Transfer Lifecycle Events
 	EventTransferStateChanged = "TRANSFER_STATE_CHANGED"
@@ -923,9 +925,27 @@ type RetailerRegisteredEvent struct {
 	PhoneNumber string    `json:"phone_number"`
 	Lat         float64   `json:"lat"`
 	Lng         float64   `json:"lng"`
-	H3Cell      string    `json:"h3_cell"`
+	H3Cell      string    `json:"h3_cell,omitempty"`
 	RegionCode  string    `json:"region_code"`
 	Timestamp   time.Time `json:"timestamp"`
+}
+
+// SupplierRegisteredEvent is emitted when a new supplier is onboarded.
+type SupplierRegisteredEvent struct {
+	SupplierID  string    `json:"supplier_id"`
+	CompanyName string    `json:"company_name"`
+	PhoneNumber string    `json:"phone_number"`
+	Email       string    `json:"email,omitempty"`
+	RegionCode  string    `json:"region_code"`
+	Timestamp   time.Time `json:"timestamp"`
+}
+
+// SupplierConfiguredEvent is emitted when a supplier finishes billing/tax configuration.
+type SupplierConfiguredEvent struct {
+	SupplierID          string    `json:"supplier_id"`
+	TaxID               string    `json:"tax_id,omitempty"`
+	OperatingCategories []string  `json:"operating_categories,omitempty"`
+	Timestamp           time.Time `json:"timestamp"`
 }
 
 // WarehouseStatusChangedEvent is emitted when IsActive or IsOnShift toggles.

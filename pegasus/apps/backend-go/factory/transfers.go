@@ -26,6 +26,11 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
+var (
+	errTransferNotFound  = errors.New("transfer not found")
+	errTransferForbidden = errors.New("transfer does not belong to this scope")
+)
+
 // ── Internal Transfer Order State Machine ─────────────────────────────────────
 //
 //  DRAFT → APPROVED → LOADING → DISPATCHED → IN_TRANSIT → ARRIVED → RECEIVED
@@ -853,107 +858,116 @@ func (s *TransferService) HandleApproveTransfer(w http.ResponseWriter, r *http.R
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
 
-	// 1. Read transfer and validate DRAFT → APPROVED
-	row, err := s.Spanner.Single().ReadRow(ctx, "InternalTransferOrders",
-		spanner.Key{transferID},
-		[]string{"State", "FactoryId", "SupplierId", "WarehouseId", "TotalVolumeVU"})
-	if err != nil {
-		http.Error(w, `{"error":"transfer not found"}`, http.StatusNotFound)
-		return
-	}
-
-	var currentState, rowFactoryID, supplierID, warehouseID string
 	var totalVolumeVU float64
-	if err := row.Columns(&currentState, &rowFactoryID, &supplierID, &warehouseID, &totalVolumeVU); err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	var supplierID, warehouseID string
+	var manifestIDs []string
+	convoyCount := 0
 
-	if rowFactoryID != factoryID {
-		http.Error(w, `{"error":"transfer does not belong to this factory"}`, http.StatusForbidden)
-		return
-	}
+	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		// 1. Read transfer and validate DRAFT → APPROVED
+		row, err := txn.ReadRow(ctx, "InternalTransferOrders",
+			spanner.Key{transferID},
+			[]string{"State", "FactoryId", "SupplierId", "WarehouseId", "TotalVolumeVU"})
+		if err != nil {
+			if spanner.ErrCode(err) == codes.NotFound {
+				return errTransferNotFound
+			}
+			return err
+		}
 
-	if currentState != "DRAFT" {
-		http.Error(w, fmt.Sprintf(`{"error":"invalid transition: %s → APPROVED (must be DRAFT)"}`, currentState), http.StatusConflict)
-		return
-	}
+		var currentState, rowFactoryID string
+		if err := row.Columns(&currentState, &rowFactoryID, &supplierID, &warehouseID, &totalVolumeVU); err != nil {
+			return err
+		}
 
-	// 2. Apply DRAFT → APPROVED
-	m := spanner.Update("InternalTransferOrders",
-		[]string{"TransferId", "State", "UpdatedAt"},
-		[]interface{}{transferID, "APPROVED", spanner.CommitTimestamp},
-	)
-	if _, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{m})
-	}); err != nil {
+		if rowFactoryID != factoryID {
+			return errTransferForbidden
+		}
+
+		if currentState != "DRAFT" {
+			return fmt.Errorf("invalid transition: %s → APPROVED (must be DRAFT)", currentState)
+		}
+
+		// 2. Apply DRAFT → APPROVED
+		var mutations []*spanner.Mutation
+		mutations = append(mutations, spanner.Update("InternalTransferOrders",
+			[]string{"TransferId", "State", "UpdatedAt"},
+			[]interface{}{transferID, "APPROVED", spanner.CommitTimestamp},
+		))
+
+		// 3. Post-approval: generate convoy manifests via Volumetric Engine
+		convoyCount = int(math.Ceil(totalVolumeVU / FactoryClassCCapacityVU))
+		if convoyCount < 1 {
+			convoyCount = 1
+		}
+
+		manifestIDs = []string{}
+		if convoyCount > 1 || totalVolumeVU > 0 {
+			for i := 0; i < convoyCount; i++ {
+				manifestID := uuid.New().String()
+				truckVU := FactoryClassCCapacityVU
+				if i == convoyCount-1 {
+					// Last truck gets the remainder
+					truckVU = totalVolumeVU - float64(i)*FactoryClassCCapacityVU
+					if truckVU <= 0 {
+						continue
+					}
+				}
+				mutations = append(mutations, spanner.InsertMap("FactoryTruckManifests", map[string]interface{}{
+					"ManifestId":    manifestID,
+					"FactoryId":     factoryID,
+					"State":         "PENDING",
+					"TotalVolumeVU": truckVU,
+					"MaxVolumeVU":   FactoryClassCCapacityVU,
+					"StopCount":     int64(1),
+					"CreatedAt":     spanner.CommitTimestamp,
+				}))
+				manifestIDs = append(manifestIDs, manifestID)
+			}
+		}
+
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+
+		// 4. Emit transfer-approval event through outbox (durable relay).
+		evt := map[string]interface{}{
+			"event":        internalKafka.EventTransferApproved,
+			"transfer_id":  transferID,
+			"factory_id":   factoryID,
+			"warehouse_id": warehouseID,
+			"supplier_id":  supplierID,
+			"volume_vu":    totalVolumeVU,
+			"convoy_count": convoyCount,
+			"manifest_ids": manifestIDs,
+			"timestamp":    time.Now().UTC().Format(time.RFC3339),
+		}
+
+		return outbox.EmitJSON(txn, "InternalTransferOrder", transferID,
+			internalKafka.EventTransferApproved, internalKafka.TopicMain, evt,
+			telemetry.TraceIDFromContext(ctx))
+	})
+
+	if err != nil {
+		if errors.Is(err, errTransferNotFound) {
+			http.Error(w, `{"error":"transfer not found"}`, http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, errTransferForbidden) {
+			http.Error(w, `{"error":"transfer does not belong to this factory"}`, http.StatusForbidden)
+			return
+		}
+		if strings.Contains(err.Error(), "invalid transition") {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusConflict)
+			return
+		}
 		log.Printf("[TRANSFERS] approve error: %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	// 3. Post-approval: generate convoy manifests via Volumetric Engine
-	convoyCount := int(math.Ceil(totalVolumeVU / FactoryClassCCapacityVU))
-	if convoyCount < 1 {
-		convoyCount = 1
-	}
-
-	var manifestIDs []string
-	if convoyCount > 1 || totalVolumeVU > 0 {
-		var mutations []*spanner.Mutation
-		for i := 0; i < convoyCount; i++ {
-			manifestID := uuid.New().String()
-			truckVU := FactoryClassCCapacityVU
-			if i == convoyCount-1 {
-				// Last truck gets the remainder
-				truckVU = totalVolumeVU - float64(i)*FactoryClassCCapacityVU
-				if truckVU <= 0 {
-					continue
-				}
-			}
-			mutations = append(mutations, spanner.InsertMap("FactoryTruckManifests", map[string]interface{}{
-				"ManifestId":    manifestID,
-				"FactoryId":     factoryID,
-				"State":         "PENDING",
-				"TotalVolumeVU": truckVU,
-				"MaxVolumeVU":   FactoryClassCCapacityVU,
-				"StopCount":     int64(1),
-				"CreatedAt":     spanner.CommitTimestamp,
-			}))
-			manifestIDs = append(manifestIDs, manifestID)
-		}
-		if len(mutations) > 0 {
-			if _, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-				return txn.BufferWrite(mutations)
-			}); err != nil {
-				log.Printf("[TRANSFERS] convoy manifest creation failed for %s: %v", transferID, err)
-				// Non-fatal — transfer is already APPROVED, manifests can be retried
-			} else {
-				log.Printf("[TRANSFERS] Created %d convoy manifests for transfer %s (%.1f VU)",
-					len(manifestIDs), transferID[:8], totalVolumeVU)
-			}
-		}
-	}
-
-	// 4. Emit transfer-approval event through outbox (durable relay).
-	evt := map[string]interface{}{
-		"event":        internalKafka.EventTransferApproved,
-		"transfer_id":  transferID,
-		"factory_id":   factoryID,
-		"warehouse_id": warehouseID,
-		"supplier_id":  supplierID,
-		"volume_vu":    totalVolumeVU,
-		"convoy_count": convoyCount,
-		"manifest_ids": manifestIDs,
-		"timestamp":    time.Now().UTC().Format(time.RFC3339),
-	}
-	if _, emitErr := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return outbox.EmitJSON(txn, "InternalTransferOrder", transferID,
-			internalKafka.EventTransferApproved, internalKafka.TopicMain, evt,
-			telemetry.TraceIDFromContext(ctx))
-	}); emitErr != nil {
-		log.Printf("[TRANSFERS] approve outbox emit failed for %s: %v", transferID, emitErr)
-	}
+	log.Printf("[TRANSFERS] Created %d convoy manifests for transfer %s (%.1f VU)",
+		len(manifestIDs), transferID[:8], totalVolumeVU)
 
 	if s.Cache != nil {
 		s.Cache.Invalidate(ctx,

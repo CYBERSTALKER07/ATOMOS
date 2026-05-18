@@ -1,5 +1,5 @@
 {
-  "version": "2026-05-16",
+  "version": "2026-05-20",
   "generatedFrom": {
     "manifests": [
       "pegasus/package.json",
@@ -17,6 +17,7 @@
   },
   "languagesAndRuntimes": [
     "Go",
+    "Python",
     "TypeScript",
     "Tailwind CSS",
     "Tauri",
@@ -28,7 +29,9 @@
     "Vite",
     "ESLint",
     "quicktype",
-    "go run ./apps/backend-go/cmd/gen-contracts"
+    "grpcio-tools",
+    "go run ./apps/backend-go/cmd/gen-contracts",
+    "make -C pegasus sprint1-gate"
   ],
   "codeRetrieval": {
     "preferredTools": [
@@ -67,6 +70,161 @@
     ]
   },
   "runtimeContracts": [
+    {
+      "name": "OR-Tools optimizer-core sidecar runtime (Pattern-A)",
+      "path": "Kafka optimization jobs -> Go adapter -> gRPC sidecar -> OutboxEvents",
+      "owner": "pegasus/services/optimizer-core/{proto,server-rust,server,adapters/go}",
+      "methods": [
+        "proto/optimizer_core.proto defines CalculateRoute (VRP), ResolveConstraint (CP-SAT), and HealthCheck RPCs",
+        "Rust sidecar adapters in server-rust/src/{mapping.rs,scaling.rs,solver/vrp.rs,solver/cpsat.rs} enforce deterministic UUID-index mapping and SCALE_FACTOR=10000 integer conversion and now execute deterministic constrained assignment + route-construction solver logic with best-effort/time-limit semantics",
+        "Go worker scaffold in adapters/go/internal/adapter/worker.go consumes optimization jobs from Kafka and wraps solver calls with bounded retry plus backoff+jitter",
+        "Go worker persists OPTIMIZATION_SOLVED payloads to Spanner OutboxEvents only and does not mutate Inventory or Manifest tables directly",
+        "Backend optimizer gRPC transport in apps/backend-go/internal/rpc/optimizergrpc/client.go now prefers OPTIMIZER_SIDE_ENDPOINT with bounded block-on-dial timeout and local circuit-breaker fast failover",
+        "infra/k8s/ai-worker/deployment.yaml now additively co-locates optimizer-core-rust sidecar and loopback endpoint wiring (127.0.0.1:50055)"
+      ],
+      "consumers": [
+        "services/optimizer-core/proto/optimizer_core.proto",
+        "services/optimizer-core/server-rust/src/{main.rs,service.rs,mapping.rs,scaling.rs,solver/vrp.rs,solver/cpsat.rs}",
+        "services/optimizer-core/server/{vrp_adapter.py,cpsat_adapter.py,service.py,main.py,mapping.py,scaling.py}",
+        "services/optimizer-core/adapters/go/internal/{adapter,optimizergrpc,model,mapping,scaling,config}",
+        "services/optimizer-core/adapters/go/cmd/optimizer-worker/main.go"
+      ],
+      "notes": [
+        "Pattern-A sidecar runtime remains additive and keeps current backend-go optimization paths intact while enabling executable Rust solver behavior.",
+        "Python sidecar remains available for dual-run canary parity checks while Rust sidecar ramps.",
+        "Go optimizergrpc transport methods are scaffold stubs pending generated Go protobuf bindings and envelope-to-protobuf mapping."
+      ]
+    },
+    {
+      "name": "Country-smart payment policy and 3C degradation closure",
+      "path": "Deterministic gateway fallback authority and single-emission degradation signaling",
+      "owner": "pegasus/apps/backend-go/{order/service.go,order/unified_checkout.go,countrycfg/regions.go} + pegasus/contracts/events.schema.json",
+      "methods": [
+        "order/service.go and order/unified_checkout.go now call resolveRequestedGatewayForRetailer before policy evaluation to avoid blank or pre-resolution fallback gateway hints",
+        "CardCheckout now uses a per-request fallback latch so cascading direct and hosted init failures emit at most one PAYMENT_GATEWAY_DEGRADED event",
+        "countrycfg/regions.go now uses a pure helper for retailer country-vs-region gateway precedence, preserving CountryCode-first behavior",
+        "contracts/events.schema.json regenerated from cmd/gen-contracts now includes PAYMENT_GATEWAY_DEGRADED contract coverage"
+      ],
+      "consumers": [
+        "apps/backend-go/order/service.go",
+        "apps/backend-go/order/unified_checkout.go",
+        "apps/backend-go/countrycfg/regions.go",
+        "apps/backend-go/countrycfg/service_test.go",
+        "apps/backend-go/order/service_test.go",
+        "contracts/events.schema.json"
+      ],
+      "notes": [
+        "Closure is additive and keeps checkout response and websocket contracts backward compatible.",
+        "Focused regressions now lock requested-gateway fallback behavior and country default gateway resolution."
+      ]
+    },
+    {
+      "name": "Sprint-2 supplier orders workflow consumption",
+      "path": "Supplier orders search fallback integration with entity-resolution",
+      "owner": "pegasus/apps/admin-portal/app/supplier/orders/page.tsx + pegasus/apps/admin-portal/lib/api/entity-resolution.ts",
+      "methods": [
+        "orders page now issues debounced resolveSupplierEntity requests only when local text matching returns zero rows",
+        "fallback projection maps ORDER and RETAILER candidates into additive order_id filtering against loaded order rows",
+        "existing tabs/history/state filter behavior remains unchanged while search enrichment is additive"
+      ],
+      "consumers": [
+        "apps/admin-portal/app/supplier/orders/page.tsx",
+        "apps/admin-portal/lib/api/entity-resolution.ts",
+        "packages/types/entity-resolution.ts"
+      ],
+      "notes": [
+        "Read-only integration path; no mutation, outbox, cache invalidation, or websocket contract changes.",
+        "Fallback activation condition limits additional API load to no-match search paths."
+      ]
+    },
+    {
+      "name": "Sprint-2 entity-resolution shared contract bridge",
+      "path": "Shared TypeScript contracts and supplier web API bridge for entity-resolution",
+      "owner": "pegasus/packages/types/{entity-resolution.ts,index.ts,package.json} + pegasus/apps/admin-portal/lib/api/entity-resolution.ts",
+      "methods": [
+        "packages/types/entity-resolution.ts defines canonical request/response envelopes and graph projection contracts for /v1/supplier/entity-resolution/{resolve,explain}",
+        "packages/types/index.ts and package.json now export entity-resolution contracts as barrel and subpath entries",
+        "admin-portal/lib/api/entity-resolution.ts now exposes typed resolveSupplierEntity and explainSupplierEntity helpers over apiFetchNoQueue",
+        "Supplier web helper validates {status:'ok', result} envelopes and raises structured request errors on non-2xx responses"
+      ],
+      "consumers": [
+        "packages/types/entity-resolution.ts",
+        "packages/types/index.ts",
+        "packages/types/package.json",
+        "apps/admin-portal/lib/api/entity-resolution.ts"
+      ],
+      "notes": [
+        "This tranche closes backend-to-web contract drift without introducing UI layout changes.",
+        "The bridge is additive and read-only, with no outbox/cache-invalidation mutation impact."
+      ]
+    },
+    {
+      "name": "Sprint-2 supplier entity-resolution read-side kickoff",
+      "path": "Supplier-scoped entity resolution and one-hop lineage projection",
+      "owner": "pegasus/apps/backend-go/{entityresolution/{handlers.go,service.go,repository.go,doc.go,entityresolution_test.go},entityresolutionroutes/routes.go,main.go}",
+      "methods": [
+        "entityresolutionroutes/routes.go mounts POST /v1/supplier/entity-resolution/resolve and POST /v1/supplier/entity-resolution/explain",
+        "Route chain enforces SUPPLIER|ADMIN role gate plus RequireRegionScopeWithClient, idempotency guard, and logging middleware parity",
+        "entityresolution/service.go ranks deterministic exact_id_match results ahead of probabilistic token_overlap and substring_match candidates",
+        "entityresolution/repository.go performs supplier-scoped index-backed Spanner reads for exact lookup, candidate listing, and lineage loading",
+        "entityresolution/handlers.go uses strict JSON decoding and claim-derived supplier scope and remains read-only"
+      ],
+      "consumers": [
+        "backend-go entityresolutionroutes/routes.go",
+        "backend-go entityresolution/handlers.go",
+        "backend-go entityresolution/service.go",
+        "backend-go entityresolution/repository.go",
+        "backend-go main.go"
+      ],
+      "notes": [
+        "Rollout is additive and read-only with no outbox or cache-invalidation mutation impact.",
+        "Candidate ranking and lineage responses are tenant-scoped through ResolveSupplierID and supplier-indexed queries."
+      ]
+    },
+    {
+      "name": "Sprint-3 supplier graph-query analytics read surface",
+      "path": "POST /v1/supplier/analytics/graph/query with shared type and web API bridge",
+      "owner": "pegasus/apps/backend-go/{analytics/graph_query.go,supplierinsightsroutes/routes.go} + pegasus/packages/types/analytics.ts + pegasus/apps/admin-portal/lib/api/graph-analytics.ts",
+      "methods": [
+        "supplierinsightsroutes/routes.go mounts POST /v1/supplier/analytics/graph/query under supplier/admin role + region scope + warehouse scope middleware",
+        "analytics/graph_query.go enforces strict request decode, claim-bound supplier scope, bounded page_size and offset, and normalized date filters",
+        "Query modes are additive and typed: PRODUCT_LOCATION_TIME, SUPPLIER_TIER, and LANE_CAPACITY",
+        "Response payload keeps analytics envelope compatibility and returns nodes, edges, rows, pagination, and explainability metadata",
+        "packages/types/analytics.ts now exports GraphAnalytics request and response contracts consumed by admin-portal helper querySupplierGraphAnalytics"
+      ],
+      "consumers": [
+        "backend-go analytics/graph_query.go",
+        "backend-go supplierinsightsroutes/routes.go",
+        "packages/types/analytics.ts",
+        "apps/admin-portal/lib/api/graph-analytics.ts"
+      ],
+      "notes": [
+        "Tranche is read-only and additive with no outbox emission, cache invalidation, or mutation-path side effects.",
+        "Focused tests cover request normalization, method guards, auth guards, and helper response envelope validation."
+      ]
+    },
+    {
+      "name": "Sprint-3 forecast tournament core read surface",
+      "path": "POST /v1/supplier/analytics/forecast/tournament with shared type and web API bridge",
+      "owner": "pegasus/apps/backend-go/{analytics/forecast_tournament.go,supplierinsightsroutes/routes.go} + pegasus/packages/types/analytics.ts + pegasus/apps/admin-portal/lib/api/forecast-tournament.ts",
+      "methods": [
+        "supplierinsightsroutes/routes.go mounts POST /v1/supplier/analytics/forecast/tournament under supplier/admin role + region scope + warehouse scope middleware",
+        "analytics/forecast_tournament.go enforces strict request decode, claim-bound supplier scope, bounded from/to window normalization, and min_sample_size bounds",
+        "Leaderboard cohorts are additive and typed: SKU_MEDIAN_V3, LEGACY_AGGREGATE, NEIGHBORHOOD_HEURISTIC, SUPPLIER_DEFAULT",
+        "Response payload keeps analytics envelope compatibility and returns variants, champion_variant, champion_score, and explainability metadata",
+        "packages/types/analytics.ts now exports ForecastTournament request and response contracts consumed by admin-portal helper querySupplierForecastTournament"
+      ],
+      "consumers": [
+        "backend-go analytics/forecast_tournament.go",
+        "backend-go supplierinsightsroutes/routes.go",
+        "packages/types/analytics.ts",
+        "apps/admin-portal/lib/api/forecast-tournament.ts"
+      ],
+      "notes": [
+        "Tranche is read-only and additive with no outbox emission, cache invalidation, or mutation-path side effects.",
+        "Focused tests cover request normalization, method guards, auth guards, route mount coverage, and helper response envelope validation."
+      ]
+    },
     {
       "name": "Workstream F/G/H delivery and payment hardening",
       "path": "Delivery adjustment fail-closed policy + Adyen chargeback/reversal persistence seam wiring",
@@ -1382,6 +1540,10 @@
   },
   "engineeringGuardTooling": {
     "workflow": ".github/workflows/one-eye-guards.yml",
+    "workflows": [
+      ".github/workflows/ci.yml",
+      ".github/workflows/one-eye-guards.yml"
+    ],
     "agentMcpServers": [
       {
         "serverId": "sequential-thinking",
@@ -1404,6 +1566,7 @@
       }
     },
     "scripts": [
+      "pegasus/scripts/sprint1_execution_gate.py",
       "pegasus/scripts/contract_guard_mcp.py",
       "pegasus/scripts/architecture_guard_mcp.py",
       "pegasus/scripts/design_system_guard_mcp.py",
@@ -1412,13 +1575,18 @@
       "pegasus/scripts/security_guard.py"
     ],
     "checks": [
+      "sprint1_execution_gate",
       "contract_guard_mcp",
       "architecture_guard_mcp",
       "design_system_guard_mcp",
       "production_safety",
       "visual_test_intelligence",
       "security"
-    ]
+    ],
+    "ciExecutionModes": {
+      "pull_request": "sprint1_execution_gate",
+      "push": "versionscan_scan"
+    }
   },
   "externalIntegrations": [
     "Payme",

@@ -105,9 +105,7 @@ class SavedCardsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(addError = null, loadIssue = null) }
             try {
-                val res = api.initiateCard(mapOf(
-                    "gateway" to "GLOBAL_PAY"
-                ))
+                val res = api.initiateCard(emptyMap())
                 if (res is JsonObject) {
                     val session = res["card_token"]?.jsonPrimitive?.contentOrNull
                     _uiState.update { it.copy(initiateSession = session, otpPhone = null, isAddingCard = true) }

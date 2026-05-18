@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"backend-go/cache"
 	"backend-go/auth"
+	"backend-go/cache"
 	"backend-go/models"
 	"backend-go/spannerx"
 
@@ -20,7 +20,7 @@ import (
 
 // EmpathyService holds the Spanner client for Empathy Engine operations.
 type EmpathyService struct {
-	Cache *cache.Cache
+	Cache  *cache.Cache
 	Client *spanner.Client
 }
 
@@ -67,8 +67,8 @@ func (s *EmpathyService) hasHistoryForCategory(ctx context.Context, retailerID, 
 	stmt := spanner.Statement{
 		SQL: `SELECT COUNT(*) FROM Orders o
 		      JOIN OrderLineItems li ON li.OrderId = o.OrderId
-		      JOIN Products p ON p.ProductId = li.ProductId
-		      WHERE o.RetailerId = @rid AND p.CategoryId = @cid AND o.State = 'COMPLETED'
+		      JOIN SupplierProducts sp ON sp.SkuId = li.SkuId
+		      WHERE o.RetailerId = @rid AND sp.CategoryId = @cid AND o.State = 'COMPLETED'
 		      LIMIT 1`,
 		Params: map[string]interface{}{"rid": retailerID, "cid": categoryID},
 	}
@@ -90,7 +90,7 @@ func (s *EmpathyService) hasHistoryForProduct(ctx context.Context, retailerID, p
 	stmt := spanner.Statement{
 		SQL: `SELECT COUNT(*) FROM Orders o
 		      JOIN OrderLineItems li ON li.OrderId = o.OrderId
-		      WHERE o.RetailerId = @rid AND li.ProductId = @pid AND o.State = 'COMPLETED'
+		      WHERE o.RetailerId = @rid AND li.SkuId = @pid AND o.State = 'COMPLETED'
 		      LIMIT 1`,
 		Params: map[string]interface{}{"rid": retailerID, "pid": productID},
 	}

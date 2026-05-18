@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SupplierShiftProvider, useSupplierShift } from '@/hooks/useSupplierShift';
 import { firebaseSignOut } from '../../lib/firebase';
+import { useToast } from '../../components/Toast';
 
 function clearAuthCookies() {
   document.cookie = 'pegasus_admin_jwt=; path=/; max-age=0; SameSite=Lax';
@@ -15,6 +16,25 @@ function SupplierLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { isActive, toggleShift } = useSupplierShift();
   const [isToggling, setIsToggling] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleLiveEvent = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail?.type === 'retailer_payment_gateway_degraded') {
+        const { retailer_id, gateway, reason } = customEvent.detail;
+        toast(
+          `Retailer ${retailer_id?.slice(0, 8)} payments on ${gateway} are blocked: ${reason}.`,
+          'error',
+          undefined,
+          10000
+        );
+      }
+    };
+    window.addEventListener('supplier-live-event', handleLiveEvent);
+    return () => window.removeEventListener('supplier-live-event', handleLiveEvent);
+  }, [toast]);
 
   const handleLogout = useCallback(() => {
     clearAuthCookies();

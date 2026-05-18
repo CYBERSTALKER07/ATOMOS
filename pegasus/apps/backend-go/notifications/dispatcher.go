@@ -91,10 +91,11 @@ func (d *Dispatcher) resolveUserContacts(ctx context.Context, userID, role strin
 			return
 		}
 		var p, f, t spanner.NullString
-		_ = row.Columns(&p, &f, &t)
-		phone = p.StringVal
-		fcmToken = f.StringVal
-		telegramChatId = t.StringVal
+		if err := row.Columns(&p, &f, &t); err == nil {
+			phone = p.StringVal
+			fcmToken = f.StringVal
+			telegramChatId = t.StringVal
+		}
 
 	case "DRIVER":
 		row, err := d.Spanner.Single().ReadRow(ctx, "Drivers",
@@ -103,8 +104,9 @@ func (d *Dispatcher) resolveUserContacts(ctx context.Context, userID, role strin
 			return
 		}
 		var p spanner.NullString
-		_ = row.Columns(&p)
-		phone = p.StringVal
+		if err := row.Columns(&p); err == nil {
+			phone = p.StringVal
+		}
 		// Driver FCM token from DeviceTokens table
 		fcmToken = d.getDeviceToken(ctx, userID)
 
@@ -115,8 +117,9 @@ func (d *Dispatcher) resolveUserContacts(ctx context.Context, userID, role strin
 			return
 		}
 		var p spanner.NullString
-		_ = row.Columns(&p)
-		phone = p.StringVal
+		if err := row.Columns(&p); err == nil {
+			phone = p.StringVal
+		}
 		fcmToken = d.getDeviceToken(ctx, userID)
 	}
 	return

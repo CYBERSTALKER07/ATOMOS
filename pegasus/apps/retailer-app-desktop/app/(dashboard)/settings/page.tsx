@@ -5,6 +5,7 @@ import {
   User,
   Mail,
   MapPin,
+  Globe,
   Bell,
   CreditCard,
   Settings,
@@ -285,6 +286,7 @@ export default function SettingsPage() {
   const [profileName, setProfileName] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
   const [profileLocation, setProfileLocation] = useState("");
+  const [profileCountryCode, setProfileCountryCode] = useState("");
   const [profileCompany, setProfileCompany] = useState("");
   const [profileErrors, setProfileErrors] = useState<ProfileFieldErrors>({});
   const [saveBanner, setSaveBanner] = useState<SaveBanner | null>(null);
@@ -313,6 +315,7 @@ export default function SettingsPage() {
       if (data.company) setProfileCompany(data.company);
       if (data.phone) setProfileEmail(data.phone);
       if (data.location) setProfileLocation(data.location);
+      if (data.country_code) setProfileCountryCode(data.country_code);
     } catch (err) {
       setProfileError(
         normalizeErrorMessage(err, "Unable to load retailer profile."),
@@ -337,6 +340,7 @@ export default function SettingsPage() {
         if (p.name) setProfileName(p.name);
         if (p.company) setProfileCompany(p.company);
         if (p.email) setProfileEmail(p.email);
+        if (p.country_code) setProfileCountryCode(p.country_code);
       } catch {
         /* ignore */
       }
@@ -365,6 +369,7 @@ export default function SettingsPage() {
           name: profileName,
           company: profileCompany,
           location: profileLocation,
+          country_code: profileCountryCode,
         }),
       });
       if (!res.ok) {
@@ -384,6 +389,7 @@ export default function SettingsPage() {
               ...existing,
               name: profileName,
               company: profileCompany,
+              country_code: profileCountryCode,
             }),
           );
         } catch {
@@ -398,7 +404,7 @@ export default function SettingsPage() {
     } finally {
       setSavingProfile(false);
     }
-  }, [profileName, profileCompany, profileLocation]);
+  }, [profileName, profileCompany, profileLocation, profileCountryCode]);
 
   const toggleGlobal = useCallback(async () => {
     if (!autoOrder) return;
@@ -642,6 +648,13 @@ export default function SettingsPage() {
                       icon={MapPin}
                       editing={profileEditing}
                       onChange={setProfileLocation}
+                    />
+                    <ProfileField
+                      label="Country Code"
+                      value={profileCountryCode}
+                      icon={Globe}
+                      editing={profileEditing}
+                      onChange={setProfileCountryCode}
                     />
                   </div>
                   {profileEditing && (

@@ -22,6 +22,7 @@ BACKEND_DIR   := apps/backend-go
 ADMIN_DIR     := apps/admin-portal
 DDL_FILE      := $(BACKEND_DIR)/schema/spanner.ddl
 ENV_FILE      := $(BACKEND_DIR)/.env
+DEFAULT_SPRINT1_BASE_SHA := $(shell /usr/bin/git merge-base HEAD origin/main 2>/dev/null || /usr/bin/git merge-base HEAD main 2>/dev/null || true)
 
 # ── Secret Preflight ────────────────────────────────────────────────────────
 # Every target that boots Go code depends on `require-env`, which refuses to
@@ -40,8 +41,8 @@ require-env:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 .PHONY: help env-up env-down env-status spanner-init seed simulate test-e2e \
-        build clean nuke full-reset dev-ip dev-devices \
-        desktop-dev desktop-build desktop-build-mac desktop-build-win desktop-check desktop-clean
+	build clean nuke full-reset dev-ip dev-devices sprint1-gate \
+	desktop-dev desktop-build desktop-build-mac desktop-build-win desktop-check desktop-clean
 
 ## ── help: Display available targets ────────────────────────────────────────
 help: ## Show this help
@@ -153,6 +154,19 @@ full-reset: env-down env-up ## Full infrastructure reset + reseed
 	@$(MAKE) spanner-init
 	@$(MAKE) seed
 	@echo "═══ FULL RESET COMPLETE ═══"
+
+## ── sprint1-gate: Run Sprint-1 execution baseline guard suite ─────────────
+sprint1-gate: ## Run Sprint-1 enterprise execution gate and emit report JSON
+	@echo "═══ SPRINT-1 EXECUTION GATE ═══"
+	@args="--repo-root .. --output-dir pegasus/.execution/sprint1 --with-enforce --changed-only --diff-mode working-tree"; \
+	base="$(BASE_SHA)"; \
+	if [ -z "$$base" ]; then base=$$(/usr/bin/git merge-base HEAD origin/main 2>/dev/null || /usr/bin/git merge-base HEAD main 2>/dev/null || true); fi; \
+	head="$(HEAD_SHA)"; \
+	if [ -z "$$head" ] && [ -n "$$base" ]; then head="HEAD"; fi; \
+	if [ -n "$$base" ]; then args="$$args --base-sha $$base"; fi; \
+	if [ -n "$$head" ]; then args="$$args --head-sha $$head"; fi; \
+	/usr/bin/python3 scripts/sprint1_execution_gate.py $$args
+	@echo "═══ Sprint-1 gate report written to pegasus/.execution/sprint1/gate-report.json ═══"
 
 ## ── clean: Remove build artifacts ─────────────────────────────────────────
 clean: ## Clean build artifacts

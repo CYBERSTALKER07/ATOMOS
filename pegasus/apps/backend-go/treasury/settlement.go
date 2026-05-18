@@ -15,6 +15,7 @@ import (
 	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"google.golang.org/api/iterator"
 )
 
@@ -272,6 +273,46 @@ func HandleBatchSettle(client *spanner.Client) http.HandlerFunc {
 
 		_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			var mutations []*spanner.Mutation
+
+			// 1. Bulk read invoices to verify ownership and current status
+			keys := make([]spanner.KeySet, 0, len(req.InvoiceIDs))
+			for _, id := range req.InvoiceIDs {
+				keys = append(keys, spanner.Key{id})
+			}
+
+			iter := txn.Read(ctx, "MasterInvoices", spanner.KeySets(keys...), []string{"InvoiceId", "SupplierId", "CustodyStatus"})
+			defer iter.Stop()
+
+			foundCount := 0
+			for {
+				row, readErr := iter.Next()
+				if readErr == iterator.Done {
+					break
+				}
+				if readErr != nil {
+					return readErr
+				}
+
+				var id, supplierID string
+				var custodyStatus spanner.NullString
+				if colErr := row.Columns(&id, &supplierID, &custodyStatus); colErr != nil {
+					return colErr
+				}
+
+				foundCount++
+
+				if supplierID != claims.ResolveSupplierID() {
+					return fmt.Errorf("invoice %s does not belong to this supplier", id)
+				}
+				if custodyStatus.StringVal != "PENDING" {
+					return fmt.Errorf("invoice %s is not PENDING (current: %s)", id, custodyStatus.StringVal)
+				}
+			}
+
+			if foundCount != len(req.InvoiceIDs) {
+				return fmt.Errorf("one or more invoices not found")
+			}
+
 			for _, invoiceID := range req.InvoiceIDs {
 				invoiceSuffix := invoiceID
 				if len(invoiceSuffix) > 8 {
@@ -279,8 +320,8 @@ func HandleBatchSettle(client *spanner.Client) http.HandlerFunc {
 				}
 				mutations = append(mutations,
 					spanner.Update("MasterInvoices",
-						[]string{"InvoiceId", "CustodyStatus", "CollectedAt"},
-						[]interface{}{invoiceID, "SETTLED", now},
+						[]string{"InvoiceId", "CustodyStatus", "CollectedAt", "UpdatedAt"},
+						[]interface{}{invoiceID, "SETTLED", now, spanner.CommitTimestamp},
 					),
 				)
 				// Audit log entry
@@ -288,7 +329,7 @@ func HandleBatchSettle(client *spanner.Client) http.HandlerFunc {
 					spanner.Insert("AuditLog",
 						[]string{"LogId", "ActorId", "ActorRole", "Action", "ResourceType", "ResourceId", "Metadata", "CreatedAt"},
 						[]interface{}{
-							"AUDIT-" + now.Format("20060102150405") + "-" + invoiceSuffix,
+							"AUDIT-" + now.Format("20060102150405") + "-" + invoiceSuffix + "-" + uuid.New().String()[:8],
 							claims.UserID, claims.Role, "STATE_CHANGE", "INVOICE", invoiceID,
 							`{"old_status":"PENDING","new_status":"SETTLED","reference":"` + req.Reference + `"}`,
 							spanner.CommitTimestamp,
@@ -366,15 +407,20 @@ func HandleInvoiceStatusOverride(client *spanner.Client) http.HandlerFunc {
 
 		_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			// Read current status for audit
-			row, err := txn.ReadRow(ctx, "MasterInvoices", spanner.Key{req.InvoiceID}, []string{"CustodyStatus", "OrderId", "RetailerId"})
+			row, err := txn.ReadRow(ctx, "MasterInvoices", spanner.Key{req.InvoiceID}, []string{"SupplierId", "CustodyStatus", "OrderId", "RetailerId"})
 			if err != nil {
 				return err
 			}
 			var oldStatus spanner.NullString
 			var orderID spanner.NullString
 			var retailerID spanner.NullString
-			if err := row.Columns(&oldStatus, &orderID, &retailerID); err != nil {
+			var supplierID string
+			if err := row.Columns(&supplierID, &oldStatus, &orderID, &retailerID); err != nil {
 				return err
+			}
+
+			if supplierID != claims.ResolveSupplierID() {
+				return fmt.Errorf("invoice does not belong to this supplier")
 			}
 
 			mutations := []*spanner.Mutation{

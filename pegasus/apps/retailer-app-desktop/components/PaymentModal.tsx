@@ -19,7 +19,7 @@ import type { CardCheckoutResponse, PendingPaymentSession, PendingPaymentsRespon
 
 /* ── Types ── */
 
-type PaymentEvent = PaymentRequiredEvent & {
+type PaymentEvent = Omit<PaymentRequiredEvent, "available_card_gateways"> & {
   available_card_gateways?: string[];
 };
 

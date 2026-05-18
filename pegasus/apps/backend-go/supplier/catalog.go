@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -134,7 +134,7 @@ func HandleCreateProduct(client *spanner.Client) http.HandlerFunc {
 			return
 		}
 		if err := ensureCanonicalCategoriesSeeded(r.Context(), client); err != nil {
-			log.Printf("[SUPPLIER CATALOG] category seed error: %v", err)
+			slog.ErrorContext(r.Context(), "Category seed error", "error", err)
 			http.Error(w, "Category catalog unavailable", http.StatusInternalServerError)
 			return
 		}
@@ -179,7 +179,7 @@ func HandleCreateProduct(client *spanner.Client) http.HandlerFunc {
 
 		isConfigured, operatingCategories, err := loadSupplierCategoryAccess(r.Context(), client, supplierId)
 		if err != nil {
-			log.Printf("[SUPPLIER CATALOG] load supplier access error: %v", err)
+			slog.ErrorContext(r.Context(), "Load supplier access error", "supplier_id", supplierId, "error", err)
 			http.Error(w, "Supplier profile unavailable", http.StatusInternalServerError)
 			return
 		}
@@ -236,7 +236,7 @@ func HandleCreateProduct(client *spanner.Client) http.HandlerFunc {
 				http.Error(w, `{"error":"sku_id already exists"}`, http.StatusConflict)
 				return
 			}
-			log.Printf("[SUPPLIER CATALOG] create error for %s/%s: %v", supplierId, p.SkuId, err)
+			slog.ErrorContext(r.Context(), "Create error", "supplier_id", supplierId, "sku_id", p.SkuId, "error", err)
 			http.Error(w, "Ledger write fault", http.StatusInternalServerError)
 			return
 		}
@@ -324,7 +324,7 @@ func HandleSupplierLogin(spannerClient *spanner.Client) http.HandlerFunc {
 					IsConfigured: isCfg,
 				})
 				if err != nil {
-					log.Printf("[SUPPLIER AUTH] token generation error: %v", err)
+					slog.ErrorContext(r.Context(), "Token generation error", "error", err)
 					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 					return
 				}
@@ -337,7 +337,7 @@ func HandleSupplierLogin(spannerClient *spanner.Client) http.HandlerFunc {
 						SQL:    "SELECT COALESCE(FirebaseUid, '') FROM SupplierUsers WHERE UserId = @id",
 						Params: map[string]interface{}{"id": userID},
 					}).Do(func(row *spanner.Row) error { return row.Columns(&fbUid) }); err != nil {
-						log.Printf("[SUPPLIER AUTH] firebase UID lookup failed for user %s: %v", userID, err)
+						slog.WarnContext(r.Context(), "Firebase UID lookup failed", "user_id", userID, "error", err)
 					}
 					if fbUid != "" {
 						token, err := auth.MintCustomToken(ctx, fbUid, map[string]interface{}{
@@ -349,7 +349,7 @@ func HandleSupplierLogin(spannerClient *spanner.Client) http.HandlerFunc {
 							"factory_role":  factoryRole,
 						})
 						if err != nil {
-							log.Printf("[SUPPLIER AUTH] firebase token mint failed for user %s: %v", userID, err)
+							slog.WarnContext(r.Context(), "Firebase token mint failed", "user_id", userID, "error", err)
 						} else {
 							firebaseToken = token
 						}
@@ -397,7 +397,7 @@ func HandleSupplierLogin(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 		if err != nil {
-			log.Printf("[SUPPLIER AUTH] query error: %v", err)
+			slog.ErrorContext(r.Context(), "Query error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -405,7 +405,7 @@ func HandleSupplierLogin(spannerClient *spanner.Client) http.HandlerFunc {
 		var supplierID, name, passwordHash, category, countryCode string
 		var isConfigured bool
 		if err := row.Columns(&supplierID, &name, &passwordHash, &category, &countryCode, &isConfigured); err != nil {
-			log.Printf("[SUPPLIER AUTH] parse error: %v", err)
+			slog.ErrorContext(r.Context(), "Parse error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -430,7 +430,7 @@ func HandleSupplierLogin(spannerClient *spanner.Client) http.HandlerFunc {
 			IsConfigured: isConfigured,
 		})
 		if err != nil {
-			log.Printf("[SUPPLIER AUTH] token generation error: %v", err)
+			slog.ErrorContext(r.Context(), "Token generation error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -443,7 +443,7 @@ func HandleSupplierLogin(spannerClient *spanner.Client) http.HandlerFunc {
 				SQL:    "SELECT COALESCE(FirebaseUid, '') FROM Suppliers WHERE SupplierId = @id",
 				Params: map[string]interface{}{"id": supplierID},
 			}).Do(func(row *spanner.Row) error { return row.Columns(&fbUid) }); err != nil {
-				log.Printf("[SUPPLIER AUTH] firebase UID lookup failed for supplier %s: %v", supplierID, err)
+				slog.WarnContext(r.Context(), "Firebase UID lookup failed", "supplier_id", supplierID, "error", err)
 			}
 			if fbUid != "" {
 				token, err := auth.MintCustomToken(ctx, fbUid, map[string]interface{}{
@@ -452,7 +452,7 @@ func HandleSupplierLogin(spannerClient *spanner.Client) http.HandlerFunc {
 					"supplier_role": "GLOBAL_ADMIN",
 				})
 				if err != nil {
-					log.Printf("[SUPPLIER AUTH] firebase token mint failed for supplier %s: %v", supplierID, err)
+					slog.WarnContext(r.Context(), "Firebase token mint failed", "supplier_id", supplierID, "error", err)
 				} else {
 					firebaseToken = token
 				}
@@ -535,7 +535,7 @@ func HandleListSupplierProducts(client *spanner.Client) http.HandlerFunc {
 				break
 			}
 			if err != nil {
-				log.Printf("[SUPPLIER CATALOG] query error: %v", err)
+				slog.ErrorContext(r.Context(), "Query error", "error", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
@@ -545,7 +545,7 @@ func HandleListSupplierProducts(client *spanner.Client) http.HandlerFunc {
 			if err := row.Columns(&p.SkuID, &p.Name, &p.Description, &p.ImageURL,
 				&p.SellByBlock, &p.UnitsPerBlock, &p.BasePrice, &p.IsActive, &p.CategoryID, &p.CategoryName, &p.VolumetricUnit, &p.MinimumOrderQty, &p.StepSize, &createdAt,
 				&p.LengthCM, &p.WidthCM, &p.HeightCM); err != nil {
-				log.Printf("[SUPPLIER CATALOG] parse error: %v", err)
+				slog.ErrorContext(r.Context(), "Parse error", "error", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
@@ -603,14 +603,14 @@ func HandleRetailerLogin(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 		if err != nil {
-			log.Printf("[RETAILER AUTH] query error: %v", err)
+			slog.ErrorContext(r.Context(), "Query error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
 		var retailerID, name, passwordHash, status, shopName string
 		if err := row.Columns(&retailerID, &name, &passwordHash, &status, &shopName); err != nil {
-			log.Printf("[RETAILER AUTH] parse error: %v", err)
+			slog.ErrorContext(r.Context(), "Parse error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -632,7 +632,7 @@ func HandleRetailerLogin(spannerClient *spanner.Client) http.HandlerFunc {
 
 		token, err := auth.GenerateTestToken(retailerID, "RETAILER")
 		if err != nil {
-			log.Printf("[RETAILER AUTH] token generation error: %v", err)
+			slog.ErrorContext(r.Context(), "Token generation error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -646,11 +646,11 @@ func HandleRetailerLogin(spannerClient *spanner.Client) http.HandlerFunc {
 				SQL:    "SELECT COALESCE(FirebaseUid, '') FROM Retailers WHERE RetailerId = @id",
 				Params: map[string]interface{}{"id": retailerID},
 			}).Do(func(row *spanner.Row) error { return row.Columns(&fbUid) }); err != nil {
-				log.Printf("[RETAILER AUTH] firebase UID lookup failed for retailer %s: %v", retailerID, err)
+				slog.WarnContext(r.Context(), "Firebase UID lookup failed", "retailer_id", retailerID, "error", err)
 			}
 			if fbUid != "" {
 				if token, err := auth.MintCustomToken(r.Context(), fbUid, map[string]interface{}{"role": "RETAILER", "retailer_id": retailerID}); err != nil {
-					log.Printf("[RETAILER AUTH] firebase token mint failed for retailer %s: %v", retailerID, err)
+					slog.WarnContext(r.Context(), "Firebase token mint failed", "retailer_id", retailerID, "error", err)
 				} else {
 					firebaseToken = token
 				}

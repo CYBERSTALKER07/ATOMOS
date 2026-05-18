@@ -291,6 +291,16 @@ func ResolveDefaultGatewayForCountry(countryCode string) string {
 	return "AIRWALLEX"
 }
 
+func resolveDefaultGatewayForRetailerCodes(retailerCountryCode, regionCountryCode string) string {
+	if strings.TrimSpace(retailerCountryCode) != "" {
+		return ResolveDefaultGatewayForCountry(retailerCountryCode)
+	}
+	if strings.TrimSpace(regionCountryCode) != "" {
+		return ResolveDefaultGatewayForCountry(regionCountryCode)
+	}
+	return "GLOBAL_PAY"
+}
+
 // ResolveDefaultGatewayForRetailer resolves the default card-tokenization
 // gateway for a retailer based on their CountryCode (or Region's CountryCode).
 // Falls back to UZ semantics ("GLOBAL_PAY") when the retailer has no region binding
@@ -308,21 +318,25 @@ func (s *Service) ResolveDefaultGatewayForRetailer(ctx context.Context, retailer
 	var countryCode spanner.NullString
 
 	_ = row.Columns(&regionID, &countryCode)
+	retailerCountryCode := ""
+	if countryCode.Valid {
+		retailerCountryCode = countryCode.StringVal
+	}
 
 	// Direct CountryCode preference
-	if countryCode.Valid && strings.TrimSpace(countryCode.StringVal) != "" {
-		return ResolveDefaultGatewayForCountry(countryCode.StringVal)
+	if strings.TrimSpace(retailerCountryCode) != "" {
+		return resolveDefaultGatewayForRetailerCodes(retailerCountryCode, "")
 	}
 
 	// Fallback to Region lookup
 	if regionID.Valid && strings.TrimSpace(regionID.StringVal) != "" {
 		region, regionErr := s.GetRegionByID(ctx, regionID.StringVal)
 		if regionErr == nil && region != nil {
-			return ResolveDefaultGatewayForCountry(region.CountryCode)
+			return resolveDefaultGatewayForRetailerCodes(retailerCountryCode, region.CountryCode)
 		}
 	}
 
-	return "GLOBAL_PAY"
+	return resolveDefaultGatewayForRetailerCodes(retailerCountryCode, "")
 }
 
 // SeedDefaultRegions inserts baseline region and config rows when absent.

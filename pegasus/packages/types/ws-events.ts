@@ -102,6 +102,7 @@ export enum WSEventType {
   PAYMENT_CLEARED = 'PAYMENT_CLEARED',
   PAYMENT_EXPIRED = 'PAYMENT_EXPIRED',
   PAYMENT_FAILED = 'PAYMENT_FAILED',
+  PAYMENT_GATEWAY_DEGRADED = 'PAYMENT_GATEWAY_DEGRADED',
   PAYMENT_INTENT_CREATED = 'PAYMENT_INTENT_CREATED',
   PAYMENT_REFUNDED = 'PAYMENT_REFUNDED',
   PAYMENT_REQUIRED = 'PAYMENT_REQUIRED',
@@ -120,6 +121,8 @@ export enum WSEventType {
   REPLENISHMENT_TRANSFER_CREATED = 'REPLENISHMENT_TRANSFER_CREATED',
   RETAILER_PRICE_OVERRIDE = 'RETAILER_PRICE_OVERRIDE',
   RETAILER_REGISTERED = 'RETAILER_REGISTERED',
+  SUPPLIER_REGISTERED = 'SUPPLIER_REGISTERED',
+  SUPPLIER_CONFIGURED = 'SUPPLIER_CONFIGURED',
   RETURN_RESOLVED = 'RETURN_RESOLVED',
   ROUTE_CREATED = 'ROUTE_CREATED',
   ROUTE_FINALIZED = 'ROUTE_FINALIZED',
@@ -659,6 +662,13 @@ export interface PaymentFailedPayload {
   timestamp: string;
 }
 
+export interface PaymentGatewayDegradedPayload {
+  retailer_id: string;
+  gateway: string;
+  reason: string;
+  timestamp: string;
+}
+
 export interface PaymentSettledPayload {
   order_id: string;
   invoice_id: string;
@@ -736,8 +746,24 @@ export interface RetailerRegisteredPayload {
   phone_number: string;
   lat: number;
   lng: number;
-  h3_cell: string;
+  h3_cell?: string;
   region_code: string;
+  timestamp: string;
+}
+
+export interface SupplierRegisteredPayload {
+  supplier_id: string;
+  company_name: string;
+  phone_number: string;
+  email?: string;
+  region_code: string;
+  timestamp: string;
+}
+
+export interface SupplierConfiguredPayload {
+  supplier_id: string;
+  tax_id?: string;
+  operating_categories?: string[];
   timestamp: string;
 }
 
@@ -1025,6 +1051,8 @@ export interface WSEventPayloadMap {
   'REPLENISHMENT_TRANSFER_CREATED': UnknownEventPayload;
   'RETAILER_PRICE_OVERRIDE': RetailerPriceOverridePayload;
   'RETAILER_REGISTERED': RetailerRegisteredPayload;
+  'SUPPLIER_REGISTERED': SupplierRegisteredPayload;
+  'SUPPLIER_CONFIGURED': SupplierConfiguredPayload;
   'RETURN_RESOLVED': UnknownEventPayload;
   'ROUTE_CREATED': RouteCreatedPayload;
   'ROUTE_FINALIZED': RouteFinalizedPayload;
@@ -1177,6 +1205,8 @@ export type ReplenishmentLockReleasedWSEvent = WSEventMessage<'REPLENISHMENT_LOC
 export type ReplenishmentTransferCreatedWSEvent = WSEventMessage<'REPLENISHMENT_TRANSFER_CREATED'>;
 export type RetailerPriceOverrideWSEvent = WSEventMessage<'RETAILER_PRICE_OVERRIDE'>;
 export type RetailerRegisteredWSEvent = WSEventMessage<'RETAILER_REGISTERED'>;
+export type SupplierRegisteredWSEvent = WSEventMessage<'SUPPLIER_REGISTERED'>;
+export type SupplierConfiguredWSEvent = WSEventMessage<'SUPPLIER_CONFIGURED'>;
 export type ReturnResolvedWSEvent = WSEventMessage<'RETURN_RESOLVED'>;
 export type RouteCreatedWSEvent = WSEventMessage<'ROUTE_CREATED'>;
 export type RouteFinalizedWSEvent = WSEventMessage<'ROUTE_FINALIZED'>;

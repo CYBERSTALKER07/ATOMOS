@@ -34,6 +34,7 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 ## Backend Core Stack
 
 - Go services with `chi` HTTP routing and WebSockets
+- Rust gRPC sidecar scaffolding for optimization workloads (`services/optimizer-core/server-rust`) with Python parity baseline (`services/optimizer-core/server`)
 - Spanner data access
 - Kafka eventing
 - Redis cache and Pub/Sub invalidation
@@ -42,6 +43,58 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 - Structured logging via `log/slog` on runtime paths (including recent high-noise migration in `analytics/`, `sync/`, `replenishment/`, `treasury/`, `vault/`, and `kafka/emitter.go`, plus tranche-1 cache infra migration in `cache/redis.go`, `cache/pubsub.go`, `cache/invalidate.go`, `cache/middleware.go`, `cache/warehouse_load.go`, `cache/warehouse_geo.go`, `cache/priority.go`, and `cache/circuitbreaker.go`)
 
 ## Runtime Contract Surfaces
+
+- OR-Tools sidecar optimization runtime (Pattern-A): `pegasus/services/optimizer-core/**`
+	- Rust gRPC service now executes deterministic constrained assignment and route construction via `proto/optimizer_core.proto` and `server-rust/src/{service.rs,solver/vrp.rs,solver/cpsat.rs,main.rs}` (best-effort/time-limit aware), replacing scaffold-only responses.
+	- Deterministic adapters enforce UUID-index mapping (`server-rust/src/mapping.rs`) and integer scaling (`server-rust/src/scaling.rs`, `SCALE_FACTOR=10000`) before solver execution.
+	- Go worker scaffold in `services/optimizer-core/adapters/go/**` consumes optimization jobs from Kafka, applies bounded retry/backoff+jitter around solver RPC calls, and writes only `OPTIMIZATION_SOLVED` payloads to Spanner `OutboxEvents` (no direct Inventory/Manifest mutations).
+	- Sidecar topology is additively wired for co-location in `infra/k8s/ai-worker/deployment.yaml` with local loopback endpoint `OPTIMIZER_SIDE_ENDPOINT=127.0.0.1:50055` and `optimizer-core-rust` container port `50055`.
+	- Container/runtime scaffolding remains additive through `services/optimizer-core/{Dockerfile.rust,Dockerfile,requirements.txt,scripts/gen_proto.sh}` and Go module bootstrap in `services/optimizer-core/adapters/go/go.mod`; Python sidecar remains available for dual-run parity checks during canary rollout.
+
+- Country-smart payment policy and 3C degradation closure: `pegasus/apps/backend-go/{order/service.go,order/unified_checkout.go,countrycfg/regions.go}` + `pegasus/contracts/events.schema.json`
+	- Checkout policy resolution now normalizes requested gateway authority through `resolveRequestedGatewayForRetailer` before policy evaluation so degradation paths carry deterministic gateway identity.
+	- `CardCheckout` now dedupes fallback emission per request and prevents duplicate `PAYMENT_GATEWAY_DEGRADED` events when direct + hosted initialization both fail.
+	- Event schema artifact regenerated via `go run ./apps/backend-go/cmd/gen-contracts -mode json-schema -schema-out contracts/events.schema.json`, restoring `PAYMENT_GATEWAY_DEGRADED` contract visibility for shared/native consumers.
+	- Focused regression coverage added in `pegasus/apps/backend-go/countrycfg/service_test.go` and `pegasus/apps/backend-go/order/service_test.go`.
+
+- Sprint-1 execution governance gate: `pegasus/scripts/sprint1_execution_gate.py` + `make -C pegasus sprint1-gate`
+	- Orchestrates VersionScan and one-eye guard scripts into one reproducible baseline run.
+	- Emits machine-readable report artifact at `pegasus/.execution/sprint1/gate-report.json`.
+	- Supports explicit diff scoping via `BASE_SHA` and `HEAD_SHA` for branch/PR enforcement.
+	- CI workflows `.github/workflows/ci.yml` and `.github/workflows/one-eye-guards.yml` now both invoke this gate for PR guard evaluation instead of split per-guard command chains.
+	- Direct `versionscan.py scan` in CI remains push-only baseline coverage; PR enforcement is executed through the sprint gate path.
+
+- Sprint-3 supplier graph-query analytics read surface: `pegasus/apps/backend-go/{analytics/graph_query.go,supplierinsightsroutes/routes.go}` + `pegasus/packages/types/analytics.ts` + `pegasus/apps/admin-portal/lib/api/graph-analytics.ts`
+	- New supplier-scoped endpoint mounts at `POST /v1/supplier/analytics/graph/query`.
+	- Handler enforces strict decode (`DisallowUnknownFields`), claim-bound supplier scope, optional warehouse/factory/sku filters, bounded pagination (`page_size`, `offset`, `has_more`, `next_offset`), and explainability metadata.
+	- Query modes are additive and typed: `PRODUCT_LOCATION_TIME`, `SUPPLIER_TIER`, `LANE_CAPACITY`.
+	- Supplier web now uses typed helper `querySupplierGraphAnalytics` with structured non-2xx request error propagation and envelope validation.
+	- Tranche is read-only and additive; no outbox, cache invalidation, or mutation-path changes.
+
+- Sprint-3 forecast tournament core read surface: `pegasus/apps/backend-go/{analytics/forecast_tournament.go,supplierinsightsroutes/routes.go}` + `pegasus/packages/types/analytics.ts` + `pegasus/apps/admin-portal/lib/api/forecast-tournament.ts`
+	- New supplier-scoped endpoint mounts at `POST /v1/supplier/analytics/forecast/tournament`.
+	- Handler enforces strict decode (`DisallowUnknownFields`), claim-bound supplier scope, bounded date-window and `min_sample_size` normalization, and warehouse scope override when node scope is active.
+	- Leaderboard aggregation is additive and read-only, classifying variants across `SKU_MEDIAN_V3`, `LEGACY_AGGREGATE`, `NEIGHBORHOOD_HEURISTIC`, and `SUPPLIER_DEFAULT` using `AIPredictions`, `AIPredictionItems`, and `SupplierRetailerClients`.
+	- Champion selection is deterministic and eligibility-gated by `min_sample_size`; response includes additive `variants`, `champion_variant`, and `champion_score` under existing analytics envelope `{timestamp,data}`.
+	- Supplier web now uses typed helper `querySupplierForecastTournament` with structured non-2xx request error propagation and envelope validation.
+
+- Sprint-2 supplier entity-resolution read-side kickoff: `pegasus/apps/backend-go/{entityresolution/{handlers.go,service.go,repository.go,doc.go},entityresolutionroutes/routes.go,main.go}`
+	- New supplier-scoped read endpoints mount at `POST /v1/supplier/entity-resolution/resolve` and `POST /v1/supplier/entity-resolution/explain`.
+	- Route stack matches existing supplier surfaces: role gate (`SUPPLIER|ADMIN`) + `RequireRegionScopeWithClient` + idempotency guard + logging middleware.
+	- Service layer ranks deterministic exact matches (`exact_id_match`) ahead of probabilistic candidates (`token_overlap`, `substring_match`) and returns confidence-scored candidates.
+	- Explain path emits one-hop semantic lineage projection across supplier-owned entities using index-backed Spanner reads.
+	- Tranche is intentionally read-only; no outbox/cache invalidation mutations are introduced.
+
+- Sprint-2 entity-resolution shared contract bridge: `pegasus/packages/types/{entity-resolution.ts,index.ts,package.json}` + `pegasus/apps/admin-portal/lib/api/entity-resolution.ts`
+	- Shared contract package now exposes canonical request/response envelopes and graph projection types for `/v1/supplier/entity-resolution/{resolve,explain}`.
+	- Supplier web now has typed `resolveSupplierEntity` and `explainSupplierEntity` accessors built on `apiFetchNoQueue`.
+	- Envelope parsing is strict (`{status:'ok', result}`) and non-2xx responses raise structured request errors for operator-safe handling.
+	- No UI layout mutation is required in this tranche; this is an additive service/data-layer bridge.
+
+- Sprint-2 supplier orders workflow consumption: `pegasus/apps/admin-portal/app/supplier/orders/page.tsx`
+	- Orders search now uses debounced `resolveSupplierEntity` fallback enrichment only when direct local text filtering yields zero rows.
+	- Fallback candidate projection maps `ORDER` and `RETAILER` resolution candidates to additive `order_id` filtering over the already loaded order page data.
+	- Existing tab/history/state-filter behavior and page layout are unchanged; integration is read-only and additive.
 
 - Delivery adjustment fail-closed policy and Adyen chargeback persistence hardening: `pegasus/apps/backend-go/{order/delivery_handshake.go,deliveryroutes/{routes.go,routes_test.go},order/{unified_checkout.go,service_test.go},payment/{webhooks.go,adyen_webhook.go,webhook_contract_test.go},main.go}`
 	- `order/delivery_handshake.go` now rejects upward delivery edits in `UpdateOrderDuringDelivery` via typed `ErrUpwardDeliveryEditForbidden`.

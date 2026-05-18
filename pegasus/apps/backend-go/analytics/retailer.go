@@ -3,6 +3,7 @@ package analytics
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -120,7 +121,9 @@ func HandleGetRetailerExpenses(client *spanner.Client, readRouter proximity.Read
 		totalsIter := readClient.Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, totalsStmt)
 		defer totalsIter.Stop()
 		if row, err := totalsIter.Next(); err == nil {
-			_ = row.Columns(&resp.TotalThisMonth, &resp.TotalLastMonth)
+			if err := row.Columns(&resp.TotalThisMonth, &resp.TotalLastMonth); err != nil {
+				slog.WarnContext(r.Context(), "retailer metrics column read failed", "error", err)
+			}
 		}
 
 		// 3. Top suppliers by spend
@@ -128,11 +131,11 @@ func HandleGetRetailerExpenses(client *spanner.Client, readRouter proximity.Read
 			SQL: `SELECT 
 					p.SupplierId as supplier_id,
 					COALESCE(s.Name, p.SupplierId) as supplier_name,
-					CAST(SUM(oi.Quantity * p.Price) AS INT64) as total,
+					CAST(SUM(oi.Quantity * oi.UnitPrice) AS INT64) as total,
 					COUNT(DISTINCT o.OrderId) as order_count
 				FROM Orders o
-				JOIN OrderItems oi ON o.OrderId = oi.OrderId
-				JOIN Products p ON oi.ProductId = p.ProductId
+				JOIN OrderLineItems oi ON o.OrderId = oi.OrderId
+				JOIN SupplierProducts p ON oi.SkuId = p.SkuId
 				LEFT JOIN Suppliers s ON p.SupplierId = s.SupplierId
 				WHERE o.RetailerId = @retailerId
 				  AND o.State IN ('COMPLETED', 'ARRIVED', 'IN_TRANSIT')
@@ -165,17 +168,17 @@ func HandleGetRetailerExpenses(client *spanner.Client, readRouter proximity.Read
 		// 4. Top products by spend
 		topProdStmt := spanner.Statement{
 			SQL: `SELECT 
-					oi.ProductId as product_id,
+					oi.SkuId as product_id,
 					p.Name as product_name,
-					CAST(SUM(oi.Quantity * p.Price) AS INT64) as total,
+					CAST(SUM(oi.Quantity * oi.UnitPrice) AS INT64) as total,
 					SUM(oi.Quantity) as quantity
 				FROM Orders o
-				JOIN OrderItems oi ON o.OrderId = oi.OrderId
-				JOIN Products p ON oi.ProductId = p.ProductId
+				JOIN OrderLineItems oi ON o.OrderId = oi.OrderId
+				JOIN SupplierProducts p ON oi.SkuId = p.SkuId
 				WHERE o.RetailerId = @retailerId
 				  AND o.State IN ('COMPLETED', 'ARRIVED', 'IN_TRANSIT')
 				  AND o.CreatedAt >= @since
-				GROUP BY oi.ProductId, p.Name
+				GROUP BY oi.SkuId, p.Name
 				ORDER BY total DESC
 				LIMIT 10`,
 			Params: map[string]interface{}{

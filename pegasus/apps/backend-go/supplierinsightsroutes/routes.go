@@ -37,6 +37,8 @@ type Deps struct {
 //	GET /v1/supplier/analytics/demand/today                — demand snapshot
 //	GET /v1/supplier/analytics/demand/history              — demand history
 //	GET /v1/supplier/analytics/{transit-heatmap,throughput,load-distribution,node-efficiency,sla-health,revenue,top-retailers}
+//	POST /v1/supplier/analytics/graph/query                — graph query analytics (pagination + explainability)
+//	POST /v1/supplier/analytics/forecast/tournament        — forecast tournament leaderboard (champion/challenger)
 //	GET /v1/supplier/financials                            — supplier financials
 //	GET /v1/supplier/crm/retailers                         — CRM retailer list
 //	GET /v1/supplier/crm/retailers/{id}                    — CRM retailer detail
@@ -71,6 +73,10 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierRole, log(withRegionScope(withWarehouseScope(analytics.HandleRevenue(d.Spanner, d.ReadRouter))))))
 	r.HandleFunc("/v1/supplier/analytics/top-retailers",
 		auth.RequireRole(supplierRole, log(withRegionScope(withWarehouseScope(analytics.HandleTopRetailers(d.Spanner, d.ReadRouter))))))
+	r.HandleFunc("/v1/supplier/analytics/graph/query",
+		auth.RequireRole(supplierRole, log(withRegionScope(withWarehouseScope(analytics.HandleGraphQuery(d.Spanner, d.ReadRouter))))))
+	r.HandleFunc("/v1/supplier/analytics/forecast/tournament",
+		auth.RequireRole(supplierRole, log(withRegionScope(withWarehouseScope(analytics.HandleForecastTournament(d.Spanner, d.ReadRouter))))))
 	r.HandleFunc("/v1/supplier/financials",
 		auth.RequireRole(supplierRole, log(withRegionScope(analytics.HandleSupplierFinancials(d.Spanner, d.ReadRouter)))))
 	r.HandleFunc("/v1/supplier/crm/retailers",

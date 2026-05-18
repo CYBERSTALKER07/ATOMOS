@@ -55,6 +55,9 @@ RAW_FETCH_ALLOWLIST_PATTERNS = [
 RAW_FETCH_RE = re.compile(r"\bfetch\s*\(")
 
 
+PYTHON_BIN = sys.executable or "python3"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
@@ -88,7 +91,7 @@ def main() -> int:
     design_sync_changes = [path for path in files if match_any(path, DESIGN_SYNC_PATTERNS)]
     codebase_focus_changes = sorted(set(trigger_changes + token_source_changes))
     cmd = [
-        "python3",
+        PYTHON_BIN,
         "pegasus/scripts/design_token_enforcement_guard.py",
         "--repo-root",
         str(repo_root),

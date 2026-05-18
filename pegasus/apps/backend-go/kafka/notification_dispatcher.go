@@ -307,6 +307,10 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handleWarehouseSpatialUpdated(deps, m.Value)
 			case EventFactoryCreated:
 				handleFactoryCreated(deps, m.Value)
+			case EventSupplierRegistered:
+				handleSupplierRegistered(deps, m.Value)
+			case EventSupplierConfigured:
+				handleSupplierConfigured(deps, m.Value)
 			case EventRetailerRegistered:
 				handleRetailerRegistered(deps, m.Value)
 			case EventFactorySLABreach:
@@ -935,8 +939,9 @@ func handleCancelRequested(deps NotificationDeps, data []byte) {
 		row, err := deps.SpannerClient.Single().ReadRow(ctx, "Orders", spanner.Key{event.OrderID}, []string{"SupplierId"})
 		if err == nil {
 			var sid spanner.NullString
-			_ = row.Columns(&sid)
-			supplierID = sid.StringVal
+			if err := row.Columns(&sid); err == nil {
+				supplierID = sid.StringVal
+			}
 		}
 	}
 	if supplierID != "" {
@@ -966,8 +971,9 @@ func handleCancelApproved(deps NotificationDeps, data []byte) {
 		row, err := deps.SpannerClient.Single().ReadRow(ctx, "Orders", spanner.Key{event.OrderID}, []string{"RetailerId"})
 		if err == nil {
 			var rid spanner.NullString
-			_ = row.Columns(&rid)
-			retailerID = rid.StringVal
+			if err := row.Columns(&rid); err == nil {
+				retailerID = rid.StringVal
+			}
 		}
 	}
 	if retailerID != "" {
@@ -1841,6 +1847,44 @@ func handleFactoryCreated(deps NotificationDeps, data []byte) {
 			"notification.factory_created.title",
 			"notification.factory_created.body",
 			map[string]string{"factory_name": event.Name, "warehouses_linked": fmt.Sprintf("%d", event.WarehousesLinked)},
+		))
+}
+
+func handleSupplierRegistered(deps NotificationDeps, data []byte) {
+	var event SupplierRegisteredEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "SUPPLIER_REGISTERED", "err", err)
+		return
+	}
+	if event.SupplierID == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventSupplierRegistered,
+		notifications.NewFormattedNotification(
+			"Welcome to Pegasus",
+			fmt.Sprintf("Supplier account %s registered successfully.", event.CompanyName),
+			"notification.supplier_registered.title",
+			"notification.supplier_registered.body",
+			map[string]string{"company_name": event.CompanyName},
+		))
+}
+
+func handleSupplierConfigured(deps NotificationDeps, data []byte) {
+	var event SupplierConfiguredEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", "SUPPLIER_CONFIGURED", "err", err)
+		return
+	}
+	if event.SupplierID == "" {
+		return
+	}
+	dispatchToRecipient(deps, event.SupplierID, "SUPPLIER", EventSupplierConfigured,
+		notifications.NewFormattedNotification(
+			"Onboarding Complete",
+			"Your profile has been configured and your catalog is ready to receive products.",
+			"notification.supplier_configured.title",
+			"notification.supplier_configured.body",
+			nil,
 		))
 }
 

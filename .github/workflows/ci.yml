@@ -58,6 +58,7 @@ jobs:
             relevant:
               - '.github/workflows/one-eye-guards.yml'
               - '.github/workflows/ci.yml'
+              - 'pegasus/Makefile'
               - 'pegasus/scripts/guard_utils.py'
               - 'pegasus/scripts/contract_drift_guard.py'
               - 'pegasus/scripts/architecture_boundary_guard.py'
@@ -65,6 +66,7 @@ jobs:
               - 'pegasus/scripts/contract_guard_mcp.py'
               - 'pegasus/scripts/architecture_guard_mcp.py'
               - 'pegasus/scripts/design_system_guard_mcp.py'
+              - 'pegasus/scripts/sprint1_execution_gate.py'
               - 'pegasus/scripts/production_safety_guard.py'
               - 'pegasus/scripts/visual_test_intelligence_guard.py'
               - 'pegasus/scripts/security_guard.py'
@@ -101,58 +103,28 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Contract Guard MCP
+      - name: Run sprint1 execution gate
         if: steps.one_eye_paths.outputs.relevant == 'true'
         run: |
-          python3 pegasus/scripts/contract_guard_mcp.py \
+          python3 pegasus/scripts/sprint1_execution_gate.py \
             --repo-root . \
+            --with-enforce \
+            --changed-only \
             --base-sha "${{ github.event.pull_request.base.sha }}" \
             --head-sha "${{ github.event.pull_request.head.sha }}"
 
-      - name: Architecture Guard MCP
-        if: steps.one_eye_paths.outputs.relevant == 'true'
-        run: |
-          python3 pegasus/scripts/architecture_guard_mcp.py \
-            --repo-root . \
-            --base-sha "${{ github.event.pull_request.base.sha }}" \
-            --head-sha "${{ github.event.pull_request.head.sha }}"
-
-      - name: Design System Guard MCP
-        if: steps.one_eye_paths.outputs.relevant == 'true'
-        run: |
-          python3 pegasus/scripts/design_system_guard_mcp.py \
-            --repo-root . \
-            --base-sha "${{ github.event.pull_request.base.sha }}" \
-            --head-sha "${{ github.event.pull_request.head.sha }}"
-
-      - name: Production Safety Guard
-        if: steps.one_eye_paths.outputs.relevant == 'true'
-        run: |
-          python3 pegasus/scripts/production_safety_guard.py \
-            --repo-root . \
-            --base-sha "${{ github.event.pull_request.base.sha }}" \
-            --head-sha "${{ github.event.pull_request.head.sha }}"
-
-      - name: Visual + Test Intelligence
-        if: steps.one_eye_paths.outputs.relevant == 'true'
-        run: |
-          python3 pegasus/scripts/visual_test_intelligence_guard.py \
-            --repo-root . \
-            --base-sha "${{ github.event.pull_request.base.sha }}" \
-            --head-sha "${{ github.event.pull_request.head.sha }}"
-
-      - name: Security Guard
-        if: steps.one_eye_paths.outputs.relevant == 'true'
-        run: |
-          python3 pegasus/scripts/security_guard.py \
-            --repo-root . \
-            --base-sha "${{ github.event.pull_request.base.sha }}" \
-            --head-sha "${{ github.event.pull_request.head.sha }}"
+      - name: Upload sprint1 gate artifacts
+        if: always() && steps.one_eye_paths.outputs.relevant == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-one-eye-sprint1-gate-${{ github.run_id }}
+          path: pegasus/.execution/sprint1
 
   # ── VersionScan guardrails ───────────────────────────────────────────────
   versionscan:
     name: VersionScan — manifest + guardrails
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v4
@@ -166,11 +138,6 @@ jobs:
       - name: VersionScan manifest
         working-directory: pegasus
         run: python3 scripts/versionscan.py scan --repo-root . --output-dir .versionscan
-
-      - name: VersionScan enforce (PR changed files)
-        if: github.event_name == 'pull_request'
-        working-directory: pegasus
-        run: python3 scripts/versionscan.py enforce --repo-root . --output-dir .versionscan --changed-only
 
       - name: Upload VersionScan artifacts
         if: always()

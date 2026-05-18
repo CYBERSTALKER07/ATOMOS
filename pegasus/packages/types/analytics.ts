@@ -129,3 +129,115 @@ export interface HealthCheckResponse {
   redis: boolean;
   time: string;
 }
+
+// ─── Graph Query Analytics (Sprint-3) ──────────────────────────────────────
+export type GraphAnalyticsQueryMode =
+  | 'PRODUCT_LOCATION_TIME'
+  | 'SUPPLIER_TIER'
+  | 'LANE_CAPACITY';
+
+export interface GraphAnalyticsQueryRequest {
+  query_mode: GraphAnalyticsQueryMode;
+  from?: string;
+  to?: string;
+  warehouse_id?: string;
+  factory_id?: string;
+  sku_id?: string;
+  page_size?: number;
+  offset?: number;
+}
+
+export interface GraphAnalyticsNode {
+  node_id: string;
+  node_type: string;
+  label: string;
+  metadata?: Record<string, string>;
+}
+
+export interface GraphAnalyticsEdge {
+  from: string;
+  to: string;
+  relation: string;
+  weight: number;
+  metadata?: Record<string, string>;
+}
+
+export interface GraphAnalyticsRow {
+  row_id: string;
+  dimensions: Record<string, string>;
+  metrics: Record<string, number>;
+  explain_tags?: string[];
+}
+
+export interface GraphAnalyticsPagination {
+  page_size: number;
+  offset: number;
+  returned: number;
+  has_more: boolean;
+  next_offset?: number;
+}
+
+export interface GraphAnalyticsExplainability {
+  query_mode: GraphAnalyticsQueryMode;
+  scope_supplier_id: string;
+  scope_warehouse_id?: string;
+  applied_filters: Record<string, string>;
+  data_sources: string[];
+  generated_at: string;
+}
+
+export interface GraphAnalyticsQueryResult {
+  query_mode: GraphAnalyticsQueryMode;
+  nodes: GraphAnalyticsNode[];
+  edges: GraphAnalyticsEdge[];
+  rows: GraphAnalyticsRow[];
+  pagination: GraphAnalyticsPagination;
+  explainability: GraphAnalyticsExplainability;
+}
+
+export interface GraphAnalyticsQueryResponse {
+  timestamp: number;
+  data: GraphAnalyticsQueryResult;
+}
+
+// ─── Forecast Tournament Analytics (Sprint-3) ─────────────────────────────
+export interface ForecastTournamentQueryRequest {
+  from?: string;
+  to?: string;
+  warehouse_id?: string;
+  min_sample_size?: number;
+}
+
+export interface ForecastTournamentVariantScore {
+  variant_key: string;
+  label: string;
+  predictions: number;
+  fired: number;
+  rejected: number;
+  waiting: number;
+  dormant: number;
+  conversion_rate: number;
+  score: number;
+  champion_eligible: boolean;
+  avg_predicted_amount: number;
+  total_predicted_amount: number;
+}
+
+export interface ForecastTournamentResult {
+  window_from: string;
+  window_to: string;
+  scope_supplier_id: string;
+  scope_warehouse_id?: string;
+  min_sample_size: number;
+  champion_variant?: string;
+  champion_score: number;
+  total_predictions: number;
+  variants: ForecastTournamentVariantScore[];
+  data_sources: string[];
+  generated_at: string;
+}
+
+export interface ForecastTournamentQueryResponse {
+  timestamp: number;
+  data: ForecastTournamentResult;
+}

@@ -52,6 +52,8 @@ spec:
                 secretKeyRef:
                   name: void-backend-secrets
                   key: GOOGLE_CLOUD_PROJECT
+            - name: OPTIMIZER_SIDE_ENDPOINT
+              value: "127.0.0.1:50055"
           resources:
             requests:
               cpu: "250m"
@@ -70,6 +72,37 @@ spec:
             httpGet:
               path: /ready
               port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 2
+        - name: optimizer-core-rust
+          image: OPTIMIZER_CORE_RUST_IMAGE_PLACEHOLDER
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: optimizer-grpc
+              containerPort: 50055
+              protocol: TCP
+          env:
+            - name: OPTIMIZER_CORE_GRPC_PORT
+              value: "50055"
+            - name: RUST_LOG
+              value: "info"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            tcpSocket:
+              port: optimizer-grpc
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: optimizer-grpc
             initialDelaySeconds: 5
             periodSeconds: 10
             failureThreshold: 2

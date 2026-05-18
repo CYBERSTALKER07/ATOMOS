@@ -4,13 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"backend-go/auth"
 	"backend-go/cache"
+	internalKafka "backend-go/kafka"
+	"backend-go/outbox"
+	"backend-go/telemetry"
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
@@ -62,7 +65,7 @@ func HandleSupplierRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			req.Categories = []string{}
 		}
 		if err := ensureCanonicalCategoriesSeeded(r.Context(), spannerClient); err != nil {
-			log.Printf("[SUPPLIER REGISTER] category seed error: %v", err)
+			slog.ErrorContext(r.Context(), "Category seed error", "error", err)
 			http.Error(w, `{"error":"category catalog unavailable"}`, http.StatusInternalServerError)
 			return
 		}
@@ -92,7 +95,7 @@ func HandleSupplierRegister(spannerClient *spanner.Client) http.HandlerFunc {
 		// Hash password
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
-			log.Printf("[SUPPLIER REGISTER] bcrypt error: %v", err)
+			slog.ErrorContext(r.Context(), "Bcrypt error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -151,13 +154,28 @@ func HandleSupplierRegister(spannerClient *spanner.Client) http.HandlerFunc {
 		}
 
 		m := spanner.Insert("Suppliers", cols, vals)
+
+		event := internalKafka.SupplierRegisteredEvent{
+			SupplierID:  supplierId,
+			CompanyName: req.CompanyName,
+			PhoneNumber: req.Phone,
+			Email:       req.Email,
+			RegionCode:  countryCode,
+			Timestamp:   time.Now().UTC(),
+		}
+
 		if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-			return txn.BufferWrite([]*spanner.Mutation{m})
+			if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
+				return err
+			}
+			return outbox.EmitJSON(txn, "Supplier", supplierId, internalKafka.EventSupplierRegistered, internalKafka.TopicMain, event, telemetry.TraceIDFromContext(ctx))
 		}); err != nil {
-			log.Printf("[SUPPLIER REGISTER] spanner insert error: %v", err)
+			slog.ErrorContext(r.Context(), "Spanner insert error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
+
+		internalKafka.EmitNotification(internalKafka.EventSupplierRegistered, event)
 
 		// ── T=0 Mirror: root supplier → SupplierUsers as GLOBAL_ADMIN ────
 		// Unifies the identity table from day one. No lazy-mirror needed.
@@ -175,7 +193,7 @@ func HandleSupplierRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			return txn.BufferWrite([]*spanner.Mutation{mirrorMut})
 		}); err != nil {
 			// Non-fatal: root still exists in Suppliers table, login works via fallback.
-			log.Printf("[SUPPLIER REGISTER] T=0 mirror to SupplierUsers failed (non-fatal): %v", err)
+			slog.WarnContext(r.Context(), "T=0 mirror to SupplierUsers failed (non-fatal)", "error", err)
 		}
 
 		token, err := auth.MintIdentityToken(&auth.PegasusClaims{
@@ -187,7 +205,7 @@ func HandleSupplierRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			IsConfigured: isConfigured,
 		})
 		if err != nil {
-			log.Printf("[SUPPLIER REGISTER] token error: %v", err)
+			slog.ErrorContext(r.Context(), "Token error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -206,7 +224,7 @@ func HandleSupplierRegister(spannerClient *spanner.Client) http.HandlerFunc {
 					spanner.Update("SupplierUsers", []string{"UserId", "FirebaseUid"}, []interface{}{mirrorID, fbUid}),
 				})
 			}); err != nil {
-				log.Printf("[SUPPLIER REGISTER] firebase UID mirror failed for %s: %v", supplierId, err)
+				slog.WarnContext(r.Context(), "Firebase UID mirror failed", "supplier_id", supplierId, "error", err)
 			}
 			token, err := auth.MintCustomToken(ctx, fbUid, map[string]interface{}{
 				"role":          "SUPPLIER",
@@ -214,7 +232,7 @@ func HandleSupplierRegister(spannerClient *spanner.Client) http.HandlerFunc {
 				"supplier_role": "GLOBAL_ADMIN",
 			})
 			if err != nil {
-				log.Printf("[SUPPLIER REGISTER] firebase token mint failed for %s: %v", supplierId, err)
+				slog.WarnContext(r.Context(), "Firebase token mint failed", "supplier_id", supplierId, "error", err)
 			} else {
 				firebaseToken = token
 			}
@@ -267,7 +285,7 @@ func HandleSupplierConfigure(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 		if err := ensureCanonicalCategoriesSeeded(r.Context(), spannerClient); err != nil {
-			log.Printf("[SUPPLIER CONFIGURE] category seed error: %v", err)
+			slog.ErrorContext(r.Context(), "Category seed error", "error", err)
 			http.Error(w, `{"error":"category catalog unavailable"}`, http.StatusInternalServerError)
 			return
 		}
@@ -290,13 +308,26 @@ func HandleSupplierConfigure(spannerClient *spanner.Client) http.HandlerFunc {
 			[]string{"SupplierId", "TaxId", "Category", "IsConfigured", "OperatingCategories"},
 			[]interface{}{supplierID, req.TaxId, primaryCategoryName(validCategories), true, validCategories},
 		)
+
+		event := internalKafka.SupplierConfiguredEvent{
+			SupplierID:          supplierID,
+			TaxID:               req.TaxId,
+			OperatingCategories: validCategories,
+			Timestamp:           time.Now().UTC(),
+		}
+
 		if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-			return txn.BufferWrite([]*spanner.Mutation{m})
+			if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
+				return err
+			}
+			return outbox.EmitJSON(txn, "Supplier", supplierID, internalKafka.EventSupplierConfigured, internalKafka.TopicMain, event, telemetry.TraceIDFromContext(ctx))
 		}); err != nil {
-			log.Printf("[SUPPLIER CONFIGURE] spanner update error: %v", err)
+			slog.ErrorContext(r.Context(), "Spanner update error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
+
+		internalKafka.EmitNotification(internalKafka.EventSupplierConfigured, event)
 
 		cache.Invalidate(ctx, cache.SupplierProfile(supplierID))
 
@@ -371,7 +402,7 @@ func HandleBillingSetup(spannerClient *spanner.Client) http.HandlerFunc {
 		if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 			return txn.BufferWrite([]*spanner.Mutation{m})
 		}); err != nil {
-			log.Printf("[SUPPLIER BILLING] spanner update error: %v", err)
+			slog.ErrorContext(r.Context(), "Spanner update error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -397,7 +428,7 @@ func HandleListPlatformCategories(spannerClient *spanner.Client) http.HandlerFun
 		}
 
 		if err := ensureCanonicalCategoriesSeeded(r.Context(), spannerClient); err != nil {
-			log.Printf("[PLATFORM CATEGORIES] seed error: %v", err)
+			slog.ErrorContext(r.Context(), "Category seed error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -423,13 +454,13 @@ func HandleListPlatformCategories(spannerClient *spanner.Client) http.HandlerFun
 				break
 			}
 			if err != nil {
-				log.Printf("[PLATFORM CATEGORIES] query error: %v", err)
+				slog.ErrorContext(r.Context(), "Query error", "error", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
 			var c Category
 			if err := row.Columns(&c.CategoryId, &c.DisplayName, &c.IconUrl, &c.DisplayOrder); err != nil {
-				log.Printf("[PLATFORM CATEGORIES] parse error: %v", err)
+				slog.ErrorContext(r.Context(), "Parse error", "error", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
@@ -486,7 +517,7 @@ func HandleGetSupplierProfile(spannerClient *spanner.Client, rc *cache.Cache, fl
 			return fetchSupplierProfile(r.Context(), spannerClient, supplierID)
 		})
 		if err != nil {
-			log.Printf("[SUPPLIER PROFILE] fetch error: %v", err)
+			slog.ErrorContext(r.Context(), "Fetch error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -689,7 +720,7 @@ func HandleUpdateSupplierProfile(spannerClient *spanner.Client, rc *cache.Cache)
 			})
 		})
 		if err != nil {
-			log.Printf("[SUPPLIER PROFILE] update error for %s: %v", claims.UserID, err)
+			slog.ErrorContext(r.Context(), "Profile update error", "supplier_id", claims.UserID, "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}

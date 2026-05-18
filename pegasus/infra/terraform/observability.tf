@@ -163,6 +163,86 @@ resource "google_monitoring_alert_policy" "http_p99_latency" {
   }
 }
 
+# ── Optimizer canary hard gates (Phase-7) ────────────────────────────────
+
+resource "google_monitoring_alert_policy" "optimizer_canary_solver_duration" {
+  display_name = "VOID — Optimizer Canary FAIL: p99 Solver Duration > 100 ms"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "optimizer solver duration"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_optimizer_solver_duration_seconds/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0.1
+      duration        = "900s"
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MAX"
+      }
+    }
+  }
+
+  notification_channels = var.alert_notification_channels
+
+  documentation {
+    content   = "Phase-7 optimizer canary hard gate: rollback if p99 solver duration exceeds 100 ms for 15 min."
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "optimizer_canary_error_rate" {
+  display_name = "VOID — Optimizer Canary FAIL: Error Rate > 1%"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "optimizer error rate"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_optimizer_error_rate/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0.01
+      duration        = "900s"
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MAX"
+      }
+    }
+  }
+
+  notification_channels = var.alert_notification_channels
+
+  documentation {
+    content   = "Phase-7 optimizer canary hard gate: rollback if optimizer error-rate (timeout+error+fallback) exceeds 1% for 15 min."
+    mime_type = "text/markdown"
+  }
+}
+
+resource "google_monitoring_alert_policy" "optimizer_canary_circuit_breaker" {
+  display_name = "VOID — Optimizer Canary FAIL: Circuit Breaker Not Closed"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "optimizer circuit breaker"
+    condition_threshold {
+      filter          = "metric.type=\"prometheus.googleapis.com/void_optimizer_circuit_breaker_state/gauge\" resource.type=\"prometheus_target\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0
+      duration        = "300s"
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MAX"
+      }
+    }
+  }
+
+  notification_channels = var.alert_notification_channels
+
+  documentation {
+    content   = "Phase-7 optimizer canary hard gate: rollback if optimizer circuit-breaker state is not CLOSED for 5 min."
+    mime_type = "text/markdown"
+  }
+}
+
 # ── Uptime check — backend health endpoint ─────────────────────────────────
 
 resource "google_monitoring_uptime_check_config" "backend_health" {

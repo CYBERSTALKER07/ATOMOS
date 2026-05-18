@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -139,7 +139,7 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 	// Snapshot-authoritative fee split for reversal ledger math.
 	snapshot, hasSnapshot, snapshotErr := LoadSupplierSettlementSnapshot(ctx, rs.spanner, orderID, supplierID)
 	if snapshotErr != nil {
-		log.Printf("[REFUND] Settlement snapshot lookup failed for order %s supplier %s: %v", orderID, supplierID, snapshotErr)
+		slog.WarnContext(ctx, "Settlement snapshot lookup failed", "order_id", orderID, "supplier_id", supplierID, "error", snapshotErr)
 	}
 
 	// 3. Call payment gateway for refund
@@ -150,20 +150,20 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 	if sessGateway == "CASH" {
 		// Cash refunds are manual — mark for manual processing
 		refundStatus = RefundManualRequired
-		log.Printf("[REFUND] Cash refund for order %s — requires manual processing", orderID)
+		slog.InfoContext(ctx, "Cash refund requires manual processing", "order_id", orderID)
 	} else {
 		executionClient, executionErr := rs.resolveExecutionClient(ctx, orderID, sessGateway)
 		if executionErr != nil {
 			refundStatus = RefundManualRequired
-			log.Printf("[REFUND] Provider execution unavailable for refund on order %s via %s: %v", orderID, sessGateway, executionErr)
+			slog.WarnContext(ctx, "Provider execution unavailable for refund", "order_id", orderID, "gateway", sessGateway, "error", executionErr)
 		} else {
 			providerPaymentID, refLookupErr := rs.lookupProviderPaymentID(ctx, sessionID, providerReference)
 			if refLookupErr != nil {
 				refundStatus = RefundManualRequired
-				log.Printf("[REFUND] Provider payment reference lookup failed for order %s via %s: %v", orderID, sessGateway, refLookupErr)
+				slog.WarnContext(ctx, "Provider payment reference lookup failed", "order_id", orderID, "gateway", sessGateway, "error", refLookupErr)
 			} else if providerPaymentID == "" {
 				refundStatus = RefundManualRequired
-				log.Printf("[REFUND] Provider payment reference missing for order %s via %s; refund requires manual handling", orderID, sessGateway)
+				slog.WarnContext(ctx, "Provider payment reference missing; refund requires manual handling", "order_id", orderID, "gateway", sessGateway)
 			} else {
 				refundResult, refErr := executionClient.RefundPayment(ctx, ProviderRefundRequest{
 					OrderID:   orderID,
@@ -174,10 +174,10 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 				if refErr != nil {
 					if errors.Is(refErr, ErrAdyenDirectOperationUnsupported) || errors.Is(refErr, ErrAirwallexDirectOperationUnsupported) {
 						refundStatus = RefundManualRequired
-						log.Printf("[REFUND] Gateway refund requires manual handling for order %s via %s: %v", orderID, sessGateway, refErr)
+						slog.WarnContext(ctx, "Gateway refund requires manual handling", "order_id", orderID, "gateway", sessGateway, "error", refErr)
 					} else {
 						refundStatus = RefundFailed
-						log.Printf("[REFUND] Gateway refund failed for order %s via %s: %v", orderID, sessGateway, refErr)
+						slog.ErrorContext(ctx, "Gateway refund failed", "order_id", orderID, "gateway", sessGateway, "error", refErr)
 					}
 				} else {
 					refundStatus = RefundSettled
@@ -188,7 +188,7 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 					if providerRefundID == "" {
 						providerRefundID = providerPaymentID
 					}
-					log.Printf("[REFUND] Gateway refund succeeded for order %s via %s: %d %s", orderID, sessGateway, refundAmount, resolvedCurrency)
+					slog.InfoContext(ctx, "Gateway refund succeeded", "order_id", orderID, "gateway", sessGateway, "amount", refundAmount, "currency", resolvedCurrency)
 				}
 			}
 		}
@@ -286,7 +286,7 @@ func (rs *RefundService) InitiateRefund(ctx context.Context, req RefundRequest, 
 	// Cache invalidate
 	cache.Invalidate(ctx, cache.PrefixActiveOrders+retailerID, cache.SupplierProfile(supplierID))
 
-	log.Printf("[REFUND] Refund %s for order %s: %d %s → %s", refundID, orderID, refundAmount, resolvedCurrency, refundStatus)
+	slog.InfoContext(ctx, "Refund processed", "refund_id", refundID, "order_id", orderID, "amount", refundAmount, "currency", resolvedCurrency, "status", refundStatus)
 
 	return &RefundResult{
 		RefundID:         refundID,
@@ -507,7 +507,7 @@ func (rs *RefundService) InitiateDeliveryDeltaRefund(ctx context.Context, req De
 	// Snapshot-authoritative fee split for reversal ledger math.
 	snapshot, hasSnapshot, snapshotErr := LoadSupplierSettlementSnapshot(ctx, rs.spanner, req.OrderID, supplierID)
 	if snapshotErr != nil {
-		log.Printf("[REFUND.DELTA] settlement snapshot lookup failed for order %s supplier %s: %v", req.OrderID, supplierID, snapshotErr)
+		slog.WarnContext(ctx, "Settlement snapshot lookup failed", "order_id", req.OrderID, "supplier_id", supplierID, "error", snapshotErr)
 	}
 
 	// Provider call. Failures fall back to MANUAL_REQUIRED so operators can
@@ -518,16 +518,16 @@ func (rs *RefundService) InitiateDeliveryDeltaRefund(ctx context.Context, req De
 	executionClient, executionErr := rs.resolveExecutionClient(ctx, req.OrderID, sessGateway)
 	if executionErr != nil {
 		refundStatus = RefundManualRequired
-		log.Printf("[REFUND.DELTA] provider execution unavailable order=%s gateway=%s: %v", req.OrderID, sessGateway, executionErr)
+		slog.WarnContext(ctx, "Provider execution unavailable", "order_id", req.OrderID, "gateway", sessGateway, "error", executionErr)
 	} else {
 		providerPaymentID, refLookupErr := rs.lookupProviderPaymentID(ctx, sessionID, providerReference)
 		switch {
 		case refLookupErr != nil:
 			refundStatus = RefundManualRequired
-			log.Printf("[REFUND.DELTA] provider payment ref lookup failed order=%s: %v", req.OrderID, refLookupErr)
+			slog.WarnContext(ctx, "Provider payment ref lookup failed", "order_id", req.OrderID, "error", refLookupErr)
 		case providerPaymentID == "":
 			refundStatus = RefundManualRequired
-			log.Printf("[REFUND.DELTA] provider payment ref missing order=%s", req.OrderID)
+			slog.WarnContext(ctx, "Provider payment ref missing", "order_id", req.OrderID)
 		default:
 			refundResult, refErr := executionClient.RefundPayment(ctx, ProviderRefundRequest{
 				OrderID:   req.OrderID,
@@ -541,7 +541,7 @@ func (rs *RefundService) InitiateDeliveryDeltaRefund(ctx context.Context, req De
 				} else {
 					refundStatus = RefundFailed
 				}
-				log.Printf("[REFUND.DELTA] provider refund failed order=%s gateway=%s: %v", req.OrderID, sessGateway, refErr)
+				slog.ErrorContext(ctx, "Provider refund failed", "order_id", req.OrderID, "gateway", sessGateway, "error", refErr)
 			} else {
 				refundStatus = RefundSettled
 				providerRefundID = strings.TrimSpace(refundResult.ProviderRefundID)
@@ -636,7 +636,7 @@ func (rs *RefundService) InitiateDeliveryDeltaRefund(ctx context.Context, req De
 
 	cache.Invalidate(ctx, cache.PrefixActiveOrders+retailerID, cache.SupplierProfile(supplierID))
 
-	log.Printf("[REFUND.DELTA] order=%s session=%s delta=%d %s status=%s", req.OrderID, sessionID, delta, resolvedCurrency, refundStatus)
+	slog.InfoContext(ctx, "Delta refund processed", "order_id", req.OrderID, "session_id", sessionID, "delta", delta, "currency", resolvedCurrency, "status", refundStatus)
 
 	return &RefundResult{
 		RefundID:         deltaRefundID,

@@ -35,6 +35,9 @@ CONTEXT_SYNC_PATTERNS = [
     "pegasus/context/technology-inventory.json",
 ]
 
+
+PYTHON_BIN = sys.executable or "python3"
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
@@ -69,7 +72,7 @@ def main() -> int:
     context_sync_changes = [path for path in files if match_any(path, CONTEXT_SYNC_PATTERNS)]
     codebase_focus_changes = sorted(set(trigger_changes))
     cmd = [
-        "python3",
+        PYTHON_BIN,
         "pegasus/scripts/architecture_boundary_guard.py",
         "--repo-root",
         str(repo_root),

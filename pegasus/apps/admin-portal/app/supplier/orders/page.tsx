@@ -18,6 +18,8 @@ import { useToast } from '@/components/Toast';
 import ShopClosedBanner from '@/components/ShopClosedBanner';
 import EarlyCompleteBanner from '@/components/EarlyCompleteBanner';
 import NegotiationBanner from '@/components/NegotiationBanner';
+import { resolveSupplierEntity } from '@/lib/api/entity-resolution';
+import { hasLocalOrderSearchMatch, scheduleOrderResolutionFallback } from './search-fallback';
 import { Button } from '@heroui/react';
 import {
   buildSupplierAutoDispatchIdempotencyKey,
@@ -125,6 +127,7 @@ export default function OrdersPage() {
   const [tab, setTab] = useState<Tab>('active');
   const [showHistory, setShowHistory] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [resolvedSearchOrderIds, setResolvedSearchOrderIds] = useState<string[]>([]);
   const [stateFilter, setStateFilter] = useState('');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -190,6 +193,28 @@ export default function OrdersPage() {
     fetchOrders();
     setSelected(new Set());
   }, [fetchOrders]);
+
+  useEffect(() => {
+    const trimmedQuery = searchQuery.trim();
+    if (!trimmedQuery) {
+      setResolvedSearchOrderIds([]);
+      return;
+    }
+
+    const hasLocalMatch = hasLocalOrderSearchMatch(trimmedQuery, orders);
+    if (hasLocalMatch) {
+      setResolvedSearchOrderIds([]);
+      return;
+    }
+
+    return scheduleOrderResolutionFallback({
+      query: trimmedQuery,
+      rows: orders,
+      resolveEntity: resolveSupplierEntity,
+      onResolved: setResolvedSearchOrderIds,
+      delayMs: 280,
+    });
+  }, [orders, searchQuery]);
 
   // Auto-refresh every 30s for active tabs
   useSyncHub("HYBRID", "ORDER_REASSIGNED", async (signal) => {
@@ -471,12 +496,16 @@ export default function OrdersPage() {
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter(o => o.order_id.toLowerCase().includes(q) || (o.retailer_name || '').toLowerCase().includes(q));
+      if (result.length === 0 && resolvedSearchOrderIds.length > 0) {
+        const resolvedIDSet = new Set(resolvedSearchOrderIds);
+        result = orders.filter((order) => resolvedIDSet.has(order.order_id));
+      }
     }
     if (stateFilter) {
       result = result.filter(o => o.state === stateFilter);
     }
     return result;
-  }, [orders, searchQuery, stateFilter]);
+  }, [orders, searchQuery, resolvedSearchOrderIds, stateFilter]);
 
   const totalItems = hasMore ? serverOffset + orders.length + 1 : serverOffset + orders.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));

@@ -257,6 +257,20 @@ func (s *OrderService) resolveSupplierCurrency(ctx context.Context, supplierID s
 	return currencyCode
 }
 
+// resolveRequestedGatewayForRetailer ensures gateway selection is never blank.
+// Priority: explicit request -> retailer country/region default -> GLOBAL_PAY.
+func (s *OrderService) resolveRequestedGatewayForRetailer(ctx context.Context, retailerID, requestedGateway string) string {
+	if normalized := strings.ToUpper(strings.TrimSpace(requestedGateway)); normalized != "" {
+		return normalized
+	}
+	if s != nil && s.CountryConfig != nil && strings.TrimSpace(retailerID) != "" {
+		if resolved := strings.ToUpper(strings.TrimSpace(s.CountryConfig.ResolveDefaultGatewayForRetailer(ctx, retailerID))); resolved != "" {
+			return resolved
+		}
+	}
+	return "GLOBAL_PAY"
+}
+
 func asGatewayPolicyError(err error) (*ErrGatewayPolicy, bool) {
 	var policyErr *ErrGatewayPolicy
 	if errors.As(err, &policyErr) {
@@ -3383,11 +3397,12 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		retailerId = retailerIdNull.StringVal
 	}
 
-	gatewayResolution, err := s.ResolveCheckoutGatewayWithMetadata(ctx, []string{supplierId}, gateway)
+	requestedGateway := s.resolveRequestedGatewayForRetailer(ctx, retailerId, gateway)
+	gatewayResolution, err := s.ResolveCheckoutGatewayWithMetadata(ctx, []string{supplierId}, requestedGateway)
 	if err != nil {
 		if policyErr, ok := asGatewayPolicyError(err); ok {
 			if retailerId != "" {
-				s.Trigger3CFallback(ctx, retailerId, gateway, policyErr.Message)
+				s.Trigger3CFallback(ctx, retailerId, requestedGateway, policyErr.Message)
 			}
 			return nil, policyErr
 		}
@@ -3529,6 +3544,14 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 	var serviceID string
 	var secretKey string
 	var recipientID string
+	fallbackTriggered := false
+	triggerFallback := func(reason string) {
+		if fallbackTriggered || retailerId == "" || strings.TrimSpace(gateway) == "" {
+			return
+		}
+		s.Trigger3CFallback(ctx, retailerId, gateway, reason)
+		fallbackTriggered = true
+	}
 	if s.Vault != nil {
 		cfg, vaultErr := s.Vault.GetDecryptedConfigByOrder(ctx, orderId, gateway)
 		if vaultErr == nil {
@@ -3598,7 +3621,7 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 				})
 				if execErr != nil {
 					slog.Warn("order.card_checkout_direct_init_failed", "order_id", orderId, "gateway", gateway, "err", execErr)
-					s.Trigger3CFallback(ctx, retailerId, gateway, fmt.Sprintf("direct payment init failed: %v", execErr))
+					triggerFallback(fmt.Sprintf("direct payment init failed: %v", execErr))
 				} else {
 					providerReference = strings.TrimSpace(executionResult.ProviderReference)
 					if providerReference == "" {
@@ -3670,7 +3693,7 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		checkoutResult, checkoutErr := payment.CreateGlobalPayHostedCheckout(ctx, creds, checkoutReq)
 		if checkoutErr != nil {
 			urlErr = checkoutErr
-			s.Trigger3CFallback(ctx, retailerId, gateway, fmt.Sprintf("hosted checkout init failed: %v", checkoutErr))
+			triggerFallback(fmt.Sprintf("hosted checkout init failed: %v", checkoutErr))
 			if s.SessionSvc != nil {
 				if failErr := s.SessionSvc.FailSession(ctx, resp.SessionID, "GLOBAL_PAY_INIT_FAILED", checkoutErr.Error()); failErr != nil {
 					slog.Error("order.card_checkout_session_fail_failed", "session_id", resp.SessionID, "err", failErr)
@@ -3706,7 +3729,7 @@ func (s *OrderService) CardCheckout(ctx context.Context, orderId, gateway, callb
 		})
 		if checkoutErr != nil {
 			urlErr = checkoutErr
-			s.Trigger3CFallback(ctx, retailerId, gateway, fmt.Sprintf("hosted checkout init failed: %v", checkoutErr))
+			triggerFallback(fmt.Sprintf("hosted checkout init failed: %v", checkoutErr))
 			if s.SessionSvc != nil {
 				if failErr := s.SessionSvc.FailSession(ctx, resp.SessionID, "ADYEN_INIT_FAILED", checkoutErr.Error()); failErr != nil {
 					slog.Error("order.card_checkout_session_fail_failed", "session_id", resp.SessionID, "err", failErr)

@@ -1,6 +1,6 @@
 {
-  "version": "2026-05-16",
-  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer+supplier fanout parity with admin-portal hybrid invalidation, retailer inbox settlement/session refresh parity with shared ws-event contract coverage, checkout supplier-effective currency resolution, payment-session currency normalization, refund/chargeback additive currency compatibility, treasury/reconciliation read-model currency parity for admin portal consumers, warehouse treasury invoice currency parity across portal and native clients, warehouse analytics additive import anomaly queue projection with portal/native parity, regional degressive checkout fee authority seeded from RegionalConfigs and evaluated through order/fee_policy.go with immutable slice outputs, multitenant driver/factory login disambiguation plus supplier-scoped phone uniqueness in provisioning flows, phase-1 regional substrate plus provider-seam normalization for GLOBAL_PAY/ADYEN/AIRWALLEX/CASH with official Adyen Payment Links hosted-checkout wiring, provider execution-path gateway normalization plus `payment/execution.go` stored-method/direct refund routing for order checkout, fulfillment, authorization, void, and refund call sites, AIRWALLEX policy/capability/schema convergence with structured tokenization gateway-unsupported responses on `/v1/retailer/card/initiate`, supplier/warehouse region query-scope middleware enforcement, webhook route composition parity for Global Pay, Stripe, and Adyen ingress, settlement-locality bootstrap for MasterInvoices/Warehouses/Vault precedence plus SupplierInventoryV2 warehouse-key inventory schema, supplier inventory import staging substrate and admin-portal wizard shell routing, supplier import alias deprecation plus warehouse-scoped analytics attribution convergence, active InventoryV2 runtime dual-read/write mirroring across checkout/restock plus replenishment and planning read convergence, autonomous nearest-factory routing fallback when no active SupplyLanes candidate exists, checkout warehouse equal-H3 tie round-robin balancing across resolver paths, region-filtered supplier reads and expanded warehouse ops plus demand read surfaces, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, targeted workspace retrieval as the default codebase-retrieval path, S-level dynamic billing metering with milestone-driven platform fee adjustments plus treasury billing telemetry, dynamic delivery handshake settlement orchestration with DeliverySessions audit trails, settlement-required fanout, dispute escalation outbox/dispatcher closure, retailer role-row consumption parity, Task 1.4 desktop-to-native verified command handshake lifecycle bridging with Redis-backed ws command registry plus native ACK settlement, and Phase 2.1 websocket envelope guard schema negotiation with guarded downgrade and SYSTEM_APP_OUTDATED fallback).",
+  "version": "2026-05-20",
+  "description": "Canonical machine-readable topology for runtime systems and agent context tooling (OR-Tools sidecar optimization runtime for VRP/CP-SAT with Kafka->gRPC->Outbox worker flow and additive ai-worker sidecar co-location wiring, phase-3 route-composer split plus Phase VIII replenishment producer+notification-consumer closure, additive telemetry journaling from websocket ingress through Kafka into Spanner audit storage, retailer cart sync realtime convergence via CART_SYNC_UPDATED post-commit invalidation, retailer AI confirm/reject outbox atomicity plus ORDER_REASSIGNED retailer+supplier fanout parity with admin-portal hybrid invalidation, retailer inbox settlement/session refresh parity with shared ws-event contract coverage, checkout supplier-effective currency resolution, payment-session currency normalization, refund/chargeback additive currency compatibility, treasury/reconciliation read-model currency parity for admin portal consumers, warehouse treasury invoice currency parity across portal and native clients, warehouse analytics additive import anomaly queue projection with portal/native parity, regional degressive checkout fee authority seeded from RegionalConfigs and evaluated through order/fee_policy.go with immutable slice outputs, multitenant driver/factory login disambiguation plus supplier-scoped phone uniqueness in provisioning flows, phase-1 regional substrate plus provider-seam normalization for GLOBAL_PAY/ADYEN/AIRWALLEX/CASH with official Adyen Payment Links hosted-checkout wiring, provider execution-path gateway normalization plus `payment/execution.go` stored-method/direct refund routing for order checkout, fulfillment, authorization, void, and refund call sites, AIRWALLEX policy/capability/schema convergence with structured tokenization gateway-unsupported responses on `/v1/retailer/card/initiate`, supplier/warehouse region query-scope middleware enforcement, webhook route composition parity for Global Pay, Stripe, and Adyen ingress, settlement-locality bootstrap for MasterInvoices/Warehouses/Vault precedence plus SupplierInventoryV2 warehouse-key inventory schema, supplier inventory import staging substrate and admin-portal wizard shell routing, supplier import alias deprecation plus warehouse-scoped analytics attribution convergence, active InventoryV2 runtime dual-read/write mirroring across checkout/restock plus replenishment and planning read convergence, autonomous nearest-factory routing fallback when no active SupplyLanes candidate exists, checkout warehouse equal-H3 tie round-robin balancing across resolver paths, region-filtered supplier reads and expanded warehouse ops plus demand read surfaces, slog observability tranche across high-noise runtime domains and cache infrastructure paths, local sequential-thinking MCP fallback, targeted workspace retrieval as the default codebase-retrieval path, S-level dynamic billing metering with milestone-driven platform fee adjustments plus treasury billing telemetry, dynamic delivery handshake settlement orchestration with DeliverySessions audit trails, settlement-required fanout, dispute escalation outbox/dispatcher closure, retailer role-row consumption parity, Task 1.4 desktop-to-native verified command handshake lifecycle bridging with Redis-backed ws command registry plus native ACK settlement, and Phase 2.1 websocket envelope guard schema negotiation with guarded downgrade and SYSTEM_APP_OUTDATED fallback).",
   "agentContext": {
     "syncSet": [
       "../.github/ACT.md",
@@ -112,7 +112,18 @@
     { "id": "one_eye_guards", "type": "policy_guard", "label": "One-Eye Guard Suite" },
     { "id": "ws_command_registry", "type": "backend", "label": "WebSocket Command Registry" },
     { "id": "ws_envelope_guard", "type": "backend", "label": "WebSocket Envelope Guard" },
-    { "id": "payment_provider_execution", "type": "backend", "label": "Provider Execution Router" }
+    { "id": "payment_provider_execution", "type": "backend", "label": "Provider Execution Router" },
+    { "id": "entity_resolution_surface", "type": "backend", "label": "Supplier Entity Resolution Surface" },
+    { "id": "entity_resolution_shared_contracts", "type": "contract", "label": "Entity Resolution Shared TS Contracts" },
+    { "id": "supplier_orders_workflow", "type": "web", "label": "Supplier Orders Workflow" },
+    { "id": "supplier_graph_query_surface", "type": "backend", "label": "Supplier Graph Query Surface" },
+    { "id": "supplier_graph_query_contracts", "type": "contract", "label": "Supplier Graph Query Shared Contracts" },
+    { "id": "supplier_forecast_tournament_surface", "type": "backend", "label": "Supplier Forecast Tournament Surface" },
+    { "id": "supplier_forecast_tournament_contracts", "type": "contract", "label": "Supplier Forecast Tournament Shared Contracts" },
+    { "id": "optimizer_core_sidecar", "type": "worker", "label": "Optimizer Core Sidecar (OR-Tools)" },
+    { "id": "optimizer_kafka_adapter", "type": "worker", "label": "Optimizer Kafka Adapter" },
+    { "id": "optimizer_contract_pkg", "type": "contract", "label": "Optimizer Contract Package" },
+    { "id": "or_tools_solver", "type": "dependency", "label": "Google OR-Tools Solver" }
   ],
   "edges": [
     { "from": "admin_portal", "to": "maglev", "relationship": "calls" },
@@ -124,6 +135,21 @@
     { "from": "maglev", "to": "router", "relationship": "routes_to" },
     { "from": "maglev", "to": "ws_hubs", "relationship": "upgrades_to_ws" },
     { "from": "router", "to": "handlers", "relationship": "dispatches" },
+    { "from": "router", "to": "entity_resolution_surface", "relationship": "dispatches" },
+    { "from": "router", "to": "supplier_graph_query_surface", "relationship": "dispatches" },
+    { "from": "router", "to": "supplier_forecast_tournament_surface", "relationship": "dispatches" },
+    { "from": "entity_resolution_surface", "to": "spanner", "relationship": "index_backed_reads" },
+    { "from": "entity_resolution_surface", "to": "entity_resolution_shared_contracts", "relationship": "defines_contracts" },
+    { "from": "supplier_graph_query_surface", "to": "spanner", "relationship": "index_backed_reads" },
+    { "from": "supplier_graph_query_surface", "to": "supplier_graph_query_contracts", "relationship": "defines_contracts" },
+    { "from": "supplier_forecast_tournament_surface", "to": "spanner", "relationship": "index_backed_reads" },
+    { "from": "supplier_forecast_tournament_surface", "to": "supplier_forecast_tournament_contracts", "relationship": "defines_contracts" },
+    { "from": "admin_portal", "to": "entity_resolution_shared_contracts", "relationship": "consumes_contracts" },
+    { "from": "admin_portal", "to": "supplier_graph_query_contracts", "relationship": "consumes_contracts" },
+    { "from": "admin_portal", "to": "supplier_forecast_tournament_contracts", "relationship": "consumes_contracts" },
+    { "from": "admin_portal", "to": "supplier_orders_workflow", "relationship": "renders" },
+    { "from": "supplier_orders_workflow", "to": "entity_resolution_surface", "relationship": "fallback_query" },
+    { "from": "supplier_orders_workflow", "to": "entity_resolution_shared_contracts", "relationship": "uses_contracts" },
     { "from": "handlers", "to": "payment_provider_execution", "relationship": "routes_direct_execution" },
     { "from": "handlers", "to": "spanner", "relationship": "rwtxn_outbox_emit" },
     { "from": "handlers", "to": "redis", "relationship": "cache_invalidate" },
@@ -135,6 +161,12 @@
     { "from": "telemetry_audit_journal", "to": "kafka", "relationship": "publishes" },
     { "from": "spanner", "to": "outbox_relay", "relationship": "tailed_by" },
     { "from": "outbox_relay", "to": "kafka", "relationship": "publishes" },
+    { "from": "kafka", "to": "optimizer_kafka_adapter", "relationship": "consumed_by" },
+    { "from": "optimizer_kafka_adapter", "to": "optimizer_core_sidecar", "relationship": "grpc_requests" },
+    { "from": "optimizer_kafka_adapter", "to": "spanner", "relationship": "writes_outbox_events" },
+    { "from": "optimizer_kafka_adapter", "to": "optimizer_contract_pkg", "relationship": "uses_contracts" },
+    { "from": "optimizer_core_sidecar", "to": "optimizer_contract_pkg", "relationship": "uses_contracts" },
+    { "from": "optimizer_core_sidecar", "to": "or_tools_solver", "relationship": "runs_solver" },
     { "from": "kafka", "to": "ai_worker", "relationship": "consumed_by" },
     { "from": "kafka", "to": "reconciler", "relationship": "consumed_by" },
     { "from": "kafka", "to": "telemetry_audit_sink", "relationship": "consumed_by" },
@@ -162,6 +194,161 @@
     { "from": "native_codegen_bridge", "to": "ios_clients", "relationship": "generates_native_models_for" }
   ],
   "runtimeContracts": [
+    {
+      "id": "or_tools_optimizer_core_pattern_a_runtime",
+      "path": "Pattern-A optimizer sidecar for VRP + CP-SAT with Kafka->gRPC->Outbox persistence",
+      "owner": "pegasus/services/optimizer-core/{proto,server-rust,server,adapters/go}",
+      "methods": [
+        "proto/optimizer_core.proto defines CalculateRoute(VRP), ResolveConstraint(CP-SAT), and HealthCheck RPCs for optimizer-core",
+        "server-rust/src/{mapping.rs,scaling.rs,solver/vrp.rs,solver/cpsat.rs} apply SCALE_FACTOR=10000 integer adapters plus deterministic UUID-index mapping and execute deterministic constrained assignment/route-construction solver logic with best-effort time-limit behavior",
+        "adapters/go/internal/adapter/worker.go consumes optimization jobs from Kafka, enforces bounded retry with backoff+jitter for solver RPC calls, and persists OPTIMIZATION_SOLVED to OutboxEvents only",
+        "adapters/go/internal/adapter/translate.go enforces deterministic mapping and matrix/dimension validation before building solver envelopes",
+        "apps/backend-go/internal/rpc/optimizergrpc/client.go now prefers OPTIMIZER_SIDE_ENDPOINT with bounded block-on-dial timeout and local circuit-breaker fast failover",
+        "infra/k8s/ai-worker/deployment.yaml now additively co-locates optimizer-core-rust sidecar and loopback endpoint wiring (127.0.0.1:50055)"
+      ],
+      "consumers": [
+        "pegasus/services/optimizer-core/proto/optimizer_core.proto",
+        "pegasus/services/optimizer-core/server-rust/src/{main.rs,service.rs,mapping.rs,scaling.rs,solver/vrp.rs,solver/cpsat.rs}",
+        "pegasus/services/optimizer-core/server/{vrp_adapter.py,cpsat_adapter.py,service.py,main.py,mapping.py,scaling.py}",
+        "pegasus/services/optimizer-core/adapters/go/internal/{adapter,optimizergrpc,model,mapping,scaling,config}",
+        "pegasus/services/optimizer-core/adapters/go/cmd/optimizer-worker/main.go"
+      ],
+      "notes": [
+        "Runtime remains additive and preserves existing backend-go optimization paths while enabling executable sidecar contracts.",
+        "Python sidecar remains available as a canary parity baseline during Rust ramp-up.",
+        "Go optimizergrpc transport methods are intentionally stubbed until generated Go protobuf bindings are wired."
+      ]
+    },
+    {
+      "id": "country_smart_payment_policy_3c_closure",
+      "path": "Country-smart gateway fallback authority and 3C degradation dedupe",
+      "owner": "pegasus/apps/backend-go/{order/service.go,order/unified_checkout.go,countrycfg/regions.go} + pegasus/contracts/events.schema.json",
+      "methods": [
+        "order/service.go and order/unified_checkout.go now resolve requested gateway through resolveRequestedGatewayForRetailer before policy evaluation",
+        "CardCheckout now guards Trigger3CFallback with per-request latch semantics so one request emits at most one PAYMENT_GATEWAY_DEGRADED event",
+        "countrycfg/regions.go now exposes testable country-vs-region gateway precedence helper to preserve CountryCode-first behavior",
+        "contracts/events.schema.json regenerated via cmd/gen-contracts now includes PAYMENT_GATEWAY_DEGRADED contract coverage"
+      ],
+      "consumers": [
+        "pegasus/apps/backend-go/order/service.go",
+        "pegasus/apps/backend-go/order/unified_checkout.go",
+        "pegasus/apps/backend-go/countrycfg/regions.go",
+        "pegasus/apps/backend-go/countrycfg/service_test.go",
+        "pegasus/apps/backend-go/order/service_test.go",
+        "pegasus/contracts/events.schema.json"
+      ],
+      "notes": [
+        "This closure is additive and preserves existing response contracts while eliminating duplicate degradation signal emissions.",
+        "Gateway fallback authority is now deterministic for policy errors and degradation notifications."
+      ]
+    },
+    {
+      "id": "sprint2_supplier_orders_entity_resolution_consumer",
+      "path": "Supplier orders search fallback consumption of entity-resolution",
+      "owner": "pegasus/apps/admin-portal/app/supplier/orders/page.tsx + pegasus/apps/admin-portal/lib/api/entity-resolution.ts",
+      "methods": [
+        "orders/page.tsx now runs debounced resolveSupplierEntity lookups when local text filter returns zero rows",
+        "fallback mapping projects ORDER and RETAILER candidates into order_id fallback filtering against in-memory order rows",
+        "existing state chips and history/tab behavior remain unchanged while search enrichment remains additive"
+      ],
+      "consumers": [
+        "pegasus/apps/admin-portal/app/supplier/orders/page.tsx",
+        "pegasus/apps/admin-portal/lib/api/entity-resolution.ts",
+        "pegasus/packages/types/entity-resolution.ts"
+      ],
+      "notes": [
+        "Integration is read-only and does not alter backend mutation paths or websocket contracts.",
+        "Fallback resolution executes only when direct local matching returns no rows, minimizing unnecessary API load."
+      ]
+    },
+    {
+      "id": "sprint2_entity_resolution_shared_contract_bridge",
+      "path": "Shared TypeScript contracts and supplier web API bridge for entity-resolution",
+      "owner": "pegasus/packages/types/{entity-resolution.ts,index.ts,package.json} + pegasus/apps/admin-portal/lib/api/entity-resolution.ts",
+      "methods": [
+        "packages/types/entity-resolution.ts defines canonical request and response envelope contracts for /v1/supplier/entity-resolution/{resolve,explain}",
+        "packages/types/index.ts and package.json now export entity-resolution contracts for cross-app import stability",
+        "admin-portal/lib/api/entity-resolution.ts adds typed resolveSupplierEntity and explainSupplierEntity helpers using apiFetchNoQueue",
+        "Supplier web helper validates {status:'ok', result} envelope shape and raises structured request errors for non-2xx responses"
+      ],
+      "consumers": [
+        "pegasus/packages/types/entity-resolution.ts",
+        "pegasus/packages/types/index.ts",
+        "pegasus/packages/types/package.json",
+        "pegasus/apps/admin-portal/lib/api/entity-resolution.ts"
+      ],
+      "notes": [
+        "This bridge keeps the Sprint-2 backend read surface and supplier web contract model aligned without UI layout mutations.",
+        "API access remains read-only and additive with no outbox, cache invalidation, or mutation-path impact."
+      ]
+    },
+    {
+      "id": "sprint2_supplier_entity_resolution_read_surface",
+      "path": "Supplier-scoped entity resolution + explainability graph projection",
+      "owner": "pegasus/apps/backend-go/{entityresolution/{handlers.go,service.go,repository.go,doc.go,entityresolution_test.go},entityresolutionroutes/routes.go,main.go}",
+      "methods": [
+        "entityresolutionroutes/routes.go mounts POST /v1/supplier/entity-resolution/resolve and POST /v1/supplier/entity-resolution/explain",
+        "Route stack applies auth.RequireRole([SUPPLIER, ADMIN]) plus auth.RequireRegionScopeWithClient with idempotency and logging middleware parity",
+        "entityresolution/service.go prioritizes deterministic exact_id_match over probabilistic token_overlap and substring_match confidence scoring",
+        "entityresolution/repository.go executes supplier-scoped exact lookup, candidate listing, and lineage loading through index-backed Spanner reads",
+        "entityresolution/handlers.go enforces strict JSON decoding and claim-derived supplier scope while keeping behavior read-only"
+      ],
+      "consumers": [
+        "pegasus/apps/backend-go/entityresolutionroutes/routes.go",
+        "pegasus/apps/backend-go/entityresolution/handlers.go",
+        "pegasus/apps/backend-go/entityresolution/service.go",
+        "pegasus/apps/backend-go/entityresolution/repository.go",
+        "pegasus/apps/backend-go/main.go"
+      ],
+      "notes": [
+        "This tranche adds no mutations, outbox writes, or cache invalidation paths and is safe for additive rollout.",
+        "Confidence-ranked resolution and one-hop lineage projection are supplier-scoped to avoid cross-tenant exposure."
+      ]
+    },
+    {
+      "id": "sprint3_supplier_graph_query_read_surface",
+      "path": "Supplier analytics graph query read surface + shared contract bridge",
+      "owner": "pegasus/apps/backend-go/{analytics/graph_query.go,supplierinsightsroutes/routes.go} + pegasus/packages/types/analytics.ts + pegasus/apps/admin-portal/lib/api/graph-analytics.ts",
+      "methods": [
+        "supplierinsightsroutes/routes.go mounts POST /v1/supplier/analytics/graph/query behind supplier/admin role, region scope, warehouse scope, and logging middleware",
+        "analytics/graph_query.go enforces strict JSON decode with bounded request normalization for page_size, offset, and date windows",
+        "Graph query execution supports PRODUCT_LOCATION_TIME, SUPPLIER_TIER, and LANE_CAPACITY modes with scope-aware Spanner reads",
+        "Response payload includes additive nodes, edges, rows, pagination, and explainability metadata under existing analytics envelope {timestamp,data}",
+        "packages/types/analytics.ts now defines GraphAnalytics query/request/result contracts and admin-portal helper exposes typed querySupplierGraphAnalytics access"
+      ],
+      "consumers": [
+        "pegasus/apps/backend-go/analytics/graph_query.go",
+        "pegasus/apps/backend-go/supplierinsightsroutes/routes.go",
+        "pegasus/packages/types/analytics.ts",
+        "pegasus/apps/admin-portal/lib/api/graph-analytics.ts"
+      ],
+      "notes": [
+        "This tranche is read-only and additive with no outbox emitters, cache invalidation mutations, or websocket contract changes.",
+        "Pagination and explainability metadata are bounded and deterministic for supplier analytics consumers."
+      ]
+    },
+    {
+      "id": "sprint3_supplier_forecast_tournament_surface",
+      "path": "Supplier forecast tournament leaderboard + champion selection read surface",
+      "owner": "pegasus/apps/backend-go/{analytics/forecast_tournament.go,supplierinsightsroutes/routes.go} + pegasus/packages/types/analytics.ts + pegasus/apps/admin-portal/lib/api/forecast-tournament.ts",
+      "methods": [
+        "supplierinsightsroutes/routes.go mounts POST /v1/supplier/analytics/forecast/tournament behind supplier/admin role, region scope, warehouse scope, and logging middleware",
+        "analytics/forecast_tournament.go enforces strict JSON decode with bounded from/to window and min_sample_size normalization",
+        "Leaderboard aggregation classifies variants across SKU_MEDIAN_V3, LEGACY_AGGREGATE, NEIGHBORHOOD_HEURISTIC, and SUPPLIER_DEFAULT using AIPredictions and AIPredictionItems",
+        "Champion selection is deterministic and sample-size gated, returning additive champion_variant/champion_score plus per-variant conversion metrics",
+        "packages/types/analytics.ts now defines ForecastTournament query/request/result contracts and admin-portal helper exposes typed querySupplierForecastTournament access"
+      ],
+      "consumers": [
+        "pegasus/apps/backend-go/analytics/forecast_tournament.go",
+        "pegasus/apps/backend-go/supplierinsightsroutes/routes.go",
+        "pegasus/packages/types/analytics.ts",
+        "pegasus/apps/admin-portal/lib/api/forecast-tournament.ts"
+      ],
+      "notes": [
+        "This tranche is read-only and additive with no outbox emitters, cache invalidation mutations, or websocket contract changes.",
+        "Variant scoring is bounded by request normalization and claim-derived supplier scope for safe rollout."
+      ]
+    },
     {
       "id": "workstream_fgh_delivery_policy_and_chargeback_hardening",
       "path": "Delivery adjustment fail-closed policy + Adyen chargeback/reversal persistence seam wiring",

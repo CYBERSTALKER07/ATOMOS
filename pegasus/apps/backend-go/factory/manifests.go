@@ -185,7 +185,7 @@ func attachManifestTransfers(ctx context.Context, spannerClient *spanner.Client,
 		             COALESCE(SUM(i.Quantity), 0) AS total_quantity,
 		             COALESCE(MIN(p.Name), '') AS product_name
 		      FROM InternalTransferItems i
-		      LEFT JOIN Products p ON p.ProductId = i.ProductId
+		      LEFT JOIN SupplierProducts p ON p.SkuId = i.ProductId
 		      WHERE i.TransferId IN UNNEST(@transfer_ids)
 		      GROUP BY i.TransferId`,
 		Params: map[string]interface{}{"transfer_ids": transferIDs},

@@ -63,6 +63,65 @@ func TestMergeCountryConfigForUpsertPreservesExistingFields(t *testing.T) {
 	}
 }
 
+func TestResolveDefaultGatewayForCountry(t *testing.T) {
+	tests := []struct {
+		name        string
+		countryCode string
+		want        string
+	}{
+		{name: "uz defaults global pay", countryCode: "UZ", want: "GLOBAL_PAY"},
+		{name: "empty defaults global pay", countryCode: "", want: "GLOBAL_PAY"},
+		{name: "adyen market", countryCode: "DE", want: "ADYEN"},
+		{name: "fallback market", countryCode: "IN", want: "AIRWALLEX"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ResolveDefaultGatewayForCountry(tc.countryCode)
+			if got != tc.want {
+				t.Fatalf("ResolveDefaultGatewayForCountry(%q) = %q, want %q", tc.countryCode, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestResolveDefaultGatewayForRetailerCodes_PrefersRetailerCountry(t *testing.T) {
+	tests := []struct {
+		name            string
+		retailerCountry string
+		regionCountry   string
+		want            string
+	}{
+		{
+			name:            "retailer country wins over region",
+			retailerCountry: "UZ",
+			regionCountry:   "DE",
+			want:            "GLOBAL_PAY",
+		},
+		{
+			name:            "region used when retailer country empty",
+			retailerCountry: "",
+			regionCountry:   "DE",
+			want:            "ADYEN",
+		},
+		{
+			name:            "fallback when both empty",
+			retailerCountry: "",
+			regionCountry:   "",
+			want:            "GLOBAL_PAY",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := resolveDefaultGatewayForRetailerCodes(tc.retailerCountry, tc.regionCountry)
+			if got != tc.want {
+				t.Fatalf("resolveDefaultGatewayForRetailerCodes(%q, %q) = %q, want %q", tc.retailerCountry, tc.regionCountry, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestMergeCountryConfigForUpsertFallsBackToDefaultWhenMissing(t *testing.T) {
 	merged := mergeCountryConfigForUpsert(nil, &CountryConfig{
 		CountryCode: "TJ",

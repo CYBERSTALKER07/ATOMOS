@@ -18,6 +18,7 @@ interface CRMRetailer {
   order_count: number;
   last_order_date: string;
   status: string;
+  country_code?: string;
 }
 
 interface CRMOrder {
@@ -171,7 +172,10 @@ export default function SupplierCRM() {
                         {r.retailer_name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
                       </div>
                       <div>
-                        <p className="md-typescale-body-small">{r.retailer_name}</p>
+                        <div className="flex items-center gap-2">
+                           <p className="md-typescale-body-small">{r.retailer_name}</p>
+                           {r.country_code && <span className="md-typescale-label-small px-1.5 py-0.5" style={{ background: 'var(--border)', color: 'var(--surface)', borderRadius: 4 }}>{r.country_code}</span>}
+                        </div>
                         {r.phone && <p className="md-typescale-label-small font-mono" style={{ color: 'var(--border)' }}>{r.phone}</p>}
                       </div>
                     </div>

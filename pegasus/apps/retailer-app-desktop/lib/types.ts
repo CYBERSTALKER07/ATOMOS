@@ -267,6 +267,7 @@ export interface RetailerProfile {
   // retailer rows pre-Phase F have NULL columns.
   receiving_window_open?: string | null;
   receiving_window_close?: string | null;
+  country_code?: string;
 }
 
 /* ── Line Items History ── */

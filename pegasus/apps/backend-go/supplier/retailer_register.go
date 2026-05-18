@@ -3,7 +3,8 @@ package supplier
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/api/iterator"
 )
 
 // HandleRetailerRegister creates a new retailer account.
@@ -58,22 +60,9 @@ func HandleRetailerRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		// Check phone uniqueness
-		stmt := spanner.Statement{
-			SQL:    `SELECT RetailerId FROM Retailers WHERE Phone = @phone LIMIT 1`,
-			Params: map[string]interface{}{"phone": req.PhoneNumber},
-		}
-		iter := spannerClient.Single().Query(r.Context(), stmt)
-		row, err := iter.Next()
-		iter.Stop()
-		if row != nil && err == nil {
-			http.Error(w, `{"error":"phone number already registered"}`, http.StatusConflict)
-			return
-		}
-
 		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
-			log.Printf("[RETAILER REGISTER] bcrypt error: %v", err)
+			slog.ErrorContext(r.Context(), "[RETAILER REGISTER] bcrypt error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
@@ -84,8 +73,17 @@ func HandleRetailerRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			shopName = req.OwnerName
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
+
+		var fbUid string
+		// Best-effort network call outside of Spanner Txn
+		fbUid, fbErr := auth.CreateFirebaseUser(ctx, "", "", req.OwnerName, req.PhoneNumber, "RETAILER", map[string]interface{}{
+			"retailer_id": retailerId,
+		})
+		if fbErr != nil {
+			slog.WarnContext(ctx, "[RETAILER REGISTER] firebase UID creation failed", "error", fbErr)
+		}
 
 		insertMap := map[string]interface{}{
 			"RetailerId":              retailerId,
@@ -98,6 +96,9 @@ func HandleRetailerRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			"ShopName":                shopName,
 			"ShopLocation":            req.AddressText,
 			"CountryCode":             req.CountryCode,
+		}
+		if fbUid != "" {
+			insertMap["FirebaseUid"] = fbUid
 		}
 		if req.Latitude != 0 || req.Longitude != 0 {
 			insertMap["Latitude"] = req.Latitude
@@ -130,58 +131,67 @@ func HandleRetailerRegister(spannerClient *spanner.Client) http.HandlerFunc {
 			insertMap["StorageCeilingHeightCM"] = req.StorageCeilingHeightCM
 		}
 		m := spanner.InsertMap("Retailers", insertMap)
+
+		event := internalKafka.RetailerRegisteredEvent{
+			RetailerId:  retailerId,
+			OwnerName:   req.OwnerName,
+			ShopName:    shopName,
+			PhoneNumber: req.PhoneNumber,
+			Lat:         req.Latitude,
+			Lng:         req.Longitude,
+			H3Cell:      "",
+			RegionCode:  req.CountryCode,
+			Timestamp:   time.Now().UTC(),
+		}
+		if v, ok := insertMap["H3Index"].(string); ok {
+			event.H3Cell = v
+		}
+
 		if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+			// 1. Check phone uniqueness inside txn
+			stmt := spanner.Statement{
+				SQL:    `SELECT RetailerId FROM Retailers WHERE Phone = @phone LIMIT 1`,
+				Params: map[string]interface{}{"phone": req.PhoneNumber},
+			}
+			iter := txn.Query(ctx, stmt)
+			defer iter.Stop()
+			row, err := iter.Next()
+			if err != nil && err != iterator.Done {
+				return err
+			}
+			if row != nil {
+				return errors.New("phone taken") // custom sentinel if needed, or inline error
+			}
+
+			// 2. Insert Retailer
 			if err := txn.BufferWrite([]*spanner.Mutation{m}); err != nil {
 				return err
 			}
-			h3Cell := ""
-			if v, ok := insertMap["H3Index"].(string); ok {
-				h3Cell = v
-			}
-			lat, _ := insertMap["Latitude"].(float64)
-			lng, _ := insertMap["Longitude"].(float64)
-			event := internalKafka.RetailerRegisteredEvent{
-				RetailerId:  retailerId,
-				OwnerName:   req.OwnerName,
-				ShopName:    shopName,
-				PhoneNumber: req.PhoneNumber,
-				Lat:         lat,
-				Lng:         lng,
-				H3Cell:      h3Cell,
-				RegionCode:  req.CountryCode,
-				Timestamp:   time.Now().UTC(),
-			}
+
+			// 3. Outbox Event
 			return outbox.EmitJSON(txn, "Retailer", retailerId,
 				internalKafka.EventRetailerRegistered, internalKafka.TopicMain, event,
 				telemetry.TraceIDFromContext(ctx))
 		}); err != nil {
-			log.Printf("[RETAILER REGISTER] spanner insert error: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			slog.ErrorContext(r.Context(), "[RETAILER REGISTER] spanner txn error", "error", err)
+			http.Error(w, `{"error":"phone number already registered or internal error"}`, http.StatusConflict) // fallback status
 			return
 		}
+
+		// 4. Best-effort UX Fan-out
+		internalKafka.EmitNotification(internalKafka.EventRetailerRegistered, event)
 
 		token, err := auth.GenerateTestToken(retailerId, "RETAILER")
 		if err != nil {
-			log.Printf("[RETAILER REGISTER] token error: %v", err)
+			slog.ErrorContext(r.Context(), "[RETAILER REGISTER] token error", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
-		// Create Firebase Auth user for retailer (phone-based, graceful degradation)
 		var firebaseToken string
-		fbUid, fbErr := auth.CreateFirebaseUser(ctx, "", "", req.OwnerName, req.PhoneNumber, "RETAILER", map[string]interface{}{
-			"retailer_id": retailerId,
-		})
-		if fbErr == nil && fbUid != "" {
-			if _, err := spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-				return txn.BufferWrite([]*spanner.Mutation{
-					spanner.Update("Retailers", []string{"RetailerId", "FirebaseUid"}, []interface{}{retailerId, fbUid}),
-				})
-			}); err != nil {
-				log.Printf("[RETAILER REGISTER] firebase UID mirror failed for %s: %v", retailerId, err)
-			}
+		if fbUid != "" {
 			if token, err := auth.MintCustomToken(ctx, fbUid, map[string]interface{}{"role": "RETAILER", "retailer_id": retailerId}); err != nil {
-				log.Printf("[RETAILER REGISTER] firebase token mint failed for %s: %v", retailerId, err)
+				slog.WarnContext(ctx, "[RETAILER REGISTER] firebase token mint failed", "error", err)
 			} else {
 				firebaseToken = token
 			}
@@ -200,6 +210,8 @@ func HandleRetailerRegister(spannerClient *spanner.Client) http.HandlerFunc {
 		if firebaseToken != "" {
 			resp["firebase_token"] = firebaseToken
 		}
+
+		slog.InfoContext(r.Context(), "retailer.registered", "retailer_id", retailerId, "trace_id", telemetry.TraceIDFromContext(r.Context()))
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(resp)

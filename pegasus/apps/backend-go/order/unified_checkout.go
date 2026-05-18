@@ -200,11 +200,12 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	for supplierID := range supplierGroups {
 		supplierIDs = append(supplierIDs, supplierID)
 	}
-	gatewayResolution, gatewayErr := s.ResolveCheckoutGatewayWithMetadata(ctx, supplierIDs, req.PaymentGateway)
+	requestedGateway := s.resolveRequestedGatewayForRetailer(ctx, req.RetailerID, req.PaymentGateway)
+	gatewayResolution, gatewayErr := s.ResolveCheckoutGatewayWithMetadata(ctx, supplierIDs, requestedGateway)
 	if gatewayErr != nil {
 		var policyErr *ErrGatewayPolicy
 		if errors.As(gatewayErr, &policyErr) {
-			s.Trigger3CFallback(ctx, req.RetailerID, req.PaymentGateway, policyErr.Message)
+			s.Trigger3CFallback(ctx, req.RetailerID, requestedGateway, policyErr.Message)
 			payload := gatewayPolicyErrorPayload(policyErr)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnprocessableEntity)

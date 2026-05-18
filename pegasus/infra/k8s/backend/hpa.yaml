@@ -11,7 +11,7 @@ spec:
     kind: Deployment
     name: backend-go
   minReplicas: 2
-  maxReplicas: 30
+  maxReplicas: 100
   metrics:
     - type: Resource
       resource:

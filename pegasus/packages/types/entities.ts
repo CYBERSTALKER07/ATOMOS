@@ -52,6 +52,7 @@ export interface Retailer {
   shop_address: string;
   status: RetailerStatus;
   telegram_chat_id: string | null;
+  country_code?: string;
   created_at: string;
   updated_at: string | null;
 }

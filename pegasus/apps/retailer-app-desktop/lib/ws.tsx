@@ -5,6 +5,7 @@ import type { WSEventMessage, WSEventPayloadMap, WSEventTypeValue } from '@pegas
 import { readToken } from './auth';
 
 export type WsEventType = WSEventTypeValue;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type WsMessage = (Record<string, any> & { type?: string });
 
 type WsEventPayload<T extends string> = T extends WsEventType

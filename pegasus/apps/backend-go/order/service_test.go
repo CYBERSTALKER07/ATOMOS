@@ -454,6 +454,30 @@ func TestNormalizeCardGateway_Whitespace(t *testing.T) {
 	}
 }
 
+func TestResolveRequestedGatewayForRetailer_UsesExplicitGateway(t *testing.T) {
+	svc := &OrderService{}
+	got := svc.resolveRequestedGatewayForRetailer(context.Background(), "ret-1", " adyen ")
+	if got != "ADYEN" {
+		t.Fatalf("resolveRequestedGatewayForRetailer() = %q, want ADYEN", got)
+	}
+}
+
+func TestResolveRequestedGatewayForRetailer_DefaultsGlobalPayWithoutCountryService(t *testing.T) {
+	svc := &OrderService{}
+	got := svc.resolveRequestedGatewayForRetailer(context.Background(), "ret-1", "")
+	if got != "GLOBAL_PAY" {
+		t.Fatalf("resolveRequestedGatewayForRetailer() = %q, want GLOBAL_PAY", got)
+	}
+}
+
+func TestResolveRequestedGatewayForRetailer_DefaultsGlobalPayWithoutRetailerID(t *testing.T) {
+	svc := &OrderService{}
+	got := svc.resolveRequestedGatewayForRetailer(context.Background(), "", "")
+	if got != "GLOBAL_PAY" {
+		t.Fatalf("resolveRequestedGatewayForRetailer() = %q, want GLOBAL_PAY", got)
+	}
+}
+
 func TestValidateWarehouseLocalGatewayCredentialRecord_AdyenMissingConfigFailsClosed(t *testing.T) {
 	err := validateWarehouseLocalGatewayCredentialRecord("ADYEN", "wh-1", false, "", nil)
 	if err == nil {

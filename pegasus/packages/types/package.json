@@ -14,6 +14,7 @@
     "./analytics": "./analytics.ts",
     "./warehouse": "./warehouse.ts",
     "./factory": "./factory.ts",
-    "./ws": "./ws-events.ts"
+    "./ws": "./ws-events.ts",
+    "./entity-resolution": "./entity-resolution.ts"
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   Ticket,
@@ -9,11 +9,13 @@ import {
   ShieldCheck,
   Truck,
   ChevronRight,
+  AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@heroui/react";
 import { useCart } from "../lib/cart";
 import { apiFetch } from "../lib/auth";
+import { useWebSocket } from "../lib/ws";
 import { useRouter } from "next/navigation";
 import type {
   CardCheckoutResponse,
@@ -21,6 +23,7 @@ import type {
   UnifiedCheckoutResponse,
   RetailerProfile,
 } from "../lib/types";
+import type { PaymentGatewayDegradedPayload } from "@pegasus/types/ws-events";
 
 function getProfile(): RetailerProfile | null {
   if (typeof localStorage === "undefined") return null;
@@ -44,11 +47,26 @@ export default function CheckoutModal({
   total,
 }: CheckoutModalProps) {
   const { items, clearCart } = useCart();
-  const [method, setMethod] = useState<"global_pay" | "adyen" | "cash">("global_pay");
+  const [method, setMethod] = useState<"global_pay" | "adyen" | "airwallex" | "cash">("global_pay");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [degradedBanner, setDegradedBanner] = useState<{ gateway: string; reason: string } | null>(null);
   const [oosItems, setOosItems] = useState<string[]>([]);
   const router = useRouter();
+  const { subscribe } = useWebSocket();
+
+  useEffect(() => {
+    const unsub = subscribe("PAYMENT_GATEWAY_DEGRADED", (msg) => {
+      const payload = msg as unknown as PaymentGatewayDegradedPayload;
+      if (payload.gateway) {
+        setDegradedBanner({ gateway: payload.gateway, reason: payload.reason || "Outage detected" });
+        if (method !== "cash") {
+          setMethod("cash");
+        }
+      }
+    });
+    return () => unsub();
+  }, [subscribe, method]);
 
   const handleCheckout = async () => {
     if (items.length === 0) return;
@@ -58,13 +76,15 @@ export default function CheckoutModal({
 
     try {
       const profile = getProfile();
-      if (!profile?.id)
-        throw new Error("Retailer profile not found. Please log in again.");
+      if (!profile) {
+        throw new Error("Authentication required. Please log in again.");
+      }
 
       const gatewayMap: Record<string, string> = {
-        cash: "CASH",
         global_pay: "GLOBAL_PAY",
         adyen: "ADYEN",
+        airwallex: "AIRWALLEX",
+        cash: "CASH",
       };
 
       const lineItems = items.map((item) => ({
@@ -72,6 +92,7 @@ export default function CheckoutModal({
         quantity: item.quantity,
         unit_price: item.price,
       }));
+
       const cartKey = lineItems
         .map((item) => `${item.sku_id}:${item.quantity}:${item.unit_price}`)
         .sort()
@@ -102,13 +123,22 @@ export default function CheckoutModal({
             "All items are out of stock. Please update your cart.",
           );
         }
+        if (cartRes.status === 422 && errBody?.error === "payment_gateway_policy_violation") {
+          // This happens when unified checkout policy triggers 3C Fallback.
+          // We can read it here, although WS will arrive shortly.
+          setDegradedBanner({ gateway: gatewayMap[method], reason: errBody.message || "Gateway temporarily blocked." });
+          if (method !== "cash") {
+             setMethod("cash");
+          }
+          throw new Error(errBody.message || "Payment gateway policy violation. Switched to cash fallback.");
+        }
         throw new Error(errBody?.error || "Failed to create orders from cart");
       }
-      const cartData: UnifiedCheckoutResponse = await cartRes.json();
-      const supplierOrders = cartData.supplier_orders || [];
 
-      if (["global_pay", "adyen"].includes(method)) {
-        for (const so of supplierOrders) {
+      const resData = (await cartRes.json()) as UnifiedCheckoutResponse;
+
+      for (const so of resData.supplier_orders) {
+        if (method !== "cash" && !degradedBanner) {
           const payRes = await apiFetch("/v1/order/card-checkout", {
             method: "POST",
             headers: {
@@ -121,27 +151,30 @@ export default function CheckoutModal({
               return_url: "retailer-app://orders",
             }),
           });
-          if (!payRes.ok)
+          if (!payRes.ok) {
+            const payErrBody = await payRes.json().catch(() => null);
+            if (payRes.status === 422 && payErrBody?.error === "payment_gateway_policy_violation") {
+               setDegradedBanner({ gateway: gatewayMap[method], reason: payErrBody.message || "Gateway temporarily blocked." });
+               setMethod("cash");
+               throw new Error(payErrBody.message || "Card gateway rejected. Please use cash for remaining orders.");
+            }
             throw new Error(
               `Payment initiation failed for order ${so.order_id}`,
             );
-          const payData: CardCheckoutResponse = await payRes.json();
+          }
+          const payData = (await payRes.json()) as CardCheckoutResponse;
           if (payData.payment_url) {
             window.open(payData.payment_url, "_blank");
           }
-        }
-      } else if (method === "cash") {
-        for (const so of supplierOrders) {
-          const payRes = await apiFetch("/v1/order/cash-checkout", {
+        } else {
+          // Cash fallback / default
+          await apiFetch("/v1/order/cash-checkout", {
             method: "POST",
             headers: {
               "Idempotency-Key": `retailer-cash-checkout:${so.order_id}`,
             },
             body: JSON.stringify({ order_id: so.order_id }),
           });
-          if (!payRes.ok)
-            throw new Error(`Cash checkout failed for order ${so.order_id}`);
-          await ((await payRes.json()) as Promise<CashCheckoutResponse>);
         }
       }
 
@@ -155,188 +188,236 @@ export default function CheckoutModal({
     }
   };
 
+  const isCardDisabled = degradedBanner != null;
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4"
+        >
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-[#0a0a0a]/60 backdrop-blur-md"
-            onClick={onClose}
-          />
-
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="relative w-full max-w-2xl bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="w-full max-w-lg bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-[32px] shadow-2xl overflow-hidden flex flex-col"
           >
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-[var(--desk-border)] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[var(--desk-accent-soft)] text-[var(--desk-accent)] flex items-center justify-center">
-                  <ShieldCheck size={22} />
-                </div>
-                <div>
-                  <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
-                    Trade Settlement
-                  </h2>
-                  <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
-                    Secure Operational Protocol
-                  </p>
-                </div>
-              </div>
+            <div className="flex items-center justify-between p-6 border-b border-[var(--desk-border)]">
+              <h2 className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                Secure Checkout
+              </h2>
               <button
                 onClick={onClose}
-                className="w-10 h-10 rounded-full hover:bg-[var(--desk-surface-subtle)] flex items-center justify-center transition-colors"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--desk-text-tertiary)] hover:bg-[var(--desk-surface-subtle)] hover:text-[var(--desk-text-primary)] transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8 space-y-8">
-              {error && (
-                <div className="p-4 rounded-xl bg-red-50 border border-red-100 flex items-start gap-3">
-                  <XCircle className="text-red-500 mt-0.5" size={18} />
+            <div className="p-6 flex flex-col gap-6 max-h-[70vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 bg-[var(--desk-accent)]/5 border border-[var(--desk-accent)]/10 rounded-3xl">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-accent)] mb-1 block">
+                    Total Authorization
+                  </span>
+                  <div className="md-typescale-display-small font-bold text-[var(--desk-text-primary)]">
+                    UZS {total.toLocaleString()}
+                  </div>
+                </div>
+                <Ticket
+                  size={32}
+                  className="text-[var(--desk-accent)] opacity-20"
+                />
+              </div>
+
+              {degradedBanner && (
+                <div className="p-4 bg-orange-50 border border-orange-200 rounded-2xl flex gap-3 text-orange-800">
+                  <AlertTriangle size={20} className="shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-red-800 font-bold text-sm">
-                      Execution Interrupted
-                    </p>
-                    <p className="text-red-600 text-xs mt-0.5">{error}</p>
-                    {oosItems.length > 0 && (
-                      <ul className="mt-2 text-xs text-red-500 list-disc pl-4 space-y-1">
-                        {oosItems.map((sku) => (
-                          <li key={sku}>{sku}</li>
-                        ))}
-                      </ul>
-                    )}
+                     <h3 className="font-bold text-sm uppercase tracking-wide">Card Payments Temporarily Unavailable</h3>
+                     <p className="text-xs mt-1 font-medium opacity-90">
+                       {degradedBanner.gateway} is currently experiencing issues ({degradedBanner.reason}). We have automatically switched your payment method to cash.
+                     </p>
                   </div>
                 </div>
               )}
 
-              <div className="p-6 rounded-2xl bg-[var(--desk-text-primary)] text-white shadow-xl flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-widest opacity-60 mb-2">
-                    Total Settlement Amount
-                  </p>
-                  <h3 className="md-typescale-display-small font-bold tabular-nums">
-                    {total.toLocaleString()}{" "}
-                    <small className="text-sm opacity-40 ml-0.5 uppercase">
-                      UZS
-                    </small>
-                  </h3>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-2 justify-end mb-2">
-                    <Truck size={16} className="opacity-60" />
-                    <span className="text-xs font-bold uppercase tracking-widest opacity-60">
-                      Estimated Arrival
-                    </span>
-                  </div>
-                  <p className="md-typescale-title-medium font-bold uppercase tracking-tighter">
-                    Immediate Route
-                  </p>
-                </div>
-              </div>
+              <div className="space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] pl-2">
+                  Payment Protocol
+                </span>
 
-              <div>
-                <h3 className="md-typescale-label-small uppercase tracking-[0.2em] text-[var(--desk-text-tertiary)] mb-4">
-                  Select Settlement Gateway
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div
-                    onClick={() => setMethod("cash")}
-                    className={`p-5 rounded-2xl border-2 transition-all cursor-pointer group ${method === "cash" ? "border-[var(--desk-accent)] bg-[var(--desk-accent-soft)] shadow-md" : "border-[var(--desk-border)] hover:border-[var(--desk-border-strong)] bg-[var(--desk-surface)]"}`}
-                  >
-                    <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors ${method === "cash" ? "bg-[var(--desk-accent)] text-white" : "bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)] group-hover:text-[var(--desk-text-primary)]"}`}
-                    >
-                      <Ticket size={24} />
-                    </div>
-                    <h4
-                      className={`md-typescale-title-small font-bold transition-colors ${method === "cash" ? "text-[var(--desk-accent)]" : "text-[var(--desk-text-primary)]"}`}
-                    >
-                      Physical Settlement
-                    </h4>
-                    <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">
-                      Cash payment on node arrival.
-                    </p>
-                  </div>
-
-                  <div
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    disabled={isCardDisabled}
                     onClick={() => setMethod("global_pay")}
-                    className={`p-5 rounded-2xl border-2 transition-all cursor-pointer group ${method === "global_pay" ? "border-[var(--desk-accent)] bg-[var(--desk-accent-soft)] shadow-md" : "border-[var(--desk-border)] hover:border-[var(--desk-border-strong)] bg-[var(--desk-surface)]"}`}
+                    className={`relative p-5 rounded-2xl border text-left transition-all ${isCardDisabled ? "opacity-40 cursor-not-allowed grayscale" : ""} ${
+                      method === "global_pay"
+                        ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5 ring-1 ring-[var(--desk-accent)]"
+                        : "border-[var(--desk-border)] bg-[var(--desk-canvas)] hover:border-[var(--desk-text-tertiary)]"
+                    }`}
                   >
-                    <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors ${method === "global_pay" ? "bg-[var(--desk-accent)] text-white" : "bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)] group-hover:text-[var(--desk-text-primary)]"}`}
-                    >
-                      <CreditCard size={24} />
+                    <div className="flex items-center justify-between mb-3">
+                      <CreditCard
+                        size={20}
+                        className={
+                          method === "global_pay"
+                            ? "text-[var(--desk-accent)]"
+                            : "text-[var(--desk-text-tertiary)]"
+                        }
+                      />
+                      {method === "global_pay" && (
+                        <div className="w-2 h-2 rounded-full bg-[var(--desk-accent)] shadow-[0_0_8px_var(--desk-accent)]" />
+                      )}
                     </div>
-                    <h4
-                      className={`md-typescale-title-small font-bold transition-colors ${method === "global_pay" ? "text-[var(--desk-accent)]" : "text-[var(--desk-text-primary)]"}`}
-                    >
-                      Network Transaction
-                    </h4>
-                    <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">
-                      Instant digital credit settlement.
-                    </p>
-                  </div>
+                    <span className="block md-typescale-body-large font-bold text-[var(--desk-text-primary)]">
+                      Global Pay
+                    </span>
+                    <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
+                      Local UZ Cards
+                    </span>
+                  </button>
 
-                  <div
+                  <button
+                    disabled={isCardDisabled}
                     onClick={() => setMethod("adyen")}
-                    className={`p-5 rounded-2xl border-2 transition-all cursor-pointer group ${method === "adyen" ? "border-[var(--desk-accent)] bg-[var(--desk-accent-soft)] shadow-md" : "border-[var(--desk-border)] hover:border-[var(--desk-border-strong)] bg-[var(--desk-surface)]"}`}
+                    className={`relative p-5 rounded-2xl border text-left transition-all ${isCardDisabled ? "opacity-40 cursor-not-allowed grayscale" : ""} ${
+                      method === "adyen"
+                        ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5 ring-1 ring-[var(--desk-accent)]"
+                        : "border-[var(--desk-border)] bg-[var(--desk-canvas)] hover:border-[var(--desk-text-tertiary)]"
+                    }`}
                   >
-                    <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors ${method === "adyen" ? "bg-[var(--desk-accent)] text-white" : "bg-[var(--desk-surface-subtle)] text-[var(--desk-text-tertiary)] group-hover:text-[var(--desk-text-primary)]"}`}
-                    >
-                      <CreditCard size={24} />
+                    <div className="flex items-center justify-between mb-3">
+                      <CreditCard
+                        size={20}
+                        className={
+                          method === "adyen"
+                            ? "text-[var(--desk-accent)]"
+                            : "text-[var(--desk-text-tertiary)]"
+                        }
+                      />
+                      {method === "adyen" && (
+                        <div className="w-2 h-2 rounded-full bg-[var(--desk-accent)] shadow-[0_0_8px_var(--desk-accent)]" />
+                      )}
                     </div>
-                    <h4
-                      className={`md-typescale-title-small font-bold transition-colors ${method === "adyen" ? "text-[var(--desk-accent)]" : "text-[var(--desk-text-primary)]"}`}
-                    >
-                      Adyen Checkout
-                    </h4>
-                    <p className="md-typescale-body-small text-[var(--desk-text-tertiary)] mt-1">
-                      International card settlement via Adyen.
-                    </p>
-                  </div>
+                    <span className="block md-typescale-body-large font-bold text-[var(--desk-text-primary)]">
+                      Adyen
+                    </span>
+                    <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
+                      International Auth
+                    </span>
+                  </button>
+
+                  <button
+                    disabled={isCardDisabled}
+                    onClick={() => setMethod("airwallex")}
+                    className={`relative p-5 rounded-2xl border text-left transition-all ${isCardDisabled ? "opacity-40 cursor-not-allowed grayscale" : ""} ${
+                      method === "airwallex"
+                        ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5 ring-1 ring-[var(--desk-accent)]"
+                        : "border-[var(--desk-border)] bg-[var(--desk-canvas)] hover:border-[var(--desk-text-tertiary)]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <CreditCard
+                        size={20}
+                        className={
+                          method === "airwallex"
+                            ? "text-[var(--desk-accent)]"
+                            : "text-[var(--desk-text-tertiary)]"
+                        }
+                      />
+                      {method === "airwallex" && (
+                        <div className="w-2 h-2 rounded-full bg-[var(--desk-accent)] shadow-[0_0_8px_var(--desk-accent)]" />
+                      )}
+                    </div>
+                    <span className="block md-typescale-body-large font-bold text-[var(--desk-text-primary)]">
+                      Airwallex
+                    </span>
+                    <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
+                      Cross-border B2B
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setMethod("cash")}
+                    className={`relative p-5 rounded-2xl border text-left transition-all ${
+                      method === "cash"
+                        ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5 ring-1 ring-[var(--desk-accent)]"
+                        : "border-[var(--desk-border)] bg-[var(--desk-canvas)] hover:border-[var(--desk-text-tertiary)]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <Truck
+                        size={20}
+                        className={
+                          method === "cash"
+                            ? "text-[var(--desk-accent)]"
+                            : "text-[var(--desk-text-tertiary)]"
+                        }
+                      />
+                      {method === "cash" && (
+                        <div className="w-2 h-2 rounded-full bg-[var(--desk-accent)] shadow-[0_0_8px_var(--desk-accent)]" />
+                      )}
+                    </div>
+                    <span className="block md-typescale-body-large font-bold text-[var(--desk-text-primary)]">
+                      Cash on Delivery
+                    </span>
+                    <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
+                      Physical tender
+                    </span>
+                  </button>
                 </div>
               </div>
+
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-xs font-bold rounded-xl flex items-center gap-3">
+                  <ShieldCheck size={16} className="shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              {oosItems.length > 0 && (
+                <div className="p-4 bg-orange-50 border border-orange-100 text-orange-700 text-xs font-bold rounded-xl flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={16} />
+                    <span>The following items are out of stock:</span>
+                  </div>
+                  <ul className="list-disc list-inside pl-6 space-y-1">
+                    {oosItems.map((id) => (
+                      <li key={id}>{id}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
-            <div className="px-8 py-6 border-t border-[var(--desk-border)] bg-[var(--desk-surface-subtle)] flex items-center justify-between">
-              <button
-                onClick={onClose}
-                disabled={loading}
-                className="text-[var(--desk-text-tertiary)] font-bold md-typescale-label-large hover:text-[var(--desk-text-primary)] transition-colors disabled:opacity-30"
-              >
-                Cancel Protocol
-              </button>
-
+            <div className="p-6 bg-[var(--desk-surface-subtle)] border-t border-[var(--desk-border)] flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-[var(--desk-text-tertiary)]">
+                <ShieldCheck size={14} />
+                <span className="text-[10px] font-bold uppercase tracking-widest">
+                  End-to-end encrypted
+                </span>
+              </div>
               <Button
-                onClick={handleCheckout}
+                onPress={handleCheckout}
                 isDisabled={loading || items.length === 0}
-                className="bg-[var(--desk-text-primary)] text-white font-bold h-12 px-10 rounded-xl shadow-xl transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:hover:scale-100 flex items-center gap-3"
+                className="h-12 px-8 bg-[var(--desk-text-primary)] text-[var(--desk-surface)] font-bold rounded-xl shadow-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
               >
                 {loading ? (
                   <Loader2 size={18} className="animate-spin" />
                 ) : (
                   <>
-                    Execute Order <ChevronRight size={18} />
+                    Confirm Execution <ChevronRight size={18} />
                   </>
                 )}
               </Button>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       )}
     </AnimatePresence>
   );
-}
-
-function XCircle({ className, size }: { className?: string; size?: number }) {
-  return <X className={className} size={size} />;
 }
