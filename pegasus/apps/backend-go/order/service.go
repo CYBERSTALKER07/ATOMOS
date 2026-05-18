@@ -3775,35 +3775,40 @@ func (s *OrderService) LookupRetailerPhone(ctx context.Context, retailerID strin
 // and emits a PaymentGatewayDegradedEvent via the transactional outbox to notify
 // both the retailer and connected suppliers.
 func (s *OrderService) Trigger3CFallback(ctx context.Context, retailerID, gateway, reason string) {
-	if s == nil {
+	if s == nil || s.Client == nil || strings.TrimSpace(gateway) == "" {
 		return
 	}
 
-	// 1. Block card tokens for this gateway
-	if s.CardTokenSvc != nil {
-		if err := s.CardTokenSvc.DeactivateAllRetailerCardsForGateway(ctx, retailerID, gateway); err != nil {
-			log.Printf("[3C_FALLBACK] Failed to deactivate cards for retailer %s gateway %s: %v", retailerID, gateway, err)
-		} else {
-			log.Printf("[3C_FALLBACK] Deactivated %s cards for retailer %s (Reason: %s)", gateway, retailerID, reason)
-		}
-	}
+	gateway = strings.ToUpper(strings.TrimSpace(gateway))
 
-	// 2. Emit degradation event via outbox
-	if s.Client != nil {
-		_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-			event := kafkaEvents.PaymentGatewayDegradedEvent{
-				RetailerID: retailerID,
-				Gateway:    gateway,
-				Reason:     reason,
-				Timestamp:  time.Now().UTC(),
+	_, err := s.Client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		// 1. Block card tokens for this gateway (inside the same transaction)
+		if s.CardTokenSvc != nil {
+			mutations, err := s.CardTokenSvc.DeactivateAllRetailerCardsForGatewayMutations(ctx, txn, retailerID, gateway)
+			if err != nil {
+				return fmt.Errorf("deactivate cards prep failed: %w", err)
 			}
-			// Emit using a pseudo orderID since this is retailer-level, not tied to a single order.
-			// The outbox will route it to TopicMain.
-			return outbox.EmitJSON(txn, "Retailer", retailerID, kafkaEvents.EventPaymentGatewayDegraded, kafkaEvents.TopicMain, event, "")
-		})
-		if err != nil {
-			log.Printf("[3C_FALLBACK] Failed to emit degradation event for retailer %s: %v", retailerID, err)
+			if len(mutations) > 0 {
+				if err := txn.BufferWrite(mutations); err != nil {
+					return err
+				}
+			}
 		}
+
+		// 2. Emit degradation event via outbox
+		event := kafkaEvents.PaymentGatewayDegradedEvent{
+			RetailerID: retailerID,
+			Gateway:    gateway,
+			Reason:     reason,
+			Timestamp:  time.Now().UTC(),
+		}
+		// Emit using a pseudo orderID since this is retailer-level, not tied to a single order.
+		return outbox.EmitJSON(txn, "Retailer", retailerID, kafkaEvents.EventPaymentGatewayDegraded, kafkaEvents.TopicMain, event, telemetry.TraceIDFromContext(ctx))
+	})
+	if err != nil {
+		log.Printf("[3C_FALLBACK] Atomic fallback failed for retailer %s gateway %s: %v", retailerID, gateway, err)
+	} else {
+		log.Printf("[3C_FALLBACK] Atomically deactivated %s cards and emitted degradation event for retailer %s (Reason: %s)", gateway, retailerID, reason)
 	}
 }
 

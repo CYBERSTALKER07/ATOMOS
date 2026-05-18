@@ -292,26 +292,37 @@ func ResolveDefaultGatewayForCountry(countryCode string) string {
 }
 
 // ResolveDefaultGatewayForRetailer resolves the default card-tokenization
-// gateway for a retailer based on their region's country code. Falls back to
-// UZ semantics ("GLOBAL_PAY") when the retailer has no region binding or the
-// region lookup fails — never returns an empty gateway.
+// gateway for a retailer based on their CountryCode (or Region's CountryCode).
+// Falls back to UZ semantics ("GLOBAL_PAY") when the retailer has no region binding
+// or country code configured.
 func (s *Service) ResolveDefaultGatewayForRetailer(ctx context.Context, retailerID string) string {
 	if s == nil || s.Spanner == nil || strings.TrimSpace(retailerID) == "" {
 		return "GLOBAL_PAY"
 	}
-	row, err := s.Spanner.Single().ReadRow(ctx, "Retailers", spanner.Key{retailerID}, []string{"RegionId"})
+	row, err := s.Spanner.Single().ReadRow(ctx, "Retailers", spanner.Key{retailerID}, []string{"RegionId", "CountryCode"})
 	if err != nil {
 		return "GLOBAL_PAY"
 	}
+
 	var regionID spanner.NullString
-	if scanErr := row.Columns(&regionID); scanErr != nil || !regionID.Valid || strings.TrimSpace(regionID.StringVal) == "" {
-		return "GLOBAL_PAY"
+	var countryCode spanner.NullString
+
+	_ = row.Columns(&regionID, &countryCode)
+
+	// Direct CountryCode preference
+	if countryCode.Valid && strings.TrimSpace(countryCode.StringVal) != "" {
+		return ResolveDefaultGatewayForCountry(countryCode.StringVal)
 	}
-	region, regionErr := s.GetRegionByID(ctx, regionID.StringVal)
-	if regionErr != nil || region == nil {
-		return "GLOBAL_PAY"
+
+	// Fallback to Region lookup
+	if regionID.Valid && strings.TrimSpace(regionID.StringVal) != "" {
+		region, regionErr := s.GetRegionByID(ctx, regionID.StringVal)
+		if regionErr == nil && region != nil {
+			return ResolveDefaultGatewayForCountry(region.CountryCode)
+		}
 	}
-	return ResolveDefaultGatewayForCountry(region.CountryCode)
+
+	return "GLOBAL_PAY"
 }
 
 // SeedDefaultRegions inserts baseline region and config rows when absent.

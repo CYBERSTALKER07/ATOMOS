@@ -178,35 +178,11 @@ func (s *CardTokenService) DeactivateCard(ctx context.Context, tokenID, retailer
 
 // DeactivateAllRetailerCardsForGateway soft-deletes all card tokens for a specific retailer and gateway.
 func (s *CardTokenService) DeactivateAllRetailerCardsForGateway(ctx context.Context, retailerID, gateway string) error {
-	gateway = strings.ToUpper(gateway)
 	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		stmt := spanner.Statement{
-			SQL: `SELECT TokenId FROM RetailerCardTokens
-			      WHERE RetailerId = @rid AND Gateway = @gw AND IsActive = true`,
-			Params: map[string]interface{}{"rid": retailerID, "gw": gateway},
+		mutations, err := s.DeactivateAllRetailerCardsForGatewayMutations(ctx, txn, retailerID, gateway)
+		if err != nil {
+			return err
 		}
-		iter := txn.Query(ctx, stmt)
-		defer iter.Stop()
-
-		var mutations []*spanner.Mutation
-		for {
-			row, err := iter.Next()
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				return err
-			}
-			var tokenID string
-			if err := row.Columns(&tokenID); err != nil {
-				return err
-			}
-			mutations = append(mutations, spanner.Update("RetailerCardTokens",
-				[]string{"TokenId", "IsActive", "IsDefault"},
-				[]interface{}{tokenID, false, false},
-			))
-		}
-
 		if len(mutations) > 0 {
 			return txn.BufferWrite(mutations)
 		}
@@ -217,6 +193,38 @@ func (s *CardTokenService) DeactivateAllRetailerCardsForGateway(ctx context.Cont
 	}
 	log.Printf("[CARD-TOKEN] Deactivated all %s cards for retailer %s", gateway, retailerID)
 	return nil
+}
+
+// DeactivateAllRetailerCardsForGatewayMutations returns the mutations required to soft-delete all card tokens for a specific retailer and gateway.
+func (s *CardTokenService) DeactivateAllRetailerCardsForGatewayMutations(ctx context.Context, txn *spanner.ReadWriteTransaction, retailerID, gateway string) ([]*spanner.Mutation, error) {
+	gateway = strings.ToUpper(gateway)
+	stmt := spanner.Statement{
+		SQL: `SELECT TokenId FROM RetailerCardTokens
+		      WHERE RetailerId = @rid AND Gateway = @gw AND IsActive = true`,
+		Params: map[string]interface{}{"rid": retailerID, "gw": gateway},
+	}
+	iter := txn.Query(ctx, stmt)
+	defer iter.Stop()
+
+	var mutations []*spanner.Mutation
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		var tokenID string
+		if err := row.Columns(&tokenID); err != nil {
+			return nil, err
+		}
+		mutations = append(mutations, spanner.Update("RetailerCardTokens",
+			[]string{"TokenId", "IsActive", "IsDefault"},
+			[]interface{}{tokenID, false, false},
+		))
+	}
+	return mutations, nil
 }
 
 // SetDefaultCard marks a card as the default, unsetting any previous default for the

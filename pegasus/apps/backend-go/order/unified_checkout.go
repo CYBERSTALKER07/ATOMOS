@@ -12,7 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -118,7 +118,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	}
 	if claims, ok := r.Context().Value(auth.ClaimsContextKey).(*auth.PegasusClaims); ok && claims != nil {
 		if req.RetailerID != "" && req.RetailerID != claims.UserID {
-			log.Printf("[UNIFIED_CHECKOUT] retailer_id mismatch: payload=%s, claims=%s", req.RetailerID, claims.UserID)
+			slog.WarnContext(r.Context(), "retailer_id mismatch", "payload_id", req.RetailerID, "claims_id", claims.UserID)
 			http.Error(w, `{"error":"RetailerID mismatch. Do not trust request body."}`, http.StatusForbidden)
 			return
 		}
@@ -176,7 +176,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 
 	supplierBySku, err := s.resolveSuppliers(ctx, skuIDs)
 	if err != nil {
-		log.Printf("[UNIFIED_CHECKOUT] Supplier resolution failed: %v", err)
+		slog.ErrorContext(ctx, "Supplier resolution failed", "error", err)
 		apierrors.InternalError(w, r, "Failed to resolve product suppliers.")
 		return
 	}
@@ -211,7 +211,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			_ = json.NewEncoder(w).Encode(payload)
 			return
 		}
-		log.Printf("[UNIFIED_CHECKOUT] Gateway resolution failed: %v", gatewayErr)
+		slog.ErrorContext(ctx, "Gateway resolution failed", "error", gatewayErr)
 		apierrors.InternalError(w, r, "Failed to resolve payment gateway policy.")
 		return
 	}
@@ -236,7 +236,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 			effectivePrice, isOverride, priceErr := cart.ResolveRetailerPrice(
 				ctx, s.Client, sid, req.RetailerID, item.SkuId, basePrice)
 			if priceErr != nil {
-				log.Printf("[UNIFIED_CHECKOUT] Price resolution failed for %s/%s: %v — using base", sid, item.SkuId, priceErr)
+				slog.WarnContext(ctx, "Price resolution failed, using base", "supplier_id", sid, "sku", item.SkuId, "error", priceErr)
 				effectivePrice = basePrice
 			}
 			items[i].UnitPrice = effectivePrice
@@ -305,7 +305,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	for sid := range supplierGroups {
 		match, whErr := proximity.ResolveWarehouseWithRouter(ctx, s.Client, s.ReadRouter, sid, retailerLat, retailerLng)
 		if whErr != nil {
-			log.Printf("[UNIFIED_CHECKOUT] Warehouse resolution failed for supplier %s: %v — proceeding without warehouse", sid, whErr)
+			slog.WarnContext(ctx, "Warehouse resolution failed, proceeding without warehouse", "supplier_id", sid, "error", whErr)
 		}
 		if match != nil {
 			warehouseBySupplier[sid] = match
@@ -360,7 +360,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	}
 	regionalFeeDefaultsBySupplier, regionalFeeDefaultsErr := s.resolveRegionalDegressiveFeeDefaults(ctx, planSupplierIDs)
 	if regionalFeeDefaultsErr != nil {
-		log.Printf("[UNIFIED_CHECKOUT] regional fee defaults unavailable; falling back to legacy fee policy: %v", regionalFeeDefaultsErr)
+		slog.WarnContext(ctx, "Regional fee defaults unavailable, falling back to legacy fee policy", "error", regionalFeeDefaultsErr)
 		regionalFeeDefaultsBySupplier = nil
 	}
 	invoiceSettlementTarget := settlementTargetForWarehouseIDs(warehouseIDs)
@@ -481,7 +481,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 				if iterErr != nil {
 					lowerErr := strings.ToLower(iterErr.Error())
 					if strings.Contains(lowerErr, "supplierpayoutpolicies") && strings.Contains(lowerErr, "not found") {
-						log.Printf("[UNIFIED_CHECKOUT] SupplierPayoutPolicies unavailable; defaulting to HQ payout mode: %v", iterErr)
+						slog.WarnContext(ctx, "SupplierPayoutPolicies unavailable, defaulting to HQ payout mode", "error", iterErr)
 						break
 					}
 					return fmt.Errorf("supplier payout policy lookup failed: %w", iterErr)
@@ -804,7 +804,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	})
 
 	if err != nil {
-		log.Printf("[UNIFIED_CHECKOUT] Spanner transaction failed: %v", err)
+		slog.ErrorContext(ctx, "Spanner transaction failed", "error", err)
 
 		// New Target: Inject OrderValidationFailed for UI feedback
 		// Must be isolated since main checkout txn failed.
@@ -937,15 +937,17 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		})
 		if backErr != nil {
 			// Primary order already committed — log and continue
-			log.Printf("[UNIFIED_CHECKOUT] BACKORDERED transaction failed (primary ok): %v", backErr)
+			slog.ErrorContext(ctx, "BACKORDERED transaction failed (primary ok)", "error", backErr)
 		}
 	}
 
 	// ── CACHE INVALIDATION After Commit ────────────────────────────────────────
 	s.Cache.Invalidate(ctx, cache.PrefixActiveOrders+req.RetailerID)
 
-	log.Printf("[UNIFIED_CHECKOUT] InvoiceID=%s RetailerId=%s Total=%d SupplierOrders=%d BackorderedItems=%d",
-		invoiceID, req.RetailerID, effectiveGrandTotal, len(processedPlans), totalBackorderedItems)
+	slog.InfoContext(ctx, "unified_checkout.completed",
+		"invoice_id", invoiceID, "retailer_id", req.RetailerID,
+		"total", effectiveGrandTotal, "supplier_orders", len(processedPlans),
+		"backordered_items", totalBackorderedItems)
 
 	// ── Step 5c: Authorize GLOBAL_PAY orders (saved card → hold funds at checkout) ──
 	// Best-effort: if authorization fails, orders remain PENDING and fall back to
@@ -953,6 +955,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 	if req.PaymentGateway == "GLOBAL_PAY" && s.DirectClient != nil && s.CardTokenSvc != nil {
 		savedCard, _ := s.CardTokenSvc.GetDefaultCard(ctx, req.RetailerID, "GLOBAL_PAY")
 		if savedCard != nil {
+			fallbackTriggered := false
 			for _, plan := range processedPlans {
 				orderTotal := processedTotals[plan.OrderID]
 				if orderTotal <= 0 {
@@ -960,11 +963,13 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 				}
 				if authErr := s.authorizeAtCheckout(ctx, plan.OrderID, plan.SupplierID, req.RetailerID,
 					invoiceID, orderTotal, savedCard.ProviderCardToken); authErr != nil {
-					log.Printf("[UNIFIED_CHECKOUT] GP authorization failed for order %s (non-fatal, delivery fallback): %v",
-						plan.OrderID, authErr)
+					slog.WarnContext(ctx, "GP authorization failed for order (non-fatal, delivery fallback)", "order_id", plan.OrderID, "error", authErr)
+					if !fallbackTriggered {
+						s.Trigger3CFallback(ctx, req.RetailerID, "GLOBAL_PAY", fmt.Sprintf("authorize call failed: %v", authErr))
+						fallbackTriggered = true
+					}
 				} else {
-					log.Printf("[UNIFIED_CHECKOUT] GP authorization succeeded for order %s — amount %d held",
-						plan.OrderID, orderTotal)
+					slog.InfoContext(ctx, "GP authorization succeeded", "order_id", plan.OrderID, "amount", orderTotal)
 				}
 			}
 		}
@@ -999,7 +1004,7 @@ func (s *OrderService) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Requ
 		SupplierOrders:       supplierResults,
 		BackorderedItemCount: totalBackorderedItems,
 	}); err != nil {
-		log.Printf("[UNIFIED_CHECKOUT] Response encode error: %v", err)
+		slog.ErrorContext(ctx, "Response encode error", "error", err)
 	}
 }
 
@@ -1026,7 +1031,7 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 
 	splitRecipients := payment.ComputeSplitRecipients(amount, recipientID, s.feeBasisPoints())
 	if snapshot, ok, snapErr := payment.LoadSupplierSettlementSnapshot(ctx, s.Client, orderID, supplierID); snapErr != nil {
-		log.Printf("[UNIFIED_CHECKOUT] snapshot lookup failed for order %s supplier %s: %v", orderID, supplierID, snapErr)
+		slog.WarnContext(ctx, "snapshot lookup failed", "order_id", orderID, "supplier_id", supplierID, "error", snapErr)
 	} else if ok {
 		effectiveAmount := snapshot.GrossAmount
 		if effectiveAmount <= 0 {
@@ -1050,7 +1055,6 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 		Recipients: splitRecipients,
 	})
 	if authErr != nil {
-		s.Trigger3CFallback(ctx, retailerID, "GLOBAL_PAY", fmt.Sprintf("authorize call failed: %v", authErr))
 		return fmt.Errorf("authorize call: %w", authErr)
 	}
 	if authResult.Action != nil && strings.TrimSpace(authResult.Action.RedirectURL) != "" {
@@ -1070,7 +1074,7 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 			InvoiceID:  invoiceID,
 		})
 		if sessErr != nil {
-			log.Printf("[CHECKOUT-AUTH] Session creation failed for order %s after auth: %v", orderID, sessErr)
+			slog.ErrorContext(ctx, "Session creation failed after auth", "order_id", orderID, "error", sessErr)
 		} else {
 			// Transition session to AUTHORIZED with auth metadata.
 			providerReference := strings.TrimSpace(authResult.ProviderReference)
@@ -1086,7 +1090,7 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 				})
 			})
 			if updateErr != nil {
-				log.Printf("[CHECKOUT-AUTH] Session AUTHORIZED update failed for %s: %v", session.SessionID, updateErr)
+				slog.ErrorContext(ctx, "Session AUTHORIZED update failed", "session_id", session.SessionID, "error", updateErr)
 			}
 		}
 	}
@@ -1124,7 +1128,7 @@ func (s *OrderService) authorizeAtCheckout(ctx context.Context, orderID, supplie
 		}, telemetry.TraceIDFromContext(ctx))
 	})
 	if err != nil {
-		log.Printf("[CHECKOUT-AUTH] Orders.PaymentStatus update failed for %s: %v", orderID, err)
+		slog.ErrorContext(ctx, "Orders.PaymentStatus update failed", "order_id", orderID, "error", err)
 	}
 
 	return nil
