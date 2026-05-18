@@ -79,7 +79,10 @@
         "Rust sidecar adapters in server-rust/src/{mapping.rs,scaling.rs,solver/vrp.rs,solver/cpsat.rs} enforce deterministic UUID-index mapping and SCALE_FACTOR=10000 integer conversion and now execute deterministic constrained assignment + route-construction solver logic with best-effort/time-limit semantics",
         "Go worker scaffold in adapters/go/internal/adapter/worker.go consumes optimization jobs from Kafka and wraps solver calls with bounded retry plus backoff+jitter",
         "Go worker persists OPTIMIZATION_SOLVED payloads to Spanner OutboxEvents only and does not mutate Inventory or Manifest tables directly",
+        "Adapter gRPC transport in services/optimizer-core/adapters/go/internal/optimizergrpc/client.go is now fully protobuf-wired using generated stubs in services/optimizer-core/adapters/go/internal/optimizerpb/{optimizer_core.pb.go,optimizer_core_grpc.pb.go}",
+        "Adapter failure-path tests in services/optimizer-core/adapters/go/internal/{optimizergrpc/client_test.go,adapter/worker_test.go} now cover sidecar unavailable, deadline timeout, and infeasible-result handling",
         "Backend optimizer gRPC transport in apps/backend-go/internal/rpc/optimizergrpc/client.go now prefers OPTIMIZER_SIDE_ENDPOINT with bounded block-on-dial timeout and local circuit-breaker fast failover",
+        "Phase-7 canary hard gates are now codified in infra/k8s/monitoring/prometheusrule.yaml and infra/terraform/observability.tf for void_optimizer_solver_duration_seconds, void_optimizer_error_rate, and void_optimizer_circuit_breaker_state",
         "infra/k8s/ai-worker/deployment.yaml now additively co-locates optimizer-core-rust sidecar and loopback endpoint wiring (127.0.0.1:50055)"
       ],
       "consumers": [
@@ -92,7 +95,7 @@
       "notes": [
         "Pattern-A sidecar runtime remains additive and keeps current backend-go optimization paths intact while enabling executable Rust solver behavior.",
         "Python sidecar remains available for dual-run canary parity checks while Rust sidecar ramps.",
-        "Go optimizergrpc transport methods are scaffold stubs pending generated Go protobuf bindings and envelope-to-protobuf mapping."
+        "Go optimizergrpc transport is now protobuf-mapped end-to-end with fault-path coverage and canary rollback gates."
       ]
     },
     {

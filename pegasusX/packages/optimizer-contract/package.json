@@ -1,0 +1,11 @@
+{
+  "name": "@pegasusx/optimizer-contract",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Stable contract between the dispatcher (backend-go) and the optimizer (ai-worker) for Clarke-Wright + H3 geo-batching route planning.",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "dependencies": {
+    "@pegasusx/types": "workspace:*"
+  }
+}

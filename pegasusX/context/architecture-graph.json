@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "project": "pegasusX",
+  "generatedAt": null,
+  "runtimeNotes": [
+    {
+      "date": "2026-05-17",
+      "summary": "Expanded supplier and retailer backend route coverage in apps/backend-go with optional Firebase-protected retailer role row."
+    },
+    {
+      "date": "2026-05-17",
+      "summary": "Expanded driver and warehouse backend route coverage in apps/backend-go with Firebase-role-gated driver/warehouse paths and cookie-admin fallback for warehouse scaffold mode."
+    },
+    {
+      "date": "2026-05-17",
+      "summary": "Expanded factory and payload backend route coverage in apps/backend-go with Firebase-role-gated factory/payload paths and cookie-admin fallback scaffold mode."
+    },
+    {
+      "date": "2026-05-17",
+      "summary": "Expanded payment and webhook backend route coverage in apps/backend-go with idempotency-backed payment mutations and signature-first webhook handling."
+    },
+    {
+      "date": "2026-05-17",
+      "summary": "Expanded advanced factory/payload workflow coverage in apps/backend-go: factory manifest lifecycle transitions + rebalance/cancel/exception queue, and payload manifest lifecycle + exception handling + reassignment apply depth."
+    },
+    {
+      "date": "2026-05-17",
+      "summary": "Expanded shared event contracts with advanced manifest workflow types (MANIFEST_ORDER_INJECTED, MANIFEST_ORDER_EXCEPTION, MANIFEST_DLQ_ESCALATION, MANIFEST_REBALANCED, MANIFEST_CANCELLED)."
+    },
+    {
+      "date": "2026-05-17",
+      "summary": "Hardened payment webhooks to provider-exact signature formats (Global Pay Basic auth, Stripe Stripe-Signature t/v1, Adyen item-level hmacSignature) and moved factory/payload manifest mutations behind repository Apply seams with outbox emit, cache invalidation, and websocket fanout parity."
+    },
+    {
+      "date": "2026-05-17",
+      "summary": "Added manifest payload contract parity in scaffold handlers: MANIFEST_SEALED envelopes now include route/driver/vehicle/order_count metadata, and payload reassignment envelopes include from/to manifest and route metadata with source+target manifest cache invalidation."
+    },
+    {
+      "date": "2026-05-17",
+      "summary": "Activated scaffold reliability lifecycle in backend-go: main now starts outbox relay + cache invalidation subscriber, repositories persist buffered outbox events into relay-readable memory store, and trace middleware propagates X-Trace-Id into outbox event payload context."
+    },
+    {
+      "date": "2026-05-17",
+      "summary": "Activated production-adapter bridge in backend-go: bootstrap now attempts Redis cache backend and Kafka outbox publisher with in-memory/logging fallback, and websocket hubs relay typed fanout envelopes with source-instance suppression while main starts all hub relay subscribers."
+    },
+    {
+      "date": "2026-05-17",
+      "summary": "Added strict reliability mode in backend-go bootstrap: REQUIRE_INFRA_ADAPTERS enforces fail-fast startup when Redis or Kafka adapter initialization fails; default mode remains fail-open fallback for local scaffold runs."
+    },
+    {
+      "date": "2026-05-17",
+      "summary": "Bound outbox relay authority to Spanner OutboxEvents when available: bootstrap now probes Spanner and selects outbox.SpannerStore for relay fetch/mark with in-memory fallback, and strict-mode adapter startup behavior is covered by bootstrap tests."
+    },
+    {
+      "date": "2026-05-17",
+      "summary": "Activated request reliability middleware in backend-go: main mounts bootstrap reliability controls after trace middleware (fixed-window rate limits, priority shedding, per-class circuit-open responses), gated by RELIABILITY_MIDDLEWARE_ENABLED with dedicated middleware tests and emulator-gated Spanner outbox integration coverage."
+    },
+    {
+      "date": "2026-05-17",
+      "summary": "Activated payment execution routing seam in backend-go: payment service now routes checkout/chargeback/reversal through payment/execution.go with bounded retry/backoff+jitter for retryable provider failures and typed gateway policy errors, with AIRWALLEX direct execution controlled by AIRWALLEX_DIRECT_EXECUTION_ENABLED."
+    },
+    {
+      "date": "2026-05-18",
+      "summary": "Added checkout attempt execution persistence in backend-go/payment: checkout now writes PaymentAttemptRecord via repository SaveAttempt and surfaces additive attempt_id/execution_action/execution_mode/provider_reference metadata in checkout response and payment-required event payloads."
+    }
+  ],
+  "nodes": [
+    { "id": "backend-go", "kind": "service", "language": "go", "path": "apps/backend-go" },
+    { "id": "ai-worker", "kind": "service", "language": "go", "path": "apps/ai-worker" },
+    { "id": "supplier-portal", "kind": "web", "language": "ts", "path": "apps/supplier-portal" },
+    { "id": "retailer-app-android", "kind": "mobile", "language": "kotlin", "path": "apps/retailer-app-android" },
+    { "id": "retailer-app-ios", "kind": "mobile", "language": "swift", "path": "apps/retailer-app-ios" },
+    { "id": "retailer-app-desktop", "kind": "desktop", "language": "ts", "path": "apps/retailer-app-desktop" },
+    { "id": "driver-app-android", "kind": "mobile", "language": "kotlin", "path": "apps/driver-app-android" },
+    { "id": "driver-app-ios", "kind": "mobile", "language": "swift", "path": "apps/driver-app-ios" },
+    { "id": "warehouse-portal", "kind": "web", "language": "ts", "path": "apps/warehouse-portal" },
+    { "id": "warehouse-app-android", "kind": "mobile", "language": "kotlin", "path": "apps/warehouse-app-android" },
+    { "id": "warehouse-app-ios", "kind": "mobile", "language": "swift", "path": "apps/warehouse-app-ios" },
+    { "id": "factory-portal", "kind": "web", "language": "ts", "path": "apps/factory-portal" },
+    { "id": "factory-app-android", "kind": "mobile", "language": "kotlin", "path": "apps/factory-app-android" },
+    { "id": "factory-app-ios", "kind": "mobile", "language": "swift", "path": "apps/factory-app-ios" },
+    { "id": "payload-terminal", "kind": "mobile", "language": "ts", "path": "apps/payload-terminal" },
+    { "id": "payload-app-ios", "kind": "mobile", "language": "swift", "path": "apps/payload-app-ios" },
+    { "id": "payload-app-android", "kind": "mobile", "language": "kotlin", "path": "apps/payload-app-android" },
+    { "id": "pkg-types", "kind": "package", "language": "ts", "path": "packages/types" },
+    { "id": "pkg-api-client", "kind": "package", "language": "ts", "path": "packages/api-client" },
+    { "id": "pkg-validation", "kind": "package", "language": "ts", "path": "packages/validation" },
+    { "id": "pkg-i18n", "kind": "package", "language": "ts", "path": "packages/i18n" },
+    { "id": "pkg-ui-kit", "kind": "package", "language": "ts", "path": "packages/ui-kit" },
+    { "id": "pkg-config", "kind": "package", "language": "go", "path": "packages/config" },
+    { "id": "contracts-events", "kind": "contract", "language": "json", "path": "contracts/events.schema.json" },
+    { "id": "spanner", "kind": "infra", "language": "ddl", "path": "apps/backend-go/schema/spanner.ddl" },
+    { "id": "redis", "kind": "infra" },
+    { "id": "kafka", "kind": "infra" },
+    { "id": "firebase-auth", "kind": "infra" },
+    { "id": "terraform", "kind": "infra", "path": "infra/terraform" }
+  ],
+  "edges": [
+    { "from": "supplier-portal", "to": "backend-go", "kind": "http" },
+    { "from": "retailer-app-android", "to": "backend-go", "kind": "http+ws" },
+    { "from": "retailer-app-ios", "to": "backend-go", "kind": "http+ws" },
+    { "from": "retailer-app-desktop", "to": "backend-go", "kind": "http+ws" },
+    { "from": "driver-app-android", "to": "backend-go", "kind": "http+ws" },
+    { "from": "driver-app-ios", "to": "backend-go", "kind": "http+ws" },
+    { "from": "warehouse-portal", "to": "backend-go", "kind": "http+ws" },
+    { "from": "warehouse-app-android", "to": "backend-go", "kind": "http+ws" },
+    { "from": "warehouse-app-ios", "to": "backend-go", "kind": "http+ws" },
+    { "from": "factory-portal", "to": "backend-go", "kind": "http+ws" },
+    { "from": "factory-app-android", "to": "backend-go", "kind": "http+ws" },
+    { "from": "factory-app-ios", "to": "backend-go", "kind": "http+ws" },
+    { "from": "payload-terminal", "to": "backend-go", "kind": "http+ws" },
+    { "from": "payload-app-ios", "to": "backend-go", "kind": "http+ws" },
+    { "from": "payload-app-android", "to": "backend-go", "kind": "http+ws" },
+    { "from": "backend-go", "to": "spanner", "kind": "rw-txn" },
+    { "from": "backend-go", "to": "redis", "kind": "cache+pubsub" },
+    { "from": "backend-go", "to": "kafka", "kind": "outbox-relay" },
+    { "from": "backend-go", "to": "firebase-auth", "kind": "id-token-verify" },
+    { "from": "ai-worker", "to": "kafka", "kind": "consume" },
+    { "from": "ai-worker", "to": "spanner", "kind": "rw-txn" },
+    { "from": "terraform", "to": "spanner", "kind": "provision" },
+    { "from": "terraform", "to": "redis", "kind": "provision" },
+    { "from": "terraform", "to": "kafka", "kind": "runtime-secret-wiring" },
+    { "from": "backend-go", "to": "contracts-events", "kind": "generates" },
+    { "from": "retailer-app-android", "to": "contracts-events", "kind": "codegen" },
+    { "from": "retailer-app-ios", "to": "contracts-events", "kind": "codegen" },
+    { "from": "driver-app-android", "to": "contracts-events", "kind": "codegen" },
+    { "from": "driver-app-ios", "to": "contracts-events", "kind": "codegen" },
+    { "from": "warehouse-app-android", "to": "contracts-events", "kind": "codegen" },
+    { "from": "warehouse-app-ios", "to": "contracts-events", "kind": "codegen" },
+    { "from": "factory-app-android", "to": "contracts-events", "kind": "codegen" },
+    { "from": "factory-app-ios", "to": "contracts-events", "kind": "codegen" },
+    { "from": "payload-app-android", "to": "contracts-events", "kind": "codegen" },
+    { "from": "payload-app-ios", "to": "contracts-events", "kind": "codegen" }
+  ]
+}

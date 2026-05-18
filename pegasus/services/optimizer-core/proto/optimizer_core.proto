@@ -1,0 +1,127 @@
+syntax = "proto3";
+
+package pegasus.optimizer.core.v1;
+
+option go_package = "optimizercorepb";
+
+enum JobType {
+  JOB_TYPE_UNSPECIFIED = 0;
+  JOB_TYPE_CTP = 1;
+  JOB_TYPE_MEIO = 2;
+  JOB_TYPE_FACTORY_SCHEDULING = 3;
+  JOB_TYPE_FLEET_ROUTING = 4;
+}
+
+message SolverMetadata {
+  string job_id = 1;
+  string trace_id = 2;
+  string supplier_id = 3;
+  JobType job_type = 4;
+  int64 scale_factor = 5;
+  string idempotency_key = 6;
+  string source_event_type = 7;
+  int64 requested_at_unix_ms = 8;
+}
+
+message Int64Row {
+  repeated int64 values = 1;
+}
+
+message Vehicle {
+  string vehicle_uuid = 1;
+  string driver_uuid = 2;
+  int64 capacity_scaled = 3;
+  int64 start_time_window_scaled = 4;
+  int64 end_time_window_scaled = 5;
+}
+
+message NodeDemand {
+  string node_uuid = 1;
+  int64 demand_scaled = 2;
+}
+
+message NodeTimeWindow {
+  string node_uuid = 1;
+  int64 start_time_window_scaled = 2;
+  int64 end_time_window_scaled = 3;
+}
+
+message VRPRequest {
+  SolverMetadata meta = 1;
+  string depot_node_uuid = 2;
+  repeated string drop_off_node_uuids = 3;
+  repeated Int64Row distance_matrix_scaled = 4;
+  repeated Vehicle vehicles = 5;
+  repeated NodeDemand node_demands = 6;
+  repeated NodeTimeWindow node_time_windows = 7;
+  int64 solver_time_limit_ms = 8;
+  bool return_best_effort = 9;
+}
+
+message VehicleRoute {
+  string vehicle_uuid = 1;
+  string driver_uuid = 2;
+  repeated string ordered_node_uuids = 3;
+  int64 load_scaled = 4;
+  int64 route_cost_scaled = 5;
+}
+
+message VRPResponse {
+  SolverMetadata meta = 1;
+  bool feasible = 2;
+  bool timed_out = 3;
+  int64 objective_cost_scaled = 4;
+  repeated VehicleRoute routes = 5;
+  repeated string unassigned_node_uuids = 6;
+  repeated string warnings = 7;
+}
+
+message FactorySlot {
+  string factory_node_uuid = 1;
+  int64 slot_capacity_scaled = 2;
+}
+
+message ManifestRequirement {
+  string manifest_id = 1;
+  int64 required_capacity_scaled = 2;
+  int64 priority_score_scaled = 3;
+  repeated string eligible_factory_node_uuids = 4;
+}
+
+message CPSATRequest {
+  SolverMetadata meta = 1;
+  repeated FactorySlot factory_slots = 2;
+  repeated ManifestRequirement manifest_requirements = 3;
+  int64 solver_time_limit_ms = 4;
+  bool return_best_effort = 5;
+  int32 num_search_workers = 6;
+}
+
+message Assignment {
+  string manifest_id = 1;
+  string factory_node_uuid = 2;
+  bool assigned = 3;
+}
+
+message CPSATResponse {
+  SolverMetadata meta = 1;
+  bool feasible = 2;
+  bool timed_out = 3;
+  int64 objective_score_scaled = 4;
+  repeated Assignment assignments = 5;
+  repeated string unassigned_manifest_ids = 6;
+  repeated string warnings = 7;
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  bool ok = 1;
+  string service = 2;
+}
+
+service OptimizerCoreService {
+  rpc CalculateRoute(VRPRequest) returns (VRPResponse);
+  rpc ResolveConstraint(CPSATRequest) returns (CPSATResponse);
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}

@@ -1,0 +1,25 @@
+{
+  "findingCount": 2,
+  "findingSummary": {
+    "apply_without_rwt": 1,
+    "direct_write_messages": 1
+  },
+  "findings": [
+    {
+      "file": "apps/backend-go/telemetryaudit/sink.go",
+      "line": 58,
+      "rule": "apply_without_rwt",
+      "severity": "warning",
+      "message": "Spanner Apply call detected in app path; prefer ReadWriteTransaction for mutable workflows.",
+      "snippet": "_, err := spannerClient.Apply(ctx, []*spanner.Mutation{"
+    },
+    {
+      "file": "apps/backend-go/telemetryaudit/journal.go",
+      "line": 111,
+      "rule": "direct_write_messages",
+      "severity": "error",
+      "message": "Direct Kafka WriteMessages call outside outbox/relay or kafka/ infrastructure.",
+      "snippet": "err = j.writer.WriteMessages(ctx, goKafka.Message{"
+    }
+  ]
+}

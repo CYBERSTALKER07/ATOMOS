@@ -1,0 +1,2794 @@
+{
+  "eventCount": 129,
+  "events": [
+    {
+      "constant": "EventAiOrderConfirmed",
+      "eventName": "AI_ORDER_CONFIRMED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 58,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 1308
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 218
+        }
+      ]
+    },
+    {
+      "constant": "EventAiOrderRejected",
+      "eventName": "AI_ORDER_REJECTED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 59,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 1394
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 220
+        }
+      ]
+    },
+    {
+      "constant": "EventAiPlanDateShift",
+      "eventName": "AI_PLAN_DATE_SHIFT",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 172,
+      "producerRefCount": 1,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/kafka/emitter.go",
+          "line": 147
+        }
+      ],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventAiPlanSkuModified",
+      "eventName": "AI_PLAN_SKU_MODIFIED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 173,
+      "producerRefCount": 1,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/kafka/emitter.go",
+          "line": 164
+        }
+      ],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventAiPredictionCorrected",
+      "eventName": "AI_PREDICTION_CORRECTED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 171,
+      "producerRefCount": 1,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/kafka/emitter.go",
+          "line": 103
+        }
+      ],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventCancelApproved",
+      "eventName": "CANCEL_APPROVED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 47,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 335
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 182
+        }
+      ]
+    },
+    {
+      "constant": "EventCancelRequested",
+      "eventName": "CANCEL_REQUESTED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 46,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 6,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 267
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 180
+        }
+      ]
+    },
+    {
+      "constant": "EventCashCollectionRequired",
+      "eventName": "CASH_COLLECTION_REQUIRED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 138,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 5,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 3902
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 162
+        }
+      ]
+    },
+    {
+      "constant": "EventCommandDispatched",
+      "eventName": "COMMAND_DISPATCHED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 61,
+      "producerRefCount": 0,
+      "consumerRefCount": 0,
+      "otherRefCount": 5,
+      "producerRefs": [],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventCommandReceived",
+      "eventName": "COMMAND_RECEIVED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 62,
+      "producerRefCount": 0,
+      "consumerRefCount": 0,
+      "otherRefCount": 5,
+      "producerRefs": [],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventCommandSettled",
+      "eventName": "COMMAND_SETTLED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 63,
+      "producerRefCount": 0,
+      "consumerRefCount": 0,
+      "otherRefCount": 5,
+      "producerRefs": [],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventCreditDeliveryMarked",
+      "eventName": "CREDIT_DELIVERY_MARKED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 54,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 7,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 833
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 210
+        }
+      ]
+    },
+    {
+      "constant": "EventCreditDeliveryResolved",
+      "eventName": "CREDIT_DELIVERY_RESOLVED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 55,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 7,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 955
+        },
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 958,
+          "viaLiteral": "CREDIT_DELIVERY_RESOLVED"
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 212
+        }
+      ]
+    },
+    {
+      "constant": "EventDeliveryDeltaRefunded",
+      "eventName": "DELIVERY_DELTA_REFUNDED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 30,
+      "producerRefCount": 1,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/payment/refund.go",
+          "line": 630,
+          "viaLiteral": "DELIVERY_DELTA_REFUNDED"
+        }
+      ],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventDeliveryDisputed",
+      "eventName": "DELIVERY_DISPUTED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 32,
+      "producerRefCount": 0,
+      "consumerRefCount": 1,
+      "otherRefCount": 7,
+      "producerRefs": [],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 154
+        }
+      ]
+    },
+    {
+      "constant": "EventDeliverySessionUpdated",
+      "eventName": "DELIVERY_SESSION_UPDATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 31,
+      "producerRefCount": 3,
+      "consumerRefCount": 1,
+      "otherRefCount": 9,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 3040
+        },
+        {
+          "file": "apps/backend-go/order/delivery_handshake.go",
+          "line": 246
+        },
+        {
+          "file": "apps/backend-go/order/delivery_handshake.go",
+          "line": 542
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 152
+        }
+      ]
+    },
+    {
+      "constant": "EventDemandForecastReady",
+      "eventName": "DEMAND_FORECAST_READY",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 89,
+      "producerRefCount": 0,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventDispatchLockAcquired",
+      "eventName": "DISPATCH_LOCK_ACQUIRED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 80,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/warehouse/dispatch_lock.go",
+          "line": 147
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 250
+        }
+      ]
+    },
+    {
+      "constant": "EventDispatchLockReleased",
+      "eventName": "DISPATCH_LOCK_RELEASED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 81,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/warehouse/dispatch_lock.go",
+          "line": 239
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 252
+        }
+      ]
+    },
+    {
+      "constant": "EventDriverApproaching",
+      "eventName": "DRIVER_APPROACHING",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 15,
+      "producerRefCount": 1,
+      "consumerRefCount": 0,
+      "otherRefCount": 18,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/ws/hub_integration_test.go",
+          "line": 544,
+          "viaLiteral": "DRIVER_APPROACHING"
+        }
+      ],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventDriverArrived",
+      "eventName": "DRIVER_ARRIVED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 16,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 6,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 1341
+        },
+        {
+          "file": "apps/backend-go/kafka/kafka_integration_test.go",
+          "line": 156
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 140
+        }
+      ]
+    },
+    {
+      "constant": "EventDriverAvailabilityChanged",
+      "eventName": "DRIVER_AVAILABILITY_CHANGED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 34,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 6,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/fleet/driver_api.go",
+          "line": 317
+        },
+        {
+          "file": "apps/backend-go/fleet/driver_api.go",
+          "line": 334
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 168
+        }
+      ]
+    },
+    {
+      "constant": "EventDriverCreated",
+      "eventName": "DRIVER_CREATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 106,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/fleet.go",
+          "line": 527
+        },
+        {
+          "file": "apps/backend-go/warehouse/drivers.go",
+          "line": 348
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 258
+        }
+      ]
+    },
+    {
+      "constant": "EventEarlyCompleteApproved",
+      "eventName": "EARLY_COMPLETE_APPROVED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 51,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 6,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 702
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 204
+        }
+      ]
+    },
+    {
+      "constant": "EventEarlyCompleteRequested",
+      "eventName": "EARLY_COMPLETE_REQUESTED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 50,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 7,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 583
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 202
+        }
+      ]
+    },
+    {
+      "constant": "EventFactoryCreated",
+      "eventName": "FACTORY_CREATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 120,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/crud.go",
+          "line": 385
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 308
+        }
+      ]
+    },
+    {
+      "constant": "EventFactoryManifestCreated",
+      "eventName": "FACTORY_MANIFEST_CREATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 88,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/batcher.go",
+          "line": 289
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 298
+        }
+      ]
+    },
+    {
+      "constant": "EventFactorySLABreach",
+      "eventName": "FACTORY_SLA_BREACH",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 749,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/sla_monitor.go",
+          "line": 170
+        },
+        {
+          "file": "apps/backend-go/factory/sla_monitor.go",
+          "line": 270
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 316
+        }
+      ]
+    },
+    {
+      "constant": "EventFeeRateAdjusted",
+      "eventName": "FEE_RATE_ADJUSTED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 27,
+      "producerRefCount": 0,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventFleetDispatched",
+      "eventName": "FLEET_DISPATCHED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 131,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 1508
+        },
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 168
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 248
+        }
+      ]
+    },
+    {
+      "constant": "EventForceSealAlert",
+      "eventName": "FORCE_SEAL_ALERT",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 152,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 694
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 286
+        }
+      ]
+    },
+    {
+      "constant": "EventFreezeLockAcquired",
+      "eventName": "FREEZE_LOCK_ACQUIRED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 82,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/warehouse/dispatch_lock.go",
+          "line": 153
+        },
+        {
+          "file": "apps/backend-go/warehouse/dispatch_lock.go",
+          "line": 156
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 254
+        }
+      ]
+    },
+    {
+      "constant": "EventFreezeLockReleased",
+      "eventName": "FREEZE_LOCK_RELEASED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 83,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/warehouse/dispatch_lock.go",
+          "line": 243
+        },
+        {
+          "file": "apps/backend-go/warehouse/dispatch_lock.go",
+          "line": 246
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 256
+        }
+      ]
+    },
+    {
+      "constant": "EventFulfillmentPaid",
+      "eventName": "FULFILLMENT_PAID",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 136,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 2741
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 166
+        }
+      ]
+    },
+    {
+      "constant": "EventFulfillmentPaymentCompleted",
+      "eventName": "FULFILLMENT_PAYMENT_COMPLETED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 135,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 2728
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 164
+        }
+      ]
+    },
+    {
+      "constant": "EventInboundFreightUnannounced",
+      "eventName": "INBOUND_FREIGHT_UNANNOUNCED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 750,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/force_receive.go",
+          "line": 207
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 318
+        }
+      ]
+    },
+    {
+      "constant": "EventInsightApprovedTransferCreated",
+      "eventName": "INSIGHT_APPROVED_TRANSFER_CREATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 756,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/replenishment/api.go",
+          "line": 257
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 344
+        }
+      ]
+    },
+    {
+      "constant": "EventInternalLoadConfirmed",
+      "eventName": "INTERNAL_LOAD_CONFIRMED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 167,
+      "producerRefCount": 0,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventInventoryImportStatusUpdate",
+      "eventName": "INVENTORY_IMPORT_STATUS_UPDATE",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 91,
+      "producerRefCount": 0,
+      "consumerRefCount": 1,
+      "otherRefCount": 1,
+      "producerRefs": [],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 156
+        }
+      ]
+    },
+    {
+      "constant": "EventInventoryImportUploaded",
+      "eventName": "INVENTORY_IMPORT_UPLOADED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 90,
+      "producerRefCount": 0,
+      "consumerRefCount": 0,
+      "otherRefCount": 2,
+      "producerRefs": [],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventLookAheadCompleted",
+      "eventName": "LOOK_AHEAD_COMPLETED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 757,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/look_ahead.go",
+          "line": 190
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 340
+        }
+      ]
+    },
+    {
+      "constant": "EventManifestCancelled",
+      "eventName": "MANIFEST_CANCELLED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 73,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/kill_switch.go",
+          "line": 115
+        },
+        {
+          "file": "apps/backend-go/factory/override.go",
+          "line": 483
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 278
+        }
+      ]
+    },
+    {
+      "constant": "EventManifestCompleted",
+      "eventName": "MANIFEST_COMPLETED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 732,
+      "producerRefCount": 1,
+      "consumerRefCount": 2,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 4632
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/treasurer.go",
+          "line": 83
+        },
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 282
+        }
+      ]
+    },
+    {
+      "constant": "EventManifestDLQEscalation",
+      "eventName": "MANIFEST_DLQ_ESCALATION",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 736,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 1239
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 276
+        }
+      ]
+    },
+    {
+      "constant": "EventManifestDispatched",
+      "eventName": "MANIFEST_DISPATCHED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 730,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/fleet/truck_state.go",
+          "line": 251
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 280
+        }
+      ]
+    },
+    {
+      "constant": "EventManifestDraftCreated",
+      "eventName": "MANIFEST_DRAFT_CREATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 724,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/dispatch/persist.go",
+          "line": 116
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 264
+        }
+      ]
+    },
+    {
+      "constant": "EventManifestForceSeal",
+      "eventName": "MANIFEST_FORCE_SEALED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 742,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 675
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 274
+        }
+      ]
+    },
+    {
+      "constant": "EventManifestLoadingStarted",
+      "eventName": "MANIFEST_LOADING_STARTED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 726,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 268
+        },
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 278
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 266
+        }
+      ]
+    },
+    {
+      "constant": "EventManifestOrderException",
+      "eventName": "MANIFEST_ORDER_EXCEPTION",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 734,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 1216
+        },
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 1231
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 270
+        }
+      ]
+    },
+    {
+      "constant": "EventManifestOrderInjected",
+      "eventName": "MANIFEST_ORDER_INJECTED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 740,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 412
+        },
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 424
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 272
+        }
+      ]
+    },
+    {
+      "constant": "EventManifestOrderReassigned",
+      "eventName": "MANIFEST_ORDER_REASSIGNED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 161,
+      "producerRefCount": 0,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventManifestRebalanced",
+      "eventName": "MANIFEST_REBALANCED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 71,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/override.go",
+          "line": 187
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 262
+        }
+      ]
+    },
+    {
+      "constant": "EventManifestSealed",
+      "eventName": "MANIFEST_SEALED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 728,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 5,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 652
+        },
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 668
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 268
+        }
+      ]
+    },
+    {
+      "constant": "EventManifestSettled",
+      "eventName": "MANIFEST_SETTLED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 852,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/kafka/treasurer.go",
+          "line": 611
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 284
+        }
+      ]
+    },
+    {
+      "constant": "EventMissingItemsReported",
+      "eventName": "MISSING_ITEMS_REPORTED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 56,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 6,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 1097
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 214
+        }
+      ]
+    },
+    {
+      "constant": "EventNegotiationProposed",
+      "eventName": "NEGOTIATION_PROPOSED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 52,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 8,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/negotiation.go",
+          "line": 116
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 206
+        }
+      ]
+    },
+    {
+      "constant": "EventNegotiationResolved",
+      "eventName": "NEGOTIATION_RESOLVED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 53,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 7,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/negotiation.go",
+          "line": 232
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 208
+        }
+      ]
+    },
+    {
+      "constant": "EventNetworkModeChanged",
+      "eventName": "NETWORK_MODE_CHANGED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 752,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/kill_switch.go",
+          "line": 101
+        },
+        {
+          "file": "apps/backend-go/factory/network_optimizer.go",
+          "line": 390
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 330
+        }
+      ]
+    },
+    {
+      "constant": "EventOffloadConfirmed",
+      "eventName": "OFFLOAD_CONFIRMED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 137,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 3072
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 198
+        }
+      ]
+    },
+    {
+      "constant": "EventOrderAssigned",
+      "eventName": "ORDER_ASSIGNED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 87,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 149
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 300
+        }
+      ]
+    },
+    {
+      "constant": "EventOrderCancelLocked",
+      "eventName": "ORDER_CANCEL_LOCKED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 74,
+      "producerRefCount": 0,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventOrderCancelled",
+      "eventName": "ORDER_CANCELLED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 132,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 5,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 1657
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 196
+        }
+      ]
+    },
+    {
+      "constant": "EventOrderCancelledByOrigin",
+      "eventName": "ORDER_CANCELLED_BY_ORIGIN",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 133,
+      "producerRefCount": 1,
+      "consumerRefCount": 2,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/recovery.go",
+          "line": 180
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/treasurer.go",
+          "line": 90
+        },
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 292
+        }
+      ]
+    },
+    {
+      "constant": "EventOrderCompleted",
+      "eventName": "ORDER_COMPLETED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 33,
+      "producerRefCount": 3,
+      "consumerRefCount": 2,
+      "otherRefCount": 10,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 1805
+        },
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 3301
+        },
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 4076
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/treasurer.go",
+          "line": 61
+        },
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 188
+        }
+      ]
+    },
+    {
+      "constant": "EventOrderCreated",
+      "eventName": "ORDER_CREATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 145,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/procurement.go",
+          "line": 154
+        },
+        {
+          "file": "apps/backend-go/order/unified_checkout.go",
+          "line": 792
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 190
+        }
+      ]
+    },
+    {
+      "constant": "EventOrderDelayed",
+      "eventName": "ORDER_DELAYED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 157,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/mark_delayed.go",
+          "line": 71
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 288
+        }
+      ]
+    },
+    {
+      "constant": "EventOrderDispatched",
+      "eventName": "ORDER_DISPATCHED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 14,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 9,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 1516
+        },
+        {
+          "file": "apps/backend-go/kafka/kafka_integration_test.go",
+          "line": 88
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 138
+        }
+      ]
+    },
+    {
+      "constant": "EventOrderFinalized",
+      "eventName": "ORDER_FINALIZED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 26,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 0,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/unified_checkout.go",
+          "line": 1121
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/billing_tier_worker.go",
+          "line": 41
+        }
+      ]
+    },
+    {
+      "constant": "EventOrderModified",
+      "eventName": "ORDER_MODIFIED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 36,
+      "producerRefCount": 1,
+      "consumerRefCount": 2,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 2270
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/treasurer.go",
+          "line": 69
+        },
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 172
+        }
+      ]
+    },
+    {
+      "constant": "EventOrderReassigned",
+      "eventName": "ORDER_REASSIGNED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 35,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 10,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 4259
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 170
+        }
+      ]
+    },
+    {
+      "constant": "EventOrderRerouted",
+      "eventName": "ORDER_REROUTED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 37,
+      "producerRefCount": 0,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventOrderStatusChanged",
+      "eventName": "ORDER_STATUS_CHANGED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 17,
+      "producerRefCount": 11,
+      "consumerRefCount": 1,
+      "otherRefCount": 14,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/shop_closed.go",
+          "line": 667
+        },
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 1275
+        },
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 1351
+        },
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 1817
+        },
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 3083
+        },
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 3313
+        },
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 3911
+        },
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 4088
+        },
+        {
+          "file": "apps/backend-go/order/legacy_orders.go",
+          "line": 313
+        },
+        {
+          "file": "apps/backend-go/supplier/vetting.go",
+          "line": 333
+        },
+        {
+          "file": "apps/backend-go/kafka/kafka_integration_test.go",
+          "line": 218
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 142
+        }
+      ]
+    },
+    {
+      "constant": "EventOrderSync",
+      "eventName": "ORDER_SYNC",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 170,
+      "producerRefCount": 1,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/kafka/emitter.go",
+          "line": 58
+        }
+      ],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventOrderValidationFailed",
+      "eventName": "ORDER_VALIDATION_FAILED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 25,
+      "producerRefCount": 1,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/unified_checkout.go",
+          "line": 812
+        }
+      ],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventOutOfStock",
+      "eventName": "OUT_OF_STOCK",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 113,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/unified_checkout.go",
+          "line": 294
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 176
+        }
+      ]
+    },
+    {
+      "constant": "EventOutboxFailed",
+      "eventName": "OUTBOX_FAILED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 94,
+      "producerRefCount": 1,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/ws/warehouse_hub.go",
+          "line": 205,
+          "viaLiteral": "OUTBOX_FAILED"
+        }
+      ],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventPayloadOverflow",
+      "eventName": "PAYLOAD_OVERFLOW",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 134,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/recovery.go",
+          "line": 234
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 294
+        }
+      ]
+    },
+    {
+      "constant": "EventPayloadReadyToSeal",
+      "eventName": "PAYLOAD_READY_TO_SEAL",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 18,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 1526
+        },
+        {
+          "file": "apps/backend-go/kafka/kafka_integration_test.go",
+          "line": 385
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 144
+        }
+      ]
+    },
+    {
+      "constant": "EventPayloadSealed",
+      "eventName": "PAYLOAD_SEALED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 19,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 1266
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 146
+        }
+      ]
+    },
+    {
+      "constant": "EventPayloadSync",
+      "eventName": "PAYLOAD_SYNC",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 164,
+      "producerRefCount": 6,
+      "consumerRefCount": 2,
+      "otherRefCount": 7,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/dispatch/persist.go",
+          "line": 124
+        },
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 54
+        },
+        {
+          "file": "apps/backend-go/factory/override.go",
+          "line": 201
+        },
+        {
+          "file": "apps/backend-go/factory/override.go",
+          "line": 211
+        },
+        {
+          "file": "apps/backend-go/factory/override.go",
+          "line": 352
+        },
+        {
+          "file": "apps/backend-go/factory/override.go",
+          "line": 497
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 290
+        },
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher_test.go",
+          "line": 20
+        }
+      ]
+    },
+    {
+      "constant": "EventPaymentBypassCompleted",
+      "eventName": "PAYMENT_BYPASS_COMPLETED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 140,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 5,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 169
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 186
+        }
+      ]
+    },
+    {
+      "constant": "EventPaymentBypassIssued",
+      "eventName": "PAYMENT_BYPASS_ISSUED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 139,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 95
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 184
+        }
+      ]
+    },
+    {
+      "constant": "EventPaymentCleared",
+      "eventName": "PAYMENT_CLEARED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 24,
+      "producerRefCount": 1,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/unified_checkout.go",
+          "line": 1109
+        }
+      ],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventPaymentFailed",
+      "eventName": "PAYMENT_FAILED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 21,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 11,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/kafka/kafka_integration_test.go",
+          "line": 332
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 158
+        }
+      ]
+    },
+    {
+      "constant": "EventPaymentGatewayDegraded",
+      "eventName": "PAYMENT_GATEWAY_DEGRADED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 22,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 3806
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 160
+        }
+      ]
+    },
+    {
+      "constant": "EventPaymentIntentCreated",
+      "eventName": "PAYMENT_INTENT_CREATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 23,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/kafka/treasurer.go",
+          "line": 295
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/gateway_worker.go",
+          "line": 49
+        }
+      ]
+    },
+    {
+      "constant": "EventPaymentRefunded",
+      "eventName": "PAYMENT_REFUNDED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 149,
+      "producerRefCount": 2,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/payment/refund.go",
+          "line": 278
+        },
+        {
+          "file": "apps/backend-go/payment/refund.go",
+          "line": 279,
+          "viaLiteral": "PAYMENT_REFUNDED"
+        }
+      ],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventPaymentSettled",
+      "eventName": "PAYMENT_SETTLED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 20,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 14,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/kafka/kafka_integration_test.go",
+          "line": 274
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 148
+        }
+      ]
+    },
+    {
+      "constant": "EventPowerOutageReported",
+      "eventName": "POWER_OUTAGE_REPORTED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 57,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/shop_closed.go",
+          "line": 204
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 226
+        }
+      ]
+    },
+    {
+      "constant": "EventPreOrderAutoAccepted",
+      "eventName": "PRE_ORDER_AUTO_ACCEPTED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 76,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/cron.go",
+          "line": 1030
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 242
+        }
+      ]
+    },
+    {
+      "constant": "EventPreOrderCancelled",
+      "eventName": "PRE_ORDER_CANCELLED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 79,
+      "producerRefCount": 0,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventPreOrderConfirmed",
+      "eventName": "PRE_ORDER_CONFIRMED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 77,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 1603
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 244
+        }
+      ]
+    },
+    {
+      "constant": "EventPreOrderEdited",
+      "eventName": "PRE_ORDER_EDITED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 78,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 1525
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 246
+        }
+      ]
+    },
+    {
+      "constant": "EventPreOrderNotified",
+      "eventName": "PRE_ORDER_NOTIFIED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 75,
+      "producerRefCount": 0,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventPullMatrixCompleted",
+      "eventName": "PULL_MATRIX_COMPLETED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 748,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/pull_matrix.go",
+          "line": 129
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 332
+        }
+      ]
+    },
+    {
+      "constant": "EventReplenishmentLockAcquired",
+      "eventName": "REPLENISHMENT_LOCK_ACQUIRED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 746,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 1,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/replenishment_lock.go",
+          "line": 102
+        },
+        {
+          "file": "apps/backend-go/factory/replenishment_lock.go",
+          "line": 123
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 334
+        }
+      ]
+    },
+    {
+      "constant": "EventReplenishmentLockReleased",
+      "eventName": "REPLENISHMENT_LOCK_RELEASED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 747,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 1,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/replenishment_lock.go",
+          "line": 153
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 336
+        }
+      ]
+    },
+    {
+      "constant": "EventReplenishmentTransferCreated",
+      "eventName": "REPLENISHMENT_TRANSFER_CREATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 755,
+      "producerRefCount": 4,
+      "consumerRefCount": 1,
+      "otherRefCount": 5,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/replenishment/engine.go",
+          "line": 545,
+          "viaLiteral": "REPLENISHMENT_TRANSFER_CREATED"
+        },
+        {
+          "file": "apps/backend-go/factory/transfers.go",
+          "line": 1330
+        },
+        {
+          "file": "apps/backend-go/factory/emergency.go",
+          "line": 141
+        },
+        {
+          "file": "apps/backend-go/factory/look_ahead.go",
+          "line": 374
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 342
+        }
+      ]
+    },
+    {
+      "constant": "EventRetailerPriceOverride",
+      "eventName": "RETAILER_PRICE_OVERRIDE",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 114,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/retailer_pricing.go",
+          "line": 336
+        },
+        {
+          "file": "apps/backend-go/supplier/retailer_pricing.go",
+          "line": 418
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 178
+        }
+      ]
+    },
+    {
+      "constant": "EventRetailerRegistered",
+      "eventName": "RETAILER_REGISTERED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 121,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/retailer_register.go",
+          "line": 173
+        },
+        {
+          "file": "apps/backend-go/supplier/retailer_register.go",
+          "line": 182
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 314
+        }
+      ]
+    },
+    {
+      "constant": "EventRouteCreated",
+      "eventName": "ROUTE_CREATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 86,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 133
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 296
+        }
+      ]
+    },
+    {
+      "constant": "EventRouteFinalized",
+      "eventName": "ROUTE_FINALIZED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 738,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/manifest.go",
+          "line": 795
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 302
+        }
+      ]
+    },
+    {
+      "constant": "EventSettlementRequired",
+      "eventName": "SETTLEMENT_REQUIRED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 28,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 10,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/service.go",
+          "line": 3056
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 150
+        }
+      ]
+    },
+    {
+      "constant": "EventSettlementRevised",
+      "eventName": "SETTLEMENT_REVISED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 29,
+      "producerRefCount": 1,
+      "consumerRefCount": 0,
+      "otherRefCount": 0,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/delivery_handshake.go",
+          "line": 498
+        }
+      ],
+      "consumerRefs": []
+    },
+    {
+      "constant": "EventShopClosed",
+      "eventName": "SHOP_CLOSED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 40,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/shop_closed.go",
+          "line": 217
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 222
+        }
+      ]
+    },
+    {
+      "constant": "EventShopClosedEscalated",
+      "eventName": "SHOP_CLOSED_ESCALATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 42,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 7,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/shop_closed.go",
+          "line": 305
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 228
+        }
+      ]
+    },
+    {
+      "constant": "EventShopClosedResolved",
+      "eventName": "SHOP_CLOSED_RESOLVED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 43,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 4,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/shop_closed.go",
+          "line": 554
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 230
+        }
+      ]
+    },
+    {
+      "constant": "EventShopClosedResponse",
+      "eventName": "SHOP_CLOSED_RESPONSE",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 41,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 5,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/shop_closed.go",
+          "line": 434
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 224
+        }
+      ]
+    },
+    {
+      "constant": "EventSmsQuickComplete",
+      "eventName": "SMS_QUICK_COMPLETE",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 141,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 5,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 420
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 200
+        }
+      ]
+    },
+    {
+      "constant": "EventSplitPaymentCreated",
+      "eventName": "SPLIT_PAYMENT_CREATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 60,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 5,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/edge_handlers.go",
+          "line": 1226
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 216
+        }
+      ]
+    },
+    {
+      "constant": "EventStockBackordered",
+      "eventName": "STOCK_BACKORDERED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 144,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/unified_checkout.go",
+          "line": 932
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 194
+        }
+      ]
+    },
+    {
+      "constant": "EventStockThresholdBreach",
+      "eventName": "STOCK_THRESHOLD_BREACH",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 745,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/pull_matrix.go",
+          "line": 206
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 338
+        }
+      ]
+    },
+    {
+      "constant": "EventSupplierConfigured",
+      "eventName": "SUPPLIER_CONFIGURED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 123,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/registration.go",
+          "line": 323
+        },
+        {
+          "file": "apps/backend-go/supplier/registration.go",
+          "line": 330
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 312
+        }
+      ]
+    },
+    {
+      "constant": "EventSupplierRegistered",
+      "eventName": "SUPPLIER_REGISTERED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 122,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/registration.go",
+          "line": 171
+        },
+        {
+          "file": "apps/backend-go/supplier/registration.go",
+          "line": 178
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 310
+        }
+      ]
+    },
+    {
+      "constant": "EventSupplyLaneTransitUpdated",
+      "eventName": "SUPPLY_LANE_TRANSIT_UPDATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 751,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/supply_lanes.go",
+          "line": 437
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 320
+        }
+      ]
+    },
+    {
+      "constant": "EventSupplyRequestAcknowledged",
+      "eventName": "SUPPLY_REQUEST_ACKNOWLEDGED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 67,
+      "producerRefCount": 0,
+      "consumerRefCount": 2,
+      "otherRefCount": 2,
+      "producerRefs": [],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 234
+        },
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 1573
+        }
+      ]
+    },
+    {
+      "constant": "EventSupplyRequestCancelled",
+      "eventName": "SUPPLY_REQUEST_CANCELLED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 70,
+      "producerRefCount": 0,
+      "consumerRefCount": 2,
+      "otherRefCount": 2,
+      "producerRefs": [],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 240
+        },
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 1579
+        }
+      ]
+    },
+    {
+      "constant": "EventSupplyRequestFulfilled",
+      "eventName": "SUPPLY_REQUEST_FULFILLED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 69,
+      "producerRefCount": 0,
+      "consumerRefCount": 2,
+      "otherRefCount": 2,
+      "producerRefs": [],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 238
+        },
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 1577
+        }
+      ]
+    },
+    {
+      "constant": "EventSupplyRequestReady",
+      "eventName": "SUPPLY_REQUEST_READY",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 68,
+      "producerRefCount": 0,
+      "consumerRefCount": 2,
+      "otherRefCount": 2,
+      "producerRefs": [],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 236
+        },
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 1575
+        }
+      ]
+    },
+    {
+      "constant": "EventSupplyRequestSubmitted",
+      "eventName": "SUPPLY_REQUEST_SUBMITTED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 66,
+      "producerRefCount": 1,
+      "consumerRefCount": 2,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/warehouse/supply_requests.go",
+          "line": 254
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 232
+        },
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 1569
+        }
+      ]
+    },
+    {
+      "constant": "EventTransferApproved",
+      "eventName": "TRANSFER_APPROVED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 127,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/transfers.go",
+          "line": 947
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 324
+        }
+      ]
+    },
+    {
+      "constant": "EventTransferReceived",
+      "eventName": "TRANSFER_RECEIVED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 128,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/transfers.go",
+          "line": 1122
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 326
+        }
+      ]
+    },
+    {
+      "constant": "EventTransferStateChanged",
+      "eventName": "TRANSFER_STATE_CHANGED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 126,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 3,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/transfers.go",
+          "line": 776
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 322
+        }
+      ]
+    },
+    {
+      "constant": "EventTransferUnassigned",
+      "eventName": "TRANSFER_UNASSIGNED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 72,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/factory/override.go",
+          "line": 339
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 328
+        }
+      ]
+    },
+    {
+      "constant": "EventUnifiedCheckoutCompleted",
+      "eventName": "UNIFIED_CHECKOUT_COMPLETED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 146,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/order/unified_checkout.go",
+          "line": 796
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 192
+        }
+      ]
+    },
+    {
+      "constant": "EventVehicleCreated",
+      "eventName": "VEHICLE_CREATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 107,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/vehicles.go",
+          "line": 203
+        },
+        {
+          "file": "apps/backend-go/warehouse/vehicles.go",
+          "line": 229
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 260
+        }
+      ]
+    },
+    {
+      "constant": "EventWarehouseCreated",
+      "eventName": "WAREHOUSE_CREATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 110,
+      "producerRefCount": 1,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/warehouses.go",
+          "line": 407
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 304
+        }
+      ]
+    },
+    {
+      "constant": "EventWarehouseSpatialUpdated",
+      "eventName": "WAREHOUSE_SPATIAL_UPDATED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 111,
+      "producerRefCount": 2,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/warehouses.go",
+          "line": 691
+        },
+        {
+          "file": "apps/backend-go/supplier/warehouses.go",
+          "line": 886
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 306
+        }
+      ]
+    },
+    {
+      "constant": "EventWarehouseStatusChanged",
+      "eventName": "WAREHOUSE_STATUS_CHANGED",
+      "declFile": "apps/backend-go/kafka/events.go",
+      "declLine": 112,
+      "producerRefCount": 3,
+      "consumerRefCount": 1,
+      "otherRefCount": 2,
+      "producerRefs": [
+        {
+          "file": "apps/backend-go/supplier/warehouses.go",
+          "line": 708
+        },
+        {
+          "file": "apps/backend-go/supplier/warehouses.go",
+          "line": 723
+        },
+        {
+          "file": "apps/backend-go/supplier/warehouses.go",
+          "line": 997
+        }
+      ],
+      "consumerRefs": [
+        {
+          "file": "apps/backend-go/kafka/notification_dispatcher.go",
+          "line": 174
+        }
+      ]
+    }
+  ],
+  "producerOrphans": [
+    "EventDeliveryDeltaRefunded",
+    "EventOrderValidationFailed",
+    "EventPaymentCleared",
+    "EventSettlementRevised"
+  ],
+  "consumerOrphans": [
+    "EventDeliveryDisputed",
+    "EventInventoryImportStatusUpdate"
+  ],
+  "externalProducerOnlyEvents": [
+    "EventAiPlanDateShift",
+    "EventAiPlanSkuModified",
+    "EventAiPredictionCorrected",
+    "EventDriverApproaching",
+    "EventOrderSync",
+    "EventOutboxFailed",
+    "EventPaymentRefunded"
+  ],
+  "externalConsumerOnlyEvents": [
+    "EventDemandForecastReady",
+    "EventPreOrderCancelled"
+  ],
+  "helperDispatchedOnlyEvents": [
+    "EventSupplyRequestAcknowledged",
+    "EventSupplyRequestCancelled",
+    "EventSupplyRequestFulfilled",
+    "EventSupplyRequestReady"
+  ],
+  "scaffoldingEvents": [
+    "EventInternalLoadConfirmed",
+    "EventManifestOrderReassigned",
+    "EventOrderCancelLocked",
+    "EventOrderRerouted",
+    "EventPreOrderNotified"
+  ],
+  "deadEvents": [
+    "EventCommandDispatched",
+    "EventCommandReceived",
+    "EventCommandSettled",
+    "EventFeeRateAdjusted",
+    "EventInventoryImportUploaded"
+  ]
+}

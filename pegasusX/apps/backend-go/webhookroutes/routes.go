@@ -1,0 +1,22 @@
+// verification is performed by the payment service handlers.
+package webhookroutes
+
+import (
+	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
+)
+
+// Deps is the narrow dependency contract for webhook routes.
+type Deps struct {
+	Service *payment.Service
+}
+
+// RegisterRoutes mounts payment webhook endpoints.
+func RegisterRoutes(r chi.Router, d Deps) {
+	if d.Service == nil {
+		return
+	}
+	r.Post("/v1/webhooks/global-pay", d.Service.HandleGlobalPayWebhook)
+	r.Post("/v1/webhooks/adyen", d.Service.HandleAdyenWebhook)
+	r.Post("/v1/webhooks/stripe", d.Service.HandleStripeWebhook)
+}

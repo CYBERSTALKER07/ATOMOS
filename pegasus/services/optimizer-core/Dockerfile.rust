@@ -1,0 +1,22 @@
+FROM rust:1.82-bookworm AS builder
+
+WORKDIR /app
+
+COPY server-rust/Cargo.toml server-rust/build.rs ./server-rust/
+COPY server-rust/src ./server-rust/src
+COPY proto ./proto
+
+WORKDIR /app/server-rust
+RUN cargo build --release
+
+FROM debian:bookworm-slim
+
+RUN useradd --create-home --shell /usr/sbin/nologin app
+
+COPY --from=builder /app/server-rust/target/release/optimizer-core-rust /usr/local/bin/optimizer-core-rust
+
+ENV OPTIMIZER_CORE_GRPC_PORT=50055
+EXPOSE 50055
+
+USER app
+ENTRYPOINT ["optimizer-core-rust"]

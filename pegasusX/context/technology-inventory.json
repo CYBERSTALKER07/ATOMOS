@@ -1,0 +1,201 @@
+{
+  "project": "pegasusX",
+  "backend": {
+    "language": "go",
+    "minVersion": "1.22",
+    "router": "github.com/go-chi/chi/v5",
+    "database": "google-cloud-spanner",
+    "cache": "redis-7",
+    "events": "apache-kafka",
+    "logging": "log/slog",
+    "traceMiddleware": "bootstrap.TraceMiddleware (X-Trace-Id normalization + outbox context propagation)",
+    "scaffoldOutboxRuntime": "relay store selected at runtime: Spanner OutboxEvents authority when reachable, otherwise in-memory fallback; relay started from main",
+    "adapterBridge": "bootstrap attempts Redis cache transport and Kafka outbox transport with in-memory/logging fallback",
+    "strictReliabilityMode": "REQUIRE_INFRA_ADAPTERS fail-fast bootstrap on Redis/Kafka adapter init failure",
+    "requestReliabilityMiddleware": "bootstrap/reliability_middleware.go mounted after TraceMiddleware in main (fixed-window rate limits, priority shedding, per-class circuit-open responses), toggled by RELIABILITY_MIDDLEWARE_ENABLED",
+    "paymentExecutionRouter": "payment/execution.go routes checkout/chargeback/reversal actions with bounded retry/backoff+jitter and typed gateway policy errors before persistence/outbox emission",
+    "paymentAttemptPersistence": "payment/service.go persists PaymentAttemptRecord via repository SaveAttempt after session creation and surfaces additive attempt_id/execution_action/execution_mode/provider_reference metadata in checkout response and payment-required event payloads",
+    "airwallexDirectExecutionFlag": "AIRWALLEX_DIRECT_EXECUTION_ENABLED gates AIRWALLEX execution support in payment router",
+    "strictModeStartupTests": "bootstrap tests assert fail-fast on missing Redis/Kafka and success when both adapters are healthy",
+    "spannerOutboxIntegrationCoverage": "outbox/spanner_store_integration_test.go validates Append->Fetch->MarkPublished lifecycle against emulator-backed Spanner when available",
+    "wsRelayTransport": "ws:<hub>:fanout typed envelopes with source suppression; subscribers started from main",
+    "auth": "jwt + firebase-id-token(optional)",
+    "geospatial": "h3-res-7",
+    "routeCoverage": {
+      "supplierroutes": [
+        "/v1/auth/supplier/register",
+        "/v1/supplier/configure",
+        "/v1/supplier/profile",
+        "/v1/supplier/dashboard",
+        "/v1/supplier/earnings",
+        "/v1/supplier/inventory",
+        "/v1/supplier/inventory/audit",
+        "/v1/supplier/orders",
+        "/v1/supplier/orders/vet"
+      ],
+      "retailerroutes": [
+        "/v1/auth/retailer/register",
+        "/v1/retailer/profile",
+        "/v1/retailer/suppliers",
+        "/v1/retailer/cart/sync",
+        "/v1/retailers/{retailerID}/orders",
+        "/v1/orders/request-cancel",
+        "/v1/order/cancel",
+        "/v1/retailer/analytics/expenses",
+        "/v1/retailer/analytics/detailed",
+        "/v1/retailer/family-members",
+        "/v1/retailer/orders/confirm-ai",
+        "/v1/retailer/orders/reject-ai",
+        "/v1/orders/edit-preorder",
+        "/v1/orders/confirm-preorder",
+        "/v1/retailer/pending-payments",
+        "/v1/retailer/active-fulfillment",
+        "/v1/retailer/tracking"
+      ],
+      "driverroutes": [
+        "/v1/driver/profile",
+        "/v1/driver/history",
+        "/v1/driver/earnings",
+        "/v1/driver/availability",
+        "/v1/driver/pending-collections",
+        "/v1/driver/manifest-gate",
+        "/v1/driver/manifest",
+        "/v1/fleet/manifest"
+      ],
+      "warehouseroutes": [
+        "/v1/warehouse/ops/dashboard",
+        "/v1/warehouse/ops/inventory",
+        "/v1/warehouse/ops/orders",
+        "/v1/warehouse/ops/dispatch/preview",
+        "/v1/warehouse/demand/forecast",
+        "/v1/warehouse/supply-requests",
+        "/v1/warehouse/dispatch-locks",
+        "/v1/warehouse/dispatch-lock"
+      ],
+      "factoryroutes": [
+        "/v1/factory/analytics/overview",
+        "/v1/factory/dashboard",
+        "/v1/factory/profile",
+        "/v1/factory/transfers",
+        "/v1/factory/transfers/create",
+        "/v1/factory/manifests",
+        "/v1/factory/manifests/{manifestID}",
+        "/v1/factory/manifests/{manifestID}/start-loading",
+        "/v1/factory/manifests/{manifestID}/seal",
+        "/v1/factory/manifests/{manifestID}/dispatch",
+        "/v1/factory/manifests/{manifestID}/complete",
+        "/v1/factory/manifests/rebalance",
+        "/v1/factory/manifests/cancel-transfer",
+        "/v1/factory/manifests/cancel",
+        "/v1/factory/manifest-exceptions",
+        "/v1/factory/fleet/drivers",
+        "/v1/factory/fleet/vehicles",
+        "/v1/factory/staff",
+        "/v1/factory/dispatch",
+        "/v1/factory/supply-requests"
+      ],
+      "payloaderroutes": [
+        "/v1/payloader/trucks",
+        "/v1/payloader/orders",
+        "/v1/payloader/manifests",
+        "/v1/payloader/manifests/{manifestID}",
+        "/v1/payloader/manifests/{manifestID}/start-loading",
+        "/v1/payloader/manifests/{manifestID}/inject-order",
+        "/v1/payloader/manifests/{manifestID}/seal",
+        "/v1/payload/manifest-exception",
+        "/v1/payloader/manifest-exceptions",
+        "/v1/payloader/recommend-reassign",
+        "/v1/payloader/reassign-order",
+        "/v1/payload/seal"
+      ],
+      "paymentroutes": [
+        "/v1/checkout/b2b",
+        "/v1/checkout/unified",
+        "/v1/payment/chargeback",
+        "/v1/payment/chargeback/reversal",
+        "/v1/payment/global_pay/initiate"
+      ],
+      "webhookroutes": [
+        "/v1/webhooks/global-pay",
+        "/v1/webhooks/adyen",
+        "/v1/webhooks/stripe"
+      ],
+      "retailerProtectedMode": "firebase+role-gated-when-enabled"
+      ,"driverProtectedMode": "firebase+role-gated-when-enabled"
+      ,"warehouseProtectedMode": "firebase+role-gated-with-cookie-admin-fallback"
+      ,"factoryProtectedMode": "firebase+role-gated-with-cookie-admin-fallback"
+      ,"payloadProtectedMode": "firebase+role-gated-with-cookie-admin-fallback"
+      ,"paymentProtectedMode": "checkout-retailer-firebase-when-enabled + admin-cookie-fallback-for-mutations"
+      ,"webhookAuthMode": "provider-exact-signature-first-no-jwt"
+      ,"webhookSignatureModes": {
+        "globalPay": "basic-auth-credentials",
+        "stripe": "stripe-signature-t-v1-over-raw-body",
+        "adyen": "item-level-additionalData-hmacSignature"
+      }
+      ,"mutationSeams": {
+        "factory": "repository-apply + outbox-emit + post-commit-cache-invalidate + ws-fanout",
+        "payload": "repository-apply + outbox-emit + post-commit-cache-invalidate + ws-fanout"
+      }
+      ,"manifestPayloadParity": {
+        "sealedLifecycleMetadata": [
+          "route_id",
+          "driver_id",
+          "vehicle_id",
+          "order_count"
+        ],
+        "payloadReassignMetadata": [
+          "from_manifest_id",
+          "to_manifest_id",
+          "from_route_id",
+          "to_route_id",
+          "to_driver_id"
+        ],
+        "cacheInvalidation": "source-and-target-manifest-keys"
+      }
+      ,"manifestRealtimeFanoutEvents": [
+        "MANIFEST_LOADING_STARTED",
+        "MANIFEST_SEALED",
+        "MANIFEST_ORDER_INJECTED",
+        "MANIFEST_ORDER_EXCEPTION",
+        "MANIFEST_DLQ_ESCALATION",
+        "MANIFEST_REBALANCED"
+      ]
+    }
+  },
+  "web": {
+    "framework": "next-15",
+    "react": "19",
+    "styling": "tailwind-v4 + hand-rolled-m3",
+    "desktop": "tauri-2",
+    "charts": "recharts",
+    "maps": "maplibre-gl"
+  },
+  "mobile": {
+    "android": "kotlin + jetpack-compose-m3",
+    "ios": "swiftui",
+    "payloadTerminal": "expo / react-native"
+  },
+  "packages": [
+    "types",
+    "api-client",
+    "validation",
+    "i18n",
+    "ui-kit",
+    "config"
+  ],
+  "contracts": [
+    "contracts/events.schema.json"
+  ],
+  "contractEventAdditions": [
+    "MANIFEST_ORDER_INJECTED",
+    "MANIFEST_ORDER_EXCEPTION",
+    "MANIFEST_DLQ_ESCALATION",
+    "MANIFEST_REBALANCED",
+    "MANIFEST_CANCELLED"
+  ],
+  "infra": [
+    "docker-compose (spanner, redis, kafka, kafka-ui)",
+    "terraform (vpc, spanner, redis, secret-manager wiring)",
+    "kubernetes"
+  ]
+}

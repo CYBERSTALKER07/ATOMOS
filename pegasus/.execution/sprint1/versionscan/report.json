@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "generatedAt": "2026-05-18T20:00:28.394559+00:00",
+    "repoRoot": "/Users/shakhzod/Desktop/V.O.I.D/pegasus",
+    "fileCount": 21665,
+    "tool": "versionscan",
+    "version": 1
+  },
+  "summary": {
+    "endpoints": 306,
+    "wsEndpoints": 10,
+    "events": 129,
+    "producerOrphans": 4,
+    "consumerOrphans": 2,
+    "externalProducerOnlyEvents": 7,
+    "externalConsumerOnlyEvents": 2,
+    "helperDispatchedOnlyEvents": 4,
+    "scaffoldingEvents": 5,
+    "deadEvents": 5,
+    "guardrailFindings": 2,
+    "goOnlyCriticalKeys": 92
+  }
+}

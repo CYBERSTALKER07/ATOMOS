@@ -1,0 +1,2760 @@
+{
+  "endpointCount": 306,
+  "websocketEndpointCount": 10,
+  "endpoints": [
+    {
+      "file": "apps/backend-go/proximityroutes/routes.go",
+      "line": 44,
+      "path": "/v1/supplier/serving-warehouse",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/proximityroutes/routes.go",
+      "line": 46,
+      "path": "/v1/supplier/geo-report",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/proximityroutes/routes.go",
+      "line": 48,
+      "path": "/v1/supplier/dispatch-audits",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/proximityroutes/routes.go",
+      "line": 50,
+      "path": "/v1/supplier/zone-preview",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/proximityroutes/routes.go",
+      "line": 52,
+      "path": "/v1/supplier/warehouses/validate-coverage",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/proximityroutes/routes.go",
+      "line": 54,
+      "path": "/v1/supplier/warehouse-loads",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 121,
+      "path": "/v1/warehouse/transfers/emergency",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 126,
+      "path": "/v1/warehouse/transfers/force-receive",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 131,
+      "path": "/v1/warehouse/transfers/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 135,
+      "path": "/v1/warehouse/replenishment/insights",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 137,
+      "path": "/v1/warehouse/replenishment/insights/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 141,
+      "path": "/v1/warehouse/demand/forecast",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 145,
+      "path": "/v1/warehouse/supply-requests",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 148,
+      "path": "/v1/warehouse/supply-requests/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 152,
+      "path": "/v1/warehouse/ops/dashboard",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 154,
+      "path": "/v1/warehouse/ops/drivers",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 155,
+      "path": "/v1/warehouse/ops/drivers/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 157,
+      "path": "/v1/warehouse/ops/vehicles",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 158,
+      "path": "/v1/warehouse/ops/vehicles/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 160,
+      "path": "/v1/warehouse/ops/staff",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 161,
+      "path": "/v1/warehouse/ops/staff/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 163,
+      "path": "/v1/warehouse/ops/orders",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 168,
+      "path": "/v1/warehouse/ops/orders/{id}/delay",
+      "method": "POST",
+      "mount": "chi.Post",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 169,
+      "path": "/v1/warehouse/ops/orders/{id}/reject",
+      "method": "POST",
+      "mount": "chi.Post",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 170,
+      "path": "/v1/warehouse/ops/orders/{id}/overflow",
+      "method": "POST",
+      "mount": "chi.Post",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 172,
+      "path": "/v1/warehouse/ops/orders/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 174,
+      "path": "/v1/warehouse/ops/dispatch/preview",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 175,
+      "path": "/v1/warehouse/ops/inventory",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 176,
+      "path": "/v1/warehouse/ops/products",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 177,
+      "path": "/v1/warehouse/ops/manifests",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 178,
+      "path": "/v1/warehouse/ops/analytics",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 179,
+      "path": "/v1/warehouse/ops/crm",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 180,
+      "path": "/v1/warehouse/ops/returns",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 181,
+      "path": "/v1/warehouse/ops/treasury",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 182,
+      "path": "/v1/warehouse/ops/financials",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 183,
+      "path": "/v1/warehouse/ops/payment-config",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 188,
+      "path": "/v1/warehouse/dispatch-lock",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 190,
+      "path": "/v1/warehouse/dispatch-locks",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/warehouseroutes/routes.go",
+      "line": 194,
+      "path": "/ws/warehouse",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 79,
+      "path": "/v1/retailer/analytics/expenses",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 81,
+      "path": "/v1/retailer/analytics/detailed",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 83,
+      "path": "/v1/orders/request-cancel",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 85,
+      "path": "/v1/order/cancel",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 87,
+      "path": "/v1/order/create",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 89,
+      "path": "/v1/order/cash-checkout",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 91,
+      "path": "/v1/order/card-checkout",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 93,
+      "path": "/v1/retailer/shop-closed-response",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 95,
+      "path": "/v1/retailer/family-members",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 97,
+      "path": "/v1/retailer/family-members/{memberID}",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 99,
+      "path": "/v1/retailer/orders/confirm-ai",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 101,
+      "path": "/v1/retailer/orders/reject-ai",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 103,
+      "path": "/v1/orders/edit-preorder",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 105,
+      "path": "/v1/orders/confirm-preorder",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 107,
+      "path": "/v1/retailer/cart/sync",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 109,
+      "path": "/v1/retailer/suppliers",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 111,
+      "path": "/v1/retailer/suppliers/{supplierID}/{action}",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 113,
+      "path": "/v1/retailer/profile",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 115,
+      "path": "/v1/retailers/{retailerID}/orders",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 117,
+      "path": "/v1/retailer/tracking",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 119,
+      "path": "/v1/retailer/card/initiate",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 121,
+      "path": "/v1/retailer/card/confirm",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 123,
+      "path": "/v1/retailer/cards",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 125,
+      "path": "/v1/retailer/card/deactivate",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 127,
+      "path": "/v1/retailer/card/default",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 129,
+      "path": "/v1/retailer/pending-payments",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 131,
+      "path": "/v1/retailer/active-fulfillment",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 133,
+      "path": "/v1/retailer/settings/auto-order/global",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 135,
+      "path": "/v1/retailer/settings/auto-order/supplier/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 137,
+      "path": "/v1/retailer/settings/auto-order/product/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 139,
+      "path": "/v1/retailer/settings/auto-order/variant/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 141,
+      "path": "/v1/retailer/settings/auto-order/category/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 143,
+      "path": "/v1/retailer/settings/auto-order",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/retailerroutes/routes.go",
+      "line": 145,
+      "path": "/v1/ws/retailer",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/driverroutes/routes.go",
+      "line": 54,
+      "path": "/v1/driver/earnings",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/driverroutes/routes.go",
+      "line": 56,
+      "path": "/v1/driver/history",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/driverroutes/routes.go",
+      "line": 58,
+      "path": "/v1/driver/availability",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/driverroutes/routes.go",
+      "line": 60,
+      "path": "/v1/driver/pending-collections",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/driverroutes/routes.go",
+      "line": 62,
+      "path": "/v1/driver/profile",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/driverroutes/routes.go",
+      "line": 66,
+      "path": "/v1/driver/manifest-gate",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/driverroutes/routes.go",
+      "line": 73,
+      "path": "/v1/driver/manifest",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/driverroutes/routes.go",
+      "line": 76,
+      "path": "/v1/fleet/manifest",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/driverroutes/routes.go",
+      "line": 79,
+      "path": "/v1/ws/driver",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/catalogroutes/routes.go",
+      "line": 44,
+      "path": "/v1/catalog/platform-categories",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/catalogroutes/routes.go",
+      "line": 47,
+      "path": "/v1/catalog/categories",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/catalogroutes/routes.go",
+      "line": 52,
+      "path": "/v1/catalog/categories/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/catalogroutes/routes.go",
+      "line": 57,
+      "path": "/v1/catalog/products",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/catalogroutes/routes.go",
+      "line": 62,
+      "path": "/v1/catalog/suppliers/search",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/catalogroutes/routes.go",
+      "line": 68,
+      "path": "/v1/products",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/paymentroutes/routes.go",
+      "line": 52,
+      "path": "/v1/checkout/b2b",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/paymentroutes/routes.go",
+      "line": 54,
+      "path": "/v1/checkout/unified",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/paymentroutes/routes.go",
+      "line": 57,
+      "path": "/v1/payment/chargeback",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/paymentroutes/routes.go",
+      "line": 59,
+      "path": "/v1/payment/chargeback/reversal",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierlogisticsroutes/routes.go",
+      "line": 65,
+      "path": "/v1/supplier/picking-manifests",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierlogisticsroutes/routes.go",
+      "line": 67,
+      "path": "/v1/supplier/picking-manifests/orders",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierlogisticsroutes/routes.go",
+      "line": 69,
+      "path": "/v1/payload/manifest-exception",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierlogisticsroutes/routes.go",
+      "line": 71,
+      "path": "/v1/supplier/manifest-exceptions",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierlogisticsroutes/routes.go",
+      "line": 73,
+      "path": "/v1/supplier/manifests",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierlogisticsroutes/routes.go",
+      "line": 75,
+      "path": "/v1/supplier/manifests/auto-dispatch",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierlogisticsroutes/routes.go",
+      "line": 77,
+      "path": "/v1/supplier/manifests/dispatch-recommend",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierlogisticsroutes/routes.go",
+      "line": 79,
+      "path": "/v1/supplier/manifests/manual-dispatch",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierlogisticsroutes/routes.go",
+      "line": 81,
+      "path": "/v1/supplier/manifests/waiting-room",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierlogisticsroutes/routes.go",
+      "line": 83,
+      "path": "/v1/supplier/manifests/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierlogisticsroutes/routes.go",
+      "line": 85,
+      "path": "/v1/supplier/fleet-volumetrics",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierlogisticsroutes/routes.go",
+      "line": 87,
+      "path": "/v1/supplier/dispatch-queue",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierlogisticsroutes/routes.go",
+      "line": 89,
+      "path": "/v1/supplier/dispatch-preview",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercatalogroutes/routes.go",
+      "line": 44,
+      "path": "/v1/supplier/products/upload-ticket",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercatalogroutes/routes.go",
+      "line": 46,
+      "path": "/v1/supplier/products",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercatalogroutes/routes.go",
+      "line": 48,
+      "path": "/v1/supplier/products/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercatalogroutes/routes.go",
+      "line": 50,
+      "path": "/v1/supplier/pricing/rules",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercatalogroutes/routes.go",
+      "line": 52,
+      "path": "/v1/supplier/pricing/rules/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercatalogroutes/routes.go",
+      "line": 54,
+      "path": "/v1/supplier/pricing/retailer-overrides",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercatalogroutes/routes.go",
+      "line": 56,
+      "path": "/v1/supplier/pricing/retailer-overrides/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplieroperationsroutes/routes.go",
+      "line": 55,
+      "path": "/v1/supplier/fleet/drivers",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplieroperationsroutes/routes.go",
+      "line": 57,
+      "path": "/v1/supplier/fleet/drivers/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/supplieroperationsroutes/routes.go",
+      "line": 59,
+      "path": "/v1/supplier/fleet/vehicles",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/supplieroperationsroutes/routes.go",
+      "line": 61,
+      "path": "/v1/supplier/fleet/vehicles/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/supplieroperationsroutes/routes.go",
+      "line": 63,
+      "path": "/v1/supplier/fulfillment/pay",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/supplieroperationsroutes/routes.go",
+      "line": 65,
+      "path": "/v1/supplier/returns",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplieroperationsroutes/routes.go",
+      "line": 67,
+      "path": "/v1/supplier/returns/resolve",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplieroperationsroutes/routes.go",
+      "line": 69,
+      "path": "/v1/supplier/quarantine-stock",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplieroperationsroutes/routes.go",
+      "line": 71,
+      "path": "/v1/inventory/reconcile-returns",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/fleetroutes/routes.go",
+      "line": 79,
+      "path": "/v1/fleet/drivers/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/fleetroutes/routes.go",
+      "line": 84,
+      "path": "/v1/fleet/route/request-early-complete",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/fleetroutes/routes.go",
+      "line": 89,
+      "path": "/v1/fleet/dispatch",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/fleetroutes/routes.go",
+      "line": 93,
+      "path": "/v1/fleet/reassign",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/fleetroutes/routes.go",
+      "line": 97,
+      "path": "/v1/fleet/capacity",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/fleetroutes/routes.go",
+      "line": 101,
+      "path": "/v1/fleet/active",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/fleetroutes/routes.go",
+      "line": 105,
+      "path": "/v1/fleet/trucks/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/fleetroutes/routes.go",
+      "line": 110,
+      "path": "/v1/fleet/driver/depart",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/fleetroutes/routes.go",
+      "line": 114,
+      "path": "/v1/fleet/driver/return-complete",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/fleetroutes/routes.go",
+      "line": 118,
+      "path": "/v1/fleet/route/reorder",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/fleetroutes/routes.go",
+      "line": 122,
+      "path": "/v1/fleet/orders",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/fleetroutes/routes.go",
+      "line": 126,
+      "path": "/v1/fleet/route/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/airoutes/routes.go",
+      "line": 47,
+      "path": "/v1/ai/preorder",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/airoutes/routes.go",
+      "line": 49,
+      "path": "/v1/ai/predictions",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/airoutes/routes.go",
+      "line": 51,
+      "path": "/v1/ai/predictions/correct",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/telemetryroutes/routes.go",
+      "line": 24,
+      "path": "/ws/telemetry",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/telemetryroutes/routes.go",
+      "line": 26,
+      "path": "/ws/fleet",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/infraroutes/routes.go",
+      "line": 22,
+      "path": "/v1/health",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 69,
+      "path": "/v1/supplier/configure",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 71,
+      "path": "/v1/supplier/billing/setup",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 73,
+      "path": "/v1/supplier/profile",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 75,
+      "path": "/v1/supplier/shift",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 77,
+      "path": "/v1/supplier/payout-policy",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 79,
+      "path": "/v1/supplier/payment-config",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 81,
+      "path": "/v1/supplier/gateway-onboarding",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 83,
+      "path": "/v1/supplier/payment/recipient/register",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 85,
+      "path": "/v1/supplier/org/members",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 87,
+      "path": "/v1/supplier/org/members/invite",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 89,
+      "path": "/v1/supplier/org/members/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 91,
+      "path": "/v1/supplier/staff/payloader",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 93,
+      "path": "/v1/supplier/staff/payloader/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 95,
+      "path": "/v1/supplier/warehouse-staff",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 97,
+      "path": "/v1/supplier/warehouse-staff/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 99,
+      "path": "/v1/supplier/warehouses",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 101,
+      "path": "/v1/supplier/warehouses/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 103,
+      "path": "/v1/supplier/warehouse-inflight-vu",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierroutes/routes.go",
+      "line": 107,
+      "path": "/v1/ws/supplier",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 98,
+      "path": "/v1/factory/analytics/overview",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 100,
+      "path": "/v1/factory/dashboard",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 104,
+      "path": "/v1/factory/profile",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 108,
+      "path": "/v1/factory/transfers",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 114,
+      "path": "/v1/factory/transfers/create",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 118,
+      "path": "/v1/factory/transfers/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 122,
+      "path": "/v1/factory/manifests",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 127,
+      "path": "/v1/factory/manifests/rebalance",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 129,
+      "path": "/v1/factory/manifests/cancel-transfer",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 131,
+      "path": "/v1/factory/manifests/cancel",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 135,
+      "path": "/v1/factory/manifests/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 139,
+      "path": "/v1/factory/fleet",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 141,
+      "path": "/v1/factory/fleet/drivers",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 143,
+      "path": "/v1/factory/fleet/vehicles",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 147,
+      "path": "/v1/factory/staff",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 149,
+      "path": "/v1/factory/staff/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 155,
+      "path": "/v1/factory/dispatch",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 159,
+      "path": "/v1/factory/supply-requests",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 163,
+      "path": "/v1/factory/supply-requests/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/factoryroutes/routes.go",
+      "line": 167,
+      "path": "/v1/ws/factory",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/deliveryroutes/routes.go",
+      "line": 79,
+      "path": "/v1/delivery/arrive",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/deliveryroutes/routes.go",
+      "line": 83,
+      "path": "/v1/delivery/verify-handshake",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/deliveryroutes/routes.go",
+      "line": 87,
+      "path": "/v1/delivery/update-order-during-delivery",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/deliveryroutes/routes.go",
+      "line": 91,
+      "path": "/v1/delivery/confirm-payment-bypass",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/deliveryroutes/routes.go",
+      "line": 95,
+      "path": "/v1/delivery/sms-complete",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/deliveryroutes/routes.go",
+      "line": 99,
+      "path": "/v1/delivery/shop-closed",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/deliveryroutes/routes.go",
+      "line": 103,
+      "path": "/v1/delivery/bypass-offload",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/deliveryroutes/routes.go",
+      "line": 107,
+      "path": "/v1/delivery/negotiate",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/deliveryroutes/routes.go",
+      "line": 111,
+      "path": "/v1/delivery/credit-delivery",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/deliveryroutes/routes.go",
+      "line": 115,
+      "path": "/v1/delivery/missing-items",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/deliveryroutes/routes.go",
+      "line": 119,
+      "path": "/v1/delivery/split-payment",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercoreroutes/routes.go",
+      "line": 59,
+      "path": "/v1/supplier/dashboard",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercoreroutes/routes.go",
+      "line": 61,
+      "path": "/v1/supplier/earnings",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercoreroutes/routes.go",
+      "line": 63,
+      "path": "/v1/supplier/inventory",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercoreroutes/routes.go",
+      "line": 65,
+      "path": "/v1/supplier/inventory/import",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercoreroutes/routes.go",
+      "line": 67,
+      "path": "/v1/supplier/inventory/import/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercoreroutes/routes.go",
+      "line": 70,
+      "path": "/v1/supplier/inventory/audit",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercoreroutes/routes.go",
+      "line": 72,
+      "path": "/v1/supplier/orders",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/suppliercoreroutes/routes.go",
+      "line": 74,
+      "path": "/v1/supplier/orders/vet",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/webhookroutes/routes.go",
+      "line": 36,
+      "path": "/v1/webhooks/global-pay",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/webhookroutes/routes.go",
+      "line": 37,
+      "path": "/v1/webhooks/adyen",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/webhookroutes/routes.go",
+      "line": 38,
+      "path": "/v1/webhooks/stripe",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 57,
+      "path": "/v1/auth/login",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 58,
+      "path": "/v1/auth/refresh",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 59,
+      "path": "/v1/auth/factory/refresh",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 60,
+      "path": "/v1/auth/warehouse/refresh",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 63,
+      "path": "/v1/auth/driver/login",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 64,
+      "path": "/v1/auth/admin/login",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 65,
+      "path": "/v1/auth/admin/register",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 66,
+      "path": "/v1/auth/supplier/login",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 67,
+      "path": "/v1/auth/supplier/register",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 68,
+      "path": "/v1/auth/retailer/login",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 69,
+      "path": "/v1/auth/retailer/register",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 70,
+      "path": "/v1/auth/warehouse/login",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 73,
+      "path": "/v1/auth/payloader/login",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 74,
+      "path": "/v1/auth/factory/login",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 78,
+      "path": "/v1/auth/factory/register",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 80,
+      "path": "/v1/auth/warehouse/register",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/authroutes/routes.go",
+      "line": 84,
+      "path": "/debug/mint-token",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": false,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/payloaderroutes/routes.go",
+      "line": 50,
+      "path": "/v1/payloader/trucks",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/payloaderroutes/routes.go",
+      "line": 52,
+      "path": "/v1/payloader/orders",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/payloaderroutes/routes.go",
+      "line": 54,
+      "path": "/v1/payloader/recommend-reassign",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/payloaderroutes/routes.go",
+      "line": 56,
+      "path": "/v1/payload/seal",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/payloaderroutes/routes.go",
+      "line": 59,
+      "path": "/v1/ws/payloader",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/orderroutes/routes.go",
+      "line": 56,
+      "path": "/v1/order/refunds",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/orderroutes/routes.go",
+      "line": 58,
+      "path": "/v1/orders",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/orderroutes/routes.go",
+      "line": 60,
+      "path": "/v1/orders/",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/orderroutes/routes.go",
+      "line": 62,
+      "path": "/v1/orders/line-items/history",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/orderroutes/routes.go",
+      "line": 66,
+      "path": "/v1/order/deliver",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/orderroutes/routes.go",
+      "line": 68,
+      "path": "/v1/order/validate-qr",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/orderroutes/routes.go",
+      "line": 70,
+      "path": "/v1/order/confirm-offload",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/orderroutes/routes.go",
+      "line": 72,
+      "path": "/v1/order/complete",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/orderroutes/routes.go",
+      "line": 74,
+      "path": "/v1/order/collect-cash",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/orderroutes/routes.go",
+      "line": 77,
+      "path": "/v1/routes",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/orderroutes/routes.go",
+      "line": 79,
+      "path": "/v1/prediction/create",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/orderroutes/routes.go",
+      "line": 82,
+      "path": "/v1/order/refund",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/orderroutes/routes.go",
+      "line": 84,
+      "path": "/v1/order/amend",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/orderroutes/routes.go",
+      "line": 88,
+      "path": "/v1/vehicle/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 50,
+      "path": "/v1/supplier/country-overrides",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 52,
+      "path": "/v1/supplier/country-overrides/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 54,
+      "path": "/v1/supplier/analytics/velocity",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 56,
+      "path": "/v1/supplier/analytics/demand/today",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 58,
+      "path": "/v1/supplier/analytics/demand/history",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 60,
+      "path": "/v1/supplier/analytics/transit-heatmap",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 62,
+      "path": "/v1/supplier/analytics/throughput",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 64,
+      "path": "/v1/supplier/analytics/load-distribution",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 66,
+      "path": "/v1/supplier/analytics/node-efficiency",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 68,
+      "path": "/v1/supplier/analytics/sla-health",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 70,
+      "path": "/v1/supplier/analytics/revenue",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 72,
+      "path": "/v1/supplier/analytics/top-retailers",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 74,
+      "path": "/v1/supplier/financials",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 76,
+      "path": "/v1/supplier/crm/retailers",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierinsightsroutes/routes.go",
+      "line": 78,
+      "path": "/v1/supplier/crm/retailers/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/sync/routes.go",
+      "line": 23,
+      "path": "/v1/sync/batch",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/sync/routes.go",
+      "line": 27,
+      "path": "/v1/sync/catchup",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/sync/routes.go",
+      "line": 31,
+      "path": "/v1/sync/delta",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/treasury/routes.go",
+      "line": 33,
+      "path": "/v1/treasury/ledger",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/treasury/routes.go",
+      "line": 35,
+      "path": "/v1/treasury/cash-holdings",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/treasury/routes.go",
+      "line": 37,
+      "path": "/v1/treasury/batch-settle",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/treasury/routes.go",
+      "line": 39,
+      "path": "/v1/treasury/invoice/status",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/treasury/routes.go",
+      "line": 41,
+      "path": "/v1/supplier/settlement-report",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/treasury/routes.go",
+      "line": 43,
+      "path": "/v1/internal/treasury/supplier-payout-policy",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/userroutes/routes.go",
+      "line": 53,
+      "path": "/v1/user/device-token",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/userroutes/routes.go",
+      "line": 55,
+      "path": "/v1/user/notifications",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/userroutes/routes.go",
+      "line": 57,
+      "path": "/v1/user/notifications/read",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/userroutes/routes.go",
+      "line": 59,
+      "path": "/v1/ws/command/dispatch",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/userroutes/routes.go",
+      "line": 61,
+      "path": "/v1/ws/ack",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 114,
+      "path": "/v1/admin/reconciliation",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 124,
+      "path": "/v1/admin/audit-log",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 128,
+      "path": "/v1/admin/country-configs",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 130,
+      "path": "/v1/admin/country-configs/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 134,
+      "path": "/v1/admin/orders/payment-bypass",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 138,
+      "path": "/v1/admin/orders/approve-cancel",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 142,
+      "path": "/v1/admin/shop-closed/active",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 146,
+      "path": "/v1/admin/shop-closed/resolve",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 150,
+      "path": "/v1/admin/route/approve-early-complete",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 154,
+      "path": "/v1/admin/negotiate/resolve",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 158,
+      "path": "/v1/admin/orders/resolve-credit",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": true
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 162,
+      "path": "/v1/admin/nuke",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 168,
+      "path": "/v1/admin/config",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 172,
+      "path": "/v1/admin/config/platform-fee",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 176,
+      "path": "/v1/admin/empathy/adoption",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 180,
+      "path": "/v1/admin/retailer/pending",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 182,
+      "path": "/v1/admin/retailer/approve",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 184,
+      "path": "/v1/admin/retailer/reject",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 188,
+      "path": "/v1/admin/broadcast",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 192,
+      "path": "/v1/admin/dlq",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 194,
+      "path": "/v1/admin/dlq/replay",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 198,
+      "path": "/v1/admin/payment/reconcile",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/adminroutes/routes.go",
+      "line": 202,
+      "path": "/v1/admin/replenishment/trigger",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 64,
+      "path": "/v1/supplier/delivery-zones/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 66,
+      "path": "/v1/supplier/delivery-zones",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 68,
+      "path": "/v1/supplier/factories",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 70,
+      "path": "/v1/supplier/factories/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 72,
+      "path": "/v1/supplier/factories/recommend-warehouses",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 74,
+      "path": "/v1/supplier/factories/optimal-assignments",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 76,
+      "path": "/v1/supplier/geocode/reverse",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 78,
+      "path": "/v1/supplier/retailers/locations",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 80,
+      "path": "/v1/supplier/supply-lanes",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 82,
+      "path": "/v1/supplier/supply-lanes/*",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 84,
+      "path": "/v1/supplier/network-mode",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 86,
+      "path": "/v1/supplier/network-analytics",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 88,
+      "path": "/v1/supplier/replenishment/kill-switch",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 90,
+      "path": "/v1/supplier/replenishment/audit",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 92,
+      "path": "/v1/supplier/replenishment/pull-matrix",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 94,
+      "path": "/v1/supplier/replenishment/predictive-push",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 96,
+      "path": "/v1/supplier/warehouses/territory-preview",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    },
+    {
+      "file": "apps/backend-go/supplierplanningroutes/routes.go",
+      "line": 98,
+      "path": "/v1/supplier/warehouses/apply-territory",
+      "method": "HANDLEFUNC",
+      "mount": "chi.HandleFunc",
+      "hasRoleGuardNearby": true,
+      "hasIdempotencyNearby": false
+    }
+  ]
+}

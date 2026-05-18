@@ -1,0 +1,26 @@
+{
+  "name": "pegasusx",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Single-supplier logistics stack. Sibling project to pegasus.",
+  "workspaces": [
+    "apps/supplier-portal",
+    "apps/retailer-app-desktop",
+    "apps/warehouse-portal",
+    "apps/factory-portal",
+    "apps/payload-terminal",
+    "packages/types",
+    "packages/api-client",
+    "packages/validation",
+    "packages/i18n",
+    "packages/ui-kit"
+  ],
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml down"
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "generatedAt": "2026-05-18T20:00:28.455312+00:00",
+  "repoRoot": "/Users/shakhzod/Desktop/V.O.I.D",
+  "pegasusRoot": "/Users/shakhzod/Desktop/V.O.I.D/pegasus",
+  "outputDir": "pegasus/.execution/sprint1",
+  "diffScope": {
+    "mode": "working-tree",
+    "source": "working-tree",
+    "baseSha": null,
+    "headSha": null,
+    "defaultBranch": "main",
+    "defaultRef": null,
+    "changedFileCount": 0
+  },
+  "summary": {
+    "total": 8,
+    "passed": 8,
+    "failed": 0,
+    "status": "pass"
+  },
+  "checks": [
+    {
+      "id": "versionscan_scan",
+      "command": [
+        "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+        "pegasus/scripts/versionscan.py",
+        "scan",
+        "--repo-root",
+        "/Users/shakhzod/Desktop/V.O.I.D/pegasus",
+        "--output-dir",
+        ".execution/sprint1/versionscan"
+      ],
+      "exitCode": 0,
+      "durationMs": 107269,
+      "status": "pass",
+      "stdout": "{\n  \"endpoints\": 306,\n  \"wsEndpoints\": 10,\n  \"events\": 129,\n  \"producerOrphans\": 4,\n  \"consumerOrphans\": 2,\n  \"externalProducerOnlyEvents\": 7,\n  \"externalConsumerOnlyEvents\": 2,\n  \"helperDispatchedOnlyEvents\": 4,\n  \"scaffoldingEvents\": 5,\n  \"deadEvents\": 5,\n  \"guardrailFindings\": 2,\n  \"goOnlyCriticalKeys\": 92\n}\n",
+      "stderr": ""
+    },
+    {
+      "id": "contract_guard_mcp",
+      "command": [
+        "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+        "pegasus/scripts/contract_guard_mcp.py",
+        "--repo-root",
+        "/Users/shakhzod/Desktop/V.O.I.D"
+      ],
+      "exitCode": 0,
+      "durationMs": 181,
+      "status": "pass",
+      "stdout": "contract-guard-mcp: no contract trigger changes detected; passing.\n",
+      "stderr": ""
+    },
+    {
+      "id": "architecture_guard_mcp",
+      "command": [
+        "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+        "pegasus/scripts/architecture_guard_mcp.py",
+        "--repo-root",
+        "/Users/shakhzod/Desktop/V.O.I.D"
+      ],
+      "exitCode": 0,
+      "durationMs": 442,
+      "status": "pass",
+      "stdout": "architecture-guard-mcp: trigger changes:\n  - pegasus/apps/backend-go/analytics/retailer.go\n  - pegasus/apps/backend-go/factory/manifests.go\n  - pegasus/apps/backend-go/factory/transfers.go\n  - pegasus/apps/backend-go/kafka/events.go\n  - pegasus/apps/backend-go/kafka/notification_dispatcher.go\n  - pegasus/apps/backend-go/notifications/dispatcher.go\n  - pegasus/apps/backend-go/payment/refund.go\n  - pegasus/apps/backend-go/settings/empathy_handlers.go\n  - pegasus/apps/backend-go/supplier/catalog.go\n  - pegasus/apps/backend-go/supplier/registration.go\n  - pegasus/apps/backend-go/supplier/retailer_register.go\n  - pegasus/apps/backend-go/treasury/settlement.go\n  - pegasus/apps/backend-go/warehouse/analytics.go\narchitecture-guard-mcp: context summary (codebase_focus=13, context_sync=4)\narchitecture-boundary-guard: no boundary violations detected; passing.\narchitecture-guard-mcp: boundary, context, and codebase-first MCP checks passed.\n",
+      "stderr": ""
+    },
+    {
+      "id": "design_system_guard_mcp",
+      "command": [
+        "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+        "pegasus/scripts/design_system_guard_mcp.py",
+        "--repo-root",
+        "/Users/shakhzod/Desktop/V.O.I.D"
+      ],
+      "exitCode": 0,
+      "durationMs": 145,
+      "status": "pass",
+      "stdout": "design-system-guard-mcp: no UI/design-system trigger changes detected; passing.\n",
+      "stderr": ""
+    },
+    {
+      "id": "production_safety_guard",
+      "command": [
+        "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+        "pegasus/scripts/production_safety_guard.py",
+        "--repo-root",
+        "/Users/shakhzod/Desktop/V.O.I.D"
+      ],
+      "exitCode": 0,
+      "durationMs": 284,
+      "status": "pass",
+      "stdout": "production-safety-guard: critical changes:\n  - pegasus/apps/backend-go/analytics/retailer.go\n  - pegasus/apps/backend-go/factory/manifests.go\n  - pegasus/apps/backend-go/factory/transfers.go\n  - pegasus/apps/backend-go/kafka/events.go\n  - pegasus/apps/backend-go/kafka/notification_dispatcher.go\n  - pegasus/apps/backend-go/notifications/dispatcher.go\n  - pegasus/apps/backend-go/payment/refund.go\n  - pegasus/apps/backend-go/settings/empathy_handlers.go\n  - pegasus/apps/backend-go/supplier/catalog.go\n  - pegasus/apps/backend-go/supplier/registration.go\n  - pegasus/apps/backend-go/supplier/retailer_register.go\n  - pegasus/apps/backend-go/treasury/settlement.go\n  - pegasus/apps/backend-go/warehouse/analytics.go\nproduction-safety-guard: test evidence changes:\n  - pegasus/tests/cross-role/sprint1_execution_gate_evidence.md\nproduction-safety-guard: production safety checks passed.\n",
+      "stderr": ""
+    },
+    {
+      "id": "visual_test_intelligence_guard",
+      "command": [
+        "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+        "pegasus/scripts/visual_test_intelligence_guard.py",
+        "--repo-root",
+        "/Users/shakhzod/Desktop/V.O.I.D"
+      ],
+      "exitCode": 0,
+      "durationMs": 153,
+      "status": "pass",
+      "stdout": "visual-test-intelligence-guard: no UI surface changes detected; passing.\n",
+      "stderr": ""
+    },
+    {
+      "id": "security_guard",
+      "command": [
+        "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+        "pegasus/scripts/security_guard.py",
+        "--repo-root",
+        "/Users/shakhzod/Desktop/V.O.I.D"
+      ],
+      "exitCode": 0,
+      "durationMs": 1207,
+      "status": "pass",
+      "stdout": "security-guard: no security violations detected; passing.\n",
+      "stderr": ""
+    },
+    {
+      "id": "versionscan_enforce",
+      "command": [
+        "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+        "pegasus/scripts/versionscan.py",
+        "enforce",
+        "--repo-root",
+        "/Users/shakhzod/Desktop/V.O.I.D/pegasus",
+        "--output-dir",
+        ".execution/sprint1/versionscan",
+        "--changed-only"
+      ],
+      "exitCode": 0,
+      "durationMs": 109212,
+      "status": "pass",
+      "stdout": "{\n  \"endpoints\": 306,\n  \"wsEndpoints\": 10,\n  \"events\": 129,\n  \"producerOrphans\": 4,\n  \"consumerOrphans\": 2,\n  \"externalProducerOnlyEvents\": 7,\n  \"externalConsumerOnlyEvents\": 2,\n  \"helperDispatchedOnlyEvents\": 4,\n  \"scaffoldingEvents\": 5,\n  \"deadEvents\": 5,\n  \"guardrailFindings\": 2,\n  \"goOnlyCriticalKeys\": 92\n}\nVersionScan enforce: no changed files detected; skipping block rules.\n",
+      "stderr": ""
+    }
+  ]
+}
