@@ -280,7 +280,13 @@ func AssignFleetToOrders(orders []dispatchableOrder, fleet []availableDriver) *A
 	cellGroups := make(map[string][]dispatchableOrder)
 	cellOrder := []string{} // preserve insertion order for deterministic output
 	for _, o := range normalOrders {
-		cell := proximity.LookupCell(o.Lat, o.Lng)
+		cell := o.H3Cell
+		if cell == "" && (o.Lat != 0 || o.Lng != 0) {
+			cell = proximity.LookupCell(o.Lat, o.Lng)
+		}
+		if cell == "" {
+			cell = "UNMAPPED:" + o.OrderID
+		}
 		if _, exists := cellGroups[cell]; !exists {
 			cellOrder = append(cellOrder, cell)
 		}
@@ -515,6 +521,7 @@ type dispatchableOrder struct {
 	OrderID              string
 	RetailerID           string
 	RetailerName         string
+	H3Cell               string
 	Amount               int64
 	Lat                  float64
 	Lng                  float64
@@ -1431,27 +1438,46 @@ func runAutoDispatch(ctx context.Context, client *spanner.Client, readRouter pro
 // ── Step 1: Fetch Dispatchable Orders ───────────────────────────────────────
 
 func fetchDispatchableOrders(ctx context.Context, client *spanner.Client, readRouter proximity.ReadRouter, supplierID string, filterOrderIDs []string) ([]dispatchableOrder, error) {
-	// Query: get PENDING/LOADED orders (no RouteId) for this supplier's retailers,
-	// joined with retailer location and order line items with pallet footprints.
-	sql := `SELECT o.OrderId, o.RetailerId, r.Name AS RetailerName, o.Amount,
-	               r.ShopLocation,
+	params := map[string]interface{}{"sid": supplierID}
+	warehouseID := auth.EffectiveWarehouseID(ctx)
+
+	targetCells, err := resolveDispatchTargetCells(ctx, client, supplierID, warehouseID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve dispatch target cells: %w", err)
+	}
+
+	ordersSource := "Orders o"
+	if len(targetCells) > 0 {
+		ordersSource = "Orders@{FORCE_INDEX=IDX_Orders_H3Cell_State} o"
+		params["targetCells"] = targetCells
+	}
+
+	// Query: get dispatchable orders and aggregate volumetrics.
+	// Spatial narrowing is performed in-Spanner via Orders.H3Cell when target
+	// coverage cells are available.
+	sql := fmt.Sprintf(`SELECT o.OrderId, o.RetailerId, r.Name AS RetailerName,
+	               COALESCE(o.H3Cell, '') AS OrderH3Cell,
+	               o.Amount,
+	               IFNULL(r.Latitude, 0) AS RetailerLat,
+	               IFNULL(r.Longitude, 0) AS RetailerLng,
 	               COALESCE(r.ReceivingWindowOpen, '') AS ReceivingWindowOpen,
 	               COALESCE(r.ReceivingWindowClose, '') AS ReceivingWindowClose,
 	               COALESCE(o.IsRecovery, FALSE) AS IsRecovery,
 	               COALESCE(SUM(li.Quantity * COALESCE(sp.VolumetricUnit, (sp.LengthCM * sp.WidthCM * sp.HeightCM / 5000.0), sp.PalletFootprint, 1.0)), 0) AS TotalVolumeVU
-	        FROM Orders o
+	        FROM %s
 	        JOIN Retailers r ON o.RetailerId = r.RetailerId
 	        LEFT JOIN OrderLineItems li ON o.OrderId = li.OrderId
 	        LEFT JOIN SupplierProducts sp ON li.SkuId = sp.SkuId
 	        WHERE o.State IN ('PENDING', 'LOADED', 'READY_FOR_DISPATCH')
 	          AND (o.RouteId IS NULL OR o.RouteId = '')
 	          AND (o.ManifestId IS NULL OR o.ManifestId = '')
-	          AND o.SupplierId = @sid`
+	          AND o.SupplierId = @sid`, ordersSource)
 
-	params := map[string]interface{}{"sid": supplierID}
+	if len(targetCells) > 0 {
+		sql += " AND o.H3Cell IS NOT NULL AND o.H3Cell != '' AND o.H3Cell IN UNNEST(@targetCells)"
+	}
 
 	// Apply warehouse scope if present
-	warehouseID := auth.EffectiveWarehouseID(ctx)
 	if warehouseID != "" {
 		sql += " AND o.WarehouseId = @warehouseId"
 		params["warehouseId"] = warehouseID
@@ -1462,7 +1488,9 @@ func fetchDispatchableOrders(ctx context.Context, client *spanner.Client, readRo
 		params["orderIds"] = filterOrderIDs
 	}
 
-	sql += ` GROUP BY o.OrderId, o.RetailerId, r.Name, o.Amount, r.ShopLocation, r.ReceivingWindowOpen, r.ReceivingWindowClose, o.IsRecovery
+	sql += ` GROUP BY o.OrderId, o.RetailerId, r.Name, o.H3Cell, o.Amount,
+	                  r.Latitude, r.Longitude, r.ReceivingWindowOpen,
+	                  r.ReceivingWindowClose, o.IsRecovery
 	         ORDER BY COALESCE(o.DispatchPriority, 0) DESC, TotalVolumeVU DESC`
 
 	readClient := client
@@ -1489,26 +1517,25 @@ func fetchDispatchableOrders(ctx context.Context, client *spanner.Client, readRo
 			return nil, fmt.Errorf("query dispatchable orders: %w", err)
 		}
 
-		var orderID, retailerID, retailerName string
+		var orderID, retailerID, retailerName, h3Cell string
 		var amount spanner.NullInt64
-		var shopLocation spanner.NullString
+		var retailerLat, retailerLng float64
 		var rwOpen, rwClose string
 		var isRecovery spanner.NullBool
 		var totalVU spanner.NullFloat64
 
-		if err := row.Columns(&orderID, &retailerID, &retailerName, &amount, &shopLocation, &rwOpen, &rwClose, &isRecovery, &totalVU); err != nil {
+		if err := row.Columns(&orderID, &retailerID, &retailerName, &h3Cell, &amount, &retailerLat, &retailerLng, &rwOpen, &rwClose, &isRecovery, &totalVU); err != nil {
 			return nil, fmt.Errorf("parse order row: %w", err)
 		}
-
-		lat, lng := parseWKTPoint(shopLocation.StringVal)
 
 		results = append(results, dispatchableOrder{
 			OrderID:              orderID,
 			RetailerID:           retailerID,
 			RetailerName:         retailerName,
+			H3Cell:               h3Cell,
 			Amount:               amount.Int64,
-			Lat:                  lat,
-			Lng:                  lng,
+			Lat:                  retailerLat,
+			Lng:                  retailerLng,
 			VolumeVU:             totalVU.Float64,
 			ReceivingWindowOpen:  rwOpen,
 			ReceivingWindowClose: rwClose,
@@ -1517,6 +1544,56 @@ func fetchDispatchableOrders(ctx context.Context, client *spanner.Client, readRo
 	}
 
 	return results, nil
+}
+
+func resolveDispatchTargetCells(ctx context.Context, client *spanner.Client, supplierID, warehouseID string) ([]string, error) {
+	sql := `SELECT H3Indexes
+	        FROM Warehouses
+	        WHERE SupplierId = @sid
+	          AND IsActive = true`
+	params := map[string]interface{}{"sid": supplierID}
+
+	if warehouseID != "" {
+		sql += " AND WarehouseId = @warehouseId"
+		params["warehouseId"] = warehouseID
+	}
+
+	stmt := spanner.Statement{SQL: sql, Params: params}
+	iter := spannerx.StaleQuery(ctx, client, stmt)
+	defer iter.Stop()
+
+	seen := make(map[string]struct{})
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("query warehouse coverage: %w", err)
+		}
+
+		var cells []string
+		if err := row.Columns(&cells); err != nil {
+			return nil, fmt.Errorf("parse warehouse coverage row: %w", err)
+		}
+		for _, cell := range cells {
+			if cell == "" {
+				continue
+			}
+			seen[cell] = struct{}{}
+		}
+	}
+
+	if len(seen) == 0 {
+		return nil, nil
+	}
+
+	out := make([]string, 0, len(seen))
+	for cell := range seen {
+		out = append(out, cell)
+	}
+	sort.Strings(out)
+	return out, nil
 }
 
 // fetchWarehouseOrigin resolves a warehouse's depot coordinates for route

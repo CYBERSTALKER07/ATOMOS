@@ -966,7 +966,7 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		adminClient.Close()
 	}
 
-	// ── MIGRATION: Geo-Spatial Sovereignty — H3Index on Retailers, Factories & Orders ────
+	// ── MIGRATION: Geo-Spatial Sovereignty — H3Index on Retailers and Factories ────
 	adminClient, err = database.NewDatabaseAdminClient(ctx, opts...)
 	if err == nil {
 		geoH3DDL := []string{
@@ -974,8 +974,6 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 			"CREATE INDEX Idx_Retailers_ByH3Index ON Retailers(H3Index)",
 			"ALTER TABLE Factories ADD COLUMN H3Index STRING(MAX)",
 			"CREATE INDEX Idx_Factories_ByH3Index ON Factories(H3Index)",
-			"ALTER TABLE Orders ADD COLUMN H3Index STRING(MAX)",
-			"CREATE INDEX Idx_Orders_ByH3Index ON Orders(H3Index)",
 		}
 		for _, stmt := range geoH3DDL {
 			op, ddlErr := adminClient.UpdateDatabaseDdl(ctx, &databasepb.UpdateDatabaseDdlRequest{
@@ -1009,7 +1007,7 @@ func Run(ctx context.Context, opts []option.ClientOption, dbName string, spanner
 		adminClient.Close()
 	}
 
-	// ── BACKFILL: H3Index for rows created before the H3 migration ────────────
+	// ── BACKFILL: H3Index for retailer/factory rows created before the H3 migration ────────────
 	// Runs once per boot, a no-op after the first successful pass (all rows
 	// already have H3Index populated). Uses h3-go/v4 at resolution 7 to emit
 	// 15-char lowercase hex cell IDs compatible with h3-js on the frontend.

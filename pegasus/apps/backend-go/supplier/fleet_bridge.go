@@ -395,7 +395,13 @@ func HandleH3RoutePreview(client *spanner.Client, readRouter proximity.ReadRoute
 		cellOrder := []string{}
 
 		for _, o := range orders {
-			cell := proximity.LookupCell(o.Lat, o.Lng)
+			cell := o.H3Cell
+			if cell == "" && (o.Lat != 0 || o.Lng != 0) {
+				cell = proximity.LookupCell(o.Lat, o.Lng)
+			}
+			if cell == "" {
+				cell = "UNMAPPED:" + o.OrderID
+			}
 			if _, exists := cells[cell]; !exists {
 				cells[cell] = &cellAcc{}
 				cellOrder = append(cellOrder, cell)

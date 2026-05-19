@@ -56,6 +56,8 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 	- Rust sidecar local-build compatibility is now hardened in `services/optimizer-core/Dockerfile.rust` by pinning `rust:1.85-bookworm` and installing `protobuf-compiler`, eliminating transitive edition2024 Cargo parsing failures and missing-`protoc` build errors during dockerized bring-up.
 	- Container/runtime scaffolding remains additive through `services/optimizer-core/{Dockerfile.rust,Dockerfile,requirements.txt,scripts/gen_proto.sh}` and Go module bootstrap in `services/optimizer-core/adapters/go/go.mod`; Python sidecar remains available for dual-run parity checks during canary rollout.
 
+- Dispatch H3Cell convergence and Orders.H3Index deprecation: `apps/backend-go/supplier/{dispatcher.go,fleet_bridge.go}` now uses persisted `Orders.H3Cell` for dispatch and preview clustering (index-backed filtering, no per-order retailer `ShopLocation` WKT parse plus runtime H3 lookup loops), and legacy `Orders.H3Index` add/index/backfill paths were removed from `apps/backend-go/migrations/{migrations.go,h3_backfill.go}` while keeping canonical backfill ownership only under `migrations/h3_backfill.go`.
+
 - Country-smart payment policy and 3C degradation closure: `pegasus/apps/backend-go/{order/service.go,order/unified_checkout.go,countrycfg/regions.go}` + `pegasus/contracts/events.schema.json`
 	- Checkout policy resolution now normalizes requested gateway authority through `resolveRequestedGatewayForRetailer` before policy evaluation so degradation paths carry deterministic gateway identity.
 	- `CardCheckout` now dedupes fallback emission per request and prevents duplicate `PAYMENT_GATEWAY_DEGRADED` events when direct + hosted initialization both fail.
@@ -68,6 +70,7 @@ This file is the human-readable companion to `pegasus/context/technology-invento
 	- Supports explicit diff scoping via `BASE_SHA` and `HEAD_SHA` for branch/PR enforcement.
 	- CI workflows `.github/workflows/ci.yml` and `.github/workflows/one-eye-guards.yml` now both invoke this gate for PR guard evaluation instead of split per-guard command chains.
 	- Direct `versionscan.py scan` in CI remains push-only baseline coverage; PR enforcement is executed through the sprint gate path.
+
 
 - Sprint-3 supplier graph-query analytics read surface: `pegasus/apps/backend-go/{analytics/graph_query.go,supplierinsightsroutes/routes.go}` + `pegasus/packages/types/analytics.ts` + `pegasus/apps/admin-portal/lib/api/graph-analytics.ts`
 	- New supplier-scoped endpoint mounts at `POST /v1/supplier/analytics/graph/query`.

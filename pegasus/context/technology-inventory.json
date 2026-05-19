@@ -71,6 +71,28 @@
   },
   "runtimeContracts": [
     {
+      "name": "Dispatch H3Cell convergence and Orders.H3Index deprecation",
+      "path": "Supplier dispatch and preview clustering now use persisted Orders.H3Cell instead of runtime retailer location parsing",
+      "owner": "pegasus/apps/backend-go/supplier/{dispatcher.go,fleet_bridge.go} + pegasus/apps/backend-go/migrations/{migrations.go,h3_backfill.go}",
+      "methods": [
+        "supplier/dispatcher.go now uses persisted Orders.H3Cell in dispatch fetch and clustering paths and removes per-order retailer ShopLocation WKT parse plus runtime H3 lookup loops",
+        "supplier/fleet_bridge.go preview clustering now reuses persisted order H3 cells instead of recomputing from order coordinates",
+        "migrations/migrations.go no longer provisions legacy Orders.H3Index add/index migration statements",
+        "migrations/h3_backfill.go no longer backfills Orders.H3Index and retains canonical backfill ownership under migrations",
+        "duplicate root apps/backend-go/h3_backfill.go was removed to avoid dual backfill entrypoints"
+      ],
+      "consumers": [
+        "apps/backend-go/supplier/dispatcher.go",
+        "apps/backend-go/supplier/fleet_bridge.go",
+        "apps/backend-go/migrations/migrations.go",
+        "apps/backend-go/migrations/h3_backfill.go"
+      ],
+      "notes": [
+        "Dispatch selection and preview aggregation are now aligned to persisted order spatial state for index-backed behavior and lower CPU churn.",
+        "Orders.H3Index legacy migration and backfill paths were removed while preserving additive retailer and factory backfill surfaces."
+      ]
+    },
+    {
       "name": "OR-Tools optimizer-core sidecar runtime (Pattern-A)",
       "path": "Kafka optimization jobs -> Go adapter -> gRPC sidecar -> OutboxEvents",
       "owner": "pegasus/services/optimizer-core/{proto,server-rust,server,adapters/go}",

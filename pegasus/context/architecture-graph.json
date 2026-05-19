@@ -195,6 +195,27 @@
   ],
   "runtimeContracts": [
     {
+      "id": "dispatch_h3cell_convergence_orders_h3index_deprecation",
+      "path": "Supplier dispatch and preview clustering now consume persisted Orders.H3Cell with legacy Orders.H3Index migration/backfill paths removed",
+      "owner": "pegasus/apps/backend-go/supplier/{dispatcher.go,fleet_bridge.go} + pegasus/apps/backend-go/migrations/{migrations.go,h3_backfill.go}",
+      "methods": [
+        "supplier/dispatcher.go now filters and clusters dispatchable orders using persisted Orders.H3Cell, removing per-order retailer ShopLocation WKT parse and runtime H3 lookup loops",
+        "supplier/fleet_bridge.go now uses persisted order H3 cells for preview clustering instead of coordinate recomputation",
+        "migrations/migrations.go removes legacy Orders.H3Index add/index migration statements",
+        "migrations/h3_backfill.go removes Orders.H3Index backfill logic while preserving canonical migration-owned backfill behavior"
+      ],
+      "consumers": [
+        "pegasus/apps/backend-go/supplier/dispatcher.go",
+        "pegasus/apps/backend-go/supplier/fleet_bridge.go",
+        "pegasus/apps/backend-go/migrations/migrations.go",
+        "pegasus/apps/backend-go/migrations/h3_backfill.go"
+      ],
+      "notes": [
+        "Dispatch and preview paths are now aligned to persisted spatial state and index-backed access patterns.",
+        "Orders.H3Index legacy deprecation is migration-safe and additive for non-order H3 fields."
+      ]
+    },
+    {
       "id": "or_tools_optimizer_core_pattern_a_runtime",
       "path": "Pattern-A optimizer sidecar for VRP + CP-SAT with Kafka->gRPC->Outbox persistence",
       "owner": "pegasus/services/optimizer-core/{proto,server-rust,server,adapters/go}",

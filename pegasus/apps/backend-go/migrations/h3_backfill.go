@@ -10,22 +10,19 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-// backfillH3Indexes populates the H3Index column on Retailers, Factories, and
-// Orders for rows created before the Geo-Spatial Sovereignty migration. It is
+// backfillH3Indexes populates the H3Index column on Retailers and Factories
+// for rows created before the Geo-Spatial Sovereignty migration. It is
 // idempotent — subsequent boots see an empty candidate set and exit immediately.
 //
-// Retailers/Factories derive H3Index from their own Lat/Lng; Orders inherit
-// H3Index from their Retailer so that geo-scoped queries can filter on orders
-// directly without joining Retailers at read time.
+// Retailers/Factories derive H3Index from their own Lat/Lng.
 func backfillH3Indexes(ctx context.Context, sc *spanner.Client) {
 	if sc == nil {
 		return
 	}
 	n1 := backfillRetailerH3(ctx, sc)
 	n2 := backfillFactoryH3(ctx, sc)
-	n3 := backfillOrderH3(ctx, sc)
-	if n1+n2+n3 > 0 {
-		log.Printf("[H3-BACKFILL] retailers=%d factories=%d orders=%d", n1, n2, n3)
+	if n1+n2 > 0 {
+		log.Printf("[H3-BACKFILL] retailers=%d factories=%d", n1, n2)
 	}
 }
 
@@ -102,37 +99,6 @@ func backfillFactoryH3(ctx context.Context, sc *spanner.Client) int {
 		updates = append(updates, h3BackfillUpdate{id: id, h3Index: cell})
 	}
 	return applyH3Updates(ctx, sc, "Factories", "FactoryId", updates)
-}
-
-func backfillOrderH3(ctx context.Context, sc *spanner.Client) int {
-	iter := sc.Single().Query(ctx, spanner.Statement{
-		SQL: `SELECT o.OrderId, r.H3Index
-		      FROM Orders o JOIN Retailers r ON r.RetailerId = o.RetailerId
-		      WHERE (o.H3Index IS NULL OR o.H3Index = '')
-		        AND r.H3Index IS NOT NULL AND r.H3Index != ''`,
-	})
-	defer iter.Stop()
-
-	var updates []h3BackfillUpdate
-	for {
-		row, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.Printf("[H3-BACKFILL] order scan error: %v", err)
-			return len(updates)
-		}
-		var id, cell string
-		if err := row.Columns(&id, &cell); err != nil {
-			continue
-		}
-		if cell == "" {
-			continue
-		}
-		updates = append(updates, h3BackfillUpdate{id: id, h3Index: cell})
-	}
-	return applyH3Updates(ctx, sc, "Orders", "OrderId", updates)
 }
 
 // applyH3Updates writes H3Index values back in batches of 500 to stay under
