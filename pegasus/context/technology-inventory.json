@@ -83,19 +83,25 @@
         "Adapter failure-path tests in services/optimizer-core/adapters/go/internal/{optimizergrpc/client_test.go,adapter/worker_test.go} now cover sidecar unavailable, deadline timeout, and infeasible-result handling",
         "Backend optimizer gRPC transport in apps/backend-go/internal/rpc/optimizergrpc/client.go now prefers OPTIMIZER_SIDE_ENDPOINT with bounded block-on-dial timeout and local circuit-breaker fast failover",
         "Phase-7 canary hard gates are now codified in infra/k8s/monitoring/prometheusrule.yaml and infra/terraform/observability.tf for void_optimizer_solver_duration_seconds, void_optimizer_error_rate, and void_optimizer_circuit_breaker_state",
-        "infra/k8s/ai-worker/deployment.yaml now additively co-locates optimizer-core-rust sidecar and loopback endpoint wiring (127.0.0.1:50055)"
+        "infra/k8s/ai-worker/deployment.yaml now additively co-locates optimizer-core-rust sidecar and loopback endpoint wiring (127.0.0.1:50055)",
+        "docker-compose.yml now provisions no-cloud optimizer simulation through kafka-init topic bootstrap for pegasus-optimizer-jobs and profile optimizer-sim services (optimizer-core-rust and optimizer-adapter-worker) with local emulator dependencies",
+        "Makefile now exposes optimizer-sim-up, optimizer-sim-down, and optimizer-sim-bootstrap orchestration targets for repeatable local bring-up"
       ],
       "consumers": [
         "services/optimizer-core/proto/optimizer_core.proto",
         "services/optimizer-core/server-rust/src/{main.rs,service.rs,mapping.rs,scaling.rs,solver/vrp.rs,solver/cpsat.rs}",
         "services/optimizer-core/server/{vrp_adapter.py,cpsat_adapter.py,service.py,main.py,mapping.py,scaling.py}",
         "services/optimizer-core/adapters/go/internal/{adapter,optimizergrpc,model,mapping,scaling,config}",
-        "services/optimizer-core/adapters/go/cmd/optimizer-worker/main.go"
+        "services/optimizer-core/adapters/go/cmd/optimizer-worker/main.go",
+        "services/optimizer-core/adapters/go/Dockerfile",
+        "docker-compose.yml",
+        "Makefile"
       ],
       "notes": [
         "Pattern-A sidecar runtime remains additive and keeps current backend-go optimization paths intact while enabling executable Rust solver behavior.",
         "Python sidecar remains available for dual-run canary parity checks while Rust sidecar ramps.",
-        "Go optimizergrpc transport is now protobuf-mapped end-to-end with fault-path coverage and canary rollback gates."
+        "Go optimizergrpc transport is now protobuf-mapped end-to-end with fault-path coverage and canary rollback gates.",
+        "Local no-cloud optimizer simulation is now runnable through optimizer-sim profile orchestration without Google Cloud API keys."
       ]
     },
     {

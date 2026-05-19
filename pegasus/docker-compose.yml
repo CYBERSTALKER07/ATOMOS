@@ -87,6 +87,8 @@ services:
         kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 1 --replication-factor 1 --topic pegasus-logistics-events-dlq
         echo 'Creating inventory.import.events topic with 16 partitions...'
         kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 16 --replication-factor 1 --topic inventory.import.events
+        echo 'Creating pegasus-optimizer-jobs topic with 16 partitions...'
+        kafka-topics --create --if-not-exists --bootstrap-server kafka:29092 --partitions 16 --replication-factor 1 --topic pegasus-optimizer-jobs
         echo 'Topics created successfully.'
       "
 
@@ -174,6 +176,50 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  # ----------------------------------------
+  # OPTIMIZER CORE (Rust Sidecar, local simulation profile)
+  # ----------------------------------------
+  optimizer-core-rust:
+    profiles: ["optimizer-sim"]
+    build:
+      context: ./services/optimizer-core
+      dockerfile: Dockerfile.rust
+    container_name: pegasus-optimizer-core-rust
+    environment:
+      - OPTIMIZER_CORE_GRPC_PORT=50055
+      - RUST_LOG=info
+    ports:
+      - '50055:50055'
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  # ----------------------------------------
+  # OPTIMIZER ADAPTER WORKER (Kafka -> gRPC -> Outbox)
+  # ----------------------------------------
+  optimizer-adapter-worker:
+    profiles: ["optimizer-sim"]
+    build:
+      context: ./services/optimizer-core/adapters/go
+      dockerfile: Dockerfile
+    container_name: pegasus-optimizer-adapter-worker
+    environment:
+      - KAFKA_BROKERS=kafka:29092
+      - OPTIMIZER_JOB_TOPIC=pegasus-optimizer-jobs
+      - OPTIMIZER_WORKER_GROUP_ID=pegasus-optimizer-core-worker
+      - SPANNER_DATABASE=projects/pegasus-logistics/instances/pegasus-dev/databases/pegasus-db
+      - SPANNER_EMULATOR_HOST=spanner:9010
+      - OPTIMIZER_CORE_GRPC_ADDR=optimizer-core-rust:50055
+      - SOLVER_MAX_ATTEMPTS=3
+      - SOLVER_RETRY_BASE_MS=200
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      spanner:
+        condition: service_healthy
+      optimizer-core-rust:
+        condition: service_started
 
 volumes:
   kafka_data:

@@ -40,7 +40,7 @@ require-env:
 # TARGETS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-.PHONY: help env-up env-down env-status spanner-init seed simulate test-e2e \
+.PHONY: help env-up env-down env-status optimizer-sim-up optimizer-sim-down optimizer-sim-bootstrap spanner-init seed simulate test-e2e \
 	build clean nuke full-reset dev-ip dev-devices sprint1-gate \
 	desktop-dev desktop-build desktop-build-mac desktop-build-win desktop-check desktop-clean
 
@@ -102,6 +102,23 @@ env-down: ## Stop infrastructure and purge volumes
 ## ── env-status: Show running container status ─────────────────────────────
 env-status: ## Show container health
 	docker compose ps
+
+## ── optimizer-sim-up: Start OR-Tools local simulation profile ─────────────
+optimizer-sim-up: ## Start optimizer sidecar + adapter worker on local emulators
+	@echo "═══ OPTIMIZER SIM: Starting local Docker profile (no cloud API keys) ═══"
+	docker compose --profile optimizer-sim up -d
+	@echo "═══ Optimizer simulation profile started ═══"
+	@echo "Tip: if this is the first run, initialize schema with 'make spanner-init'"
+
+## ── optimizer-sim-down: Stop OR-Tools local simulation profile ────────────
+optimizer-sim-down: ## Stop optimizer sidecar + adapter worker profile
+	@echo "═══ OPTIMIZER SIM: Stopping profile services ═══"
+	docker compose --profile optimizer-sim stop optimizer-core-rust optimizer-adapter-worker
+	@echo "═══ Optimizer simulation profile stopped ═══"
+
+## ── optimizer-sim-bootstrap: Bring up profile + initialize Spanner ────────
+optimizer-sim-bootstrap: require-env optimizer-sim-up spanner-init ## First-run bootstrap for optimizer local simulation
+	@echo "═══ Optimizer simulation bootstrap complete ═══"
 
 ## ── spanner-init: Create instance + database + apply DDL ──────────────────
 spanner-init: require-env ## Initialize Spanner emulator (instance + database + full DDL)
