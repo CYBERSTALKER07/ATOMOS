@@ -37,6 +37,93 @@ func makeDispatchOrders(n int) []GeoOrder {
 	return orders
 }
 
+func TestAssignFleetToOrders_UsesPersistedH3CellWithoutCoordinates(t *testing.T) {
+	orders := []dispatchableOrder{
+		{
+			OrderID:      "H3-ORDER-1",
+			RetailerID:   "RET-1",
+			RetailerName: "Retailer 1",
+			H3Cell:       "872830828ffffff",
+			Amount:       12000,
+			VolumeVU:     4,
+		},
+		{
+			OrderID:      "H3-ORDER-2",
+			RetailerID:   "RET-2",
+			RetailerName: "Retailer 2",
+			H3Cell:       "872830828ffffff",
+			Amount:       8000,
+			VolumeVU:     3,
+		},
+	}
+
+	fleet := []availableDriver{
+		{
+			DriverID:     "DRV-1",
+			Name:         "Driver 1",
+			VehicleType:  "Damas",
+			VehicleClass: "CLASS_A",
+			MaxVolumeVU:  20,
+		},
+	}
+
+	result := AssignFleetToOrders(orders, fleet)
+	if result == nil {
+		t.Fatal("expected non-nil assignment result")
+	}
+	if len(result.Splits) != 0 {
+		t.Fatalf("expected no split orders, got %d", len(result.Splits))
+	}
+	if len(result.Orphans) != 0 {
+		t.Fatalf("expected no orphan orders, got %d", len(result.Orphans))
+	}
+	if len(result.Routes) != 1 {
+		t.Fatalf("expected exactly 1 route, got %d", len(result.Routes))
+	}
+	if got := len(result.Routes[0].Orders); got != 2 {
+		t.Fatalf("expected 2 assigned orders in the route, got %d", got)
+	}
+}
+
+func TestAssignFleetToOrders_AssignsUnmappedOrderWithNoSpatialData(t *testing.T) {
+	orders := []dispatchableOrder{
+		{
+			OrderID:      "UNMAPPED-1",
+			RetailerID:   "RET-X",
+			RetailerName: "Retailer X",
+			Amount:       5000,
+			VolumeVU:     2,
+		},
+	}
+
+	fleet := []availableDriver{
+		{
+			DriverID:     "DRV-2",
+			Name:         "Driver 2",
+			VehicleType:  "Damas",
+			VehicleClass: "CLASS_A",
+			MaxVolumeVU:  10,
+		},
+	}
+
+	result := AssignFleetToOrders(orders, fleet)
+	if result == nil {
+		t.Fatal("expected non-nil assignment result")
+	}
+	if len(result.Orphans) != 0 {
+		t.Fatalf("expected no orphan orders, got %d", len(result.Orphans))
+	}
+	if len(result.Routes) != 1 {
+		t.Fatalf("expected exactly 1 route, got %d", len(result.Routes))
+	}
+	if got := len(result.Routes[0].Orders); got != 1 {
+		t.Fatalf("expected 1 assigned order in the route, got %d", got)
+	}
+	if gotID := result.Routes[0].Orders[0].OrderID; gotID != "UNMAPPED-1" {
+		t.Fatalf("expected assigned order UNMAPPED-1, got %s", gotID)
+	}
+}
+
 // TestKMeansCluster_DeterministicOutput runs kMeansCluster 100 times on the
 // same input and verifies every run produces byte-identical cluster assignments.
 func TestKMeansCluster_DeterministicOutput(t *testing.T) {
