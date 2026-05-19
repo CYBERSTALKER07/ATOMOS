@@ -684,6 +684,8 @@ func updateWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 			event := kafka.WarehouseSpatialUpdatedEvent{
 				WarehouseId:    warehouseID,
 				SupplierId:     supplierID,
+				OldH3Count:     len(existingH3Cells),
+				NewH3Count:     len(h3Cells),
 				CoverageRadius: radius,
 				Timestamp:      time.Now().UTC(),
 			}
@@ -879,6 +881,8 @@ func saveWarehouseCoverage(w http.ResponseWriter, r *http.Request, client *spann
 		event := kafka.WarehouseSpatialUpdatedEvent{
 			WarehouseId:    warehouseID,
 			SupplierId:     supplierID,
+			OldH3Count:     len(existingH3Cells),
+			NewH3Count:     len(hexes),
 			CoverageRadius: existingRadius,
 			Timestamp:      time.Now().UTC(),
 		}
