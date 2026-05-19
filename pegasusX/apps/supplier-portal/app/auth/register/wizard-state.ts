@@ -137,12 +137,13 @@ export const STEP_LABELS: Record<StepId, string> = {
 // Validation returns a map of field-name -> error string. Empty map = valid.
 export function validateAccount(s: AccountStep): Record<string, string> {
   const e: Record<string, string> = {};
+  const minCredentialLengthMessage = "Password must be at least 10 characters";
   if (s.legalName.trim().length < 2) e.legalName = "Legal name is required";
   if (s.contactName.trim().length < 2) e.contactName = "Contact name is required";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.email)) e.email = "Valid email is required";
   if (!s.countryCode) e.countryCode = "Country is required";
   if (!/^\d{6,14}$/.test(s.phoneLocal)) e.phoneLocal = "Phone digits only (6–14)";
-  if (s.password.length < 10) e.password = "Password must be at least 10 characters";
+  if (s.password.length < 10) e.password = minCredentialLengthMessage;
   return e;
 }
 

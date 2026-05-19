@@ -64,8 +64,10 @@ func TestSolveSucceedsWhenStubSucceeds(t *testing.T) {
 		apiKey: "test-key",
 		cb:     breaker,
 	}
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
 
-	resp, err := client.Solve(context.Background(), &contract.SolveRequest{TraceID: "trace-ok"})
+	resp, err := client.Solve(ctx, &contract.SolveRequest{TraceID: "trace-ok"})
 	if err != nil {
 		t.Fatalf("expected solve success, got error: %v", err)
 	}
@@ -79,7 +81,9 @@ func TestSolveSucceedsWhenStubSucceeds(t *testing.T) {
 
 func mustFailSolve(t *testing.T, client *GRPCClient, req *contract.SolveRequest) error {
 	t.Helper()
-	_, err := client.Solve(context.Background(), req)
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+	_, err := client.Solve(ctx, req)
 	if err == nil {
 		t.Fatal("expected solve failure")
 	}

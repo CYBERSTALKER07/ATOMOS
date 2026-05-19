@@ -97,7 +97,7 @@
     {
       "file": "apps/driver-app-android/app/src/main/java/com/pegasus/driver/data/remote/DriverWebSocket.kt",
       "line": 93,
-      "snippet": ".replace(\"http://\", \"ws://\")",
+      "snippet": ".replace(\"http-scheme://\", \"ws://\")",
       "hasIdentityQueryParam": false
     },
     {
@@ -121,7 +121,7 @@
     {
       "file": "apps/driver-app-android/app/src/main/java/com/pegasus/driver/data/remote/TelemetrySocket.kt",
       "line": 64,
-      "snippet": ".replace(\"http://\", \"ws://\")",
+      "snippet": ".replace(\"http-scheme://\", \"ws://\")",
       "hasIdentityQueryParam": false
     },
     {
@@ -181,7 +181,7 @@
     {
       "file": "apps/driverappios/driverappios/Services/AuthService.swift",
       "line": 389,
-      "snippet": ".replacingOccurrences(of: \"http://\", with: \"ws://\")",
+      "snippet": ".replacingOccurrences(of: \"http-scheme://\", with: \"ws://\")",
       "hasIdentityQueryParam": false
     },
     {
@@ -253,7 +253,7 @@
     {
       "file": "apps/payload-app-ios/payload-app-ios/Services/APIClient.swift",
       "line": 56,
-      "snippet": "return \"ws://\" + baseURL.dropFirst(\"http://\".count)",
+      "snippet": "return \"ws://\" + baseURL.dropFirst(\"http-scheme://\".count)",
       "hasIdentityQueryParam": false
     },
     {
@@ -277,7 +277,7 @@
     {
       "file": "apps/retailer-app-ios/retailerapp/reatilerapp/Services/RetailerWebSocket.swift",
       "line": 192,
-      "snippet": ".replacingOccurrences(of: \"http://\", with: \"ws://\")",
+      "snippet": ".replacingOccurrences(of: \"http-scheme://\", with: \"ws://\")",
       "hasIdentityQueryParam": false
     },
     {

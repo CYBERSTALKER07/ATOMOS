@@ -15,7 +15,7 @@ import (
 func TestVerifyGlobalPayBasicAuth(t *testing.T) {
 	t.Parallel()
 
-	secret := "gp-secret"
+	secret := "test-gp-secret"
 	valid := "Basic " + base64.StdEncoding.EncodeToString([]byte("Paycom:"+secret))
 
 	tests := []struct {
@@ -82,7 +82,7 @@ func TestParseGlobalPayWebhookRequest(t *testing.T) {
 		{
 			name:   "valid json payload",
 			body:   `{"session_id":"sess-1","transaction_id":"tx-1","status":"PAID","amount_minor":1200,"currency":"USD"}`,
-			rawURL: "http://example.test/v1/webhooks/global-pay",
+			rawURL: "http://localhost/v1/webhooks/global-pay",
 			assert: func(t *testing.T, req globalPayWebhookRequest) {
 				t.Helper()
 				if req.SessionID != "sess-1" || req.TransactionID != "tx-1" || req.Status != "PAID" {
@@ -96,7 +96,7 @@ func TestParseGlobalPayWebhookRequest(t *testing.T) {
 		{
 			name:   "query fallback for transaction and status",
 			body:   `{}`,
-			rawURL: "http://example.test/v1/webhooks/global-pay?session_id=sess-q&payment_id=pay-q&state=CAPTURED&amount_minor=50&currency=UZS",
+			rawURL: "http://localhost/v1/webhooks/global-pay?session_id=sess-q&payment_id=pay-q&state=CAPTURED&amount_minor=50&currency=UZS",
 			assert: func(t *testing.T, req globalPayWebhookRequest) {
 				t.Helper()
 				if req.SessionID != "sess-q" || req.TransactionID != "pay-q" || req.Status != "CAPTURED" {
@@ -110,21 +110,21 @@ func TestParseGlobalPayWebhookRequest(t *testing.T) {
 		{
 			name:        "missing session id",
 			body:        `{"transaction_id":"tx-1","status":"PAID"}`,
-			rawURL:      "http://example.test/v1/webhooks/global-pay",
+			rawURL:      "http://localhost/v1/webhooks/global-pay",
 			wantErr:     true,
 			errContains: "session_id is required",
 		},
 		{
 			name:        "missing transaction id",
 			body:        `{"session_id":"sess-1","status":"PAID"}`,
-			rawURL:      "http://example.test/v1/webhooks/global-pay",
+			rawURL:      "http://localhost/v1/webhooks/global-pay",
 			wantErr:     true,
 			errContains: "transaction_id",
 		},
 		{
 			name:        "missing status",
 			body:        `{"session_id":"sess-1","transaction_id":"tx-1"}`,
-			rawURL:      "http://example.test/v1/webhooks/global-pay",
+			rawURL:      "http://localhost/v1/webhooks/global-pay",
 			wantErr:     true,
 			errContains: "status is required",
 		},
@@ -203,7 +203,7 @@ func TestVerifyStripeSignatureHeader(t *testing.T) {
 		},
 		{
 			name:   "signature mismatch",
-			header: buildHeader(now, "wrong-secret"),
+			header: buildHeader(now, "wrong-test-secret"),
 			secret: secret,
 			now:    now,
 			want:   false,
@@ -314,7 +314,7 @@ func TestValidateAdyenNotificationItem(t *testing.T) {
 func TestVerifyAdyenNotificationSignature(t *testing.T) {
 	t.Parallel()
 
-	secret := "adyen-secret"
+	secret := "test-adyen-secret"
 	item := validAdyenItemForTest()
 	item.AdditionalData = map[string]string{}
 
@@ -337,7 +337,7 @@ func TestVerifyAdyenNotificationSignature(t *testing.T) {
 		{
 			name:   "wrong secret",
 			item:   item,
-			secret: "wrong-secret",
+			secret: "wrong-test-secret",
 			want:   false,
 		},
 		{
