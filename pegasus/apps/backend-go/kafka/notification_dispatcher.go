@@ -155,6 +155,8 @@ func StartNotificationDispatcher(ctx context.Context, deps NotificationDeps, bro
 				handleDeliveryDisputed(deps, m.Value)
 			case EventInventoryImportStatusUpdate:
 				handleInventoryImportStatusUpdate(deps, m.Value)
+			case EventOptimizationSolved:
+				handleOptimizationSolved(deps, m.Value)
 			case EventPaymentFailed:
 				handlePaymentFailed(deps, m.Value)
 			case EventPaymentGatewayDegraded:
@@ -2597,6 +2599,50 @@ func handleInventoryImportStatusUpdate(deps NotificationDeps, data []byte) {
 			"session_id":         event.SessionID,
 			"status":             event.Status,
 			"suggested_mappings": event.SuggestedMappings,
+		})
+	}
+}
+
+func handleOptimizationSolved(deps NotificationDeps, data []byte) {
+	var event OptimizationSolvedEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		slog.Error("notification_dispatcher.unmarshal", "event", EventOptimizationSolved, "err", err)
+		return
+	}
+	if strings.TrimSpace(event.SupplierID) == "" || strings.TrimSpace(event.JobID) == "" {
+		return
+	}
+
+	payload, _ := json.Marshal(map[string]any{
+		"job_id":      event.JobID,
+		"trace_id":    event.TraceID,
+		"supplier_id": event.SupplierID,
+		"solver_type": event.SolverType,
+		"status":      event.Status,
+		"timed_out":   event.TimedOut,
+		"matrix_size": event.MatrixSize,
+		"produced_at": event.ProducedAt,
+		"warnings":    event.Warnings,
+	})
+
+	if deps.SupplierHub != nil {
+		deps.SupplierHub.PushToSupplier(event.SupplierID, map[string]any{
+			"id":          fmt.Sprintf("optimization-solved-%d", time.Now().UTC().UnixNano()),
+			"type":        EventOptimizationSolved,
+			"title":       "Dispatch Optimization Ready",
+			"body":        fmt.Sprintf("Dispatch job %s solved with %s status.", event.JobID, event.Status),
+			"payload":     string(payload),
+			"channel":     "PUSH",
+			"created_at":  time.Now().UTC().Format(time.RFC3339),
+			"job_id":      event.JobID,
+			"trace_id":    event.TraceID,
+			"supplier_id": event.SupplierID,
+			"solver_type": event.SolverType,
+			"status":      event.Status,
+			"timed_out":   event.TimedOut,
+			"matrix_size": event.MatrixSize,
+			"produced_at": event.ProducedAt,
+			"warnings":    event.Warnings,
 		})
 	}
 }

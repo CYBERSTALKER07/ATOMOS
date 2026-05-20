@@ -9,6 +9,15 @@ const (
 	SolverTypeCPSAT SolverType = "CP_SAT"
 )
 
+type SolverStatus string
+
+const (
+	SolverStatusOptimal      SolverStatus = "OPTIMAL"
+	SolverStatusFeasible     SolverStatus = "FEASIBLE"
+	SolverStatusInfeasible   SolverStatus = "INFEASIBLE"
+	SolverStatusModelInvalid SolverStatus = "MODEL_INVALID"
+)
+
 type OptimizationJob struct {
 	JobID            string          `json:"job_id"`
 	TraceID          string          `json:"trace_id"`
@@ -96,8 +105,9 @@ type NodeTimeWindowEnvelope struct {
 
 type VRPResultEnvelope struct {
 	Meta                SolverMetadata         `json:"meta"`
-	Feasible            bool                   `json:"feasible"`
+	Status              SolverStatus           `json:"status"`
 	TimedOut            bool                   `json:"timed_out"`
+	MatrixSize          int32                  `json:"matrix_size"`
 	ObjectiveCostScaled int64                  `json:"objective_cost_scaled"`
 	Routes              []VehicleRouteEnvelope `json:"routes"`
 	UnassignedNodeUUIDs []string               `json:"unassigned_node_uuids"`
@@ -156,8 +166,9 @@ type ManifestRequirementEnvelope struct {
 
 type CPSATResultEnvelope struct {
 	Meta                  SolverMetadata       `json:"meta"`
-	Feasible              bool                 `json:"feasible"`
+	Status                SolverStatus         `json:"status"`
 	TimedOut              bool                 `json:"timed_out"`
+	MatrixSize            int32                `json:"matrix_size"`
 	ObjectiveScoreScaled  int64                `json:"objective_score_scaled"`
 	Assignments           []AssignmentEnvelope `json:"assignments"`
 	UnassignedManifestIDs []string             `json:"unassigned_manifest_ids"`
@@ -177,8 +188,9 @@ type OptimizationSolvedEvent struct {
 	TraceID    string               `json:"trace_id"`
 	SupplierID string               `json:"supplier_id"`
 	SolverType SolverType           `json:"solver_type"`
-	Feasible   bool                 `json:"feasible"`
+	Status     SolverStatus         `json:"status"`
 	TimedOut   bool                 `json:"timed_out"`
+	MatrixSize int32                `json:"matrix_size"`
 	ProducedAt string               `json:"produced_at"`
 	Warnings   []string             `json:"warnings,omitempty"`
 	VRP        *VRPResultEnvelope   `json:"vrp,omitempty"`

@@ -64,6 +64,8 @@ func TestCalculateRouteMapsProtoRoundTrip(t *testing.T) {
 				Feasible:            true,
 				TimedOut:            false,
 				ObjectiveCostScaled: 1234,
+				Status:              optimizercorepb.SolverStatus_FEASIBLE,
+				MatrixSize:          3,
 				Routes: []*optimizercorepb.VehicleRoute{{
 					VehicleUuid:      "veh-1",
 					DriverUuid:       "drv-1",
@@ -114,8 +116,11 @@ func TestCalculateRouteMapsProtoRoundTrip(t *testing.T) {
 	if result == nil {
 		t.Fatal("expected non-nil result")
 	}
-	if !result.Feasible {
-		t.Fatalf("expected feasible result, got: %+v", result)
+	if result.Status != model.SolverStatusFeasible {
+		t.Fatalf("expected feasible status, got: %+v", result)
+	}
+	if result.MatrixSize != 3 {
+		t.Fatalf("unexpected matrix size: %d", result.MatrixSize)
 	}
 	if result.ObjectiveCostScaled != 1234 {
 		t.Fatalf("unexpected objective cost: %d", result.ObjectiveCostScaled)
@@ -148,6 +153,8 @@ func TestResolveConstraintMapsInfeasibleResponse(t *testing.T) {
 				Feasible:             false,
 				TimedOut:             false,
 				ObjectiveScoreScaled: 42,
+				Status:               optimizercorepb.SolverStatus_OPTIMAL,
+				MatrixSize:           2,
 				Assignments: []*optimizercorepb.Assignment{{
 					ManifestId:      "m-1",
 					FactoryNodeUuid: "f-1",
@@ -189,8 +196,11 @@ func TestResolveConstraintMapsInfeasibleResponse(t *testing.T) {
 	if result == nil {
 		t.Fatal("expected non-nil cp-sat result")
 	}
-	if result.Feasible {
-		t.Fatalf("expected infeasible result, got feasible: %+v", result)
+	if result.Status != model.SolverStatusOptimal {
+		t.Fatalf("expected optimal status, got: %+v", result)
+	}
+	if result.MatrixSize != 2 {
+		t.Fatalf("unexpected matrix size: %d", result.MatrixSize)
 	}
 	if len(result.Assignments) != 1 || result.Assignments[0].ManifestID != "m-1" {
 		t.Fatalf("unexpected assignments: %+v", result.Assignments)

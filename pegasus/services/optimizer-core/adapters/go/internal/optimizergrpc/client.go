@@ -11,6 +11,7 @@ import (
 
 	"optimizercoreadapter/internal/model"
 	optimizercorepb "optimizercoreadapter/internal/optimizerpb"
+	"optimizercoreadapter/internal/telemetry"
 )
 
 // SolverClient abstracts optimizer-core RPC calls so the worker can be tested
@@ -65,6 +66,7 @@ func (c *GRPCClient) CalculateRoute(ctx context.Context, req *model.VRPRequestEn
 
 	rpcCtx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
+	startedAt := time.Now()
 
 	rpcResp, err := c.client.CalculateRoute(rpcCtx, rpcReq)
 	if err != nil {
@@ -74,7 +76,9 @@ func (c *GRPCClient) CalculateRoute(ctx context.Context, req *model.VRPRequestEn
 		return nil, errors.New("calculate route rpc returned nil response")
 	}
 
-	return fromProtoVRPResponse(rpcResp, req.Meta), nil
+	result := fromProtoVRPResponse(rpcResp, req.Meta)
+	telemetry.RecordSolverOutcome(string(req.Meta.SolverType), string(result.Status), time.Since(startedAt), result.MatrixSize)
+	return result, nil
 }
 
 func (c *GRPCClient) ResolveConstraint(ctx context.Context, req *model.CPSATRequestEnvelope) (*model.CPSATResultEnvelope, error) {
@@ -92,6 +96,7 @@ func (c *GRPCClient) ResolveConstraint(ctx context.Context, req *model.CPSATRequ
 
 	rpcCtx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
+	startedAt := time.Now()
 
 	rpcResp, err := c.client.ResolveConstraint(rpcCtx, rpcReq)
 	if err != nil {
@@ -101,7 +106,9 @@ func (c *GRPCClient) ResolveConstraint(ctx context.Context, req *model.CPSATRequ
 		return nil, errors.New("resolve constraint rpc returned nil response")
 	}
 
-	return fromProtoCPSATResponse(rpcResp, req.Meta), nil
+	result := fromProtoCPSATResponse(rpcResp, req.Meta)
+	telemetry.RecordSolverOutcome(string(req.Meta.SolverType), string(result.Status), time.Since(startedAt), result.MatrixSize)
+	return result, nil
 }
 
 func (c *GRPCClient) Close() error {
@@ -244,8 +251,9 @@ func fromProtoVRPResponse(resp *optimizercorepb.VRPResponse, fallback model.Solv
 
 	return &model.VRPResultEnvelope{
 		Meta:                fromProtoMetadata(resp.GetMeta(), fallback),
-		Feasible:            resp.GetFeasible(),
+		Status:              fromProtoVRPStatus(resp),
 		TimedOut:            resp.GetTimedOut(),
+		MatrixSize:          vrpMatrixSize(resp),
 		ObjectiveCostScaled: resp.GetObjectiveCostScaled(),
 		Routes:              routes,
 		UnassignedNodeUUIDs: unassignedNodeUUIDs,
@@ -277,13 +285,84 @@ func fromProtoCPSATResponse(resp *optimizercorepb.CPSATResponse, fallback model.
 
 	return &model.CPSATResultEnvelope{
 		Meta:                  fromProtoMetadata(resp.GetMeta(), fallback),
-		Feasible:              resp.GetFeasible(),
+		Status:                fromProtoCPSATStatus(resp),
 		TimedOut:              resp.GetTimedOut(),
+		MatrixSize:            cpsatMatrixSize(resp),
 		ObjectiveScoreScaled:  resp.GetObjectiveScoreScaled(),
 		Assignments:           assignments,
 		UnassignedManifestIDs: unassignedManifestIDs,
 		Warnings:              warnings,
 	}
+}
+
+func fromProtoVRPStatus(resp *optimizercorepb.VRPResponse) model.SolverStatus {
+	if resp == nil {
+		return model.SolverStatusModelInvalid
+	}
+	if resp.GetMatrixSize() == 0 {
+		if resp.GetTimedOut() || resp.GetFeasible() {
+			return model.SolverStatusFeasible
+		}
+		return model.SolverStatusInfeasible
+	}
+
+	switch resp.GetStatus() {
+	case optimizercorepb.SolverStatus_OPTIMAL:
+		return model.SolverStatusOptimal
+	case optimizercorepb.SolverStatus_FEASIBLE:
+		return model.SolverStatusFeasible
+	case optimizercorepb.SolverStatus_INFEASIBLE:
+		return model.SolverStatusInfeasible
+	case optimizercorepb.SolverStatus_MODEL_INVALID:
+		return model.SolverStatusModelInvalid
+	default:
+		return model.SolverStatusModelInvalid
+	}
+}
+
+func fromProtoCPSATStatus(resp *optimizercorepb.CPSATResponse) model.SolverStatus {
+	if resp == nil {
+		return model.SolverStatusModelInvalid
+	}
+	if resp.GetMatrixSize() == 0 {
+		if resp.GetTimedOut() || resp.GetFeasible() {
+			return model.SolverStatusFeasible
+		}
+		return model.SolverStatusInfeasible
+	}
+
+	switch resp.GetStatus() {
+	case optimizercorepb.SolverStatus_OPTIMAL:
+		return model.SolverStatusOptimal
+	case optimizercorepb.SolverStatus_FEASIBLE:
+		return model.SolverStatusFeasible
+	case optimizercorepb.SolverStatus_INFEASIBLE:
+		return model.SolverStatusInfeasible
+	case optimizercorepb.SolverStatus_MODEL_INVALID:
+		return model.SolverStatusModelInvalid
+	default:
+		return model.SolverStatusModelInvalid
+	}
+}
+
+func vrpMatrixSize(resp *optimizercorepb.VRPResponse) int32 {
+	if resp == nil {
+		return 0
+	}
+	if size := resp.GetMatrixSize(); size > 0 {
+		return size
+	}
+	return int32(len(resp.GetUnassignedNodeUuids()) + 1)
+}
+
+func cpsatMatrixSize(resp *optimizercorepb.CPSATResponse) int32 {
+	if resp == nil {
+		return 0
+	}
+	if size := resp.GetMatrixSize(); size > 0 {
+		return size
+	}
+	return int32(len(resp.GetAssignments()))
 }
 
 func toProtoMetadata(meta model.SolverMetadata) *optimizercorepb.SolverMetadata {

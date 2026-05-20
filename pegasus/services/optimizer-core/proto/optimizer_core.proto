@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package pegasus.optimizer.core.v1;
 
-option go_package = "optimizercorepb";
+option go_package = "optimizercoreadapter/internal/optimizerpb;optimizercorepb";
 
 enum JobType {
   JOB_TYPE_UNSPECIFIED = 0;
@@ -10,6 +10,13 @@ enum JobType {
   JOB_TYPE_MEIO = 2;
   JOB_TYPE_FACTORY_SCHEDULING = 3;
   JOB_TYPE_FLEET_ROUTING = 4;
+}
+
+enum SolverStatus {
+  OPTIMAL = 0;
+  FEASIBLE = 1;
+  INFEASIBLE = 2;
+  MODEL_INVALID = 3;
 }
 
 message SolverMetadata {
@@ -74,6 +81,8 @@ message VRPResponse {
   repeated VehicleRoute routes = 5;
   repeated string unassigned_node_uuids = 6;
   repeated string warnings = 7;
+  SolverStatus status = 8;
+  int32 matrix_size = 9;
 }
 
 message FactorySlot {
@@ -111,6 +120,8 @@ message CPSATResponse {
   repeated Assignment assignments = 5;
   repeated string unassigned_manifest_ids = 6;
   repeated string warnings = 7;
+  SolverStatus status = 8;
+  int32 matrix_size = 9;
 }
 
 message HealthCheckRequest {}

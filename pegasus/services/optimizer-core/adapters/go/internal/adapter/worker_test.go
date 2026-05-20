@@ -51,7 +51,7 @@ func TestSolveVRPWithRetryRecoversAfterTransientFailures(t *testing.T) {
 				if attempts < 3 {
 					return nil, status.Error(codes.Unavailable, "sidecar crash")
 				}
-				return &model.VRPResultEnvelope{Feasible: true}, nil
+				return &model.VRPResultEnvelope{Status: model.SolverStatusFeasible, MatrixSize: 3}, nil
 			},
 		},
 	}
@@ -60,7 +60,7 @@ func TestSolveVRPWithRetryRecoversAfterTransientFailures(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected successful retry recovery, got error: %v", err)
 	}
-	if result == nil || !result.Feasible {
+	if result == nil || result.Status != model.SolverStatusFeasible {
 		t.Fatalf("expected feasible result after retries, got: %+v", result)
 	}
 	if attempts != 3 {
@@ -108,8 +108,9 @@ func TestSolveCPSATWithRetryReturnsInfeasibleWithoutRetry(t *testing.T) {
 			resolveConstraintFn: func(context.Context, *model.CPSATRequestEnvelope) (*model.CPSATResultEnvelope, error) {
 				attempts++
 				return &model.CPSATResultEnvelope{
-					Feasible:              false,
+					Status:                model.SolverStatusInfeasible,
 					TimedOut:              false,
+					MatrixSize:            2,
 					UnassignedManifestIDs: []string{"manifest-2"},
 					Warnings:              []string{"infeasible under current capacities"},
 				}, nil
@@ -121,7 +122,7 @@ func TestSolveCPSATWithRetryReturnsInfeasibleWithoutRetry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected infeasible response to be returned without error, got: %v", err)
 	}
-	if result == nil || result.Feasible {
+	if result == nil || result.Status != model.SolverStatusInfeasible {
 		t.Fatalf("expected infeasible result, got: %+v", result)
 	}
 	if attempts != 1 {

@@ -2,10 +2,13 @@ package adapter
 
 import (
 	"fmt"
+	"time"
 
 	"optimizercoreadapter/internal/mapping"
 	"optimizercoreadapter/internal/model"
 	"optimizercoreadapter/internal/scaling"
+
+	contract "optimizercontract"
 )
 
 const (
@@ -13,7 +16,11 @@ const (
 	defaultCPSATTimeLimitMS int64 = 30_000
 )
 
-func BuildVRPRequest(job model.OptimizationJob, payload model.VRPPayload) (*model.VRPRequestEnvelope, error) {
+func BuildVRPRequest(job contract.OptimizationJobEnvelope) (*model.VRPRequestEnvelope, error) {
+	payload := job.VRP
+	if payload == nil {
+		return nil, fmt.Errorf("vrp payload missing")
+	}
 	if payload.DepotNodeUUID == "" {
 		return nil, fmt.Errorf("vrp payload missing depot_node_uuid")
 	}
@@ -71,15 +78,20 @@ func BuildVRPRequest(job model.OptimizationJob, payload model.VRPPayload) (*mode
 		timeLimitMS = defaultVRPTimeLimitMS
 	}
 
+	solverType, requestedAtUnixMS, err := buildSolverMetadata(job)
+	if err != nil {
+		return nil, err
+	}
+
 	meta := model.SolverMetadata{
 		JobID:            job.JobID,
 		TraceID:          job.TraceID,
 		SupplierID:       job.SupplierID,
-		SolverType:       job.SolverType,
+		SolverType:       solverType,
 		ScaleFactor:      scaling.Factor,
 		IdempotencyKey:   job.IdempotencyKey,
 		SourceEventType:  job.SourceEventType,
-		RequestedAtUnixM: job.RequestedAtUnixM,
+		RequestedAtUnixM: requestedAtUnixMS,
 	}
 
 	return &model.VRPRequestEnvelope{
@@ -96,7 +108,11 @@ func BuildVRPRequest(job model.OptimizationJob, payload model.VRPPayload) (*mode
 	}, nil
 }
 
-func BuildCPSATRequest(job model.OptimizationJob, payload model.CPSATPayload) (*model.CPSATRequestEnvelope, error) {
+func BuildCPSATRequest(job contract.OptimizationJobEnvelope) (*model.CPSATRequestEnvelope, error) {
+	payload := job.CPSAT
+	if payload == nil {
+		return nil, fmt.Errorf("cp-sat payload missing")
+	}
 	factoryIDs := make([]string, 0, len(payload.FactorySlots))
 	for _, slot := range payload.FactorySlots {
 		factoryIDs = append(factoryIDs, slot.FactoryNodeUUID)
@@ -138,15 +154,20 @@ func BuildCPSATRequest(job model.OptimizationJob, payload model.CPSATPayload) (*
 		timeLimitMS = defaultCPSATTimeLimitMS
 	}
 
+	solverType, requestedAtUnixMS, err := buildSolverMetadata(job)
+	if err != nil {
+		return nil, err
+	}
+
 	meta := model.SolverMetadata{
 		JobID:            job.JobID,
 		TraceID:          job.TraceID,
 		SupplierID:       job.SupplierID,
-		SolverType:       job.SolverType,
+		SolverType:       solverType,
 		ScaleFactor:      scaling.Factor,
 		IdempotencyKey:   job.IdempotencyKey,
 		SourceEventType:  job.SourceEventType,
-		RequestedAtUnixM: job.RequestedAtUnixM,
+		RequestedAtUnixM: requestedAtUnixMS,
 	}
 
 	return &model.CPSATRequestEnvelope{
@@ -157,4 +178,27 @@ func BuildCPSATRequest(job model.OptimizationJob, payload model.CPSATPayload) (*
 		ReturnBestEffort:     true,
 		NumSearchWorkers:     payload.NumSearchWorkers,
 	}, nil
+}
+
+func buildSolverMetadata(job contract.OptimizationJobEnvelope) (model.SolverType, int64, error) {
+	var solverType model.SolverType
+	switch job.SolverType {
+	case contract.OptimizationSolverTypeVRP:
+		solverType = model.SolverTypeVRP
+	case contract.OptimizationSolverTypeCPSAT:
+		solverType = model.SolverTypeCPSAT
+	default:
+		return "", 0, fmt.Errorf("unsupported solver_type %q", job.SolverType)
+	}
+
+	requestedAt := time.Now().UTC()
+	if job.DispatchTimestamp != "" {
+		parsed, err := time.Parse(time.RFC3339Nano, job.DispatchTimestamp)
+		if err != nil {
+			return "", 0, fmt.Errorf("parse dispatch_timestamp: %w", err)
+		}
+		requestedAt = parsed.UTC()
+	}
+
+	return solverType, requestedAt.UnixMilli(), nil
 }

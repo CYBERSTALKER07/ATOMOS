@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use crate::pb::{Int64Row, VehicleRoute, VrpRequest, VrpResponse};
+use crate::pb::{Int64Row, SolverStatus, VehicleRoute, VrpRequest, VrpResponse};
 
 const DISTANCE_FALLBACK_PENALTY: i64 = 1_000_000;
 
 pub fn solve(request: &VrpRequest) -> VrpResponse {
     let drop_count = request.drop_off_node_uuids.len();
+    let matrix_size = (drop_count + 1) as i32;
     if drop_count == 0 {
         return VrpResponse {
             meta: request.meta.clone(),
@@ -16,6 +17,8 @@ pub fn solve(request: &VrpRequest) -> VrpResponse {
             routes: Vec::new(),
             unassigned_node_uuids: Vec::new(),
             warnings: Vec::new(),
+            status: SolverStatus::Optimal as i32,
+            matrix_size,
         };
     }
 
@@ -29,6 +32,8 @@ pub fn solve(request: &VrpRequest) -> VrpResponse {
             routes: Vec::new(),
             unassigned_node_uuids: request.drop_off_node_uuids.clone(),
             warnings: vec!["no vehicles provided for route calculation".to_string()],
+            status: SolverStatus::ModelInvalid as i32,
+            matrix_size,
         };
     }
 
@@ -200,6 +205,7 @@ pub fn solve(request: &VrpRequest) -> VrpResponse {
         .collect();
 
     if timed_out && !request.return_best_effort {
+        let assigned_count = assigned.iter().filter(|is_assigned| **is_assigned).count();
         return VrpResponse {
             meta: request.meta.clone(),
             feasible: false,
@@ -208,8 +214,21 @@ pub fn solve(request: &VrpRequest) -> VrpResponse {
             routes: Vec::new(),
             unassigned_node_uuids: request.drop_off_node_uuids.clone(),
             warnings,
+            status: if assigned_count > 0 {
+                SolverStatus::Feasible as i32
+            } else {
+                SolverStatus::Infeasible as i32
+            },
+            matrix_size,
         };
     }
+
+    let assigned_count = assigned.iter().filter(|is_assigned| **is_assigned).count();
+    let status = if timed_out || assigned_count > 0 {
+        SolverStatus::Feasible as i32
+    } else {
+        SolverStatus::Infeasible as i32
+    };
 
     VrpResponse {
         meta: request.meta.clone(),
@@ -219,6 +238,8 @@ pub fn solve(request: &VrpRequest) -> VrpResponse {
         routes,
         unassigned_node_uuids,
         warnings,
+        status,
+        matrix_size,
     }
 }
 

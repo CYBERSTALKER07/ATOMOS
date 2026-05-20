@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import type { DispatchJobProjection, DispatchProjectionStop } from '@pegasus/types';
 import { apiFetch, apiFetchNoQueue, useToken } from '@/lib/auth';
+import { getDispatchJobProjection } from '@/lib/api/dispatch-jobs';
 import { useSyncHub } from '@/lib/useSyncHub';
 import EmptyState from '@/components/EmptyState';
 import { Skeleton } from '@/components/Skeleton';
@@ -52,6 +54,7 @@ interface LoadStep {
 }
 
 interface TruckManifest {
+  manifest_id?: string;
   route_id: string;
   driver_id: string;
   driver_name: string;
@@ -101,12 +104,87 @@ interface WaitingRoomResponse {
   orders: { order_id: string; retailer_name: string; amount: number; created_at: string }[];
 }
 
+interface SupplierOptimizationSolvedEvent {
+	type: string;
+	job_id?: string;
+}
+
+const dispatchProjectionPollLimit = 40;
+const dispatchProjectionPollDelayMs = 750;
+
 function formatAmount(amount: number): string {
   return new Intl.NumberFormat('en-US').format(amount);
 }
 
 function shortId(id: string): string {
   return id.length > 12 ? id.slice(0, 12) + '…' : id;
+}
+
+function buildGeoZone(stops: DispatchProjectionStop[]): string {
+  if (stops.length === 0) {
+    return '';
+  }
+  const centroid = stops.reduce(
+    (acc, stop) => ({ lat: acc.lat + stop.lat, lng: acc.lng + stop.lng }),
+    { lat: 0, lng: 0 },
+  );
+  return `${(centroid.lat / stops.length).toFixed(3)},${(centroid.lng / stops.length).toFixed(3)}`;
+}
+
+function buildLoadingManifest(stops: DispatchProjectionStop[]): LoadStep[] {
+  const totalStops = stops.length;
+  const loadingManifest = new Array<LoadStep>(totalStops);
+  stops.forEach((stop, index) => {
+    const loadSequence = totalStops - index;
+    let instruction = `Load position ${loadSequence} of ${totalStops}`;
+    if (loadSequence === 1) {
+      instruction = 'Load first — Back of Truck';
+    } else if (loadSequence === totalStops) {
+      instruction = 'Load last — By the Doors';
+    }
+    loadingManifest[loadSequence - 1] = {
+      load_sequence: loadSequence,
+      order_id: stop.order_id ?? stop.node_uuid,
+      retailer_name: stop.retailer_name ?? stop.order_id ?? stop.node_uuid,
+      volume_vu: stop.demand_vu,
+      lat: stop.lat,
+      lng: stop.lng,
+      instruction,
+    };
+  });
+  return loadingManifest;
+}
+
+function projectionToDispatchResult(projection: DispatchJobProjection): DispatchResult {
+  return {
+    snapshot_timestamp: projection.updated_at || projection.completed_at || projection.requested_at,
+    manifests: projection.routes.map((route) => ({
+      manifest_id: route.manifest_id,
+      route_id: route.route_id ?? route.driver_uuid,
+      driver_id: route.driver_uuid,
+      driver_name: route.driver_name ?? route.driver_uuid,
+      vehicle_type: route.vehicle_type ?? '',
+      vehicle_class: route.vehicle_class ?? '',
+      max_volume_vu: route.capacity_vu,
+      used_volume_vu: route.load_vu,
+      orders: route.stops.map((stop) => ({
+        order_id: stop.order_id ?? stop.node_uuid,
+        retailer_id: stop.retailer_id ?? '',
+        retailer_name: stop.retailer_name ?? stop.order_id ?? stop.node_uuid,
+        amount: stop.amount ?? 0,
+        volume_vu: stop.demand_vu,
+        lat: stop.lat,
+        lng: stop.lng,
+      })),
+      loading_manifest: buildLoadingManifest(route.stops),
+      geo_zone: buildGeoZone(route.stops),
+    })),
+    orphans: projection.unassigned.map((stop) => ({
+      order_id: stop.order_id ?? stop.node_uuid,
+      retailer_name: stop.retailer_name ?? stop.order_id ?? stop.node_uuid,
+      reason: 'UNASSIGNED_BY_OPTIMIZER',
+    })),
+  };
 }
 
 /* ─── Main Page ───────────────────────────────────────────── */
@@ -119,6 +197,9 @@ export default function DispatchPage() {
   const [dispatching, setDispatching] = useState(false);
   const [result, setResult] = useState<DispatchResult | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [queuedJobId, setQueuedJobId] = useState<string | null>(null);
+  const [projectionStatus, setProjectionStatus] = useState<string | null>(null);
+  const projectionPollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Waiting room state
   const [waitingRoom, setWaitingRoom] = useState<WaitingRoomResponse | null>(null);
@@ -147,17 +228,107 @@ export default function DispatchPage() {
   // Admin overrides: driver_id → order_ids
   const [orderAssignments, setOrderAssignments] = useState<Map<string, Set<string>>>(new Map());
 
+  const clearProjectionPoll = useCallback(() => {
+  if (projectionPollTimerRef.current !== null) {
+    clearTimeout(projectionPollTimerRef.current);
+    projectionPollTimerRef.current = null;
+  }
+  }, []);
+
+  const hydrateDispatchJob = useCallback(async (jobId: string, attempt = 0) => {
+  clearProjectionPoll();
+  try {
+    const projection = await getDispatchJobProjection(jobId);
+    if (projection.ready) {
+      setResult(projectionToDispatchResult(projection));
+      setExpandedManifest(null);
+    }
+    setProjectionStatus(projection.status);
+
+    if (projection.status === 'APPLIED') {
+      setQueuedJobId((current) => (current === jobId ? null : current));
+      toast(
+        `Queued dispatch ready: ${projection.routes.length} truck(s), ${projection.unassigned.length} orphan(s)`,
+        projection.unassigned.length > 0 ? 'warning' : 'success',
+      );
+      return;
+    }
+    if (projection.status === 'FAILED' || projection.failure_code || projection.failure_message) {
+      setQueuedJobId((current) => (current === jobId ? null : current));
+      toast(projection.failure_message || 'Queued auto-dispatch failed during apply', 'error');
+      return;
+    }
+    if (attempt === 0) {
+      toast('Optimizer solved — applying manifests…', 'success');
+    }
+    if (attempt < dispatchProjectionPollLimit) {
+      projectionPollTimerRef.current = setTimeout(() => {
+        void hydrateDispatchJob(jobId, attempt + 1);
+      }, dispatchProjectionPollDelayMs);
+      return;
+    }
+    toast('Dispatch preview is ready, but manifest apply is still finishing', 'warning');
+  } catch (error) {
+    if (attempt < dispatchProjectionPollLimit) {
+      projectionPollTimerRef.current = setTimeout(() => {
+        void hydrateDispatchJob(jobId, attempt + 1);
+      }, dispatchProjectionPollDelayMs);
+      return;
+    }
+    setQueuedJobId((current) => (current === jobId ? null : current));
+    setProjectionStatus(null);
+    toast((error as Error).message || 'Failed to load queued dispatch result', 'error');
+  }
+  }, [clearProjectionPoll, toast]);
+
+  useEffect(() => {
+  return () => {
+    clearProjectionPoll();
+  };
+  }, [clearProjectionPoll]);
+
+  useEffect(() => {
+  const onSupplierLiveEvent = (event: Event) => {
+    const frame = (event as CustomEvent<SupplierOptimizationSolvedEvent>).detail;
+    if (!frame || frame.type !== 'OPTIMIZATION_SOLVED' || !frame.job_id) {
+      return;
+    }
+    if (!queuedJobId || frame.job_id !== queuedJobId) {
+      return;
+    }
+    void hydrateDispatchJob(frame.job_id);
+  };
+
+  window.addEventListener('supplier-live-event', onSupplierLiveEvent);
+  return () => {
+    window.removeEventListener('supplier-live-event', onSupplierLiveEvent);
+  };
+  }, [hydrateDispatchJob, queuedJobId]);
+
   /* ─── Waiting Room Polling ──────────────────────────────── */
 
   useSyncHub(
     "POLL",
     "data",
     async (signal: AbortSignal) => {
-      if (!token) return;
+      if (!token) {
+        setWaitingRoom(null);
+        setWaitingLoading(false);
+        return;
+      }
+
+      const snapshotTimestamp = result?.snapshot_timestamp;
+      if (!snapshotTimestamp) {
+        setWaitingRoom(null);
+        setWaitingLoading(false);
+        return;
+      }
+
       try {
-        const ts = result?.snapshot_timestamp || '';
-        const q = ts ? `?after=${encodeURIComponent(ts)}` : '';
-        const res = await apiFetch(`/v1/supplier/manifests/waiting-room${q}`, { signal });
+        const res = await apiFetch(
+          `/v1/supplier/manifests/waiting-room?after=${encodeURIComponent(snapshotTimestamp)}`,
+          { signal },
+        );
         if (res.ok) {
           setWaitingRoom(await res.json());
         }
@@ -175,6 +346,7 @@ export default function DispatchPage() {
 
   const runAutoDispatch = useCallback(async () => {
     if (!token) return;
+	clearProjectionPoll();
     setDispatching(true);
     try {
       const body: Record<string, unknown> = {};
@@ -191,19 +363,27 @@ export default function DispatchPage() {
       });
       const responseBody = await res.json().catch(() => ({} as {
         queued?: boolean;
+        job_id?: string;
+        status?: string;
         error?: string;
         message?: string;
         manifests?: TruckManifest[];
         orphans?: OrphanOrder[];
       }));
       if (responseBody.queued) {
-        toast('Auto-dispatch queued — results will be available after reconnect', 'success');
+		setQueuedJobId(responseBody.job_id ?? null);
+		setProjectionStatus(responseBody.status ?? 'QUEUED');
+		setResult(null);
+		setExpandedManifest(null);
+		toast('Auto-dispatch queued — waiting for optimizer result', 'success');
         return;
       }
       if (!res.ok) {
         throw new Error(responseBody.error || responseBody.message || 'Auto-dispatch failed');
       }
       const data = responseBody as DispatchResult;
+	  setQueuedJobId(null);
+	  setProjectionStatus(null);
       setResult(data);
       setExpandedManifest(null);
       toast(
@@ -215,7 +395,7 @@ export default function DispatchPage() {
     } finally {
       setDispatching(false);
     }
-  }, [token, excludedTrucks, toast]);
+  }, [token, excludedTrucks, toast, clearProjectionPoll]);
 
   /* ─── Confirm & Fleet-Dispatch ──────────────────────────── */
 
@@ -245,14 +425,20 @@ export default function DispatchPage() {
     setConfirming(false);
     if (fail === 0 && queued === 0) {
       toast(`Dispatched ${ok} truck(s) successfully`, 'success');
+	  clearProjectionPoll();
+	  setQueuedJobId(null);
+	  setProjectionStatus(null);
       setResult(null);
     } else if (fail === 0) {
       toast(`Dispatched ${ok} truck(s), queued ${queued} for replay`, 'success');
+	  clearProjectionPoll();
+	  setQueuedJobId(null);
+	  setProjectionStatus(null);
       setResult(null);
     } else {
       toast(`${ok} succeeded, ${queued} queued, ${fail} failed — check fleet status`, 'error');
     }
-  }, [token, result, toast]);
+  }, [token, result, toast, clearProjectionPoll]);
 
   /* ─── Re-Dispatch Handlers ──────────────────────────────── */
 
@@ -529,12 +715,12 @@ export default function DispatchPage() {
           {mode === 'auto' ? (
             <Button
               variant="primary"
-              isDisabled={dispatching}
+			  isDisabled={dispatching || queuedJobId !== null}
               onPress={runAutoDispatch}
               className="md-btn md-btn-filled md-typescale-label-large px-5 py-2.5"
             >
               <Icon name="dispatch" size={18} className="mr-1.5" />
-              {dispatching ? 'Dispatching…' : 'Run Auto-Dispatch'}
+			  {dispatching ? 'Dispatching…' : queuedJobId ? 'Awaiting Apply…' : 'Run Auto-Dispatch'}
             </Button>
           ) : (
             <Button
@@ -649,11 +835,11 @@ export default function DispatchPage() {
             </div>
             <Button
               variant="primary"
-              isDisabled={confirming}
+			  isDisabled={confirming || (projectionStatus !== null && projectionStatus !== 'APPLIED')}
               onPress={confirmDispatch}
               className="md-btn md-btn-filled md-typescale-label-large px-5 py-2.5"
             >
-              {confirming ? 'Dispatching…' : 'Confirm & Dispatch All'}
+			  {confirming ? 'Dispatching…' : projectionStatus && projectionStatus !== 'APPLIED' ? 'Applying manifests…' : 'Confirm & Dispatch All'}
             </Button>
           </div>
 

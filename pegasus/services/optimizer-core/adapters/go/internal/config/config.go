@@ -13,6 +13,7 @@ const (
 	defaultKafkaTopic        = "pegasus-optimizer-jobs"
 	defaultKafkaGroupID      = "pegasus-optimizer-core-worker"
 	defaultOptimizerCoreAddr = "localhost:50055"
+	defaultMetricsAddr       = ":8082"
 	defaultMaxAttempts       = 3
 	defaultRetryBaseMS       = 200
 )
@@ -23,7 +24,9 @@ type Config struct {
 	KafkaGroupID string
 
 	SpannerDatabase     string
+	RedisAddress        string
 	OptimizerCoreAddr   string
+	MetricsAddr         string
 	SolverMaxAttempts   int
 	SolverRetryBaseTime time.Duration
 }
@@ -39,8 +42,10 @@ func LoadFromEnv() (Config, error) {
 	if strings.TrimSpace(cfg.SpannerDatabase) == "" {
 		return Config{}, fmt.Errorf("SPANNER_DATABASE is required")
 	}
+	cfg.RedisAddress = strings.TrimSpace(os.Getenv("REDIS_ADDRESS"))
 
 	cfg.OptimizerCoreAddr = getEnv("OPTIMIZER_CORE_GRPC_ADDR", defaultOptimizerCoreAddr)
+	cfg.MetricsAddr = getEnv("OPTIMIZER_WORKER_METRICS_ADDR", defaultMetricsAddr)
 	cfg.SolverMaxAttempts = getEnvInt("SOLVER_MAX_ATTEMPTS", defaultMaxAttempts)
 	cfg.SolverRetryBaseTime = time.Duration(getEnvInt("SOLVER_RETRY_BASE_MS", defaultRetryBaseMS)) * time.Millisecond
 

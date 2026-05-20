@@ -20,6 +20,8 @@ class OptimizerCoreService(pb2_grpc.OptimizerCoreServiceServicer):
             context.set_details(str(exc))
             response = pb2.VRPResponse(feasible=False, timed_out=False)
             response.meta.CopyFrom(request.meta)
+            response.status = pb2.MODEL_INVALID
+            response.matrix_size = len(request.drop_off_node_uuids) + 1
             response.warnings.append(f"internal error: {exc}")
             return response
 
@@ -36,6 +38,8 @@ class OptimizerCoreService(pb2_grpc.OptimizerCoreServiceServicer):
             context.set_details(str(exc))
             response = pb2.CPSATResponse(feasible=False, timed_out=False)
             response.meta.CopyFrom(request.meta)
+            response.status = pb2.MODEL_INVALID
+            response.matrix_size = len(request.manifest_requirements)
             response.warnings.append(f"internal error: {exc}")
             return response
 

@@ -1,7 +1,7 @@
 /**
  * GENERATED FILE - DO NOT EDIT MANUALLY.
- * Source: kafka/events.go
- * Generated at: 2026-05-14T15:49:35Z
+ * Source: ./apps/backend-go/kafka/events.go
+ * Generated at: 2026-05-20T00:00:36Z
  */
 
 export enum WSEventType {
@@ -21,6 +21,7 @@ export enum WSEventType {
   COMMAND_SETTLED = 'COMMAND_SETTLED',
   CREDIT_DELIVERY_MARKED = 'CREDIT_DELIVERY_MARKED',
   CREDIT_DELIVERY_RESOLVED = 'CREDIT_DELIVERY_RESOLVED',
+  DELIVERY_DELTA_REFUNDED = 'DELIVERY_DELTA_REFUNDED',
   DELIVERY_DISPUTED = 'DELIVERY_DISPUTED',
   DELIVERY_SESSION_UPDATED = 'DELIVERY_SESSION_UPDATED',
   DEMAND_FORECAST_READY = 'DEMAND_FORECAST_READY',
@@ -73,6 +74,8 @@ export enum WSEventType {
   NEGOTIATION_RESOLVED = 'NEGOTIATION_RESOLVED',
   NETWORK_MODE_CHANGED = 'NETWORK_MODE_CHANGED',
   OFFLOAD_CONFIRMED = 'OFFLOAD_CONFIRMED',
+  OPTIMIZATION_JOB_QUEUED = 'OPTIMIZATION_JOB_QUEUED',
+  OPTIMIZATION_SOLVED = 'OPTIMIZATION_SOLVED',
   ORDER_AMENDED = 'ORDER_AMENDED',
   ORDER_ASSIGNED = 'ORDER_ASSIGNED',
   ORDER_CANCELLED = 'ORDER_CANCELLED',
@@ -121,12 +124,11 @@ export enum WSEventType {
   REPLENISHMENT_TRANSFER_CREATED = 'REPLENISHMENT_TRANSFER_CREATED',
   RETAILER_PRICE_OVERRIDE = 'RETAILER_PRICE_OVERRIDE',
   RETAILER_REGISTERED = 'RETAILER_REGISTERED',
-  SUPPLIER_REGISTERED = 'SUPPLIER_REGISTERED',
-  SUPPLIER_CONFIGURED = 'SUPPLIER_CONFIGURED',
   RETURN_RESOLVED = 'RETURN_RESOLVED',
   ROUTE_CREATED = 'ROUTE_CREATED',
   ROUTE_FINALIZED = 'ROUTE_FINALIZED',
   SETTLEMENT_REQUIRED = 'SETTLEMENT_REQUIRED',
+  SETTLEMENT_REVISED = 'SETTLEMENT_REVISED',
   SHOP_CLOSED = 'SHOP_CLOSED',
   SHOP_CLOSED_ALERT = 'SHOP_CLOSED_ALERT',
   SHOP_CLOSED_ESCALATED = 'SHOP_CLOSED_ESCALATED',
@@ -136,6 +138,8 @@ export enum WSEventType {
   SPLIT_PAYMENT_CREATED = 'SPLIT_PAYMENT_CREATED',
   STOCK_BACKORDERED = 'STOCK_BACKORDERED',
   STOCK_THRESHOLD_BREACH = 'STOCK_THRESHOLD_BREACH',
+  SUPPLIER_CONFIGURED = 'SUPPLIER_CONFIGURED',
+  SUPPLIER_REGISTERED = 'SUPPLIER_REGISTERED',
   SUPPLY_LANE_TRANSIT_UPDATED = 'SUPPLY_LANE_TRANSIT_UPDATED',
   SUPPLY_REQUEST_ACKNOWLEDGED = 'SUPPLY_REQUEST_ACKNOWLEDGED',
   SUPPLY_REQUEST_CANCELLED = 'SUPPLY_REQUEST_CANCELLED',
@@ -143,6 +147,7 @@ export enum WSEventType {
   SUPPLY_REQUEST_READY = 'SUPPLY_REQUEST_READY',
   SUPPLY_REQUEST_SUBMITTED = 'SUPPLY_REQUEST_SUBMITTED',
   SUPPLY_REQUEST_UPDATE = 'SUPPLY_REQUEST_UPDATE',
+  SYSTEM_APP_OUTDATED = 'SYSTEM_APP_OUTDATED',
   SYSTEM_BROADCAST = 'SYSTEM_BROADCAST',
   TOKEN_REFRESH_NEEDED = 'TOKEN_REFRESH_NEEDED',
   TRANSFER_APPROVED = 'TRANSFER_APPROVED',
@@ -194,6 +199,23 @@ export interface CommandSettledPayload {
   timestamp: string;
 }
 
+export interface DeliveryDeltaRefundedPayload {
+  order_id: string;
+  session_id: string;
+  delivery_session_id: string;
+  refund_id: string;
+  original_amount: number;
+  adjusted_amount: number;
+  delta_amount: number;
+  currency: string;
+  gateway: string;
+  status: string;
+  provider_refund_id?: string;
+  supplier_id?: string;
+  retailer_id?: string;
+  timestamp: string;
+}
+
 export interface DeliveryDisputedPayload {
   session_id: string;
   order_id: string;
@@ -215,6 +237,10 @@ export interface DeliverySessionUpdatedPayload {
   adjusted_amount: number;
   fee_basis_points: number;
   fee_amount: number;
+  net_payout_amount?: number;
+  fee_policy_version?: string;
+  selected_tier_key?: string;
+  fee_cap_applied?: boolean;
   currency: string;
   timestamp: string;
 }
@@ -463,6 +489,18 @@ export interface OffloadConfirmedPayload {
   timestamp: string;
 }
 
+export interface OptimizationSolvedPayload {
+  job_id: string;
+  trace_id: string;
+  supplier_id: string;
+  solver_type: string;
+  status: string;
+  timed_out: boolean;
+  matrix_size: number;
+  produced_at: string;
+  warnings?: string[];
+}
+
 export interface OrderAssignedPayload {
   order_id: string;
   route_id: string;
@@ -595,8 +633,8 @@ export interface OrderStatusChangedPayload {
 
 export interface OrderValidationFailedPayload {
   order_id: string;
-  invoice_id?: string;
-  retailer_id?: string;
+  invoice_id: string;
+  retailer_id: string;
   reason: string;
   timestamp: string;
 }
@@ -751,22 +789,6 @@ export interface RetailerRegisteredPayload {
   timestamp: string;
 }
 
-export interface SupplierRegisteredPayload {
-  supplier_id: string;
-  company_name: string;
-  phone_number: string;
-  email?: string;
-  region_code: string;
-  timestamp: string;
-}
-
-export interface SupplierConfiguredPayload {
-  supplier_id: string;
-  tax_id?: string;
-  operating_categories?: string[];
-  timestamp: string;
-}
-
 export interface RouteCreatedPayload {
   route_id: string;
   manifest_id?: string;
@@ -799,6 +821,29 @@ export interface SettlementRequiredPayload {
   state: string;
   amount: number;
   original_amount: number;
+  currency: string;
+  timestamp: string;
+}
+
+export interface SettlementRevisedPayload {
+  invoice_id: string;
+  order_id: string;
+  supplier_id: string;
+  warehouse_id?: string;
+  session_id?: string;
+  original_slice_id: string;
+  revision_slice_id: string;
+  revision_reason: string;
+  gross_amount: number;
+  fee_amount: number;
+  net_payout_amount: number;
+  fee_basis_points: number;
+  fee_cap_applied?: boolean;
+  fee_policy_version: string;
+  selected_tier_key?: string;
+  settlement_target?: string;
+  payout_owner_type?: string;
+  payout_owner_id?: string;
   currency: string;
   timestamp: string;
 }
@@ -858,6 +903,22 @@ export interface StockThresholdBreachPayload {
   product_id: string;
   current_stock: number;
   safety_level: number;
+  timestamp: string;
+}
+
+export interface SupplierConfiguredPayload {
+  supplier_id: string;
+  tax_id?: string;
+  operating_categories?: string[];
+  timestamp: string;
+}
+
+export interface SupplierRegisteredPayload {
+  supplier_id: string;
+  company_name: string;
+  phone_number: string;
+  email?: string;
+  region_code: string;
   timestamp: string;
 }
 
@@ -952,6 +1013,7 @@ export interface WSEventPayloadMap {
   'COMMAND_SETTLED': CommandSettledPayload;
   'CREDIT_DELIVERY_MARKED': UnknownEventPayload;
   'CREDIT_DELIVERY_RESOLVED': UnknownEventPayload;
+  'DELIVERY_DELTA_REFUNDED': DeliveryDeltaRefundedPayload;
   'DELIVERY_DISPUTED': DeliveryDisputedPayload;
   'DELIVERY_SESSION_UPDATED': DeliverySessionUpdatedPayload;
   'DEMAND_FORECAST_READY': DemandForecastReadyPayload;
@@ -1004,6 +1066,8 @@ export interface WSEventPayloadMap {
   'NEGOTIATION_RESOLVED': NegotiationResolvedPayload;
   'NETWORK_MODE_CHANGED': NetworkModeChangedPayload;
   'OFFLOAD_CONFIRMED': OffloadConfirmedPayload;
+  'OPTIMIZATION_JOB_QUEUED': UnknownEventPayload;
+  'OPTIMIZATION_SOLVED': OptimizationSolvedPayload;
   'ORDER_AMENDED': UnknownEventPayload;
   'ORDER_ASSIGNED': OrderAssignedPayload;
   'ORDER_CANCELLED': UnknownEventPayload;
@@ -1033,6 +1097,7 @@ export interface WSEventPayloadMap {
   'PAYMENT_CLEARED': PaymentClearedPayload;
   'PAYMENT_EXPIRED': UnknownEventPayload;
   'PAYMENT_FAILED': PaymentFailedPayload;
+  'PAYMENT_GATEWAY_DEGRADED': PaymentGatewayDegradedPayload;
   'PAYMENT_INTENT_CREATED': UnknownEventPayload;
   'PAYMENT_REFUNDED': UnknownEventPayload;
   'PAYMENT_REQUIRED': UnknownEventPayload;
@@ -1051,12 +1116,11 @@ export interface WSEventPayloadMap {
   'REPLENISHMENT_TRANSFER_CREATED': UnknownEventPayload;
   'RETAILER_PRICE_OVERRIDE': RetailerPriceOverridePayload;
   'RETAILER_REGISTERED': RetailerRegisteredPayload;
-  'SUPPLIER_REGISTERED': SupplierRegisteredPayload;
-  'SUPPLIER_CONFIGURED': SupplierConfiguredPayload;
   'RETURN_RESOLVED': UnknownEventPayload;
   'ROUTE_CREATED': RouteCreatedPayload;
   'ROUTE_FINALIZED': RouteFinalizedPayload;
   'SETTLEMENT_REQUIRED': SettlementRequiredPayload;
+  'SETTLEMENT_REVISED': SettlementRevisedPayload;
   'SHOP_CLOSED': ShopClosedPayload;
   'SHOP_CLOSED_ALERT': UnknownEventPayload;
   'SHOP_CLOSED_ESCALATED': ShopClosedEscalatedPayload;
@@ -1066,6 +1130,8 @@ export interface WSEventPayloadMap {
   'SPLIT_PAYMENT_CREATED': UnknownEventPayload;
   'STOCK_BACKORDERED': StockBackorderedPayload;
   'STOCK_THRESHOLD_BREACH': StockThresholdBreachPayload;
+  'SUPPLIER_CONFIGURED': SupplierConfiguredPayload;
+  'SUPPLIER_REGISTERED': SupplierRegisteredPayload;
   'SUPPLY_LANE_TRANSIT_UPDATED': SupplyLaneTransitUpdatedPayload;
   'SUPPLY_REQUEST_ACKNOWLEDGED': UnknownEventPayload;
   'SUPPLY_REQUEST_CANCELLED': UnknownEventPayload;
@@ -1073,6 +1139,7 @@ export interface WSEventPayloadMap {
   'SUPPLY_REQUEST_READY': UnknownEventPayload;
   'SUPPLY_REQUEST_SUBMITTED': UnknownEventPayload;
   'SUPPLY_REQUEST_UPDATE': UnknownEventPayload;
+  'SYSTEM_APP_OUTDATED': UnknownEventPayload;
   'SYSTEM_BROADCAST': UnknownEventPayload;
   'TOKEN_REFRESH_NEEDED': UnknownEventPayload;
   'TRANSFER_APPROVED': UnknownEventPayload;
@@ -1106,6 +1173,7 @@ export type CommandReceivedWSEvent = WSEventMessage<'COMMAND_RECEIVED'>;
 export type CommandSettledWSEvent = WSEventMessage<'COMMAND_SETTLED'>;
 export type CreditDeliveryMarkedWSEvent = WSEventMessage<'CREDIT_DELIVERY_MARKED'>;
 export type CreditDeliveryResolvedWSEvent = WSEventMessage<'CREDIT_DELIVERY_RESOLVED'>;
+export type DeliveryDeltaRefundedWSEvent = WSEventMessage<'DELIVERY_DELTA_REFUNDED'>;
 export type DeliveryDisputedWSEvent = WSEventMessage<'DELIVERY_DISPUTED'>;
 export type DeliverySessionUpdatedWSEvent = WSEventMessage<'DELIVERY_SESSION_UPDATED'>;
 export type DemandForecastReadyWSEvent = WSEventMessage<'DEMAND_FORECAST_READY'>;
@@ -1158,6 +1226,8 @@ export type NegotiationProposedWSEvent = WSEventMessage<'NEGOTIATION_PROPOSED'>;
 export type NegotiationResolvedWSEvent = WSEventMessage<'NEGOTIATION_RESOLVED'>;
 export type NetworkModeChangedWSEvent = WSEventMessage<'NETWORK_MODE_CHANGED'>;
 export type OffloadConfirmedWSEvent = WSEventMessage<'OFFLOAD_CONFIRMED'>;
+export type OptimizationJobQueuedWSEvent = WSEventMessage<'OPTIMIZATION_JOB_QUEUED'>;
+export type OptimizationSolvedWSEvent = WSEventMessage<'OPTIMIZATION_SOLVED'>;
 export type OrderAmendedWSEvent = WSEventMessage<'ORDER_AMENDED'>;
 export type OrderAssignedWSEvent = WSEventMessage<'ORDER_ASSIGNED'>;
 export type OrderCancelledWSEvent = WSEventMessage<'ORDER_CANCELLED'>;
@@ -1187,6 +1257,7 @@ export type PaymentBypassIssuedWSEvent = WSEventMessage<'PAYMENT_BYPASS_ISSUED'>
 export type PaymentClearedWSEvent = WSEventMessage<'PAYMENT_CLEARED'>;
 export type PaymentExpiredWSEvent = WSEventMessage<'PAYMENT_EXPIRED'>;
 export type PaymentFailedWSEvent = WSEventMessage<'PAYMENT_FAILED'>;
+export type PaymentGatewayDegradedWSEvent = WSEventMessage<'PAYMENT_GATEWAY_DEGRADED'>;
 export type PaymentIntentCreatedWSEvent = WSEventMessage<'PAYMENT_INTENT_CREATED'>;
 export type PaymentRefundedWSEvent = WSEventMessage<'PAYMENT_REFUNDED'>;
 export type PaymentRequiredWSEvent = WSEventMessage<'PAYMENT_REQUIRED'>;
@@ -1205,12 +1276,11 @@ export type ReplenishmentLockReleasedWSEvent = WSEventMessage<'REPLENISHMENT_LOC
 export type ReplenishmentTransferCreatedWSEvent = WSEventMessage<'REPLENISHMENT_TRANSFER_CREATED'>;
 export type RetailerPriceOverrideWSEvent = WSEventMessage<'RETAILER_PRICE_OVERRIDE'>;
 export type RetailerRegisteredWSEvent = WSEventMessage<'RETAILER_REGISTERED'>;
-export type SupplierRegisteredWSEvent = WSEventMessage<'SUPPLIER_REGISTERED'>;
-export type SupplierConfiguredWSEvent = WSEventMessage<'SUPPLIER_CONFIGURED'>;
 export type ReturnResolvedWSEvent = WSEventMessage<'RETURN_RESOLVED'>;
 export type RouteCreatedWSEvent = WSEventMessage<'ROUTE_CREATED'>;
 export type RouteFinalizedWSEvent = WSEventMessage<'ROUTE_FINALIZED'>;
 export type SettlementRequiredWSEvent = WSEventMessage<'SETTLEMENT_REQUIRED'>;
+export type SettlementRevisedWSEvent = WSEventMessage<'SETTLEMENT_REVISED'>;
 export type ShopClosedWSEvent = WSEventMessage<'SHOP_CLOSED'>;
 export type ShopClosedAlertWSEvent = WSEventMessage<'SHOP_CLOSED_ALERT'>;
 export type ShopClosedEscalatedWSEvent = WSEventMessage<'SHOP_CLOSED_ESCALATED'>;
@@ -1220,6 +1290,8 @@ export type SmsQuickCompleteWSEvent = WSEventMessage<'SMS_QUICK_COMPLETE'>;
 export type SplitPaymentCreatedWSEvent = WSEventMessage<'SPLIT_PAYMENT_CREATED'>;
 export type StockBackorderedWSEvent = WSEventMessage<'STOCK_BACKORDERED'>;
 export type StockThresholdBreachWSEvent = WSEventMessage<'STOCK_THRESHOLD_BREACH'>;
+export type SupplierConfiguredWSEvent = WSEventMessage<'SUPPLIER_CONFIGURED'>;
+export type SupplierRegisteredWSEvent = WSEventMessage<'SUPPLIER_REGISTERED'>;
 export type SupplyLaneTransitUpdatedWSEvent = WSEventMessage<'SUPPLY_LANE_TRANSIT_UPDATED'>;
 export type SupplyRequestAcknowledgedWSEvent = WSEventMessage<'SUPPLY_REQUEST_ACKNOWLEDGED'>;
 export type SupplyRequestCancelledWSEvent = WSEventMessage<'SUPPLY_REQUEST_CANCELLED'>;
@@ -1227,6 +1299,7 @@ export type SupplyRequestFulfilledWSEvent = WSEventMessage<'SUPPLY_REQUEST_FULFI
 export type SupplyRequestReadyWSEvent = WSEventMessage<'SUPPLY_REQUEST_READY'>;
 export type SupplyRequestSubmittedWSEvent = WSEventMessage<'SUPPLY_REQUEST_SUBMITTED'>;
 export type SupplyRequestUpdateWSEvent = WSEventMessage<'SUPPLY_REQUEST_UPDATE'>;
+export type SystemAppOutdatedWSEvent = WSEventMessage<'SYSTEM_APP_OUTDATED'>;
 export type SystemBroadcastWSEvent = WSEventMessage<'SYSTEM_BROADCAST'>;
 export type TokenRefreshNeededWSEvent = WSEventMessage<'TOKEN_REFRESH_NEEDED'>;
 export type TransferApprovedWSEvent = WSEventMessage<'TRANSFER_APPROVED'>;

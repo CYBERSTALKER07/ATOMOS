@@ -12,16 +12,19 @@ MAX_CPSAT_TIME_LIMIT_MS = 300_000
 def solve_cpsat(request: pb2.CPSATRequest) -> pb2.CPSATResponse:
     response = pb2.CPSATResponse()
     response.meta.CopyFrom(request.meta)
+    response.matrix_size = len(request.manifest_requirements)
 
     warnings: list[str] = []
 
     if len(request.factory_slots) == 0:
         response.feasible = False
+        response.status = pb2.MODEL_INVALID
         response.warnings.append("no factory slots supplied")
         return response
 
     if len(request.manifest_requirements) == 0:
         response.feasible = True
+        response.status = pb2.OPTIMAL
         return response
 
     try:
@@ -29,6 +32,7 @@ def solve_cpsat(request: pb2.CPSATRequest) -> pb2.CPSATResponse:
         manifest_map = BidirectionalIndexMap(req.manifest_id for req in request.manifest_requirements)
     except ValueError as exc:
         response.feasible = False
+        response.status = pb2.MODEL_INVALID
         response.warnings.append(str(exc))
         return response
 
@@ -94,6 +98,12 @@ def solve_cpsat(request: pb2.CPSATRequest) -> pb2.CPSATResponse:
 
     response.feasible = status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
     response.timed_out = status == cp_model.UNKNOWN
+    response.status = {
+        cp_model.OPTIMAL: pb2.OPTIMAL,
+        cp_model.FEASIBLE: pb2.FEASIBLE,
+        cp_model.INFEASIBLE: pb2.INFEASIBLE,
+        cp_model.MODEL_INVALID: pb2.MODEL_INVALID,
+    }.get(status, pb2.FEASIBLE if response.timed_out else pb2.MODEL_INVALID)
 
     if response.feasible:
         response.objective_score_scaled = int(solver.ObjectiveValue())

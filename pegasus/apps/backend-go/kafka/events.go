@@ -85,6 +85,8 @@ const (
 	// Dispatch Pipeline Events
 	EventRouteCreated                = "ROUTE_CREATED"
 	EventOrderAssigned               = "ORDER_ASSIGNED"
+	EventOptimizationQueued          = "OPTIMIZATION_JOB_QUEUED"
+	EventOptimizationSolved          = "OPTIMIZATION_SOLVED"
 	EventFactoryManifestCreated      = "FACTORY_MANIFEST_CREATED"
 	EventDemandForecastReady         = "DEMAND_FORECAST_READY"
 	EventInventoryImportUploaded     = "INVENTORY_IMPORT_UPLOADED"
@@ -96,6 +98,7 @@ const (
 	// Pegasus topic names.
 	TopicFreezeLocks           = "pegasus-freeze-locks"
 	TopicMain                  = "pegasus-logistics-events"
+	TopicOptimizerJobs         = "pegasus-optimizer-jobs"
 	TopicDemandForecast        = "pegasus-demand-forecast"
 	TopicDriverSync            = "pegasus-driver-sync-events"
 	TopicTelemetryRaw          = "pegasus-telemetry-raw"
@@ -301,6 +304,21 @@ type InventoryImportStatusUpdateEvent struct {
 	Status            string    `json:"status"`
 	SuggestedMappings int       `json:"suggested_mappings"`
 	Timestamp         time.Time `json:"timestamp"`
+}
+
+// OptimizationSolvedEvent is the supplier-facing realtime subset of the
+// optimizer worker's terminal payload. Supplier clients use the job id and
+// solver summary to refresh projection state when a queued dispatch completes.
+type OptimizationSolvedEvent struct {
+	JobID      string   `json:"job_id"`
+	TraceID    string   `json:"trace_id"`
+	SupplierID string   `json:"supplier_id"`
+	SolverType string   `json:"solver_type"`
+	Status     string   `json:"status"`
+	TimedOut   bool     `json:"timed_out"`
+	MatrixSize int32    `json:"matrix_size"`
+	ProducedAt string   `json:"produced_at"`
+	Warnings   []string `json:"warnings,omitempty"`
 }
 
 // DriverAvailabilityChangedEvent is emitted when a driver goes online or offline.

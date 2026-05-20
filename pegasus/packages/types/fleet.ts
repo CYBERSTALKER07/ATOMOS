@@ -30,6 +30,10 @@ export interface AutoDispatchRequest {
 }
 
 export interface AutoDispatchResult {
+  queued?: boolean;
+  job_id?: string;
+  status?: string;
+  snapshot_timestamp?: string;
   manifests: TruckManifest[];
   orphans: OrphanOrder[];
 }
@@ -47,6 +51,75 @@ export interface TruckManifest {
 export interface OrphanOrder {
   order_id: string;
   reason: string;
+}
+
+export interface DispatchJobSummary {
+  job_id: string;
+  status: string;
+  solver_type: string;
+  requested_at: string;
+  updated_at: string;
+  ready: boolean;
+}
+
+export interface DispatchJobActiveListResponse {
+  jobs: DispatchJobSummary[];
+  source: string;
+  degraded: boolean;
+}
+
+export interface DispatchProjectionDepot {
+  node_uuid: string;
+  label?: string;
+  lat: number;
+  lng: number;
+}
+
+export interface DispatchProjectionStop {
+  sequence?: number;
+  node_uuid: string;
+  order_id?: string;
+  retailer_id?: string;
+  retailer_name?: string;
+  lat: number;
+  lng: number;
+  amount?: number;
+  demand_vu: number;
+  receiving_window_open?: string;
+  receiving_window_close?: string;
+}
+
+export interface DispatchProjectionRoute {
+  route_id?: string;
+  manifest_id?: string;
+  vehicle_uuid: string;
+  driver_uuid: string;
+  driver_name?: string;
+  vehicle_type?: string;
+  vehicle_class?: string;
+  capacity_vu: number;
+  load_vu: number;
+  route_cost_km: number;
+  stops: DispatchProjectionStop[];
+}
+
+export interface DispatchJobProjection {
+  job_id: string;
+  status: string;
+  solver_type: string;
+  ready: boolean;
+  requested_at: string;
+  updated_at: string;
+  completed_at?: string;
+  failure_code?: string;
+  failure_message?: string;
+  timed_out?: boolean;
+  matrix_size?: number;
+  objective_cost_km?: number;
+  warnings: string[];
+  depot?: DispatchProjectionDepot;
+  routes: DispatchProjectionRoute[];
+  unassigned: DispatchProjectionStop[];
 }
 
 // ─── Waiting Room ───────────────────────────────────────────────────────────

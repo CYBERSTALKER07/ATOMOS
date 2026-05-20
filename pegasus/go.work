@@ -7,4 +7,5 @@ use (
 	./packages/ai-bridge
 	./packages/config
 	./packages/optimizer-contract
+	./services/optimizer-core/adapters/go
 )

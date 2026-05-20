@@ -11,12 +11,15 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	kafkago "github.com/segmentio/kafka-go"
 	"google.golang.org/api/iterator"
 
 	"optimizercoreadapter/internal/config"
 	"optimizercoreadapter/internal/model"
 	"optimizercoreadapter/internal/optimizergrpc"
+
+	contract "optimizercontract"
 )
 
 const (
@@ -28,11 +31,12 @@ const (
 type Worker struct {
 	cfg          config.Config
 	reader       *kafkago.Reader
+	redis        redis.UniversalClient
 	spanner      *spanner.Client
 	solverClient optimizergrpc.SolverClient
 }
 
-func NewWorker(cfg config.Config, spannerClient *spanner.Client, solverClient optimizergrpc.SolverClient) *Worker {
+func NewWorker(cfg config.Config, spannerClient *spanner.Client, solverClient optimizergrpc.SolverClient, redisClient redis.UniversalClient) *Worker {
 	reader := kafkago.NewReader(kafkago.ReaderConfig{
 		Brokers:  cfg.KafkaBrokers,
 		Topic:    cfg.KafkaTopic,
@@ -44,6 +48,7 @@ func NewWorker(cfg config.Config, spannerClient *spanner.Client, solverClient op
 	return &Worker{
 		cfg:          cfg,
 		reader:       reader,
+		redis:        redisClient,
 		spanner:      spannerClient,
 		solverClient: solverClient,
 	}
@@ -83,7 +88,7 @@ func (w *Worker) Close() error {
 }
 
 func (w *Worker) handleMessage(ctx context.Context, msg kafkago.Message) error {
-	var job model.OptimizationJob
+	var job contract.OptimizationJobEnvelope
 	if err := json.Unmarshal(msg.Value, &job); err != nil {
 		return fmt.Errorf("decode optimization job: %w", err)
 	}
@@ -101,64 +106,60 @@ func (w *Worker) handleMessage(ctx context.Context, msg kafkago.Message) error {
 		return nil
 	}
 
-	switch job.SolverType {
-	case model.SolverTypeVRP:
-		var payload model.VRPPayload
-		if err := json.Unmarshal(job.Payload, &payload); err != nil {
-			return fmt.Errorf("decode vrp payload: %w", err)
-		}
+	if err := w.markJobRunning(ctx, job.JobID); err != nil {
+		return fmt.Errorf("mark optimization job %s running: %w", job.JobID, err)
+	}
 
-		req, err := BuildVRPRequest(job, payload)
+	switch job.SolverType {
+	case contract.OptimizationSolverTypeVRP:
+		req, err := BuildVRPRequest(job)
 		if err != nil {
-			return fmt.Errorf("build vrp request: %w", err)
+			return w.failJob(ctx, job, "VRP_REQUEST_BUILD_FAILED", fmt.Errorf("build vrp request: %w", err))
 		}
 
 		result, err := w.solveVRPWithRetry(ctx, req)
 		if err != nil {
-			return fmt.Errorf("solve vrp: %w", err)
+			return w.failJob(ctx, job, "VRP_SOLVE_FAILED", fmt.Errorf("solve vrp: %w", err))
 		}
 
-		return w.publishOutboxResult(ctx, job, &model.OptimizationSolvedEvent{
+		return w.persistSolvedResult(ctx, job, &model.OptimizationSolvedEvent{
 			JobID:      job.JobID,
 			TraceID:    job.TraceID,
 			SupplierID: job.SupplierID,
-			SolverType: job.SolverType,
-			Feasible:   result.Feasible,
+			SolverType: model.SolverTypeVRP,
+			Status:     result.Status,
 			TimedOut:   result.TimedOut,
+			MatrixSize: result.MatrixSize,
 			ProducedAt: time.Now().UTC().Format(time.RFC3339Nano),
 			Warnings:   result.Warnings,
 			VRP:        result,
 		})
 
-	case model.SolverTypeCPSAT:
-		var payload model.CPSATPayload
-		if err := json.Unmarshal(job.Payload, &payload); err != nil {
-			return fmt.Errorf("decode cp-sat payload: %w", err)
-		}
-
-		req, err := BuildCPSATRequest(job, payload)
+	case contract.OptimizationSolverTypeCPSAT:
+		req, err := BuildCPSATRequest(job)
 		if err != nil {
-			return fmt.Errorf("build cp-sat request: %w", err)
+			return w.failJob(ctx, job, "CPSAT_REQUEST_BUILD_FAILED", fmt.Errorf("build cp-sat request: %w", err))
 		}
 
 		result, err := w.solveCPSATWithRetry(ctx, req)
 		if err != nil {
-			return fmt.Errorf("solve cp-sat: %w", err)
+			return w.failJob(ctx, job, "CPSAT_SOLVE_FAILED", fmt.Errorf("solve cp-sat: %w", err))
 		}
 
-		return w.publishOutboxResult(ctx, job, &model.OptimizationSolvedEvent{
+		return w.persistSolvedResult(ctx, job, &model.OptimizationSolvedEvent{
 			JobID:      job.JobID,
 			TraceID:    job.TraceID,
 			SupplierID: job.SupplierID,
-			SolverType: job.SolverType,
-			Feasible:   result.Feasible,
+			SolverType: model.SolverTypeCPSAT,
+			Status:     result.Status,
 			TimedOut:   result.TimedOut,
+			MatrixSize: result.MatrixSize,
 			ProducedAt: time.Now().UTC().Format(time.RFC3339Nano),
 			Warnings:   result.Warnings,
 			CPSAT:      result,
 		})
 	default:
-		return fmt.Errorf("unsupported solver_type %q", job.SolverType)
+		return w.failJob(ctx, job, "UNSUPPORTED_SOLVER_TYPE", fmt.Errorf("unsupported solver_type %q", job.SolverType))
 	}
 }
 
@@ -229,24 +230,89 @@ func (w *Worker) resultAlreadyPublished(ctx context.Context, jobID string) (bool
 	return true, nil
 }
 
-func (w *Worker) publishOutboxResult(ctx context.Context, job model.OptimizationJob, event *model.OptimizationSolvedEvent) error {
-	payload, err := json.Marshal(event)
-	if err != nil {
-		return fmt.Errorf("marshal optimization solved event: %w", err)
-	}
+func (w *Worker) markJobRunning(ctx context.Context, jobID string) error {
+	startedAt := time.Now().UTC()
 
-	_, err = w.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		mutation := spanner.Insert("OutboxEvents",
-			[]string{"EventId", "AggregateType", "AggregateId", "EventType", "TopicName", "Payload", "CreatedAt", "TraceID"},
-			[]interface{}{uuid.NewString(), outboxAggregateType, job.JobID, outboxEventType, outboxTopicMain, payload, spanner.CommitTimestamp, job.TraceID},
+	_, err := w.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		mutation := spanner.Update("OptimizationJobs",
+			[]string{"JobId", "Status", "PublishedAt", "StartedAt", "AttemptCount", "FailureCode", "FailureMessage", "UpdatedAt"},
+			[]interface{}{jobID, string(contract.OptimizationJobStatusRunning), startedAt, startedAt, int64(1), "", "", spanner.CommitTimestamp},
 		)
 		return txn.BufferWrite([]*spanner.Mutation{mutation})
 	})
 	if err != nil {
-		return fmt.Errorf("write outbox result for job %s: %w", job.JobID, err)
+		return fmt.Errorf("mark optimization job running: %w", err)
 	}
 
 	return nil
+}
+
+func (w *Worker) persistSolvedResult(ctx context.Context, job contract.OptimizationJobEnvelope, event *model.OptimizationSolvedEvent) error {
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("marshal optimization solved event: %w", err)
+	}
+	completedAt := time.Now().UTC()
+
+	_, err = w.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		jobMutation := spanner.Update("OptimizationJobs",
+			[]string{"JobId", "Status", "ResultPayload", "FailureCode", "FailureMessage", "CompletedAt", "UpdatedAt"},
+			[]interface{}{job.JobID, string(contract.OptimizationJobStatusSolved), payload, "", "", completedAt, spanner.CommitTimestamp},
+		)
+		outboxMutation := spanner.Insert("OutboxEvents",
+			[]string{"EventId", "AggregateType", "AggregateId", "EventType", "TopicName", "Payload", "CreatedAt", "TraceID"},
+			[]interface{}{uuid.NewString(), outboxAggregateType, job.JobID, outboxEventType, outboxTopicMain, payload, spanner.CommitTimestamp, job.TraceID},
+		)
+		return txn.BufferWrite([]*spanner.Mutation{jobMutation, outboxMutation})
+	})
+	if err != nil {
+		return fmt.Errorf("write outbox result for job %s: %w", job.JobID, err)
+	}
+	if err := w.removeActiveJob(ctx, job.SupplierID, job.JobID); err != nil {
+		slog.WarnContext(ctx, "optimizer worker active-set remove failed after solve", "job_id", job.JobID, "supplier_id", job.SupplierID, "err", err)
+	}
+
+	return nil
+}
+
+func (w *Worker) failJob(ctx context.Context, job contract.OptimizationJobEnvelope, failureCode string, cause error) error {
+	if err := w.recordJobFailure(ctx, job.SupplierID, job.JobID, failureCode, cause.Error()); err != nil {
+		return fmt.Errorf("record failure for job %s after %s: %w", job.JobID, failureCode, err)
+	}
+
+	slog.ErrorContext(ctx, "optimizer worker job failed", "job_id", job.JobID, "failure_code", failureCode, "err", cause)
+	return nil
+}
+
+func (w *Worker) recordJobFailure(ctx context.Context, supplierID string, jobID string, failureCode string, failureMessage string) error {
+	completedAt := time.Now().UTC()
+
+	_, err := w.spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		mutation := spanner.Update("OptimizationJobs",
+			[]string{"JobId", "Status", "ResultPayload", "FailureCode", "FailureMessage", "CompletedAt", "UpdatedAt"},
+			[]interface{}{jobID, string(contract.OptimizationJobStatusFailed), []byte{}, failureCode, failureMessage, completedAt, spanner.CommitTimestamp},
+		)
+		return txn.BufferWrite([]*spanner.Mutation{mutation})
+	})
+	if err != nil {
+		return fmt.Errorf("mark optimization job failed: %w", err)
+	}
+	if err := w.removeActiveJob(ctx, supplierID, jobID); err != nil {
+		slog.WarnContext(ctx, "optimizer worker active-set remove failed after failure", "job_id", jobID, "supplier_id", supplierID, "err", err)
+	}
+
+	return nil
+}
+
+func (w *Worker) removeActiveJob(ctx context.Context, supplierID string, jobID string) error {
+	if w.redis == nil || supplierID == "" || jobID == "" {
+		return nil
+	}
+	return w.redis.SRem(ctx, supplierActiveJobsKey(supplierID), jobID).Err()
+}
+
+func supplierActiveJobsKey(supplierID string) string {
+	return "supplier:" + supplierID + ":jobs:active"
 }
 
 func sleepWithBackoff(ctx context.Context, base time.Duration, attempt int) error {

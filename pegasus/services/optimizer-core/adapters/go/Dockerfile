@@ -1,12 +1,15 @@
 FROM golang:1.25-bookworm AS builder
 
-WORKDIR /app
+WORKDIR /src/services/optimizer-core/adapters/go
 
-COPY go.mod go.sum ./
+COPY services/optimizer-core/adapters/go/go.mod services/optimizer-core/adapters/go/go.sum ./
+COPY packages/optimizer-contract /src/packages/optimizer-contract
+RUN go mod edit -replace optimizercontract=/src/packages/optimizer-contract
 RUN go mod download
 
-COPY cmd ./cmd
-COPY internal ./internal
+COPY services/optimizer-core/adapters/go/cmd ./cmd
+COPY services/optimizer-core/adapters/go/internal ./internal
+RUN go mod tidy
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/optimizer-worker ./cmd/optimizer-worker
 

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use crate::pb::{Assignment, CpsatRequest, CpsatResponse};
+use crate::pb::{Assignment, CpsatRequest, CpsatResponse, SolverStatus};
 
 #[derive(Clone)]
 struct ManifestNode {
@@ -35,6 +35,7 @@ impl BestSolution {
 }
 
 pub fn solve(request: &CpsatRequest) -> CpsatResponse {
+    let matrix_size = request.manifest_requirements.len() as i32;
     if request.manifest_requirements.is_empty() {
         return CpsatResponse {
             meta: request.meta.clone(),
@@ -44,6 +45,8 @@ pub fn solve(request: &CpsatRequest) -> CpsatResponse {
             assignments: Vec::new(),
             unassigned_manifest_ids: Vec::new(),
             warnings: Vec::new(),
+            status: SolverStatus::Optimal as i32,
+            matrix_size,
         };
     }
 
@@ -88,6 +91,8 @@ pub fn solve(request: &CpsatRequest) -> CpsatResponse {
                 .map(|manifest| manifest.manifest_id.clone())
                 .collect(),
             warnings: vec!["no factory slots provided for constraint resolution".to_string()],
+            status: SolverStatus::ModelInvalid as i32,
+            matrix_size,
         };
     }
 
@@ -165,6 +170,11 @@ pub fn solve(request: &CpsatRequest) -> CpsatResponse {
     }
 
     if timed_out && !request.return_best_effort {
+        let status = if best_solution.objective_score_scaled == i64::MIN {
+            SolverStatus::Infeasible as i32
+        } else {
+            SolverStatus::Feasible as i32
+        };
         return CpsatResponse {
             meta: request.meta.clone(),
             feasible: false,
@@ -185,6 +195,8 @@ pub fn solve(request: &CpsatRequest) -> CpsatResponse {
                 .map(|manifest| manifest.manifest_id.clone())
                 .collect(),
             warnings,
+            status,
+            matrix_size,
         };
     }
 
@@ -220,6 +232,16 @@ pub fn solve(request: &CpsatRequest) -> CpsatResponse {
         best_solution.objective_score_scaled
     };
 
+    let status = if timed_out {
+        if best_solution.objective_score_scaled == i64::MIN {
+            SolverStatus::Infeasible as i32
+        } else {
+            SolverStatus::Feasible as i32
+        }
+    } else {
+        SolverStatus::Optimal as i32
+    };
+
     CpsatResponse {
         meta: request.meta.clone(),
         feasible: unassigned_manifest_ids.is_empty(),
@@ -228,6 +250,8 @@ pub fn solve(request: &CpsatRequest) -> CpsatResponse {
         assignments,
         unassigned_manifest_ids,
         warnings,
+        status,
+        matrix_size,
     }
 }
 

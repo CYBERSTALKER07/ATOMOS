@@ -18,16 +18,26 @@ import (
 	instance "cloud.google.com/go/spanner/admin/instance/apiv1"
 	"cloud.google.com/go/spanner/admin/instance/apiv1/instancepb"
 	"github.com/segmentio/kafka-go"
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	internalKafka "backend-go/kafka"
+	"backend-go/pkg/pin"
 	"config" // local map
 )
 
 const canonicalSchemaPath = "schema/spanner.ddl"
+
+type seedCredential struct {
+	Surface string
+	Route   string
+	Login   string
+	Secret  string
+	Notes   string
+}
 
 func main() {
 	log.Println("Initializing Pegasus Seed Script...")
@@ -493,6 +503,41 @@ func main() {
 			`CREATE INDEX Idx_OutboxEvents_Unpublished
 				ON OutboxEvents(PublishedAt, CreatedAt)`,
 
+			// ── Phase XI: Async optimization job substrate ──
+			`CREATE TABLE OptimizationJobs (
+				JobId            STRING(36)   NOT NULL,
+				SupplierId       STRING(36)   NOT NULL,
+				JobType          STRING(40)   NOT NULL,
+				SolverType       STRING(20)   NOT NULL,
+				Status           STRING(30)   NOT NULL,
+				TraceId          STRING(36),
+				IdempotencyKey   STRING(128),
+				SourceEventType  STRING(60)   NOT NULL,
+				Payload          BYTES(MAX)   NOT NULL,
+				ResultPayload    BYTES(MAX),
+				FailureCode      STRING(64),
+				FailureMessage   STRING(MAX),
+				AttemptCount     INT64        NOT NULL DEFAULT (0),
+				RequestedAt      TIMESTAMP    NOT NULL,
+				PublishedAt      TIMESTAMP,
+				StartedAt        TIMESTAMP,
+				CompletedAt      TIMESTAMP,
+				AppliedAt        TIMESTAMP,
+				UpdatedAt        TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+				CONSTRAINT CHK_OptimizationJobStatus CHECK (
+					Status IN ('QUEUED', 'PUBLISHED', 'RUNNING', 'SOLVED', 'APPLYING', 'APPLIED', 'FAILED', 'CANCELLED')
+				),
+				CONSTRAINT CHK_OptimizationJobSolver CHECK (
+					SolverType IN ('VRP', 'CP_SAT')
+				),
+			) PRIMARY KEY (JobId)`,
+			`CREATE INDEX Idx_OptimizationJobs_BySupplierStatus
+				ON OptimizationJobs(SupplierId, Status, UpdatedAt DESC)`,
+			`CREATE INDEX Idx_OptimizationJobs_BySupplierRequested
+				ON OptimizationJobs(SupplierId, RequestedAt DESC)`,
+			`CREATE INDEX Idx_OptimizationJobs_BySupplierIdempotency
+				ON OptimizationJobs(SupplierId, IdempotencyKey, RequestedAt DESC)`,
+
 			// ── Phase 2 — Intelligent Dispatch Optimization ──
 			// VolumeVU is the per-order volumetric unit total (sum of line-item
 			// volume × quantity). First-class column so the optimizer hydrates
@@ -588,8 +633,18 @@ func main() {
 	}
 	log.Println("Canonical schema is applied.")
 
-	// Seed data is maintained by cmd/seed/main.go. Keep setup focused on schema bootstrap.
-	log.Println("Skipping inline seed data; use cmd/seed/main.go for deterministic fixtures.")
+	client, err := spanner.NewClient(ctx, dbName, opts...)
+	if err != nil {
+		log.Fatalf("Failed to create Spanner data client: %v", err)
+	}
+	defer client.Close()
+
+	credentials, err := ensureSeedCredentials(ctx, client)
+	if err != nil {
+		log.Fatalf("Failed to ensure seed credentials: %v", err)
+	}
+	log.Println("Deterministic business fixtures remain in cmd/seed/main.go; applying credential fixtures for local app login testing.")
+	printSeedCredentials(credentials)
 
 	// 5. Kafka Topic Initialization
 	log.Println("Initializing Kafka Topics...")
@@ -647,14 +702,20 @@ func applyDDLStatements(ctx context.Context, admin *database.DatabaseAdminClient
 }
 
 func setupSeedData(ctx context.Context, client *spanner.Client) {
+	demoDataSeeded := false
+
 	_, err := client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		// Check if data already exists
 		iter := txn.Query(ctx, spanner.Statement{SQL: "SELECT RetailerId FROM Retailers WHERE RetailerId = 'retailer-123'"})
 		_, err := iter.Next()
 		iter.Stop()
-		if err != iterator.Done {
-			return err // Already seeded or real error
+		if err == nil {
+			return nil
 		}
+		if err != iterator.Done {
+			return err
+		}
+		demoDataSeeded = true
 
 		// ── Stable IDs ────────────────────────────────────────────────────
 		const (
@@ -969,18 +1030,229 @@ func setupSeedData(ctx context.Context, client *spanner.Client) {
 		log.Fatalf("Failed to inject seed data: %v", err)
 	}
 
+	credentials, err := ensureSeedCredentials(ctx, client)
+	if err != nil {
+		log.Fatalf("Failed to ensure seed credentials: %v", err)
+	}
+
 	log.Println("═══════════════════════════════════════════════════════════")
-	log.Println("  SEED DATA INJECTED SUCCESSFULLY")
-	log.Println("  • 4 Suppliers (Coca-Cola, Nestlé, PepsiCo, Unilever)")
-	log.Println("  • 4 Categories (Beverages, Dairy, Snacks, Hygiene)")
-	log.Println("  • 20 SKUs with inventory stock")
-	log.Println("  • 5 Retailers across Uzbekistan")
-	log.Println("  • 2 Drivers")
-	log.Println("  • 12 Orders (5 completed, 2 in-progress, 5 pending)")
-	log.Println("  • 21 Line items with delivery/damage statuses")
-	log.Println("  • 10 Ledger entries + 2 anomalies")
-	log.Println("  • 6 Pricing tiers")
+	if demoDataSeeded {
+		log.Println("  DEMO DATA SEEDED SUCCESSFULLY")
+		log.Println("  • 4 Suppliers (Coca-Cola, Nestlé, PepsiCo, Unilever)")
+		log.Println("  • 4 Categories (Beverages, Dairy, Snacks, Hygiene)")
+		log.Println("  • 20 SKUs with inventory stock")
+		log.Println("  • 5 Retailers across Uzbekistan")
+		log.Println("  • 2 Drivers")
+		log.Println("  • 12 Orders (5 completed, 2 in-progress, 5 pending)")
+		log.Println("  • 21 Line items with delivery/damage statuses")
+		log.Println("  • 10 Ledger entries + 2 anomalies")
+		log.Println("  • 6 Pricing tiers")
+	} else {
+		log.Println("  DEMO DATA ALREADY PRESENT — SKIPPED REINSERT")
+	}
+	log.Println("  LOGIN CREDENTIALS VERIFIED")
+	printSeedCredentials(credentials)
 	log.Println("═══════════════════════════════════════════════════════════")
+}
+
+func ensureSeedCredentials(ctx context.Context, client *spanner.Client) ([]seedCredential, error) {
+	const (
+		legacyAdminID       = "ADMIN-001"
+		seedSupplierID      = "SUP-COCA-001"
+		seedRetailerID      = "retailer-123"
+		seedDriverID        = "DRV-AMIR-001"
+		seedWarehouseID     = "WH-SEED-001"
+		seedFactoryID       = "FAC-SEED-001"
+		seedVehicleID       = "VEH-SEED-001"
+		seedWarehouseAdmin  = "WHSTAFF-SEED-ADMIN-001"
+		seedPayloaderID     = "WHSTAFF-SEED-PAY-001"
+		seedFactoryAdminID  = "FACTSTAFF-SEED-ADMIN-001"
+		legacyAdminEmail    = "admin@void.pegasus.uz"
+		legacyAdminPassword = "admin123"
+		supplierEmail       = "supplier.coca@void.pegasus.uz"
+		supplierPhone       = "+998901110001"
+		supplierPassword    = "supplier123"
+		retailerPhone       = "+998901234567"
+		retailerPassword    = "retailer123"
+		driverPhone         = "+998901110011"
+		driverPIN           = "11111111"
+		warehousePhone      = "+998901110021"
+		warehousePIN        = "22222222"
+		payloaderPhone      = "+998901110022"
+		payloaderPIN        = "33333333"
+		factoryPhone        = "+998901110031"
+		factoryPassword     = "factory123"
+		factoryPIN          = "44444444"
+	)
+
+	legacyAdminHash, err := bcryptHash(legacyAdminPassword)
+	if err != nil {
+		return nil, fmt.Errorf("hash legacy admin password: %w", err)
+	}
+	supplierPasswordHash, err := bcryptHash(supplierPassword)
+	if err != nil {
+		return nil, fmt.Errorf("hash supplier password: %w", err)
+	}
+	retailerPasswordHash, err := bcryptHash(retailerPassword)
+	if err != nil {
+		return nil, fmt.Errorf("hash retailer password: %w", err)
+	}
+	factoryPasswordHash, err := bcryptHash(factoryPassword)
+	if err != nil {
+		return nil, fmt.Errorf("hash factory password: %w", err)
+	}
+
+	_, err = client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		driverPinHash, err := ensureSeedPIN(ctx, txn, driverPIN, pin.EntityDriver, seedDriverID)
+		if err != nil {
+			return fmt.Errorf("ensure driver pin: %w", err)
+		}
+		warehousePinHash, err := ensureSeedPIN(ctx, txn, warehousePIN, pin.EntityWarehouseStaff, seedWarehouseAdmin)
+		if err != nil {
+			return fmt.Errorf("ensure warehouse admin pin: %w", err)
+		}
+		payloaderPinHash, err := ensureSeedPIN(ctx, txn, payloaderPIN, pin.EntityWarehouseStaff, seedPayloaderID)
+		if err != nil {
+			return fmt.Errorf("ensure payloader pin: %w", err)
+		}
+		factoryPinHash, err := ensureSeedPIN(ctx, txn, factoryPIN, pin.EntityFactoryStaff, seedFactoryAdminID)
+		if err != nil {
+			return fmt.Errorf("ensure factory admin pin: %w", err)
+		}
+
+		mutations := []*spanner.Mutation{
+			spanner.InsertOrUpdate("Admins",
+				[]string{"AdminId", "Email", "PasswordHash", "DisplayName", "CreatedAt"},
+				[]interface{}{legacyAdminID, legacyAdminEmail, legacyAdminHash, "Platform Admin", spanner.CommitTimestamp},
+			),
+			spanner.InsertOrUpdate("Suppliers",
+				[]string{"SupplierId", "Name", "Category", "Phone", "Email", "PasswordHash", "TaxId", "ContactPerson", "CompanyRegNumber", "BillingAddress", "IsConfigured", "OperatingCategories", "BankName", "AccountNumber", "CardNumber", "GlobalPayntGateway", "CountryCode", "CreatedAt"},
+				[]interface{}{seedSupplierID, "Coca-Cola Uzbekistan", "Beverages", supplierPhone, supplierEmail, supplierPasswordHash, "UZ1001001", "Dilshod Karimov", "REG-COCA-001", "12 Amir Temur Avenue, Tashkent", true, []string{"CAT-BVRG-001"}, "Asaka Bank", "20208000987654321001", "8600123412340001", "GLOBAL_PAY", "UZ", spanner.CommitTimestamp},
+			),
+			spanner.InsertOrUpdate("Retailers",
+				[]string{"RetailerId", "Name", "ShopName", "ShopLocation", "Phone", "TaxIdentificationNumber", "Status", "PasswordHash", "CountryCode", "CreatedAt"},
+				[]interface{}{seedRetailerID, "Target Samarkand", "Target Samarkand", "POINT(66.9750 39.6270)", retailerPhone, "UZ1001001", "VERIFIED", retailerPasswordHash, "UZ", spanner.CommitTimestamp},
+			),
+			spanner.InsertOrUpdate("Warehouses",
+				[]string{"WarehouseId", "SupplierId", "Name", "Address", "Lat", "Lng", "IsActive", "IsDefault", "IsOnShift", "CreatedAt", "UpdatedAt"},
+				[]interface{}{seedWarehouseID, seedSupplierID, "Coca-Cola Tashkent Warehouse", "42 Navoi Street, Tashkent", 41.3111, 69.2797, true, true, true, spanner.CommitTimestamp, spanner.CommitTimestamp},
+			),
+			spanner.InsertOrUpdate("Factories",
+				[]string{"FactoryId", "SupplierId", "Name", "Address", "Lat", "Lng", "RegionCode", "LeadTimeDays", "ProductionCapacityVU", "IsActive", "CreatedAt", "UpdatedAt"},
+				[]interface{}{seedFactoryID, seedSupplierID, "Coca-Cola Bottling Plant", "7 Chimgan Street, Tashkent", 41.3275, 69.2811, "UZ-TAS", int64(2), 1500.0, true, spanner.CommitTimestamp, spanner.CommitTimestamp},
+			),
+			spanner.InsertOrUpdate("Vehicles",
+				[]string{"VehicleId", "SupplierId", "WarehouseId", "HomeNodeType", "HomeNodeId", "VehicleClass", "Label", "LicensePlate", "MaxVolumeVU", "IsActive", "CreatedAt"},
+				[]interface{}{seedVehicleID, seedSupplierID, seedWarehouseID, "WAREHOUSE", seedWarehouseID, "CLASS_A", "Seed Damass 1", "01A777AA", 50.0, true, spanner.CommitTimestamp},
+			),
+			spanner.InsertOrUpdate("Drivers",
+				[]string{"DriverId", "Name", "Phone", "PinHash", "SupplierId", "DriverType", "VehicleType", "LicensePlate", "IsActive", "VehicleId", "WarehouseId", "HomeNodeType", "HomeNodeId", "CreatedAt"},
+				[]interface{}{seedDriverID, "Amir Karimov", driverPhone, driverPinHash, seedSupplierID, "IN_HOUSE", "Damass", "01A777AA", true, seedVehicleID, seedWarehouseID, "WAREHOUSE", seedWarehouseID, spanner.CommitTimestamp},
+			),
+			spanner.InsertOrUpdate("WarehouseStaff",
+				[]string{"WorkerId", "SupplierId", "WarehouseId", "Name", "Phone", "PinHash", "Role", "IsActive", "CreatedAt"},
+				[]interface{}{seedWarehouseAdmin, seedSupplierID, seedWarehouseID, "Aziza Umarova", warehousePhone, warehousePinHash, "WAREHOUSE_ADMIN", true, spanner.CommitTimestamp},
+			),
+			spanner.InsertOrUpdate("WarehouseStaff",
+				[]string{"WorkerId", "SupplierId", "WarehouseId", "Name", "Phone", "PinHash", "Role", "IsActive", "CreatedAt"},
+				[]interface{}{seedPayloaderID, seedSupplierID, seedWarehouseID, "Bekzod Juraev", payloaderPhone, payloaderPinHash, "PAYLOADER", true, spanner.CommitTimestamp},
+			),
+			spanner.InsertOrUpdate("FactoryStaff",
+				[]string{"StaffId", "FactoryId", "SupplierId", "Name", "Phone", "PasswordHash", "PinHash", "StaffRole", "IsActive", "CreatedAt"},
+				[]interface{}{seedFactoryAdminID, seedFactoryID, seedSupplierID, "Kamola Isaeva", factoryPhone, factoryPasswordHash, factoryPinHash, "FACTORY_ADMIN", true, spanner.CommitTimestamp},
+			),
+		}
+
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("ensure seed credentials transaction: %w", err)
+	}
+
+	return []seedCredential{
+		{
+			Surface: "Admin Portal / Admin Desktop",
+			Route:   "POST /v1/auth/admin/login",
+			Login:   fmt.Sprintf("email=%s", supplierEmail),
+			Secret:  fmt.Sprintf("password=%s", supplierPassword),
+			Notes:   fmt.Sprintf("Supplier root account for %s. Alt phone login: POST /v1/auth/supplier/login with phone=%s", seedSupplierID, supplierPhone),
+		},
+		{
+			Surface: "Retailer Desktop / iOS / Android",
+			Route:   "POST /v1/auth/retailer/login",
+			Login:   fmt.Sprintf("phone=%s", retailerPhone),
+			Secret:  fmt.Sprintf("password=%s", retailerPassword),
+			Notes:   fmt.Sprintf("RetailerId=%s (Target Samarkand)", seedRetailerID),
+		},
+		{
+			Surface: "Driver Android / iOS",
+			Route:   "POST /v1/auth/driver/login",
+			Login:   fmt.Sprintf("phone=%s", driverPhone),
+			Secret:  fmt.Sprintf("pin=%s", driverPIN),
+			Notes:   fmt.Sprintf("DriverId=%s, assigned to %s", seedDriverID, seedVehicleID),
+		},
+		{
+			Surface: "Warehouse Portal / Desktop / iOS / Android",
+			Route:   "POST /v1/auth/warehouse/login",
+			Login:   fmt.Sprintf("phone=%s", warehousePhone),
+			Secret:  fmt.Sprintf("pin=%s", warehousePIN),
+			Notes:   fmt.Sprintf("Warehouse admin at %s", seedWarehouseID),
+		},
+		{
+			Surface: "Payload Terminal / iPad / Android Tablet",
+			Route:   "POST /v1/auth/payloader/login",
+			Login:   fmt.Sprintf("phone=%s", payloaderPhone),
+			Secret:  fmt.Sprintf("pin=%s", payloaderPIN),
+			Notes:   fmt.Sprintf("Payloader at %s", seedWarehouseID),
+		},
+		{
+			Surface: "Factory Portal / Desktop / iOS / Android",
+			Route:   "POST /v1/auth/factory/login",
+			Login:   fmt.Sprintf("phone=%s", factoryPhone),
+			Secret:  fmt.Sprintf("password=%s (PIN fallback %s)", factoryPassword, factoryPIN),
+			Notes:   fmt.Sprintf("Factory admin at %s", seedFactoryID),
+		},
+		{
+			Surface: "Legacy ADMIN bootstrap",
+			Route:   "POST /v1/auth/admin/login",
+			Login:   fmt.Sprintf("email=%s", legacyAdminEmail),
+			Secret:  fmt.Sprintf("password=%s", legacyAdminPassword),
+			Notes:   "Legacy platform admin seed. For supplier-scoped portal data, use the Supplier root account above.",
+		},
+	}, nil
+}
+
+func ensureSeedPIN(ctx context.Context, txn *spanner.ReadWriteTransaction, plaintext string, entityType pin.EntityType, entityID string) (string, error) {
+	if err := pin.Delete(ctx, txn, entityType, entityID); err != nil {
+		return "", fmt.Errorf("delete previous pin for %s: %w", entityID, err)
+	}
+
+	bcryptHash, err := pin.RegisterExisting(ctx, txn, plaintext, entityType, entityID)
+	if err != nil {
+		return "", fmt.Errorf("register pin for %s: %w", entityID, err)
+	}
+
+	return bcryptHash, nil
+}
+
+func bcryptHash(plaintext string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(plaintext), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(hash), nil
+}
+
+func printSeedCredentials(credentials []seedCredential) {
+	for _, credential := range credentials {
+		log.Printf("  • %s", credential.Surface)
+		log.Printf("    Route: %s", credential.Route)
+		log.Printf("    Login: %s", credential.Login)
+		log.Printf("    Secret: %s", credential.Secret)
+		if credential.Notes != "" {
+			log.Printf("    Notes: %s", credential.Notes)
+		}
+	}
 }
 
 func setupKafkaTopic(brokerAddress string, topic string) {

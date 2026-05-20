@@ -91,6 +91,7 @@ const (
 	// ── Country Config Invalidation ────────────────────────────────────
 	PrefixCountryConfigCache   = "countrycfg:config:"   // signal-only invalidation key: countrycfg:config:<countryCode>
 	PrefixCountryOverrideCache = "countrycfg:override:" // signal-only invalidation key: countrycfg:override:<supplierId>:<countryCode>
+	PrefixSupplierJobsActive   = "supplier:"            // SET: supplier:<supplierId>:jobs:active -> {jobId, ...}
 )
 
 // ─── TTL Constants ─────────────────────────────────────────────────────────────
@@ -113,11 +114,12 @@ const (
 	TTLWSCommandRegistry = 24 * time.Hour
 
 	// ── Profile + settings + analytics cache TTLs ──────────────────────
-	TTLProfile           = 5 * time.Minute  // profile reads change infrequently
-	TTLCatalogSearch     = 30 * time.Second // search results refresh quickly
-	TTLCategorySuppliers = 2 * time.Minute  // category-supplier listings
-	TTLSettings          = 2 * time.Minute  // retailer settings hierarchy
-	TTLAnalytics         = 60 * time.Second // dashboard metrics
+	TTLProfile            = 5 * time.Minute  // profile reads change infrequently
+	TTLCatalogSearch      = 30 * time.Second // search results refresh quickly
+	TTLCategorySuppliers  = 2 * time.Minute  // category-supplier listings
+	TTLSettings           = 2 * time.Minute  // retailer settings hierarchy
+	TTLAnalytics          = 60 * time.Second // dashboard metrics
+	TTLSupplierJobsActive = 24 * time.Hour   // active async dispatch jobs self-heal if terminal cleanup is missed
 )
 
 // ─── GEO Member Helpers ────────────────────────────────────────────────────────
@@ -156,4 +158,10 @@ func CountryConfigCacheKey(countryCode string) string { return PrefixCountryConf
 // CountryOverrideCacheKey returns the invalidation key for a supplier country override row.
 func CountryOverrideCacheKey(supplierID, countryCode string) string {
 	return PrefixCountryOverrideCache + supplierID + ":" + countryCode
+}
+
+// SupplierJobsActiveKey returns the Redis SET key tracking active optimization
+// jobs for one supplier.
+func SupplierJobsActiveKey(supplierID string) string {
+	return PrefixSupplierJobsActive + supplierID + ":jobs:active"
 }

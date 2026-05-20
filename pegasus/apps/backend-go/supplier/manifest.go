@@ -76,7 +76,37 @@ func (s *ManifestService) CreateDraftManifest(
 	orders []DispatchOrder,
 	loadingManifest []LoadingManifestEntry,
 ) (string, error) {
-	manifestID := uuid.New().String()
+	return s.CreateDraftManifestWithIdentity(
+		ctx,
+		uuid.New().String(),
+		supplierID,
+		warehouseID,
+		routeID,
+		truckID,
+		driverID,
+		maxVolumeVU,
+		regionCode,
+		orders,
+		loadingManifest,
+	)
+}
+
+func (s *ManifestService) CreateDraftManifestWithIdentity(
+	ctx context.Context,
+	manifestID string,
+	supplierID string,
+	warehouseID string,
+	routeID string,
+	truckID string,
+	driverID string,
+	maxVolumeVU float64,
+	regionCode string,
+	orders []DispatchOrder,
+	loadingManifest []LoadingManifestEntry,
+) (string, error) {
+	if manifestID == "" {
+		manifestID = uuid.New().String()
+	}
 	now := time.Now().UTC()
 
 	effectiveMax := maxVolumeVU * TetrisBuffer
@@ -86,6 +116,12 @@ func (s *ManifestService) CreateDraftManifest(
 	}
 
 	_, err := s.Spanner.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		if _, err := txn.ReadRow(ctx, "SupplierTruckManifests", spanner.Key{manifestID}, []string{"ManifestId"}); err == nil {
+			return nil
+		} else if !errors.Is(err, spanner.ErrRowNotFound) {
+			return fmt.Errorf("read manifest %s: %w", manifestID, err)
+		}
+
 		var mutations []*spanner.Mutation
 
 		// Insert manifest in DRAFT state

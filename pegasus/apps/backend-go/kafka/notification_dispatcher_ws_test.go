@@ -30,6 +30,14 @@ func newRetailerHubServer(hub *ws.RetailerHub, retailerID string) *httptest.Serv
 	}))
 }
 
+func newSupplierHubServer(hub *ws.SupplierHub, supplierID string) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims := &auth.PegasusClaims{UserID: supplierID, SupplierID: supplierID, Role: "ADMIN"}
+		ctx := context.WithValue(r.Context(), auth.ClaimsContextKey, claims)
+		hub.HandleConnection(w, r.WithContext(ctx))
+	}))
+}
+
 func websocketURL(srv *httptest.Server) string {
 	return "ws" + strings.TrimPrefix(srv.URL, "http")
 }
@@ -159,5 +167,68 @@ func TestHandleDeliverySessionUpdated_PushesTypedFrameOverRetailerWebSocket(t *t
 	}
 	if got["fee_amount"] != float64(4425) {
 		t.Fatalf("fee_amount = %#v, want 4425", got["fee_amount"])
+	}
+}
+
+func TestHandleOptimizationSolved_PushesTypedFrameOverSupplierWebSocket(t *testing.T) {
+	hub := ws.NewSupplierHub()
+	srv := newSupplierHubServer(hub, "supplier-1")
+	defer srv.Close()
+
+	conn := dialWebSocket(t, websocketURL(srv))
+	defer conn.Close()
+
+	time.Sleep(50 * time.Millisecond)
+
+	data, err := json.Marshal(OptimizationSolvedEvent{
+		JobID:      "job-42",
+		TraceID:    "trace-42",
+		SupplierID: "supplier-1",
+		SolverType: "VRP",
+		Status:     "OPTIMAL",
+		TimedOut:   false,
+		MatrixSize: 27,
+		ProducedAt: time.Now().UTC().Format(time.RFC3339),
+		Warnings:   []string{"bounded_runtime"},
+	})
+	if err != nil {
+		t.Fatalf("marshal optimization solved event: %v", err)
+	}
+
+	handleOptimizationSolved(NotificationDeps{SupplierHub: hub}, data)
+
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	var got map[string]any
+	if err := conn.ReadJSON(&got); err != nil {
+		t.Fatalf("read websocket frame: %v", err)
+	}
+
+	if got["type"] != EventOptimizationSolved {
+		t.Fatalf("type = %#v, want %q", got["type"], EventOptimizationSolved)
+	}
+	if got["channel"] != "PUSH" {
+		t.Fatalf("channel = %#v, want %q", got["channel"], "PUSH")
+	}
+	if got["job_id"] != "job-42" {
+		t.Fatalf("job_id = %#v, want job-42", got["job_id"])
+	}
+	if got["supplier_id"] != "supplier-1" {
+		t.Fatalf("supplier_id = %#v, want supplier-1", got["supplier_id"])
+	}
+	if got["solver_type"] != "VRP" {
+		t.Fatalf("solver_type = %#v, want VRP", got["solver_type"])
+	}
+	if got["status"] != "OPTIMAL" {
+		t.Fatalf("status = %#v, want OPTIMAL", got["status"])
+	}
+	if got["timed_out"] != false {
+		t.Fatalf("timed_out = %#v, want false", got["timed_out"])
+	}
+	if got["matrix_size"] != float64(27) {
+		t.Fatalf("matrix_size = %#v, want 27", got["matrix_size"])
+	}
+	warnings, ok := got["warnings"].([]any)
+	if !ok || len(warnings) != 1 || warnings[0] != "bounded_runtime" {
+		t.Fatalf("warnings = %#v, want [bounded_runtime]", got["warnings"])
 	}
 }

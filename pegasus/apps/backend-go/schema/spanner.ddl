@@ -2147,6 +2147,48 @@ CREATE TABLE OutboxEvents (
 CREATE INDEX Idx_OutboxEvents_Unpublished
     ON OutboxEvents(PublishedAt, CreatedAt);
 
+-- ── Phase XI: Asynchronous Optimization Job Substrate ─────────────────────
+-- OptimizationJobs is the durable ledger for externally queued solver work.
+-- The live supplier dispatch path still executes synchronously in this
+-- tranche; this table lands first so enqueue/apply phases can be wired
+-- additively with traceable status transitions and bounded retry metadata.
+CREATE TABLE OptimizationJobs (
+    JobId            STRING(36)   NOT NULL,
+    SupplierId       STRING(36)   NOT NULL,
+    JobType          STRING(40)   NOT NULL,
+    SolverType       STRING(20)   NOT NULL,
+    Status           STRING(30)   NOT NULL,
+    TraceId          STRING(36),
+    IdempotencyKey   STRING(128),
+    SourceEventType  STRING(60)   NOT NULL,
+    Payload          BYTES(MAX)   NOT NULL,
+    ResultPayload    BYTES(MAX),
+    FailureCode      STRING(64),
+    FailureMessage   STRING(MAX),
+    AttemptCount     INT64        NOT NULL DEFAULT (0),
+    RequestedAt      TIMESTAMP    NOT NULL,
+    PublishedAt      TIMESTAMP,
+    StartedAt        TIMESTAMP,
+    CompletedAt      TIMESTAMP,
+    AppliedAt        TIMESTAMP,
+    UpdatedAt        TIMESTAMP    NOT NULL OPTIONS (allow_commit_timestamp=true),
+    CONSTRAINT CHK_OptimizationJobStatus CHECK (
+        Status IN ('QUEUED', 'PUBLISHED', 'RUNNING', 'SOLVED', 'APPLYING', 'APPLIED', 'FAILED', 'CANCELLED')
+    ),
+    CONSTRAINT CHK_OptimizationJobSolver CHECK (
+        SolverType IN ('VRP', 'CP_SAT')
+    ),
+) PRIMARY KEY (JobId);
+
+CREATE INDEX Idx_OptimizationJobs_BySupplierStatus
+    ON OptimizationJobs(SupplierId, Status, UpdatedAt DESC);
+
+CREATE INDEX Idx_OptimizationJobs_BySupplierRequested
+    ON OptimizationJobs(SupplierId, RequestedAt DESC);
+
+CREATE INDEX Idx_OptimizationJobs_BySupplierIdempotency
+    ON OptimizationJobs(SupplierId, IdempotencyKey, RequestedAt DESC);
+
 -- ── Phase VII-B: Telemetry Audit Journal ─────────────────────────────────────
 -- Durable append-only storage for live driver GPS ingress. TraceId accepts both
 -- client UUIDs and deterministic server-derived SHA-256 hex when older clients

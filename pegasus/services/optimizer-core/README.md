@@ -5,8 +5,8 @@ This directory scaffolds stateless OR-Tools gRPC sidecars for V.O.I.D. optimizat
 Pattern selected: gRPC sidecar (Pattern A)
 
 Current rollout mode:
-- Python sidecar remains available as the canary baseline.
-- Rust sidecar is the target compute engine for hybrid Go orchestration + Rust solver execution.
+- Rust sidecar is the canonical production-grade solver for hybrid Go orchestration + Rust execution.
+- Python sidecar remains available only as a deprecated reference/parity path.
 
 Why this fits the current repo:
 - `pegasus/apps/backend-go` already uses asynchronous Kafka worker patterns and transactional outbox writes.
@@ -65,6 +65,12 @@ pegasus/services/optimizer-core/
 2. CP-SAT constraints model (`ResolveConstraint`)
 - Input: factory slot capacities, manifest requirements, retailer-priority scores.
 - Output: boolean assignment matrix (`manifest_id` -> `factory_node_id`).
+
+## Contract Additions
+
+- `VRPResponse` and `CPSATResponse` now carry additive `SolverStatus` (`OPTIMAL`, `FEASIBLE`, `INFEASIBLE`, `MODEL_INVALID`) and `matrix_size` fields.
+- Legacy `feasible` remains on the wire for mixed-rollout compatibility, but Go adapter payloads now promote explicit `status` and `matrix_size` in `OPTIMIZATION_SOLVED`.
+- Adapter worker metrics now expose `void_optimizer_status_count` and `void_optimizer_latency_matrix_ratio` on `/metrics` (default bind `:8082`) with `/healthz` for local/runtime scrape readiness.
 
 ## Data Transformation Rules (Implemented)
 
@@ -139,8 +145,8 @@ go run ./cmd/optimizer-worker
 ```
 
 Dual-run canary bootstrap:
-- Keep Python sidecar active for output parity checks.
-- Run Rust sidecar with the same protobuf contract and compare deterministic outputs before traffic cutover.
+- Keep Python sidecar available only for reference parity checks.
+- Run Rust sidecar with the same protobuf contract and compare deterministic outputs when auditing regressions, not as a production fallback.
 
 ## Notes
 

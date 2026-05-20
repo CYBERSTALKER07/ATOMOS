@@ -76,6 +76,58 @@ func (JobType) EnumDescriptor() ([]byte, []int) {
 	return file_optimizer_core_proto_rawDescGZIP(), []int{0}
 }
 
+type SolverStatus int32
+
+const (
+	SolverStatus_OPTIMAL       SolverStatus = 0
+	SolverStatus_FEASIBLE      SolverStatus = 1
+	SolverStatus_INFEASIBLE    SolverStatus = 2
+	SolverStatus_MODEL_INVALID SolverStatus = 3
+)
+
+// Enum value maps for SolverStatus.
+var (
+	SolverStatus_name = map[int32]string{
+		0: "OPTIMAL",
+		1: "FEASIBLE",
+		2: "INFEASIBLE",
+		3: "MODEL_INVALID",
+	}
+	SolverStatus_value = map[string]int32{
+		"OPTIMAL":       0,
+		"FEASIBLE":      1,
+		"INFEASIBLE":    2,
+		"MODEL_INVALID": 3,
+	}
+)
+
+func (x SolverStatus) Enum() *SolverStatus {
+	p := new(SolverStatus)
+	*p = x
+	return p
+}
+
+func (x SolverStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SolverStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_optimizer_core_proto_enumTypes[1].Descriptor()
+}
+
+func (SolverStatus) Type() protoreflect.EnumType {
+	return &file_optimizer_core_proto_enumTypes[1]
+}
+
+func (x SolverStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SolverStatus.Descriptor instead.
+func (SolverStatus) EnumDescriptor() ([]byte, []int) {
+	return file_optimizer_core_proto_rawDescGZIP(), []int{1}
+}
+
 type SolverMetadata struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	JobId             string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
@@ -601,6 +653,8 @@ type VRPResponse struct {
 	Routes              []*VehicleRoute        `protobuf:"bytes,5,rep,name=routes,proto3" json:"routes,omitempty"`
 	UnassignedNodeUuids []string               `protobuf:"bytes,6,rep,name=unassigned_node_uuids,json=unassignedNodeUuids,proto3" json:"unassigned_node_uuids,omitempty"`
 	Warnings            []string               `protobuf:"bytes,7,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	Status              SolverStatus           `protobuf:"varint,8,opt,name=status,proto3,enum=pegasus.optimizer.core.v1.SolverStatus" json:"status,omitempty"`
+	MatrixSize          int32                  `protobuf:"varint,9,opt,name=matrix_size,json=matrixSize,proto3" json:"matrix_size,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -682,6 +736,20 @@ func (x *VRPResponse) GetWarnings() []string {
 		return x.Warnings
 	}
 	return nil
+}
+
+func (x *VRPResponse) GetStatus() SolverStatus {
+	if x != nil {
+		return x.Status
+	}
+	return SolverStatus_OPTIMAL
+}
+
+func (x *VRPResponse) GetMatrixSize() int32 {
+	if x != nil {
+		return x.MatrixSize
+	}
+	return 0
 }
 
 type FactorySlot struct {
@@ -957,6 +1025,8 @@ type CPSATResponse struct {
 	Assignments           []*Assignment          `protobuf:"bytes,5,rep,name=assignments,proto3" json:"assignments,omitempty"`
 	UnassignedManifestIds []string               `protobuf:"bytes,6,rep,name=unassigned_manifest_ids,json=unassignedManifestIds,proto3" json:"unassigned_manifest_ids,omitempty"`
 	Warnings              []string               `protobuf:"bytes,7,rep,name=warnings,proto3" json:"warnings,omitempty"`
+	Status                SolverStatus           `protobuf:"varint,8,opt,name=status,proto3,enum=pegasus.optimizer.core.v1.SolverStatus" json:"status,omitempty"`
+	MatrixSize            int32                  `protobuf:"varint,9,opt,name=matrix_size,json=matrixSize,proto3" json:"matrix_size,omitempty"`
 	unknownFields         protoimpl.UnknownFields
 	sizeCache             protoimpl.SizeCache
 }
@@ -1038,6 +1108,20 @@ func (x *CPSATResponse) GetWarnings() []string {
 		return x.Warnings
 	}
 	return nil
+}
+
+func (x *CPSATResponse) GetStatus() SolverStatus {
+	if x != nil {
+		return x.Status
+	}
+	return SolverStatus_OPTIMAL
+}
+
+func (x *CPSATResponse) GetMatrixSize() int32 {
+	if x != nil {
+		return x.MatrixSize
+	}
+	return 0
 }
 
 type HealthCheckRequest struct {
@@ -1178,7 +1262,7 @@ const file_optimizer_core_proto_rawDesc = "" +
 	"\x12ordered_node_uuids\x18\x03 \x03(\tR\x10orderedNodeUuids\x12\x1f\n" +
 	"\vload_scaled\x18\x04 \x01(\x03R\n" +
 	"loadScaled\x12*\n" +
-	"\x11route_cost_scaled\x18\x05 \x01(\x03R\x0frouteCostScaled\"\xca\x02\n" +
+	"\x11route_cost_scaled\x18\x05 \x01(\x03R\x0frouteCostScaled\"\xac\x03\n" +
 	"\vVRPResponse\x12=\n" +
 	"\x04meta\x18\x01 \x01(\v2).pegasus.optimizer.core.v1.SolverMetadataR\x04meta\x12\x1a\n" +
 	"\bfeasible\x18\x02 \x01(\bR\bfeasible\x12\x1b\n" +
@@ -1186,7 +1270,10 @@ const file_optimizer_core_proto_rawDesc = "" +
 	"\x15objective_cost_scaled\x18\x04 \x01(\x03R\x13objectiveCostScaled\x12?\n" +
 	"\x06routes\x18\x05 \x03(\v2'.pegasus.optimizer.core.v1.VehicleRouteR\x06routes\x122\n" +
 	"\x15unassigned_node_uuids\x18\x06 \x03(\tR\x13unassignedNodeUuids\x12\x1a\n" +
-	"\bwarnings\x18\a \x03(\tR\bwarnings\"k\n" +
+	"\bwarnings\x18\a \x03(\tR\bwarnings\x12?\n" +
+	"\x06status\x18\b \x01(\x0e2'.pegasus.optimizer.core.v1.SolverStatusR\x06status\x12\x1f\n" +
+	"\vmatrix_size\x18\t \x01(\x05R\n" +
+	"matrixSize\"k\n" +
 	"\vFactorySlot\x12*\n" +
 	"\x11factory_node_uuid\x18\x01 \x01(\tR\x0ffactoryNodeUuid\x120\n" +
 	"\x14slot_capacity_scaled\x18\x02 \x01(\x03R\x12slotCapacityScaled\"\xe3\x01\n" +
@@ -1208,7 +1295,7 @@ const file_optimizer_core_proto_rawDesc = "" +
 	"\vmanifest_id\x18\x01 \x01(\tR\n" +
 	"manifestId\x12*\n" +
 	"\x11factory_node_uuid\x18\x02 \x01(\tR\x0ffactoryNodeUuid\x12\x1a\n" +
-	"\bassigned\x18\x03 \x01(\bR\bassigned\"\xda\x02\n" +
+	"\bassigned\x18\x03 \x01(\bR\bassigned\"\xbc\x03\n" +
 	"\rCPSATResponse\x12=\n" +
 	"\x04meta\x18\x01 \x01(\v2).pegasus.optimizer.core.v1.SolverMetadataR\x04meta\x12\x1a\n" +
 	"\bfeasible\x18\x02 \x01(\bR\bfeasible\x12\x1b\n" +
@@ -1216,7 +1303,10 @@ const file_optimizer_core_proto_rawDesc = "" +
 	"\x16objective_score_scaled\x18\x04 \x01(\x03R\x14objectiveScoreScaled\x12G\n" +
 	"\vassignments\x18\x05 \x03(\v2%.pegasus.optimizer.core.v1.AssignmentR\vassignments\x126\n" +
 	"\x17unassigned_manifest_ids\x18\x06 \x03(\tR\x15unassignedManifestIds\x12\x1a\n" +
-	"\bwarnings\x18\a \x03(\tR\bwarnings\"\x14\n" +
+	"\bwarnings\x18\a \x03(\tR\bwarnings\x12?\n" +
+	"\x06status\x18\b \x01(\x0e2'.pegasus.optimizer.core.v1.SolverStatusR\x06status\x12\x1f\n" +
+	"\vmatrix_size\x18\t \x01(\x05R\n" +
+	"matrixSize\"\x14\n" +
 	"\x12HealthCheckRequest\"?\n" +
 	"\x13HealthCheckResponse\x12\x0e\n" +
 	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x18\n" +
@@ -1226,11 +1316,17 @@ const file_optimizer_core_proto_rawDesc = "" +
 	"\fJOB_TYPE_CTP\x10\x01\x12\x11\n" +
 	"\rJOB_TYPE_MEIO\x10\x02\x12\x1f\n" +
 	"\x1bJOB_TYPE_FACTORY_SCHEDULING\x10\x03\x12\x1a\n" +
-	"\x16JOB_TYPE_FLEET_ROUTING\x10\x042\xcd\x02\n" +
+	"\x16JOB_TYPE_FLEET_ROUTING\x10\x04*L\n" +
+	"\fSolverStatus\x12\v\n" +
+	"\aOPTIMAL\x10\x00\x12\f\n" +
+	"\bFEASIBLE\x10\x01\x12\x0e\n" +
+	"\n" +
+	"INFEASIBLE\x10\x02\x12\x11\n" +
+	"\rMODEL_INVALID\x10\x032\xcd\x02\n" +
 	"\x14OptimizerCoreService\x12_\n" +
 	"\x0eCalculateRoute\x12%.pegasus.optimizer.core.v1.VRPRequest\x1a&.pegasus.optimizer.core.v1.VRPResponse\x12f\n" +
 	"\x11ResolveConstraint\x12'.pegasus.optimizer.core.v1.CPSATRequest\x1a(.pegasus.optimizer.core.v1.CPSATResponse\x12l\n" +
-	"\vHealthCheck\x12-.pegasus.optimizer.core.v1.HealthCheckRequest\x1a..pegasus.optimizer.core.v1.HealthCheckResponseB\x11Z\x0foptimizercorepbb\x06proto3"
+	"\vHealthCheck\x12-.pegasus.optimizer.core.v1.HealthCheckRequest\x1a..pegasus.optimizer.core.v1.HealthCheckResponseB;Z9optimizercoreadapter/internal/optimizerpb;optimizercorepbb\x06proto3"
 
 var (
 	file_optimizer_core_proto_rawDescOnce sync.Once
@@ -1244,51 +1340,54 @@ func file_optimizer_core_proto_rawDescGZIP() []byte {
 	return file_optimizer_core_proto_rawDescData
 }
 
-var file_optimizer_core_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_optimizer_core_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_optimizer_core_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_optimizer_core_proto_goTypes = []any{
 	(JobType)(0),                // 0: pegasus.optimizer.core.v1.JobType
-	(*SolverMetadata)(nil),      // 1: pegasus.optimizer.core.v1.SolverMetadata
-	(*Int64Row)(nil),            // 2: pegasus.optimizer.core.v1.Int64Row
-	(*Vehicle)(nil),             // 3: pegasus.optimizer.core.v1.Vehicle
-	(*NodeDemand)(nil),          // 4: pegasus.optimizer.core.v1.NodeDemand
-	(*NodeTimeWindow)(nil),      // 5: pegasus.optimizer.core.v1.NodeTimeWindow
-	(*VRPRequest)(nil),          // 6: pegasus.optimizer.core.v1.VRPRequest
-	(*VehicleRoute)(nil),        // 7: pegasus.optimizer.core.v1.VehicleRoute
-	(*VRPResponse)(nil),         // 8: pegasus.optimizer.core.v1.VRPResponse
-	(*FactorySlot)(nil),         // 9: pegasus.optimizer.core.v1.FactorySlot
-	(*ManifestRequirement)(nil), // 10: pegasus.optimizer.core.v1.ManifestRequirement
-	(*CPSATRequest)(nil),        // 11: pegasus.optimizer.core.v1.CPSATRequest
-	(*Assignment)(nil),          // 12: pegasus.optimizer.core.v1.Assignment
-	(*CPSATResponse)(nil),       // 13: pegasus.optimizer.core.v1.CPSATResponse
-	(*HealthCheckRequest)(nil),  // 14: pegasus.optimizer.core.v1.HealthCheckRequest
-	(*HealthCheckResponse)(nil), // 15: pegasus.optimizer.core.v1.HealthCheckResponse
+	(SolverStatus)(0),           // 1: pegasus.optimizer.core.v1.SolverStatus
+	(*SolverMetadata)(nil),      // 2: pegasus.optimizer.core.v1.SolverMetadata
+	(*Int64Row)(nil),            // 3: pegasus.optimizer.core.v1.Int64Row
+	(*Vehicle)(nil),             // 4: pegasus.optimizer.core.v1.Vehicle
+	(*NodeDemand)(nil),          // 5: pegasus.optimizer.core.v1.NodeDemand
+	(*NodeTimeWindow)(nil),      // 6: pegasus.optimizer.core.v1.NodeTimeWindow
+	(*VRPRequest)(nil),          // 7: pegasus.optimizer.core.v1.VRPRequest
+	(*VehicleRoute)(nil),        // 8: pegasus.optimizer.core.v1.VehicleRoute
+	(*VRPResponse)(nil),         // 9: pegasus.optimizer.core.v1.VRPResponse
+	(*FactorySlot)(nil),         // 10: pegasus.optimizer.core.v1.FactorySlot
+	(*ManifestRequirement)(nil), // 11: pegasus.optimizer.core.v1.ManifestRequirement
+	(*CPSATRequest)(nil),        // 12: pegasus.optimizer.core.v1.CPSATRequest
+	(*Assignment)(nil),          // 13: pegasus.optimizer.core.v1.Assignment
+	(*CPSATResponse)(nil),       // 14: pegasus.optimizer.core.v1.CPSATResponse
+	(*HealthCheckRequest)(nil),  // 15: pegasus.optimizer.core.v1.HealthCheckRequest
+	(*HealthCheckResponse)(nil), // 16: pegasus.optimizer.core.v1.HealthCheckResponse
 }
 var file_optimizer_core_proto_depIdxs = []int32{
 	0,  // 0: pegasus.optimizer.core.v1.SolverMetadata.job_type:type_name -> pegasus.optimizer.core.v1.JobType
-	1,  // 1: pegasus.optimizer.core.v1.VRPRequest.meta:type_name -> pegasus.optimizer.core.v1.SolverMetadata
-	2,  // 2: pegasus.optimizer.core.v1.VRPRequest.distance_matrix_scaled:type_name -> pegasus.optimizer.core.v1.Int64Row
-	3,  // 3: pegasus.optimizer.core.v1.VRPRequest.vehicles:type_name -> pegasus.optimizer.core.v1.Vehicle
-	4,  // 4: pegasus.optimizer.core.v1.VRPRequest.node_demands:type_name -> pegasus.optimizer.core.v1.NodeDemand
-	5,  // 5: pegasus.optimizer.core.v1.VRPRequest.node_time_windows:type_name -> pegasus.optimizer.core.v1.NodeTimeWindow
-	1,  // 6: pegasus.optimizer.core.v1.VRPResponse.meta:type_name -> pegasus.optimizer.core.v1.SolverMetadata
-	7,  // 7: pegasus.optimizer.core.v1.VRPResponse.routes:type_name -> pegasus.optimizer.core.v1.VehicleRoute
-	1,  // 8: pegasus.optimizer.core.v1.CPSATRequest.meta:type_name -> pegasus.optimizer.core.v1.SolverMetadata
-	9,  // 9: pegasus.optimizer.core.v1.CPSATRequest.factory_slots:type_name -> pegasus.optimizer.core.v1.FactorySlot
-	10, // 10: pegasus.optimizer.core.v1.CPSATRequest.manifest_requirements:type_name -> pegasus.optimizer.core.v1.ManifestRequirement
-	1,  // 11: pegasus.optimizer.core.v1.CPSATResponse.meta:type_name -> pegasus.optimizer.core.v1.SolverMetadata
-	12, // 12: pegasus.optimizer.core.v1.CPSATResponse.assignments:type_name -> pegasus.optimizer.core.v1.Assignment
-	6,  // 13: pegasus.optimizer.core.v1.OptimizerCoreService.CalculateRoute:input_type -> pegasus.optimizer.core.v1.VRPRequest
-	11, // 14: pegasus.optimizer.core.v1.OptimizerCoreService.ResolveConstraint:input_type -> pegasus.optimizer.core.v1.CPSATRequest
-	14, // 15: pegasus.optimizer.core.v1.OptimizerCoreService.HealthCheck:input_type -> pegasus.optimizer.core.v1.HealthCheckRequest
-	8,  // 16: pegasus.optimizer.core.v1.OptimizerCoreService.CalculateRoute:output_type -> pegasus.optimizer.core.v1.VRPResponse
-	13, // 17: pegasus.optimizer.core.v1.OptimizerCoreService.ResolveConstraint:output_type -> pegasus.optimizer.core.v1.CPSATResponse
-	15, // 18: pegasus.optimizer.core.v1.OptimizerCoreService.HealthCheck:output_type -> pegasus.optimizer.core.v1.HealthCheckResponse
-	16, // [16:19] is the sub-list for method output_type
-	13, // [13:16] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	2,  // 1: pegasus.optimizer.core.v1.VRPRequest.meta:type_name -> pegasus.optimizer.core.v1.SolverMetadata
+	3,  // 2: pegasus.optimizer.core.v1.VRPRequest.distance_matrix_scaled:type_name -> pegasus.optimizer.core.v1.Int64Row
+	4,  // 3: pegasus.optimizer.core.v1.VRPRequest.vehicles:type_name -> pegasus.optimizer.core.v1.Vehicle
+	5,  // 4: pegasus.optimizer.core.v1.VRPRequest.node_demands:type_name -> pegasus.optimizer.core.v1.NodeDemand
+	6,  // 5: pegasus.optimizer.core.v1.VRPRequest.node_time_windows:type_name -> pegasus.optimizer.core.v1.NodeTimeWindow
+	2,  // 6: pegasus.optimizer.core.v1.VRPResponse.meta:type_name -> pegasus.optimizer.core.v1.SolverMetadata
+	8,  // 7: pegasus.optimizer.core.v1.VRPResponse.routes:type_name -> pegasus.optimizer.core.v1.VehicleRoute
+	1,  // 8: pegasus.optimizer.core.v1.VRPResponse.status:type_name -> pegasus.optimizer.core.v1.SolverStatus
+	2,  // 9: pegasus.optimizer.core.v1.CPSATRequest.meta:type_name -> pegasus.optimizer.core.v1.SolverMetadata
+	10, // 10: pegasus.optimizer.core.v1.CPSATRequest.factory_slots:type_name -> pegasus.optimizer.core.v1.FactorySlot
+	11, // 11: pegasus.optimizer.core.v1.CPSATRequest.manifest_requirements:type_name -> pegasus.optimizer.core.v1.ManifestRequirement
+	2,  // 12: pegasus.optimizer.core.v1.CPSATResponse.meta:type_name -> pegasus.optimizer.core.v1.SolverMetadata
+	13, // 13: pegasus.optimizer.core.v1.CPSATResponse.assignments:type_name -> pegasus.optimizer.core.v1.Assignment
+	1,  // 14: pegasus.optimizer.core.v1.CPSATResponse.status:type_name -> pegasus.optimizer.core.v1.SolverStatus
+	7,  // 15: pegasus.optimizer.core.v1.OptimizerCoreService.CalculateRoute:input_type -> pegasus.optimizer.core.v1.VRPRequest
+	12, // 16: pegasus.optimizer.core.v1.OptimizerCoreService.ResolveConstraint:input_type -> pegasus.optimizer.core.v1.CPSATRequest
+	15, // 17: pegasus.optimizer.core.v1.OptimizerCoreService.HealthCheck:input_type -> pegasus.optimizer.core.v1.HealthCheckRequest
+	9,  // 18: pegasus.optimizer.core.v1.OptimizerCoreService.CalculateRoute:output_type -> pegasus.optimizer.core.v1.VRPResponse
+	14, // 19: pegasus.optimizer.core.v1.OptimizerCoreService.ResolveConstraint:output_type -> pegasus.optimizer.core.v1.CPSATResponse
+	16, // 20: pegasus.optimizer.core.v1.OptimizerCoreService.HealthCheck:output_type -> pegasus.optimizer.core.v1.HealthCheckResponse
+	18, // [18:21] is the sub-list for method output_type
+	15, // [15:18] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_optimizer_core_proto_init() }
@@ -1301,7 +1400,7 @@ func file_optimizer_core_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_optimizer_core_proto_rawDesc), len(file_optimizer_core_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,

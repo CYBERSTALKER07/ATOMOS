@@ -1236,6 +1236,60 @@
       "title": "OffloadConfirmedPayload",
       "type": "object"
     },
+    "OptimizationSolvedPayload": {
+      "additionalProperties": true,
+      "properties": {
+        "job_id": {
+          "type": "string"
+        },
+        "matrix_size": {
+          "type": "integer"
+        },
+        "produced_at": {
+          "type": "string"
+        },
+        "solver_type": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "supplier_id": {
+          "type": "string"
+        },
+        "timed_out": {
+          "type": "boolean"
+        },
+        "trace_id": {
+          "type": "string"
+        },
+        "warnings": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "job_id",
+        "matrix_size",
+        "produced_at",
+        "solver_type",
+        "status",
+        "supplier_id",
+        "timed_out",
+        "trace_id"
+      ],
+      "title": "OptimizationSolvedPayload",
+      "type": "object"
+    },
     "OrderAssignedPayload": {
       "additionalProperties": true,
       "properties": {
@@ -4447,6 +4501,44 @@
         {
           "properties": {
             "type": {
+              "const": "OPTIMIZATION_JOB_QUEUED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OptimizationJobQueuedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/OptimizationSolvedPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "OPTIMIZATION_SOLVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OptimizationSolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "ORDER_AMENDED"
             }
           },
@@ -6089,6 +6181,8 @@
         "NEGOTIATION_RESOLVED",
         "NETWORK_MODE_CHANGED",
         "OFFLOAD_CONFIRMED",
+        "OPTIMIZATION_JOB_QUEUED",
+        "OPTIMIZATION_SOLVED",
         "ORDER_AMENDED",
         "ORDER_ASSIGNED",
         "ORDER_CANCELLED",
@@ -6251,6 +6345,8 @@
     "NEGOTIATION_RESOLVED": "NegotiationResolvedPayload",
     "NETWORK_MODE_CHANGED": "NetworkModeChangedPayload",
     "OFFLOAD_CONFIRMED": "OffloadConfirmedPayload",
+    "OPTIMIZATION_JOB_QUEUED": "UnknownEventPayload",
+    "OPTIMIZATION_SOLVED": "OptimizationSolvedPayload",
     "ORDER_AMENDED": "UnknownEventPayload",
     "ORDER_ASSIGNED": "OrderAssignedPayload",
     "ORDER_CANCELLED": "UnknownEventPayload",

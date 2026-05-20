@@ -50,6 +50,8 @@ type Deps struct {
 //	GET /v1/supplier/fleet-volumetrics                 — fleet capacity vs backlog
 //	POST /v1/supplier/dispatch-queue                   — ready-for-dispatch queue execution
 //	GET /v1/supplier/dispatch-preview                  — H3 dispatch preview
+//	GET /v1/supplier/dispatch/jobs/active              — active async optimizer jobs
+//	GET /v1/supplier/dispatch/jobs/{job_id}/projection — additive solved projection read
 func RegisterRoutes(r chi.Router, d Deps) {
 	log := d.Log
 	idem := d.Idempotency
@@ -88,6 +90,14 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		auth.RequireRole(supplierRole, log(withRegionScope(idem(withWarehouseScope(supplier.HandleDispatchQueue(d.Spanner, d.ReadRouter, d.ManifestSvc, d.Optimizer, d.Counters)))))))
 	r.HandleFunc("/v1/supplier/dispatch-preview",
 		auth.RequireRole(supplierRole, log(withRegionScope(withWarehouseScope(supplier.HandleH3RoutePreview(d.Spanner, d.ReadRouter))))))
+	r.HandleFunc("/v1/supplier/dispatch/jobs/active",
+		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleActiveDispatchJobs(d.Spanner)))))
+	r.HandleFunc("/v1/supplier/dispatch/jobs/{jobID}/projection",
+		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleDispatchJobRoutes(d.Spanner)))))
+	r.HandleFunc("/v1/suppliers/{supplierID}/dispatch/jobs/active",
+		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleActiveDispatchJobs(d.Spanner)))))
+	r.HandleFunc("/v1/suppliers/{supplierID}/dispatch/jobs/{jobID}/projection",
+		auth.RequireRole(supplierRole, log(withRegionScope(supplier.HandleDispatchJobRoutes(d.Spanner)))))
 }
 
 func manifestRootHandler(manifestSvc *supplier.ManifestService) http.HandlerFunc {

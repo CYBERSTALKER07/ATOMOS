@@ -659,6 +659,7 @@ func main() {
 		Telegram:      tgClient,
 		SpannerClient: spannerClient,
 	}, cfg.KafkaBrokerAddress)
+	supplier.StartOptimizationApplyConsumer(ctx, spannerClient, manifestSvc, cfg.KafkaBrokerAddress)
 
 	// Boot the Financial Worker
 	internalKafka.StartTreasurer(ctx, spannerClient, cfg.KafkaBrokerAddress, platformCfg)

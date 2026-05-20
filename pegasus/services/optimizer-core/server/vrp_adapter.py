@@ -13,6 +13,7 @@ MAX_VRP_TIME_LIMIT_MS = 60_000
 def solve_vrp(request: pb2.VRPRequest) -> pb2.VRPResponse:
     response = pb2.VRPResponse()
     response.meta.CopyFrom(request.meta)
+    response.matrix_size = len(request.drop_off_node_uuids) + 1
 
     warnings: list[str] = []
 
@@ -22,15 +23,18 @@ def solve_vrp(request: pb2.VRPRequest) -> pb2.VRPResponse:
     except ValueError as exc:
         response.feasible = False
         response.timed_out = False
+        response.status = pb2.MODEL_INVALID
         response.warnings.append(str(exc))
         return response
 
     if node_map.size <= 1:
         response.feasible = True
+        response.status = pb2.OPTIMAL
         return response
 
     if len(request.vehicles) == 0:
         response.feasible = False
+        response.status = pb2.MODEL_INVALID
         response.warnings.append("no vehicles supplied")
         return response
 
@@ -38,6 +42,7 @@ def solve_vrp(request: pb2.VRPRequest) -> pb2.VRPResponse:
         distance_matrix = _matrix_from_request(request.distance_matrix_scaled, node_map.size)
     except ValueError as exc:
         response.feasible = False
+        response.status = pb2.MODEL_INVALID
         response.warnings.append(str(exc))
         return response
 
@@ -125,6 +130,7 @@ def solve_vrp(request: pb2.VRPRequest) -> pb2.VRPResponse:
 
     if solution is None:
         response.feasible = False
+        response.status = pb2.INFEASIBLE
         if response.timed_out:
             response.warnings.append("solver timed out without feasible solution")
         else:
@@ -132,6 +138,7 @@ def solve_vrp(request: pb2.VRPRequest) -> pb2.VRPResponse:
         return response
 
     response.feasible = True
+    response.status = pb2.FEASIBLE if response.timed_out else pb2.OPTIMAL
     response.objective_cost_scaled = int(solution.ObjectiveValue())
 
     assigned_nodes: set[str] = set()

@@ -533,6 +533,7 @@ type dispatchableOrder struct {
 }
 
 type availableDriver struct {
+	VehicleID    string
 	DriverID     string
 	Name         string
 	VehicleType  string
@@ -565,7 +566,7 @@ func HandleAutoDispatch(client *spanner.Client, readRouter proximity.ReadRouter,
 		ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 		defer cancel()
 
-		result, err := runAutoDispatch(ctx, client, readRouter, supplierID, req.OrderIDs, req.ExcludedTruckIds, manifestSvc, optimizer, counters, false)
+		queued, immediate, err := queueAutoDispatchJob(ctx, client, readRouter, supplierID, req.OrderIDs, req.ExcludedTruckIds, r.Header.Get("Idempotency-Key"))
 		if err != nil {
 			log.Printf("[AUTO-DISPATCH] error for supplier %s: %v", supplierID, err)
 			http.Error(w, `{"error":"auto-dispatch failed"}`, http.StatusInternalServerError)
@@ -573,7 +574,13 @@ func HandleAutoDispatch(client *spanner.Client, readRouter proximity.ReadRouter,
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(result)
+		if immediate != nil {
+			_ = json.NewEncoder(w).Encode(immediate)
+			return
+		}
+
+		w.WriteHeader(http.StatusAccepted)
+		_ = json.NewEncoder(w).Encode(queued)
 	}
 }
 
@@ -653,7 +660,7 @@ func HandleManualDispatch(client *spanner.Client, readRouter proximity.ReadRoute
 		defer cancel()
 
 		// Fetch driver info
-		driver, err := fetchDriverByID(ctx, client, supplierID, req.DriverID)
+		driver, err := fetchDriverByIDFresh(ctx, client, supplierID, req.DriverID)
 		if err != nil {
 			log.Printf("[MANUAL-DISPATCH] driver lookup failed for supplier %s driver %s: %v", supplierID, req.DriverID, err)
 			http.Error(w, `{"error":"driver lookup failed"}`, http.StatusBadRequest)
@@ -661,7 +668,7 @@ func HandleManualDispatch(client *spanner.Client, readRouter proximity.ReadRoute
 		}
 
 		// Fetch order data
-		orders, err := fetchDispatchableOrders(ctx, client, readRouter, supplierID, req.OrderIDs)
+		orders, err := fetchDispatchableOrdersFresh(ctx, client, readRouter, supplierID, req.OrderIDs)
 		if err != nil {
 			log.Printf("[MANUAL-DISPATCH] fetch orders failed for supplier %s: %v", supplierID, err)
 			http.Error(w, `{"error":"fetch orders failed"}`, http.StatusInternalServerError)
@@ -782,6 +789,14 @@ func HandleManualDispatch(client *spanner.Client, readRouter proximity.ReadRoute
 
 // fetchDriverByID loads a single driver by ID, scoped to the supplier.
 func fetchDriverByID(ctx context.Context, client *spanner.Client, supplierID, driverID string) (*availableDriver, error) {
+	return fetchDriverByIDWithConsistency(ctx, client, supplierID, driverID, false)
+}
+
+func fetchDriverByIDFresh(ctx context.Context, client *spanner.Client, supplierID, driverID string) (*availableDriver, error) {
+	return fetchDriverByIDWithConsistency(ctx, client, supplierID, driverID, true)
+}
+
+func fetchDriverByIDWithConsistency(ctx context.Context, client *spanner.Client, supplierID, driverID string, useStrongRead bool) (*availableDriver, error) {
 	stmt := spanner.Statement{
 		SQL: `SELECT d.DriverId, d.Name, d.VehicleType, d.VehicleClass,
 		             COALESCE(v.MaxVolumeVU, 100) AS MaxVolumeVU
@@ -794,7 +809,12 @@ func fetchDriverByID(ctx context.Context, client *spanner.Client, supplierID, dr
 			"sid": supplierID,
 		},
 	}
-	iter := spannerx.StaleQuery(ctx, client, stmt)
+	var iter *spanner.RowIterator
+	if useStrongRead {
+		iter = client.Single().Query(ctx, stmt)
+	} else {
+		iter = spannerx.StaleQuery(ctx, client, stmt)
+	}
 	defer iter.Stop()
 
 	row, err := iter.Next()
@@ -1438,6 +1458,14 @@ func runAutoDispatch(ctx context.Context, client *spanner.Client, readRouter pro
 // ── Step 1: Fetch Dispatchable Orders ───────────────────────────────────────
 
 func fetchDispatchableOrders(ctx context.Context, client *spanner.Client, readRouter proximity.ReadRouter, supplierID string, filterOrderIDs []string) ([]dispatchableOrder, error) {
+	return fetchDispatchableOrdersWithConsistency(ctx, client, readRouter, supplierID, filterOrderIDs, false)
+}
+
+func fetchDispatchableOrdersFresh(ctx context.Context, client *spanner.Client, readRouter proximity.ReadRouter, supplierID string, filterOrderIDs []string) ([]dispatchableOrder, error) {
+	return fetchDispatchableOrdersWithConsistency(ctx, client, readRouter, supplierID, filterOrderIDs, true)
+}
+
+func fetchDispatchableOrdersWithConsistency(ctx context.Context, client *spanner.Client, readRouter proximity.ReadRouter, supplierID string, filterOrderIDs []string, useStrongRead bool) ([]dispatchableOrder, error) {
 	params := map[string]interface{}{"sid": supplierID}
 	warehouseID := auth.EffectiveWarehouseID(ctx)
 
@@ -1491,7 +1519,7 @@ func fetchDispatchableOrders(ctx context.Context, client *spanner.Client, readRo
 	sql += ` GROUP BY o.OrderId, o.RetailerId, r.Name, o.H3Cell, o.Amount,
 	                  r.Latitude, r.Longitude, r.ReceivingWindowOpen,
 	                  r.ReceivingWindowClose, o.IsRecovery
-	         ORDER BY COALESCE(o.DispatchPriority, 0) DESC, TotalVolumeVU DESC`
+	         ORDER BY MAX(COALESCE(o.DispatchPriority, 0)) DESC, TotalVolumeVU DESC`
 
 	readClient := client
 	if warehouseID != "" {
@@ -1501,10 +1529,15 @@ func fetchDispatchableOrders(ctx context.Context, client *spanner.Client, readRo
 	}
 
 	stmt := spanner.Statement{SQL: sql, Params: params}
-	// Use explicit staleness snapshot to reduce Spanner read contention during
-	// high-volume batch dispatch. 10-second staleness is acceptable for dispatch
-	// since orders don't change state faster than the dispatch cycle.
-	iter := readClient.Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, stmt)
+	var iter *spanner.RowIterator
+	if useStrongRead {
+		// Mutation-triggered dispatch must see just-created orders immediately.
+		iter = readClient.Single().Query(ctx, stmt)
+	} else {
+		// Use explicit staleness snapshot to reduce Spanner read contention during
+		// high-volume preview/read paths.
+		iter = readClient.Single().WithTimestampBound(spanner.ExactStaleness(10*time.Second)).Query(ctx, stmt)
+	}
 	defer iter.Stop()
 
 	var results []dispatchableOrder
@@ -1630,7 +1663,15 @@ func fetchWarehouseOrigin(ctx context.Context, client *spanner.Client, warehouse
 // ── Step 2: Fetch Available Drivers ─────────────────────────────────────────
 
 func fetchAvailableDrivers(ctx context.Context, client *spanner.Client, supplierID string) ([]availableDriver, error) {
-	sql := `SELECT d.DriverId, d.Name, COALESCE(d.VehicleType, ''), COALESCE(v.VehicleClass, ''), v.MaxVolumeVU
+	return fetchAvailableDriversWithConsistency(ctx, client, supplierID, false)
+}
+
+func fetchAvailableDriversFresh(ctx context.Context, client *spanner.Client, supplierID string) ([]availableDriver, error) {
+	return fetchAvailableDriversWithConsistency(ctx, client, supplierID, true)
+}
+
+func fetchAvailableDriversWithConsistency(ctx context.Context, client *spanner.Client, supplierID string, useStrongRead bool) ([]availableDriver, error) {
+	sql := `SELECT d.DriverId, d.VehicleId, d.Name, COALESCE(d.VehicleType, ''), COALESCE(v.VehicleClass, ''), v.MaxVolumeVU
 	        FROM Drivers d
 	        JOIN Vehicles v ON d.VehicleId = v.VehicleId
 	        WHERE d.SupplierId = @sid
@@ -1649,7 +1690,12 @@ func fetchAvailableDrivers(ctx context.Context, client *spanner.Client, supplier
 	}
 
 	stmt := spanner.Statement{SQL: sql, Params: params}
-	iter := spannerx.StaleQuery(ctx, client, stmt)
+	var iter *spanner.RowIterator
+	if useStrongRead {
+		iter = client.Single().Query(ctx, stmt)
+	} else {
+		iter = spannerx.StaleQuery(ctx, client, stmt)
+	}
 	defer iter.Stop()
 
 	var drivers []availableDriver
@@ -1663,7 +1709,7 @@ func fetchAvailableDrivers(ctx context.Context, client *spanner.Client, supplier
 		}
 
 		var d availableDriver
-		if err := row.Columns(&d.DriverID, &d.Name, &d.VehicleType, &d.VehicleClass, &d.MaxVolumeVU); err != nil {
+		if err := row.Columns(&d.DriverID, &d.VehicleID, &d.Name, &d.VehicleType, &d.VehicleClass, &d.MaxVolumeVU); err != nil {
 			return nil, fmt.Errorf("parse driver row: %w", err)
 		}
 		drivers = append(drivers, d)
