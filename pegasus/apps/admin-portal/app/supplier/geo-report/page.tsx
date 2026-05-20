@@ -6,6 +6,7 @@ import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import StatsCard from '@/components/StatsCard';
 import { cellToBoundary } from 'h3-js';
+import { resolveRenderableHexes } from '../_shared/h3-coverage';
 
 const MapGL = dynamic(() => import('react-map-gl/maplibre').then(m => m.default), { ssr: false });
 const Source = dynamic(() => import('react-map-gl/maplibre').then(m => m.Source), { ssr: false });
@@ -25,6 +26,8 @@ interface WarehouseZone {
   warehouse_name: string;
   hex_count: number;
   hexes: string[];
+  hexes_compacted?: string[];
+  h3_resolution?: number;
   retailer_count: number;
 }
 
@@ -85,7 +88,14 @@ export default function GeoReportPage() {
       color: ZONE_COLORS[i % ZONE_COLORS.length],
       retailerCount: z.retailer_count,
       hexCount: z.hex_count,
-      geojson: hexesToGeoJSON(z.hexes, ZONE_COLORS[i % ZONE_COLORS.length]),
+      geojson: hexesToGeoJSON(
+        resolveRenderableHexes({
+          hexes: z.hexes,
+          compactedHexes: z.hexes_compacted,
+          resolution: z.h3_resolution,
+        }),
+        ZONE_COLORS[i % ZONE_COLORS.length],
+      ),
     }));
   }, [report]);
 

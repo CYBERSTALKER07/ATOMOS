@@ -51,19 +51,21 @@ type UpdateWarehouseRequest struct {
 }
 
 type WarehouseResponse struct {
-	WarehouseId      string   `json:"warehouse_id"`
-	SupplierId       string   `json:"supplier_id"`
-	Name             string   `json:"name"`
-	Address          string   `json:"address"`
-	Lat              float64  `json:"lat"`
-	Lng              float64  `json:"lng"`
-	H3Indexes        []string `json:"h3_indexes"`
-	CoverageRadiusKm float64  `json:"coverage_radius_km"`
-	PaymentConfigID  string   `json:"payment_config_id,omitempty"`
-	IsActive         bool     `json:"is_active"`
-	IsDefault        bool     `json:"is_default"`
-	IsOnShift        bool     `json:"is_on_shift"`
-	CreatedAt        string   `json:"created_at"`
+	WarehouseId        string   `json:"warehouse_id"`
+	SupplierId         string   `json:"supplier_id"`
+	Name               string   `json:"name"`
+	Address            string   `json:"address"`
+	Lat                float64  `json:"lat"`
+	Lng                float64  `json:"lng"`
+	H3Indexes          []string `json:"h3_indexes"`
+	H3IndexesCompacted []string `json:"h3_indexes_compacted,omitempty"`
+	H3Resolution       int      `json:"h3_resolution,omitempty"`
+	CoverageRadiusKm   float64  `json:"coverage_radius_km"`
+	PaymentConfigID    string   `json:"payment_config_id,omitempty"`
+	IsActive           bool     `json:"is_active"`
+	IsDefault          bool     `json:"is_default"`
+	IsOnShift          bool     `json:"is_on_shift"`
+	CreatedAt          string   `json:"created_at"`
 	// Aggregated stats
 	DriverCount int64 `json:"driver_count"`
 	OrderCount  int64 `json:"order_count"`
@@ -253,6 +255,7 @@ func listWarehouses(w http.ResponseWriter, r *http.Request, client *spanner.Clie
 			wh.PaymentConfigID = paymentConfigID.StringVal
 		}
 		wh.H3Indexes = h3Indexes
+		applyWarehouseCoverageTransportFields(&wh)
 		if createdAt.Valid {
 			wh.CreatedAt = createdAt.Time.Format("2006-01-02T15:04:05Z")
 		}
@@ -326,6 +329,7 @@ func getWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Client
 		wh.PaymentConfigID = paymentConfigID.StringVal
 	}
 	wh.H3Indexes = h3Indexes
+	applyWarehouseCoverageTransportFields(&wh)
 	if createdAt.Valid {
 		wh.CreatedAt = createdAt.Time.Format("2006-01-02T15:04:05Z")
 	}
@@ -441,7 +445,7 @@ func createWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(WarehouseResponse{
+	response := WarehouseResponse{
 		WarehouseId:      warehouseID,
 		SupplierId:       supplierID,
 		Name:             req.Name,
@@ -454,8 +458,10 @@ func createWarehouse(w http.ResponseWriter, r *http.Request, client *spanner.Cli
 		IsActive:         true,
 		IsDefault:        false,
 		IsOnShift:        true,
-		HexCount:         int64(len(h3Cells)),
-	})
+	}
+	applyWarehouseCoverageTransportFields(&response)
+	applyWarehouseDerivedStats(&response)
+	json.NewEncoder(w).Encode(response)
 }
 
 func loadWarehouseAggregateStats(ctx context.Context, client *spanner.Client, supplierID, warehouseID string) (warehouseAggregateStats, error) {
@@ -487,6 +493,17 @@ func loadWarehouseAggregateStats(ctx context.Context, client *spanner.Client, su
 
 func applyWarehouseDerivedStats(wh *WarehouseResponse) {
 	wh.HexCount = int64(len(wh.H3Indexes))
+}
+
+func applyWarehouseCoverageTransportFields(wh *WarehouseResponse) {
+	wh.H3Resolution = proximity.CoverageResolution(wh.H3Indexes)
+	compacted, err := proximity.CompactCells(wh.H3Indexes)
+	if err != nil {
+		log.Printf("[WAREHOUSE] compact cells failed for %s: %v", wh.WarehouseId, err)
+		wh.H3IndexesCompacted = append([]string(nil), wh.H3Indexes...)
+		return
+	}
+	wh.H3IndexesCompacted = compacted
 }
 
 // ── Update Warehouse ──────────────────────────────────────────────────────
@@ -795,18 +812,17 @@ func saveWarehouseCoverage(w http.ResponseWriter, r *http.Request, client *spann
 		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
 		return
 	}
-	if len(req.Polygon) < 3 {
-		http.Error(w, `{"error":"polygon must have at least 3 points"}`, http.StatusBadRequest)
+	req.H3Resolution = proximity.NormalizeCoverageResolution(req.H3Resolution)
+	if err := proximity.ValidateCoveragePolygon(req.Polygon, req.H3Resolution); err != nil {
+		writeWarehouseCoverageHTTPError(w, err)
 		return
 	}
-	for _, pt := range req.Polygon {
-		if pt[0] < -90 || pt[0] > 90 || pt[1] < -180 || pt[1] > 180 {
-			http.Error(w, `{"error":"coordinates out of range"}`, http.StatusBadRequest)
-			return
-		}
-	}
 
-	hexes := proximity.ComputePolygonCoverage(req.Polygon, req.H3Resolution)
+	hexes, err := proximity.ComputePolygonCoverage(req.Polygon, req.H3Resolution)
+	if err != nil {
+		writeWarehouseCoverageHTTPError(w, err)
+		return
+	}
 	if len(hexes) == 0 {
 		http.Error(w, `{"error":"polygon does not produce any coverage cells"}`, http.StatusBadRequest)
 		return
@@ -925,6 +941,17 @@ func saveWarehouseCoverage(w http.ResponseWriter, r *http.Request, client *spann
 		"warehouse_id": warehouseID,
 		"h3_count":     len(hexes),
 	})
+}
+
+func writeWarehouseCoverageHTTPError(w http.ResponseWriter, err error) {
+	status := proximity.CoverageErrorStatus(err)
+	if status == http.StatusInternalServerError {
+		log.Printf("[WAREHOUSE] unexpected coverage validation error: %v", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": proximity.CoverageErrorMessage(err)})
 }
 
 // ── Deactivate Warehouse ──────────────────────────────────────────────────

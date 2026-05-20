@@ -1,6 +1,8 @@
 package proximity
 
 import (
+	"reflect"
+	"sort"
 	"testing"
 
 	h3 "github.com/uber/h3-go/v4"
@@ -177,5 +179,112 @@ func TestLookupCell_NearPole(t *testing.T) {
 func TestComputeGridCoverage_NearPole(t *testing.T) {
 	if len(ComputeGridCoverage(89.5, 0.0, 5.0)) == 0 {
 		t.Error("pole coverage is empty")
+	}
+}
+
+func TestComputePolygonCoverage_CellsHaveCentersInsidePolygon(t *testing.T) {
+	polygon := [][2]float64{
+		{41.2850, 69.2050},
+		{41.2850, 69.2550},
+		{41.3200, 69.2550},
+		{41.3200, 69.2050},
+	}
+
+	got, err := ComputePolygonCoverage(polygon, H3Resolution)
+	if err != nil {
+		t.Fatalf("ComputePolygonCoverage returned error: %v", err)
+	}
+
+	if len(got) == 0 {
+		t.Fatal("expected native polygon coverage to return cells")
+	}
+
+	for _, cellID := range got {
+		cell := h3.CellFromString(cellID)
+		if !cell.IsValid() {
+			t.Fatalf("invalid H3 cell returned: %s", cellID)
+		}
+		center, err := h3.CellToLatLng(cell)
+		if err != nil {
+			t.Fatalf("failed to decode cell center for %s: %v", cellID, err)
+		}
+		if !pointInPolygon(center.Lat, center.Lng, polygon) {
+			t.Fatalf("cell %s center (%f,%f) is outside polygon", cellID, center.Lat, center.Lng)
+		}
+	}
+}
+
+func TestComputePolygonCoverage_IsDeterministic(t *testing.T) {
+	polygon := [][2]float64{
+		{41.2900, 69.2100},
+		{41.2950, 69.2500},
+		{41.3200, 69.2450},
+		{41.3180, 69.2150},
+	}
+
+	baseline, err := ComputePolygonCoverage(polygon, H3Resolution)
+	if err != nil {
+		t.Fatalf("ComputePolygonCoverage baseline returned error: %v", err)
+	}
+	for i := 0; i < 20; i++ {
+		got, err := ComputePolygonCoverage(polygon, H3Resolution)
+		if err != nil {
+			t.Fatalf("ComputePolygonCoverage iteration %d returned error: %v", i, err)
+		}
+		if !reflect.DeepEqual(got, baseline) {
+			t.Fatalf("iteration %d produced non-deterministic polygon coverage\n got: %v\nwant: %v", i, got, baseline)
+		}
+	}
+}
+
+func TestCompactCells_RoundTrip(t *testing.T) {
+	polygon := [][2]float64{
+		{41.2700, 69.1800},
+		{41.2700, 69.2900},
+		{41.3500, 69.2900},
+		{41.3500, 69.1800},
+	}
+
+	original, err := ComputePolygonCoverage(polygon, 8)
+	if err != nil {
+		t.Fatalf("ComputePolygonCoverage returned error: %v", err)
+	}
+	if len(original) == 0 {
+		t.Fatal("expected polygon coverage to produce cells at resolution 8")
+	}
+
+	compacted, err := CompactCells(original)
+	if err != nil {
+		t.Fatalf("CompactCells returned error: %v", err)
+	}
+	if len(compacted) == 0 {
+		t.Fatal("expected compacted cell set to be non-empty")
+	}
+
+	roundTrip, err := UncompactCells(compacted, 8)
+	if err != nil {
+		t.Fatalf("UncompactCells returned error: %v", err)
+	}
+
+	sort.Strings(original)
+	sort.Strings(roundTrip)
+	if !reflect.DeepEqual(roundTrip, original) {
+		t.Fatalf("compact/uncompact round-trip mismatch\n got: %v\nwant: %v", roundTrip, original)
+	}
+}
+
+func TestCoverageResolution_UsesInputCells(t *testing.T) {
+	cells, err := ComputePolygonCoverage([][2]float64{
+		{41.2700, 69.1800},
+		{41.2700, 69.2900},
+		{41.3500, 69.2900},
+		{41.3500, 69.1800},
+	}, 8)
+	if err != nil {
+		t.Fatalf("ComputePolygonCoverage returned error: %v", err)
+	}
+
+	if got := CoverageResolution(cells); got != 8 {
+		t.Fatalf("CoverageResolution returned %d, want 8", got)
 	}
 }

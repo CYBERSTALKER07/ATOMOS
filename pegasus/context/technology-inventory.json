@@ -93,20 +93,94 @@
       ]
     },
     {
+      "name": "Phase-3 supplier H3 polygon fill and compacted transport",
+      "path": "Native H3 polygon fill plus additive compacted coverage payloads for supplier geo-planning surfaces",
+      "owner": "pegasus/apps/backend-go/{proximity/{h3.go,zone_preview.go,geo_report.go},supplier/warehouses.go} + pegasus/apps/admin-portal/app/supplier/{_shared/h3-coverage.ts,geo-report/page.tsx,warehouses/{page.tsx,CoverageEditor.tsx}}",
+      "methods": [
+        "proximity/h3.go now routes polygon coverage through h3.PolygonToCells and adds CompactCells, UncompactCells, and CoverageResolution helpers",
+        "proximity/zone_preview.go validate-coverage responses now return additive hexes_compacted and h3_resolution alongside legacy hexes/conflicts",
+        "proximity/geo_report.go warehouse summaries now return additive hexes_compacted and inferred h3_resolution",
+        "supplier/warehouses.go warehouse list/detail/create responses now return additive h3_indexes_compacted and inferred h3_resolution",
+        "admin-portal supplier coverage consumers now lazily expand compacted arrays through app/supplier/_shared/h3-coverage.ts using h3-js uncompactCells"
+      ],
+      "consumers": [
+        "apps/backend-go/proximity/h3.go",
+        "apps/backend-go/proximity/zone_preview.go",
+        "apps/backend-go/proximity/geo_report.go",
+        "apps/backend-go/supplier/warehouses.go",
+        "apps/admin-portal/app/supplier/_shared/h3-coverage.ts",
+        "apps/admin-portal/app/supplier/warehouses/CoverageEditor.tsx",
+        "apps/admin-portal/app/supplier/warehouses/page.tsx",
+        "apps/admin-portal/app/supplier/geo-report/page.tsx"
+      ],
+      "notes": [
+        "Spanner Warehouses.H3Indexes and Redis whcell:* memberships remain expanded in this tranche to preserve serving-warehouse, audit, and cache-index behavior.",
+        "Transport compaction is additive and fail-open: portal consumers fall back to raw hex arrays when compacted fields are absent or invalid."
+      ]
+    },
+    {
+      "name": "H3 memory and egress safety hardening",
+      "path": "Bounded H3 compute and payload controls for supplier coverage and geo-report surfaces",
+      "owner": "pegasus/apps/backend-go/{proximity/{h3.go,zone_preview.go,geo_report.go},supplier/warehouses.go}",
+      "methods": [
+        "proximity/h3.go now defines shared coverage guardrails for polygon complexity, area ceilings, max generated cells, fallback sampler iteration budgets, and response-size caps",
+        "proximity/zone_preview.go now validates polygon complexity before compute, maps violations to structured 400/422/413 responses, and enforces bounded fallback sampler growth",
+        "supplier/warehouses.go now reuses shared proximity guardrails for coverage-save polygon validation and bounded compute failure handling",
+        "proximity/geo_report.go now replaces unbounded overlap aggregation with bounded unique sampling and caps per-warehouse coverage payload arrays with additive coverage_truncated metadata"
+      ],
+      "consumers": [
+        "apps/backend-go/proximity/h3.go",
+        "apps/backend-go/proximity/zone_preview.go",
+        "apps/backend-go/supplier/warehouses.go",
+        "apps/backend-go/proximity/geo_report.go"
+      ],
+      "notes": [
+        "Guardrails are additive and maintain existing endpoint contracts while introducing deterministic bounded failure behavior.",
+        "Bounded overlap sampling and payload caps reduce heap pressure during geo-report generation under large coverage sets."
+      ]
+    },
+    {
+      "name": "H2 observability and H3 pentagon fallback closure",
+      "path": "Spatial compaction observability plus pentagon-safe H3 boundary fallback",
+      "owner": "pegasus/apps/backend-go/proximity/{metrics.go,h3.go,zone_preview.go,geo_report.go,recommendation.go}",
+      "methods": [
+        "proximity/metrics.go now exports void_spatial_compaction_ratio and void_spatial_egress_overflow_total with zone_type and resolution labels",
+        "proximity/zone_preview.go now records validate-coverage compaction ratios and truncates compacted payloads above MaxCompactedEgressCells with overflow counter increments",
+        "proximity/geo_report.go now records per-warehouse compaction ratios and enforces compacted egress truncation with supplier and warehouse warning logs",
+        "proximity/h3.go now wraps LatLngToCell, GridDisk, PolygonToCells, and GridDistance with panic-safe guards, pentagon-neighborhood checks, and Haversine fallback micro-batches",
+        "proximity/recommendation.go H3GridDistance now routes through safeGridDistanceCells for topology-safe scoring"
+      ],
+      "consumers": [
+        "apps/backend-go/proximity/metrics.go",
+        "apps/backend-go/proximity/h3.go",
+        "apps/backend-go/proximity/zone_preview.go",
+        "apps/backend-go/proximity/geo_report.go",
+        "apps/backend-go/proximity/recommendation.go"
+      ],
+      "notes": [
+        "Metric identities are stable for Prometheus and alerting integrations: void_spatial_compaction_ratio and void_spatial_egress_overflow_total.",
+        "Pentagon/topology-boundary failures now degrade via Haversine approximations rather than hard request failure."
+      ]
+    },
+    {
       "name": "OR-Tools optimizer-core sidecar runtime (Pattern-A)",
-      "path": "Kafka optimization jobs -> Go adapter -> gRPC sidecar -> OutboxEvents",
+      "path": "Kafka optimization jobs -> Go adapter -> gRPC sidecar -> OptimizationJobs + OutboxEvents",
       "owner": "pegasus/services/optimizer-core/{proto,server-rust,server,adapters/go}",
       "methods": [
-        "proto/optimizer_core.proto defines CalculateRoute (VRP), ResolveConstraint (CP-SAT), and HealthCheck RPCs",
-        "Rust sidecar adapters in server-rust/src/{mapping.rs,scaling.rs,solver/vrp.rs,solver/cpsat.rs} enforce deterministic UUID-index mapping and SCALE_FACTOR=10000 integer conversion and now execute deterministic constrained assignment + route-construction solver logic with best-effort/time-limit semantics",
-        "Go worker scaffold in adapters/go/internal/adapter/worker.go consumes optimization jobs from Kafka and wraps solver calls with bounded retry plus backoff+jitter",
-        "Go worker persists OPTIMIZATION_SOLVED payloads to Spanner OutboxEvents only and does not mutate Inventory or Manifest tables directly",
+        "proto/optimizer_core.proto defines CalculateRoute (VRP), ResolveConstraint (CP-SAT), and HealthCheck RPCs and now adds additive SolverStatus plus matrix_size on VRP/CPSAT responses",
+        "Rust sidecar adapters in server-rust/src/{mapping.rs,scaling.rs,solver/vrp.rs,solver/cpsat.rs} enforce deterministic UUID-index mapping and SCALE_FACTOR=10000 integer conversion and now execute deterministic constrained assignment + route-construction solver logic with best-effort/time-limit semantics while populating SolverStatus and matrix_size",
+        "Deprecated Python reference adapters in server/{vrp_adapter.py,cpsat_adapter.py,service.py} keep non-production parity with the canonical Rust solver contract",
+        "packages/optimizer-contract/jobs.go now defines the canonical OptimizationJobEnvelope shared by backend enqueue and worker consume paths",
+        "Go worker in adapters/go/internal/adapter/worker.go consumes shared OptimizationJobEnvelope payloads from Kafka and wraps solver calls with bounded retry plus backoff+jitter",
+        "Go worker now updates OptimizationJobs to RUNNING|SOLVED|FAILED and persists OPTIMIZATION_SOLVED payloads to Spanner OutboxEvents in the same result transaction while emitting explicit status and matrix_size fields instead of relying on an ambiguous top-level feasible boolean",
+        "Optimizer worker config/main now honor optional REDIS_ADDRESS and remove terminal supplier job ids from supplier:{supplier_id}:jobs:active only after SOLVED or FAILED commit succeeds",
         "Adapter gRPC transport in services/optimizer-core/adapters/go/internal/optimizergrpc/client.go is now fully protobuf-wired using generated stubs in services/optimizer-core/adapters/go/internal/optimizerpb/{optimizer_core.pb.go,optimizer_core_grpc.pb.go}",
+        "Adapter telemetry in services/optimizer-core/adapters/go/internal/{optimizergrpc/client.go,telemetry/metrics.go} and cmd/optimizer-worker/main.go now records void_optimizer_status_count and void_optimizer_latency_matrix_ratio and serves /metrics plus /healthz on OPTIMIZER_WORKER_METRICS_ADDR",
         "Adapter failure-path tests in services/optimizer-core/adapters/go/internal/{optimizergrpc/client_test.go,adapter/worker_test.go} now cover sidecar unavailable, deadline timeout, and infeasible-result handling",
         "Backend optimizer gRPC transport in apps/backend-go/internal/rpc/optimizergrpc/client.go now prefers OPTIMIZER_SIDE_ENDPOINT with bounded block-on-dial timeout and local circuit-breaker fast failover",
         "Phase-7 canary hard gates are now codified in infra/k8s/monitoring/prometheusrule.yaml and infra/terraform/observability.tf for void_optimizer_solver_duration_seconds, void_optimizer_error_rate, and void_optimizer_circuit_breaker_state",
         "infra/k8s/ai-worker/deployment.yaml now additively co-locates optimizer-core-rust sidecar and loopback endpoint wiring (127.0.0.1:50055)",
-        "docker-compose.yml now provisions no-cloud optimizer simulation through kafka-init topic bootstrap for pegasus-optimizer-jobs and profile optimizer-sim services (optimizer-core-rust and optimizer-adapter-worker) with local emulator dependencies",
+        "docker-compose.yml now provisions no-cloud optimizer simulation through kafka-init topic bootstrap for pegasus-optimizer-jobs and profile optimizer-sim services (optimizer-core-rust and optimizer-adapter-worker) with local emulator dependencies, REDIS_ADDRESS=redis:6379 parity wiring, K8s-aligned resource limits, and host metrics port 8082",
         "Makefile now exposes optimizer-sim-up, optimizer-sim-down, and optimizer-sim-bootstrap orchestration targets for repeatable local bring-up",
         "services/optimizer-core/Dockerfile.rust now pins rust:1.85-bookworm and installs protobuf-compiler so transitive edition2024 dependency parsing and protoc-dependent codegen succeed in local docker simulation builds"
       ],
@@ -114,18 +188,58 @@
         "services/optimizer-core/proto/optimizer_core.proto",
         "services/optimizer-core/server-rust/src/{main.rs,service.rs,mapping.rs,scaling.rs,solver/vrp.rs,solver/cpsat.rs}",
         "services/optimizer-core/server/{vrp_adapter.py,cpsat_adapter.py,service.py,main.py,mapping.py,scaling.py}",
-        "services/optimizer-core/adapters/go/internal/{adapter,optimizergrpc,model,mapping,scaling,config}",
+        "services/optimizer-core/adapters/go/internal/{adapter,optimizergrpc,model,mapping,scaling,config,telemetry}",
         "services/optimizer-core/adapters/go/cmd/optimizer-worker/main.go",
         "services/optimizer-core/adapters/go/Dockerfile",
+        "packages/optimizer-contract/{go.mod,types.go,jobs.go}",
         "docker-compose.yml",
         "Makefile"
       ],
       "notes": [
         "Pattern-A sidecar runtime remains additive and keeps current backend-go optimization paths intact while enabling executable Rust solver behavior.",
-        "Python sidecar remains available for dual-run canary parity checks while Rust sidecar ramps.",
+        "Rust sidecar is now the canonical production solver; Python sidecar remains available only as a deprecated reference/parity path.",
         "Go optimizergrpc transport is now protobuf-mapped end-to-end with fault-path coverage and canary rollback gates.",
         "Rust sidecar local startup now requires Dockerfile.rust builder compatibility hardening (rust:1.85-bookworm + protobuf-compiler) for deterministic container builds.",
-        "Local no-cloud optimizer simulation is now runnable through optimizer-sim profile orchestration without Google Cloud API keys."
+        "Local no-cloud optimizer simulation is now runnable through optimizer-sim profile orchestration without Google Cloud API keys.",
+        "Adapter observability now exposes solver-status counts and latency-to-matrix-size ratios on a dedicated metrics endpoint, local compose resource limits intentionally mirror current ai-worker deployment truth, and active-job cleanup degrades safely when Redis is unavailable."
+      ]
+    },
+    {
+      "name": "Backend async optimizer dispatch wiring (Phases K1/K3)",
+      "path": "OptimizationJobs ledger, Redis active-job index, queue envelope, supplier projection read path, and solved-result apply path for additive async rollout",
+      "owner": "pegasus/apps/backend-go/{schema/spanner.ddl,migrations/migrations.go,cmd/setup/main.go,optimizationjobs/**,cache/{keys.go,optimization_jobs.go},supplier/{dispatcher.go,dispatch_queue.go,dispatch_jobs.go,dispatch_apply.go,manifest.go},kafka/events.go} + pegasus/packages/optimizer-contract/jobs.go + pegasus/services/optimizer-core/adapters/go/internal/{config/config.go,adapter/worker.go}",
+      "methods": [
+        "schema/spanner.ddl, migrations/migrations.go, and cmd/setup/main.go now provision OptimizationJobs with supplier/status/request/idempotency indexes and bounded retry metadata columns",
+        "optimizationjobs/{service.go,query.go} now define typed queued-job records, solver/status enums, validation for additive async optimizer rollout, deterministic caller-supplied job ids, APPLYING active-state visibility, and bounded supplier/job read helpers for Redis fallback projection reads",
+        "optimizationjobs/repository.go now provides Spanner insert mutations for transactional job persistence",
+        "packages/optimizer-contract/jobs.go now defines the canonical OptimizationJobEnvelope metadata plus render-ready VRP depot/node/vehicle payloads and solved-result envelopes shared by backend and worker",
+        "cache/{keys.go,optimization_jobs.go} now define Redis set key pattern supplier:{supplier_id}:jobs:active and helper methods for SADD, SMEMBERS, and SREM lifecycle maintenance",
+        "supplier/{dispatcher.go,dispatch_queue.go} now snapshot auto-dispatch order/driver state, enrich queue envelopes with render-ready metadata, insert OptimizationJobs, emit TopicOptimizerJobs through transactional outbox, and perform best-effort queue-side SADD before returning HTTP 202 with job_id",
+        "supplier/dispatch_jobs.go now exposes supplier active-job and solved-projection reads using Redis-primary and bounded Spanner fallback behavior at /v1/supplier/dispatch/jobs/active plus /v1/supplier|suppliers projection paths while surfacing deterministic route_id and manifest_id for SOLVED|APPLYING|APPLIED results",
+        "supplier/{dispatch_apply.go,manifest.go} now consume OPTIMIZATION_SOLVED in backend-go, transition jobs through SOLVED -> APPLYING -> APPLIED, re-add/remove supplier active-job Redis entries around apply, and idempotently materialize draft manifests via deterministic route_id / manifest_id plus CreateDraftManifestWithIdentity",
+        "kafka/{events.go,notification_dispatcher.go} now model a supplier-facing OptimizationSolvedEvent payload subset, consume OPTIMIZATION_SOLVED, and push supplier-scoped websocket completion frames keyed by job_id through SupplierHub while reusing the existing notification dispatcher seam",
+        "services/optimizer-core/adapters/go/internal/{config/config.go,adapter/worker.go} plus cmd/optimizer-worker/main.go now honor REDIS_ADDRESS and remove terminal jobs from supplier active sets only after successful SOLVED or FAILED ledger commit",
+        "kafka/events.go now declares TopicOptimizerJobs plus additive EventOptimizationQueued and EventOptimizationSolved constants for the queue and result phases"
+      ],
+      "consumers": [
+        "apps/backend-go/schema/spanner.ddl",
+        "apps/backend-go/migrations/migrations.go",
+        "apps/backend-go/cmd/setup/main.go",
+        "apps/backend-go/optimizationjobs/{doc.go,service.go,query.go,repository.go,service_test.go}",
+        "apps/backend-go/cache/{keys.go,optimization_jobs.go}",
+        "apps/backend-go/supplier/{dispatcher.go,dispatch_queue.go,dispatch_jobs.go,dispatch_apply.go,manifest.go}",
+        "apps/backend-go/kafka/events.go",
+        "services/optimizer-core/adapters/go/internal/{config/config.go,adapter/worker.go}",
+        "services/optimizer-core/adapters/go/cmd/optimizer-worker/main.go",
+        "packages/optimizer-contract/jobs.go",
+        "packages/types/fleet.ts",
+        "apps/admin-portal/lib/api/dispatch-jobs.ts",
+        "apps/admin-portal/app/supplier/dispatch/page.tsx"
+      ],
+      "notes": [
+        "This tranche is additive only: supplier auto-dispatch now queues, exposes active/projection read visibility, returns 202 with job_id, and consumes terminal solved results inside backend-go to apply deterministic draft manifests without moving solver-side mutation ownership out of the worker boundary.",
+        "OptimizationJobs now captures the durable enqueue ledger, Redis-backed active polling index, and worker-side RUNNING|SOLVED|FAILED result writeback so later async route changes stay transactional and traceable even when Redis degrades to bounded Spanner fallback.",
+        "Supplier realtime now receives OPTIMIZATION_SOLVED completion frames through kafka/notification_dispatcher.go, and supplier web dispatch now hydrates queued projections from websocket completion events via app/supplier/dispatch/page.tsx plus lib/api/dispatch-jobs.ts while gating confirm until apply reaches APPLIED."
       ]
     },
     {

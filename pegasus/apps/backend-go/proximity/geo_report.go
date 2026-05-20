@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
 	"backend-go/auth"
 	"backend-go/cache"
@@ -44,21 +45,24 @@ type DeadZoneRetailer struct {
 
 // WarehouseSummary shows a warehouse's coverage stats in the report.
 type WarehouseSummary struct {
-	WarehouseId      string   `json:"warehouse_id"`
-	WarehouseName    string   `json:"warehouse_name"`
-	Name             string   `json:"name"`
-	Lat              float64  `json:"lat"`
-	Lng              float64  `json:"lng"`
-	CoverageRadiusKm float64  `json:"coverage_radius_km"`
-	HexCount         int      `json:"hex_count"`
-	Hexes            []string `json:"hexes"`
-	RetailerCount    int      `json:"retailer_count"`
-	CellCount        int      `json:"cell_count"`
-	RetailersCovered int      `json:"retailers_covered"`
-	QueueDepth       int64    `json:"queue_depth"`
-	MaxCapacity      int64    `json:"max_capacity"`
-	LoadPercent      float64  `json:"load_percent"`
-	LoadStatus       string   `json:"load_status"` // GREEN | YELLOW | RED
+	WarehouseId       string   `json:"warehouse_id"`
+	WarehouseName     string   `json:"warehouse_name"`
+	Name              string   `json:"name"`
+	Lat               float64  `json:"lat"`
+	Lng               float64  `json:"lng"`
+	CoverageRadiusKm  float64  `json:"coverage_radius_km"`
+	HexCount          int      `json:"hex_count"`
+	Hexes             []string `json:"hexes"`
+	HexesCompacted    []string `json:"hexes_compacted,omitempty"`
+	H3Resolution      int      `json:"h3_resolution,omitempty"`
+	RetailerCount     int      `json:"retailer_count"`
+	CellCount         int      `json:"cell_count"`
+	RetailersCovered  int      `json:"retailers_covered"`
+	QueueDepth        int64    `json:"queue_depth"`
+	MaxCapacity       int64    `json:"max_capacity"`
+	LoadPercent       float64  `json:"load_percent"`
+	LoadStatus        string   `json:"load_status"` // GREEN | YELLOW | RED
+	CoverageTruncated bool     `json:"coverage_truncated,omitempty"`
 }
 
 // HandleGeoReport — GET /v1/supplier/geo-report
@@ -186,12 +190,9 @@ func buildGeoReport(ctx context.Context, client *spanner.Client, supplierID stri
 		}
 	}
 
-	// 4. Check for cross-supplier overlaps
-	var allCells []string
-	for _, wh := range warehouses {
-		allCells = append(allCells, wh.H3Indexes...)
-	}
-	overlaps, err := CheckCoverageOverlap(ctx, client, supplierID, allCells)
+	// 4. Check for cross-supplier overlaps using a bounded unique sample.
+	overlapSample := sampleCoverageCellsForOverlap(warehouses, 50)
+	overlaps, err := CheckCoverageOverlap(ctx, client, supplierID, overlapSample)
 	if err != nil {
 		log.Printf("[GEO-REPORT] overlap check error: %v", err)
 		overlaps = nil
@@ -217,23 +218,57 @@ func buildGeoReport(ctx context.Context, client *spanner.Client, supplierID stri
 			loadPct = 1.0
 		}
 
+		hexesForResponse, hexesTruncated := LimitCoverageCellsForResponse(wh.H3Indexes, MaxCoverageResponseCells)
 		summaries[i] = WarehouseSummary{
-			WarehouseId:      wh.WarehouseId,
-			WarehouseName:    wh.Name,
-			Name:             wh.Name,
-			Lat:              wh.Lat,
-			Lng:              wh.Lng,
-			CoverageRadiusKm: wh.CoverageRadiusKm,
-			HexCount:         len(wh.H3Indexes),
-			Hexes:            append([]string(nil), wh.H3Indexes...),
-			RetailerCount:    whCoveredCounts[wh.WarehouseId],
-			CellCount:        len(wh.H3Indexes),
-			RetailersCovered: whCoveredCounts[wh.WarehouseId],
-			QueueDepth:       depth,
-			MaxCapacity:      maxCap,
-			LoadPercent:      loadPct,
-			LoadStatus:       cache.LoadStatus(loadPct),
+			WarehouseId:       wh.WarehouseId,
+			WarehouseName:     wh.Name,
+			Name:              wh.Name,
+			Lat:               wh.Lat,
+			Lng:               wh.Lng,
+			CoverageRadiusKm:  wh.CoverageRadiusKm,
+			HexCount:          len(wh.H3Indexes),
+			Hexes:             hexesForResponse,
+			H3Resolution:      CoverageResolution(wh.H3Indexes),
+			RetailerCount:     whCoveredCounts[wh.WarehouseId],
+			CellCount:         len(wh.H3Indexes),
+			RetailersCovered:  whCoveredCounts[wh.WarehouseId],
+			QueueDepth:        depth,
+			MaxCapacity:       maxCap,
+			LoadPercent:       loadPct,
+			LoadStatus:        cache.LoadStatus(loadPct),
+			CoverageTruncated: hexesTruncated,
 		}
+
+		compactionInput, compactionTruncated := LimitCoverageCellsForResponse(wh.H3Indexes, MaxCoverageCells)
+		if compactionTruncated {
+			summaries[i].CoverageTruncated = true
+		}
+		resolutionLabel := strconv.Itoa(summaries[i].H3Resolution)
+		rawCompactionCount := len(compactionInput)
+
+		compacted, compactErr := CompactCells(compactionInput)
+		if compactErr != nil {
+			log.Printf("[GEO-REPORT] compact cells failed for warehouse %s: %v", wh.WarehouseId, compactErr)
+			compacted = append([]string(nil), summaries[i].Hexes...)
+			if rawCompactionCount > 0 {
+				SpatialCompactionRatio.WithLabelValues("geo_report", resolutionLabel).Observe(1.0)
+			}
+		} else if rawCompactionCount > 0 {
+			SpatialCompactionRatio.WithLabelValues("geo_report", resolutionLabel).Observe(float64(len(compacted)) / float64(rawCompactionCount))
+		}
+
+		if len(compacted) > MaxCompactedEgressCells {
+			SpatialEgressOverflowTotal.WithLabelValues("geo_report", resolutionLabel).Inc()
+			log.Printf("[SPATIAL-EGRESS][WARN] zone_type=geo_report supplier_id=%s warehouse_id=%s resolution=%d compacted_cells=%d threshold=%d action=truncate", supplierID, wh.WarehouseId, summaries[i].H3Resolution, len(compacted), MaxCompactedEgressCells)
+			compacted = append([]string(nil), compacted[:MaxCompactedEgressCells]...)
+			summaries[i].CoverageTruncated = true
+		}
+
+		limitedCompacted, compactedTruncated := LimitCoverageCellsForResponse(compacted, MaxCoverageResponseCells)
+		if compactedTruncated {
+			summaries[i].CoverageTruncated = true
+		}
+		summaries[i].HexesCompacted = limitedCompacted
 		totalHexes += len(wh.H3Indexes)
 	}
 
@@ -343,4 +378,27 @@ func containsCell(cells []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func sampleCoverageCellsForOverlap(warehouses []warehouseForReport, max int) []string {
+	if max <= 0 {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, max)
+	out := make([]string, 0, max)
+	for _, warehouse := range warehouses {
+		for _, cell := range warehouse.H3Indexes {
+			if _, exists := seen[cell]; exists {
+				continue
+			}
+			seen[cell] = struct{}{}
+			out = append(out, cell)
+			if len(out) >= max {
+				return out
+			}
+		}
+	}
+
+	return out
 }

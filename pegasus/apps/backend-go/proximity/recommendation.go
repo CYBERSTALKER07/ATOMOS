@@ -106,7 +106,7 @@ func H3GridDistance(cellA, cellB string) int {
 	if !a.IsValid() || !b.IsValid() {
 		return math.MaxInt32
 	}
-	d, err := h3.GridDistance(a, b)
+	d, err := safeGridDistanceCells(a, b)
 	if err != nil {
 		return math.MaxInt32
 	}

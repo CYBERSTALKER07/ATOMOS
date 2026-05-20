@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
 
 	"backend-go/auth"
 
 	"cloud.google.com/go/spanner"
-	h3 "github.com/uber/h3-go/v4"
 	"google.golang.org/api/iterator"
 )
 
@@ -347,22 +347,43 @@ type CoverageConflict struct {
 }
 
 type ValidateCoverageResponse struct {
-	Hexes         []string           `json:"hexes"`
-	Conflicts     []CoverageConflict `json:"conflicts"`
-	RetailerCount int                `json:"retailer_count"`
+	Hexes          []string           `json:"hexes"`
+	HexesCompacted []string           `json:"hexes_compacted,omitempty"`
+	H3Resolution   int                `json:"h3_resolution,omitempty"`
+	Conflicts      []CoverageConflict `json:"conflicts"`
+	RetailerCount  int                `json:"retailer_count"`
 }
 
 // ComputePolygonCoverage returns the H3 cells whose centers fall inside the polygon.
 // Invalid resolutions fall back to the canonical supplier coverage resolution.
-func ComputePolygonCoverage(polygon [][2]float64, resolution int) []string {
-	edgeKm := H3Res7EdgeKm
-	if resolution != 7 && resolution != 8 {
-		resolution = H3Resolution
+func ComputePolygonCoverage(polygon [][2]float64, resolution int) ([]string, error) {
+	resolution = NormalizeCoverageResolution(resolution)
+	if err := ValidateCoveragePolygon(polygon, resolution); err != nil {
+		return nil, err
 	}
+
+	edgeKm := H3Res7EdgeKm
 	if resolution == 8 {
 		edgeKm = H3Res7EdgeKm / 2.6457 // res8 ≈ 0.46 km edge
 	}
-	return computePolygonCoverage(polygon, edgeKm, resolution)
+	if cells, err := polygonToCells(polygon, resolution); err == nil && len(cells) > 0 {
+		if limitErr := ValidateCoverageCellsCount(len(cells)); limitErr != nil {
+			return nil, limitErr
+		}
+		return cells, nil
+	} else if err != nil {
+		log.Printf("[POLYGON-COVERAGE] native fill failed; falling back to sampler: %v", err)
+	}
+
+	cells, err := computePolygonCoverage(polygon, edgeKm, resolution)
+	if err != nil {
+		return nil, err
+	}
+	if err := ValidateCoverageCellsCount(len(cells)); err != nil {
+		return nil, err
+	}
+
+	return cells, nil
 }
 
 // FindCoverageConflicts returns same-supplier warehouses whose H3 coverage overlaps
@@ -390,33 +411,49 @@ func HandleValidateCoverage(spannerClient *spanner.Client) http.HandlerFunc {
 			return
 		}
 
-		if len(req.Polygon) < 3 {
-			http.Error(w, `{"error":"polygon must have at least 3 points"}`, http.StatusBadRequest)
+		req.H3Resolution = NormalizeCoverageResolution(req.H3Resolution)
+		if err := ValidateCoveragePolygon(req.Polygon, req.H3Resolution); err != nil {
+			writeCoverageHTTPError(w, err)
 			return
-		}
-		if req.H3Resolution != 7 && req.H3Resolution != 8 {
-			req.H3Resolution = H3Resolution // default to 7
-		}
-
-		// Validate coordinate bounds
-		for _, pt := range req.Polygon {
-			if pt[0] < -90 || pt[0] > 90 || pt[1] < -180 || pt[1] > 180 {
-				http.Error(w, `{"error":"coordinates out of range"}`, http.StatusBadRequest)
-				return
-			}
 		}
 
 		supplierID := claims.ResolveSupplierID()
 		ctx := r.Context()
 
 		// 1. Compute grid cells covering the polygon
-		hexes := ComputePolygonCoverage(req.Polygon, req.H3Resolution)
+		hexes, err := ComputePolygonCoverage(req.Polygon, req.H3Resolution)
+		if err != nil {
+			writeCoverageHTTPError(w, err)
+			return
+		}
+		if err := ValidateCoverageResponseCount(len(hexes)); err != nil {
+			writeCoverageHTTPError(w, err)
+			return
+		}
+		hexesCompacted, compactErr := CompactCells(hexes)
+		if compactErr != nil {
+			log.Printf("[VALIDATE-COVERAGE] compact cells failed: %v", compactErr)
+			hexesCompacted = append([]string(nil), hexes...)
+		}
+
+		resolutionLabel := strconv.Itoa(req.H3Resolution)
+		if len(hexes) > 0 {
+			SpatialCompactionRatio.WithLabelValues("validate_coverage", resolutionLabel).Observe(float64(len(hexesCompacted)) / float64(len(hexes)))
+		}
+
+		if len(hexesCompacted) > MaxCompactedEgressCells {
+			SpatialEgressOverflowTotal.WithLabelValues("validate_coverage", resolutionLabel).Inc()
+			log.Printf("[SPATIAL-EGRESS][WARN] zone_type=validate_coverage resolution=%d compacted_cells=%d threshold=%d action=truncate", req.H3Resolution, len(hexesCompacted), MaxCompactedEgressCells)
+			hexesCompacted = append([]string(nil), hexesCompacted[:MaxCompactedEgressCells]...)
+		}
 
 		if len(hexes) == 0 {
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(ValidateCoverageResponse{
-				Hexes:     []string{},
-				Conflicts: []CoverageConflict{},
+				Hexes:          []string{},
+				HexesCompacted: []string{},
+				H3Resolution:   req.H3Resolution,
+				Conflicts:      []CoverageConflict{},
 			})
 			return
 		}
@@ -436,15 +473,17 @@ func HandleValidateCoverage(spannerClient *spanner.Client) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(ValidateCoverageResponse{
-			Hexes:         hexes,
-			Conflicts:     conflicts,
-			RetailerCount: retailerCount,
+			Hexes:          hexes,
+			HexesCompacted: hexesCompacted,
+			H3Resolution:   req.H3Resolution,
+			Conflicts:      conflicts,
+			RetailerCount:  retailerCount,
 		})
 	}
 }
 
 // computePolygonCoverage generates grid cells whose centers fall inside the polygon.
-func computePolygonCoverage(polygon [][2]float64, edgeKm float64, resolution int) []string {
+func computePolygonCoverage(polygon [][2]float64, edgeKm float64, resolution int) ([]string, error) {
 	// Compute bounding box
 	minLat, maxLat := polygon[0][0], polygon[0][0]
 	minLng, maxLng := polygon[0][1], polygon[0][1]
@@ -470,28 +509,51 @@ func computePolygonCoverage(polygon [][2]float64, edgeKm float64, resolution int
 		cosLat = 1e-10
 	}
 	stepLng := edgeKm / (111.0 * cosLat)
+	if stepLat <= 0 || stepLng <= 0 || math.IsNaN(stepLat) || math.IsNaN(stepLng) || math.IsInf(stepLng, 0) {
+		return nil, ErrCoverageSamplerLimitExceeded
+	}
 
-	var cells []string
-	seen := make(map[string]bool)
+	latSpan := (maxLat + stepLat) - (minLat - stepLat)
+	lngSpan := (maxLng + stepLng) - (minLng - stepLng)
+	latSteps := int(math.Ceil(latSpan/stepLat)) + 1
+	lngSteps := int(math.Ceil(lngSpan/stepLng)) + 1
+	iterations := latSteps * lngSteps
+	if iterations > MaxCoverageFallbackIterations {
+		return nil, fmt.Errorf("%w: iterations=%d max=%d", ErrCoverageSamplerLimitExceeded, iterations, MaxCoverageFallbackIterations)
+	}
+
+	capacity := iterations / 4
+	if capacity < 64 {
+		capacity = 64
+	}
+	if capacity > MaxCoverageCells {
+		capacity = MaxCoverageCells
+	}
+
+	cells := make([]string, 0, capacity)
+	seen := make(map[string]struct{}, capacity)
 
 	for lat := minLat - stepLat; lat <= maxLat+stepLat; lat += stepLat {
 		for lng := minLng - stepLng; lng <= maxLng+stepLng; lng += stepLng {
 			if !pointInPolygon(lat, lng, polygon) {
 				continue
 			}
-			cell, err := h3.LatLngToCell(h3.LatLng{Lat: lat, Lng: lng}, resolution)
+			cell, err := safeLatLngToCell(lat, lng, resolution)
 			if err != nil {
 				continue
 			}
 			id := cell.String()
-			if !seen[id] {
-				seen[id] = true
+			if _, exists := seen[id]; !exists {
+				if len(cells) >= MaxCoverageCells {
+					return nil, fmt.Errorf("%w: got >=%d", ErrCoverageCellLimitExceeded, MaxCoverageCells)
+				}
+				seen[id] = struct{}{}
 				cells = append(cells, id)
 			}
 		}
 	}
 
-	return cells
+	return cells, nil
 }
 
 // pointInPolygon uses ray-casting to test if (lat, lng) is inside the polygon.
@@ -510,6 +572,17 @@ func pointInPolygon(lat, lng float64, polygon [][2]float64) bool {
 		j = i
 	}
 	return inside
+}
+
+func writeCoverageHTTPError(w http.ResponseWriter, err error) {
+	status := CoverageErrorStatus(err)
+	if status == http.StatusInternalServerError {
+		log.Printf("[COVERAGE] unexpected coverage error: %v", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"error": CoverageErrorMessage(err)})
 }
 
 // findCoverageConflicts queries sibling warehouses for overlapping H3 cells.

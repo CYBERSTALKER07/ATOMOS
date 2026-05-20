@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '@heroui/react';
 import { apiFetch } from '@/lib/auth';
 import Icon from '@/components/Icon';
 import { cellToBoundary, latLngToCell } from 'h3-js';
 import { buildSupplierWarehouseCoverageIdempotencyKey } from '../_shared/idempotency';
+import { resolveRenderableHexes } from '../_shared/h3-coverage';
 
 const MapGL = dynamic(() => import('react-map-gl/maplibre').then(m => m.default), { ssr: false });
 const Source = dynamic(() => import('react-map-gl/maplibre').then(m => m.Source), { ssr: false });
@@ -25,6 +26,8 @@ interface Props {
   lat: number;
   lng: number;
   existingHexes: string[];
+  existingHexesCompacted?: string[];
+  h3Resolution?: number;
   onSaved: () => void;
 }
 
@@ -36,6 +39,8 @@ interface ConflictItem {
 
 interface ValidateResult {
   hexes: string[];
+  hexes_compacted?: string[];
+  h3_resolution?: number;
   conflicts: ConflictItem[];
   retailer_count: number;
 }
@@ -56,8 +61,17 @@ function hexesToGeoJSON(hexes: string[], color: string) {
   return { type: 'FeatureCollection' as const, features };
 }
 
+function resolveTokenColor(token: string, fallback = 'transparent') {
+  if (typeof window === 'undefined') {
+    return fallback;
+  }
+
+  const value = window.getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+  return value || fallback;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default function CoverageEditor({ warehouseId, warehouseName, lat, lng, existingHexes, onSaved }: Props) {
+export default function CoverageEditor({ warehouseId, warehouseName, lat, lng, existingHexes, existingHexesCompacted, h3Resolution, onSaved }: Props) {
   const [resolution, setResolution] = useState(7);
   const [polygon, setPolygon] = useState<[number, number][]>([]); // [lat, lng] vertices
   const [drawing, setDrawing] = useState(false);
@@ -67,14 +81,44 @@ export default function CoverageEditor({ warehouseId, warehouseName, lat, lng, e
   const [error, setError] = useState('');
   const mapRef = useRef<{ getMap: () => unknown } | null>(null);
 
+  const existingRenderableHexes = useMemo(
+    () => resolveRenderableHexes({
+      hexes: existingHexes,
+      compactedHexes: existingHexesCompacted,
+      resolution: h3Resolution,
+    }),
+    [existingHexes, existingHexesCompacted, h3Resolution],
+  );
+
+  const mapColors = useMemo(
+    () => ({
+      existing: resolveTokenColor('--color-md-success'),
+      preview: resolveTokenColor('--color-md-primary'),
+      conflict: resolveTokenColor('--color-md-error'),
+      drawing: resolveTokenColor('--color-md-warning'),
+    }),
+    [],
+  );
+
+  const previewRenderableHexes = useMemo(
+    () => previewResult
+      ? resolveRenderableHexes({
+          hexes: previewResult.hexes,
+          compactedHexes: previewResult.hexes_compacted,
+          resolution: previewResult.h3_resolution ?? resolution,
+        })
+      : [],
+    [previewResult, resolution],
+  );
+
   // Existing coverage as GeoJSON
-  const existingGeoJSON = hexesToGeoJSON(existingHexes, '#4CAF50');
+  const existingGeoJSON = hexesToGeoJSON(existingRenderableHexes, mapColors.existing);
 
   // Preview hexes GeoJSON
   const previewGeoJSON = previewResult
     ? hexesToGeoJSON(
-        previewResult.hexes.filter(h => !previewResult.conflicts.some(c => c.hex === h)),
-        '#2196F3',
+        previewRenderableHexes.filter(h => !previewResult.conflicts.some(c => c.hex === h)),
+        mapColors.preview,
       )
     : null;
 
@@ -82,7 +126,7 @@ export default function CoverageEditor({ warehouseId, warehouseName, lat, lng, e
   const conflictGeoJSON = previewResult
     ? hexesToGeoJSON(
         previewResult.conflicts.map(c => c.hex),
-        '#F44336',
+        mapColors.conflict,
       )
     : null;
 
@@ -250,7 +294,7 @@ export default function CoverageEditor({ warehouseId, warehouseName, lat, lng, e
 
         {/* Status info */}
         <div className="flex items-center gap-4 md-typescale-label-small" style={{ color: 'var(--muted)' }}>
-          <span>Existing: {existingHexes.length} hexes</span>
+          <span>Existing: {existingRenderableHexes.length} hexes</span>
           <span>Center: {centerHex.slice(0, 10)}...</span>
           {polygon.length > 0 && <span>Polygon: {polygon.length} vertices</span>}
         </div>
@@ -281,10 +325,10 @@ export default function CoverageEditor({ warehouseId, warehouseName, lat, lng, e
           </Marker>
 
           {/* Existing coverage (green) */}
-          {existingHexes.length > 0 && (
+          {existingRenderableHexes.length > 0 && (
             <Source id="existing-hexes" type="geojson" data={existingGeoJSON}>
-              <Layer id="existing-hex-fill" type="fill" paint={{ 'fill-color': '#4CAF50', 'fill-opacity': 0.2 }} />
-              <Layer id="existing-hex-line" type="line" paint={{ 'line-color': '#4CAF50', 'line-width': 1.5, 'line-opacity': 0.6 }} />
+              <Layer id="existing-hex-fill" type="fill" paint={{ 'fill-color': mapColors.existing, 'fill-opacity': 0.2 }} />
+              <Layer id="existing-hex-line" type="line" paint={{ 'line-color': mapColors.existing, 'line-width': 1.5, 'line-opacity': 0.6 }} />
             </Source>
           )}
 
@@ -293,11 +337,11 @@ export default function CoverageEditor({ warehouseId, warehouseName, lat, lng, e
             <Source id="drawing-polygon" type="geojson" data={polygonGeoJSON as GeoJSON.FeatureCollection}>
               {polygon.length >= 3 ? (
                 <>
-                  <Layer id="draw-fill" type="fill" paint={{ 'fill-color': '#FFC107', 'fill-opacity': 0.15 }} />
-                  <Layer id="draw-line" type="line" paint={{ 'line-color': '#FFC107', 'line-width': 2, 'line-dasharray': [2, 2] }} />
+                  <Layer id="draw-fill" type="fill" paint={{ 'fill-color': mapColors.drawing, 'fill-opacity': 0.15 }} />
+                  <Layer id="draw-line" type="line" paint={{ 'line-color': mapColors.drawing, 'line-width': 2, 'line-dasharray': [2, 2] }} />
                 </>
               ) : (
-                <Layer id="draw-line" type="line" paint={{ 'line-color': '#FFC107', 'line-width': 2, 'line-dasharray': [2, 2] }} />
+                <Layer id="draw-line" type="line" paint={{ 'line-color': mapColors.drawing, 'line-width': 2, 'line-dasharray': [2, 2] }} />
               )}
             </Source>
           )}
@@ -305,23 +349,23 @@ export default function CoverageEditor({ warehouseId, warehouseName, lat, lng, e
           {/* Preview hexes (blue) */}
           {previewGeoJSON && previewGeoJSON.features.length > 0 && (
             <Source id="preview-hexes" type="geojson" data={previewGeoJSON}>
-              <Layer id="preview-hex-fill" type="fill" paint={{ 'fill-color': '#2196F3', 'fill-opacity': 0.3 }} />
-              <Layer id="preview-hex-line" type="line" paint={{ 'line-color': '#2196F3', 'line-width': 1.5 }} />
+              <Layer id="preview-hex-fill" type="fill" paint={{ 'fill-color': mapColors.preview, 'fill-opacity': 0.3 }} />
+              <Layer id="preview-hex-line" type="line" paint={{ 'line-color': mapColors.preview, 'line-width': 1.5 }} />
             </Source>
           )}
 
           {/* Conflict hexes (red) */}
           {conflictGeoJSON && conflictGeoJSON.features.length > 0 && (
             <Source id="conflict-hexes" type="geojson" data={conflictGeoJSON}>
-              <Layer id="conflict-hex-fill" type="fill" paint={{ 'fill-color': '#F44336', 'fill-opacity': 0.4 }} />
-              <Layer id="conflict-hex-line" type="line" paint={{ 'line-color': '#F44336', 'line-width': 2 }} />
+              <Layer id="conflict-hex-fill" type="fill" paint={{ 'fill-color': mapColors.conflict, 'fill-opacity': 0.4 }} />
+              <Layer id="conflict-hex-line" type="line" paint={{ 'line-color': mapColors.conflict, 'line-width': 2 }} />
             </Source>
           )}
 
           {/* Drawing vertex markers */}
           {polygon.map((pt, i) => (
             <Marker key={i} longitude={pt[1]} latitude={pt[0]} anchor="center">
-              <div className="w-3 h-3 rounded-full" style={{ background: '#FFC107', border: '1px solid white' }} />
+              <div className="w-3 h-3 rounded-full" style={{ background: mapColors.drawing, border: '1px solid white' }} />
             </Marker>
           ))}
         </MapGL>

@@ -1,6 +1,12 @@
 # Pegasus Enterprise Execution Plan (90 Days)
 
-Last updated: 2026-05-19
+Last updated: 2026-05-20
+
+## Execution Status Snapshot
+
+1. Sprint-adjacent runtime tranche: supplier H3 spatial optimization has started in `pegasus/apps/backend-go/{proximity/{h3.go,zone_preview.go,geo_report.go},supplier/warehouses.go}` with native `h3.PolygonToCells` cutover, shared compact/uncompact helpers, and additive compacted response fields (`hexes_compacted`, `h3_indexes_compacted`, `h3_resolution`).
+2. Supplier portal consumers in `pegasus/apps/admin-portal/app/supplier/{_shared/h3-coverage.ts,geo-report/page.tsx,warehouses/{page.tsx,CoverageEditor.tsx}}` now lazily uncompact coverage arrays via `h3-js`, preserving existing UI layout while reducing transport dependence on expanded hex sets.
+3. Storage and cache discipline remain unchanged in this tranche: Spanner `Warehouses.H3Indexes` and Redis `whcell:*` memberships stay expanded until serving-warehouse, coverage-audit, and cache-index consumers are upgraded together.
 
 ## Scope Lock
 
@@ -69,6 +75,7 @@ Last updated: 2026-05-19
 
 1. Allocation and constraints: constrained material allocation solver for shortage scenarios with SLA and margin modes.
 2. Payload optimization: cube-out and weight-out packing recommendations integrated into dispatch flows.
+  Status 2026-05-20: additive K2/K3 async dispatch substrate is implemented for supplier auto-dispatch queueing, worker ledger writeback, supplier-scoped read visibility (`202 Accepted` + `job_id`, transactional outbox enqueue, `OptimizationJobs` `RUNNING|SOLVED|FAILED` updates, Redis active-job index `supplier:{supplier_id}:jobs:active` with Spanner fail-open fallback, and additive active/projection endpoints backed by `OptimizationJobs.ResultPayload`), and supplier websocket completion fanout (`OPTIMIZATION_SOLVED` now drives supplier-scoped `ws/supplier` completion frames with typed `ws-events.ts` and `events.schema.json` contracts); K4 live chaos validation is also complete on the local compose stack with a 60-request authenticated burst during `docker compose stop redis` producing 17 `redis_index` reads, 43 `spanner_fallback` reads, zero request errors, immediate post-stop fallback continuity at 50 active jobs, and successful Redis recovery back to `redis_index`; downstream manifest/order apply remains deferred.
 3. Sync layer: production WMS and TMS connectors with retry, idempotency, and reconciliation.
 4. Telematics loop: route deviations and arrival data fed into lead-time calibrator and planning graph.
 5. Frontend and clients: planner actions for reroute, reallocate, and commit plans with traceable approvals.

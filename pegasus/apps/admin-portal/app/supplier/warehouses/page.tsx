@@ -30,6 +30,8 @@ interface WarehouseItem {
 
 interface WarehouseDetail extends WarehouseItem {
   h3_indexes?: string[];
+  h3_indexes_compacted?: string[];
+  h3_resolution?: number;
   primary_factory_id?: string;
   secondary_factory_id?: string;
   created_at: string;
@@ -66,6 +68,8 @@ function normalizeWarehouseDetail(payload: WarehouseApiPayload): WarehouseDetail
   return {
     ...normalized,
     h3_indexes: Array.isArray(payload.h3_indexes) ? payload.h3_indexes : [],
+    h3_indexes_compacted: Array.isArray(payload.h3_indexes_compacted) ? payload.h3_indexes_compacted : [],
+    h3_resolution: typeof payload.h3_resolution === 'number' ? payload.h3_resolution : undefined,
     primary_factory_id: payload.primary_factory_id,
     secondary_factory_id: payload.secondary_factory_id,
     created_at: payload.created_at || '',
@@ -112,7 +116,7 @@ export default function WarehousesPage() {
       const data: WarehouseApiPayload = await res.json();
       setSelectedWarehouse(normalizeWarehouseDetail(data));
     } catch {
-      setSelectedWarehouse({ ...wh, h3_indexes: [], created_at: '' });
+      setSelectedWarehouse({ ...wh, h3_indexes: [], h3_indexes_compacted: [], created_at: '' });
     } finally {
       setDetailLoading(false);
     }
@@ -458,7 +462,7 @@ export default function WarehousesPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="border-[var(--color-md-error)] text-[var(--color-md-error)]"
+                  className="border-(--color-md-error) text-(--color-md-error)"
                   onPress={() => {
                     if (confirm('Deactivate this warehouse?')) {
                       handleDeactivate(selectedWarehouse.warehouse_id);
@@ -479,6 +483,8 @@ export default function WarehousesPage() {
             lat={selectedWarehouse.lat}
             lng={selectedWarehouse.lng}
             existingHexes={selectedWarehouse.h3_indexes || []}
+            existingHexesCompacted={selectedWarehouse.h3_indexes_compacted || []}
+            h3Resolution={selectedWarehouse.h3_resolution}
             onSaved={() => {
               closeDrawer();
               fetchWarehouses();
@@ -595,25 +601,25 @@ function WarehouseEditForm({
     <div className="p-6 space-y-5">
       <div>
         <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Name</label>
-        <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-[var(--accent)]" style={editFieldStyle} value={name} onChange={e => setName(e.target.value)} />
+        <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} value={name} onChange={e => setName(e.target.value)} />
       </div>
       <div>
         <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Address</label>
-        <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-[var(--accent)]" style={editFieldStyle} value={address} onChange={e => setAddress(e.target.value)} />
+        <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} value={address} onChange={e => setAddress(e.target.value)} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Latitude</label>
-          <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-[var(--accent)]" style={editFieldStyle} type="number" step="any" value={lat} onChange={e => setLat(e.target.value)} />
+          <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} type="number" step="any" value={lat} onChange={e => setLat(e.target.value)} />
         </div>
         <div>
           <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Longitude</label>
-          <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-[var(--accent)]" style={editFieldStyle} type="number" step="any" value={lng} onChange={e => setLng(e.target.value)} />
+          <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} type="number" step="any" value={lng} onChange={e => setLng(e.target.value)} />
         </div>
       </div>
       <div>
         <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--muted)' }}>Coverage Radius (km)</label>
-        <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-[var(--accent)]" style={editFieldStyle} type="number" value={radius} onChange={e => setRadius(e.target.value)} />
+        <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} type="number" value={radius} onChange={e => setRadius(e.target.value)} />
       </div>
 
       {/* Status toggles */}
@@ -645,7 +651,7 @@ function WarehouseEditForm({
       {!isActive && (
         <div>
           <label className="md-typescale-label-medium block mb-1.5" style={{ color: 'var(--danger)' }}>Disabled Reason</label>
-          <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-[var(--accent)]" style={editFieldStyle} placeholder="e.g. Maintenance, Out of stock" value={disabledReason} onChange={e => setDisabledReason(e.target.value)} />
+          <input className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent" style={editFieldStyle} placeholder="e.g. Maintenance, Out of stock" value={disabledReason} onChange={e => setDisabledReason(e.target.value)} />
         </div>
       )}
 
@@ -682,7 +688,7 @@ function WarehouseEditForm({
             Max Capacity (VU)
           </label>
           <input
-            className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="w-full px-3 py-2.5 md-typescale-body-medium outline-none focus:ring-2 focus:ring-accent"
             style={{
               ...editFieldStyle,
               ...(vuViolation ? { borderColor: 'var(--danger)' } : {}),
