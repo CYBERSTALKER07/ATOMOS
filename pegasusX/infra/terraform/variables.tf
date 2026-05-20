@@ -3,6 +3,18 @@ variable "project_id" {
   type        = string
 }
 
+variable "tenant_slug" {
+  description = "Client or sandbox slug used to namespace isolated SSMR resources."
+  type        = string
+  default     = "ssmr"
+}
+
+variable "resource_prefix" {
+  description = "Explicit resource prefix override. When empty, terraform uses pegasusx-<tenant_slug>."
+  type        = string
+  default     = ""
+}
+
 variable "region" {
   description = "Primary deployment region."
   type        = string
@@ -18,25 +30,31 @@ variable "environment" {
 variable "vpc_name" {
   description = "VPC name used by backend workloads and Memorystore."
   type        = string
-  default     = "pegasusx-vpc"
+  default     = ""
 }
 
 variable "spanner_instance_name" {
   description = "Cloud Spanner instance name."
   type        = string
-  default     = "pegasusx-ledger-instance"
+  default     = ""
 }
 
 variable "spanner_database_name" {
   description = "Cloud Spanner database name."
   type        = string
-  default     = "pegasusx-db"
+  default     = ""
+}
+
+variable "spanner_display_name" {
+  description = "Cloud Spanner display name. When empty, derived from the tenant slug."
+  type        = string
+  default     = ""
 }
 
 variable "redis_instance_name" {
   description = "Memorystore Redis instance name."
   type        = string
-  default     = "pegasusx-redis"
+  default     = ""
 }
 
 variable "redis_memory_size_gb" {
@@ -53,9 +71,27 @@ variable "kafka_bootstrap_servers" {
 }
 
 variable "kafka_topic_main" {
-  description = "Default Kafka topic used by backend-go outbox relay."
+  description = "Default Kafka topic used by backend-go outbox relay for order and state events."
   type        = string
-  default     = "pegasusx-main"
+  default     = "ssmr.events.orders"
+}
+
+variable "kafka_topic_spatial" {
+  description = "Kafka topic reserved for spatial or H3 fanout workloads."
+  type        = string
+  default     = "ssmr.events.spatial"
+}
+
+variable "kafka_topic_realtime" {
+  description = "Kafka topic reserved for realtime socket and fleet fanout."
+  type        = string
+  default     = "ssmr.events.realtime"
+}
+
+variable "kafka_topic_webhooks" {
+  description = "Kafka topic reserved for outbound webhook delivery work."
+  type        = string
+  default     = "ssmr.events.webhooks"
 }
 
 variable "firebase_project_id" {

@@ -47,6 +47,7 @@
 ```
 
 ## Event Discipline
+- `events.TopicMain` now resolves from `KAFKA_TOPIC_MAIN` at process start so local/client sandboxes can keep transactional outbox traffic on tenant-specific Kafka topics without rewriting every emit call site.
 - Runtime adapter bridge is now additive in `bootstrap.NewApp`: cache selection attempts Redis backend (`cache/redis_backend.go`) and falls back to in-memory cache on init/ping failure; outbox publisher selection attempts Kafka writer transport (`outbox/kafka_publisher.go`) and falls back to logging publisher on init failure.
 - Runtime strict mode is now additive in `bootstrap.NewApp`: when `REQUIRE_INFRA_ADAPTERS=true`, bootstrap fails fast if Redis or Kafka adapters cannot be initialized, preventing degraded startup in production-like runs.
 - Outbox relay authority is now additive in `bootstrap.NewApp`: relay `Fetch`/`MarkPublished` binds to `OutboxEvents` through `outbox/spanner_store.go` when Spanner connectivity and table probe succeed; fallback remains the in-memory outbox store when Spanner is unavailable.
@@ -79,7 +80,10 @@
 
 ## Infrastructure Baseline
 - Local dev: `infra/docker-compose.yml` runs Spanner emulator, Redis, Kafka, Kafka UI.
+- Isolated SSMR sandbox: `infra/docker-compose.ssmr.yml` runs isolated Spanner/Redis/Kafka on non-overlapping host ports, explicit Kafka topic bootstrap (`ssmr.events.orders`, `ssmr.events.spatial`, `ssmr.events.realtime`, `ssmr.events.webhooks`), the local `apps/backend-go/cmd/setup` schema/seed bootstrap job, and the Go backend + ai-worker against those isolated adapters.
 - Cloud provisioning baseline: `infra/terraform/` provisions VPC, Spanner, Redis, and Secret Manager entries for Kafka/Firebase runtime wiring.
+- Terraform segregation: `tenant_slug` / `resource_prefix` now namespace cloud resources and Secret Manager entries so each SSMR tenant can keep isolated Spanner, Redis, and topic wiring without sharing state identifiers.
+- Phase-2 note: pegasusX does not yet carry a concrete optimizer-sidecar-rust implementation. The sandbox stack intentionally stops at backend-go + ai-worker rather than pretending a solver runtime exists.
 
 ## Single-Supplier Enforcement
 - Bootstrap seeds exactly one `Suppliers` row.

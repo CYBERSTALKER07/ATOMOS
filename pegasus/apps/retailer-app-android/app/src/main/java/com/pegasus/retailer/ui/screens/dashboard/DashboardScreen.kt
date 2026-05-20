@@ -25,6 +25,7 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Inventory2
+import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.ShoppingBag
 import androidx.compose.material.icons.rounded.Storefront
@@ -77,6 +78,7 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
     onOpenCatalog: () -> Unit = {},
     onOpenOrders: () -> Unit = {},
+    onOpenDeliveries: () -> Unit = {},
     onOpenInsights: () -> Unit = {},
     onOpenSuppliers: () -> Unit = {},
     onOpenProcurement: () -> Unit = {},
@@ -158,6 +160,7 @@ fun DashboardScreen(
                         predictionCount = uiState.predictions.size,
                         onOpenCatalog = onOpenCatalog,
                         onOpenOrders = onOpenOrders,
+                        onOpenDeliveries = onOpenDeliveries,
                         onOpenInsights = onOpenInsights,
                         onOpenSuppliers = onOpenSuppliers,
                         onOpenProcurement = onOpenProcurement,
@@ -314,6 +317,7 @@ private fun ServiceGrid(
     predictionCount: Int,
     onOpenCatalog: () -> Unit = {},
     onOpenOrders: () -> Unit = {},
+    onOpenDeliveries: () -> Unit = {},
     onOpenInsights: () -> Unit = {},
     onOpenSuppliers: () -> Unit = {},
     onOpenProcurement: () -> Unit = {},
@@ -325,8 +329,8 @@ private fun ServiceGrid(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ServiceTile(
-                title = "Catalog",
-                subtitle = "Browse products and suppliers",
+                title = "Buy workspace",
+                subtitle = "Browse products and restock",
                 icon = Icons.Rounded.ShoppingBag,
                 onClick = onOpenCatalog,
                 modifier = Modifier
@@ -334,10 +338,10 @@ private fun ServiceGrid(
                     .height(152.dp),
             )
             ServiceTile(
-                title = "AI insights",
-                subtitle = "$predictionCount restock signals",
-                icon = Icons.Rounded.AutoAwesome,
-                onClick = onOpenInsights,
+                title = "Orders",
+                subtitle = "$activeOrderCount active now",
+                icon = Icons.Rounded.Inventory2,
+                onClick = onOpenOrders,
                 modifier = Modifier
                     .weight(1f)
                     .height(152.dp),
@@ -349,10 +353,10 @@ private fun ServiceGrid(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             ServiceTile(
-                title = "Orders",
-                subtitle = "$activeOrderCount active now",
-                icon = Icons.Rounded.Inventory2,
-                onClick = onOpenOrders,
+                title = "Deliveries",
+                subtitle = "Track inbound on map",
+                icon = Icons.Rounded.Map,
+                onClick = onOpenDeliveries,
                 modifier = Modifier
                     .weight(1f)
                     .height(128.dp),
@@ -362,15 +366,15 @@ private fun ServiceGrid(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 ServiceTileCompact(
-                    title = "Inbox",
-                    icon = Icons.Rounded.Storefront,
-                    onClick = onOpenSuppliers,
+                    title = "AI insights",
+                    icon = Icons.Rounded.AutoAwesome,
+                    onClick = onOpenInsights,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 ServiceTileCompact(
-                    title = "Search",
-                    icon = Icons.Rounded.Search,
-                    onClick = onOpenCatalog,
+                    title = "Suppliers",
+                    icon = Icons.Rounded.Storefront,
+                    onClick = onOpenSuppliers,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -393,9 +397,9 @@ private fun ServiceGrid(
                 modifier = Modifier.weight(1f),
             )
             ServiceTileCompact(
-                title = "Profile",
-                icon = Icons.Rounded.Storefront,
-                onClick = onOpenProfile,
+                title = "Search",
+                icon = Icons.Rounded.Search,
+                onClick = onOpenCatalog,
                 modifier = Modifier.weight(1f),
             )
         }

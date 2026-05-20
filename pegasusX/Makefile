@@ -1,9 +1,11 @@
-.PHONY: help infra-up infra-down backend-run backend-build supplier-portal-dev
+.PHONY: help infra-up infra-down ssmr-infra-up ssmr-infra-down backend-run backend-build supplier-portal-dev
 
 help:
 	@echo "pegasusX make targets"
 	@echo "  infra-up              start Spanner emulator, Redis, Kafka via docker-compose"
 	@echo "  infra-down            stop infra"
+	@echo "  ssmr-infra-up         start the isolated SSMR sandbox stack"
+	@echo "  ssmr-infra-down       stop the isolated SSMR sandbox stack"
 	@echo "  backend-run           run backend-go locally"
 	@echo "  backend-build         build all Go binaries"
 	@echo "  supplier-portal-dev   run supplier portal Next.js dev server"
@@ -16,6 +18,12 @@ infra-up:
 
 infra-down:
 	docker compose -f infra/docker-compose.yml down
+
+ssmr-infra-up:
+	docker compose -f infra/docker-compose.ssmr.yml up -d
+
+ssmr-infra-down:
+	docker compose -f infra/docker-compose.ssmr.yml down
 
 backend-run:
 	cd apps/backend-go && go run ./...

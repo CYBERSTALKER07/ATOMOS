@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -31,6 +33,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +56,8 @@ fun CatalogScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isSearching = uiState.searchQuery.length >= 2
+    val buyFilters = listOf("Categories", "Suppliers", "Recent", "AI suggested")
+    var selectedFilterIndex by rememberSaveable { mutableIntStateOf(0) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         OutlinedTextField(
@@ -59,7 +66,7 @@ fun CatalogScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            placeholder = { Text("Search products") },
+            placeholder = { Text("Search products, suppliers, or categories") },
             leadingIcon = {
                 Icon(
                     imageVector = Icons.Outlined.Search,
@@ -76,6 +83,27 @@ fun CatalogScreen(
             ),
         )
 
+        if (!isSearching) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                items(buyFilters.size) { index ->
+                    FilterChip(
+                        selected = selectedFilterIndex == index,
+                        onClick = { selectedFilterIndex = index },
+                        label = {
+                            Text(
+                                text = buyFilters[index],
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        },
+                    )
+                }
+            }
+        }
+
         when {
             isSearching && uiState.filteredProducts.isNotEmpty() -> {
                 LazyVerticalGrid(
@@ -87,7 +115,7 @@ fun CatalogScreen(
                 ) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         CatalogSectionHeader(
-                            title = "Search results",
+                            title = "Buy results",
                             subtitle = "${uiState.filteredProducts.size} products",
                         )
                     }
@@ -121,8 +149,8 @@ fun CatalogScreen(
                 ) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         CatalogSectionHeader(
-                            title = "Browse categories",
-                            subtitle = "${uiState.categories.size} groups available",
+                            title = "Buy workspace",
+                            subtitle = "Categories, suppliers, and reorder paths",
                         )
                     }
                     items(uiState.categories, key = { it.id }) { category ->

@@ -1,6 +1,21 @@
 locals {
+  tenant_slug                    = trimspace(var.tenant_slug) != "" ? lower(trimspace(var.tenant_slug)) : "ssmr"
+  resource_prefix                = trimspace(var.resource_prefix) != "" ? trimspace(var.resource_prefix) : "pegasusx-${local.tenant_slug}"
+  vpc_name                       = trimspace(var.vpc_name) != "" ? trimspace(var.vpc_name) : "${local.resource_prefix}-vpc"
+  spanner_instance_name          = trimspace(var.spanner_instance_name) != "" ? trimspace(var.spanner_instance_name) : "${local.resource_prefix}-spanner"
+  spanner_database_name          = trimspace(var.spanner_database_name) != "" ? trimspace(var.spanner_database_name) : "${local.resource_prefix}-db"
+  spanner_display_name           = trimspace(var.spanner_display_name) != "" ? trimspace(var.spanner_display_name) : "${local.resource_prefix} ledger"
+  redis_instance_name            = trimspace(var.redis_instance_name) != "" ? trimspace(var.redis_instance_name) : "${local.resource_prefix}-redis"
+  secret_kafka_bootstrap_servers = "${local.resource_prefix}-kafka-bootstrap-servers"
+  secret_kafka_topic_main        = "${local.resource_prefix}-kafka-topic-orders"
+  secret_kafka_topic_spatial     = "${local.resource_prefix}-kafka-topic-spatial"
+  secret_kafka_topic_realtime    = "${local.resource_prefix}-kafka-topic-realtime"
+  secret_kafka_topic_webhooks    = "${local.resource_prefix}-kafka-topic-webhooks"
+  secret_firebase_project_id     = "${local.resource_prefix}-firebase-project-id"
+  secret_firebase_auth_enabled   = "${local.resource_prefix}-firebase-auth-enabled"
   labels = {
     app         = "pegasusx"
+    tenant      = local.tenant_slug
     environment = var.environment
     managed_by  = "terraform"
   }
@@ -18,13 +33,13 @@ resource "google_project_service" "required_apis" {
 }
 
 resource "google_compute_network" "pegasusx_vpc" {
-  name                    = var.vpc_name
+  name                    = local.vpc_name
   auto_create_subnetworks = true
   depends_on              = [google_project_service.required_apis]
 }
 
 resource "google_redis_instance" "cache" {
-  name               = var.redis_instance_name
+  name               = local.redis_instance_name
   tier               = "STANDARD_HA"
   memory_size_gb     = var.redis_memory_size_gb
   region             = var.region
@@ -34,9 +49,9 @@ resource "google_redis_instance" "cache" {
 }
 
 resource "google_spanner_instance" "ledger" {
-  name         = var.spanner_instance_name
+  name         = local.spanner_instance_name
   config       = "regional-${var.region}"
-  display_name = "pegasusX Ledger"
+  display_name = local.spanner_display_name
   num_nodes    = 1
   labels       = local.labels
   depends_on   = [google_project_service.required_apis]
@@ -44,13 +59,13 @@ resource "google_spanner_instance" "ledger" {
 
 resource "google_spanner_database" "main" {
   instance = google_spanner_instance.ledger.name
-  name     = var.spanner_database_name
+  name     = local.spanner_database_name
 }
 
 # Kafka remains provider-agnostic (Confluent Cloud / managed Kafka / self-hosted).
 # Store bootstrap servers in Secret Manager for runtime injection.
 resource "google_secret_manager_secret" "kafka_bootstrap_servers" {
-  secret_id = "pegasusx-kafka-bootstrap-servers"
+  secret_id = local.secret_kafka_bootstrap_servers
   replication {
     auto {}
   }
@@ -64,7 +79,7 @@ resource "google_secret_manager_secret_version" "kafka_bootstrap_servers" {
 }
 
 resource "google_secret_manager_secret" "kafka_topic_main" {
-  secret_id = "pegasusx-kafka-topic-main"
+  secret_id = local.secret_kafka_topic_main
   replication {
     auto {}
   }
@@ -76,8 +91,47 @@ resource "google_secret_manager_secret_version" "kafka_topic_main" {
   secret_data = var.kafka_topic_main
 }
 
+resource "google_secret_manager_secret" "kafka_topic_spatial" {
+  secret_id = local.secret_kafka_topic_spatial
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "kafka_topic_spatial" {
+  secret      = google_secret_manager_secret.kafka_topic_spatial.id
+  secret_data = var.kafka_topic_spatial
+}
+
+resource "google_secret_manager_secret" "kafka_topic_realtime" {
+  secret_id = local.secret_kafka_topic_realtime
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "kafka_topic_realtime" {
+  secret      = google_secret_manager_secret.kafka_topic_realtime.id
+  secret_data = var.kafka_topic_realtime
+}
+
+resource "google_secret_manager_secret" "kafka_topic_webhooks" {
+  secret_id = local.secret_kafka_topic_webhooks
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "kafka_topic_webhooks" {
+  secret      = google_secret_manager_secret.kafka_topic_webhooks.id
+  secret_data = var.kafka_topic_webhooks
+}
+
 resource "google_secret_manager_secret" "firebase_project_id" {
-  secret_id = "pegasusx-firebase-project-id"
+  secret_id = local.secret_firebase_project_id
   replication {
     auto {}
   }
@@ -91,7 +145,7 @@ resource "google_secret_manager_secret_version" "firebase_project_id" {
 }
 
 resource "google_secret_manager_secret" "firebase_auth_enabled" {
-  secret_id = "pegasusx-firebase-auth-enabled"
+  secret_id = local.secret_firebase_auth_enabled
   replication {
     auto {}
   }

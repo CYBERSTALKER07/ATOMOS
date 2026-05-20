@@ -4,6 +4,10 @@
   "generatedAt": null,
   "runtimeNotes": [
     {
+      "date": "2026-05-21",
+      "summary": "Added the Phase-1 SSMR physical sandbox baseline: backend-go/cmd/setup bootstraps isolated Spanner schema + seeded supplier state, docker-compose.ssmr.yml stands up isolated local infra/runtime services, TopicMain resolves from KAFKA_TOPIC_MAIN for tenant-scoped Kafka isolation, and terraform now namespaces resources/topic secrets by tenant_slug/resource_prefix."
+    },
+    {
       "date": "2026-05-17",
       "summary": "Expanded supplier and retailer backend route coverage in apps/backend-go with optional Firebase-protected retailer role row."
     },
@@ -65,7 +69,9 @@
     }
   ],
   "nodes": [
+    { "id": "docker-compose-ssmr", "kind": "infra", "language": "yaml", "path": "infra/docker-compose.ssmr.yml" },
     { "id": "backend-go", "kind": "service", "language": "go", "path": "apps/backend-go" },
+    { "id": "backend-setup", "kind": "tooling", "language": "go", "path": "apps/backend-go/cmd/setup" },
     { "id": "ai-worker", "kind": "service", "language": "go", "path": "apps/ai-worker" },
     { "id": "supplier-portal", "kind": "web", "language": "ts", "path": "apps/supplier-portal" },
     { "id": "retailer-app-android", "kind": "mobile", "language": "kotlin", "path": "apps/retailer-app-android" },
@@ -96,6 +102,10 @@
     { "id": "terraform", "kind": "infra", "path": "infra/terraform" }
   ],
   "edges": [
+    { "from": "docker-compose-ssmr", "to": "backend-setup", "kind": "local-bootstrap" },
+    { "from": "docker-compose-ssmr", "to": "backend-go", "kind": "local-runtime" },
+    { "from": "docker-compose-ssmr", "to": "ai-worker", "kind": "local-runtime" },
+    { "from": "backend-setup", "to": "spanner", "kind": "schema-bootstrap" },
     { "from": "supplier-portal", "to": "backend-go", "kind": "http" },
     { "from": "retailer-app-android", "to": "backend-go", "kind": "http+ws" },
     { "from": "retailer-app-ios", "to": "backend-go", "kind": "http+ws" },
@@ -114,6 +124,9 @@
     { "from": "backend-go", "to": "spanner", "kind": "rw-txn" },
     { "from": "backend-go", "to": "redis", "kind": "cache+pubsub" },
     { "from": "backend-go", "to": "kafka", "kind": "outbox-relay" },
+    { "from": "docker-compose-ssmr", "to": "spanner", "kind": "local-emulator" },
+    { "from": "docker-compose-ssmr", "to": "redis", "kind": "local-emulator" },
+    { "from": "docker-compose-ssmr", "to": "kafka", "kind": "local-emulator" },
     { "from": "backend-go", "to": "firebase-auth", "kind": "id-token-verify" },
     { "from": "ai-worker", "to": "kafka", "kind": "consume" },
     { "from": "ai-worker", "to": "spanner", "kind": "rw-txn" },

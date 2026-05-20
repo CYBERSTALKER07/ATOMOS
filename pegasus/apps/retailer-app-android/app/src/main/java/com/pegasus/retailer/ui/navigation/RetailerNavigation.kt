@@ -58,7 +58,6 @@ import com.pegasus.retailer.ui.screens.cart.CartViewModel
 import com.pegasus.retailer.ui.screens.profile.ProfileScreen
 import com.pegasus.retailer.ui.screens.profile.FamilyMembersScreen
 import com.pegasus.retailer.ui.screens.profile.SavedCardsScreen
-import com.pegasus.retailer.ui.screens.profile.AutoOrderScreen
 import com.pegasus.retailer.ui.screens.catalog.CatalogScreen
 import com.pegasus.retailer.ui.screens.catalog.CategorySuppliersScreen
 import com.pegasus.retailer.ui.screens.dashboard.DashboardScreen
@@ -101,9 +100,10 @@ fun RetailerNavigation(
     var paymentError by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Show floating bar on Home, Orders, Suppliers tabs
-    val showFloatingBar = currentTab in listOf(PegasusTab.HOME, PegasusTab.ORDERS, PegasusTab.SUPPLIERS)
+    // Show floating bar on primary operational tabs.
+    val showFloatingBar = currentTab in listOf(PegasusTab.HOME, PegasusTab.CATALOG, PegasusTab.ORDERS, PegasusTab.MAP)
     val isCompact = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Compact
+    val topBarTitle = if (currentTab in PegasusTab.PrimaryTabs) currentTab.label else "Retailer"
 
     Box(modifier = Modifier.fillMaxSize()) {
         Row(modifier = Modifier.fillMaxSize()) {
@@ -149,7 +149,17 @@ fun RetailerNavigation(
                                     launchSingleTop = true
                                 }
                             }
-                            else -> { /* Profile, Settings, Inbox — future */ }
+                            com.pegasus.retailer.ui.components.SidebarDestination.INBOX -> {
+                                navController.navigate("NOTIFICATIONS") {
+                                    launchSingleTop = true
+                                }
+                            }
+                            com.pegasus.retailer.ui.components.SidebarDestination.PROFILE -> {
+                                navController.navigate(PegasusTab.PROFILE.name) {
+                                    launchSingleTop = true
+                                }
+                            }
+                            else -> { /* Settings — future */ }
                         }
                         railExpanded = false // Collapse after selection if desired
                     },
@@ -188,6 +198,7 @@ fun RetailerNavigation(
                     cartBadge = cartBadge,
                     notificationBadge = navState.activeOrderCount,
                     avatarInitial = navState.avatarInitial,
+                    title = topBarTitle,
                 )
             },
             bottomBar = {
@@ -220,43 +231,27 @@ fun RetailerNavigation(
             },
         ) { innerPadding ->
             Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-                if (navSyncMessage != null) {
-                    val loadIssue = navState.loadIssue
-                    val containerColor = when (loadIssue) {
-                        NavigationLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-                        NavigationLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                        NavigationLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
-                        null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-                    }
-                    val contentColor = when (loadIssue) {
-                        NavigationLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
-                        NavigationLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
-                        NavigationLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
-                        null -> MaterialTheme.colorScheme.onPrimaryContainer
-                    }
-
-                    androidx.compose.foundation.layout.Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(containerColor)
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = navSyncMessage,
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = contentColor,
-                        )
-                        if (loadIssue != null) {
-                            TextButton(onClick = navigationViewModel::retrySync) {
-                                Text("Retry", color = contentColor)
-                            }
+                RetailerOperationsStrip(
+                    navState = navState,
+                    navSyncMessage = navSyncMessage,
+                    onRetrySync = navigationViewModel::retrySync,
+                    onOpenDeliveries = {
+                        currentTab = PegasusTab.MAP
+                        showActiveDeliveries = true
+                        navController.navigate(PegasusTab.MAP.name) {
+                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                    }
-                }
+                    },
+                    onReviewPayment = {
+                        paymentPhase = PaymentPhase.CHOOSE
+                        paymentError = null
+                        if (navState.paymentEvent == null) {
+                            navigationViewModel.loadPendingPayments()
+                        }
+                    },
+                )
 
                 NavHost(
                     navController = navController,
@@ -310,7 +305,7 @@ fun RetailerNavigation(
                                 }
                             },
                             onOpenSuppliers = {
-                                currentTab = PegasusTab.SUPPLIERS
+                                currentTab = PegasusTab.CATALOG
                                 navController.navigate(PegasusTab.SUPPLIERS.name) {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
@@ -326,8 +321,15 @@ fun RetailerNavigation(
                                 }
                             },
                             onOpenProfile = {
-                                currentTab = PegasusTab.PROFILE
                                 navController.navigate(PegasusTab.PROFILE.name) {
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            onOpenDeliveries = {
+                                currentTab = PegasusTab.MAP
+                                navController.navigate(PegasusTab.MAP.name) {
                                     popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
@@ -503,7 +505,17 @@ fun RetailerNavigation(
                                 launchSingleTop = true
                             }
                         }
-                        else -> { /* Profile, Settings, Inbox — future */ }
+                        com.pegasus.retailer.ui.components.SidebarDestination.INBOX -> {
+                            navController.navigate("NOTIFICATIONS") {
+                                launchSingleTop = true
+                            }
+                        }
+                        com.pegasus.retailer.ui.components.SidebarDestination.PROFILE -> {
+                            navController.navigate(PegasusTab.PROFILE.name) {
+                                launchSingleTop = true
+                            }
+                        }
+                        else -> { /* Settings — future */ }
                     }
                 },
             )
@@ -574,6 +586,99 @@ fun RetailerNavigation(
                     navigationViewModel.clearPaymentEvent()
                 },
             )
+        }
+    }
+}
+
+@Composable
+private fun RetailerOperationsStrip(
+    navState: NavigationUiState,
+    navSyncMessage: String?,
+    onRetrySync: () -> Unit,
+    onOpenDeliveries: () -> Unit,
+    onReviewPayment: () -> Unit,
+) {
+    var message: String? = null
+    var actionLabel: String? = null
+    var onAction: (() -> Unit)? = null
+    var containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+    var contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+
+    when {
+        navState.paymentEvent != null -> {
+            val orderRef = navState.paymentEvent.orderId.takeLast(6)
+            message = "Settlement required for order #$orderRef"
+            actionLabel = "Review"
+            onAction = onReviewPayment
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f)
+            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+        }
+
+        navState.approachingOrderIds.isNotEmpty() -> {
+            val count = navState.approachingOrderIds.size
+            message = if (count == 1) {
+                "Driver approaching now"
+            } else {
+                "Drivers approaching for $count deliveries"
+            }
+            actionLabel = "Track"
+            onAction = onOpenDeliveries
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        }
+
+        navState.paymentFailed -> {
+            message = navState.paymentFailureMessage.ifBlank { "Payment failed. Retry settlement." }
+            actionLabel = "Retry"
+            onAction = onReviewPayment
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+            contentColor = MaterialTheme.colorScheme.onErrorContainer
+        }
+
+        navSyncMessage != null -> {
+            message = navSyncMessage
+            val loadIssue = navState.loadIssue
+            containerColor = when (loadIssue) {
+                NavigationLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                NavigationLoadIssue.OFFLINE -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                NavigationLoadIssue.ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+                null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            }
+            contentColor = when (loadIssue) {
+                NavigationLoadIssue.RESTRICTED -> MaterialTheme.colorScheme.onErrorContainer
+                NavigationLoadIssue.OFFLINE -> MaterialTheme.colorScheme.onTertiaryContainer
+                NavigationLoadIssue.ERROR -> MaterialTheme.colorScheme.onErrorContainer
+                null -> MaterialTheme.colorScheme.onPrimaryContainer
+            }
+            if (loadIssue != null) {
+                actionLabel = "Retry"
+                onAction = onRetrySync
+            }
+        }
+    }
+
+    if (message == null) return
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(containerColor)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = message,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.labelMedium,
+            color = contentColor,
+        )
+
+        if (actionLabel != null && onAction != null) {
+            TextButton(onClick = onAction) {
+                Text(actionLabel, color = contentColor)
+            }
         }
     }
 }

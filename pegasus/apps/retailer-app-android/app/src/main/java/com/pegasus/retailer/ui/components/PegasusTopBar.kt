@@ -38,11 +38,12 @@ fun PegasusTopBar(
     cartBadge: Int = 0,
     notificationBadge: Int = 0,
     avatarInitial: String = "?",
+    title: String = "Pegasus",
 ) {
     CenterAlignedTopAppBar(
         title = {
             Text(
-                "Pegasus",
+                title,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             )
         },

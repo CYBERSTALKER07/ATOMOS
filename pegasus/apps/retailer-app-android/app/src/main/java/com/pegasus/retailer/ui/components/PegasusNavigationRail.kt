@@ -114,7 +114,7 @@ private fun ExpandedDrawer(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 12.dp)
         ) {
-            PegasusTab.entries.forEach { tab ->
+            PegasusTab.PrimaryTabs.forEach { tab ->
                 val selected = currentTab == tab
                 NavigationDrawerItem(
                     label = { Text(tab.label) },
@@ -224,7 +224,7 @@ private fun CollapsedRail(
                 .padding(top = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            PegasusTab.entries.forEach { tab ->
+            PegasusTab.PrimaryTabs.forEach { tab ->
                 val selected = currentTab == tab
                 NavigationRailItem(
                     selected = selected,

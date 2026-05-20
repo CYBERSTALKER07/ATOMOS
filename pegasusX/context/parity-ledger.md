@@ -52,6 +52,7 @@ Maps each pegasusX surface to the Pegasus reference and tracks intentional diver
 
 ## Divergence Log
 _Add an entry whenever pegasusX intentionally drifts from Pegasus behavior._
+- 2026-05-21: Phase-1 SSMR physical sandbox baseline now lives in pegasusX with dedicated `docker-compose.ssmr.yml`, `.env.ssmr.example`, `apps/backend-go/cmd/setup`, tenant-scoped terraform resource/secret naming, and env-resolved `KAFKA_TOPIC_MAIN` for outbox topic isolation. Divergence remains explicit: the compose stack intentionally stops short of a Rust optimizer sidecar because pegasusX does not yet carry a concrete implementation.
 - 2026-05-17: Firebase bearer verification is implemented as optional route-level middleware in pegasusX (`FIREBASE_AUTH_ENABLED`) while supplier onboarding keeps cookie JWT as canonical auth path.
 - 2026-05-17: Supplier and retailer backend operational route coverage was expanded additively in pegasusX route composers. Retailer protected endpoints are Firebase-role-gated when enabled; local development fallback remains open when Firebase wiring is disabled.
 - 2026-05-17: Driver and warehouse backend operational route coverage was expanded additively in pegasusX route composers. Warehouse local-scaffold mode currently uses cookie `ADMIN` fallback auth when Firebase verifier wiring is disabled.

@@ -1,0 +1,158 @@
+name: pegasusx-ssmr
+
+services:
+  spanner-emulator:
+    image: gcr.io/cloud-spanner-emulator/emulator:latest
+    ports:
+      - "9110:9010"
+      - "9120:9020"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6389:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "22181:2181"
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9094
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    ports:
+      - "9094:9094"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9094 --list >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 5s
+      retries: 8
+    restart: unless-stopped
+
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    env_file:
+      - ../.env.ssmr.example
+    command:
+      - /bin/bash
+      - -lc
+      - |
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_MAIN}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_SPATIAL}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_REALTIME}" --partitions 3 --replication-factor 1
+        kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic "$${KAFKA_TOPIC_WEBHOOKS}" --partitions 3 --replication-factor 1
+    restart: "no"
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: ssmr-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    ports:
+      - "8083:8080"
+    restart: unless-stopped
+
+  backend-setup:
+    image: golang:1.25-bookworm
+    depends_on:
+      - spanner-emulator
+    working_dir: /workspace/pegasusX
+    volumes:
+      - ..:/workspace/pegasusX
+    env_file:
+      - ../.env.ssmr.example
+    environment:
+      SPANNER_EMULATOR_HOST: spanner-emulator:9010
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:29092
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        for attempt in 1 2 3 4 5 6 7 8 9 10; do
+          go run ./apps/backend-go/cmd/setup && exit 0
+          echo "spanner bootstrap retry $$attempt"
+          sleep 2
+        done
+        exit 1
+    restart: "no"
+
+  backend-go:
+    image: golang:1.25-bookworm
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      backend-setup:
+        condition: service_completed_successfully
+    working_dir: /workspace/pegasusX
+    volumes:
+      - ..:/workspace/pegasusX
+    env_file:
+      - ../.env.ssmr.example
+    environment:
+      HTTP_PORT: 8080
+      PUBLIC_BASE_URL: http://localhost:8180
+      SPANNER_EMULATOR_HOST: spanner-emulator:9010
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:29092
+    command:
+      - /bin/sh
+      - -lc
+      - go run ./apps/backend-go
+    ports:
+      - "8180:8080"
+    restart: unless-stopped
+
+  ai-worker:
+    image: golang:1.25-bookworm
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      backend-setup:
+        condition: service_completed_successfully
+    working_dir: /workspace/pegasusX
+    volumes:
+      - ..:/workspace/pegasusX
+    env_file:
+      - ../.env.ssmr.example
+    environment:
+      SPANNER_EMULATOR_HOST: spanner-emulator:9010
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:29092
+    command:
+      - /bin/sh
+      - -lc
+      - go run ./apps/ai-worker
+    restart: unless-stopped
+
+  # Phase 2 hook: add an optimizer-sidecar-rust service here when pegasusX
+  # carries a concrete OR-Tools sidecar implementation.

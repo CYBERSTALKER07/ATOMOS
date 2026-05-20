@@ -27,7 +27,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
 /**
- * B&W Navigation Bar — 5 tabs. Insights moved to sidebar.
+ * Retailer primary navigation shell.
+ * Secondary destinations stay in sidebar/overflow surfaces.
  */
 enum class PegasusTab(
     val label: String,
@@ -35,11 +36,17 @@ enum class PegasusTab(
     val unselectedIcon: ImageVector,
 ) {
     HOME("Home", Icons.Rounded.Home, Icons.Outlined.Home),
-    CATALOG("Catalog", Icons.Rounded.Store, Icons.Outlined.Store),
+    CATALOG("Buy", Icons.Rounded.Store, Icons.Outlined.Store),
     ORDERS("Orders", Icons.Rounded.Inventory2, Icons.Outlined.Inventory2),
-    MAP("Map", Icons.Rounded.Map, Icons.Outlined.Map),
+    MAP("Deliveries", Icons.Rounded.Map, Icons.Outlined.Map),
     PROFILE("Profile", Icons.Rounded.AccountCircle, Icons.Outlined.AccountCircle),
     SUPPLIERS("Suppliers", Icons.Rounded.Person, Icons.Outlined.Person),
+
+    ;
+
+    companion object {
+        val PrimaryTabs: List<PegasusTab> = listOf(HOME, CATALOG, ORDERS, MAP)
+    }
 }
 
 @Composable
@@ -54,7 +61,7 @@ fun PegasusBottomBar(
         tonalElevation = 0.dp,
         windowInsets = WindowInsets(0, 0, 0, 0),
     ) {
-        PegasusTab.entries.forEach { tab ->
+        PegasusTab.PrimaryTabs.forEach { tab ->
             val selected = tab == currentTab
             NavigationBarItem(
                 selected = selected,

@@ -9,6 +9,7 @@
     "events": "apache-kafka",
     "logging": "log/slog",
     "traceMiddleware": "bootstrap.TraceMiddleware (X-Trace-Id normalization + outbox context propagation)",
+    "sandboxBootstrapCommand": "apps/backend-go/cmd/setup creates isolated Spanner instance/database, applies schema/spanner.ddl, and seeds the single supplier row for SSMR sandbox bring-up",
     "scaffoldOutboxRuntime": "relay store selected at runtime: Spanner OutboxEvents authority when reachable, otherwise in-memory fallback; relay started from main",
     "adapterBridge": "bootstrap attempts Redis cache transport and Kafka outbox transport with in-memory/logging fallback",
     "strictReliabilityMode": "REQUIRE_INFRA_ADAPTERS fail-fast bootstrap on Redis/Kafka adapter init failure",
@@ -21,6 +22,7 @@
     "wsRelayTransport": "ws:<hub>:fanout typed envelopes with source suppression; subscribers started from main",
     "auth": "jwt + firebase-id-token(optional)",
     "geospatial": "h3-res-7",
+    "topicIsolation": "events.TopicMain resolves from KAFKA_TOPIC_MAIN at process start so isolated sandboxes can publish to tenant-specific Kafka topics without rewriting emit call sites",
     "routeCoverage": {
       "supplierroutes": [
         "/v1/auth/supplier/register",
@@ -195,7 +197,8 @@
   ],
   "infra": [
     "docker-compose (spanner, redis, kafka, kafka-ui)",
-    "terraform (vpc, spanner, redis, secret-manager wiring)",
+    "docker-compose.ssmr (isolated spanner/redis/kafka, topic bootstrap, backend-go + ai-worker, cmd/setup bootstrap)",
+    "terraform (vpc, spanner, redis, tenant-scoped secret-manager wiring for orders/spatial/realtime/webhook topics)",
     "kubernetes"
   ]
 }

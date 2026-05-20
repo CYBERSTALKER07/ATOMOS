@@ -2,12 +2,23 @@
 // constants. Mirrors contracts/events.schema.json and packages/types EventType.
 package events
 
+import (
+	"os"
+	"strings"
+)
+
 const (
-	// TopicMain is the canonical multi-event topic for state transitions.
-	TopicMain = "pegasusx-main"
+	// DefaultTopicMain is the fallback multi-event topic for state transitions.
+	DefaultTopicMain = "pegasusx-main"
 	// TopicCacheInvalidate is the Redis Pub/Sub channel for cross-pod cache
 	// invalidation. Held here so cache + outbox share a single constant.
 	TopicCacheInvalidate = "cache:invalidate"
+)
+
+var (
+	// TopicMain resolves once at process start so isolated sandboxes can publish
+	// to client-specific Kafka topics without patching every outbox call site.
+	TopicMain = topicFromEnv("KAFKA_TOPIC_MAIN", DefaultTopicMain)
 )
 
 // EventType constants. Add new types here, in events.schema.json, and in
@@ -66,3 +77,11 @@ const (
 	AggregateManifest  = "Manifest"
 	AggregateSession   = "DeliverySession"
 )
+
+func topicFromEnv(key string, fallback string) string {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	return value
+}

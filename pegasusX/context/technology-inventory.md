@@ -8,6 +8,7 @@
 - **Events**: Apache Kafka (transactional outbox; sync writer with `RequiredAcks=all`)
 - **Logging**: `log/slog` (JSON handler, `trace_id` propagated)
 - **Trace ingress middleware**: `bootstrap.TraceMiddleware` normalizes/generates `X-Trace-Id`, propagates it through request context, and enables additive `trace_id` insertion in map-based outbox payloads.
+- **Sandbox bootstrap command (additive)**: `apps/backend-go/cmd/setup` creates the isolated Spanner instance/database when needed, applies `apps/backend-go/schema/spanner.ddl`, and seeds the single supplier row for local SSMR sandbox bring-up.
 - **Scaffold outbox runtime**: `bootstrap` now starts `OutboxRelay` with store authority selected at runtime: `outbox/spanner_store.go` (`OutboxEvents` fetch/mark) when Spanner is reachable, with in-memory store fallback when unavailable; repository emit paths use a shared outbox appender seam.
 - **Adapter bridge (additive)**: `bootstrap` now attempts Redis transport via `cache/redis_backend.go` and Kafka outbox transport via `outbox/kafka_publisher.go`, with fail-open fallback to in-memory cache/logging publisher when dependencies are unavailable.
 - **Strict reliability mode (additive)**: `REQUIRE_INFRA_ADAPTERS=true` enforces fail-fast bootstrap if Redis or Kafka adapter initialization fails; default mode remains fail-open for local/scaffold startup.
@@ -20,6 +21,7 @@
 - **WebSocket relay transport**: `ws/hub.go` now relays typed fanout envelopes over `ws:<hub>:fanout` with source-instance suppression; `main.go` starts all role-hub relay subscribers during boot.
 - **AuthN**: JWT cookie sessions + optional Firebase ID token verification (RS256 + Google cert rotation cache)
 - **Geospatial**: H3 resolution 7, 15-char hex on the wire
+- **Topic isolation (additive)**: `events.TopicMain` resolves from `KAFKA_TOPIC_MAIN` at process start, allowing isolated tenant/event-bus naming without changing every outbox emit call site.
 - **Workspace**: `go.work` at `pegasusX/` root listing `./apps/backend-go`, `./apps/ai-worker`, `./packages/config`
 - **Route coverage (additive 2026-05-17)**:
 	- `supplierroutes`: register + supplier core operational surfaces (configure, profile, dashboard, earnings, inventory, inventory-audit, orders, vet).
@@ -67,5 +69,6 @@
 
 ## Infra
 - `infra/docker-compose.yml` — local Spanner emulator, Redis, Kafka, Kafka UI
-- `infra/terraform/` — baseline cloud provisioning (VPC, Spanner, Redis, Secret Manager for Kafka/Firebase runtime wiring)
+- `infra/docker-compose.ssmr.yml` — isolated SSMR sandbox stack (non-overlapping host ports, Kafka topic bootstrap, backend-go + ai-worker runtime services, Spanner schema/seed bootstrap via `cmd/setup`)
+- `infra/terraform/` — baseline cloud provisioning (VPC, Spanner, Redis, Secret Manager for Kafka/Firebase runtime wiring) with `tenant_slug` / `resource_prefix` segregation and distinct orders/spatial/realtime/webhook topic secret outputs
 - `infra/k8s/` — deployment manifests
