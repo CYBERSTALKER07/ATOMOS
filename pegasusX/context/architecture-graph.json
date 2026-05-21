@@ -4,6 +4,38 @@
   "generatedAt": null,
   "runtimeNotes": [
     {
+      "date": "2026-05-22",
+      "summary": "Completed shared supplier contract bridge: packages/types now includes supplier register/login/configure/billing/profile/topology DTOs and packages/api-client now exposes typed supplier methods for auth + core supplier endpoints with Idempotency-Key support and structured API error handling."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "B02 supplier bootstrap durability advanced: supplier repository now persists rich onboarding/billing fields in SupplierProfiles plus durable warehouse/factory topology reads and replacements, supplierroutes now expose GET|PUT /v1/supplier/topology, and supplier portal now proxies same-origin /api/* calls to backend authority while preserving cookie/idempotency behavior for register and billing flows."
+    },
+    {
+      "date": "2026-05-21",
+      "summary": "Added additive order status mutation path in orderroutes/service (PATCH /v1/order/{orderID}/status) with canonical transition checks, transactional outbox emit ORDER_STATUS_CHANGED, post-commit cache invalidation, and supplier/retailer websocket fanout; websocket role-room mapping now uses canonical auth role constants; outbox EmitJSON now injects trace_id for object payloads (struct/map parity)."
+    },
+    {
+      "date": "2026-05-21",
+      "summary": "Completed Phase-1.2 payment durability implementation: schema now includes PaymentSessions/PaymentAttempts/PaymentChargebacks/PaymentReversals/PaymentWebhooks, a new Spanner-backed payment repository persists payment rows and outbox events atomically, checkout now writes session + first attempt via CreateSessionWithAttempt in one transaction path, and bootstrap now selects Spanner payment storage when available with in-memory fallback retained."
+    },
+    {
+      "date": "2026-05-21",
+      "summary": "Started Phase-1 backend durability implementation: schema now includes Orders + supplier/retailer created-at indexes, a new Spanner-backed order repository persists order rows and outbox events atomically, and bootstrap now selects Spanner order storage when available with explicit in-memory fallback."
+    },
+    {
+      "date": "2026-05-21",
+      "summary": "Added Phase-2 Redis-backed H3 spatial hub: bootstrap precomputes supplier delivery perimeter coverage into Redis sets (expanded + compacted), order creation derives H3 server-side and enforces fail-closed O(1) SISMEMBER checks, and cmd/ssmr-smokecheck plus smoke_ssmr.sh now include a spatial perimeter assertion stage."
+    },
+    {
+      "date": "2026-05-21",
+      "summary": "Added persistent Go caches and permanent CI enforcement for the SSMR gate: docker-compose.ssmr.yml now shares named module/build cache volumes across Go containers, smoke_ssmr.sh preserves those caches during teardown, and repo-root .github/workflows/ssmr-infra.yml runs make test-ssmr-infra for pegasusX changes."
+    },
+    {
+      "date": "2026-05-21",
+      "summary": "Added the Phase-2 SSMR smoke gate: scripts/smoke_ssmr.sh plus cmd/ssmr-smokecheck now prove isolated Spanner seed/schema state, Redis reachability, backend health, and Kafka topic isolation/round-trip flow, and docker-compose.ssmr.yml now invokes /usr/local/go/bin/go explicitly inside Go containers."
+    },
+    {
       "date": "2026-05-21",
       "summary": "Added the Phase-1 SSMR physical sandbox baseline: backend-go/cmd/setup bootstraps isolated Spanner schema + seeded supplier state, docker-compose.ssmr.yml stands up isolated local infra/runtime services, TopicMain resolves from KAFKA_TOPIC_MAIN for tenant-scoped Kafka isolation, and terraform now namespaces resources/topic secrets by tenant_slug/resource_prefix."
     },
@@ -69,11 +101,20 @@
     }
   ],
   "nodes": [
+    { "id": "execution-plan", "kind": "context", "language": "md", "path": "context/plan.md" },
+    { "id": "ssmr-infra-workflow", "kind": "ci", "language": "yaml", "path": "../.github/workflows/ssmr-infra.yml" },
     { "id": "docker-compose-ssmr", "kind": "infra", "language": "yaml", "path": "infra/docker-compose.ssmr.yml" },
+    { "id": "ssmr-smoke-harness", "kind": "tooling", "language": "bash", "path": "scripts/smoke_ssmr.sh" },
     { "id": "backend-go", "kind": "service", "language": "go", "path": "apps/backend-go" },
+    { "id": "order-spanner-repo", "kind": "component", "language": "go", "path": "apps/backend-go/order/repository_spanner.go" },
+    { "id": "payment-spanner-repo", "kind": "component", "language": "go", "path": "apps/backend-go/payment/repository_spanner.go" },
+    { "id": "supplier-spanner-repo", "kind": "component", "language": "go", "path": "apps/backend-go/supplier/repository_spanner.go" },
     { "id": "backend-setup", "kind": "tooling", "language": "go", "path": "apps/backend-go/cmd/setup" },
+    { "id": "ssmr-smokecheck", "kind": "tooling", "language": "go", "path": "apps/backend-go/cmd/ssmr-smokecheck" },
+    { "id": "retailer-proximity", "kind": "component", "language": "go", "path": "apps/backend-go/retailer/proximity_service.go" },
     { "id": "ai-worker", "kind": "service", "language": "go", "path": "apps/ai-worker" },
     { "id": "supplier-portal", "kind": "web", "language": "ts", "path": "apps/supplier-portal" },
+    { "id": "supplier-portal-api-proxy", "kind": "component", "language": "ts", "path": "apps/supplier-portal/app/api/[...path]/route.ts" },
     { "id": "retailer-app-android", "kind": "mobile", "language": "kotlin", "path": "apps/retailer-app-android" },
     { "id": "retailer-app-ios", "kind": "mobile", "language": "swift", "path": "apps/retailer-app-ios" },
     { "id": "retailer-app-desktop", "kind": "desktop", "language": "ts", "path": "apps/retailer-app-desktop" },
@@ -102,11 +143,31 @@
     { "id": "terraform", "kind": "infra", "path": "infra/terraform" }
   ],
   "edges": [
+    { "from": "execution-plan", "to": "backend-go", "kind": "governs-delivery" },
+    { "from": "execution-plan", "to": "supplier-portal", "kind": "governs-delivery" },
+    { "from": "execution-plan", "to": "ai-worker", "kind": "governs-delivery" },
+    { "from": "execution-plan", "to": "terraform", "kind": "governs-delivery" },
+    { "from": "ssmr-infra-workflow", "to": "ssmr-smoke-harness", "kind": "ci-stage-gate" },
+    { "from": "ssmr-smoke-harness", "to": "docker-compose-ssmr", "kind": "smoke-orchestration" },
+    { "from": "ssmr-smoke-harness", "to": "ssmr-smokecheck", "kind": "direct-proof" },
     { "from": "docker-compose-ssmr", "to": "backend-setup", "kind": "local-bootstrap" },
     { "from": "docker-compose-ssmr", "to": "backend-go", "kind": "local-runtime" },
     { "from": "docker-compose-ssmr", "to": "ai-worker", "kind": "local-runtime" },
     { "from": "backend-setup", "to": "spanner", "kind": "schema-bootstrap" },
+    { "from": "ssmr-smokecheck", "to": "spanner", "kind": "read-assert" },
+    { "from": "ssmr-smokecheck", "to": "redis", "kind": "spatial-read-assert" },
+    { "from": "ssmr-smokecheck", "to": "kafka", "kind": "topic-roundtrip-assert" },
+    { "from": "backend-go", "to": "order-spanner-repo", "kind": "domain-component" },
+    { "from": "order-spanner-repo", "to": "spanner", "kind": "order-persistence" },
+    { "from": "backend-go", "to": "payment-spanner-repo", "kind": "domain-component" },
+    { "from": "payment-spanner-repo", "to": "spanner", "kind": "payment-persistence" },
+    { "from": "backend-go", "to": "supplier-spanner-repo", "kind": "domain-component" },
+    { "from": "supplier-spanner-repo", "to": "spanner", "kind": "supplier-persistence" },
+    { "from": "backend-go", "to": "retailer-proximity", "kind": "domain-component" },
+    { "from": "retailer-proximity", "to": "redis", "kind": "spatial-membership" },
     { "from": "supplier-portal", "to": "backend-go", "kind": "http" },
+    { "from": "supplier-portal", "to": "supplier-portal-api-proxy", "kind": "same-origin-api" },
+    { "from": "supplier-portal-api-proxy", "to": "backend-go", "kind": "http-proxy" },
     { "from": "retailer-app-android", "to": "backend-go", "kind": "http+ws" },
     { "from": "retailer-app-ios", "to": "backend-go", "kind": "http+ws" },
     { "from": "retailer-app-desktop", "to": "backend-go", "kind": "http+ws" },
@@ -121,6 +182,7 @@
     { "from": "payload-terminal", "to": "backend-go", "kind": "http+ws" },
     { "from": "payload-app-ios", "to": "backend-go", "kind": "http+ws" },
     { "from": "payload-app-android", "to": "backend-go", "kind": "http+ws" },
+    { "from": "pkg-api-client", "to": "pkg-types", "kind": "package-dependency" },
     { "from": "backend-go", "to": "spanner", "kind": "rw-txn" },
     { "from": "backend-go", "to": "redis", "kind": "cache+pubsub" },
     { "from": "backend-go", "to": "kafka", "kind": "outbox-relay" },

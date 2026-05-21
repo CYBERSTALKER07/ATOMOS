@@ -29,6 +29,7 @@ import (
 // implementations with real RW transactions and OutboxEvents writes.
 type Repository interface {
 	CreateSession(ctx context.Context, s SessionRecord, emit func(outbox.TxnBuffer) error) error
+	CreateSessionWithAttempt(ctx context.Context, s SessionRecord, a PaymentAttemptRecord, emit func(outbox.TxnBuffer) error) error
 	SaveAttempt(ctx context.Context, a PaymentAttemptRecord, emit func(outbox.TxnBuffer) error) error
 	SaveChargeback(ctx context.Context, c ChargebackRecord, emit func(outbox.TxnBuffer) error) error
 	SaveReversal(ctx context.Context, rev ReversalRecord, emit func(outbox.TxnBuffer) error) error
@@ -837,7 +838,7 @@ func (s *Service) handleCheckout(mode string, w http.ResponseWriter, r *http.Req
 		CreatedAt:         now,
 		UpdatedAt:         now,
 	}
-	if err := s.repo.CreateSession(r.Context(), session, func(txn outbox.TxnBuffer) error {
+	if err := s.repo.CreateSessionWithAttempt(r.Context(), session, attempt, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateSession, session.SessionID, events.TopicMain, paymentEvent{
 			Type:              events.EventPaymentRequired,
 			SessionID:         session.SessionID,
@@ -857,11 +858,7 @@ func (s *Service) handleCheckout(mode string, w http.ResponseWriter, r *http.Req
 			Timestamp:         now.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "checkout_session_create_failed", err.Error(), "/v1/checkout", false, "")
-		return
-	}
-	if err := s.repo.SaveAttempt(r.Context(), attempt, nil); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "checkout_attempt_create_failed", err.Error(), "/v1/checkout", false, "")
+		writeJSONError(w, http.StatusInternalServerError, "checkout_session_attempt_create_failed", err.Error(), "/v1/checkout", false, "")
 		return
 	}
 

@@ -45,6 +45,7 @@ export default function BillingSetupPage() {
     if (state.bankName.trim().length < 2) e.bankName = "Bank name required";
     if (state.accountHolder.trim().length < 2) e.accountHolder = "Account holder required";
     if (state.accountNumber.trim().length < 4) e.accountNumber = "Account number required";
+    if (state.swiftBic.trim().length < 4) e.swiftBic = "SWIFT / BIC required";
     if (state.selectedGateways.length === 0) e.selectedGateways = "Choose at least one gateway";
     return e;
   }
@@ -66,7 +67,10 @@ export default function BillingSetupPage() {
     try {
       const res = await fetch("/api/supplier/billing/setup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": cryptoRandomId(),
+        },
         body: JSON.stringify(state),
       });
       if (!res.ok) {
@@ -166,4 +170,9 @@ function Field({ id, label, error, hint, children }: { id: string; label: string
         : hint ? <p className="md-helper">{hint}</p> : null}
     </div>
   );
+}
+
+function cryptoRandomId() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }

@@ -88,21 +88,15 @@ func EmitJSON(ctx context.Context, txn TxnBuffer, aggregateType, aggregateID, to
 		return fmt.Errorf("outbox: aggregateType/aggregateID/topic required")
 	}
 	traceID := TraceIDFromContext(ctx)
-	if traceID != "" {
-		if mapPayload, ok := payload.(map[string]any); ok {
-			cloned := make(map[string]any, len(mapPayload)+1)
-			for k, v := range mapPayload {
-				cloned[k] = v
-			}
-			if _, exists := cloned["trace_id"]; !exists {
-				cloned["trace_id"] = traceID
-			}
-			payload = cloned
-		}
-	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("outbox: marshal payload: %w", err)
+	}
+	if traceID != "" {
+		raw, err = injectTraceID(raw, traceID)
+		if err != nil {
+			return fmt.Errorf("outbox: inject trace id: %w", err)
+		}
 	}
 	return txn.BufferOutbox(ctx, Event{
 		EventID:       newEventID(),
@@ -112,6 +106,27 @@ func EmitJSON(ctx context.Context, txn TxnBuffer, aggregateType, aggregateID, to
 		Payload:       raw,
 		CreatedAt:     time.Now().UTC(),
 	})
+}
+
+func injectTraceID(raw []byte, traceID string) ([]byte, error) {
+	if strings.TrimSpace(traceID) == "" {
+		return raw, nil
+	}
+	var object map[string]any
+	if err := json.Unmarshal(raw, &object); err != nil {
+		// Non-object payloads (or malformed JSON) are passed through unchanged
+		// because upstream marshaling has already succeeded.
+		return raw, nil
+	}
+	if _, exists := object["trace_id"]; exists {
+		return raw, nil
+	}
+	object["trace_id"] = traceID
+	patched, err := json.Marshal(object)
+	if err != nil {
+		return nil, err
+	}
+	return patched, nil
 }
 
 // newEventID is overridable in tests. Production uses crypto/rand UUIDv7.

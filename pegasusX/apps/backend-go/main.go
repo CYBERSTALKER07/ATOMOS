@@ -26,6 +26,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailerroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouseroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/webhookroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
@@ -57,6 +58,10 @@ func main() {
 	if app.Cache != nil {
 		go app.Cache.StartInvalidationSubscriber(ctx)
 		slog.Info("cache invalidation subscriber started")
+	}
+	if app.NotificationConsumer != nil {
+		go app.NotificationConsumer.Start(ctx)
+		slog.Info("notification consumer started")
 	}
 	startHubRelaySubscribers(ctx, []*ws.Hub{
 		app.RetailerHub,
@@ -127,7 +132,14 @@ func main() {
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 	})
+	telemetryroutes.RegisterRoutes(r, telemetryroutes.Deps{
+		TelemetryHub:        app.TelemetryHub,
+		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
+		FirebaseVerifier:    firebaseVerifier,
+	})
 	// TODO: register additional domain *routes packages here.
+	ws.RegisterRoutes(r, slog.Default(), cfg.FirebaseAuthEnabled, firebaseVerifier,
+		app.RetailerHub, app.SupplierHub, app.DriverHub, app.PayloadHub, app.WarehouseHub, app.FactoryHub, app.TelemetryHub)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,

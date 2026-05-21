@@ -26,8 +26,11 @@
         "DRIVER_CREATED",
         "VEHICLE_CREATED",
         "WAREHOUSE_CREATED",
+        "WAREHOUSE_SUPPLY_REQUEST_OPENED",
+        "WAREHOUSE_DISPATCH_LOCK_CHANGED",
         "FACTORY_CREATED",
         "ORDER_CREATED",
+        "ORDER_STATUS_CHANGED",
         "ORDER_VALIDATION_FAILED",
         "ORDER_ASSIGNED",
         "ORDER_REASSIGNED",
@@ -166,6 +169,44 @@
       ]
     },
 
+    "WarehouseSupplyRequestOpened": {
+      "allOf": [
+        { "$ref": "#/definitions/Envelope" },
+        {
+          "type": "object",
+          "required": ["supplier_id", "request_id", "status", "timestamp"],
+          "properties": {
+            "supplier_id": { "type": "string", "format": "uuid" },
+            "warehouse_id": { "type": "string", "format": "uuid" },
+            "request_id": { "type": "string" },
+            "status": { "type": "string" },
+            "requested_by": { "type": "string" },
+            "timestamp": { "type": "string", "format": "date-time" }
+          }
+        }
+      ]
+    },
+
+    "WarehouseDispatchLockChanged": {
+      "allOf": [
+        { "$ref": "#/definitions/Envelope" },
+        {
+          "type": "object",
+          "required": ["supplier_id", "lock_id", "action", "timestamp"],
+          "properties": {
+            "supplier_id": { "type": "string", "format": "uuid" },
+            "warehouse_id": { "type": "string", "format": "uuid" },
+            "lock_id": { "type": "string" },
+            "entity_type": { "type": "string" },
+            "entity_id": { "type": "string" },
+            "reason": { "type": "string" },
+            "action": { "type": "string", "enum": ["ACQUIRED", "RELEASED"] },
+            "timestamp": { "type": "string", "format": "date-time" }
+          }
+        }
+      ]
+    },
+
     "FactoryCreated": {
       "allOf": [
         { "$ref": "#/definitions/Envelope" },
@@ -196,6 +237,29 @@
             "supplier_id": { "type": "string", "format": "uuid" },
             "warehouse_id": { "type": "string", "format": "uuid" },
             "total": { "$ref": "#/definitions/Money" }
+          }
+        }
+      ]
+    },
+
+    "OrderStatusChanged": {
+      "allOf": [
+        { "$ref": "#/definitions/Envelope" },
+        {
+          "type": "object",
+          "required": ["order_id", "supplier_id", "retailer_id", "previous_status", "status"],
+          "properties": {
+            "order_id": { "type": "string", "format": "uuid" },
+            "supplier_id": { "type": "string", "format": "uuid" },
+            "retailer_id": { "type": "string", "format": "uuid" },
+            "previous_status": { "type": "string", "enum": ["PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "COMPLETED", "CANCELLED"] },
+            "status": { "type": "string", "enum": ["PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "COMPLETED", "CANCELLED"] },
+            "reason": { "type": "string" },
+            "actor_role": { "type": "string" },
+            "actor_id": { "type": "string" },
+            "version": { "type": "integer", "minimum": 1 },
+            "total_minor": { "type": "integer" },
+            "currency": { "type": "string", "minLength": 3, "maxLength": 3 }
           }
         }
       ]

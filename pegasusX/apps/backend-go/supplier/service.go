@@ -25,6 +25,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Repository is the persistence seam for the seeded supplier aggregate.
@@ -34,6 +35,18 @@ import (
 type Repository interface {
 	GetProfile(ctx context.Context, supplierID string) (Profile, bool, error)
 	UpdateProfile(ctx context.Context, p Profile, emit func(outbox.TxnBuffer) error) error
+	GetAuthByPhone(ctx context.Context, phone string) (SupplierAuthRecord, bool, error)
+	GetTopology(ctx context.Context, supplierID string) (SupplierTopology, error)
+	ReplaceTopology(ctx context.Context, supplierID string, topology SupplierTopology, emit func(outbox.TxnBuffer) error) error
+}
+
+// SupplierAuthRecord is the credential snapshot used by login flow.
+type SupplierAuthRecord struct {
+	UserID       string
+	SupplierID   string
+	Phone        string
+	PasswordHash string
+	IsConfigured bool
 }
 
 // Profile is the persisted supplier-onboarding aggregate. Mirrors the
@@ -44,8 +57,11 @@ type Profile struct {
 	ContactName       string
 	Email             string
 	Phone             string
+	AuthUserID        string
+	AuthPasswordHash  string
 	Country           string
 	Currency          string
+	WarehouseName     string
 	WarehouseAddress  string
 	WarehouseLat      float64
 	WarehouseLng      float64
@@ -70,6 +86,36 @@ type Profile struct {
 	RegisteredAt      time.Time
 	ConfiguredAt      time.Time
 	UpdatedAt         time.Time
+}
+
+// WarehouseNode is one supplier-owned warehouse topology node.
+type WarehouseNode struct {
+	WarehouseID      string
+	Name             string
+	Lat              float64
+	Lng              float64
+	CoverageRadiusKm float64
+	IsActive         bool
+	IsOnShift        bool
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+// FactoryNode is one supplier-owned factory topology node.
+type FactoryNode struct {
+	FactoryID string
+	Name      string
+	Lat       float64
+	Lng       float64
+	IsActive  bool
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// SupplierTopology is the warehouse/factory graph for one supplier.
+type SupplierTopology struct {
+	Warehouses []WarehouseNode
+	Factories  []FactoryNode
 }
 
 // Service wires repository, cache, idempotency, and JWT issuance.
@@ -152,6 +198,7 @@ type AccountStep struct {
 
 // AddressStep is a reused shape for warehouse/billing addresses.
 type AddressStep struct {
+	Name    string  `json:"name,omitempty"`
 	Address string  `json:"address"`
 	Lat     float64 `json:"lat"`
 	Lng     float64 `json:"lng"`
@@ -190,6 +237,19 @@ type RegisterResponse struct {
 	NextStep     string `json:"next_step"`
 }
 
+// LoginRequest is the wire shape for POST /v1/auth/supplier/login.
+type LoginRequest struct {
+	Phone    string `json:"phone"`
+	Password string `json:"password"`
+}
+
+// LoginResponse is the login confirmation payload.
+type LoginResponse struct {
+	SupplierID   string `json:"supplier_id"`
+	IsConfigured bool   `json:"is_configured"`
+	NextStep     string `json:"next_step"`
+}
+
 // Validate enforces wizard invariants.
 func (r RegisterRequest) Validate() error {
 	if strings.TrimSpace(r.Account.LegalName) == "" {
@@ -213,6 +273,9 @@ func (r RegisterRequest) Validate() error {
 	if strings.TrimSpace(r.Location.Warehouse.Address) == "" {
 		return errors.New("location.warehouse.address required")
 	}
+	if strings.TrimSpace(r.Location.Warehouse.Name) == "" {
+		return errors.New("location.warehouse.name required")
+	}
 	if r.Location.Warehouse.Lat == 0 && r.Location.Warehouse.Lng == 0 {
 		return errors.New("location.warehouse lat/lng required")
 	}
@@ -231,12 +294,27 @@ func (r RegisterRequest) Validate() error {
 	return nil
 }
 
+// Validate enforces login payload invariants.
+func (r LoginRequest) Validate() error {
+	if strings.TrimSpace(r.Phone) == "" {
+		return errors.New("phone required")
+	}
+	if strings.TrimSpace(r.Password) == "" {
+		return errors.New("password required")
+	}
+	return nil
+}
+
 // Register persists the wizard payload onto the seeded supplier row, emits a
 // SUPPLIER_UPDATED outbox event atomically, invalidates the supplier cache
 // post-commit, and returns the response shape the wizard expects.
 func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterResponse, error) {
 	if err := req.Validate(); err != nil {
 		return RegisterResponse{}, err
+	}
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Account.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return RegisterResponse{}, fmt.Errorf("hash supplier password: %w", err)
 	}
 
 	current, found, err := s.repo.GetProfile(ctx, s.supplierID)
@@ -252,10 +330,13 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	current.ContactName = req.Account.ContactName
 	current.Email = req.Account.Email
 	current.Phone = req.Phone
+	current.AuthUserID = rootSupplierUserID(s.supplierID)
+	current.AuthPasswordHash = string(passwordHash)
 	if strings.TrimSpace(req.Account.Country) != "" {
 		current.Country = strings.ToUpper(req.Account.Country)
 	}
 	current.WarehouseAddress = req.Location.Warehouse.Address
+	current.WarehouseName = req.Location.Warehouse.Name
 	current.WarehouseLat = req.Location.Warehouse.Lat
 	current.WarehouseLng = req.Location.Warehouse.Lng
 	current.BillingSameAsWh = req.Location.BillingSameAsWh
@@ -312,6 +393,32 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	}, nil
 }
 
+// Login verifies supplier credentials and returns the configured-state snapshot.
+func (s *Service) Login(ctx context.Context, req LoginRequest) (LoginResponse, error) {
+	if err := req.Validate(); err != nil {
+		return LoginResponse{}, err
+	}
+	rec, found, err := s.repo.GetAuthByPhone(ctx, req.Phone)
+	if err != nil {
+		return LoginResponse{}, fmt.Errorf("load supplier credentials: %w", err)
+	}
+	if !found || strings.TrimSpace(rec.PasswordHash) == "" {
+		return LoginResponse{}, ErrInvalidCredentials
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(rec.PasswordHash), []byte(req.Password)); err != nil {
+		return LoginResponse{}, ErrInvalidCredentials
+	}
+	nextStep := "/"
+	if !rec.IsConfigured {
+		nextStep = "/setup/billing"
+	}
+	return LoginResponse{
+		SupplierID:   rec.SupplierID,
+		IsConfigured: rec.IsConfigured,
+		NextStep:     nextStep,
+	}, nil
+}
+
 // ── ConfigureBilling ───────────────────────────────────────────────────────
 
 // BillingSetupRequest is the wire shape for POST /v1/supplier/billing/setup.
@@ -337,6 +444,10 @@ var allowedGateways = map[string]struct{}{
 	"AIRWALLEX":  {},
 	"CASH":       {},
 }
+
+const defaultCoverageRadiusKm = 10.0
+
+var ErrInvalidCredentials = errors.New("invalid_credentials")
 
 // Validate enforces billing payload invariants.
 func (r BillingSetupRequest) Validate() error {
@@ -438,7 +549,7 @@ func (s *Service) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		case err != nil:
 			s.log.Warn("idempotency guard failed", "err", err)
 		case hit:
-			s.replaySession(w, rec)
+			s.replaySession(w, rec, false)
 			return
 		}
 	}
@@ -473,6 +584,37 @@ func (s *Service) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(respBytes)
 }
 
+// HandleLogin is the HTTP entry-point for POST /v1/auth/supplier/login.
+func (s *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	var req LoginRequest
+	if err := json.NewDecoder(io.LimitReader(r.Body, 16*1024)).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	defer r.Body.Close()
+
+	resp, err := s.Login(r.Context(), req)
+	if err != nil {
+		s.log.Warn("supplier login failed", "phone", req.Phone, "err", err)
+		switch {
+		case errors.Is(err, ErrInvalidCredentials):
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
+		default:
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		}
+		return
+	}
+
+	if err := s.writeSessionCookie(w, resp.IsConfigured); err != nil {
+		s.log.Warn("session cookie issue failed", "err", err)
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
 // HandleConfigureBilling is the HTTP entry-point for POST /v1/supplier/billing/setup.
 // Expected to run behind auth.CookieAuth + auth.RequireRole(ADMIN).
 func (s *Service) HandleConfigureBilling(w http.ResponseWriter, r *http.Request) {
@@ -497,7 +639,7 @@ func (s *Service) HandleConfigureBilling(w http.ResponseWriter, r *http.Request)
 		case err != nil:
 			s.log.Warn("idempotency guard failed", "err", err)
 		case hit:
-			s.replaySession(w, rec)
+			s.replaySession(w, rec, true)
 			return
 		}
 	}
@@ -552,11 +694,8 @@ func (s *Service) writeSessionCookie(w http.ResponseWriter, isConfigured bool) e
 
 // replaySession returns an idempotency-stored response but also reissues the
 // session cookie so the replay-caller still ends up authenticated.
-func (s *Service) replaySession(w http.ResponseWriter, rec idempotency.Record) {
-	// Best-effort: reissue cookie as not-configured; the success replay path
-	// is followed by the wizard's own redirect, which the middleware will
-	// re-evaluate against the cookie.
-	_ = s.writeSessionCookie(w, false)
+func (s *Service) replaySession(w http.ResponseWriter, rec idempotency.Record, isConfigured bool) {
+	_ = s.writeSessionCookie(w, isConfigured)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(rec.StatusCode)
 	_, _ = w.Write(rec.Response)
@@ -589,6 +728,10 @@ type supplierBillingEvent struct {
 }
 
 func supplierCacheKey(id string) string { return "supplier:" + id }
+
+func rootSupplierUserID(supplierID string) string {
+	return "root_" + supplierID
+}
 
 func writeJSON(w http.ResponseWriter, code int, body any) {
 	w.Header().Set("Content-Type", "application/json")

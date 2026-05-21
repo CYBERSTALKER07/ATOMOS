@@ -49,6 +49,164 @@ export type OrderStatus =
   | "COMPLETED"
   | "CANCELLED";
 
+// ── Supplier API contracts ─────────────────────────────────────────────────
+export interface SupplierRegisterAccount {
+  legalName: string;
+  contactName: string;
+  email: string;
+  country: string;
+  phone: string;
+  password: string;
+}
+
+export interface SupplierRegisterAddress {
+  name?: string;
+  address: string;
+  lat: number;
+  lng: number;
+}
+
+export interface SupplierRegisterLocation {
+  warehouse: SupplierRegisterAddress;
+  sameAsWarehouse: boolean;
+  billing: SupplierRegisterAddress;
+}
+
+export interface SupplierRegisterBusiness {
+  taxId: string;
+  companyRegNumber: string;
+  fleetVehicleCount: number;
+  fleetMaxVU: number;
+  factoryCount: number;
+}
+
+export interface SupplierRegisterRequest {
+  account: SupplierRegisterAccount;
+  location: SupplierRegisterLocation;
+  business: SupplierRegisterBusiness;
+  categories: string[];
+  phone: string;
+}
+
+export interface SupplierRegisterResponse {
+  supplier_id: SupplierId;
+  legal_name: string;
+  is_configured: boolean;
+  next_step: string;
+}
+
+export interface SupplierLoginRequest {
+  phone: string;
+  password: string;
+}
+
+export interface SupplierLoginResponse {
+  supplier_id: SupplierId;
+  is_configured: boolean;
+  next_step: string;
+}
+
+export interface SupplierBillingSetupRequest {
+  bankName: string;
+  accountHolder: string;
+  accountNumber: string;
+  swiftBic: string;
+  iban?: string;
+  selectedGateways: PaymentGateway[];
+}
+
+export interface SupplierBillingSetupResponse {
+  supplier_id: SupplierId;
+  is_configured: boolean;
+  selected_gateways: PaymentGateway[];
+}
+
+export interface SupplierConfigureRequest {
+  legal_name?: string;
+}
+
+export interface SupplierConfigureResponse {
+  supplier_id: SupplierId;
+  is_registered: boolean;
+  is_configured: boolean;
+  completed_at: string;
+}
+
+export interface SupplierProfile {
+  supplier_id: SupplierId;
+  legal_name: string;
+  contact_name: string;
+  email: string;
+  phone: string;
+  country: string;
+  currency: Iso4217;
+  categories: string[];
+  is_registered: boolean;
+  is_configured: boolean;
+  selected_gateways: PaymentGateway[];
+  updated_at: string;
+}
+
+export interface SupplierProfileUpdateRequest {
+  legal_name?: string;
+  contact_name?: string;
+  email?: string;
+  phone?: string;
+  categories?: string[];
+}
+
+export interface SupplierTopologyWarehouseInput {
+  warehouse_id?: WarehouseId;
+  name: string;
+  lat: number;
+  lng: number;
+  coverage_radius_km?: number;
+  is_active?: boolean;
+  is_on_shift?: boolean;
+}
+
+export interface SupplierTopologyFactoryInput {
+  factory_id?: FactoryId;
+  name: string;
+  lat: number;
+  lng: number;
+  is_active?: boolean;
+}
+
+export interface SupplierTopologyUpdateRequest {
+  warehouses: SupplierTopologyWarehouseInput[];
+  factories: SupplierTopologyFactoryInput[];
+}
+
+export interface SupplierTopologyWarehouse {
+  warehouse_id: WarehouseId;
+  name: string;
+  lat: number;
+  lng: number;
+  coverage_radius_km: number;
+  is_active: boolean;
+  is_on_shift: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupplierTopologyFactory {
+  factory_id: FactoryId;
+  name: string;
+  lat: number;
+  lng: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupplierTopologyResponse {
+  supplier_id: SupplierId;
+  warehouses: SupplierTopologyWarehouse[];
+  factories: SupplierTopologyFactory[];
+  updated_at: string;
+}
+
 // ── Envelope + event-type union ─────────────────────────────────────────────
 export interface WsEventEnvelope<T extends string = string, P = unknown> {
   type: T;
@@ -65,8 +223,11 @@ export type EventType =
   | "DRIVER_CREATED"
   | "VEHICLE_CREATED"
   | "WAREHOUSE_CREATED"
+  | "WAREHOUSE_SUPPLY_REQUEST_OPENED"
+  | "WAREHOUSE_DISPATCH_LOCK_CHANGED"
   | "FACTORY_CREATED"
   | "ORDER_CREATED"
+  | "ORDER_STATUS_CHANGED"
   | "ORDER_VALIDATION_FAILED"
   | "ORDER_ASSIGNED"
   | "ORDER_REASSIGNED"
@@ -138,6 +299,26 @@ export interface WarehouseCreated {
   max_vu?: number;
 }
 
+export interface WarehouseSupplyRequestOpened {
+  supplier_id: SupplierId;
+  warehouse_id?: WarehouseId;
+  request_id: string;
+  status: string;
+  requested_by?: string;
+  timestamp: string;
+}
+
+export interface WarehouseDispatchLockChanged {
+  supplier_id: SupplierId;
+  warehouse_id?: WarehouseId;
+  lock_id: string;
+  entity_type?: string;
+  entity_id?: string;
+  reason?: string;
+  action: "ACQUIRED" | "RELEASED";
+  timestamp: string;
+}
+
 export interface FactoryCreated {
   factory_id: FactoryId;
   supplier_id: SupplierId;
@@ -153,6 +334,20 @@ export interface OrderCreated {
   supplier_id: SupplierId;
   warehouse_id?: WarehouseId;
   total: Money;
+}
+
+export interface OrderStatusChanged {
+  order_id: OrderId;
+  supplier_id: SupplierId;
+  retailer_id: RetailerId;
+  previous_status: OrderStatus;
+  status: OrderStatus;
+  reason?: string;
+  actor_role?: Role;
+  actor_id?: string;
+  version?: number;
+  total_minor?: number;
+  currency?: Iso4217;
 }
 
 export interface OrderValidationFailed {
@@ -272,8 +467,11 @@ export type WsEvent =
   | WsEventEnvelope<"DRIVER_CREATED", DriverCreated>
   | WsEventEnvelope<"VEHICLE_CREATED", VehicleCreated>
   | WsEventEnvelope<"WAREHOUSE_CREATED", WarehouseCreated>
+  | WsEventEnvelope<"WAREHOUSE_SUPPLY_REQUEST_OPENED", WarehouseSupplyRequestOpened>
+  | WsEventEnvelope<"WAREHOUSE_DISPATCH_LOCK_CHANGED", WarehouseDispatchLockChanged>
   | WsEventEnvelope<"FACTORY_CREATED", FactoryCreated>
   | WsEventEnvelope<"ORDER_CREATED", OrderCreated>
+  | WsEventEnvelope<"ORDER_STATUS_CHANGED", OrderStatusChanged>
   | WsEventEnvelope<"ORDER_VALIDATION_FAILED", OrderValidationFailed>
   | WsEventEnvelope<"ORDER_ASSIGNED", OrderAssigned>
   | WsEventEnvelope<"ORDER_REASSIGNED", OrderReassigned>

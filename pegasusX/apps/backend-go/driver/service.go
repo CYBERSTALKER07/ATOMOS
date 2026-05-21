@@ -14,6 +14,7 @@ import (
 
 // Service keeps additive in-memory driver state for scaffold routes.
 type Service struct {
+	repo Repository
 	mu                 sync.RWMutex
 	availability       map[string]bool
 	history            map[string][]HistoryRow
@@ -25,6 +26,7 @@ type Service struct {
 
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
+	Repo Repository
 	Now func() time.Time
 }
 
@@ -56,6 +58,7 @@ func NewService(c ServiceConfig) *Service {
 		earningsMinor:      make(map[string]int64),
 		pendingCollections: make(map[string][]PendingCollection),
 		manifestHashes:     make(map[string][]string),
+		repo:                c.Repo,
 		now:                c.Now,
 	}
 }

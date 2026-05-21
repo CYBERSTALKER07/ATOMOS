@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -86,6 +87,53 @@ func (r *RedisBackend) Publish(ctx context.Context, channel string, payload []by
 		return nil
 	}
 	return r.client.Publish(ctx, channel, payload).Err()
+}
+
+// ReplaceSet atomically replaces a Redis set with the provided members and
+// leaves the set persistent (TTL=0).
+func (r *RedisBackend) ReplaceSet(ctx context.Context, key string, members []string) error {
+	if r == nil || r.client == nil {
+		return nil
+	}
+	pipe := r.client.TxPipeline()
+	pipe.Del(ctx, key)
+	if len(members) > 0 {
+		sorted := append([]string(nil), members...)
+		sort.Strings(sorted)
+		args := make([]any, 0, len(sorted))
+		for _, member := range sorted {
+			if strings.TrimSpace(member) == "" {
+				continue
+			}
+			args = append(args, member)
+		}
+		if len(args) > 0 {
+			pipe.SAdd(ctx, key, args...)
+		}
+	}
+	pipe.Persist(ctx, key)
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+// SIsMember checks whether member belongs to a Redis set key.
+func (r *RedisBackend) SIsMember(ctx context.Context, key string, member string) (bool, error) {
+	if r == nil || r.client == nil {
+		return false, nil
+	}
+	return r.client.SIsMember(ctx, key, member).Result()
+}
+
+// Exists reports whether the key is present in Redis.
+func (r *RedisBackend) Exists(ctx context.Context, key string) (bool, error) {
+	if r == nil || r.client == nil {
+		return false, nil
+	}
+	count, err := r.client.Exists(ctx, key).Result()
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 func (r *RedisBackend) Subscribe(ctx context.Context, channel string) (<-chan []byte, func(), error) {

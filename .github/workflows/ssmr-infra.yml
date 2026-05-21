@@ -1,0 +1,39 @@
+name: pegasusX SSMR Infra Gate
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '.github/workflows/ssmr-infra.yml'
+      - 'pegasusX/**'
+  push:
+    branches: [main, develop]
+    paths:
+      - '.github/workflows/ssmr-infra.yml'
+      - 'pegasusX/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ssmr-infra:
+    name: pegasusX SSMR smoke gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: pegasusX/apps/backend-go/go.mod
+          cache: true
+
+      - name: Sync Go workspace
+        working-directory: pegasusX
+        run: go work sync
+
+      - name: Run isolated SSMR smoke gate
+        working-directory: pegasusX
+        run: make test-ssmr-infra

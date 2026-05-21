@@ -17,9 +17,11 @@ type Deps struct {
 // RegisterRoutes mounts:
 //
 //	POST /v1/auth/supplier/register    (public)
+//	POST /v1/auth/supplier/login       (public)
 //	POST /v1/supplier/configure        (requires session cookie, ADMIN role)
 //	POST /v1/supplier/billing/setup    (requires session cookie, ADMIN role)
 //	GET/PUT /v1/supplier/profile       (requires session cookie, ADMIN role)
+//	GET/PUT /v1/supplier/topology      (requires session cookie, ADMIN role)
 //	GET /v1/supplier/dashboard         (requires session cookie, ADMIN role)
 //	GET /v1/supplier/earnings          (requires session cookie, ADMIN role)
 //	GET/PATCH /v1/supplier/inventory   (requires session cookie, ADMIN role)
@@ -31,6 +33,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		return
 	}
 	r.Post("/v1/auth/supplier/register", d.Service.HandleRegister)
+	r.Post("/v1/auth/supplier/login", d.Service.HandleLogin)
 
 	r.Group(func(gr chi.Router) {
 		gr.Use(auth.CookieAuth(d.JWTSecret))
@@ -39,6 +42,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Post("/v1/supplier/billing/setup", d.Service.HandleConfigureBilling)
 		gr.Get("/v1/supplier/profile", d.Service.HandleProfile)
 		gr.Put("/v1/supplier/profile", d.Service.HandleProfile)
+		gr.Get("/v1/supplier/topology", d.Service.HandleTopology)
+		gr.Put("/v1/supplier/topology", d.Service.HandleTopology)
 		gr.Get("/v1/supplier/dashboard", d.Service.HandleDashboard)
 		gr.Get("/v1/supplier/earnings", d.Service.HandleEarnings)
 		gr.Get("/v1/supplier/inventory", d.Service.HandleInventory)

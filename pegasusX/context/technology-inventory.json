@@ -1,5 +1,127 @@
 {
   "project": "pegasusX",
+  "planning": {
+    "executionPlan": "context/plan.md is the canonical phased execution roadmap and reconciliation ledger for pegasusX; non-trivial implementation batches map to plan anchors there and update status when execution reality changes"
+  },
+  "roleRowCapabilityLedger": [
+    {
+      "role": "SUPPLIER",
+      "canonicalSurfaces": ["apps/supplier-portal"],
+      "businessOwner": "supplier leadership, finance, and support ops",
+      "backendAuthority": ["supplierroutes"],
+      "realtimeAuthority": ["supplier:{supplier_id}"]
+    },
+    {
+      "role": "RETAILER",
+      "canonicalSurfaces": ["apps/retailer-app-android", "apps/retailer-app-ios", "apps/retailer-app-desktop"],
+      "businessOwner": "commercial operations and customer support",
+      "backendAuthority": ["retailerroutes", "orderroutes", "paymentroutes.checkout"],
+      "realtimeAuthority": ["retailer:{retailer_id}"]
+    },
+    {
+      "role": "DRIVER",
+      "canonicalSurfaces": ["apps/driver-app-android", "apps/driver-app-ios"],
+      "businessOwner": "delivery execution and collections ops",
+      "backendAuthority": ["driverroutes", "telemetryroutes"],
+      "realtimeAuthority": ["driver:{driver_id}", "telemetry:live"]
+    },
+    {
+      "role": "WAREHOUSE_ADMIN",
+      "canonicalSurfaces": ["apps/warehouse-portal", "apps/warehouse-app-android", "apps/warehouse-app-ios"],
+      "businessOwner": "warehouse operations leadership",
+      "backendAuthority": ["warehouseroutes"],
+      "realtimeAuthority": ["warehouse:{home_node_id}", "supplier:{supplier_id}"]
+    },
+    {
+      "role": "FACTORY_ADMIN",
+      "canonicalSurfaces": ["apps/factory-portal", "apps/factory-app-android", "apps/factory-app-ios"],
+      "businessOwner": "factory and transfer operations leadership",
+      "backendAuthority": ["factoryroutes"],
+      "realtimeAuthority": ["factory:{home_node_id}", "supplier:{supplier_id}"]
+    },
+    {
+      "role": "PAYLOAD",
+      "canonicalSurfaces": ["apps/payload-terminal", "apps/payload-app-ios", "apps/payload-app-android"],
+      "businessOwner": "loading and dock operations leadership",
+      "backendAuthority": ["payloaderroutes"],
+      "realtimeAuthority": ["payload:{subject}"]
+    }
+  ],
+  "routeAuthorityFreeze": [
+    {"surface": "supplierroutes", "owner": "supplier platform and business control", "changeRule": "update supplier contracts, onboarding/control-tower docs, and supplier role-row parity expectations"},
+    {"surface": "retailerroutes", "owner": "retailer commerce and account authority", "changeRule": "update retailer contracts, cart/payment/tracking flows, and customer-support language"},
+    {"surface": "driverroutes", "owner": "driver execution authority", "changeRule": "update driver contracts, manifest semantics, and telemetry/delivery support scripts"},
+    {"surface": "warehouseroutes", "owner": "warehouse operational authority", "changeRule": "update warehouse contracts, dispatch/support docs, and node-scoped visibility expectations"},
+    {"surface": "factoryroutes", "owner": "factory and transfer authority", "changeRule": "update manifest contracts, transfer SOPs, and exception handling expectations"},
+    {"surface": "payloaderroutes", "owner": "loading and manifest repair authority", "changeRule": "update manifest event contracts, exception vocabulary, and source-target cache invalidation rules"},
+    {"surface": "orderroutes", "owner": "order lifecycle authority", "changeRule": "preserve additive order states, routing/serviceability authority, and duplicate-request safety"},
+    {"surface": "paymentroutes", "owner": "checkout and admin payment mutation authority", "changeRule": "preserve idempotency, policy errors, and replay-safe provider handling"},
+    {"surface": "webhookroutes", "owner": "gateway callback authority", "changeRule": "keep signature-first verification and transaction-id idempotency intact"},
+    {"surface": "telemetryroutes", "owner": "live location and execution signal authority", "changeRule": "keep authenticated identity enforcement and reconnect-safe fanout semantics intact"}
+  ],
+  "eventCatalogFreeze": {
+    "sourceOfTruth": ["apps/backend-go/events/events.go", "contracts/events.schema.json", "packages/types"],
+    "changeRule": "no event is added, renamed, or repurposed unless all source-of-truth locations are updated in the same batch",
+    "families": {
+      "supplierLifecycle": ["SUPPLIER_CREATED", "SUPPLIER_UPDATED", "SUPPLIER_BILLING_CONFIGURED"],
+      "retailerAndCart": ["RETAILER_REGISTERED", "CART_SYNC_UPDATED", "SHOP_CLOSED", "SHOP_CLOSED_RESPONSE"],
+      "fleetAndNodeOperations": ["DRIVER_CREATED", "VEHICLE_CREATED", "WAREHOUSE_CREATED", "WAREHOUSE_SUPPLY_REQUEST_OPENED", "WAREHOUSE_DISPATCH_LOCK_CHANGED", "FACTORY_CREATED", "DRIVER_AVAILABILITY_CHANGED"],
+      "orderAndRouting": ["ORDER_CREATED", "ORDER_STATUS_CHANGED", "ORDER_VALIDATION_FAILED", "ORDER_ASSIGNED", "ORDER_REASSIGNED", "ORDER_FINALIZED", "ROUTE_CREATED"],
+      "manifestLifecycle": ["MANIFEST_DRAFT_CREATED", "MANIFEST_LOADING_STARTED", "MANIFEST_ORDER_INJECTED", "MANIFEST_ORDER_EXCEPTION", "MANIFEST_DLQ_ESCALATION", "MANIFEST_REBALANCED", "MANIFEST_CANCELLED", "MANIFEST_SEALED", "MANIFEST_DISPATCHED", "MANIFEST_COMPLETED"],
+      "paymentAndDelivery": ["PAYMENT_REQUIRED", "PAYMENT_CLEARED", "SETTLEMENT_REQUIRED", "DELIVERY_SESSION_UPDATED", "DELIVERY_DISPUTED"],
+      "inventoryCommandAndSystem": ["INVENTORY_SYNC_COMPLETE", "COMMAND_DISPATCHED", "COMMAND_RECEIVED", "COMMAND_SETTLED", "SYSTEM_APP_OUTDATED"]
+    }
+  },
+  "reliabilityAcceptance": [
+    {
+      "area": "transactional-mutations",
+      "requiredPosture": ["spanner-rw-transaction", "transactional-outbox", "post-commit-cache-invalidate", "trace-logging"],
+      "draftAcceptanceTarget": "core order and payment write paths complete without duplicate business outcomes under retry and replay",
+      "proofPath": ["targeted-backend-tests", "ssmr-proof-when-infra-sensitive"]
+    },
+    {
+      "area": "checkout-and-webhooks",
+      "requiredPosture": ["client-idempotency", "provider-exact-verification", "bounded-retry-with-jitter", "typed-policy-errors"],
+      "draftAcceptanceTarget": "duplicate checkout taps and replayed webhooks collapse to one durable state transition",
+      "proofPath": ["payment-tests", "webhook-replay-scenarios"]
+    },
+    {
+      "area": "kafka-event-relay",
+      "requiredPosture": ["sync-writer-for-state-changes", "aggregate-key-ordering", "replay-safe-consumers"],
+      "draftAcceptanceTarget": "state-change event publish lag remains visible and recoverable without silent drop",
+      "proofPath": ["relay-tests", "kafka-roundtrip-ssmr", "lag-dashboards"]
+    },
+    {
+      "area": "redis-invalidation-and-ws-fanout",
+      "requiredPosture": ["post-commit-invalidation", "fail-open-local-broadcast", "source-suppressed-fanout"],
+      "draftAcceptanceTarget": "stale reads and duplicate self-echo fanout remain detectable and bounded",
+      "proofPath": ["cache-tests", "websocket-relay-checks", "reconnect-scenarios"]
+    },
+    {
+      "area": "spatial-order-acceptance",
+      "requiredPosture": ["backend-derived-h3", "warmed-perimeter-authority", "fail-closed-zone-miss"],
+      "draftAcceptanceTarget": "out-of-zone orders are blocked deterministically and in-zone orders stay stable under duplicate attempts",
+      "proofPath": ["spatial-smoke-check", "order-tests"]
+    },
+    {
+      "area": "driver-telemetry-and-live-tracking",
+      "requiredPosture": ["authenticated-driver-identity", "reconnect-safe-fanout", "no-client-trusted-identity"],
+      "draftAcceptanceTarget": "live tracking recovers after reconnect without corrupting driver identity or route state",
+      "proofPath": ["telemetry-route-validation", "websocket-checks", "load-replay-drills"]
+    },
+    {
+      "area": "ssmr-local-proof-gate",
+      "requiredPosture": ["isolated-spanner", "isolated-redis", "isolated-kafka", "bootstrap-proof", "health-proof"],
+      "draftAcceptanceTarget": "no infra-sensitive batch is treated as ready without isolated smoke evidence",
+      "proofPath": ["scripts/smoke_ssmr.sh", "make test-ssmr-infra", "ci-stage-gate"]
+    },
+    {
+      "area": "kubernetes-and-rollout-safety",
+      "requiredPosture": ["stateless-pods", "graceful-shutdown", "no-sticky-sessions", "explicit-rollback"],
+      "draftAcceptanceTarget": "rolling restart or pod loss does not orphan state-change delivery or force operator re-entry",
+      "proofPath": ["deployment-review", "rollout-drill", "shutdown-path-validation"]
+    }
+  ],
   "backend": {
     "language": "go",
     "minVersion": "1.22",
@@ -8,26 +130,42 @@
     "cache": "redis-7",
     "events": "apache-kafka",
     "logging": "log/slog",
-    "traceMiddleware": "bootstrap.TraceMiddleware (X-Trace-Id normalization + outbox context propagation)",
+    "traceMiddleware": "bootstrap.TraceMiddleware (X-Trace-Id normalization + outbox context propagation with trace_id injection for object payloads)",
     "sandboxBootstrapCommand": "apps/backend-go/cmd/setup creates isolated Spanner instance/database, applies schema/spanner.ddl, and seeds the single supplier row for SSMR sandbox bring-up",
+    "smokecheckCommand": "apps/backend-go/cmd/ssmr-smokecheck asserts seeded supplier + Retailers schema state against isolated Spanner, validates Redis-backed perimeter readiness/membership in spatial mode, and validates Kafka topic isolation + round-trip flow",
+    "smokeHarness": "scripts/smoke_ssmr.sh (also exposed as make test-ssmr-infra and npm run infra:ssmr:test) orchestrates isolated compose bring-up, Kafka topic bootstrap, idempotent backend setup, Redis ping, backend health, and direct Spanner/spatial/Kafka proof; docker-compose.ssmr.yml invokes /usr/local/go/bin/go explicitly inside Go containers",
+    "persistentGoCaches": "docker-compose.ssmr.yml shares named pegasusx-ssmr-go-mod and pegasusx-ssmr-go-build volumes across Go containers; smoke_ssmr.sh preserves them by using docker compose down --remove-orphans",
+    "ciStageGate": "repo-root .github/workflows/ssmr-infra.yml runs make test-ssmr-infra for pegasusX/** changes and manual dispatches",
     "scaffoldOutboxRuntime": "relay store selected at runtime: Spanner OutboxEvents authority when reachable, otherwise in-memory fallback; relay started from main",
+    "orderDurabilitySeam": "order/repository_spanner.go persists Orders rows and emitted outbox events atomically in one Spanner ReadWriteTransaction; bootstrap prefers Spanner repository when runtime wiring is available with in-memory fallback",
+    "paymentDurabilitySeam": "payment/repository_spanner.go persists PaymentSessions/PaymentAttempts/PaymentChargebacks/PaymentReversals/PaymentWebhooks rows and emitted outbox events atomically in one Spanner ReadWriteTransaction; bootstrap prefers Spanner payment repository when runtime wiring is available with in-memory fallback",
+    "supplierDurabilitySeam": "supplier/repository_spanner.go persists seeded supplier identity in Suppliers and rich onboarding/billing fields in SupplierProfiles, with durable topology reads/writes through Warehouses and Factories plus transactional outbox buffering",
     "adapterBridge": "bootstrap attempts Redis cache transport and Kafka outbox transport with in-memory/logging fallback",
     "strictReliabilityMode": "REQUIRE_INFRA_ADAPTERS fail-fast bootstrap on Redis/Kafka adapter init failure",
     "requestReliabilityMiddleware": "bootstrap/reliability_middleware.go mounted after TraceMiddleware in main (fixed-window rate limits, priority shedding, per-class circuit-open responses), toggled by RELIABILITY_MIDDLEWARE_ENABLED",
     "paymentExecutionRouter": "payment/execution.go routes checkout/chargeback/reversal actions with bounded retry/backoff+jitter and typed gateway policy errors before persistence/outbox emission",
-    "paymentAttemptPersistence": "payment/service.go persists PaymentAttemptRecord via repository SaveAttempt after session creation and surfaces additive attempt_id/execution_action/execution_mode/provider_reference metadata in checkout response and payment-required event payloads",
+    "paymentAttemptPersistence": "payment/service.go persists checkout PaymentSessions + first PaymentAttemptRecord atomically via repository CreateSessionWithAttempt and surfaces additive attempt_id/execution_action/execution_mode/provider_reference metadata in checkout response and payment-required event payloads",
     "airwallexDirectExecutionFlag": "AIRWALLEX_DIRECT_EXECUTION_ENABLED gates AIRWALLEX execution support in payment router",
     "strictModeStartupTests": "bootstrap tests assert fail-fast on missing Redis/Kafka and success when both adapters are healthy",
     "spannerOutboxIntegrationCoverage": "outbox/spanner_store_integration_test.go validates Append->Fetch->MarkPublished lifecycle against emulator-backed Spanner when available",
     "wsRelayTransport": "ws:<hub>:fanout typed envelopes with source suppression; subscribers started from main",
     "auth": "jwt + firebase-id-token(optional)",
-    "geospatial": "h3-res-7",
+    "geospatial": "h3-wire-15char + res9-redis-perimeter",
+    "orderSchema": "schema/spanner.ddl includes Orders with JSON line-items bytes, total/currency, H3/lat/lng, version, timestamps, and supplier/retailer created-at indexes",
+    "paymentSchema": "schema/spanner.ddl includes PaymentSessions, PaymentAttempts, PaymentChargebacks, PaymentReversals, and PaymentWebhooks with supplier/retailer scoped payment-session indexes plus session/transaction lookup indexes",
+    "supplierSchema": "schema/spanner.ddl includes SupplierProfiles for onboarding and billing fields, while topology nodes persist in Warehouses and Factories",
+    "spatialPerimeterBootstrap": "bootstrap/data.go + bootstrap/bootstrap.go precompute supplier delivery coverage into Redis sets ssmr:delivery_perimeter and ssmr:delivery_perimeter:compacted (TTL=0) from supplier warehouse coordinates when available, with deterministic fallback center/radius",
     "topicIsolation": "events.TopicMain resolves from KAFKA_TOPIC_MAIN at process start so isolated sandboxes can publish to tenant-specific Kafka topics without rewriting emit call sites",
+    "supplierPortalApiProxy": "apps/supplier-portal/app/api/[...path]/route.ts proxies same-origin /api/* requests to backend authority via SUPPLIER_BACKEND_BASE_URL/BACKEND_BASE_URL while preserving cookies and idempotency headers",
+    "sharedSupplierContractBridge": "packages/types/index.ts exports supplier register/login/configure/billing/profile/topology DTOs and packages/api-client/index.ts implements typed supplier methods with Idempotency-Key support and structured ApiError handling",
     "routeCoverage": {
       "supplierroutes": [
         "/v1/auth/supplier/register",
+        "/v1/auth/supplier/login",
         "/v1/supplier/configure",
+        "/v1/supplier/billing/setup",
         "/v1/supplier/profile",
+        "/v1/supplier/topology",
         "/v1/supplier/dashboard",
         "/v1/supplier/earnings",
         "/v1/supplier/inventory",
@@ -110,6 +248,10 @@
         "/v1/payloader/reassign-order",
         "/v1/payload/seal"
       ],
+      "orderroutes": [
+        "/v1/order/create",
+        "/v1/order/{orderID}/status"
+      ],
       "paymentroutes": [
         "/v1/checkout/b2b",
         "/v1/checkout/unified",
@@ -189,6 +331,7 @@
     "contracts/events.schema.json"
   ],
   "contractEventAdditions": [
+    "ORDER_STATUS_CHANGED",
     "MANIFEST_ORDER_INJECTED",
     "MANIFEST_ORDER_EXCEPTION",
     "MANIFEST_DLQ_ESCALATION",
@@ -197,7 +340,9 @@
   ],
   "infra": [
     "docker-compose (spanner, redis, kafka, kafka-ui)",
-    "docker-compose.ssmr (isolated spanner/redis/kafka, topic bootstrap, backend-go + ai-worker, cmd/setup bootstrap)",
+    "docker-compose.ssmr (isolated spanner/redis/kafka, topic bootstrap, backend-go + ai-worker, cmd/setup bootstrap, explicit /usr/local/go/bin/go for Go containers, named Go module/build cache volumes)",
+    "scripts/smoke_ssmr.sh (make test-ssmr-infra / npm run infra:ssmr:test proof of isolated Spanner/Redis/Kafka/bootstrap wiring, backend health, and Kafka round-trip delivery)",
+    "repo-root .github/workflows/ssmr-infra.yml (permanent CI gate running make test-ssmr-infra for pegasusX/** changes and manual dispatches)",
     "terraform (vpc, spanner, redis, tenant-scoped secret-manager wiring for orders/spatial/realtime/webhook topics)",
     "kubernetes"
   ]

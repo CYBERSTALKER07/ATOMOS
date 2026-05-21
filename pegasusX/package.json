@@ -23,6 +23,7 @@
     "infra:up": "docker compose -f infra/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker-compose.yml down",
     "infra:ssmr:up": "docker compose -f infra/docker-compose.ssmr.yml up -d",
-    "infra:ssmr:down": "docker compose -f infra/docker-compose.ssmr.yml down"
+    "infra:ssmr:down": "docker compose -f infra/docker-compose.ssmr.yml down",
+    "infra:ssmr:test": "bash scripts/smoke_ssmr.sh"
   }
 }

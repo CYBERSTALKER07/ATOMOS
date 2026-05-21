@@ -57,6 +57,9 @@ func TestHandleCheckout_UsesExecutionRouterResult(t *testing.T) {
 	if repo.createCalls != 1 {
 		t.Fatalf("createCalls = %d, want 1", repo.createCalls)
 	}
+	if repo.createWithAttemptCalls != 1 {
+		t.Fatalf("createWithAttemptCalls = %d, want 1", repo.createWithAttemptCalls)
+	}
 	if repo.attemptCalls != 1 {
 		t.Fatalf("attemptCalls = %d, want 1", repo.attemptCalls)
 	}
@@ -139,18 +142,35 @@ func newPaymentServiceForExecutionTest(repo *paymentRepoStub) *Service {
 }
 
 type paymentRepoStub struct {
-	createCalls     int
-	created         SessionRecord
-	attemptCalls    int
-	lastAttempt     PaymentAttemptRecord
-	chargebackCalls int
-	reversalCalls   int
-	webhookCalls    int
+	createCalls            int
+	createWithAttemptCalls int
+	created                SessionRecord
+	attemptCalls           int
+	lastAttempt            PaymentAttemptRecord
+	chargebackCalls        int
+	reversalCalls          int
+	webhookCalls           int
 }
 
 func (r *paymentRepoStub) CreateSession(ctx context.Context, s SessionRecord, emit func(outbox.TxnBuffer) error) error {
 	r.createCalls++
 	r.created = s
+	if emit != nil {
+		txn := &paymentTxnBufferStub{}
+		if err := emit(txn); err != nil {
+			return err
+		}
+	}
+	_ = ctx
+	return nil
+}
+
+func (r *paymentRepoStub) CreateSessionWithAttempt(ctx context.Context, s SessionRecord, a PaymentAttemptRecord, emit func(outbox.TxnBuffer) error) error {
+	r.createWithAttemptCalls++
+	r.createCalls++
+	r.attemptCalls++
+	r.created = s
+	r.lastAttempt = a
 	if emit != nil {
 		txn := &paymentTxnBufferStub{}
 		if err := emit(txn); err != nil {

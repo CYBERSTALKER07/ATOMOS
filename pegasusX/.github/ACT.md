@@ -2,6 +2,12 @@
 
 ACT = **A**udit, **C**ompanion, **T**ransparency. Required for every technical request in pegasusX.
 
+## Plan Authority
+
+1. `context/plan.md` is the canonical phased execution roadmap for pegasusX.
+2. Before any non-trivial implementation, map the work to one or more plan anchors and the active delivery batch in that file.
+3. After each execution chunk, update plan-anchor status and sync related context docs in the same change set.
+
 ## Audit
 Before any code edit, audit:
 1. Backend contract compatibility (Spanner schema, Kafka events, DTOs).
@@ -20,7 +26,7 @@ Classify each request as one of:
 
 ## Transparency
 After each phase or execution chunk:
-1. Reconcile session memory with the active plan.
+1. Reconcile session memory with `context/plan.md` as the active plan.
 2. Report per plan-anchor ID: `implemented`, `in progress`, `blocked`, `deferred`.
 3. Update `context/parity-ledger.md` whenever behavior diverges from Pegasus.
 
@@ -42,6 +48,12 @@ Future scripts under `pegasusX/scripts/`:
 - `security_guard.py`
 
 ## Runtime Additive Notes
+- 2026-05-22: B02 supplier bootstrap durability has advanced additively: `apps/backend-go/schema/spanner.ddl` now provisions `SupplierProfiles`, supplier persistence in `apps/backend-go/supplier/repository_spanner.go` now stores rich onboarding/billing + topology data (`GetTopology`, `ReplaceTopology`) against `Warehouses`/`Factories`, `supplierroutes` now mounts `GET|PUT /v1/supplier/topology`, supplier portal transport now proxies same-origin `/api/*` requests through `apps/supplier-portal/app/api/[...path]/route.ts`, and shared supplier contract/client coverage now exists in `packages/types/index.ts` + `packages/api-client/index.ts`.
+- 2026-05-21: Phase-1.2 payment durability is now additive in `pegasusX`: `apps/backend-go/schema/spanner.ddl` now provisions durable payment write tables (`PaymentSessions`, `PaymentAttempts`, `PaymentChargebacks`, `PaymentReversals`, `PaymentWebhooks`) with supplier/retailer scoped payment-session indexes, `apps/backend-go/payment/repository_spanner.go` now persists payment aggregates and emitted outbox events atomically inside one Spanner `ReadWriteTransaction`, checkout now persists `PaymentSessions` + first `PaymentAttempts` row through repository `CreateSessionWithAttempt` in one atomic write path, and `bootstrap/bootstrap.go` now prefers this Spanner-backed payment repository when runtime Spanner wiring is available with explicit in-memory fallback retained.
+- 2026-05-21: Phase-1 backend durability implementation has started additively in `pegasusX`: `apps/backend-go/schema/spanner.ddl` now defines `Orders` + supplier/retailer created-at indexes, `apps/backend-go/order/repository_spanner.go` persists order rows and outbox events atomically inside one Spanner `ReadWriteTransaction`, and `bootstrap/bootstrap.go` now prefers the Spanner-backed order repository whenever Spanner runtime wiring is available, with explicit in-memory fallback retained for degraded/local paths.
+- 2026-05-21: Phase-2 SSMR Redis-backed H3 spatial hub is now additive in `pegasusX`: `apps/backend-go/retailer/proximity_service.go` precomputes supplier delivery coverage with `h3.PolygonToCells` + `h3.CompactCells`, persists expanded and compacted sets in Redis (`ssmr:delivery_perimeter`, `ssmr:delivery_perimeter:compacted`) with TTL=0 semantics, and enforces O(1) `SISMEMBER` zone checks through `order/service.go` fail-closed `zone_miss` handling. `bootstrap/data.go` + `bootstrap/bootstrap.go` now warm the perimeter at startup from supplier warehouse coordinates when present (with deterministic config fallback), and `cmd/ssmr-smokecheck` + `scripts/smoke_ssmr.sh` now include a `spatial` assertion step.
+- 2026-05-21: Phase-2 SSMR hardening is now additive in `pegasusX`: `infra/docker-compose.ssmr.yml` shares named `pegasusx-ssmr-go-mod` and `pegasusx-ssmr-go-build` volumes across `backend-setup`, `backend-go`, and `ai-worker`, while `scripts/smoke_ssmr.sh` now tears the stack down without `-v` so those Go caches survive repeated local smoke runs. The permanent stage-gate now lives at repo root in `.github/workflows/ssmr-infra.yml`, which runs `make test-ssmr-infra` for `pegasusX/**` changes and manual dispatches.
+- 2026-05-21: Phase-2 SSMR smoke gate is now additive in `pegasusX`: `scripts/smoke_ssmr.sh` (also exposed as `make test-ssmr-infra` and `npm run infra:ssmr:test`) brings up the isolated compose stack, recreates isolated Kafka topics, reruns `apps/backend-go/cmd/setup` idempotently, asserts seeded supplier + `Retailers` schema state through `apps/backend-go/cmd/ssmr-smokecheck spanner`, pings isolated Redis, waits for `/v1/health`, and validates Kafka topic isolation + round-trip flow through `apps/backend-go/cmd/ssmr-smokecheck kafka` before teardown. `infra/docker-compose.ssmr.yml` now invokes `/usr/local/go/bin/go` explicitly inside Go containers so Docker shell PATH resolution cannot break bootstrap or runtime services.
 - 2026-05-21: Phase-1 SSMR physical sandbox baseline is now additive in `pegasusX`: `apps/backend-go/cmd/setup` bootstraps the isolated Spanner instance/database and seeds the single supplier row, `events.TopicMain` resolves from `KAFKA_TOPIC_MAIN` at process start for client-scoped Kafka isolation, `infra/docker-compose.ssmr.yml` stands up isolated local Spanner/Redis/Kafka plus bootstrap jobs and Go runtime services on non-overlapping host ports, `.env.ssmr.example` defines hermetic local defaults, and `infra/terraform/*` now namespaces resources and Secret Manager topic wiring by `tenant_slug` / `resource_prefix` while exporting distinct orders/spatial/realtime/webhook topic secrets. Divergence remains explicit: pegasusX still has no concrete optimizer-sidecar-rust implementation, so the compose stack reserves that hook for Phase 2 instead of faking readiness.
 - 2026-05-17: Supplier core surface is now mounted additively in `supplierroutes` (`/v1/supplier/configure`, `/v1/supplier/profile`, `/v1/supplier/dashboard`, `/v1/supplier/earnings`, `/v1/supplier/inventory`, `/v1/supplier/inventory/audit`, `/v1/supplier/orders`, `/v1/supplier/orders/vet`) behind cookie auth + `RequireRole(ADMIN)`.
 - 2026-05-17: Retailer core surface is now mounted additively in `retailerroutes` (`/v1/retailer/profile`, `/v1/retailer/suppliers*`, `/v1/retailer/cart/sync`, `/v1/retailers/{retailerID}/orders`, cancellation, analytics, family members, AI confirm/reject, preorder, pending-payments, active-fulfillment, tracking). When `FIREBASE_AUTH_ENABLED=true` and verifier wiring is available, these routes are protected by Firebase bearer auth + `RequireRole(RETAILER)`; otherwise they remain scaffold-accessible for local development.

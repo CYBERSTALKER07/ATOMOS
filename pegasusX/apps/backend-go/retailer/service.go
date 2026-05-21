@@ -61,6 +61,7 @@ type Service struct {
 	repo        Repository
 	cache       *cache.Cache
 	idem        idempotency.Store
+	proximity   *RetailerProximityService
 	supplierID  string
 	countryCode string
 	log         *slog.Logger
@@ -78,6 +79,7 @@ type ServiceConfig struct {
 	Repo        Repository
 	Cache       *cache.Cache
 	Idem        idempotency.Store
+	Proximity   *RetailerProximityService
 	SupplierID  string
 	CountryCode string
 	Log         *slog.Logger
@@ -100,6 +102,7 @@ func NewService(c ServiceConfig) *Service {
 		repo:              c.Repo,
 		cache:             c.Cache,
 		idem:              c.Idem,
+		proximity:         c.Proximity,
 		supplierID:        c.SupplierID,
 		countryCode:       c.CountryCode,
 		log:               c.Log,
@@ -134,7 +137,7 @@ func (r RegisterRequest) Validate() error {
 	if strings.TrimSpace(r.Phone) == "" {
 		return errors.New("phone required")
 	}
-	if len(r.H3Cell) != 15 {
+	if strings.TrimSpace(r.H3Cell) != "" && len(r.H3Cell) != 15 {
 		return fmt.Errorf("h3_cell must be 15-char hex, got %d", len(r.H3Cell))
 	}
 	if r.Lat == 0 && r.Lng == 0 {
@@ -164,6 +167,18 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		}, nil
 	}
 
+	h3Cell := strings.TrimSpace(req.H3Cell)
+	if s.proximity != nil {
+		cell, err := s.proximity.CellForCoordinate(req.Lat, req.Lng)
+		if err != nil {
+			return RegisterResponse{}, fmt.Errorf("derive retailer h3_cell: %w", err)
+		}
+		h3Cell = cell
+	}
+	if h3Cell == "" {
+		return RegisterResponse{}, errors.New("h3_cell required")
+	}
+
 	r := Retailer{
 		RetailerID:  s.newID(),
 		SupplierID:  s.supplierID,
@@ -172,7 +187,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		CountryCode: s.countryCode,
 		Lat:         req.Lat,
 		Lng:         req.Lng,
-		H3Cell:      req.H3Cell,
+		H3Cell:      h3Cell,
 		CreatedAt:   s.now(),
 		UpdatedAt:   s.now(),
 	}

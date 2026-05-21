@@ -2,6 +2,7 @@ package supplier
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sort"
 	"strings"
@@ -93,6 +94,29 @@ type supplierEarningsResponse struct {
 	TodayMinor int64  `json:"today_minor"`
 	WeekMinor  int64  `json:"week_minor"`
 	MonthMinor int64  `json:"month_minor"`
+}
+
+type topologyWarehouseInput struct {
+	WarehouseID      string   `json:"warehouse_id,omitempty"`
+	Name             string   `json:"name"`
+	Lat              float64  `json:"lat"`
+	Lng              float64  `json:"lng"`
+	CoverageRadiusKm *float64 `json:"coverage_radius_km,omitempty"`
+	IsActive         *bool    `json:"is_active,omitempty"`
+	IsOnShift        *bool    `json:"is_on_shift,omitempty"`
+}
+
+type topologyFactoryInput struct {
+	FactoryID string  `json:"factory_id,omitempty"`
+	Name      string  `json:"name"`
+	Lat       float64 `json:"lat"`
+	Lng       float64 `json:"lng"`
+	IsActive  *bool   `json:"is_active,omitempty"`
+}
+
+type topologyUpdateRequest struct {
+	Warehouses []topologyWarehouseInput `json:"warehouses"`
+	Factories  []topologyFactoryInput   `json:"factories"`
 }
 
 type vetOrderRequest struct {
@@ -257,6 +281,156 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 		s.cache.Invalidate(r.Context(), supplierCacheKey(s.supplierID))
 	}
 	s.handleGetProfile(w, r)
+}
+
+// HandleTopology supports GET/PUT /v1/supplier/topology.
+func (s *Service) HandleTopology(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		s.handleTopologyGet(w, r)
+	case http.MethodPut:
+		s.handleTopologyPut(w, r)
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+	}
+}
+
+func (s *Service) handleTopologyGet(w http.ResponseWriter, r *http.Request) {
+	topology, err := s.repo.GetTopology(r.Context(), s.supplierID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_topology_failed"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"supplier_id": s.supplierID,
+		"warehouses":  topology.Warehouses,
+		"factories":   topology.Factories,
+		"updated_at":  s.now().Format(time.RFC3339Nano),
+	})
+}
+
+func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
+	var req topologyUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	defer r.Body.Close()
+
+	if len(req.Warehouses) == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "warehouses_required"})
+		return
+	}
+
+	topology := SupplierTopology{
+		Warehouses: make([]WarehouseNode, 0, len(req.Warehouses)),
+		Factories:  make([]FactoryNode, 0, len(req.Factories)),
+	}
+
+	for i, wh := range req.Warehouses {
+		name := strings.TrimSpace(wh.Name)
+		if name == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("warehouses[%d].name_required", i)})
+			return
+		}
+		if wh.Lat < -90 || wh.Lat > 90 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("warehouses[%d].lat_out_of_range", i)})
+			return
+		}
+		if wh.Lng < -180 || wh.Lng > 180 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("warehouses[%d].lng_out_of_range", i)})
+			return
+		}
+
+		coverage := defaultCoverageRadiusKm
+		if wh.CoverageRadiusKm != nil && *wh.CoverageRadiusKm > 0 {
+			coverage = *wh.CoverageRadiusKm
+		}
+		isActive := true
+		if wh.IsActive != nil {
+			isActive = *wh.IsActive
+		}
+		isOnShift := true
+		if wh.IsOnShift != nil {
+			isOnShift = *wh.IsOnShift
+		}
+
+		topology.Warehouses = append(topology.Warehouses, WarehouseNode{
+			WarehouseID:      strings.TrimSpace(wh.WarehouseID),
+			Name:             name,
+			Lat:              wh.Lat,
+			Lng:              wh.Lng,
+			CoverageRadiusKm: coverage,
+			IsActive:         isActive,
+			IsOnShift:        isOnShift,
+		})
+	}
+
+	for i, fc := range req.Factories {
+		name := strings.TrimSpace(fc.Name)
+		if name == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("factories[%d].name_required", i)})
+			return
+		}
+		if fc.Lat < -90 || fc.Lat > 90 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("factories[%d].lat_out_of_range", i)})
+			return
+		}
+		if fc.Lng < -180 || fc.Lng > 180 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("factories[%d].lng_out_of_range", i)})
+			return
+		}
+
+		isActive := true
+		if fc.IsActive != nil {
+			isActive = *fc.IsActive
+		}
+
+		topology.Factories = append(topology.Factories, FactoryNode{
+			FactoryID: strings.TrimSpace(fc.FactoryID),
+			Name:      name,
+			Lat:       fc.Lat,
+			Lng:       fc.Lng,
+			IsActive:  isActive,
+		})
+	}
+
+	current, found, err := s.repo.GetProfile(r.Context(), s.supplierID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_failed"})
+		return
+	}
+	if !found {
+		current = Profile{SupplierID: s.supplierID, Country: s.country, Currency: s.currency, IsRegistered: true}
+	}
+
+	now := s.now()
+	if err := s.repo.ReplaceTopology(r.Context(), s.supplierID, topology, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, s.supplierID, events.TopicMain, supplierUpdatedEvent{
+			Type:         events.EventSupplierUpdated,
+			SupplierID:   s.supplierID,
+			LegalName:    current.LegalName,
+			ContactName:  current.ContactName,
+			Email:        current.Email,
+			Phone:        current.Phone,
+			Country:      current.Country,
+			Categories:   current.Categories,
+			IsRegistered: current.IsRegistered,
+			IsConfigured: current.IsConfigured,
+			Action:       "TOPOLOGY_UPDATED",
+			Timestamp:    now.Format(time.RFC3339Nano),
+		})
+	}); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_supplier_topology_failed"})
+		return
+	}
+
+	if s.cache != nil {
+		s.cache.Invalidate(r.Context(), supplierCacheKey(s.supplierID))
+	}
+
+	s.handleTopologyGet(w, r)
 }
 
 // HandleDashboard returns supplier-facing operational counters.

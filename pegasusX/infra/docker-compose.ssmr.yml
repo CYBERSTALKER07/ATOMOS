@@ -86,6 +86,8 @@ services:
     working_dir: /workspace/pegasusX
     volumes:
       - ..:/workspace/pegasusX
+      - pegasusx-ssmr-go-mod:/root/go/pkg/mod
+      - pegasusx-ssmr-go-build:/root/.cache/go-build
     env_file:
       - ../.env.ssmr.example
     environment:
@@ -97,7 +99,7 @@ services:
       - -lc
       - |
         for attempt in 1 2 3 4 5 6 7 8 9 10; do
-          go run ./apps/backend-go/cmd/setup && exit 0
+          /usr/local/go/bin/go run ./apps/backend-go/cmd/setup && exit 0
           echo "spanner bootstrap retry $$attempt"
           sleep 2
         done
@@ -116,6 +118,8 @@ services:
     working_dir: /workspace/pegasusX
     volumes:
       - ..:/workspace/pegasusX
+      - pegasusx-ssmr-go-mod:/root/go/pkg/mod
+      - pegasusx-ssmr-go-build:/root/.cache/go-build
     env_file:
       - ../.env.ssmr.example
     environment:
@@ -127,7 +131,7 @@ services:
     command:
       - /bin/sh
       - -lc
-      - go run ./apps/backend-go
+      - /usr/local/go/bin/go run ./apps/backend-go
     ports:
       - "8180:8080"
     restart: unless-stopped
@@ -142,6 +146,8 @@ services:
     working_dir: /workspace/pegasusX
     volumes:
       - ..:/workspace/pegasusX
+      - pegasusx-ssmr-go-mod:/root/go/pkg/mod
+      - pegasusx-ssmr-go-build:/root/.cache/go-build
     env_file:
       - ../.env.ssmr.example
     environment:
@@ -151,8 +157,12 @@ services:
     command:
       - /bin/sh
       - -lc
-      - go run ./apps/ai-worker
+      - /usr/local/go/bin/go run ./apps/ai-worker
     restart: unless-stopped
 
   # Phase 2 hook: add an optimizer-sidecar-rust service here when pegasusX
   # carries a concrete OR-Tools sidecar implementation.
+
+volumes:
+  pegasusx-ssmr-go-mod:
+  pegasusx-ssmr-go-build:

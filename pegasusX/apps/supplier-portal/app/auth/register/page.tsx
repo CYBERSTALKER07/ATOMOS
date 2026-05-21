@@ -15,6 +15,10 @@ import {
   validateLocation,
 } from "./wizard-state";
 
+function composeAddress(parts: Array<string>): string {
+  return parts.map((part) => part.trim()).filter(Boolean).join(", ");
+}
+
 // 4-step Supplier onboarding wizard.
 // HARD PRODUCT INVARIANT: never collapse below 4 steps; never move
 // banking / payment-gateway setup back into this form. Banking lives at
@@ -61,18 +65,59 @@ export default function RegisterPage() {
     setSubmitting(true);
     setSubmitError(null);
     try {
+      const phone = `${dialCode}${state.account.phoneLocal}`;
+      const warehouseAddress = composeAddress([
+        state.location.warehouseLine1,
+        state.location.warehouseCity,
+        state.location.warehouseRegion,
+        state.location.warehousePostalCode,
+      ]);
+      const billingAddress = state.location.billingSameAsWarehouse
+        ? warehouseAddress
+        : composeAddress([
+          state.location.billingLine1,
+          state.location.billingCity,
+          state.location.billingRegion,
+          state.location.billingPostalCode,
+        ]);
+
+      const warehouseLat = Number(state.location.warehouseLat);
+      const warehouseLng = Number(state.location.warehouseLng);
+      const billingLat = state.location.billingSameAsWarehouse ? warehouseLat : 0;
+      const billingLng = state.location.billingSameAsWarehouse ? warehouseLng : 0;
+
       const payload = {
-        account:    state.account,
-        location:   state.location,
-        business:   state.business,
-        categories: state.categories,
-        phone:      dialCode + state.account.phoneLocal,
+        account: {
+          legalName: state.account.legalName,
+          contactName: state.account.contactName,
+          email: state.account.email,
+          country: state.account.countryCode,
+          phone,
+          password: state.account.password,
+        },
+        location: {
+          warehouse: {
+            name: state.location.warehouseName,
+            address: warehouseAddress,
+            lat: warehouseLat,
+            lng: warehouseLng,
+          },
+          sameAsWarehouse: state.location.billingSameAsWarehouse,
+          billing: {
+            address: billingAddress,
+            lat: billingLat,
+            lng: billingLng,
+          },
+        },
+        business: state.business,
+        categories: state.categories.selectedCategoryIds,
+        phone,
       };
       const res = await fetch("/api/auth/supplier/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Idempotency-Key": cryptoRandomId(),
+          "Idempotency-Key": cryptoRandomId(),
         },
         body: JSON.stringify(payload),
       });
@@ -407,7 +452,7 @@ function parseIntOrZero(v: string): number {
 }
 
 function cryptoRandomId(): string {
-  // Browser-safe random key for the X-Idempotency-Key header.
+  // Browser-safe random key for the Idempotency-Key header.
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }

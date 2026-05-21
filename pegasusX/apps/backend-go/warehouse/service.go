@@ -2,16 +2,30 @@
 package warehouse
 
 import (
+	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
 
 // Service stores additive in-memory data for warehouse operational surfaces.
 type Service struct {
+	repo         Repository
+	cache        *cache.Cache
+	supplierHub  *ws.Hub
+	warehouseHub *ws.Hub
+	log          *slog.Logger
+
 	supplierID string
 	currency   string
 	now        func() time.Time
@@ -25,6 +39,12 @@ type Service struct {
 
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
+	Repo         Repository
+	Cache        *cache.Cache
+	SupplierHub  *ws.Hub
+	WarehouseHub *ws.Hub
+	Log          *slog.Logger
+
 	SupplierID string
 	Currency   string
 	Now        func() time.Time
@@ -71,15 +91,23 @@ func NewService(c ServiceConfig) *Service {
 	if c.Now == nil {
 		c.Now = func() time.Time { return time.Now().UTC() }
 	}
+	if c.Log == nil {
+		c.Log = slog.Default()
+	}
 	if c.Currency == "" {
 		c.Currency = "UZS"
 	}
 	return &Service{
-		supplierID: c.SupplierID,
-		currency:   c.Currency,
-		now:        c.Now,
-		inventory:  make(map[string]InventoryRow),
-		locks:      make(map[string]DispatchLock),
+		repo:         c.Repo,
+		cache:        c.Cache,
+		supplierHub:  c.SupplierHub,
+		warehouseHub: c.WarehouseHub,
+		log:          c.Log,
+		supplierID:   c.SupplierID,
+		currency:     c.Currency,
+		now:          c.Now,
+		inventory:    make(map[string]InventoryRow),
+		locks:        make(map[string]DispatchLock),
 	}
 }
 
@@ -179,17 +207,53 @@ func (s *Service) HandleSupplyRequests(w http.ResponseWriter, r *http.Request) {
 		s.mu.RUnlock()
 		writeJSON(w, http.StatusOK, map[string]any{"requests": rows})
 	case http.MethodPost:
-		now := s.now().Format(time.RFC3339Nano)
-		req := SupplyRequest{
-			RequestID:   "sreq_" + strings.ReplaceAll(now, ":", ""),
-			Status:      "OPEN",
-			CreatedAt:   now,
-			UpdatedAt:   now,
-			RequestedBy: strings.TrimSpace(r.URL.Query().Get("requested_by")),
+		nowTS := s.now().Format(time.RFC3339Nano)
+		claims, _ := auth.FromContext(r.Context())
+		requestedBy := strings.TrimSpace(r.URL.Query().Get("requested_by"))
+		if requestedBy == "" {
+			requestedBy = claims.Subject
 		}
-		s.mu.Lock()
-		s.supplyRequests = append(s.supplyRequests, req)
-		s.mu.Unlock()
+		warehouseID := strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
+		if warehouseID == "" {
+			warehouseID = strings.TrimSpace(claims.HomeNodeID)
+		}
+
+		req := SupplyRequest{
+			RequestID:   "sreq_" + strings.ReplaceAll(nowTS, ":", ""),
+			Status:      "OPEN",
+			CreatedAt:   nowTS,
+			UpdatedAt:   nowTS,
+			RequestedBy: requestedBy,
+		}
+
+		eventPayload := map[string]any{
+			"type":         events.EventWarehouseSupplyRequestOpened,
+			"supplier_id":  s.supplierID,
+			"warehouse_id": warehouseID,
+			"request_id":   req.RequestID,
+			"status":       req.Status,
+			"requested_by": req.RequestedBy,
+			"timestamp":    nowTS,
+		}
+
+		if err := s.repo.Apply(r.Context(), func() error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			s.supplyRequests = append(s.supplyRequests, req)
+			return nil
+		}, func(txn outbox.TxnBuffer) error {
+			return outbox.EmitJSON(r.Context(), txn, events.AggregateWarehouse, req.RequestID, events.TopicMain, eventPayload)
+		}); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_supply_request_failed"})
+			return
+		}
+
+		if s.cache != nil {
+			s.cache.Invalidate(r.Context(), warehouseSupplyRequestsKey(s.supplierID))
+		}
+
+		s.broadcastWarehouseEvent(r.Context(), warehouseID, eventPayload)
+		s.log.Info("warehouse supply request opened", "supplier_id", s.supplierID, "warehouse_id", warehouseID, "request_id", req.RequestID)
 		writeJSON(w, http.StatusCreated, req)
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -230,17 +294,50 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "entity_type and entity_id required"})
 			return
 		}
-		now := s.now().Format(time.RFC3339Nano)
+		nowTS := s.now().Format(time.RFC3339Nano)
+		claims, _ := auth.FromContext(r.Context())
+		warehouseID := strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
+		if warehouseID == "" {
+			warehouseID = strings.TrimSpace(claims.HomeNodeID)
+		}
 		lock := DispatchLock{
-			LockID:     "lock_" + strings.ReplaceAll(now, ":", ""),
+			LockID:     "lock_" + strings.ReplaceAll(nowTS, ":", ""),
 			EntityType: strings.TrimSpace(payload.EntityType),
 			EntityID:   strings.TrimSpace(payload.EntityID),
 			Reason:     strings.TrimSpace(payload.Reason),
-			CreatedAt:  now,
+			CreatedAt:  nowTS,
 		}
-		s.mu.Lock()
-		s.locks[lock.LockID] = lock
-		s.mu.Unlock()
+
+		eventPayload := map[string]any{
+			"type":         events.EventWarehouseDispatchLockChanged,
+			"supplier_id":  s.supplierID,
+			"warehouse_id": warehouseID,
+			"lock_id":      lock.LockID,
+			"entity_type":  lock.EntityType,
+			"entity_id":    lock.EntityID,
+			"reason":       lock.Reason,
+			"action":       "ACQUIRED",
+			"timestamp":    lock.CreatedAt,
+		}
+
+		if err := s.repo.Apply(r.Context(), func() error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			s.locks[lock.LockID] = lock
+			return nil
+		}, func(txn outbox.TxnBuffer) error {
+			return outbox.EmitJSON(r.Context(), txn, events.AggregateWarehouse, lock.LockID, events.TopicMain, eventPayload)
+		}); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_dispatch_lock_failed"})
+			return
+		}
+
+		if s.cache != nil {
+			s.cache.Invalidate(r.Context(), warehouseDispatchLocksKey(s.supplierID))
+		}
+
+		s.broadcastWarehouseEvent(r.Context(), warehouseID, eventPayload)
+		s.log.Info("warehouse dispatch lock acquired", "supplier_id", s.supplierID, "warehouse_id", warehouseID, "lock_id", lock.LockID)
 		writeJSON(w, http.StatusCreated, lock)
 	case http.MethodDelete:
 		lockID := strings.TrimSpace(r.URL.Query().Get("lock_id"))
@@ -248,13 +345,79 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "lock_id required"})
 			return
 		}
-		s.mu.Lock()
-		delete(s.locks, lockID)
-		s.mu.Unlock()
+
+		claims, _ := auth.FromContext(r.Context())
+		warehouseID := strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
+		if warehouseID == "" {
+			warehouseID = strings.TrimSpace(claims.HomeNodeID)
+		}
+
+		var released DispatchLock
+		if err := s.repo.Apply(r.Context(), func() error {
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			released = s.locks[lockID]
+			delete(s.locks, lockID)
+			return nil
+		}, func(txn outbox.TxnBuffer) error {
+			eventPayload := map[string]any{
+				"type":         events.EventWarehouseDispatchLockChanged,
+				"supplier_id":  s.supplierID,
+				"warehouse_id": warehouseID,
+				"lock_id":      lockID,
+				"entity_type":  released.EntityType,
+				"entity_id":    released.EntityID,
+				"reason":       released.Reason,
+				"action":       "RELEASED",
+				"timestamp":    s.now().Format(time.RFC3339Nano),
+			}
+			return outbox.EmitJSON(r.Context(), txn, events.AggregateWarehouse, lockID, events.TopicMain, eventPayload)
+		}); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "release_dispatch_lock_failed"})
+			return
+		}
+
+		if s.cache != nil {
+			s.cache.Invalidate(r.Context(), warehouseDispatchLocksKey(s.supplierID))
+		}
+
+		s.broadcastWarehouseEvent(r.Context(), warehouseID, map[string]any{
+			"type":         events.EventWarehouseDispatchLockChanged,
+			"supplier_id":  s.supplierID,
+			"warehouse_id": warehouseID,
+			"lock_id":      lockID,
+			"entity_type":  released.EntityType,
+			"entity_id":    released.EntityID,
+			"reason":       released.Reason,
+			"action":       "RELEASED",
+			"timestamp":    s.now().Format(time.RFC3339Nano),
+		})
+		s.log.Info("warehouse dispatch lock released", "supplier_id", s.supplierID, "warehouse_id", warehouseID, "lock_id", lockID)
 		writeJSON(w, http.StatusOK, map[string]any{"status": "released", "lock_id": lockID})
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
+}
+
+func (s *Service) broadcastWarehouseEvent(ctx context.Context, warehouseID string, payload map[string]any) {
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+	if s.supplierHub != nil && s.supplierID != "" {
+		s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, raw)
+	}
+	if s.warehouseHub != nil && warehouseID != "" {
+		s.warehouseHub.Broadcast(ctx, "warehouse:"+warehouseID, raw)
+	}
+}
+
+func warehouseSupplyRequestsKey(supplierID string) string {
+	return "warehouse:supply-requests:" + supplierID
+}
+
+func warehouseDispatchLocksKey(supplierID string) string {
+	return "warehouse:dispatch-locks:" + supplierID
 }
 
 func writeJSON(w http.ResponseWriter, code int, body any) {

@@ -25,8 +25,8 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	if d.FirebaseAuthEnabled && d.FirebaseVerifier != nil {
 		r.Group(func(gr chi.Router) {
 			gr.Use(auth.FirebaseAuth(d.FirebaseVerifier))
-			gr.Use(auth.RequireRole(auth.RoleRetailer))
-			gr.Post("/v1/order/create", d.Service.HandleCreate)
+			gr.With(auth.RequireRole(auth.RoleRetailer)).Post("/v1/order/create", d.Service.HandleCreate)
+			gr.With(auth.RequireRole(auth.RoleAdmin, auth.RoleRetailer)).Patch("/v1/order/{orderID}/status", d.Service.HandleUpdateStatus)
 		})
 		return
 	}
@@ -34,4 +34,5 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	// Backward-compatible fallback for early local scaffold runs. The handler
 	// still returns 401 when no claims are present.
 	r.Post("/v1/order/create", d.Service.HandleCreate)
+	r.Patch("/v1/order/{orderID}/status", d.Service.HandleUpdateStatus)
 }
