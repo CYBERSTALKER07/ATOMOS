@@ -31,6 +31,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
+	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
@@ -512,9 +513,22 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	factorySvc.WarmManifestCache(ctx)
 	var driverOrderList driver.DriverOrderQuery
 	var driverOrderGet driver.DriverOrderGetQuery
+	var driverDepart driver.DepartFn
 	if spannerClient != nil {
 		driverOrderList = driverOrderListQuery(spannerClient)
 		driverOrderGet = driverOrderGetQuery(spannerClient)
+		manifestStore := manifest.NewStore(spannerClient)
+		driverDepart = func(ctx context.Context, driverID string) (driver.DepartResult, bool, error) {
+			departed, ok, err := manifestStore.DepartDriver(ctx, driverID, time.Now().UTC())
+			if err != nil || !ok {
+				return driver.DepartResult{}, ok, err
+			}
+			return driver.DepartResult{
+				ManifestID: departed.ManifestID,
+				OrderIDs:   departed.OrderIDs,
+				Count:      len(departed.OrderIDs),
+			}, true, nil
+		}
 	}
 	driverSvc := driver.NewService(driver.ServiceConfig{
 		Repo:        driverRepo,
@@ -522,6 +536,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		NotifSvc:    notifAdapter,
 		OrderList:   driverOrderList,
 		OrderGet:    driverOrderGet,
+		Depart:      driverDepart,
 		SupplierHub: supplierHub,
 		DriverHub:   driverHub,
 		Log:         log,

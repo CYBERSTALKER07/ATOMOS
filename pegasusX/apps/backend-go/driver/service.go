@@ -63,6 +63,7 @@ type Service struct {
 	manifest     ManifestLookup
 	pendingQuery PendingCollectionsLookup
 	earnings     EarningsLookup
+	depart       DepartFn
 
 	supplierID string
 	currency   string
@@ -91,6 +92,7 @@ type ServiceConfig struct {
 	Manifest     ManifestLookup
 	PendingQuery PendingCollectionsLookup
 	Earnings     EarningsLookup
+	Depart       DepartFn
 	SupplierID   string
 	Currency     string
 	JWTSecret    string
@@ -117,6 +119,18 @@ type PendingCollectionsLookup func(driverID string) []PendingCollection
 
 // EarningsLookup resolves the current driver earnings read model.
 type EarningsLookup func(ctx context.Context, driverID string) (DriverEarningsResponse, error)
+
+// DepartResult summarizes a committed driver-depart transition.
+type DepartResult struct {
+	ManifestID string   `json:"manifest_id"`
+	OrderIDs   []string `json:"order_ids"`
+	Count      int      `json:"orders_dispatched"`
+}
+
+// DepartFn flips a driver's SEALED manifest to DISPATCHED and rolls its LOADED
+// orders to IN_TRANSIT atomically. ok=false means the driver had no sealed
+// manifest (idempotent no-op).
+type DepartFn func(ctx context.Context, driverID string) (DepartResult, bool, error)
 
 // DailyEarning is one day of driver delivery volume.
 type DailyEarning struct {
@@ -189,6 +203,7 @@ func NewService(c ServiceConfig) *Service {
 		manifest:           c.Manifest,
 		pendingQuery:       c.PendingQuery,
 		earnings:           c.Earnings,
+		depart:             c.Depart,
 		supplierID:         c.SupplierID,
 		currency:           strings.ToUpper(strings.TrimSpace(c.Currency)),
 		jwtSecret:          strings.TrimSpace(c.JWTSecret),
@@ -582,6 +597,10 @@ func writeJSON(w http.ResponseWriter, code int, body any) {
 
 func driverAvailabilityKey(driverID string) string {
 	return "driver:availability:" + driverID
+}
+
+func driverManifestKey(driverID string) string {
+	return "driver:manifest:" + driverID
 }
 
 func manifestGateCleared(state string) bool {

@@ -1154,6 +1154,7 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 			OrderID:        current.OrderID,
 			SupplierID:     current.SupplierID,
 			RetailerID:     current.RetailerID,
+			DriverID:       current.DriverID,
 			PreviousStatus: string(prevStatus),
 			Status:         string(current.Status),
 			Reason:         strings.TrimSpace(req.Reason),
@@ -1600,6 +1601,7 @@ func emitOrderStatusChanged(ctx context.Context, txn outbox.TxnBuffer, params or
 		OrderID:        params.Order.OrderID,
 		SupplierID:     params.Order.SupplierID,
 		RetailerID:     params.Order.RetailerID,
+		DriverID:       params.Order.DriverID,
 		PreviousStatus: string(params.PreviousStatus),
 		Status:         string(params.Order.Status),
 		Reason:         params.Reason,
@@ -1928,6 +1930,7 @@ type orderStatusChangedEvent struct {
 	OrderID               string `json:"order_id"`
 	SupplierID            string `json:"supplier_id"`
 	RetailerID            string `json:"retailer_id"`
+	DriverID              string `json:"driver_id,omitempty"`
 	PreviousStatus        string `json:"previous_status"`
 	Status                string `json:"status"`
 	Reason                string `json:"reason,omitempty"`

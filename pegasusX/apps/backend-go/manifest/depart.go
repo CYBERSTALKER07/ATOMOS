@@ -1,0 +1,191 @@
+package manifest
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"cloud.google.com/go/spanner"
+	"google.golang.org/api/iterator"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+)
+
+// DepartedManifest summarizes the orders rolled into transit when a driver departs.
+type DepartedManifest struct {
+	ManifestID  string
+	SupplierID  string
+	WarehouseID string
+	RouteID     string
+	DriverID    string
+	OrderIDs    []string
+}
+
+// departOrderRow is the read-phase projection of one manifest order.
+type departOrderRow struct {
+	OrderID    string
+	SupplierID string
+	RetailerID string
+	Status     string
+}
+
+// DepartDriver flips a driver's SEALED manifest to DISPATCHED and rolls every
+// LOADED order on it to IN_TRANSIT, emitting MANIFEST_DISPATCHED plus one
+// ORDER_STATUS_CHANGED per transitioned order — all in a single transaction so
+// the manifest state and the orders can never diverge. Returns ok=false when the
+// driver has no SEALED manifest (idempotent no-op for double-tap depart).
+func (s *Store) DepartDriver(ctx context.Context, driverID string, now time.Time) (DepartedManifest, bool, error) {
+	if s == nil || s.client == nil {
+		return DepartedManifest{}, false, fmt.Errorf("manifest store: nil client")
+	}
+	driverID = strings.TrimSpace(driverID)
+	if driverID == "" {
+		return DepartedManifest{}, false, fmt.Errorf("manifest store: empty driver id")
+	}
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+
+	var result DepartedManifest
+	var found bool
+	_, err := s.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		result = DepartedManifest{}
+		found = false
+
+		manifestRow, ok, err := readSealedManifest(ctx, txn, driverID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return nil
+		}
+
+		orders, err := readManifestOrders(ctx, txn, manifestRow.ManifestID)
+		if err != nil {
+			return err
+		}
+
+		buf := &txnBuffer{}
+		mutations := []*spanner.Mutation{spanner.InsertOrUpdateMap("SupplierTruckManifests", map[string]any{
+			"ManifestId":   manifestRow.ManifestID,
+			"State":        "DISPATCHED",
+			"DispatchedAt": now.UTC(),
+			"UpdatedAt":    spanner.CommitTimestamp,
+		})}
+
+		transitioned := make([]string, 0, len(orders))
+		for _, o := range orders {
+			if !strings.EqualFold(o.Status, "LOADED") {
+				continue
+			}
+			mutations = append(mutations, spanner.InsertOrUpdateMap("Orders", map[string]any{
+				"OrderId":   o.OrderID,
+				"Status":    "IN_TRANSIT",
+				"UpdatedAt": spanner.CommitTimestamp,
+			}))
+			if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, o.OrderID, events.TopicMain, map[string]any{
+				"type":            events.EventOrderStatusChanged,
+				"trace_id":        outbox.TraceIDFromContext(ctx),
+				"order_id":        o.OrderID,
+				"supplier_id":     o.SupplierID,
+				"retailer_id":     o.RetailerID,
+				"driver_id":       driverID,
+				"manifest_id":     manifestRow.ManifestID,
+				"previous_status": "LOADED",
+				"status":          "IN_TRANSIT",
+				"timestamp":       now.UTC().Format(time.RFC3339Nano),
+			}); err != nil {
+				return err
+			}
+			transitioned = append(transitioned, o.OrderID)
+		}
+
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateManifest, manifestRow.ManifestID, events.TopicMain, map[string]any{
+			"type":         events.EventManifestDispatched,
+			"trace_id":     outbox.TraceIDFromContext(ctx),
+			"manifest_id":  manifestRow.ManifestID,
+			"supplier_id":  manifestRow.SupplierID,
+			"warehouse_id": manifestRow.WarehouseID,
+			"route_id":     manifestRow.RouteID,
+			"driver_id":    driverID,
+			"order_ids":    transitioned,
+			"order_count":  len(transitioned),
+			"timestamp":    now.UTC().Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+
+		mutations = append(mutations, outboxMutations(buf)...)
+		if err := txn.BufferWrite(mutations); err != nil {
+			return err
+		}
+
+		result = DepartedManifest{
+			ManifestID:  manifestRow.ManifestID,
+			SupplierID:  manifestRow.SupplierID,
+			WarehouseID: manifestRow.WarehouseID,
+			RouteID:     manifestRow.RouteID,
+			DriverID:    driverID,
+			OrderIDs:    transitioned,
+		}
+		found = true
+		return nil
+	})
+	if err != nil {
+		return DepartedManifest{}, false, fmt.Errorf("depart driver %s: %w", driverID, err)
+	}
+	return result, found, nil
+}
+
+func readSealedManifest(ctx context.Context, txn *spanner.ReadWriteTransaction, driverID string) (SupplierTruckRow, bool, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT ManifestId, SupplierId, COALESCE(WarehouseId, '') AS WarehouseId, COALESCE(RouteId, '') AS RouteId
+			FROM SupplierTruckManifests
+			WHERE DriverId = @driverId AND State = 'SEALED'
+			ORDER BY SealedAt DESC LIMIT 1`,
+		Params: map[string]any{"driverId": driverID},
+	}
+	iter := txn.Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err == iterator.Done {
+		return SupplierTruckRow{}, false, nil
+	}
+	if err != nil {
+		return SupplierTruckRow{}, false, fmt.Errorf("read sealed manifest: %w", err)
+	}
+	var m SupplierTruckRow
+	if err := row.Columns(&m.ManifestID, &m.SupplierID, &m.WarehouseID, &m.RouteID); err != nil {
+		return SupplierTruckRow{}, false, fmt.Errorf("scan sealed manifest: %w", err)
+	}
+	return m, true, nil
+}
+
+func readManifestOrders(ctx context.Context, txn *spanner.ReadWriteTransaction, manifestID string) ([]departOrderRow, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT o.OrderId, o.SupplierId, o.RetailerId, o.Status
+			FROM ManifestOrders mo
+			JOIN Orders o ON mo.OrderId = o.OrderId
+			WHERE mo.ManifestId = @manifestId`,
+		Params: map[string]any{"manifestId": manifestID},
+	}
+	iter := txn.Query(ctx, stmt)
+	defer iter.Stop()
+	rows := make([]departOrderRow, 0, 8)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return rows, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("read manifest orders: %w", err)
+		}
+		var o departOrderRow
+		if err := row.Columns(&o.OrderID, &o.SupplierID, &o.RetailerID, &o.Status); err != nil {
+			return nil, fmt.Errorf("scan manifest order: %w", err)
+		}
+		rows = append(rows, o)
+	}
+}

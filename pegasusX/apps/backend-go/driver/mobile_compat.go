@@ -81,13 +81,61 @@ func (s *Service) HandleWSAck(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "command_id": strings.TrimSpace(req.CommandID)})
 }
 
-// HandleDriverDepart serves POST /v1/fleet/driver/depart.
+// HandleDriverDepart serves POST /v1/fleet/driver/depart. It flips the driver's
+// SEALED manifest to DISPATCHED and rolls every LOADED order on it to IN_TRANSIT
+// atomically, then broadcasts the transition so supplier + driver surfaces update
+// in real time. Without the depart seam wired it degrades to the prior stub.
 func (s *Service) HandleDriverDepart(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "departed"})
+	driverID := driverIDFromRequest(r)
+	if driverID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	if s.depart == nil {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "departed"})
+		return
+	}
+
+	result, ok, err := s.depart(r.Context(), driverID)
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "driver depart failed", "err", err, "driver_id", driverID)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "depart_failed"})
+		return
+	}
+	if !ok {
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"status": "no_sealed_manifest",
+			"error":  "no_sealed_manifest",
+		})
+		return
+	}
+
+	if s.cache != nil {
+		s.cache.Invalidate(r.Context(), driverManifestKey(driverID))
+	}
+	s.broadcastDriverEvent(r.Context(), driverID, map[string]any{
+		"type":        "MANIFEST_DISPATCHED",
+		"driver_id":   driverID,
+		"manifest_id": result.ManifestID,
+		"order_ids":   result.OrderIDs,
+		"order_count": result.Count,
+		"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
+	})
+	s.log.InfoContext(r.Context(), "driver departed",
+		"driver_id", driverID,
+		"manifest_id", result.ManifestID,
+		"orders_dispatched", result.Count,
+	)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":            "departed",
+		"manifest_id":       result.ManifestID,
+		"orders_dispatched": result.Count,
+		"order_ids":         result.OrderIDs,
+	})
 }
 
 // HandleDriverReturnComplete serves POST /v1/fleet/driver/return-complete.

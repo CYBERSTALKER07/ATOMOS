@@ -101,6 +101,8 @@ func (d *NotificationDispatcher) dispatchParityEvent(ctx context.Context, eventT
 		return d.handleOrderEvent(ctx, payload, traceID)
 	case "UNIFIED_CHECKOUT_COMPLETED":
 		return d.handleOrderEvent(ctx, payload, traceID)
+	case "SHOP_CLOSED_BYPASS_OFFLOAD":
+		return d.handleOrderEvent(ctx, payload, traceID)
 	case "ROUTE_FINALIZED":
 		return d.handleRouteEvent(ctx, payload, traceID)
 	case "FACTORY_MANIFEST_CREATED":

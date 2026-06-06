@@ -61,6 +61,7 @@ type OrderPatch struct {
 	OrderID    string
 	Status     string
 	ManifestID string
+	DriverID   string
 	VehicleID  string
 	RouteID    string
 	UpdatedAt  time.Time
@@ -501,6 +502,9 @@ func supplierMutations(batch *SupplierWriteBatch) ([]*spanner.Mutation, error) {
 		}
 		if p.ManifestID != "" {
 			row["ManifestId"] = p.ManifestID
+		}
+		if p.DriverID != "" {
+			row["DriverId"] = p.DriverID
 		}
 		if p.VehicleID != "" {
 			row["VehicleId"] = p.VehicleID

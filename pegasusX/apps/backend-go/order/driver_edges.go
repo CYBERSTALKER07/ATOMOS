@@ -59,6 +59,7 @@ func (s *Service) HandleFleetRouteReorder(w http.ResponseWriter, r *http.Request
 			"type":           events.EventRouteReordered,
 			"route_id":       req.RouteID,
 			"driver_id":      driverID,
+			"supplier_id":    claims.SupplierID,
 			"order_sequence": req.OrderSequence,
 			"timestamp":      s.now().UTC().Format(time.RFC3339Nano),
 		}); err != nil {
@@ -241,6 +242,7 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 		"order_id":    req.OrderID,
 		"driver_id":   claims.Subject,
 		"supplier_id": current.SupplierID,
+		"retailer_id": current.RetailerID,
 		"note":        req.Note,
 		"items":       req.Items,
 		"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
@@ -345,14 +347,15 @@ func assertDriverOwnsRoute(ctx context.Context, txn *spanner.ReadWriteTransactio
 
 func applyShopClosedBypassOffload(ctx context.Context, txn *spanner.ReadWriteTransaction, driverID, orderID, token string, now time.Time) error {
 	row, err := txn.ReadRow(ctx, "Orders", spanner.Key{orderID},
-		[]string{"Status", "Version", "DriverId"})
+		[]string{"Status", "Version", "DriverId", "SupplierId", "RetailerId"})
 	if err != nil {
 		return ErrOrderNotFound
 	}
 	var status string
 	var version int64
 	var did spanner.NullString
-	if err := row.Columns(&status, &version, &did); err != nil {
+	var supplierID, retailerID string
+	if err := row.Columns(&status, &version, &did, &supplierID, &retailerID); err != nil {
 		return err
 	}
 	if status != string(StatusArrivedShopClosed) {
@@ -385,10 +388,13 @@ func applyShopClosedBypassOffload(ctx context.Context, txn *spanner.ReadWriteTra
 
 	buf := &spannerTxnBuffer{}
 	if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, map[string]any{
-		"type":      "SHOP_CLOSED_BYPASS_OFFLOAD",
-		"order_id":  orderID,
-		"driver_id": driverID,
-		"timestamp": now.UTC().Format(time.RFC3339Nano),
+		"type":        "SHOP_CLOSED_BYPASS_OFFLOAD",
+		"order_id":    orderID,
+		"driver_id":   driverID,
+		"supplier_id": supplierID,
+		"retailer_id": retailerID,
+		"status":      string(StatusAwaitingPayment),
+		"timestamp":   now.UTC().Format(time.RFC3339Nano),
 	}); err != nil {
 		return err
 	}

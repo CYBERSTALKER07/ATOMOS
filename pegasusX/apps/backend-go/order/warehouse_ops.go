@@ -134,6 +134,7 @@ func (s *Service) warehouseTransition(
 			OrderID:        current.OrderID,
 			SupplierID:     current.SupplierID,
 			RetailerID:     current.RetailerID,
+			DriverID:       current.DriverID,
 			PreviousStatus: string(prevStatus),
 			Status:         string(current.Status),
 			Reason:         strings.TrimSpace(reason),

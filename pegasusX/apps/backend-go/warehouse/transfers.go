@@ -153,16 +153,17 @@ func (s *Service) HandleForceReceive(w http.ResponseWriter, r *http.Request) {
 		req.TotalVolumeVU = 1
 	}
 
-	factoryID := strings.TrimSpace(req.FactoryID)
-	supplierID := ""
-	if factoryID == "" {
-		factoryID, supplierID, err = s.resolveWarehouseFactory(ctx, whID)
-		if err != nil {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "warehouse_not_found"})
-			return
-		}
-	} else if ops := auth.GetWarehouseOps(r.Context()); ops != nil {
-		supplierID = ops.SupplierID
+	// Factory + supplier are always derived from the JWT-scoped warehouse, never
+	// trusted from the body. A body factory_id is honored only when it matches the
+	// warehouse's own primary factory; any mismatch is a scope-spoofing attempt.
+	factoryID, supplierID, err := s.resolveWarehouseFactory(ctx, whID)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "warehouse_not_found"})
+		return
+	}
+	if bodyFactory := strings.TrimSpace(req.FactoryID); bodyFactory != "" && bodyFactory != factoryID {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "factory_scope_violation"})
+		return
 	}
 
 	if s.memoryTransfersEnabled() {
