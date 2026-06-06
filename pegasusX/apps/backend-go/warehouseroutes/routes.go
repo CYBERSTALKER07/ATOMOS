@@ -49,6 +49,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		}
 		rr.Get("/v1/warehouse/ops/dispatch/preview", d.Service.HandleDispatchPreview)
 		rr.Post("/v1/warehouse/ops/dispatch/preview", d.Service.HandleDispatchPreview)
+		rr.Post("/v1/warehouse/ops/dispatch/execute", d.Service.HandleDispatchExecute)
 		rr.Get("/v1/warehouse/ops/drivers", d.Service.HandleOpsDrivers)
 		rr.Post("/v1/warehouse/ops/drivers", d.Service.HandleOpsDrivers)
 		rr.Patch("/v1/warehouse/ops/drivers/*", d.Service.HandleOpsDrivers)

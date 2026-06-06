@@ -223,6 +223,11 @@ func (s *Service) HandleDispatchPreview(w http.ResponseWriter, r *http.Request) 
 	s.handleOpsDispatchPreview(w, r)
 }
 
+// HandleDispatchExecute serves POST /v1/warehouse/ops/dispatch/execute.
+func (s *Service) HandleDispatchExecute(w http.ResponseWriter, r *http.Request) {
+	s.handleOpsDispatchExecute(w, r)
+}
+
 // HandleDemandForecast serves GET /v1/warehouse/demand/forecast.
 func (s *Service) HandleDemandForecast(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
