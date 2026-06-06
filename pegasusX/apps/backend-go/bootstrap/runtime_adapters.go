@@ -8,6 +8,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	backendkafka "github.com/pegasusx/pegasusx/apps/backend-go/kafka"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
@@ -22,12 +23,19 @@ type kafkaRuntimePublisher interface {
 	Close() error
 }
 
+type kafkaRuntimeDLQWriter interface {
+	backendkafka.DLQWriter
+}
+
 var (
 	newRedisRuntimeAdapter = func(addr string) (redisRuntimeAdapter, error) {
 		return cache.NewRedisBackend(addr)
 	}
 	newKafkaRuntimePublisher = func(brokersCSV string, cfg outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
 		return outbox.NewKafkaPublisherFromCSV(brokersCSV, cfg)
+	}
+	newKafkaRuntimeDLQWriter = func(brokersCSV, topic string) (kafkaRuntimeDLQWriter, error) {
+		return backendkafka.NewDLQWriterFromCSV(brokersCSV, topic)
 	}
 	newSpannerRuntimeClient = func(ctx context.Context, database string) (*spanner.Client, error) {
 		return spanner.NewClient(ctx, database)

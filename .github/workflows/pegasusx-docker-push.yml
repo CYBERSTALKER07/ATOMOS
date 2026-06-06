@@ -1,0 +1,67 @@
+name: pegasusX Docker — build and push
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'pegasusX/apps/backend-go/**'
+      - 'pegasusX/apps/ai-worker/**'
+      - 'pegasusX/packages/**'
+      - 'pegasusX/go.work'
+      - 'pegasusX/go.work.sum'
+      - 'pegasusX/apps/backend-go/Dockerfile'
+      - 'pegasusX/apps/ai-worker/Dockerfile'
+      - 'pegasusX/.dockerignore'
+      - '.github/workflows/pegasusx-docker-push.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REGION: asia-south1
+
+jobs:
+  docker:
+    name: Build and push pegasusX images
+    runs-on: ubuntu-latest
+    if: vars.GCP_PROJECT_ID != '' && vars.GAR_REPO != ''
+
+    strategy:
+      matrix:
+        include:
+          - app: backend-go
+            dockerfile: pegasusX/apps/backend-go/Dockerfile
+            image: backend-go
+          - app: ai-worker
+            dockerfile: pegasusX/apps/ai-worker/Dockerfile
+            image: ai-worker
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SA_EMAIL }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push ${{ matrix.image }}
+        uses: docker/build-push-action@v6
+        with:
+          context: pegasusX
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ vars.GAR_REPO }}/${{ matrix.image }}:${{ github.sha }}
+            ${{ vars.GAR_REPO }}/${{ matrix.image }}:latest
+          cache-from: type=gha,scope=pegasusx-${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=pegasusx-${{ matrix.app }}

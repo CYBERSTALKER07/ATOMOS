@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-go
+  labels:
+    app: backend-go
+    app.kubernetes.io/name: backend-go
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  type: ClusterIP
+  selector:
+    app: backend-go
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

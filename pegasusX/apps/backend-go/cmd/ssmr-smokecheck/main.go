@@ -21,15 +21,28 @@ import (
 )
 
 func main() {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	slog.SetDefault(logger)
-
 	if len(os.Args) != 2 {
-		slog.Error("usage", "expected", "go run ./apps/backend-go/cmd/ssmr-smokecheck [spanner|kafka|spatial]")
+		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/ssmr-smokecheck [spanner|kafka|spatial|e2e|loadtokens]")
 		os.Exit(1)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	check := strings.TrimSpace(os.Args[1])
+	logOut := os.Stdout
+	if check == "loadtokens" {
+		// stdout is reserved for shell `export` lines consumed by load_cert.sh
+		logOut = os.Stderr
+	}
+	logger := slog.New(slog.NewJSONHandler(logOut, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	slog.SetDefault(logger)
+
+	timeout := 30 * time.Second
+	switch check {
+	case "loadtokens":
+		timeout = loadTokensTimeout()
+	case "e2e":
+		timeout = e2eTimeout()
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	cfg, err := bootstrap.LoadConfig()
@@ -37,8 +50,6 @@ func main() {
 		slog.Error("load config", "err", err)
 		os.Exit(1)
 	}
-
-	check := strings.TrimSpace(os.Args[1])
 	var checkErr error
 	switch check {
 	case "spanner":
@@ -47,6 +58,10 @@ func main() {
 		checkErr = runKafkaCheck(ctx, cfg)
 	case "spatial":
 		checkErr = runSpatialCheck(ctx, cfg)
+	case "e2e":
+		checkErr = runE2ECheck(ctx, cfg)
+	case "loadtokens":
+		checkErr = runLoadTokens(ctx, cfg)
 	default:
 		checkErr = fmt.Errorf("unknown check %q", check)
 	}
@@ -56,7 +71,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	slog.Info("ssmr smokecheck passed", "check", check)
+	if check != "loadtokens" {
+		slog.Info("ssmr smokecheck passed", "check", check)
+	}
 }
 
 func runSpannerCheck(ctx context.Context, cfg *bootstrap.Config) error {
@@ -308,12 +325,20 @@ func assertKafkaRoundTrip(ctx context.Context, broker string, topic string) erro
 }
 
 func expectedTopics(cfg *bootstrap.Config) []string {
-	return []string{
+	topics := []string{
 		cfg.KafkaTopicMain,
+		cfg.KafkaTopicMainDLQ,
 		envOr("KAFKA_TOPIC_SPATIAL", "ssmr.events.spatial"),
 		envOr("KAFKA_TOPIC_REALTIME", "ssmr.events.realtime"),
 		envOr("KAFKA_TOPIC_WEBHOOKS", "ssmr.events.webhooks"),
 	}
+	out := make([]string, 0, len(topics))
+	for _, topic := range topics {
+		if strings.TrimSpace(topic) != "" {
+			out = append(out, topic)
+		}
+	}
+	return out
 }
 
 func firstBroker(brokersCSV string) string {

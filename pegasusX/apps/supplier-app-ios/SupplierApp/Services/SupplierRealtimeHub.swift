@@ -1,0 +1,12 @@
+import Foundation
+import Observation
+
+/// Cross-screen refresh epoch driven by WebSocket operational events.
+@Observable
+final class SupplierRealtimeHub {
+    var refreshEpoch: Int = 0
+
+    func bump() {
+        refreshEpoch += 1
+    }
+}

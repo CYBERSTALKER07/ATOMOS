@@ -73,22 +73,12 @@ func TestHandleApplyReassign_SeamParity(t *testing.T) {
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
-	// Add a second target manifest so reassignment updates concrete manifest keys.
 	svc.mu.Lock()
 	svc.ensureDemoDataLocked()
-	now := svc.now().Format(time.RFC3339Nano)
-	svc.manifests = append(svc.manifests, ManifestRow{
-		ManifestID:    "mf_payload_2",
-		VehicleID:     "veh_payload_2",
-		DriverID:      "drv_payload_2",
-		State:         payloadManifestStateDraft,
-		TotalVolumeVU: 0,
-		MaxVolumeVU:   140,
-		StopCount:     0,
-		CreatedAt:     now,
-		UpdatedAt:     now,
-	})
-	svc.manifestOrders["mf_payload_2"] = []ManifestOrder{}
+	if svc.findManifestIndexLocked("mf_payload_2") < 0 {
+		svc.mu.Unlock()
+		t.Fatalf("expected demo manifest mf_payload_2")
+	}
 	svc.mu.Unlock()
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"balance"}`))
@@ -139,6 +129,1110 @@ func TestHandleApplyReassign_SeamParity(t *testing.T) {
 	assertPayloadWSMessageContainsType(t, payloadConn.messages, events.EventManifestRebalanced)
 }
 
+func TestHandleApplyReassign_TargetManifestCapacityExceeded(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	cacheBackend := &payloadCacheBackendSpy{}
+	supplierConn := &payloadWSConnSpy{id: "supplier-conn"}
+	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
+
+	svc := newPayloadTestService(repo, cacheBackend)
+	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
+	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
+
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	targetIdx := svc.findManifestIndexLocked("mf_payload_2")
+	if targetIdx < 0 {
+		svc.mu.Unlock()
+		t.Fatalf("expected demo manifest mf_payload_2")
+	}
+	svc.manifests[targetIdx].TotalVolumeVU = 9
+	svc.manifests[targetIdx].MaxVolumeVU = 10
+	svc.manifestOrders["mf_payload_2"] = []ManifestOrder{}
+
+	orderIdx := svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		svc.mu.Unlock()
+		t.Fatalf("expected demo order ord_payload_1")
+	}
+	originalManifestID := svc.orders[orderIdx].ManifestID
+	originalRouteID := svc.orders[orderIdx].RouteID
+	svc.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"capacity-test"}`))
+	rr := httptest.NewRecorder()
+
+	svc.HandleApplyReassign(rr, req)
+
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("expected status 409, got %d body=%s", rr.Code, rr.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if got, _ := body["error"].(string); got != "target_manifest_capacity_exceeded" {
+		t.Fatalf("expected target_manifest_capacity_exceeded, got %q", got)
+	}
+
+	if repo.applyCalls != 1 {
+		t.Fatalf("expected one repo apply call, got %d", repo.applyCalls)
+	}
+	if len(repo.events) != 0 {
+		t.Fatalf("expected zero outbox events, got %d", len(repo.events))
+	}
+	if len(cacheBackend.deletedKeys) != 0 {
+		t.Fatalf("expected no cache invalidation, got %#v", cacheBackend.deletedKeys)
+	}
+	if len(supplierConn.messages) != 0 {
+		t.Fatalf("expected no supplier websocket events")
+	}
+	if len(payloadConn.messages) != 0 {
+		t.Fatalf("expected no payload websocket events")
+	}
+
+	svc.mu.RLock()
+	defer svc.mu.RUnlock()
+	orderIdx = svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		t.Fatalf("expected demo order ord_payload_1 after conflict")
+	}
+	if got := svc.orders[orderIdx].ManifestID; got != originalManifestID {
+		t.Fatalf("expected manifest_id %q to remain unchanged, got %q", originalManifestID, got)
+	}
+	if got := svc.orders[orderIdx].RouteID; got != originalRouteID {
+		t.Fatalf("expected route_id %q to remain unchanged, got %q", originalRouteID, got)
+	}
+}
+
+func TestHandleApplyReassign_OrderAlreadyAssignedNoop(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	cacheBackend := &payloadCacheBackendSpy{}
+	supplierConn := &payloadWSConnSpy{id: "supplier-conn"}
+	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
+
+	svc := newPayloadTestService(repo, cacheBackend)
+	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
+	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
+
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	orderIdx := svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		svc.mu.Unlock()
+		t.Fatalf("expected demo order ord_payload_1")
+	}
+	originalManifestID := svc.orders[orderIdx].ManifestID
+	originalRouteID := svc.orders[orderIdx].RouteID
+	originalDepth := svc.orders[orderIdx].ReassignDepth
+	svc.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_1","reason":"noop"}`))
+	rr := httptest.NewRecorder()
+
+	svc.HandleApplyReassign(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d body=%s", rr.Code, rr.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if got, _ := body["status"].(string); got != "already_assigned" {
+		t.Fatalf("expected status already_assigned, got %q", got)
+	}
+
+	if repo.applyCalls != 1 {
+		t.Fatalf("expected one repo apply call, got %d", repo.applyCalls)
+	}
+	if len(repo.events) != 0 {
+		t.Fatalf("expected no outbox events for already_assigned, got %d", len(repo.events))
+	}
+	if len(cacheBackend.deletedKeys) != 0 {
+		t.Fatalf("expected no cache invalidation for already_assigned")
+	}
+	if len(supplierConn.messages) != 0 {
+		t.Fatalf("expected no supplier websocket events for already_assigned")
+	}
+	if len(payloadConn.messages) != 0 {
+		t.Fatalf("expected no payload websocket events for already_assigned")
+	}
+
+	svc.mu.RLock()
+	defer svc.mu.RUnlock()
+	orderIdx = svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		t.Fatalf("expected demo order ord_payload_1 after no-op")
+	}
+	if got := svc.orders[orderIdx].ManifestID; got != originalManifestID {
+		t.Fatalf("expected manifest_id %q to remain unchanged, got %q", originalManifestID, got)
+	}
+	if got := svc.orders[orderIdx].RouteID; got != originalRouteID {
+		t.Fatalf("expected route_id %q to remain unchanged, got %q", originalRouteID, got)
+	}
+	if got := svc.orders[orderIdx].ReassignDepth; got != originalDepth {
+		t.Fatalf("expected reassign depth %d to remain unchanged, got %d", originalDepth, got)
+	}
+}
+
+func TestHandleApplyReassign_TargetUnavailableConflict(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	cacheBackend := &payloadCacheBackendSpy{}
+	supplierConn := &payloadWSConnSpy{id: "supplier-conn"}
+	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
+
+	svc := newPayloadTestService(repo, cacheBackend)
+	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
+	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
+
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	for i := range svc.manifests {
+		svc.manifests[i].State = payloadManifestStateSealed
+	}
+	orderIdx := svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		svc.mu.Unlock()
+		t.Fatalf("expected demo order ord_payload_1")
+	}
+	originalManifestID := svc.orders[orderIdx].ManifestID
+	originalRouteID := svc.orders[orderIdx].RouteID
+	svc.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","reason":"auto-no-target"}`))
+	rr := httptest.NewRecorder()
+
+	svc.HandleApplyReassign(rr, req)
+
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("expected status 409, got %d body=%s", rr.Code, rr.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if got, _ := body["error"].(string); got != "reassign_target_unavailable" {
+		t.Fatalf("expected reassign_target_unavailable, got %q", got)
+	}
+
+	if repo.applyCalls != 1 {
+		t.Fatalf("expected one repo apply call, got %d", repo.applyCalls)
+	}
+	if len(repo.events) != 0 {
+		t.Fatalf("expected no outbox events when target unavailable, got %d", len(repo.events))
+	}
+	if len(cacheBackend.deletedKeys) != 0 {
+		t.Fatalf("expected no cache invalidation when target unavailable")
+	}
+	if len(supplierConn.messages) != 0 {
+		t.Fatalf("expected no supplier websocket events when target unavailable")
+	}
+	if len(payloadConn.messages) != 0 {
+		t.Fatalf("expected no payload websocket events when target unavailable")
+	}
+
+	svc.mu.RLock()
+	defer svc.mu.RUnlock()
+	orderIdx = svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		t.Fatalf("expected demo order ord_payload_1 after conflict")
+	}
+	if got := svc.orders[orderIdx].ManifestID; got != originalManifestID {
+		t.Fatalf("expected manifest_id %q to remain unchanged, got %q", originalManifestID, got)
+	}
+	if got := svc.orders[orderIdx].RouteID; got != originalRouteID {
+		t.Fatalf("expected route_id %q to remain unchanged, got %q", originalRouteID, got)
+	}
+}
+
+func TestHandleApplyReassign_SameManifestCandidateNoop(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	cacheBackend := &payloadCacheBackendSpy{}
+	supplierConn := &payloadWSConnSpy{id: "supplier-conn"}
+	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
+
+	svc := newPayloadTestService(repo, cacheBackend)
+	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
+	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
+
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	orderIdx := svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		svc.mu.Unlock()
+		t.Fatalf("expected demo order ord_payload_1")
+	}
+	originalManifestID := svc.orders[orderIdx].ManifestID
+	originalRouteID := svc.orders[orderIdx].RouteID
+	originalDepth := svc.orders[orderIdx].ReassignDepth
+	originalManifestOrderCount := len(svc.manifestOrders[originalManifestID])
+	svc.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_1","reason":"same-manifest"}`))
+	rr := httptest.NewRecorder()
+
+	svc.HandleApplyReassign(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d body=%s", rr.Code, rr.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if got, _ := body["status"].(string); got != "already_assigned" {
+		t.Fatalf("expected status already_assigned, got %q", got)
+	}
+
+	if repo.applyCalls != 1 {
+		t.Fatalf("expected one repo apply call, got %d", repo.applyCalls)
+	}
+	if len(repo.events) != 0 {
+		t.Fatalf("expected no outbox events for same-manifest no-op, got %d", len(repo.events))
+	}
+	if len(cacheBackend.deletedKeys) != 0 {
+		t.Fatalf("expected no cache invalidation for same-manifest no-op")
+	}
+	if len(supplierConn.messages) != 0 {
+		t.Fatalf("expected no supplier websocket events for same-manifest no-op")
+	}
+	if len(payloadConn.messages) != 0 {
+		t.Fatalf("expected no payload websocket events for same-manifest no-op")
+	}
+
+	svc.mu.RLock()
+	defer svc.mu.RUnlock()
+	orderIdx = svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		t.Fatalf("expected demo order ord_payload_1 after no-op")
+	}
+	if got := svc.orders[orderIdx].ManifestID; got != originalManifestID {
+		t.Fatalf("expected manifest_id %q to remain unchanged, got %q", originalManifestID, got)
+	}
+	if got := svc.orders[orderIdx].RouteID; got != originalRouteID {
+		t.Fatalf("expected route_id %q to remain unchanged, got %q", originalRouteID, got)
+	}
+	if got := svc.orders[orderIdx].ReassignDepth; got != originalDepth {
+		t.Fatalf("expected reassign depth %d to remain unchanged, got %d", originalDepth, got)
+	}
+	if got := len(svc.manifestOrders[originalManifestID]); got != originalManifestOrderCount {
+		t.Fatalf("expected manifest order count %d to remain unchanged, got %d", originalManifestOrderCount, got)
+	}
+}
+
+func TestHandleApplyReassign_ExplicitSameRouteNoop(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	cacheBackend := &payloadCacheBackendSpy{}
+	supplierConn := &payloadWSConnSpy{id: "supplier-conn"}
+	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
+
+	svc := newPayloadTestService(repo, cacheBackend)
+	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
+	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
+
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	orderIdx := svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		svc.mu.Unlock()
+		t.Fatalf("expected demo order ord_payload_1")
+	}
+	originalManifestID := svc.orders[orderIdx].ManifestID
+	originalRouteID := svc.orders[orderIdx].RouteID
+	originalDepth := svc.orders[orderIdx].ReassignDepth
+	svc.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_route_id":"route_veh_payload_1","reason":"explicit-same-route"}`))
+	rr := httptest.NewRecorder()
+
+	svc.HandleApplyReassign(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d body=%s", rr.Code, rr.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if got, _ := body["status"].(string); got != "already_assigned" {
+		t.Fatalf("expected status already_assigned, got %q", got)
+	}
+
+	if repo.applyCalls != 1 {
+		t.Fatalf("expected one repo apply call, got %d", repo.applyCalls)
+	}
+	if len(repo.events) != 0 {
+		t.Fatalf("expected no outbox events for explicit same-route no-op, got %d", len(repo.events))
+	}
+	if len(cacheBackend.deletedKeys) != 0 {
+		t.Fatalf("expected no cache invalidation for explicit same-route no-op")
+	}
+	if len(supplierConn.messages) != 0 {
+		t.Fatalf("expected no supplier websocket events for explicit same-route no-op")
+	}
+	if len(payloadConn.messages) != 0 {
+		t.Fatalf("expected no payload websocket events for explicit same-route no-op")
+	}
+
+	svc.mu.RLock()
+	defer svc.mu.RUnlock()
+	orderIdx = svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		t.Fatalf("expected demo order ord_payload_1 after no-op")
+	}
+	if got := svc.orders[orderIdx].ManifestID; got != originalManifestID {
+		t.Fatalf("expected manifest_id %q to remain unchanged, got %q", originalManifestID, got)
+	}
+	if got := svc.orders[orderIdx].RouteID; got != originalRouteID {
+		t.Fatalf("expected route_id %q to remain unchanged, got %q", originalRouteID, got)
+	}
+	if got := svc.orders[orderIdx].ReassignDepth; got != originalDepth {
+		t.Fatalf("expected reassign depth %d to remain unchanged, got %d", originalDepth, got)
+	}
+}
+
+func TestHandleApplyReassign_ExplicitSameRouteSelectsAlternateManifestWhenSourceNotMutable(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	cacheBackend := &payloadCacheBackendSpy{}
+	supplierConn := &payloadWSConnSpy{id: "supplier-conn"}
+	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
+
+	svc := newPayloadTestService(repo, cacheBackend)
+	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
+	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
+
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	orderIdx := svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		svc.mu.Unlock()
+		t.Fatalf("expected demo order ord_payload_1")
+	}
+	originalManifestID := svc.orders[orderIdx].ManifestID
+	originalRouteID := svc.orders[orderIdx].RouteID
+	originalDepth := svc.orders[orderIdx].ReassignDepth
+
+	sourceManifestIdx := svc.findManifestIndexLocked(originalManifestID)
+	if sourceManifestIdx < 0 {
+		svc.mu.Unlock()
+		t.Fatalf("expected source manifest %q", originalManifestID)
+	}
+	svc.manifests[sourceManifestIdx].State = payloadManifestStateSealed
+	svc.manifests[sourceManifestIdx].UpdatedAt = svc.now().Format(time.RFC3339Nano)
+
+	now := svc.now().Format(time.RFC3339Nano)
+	svc.manifests = append(svc.manifests, ManifestRow{
+		ManifestID:    "mf_payload_alt_same_route",
+		VehicleID:     "veh_payload_1",
+		DriverID:      "drv_payload_alt",
+		State:         payloadManifestStateDraft,
+		TotalVolumeVU: 0,
+		MaxVolumeVU:   140,
+		StopCount:     0,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	})
+	svc.manifestOrders["mf_payload_alt_same_route"] = []ManifestOrder{}
+	svc.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_route_id":"route_veh_payload_1","reason":"sealed-source-same-route"}`))
+	rr := httptest.NewRecorder()
+
+	svc.HandleApplyReassign(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d body=%s", rr.Code, rr.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if got, _ := body["status"].(string); got != "order_reassigned" {
+		t.Fatalf("expected status order_reassigned, got %q", got)
+	}
+	if got, _ := body["to_manifest_id"].(string); got != "mf_payload_alt_same_route" {
+		t.Fatalf("expected to_manifest_id mf_payload_alt_same_route, got %q", got)
+	}
+	if got, _ := body["to_route_id"].(string); got != originalRouteID {
+		t.Fatalf("expected to_route_id %q, got %q", originalRouteID, got)
+	}
+
+	if repo.applyCalls != 1 {
+		t.Fatalf("expected one repo apply call, got %d", repo.applyCalls)
+	}
+	types := payloadOutboxEventTypes(repo.events)
+	if len(types) != 1 || types[0] != events.EventManifestRebalanced {
+		t.Fatalf("unexpected outbox events: %#v", types)
+	}
+
+	assertPayloadCacheDeletedKeys(t, cacheBackend.deletedKeys,
+		payloadManifestKey(originalManifestID),
+		payloadManifestListKey("supplier-test"),
+		payloadOrderListKey("supplier-test"),
+		payloadManifestKey("mf_payload_alt_same_route"),
+	)
+
+	assertPayloadWSMessageContainsType(t, supplierConn.messages, events.EventManifestRebalanced)
+	assertPayloadWSMessageContainsType(t, payloadConn.messages, events.EventManifestRebalanced)
+
+	svc.mu.RLock()
+	defer svc.mu.RUnlock()
+	orderIdx = svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		t.Fatalf("expected demo order ord_payload_1 after reassignment")
+	}
+	if got := svc.orders[orderIdx].ManifestID; got != "mf_payload_alt_same_route" {
+		t.Fatalf("expected manifest_id mf_payload_alt_same_route, got %q", got)
+	}
+	if got := svc.orders[orderIdx].RouteID; got != originalRouteID {
+		t.Fatalf("expected route_id %q, got %q", originalRouteID, got)
+	}
+	if got := svc.orders[orderIdx].ReassignDepth; got != originalDepth+1 {
+		t.Fatalf("expected reassign depth %d, got %d", originalDepth+1, got)
+	}
+}
+
+func TestHandleApplyReassign_TargetDriverManifestMismatch(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	cacheBackend := &payloadCacheBackendSpy{}
+	supplierConn := &payloadWSConnSpy{id: "supplier-conn"}
+	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
+
+	svc := newPayloadTestService(repo, cacheBackend)
+	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
+	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
+
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	now := svc.now().Format(time.RFC3339Nano)
+	svc.manifests = append(svc.manifests, ManifestRow{
+		ManifestID:    "mf_payload_2",
+		VehicleID:     "veh_payload_2",
+		DriverID:      "drv_payload_2",
+		State:         payloadManifestStateDraft,
+		TotalVolumeVU: 0,
+		MaxVolumeVU:   140,
+		StopCount:     0,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	})
+	svc.manifestOrders["mf_payload_2"] = []ManifestOrder{}
+
+	orderIdx := svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		svc.mu.Unlock()
+		t.Fatalf("expected demo order ord_payload_1")
+	}
+	originalManifestID := svc.orders[orderIdx].ManifestID
+	originalRouteID := svc.orders[orderIdx].RouteID
+	originalDepth := svc.orders[orderIdx].ReassignDepth
+	svc.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","to_driver_id":"drv_payload_other","reason":"driver-manifest-mismatch"}`))
+	rr := httptest.NewRecorder()
+
+	svc.HandleApplyReassign(rr, req)
+
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("expected status 409, got %d body=%s", rr.Code, rr.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if got, _ := body["error"].(string); got != "target_driver_manifest_mismatch" {
+		t.Fatalf("expected target_driver_manifest_mismatch, got %q", got)
+	}
+
+	if repo.applyCalls != 1 {
+		t.Fatalf("expected one repo apply call, got %d", repo.applyCalls)
+	}
+	if len(repo.events) != 0 {
+		t.Fatalf("expected no outbox events on target_driver_manifest_mismatch")
+	}
+	if len(cacheBackend.deletedKeys) != 0 {
+		t.Fatalf("expected no cache invalidation on target_driver_manifest_mismatch")
+	}
+	if len(supplierConn.messages) != 0 {
+		t.Fatalf("expected no supplier websocket events on target_driver_manifest_mismatch")
+	}
+	if len(payloadConn.messages) != 0 {
+		t.Fatalf("expected no payload websocket events on target_driver_manifest_mismatch")
+	}
+
+	svc.mu.RLock()
+	defer svc.mu.RUnlock()
+	orderIdx = svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		t.Fatalf("expected demo order ord_payload_1 after conflict")
+	}
+	if got := svc.orders[orderIdx].ManifestID; got != originalManifestID {
+		t.Fatalf("expected manifest_id %q to remain unchanged, got %q", originalManifestID, got)
+	}
+	if got := svc.orders[orderIdx].RouteID; got != originalRouteID {
+		t.Fatalf("expected route_id %q to remain unchanged, got %q", originalRouteID, got)
+	}
+	if got := svc.orders[orderIdx].ReassignDepth; got != originalDepth {
+		t.Fatalf("expected reassign depth %d to remain unchanged, got %d", originalDepth, got)
+	}
+}
+
+func TestHandleApplyReassign_SourceManifestOrderMissingConflict(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	cacheBackend := &payloadCacheBackendSpy{}
+	supplierConn := &payloadWSConnSpy{id: "supplier-conn"}
+	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
+
+	svc := newPayloadTestService(repo, cacheBackend)
+	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
+	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
+
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	now := svc.now().Format(time.RFC3339Nano)
+	svc.manifests = append(svc.manifests, ManifestRow{
+		ManifestID:    "mf_payload_2",
+		VehicleID:     "veh_payload_2",
+		DriverID:      "drv_payload_2",
+		State:         payloadManifestStateDraft,
+		TotalVolumeVU: 0,
+		MaxVolumeVU:   140,
+		StopCount:     0,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	})
+	svc.manifestOrders["mf_payload_2"] = []ManifestOrder{}
+	svc.manifestOrders["mf_payload_1"] = []ManifestOrder{{ManifestID: "mf_payload_1", OrderID: "ord_payload_2", State: "ASSIGNED", VolumeVU: 34, UpdatedAt: now}}
+
+	orderIdx := svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		svc.mu.Unlock()
+		t.Fatalf("expected demo order ord_payload_1")
+	}
+	originalManifestID := svc.orders[orderIdx].ManifestID
+	originalRouteID := svc.orders[orderIdx].RouteID
+	originalDepth := svc.orders[orderIdx].ReassignDepth
+	svc.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"source-order-missing"}`))
+	rr := httptest.NewRecorder()
+
+	svc.HandleApplyReassign(rr, req)
+
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("expected status 409, got %d body=%s", rr.Code, rr.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if got, _ := body["error"].(string); got != "source_manifest_order_missing" {
+		t.Fatalf("expected source_manifest_order_missing, got %q", got)
+	}
+
+	if repo.applyCalls != 1 {
+		t.Fatalf("expected one repo apply call, got %d", repo.applyCalls)
+	}
+	if len(repo.events) != 0 {
+		t.Fatalf("expected no outbox events on source_manifest_order_missing")
+	}
+	if len(cacheBackend.deletedKeys) != 0 {
+		t.Fatalf("expected no cache invalidation on source_manifest_order_missing")
+	}
+	if len(supplierConn.messages) != 0 {
+		t.Fatalf("expected no supplier websocket events on source_manifest_order_missing")
+	}
+	if len(payloadConn.messages) != 0 {
+		t.Fatalf("expected no payload websocket events on source_manifest_order_missing")
+	}
+
+	svc.mu.RLock()
+	defer svc.mu.RUnlock()
+	orderIdx = svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		t.Fatalf("expected demo order ord_payload_1 after conflict")
+	}
+	if got := svc.orders[orderIdx].ManifestID; got != originalManifestID {
+		t.Fatalf("expected manifest_id %q to remain unchanged, got %q", originalManifestID, got)
+	}
+	if got := svc.orders[orderIdx].RouteID; got != originalRouteID {
+		t.Fatalf("expected route_id %q to remain unchanged, got %q", originalRouteID, got)
+	}
+	if got := svc.orders[orderIdx].ReassignDepth; got != originalDepth {
+		t.Fatalf("expected reassign depth %d to remain unchanged, got %d", originalDepth, got)
+	}
+}
+
+func TestHandleApplyReassign_SourceRouteManifestMismatchConflict(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	cacheBackend := &payloadCacheBackendSpy{}
+	supplierConn := &payloadWSConnSpy{id: "supplier-conn"}
+	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
+
+	svc := newPayloadTestService(repo, cacheBackend)
+	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
+	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
+
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	now := svc.now().Format(time.RFC3339Nano)
+	svc.manifests = append(svc.manifests, ManifestRow{
+		ManifestID:    "mf_payload_2",
+		VehicleID:     "veh_payload_2",
+		DriverID:      "drv_payload_2",
+		State:         payloadManifestStateDraft,
+		TotalVolumeVU: 0,
+		MaxVolumeVU:   140,
+		StopCount:     0,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	})
+	svc.manifestOrders["mf_payload_2"] = []ManifestOrder{}
+
+	orderIdx := svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		svc.mu.Unlock()
+		t.Fatalf("expected demo order ord_payload_1")
+	}
+	originalManifestID := svc.orders[orderIdx].ManifestID
+	originalDepth := svc.orders[orderIdx].ReassignDepth
+	svc.orders[orderIdx].RouteID = "route_veh_payload_drift"
+	svc.mu.Unlock()
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"source-route-mismatch"}`))
+	rr := httptest.NewRecorder()
+
+	svc.HandleApplyReassign(rr, req)
+
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("expected status 409, got %d body=%s", rr.Code, rr.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if got, _ := body["error"].(string); got != "source_route_manifest_mismatch" {
+		t.Fatalf("expected source_route_manifest_mismatch, got %q", got)
+	}
+
+	if repo.applyCalls != 1 {
+		t.Fatalf("expected one repo apply call, got %d", repo.applyCalls)
+	}
+	if len(repo.events) != 0 {
+		t.Fatalf("expected no outbox events on source_route_manifest_mismatch")
+	}
+	if len(cacheBackend.deletedKeys) != 0 {
+		t.Fatalf("expected no cache invalidation on source_route_manifest_mismatch")
+	}
+	if len(supplierConn.messages) != 0 {
+		t.Fatalf("expected no supplier websocket events on source_route_manifest_mismatch")
+	}
+	if len(payloadConn.messages) != 0 {
+		t.Fatalf("expected no payload websocket events on source_route_manifest_mismatch")
+	}
+
+	svc.mu.RLock()
+	defer svc.mu.RUnlock()
+	orderIdx = svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		t.Fatalf("expected demo order ord_payload_1 after conflict")
+	}
+	if got := svc.orders[orderIdx].ManifestID; got != originalManifestID {
+		t.Fatalf("expected manifest_id %q to remain unchanged, got %q", originalManifestID, got)
+	}
+	if got := svc.orders[orderIdx].ReassignDepth; got != originalDepth {
+		t.Fatalf("expected reassign depth %d to remain unchanged, got %d", originalDepth, got)
+	}
+}
+
+func TestHandleApplyReassign_TargetRouteMismatchAfterSuccess_NoExtraFanout(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	cacheBackend := &payloadCacheBackendSpy{}
+	supplierConn := &payloadWSConnSpy{id: "supplier-conn"}
+	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
+
+	svc := newPayloadTestService(repo, cacheBackend)
+	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
+	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
+
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	now := svc.now().Format(time.RFC3339Nano)
+	svc.manifests = append(svc.manifests, ManifestRow{
+		ManifestID:    "mf_payload_2",
+		VehicleID:     "veh_payload_2",
+		DriverID:      "drv_payload_2",
+		State:         payloadManifestStateDraft,
+		TotalVolumeVU: 0,
+		MaxVolumeVU:   140,
+		StopCount:     0,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	})
+	svc.manifestOrders["mf_payload_2"] = []ManifestOrder{}
+	svc.mu.Unlock()
+
+	firstReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"baseline-success"}`))
+	firstRR := httptest.NewRecorder()
+	svc.HandleApplyReassign(firstRR, firstReq)
+	if firstRR.Code != http.StatusOK {
+		t.Fatalf("expected first status 200, got %d body=%s", firstRR.Code, firstRR.Body.String())
+	}
+
+	outboxTypesAfterFirst := payloadOutboxEventTypes(repo.events)
+	cacheCallsAfterFirst := len(cacheBackend.deletedKeys)
+	supplierTypesAfterFirst := payloadWSMessageTypes(supplierConn.messages)
+	payloadTypesAfterFirst := payloadWSMessageTypes(payloadConn.messages)
+
+	secondReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","to_route_id":"route_veh_payload_1","reason":"force-route-conflict"}`))
+	secondRR := httptest.NewRecorder()
+	svc.HandleApplyReassign(secondRR, secondReq)
+
+	if secondRR.Code != http.StatusConflict {
+		t.Fatalf("expected second status 409, got %d body=%s", secondRR.Code, secondRR.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(secondRR.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode second response: %v", err)
+	}
+	if got, _ := body["error"].(string); got != "target_route_mismatch" {
+		t.Fatalf("expected target_route_mismatch, got %q", got)
+	}
+
+	if repo.applyCalls != 2 {
+		t.Fatalf("expected two repo apply calls, got %d", repo.applyCalls)
+	}
+	if got := payloadOutboxEventTypes(repo.events); len(got) != len(outboxTypesAfterFirst) {
+		t.Fatalf("expected no extra outbox events on target_route_mismatch, got %#v", got)
+	} else {
+		for i := range got {
+			if got[i] != outboxTypesAfterFirst[i] {
+				t.Fatalf("expected outbox contract sequence unchanged, got %#v want %#v", got, outboxTypesAfterFirst)
+			}
+		}
+	}
+	if len(cacheBackend.deletedKeys) != cacheCallsAfterFirst {
+		t.Fatalf("expected no extra cache invalidation on target_route_mismatch")
+	}
+	if got := payloadWSMessageTypes(supplierConn.messages); len(got) != len(supplierTypesAfterFirst) {
+		t.Fatalf("expected no extra supplier ws events on target_route_mismatch, got %#v", got)
+	} else {
+		for i := range got {
+			if got[i] != supplierTypesAfterFirst[i] {
+				t.Fatalf("expected supplier ws contract sequence unchanged, got %#v want %#v", got, supplierTypesAfterFirst)
+			}
+		}
+	}
+	if got := payloadWSMessageTypes(payloadConn.messages); len(got) != len(payloadTypesAfterFirst) {
+		t.Fatalf("expected no extra payload ws events on target_route_mismatch, got %#v", got)
+	} else {
+		for i := range got {
+			if got[i] != payloadTypesAfterFirst[i] {
+				t.Fatalf("expected payload ws contract sequence unchanged, got %#v want %#v", got, payloadTypesAfterFirst)
+			}
+		}
+	}
+}
+
+func TestHandleApplyReassign_SourceManifestOrderMissingAfterSuccess_NoExtraFanout(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	cacheBackend := &payloadCacheBackendSpy{}
+	supplierConn := &payloadWSConnSpy{id: "supplier-conn"}
+	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
+
+	svc := newPayloadTestService(repo, cacheBackend)
+	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
+	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
+
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	now := svc.now().Format(time.RFC3339Nano)
+	svc.manifests = append(svc.manifests,
+		ManifestRow{
+			ManifestID:    "mf_payload_2",
+			VehicleID:     "veh_payload_2",
+			DriverID:      "drv_payload_2",
+			State:         payloadManifestStateDraft,
+			TotalVolumeVU: 0,
+			MaxVolumeVU:   140,
+			StopCount:     0,
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		},
+		ManifestRow{
+			ManifestID:    "mf_payload_3",
+			VehicleID:     "veh_payload_3",
+			DriverID:      "drv_payload_3",
+			State:         payloadManifestStateDraft,
+			TotalVolumeVU: 0,
+			MaxVolumeVU:   140,
+			StopCount:     0,
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		},
+	)
+	svc.manifestOrders["mf_payload_2"] = []ManifestOrder{}
+	svc.manifestOrders["mf_payload_3"] = []ManifestOrder{}
+	svc.mu.Unlock()
+
+	firstReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"baseline-success"}`))
+	firstRR := httptest.NewRecorder()
+	svc.HandleApplyReassign(firstRR, firstReq)
+	if firstRR.Code != http.StatusOK {
+		t.Fatalf("expected first status 200, got %d body=%s", firstRR.Code, firstRR.Body.String())
+	}
+
+	outboxTypesAfterFirst := payloadOutboxEventTypes(repo.events)
+	cacheCallsAfterFirst := len(cacheBackend.deletedKeys)
+	supplierTypesAfterFirst := payloadWSMessageTypes(supplierConn.messages)
+	payloadTypesAfterFirst := payloadWSMessageTypes(payloadConn.messages)
+
+	svc.mu.Lock()
+	delete(svc.manifestOrders, "mf_payload_2")
+	svc.mu.Unlock()
+
+	secondReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(`{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_3","reason":"source-order-missing-after-success"}`))
+	secondRR := httptest.NewRecorder()
+	svc.HandleApplyReassign(secondRR, secondReq)
+
+	if secondRR.Code != http.StatusConflict {
+		t.Fatalf("expected second status 409, got %d body=%s", secondRR.Code, secondRR.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(secondRR.Body.Bytes(), &body); err != nil {
+		t.Fatalf("failed to decode second response: %v", err)
+	}
+	if got, _ := body["error"].(string); got != "source_manifest_order_missing" {
+		t.Fatalf("expected source_manifest_order_missing, got %q", got)
+	}
+
+	if repo.applyCalls != 2 {
+		t.Fatalf("expected two repo apply calls, got %d", repo.applyCalls)
+	}
+	if got := payloadOutboxEventTypes(repo.events); len(got) != len(outboxTypesAfterFirst) {
+		t.Fatalf("expected no extra outbox events on source_manifest_order_missing, got %#v", got)
+	} else {
+		for i := range got {
+			if got[i] != outboxTypesAfterFirst[i] {
+				t.Fatalf("expected outbox contract sequence unchanged, got %#v want %#v", got, outboxTypesAfterFirst)
+			}
+		}
+	}
+	if len(cacheBackend.deletedKeys) != cacheCallsAfterFirst {
+		t.Fatalf("expected no extra cache invalidation on source_manifest_order_missing")
+	}
+	if got := payloadWSMessageTypes(supplierConn.messages); len(got) != len(supplierTypesAfterFirst) {
+		t.Fatalf("expected no extra supplier ws events on source_manifest_order_missing, got %#v", got)
+	} else {
+		for i := range got {
+			if got[i] != supplierTypesAfterFirst[i] {
+				t.Fatalf("expected supplier ws contract sequence unchanged, got %#v want %#v", got, supplierTypesAfterFirst)
+			}
+		}
+	}
+	if got := payloadWSMessageTypes(payloadConn.messages); len(got) != len(payloadTypesAfterFirst) {
+		t.Fatalf("expected no extra payload ws events on source_manifest_order_missing, got %#v", got)
+	} else {
+		for i := range got {
+			if got[i] != payloadTypesAfterFirst[i] {
+				t.Fatalf("expected payload ws contract sequence unchanged, got %#v want %#v", got, payloadTypesAfterFirst)
+			}
+		}
+	}
+}
+
+func TestHandleApplyReassign_ReplayAfterSuccessIdempotent(t *testing.T) {
+	repo := &payloadRepoSpy{}
+	cacheBackend := &payloadCacheBackendSpy{}
+	supplierConn := &payloadWSConnSpy{id: "supplier-conn"}
+	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
+
+	svc := newPayloadTestService(repo, cacheBackend)
+	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
+	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
+
+	svc.mu.Lock()
+	svc.ensureDemoDataLocked()
+	now := svc.now().Format(time.RFC3339Nano)
+	svc.manifests = append(svc.manifests, ManifestRow{
+		ManifestID:    "mf_payload_2",
+		VehicleID:     "veh_payload_2",
+		DriverID:      "drv_payload_2",
+		State:         payloadManifestStateDraft,
+		TotalVolumeVU: 0,
+		MaxVolumeVU:   140,
+		StopCount:     0,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	})
+	svc.manifestOrders["mf_payload_2"] = []ManifestOrder{}
+	orderIdx := svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		svc.mu.Unlock()
+		t.Fatalf("expected demo order ord_payload_1")
+	}
+	originalDepth := svc.orders[orderIdx].ReassignDepth
+	svc.mu.Unlock()
+
+	body := `{"order_id":"ord_payload_1","to_manifest_id":"mf_payload_2","reason":"replay-idempotency"}`
+
+	firstReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(body))
+	firstRR := httptest.NewRecorder()
+	svc.HandleApplyReassign(firstRR, firstReq)
+
+	if firstRR.Code != http.StatusOK {
+		t.Fatalf("expected first status 200, got %d body=%s", firstRR.Code, firstRR.Body.String())
+	}
+	var firstBody map[string]any
+	if err := json.Unmarshal(firstRR.Body.Bytes(), &firstBody); err != nil {
+		t.Fatalf("failed to decode first response: %v", err)
+	}
+	if got, _ := firstBody["status"].(string); got != "order_reassigned" {
+		t.Fatalf("expected first status order_reassigned, got %q", got)
+	}
+
+	if len(repo.events) != 1 {
+		t.Fatalf("expected one outbox event after first reassignment, got %d", len(repo.events))
+	}
+	var firstEventPayload map[string]any
+	if err := json.Unmarshal(repo.events[0].Payload, &firstEventPayload); err != nil {
+		t.Fatalf("failed to decode first outbox payload: %v", err)
+	}
+	if got, _ := firstEventPayload["type"].(string); got != events.EventManifestRebalanced {
+		t.Fatalf("expected outbox type %q, got %q", events.EventManifestRebalanced, got)
+	}
+	if got, _ := firstEventPayload["order_id"].(string); got != "ord_payload_1" {
+		t.Fatalf("expected outbox order_id ord_payload_1, got %q", got)
+	}
+	if got, _ := firstEventPayload["from_manifest_id"].(string); got != "mf_payload_1" {
+		t.Fatalf("expected outbox from_manifest_id mf_payload_1, got %q", got)
+	}
+	if got, _ := firstEventPayload["to_manifest_id"].(string); got != "mf_payload_2" {
+		t.Fatalf("expected outbox to_manifest_id mf_payload_2, got %q", got)
+	}
+	if got, _ := firstEventPayload["to_route_id"].(string); got != "route_veh_payload_2" {
+		t.Fatalf("expected outbox to_route_id route_veh_payload_2, got %q", got)
+	}
+	if got, _ := firstEventPayload["to_driver_id"].(string); got != "drv_payload_2" {
+		t.Fatalf("expected outbox to_driver_id drv_payload_2, got %q", got)
+	}
+	outboxTypesAfterFirst := payloadOutboxEventTypes(repo.events)
+	cacheCallsAfterFirst := len(cacheBackend.deletedKeys)
+	supplierMessagesAfterFirst := len(supplierConn.messages)
+	payloadMessagesAfterFirst := len(payloadConn.messages)
+	supplierTypesAfterFirst := payloadWSMessageTypes(supplierConn.messages)
+	payloadTypesAfterFirst := payloadWSMessageTypes(payloadConn.messages)
+
+	if len(supplierConn.messages) == 0 {
+		t.Fatalf("expected supplier ws fanout after first reassignment")
+	}
+	if envelope := decodePayloadWSEnvelope(t, supplierConn.messages[len(supplierConn.messages)-1]); envelope.Type != events.EventManifestRebalanced {
+		t.Fatalf("expected supplier ws type %q, got %q", events.EventManifestRebalanced, envelope.Type)
+	} else {
+		if got, _ := envelope.Data["order_id"].(string); got != "ord_payload_1" {
+			t.Fatalf("expected supplier ws order_id ord_payload_1, got %q", got)
+		}
+		if got, _ := envelope.Data["from_manifest_id"].(string); got != "mf_payload_1" {
+			t.Fatalf("expected supplier ws from_manifest_id mf_payload_1, got %q", got)
+		}
+		if got, _ := envelope.Data["to_manifest_id"].(string); got != "mf_payload_2" {
+			t.Fatalf("expected supplier ws to_manifest_id mf_payload_2, got %q", got)
+		}
+	}
+	if len(payloadConn.messages) == 0 {
+		t.Fatalf("expected payload ws fanout after first reassignment")
+	}
+	if envelope := decodePayloadWSEnvelope(t, payloadConn.messages[len(payloadConn.messages)-1]); envelope.Type != events.EventManifestRebalanced {
+		t.Fatalf("expected payload ws type %q, got %q", events.EventManifestRebalanced, envelope.Type)
+	}
+
+	secondReq := httptest.NewRequest(http.MethodPost, "/v1/payloader/reassign-order", strings.NewReader(body))
+	secondRR := httptest.NewRecorder()
+	svc.HandleApplyReassign(secondRR, secondReq)
+
+	if secondRR.Code != http.StatusOK {
+		t.Fatalf("expected second status 200, got %d body=%s", secondRR.Code, secondRR.Body.String())
+	}
+	var secondBody map[string]any
+	if err := json.Unmarshal(secondRR.Body.Bytes(), &secondBody); err != nil {
+		t.Fatalf("failed to decode second response: %v", err)
+	}
+	if got, _ := secondBody["status"].(string); got != "already_assigned" {
+		t.Fatalf("expected second status already_assigned, got %q", got)
+	}
+
+	if repo.applyCalls != 2 {
+		t.Fatalf("expected two repo apply calls, got %d", repo.applyCalls)
+	}
+	if len(repo.events) != 1 {
+		t.Fatalf("expected no extra outbox events on replay, got %d", len(repo.events))
+	}
+	if got := payloadOutboxEventTypes(repo.events); len(got) != len(outboxTypesAfterFirst) {
+		t.Fatalf("expected outbox contract sequence unchanged on replay, got %#v", got)
+	} else {
+		for i := range got {
+			if got[i] != outboxTypesAfterFirst[i] {
+				t.Fatalf("expected outbox contract sequence unchanged on replay, got %#v want %#v", got, outboxTypesAfterFirst)
+			}
+		}
+	}
+	if len(cacheBackend.deletedKeys) != cacheCallsAfterFirst {
+		t.Fatalf("expected no extra cache invalidation on replay")
+	}
+	if len(supplierConn.messages) != supplierMessagesAfterFirst {
+		t.Fatalf("expected no extra supplier websocket events on replay")
+	}
+	if len(payloadConn.messages) != payloadMessagesAfterFirst {
+		t.Fatalf("expected no extra payload websocket events on replay")
+	}
+	if got := payloadWSMessageTypes(supplierConn.messages); len(got) != len(supplierTypesAfterFirst) {
+		t.Fatalf("expected supplier ws contract sequence unchanged on replay, got %#v", got)
+	} else {
+		for i := range got {
+			if got[i] != supplierTypesAfterFirst[i] {
+				t.Fatalf("expected supplier ws contract sequence unchanged on replay, got %#v want %#v", got, supplierTypesAfterFirst)
+			}
+		}
+	}
+	if got := payloadWSMessageTypes(payloadConn.messages); len(got) != len(payloadTypesAfterFirst) {
+		t.Fatalf("expected payload ws contract sequence unchanged on replay, got %#v", got)
+	} else {
+		for i := range got {
+			if got[i] != payloadTypesAfterFirst[i] {
+				t.Fatalf("expected payload ws contract sequence unchanged on replay, got %#v want %#v", got, payloadTypesAfterFirst)
+			}
+		}
+	}
+
+	svc.mu.RLock()
+	defer svc.mu.RUnlock()
+	orderIdx = svc.findOrderIndexLocked("ord_payload_1")
+	if orderIdx < 0 {
+		t.Fatalf("expected demo order ord_payload_1 after replay")
+	}
+	if got := svc.orders[orderIdx].ManifestID; got != "mf_payload_2" {
+		t.Fatalf("expected manifest_id mf_payload_2, got %q", got)
+	}
+	if got := svc.orders[orderIdx].RouteID; got != "route_veh_payload_2" {
+		t.Fatalf("expected route_id route_veh_payload_2, got %q", got)
+	}
+	if got := svc.orders[orderIdx].ReassignDepth; got != originalDepth+1 {
+		t.Fatalf("expected reassign depth %d after replay, got %d", originalDepth+1, got)
+	}
+}
+
 func newPayloadTestService(repo *payloadRepoSpy, cacheBackend *payloadCacheBackendSpy) *Service {
 	now := time.Date(2026, 5, 17, 11, 0, 0, 0, time.UTC)
 	cacheClient := cache.New(cacheBackend, nil)
@@ -169,6 +1263,35 @@ func payloadOutboxEventTypes(eventsList []outbox.Event) []string {
 		types = append(types, payload.Type)
 	}
 	return types
+}
+
+func payloadWSMessageTypes(messages [][]byte) []string {
+	types := make([]string, 0, len(messages))
+	for _, raw := range messages {
+		var envelope struct {
+			Type string `json:"type"`
+		}
+		if err := json.Unmarshal(raw, &envelope); err != nil {
+			types = append(types, "")
+			continue
+		}
+		types = append(types, envelope.Type)
+	}
+	return types
+}
+
+type payloadWSEnvelope struct {
+	Type string         `json:"type"`
+	Data map[string]any `json:"data"`
+}
+
+func decodePayloadWSEnvelope(t *testing.T, raw []byte) payloadWSEnvelope {
+	t.Helper()
+	var envelope payloadWSEnvelope
+	if err := json.Unmarshal(raw, &envelope); err != nil {
+		t.Fatalf("failed to decode payload ws envelope: %v", err)
+	}
+	return envelope
 }
 
 func assertPayloadContainsEventType(t *testing.T, got []string, want string) {
@@ -217,7 +1340,7 @@ type payloadRepoSpy struct {
 	events     []outbox.Event
 }
 
-func (r *payloadRepoSpy) Apply(ctx context.Context, mutate func() error, emit func(outbox.TxnBuffer) error) error {
+func (r *payloadRepoSpy) Apply(ctx context.Context, mutate func() error, _ func() *PersistenceSnapshot, emit func(outbox.TxnBuffer) error) error {
 	r.applyCalls++
 	if mutate != nil {
 		if err := mutate(); err != nil {

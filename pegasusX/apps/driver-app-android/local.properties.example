@@ -1,0 +1,11 @@
+# Copy to local.properties. Gradle reads this at configure time.
+# sdk.dir is auto-filled by Android Studio on first open.
+#
+# dev.host resolves to BuildConfig.API_BASE_URL in debug builds (port 8180 for pegasusX).
+#   Android emulator (AVD):       dev.host=10.0.2.2
+#   Physical device over Wi-Fi:   dev.host=192.168.1.42   (the Mac's LAN IP)
+# Production endpoint override:
+#   prod.api.base.url         -> Pegasus primary host (default)
+prod.api.base.url=https://api.pegasus.uz
+dev.host=10.0.2.2
+MAPS_API_KEY=

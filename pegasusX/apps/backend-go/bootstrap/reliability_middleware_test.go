@@ -40,6 +40,31 @@ func TestReliabilityMiddleware_RateLimitExceeded(t *testing.T) {
 	}
 }
 
+func TestReliabilityMiddleware_HealthExemptFromRateLimit(t *testing.T) {
+	current := time.Unix(1_700_000_000, 0)
+	cfg := DefaultReliabilityConfig()
+	cfg.RateLimitWindow = time.Minute
+	cfg.RateLimitDefaultMax = 1
+	cfg.PriorityMaxInFlight = 8
+	cfg.CircuitFailureThreshold = 100
+
+	middleware := newReliabilityMiddlewareWithClock(cfg, func() time.Time { return current })
+	h := middleware.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/health", nil)
+	req.RemoteAddr = "127.0.0.1:1234"
+
+	for i := 0; i < 5; i++ {
+		res := httptest.NewRecorder()
+		h.ServeHTTP(res, req)
+		if res.Code != http.StatusOK {
+			t.Fatalf("health request %d status = %d, want %d", i+1, res.Code, http.StatusOK)
+		}
+	}
+}
+
 func TestReliabilityMiddleware_ShedsOperationalWhenCapacityIsFull(t *testing.T) {
 	cfg := DefaultReliabilityConfig()
 	cfg.PriorityMaxInFlight = 1

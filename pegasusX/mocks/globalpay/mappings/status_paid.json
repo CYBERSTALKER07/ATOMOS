@@ -1,0 +1,19 @@
+{
+  "priority": 5,
+  "request": {
+    "method": "ANY",
+    "urlPathPattern": ".*/payment/(status|servicetoken|[0-9a-fA-F-]+).*"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "paymentId": "MOCK_PAY_SETTLED",
+      "paymentStatus": "SUCCESS",
+      "paid": true,
+      "amount": 5000000,
+      "currency": "UZS",
+      "isSuccessful": true
+    }
+  }
+}

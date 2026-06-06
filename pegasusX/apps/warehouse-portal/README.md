@@ -1,3 +1,45 @@
-# warehouse-portal
+# warehouse-portal (desktop)
 
-Next.js 15 + Tauri 2 desktop shell for warehouse admins. JWT role `SupplierRole=WAREHOUSE_ADMIN`. Live channel: `/ws/warehouse`.
+Next.js 15 + **Tauri 2** desktop shell for **WAREHOUSE_ADMIN** operators. Same route map as `pegasus/apps/warehouse-portal` (dashboard, orders, dispatch, inventory, supply, forecast, fleet, treasury, etc.).
+
+## Stack
+
+- **Next.js 15** App Router (static export for Tauri via `TAURI_BUILD=1`)
+- **Tauri 2** — keyring-backed JWT storage, shell/dialog/fs plugins
+- **Tailwind v4** + `@pegasusx/ui-kit` desktop foundation
+- **API**: pegasusX backend default `http://localhost:8180`
+
+## Auth
+
+- `POST /v1/auth/warehouse/login` — phone + PIN (demo: `+998901000088` / `1234`)
+- `POST /v1/auth/warehouse/refresh` — refresh token rotation
+- WebSocket: `GET /v1/ws?token=…` (warehouse + supplier rooms)
+
+## Commands
+
+```bash
+cd pegasusX
+pnpm install
+
+# Web only (browser)
+pnpm --filter @pegasusx/warehouse-portal dev
+
+# Desktop (Tauri + Next dev server on :3002)
+pnpm --filter @pegasusx/warehouse-portal tauri:dev
+
+# Release bundle
+pnpm --filter @pegasusx/warehouse-portal tauri:build
+```
+
+## Environment
+
+```bash
+# .env.local
+NEXT_PUBLIC_API_URL=http://localhost:8180
+```
+
+Tauri CSP allows `localhost:8180` and matching WebSocket origins.
+
+## Role sync
+
+Ship changes with **warehouse-app-ios**, **warehouse-app-android**, and pegasusX `backend-go/warehouse` contracts.

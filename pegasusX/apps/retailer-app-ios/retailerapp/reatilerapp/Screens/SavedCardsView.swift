@@ -1,0 +1,206 @@
+import SwiftUI
+
+struct SavedCardsView: View {
+    private var apiClient = APIClient.shared
+    @State private var cards: [RetailerCardToken] = []
+    @State private var isLoading = true
+    @State private var errorMessage: String? = nil
+    
+    // Webview / OTP states for GlobalPay would theoretically go here, but for simplicity we mock the initiate/confirm flow UI
+    @State private var showingAddCard = false
+    @State private var isAddingCard = false
+    @State private var optCode = ""
+    @State private var pendingCardToken: String? = nil
+    
+    var body: some View {
+        List {
+            if isLoading {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .center)
+            } else if let error = errorMessage {
+                Text(error)
+                    .foregroundColor(.red)
+            } else if cards.isEmpty {
+                Text("No saved cards. Add one to checkout faster.")
+                    .foregroundColor(.gray)
+            } else {
+                ForEach(cards) { card in
+                    cardRow(card)
+                }
+            }
+        }
+        .navigationTitle("Saved Cards")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { showingAddCard = true }) {
+                    Image(systemName: "plus")
+                }
+            }
+        }
+        .task {
+            await loadCards()
+        }
+        .sheet(isPresented: $showingAddCard) {
+            NavigationView {
+                Form {
+                    if let token = pendingCardToken {
+                        Section("Confirm OTP") {
+                            TextField("OTP Code", text: $optCode)
+                                .keyboardType(.numberPad)
+                            
+                            Button("Confirm") {
+                                Task {
+                                    await confirmCard(token: token)
+                                }
+                            }
+                            .disabled(optCode.isEmpty || isAddingCard)
+                        }
+                    } else {
+                        Section("Add New Card") {
+                            Text("This will initiate tokenization securely via GlobalPay.")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                            
+                            Button("Start Tokenization") {
+                                Task {
+                                    await initiateSave()
+                                }
+                            }
+                            .disabled(isAddingCard)
+                        }
+                    }
+                }
+                .navigationTitle("Add Card")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            showingAddCard = false
+                            pendingCardToken = nil
+                            optCode = ""
+                        }
+                    }
+                }
+                .overlay {
+                    if isAddingCard {
+                        ProgressView()
+                    }
+                }
+            }
+        }
+    }
+    
+    private func cardRow(_ card: RetailerCardToken) -> some View {
+        HStack {
+            Image(systemName: "creditcard.fill")
+                .foregroundColor(card.isDefault ? .blue : .primary)
+            
+            VStack(alignment: .leading) {
+                Text("\(card.cardType) •••• \(card.cardLast4)")
+                    .font(.headline)
+                if card.isDefault {
+                    Text("Default")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                }
+            }
+            Spacer()
+            
+            Menu {
+                if !card.isDefault {
+                    Button("Set Default") {
+                        Task { await setDefault(card.tokenId) }
+                    }
+                }
+                Button("Remove", role: .destructive) {
+                    Task { await deactivate(card.tokenId) }
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+        }
+    }
+    
+    private func loadCards() async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            let fetched = try await APIClient.shared.getCards()
+            cards = fetched.filter { $0.isActive }
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Saved cards access is restricted for this account.",
+                offline: "Offline mode active. Showing latest saved cards.",
+                fallback: "Saved cards could not be loaded. Please try again.",
+            )
+        }
+        isLoading = false
+    }
+    
+    private func initiateSave() async {
+        isAddingCard = true
+        errorMessage = nil
+        do {
+            let response = try await APIClient.shared.initiateCardSave()
+            pendingCardToken = response.cardToken
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Card setup access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry card setup.",
+                fallback: "Card setup could not be started. Please try again.",
+            )
+        }
+        isAddingCard = false
+    }
+    
+    private func confirmCard(token: String) async {
+        isAddingCard = true
+        errorMessage = nil
+        do {
+            let _ = try await APIClient.shared.confirmCardSave(cardToken: token, otpCode: optCode)
+            showingAddCard = false
+            pendingCardToken = nil
+            optCode = ""
+            await loadCards()
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Card confirmation access is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry card confirmation.",
+                fallback: "Card confirmation failed. Please verify OTP and try again.",
+            )
+        }
+        isAddingCard = false
+    }
+    
+    private func setDefault(_ tokenId: String) async {
+        do {
+            try await APIClient.shared.setDefaultCard(tokenId: tokenId)
+            errorMessage = nil
+            await loadCards()
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Default card update is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry default card update.",
+                fallback: "Default card could not be updated. Please try again.",
+            )
+        }
+    }
+    
+    private func deactivate(_ tokenId: String) async {
+        do {
+            try await APIClient.shared.deactivateCard(tokenId: tokenId)
+            errorMessage = nil
+            await loadCards()
+        } catch {
+            errorMessage = RetailerErrorSupport.message(
+                for: error,
+                restricted: "Card removal is restricted for this account.",
+                offline: "Offline mode active. Reconnect and retry card removal.",
+                fallback: "Card could not be removed. Please try again.",
+            )
+        }
+    }
+}

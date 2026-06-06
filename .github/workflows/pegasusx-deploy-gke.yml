@@ -1,0 +1,94 @@
+name: pegasusX Deploy — GKE
+
+on:
+  workflow_run:
+    workflows: ['pegasusX Docker — build and push']
+    types: [completed]
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag (default: triggering SHA or latest)'
+        required: false
+        default: latest
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  REGION: asia-south1
+  GKE_CLUSTER: ${{ vars.GKE_CLUSTER }}
+  K8S_NAMESPACE: pegasusx
+
+jobs:
+  deploy:
+    name: Deploy pegasusX to GKE
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SA_EMAIL }}
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.REGION }}
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+
+      - name: Resolve image tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Render manifests
+        working-directory: pegasusX
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_RUNTIME_SA_EMAIL: ${{ vars.GCP_RUNTIME_SA_EMAIL }}
+          BACKEND_IMAGE: ${{ vars.GAR_REPO }}/backend-go:${{ steps.tag.outputs.tag }}
+          AI_WORKER_IMAGE: ${{ vars.GAR_REPO }}/ai-worker:${{ steps.tag.outputs.tag }}
+          JWT_SECRET_GSM: ${{ vars.PEGASUSX_JWT_SECRET_GSM }}
+          GLOBAL_PAY_GSM: ${{ vars.PEGASUSX_GLOBAL_PAY_GSM }}
+          ADYEN_GSM: ${{ vars.PEGASUSX_ADYEN_GSM }}
+          STRIPE_GSM: ${{ vars.PEGASUSX_STRIPE_GSM }}
+        run: bash scripts/render_k8s_manifests.sh
+
+      - name: Apply namespace and workloads
+        run: |
+          kubectl apply -f pegasusX/artifacts/k8s-rendered/namespace.yaml
+          kubectl apply -f pegasusX/artifacts/k8s-rendered/serviceaccount.yaml
+          kubectl apply -f pegasusX/artifacts/k8s-rendered/backend-go-configmap.yaml
+          kubectl apply -f pegasusX/artifacts/k8s-rendered/backend-go-service.yaml
+          kubectl apply -f pegasusX/artifacts/k8s-rendered/ai-worker-configmap.yaml
+          kubectl apply -f pegasusX/artifacts/k8s-rendered/ai-worker-service.yaml
+          kubectl apply -f pegasusX/artifacts/k8s-rendered/backend-go-externalsecret.yaml
+          kubectl apply -f pegasusX/artifacts/k8s-rendered/backend-go-deployment.yaml
+          kubectl apply -f pegasusX/artifacts/k8s-rendered/ai-worker-deployment.yaml
+
+      - name: Run Spanner setup job
+        run: |
+          kubectl -n pegasusx delete job backend-go-migrate --ignore-not-found
+          kubectl apply -f pegasusX/artifacts/k8s-rendered/backend-go-migrate-job.yaml
+          kubectl -n pegasusx wait --for=condition=complete job/backend-go-migrate --timeout=300s
+
+      - name: Smoke /healthz via port-forward
+        run: |
+          kubectl -n pegasusx rollout status deployment/backend-go --timeout=300s
+          kubectl -n pegasusx port-forward svc/backend-go 18080:80 &
+          sleep 3
+          curl --fail --max-time 10 http://127.0.0.1:18080/healthz
+          curl --fail --max-time 10 http://127.0.0.1:18080/ready

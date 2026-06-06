@@ -1,0 +1,26 @@
+<svg width="640" height="420" viewBox="0 0 640 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="420" rx="28" fill="#F3F4F6"/>
+  <rect x="120" y="88" width="400" height="244" rx="28" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="2"/>
+  <rect x="160" y="126" width="150" height="18" rx="9" fill="#E5E7EB"/>
+  <rect x="160" y="160" width="320" height="18" rx="9" fill="#F1F5F9"/>
+  <rect x="160" y="194" width="320" height="18" rx="9" fill="#F1F5F9"/>
+  <rect x="160" y="228" width="320" height="18" rx="9" fill="#F1F5F9"/>
+  <rect x="160" y="262" width="320" height="18" rx="9" fill="#F1F5F9"/>
+  <g>
+    <rect x="160" y="160" width="96" height="18" rx="9" fill="#DBEAFE">
+      <animate attributeName="x" values="160;384;160" dur="2.6s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="160" y="194" width="120" height="18" rx="9" fill="#E0E7FF">
+      <animate attributeName="x" values="220;360;220" dur="2.9s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="160" y="228" width="84" height="18" rx="9" fill="#FFF3EA">
+      <animate attributeName="x" values="384;160;384" dur="2.3s" repeatCount="indefinite"/>
+    </rect>
+  </g>
+  <g>
+    <circle cx="442" cy="134" r="28" fill="#DBEAFE"/>
+    <path d="M442 118a16 16 0 1 1-11 4.4" stroke="#2563EB" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="430" cy="123" r="3.5" fill="#2563EB"/>
+    <animateTransform attributeName="transform" type="rotate" from="0 442 134" to="360 442 134" dur="1.4s" repeatCount="indefinite"/>
+  </g>
+</svg>

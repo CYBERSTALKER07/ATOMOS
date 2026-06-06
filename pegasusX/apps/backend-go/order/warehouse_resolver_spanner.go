@@ -22,8 +22,9 @@ func NewSpannerWarehouseResolver(client *spanner.Client) *SpannerWarehouseResolv
 }
 
 // ResolveNearestWarehouseID returns the closest warehouse id for the supplier.
-// It prefers warehouses where distance <= coverage radius; if none match
-// coverage, it falls back to the nearest active warehouse.
+// It only returns warehouses where distance <= coverage radius.
+// When no active on-shift warehouse covers the coordinate, it returns empty,
+// allowing callers to fail closed with a zone-miss contract.
 func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 	ctx context.Context,
 	supplierID string,
@@ -54,8 +55,6 @@ func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 
 	coveredID := ""
 	coveredDist := math.MaxFloat64
-	anyID := ""
-	anyDist := math.MaxFloat64
 
 	for {
 		row, err := iter.Next()
@@ -76,10 +75,6 @@ func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 		}
 
 		distance := haversineKm(retailerLat, retailerLng, lat.Float64, lng.Float64)
-		if isCloserWarehouse(distance, warehouseID, anyDist, anyID) {
-			anyDist = distance
-			anyID = warehouseID
-		}
 
 		effectiveRadius := math.MaxFloat64
 		if radius.Valid && radius.Float64 > 0 {
@@ -94,7 +89,7 @@ func (r *SpannerWarehouseResolver) ResolveNearestWarehouseID(
 	if coveredID != "" {
 		return coveredID, nil
 	}
-	return anyID, nil
+	return "", nil
 }
 
 func isCloserWarehouse(distance float64, warehouseID string, bestDistance float64, bestID string) bool {

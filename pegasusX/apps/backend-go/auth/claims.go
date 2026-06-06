@@ -20,8 +20,10 @@ const (
 	RoleRetailer        Role = "RETAILER"
 	RoleDriver          Role = "DRIVER"
 	RolePayload         Role = "PAYLOAD"
+	RoleFactory         Role = "FACTORY" // Native factory staff JWT (iOS / portal login)
 	RoleFactoryAdmin    Role = "FACTORY_ADMIN"
 	RoleWarehouseAdmin  Role = "WAREHOUSE_ADMIN"
+	RoleWarehouse       Role = "WAREHOUSE" // Native warehouse staff JWT (iOS / portal login)
 )
 
 // HomeNodeType is the discriminator for Driver / Vehicle scope.

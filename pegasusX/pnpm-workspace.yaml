@@ -1,0 +1,11 @@
+packages:
+  - "apps/supplier-portal"
+  - "apps/retailer-app-desktop"
+  - "apps/warehouse-portal"
+  - "apps/factory-portal"
+  - "apps/payload-terminal"
+  - "packages/types"
+  - "packages/api-client"
+  - "packages/validation"
+  - "packages/i18n"
+  - "packages/ui-kit"

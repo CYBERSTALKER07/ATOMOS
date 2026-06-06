@@ -20,10 +20,12 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		return
 	}
 
+	r.Post("/v1/auth/payloader/login", d.Service.HandlePayloaderLogin)
+
 	mountProtected := func(rr chi.Router) {
 		rr.Get("/v1/payloader/trucks", d.Service.HandleTrucks)
 		rr.Get("/v1/payloader/orders", d.Service.HandleOrders)
-		rr.Get("/v1/payloader/manifests", d.Service.HandleManifests)
+		rr.Get("/v1/payloader/manifests", d.Service.HandleManifestsList)
 		rr.Get("/v1/payloader/manifests/{manifestID}", d.Service.HandleManifestDetail)
 		rr.Post("/v1/payloader/manifests/{manifestID}/start-loading", d.Service.HandleStartLoading)
 		rr.Post("/v1/payloader/manifests/{manifestID}/inject-order", d.Service.HandleInjectOrder)
@@ -33,21 +35,31 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/payloader/recommend-reassign", d.Service.HandleRecommendReassign)
 		rr.Post("/v1/payloader/reassign-order", d.Service.HandleApplyReassign)
 		rr.Post("/v1/payload/seal", d.Service.HandleSeal)
+		rr.Post("/v1/fleet/reassign", d.Service.HandleFleetReassign)
+
+		rr.Get("/v1/supplier/manifests", d.Service.HandleManifestsList)
+		rr.Get("/v1/supplier/manifests/{id}", d.Service.HandleManifestDetail)
+		rr.Post("/v1/supplier/manifests/{id}/start-loading", d.Service.HandleStartLoading)
+		rr.Post("/v1/supplier/manifests/{id}/inject-order", d.Service.HandleInjectOrder)
+		rr.Post("/v1/supplier/manifests/{id}/seal", d.Service.HandleSealManifest)
+
+		rr.Get("/v1/user/notifications", d.Service.HandleUserNotifications)
+		rr.Post("/v1/user/notifications/read", d.Service.HandleMarkNotificationsRead)
+		// POST /v1/user/device-token is registered globally via platformroutes.
 	}
 
+	allowed := []auth.Role{auth.RolePayload, auth.RoleAdmin}
 	if d.FirebaseAuthEnabled && d.FirebaseVerifier != nil {
 		r.Group(func(gr chi.Router) {
 			gr.Use(auth.FirebaseAuth(d.FirebaseVerifier))
-			gr.Use(auth.RequireRole(auth.RolePayload, auth.RoleAdmin))
+			gr.Use(auth.RequireRole(allowed...))
 			mountProtected(gr)
 		})
 		return
 	}
 
-	// Local scaffold fallback uses supplier-portal cookie auth.
 	r.Group(func(gr chi.Router) {
-		gr.Use(auth.CookieAuth(d.JWTSecret))
-		gr.Use(auth.RequireRole(auth.RoleAdmin))
+		gr.Use(auth.RequireRole(allowed...))
 		mountProtected(gr)
 	})
 }

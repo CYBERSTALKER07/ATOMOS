@@ -13,6 +13,10 @@ locals {
   secret_kafka_topic_webhooks    = "${local.resource_prefix}-kafka-topic-webhooks"
   secret_firebase_project_id     = "${local.resource_prefix}-firebase-project-id"
   secret_firebase_auth_enabled   = "${local.resource_prefix}-firebase-auth-enabled"
+  secret_jwt                     = "${local.resource_prefix}-jwt-secret"
+  secret_global_pay_webhook      = "${local.resource_prefix}-global-pay-webhook-secret"
+  secret_adyen_webhook           = "${local.resource_prefix}-adyen-webhook-secret"
+  secret_stripe_webhook          = "${local.resource_prefix}-stripe-webhook-secret"
   labels = {
     app         = "pegasusx"
     tenant      = local.tenant_slug
@@ -24,6 +28,7 @@ locals {
 resource "google_project_service" "required_apis" {
   for_each = toset([
     "compute.googleapis.com",
+    "monitoring.googleapis.com",
     "redis.googleapis.com",
     "secretmanager.googleapis.com",
     "spanner.googleapis.com"
@@ -155,4 +160,60 @@ resource "google_secret_manager_secret" "firebase_auth_enabled" {
 resource "google_secret_manager_secret_version" "firebase_auth_enabled" {
   secret      = google_secret_manager_secret.firebase_auth_enabled.id
   secret_data = tostring(var.firebase_auth_enabled)
+}
+
+resource "google_secret_manager_secret" "jwt_secret" {
+  secret_id = local.secret_jwt
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "jwt_secret" {
+  count       = trimspace(var.jwt_secret) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.jwt_secret.id
+  secret_data = var.jwt_secret
+}
+
+resource "google_secret_manager_secret" "global_pay_webhook_secret" {
+  secret_id = local.secret_global_pay_webhook
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "global_pay_webhook_secret" {
+  count       = trimspace(var.global_pay_webhook_secret) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.global_pay_webhook_secret.id
+  secret_data = var.global_pay_webhook_secret
+}
+
+resource "google_secret_manager_secret" "adyen_webhook_secret" {
+  secret_id = local.secret_adyen_webhook
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "adyen_webhook_secret" {
+  count       = trimspace(var.adyen_webhook_secret) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.adyen_webhook_secret.id
+  secret_data = var.adyen_webhook_secret
+}
+
+resource "google_secret_manager_secret" "stripe_webhook_secret" {
+  secret_id = local.secret_stripe_webhook
+  replication {
+    auto {}
+  }
+  labels = local.labels
+}
+
+resource "google_secret_manager_secret_version" "stripe_webhook_secret" {
+  count       = trimspace(var.stripe_webhook_secret) != "" ? 1 : 0
+  secret      = google_secret_manager_secret.stripe_webhook_secret.id
+  secret_data = var.stripe_webhook_secret
 }

@@ -20,13 +20,22 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/spanner"
+	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
+	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// ErrSupplierCapReached is returned when MAX_SUPPLIERS registrations are exhausted.
+var ErrSupplierCapReached = errors.New("supplier_cap_reached")
 
 // Repository is the persistence seam for the seeded supplier aggregate.
 // Production binds this to a Spanner-backed implementation that runs every
@@ -38,6 +47,15 @@ type Repository interface {
 	GetAuthByPhone(ctx context.Context, phone string) (SupplierAuthRecord, bool, error)
 	GetTopology(ctx context.Context, supplierID string) (SupplierTopology, error)
 	ReplaceTopology(ctx context.Context, supplierID string, topology SupplierTopology, emit func(outbox.TxnBuffer) error) error
+	ListOrgMembers(ctx context.Context, supplierID string) ([]SupplierOrgMember, error)
+	CreateOrgMember(ctx context.Context, member CreateOrgMemberParams, emit func(outbox.TxnBuffer) error) error
+	ListFleetDrivers(ctx context.Context, supplierID string) ([]SupplierFleetDriver, error)
+	CreateFleetDriver(ctx context.Context, driver CreateFleetDriverParams, emit func(outbox.TxnBuffer) error) error
+	ListFleetVehicles(ctx context.Context, supplierID string) ([]SupplierFleetVehicle, error)
+	CreateFleetVehicle(ctx context.Context, vehicle CreateFleetVehicleParams, emit func(outbox.TxnBuffer) error) error
+	GetPricingRule(ctx context.Context, supplierID string) (SupplierPricingRule, bool, error)
+	UpsertPricingRule(ctx context.Context, rule SupplierPricingRule, emit func(outbox.TxnBuffer) error) error
+	CountSuppliers(ctx context.Context) (int64, error)
 }
 
 // SupplierAuthRecord is the credential snapshot used by login flow.
@@ -118,41 +136,106 @@ type SupplierTopology struct {
 	Factories  []FactoryNode
 }
 
+// SupplierPricingRule is the canonical supplier pricing authority row.
+type SupplierPricingRule struct {
+	SupplierID          string
+	BaseMarkupBps       int64
+	RetailerDiscountBps int64
+	MinMarginBps        int64
+	Currency            string
+	RuleVersion         int64
+	UpdatedBy           string
+	UpdatedAt           time.Time
+}
+
+// InventoryServicer is the inventory seam consumed by supplier handlers.
+type InventoryServicer interface {
+	ListBySupplier(ctx context.Context, supplierID string) ([]InventoryLevelView, error)
+	AdjustStock(ctx context.Context, inventoryID string, delta int64, expectedVersion int64) error
+}
+
+// InventoryLevelView is the read model consumed by the supplier inventory UI.
+type InventoryLevelView struct {
+	InventoryID      string `json:"inventory_id"`
+	ProductID        string `json:"product_id"`
+	WarehouseID      string `json:"warehouse_id"`
+	SupplierID       string `json:"supplier_id"`
+	QuantityOnHand   int64  `json:"quantity_on_hand"`
+	QuantityReserved int64  `json:"quantity_reserved"`
+	ReorderThreshold int64  `json:"reorder_threshold"`
+	Version          int64  `json:"version"`
+}
+
+// EarningsLookup resolves the supplier finance compatibility contract from a
+// durable authority read model when one is available.
+type EarningsLookup func(ctx context.Context, supplierID, currency string, now time.Time) (SupplierEarningsResponse, error)
+
+// DashboardCounts holds Spanner-backed aggregate counts for the dashboard.
+type DashboardCounts struct {
+	PendingOrders   int
+	ActiveDrivers   int
+	TotalRetailers  int
+	TodayRevenue    int64
+}
+
+// DashboardCountQuery returns aggregate counts from Spanner for the supplier dashboard.
+type DashboardCountQuery func(ctx context.Context, supplierID string) (DashboardCounts, error)
+
 // Service wires repository, cache, idempotency, and JWT issuance.
 type Service struct {
-	repo         Repository
-	cache        *cache.Cache
-	idem         idempotency.Store
-	supplierID   string
-	country      string
-	currency     string
-	jwtSecret    string
-	jwtIssuer    string
-	jwtTTL       time.Duration
-	cookieSecure bool
-	log          *slog.Logger
-	now          func() time.Time
+	repo           Repository
+	cache          *cache.Cache
+	idem           idempotency.Store
+	earningsLookup EarningsLookup
+	dashboardQuery DashboardCountQuery
+	locations      telemetry.LastLocationReader
+	supplierID     string
+	seedSupplierID string
+	maxSuppliers   int
+	country        string
+	currency       string
+	jwtSecret      string
+	jwtIssuer      string
+	jwtTTL         time.Duration
+	cookieSecure   bool
+	log            *slog.Logger
+	now            func() time.Time
 
-	mu             sync.RWMutex
-	inventory      map[string]InventoryItem
-	inventoryAudit []InventoryAuditEntry
-	orders         map[string]SupplierOrder
+	inventorySvc   InventoryServicer
+
+	portalSpanner     *spanner.Client
+	portalSupplierHub *ws.Hub
+	optimizerClient   *optimizerclient.Client
+	planCounters      *plan.SourceCounters
+	fallbackDepotLat  float64
+	fallbackDepotLng  float64
+
+	mu     sync.RWMutex
+	orders map[string]SupplierOrder
 }
+
+const supplierWebSocketSessionTTL = 10 * time.Minute
 
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
-	Repo         Repository
-	Cache        *cache.Cache
-	Idem         idempotency.Store
-	SupplierID   string
-	Country      string
-	Currency     string
-	JWTSecret    string
-	JWTIssuer    string
-	JWTTTL       time.Duration
-	CookieSecure bool
-	Log          *slog.Logger
-	Now          func() time.Time
+	Repo             Repository
+	Cache            *cache.Cache
+	Idem             idempotency.Store
+	EarningsLookup   EarningsLookup
+	DashboardQuery   DashboardCountQuery
+	Locations        telemetry.LastLocationReader
+	InventoryService InventoryServicer
+	SupplierID     string
+	SeedSupplierID string
+	MaxSuppliers   int
+	Country        string
+	Currency       string
+	JWTSecret      string
+	JWTIssuer      string
+	JWTTTL         time.Duration
+	CookieSecure   bool
+	Log            *slog.Logger
+	Now            func() time.Time
 }
 
 // NewService returns a configured Service.
@@ -166,22 +249,41 @@ func NewService(c ServiceConfig) *Service {
 	if c.JWTTTL <= 0 {
 		c.JWTTTL = 24 * time.Hour
 	}
+	maxSuppliers := c.MaxSuppliers
+	if maxSuppliers <= 0 {
+		maxSuppliers = 10
+	}
+	seedID := strings.TrimSpace(c.SeedSupplierID)
+	if seedID == "" {
+		seedID = c.SupplierID
+	}
 	return &Service{
-		repo:         c.Repo,
-		cache:        c.Cache,
-		idem:         c.Idem,
-		supplierID:   c.SupplierID,
-		country:      c.Country,
-		currency:     c.Currency,
-		jwtSecret:    c.JWTSecret,
-		jwtIssuer:    c.JWTIssuer,
-		jwtTTL:       c.JWTTTL,
-		cookieSecure: c.CookieSecure,
+		repo:           c.Repo,
+		cache:          c.Cache,
+		idem:           c.Idem,
+		earningsLookup: c.EarningsLookup,
+		dashboardQuery: c.DashboardQuery,
+		locations:      c.Locations,
+		supplierID:     c.SupplierID,
+		seedSupplierID: seedID,
+		maxSuppliers:   maxSuppliers,
+		country:        c.Country,
+		currency:       c.Currency,
+		jwtSecret:      c.JWTSecret,
+		jwtIssuer:      c.JWTIssuer,
+		jwtTTL:         c.JWTTTL,
+		cookieSecure:   c.CookieSecure,
 		log:          c.Log,
 		now:          c.Now,
-		inventory:    make(map[string]InventoryItem),
+		inventorySvc: c.InventoryService,
 		orders:       make(map[string]SupplierOrder),
 	}
+}
+
+// SetEarningsLookup replaces the supplier earnings authority seam. Bootstrap
+// wires this once payment storage is ready.
+func (s *Service) SetEarningsLookup(lookup EarningsLookup) {
+	s.earningsLookup = lookup
 }
 
 // ── Register ───────────────────────────────────────────────────────────────
@@ -235,6 +337,7 @@ type RegisterResponse struct {
 	LegalName    string `json:"legal_name"`
 	IsConfigured bool   `json:"is_configured"`
 	NextStep     string `json:"next_step"`
+	Token        string `json:"token,omitempty"`
 }
 
 // LoginRequest is the wire shape for POST /v1/auth/supplier/login.
@@ -245,9 +348,11 @@ type LoginRequest struct {
 
 // LoginResponse is the login confirmation payload.
 type LoginResponse struct {
-	SupplierID   string `json:"supplier_id"`
-	IsConfigured bool   `json:"is_configured"`
-	NextStep     string `json:"next_step"`
+	SupplierID    string `json:"supplier_id"`
+	IsConfigured  bool   `json:"is_configured"`
+	NextStep      string `json:"next_step"`
+	Token         string `json:"token,omitempty"`
+	RefreshToken  string `json:"refresh_token,omitempty"`
 }
 
 // Validate enforces wizard invariants.
@@ -308,8 +413,28 @@ func (r LoginRequest) Validate() error {
 // Register persists the wizard payload onto the seeded supplier row, emits a
 // SUPPLIER_UPDATED outbox event atomically, invalidates the supplier cache
 // post-commit, and returns the response shape the wizard expects.
+func (s *Service) resolveRegistrationSupplierID(ctx context.Context) (string, error) {
+	count, err := s.repo.CountSuppliers(ctx)
+	if err != nil {
+		return "", fmt.Errorf("count suppliers: %w", err)
+	}
+	if seedProfile, found, err := s.repo.GetProfile(ctx, s.seedSupplierID); err != nil {
+		return "", fmt.Errorf("load seed supplier: %w", err)
+	} else if found && !seedProfile.IsRegistered {
+		return s.seedSupplierID, nil
+	}
+	if int(count) >= s.maxSuppliers {
+		return "", ErrSupplierCapReached
+	}
+	return uuid.NewString(), nil
+}
+
 func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterResponse, error) {
 	if err := req.Validate(); err != nil {
+		return RegisterResponse{}, err
+	}
+	targetSupplierID, err := s.resolveRegistrationSupplierID(ctx)
+	if err != nil {
 		return RegisterResponse{}, err
 	}
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Account.Password), bcrypt.DefaultCost)
@@ -317,12 +442,12 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		return RegisterResponse{}, fmt.Errorf("hash supplier password: %w", err)
 	}
 
-	current, found, err := s.repo.GetProfile(ctx, s.supplierID)
+	current, found, err := s.repo.GetProfile(ctx, targetSupplierID)
 	if err != nil {
 		return RegisterResponse{}, fmt.Errorf("load supplier: %w", err)
 	}
 	if !found {
-		current = Profile{SupplierID: s.supplierID, Country: s.country, Currency: s.currency}
+		current = Profile{SupplierID: targetSupplierID, Country: s.country, Currency: s.currency}
 	}
 
 	now := s.now()
@@ -330,7 +455,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	current.ContactName = req.Account.ContactName
 	current.Email = req.Account.Email
 	current.Phone = req.Phone
-	current.AuthUserID = rootSupplierUserID(s.supplierID)
+	current.AuthUserID = rootSupplierUserID(targetSupplierID)
 	current.AuthPasswordHash = string(passwordHash)
 	if strings.TrimSpace(req.Account.Country) != "" {
 		current.Country = strings.ToUpper(req.Account.Country)
@@ -360,9 +485,9 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	current.UpdatedAt = now
 
 	err = s.repo.UpdateProfile(ctx, current, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, s.supplierID, events.TopicMain, supplierUpdatedEvent{
+		return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, targetSupplierID, events.TopicMain, supplierUpdatedEvent{
 			Type:         events.EventSupplierUpdated,
-			SupplierID:   s.supplierID,
+			SupplierID:   targetSupplierID,
 			LegalName:    current.LegalName,
 			ContactName:  current.ContactName,
 			Email:        current.Email,
@@ -379,14 +504,14 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		return RegisterResponse{}, fmt.Errorf("persist supplier: %w", err)
 	}
 
-	s.cache.Invalidate(ctx, supplierCacheKey(s.supplierID))
+	s.cache.Invalidate(ctx, supplierCacheKey(targetSupplierID))
 	s.log.Info("supplier registered",
-		"supplier_id", s.supplierID,
+		"supplier_id", targetSupplierID,
 		"legal_name", current.LegalName,
 		"country", current.Country,
 	)
 	return RegisterResponse{
-		SupplierID:   s.supplierID,
+		SupplierID:   targetSupplierID,
 		LegalName:    current.LegalName,
 		IsConfigured: current.IsConfigured,
 		NextStep:     "/setup/billing",
@@ -563,13 +688,19 @@ func (s *Service) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.Register(r.Context(), req)
 	if err != nil {
 		s.log.Warn("supplier registration failed", "err", err)
+		if errors.Is(err, ErrSupplierCapReached) {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": err.Error()})
+			return
+		}
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 		return
 	}
 
-	if err := s.writeSessionCookie(w, false); err != nil {
+	token, err := s.writeSessionCookie(w, resp.SupplierID, resp.IsConfigured)
+	if err != nil {
 		s.log.Warn("session cookie issue failed", "err", err)
 	}
+	resp.Token = token
 	respBytes, _ := json.Marshal(resp)
 	if key := r.Header.Get("Idempotency-Key"); key != "" && s.idem != nil {
 		_ = s.idem.Save(r.Context(), key, idempotency.Record{
@@ -609,8 +740,15 @@ func (s *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.writeSessionCookie(w, resp.IsConfigured); err != nil {
+	token, err := s.writeSessionCookie(w, resp.SupplierID, resp.IsConfigured)
+	if err != nil {
 		s.log.Warn("session cookie issue failed", "err", err)
+	}
+	resp.Token = token
+	if refresh, err := s.issueRefreshToken(resp.SupplierID, resp.IsConfigured); err != nil {
+		s.log.Warn("supplier refresh token issue failed", "err", err)
+	} else {
+		resp.RefreshToken = refresh
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -655,7 +793,7 @@ func (s *Service) HandleConfigureBilling(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
 		return
 	}
-	if err := s.writeSessionCookie(w, true); err != nil {
+	if _, err := s.writeSessionCookie(w, resp.SupplierID, true); err != nil {
 		s.log.Warn("session cookie reissue failed", "err", err)
 	}
 	respBytes, _ := json.Marshal(resp)
@@ -673,11 +811,15 @@ func (s *Service) HandleConfigureBilling(w http.ResponseWriter, r *http.Request)
 }
 
 // writeSessionCookie issues the supplier-portal session JWT.
-func (s *Service) writeSessionCookie(w http.ResponseWriter, isConfigured bool) error {
+func (s *Service) writeSessionCookie(w http.ResponseWriter, supplierID string, isConfigured bool) (string, error) {
+	supplierID = strings.TrimSpace(supplierID)
+	if supplierID == "" {
+		supplierID = s.supplierID
+	}
 	token, err := auth.Issue(auth.Claims{
-		Subject:      s.supplierID,
+		Subject:      supplierID,
 		Role:         auth.RoleAdmin,
-		SupplierID:   s.supplierID,
+		SupplierID:   supplierID,
 		IsConfigured: isConfigured,
 	}, auth.IssueOptions{
 		Secret: s.jwtSecret,
@@ -686,19 +828,55 @@ func (s *Service) writeSessionCookie(w http.ResponseWriter, isConfigured bool) e
 		Now:    s.now,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	auth.SetSessionCookie(w, token, s.jwtTTL, s.cookieSecure)
-	return nil
+	return token, nil
 }
 
 // replaySession returns an idempotency-stored response but also reissues the
 // session cookie so the replay-caller still ends up authenticated.
 func (s *Service) replaySession(w http.ResponseWriter, rec idempotency.Record, isConfigured bool) {
-	_ = s.writeSessionCookie(w, isConfigured)
+	_, _ = s.writeSessionCookie(w, s.supplierID, isConfigured)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(rec.StatusCode)
 	_, _ = w.Write(rec.Response)
+}
+
+type supplierWebSocketSessionResponse struct {
+	Token     string `json:"token"`
+	ExpiresAt string `json:"expires_at"`
+}
+
+// HandleWebSocketSession mints a short-lived websocket token for supplier portal
+// clients that need direct backend /v1/ws access without exposing the long-lived
+// session cookie to browser websocket headers.
+func (s *Service) HandleWebSocketSession(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok || claims.Role != auth.RoleAdmin || strings.TrimSpace(claims.SupplierID) == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	expiresAt := s.now().Add(supplierWebSocketSessionTTL)
+	token, err := auth.Issue(claims, auth.IssueOptions{
+		Secret: s.jwtSecret,
+		Issuer: s.jwtIssuer,
+		TTL:    supplierWebSocketSessionTTL,
+		Now:    s.now,
+	})
+	if err != nil {
+		s.log.Error("issue supplier websocket token failed", "err", err, "supplier_id", claims.SupplierID)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "issue_websocket_token_failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, supplierWebSocketSessionResponse{
+		Token:     token,
+		ExpiresAt: expiresAt.Format(time.RFC3339Nano),
+	})
 }
 
 // ── Outbox payloads + helpers ──────────────────────────────────────────────

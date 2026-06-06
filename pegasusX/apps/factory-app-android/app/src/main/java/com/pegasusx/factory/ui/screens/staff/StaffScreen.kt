@@ -1,0 +1,153 @@
+package com.pegasusx.factory.ui.screens.staff
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.pegasusx.factory.data.model.StaffMember
+import com.pegasusx.factory.data.remote.FactoryApi
+import com.pegasusx.factory.data.remote.FactoryRealtimeEventType
+import com.pegasusx.factory.ui.components.FactoryLoadingState
+import com.pegasusx.factory.ui.components.FactoryStateKind
+import com.pegasusx.factory.ui.components.FactoryStatePane
+import com.pegasusx.factory.ui.realtime.FactoryRealtimeReloadEffect
+import com.pegasusx.factory.ui.theme.PegasusSpacing
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StaffScreen(
+    api: FactoryApi,
+    onStaffClick: (String) -> Unit,
+    onBack: () -> Unit,
+) {
+    var staff by remember { mutableStateOf<List<StaffMember>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    fun load() {
+        loading = true
+        error = null
+        scope.launch {
+            try {
+                val resp = api.getStaff()
+                if (resp.isSuccessful && resp.body() != null) {
+                    staff = resp.body()!!.staff
+                } else {
+                    error = "Failed (${resp.code()})"
+                }
+            } catch (e: Exception) {
+                error = e.message ?: "Network error"
+            } finally {
+                loading = false
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { load() }
+
+    FactoryRealtimeReloadEffect(
+        eventTypes = setOf(
+            FactoryRealtimeEventType.SupplyRequestUpdate,
+            FactoryRealtimeEventType.TransferUpdate,
+            FactoryRealtimeEventType.ManifestUpdate,
+        ),
+    ) {
+        load()
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Staff") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                },
+                actions = {
+                    IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") }
+                },
+            )
+        },
+    ) { innerPadding ->
+        when {
+            loading -> FactoryLoadingState(
+                title = "Loading staff",
+                body = "Fetching the current factory operator roster.",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
+            error != null -> FactoryStatePane(
+                kind = FactoryStateKind.Error,
+                headline = "Unable to load staff",
+                body = error!!,
+                actionLabel = "Retry",
+                onAction = { load() },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
+            staff.isEmpty() -> FactoryStatePane(
+                kind = FactoryStateKind.Empty,
+                headline = "No staff on record",
+                body = "There are no staff members registered for this factory yet.",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            )
+            else -> LazyColumn(
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+            ) {
+                items(staff, key = { it.id }) { member ->
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onStaffClick(member.id) },
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(PegasusSpacing.lg),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(32.dp),
+                            )
+                            Spacer(Modifier.width(PegasusSpacing.lg))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(member.name, style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    text = member.phone,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(
+                                    text = member.role,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            AssistChip(
+                                onClick = {},
+                                label = { Text(member.status, style = MaterialTheme.typography.labelSmall) },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

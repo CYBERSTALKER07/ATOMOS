@@ -1,0 +1,11 @@
+# Copy to local.properties. Gradle reads this at configure time.
+# dev.host resolves to BuildConfig.BASE_URL / BuildConfig.WS_URL in debug builds.
+#   Android emulator (AVD):       dev.host=10.0.2.2
+#   Physical device over Wi-Fi:   dev.host=192.168.1.42
+# Production endpoint overrides:
+#   prod.api.base.url         -> Pegasus primary API host (default)
+#   prod.ws.base.url          -> Pegasus primary WebSocket host (default)
+prod.api.base.url=https://api.pegasus.uz
+prod.ws.base.url=wss://api.pegasus.uz
+dev.host=10.0.2.2
+MAPS_API_KEY=

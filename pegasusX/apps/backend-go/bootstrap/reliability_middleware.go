@@ -6,13 +6,17 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/redis/go-redis/v9"
 )
+
+const loadBootstrapHeader = "X-PegasusX-Load-Bootstrap"
 
 type reliabilityClass string
 
@@ -87,12 +91,41 @@ func DefaultReliabilityConfig() ReliabilityConfig {
 	return cfg
 }
 
+// ReliabilityConfigFromEnv returns defaults with optional RELIABILITY_RATE_LIMIT_* overrides.
+func ReliabilityConfigFromEnv() ReliabilityConfig {
+	cfg := DefaultReliabilityConfig()
+	if v := envInt("RELIABILITY_RATE_LIMIT_DEFAULT_MAX", 0); v > 0 {
+		cfg.RateLimitDefaultMax = v
+	}
+	if v := envInt("RELIABILITY_RATE_LIMIT_PAYMENT_MAX", 0); v > 0 {
+		cfg.RateLimitPaymentMax = v
+	}
+	if v := envInt("RELIABILITY_RATE_LIMIT_AUTH_MAX", 0); v > 0 {
+		cfg.RateLimitAuthMax = v
+	}
+	if v := envInt("RELIABILITY_RATE_LIMIT_WEBHOOK_MAX", 0); v > 0 {
+		cfg.RateLimitWebhookMax = v
+	}
+	if v := envInt("RELIABILITY_RATE_LIMIT_TELEMETRY_MAX", 0); v > 0 {
+		cfg.RateLimitTelemetryMax = v
+	}
+	if v := envInt("RELIABILITY_PRIORITY_MAX_IN_FLIGHT", 0); v > 0 {
+		cfg.PriorityMaxInFlight = v
+	}
+	return cfg
+}
+
+// RateLimiter enforces per-actor request limits.
+type RateLimiter interface {
+	Allow(key string, max int, window time.Duration, now time.Time) (allowed bool, remaining int, retryAfter int)
+}
+
 // ReliabilityMiddleware applies API-side resilience controls.
 type ReliabilityMiddleware struct {
 	cfg     ReliabilityConfig
 	now     func() time.Time
 	guard   *priorityGuard
-	limiter *fixedWindowRateLimiter
+	limiter RateLimiter
 	breaker *requestCircuitBreaker
 }
 
@@ -113,6 +146,14 @@ func newReliabilityMiddlewareWithClock(cfg ReliabilityConfig, now func() time.Ti
 		limiter: newFixedWindowRateLimiter(),
 		breaker: newRequestCircuitBreaker(cfg.CircuitFailureThreshold, cfg.CircuitOpenDuration),
 	}
+}
+
+// SetRedisRateLimiter swaps the in-process limiter for a Redis-backed one.
+func (m *ReliabilityMiddleware) SetRedisRateLimiter(client *redis.Client) {
+	if m == nil || client == nil {
+		return
+	}
+	m.limiter = newRedisRateLimiter(client)
 }
 
 // Middleware returns an http middleware ready for chi r.Use.
@@ -142,21 +183,25 @@ func (m *ReliabilityMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		actor := reliabilityActorKey(r)
-		maxRequests := m.limitForClass(class)
-		allowed, retryAfter := m.limiter.Allow(actor+":"+string(class), maxRequests, m.cfg.RateLimitWindow, now)
 		w.Header().Set("X-Reliability-Class", string(class))
-		w.Header().Set("X-RateLimit-Limit", strconv.Itoa(maxRequests))
-		if !allowed {
-			w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
-			http.Error(w,
-				fmt.Sprintf(`{"error":"rate_limit_exceeded","class":"%s","retry_after":%d}`,
-					class,
-					retryAfter,
-				),
-				http.StatusTooManyRequests,
-			)
-			return
+		if !isReliabilityRateLimitExempt(r.URL.Path, r) {
+			actor := reliabilityActorKey(r)
+			maxRequests := m.limitForClass(class)
+			allowed, remaining, retryAfter := m.limiter.Allow(actor+":"+string(class), maxRequests, m.cfg.RateLimitWindow, now)
+			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(maxRequests))
+			w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(remaining))
+			w.Header().Set("X-RateLimit-Reset", strconv.Itoa(int(m.cfg.RateLimitWindow.Seconds())))
+			if !allowed {
+				w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
+				http.Error(w,
+					fmt.Sprintf(`{"error":"rate_limit_exceeded","class":"%s","retry_after":%d}`,
+						class,
+						retryAfter,
+					),
+					http.StatusTooManyRequests,
+				)
+				return
+			}
 		}
 
 		if !m.guard.Acquire(r.Context(), class) {
@@ -190,6 +235,21 @@ func (m *ReliabilityMiddleware) limitForClass(class reliabilityClass) int {
 	default:
 		return m.cfg.RateLimitDefaultMax
 	}
+}
+
+func isReliabilityRateLimitExempt(path string, r *http.Request) bool {
+	lower := strings.ToLower(strings.TrimSpace(path))
+	if lower == "/v1/health" || lower == "/health" || strings.HasPrefix(lower, "/v1/health/") {
+		return true
+	}
+	secret := strings.TrimSpace(os.Getenv("LOAD_BOOTSTRAP_SECRET"))
+	if secret == "" || r == nil {
+		return false
+	}
+	if strings.TrimSpace(r.Header.Get(loadBootstrapHeader)) != secret {
+		return false
+	}
+	return strings.HasPrefix(lower, "/v1/auth/")
 }
 
 func classifyReliabilityPath(path string) reliabilityClass {
@@ -311,12 +371,12 @@ func newFixedWindowRateLimiter() *fixedWindowRateLimiter {
 	return &fixedWindowRateLimiter{buckets: make(map[string]rateBucket)}
 }
 
-func (l *fixedWindowRateLimiter) Allow(key string, max int, window time.Duration, now time.Time) (bool, int) {
+func (l *fixedWindowRateLimiter) Allow(key string, max int, window time.Duration, now time.Time) (bool, int, int) {
 	if l == nil {
-		return true, 0
+		return true, max, 0
 	}
 	if max <= 0 || window <= 0 {
-		return true, 0
+		return true, max, 0
 	}
 
 	l.mu.Lock()
@@ -333,12 +393,12 @@ func (l *fixedWindowRateLimiter) Allow(key string, max int, window time.Duration
 			retry = 1
 		}
 		l.buckets[key] = bucket
-		return false, retry
+		return false, 0, retry
 	}
 
 	bucket.count++
 	l.buckets[key] = bucket
-	return true, 0
+	return true, max - bucket.count, 0
 }
 
 type requestCircuitBreaker struct {

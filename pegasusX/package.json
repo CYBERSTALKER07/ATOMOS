@@ -24,6 +24,10 @@
     "infra:down": "docker compose -f infra/docker-compose.yml down",
     "infra:ssmr:up": "docker compose -f infra/docker-compose.ssmr.yml up -d",
     "infra:ssmr:down": "docker compose -f infra/docker-compose.ssmr.yml down",
-    "infra:ssmr:test": "bash scripts/smoke_ssmr.sh"
+    "infra:ssmr:test": "bash scripts/smoke_ssmr.sh",
+    "infra:k8s:validate": "bash scripts/validate_ai_worker_k8s.sh",
+    "infra:launch:validate": "python3 scripts/validate_launch_readiness.py",
+    "infra:load:cert": "bash scripts/load/load_cert.sh",
+    "infra:load:cert:ssmr": "bash scripts/load/load_cert.sh --with-ssmr"
   }
 }

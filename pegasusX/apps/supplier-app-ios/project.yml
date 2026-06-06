@@ -1,0 +1,45 @@
+name: SupplierAppIOS
+options:
+  bundleIdPrefix: com.pegasusx
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_UILaunchScreen_Generation: YES
+    INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+    INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+    INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  SupplierAppIOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: SupplierApp
+        excludes:
+          - "**/.DS_Store"
+    resources:
+      - path: SupplierApp/Assets.xcassets
+    info:
+      path: SupplierApp/Info.plist
+      properties:
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pegasusx.supplier
+        INFOPLIST_FILE: SupplierApp/Info.plist
+  SupplierAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: SupplierAppTests
+    dependencies:
+      - target: SupplierAppIOS

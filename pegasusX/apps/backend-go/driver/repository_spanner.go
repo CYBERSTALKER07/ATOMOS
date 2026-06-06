@@ -26,10 +26,16 @@ func NewSpannerRepository(client *spanner.Client) *SpannerRepository {
 
 type spannerTxnBuffer struct {
 	events []outbox.Event
+	audits []outbox.AuditEntry
 }
 
 func (b *spannerTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error {
 	b.events = append(b.events, e)
+	return nil
+}
+
+func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) error {
+	b.audits = append(b.audits, e)
 	return nil
 }
 
@@ -75,6 +81,9 @@ func (r *SpannerRepository) Apply(ctx context.Context, mutate func() error, emit
 				row["PublishedAt"] = e.PublishedAt.UTC()
 			}
 			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		}
+		for _, a := range buf.audits {
+			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
 		}
 		return txn.BufferWrite(mutations)
 	})

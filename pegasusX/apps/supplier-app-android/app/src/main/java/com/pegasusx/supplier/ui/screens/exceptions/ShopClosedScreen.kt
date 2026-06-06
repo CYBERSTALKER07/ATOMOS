@@ -1,0 +1,118 @@
+package com.pegasusx.supplier.ui.screens.exceptions
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import com.pegasusx.supplier.data.model.ShopClosedAttemptRow
+import com.pegasusx.supplier.data.model.ShopClosedResolveRequest
+import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasusx.supplier.ui.components.SupplierStateKind
+import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ShopClosedScreen(ops: SupplierOperationsRepository, onBack: () -> Unit) {
+    var rows by remember { mutableStateOf<List<ShopClosedAttemptRow>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busyId by remember { mutableStateOf<String?>(null) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    fun load() {
+        scope.launch {
+            loading = true
+            error = null
+            try {
+                val resp = ops.getShopClosedActive()
+                rows = if (resp.isSuccessful) resp.body()?.data.orEmpty() else emptyList()
+                if (!resp.isSuccessful) error = "Failed (${resp.code()})"
+            } catch (e: Exception) {
+                error = e.message
+            } finally {
+                loading = false
+            }
+        }
+    }
+
+    fun resolve(attemptId: String, action: String) {
+        busyId = attemptId
+        scope.launch {
+            try {
+                val resp = ops.resolveShopClosed(ShopClosedResolveRequest(attemptId, action))
+                if (resp.isSuccessful) {
+                    snackbar.showSnackbar("Resolved · $action")
+                    load()
+                } else {
+                    snackbar.showSnackbar("Failed (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                snackbar.showSnackbar(e.message ?: "Network error")
+            } finally {
+                busyId = null
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { load() }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Shop closed") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbar) },
+    ) { padding ->
+        when {
+            loading -> SupplierLoadingState("Loading shop-closed queue…", "Active attempts")
+            error != null -> SupplierStatePane(
+                kind = SupplierStateKind.Error,
+                headline = "Queue unavailable",
+                body = error!!,
+                modifier = Modifier.padding(padding),
+                actionLabel = "Retry",
+                onAction = { load() },
+            )
+            rows.isEmpty() -> SupplierStatePane(
+                kind = SupplierStateKind.Empty,
+                headline = "No active attempts",
+                body = "Driver-reported shop-closed cases appear here.",
+                modifier = Modifier.padding(padding),
+            )
+            else -> LazyColumn(
+                modifier = Modifier.padding(padding).fillMaxSize(),
+                contentPadding = PaddingValues(PegasusSpacing.lg),
+                verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+            ) {
+                items(rows, key = { it.attemptId }) { row ->
+                    val busy = busyId == row.attemptId
+                    ElevatedCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(PegasusSpacing.lg), verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                            Text(row.orderId, style = MaterialTheme.typography.titleMedium)
+                            Text("Driver ${row.driverId} · Retailer ${row.retailerId}", style = MaterialTheme.typography.bodySmall)
+                            Row(horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.xs)) {
+                                TextButton(onClick = { resolve(row.attemptId, "WAIT") }, enabled = !busy) { Text("Wait") }
+                                TextButton(onClick = { resolve(row.attemptId, "BYPASS") }, enabled = !busy) { Text("Bypass") }
+                                TextButton(onClick = { resolve(row.attemptId, "RETURN_TO_DEPOT") }, enabled = !busy) { Text("Return") }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

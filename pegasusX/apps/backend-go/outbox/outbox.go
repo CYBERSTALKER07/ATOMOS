@@ -129,9 +129,84 @@ func injectTraceID(raw []byte, traceID string) ([]byte, error) {
 	return patched, nil
 }
 
+// AuditBuffer is implemented by any RW-transaction handle that can buffer an
+// AuditLog mutation. The concrete Spanner adapter wraps *spanner.ReadWriteTransaction.
+type AuditBuffer interface {
+	BufferAudit(ctx context.Context, entry AuditEntry) error
+}
+
+// TxnAuditBuffer combines TxnBuffer and AuditBuffer for emit callbacks that
+// need to write both outbox events and audit rows atomically.
+type TxnAuditBuffer interface {
+	TxnBuffer
+	AuditBuffer
+}
+
+// AuditEntry represents one row in the AuditLog table.
+type AuditEntry struct {
+	AuditID       string
+	SupplierID    string
+	ActorID       string
+	ActorRole     string
+	Action        string
+	AggregateType string
+	AggregateID   string
+	DetailsJSON   []byte
+	TraceID       string
+	CreatedAt     time.Time
+}
+
+// WriteAudit buffers an AuditLog row inside the current transaction. If buf is
+// nil (Spanner not configured), the call is a no-op so callers don't need nil
+// checks.
+func WriteAudit(ctx context.Context, buf AuditBuffer, supplierID, actorID, actorRole, action, aggregateType, aggregateID string, details any) error {
+	if buf == nil {
+		return nil
+	}
+	var detailsJSON []byte
+	if details != nil {
+		var err error
+		detailsJSON, err = json.Marshal(details)
+		if err != nil {
+			return fmt.Errorf("audit: marshal details: %w", err)
+		}
+	}
+	return buf.BufferAudit(ctx, AuditEntry{
+		AuditID:       newEventID(),
+		SupplierID:    supplierID,
+		ActorID:       actorID,
+		ActorRole:     actorRole,
+		Action:        action,
+		AggregateType: aggregateType,
+		AggregateID:   aggregateID,
+		DetailsJSON:   detailsJSON,
+		TraceID:       TraceIDFromContext(ctx),
+		CreatedAt:     time.Now().UTC(),
+	})
+}
+
+// AuditRowMap returns a map suitable for spanner.InsertMap("AuditLog", ...).
+func (e AuditEntry) AuditRowMap() map[string]any {
+	createdAt := e.CreatedAt.UTC()
+	if createdAt.IsZero() {
+		createdAt = time.Now().UTC()
+	}
+	m := map[string]any{
+		"AuditId":       e.AuditID,
+		"SupplierId":    e.SupplierID,
+		"ActorId":       e.ActorID,
+		"ActorRole":     e.ActorRole,
+		"Action":        e.Action,
+		"AggregateType": e.AggregateType,
+		"AggregateId":   e.AggregateID,
+		"DetailsJson":   e.DetailsJSON,
+		"TraceId":       e.TraceID,
+		"CreatedAt":     createdAt,
+	}
+	return m
+}
+
 // newEventID is overridable in tests. Production uses crypto/rand UUIDv7.
 var newEventID = func() string {
-	// Lightweight monotonic id good enough for the scaffold. Production swaps
-	// this for github.com/google/uuid NewV7.
 	return fmt.Sprintf("evt_%d", time.Now().UnixNano())
 }

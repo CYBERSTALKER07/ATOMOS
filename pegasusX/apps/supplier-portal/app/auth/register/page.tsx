@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { persistSession, supplierFetch } from "@/lib/auth";
 import {
   CATEGORY_OPTIONS,
   COUNTRIES,
@@ -113,10 +114,9 @@ export default function RegisterPage() {
         categories: state.categories.selectedCategoryIds,
         phone,
       };
-      const res = await fetch("/api/auth/supplier/register", {
+      const res = await supplierFetch("/v1/auth/supplier/register", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           "Idempotency-Key": cryptoRandomId(),
         },
         body: JSON.stringify(payload),
@@ -125,7 +125,10 @@ export default function RegisterPage() {
         const body = await res.text();
         throw new Error(body || `register failed: ${res.status}`);
       }
-      // Per onboarding gate: redirect to /setup/billing for bank + gateway.
+      const data = (await res.json()) as { token?: string };
+      if (data.token) {
+        persistSession(data.token);
+      }
       window.location.href = "/setup/billing";
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : String(err));
@@ -135,16 +138,18 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="min-h-screen p-6 md:p-12 max-w-3xl mx-auto">
-      <header className="mb-8">
-        <h1 className="md-typescale-headline-large">Set up your supplier account</h1>
-        <p className="md-typescale-body-medium mt-2" style={{ color: "var(--color-md-outline)" }}>
+    <div className="auth-card">
+      <header className="mb-6">
+        <h1 className="md-typescale-headline-large" style={{ margin: 0 }}>
+          Set up your supplier account
+        </h1>
+        <p className="desk-page-subtitle">
           Step {stepIndex + 1} of {STEP_ORDER.length} — {STEP_LABELS[state.step]}
         </p>
         <Stepper currentIndex={stepIndex} />
       </header>
 
-      <section className="md-card p-6 md-shape-md">
+      <section className="md-card p-6">
         {state.step === "account"    && <AccountStepView state={state} setState={setState} errors={errors} dialCode={dialCode} />}
         {state.step === "location"   && <LocationStepView state={state} setState={setState} errors={errors} />}
         {state.step === "business"   && <BusinessStepView state={state} setState={setState} errors={errors} />}
@@ -171,30 +176,25 @@ export default function RegisterPage() {
           </button>
         )}
       </footer>
-    </main>
+    </div>
   );
 }
 
 function Stepper({ currentIndex }: { currentIndex: number }) {
   return (
-    <ol className="mt-4 flex gap-2" aria-label="Onboarding progress">
-      {STEP_ORDER.map((id, i) => {
-        const done = i < currentIndex;
-        const active = i === currentIndex;
+    <ol className="auth-step-indicator" aria-label="Onboarding progress">
+      {STEP_ORDER.map((id, index) => {
+        const done = index < currentIndex;
+        const active = index === currentIndex;
         return (
-          <li key={id} className="flex-1">
-            <div
-              className="h-1 rounded-full"
-              style={{
-                background:
-                  done || active
-                    ? "var(--color-md-primary)"
-                    : "var(--color-md-outline-variant)",
-              }}
+          <li key={id} className="flex items-center gap-3">
+            {index > 0 ? <span className="auth-step-connector" aria-hidden /> : null}
+            <span
+              className={`auth-step-dot ${active ? "auth-step-dot--active" : ""} ${done ? "auth-step-dot--done" : ""}`}
               aria-current={active ? "step" : undefined}
-            />
-            <span className="md-typescale-label-small mt-1 block" style={{ color: "var(--color-md-outline)" }}>
-              {STEP_LABELS[id]}
+              title={STEP_LABELS[id]}
+            >
+              {index + 1}
             </span>
           </li>
         );

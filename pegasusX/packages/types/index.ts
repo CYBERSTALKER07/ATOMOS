@@ -46,8 +46,15 @@ export type OrderStatus =
   | "LOADED"
   | "IN_TRANSIT"
   | "ARRIVED"
+  | "AWAITING_PAYMENT"
+  | "PENDING_CASH_COLLECTION"
   | "COMPLETED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "DELAYED";
+
+export type OrderSource = "MANUAL" | "MANUAL_PREORDER" | "AI_PREORDER";
+
+export type OrderConfirmationStatus = "CONFIRMED" | "DRAFT" | "PENDING" | "REJECTED" | "AUTO_CONFIRMED";
 
 // ── Supplier API contracts ─────────────────────────────────────────────────
 export interface SupplierRegisterAccount {
@@ -93,6 +100,7 @@ export interface SupplierRegisterResponse {
   legal_name: string;
   is_configured: boolean;
   next_step: string;
+  token?: string;
 }
 
 export interface SupplierLoginRequest {
@@ -104,6 +112,178 @@ export interface SupplierLoginResponse {
   supplier_id: SupplierId;
   is_configured: boolean;
   next_step: string;
+  token?: string;
+  refresh_token?: string;
+}
+
+export interface SupplierDashboardResponse {
+  supplier_id: SupplierId;
+  is_configured: boolean;
+  inventory_skus: number;
+  pending_orders: number;
+  updated_at: string;
+  orders_by_status?: Record<string, number>;
+  today_revenue_minor?: number;
+  currency?: string;
+  active_drivers?: number;
+  total_drivers?: number;
+  retailers_ordered_today?: number;
+  total_retailers?: number;
+  delivery_completion_rate_pct?: number;
+  fleet_vu_used?: number;
+  fleet_vu_total?: number;
+  recent_manifests?: SupplierManifestRow[];
+  activity_events?: SupplierActivityEvent[];
+}
+
+export interface SupplierManifestRow {
+  manifest_id: string;
+  /** Portal queue status; mirrored as `state` for payloader clients. */
+  status: "DRAFT" | "LOADING" | "DISPATCHED" | "SEALED" | string;
+  state?: string;
+  orders_count: number;
+  stop_count?: number;
+  driver_id?: string;
+  driver_name: string;
+  vehicle_id?: string;
+  truck_id?: string;
+  vehicle_plate?: string;
+  total_vu: number;
+  total_volume_vu?: number;
+  max_volume_vu?: number;
+  updated_at: string;
+}
+
+export interface SupplierManifestsResponse {
+  manifests: SupplierManifestRow[];
+}
+
+export interface SupplierSupplyLaneRow {
+  lane_id: string;
+  name: string;
+  warehouse_id: string;
+  h3_cells: number;
+  drivers: number;
+  orders_today: number;
+  capacity: number;
+  utilization_pct: number;
+}
+
+export interface SupplierSupplyLanesResponse {
+  lanes: SupplierSupplyLaneRow[];
+}
+
+export interface SupplierExceptionRow {
+  order_id: string;
+  kind: string;
+  status: string;
+  retailer_id?: string;
+  note?: string;
+  manifest_id?: string;
+  updated_at: string;
+}
+
+export interface SupplierExceptionsResponse {
+  exceptions: SupplierExceptionRow[];
+}
+
+export interface ShopClosedAttemptRow {
+  attempt_id: string;
+  order_id: string;
+  original_route_id?: string;
+  driver_id: string;
+  retailer_id: string;
+  resolution: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ShopClosedActiveResponse {
+  data: ShopClosedAttemptRow[];
+}
+
+export interface ShopClosedResolveRequest {
+  attempt_id: string;
+  action: "WAIT" | "BYPASS" | "RETURN_TO_DEPOT";
+}
+
+export interface NegotiationProposalItem {
+  sku_id: string;
+  original_qty: number;
+  proposed_qty: number;
+}
+
+export interface NegotiationProposalRow {
+  proposal_id: string;
+  order_id: string;
+  driver_id: string;
+  items: NegotiationProposalItem[];
+  created_at: string;
+}
+
+export interface NegotiationPendingResponse {
+  data: NegotiationProposalRow[];
+}
+
+export interface NegotiationResolveRequest {
+  proposal_id: string;
+  action: "APPROVE" | "REJECT";
+  resolution?: string;
+}
+
+export interface NegotiationResolveResponse {
+  status: string;
+  proposal_id: string;
+  order_id: string;
+}
+
+export interface PaymentBypassRequest {
+  order_id: string;
+  reason?: string;
+}
+
+export interface PaymentBypassResponse {
+  status: string;
+  bypass_token: string;
+  order_id: string;
+}
+
+export interface SupplierEmpathyAdoption {
+  total_predictions: number;
+  predictions_dormant: number;
+  predictions_waiting: number;
+  predictions_fired: number;
+  predictions_rejected: number;
+}
+
+export interface SupplierBroadcastRequest {
+  title: string;
+  body: string;
+  role?: string;
+}
+
+export interface SupplierBroadcastResponse {
+  status: string;
+  supplier_id: string;
+}
+
+export interface SupplierReplenishmentTriggerResponse {
+  status: string;
+  request_id: string;
+  warehouse_id: string;
+}
+
+export interface SupplierFleetOrderRow {
+  id: string;
+  order_id: string;
+  retailer_id?: string;
+  driver_id?: string;
+  status: string;
+  state?: string;
+  route_id?: string;
+  total_minor?: number;
+  currency?: string;
+  updated_at?: string;
 }
 
 export interface SupplierBillingSetupRequest {
@@ -207,6 +387,418 @@ export interface SupplierTopologyResponse {
   updated_at: string;
 }
 
+export interface SupplierOrgMemberCreateRequest {
+  name: string;
+  email?: string;
+  phone: string;
+  password: string;
+  supplier_role: Role;
+  assigned_warehouse_id?: WarehouseId;
+  assigned_factory_id?: FactoryId;
+  is_active?: boolean;
+}
+
+export interface SupplierOrgMember {
+  user_id: string;
+  supplier_id: SupplierId;
+  name: string;
+  email?: string;
+  phone: string;
+  supplier_role: Role;
+  assigned_warehouse_id?: WarehouseId;
+  assigned_factory_id?: FactoryId;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupplierOrgMembersResponse {
+  supplier_id: SupplierId;
+  items: SupplierOrgMember[];
+  updated_at: string;
+}
+
+export interface SupplierFleetDriverCreateRequest {
+  name: string;
+  phone: string;
+  pin: string;
+  home_node_type: HomeNodeType;
+  home_node_id: WarehouseId | FactoryId;
+  vehicle_id?: VehicleId;
+  is_active?: boolean;
+}
+
+export interface SupplierFleetDriver {
+  driver_id: DriverId;
+  supplier_id: SupplierId;
+  name: string;
+  phone: string;
+  home_node_type: HomeNodeType;
+  home_node_id: WarehouseId | FactoryId;
+  vehicle_id?: VehicleId;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupplierFleetDriversResponse {
+  supplier_id: SupplierId;
+  items: SupplierFleetDriver[];
+  updated_at: string;
+}
+
+export interface SupplierFleetVehicleCreateRequest {
+  label?: string;
+  license_plate: string;
+  home_node_type: HomeNodeType;
+  home_node_id: WarehouseId | FactoryId;
+  is_active?: boolean;
+}
+
+export interface SupplierFleetVehicle {
+  vehicle_id: VehicleId;
+  supplier_id: SupplierId;
+  label?: string;
+  license_plate: string;
+  home_node_type: HomeNodeType;
+  home_node_id: WarehouseId | FactoryId;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupplierFleetVehiclesResponse {
+  supplier_id: SupplierId;
+  items: SupplierFleetVehicle[];
+  updated_at: string;
+}
+
+export interface SupplierPricingRule {
+  supplier_id: SupplierId;
+  base_markup_bps: number;
+  retailer_discount_bps: number;
+  min_margin_bps: number;
+  currency: Iso4217;
+  rule_version: number;
+  updated_at: string;
+}
+
+export interface SupplierPricingRuleUpdateRequest {
+  base_markup_bps?: number;
+  retailer_discount_bps?: number;
+  min_margin_bps?: number;
+  currency?: Iso4217;
+}
+
+export interface SupplierOrderDriverLocation {
+  driver_id: DriverId;
+  supplier_id: SupplierId;
+  lat: number;
+  lng: number;
+  latitude: number;
+  longitude: number;
+  velocity?: number;
+  heading?: number;
+  reported_at: string;
+  received_at: string;
+  stale_after_seconds: number;
+}
+
+export interface SupplierOrder {
+  order_id: OrderId;
+  supplier_id?: SupplierId;
+  retailer_id: RetailerId;
+  warehouse_id?: WarehouseId;
+  driver_id?: DriverId;
+  vehicle_id?: VehicleId;
+  route_id?: RouteId;
+  manifest_id?: ManifestId;
+  status: string;
+  tracking_status?: string;
+  decision?: string;
+  note?: string;
+  total_minor: number;
+  currency: Iso4217;
+  live_location_available: boolean;
+  driver_location?: SupplierOrderDriverLocation;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupplierOrdersResponse {
+  orders: SupplierOrder[];
+  total?: number;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SupplierActivityEvent {
+  id: string;
+  type: string;
+  timestamp: string;
+  description: string;
+  order_id?: string;
+  manifest_id?: string;
+}
+
+export interface SupplierActivityResponse {
+  events: SupplierActivityEvent[];
+}
+
+export interface SupplierDispatchPreview {
+  undispatched_orders: Array<{
+    order_id: string;
+    retailer_id?: string;
+    warehouse_id?: string;
+    total_minor: number;
+    currency: string;
+  }>;
+  available_drivers: Array<{
+    driver_id: string;
+    name: string;
+    vehicle_id?: string;
+    truck_status?: string;
+  }>;
+  unavailable_drivers?: Array<{
+    driver_id: string;
+    name: string;
+    unavailable_reason?: string;
+  }>;
+  pending_count?: number;
+  available_driver_count?: number;
+}
+
+export type SupplierAIRecommendationStatus =
+  | "PENDING"
+  | "ACKNOWLEDGED"
+  | "OVERRIDDEN"
+  | "DISMISSED";
+
+export type SupplierAIRecommendationDecision =
+  | "ACKNOWLEDGED"
+  | "OVERRIDDEN"
+  | "DISMISSED"
+  | "REOPENED";
+
+export interface SupplierAIRecommendationEvidence {
+  label: string;
+  value: string;
+  href?: string;
+}
+
+export interface SupplierAIRecommendation {
+  recommendation_id: string;
+  supplier_id: SupplierId;
+  aggregate_id: string;
+  aggregate_type: string;
+  action: string;
+  status: SupplierAIRecommendationStatus | string;
+  score: number;
+  confidence: number;
+  source: string;
+  explanation: string;
+  reason_codes: string[];
+  evidence: SupplierAIRecommendationEvidence[];
+  decision?: SupplierAIRecommendationDecision | string;
+  decision_note?: string;
+  decided_by?: string;
+  decided_at?: string;
+  expires_at?: string;
+  generated_at: string;
+  updated_at: string;
+}
+
+export interface SupplierAIRecommendationsQuery {
+  status?: string;
+  limit?: number;
+}
+
+export interface SupplierAIRecommendationsResponse {
+  items: SupplierAIRecommendation[];
+  count: number;
+  limit: number;
+  status?: string;
+  updated_at: string;
+}
+
+export interface SupplierAIRecommendationDecisionRequest {
+  recommendation_id: string;
+  decision: SupplierAIRecommendationDecision;
+  note?: string;
+}
+
+export interface SupplierAIRecommendationDecisionResponse {
+  recommendation: SupplierAIRecommendation;
+}
+
+export interface RetailerPricingSummary {
+  base_markup_bps: number;
+  retailer_discount_bps: number;
+  min_margin_bps: number;
+  currency: Iso4217 | "";
+  rule_version: number;
+  updated_at?: string;
+}
+
+export interface RetailerSupplierPreference {
+  supplier_id: SupplierId;
+  name: string;
+  is_favorite: boolean;
+  pricing?: RetailerPricingSummary;
+}
+
+export interface RetailerPricingRuleResponse {
+  supplier_id: SupplierId;
+  configured: boolean;
+  pricing: RetailerPricingSummary;
+}
+
+export interface PaymentLedgerQuery {
+  supplier_id?: SupplierId;
+  order_id?: OrderId;
+  session_id?: SessionId;
+  gateway?: PaymentGateway | string;
+  entry_type?: string;
+  occurred_from?: string;
+  occurred_to?: string;
+  limit?: number;
+}
+
+export interface PaymentLedgerEntry {
+  ledger_entry_id: string;
+  session_id?: SessionId;
+  order_id?: OrderId;
+  supplier_id?: SupplierId;
+  retailer_id?: RetailerId;
+  gateway: string;
+  entry_type: string;
+  amount_minor: number;
+  currency: Iso4217;
+  reference_id?: string;
+  source: string;
+  occurred_at: string;
+  created_at: string;
+}
+
+export interface PaymentLedgerResponse {
+  items: PaymentLedgerEntry[];
+  count: number;
+  limit: number;
+  supplier_id: SupplierId | "";
+  filters?: {
+    order_id?: OrderId;
+    session_id?: SessionId;
+    gateway?: string;
+    entry_type?: string;
+    occurred_from?: string | null;
+    occurred_to?: string | null;
+  };
+}
+
+export interface SettlementAuthorityQuery {
+  supplier_id?: SupplierId;
+  gateway?: PaymentGateway | string;
+  entry_type?: string;
+  occurred_from?: string;
+  occurred_to?: string;
+  group_limit?: number;
+}
+
+export interface SettlementAuthorityRow {
+  gateway: string;
+  entry_type: string;
+  currency: Iso4217;
+  entry_count: number;
+  amount_minor_total: number;
+  first_occurred_at: string;
+  last_occurred_at: string;
+}
+
+export interface SettlementCurrencyTotal {
+  currency: Iso4217;
+  entry_count: number;
+  amount_minor_total: number;
+}
+
+export interface SettlementAuthorityResponse {
+  items: SettlementAuthorityRow[];
+  count: number;
+  group_limit: number;
+  supplier_id: SupplierId | "";
+  entry_count_total: number;
+  totals_by_currency: SettlementCurrencyTotal[];
+  filters?: {
+    gateway?: string;
+    entry_type?: string;
+    occurred_from?: string | null;
+    occurred_to?: string | null;
+  };
+}
+
+export interface PaymentChargebackRequest {
+  order_id: OrderId;
+  retailer_id: RetailerId;
+  gateway: PaymentGateway | string;
+  amount: number;
+  currency?: Iso4217;
+  amount_uzs?: number;
+}
+
+export interface PaymentChargebackResponse {
+  status: string;
+}
+
+export interface PaymentChargebackReversalRequest {
+  session_id: SessionId;
+}
+
+export interface PaymentChargebackReversalResponse {
+  status: string;
+}
+
+export interface ReconciliationMismatchQuery {
+  supplier_id?: SupplierId;
+  gateway?: PaymentGateway | string;
+  occurred_from?: string;
+  occurred_to?: string;
+  group_limit?: number;
+  mismatch_threshold_minor?: number;
+}
+
+export interface ReconciliationEntryTypeTotal {
+  entry_type: string;
+  entry_count: number;
+  amount_minor_total: number;
+  signed_amount_minor_total: number;
+}
+
+export interface ReconciliationMismatchRow {
+  gateway: string;
+  currency: Iso4217;
+  entry_count_total: number;
+  group_count: number;
+  credit_amount_minor_total: number;
+  debit_amount_minor_total: number;
+  net_amount_minor: number;
+  first_occurred_at: string;
+  last_occurred_at: string;
+  entry_type_totals: ReconciliationEntryTypeTotal[];
+}
+
+export interface ReconciliationMismatchResponse {
+  items: ReconciliationMismatchRow[];
+  count: number;
+  analyzed_group_count: number;
+  group_limit: number;
+  mismatch_threshold_minor: number;
+  supplier_id: SupplierId | "";
+  filters?: {
+    gateway?: string;
+    occurred_from?: string | null;
+    occurred_to?: string | null;
+  };
+}
+
 // ── Envelope + event-type union ─────────────────────────────────────────────
 export interface WsEventEnvelope<T extends string = string, P = unknown> {
   type: T;
@@ -232,6 +824,8 @@ export type EventType =
   | "ORDER_ASSIGNED"
   | "ORDER_REASSIGNED"
   | "ORDER_FINALIZED"
+  | "AI_RECOMMENDATION_CREATED"
+  | "AI_RECOMMENDATION_DECIDED"
   | "ROUTE_CREATED"
   | "MANIFEST_DRAFT_CREATED"
   | "MANIFEST_LOADING_STARTED"
@@ -249,6 +843,7 @@ export type EventType =
   | "DELIVERY_SESSION_UPDATED"
   | "DELIVERY_DISPUTED"
   | "DRIVER_AVAILABILITY_CHANGED"
+  | "DRIVER_LOCATION_UPDATED"
   | "SHOP_CLOSED"
   | "SHOP_CLOSED_RESPONSE"
   | "CART_SYNC_UPDATED"
@@ -304,7 +899,13 @@ export interface WarehouseSupplyRequestOpened {
   warehouse_id?: WarehouseId;
   request_id: string;
   status: string;
+  state?: string;
   requested_by?: string;
+  coverage_start_date?: string;
+  coverage_days?: number;
+  projected_units?: number;
+  committed_units?: number;
+  pending_confirmation_units?: number;
   timestamp: string;
 }
 
@@ -333,7 +934,18 @@ export interface OrderCreated {
   retailer_id: RetailerId;
   supplier_id: SupplierId;
   warehouse_id?: WarehouseId;
-  total: Money;
+  status: OrderStatus;
+  order_source?: OrderSource;
+  confirmation_status?: OrderConfirmationStatus;
+  requested_delivery_date?: string;
+  line_items?: RetailerOrderLineItem[];
+  total_minor: number;
+  currency: Iso4217;
+  h3_cell: H3Cell;
+  lat: number;
+  lng: number;
+  receiving_window_open?: string;
+  receiving_window_close?: string;
 }
 
 export interface OrderStatusChanged {
@@ -345,6 +957,9 @@ export interface OrderStatusChanged {
   reason?: string;
   actor_role?: Role;
   actor_id?: string;
+  order_source?: OrderSource;
+  confirmation_status?: OrderConfirmationStatus;
+  requested_delivery_date?: string;
   version?: number;
   total_minor?: number;
   currency?: Iso4217;
@@ -359,6 +974,11 @@ export interface OrderAssigned {
   order_id: OrderId;
   driver_id: DriverId;
   route_id: RouteId;
+  supplier_id?: SupplierId;
+  retailer_id?: RetailerId;
+  warehouse_id?: WarehouseId;
+  vehicle_id?: VehicleId;
+  manifest_id?: ManifestId;
 }
 
 export interface OrderReassigned {
@@ -367,26 +987,484 @@ export interface OrderReassigned {
   to_driver_id: DriverId;
   supplier_id?: SupplierId;
   retailer_id?: RetailerId;
+  warehouse_id?: WarehouseId;
+  from_route_id?: RouteId;
+  to_route_id?: RouteId;
+  vehicle_id?: VehicleId;
+  manifest_id?: ManifestId;
+}
+
+export interface AssignOrderRequest {
+  driver_id: DriverId;
+  route_id: RouteId;
+  vehicle_id?: VehicleId;
+  manifest_id?: ManifestId;
+}
+
+export interface AssignOrderResponse {
+  order_id: OrderId;
+  supplier_id: SupplierId;
+  retailer_id: RetailerId;
+  driver_id: DriverId;
+  route_id: RouteId;
+  vehicle_id?: VehicleId;
+  manifest_id?: ManifestId;
+  event_type: "ORDER_ASSIGNED" | "ORDER_REASSIGNED";
+  version: number;
+  updated_at: string;
+  no_change?: boolean;
+}
+
+export interface RetailerTrackingLineItem {
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+}
+
+export interface RetailerOrderLineItem {
+  sku: string;
+  name?: string;
+  quantity: number;
+  unit_price_minor: number;
+}
+
+export interface RetailerTrackingLocation {
+  driver_id: DriverId;
+  supplier_id: SupplierId;
+  lat: number;
+  lng: number;
+  latitude: number;
+  longitude: number;
+  velocity?: number;
+  heading?: number;
+  reported_at: string;
+  received_at: string;
+  stale_after_seconds: number;
+}
+
+export interface RetailerTrackingOrder {
+  order_id: OrderId;
+  supplier_id: SupplierId;
+  retailer_id: RetailerId;
+  warehouse_id?: WarehouseId;
+  driver_id?: DriverId;
+  vehicle_id?: VehicleId;
+  route_id?: RouteId;
+  manifest_id?: ManifestId;
+  status: OrderStatus;
+  tracking_status: "assigned" | "unassigned";
+  total_minor: number;
+  currency: Iso4217;
+  live_location_available: boolean;
+  driver_location?: RetailerTrackingLocation;
+  payment_evidence?: RetailerTrackingPaymentEvidence;
+  receipt_dossier?: RetailerTrackingReceiptDossier;
+  created_at: string;
+  updated_at: string;
+  items: RetailerTrackingLineItem[];
+}
+
+export interface RetailerTrackingPaymentEvidence {
+  entry_type: string;
+  gateway: string;
+  amount_minor: number;
+  currency: Iso4217;
+  reference_id?: string;
+  occurred_at: string;
+}
+
+export interface RetailerTrackingReceiptPaymentRecord extends PaymentLedgerEntry {}
+
+export interface RetailerTrackingReceiptGatewayWebhook {
+  webhook_id: string;
+  session_id?: SessionId;
+  gateway: string;
+  transaction_id: string;
+  status: string;
+  amount_minor: number;
+  currency: Iso4217;
+  signature_valid: boolean;
+  received_at: string;
+}
+
+export interface RetailerTrackingReceiptDeliveryProof {
+  proof_id: string;
+  proof_type: string;
+  latitude?: number;
+  longitude?: number;
+  distance_m?: number;
+  qr_token_hash_present: boolean;
+  scanned_token_hash_present: boolean;
+  captured_at: string;
+}
+
+export interface RetailerTrackingReceiptChargebackRecord {
+  chargeback_id: string;
+  gateway: string;
+  amount_minor: number;
+  currency: Iso4217;
+  created_at: string;
+}
+
+export interface RetailerTrackingReceiptReversalRecord {
+  reversal_id: string;
+  session_id?: SessionId;
+  gateway: string;
+  amount_minor: number;
+  currency: Iso4217;
+  ledger_entry_id?: string;
+  created_at: string;
+}
+
+export interface RetailerTrackingReceiptProofStatus {
+  payment_timeline_available: boolean;
+  gateway_webhooks_available: boolean;
+  delivery_proof_available: boolean;
+  missing_artifacts: string[];
+}
+
+export interface RetailerTrackingReceiptDossier {
+  session_id?: SessionId;
+  payment_timeline: RetailerTrackingReceiptPaymentRecord[];
+  gateway_webhooks: RetailerTrackingReceiptGatewayWebhook[];
+  delivery_proofs: RetailerTrackingReceiptDeliveryProof[];
+  chargebacks: RetailerTrackingReceiptChargebackRecord[];
+  reversals: RetailerTrackingReceiptReversalRecord[];
+  proof_status: RetailerTrackingReceiptProofStatus;
+}
+
+export type RetailerTrackingEventType = "ORDER_CREATED" | "ORDER_STATUS_SNAPSHOT";
+
+export interface RetailerTrackingEvent {
+  event_type: RetailerTrackingEventType;
+  order_id: OrderId;
+  status?: OrderStatus;
+  occurred_at: string;
+  derived: boolean;
+  source: "ORDER_ROW";
+}
+
+export interface RetailerTrackingResponse {
+  status: "idle" | "active";
+  orders: RetailerTrackingOrder[];
+  recent_receipts: RetailerTrackingOrder[];
+  events: RetailerTrackingEvent[];
+}
+
+export interface RetailerActiveFulfillmentResponse {
+  status: "idle" | "active";
+  fulfillments: RetailerTrackingOrder[];
+}
+
+export interface RetailerPendingPaymentsResponse {
+  status: "idle" | "pending";
+  count: number;
+  pending: RetailerTrackingOrder[];
+}
+
+export interface RetailerAIPrediction {
+  order_id: OrderId;
+  order_source: OrderSource;
+  confirmation_status: OrderConfirmationStatus;
+  requested_delivery_date?: string;
+  auto_confirm_at?: string;
+  total_minor: number;
+  currency: Iso4217;
+  derived_from_order_id?: OrderId;
+  updated_at: string;
+  line_items: RetailerOrderLineItem[];
+}
+
+export interface RetailerAIPredictionsResponse {
+  items: RetailerAIPrediction[];
+}
+
+export interface RetailerOrderLifecycleResponse {
+  order_id: OrderId;
+  status: OrderStatus;
+  order_source: OrderSource;
+  confirmation_status: OrderConfirmationStatus;
+  requested_delivery_date?: string;
+  auto_confirm_at?: string;
+  decision_at?: string;
+  decision_by?: string;
+  total_minor: number;
+  currency: Iso4217;
+  version: number;
+  updated_at: string;
+  created?: boolean;
+}
+
+export interface ConfirmAIOrderRequest {
+  order_id: OrderId;
+  requested_delivery_date?: string;
+  line_items?: RetailerOrderLineItem[];
+}
+
+export interface RejectAIOrderRequest {
+  order_id: OrderId;
+  reason?: string;
+}
+
+export interface EditPreorderRequest {
+  order_id: OrderId;
+  requested_delivery_date: string;
+  line_items: RetailerOrderLineItem[];
+}
+
+export interface ConfirmPreorderRequest {
+  order_id: OrderId;
+}
+
+export interface WarehouseDemandForecastDay {
+  date: string;
+  projected_units: number;
+  projected_revenue: number;
+  committed_units: number;
+  pending_confirmation_units: number;
+  currency: Iso4217;
+}
+
+export interface WarehouseDemandForecastProductSources {
+  incoming_orders: number;
+  ai_prediction: number;
+  pre_orders: number;
+  burn_rate: number;
+}
+
+export interface WarehouseDemandForecastProduct {
+  product_id: string;
+  product_name: string;
+  current_stock: number;
+  recommended_qty: number;
+  days_until_stockout: number;
+  priority: string;
+  unit: string;
+  sources: WarehouseDemandForecastProductSources;
+}
+
+export interface WarehouseDemandForecastResponse {
+  warehouse_id: WarehouseId;
+  forecast_days?: number;
+  generated_at?: string;
+  series: WarehouseDemandForecastDay[];
+  /** Portal parity: product-level 4-source breakdown (pegasus warehouse-portal). */
+  products?: WarehouseDemandForecastProduct[];
+}
+
+export interface WarehouseOpsDashboardResponse {
+  supplier_id?: SupplierId;
+  inventory_skus: number;
+  orders_open: number;
+  dispatch_locks: number;
+  supply_requests: number;
+  updated_at: string;
+}
+
+export interface WarehouseInventoryRow {
+  sku: string;
+  product_name: string;
+  quantity: number;
+  updated_at: string;
+}
+
+export interface WarehouseInventoryResponse {
+  items: WarehouseInventoryRow[];
+}
+
+export interface WarehouseOrderRow {
+  order_id: OrderId;
+  retailer_id: RetailerId;
+  status: string;
+  total_minor: number;
+  currency: Iso4217;
+  updated_at: string;
+}
+
+export interface WarehouseOrdersResponse {
+  orders: WarehouseOrderRow[];
+}
+
+/** Legacy compact shape; prefer WarehouseDispatchPreview from GET/POST dispatch/preview. */
+export interface WarehouseDispatchPreviewResponse {
+  status: string;
+  recommended_manifests: number;
+  estimated_eta_minutes: number;
+}
+
+export interface WarehouseSupplyRequest {
+  request_id: string;
+  supplier_id?: SupplierId;
+  warehouse_id?: WarehouseId;
+  factory_id?: string;
+  status: string;
+  state?: string;
+  priority?: string;
+  requested_delivery_date?: string;
+  total_volume_vu?: number;
+  notes?: string;
+  transfer_order_id?: string;
+  created_by?: string;
+  requested_by?: string;
+  coverage_start_date?: string;
+  coverage_days?: number;
+  projected_units?: number;
+  committed_units?: number;
+  pending_confirmation_units?: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface WarehouseSupplyRequestsResponse {
+  requests: WarehouseSupplyRequest[];
+  supply_requests?: WarehouseSupplyRequest[];
+}
+
+export interface WarehouseDispatchLock {
+  lock_id: string;
+  entity_type?: string;
+  entity_id?: string;
+  reason?: string;
+  created_at?: string;
+  supplier_id?: SupplierId;
+  warehouse_id?: WarehouseId;
+  factory_id?: string;
+  lock_type?: string;
+  locked_at?: string;
+  unlocked_at?: string;
+  locked_by?: string;
+}
+
+export interface WarehouseDispatchLocksResponse {
+  locks: WarehouseDispatchLock[];
+}
+
+export interface WarehouseDispatchLockAcquireRequest {
+  entity_type: string;
+  entity_id: string;
+  reason: string;
+}
+
+export interface WarehouseDispatchLockReleaseResponse {
+  status: string;
+  lock_id: string;
+}
+
+export interface WarehouseEmergencyTransferRequest {
+  total_volume_vu: number;
+  notes?: string;
+}
+
+export interface WarehouseForceReceiveRequest {
+  factory_id?: string;
+  total_volume_vu: number;
+  notes?: string;
+}
+
+export interface WarehouseTransferMutationResponse {
+  transfer_id: string;
+  state: string;
+  notes?: string;
+}
+
+export interface WarehouseReplenishmentInsight {
+  id: string;
+  warehouse_id: WarehouseId;
+  warehouse_name: string;
+  product_id: string;
+  product_name: string;
+  urgency: string;
+  current_stock: number;
+  avg_daily_velocity: number;
+  days_until_stockout: number;
+  reorder_quantity: number;
+  status: string;
+  created_at: string;
+}
+
+export interface WarehouseReplenishmentInsightsResponse {
+  insights: WarehouseReplenishmentInsight[];
+  data?: WarehouseReplenishmentInsight[];
+}
+
+export interface WarehouseReplenishmentInsightActionResponse {
+  insight_id: string;
+  status: string;
+  transfer_id?: string;
+}
+
+export interface WarehouseOpsFinancialsResponse {
+  warehouse_id: WarehouseId;
+  period: string;
+  currency: Iso4217;
+  total_revenue: number;
+  completed_orders: number;
+  avg_order_value: number;
+  gateway_breakdown: unknown[];
+  daily_revenue: unknown[];
+  platform_fee: number;
+  net_payout: number;
+  cash_pending: number;
+  cash_collected: number;
+}
+
+export interface WarehouseOrderMutationRequest {
+  reason?: string;
+}
+
+export interface WarehouseOrderMutationResponse {
+  order_id: OrderId;
+  status: string;
 }
 
 export interface OrderFinalized {
   order_id: OrderId;
+  supplier_id?: SupplierId;
+  retailer_id?: RetailerId;
   total: Money;
+  amount_minor?: number;
+  currency?: Iso4217;
+  status?: OrderStatus;
   fee_amount?: number;
   net_payout_amount?: number;
 }
 
+export interface PaymentRequired {
+  order_id: OrderId;
+  supplier_id?: SupplierId;
+  retailer_id?: RetailerId;
+  amount: Money;
+  amount_minor?: number;
+  currency?: Iso4217;
+  payment_method?: PaymentGateway | string;
+  status?: OrderStatus;
+}
+
 export interface PaymentCleared {
   order_id: OrderId;
+  supplier_id?: SupplierId;
+  retailer_id?: RetailerId;
   amount: Money;
+  amount_minor?: number;
+  currency?: Iso4217;
   gateway?: PaymentGateway;
+  payment_method?: PaymentGateway | string;
+  status?: OrderStatus;
   provider_reference?: string;
 }
 
 export interface SettlementRequired {
   order_id: OrderId;
-  session_id: SessionId;
+  supplier_id?: SupplierId;
+  retailer_id?: RetailerId;
+  session_id?: SessionId;
   amount: Money;
+  amount_minor?: number;
+  currency?: Iso4217;
+  payment_method?: PaymentGateway | string;
+  status?: OrderStatus;
 }
 
 export interface DeliverySessionUpdated {
@@ -398,11 +1476,31 @@ export interface DeliverySessionUpdated {
   currency?: Iso4217;
 }
 
-export interface DriverAvailabilityChanged {
+export interface DriverAvailabilityChanged extends HomeNode {
   driver_id: DriverId;
+  supplier_id?: SupplierId;
   available: boolean;
+  on_shift?: boolean;
   reason?: string;
 }
+
+export interface DriverLocationUpdated {
+  driver_id: DriverId;
+  supplier_id: SupplierId;
+  lat: number;
+  lng: number;
+  latitude: number;
+  longitude: number;
+  velocity?: number;
+  heading?: number;
+  reported_at: string;
+  received_at: string;
+  stale_after_seconds: number;
+}
+
+export type DriverAvailabilityChangedEvent = WsEventEnvelope<"DRIVER_AVAILABILITY_CHANGED"> & DriverAvailabilityChanged;
+
+export type DriverLocationUpdatedEvent = WsEventEnvelope<"DRIVER_LOCATION_UPDATED", DriverLocationUpdated>;
 
 export interface ManifestSealed {
   manifest_id: ManifestId;
@@ -476,10 +1574,12 @@ export type WsEvent =
   | WsEventEnvelope<"ORDER_ASSIGNED", OrderAssigned>
   | WsEventEnvelope<"ORDER_REASSIGNED", OrderReassigned>
   | WsEventEnvelope<"ORDER_FINALIZED", OrderFinalized>
+  | WsEventEnvelope<"PAYMENT_REQUIRED", PaymentRequired>
   | WsEventEnvelope<"PAYMENT_CLEARED", PaymentCleared>
   | WsEventEnvelope<"SETTLEMENT_REQUIRED", SettlementRequired>
   | WsEventEnvelope<"DELIVERY_SESSION_UPDATED", DeliverySessionUpdated>
-  | WsEventEnvelope<"DRIVER_AVAILABILITY_CHANGED", DriverAvailabilityChanged>
+  | DriverAvailabilityChangedEvent
+  | DriverLocationUpdatedEvent
   | WsEventEnvelope<"MANIFEST_ORDER_INJECTED", ManifestOrderInjected>
   | WsEventEnvelope<"MANIFEST_ORDER_EXCEPTION", ManifestOrderException>
   | WsEventEnvelope<"MANIFEST_DLQ_ESCALATION", ManifestOrderException>
@@ -490,3 +1590,216 @@ export type WsEvent =
   | WsEventEnvelope<"COMMAND_RECEIVED", CommandLifecycle>
   | WsEventEnvelope<"COMMAND_SETTLED", CommandLifecycle>
   | WsEventEnvelope<"SYSTEM_APP_OUTDATED", { minimum_version: string }>;
+
+// ── Warehouse portal / desktop (fleet, supply detail, live WS) ──
+
+export type WarehouseStaffRole = "WAREHOUSE_STAFF" | "PAYLOADER";
+
+export interface WarehouseStaffMember {
+  worker_id: string;
+  name: string;
+  phone: string;
+  role: WarehouseStaffRole | string;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface WarehouseStaffListResponse {
+  staff: WarehouseStaffMember[];
+}
+
+export interface CreateWarehouseStaffRequest {
+  name: string;
+  phone: string;
+  role: WarehouseStaffRole;
+  pin?: string;
+}
+
+export interface CreateWarehouseStaffResponse {
+  worker_id: string;
+  name?: string;
+  role?: WarehouseStaffRole | string;
+  pin: string;
+}
+
+export type WarehouseVehicleUnavailableReason =
+  | "MAINTENANCE"
+  | "TRUCK_DAMAGED"
+  | "REGULATORY_HOLD"
+  | "MANUAL_HOLD"
+  | string;
+
+export interface WarehouseFleetDriver {
+  driver_id: string;
+  name: string;
+  phone: string;
+  driver_type?: string;
+  vehicle_type?: string;
+  license_plate?: string;
+  is_active: boolean;
+  truck_status: string;
+  created_at?: string;
+  vehicle_id?: string;
+  vehicle_class?: string;
+  max_volume_vu?: number;
+  vehicle_is_active?: boolean;
+  vehicle_unavailable_reason?: WarehouseVehicleUnavailableReason;
+}
+
+export interface WarehouseFleetDriverListResponse {
+  drivers: WarehouseFleetDriver[];
+}
+
+export interface WarehouseAssignVehicleRequest {
+  vehicle_id?: string;
+}
+
+export interface WarehouseAssignVehicleResponse {
+  status: "ASSIGNED" | "UNASSIGNED" | string;
+  driver_id: string;
+  vehicle_id?: string;
+  previously_assigned_driver?: string;
+}
+
+export interface WarehouseFleetVehicle {
+  vehicle_id: string;
+  vehicle_class: string;
+  class_label?: string;
+  label: string;
+  license_plate: string;
+  max_volume_vu?: number;
+  capacity_vu: number;
+  is_active: boolean;
+  status: string;
+  unavailable_reason?: WarehouseVehicleUnavailableReason;
+  created_at?: string;
+  assigned_driver_id?: string;
+  assigned_driver_name?: string;
+  driver_truck_status?: string;
+}
+
+export interface WarehouseFleetVehicleListResponse {
+  vehicles: WarehouseFleetVehicle[];
+  total?: number;
+}
+
+export interface WarehouseUpdateVehicleRequest {
+  label?: string;
+  license_plate?: string;
+  is_active?: boolean;
+  unavailable_reason?: WarehouseVehicleUnavailableReason;
+}
+
+export interface WarehouseVehicleMutationResponse {
+  status: string;
+  vehicle_id: string;
+  unavailable_reason?: WarehouseVehicleUnavailableReason;
+}
+
+export interface WarehouseDispatchOrder {
+  order_id: string;
+  retailer_name: string;
+  total_uzs: number;
+  item_count: number;
+  created_at?: string;
+}
+
+export interface WarehouseDispatchDriver {
+  driver_id: string;
+  name: string;
+  phone?: string;
+  truck_status: string;
+  vehicle_id?: string;
+  vehicle_class?: string;
+  max_volume_vu?: number;
+  vehicle_label?: string;
+}
+
+export interface WarehouseUnavailableDispatchDriver extends WarehouseDispatchDriver {
+  unavailable_reason?: WarehouseVehicleUnavailableReason;
+}
+
+export interface WarehouseDispatchPreview {
+  orders?: WarehouseDispatchOrder[];
+  undispatched_orders: WarehouseDispatchOrder[];
+  drivers?: WarehouseDispatchDriver[];
+  available_drivers: WarehouseDispatchDriver[];
+  unavailable_drivers?: WarehouseUnavailableDispatchDriver[];
+  pending_count?: number;
+  available_driver_count?: number;
+}
+
+export interface WarehouseSupplyRequestItem {
+  item_id: string;
+  product_id: string;
+  requested_quantity: number;
+  recommended_qty: number;
+  unit_volume_vu: number;
+}
+
+export interface WarehouseSupplyRequestDetail extends WarehouseSupplyRequest {
+  demand_breakdown?: unknown;
+  items: WarehouseSupplyRequestItem[];
+  factory_id?: string;
+  priority?: string;
+  notes?: string;
+  transfer_order_id?: string;
+  created_by?: string;
+}
+
+export interface CreateWarehouseSupplyRequestResponse {
+  request_id: string;
+  state: string;
+  priority: string;
+  total_volume_vu: number;
+  items_count: number;
+}
+
+export interface CreateWarehouseDispatchLockResponse {
+  lock_id: string;
+  lock_type: string;
+  status: "LOCKED" | string;
+}
+
+export interface WarehouseSupplyRequestUpdateEvent {
+  type: "SUPPLY_REQUEST_UPDATE";
+  warehouse_id: string;
+  request_id: string;
+  state: string;
+  timestamp: string;
+}
+
+export interface WarehouseDispatchLockChangeEvent {
+  type: "DISPATCH_LOCK_CHANGE";
+  warehouse_id: string;
+  lock_id: string;
+  action: "ACQUIRED" | "RELEASED" | string;
+  timestamp: string;
+}
+
+export interface WarehouseOutboxFailureEvent {
+  type: "OUTBOX_FAILED";
+  event_id: string;
+  aggregate_id: string;
+  topic: string;
+  reason: string;
+  timestamp: string;
+}
+
+export interface WarehouseInventorySyncCompleteEvent {
+  type: "INVENTORY_SYNC_COMPLETE";
+  supplier_id: string;
+  warehouse_id?: string;
+  session_id: string;
+  rows_affected: number;
+  affected_warehouses?: number;
+  product_ids?: string[];
+  source?: string;
+  timestamp: string;
+}
+
+export type WarehouseLiveEvent =
+  | WarehouseSupplyRequestUpdateEvent
+  | WarehouseDispatchLockChangeEvent
+  | WarehouseOutboxFailureEvent
+  | WarehouseInventorySyncCompleteEvent;

@@ -1,0 +1,1180 @@
+{
+  "app": {
+    "language": {
+      "en": "Ingliz tili",
+      "ru": "Rus tili",
+      "uz": "O'zbek tili"
+    }
+  },
+  "common": {
+    "action": {
+      "back": "Ortga",
+      "cancel": "Bekor qilish",
+      "close": "Yopish",
+      "hide_password": "Parolni yashirish",
+      "selected": "Tanlandi",
+      "sign_out": "Chiqish",
+      "retry": "Qayta urinish",
+      "save": "Saqlash",
+      "show_password": "Parolni ko'rsatish",
+      "sign_in": "Kirish",
+      "skip_for_now": "Hozircha o'tkazib yuborish",
+      "switch_to_dark_mode": "Qorong'i rejimga o'tish",
+      "switch_to_light_mode": "Yorug' rejimga o'tish"
+    },
+    "error": {
+      "unknown": "Noma'lum xato"
+    },
+    "field": {
+      "phone": "Telefon",
+      "pin": "PIN"
+    },
+    "status": {
+      "restoring_session": "Sessiya tiklanmoqda...",
+      "saving": "Saqlanmoqda..."
+    }
+  },
+  "auth": {
+    "error": {
+      "login_failed": "Kirish muvaffaqiyatsiz tugadi",
+      "no_auth_token": "Autentifikatsiya tokeni topilmadi. Iltimos, tizimga kiring.",
+      "session_expired": "Sessiya muddati tugadi"
+    },
+    "login": {
+      "authenticating": "Tekshirilmoqda...",
+      "driver_terminal": "Haydovchi terminali",
+      "payloader_login": "Yukchi kirishi",
+      "payload_terminal": "Yuk terminali",
+      "phone_placeholder": "+998 XX XXX XX XX",
+      "pin_label": "6 xonali PIN",
+      "submit": "Kirish",
+      "title": "Pegasus"
+    }
+  },
+  "error": {
+    "bad_request": "Noto'g'ri so'rov",
+    "conflict": "Ziddiyat",
+    "forbidden": "Ruxsat yetarli emas",
+    "internal": "Ichki server xatosi",
+    "method_not_allowed": "Usul qo'llab-quvvatlanmaydi",
+    "not_found": "Resurs topilmadi",
+    "rate_limited": "So'rovlar juda ko'p",
+    "service_unavailable": "Xizmat vaqtincha ishlamayapti",
+    "unauthorized": "Autentifikatsiya talab qilinadi"
+  },
+  "order": {
+    "error": {
+      "already_processed": "Buyurtma allaqachon qayta ishlangan",
+      "cancel_denied": "Buyurtmani bekor qilib bo'lmaydi",
+      "not_found": "Buyurtma topilmadi",
+      "state_conflict": "Buyurtma holati ziddiyati"
+    }
+  },
+  "payment": {
+    "error": {
+      "3ds_failed": "3DS tasdiqlashi muvaffaqiyatsiz tugadi",
+      "3ds_required": "3DS tasdiqlashi talab qilinadi",
+      "card_declined": "Karta rad etildi",
+      "card_expired": "Karta muddati tugagan",
+      "card_invalid": "Karta ma'lumotlari noto'g'ri",
+      "gateway_unavailable": "To'lov shlyuzi mavjud emas",
+      "generic": "To'lov bajarilmadi",
+      "insufficient_funds": "Mablag' yetarli emas",
+      "otp_expired": "OTP muddati tugagan",
+      "otp_mismatch": "OTP kodi mos kelmadi",
+      "timeout": "To'lov vaqti tugadi"
+    },
+    "status": {
+      "auth_pending": "Autorizatsiya kutilmoqda",
+      "auth_success": "Autorizatsiya muvaffaqiyatli",
+      "settlement_delayed": "Hisob-kitob kechikmoqda",
+      "settlement_ok": "Hisob-kitob yakunlandi"
+    }
+  },
+  "payload": {
+    "alert": {
+      "cache_stale_body": "Keshdagi manifest 15 daqiqadan eski. Oflayn davom ettirib bo'lmaydi.",
+      "cache_stale_title": "Kesh eskirgan",
+      "exception_failed": "Istisno amalini bajarib bo'lmadi",
+      "inject_failed": "Buyurtmani qo'shib bo'lmadi",
+      "manifest_fetch_failed": "Manifestni yuklashda xato",
+      "manifest_sealed_title": "Manifest muhrlandi",
+      "offline_cached_manifest_body": "Keshdagi manifest yuklandi.",
+      "offline_cached_manifest_title": "Oflayn rejim",
+      "order_injected_title": "Buyurtma qo'shildi",
+      "queued_offline_body": "Buyurtma qo'shish navbatga olindi. Aloqa tiklanganda sinxronlanadi.",
+      "queued_offline_title": "Oflayn navbatga qo'shildi",
+      "reassign_failed": "Qayta tayinlash amalga oshmadi",
+      "recommendation_failed": "Tavsiya olish amalga oshmadi",
+      "seal_failed": "Muhrlash amalga oshmadi",
+      "start_loading_failed": "Yuklashni boshlash amalga oshmadi",
+      "sync_complete_title": "Sinxronlash yakunlandi"
+    },
+    "vehicle": {
+      "none_available": "Mavjud transport yo'q",
+      "select_target": "Maqsadli transportni tanlang"
+    }
+  },
+  "supplier_portal": {
+    "auth": {
+      "login": {
+        "brand_title": "Pegasus Hub",
+        "brand_subtitle": "Supplier operatsiyalar portali",
+        "heading": "Kirish",
+        "subheading": "Portalga kirish uchun hisob ma'lumotlaringizni kiriting",
+        "email_label": "Elektron pochta",
+        "email_placeholder": "admin@void.pegasus.uz",
+        "password_label": "Parol",
+        "password_placeholder": "Parolingizni kiriting",
+        "no_account": "Akkauntingiz yo'qmi?",
+        "create_account": "Akkaunt yaratish",
+        "http_error": "HTTP {status}",
+        "network_error": "Tarmoq xatosi - backend ishlayaptimi?"
+      },
+      "register": {
+        "brand_title": "Pegasus Hub",
+        "brand_subtitle": "Supplier ro'yxatdan o'tishi",
+        "already_registered": "Allaqachon ro'yxatdan o'tganmisiz?",
+        "creating_account": "Akkaunt yaratilmoqda...",
+        "submit": "Supplier akkauntini yaratish",
+        "continue_to": "{step} bo'limiga o'tish",
+        "steps": {
+          "account": "Akkaunt",
+          "location": "Joylashuv",
+          "business": "Biznes",
+          "categories": "Kategoriyalar"
+        },
+        "header": {
+          "account_title": "Supplier akkauntingizni yarating",
+          "account_description": "Mamlakatingizni tanlang va kompaniyangiz haqidagi asosiy ma'lumotlarni kiriting",
+          "location_title": "Siz qayerda joylashgansiz?",
+          "location_description": "Ombor joylashuvi marshrut rejalashtirish va yetkazib berish logistikasi uchun ishlatiladi",
+          "business_title": "Biznes ma'lumotlari",
+          "business_description": "Soliq ma'lumotlari va flot logistika sozlamalari",
+          "categories_title": "Mahsulot kategoriyalari",
+          "categories_description": "Yetkazib beradigan barcha mahsulot kategoriyalarini tanlang - retailerlar shu bo'yicha filtrlashadi"
+        },
+        "error": {
+          "password_mismatch": "Parollar mos kelmadi.",
+          "registration_failed": "Ro'yxatdan o'tish amalga oshmadi",
+          "http_error": "Xato {status}",
+          "network": "Tarmoq xatosi - backend ishlayaptimi?"
+        },
+        "step1": {
+          "country_label": "Mamlakat *",
+          "country_placeholder": "Mamlakatni tanlang",
+          "search_countries": "Mamlakatlarni qidirish...",
+          "no_countries": "Qidiruvingizga mos mamlakat topilmadi",
+          "company_name_label": "Kompaniya nomi *",
+          "company_name_placeholder": "Pegasus Beverages Ltd.",
+          "contact_person_label": "Aloqa uchun shaxs *",
+          "contact_person_placeholder": "Aziz Karimov",
+          "email_label": "Elektron pochta *",
+          "email_placeholder": "info@company.uz",
+          "phone_label": "Telefon raqami *",
+          "phone_placeholder": "901234567",
+          "password_label": "Parol *",
+          "password_placeholder": "Kamida 8 ta belgi",
+          "confirm_password_label": "Parolni tasdiqlang *",
+          "confirm_password_placeholder": "Parolingizni qayta kiriting"
+        },
+        "step2": {
+          "map_loading": "Xarita yuklanmoqda...",
+          "warehouse_location_label": "Ombor / saqlash joyi *",
+          "billing_address_label": "Billing manzili",
+          "billing_address_placeholder": "Ombor yoki bosh ofis manzili bilan bir xil"
+        },
+        "step3": {
+          "tax_id_label": "Soliq ID / STIR *",
+          "tax_id_placeholder": "STIR-12345678",
+          "company_reg_number_label": "Kompaniya ro'yxatga olish raqami",
+          "company_reg_number_placeholder": "MYF-001-UZ",
+          "fleet_profile_title": "Flot va logistika profili",
+          "cold_chain_title": "Cold chain ga mos flot",
+          "cold_chain_description": "Haroratga sezgir mahsulotlar uchun sovutkichli transport",
+          "palletization_label": "Palletizatsiya standarti",
+          "palletization": {
+            "not_specified": "Ko'rsatilmagan",
+            "loose_cartons": "Erkin qutilar",
+            "euro_pallets": "Yevro palletlar (120x80 sm)",
+            "mixed": "Aralash"
+          }
+        },
+        "step4": {
+          "label": "Mahsulot kategoriyalari *",
+          "selected_suffix": "tanlandi",
+          "search_placeholder": "Kategoriyalarni qidirish...",
+          "required_error": "Davom etish uchun kamida bitta kategoriyani tanlang.",
+          "categories": {
+            "cat-water": "Suv",
+            "cat-sparkling-water": "Gazlangan va ta'mli suv",
+            "cat-soft-drinks": "Salqin ichimliklar va soda",
+            "cat-juice": "Sharbatlar va nektarlar",
+            "cat-tea-coffee": "Choy va qahva",
+            "cat-energy-sports": "Energetik va sport ichimliklari",
+            "cat-powdered-drinks": "Kukunli ichimlik aralashmalari",
+            "cat-kombucha": "Kombucha va probiotik ichimliklar",
+            "cat-plant-milk": "O'simlik asosidagi sut",
+            "cat-milk": "Sut va qaymoq",
+            "cat-yogurt": "Yogurt va kefir",
+            "cat-cheese": "Pishloq",
+            "cat-butter-margarine": "Sariyog' va margarin",
+            "cat-eggs": "Tuxum",
+            "cat-deli-meats": "Deli go'shtlari va charcuterie",
+            "cat-hummus-dips": "Xummus, diplar va surtmalar",
+            "cat-tofu-tempeh": "Tofu, tempeh va go'sht alternativalari",
+            "cat-fresh-pasta-sauces": "Yangi pasta va souslar",
+            "cat-bread": "Non va bulochkalar",
+            "cat-tortillas-wraps": "Tortilla va wraplar",
+            "cat-bagels-english-muffins": "Beygl va ingliz muffini",
+            "cat-cakes-pastries": "Tortlar va pishiriqlar",
+            "cat-cookies-brownies": "Pechenye va braunilar",
+            "cat-pita-naan": "Pita, naan va yupqa nonlar",
+            "cat-baking-mixes": "Pishirish aralashmalari",
+            "cat-cereal": "Quruq nonushta mahsulotlari",
+            "cat-oatmeal-porridge": "Suli va bo'tqalar",
+            "cat-granola-bars": "Granola va donli batonchalar",
+            "cat-pancake-waffle": "Blinchik va vafli aralashmalari",
+            "cat-syrup-honey": "Sirop, asal va murabbo",
+            "cat-rice": "Guruch",
+            "cat-pasta-noodles": "Pasta va ugra",
+            "cat-flour-baking": "Un va pishirish ingredientlari",
+            "cat-sugar-sweeteners": "Shakar va shirinlashtirgichlar",
+            "cat-cooking-oils": "Ovqat tayyorlash moylari",
+            "cat-vinegar": "Sirka",
+            "cat-canned-vegetables": "Konservalangan sabzavotlar",
+            "cat-canned-fruit": "Konservalangan mevalar",
+            "cat-canned-beans-legumes": "Konservalangan loviya va dukkaklilar",
+            "cat-canned-meat-fish": "Konservalangan go'sht va baliq",
+            "cat-canned-soup": "Konservalangan sho'rva va bulyonlar",
+            "cat-tomato-products": "Pomidor sousi va pastasi",
+            "cat-condiments": "Ziravorli souslar va ketchup",
+            "cat-mayonnaise-dressings": "Mayonez va dressinglar",
+            "cat-mustard-hot-sauce": "Xantal va achchiq souslar",
+            "cat-soy-asian-sauces": "Soya va osiyo souslari",
+            "cat-bbq-marinades": "BBQ souslari va marinadlar",
+            "cat-spices-herbs": "Ziravorlar va quritilgan o'tlar",
+            "cat-salt-pepper": "Tuz va murch",
+            "cat-dried-beans-lentils": "Quritilgan loviya va yasmiq",
+            "cat-grains-couscous": "Donlar, kinoa va kuskus",
+            "cat-chips-crisps": "Chipslar va qarsildoq gazaklar",
+            "cat-popcorn": "Popkorn",
+            "cat-pretzels-crackers": "Pretzel va krekerlar",
+            "cat-nuts-seeds": "Yong'oq va urug'lar",
+            "cat-dried-fruit": "Quritilgan mevalar va trail mix",
+            "cat-jerky-meat-snacks": "Jerky va go'shtli gazaklar",
+            "cat-protein-bars": "Protein va to'yimli batonchalar",
+            "cat-rice-cakes": "Guruchli nonchalar va yengil gazaklar",
+            "cat-chocolate": "Shokolad",
+            "cat-gummy-candy": "Marmelad va chaynalmali konfetlar",
+            "cat-hard-candy-mints": "Qattiq konfetlar va yalpizlar",
+            "cat-chewing-gum": "Saqich",
+            "cat-biscuits-cookies": "Biskvit va pechenyelar",
+            "cat-ice-cream-toppings": "Muzqaymoq toppinglari va vafli konuslar",
+            "cat-fresh-fruit": "Yangi mevalar",
+            "cat-fresh-vegetables": "Yangi sabzavotlar",
+            "cat-herbs-salads": "Yangi ko'katlar va salatlar",
+            "cat-organic-produce": "Organik meva va sabzavotlar",
+            "cat-mushrooms": "Qo'ziqorinlar",
+            "cat-potatoes-onions": "Kartoshka, piyoz va ildizmevalar",
+            "cat-beef": "Mol go'shti",
+            "cat-chicken-turkey": "Tovuq va kurka",
+            "cat-pork": "Cho'chqa go'shti",
+            "cat-lamb": "Qo'y go'shti",
+            "cat-ground-meat": "Qiymalangan go'sht",
+            "cat-sausages-hotdogs": "Kolbasa va hot-doglar",
+            "cat-fresh-fish": "Yangi baliq",
+            "cat-shrimp-shellfish": "Krevetka va qisqichbaqasimonlar",
+            "cat-smoked-fish": "Dudlangan va quritilgan baliq",
+            "cat-frozen-meals": "Muzlatilgan tayyor taomlar",
+            "cat-frozen-pizza": "Muzlatilgan pitsa",
+            "cat-frozen-vegetables": "Muzlatilgan sabzavotlar",
+            "cat-frozen-fruit": "Muzlatilgan mevalar",
+            "cat-frozen-meat-seafood": "Muzlatilgan go'sht va dengiz mahsulotlari",
+            "cat-frozen-snacks": "Muzlatilgan gazaklar va aperitivlar",
+            "cat-frozen-breakfast": "Muzlatilgan nonushtalar",
+            "cat-ice-cream": "Muzqaymoq va muzlatilgan desertlar",
+            "cat-frozen-fries-potatoes": "Muzlatilgan fri va kartoshkalar",
+            "cat-mexican-food": "Meksika va lotin taomlari mahsulotlari",
+            "cat-asian-food": "Osiyo taomlari mahsulotlari",
+            "cat-indian-food": "Hind taomlari mahsulotlari",
+            "cat-middle-eastern-food": "Yaqin Sharq taomlari mahsulotlari",
+            "cat-italian-food": "Italiya maxsus mahsulotlari",
+            "cat-kosher": "Kosher",
+            "cat-halal": "Halol",
+            "cat-gluten-free": "Glutensiz mahsulotlar",
+            "cat-vegan-plant-based": "Vegan va o'simlik asosidagi mahsulotlar",
+            "cat-organic-natural": "Organik va tabiiy mahsulotlar",
+            "cat-baby-formula": "Bolalar aralashmasi",
+            "cat-baby-food": "Bolalar ovqati va gazaklari",
+            "cat-diapers": "Tagliklar va salfetkalar",
+            "cat-baby-bath-skin": "Bolalar cho'miltirish va teri parvarishi",
+            "cat-baby-feeding": "Bolalar butilkalari va oziqlantirish",
+            "cat-medicine-otc": "Retseptsiz dorilar va og'riq qoldiruvchilar",
+            "cat-cold-flu": "Shamollash, gripp va allergiya vositalari",
+            "cat-digestive-health": "Hazm salomatligi",
+            "cat-first-aid": "Birinchi yordam va bintlar",
+            "cat-vitamins": "Vitaminlar va qo'shimchalar",
+            "cat-protein-powder": "Protein kukunlari va kokteyllar",
+            "cat-eye-ear-care": "Ko'z va quloq parvarishi",
+            "cat-diabetes-care": "Diabet parvarishi vositalari",
+            "cat-mobility-aids": "Harakatlanish va kundalik yordam vositalari",
+            "cat-shampoo-conditioner": "Shampun va konditsioner",
+            "cat-hair-styling": "Soch turmagi va parvarish vositalari",
+            "cat-hair-color": "Soch bo'yog'i va rang berish",
+            "cat-body-wash-soap": "Dush geli va qattiq sovun",
+            "cat-deodorant": "Dezodorant va antiperspirantlar",
+            "cat-lotion-moisturizer": "Losyon va namlovchi vositalar",
+            "cat-sunscreen": "Quyoshdan himoya va quyoshdan keyingi parvarish",
+            "cat-face-care": "Yuz parvarishi va tozalagichlar",
+            "cat-lip-care": "Lab parvarishi va balzamlar",
+            "cat-oral-care": "Tish pastasi va og'iz parvarishi",
+            "cat-mouthwash": "Og'iz chayqagich va tish ipi",
+            "cat-shaving": "Soqol olish va ustara",
+            "cat-mens-grooming": "Erkaklar parvarishi",
+            "cat-feminine-care": "Ayollar gigiyenasi",
+            "cat-cotton-pads": "Paxta, cho'plar va disklar",
+            "cat-cosmetics-face": "Yuz makiyaji va tonal vositalar",
+            "cat-cosmetics-eyes": "Ko'z makiyaji va tush",
+            "cat-cosmetics-lips": "Lab bo'yog'i va lab yaltirog'i",
+            "cat-nail-care": "Tirnoq laklari va parvarishi",
+            "cat-fragrance": "Atir va hidlar",
+            "cat-hair-tools": "Fen, dazmol va soch asboblari",
+            "cat-all-purpose-cleaners": "Universal tozalash vositalari",
+            "cat-bathroom-cleaners": "Hammom uchun tozalash vositalari",
+            "cat-kitchen-cleaners": "Oshxona va pech tozalagichlari",
+            "cat-glass-cleaners": "Shisha va deraza tozalagichlari",
+            "cat-floor-care": "Pol parvarishi va yuvish vositalari",
+            "cat-disinfectants": "Dezinfeksiya vositalari va sanitayzerlar",
+            "cat-laundry-detergent": "Kir yuvish vositalari",
+            "cat-fabric-softener": "Mato yumshatkichlari va quritish salfetkalari",
+            "cat-stain-removers": "Dog' ketkazgichlar",
+            "cat-dishwashing": "Idish yuvish vositalari va kapsulalar",
+            "cat-trash-bags": "Axlat qoplari",
+            "cat-sponges-cloths": "Gubkalar, lattalar va cho'tkalar",
+            "cat-air-fresheners": "Havo xushbo'ylantirgichlar va shamlar",
+            "cat-pest-control": "Zararkunandalarga qarshi vositalar va repelentlar",
+            "cat-toilet-paper": "Tualet qog'ozi",
+            "cat-paper-towels": "Qog'oz sochiqlar",
+            "cat-facial-tissue": "Yuz salfetkalari",
+            "cat-napkins": "Salfetkalar",
+            "cat-plates-cups-disposable": "Bir martalik tarelka, stakan va anjomlar",
+            "cat-food-wrap-bags": "Oziq-ovqat o'ramlari, folga va zip paketlar",
+            "cat-cookware": "Idishlar va qozonlar",
+            "cat-bakeware": "Pishirish qoliplari",
+            "cat-kitchen-utensils": "Oshxona anjomlari va gadjetlari",
+            "cat-knives-cutting": "Pichoqlar va kesish taxtalari",
+            "cat-food-storage": "Oziq-ovqat saqlash va konteynerlar",
+            "cat-water-bottles": "Suv butilkalari va tumblerlar",
+            "cat-dinnerware": "Ovqatlanish idishlari va shisha buyumlar",
+            "cat-small-appliances": "Kichik oshxona texnikasi",
+            "cat-bedding": "Yotoq jihozlari va choyshablar",
+            "cat-pillows-blankets": "Yostiqlar va ko'rpalar",
+            "cat-towels": "Hammom sochiqlari va gilamchalari",
+            "cat-curtains-blinds": "Pardalar va jaluzilar",
+            "cat-home-decor": "Uy dekorlari va ramkalar",
+            "cat-candles-home-fragrance": "Shamlar va uy uchun xushbo'y hidlar",
+            "cat-storage-organization": "Saqlash va tartibga solish",
+            "cat-hangers-laundry-supplies": "Ilgichlar va kir yuvish jihozlari",
+            "cat-light-bulbs": "Lampochkalar",
+            "cat-batteries": "Batareyalar",
+            "cat-extension-cords": "Uzatkichlar va elektr taqsimlagichlar",
+            "cat-plants-seeds": "O'simliklar va urug'lar",
+            "cat-soil-fertilizer": "Tuproq va o'g'itlar",
+            "cat-garden-tools": "Bog' anjomlari",
+            "cat-outdoor-furniture": "Tashqi mebellar",
+            "cat-grills-charcoal": "Grillar va ko'mir",
+            "cat-dog-food": "Itlar uchun ozuqa",
+            "cat-cat-food": "Mushuklar uchun ozuqa",
+            "cat-pet-treats": "Uy hayvonlari uchun gazaklar",
+            "cat-pet-toys": "Uy hayvonlari o'yinchoqlari",
+            "cat-pet-grooming": "Uy hayvonlari parvarishi va salomatligi",
+            "cat-litter-waste": "Mushuk qumlari va chiqindi qoplari",
+            "cat-pet-beds-carriers": "Uy hayvonlari yotoqlari va tashuvchilari",
+            "cat-pens-pencils": "Ruchka, qalam va markerlar",
+            "cat-notebooks-paper": "Daftarlar va qog'oz",
+            "cat-binders-folders": "Papkalar, fayllar va hujjat saqlash vositalari",
+            "cat-tape-glue-scissors": "Skotch, elim va qaychi",
+            "cat-printer-ink": "Printer siyohi va toner",
+            "cat-backpacks-bags": "Ryukzak va maktab sumkalari",
+            "cat-action-figures": "Figuralar va qo'g'irchoqlar",
+            "cat-building-sets": "Konstruktorlar va bloklar",
+            "cat-board-games-puzzles": "Stol o'yinlari va pazllar",
+            "cat-outdoor-play": "Ochiq havoda o'yin va sport o'yinchoqlari",
+            "cat-arts-crafts": "Ijod va qo'l mehnati",
+            "cat-stuffed-animals": "Yumshoq o'yinchoqlar va plush",
+            "cat-phone-accessories": "Telefon g'iloflari va aksessuarlar",
+            "cat-chargers-cables": "Zaryadlovchilar va kabellar",
+            "cat-headphones-earbuds": "Quloqchinlar va earbuds",
+            "cat-memory-cards-usb": "Xotira kartalari va USB qurilmalar",
+            "cat-smart-home": "Aqlli uy qurilmalari",
+            "cat-motor-oil": "Motor moyi va suyuqliklar",
+            "cat-car-cleaning": "Avtomobil tozalash va detailing",
+            "cat-car-fresheners": "Avtomobil xushbo'ylantirgichlari",
+            "cat-car-accessories": "Avtomobil aksessuarlari",
+            "cat-party-supplies": "Bayram anjomlari va sharlar",
+            "cat-gift-wrap": "Sovg'a o'ramlari va paketlar",
+            "cat-greeting-cards": "Tabriknomalar",
+            "cat-seasonal": "Mavsumiy va bayram mahsulotlari",
+            "cat-tobacco": "Tamaki mahsulotlari",
+            "cat-lighters-matches": "Zajigalka va gugurtlar",
+            "cat-other": "Boshqa"
+          }
+        }
+      }
+    },
+    "admin": {
+      "audit_log": {
+        "title": "Audit jurnali",
+        "subtitle": "Xavfsizlik va operatsion o'zgarishlarning o'zgarmas vaqt jadvali.",
+        "filter": {
+          "resource_type": "Resurs turi",
+          "action": "Amal"
+        },
+        "action": {
+          "apply": "Qo'llash",
+          "previous": "Oldingi",
+          "next": "Keyingi"
+        },
+        "state": {
+          "loading": "Yuklanmoqda..."
+        },
+        "table": {
+          "time": "Vaqt",
+          "actor": "Bajaruvchi",
+          "action": "Amal",
+          "resource": "Resurs",
+          "resource_id": "Resurs ID",
+          "metadata": "Metama'lumot"
+        },
+        "pagination": {
+          "offset": "Siljish: {offset}"
+        },
+        "error": {
+          "load_failed": "Audit jurnalini yuklab bo'lmadi"
+        }
+      },
+      "control_center": {
+        "title": "Boshqaruv markazi",
+        "subtitle": "Supplier operator amallari: to'lov bypass, xabarnoma yuborish, qo'lda reconcile va replenishment ishga tushirish.",
+        "field": {
+          "order_id": "Buyurtma ID",
+          "reason": "Sabab",
+          "session_id": "Sessiya ID",
+          "title": "Sarlavha",
+          "body": "Matn"
+        },
+        "action": {
+          "issue_token": "Token berish",
+          "issuing": "Berilmoqda...",
+          "run_reconcile": "Reconcile ishga tushirish",
+          "reconciling": "Reconcile qilinmoqda...",
+          "send_broadcast": "Xabarnoma yuborish",
+          "broadcasting": "Yuborilmoqda...",
+          "trigger_cycle": "Siklni ishga tushirish",
+          "running": "Bajarilmoqda..."
+        },
+        "role": {
+          "all": "ALL",
+          "retailer": "RETAILER",
+          "driver": "DRIVER"
+        },
+        "bypass": {
+          "title": "To'lov bypass berish",
+          "description": "AWAITING_PAYMENT holatidagi buyurtma uchun 6 xonali bypass token yaratadi.",
+          "token": "Token: {token}"
+        },
+        "reconcile": {
+          "title": "Sessiyani qo'lda reconcile qilish",
+          "description": "Tiqilib qolgan to'lov sessiyasi uchun aniq reconcile jarayonini ishga tushiradi."
+        },
+        "broadcast": {
+          "title": "Tizim bo'ylab xabarnoma",
+          "description": "Tanlangan rol foydalanuvchilariga push va bildirishnoma yozuvlarini yuboradi.",
+          "summary": "Qabul qiluvchilar: {recipients} | Yuborildi: {sent} | Xatolar: {failed}"
+        },
+        "replenishment": {
+          "title": "Qo'lda replenishment sikli",
+          "description": "Ombor yetishmovchiligi skani va transfer yaratish logikasini darhol ishga tushiradi."
+        },
+        "toast": {
+          "bypass_issued": "{order_id} buyurtma uchun bypass berildi",
+          "reconcile_completed": "{session_id} sessiya uchun reconcile yakunlandi",
+          "broadcast_completed": "Xabarnoma yuborish yakunlandi",
+          "replenishment_triggered": "Replenishment sikli ishga tushirildi"
+        },
+        "error": {
+          "bypass_failed": "Bypass berib bo'lmadi",
+          "reconcile_failed": "Reconcile amalga oshmadi",
+          "broadcast_failed": "Xabarnoma yuborish amalga oshmadi",
+          "replenishment_failed": "Replenishment ishga tushmadi",
+          "broadcast_data_must_be_object": "Data JSON obyekt bo'lishi kerak"
+        }
+      },
+      "empathy": {
+        "title": "Empathy Engine",
+        "subtitle": "Auto-order Intelligence — tarmoq bo'yicha qabul va pipeline holati",
+        "state": {
+          "online": "Engine online",
+          "offline": "Engine offline"
+        },
+        "section": {
+          "pipeline": "Bashorat pipeline'i",
+          "hierarchy": "Yechim iyerarxiyasi"
+        },
+        "kpi": {
+          "adoption_rate": "Qabul qilish darajasi",
+          "adoption_sub": "{total} retailerdan {enabled} tasi",
+          "supplier_overrides": "Supplier override'lari",
+          "supplier_overrides_sub": "Faol supplier darajasidagi toggle'lar",
+          "product_overrides": "Mahsulot override'lari",
+          "product_overrides_sub": "Faol mahsulot darajasidagi toggle'lar",
+          "variant_overrides": "Variant override'lari",
+          "variant_overrides_sub": "Faol SKU darajasidagi toggle'lar"
+        },
+        "pipeline": {
+          "dormant": "Dormant",
+          "waiting": "Waiting",
+          "fired": "Fired",
+          "rejected": "Rejected"
+        },
+        "hierarchy": {
+          "description": "Empathy Engine auto-order eligibility ni 4 darajali override kaskadi orqali aniqlaydi. Eng aniq daraja ustun bo'ladi.",
+          "active_count": "{count} faol",
+          "variant": {
+            "level": "Variant (SKU)",
+            "description": "Variant darajasidagi toggle pastki barcha darajalarni bosib o'tadi"
+          },
+          "product": {
+            "level": "Mahsulot",
+            "description": "Mahsulot darajasidagi toggle supplier va global darajalarni bosib o'tadi"
+          },
+          "supplier": {
+            "level": "Supplier",
+            "description": "Supplier darajasidagi toggle global standartni bosib o'tadi"
+          },
+          "global": {
+            "level": "Global",
+            "description": "Retailerning asosiy auto-order yoqib/o'chirgichi"
+          }
+        },
+        "error": {
+          "telemetry_disconnected": "Empathy telemetriya uzildi"
+        }
+      }
+    },
+    "analytics": {
+      "advanced": {
+        "title": "Kengaytirilgan tahlil",
+        "action": {
+          "refresh": "Yangilash"
+        },
+        "total_revenue": "Jami tushum",
+        "sla_rate": "SLA darajasi",
+        "factory": {
+          "title": "Fabrika tahlili",
+          "summary_title": "Fabrika xulosasi",
+          "total_transfers": "Jami transferlar",
+          "avg_lead_time": "O'rtacha yetaklash vaqti",
+          "minutes_value": "{value} daqiqa"
+        },
+        "error": {
+          "fault": "Tahlil xatosi: {detail}"
+        }
+      }
+    },
+    "configuration": {
+      "countries": {
+        "title": "Mamlakat sozlamalari",
+        "subtitle": "Mamlakat bo'yicha operatsion boshqaruvlar (geofence, gatewaylar, provider tanlovlari).",
+        "list_title": "Mamlakatlar",
+        "state": {
+          "loading": "Yuklanmoqda...",
+          "select_country": "Tahrirlash uchun mamlakatni tanlang."
+        },
+        "field": {
+          "country_code": "Mamlakat kodi",
+          "country_name": "Mamlakat nomi",
+          "timezone": "Vaqt zonasi",
+          "currency_code": "Valyuta kodi",
+          "breach_radius_meters": "Breach radius (m)",
+          "sms_provider": "SMS provayder",
+          "payment_gateways": "Payment gatewaylar (vergul bilan)"
+        },
+        "action": {
+          "save": "Mamlakat konfiguratsiyasini saqlash"
+        },
+        "toast": {
+          "saved": "{country_code} saqlandi"
+        },
+        "error": {
+          "load_failed": "Mamlakat konfiguratsiyalarini yuklab bo'lmadi",
+          "save_failed": "Saqlash amalga oshmadi"
+        }
+      },
+      "system": {
+        "title": "Tizim konfiguratsiyasi",
+        "subtitle": "Logistika fizikasi va gateway parametrlar",
+        "physics": {
+          "title": "Logistika fizikasi",
+          "geofence_radius_label": "Geofence blok radiusi (metr)",
+          "geofence_help": "Yetkazib berish yakunini tasdiqlash uchun minimal yaqinlik.",
+          "delivery_fee_label": "Asosiy yetkazib berish narxi (miqdor)",
+          "delivery_fee_help": "Har bir yetkazib berishda retailer hisobiga qo'llanadi.",
+          "update_action": "Fizikani yangilash"
+        },
+        "platform_fee": {
+          "label": "Platforma komissiya foizi (0-50)",
+          "update_action": "Platforma komissiyasini yangilash"
+        },
+        "gateway": {
+          "title": "Moliyaviy gatewaylar",
+          "click_up_merchant_id": "Click Up Merchant ID",
+          "payme_secret_key": "Payme maxfiy kaliti",
+          "configured_via_secret_manager": "Secret Manager orqali sozlangan",
+          "keys_help": "To'lov gateway kalitlari infratuzilma secretlari orqali boshqariladi."
+        },
+        "action": {
+          "open_country_configuration": "Mamlakat konfiguratsiyasini ochish"
+        },
+        "toast": {
+          "config_saved": "Konfiguratsiya saqlandi.",
+          "platform_fee_updated": "Platforma komissiyasi yangilandi."
+        },
+        "error": {
+          "network_failure": "Tarmoq xatosi",
+          "failed_with_reason": "Xato: {detail}",
+          "generic_with_reason": "Xato: {detail}"
+        }
+      }
+    },
+    "billing_setup": {
+      "title": "Billing sozlamalari",
+      "subtitle": "Retailerlar sizga qanday to'lashini sozlang",
+      "submit": "Saqlash va dashboardga o'tish",
+      "error": {
+        "http_error": "Xato {status}",
+        "network": "Tarmoq xatosi - backend ishlayaptimi?",
+        "setup_failed": "Sozlash amalga oshmadi"
+      },
+      "bank_details": {
+        "title": "Bank ma'lumotlari",
+        "description": "Bajarilgan buyurtmalar bo'yicha to'lovlarni olish uchun bank ma'lumotlaringizni kiriting.",
+        "bank_name": "Bank nomi",
+        "account_number": "Hisob raqami",
+        "card_number": "Karta raqami"
+      },
+      "gateway": {
+        "title": "GlobalPaynt shlyuzi *",
+        "description": "Bajarilgan buyurtmalar uchun retailerlar qanday to'lashini tanlang. Buni keyin sozlamalarda o'zgartirishingiz mumkin.",
+        "global_pay": {
+          "label": "Global Pay",
+          "description": "Global Pay checkout jarayoni"
+        },
+        "cash": {
+          "label": "Naqd to'lov",
+          "description": "Jismoniy naqd to'lovlarni qabul qilish"
+        },
+        "card": {
+          "label": "Karta o'tkazmasi",
+          "description": "Bank kartasiga to'g'ridan-to'g'ri o'tkazma"
+        },
+        "bank": {
+          "label": "Bank o'tkazmasi",
+          "description": "Korporativ bank o'tkazmasi"
+        }
+      }
+    }
+  },
+  "notification": {
+    "ai_order_confirmed": {
+      "title": "AI buyurtma tasdiqlandi",
+      "body": "Retailer AI tavsiya qilgan {order_id} buyurtmani tasdiqladi."
+    },
+    "ai_order_rejected": {
+      "title": "AI buyurtma rad etildi",
+      "body": "Retailer AI tavsiya qilgan {order_id} buyurtmani rad etdi."
+    },
+    "cancel_approved": {
+      "title": "Buyurtma bekor qilindi",
+      "body": "{order_id} buyurtmasini bekor qilish so'rovingiz tasdiqlandi."
+    },
+    "cancel_requested": {
+      "title": "Bekor qilish so'rovi",
+      "body": "Retailer {order_id} buyurtmasini bekor qilishni so'radi. Ko'rib chiqing va tasdiqlang yoki rad eting."
+    },
+    "cash_collection_required": {
+      "title": "Naqd pul yig'ish talab qilinadi",
+      "body": "{order_id} buyurtmasi bo'yicha {amount_minor} miqdorda naqd pul yig'ilishi kutilmoqda."
+    },
+    "early_complete_approved": {
+      "title": "Muddatidan oldin yakunlash tasdiqlandi",
+      "body": "Supplier qolgan {remaining_count} buyurtma uchun muddatidan oldin yakunlashni tasdiqladi. Uy tuguningizga qayting."
+    },
+    "early_complete_requested": {
+      "title": "Marshrutni muddatidan oldin yakunlash so'rovi",
+      "body": "Haydovchi marshrutni muddatidan oldin yakunlashni so'radi. Sabab: {reason}. Qolgan buyurtmalar soni: {remaining_count}."
+    },
+    "fulfillment_paid": {
+      "title": "Bajarilish to'landi",
+      "body": "{order_id} buyurtmasi to'langan deb belgilandi: {amount_minor}."
+    },
+    "fulfillment_payment_completed": {
+      "driver": {
+        "title": "Retailer to'lovi tasdiqlandi",
+        "body": "{order_id} buyurtmasi uchun to'lov tasdiqlandi. Marshrut bajarilishini davom ettiring."
+      },
+      "retailer": {
+        "title": "To'lov yakunlandi",
+        "body": "{order_id} buyurtmasi uchun to'lov muvaffaqiyatli yakunlandi."
+      },
+      "supplier": {
+        "title": "Bajarilish to'lovi yakunlandi",
+        "body": "{order_id} buyurtmasi to'lovi {amount_minor} miqdorda yakunlandi."
+      }
+    },
+    "negotiation_proposed": {
+      "retailer": {
+        "title": "Yetkazib berish o'zgarishi taklif qilindi",
+        "body": "Sizning {order_id} buyurtmangiz uchun miqdor o'zgarishi taklif qilindi."
+      },
+      "supplier": {
+        "title": "Miqdor bo'yicha kelishuv",
+        "body": "Haydovchi {order_id} buyurtmasi bo'yicha miqdor o'zgarishini taklif qildi. Ko'rib chiqing va tasdiqlang yoki rad eting."
+      }
+    },
+    "negotiation_resolved": {
+      "title": "Kelishuv yakunlandi",
+      "body": "Supplier {order_id} buyurtmangiz bo'yicha miqdor kelishuvini {action}."
+    },
+    "offload_confirmed": {
+      "title": "Tushirish tasdiqlandi",
+      "body": "{order_id} buyurtmasi uchun tushirish tasdiqlandi. Endi to'lov jarayoni faol."
+    },
+    "order_assigned": {
+      "title": "Buyurtma tayinlandi",
+      "body": "{order_id} buyurtmasi {route_id} marshrutiga tayinlandi."
+    },
+    "order_cancelled": {
+      "retailer": {
+        "title": "Buyurtma bekor qilindi",
+        "body": "{order_id} buyurtmasi bekor qilindi."
+      },
+      "supplier": {
+        "title": "Buyurtma bekor qilindi",
+        "body": "{order_id} buyurtmasi bekor qilindi va faol oqimdan olib tashlandi."
+      }
+    },
+    "order_completed": {
+      "title": "Yetkazib berish yakunlandi",
+      "body": "Sizning {order_id} buyurtmangiz muvaffaqiyatli yetkazib berildi."
+    },
+    "order_created": {
+      "retailer": {
+        "title": "Buyurtma berildi",
+        "body": "{order_id} buyurtmasi muvaffaqiyatli berildi."
+      },
+      "supplier": {
+        "title": "Yangi buyurtma yaratildi",
+        "body": "{order_id} buyurtmasi {total_minor} {currency} summaga yaratildi."
+      }
+    },
+    "out_of_stock": {
+      "retailer": {
+        "title": "Mahsulotlar qolmagan",
+        "body": "Buyurtma rasmiylashtirish bloklandi, chunki so'ralgan barcha mahsulotlar {warehouse_id} omborida qolmagan."
+      },
+      "supplier": {
+        "title": "Mahsulot tugashi bo'yicha ogohlantirish",
+        "body": "Retailer buyurtmasini rasmiylashtirish bloklandi, chunki so'ralgan barcha mahsulotlar {warehouse_id} omborida qolmagan."
+      }
+    },
+    "payment_bypass_completed": {
+      "retailer": {
+        "title": "To'lov yakunlandi",
+        "body": "{order_id} buyurtmasi uchun to'lov bypass tasdiqlovi orqali yakunlandi."
+      },
+      "supplier": {
+        "title": "Bypass to'lovi yakunlandi",
+        "body": "{order_id} buyurtmasi bypass to'lov tasdig'i bilan yakunlandi."
+      }
+    },
+    "payment_bypass_issued": {
+      "title": "To'lov bypassi berildi",
+      "body": "Supplier {order_id} buyurtmasi uchun to'lov bypass tokenini berdi."
+    },
+    "payment_failed": {
+      "title": "To'lov amalga oshmadi",
+      "body": "{order_id} buyurtmasi uchun {gateway} orqali to'lov amalga oshmadi: {reason}. Qayta urinib ko'ring."
+    },
+    "payment_settled": {
+      "title": "To'lov olindi",
+      "body": "{order_id} buyurtmasi uchun {amount_minor} to'lov {gateway} orqali olindi.",
+      "driver": {
+        "title": "To'lov olindi",
+        "body": "Sizning yetkazib berishingiz bo'yicha to'lov tasdiqlandi. Buyurtmani yakunlashingiz mumkin."
+      }
+    },
+    "preorder_auto_accepted": {
+      "title": "Oldindan buyurtma avtomatik qabul qilindi",
+      "body": "Sizning rejalashtirilgan {order_id} buyurtmangiz qabul qilindi va {delivery_date} sanasiga yetkazib berish uchun tayyorlanmoqda."
+    },
+    "preorder_confirmed": {
+      "title": "Oldindan buyurtma tasdiqlandi",
+      "body": "Siz rejalashtirilgan {order_id} buyurtmani tasdiqladingiz. Yetkazib berish sanasi yaqinlashganda u avtomatik qabul qilinadi."
+    },
+    "preorder_edited": {
+      "title": "Oldindan buyurtma yangilandi",
+      "body": "Sizning rejalashtirilgan {order_id} buyurtmangiz yangilandi."
+    },
+    "retailer_registered": {
+      "title": "Pegasus'ga xush kelibsiz",
+      "body": "{shop_name} akkaunti ro'yxatdan o'tdi. Endi buyurtma berishingiz mumkin."
+    },
+    "route_created": {
+      "driver": {
+        "title": "Yangi marshrut tayinlandi",
+        "body": "{route_id} marshruti tayyor, rejalashtirilgan to'xtashlar soni: {stop_count}."
+      },
+      "supplier": {
+        "title": "Marshrut yaratildi",
+        "body": "{route_id} marshruti yaratildi, to'xtashlar soni: {stop_count}."
+      }
+    },
+    "route_finalized": {
+      "title": "Marshrut yakuniy tasdiqlandi",
+      "body": "{manifest_id} manifesti marshruti yakuniy tasdiqlandi, to'xtashlar soni: {stop_count}."
+    },
+    "shop_closed_reported": {
+      "title": "Yopiq do'kon haqida xabar berildi",
+      "body": "Haydovchi {order_id} buyurtmasi bo'yicha do'kon yopiq ekanini bildirdi. {attempt_id} urinish bo'yicha keyingi chora talab qilinadi."
+    },
+    "shop_closed_resolved": {
+      "driver": {
+        "title": "Yopiq do'kon holati hal qilindi",
+        "body": "{order_id} buyurtmasi bo'yicha yopiq do'kon holati {resolution} sifatida hal qilindi."
+      },
+      "retailer": {
+        "title": "Yopiq do'kon holati hal qilindi",
+        "body": "{order_id} buyurtmasi bo'yicha yopiq do'kon holati {resolution} sifatida hal qilindi."
+      }
+    },
+    "shop_closed_response": {
+      "title": "Retailer javob berdi",
+      "body": "{order_id} buyurtmasi bo'yicha retailer javobi: {response}."
+    },
+    "sms_quick_complete": {
+      "retailer": {
+        "title": "Yetkazib berish yakunlandi",
+        "body": "{order_id} buyurtmasi SMS zaxira tasdig'i orqali yakunlandi."
+      },
+      "supplier": {
+        "title": "SMS orqali yakunlash",
+        "body": "Haydovchi {order_id} buyurtmasini SMS tezkor zaxira yakunlashi orqali yakunladi."
+      }
+    },
+    "stock_backordered": {
+      "retailer": {
+        "title": "Backorder yaratildi",
+        "body": "{backorder_id} backorderi {total_minor} {currency} summaga yaratildi."
+      },
+      "supplier": {
+        "title": "Backorder qo'shildi",
+        "body": "{backorder_id} backorderi yetishmovchilikni qayta ishlash natijasida yaratildi."
+      }
+    },
+    "credit_delivery_marked": {
+      "title": "Kreditga yetkazib berish",
+      "body": "{order_id} buyurtmasi kreditga yetkazildi va supplier ko'rib chiqishini kutmoqda."
+    },
+    "credit_delivery_resolved": {
+      "driver": {
+        "title": "Kreditga yetkazib berish hal qilindi",
+        "body": "{order_id} buyurtmasi bo'yicha kreditga yetkazib berish supplier tomonidan {action} qilindi."
+      },
+      "retailer": {
+        "title": "Kreditga yetkazib berish yangilanishi",
+        "body": "{order_id} buyurtmasi bo'yicha kreditga yetkazib berish supplier tomonidan {action} qilindi."
+      }
+    },
+    "dispatch_lock_acquired": {
+      "title": "Dispatch lock yoqildi",
+      "body": "{lock_type} lock {locked_by} tomonidan yoqildi. Lock yechilguncha yangi buyurtmalar navbatga olinadi."
+    },
+    "dispatch_lock_released": {
+      "title": "Dispatch lock yechildi",
+      "body": "{lock_type} lock {locked_by} tomonidan yechildi. Navbatdagi buyurtmalar yana dispatch uchun ochiq."
+    },
+    "driver_arrived": {
+      "title": "Haydovchi yetib keldi",
+      "body": "Haydovchi {order_id} buyurtmasi bo'yicha yetib keldi. Yetkazib berishga tayyorlaning."
+    },
+    "driver_created": {
+      "title": "Haydovchi ro'yxatdan o'tdi",
+      "body": "{driver_name} haydovchisi ({phone}) flotga qo'shildi."
+    },
+    "driver_dispatched": {
+      "title": "Yangi dispatch topshirig'i",
+      "body": "Sizga {route_id} marshruti va {order_count} ta buyurtma tayinlandi. Marshrut tafsilotlarini tekshiring."
+    },
+    "driver_offline": {
+      "title": "Haydovchi oflaynga o'tdi",
+      "body": "{driver_name} haydovchisi oflaynga o'tdi. Sabab: {reason}."
+    },
+    "driver_online": {
+      "title": "Haydovchi yana onlayn",
+      "body": "{driver_name} haydovchisi yana onlayn va dispatch uchun tayyor."
+    },
+    "factory_created": {
+      "title": "Factory yaratildi",
+      "body": "{factory_name} factorysi endi faol ({warehouses_linked} ta ombor ulangan)."
+    },
+    "factory_manifest_created": {
+      "title": "Factory manifest yaratildi",
+      "body": "{route_id} factory manifesti yaratildi, konvoy to'xtashlari soni: {stop_count}."
+    },
+    "factory_sla_breach": {
+      "title": "Factory SLA buzildi",
+      "body": "{transfer_id} transferi {escalation_level} darajasida SLA ni buzdi."
+    },
+    "fleet_dispatched": {
+      "title": "Flot jo'natildi",
+      "body": "{route_id} marshruti {order_count} ta buyurtma bilan tasdiqlandi."
+    },
+    "force_seal_alert": {
+      "title": "FORCE-SEAL chegarasi",
+      "body": "{manifest_id} manifesti bo'yicha 24 soatda override kvotasi {quota} dan {count_24h} ga yetdi. Yuklash zonasini tekshiring."
+    },
+    "freeze_lock_acquired": {
+      "title": "AI freeze-lock yoqildi",
+      "body": "Qo'lda dispatch paytida AI worker {scope} sohasi uchun pauzaga qo'yildi."
+    },
+    "freeze_lock_released": {
+      "title": "AI freeze-lock yechildi",
+      "body": "AI worker {scope} sohasi uchun yana ishga tushdi. Dispatch avtomatik rejimi qayta yoqildi."
+    },
+    "inbound_freight_unannounced": {
+      "title": "E'lon qilinmagan yuk qabul qilindi",
+      "body": "Ombor {transfer_id} transferini {items_count} ta pozitsiya bilan majburiy qabul qildi."
+    },
+    "insight_transfer_created": {
+      "title": "Insight transfer yaratildi",
+      "body": "{insight_id} insighti {warehouse_id} ombori uchun {transfer_id} transferini yaratdi."
+    },
+    "manifest_cancelled": {
+      "title": "Manifest bekor qilindi",
+      "body": "{manifest_id} manifesti bekor qilindi ({reason}). Bo'shatilgan buyurtmalar soni: {released_count}."
+    },
+    "manifest_completed": {
+      "title": "Manifest yakunlandi",
+      "body": "{manifest_id} manifesti yopildi: barcha {stop_count} to'xtashlar yetkazildi."
+    },
+    "manifest_dispatched": {
+      "title": "Manifest jo'natildi",
+      "body": "{manifest_id} manifesti darvozadan chiqdi, to'xtashlar soni: {stop_count}."
+    },
+    "manifest_dlq_escalation": {
+      "title": "Manifest DLQ eskalatsiyasi",
+      "body": "{manifest_id} manifestidagi {order_id} buyurtmasi qayta urinish chegarasidan oshdi va aralashuv talab qiladi."
+    },
+    "manifest_draft_created": {
+      "title": "Manifest qoralamasi yaratildi",
+      "body": "{manifest_id} manifest qoralamasi yaratildi, rejalashtirilgan to'xtashlar soni: {stop_count}."
+    },
+    "manifest_force_sealed": {
+      "title": "Manifest majburan muhrlandi",
+      "body": "{manifest_id} manifesti {sealed_by} tomonidan majburan muhrlandi ({reason})."
+    },
+    "manifest_loading_started": {
+      "title": "Manifest yuklanishi boshlandi",
+      "body": "{manifest_id} manifesti uchun yuklash boshlandi."
+    },
+    "manifest_order_exception": {
+      "title": "Manifest istisnosi",
+      "body": "{manifest_id} manifestidagi {order_id} buyurtmasida {reason} istisnosi yuz berdi."
+    },
+    "manifest_order_injected": {
+      "title": "Buyurtma manifestga qo'shildi",
+      "body": "{order_id} buyurtmasi {manifest_id} manifestiga qo'shildi."
+    },
+    "manifest_rebalanced": {
+      "title": "Manifest qayta muvozanatlandi",
+      "body": "{manifest_id} manifesti qayta muvozanatlandi: {transfer_count} ta transfer ko'chirildi."
+    },
+    "manifest_sealed": {
+      "title": "Manifest muhrlandi",
+      "body": "{manifest_id} manifesti {volume_vu} / {max_volume_vu} VU darajada muhrlandi."
+    },
+    "missing_items_report": {
+      "title": "Yetishmayotgan mahsulotlar hisoboti",
+      "body": "Haydovchi muhrlangandan keyin {order_id} buyurtmasida {item_count} ta yetishmayotgan mahsulot borligini bildirdi."
+    },
+    "payload_ready_to_seal": {
+      "title": "Muhrlashga tayyor buyurtmalar",
+      "body": "{route_id} marshrutida payload muhrlash uchun tayyor {order_count} ta buyurtma bor. Yuklash zonasiga o'ting."
+    },
+    "payload_sealed": {
+      "title": "Payload muhrlandi",
+      "body": "{order_id} buyurtmasi {terminal_id} terminali tomonidan muhrlandi va jo'natishga tayyor."
+    },
+    "transfer_approved": {
+      "title": "Transfer tasdiqlandi",
+      "body": "{transfer_id} transferi {volume_vu} VU uchun tasdiqlandi."
+    },
+    "transfer_received": {
+      "title": "Transfer qabul qilindi",
+      "body": "{transfer_id} transferi qabul qilindi, moslashtirilgan pozitsiyalar soni: {items_count}."
+    },
+    "transfer_state_changed": {
+      "title": "Transfer holati yangilandi",
+      "body": "{transfer_id} transferi {from_state} holatidan {to_state} holatiga o'tdi."
+    },
+    "transfer_unassigned": {
+      "title": "Transfer tayinlovdan olindi",
+      "body": "{transfer_id} transferi {manifest_id} manifestidan chiqarildi."
+    },
+    "warehouse_created": {
+      "title": "Ombor yaratildi",
+      "body": "{warehouse_name} ombori supplier operatsiyalari uchun endi faol."
+    },
+    "warehouse_spatial_updated": {
+      "title": "Ombor qamrovi yangilandi",
+      "body": "{warehouse_id} ombori qamrovi yangilandi: H3 {old_h3_count} dan {new_h3_count} ga."
+    },
+    "warehouse_status_changed": {
+      "disabled": {
+        "title": "Ombor o'chirildi",
+        "body": "{warehouse_id} ombori o'chirildi. Buyurtmalar boshqa yo'nalishga o'tkazilishi mumkin."
+      },
+      "enabled": {
+        "title": "Ombor yoqildi",
+        "body": "{warehouse_id} ombori yana onlayn."
+      },
+      "off_shift": {
+        "title": "Ombor smenadan tashqarida",
+        "body": "{warehouse_id} ombori hozir smenadan tashqarida."
+      },
+      "on_shift": {
+        "title": "Ombor smenada",
+        "body": "{warehouse_id} ombori hozir smenada."
+      }
+    },
+    "manifest_order_reassigned": {
+      "title": "Buyurtma qayta tayinlandi",
+      "body": "{order_id} buyurtmasi yangi manifestga ko'chirildi. ETA o'zgarishi mumkin."
+    },
+    "manifest_settled": {
+      "title": "To'lov yakuniy hisoblandi",
+      "body": "{manifest_id} manifesti bo'yicha hisob-kitob yakunlandi. Supplier to'lovi: {supplier_payout_minor} {currency}."
+    },
+    "network_mode_changed": {
+      "title": "Tarmoq rejimi o'zgardi",
+      "body": "Optimizatsiya rejimi {old_mode} dan {new_mode} ga o'zgardi."
+    },
+    "order_amended": {
+      "title": "Buyurtma o'zgartirildi",
+      "refund_body": "{order_id} buyurtmasi o'zgartirildi. Qaytarilgan mahsulotlar uchun {refunded_minor} qaytarim qo'llandi.",
+      "no_refund_body": "{order_id} buyurtmasi o'zgartirildi. Qaytarim talab qilinmaydi."
+    },
+    "order_cancelled_by_origin": {
+      "title": "Buyurtma bekor qilindi",
+      "body": "{order_id} buyurtmasi manba tomonidan bekor qilindi: {reason}. Kutilayotgan to'lov bekor qilindi."
+    },
+    "order_delayed": {
+      "title": "Buyurtma kechikdi",
+      "body": "{order_id} buyurtmasi kechikdi: {reason}."
+    },
+    "order_dispatched": {
+      "title": "Buyurtma jo'natildi",
+      "body": "Sizning buyurtmangiz {route_id} marshruti orqali jo'natildi. Yo'lda {order_count} ta buyurtma bor."
+    },
+    "order_reassigned_added": {
+      "title": "Marshrutga yangi buyurtma qo'shildi",
+      "body": "{order_id} buyurtmasi sizning marshrutingizga qayta tayinlandi. Marshrut yangilanishlarini tekshiring."
+    },
+    "order_reassigned_removed": {
+      "title": "Buyurtma marshrutdan olindi",
+      "body": "{order_id} buyurtmasi boshqa haydovchiga qayta tayinlandi va marshrutingizdan olib tashlandi."
+    },
+    "order_status_changed": {
+      "title": "Buyurtma holati yangilandi",
+      "body": "{order_id} buyurtmasi holati {old_state} dan {new_state} ga o'zgardi."
+    },
+    "payload_overflow": {
+      "title": "Payload ortib ketdi",
+      "body": "{order_id} buyurtmasi payload ortib ketgani sababli {manifest_id} manifestidan olindi va qayta dispatch navbatiga qo'yildi."
+    },
+    "power_outage_reported": {
+      "title": "Elektr uzilishi haqida xabar berildi",
+      "body": "Haydovchi {order_id} buyurtmasi bo'yicha retailerda ehtimoliy elektr uzilishi borligini bildirdi."
+    },
+    "pull_matrix_completed": {
+      "title": "Pull matrix yakunlandi",
+      "body": "{run_id} ishga tushirilishi natijasida {skus_processed} ta SKU bo'yicha {transfers_generated} ta transfer yaratildi."
+    },
+    "replenishment_transfer_created": {
+      "title": "To'ldirish transferi yaratildi",
+      "body": "{warehouse_id} ombori uchun {transfer_id} transferi yaratildi ({source})."
+    },
+    "retailer_price_override": {
+      "created": {
+        "title": "Maxsus narx qo'llandi",
+        "body": "{sku_id} mahsuloti uchun sizga maxsus narx belgilandi."
+      },
+      "removed": {
+        "title": "Maxsus narx olib tashlandi",
+        "body": "{sku_id} mahsuloti uchun maxsus narx olib tashlandi. Endi standart narx amal qiladi."
+      }
+    },
+    "shop_closed": {
+      "title": "Haydovchi kutmoqda - do'kon yopiq ko'rinadi",
+      "body": "Haydovchi {order_id} buyurtmasi bo'yicha do'kon yopiq ekanini bildirdi. {attempt_id} urinish bo'yicha keyingi chora talab qilinadi."
+    },
+    "shop_closed_escalated": {
+      "title": "Yopiq do'kon eskalatsiyasi",
+      "body": "{order_id} buyurtmasi supplierning zudlik bilan harakati uchun eskalatsiya qilindi."
+    },
+    "shop_closed_escalation": {
+      "title": "Yopiq do'kon eskalatsiyasi",
+      "body": "{order_id} buyurtmasi supplierning zudlik bilan harakati uchun eskalatsiya qilindi."
+    },
+    "shop_closed_resolved": {
+      "title": "Yopiq do'kon holati hal qilindi",
+      "body": "{order_id} buyurtmasi bo'yicha yopiq do'kon holati admin tomonidan {action} tarzida hal qilindi.",
+      "driver": {
+        "title": "Yopiq do'kon holati hal qilindi",
+        "body": "{order_id} buyurtmasi bo'yicha yopiq do'kon holati {resolution} sifatida hal qilindi."
+      },
+      "retailer": {
+        "title": "Yopiq do'kon holati hal qilindi",
+        "body": "{order_id} buyurtmasi bo'yicha yopiq do'kon holati {resolution} sifatida hal qilindi."
+      }
+    },
+    "split_payment_created": {
+      "retailer": {
+        "title": "Bo'lingan to'lov yaratildi",
+        "body": "{order_id} buyurtmasi uchun bo'lingan to'lov yaratildi: birinchi qism {first_amount_minor}, ikkinchi qism {second_amount_minor}."
+      },
+      "supplier": {
+        "title": "Bo'lingan to'lov yaratildi",
+        "body": "{order_id} buyurtmasi uchun bo'lingan to'lov yaratildi: birinchi qism {first_amount_minor}, ikkinchi qism {second_amount_minor}."
+      }
+    },
+    "supply_lane_updated": {
+      "title": "Supply lane yangilandi",
+      "body": "{lane_id} yo'nalishi uchun tranzit bahosi {new_dampened_hours} soatgacha yangilandi."
+    },
+    "supply_request_submitted": {
+      "title": "Ta'minot so'rovi yuborildi",
+      "body": "{request_id} ta'minot so'rovi {state} holatiga o'tdi, ustuvorlik: {priority}."
+    },
+    "vehicle_created": {
+      "title": "Transport ro'yxatdan o'tdi",
+      "body": "{vehicle_label} transporti ({license_plate}) flotga qo'shildi."
+    },
+    "unified_checkout_completed": {
+      "title": "Rasmiylashtirish yakunlandi",
+      "body": "Rasmiylashtirish yakunlandi: buyurtmalar soni {order_count}, jami {total_minor} {currency}."
+    }
+  }
+}

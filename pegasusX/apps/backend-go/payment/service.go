@@ -14,6 +14,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -34,6 +35,8 @@ type Repository interface {
 	SaveChargeback(ctx context.Context, c ChargebackRecord, emit func(outbox.TxnBuffer) error) error
 	SaveReversal(ctx context.Context, rev ReversalRecord, emit func(outbox.TxnBuffer) error) error
 	SaveWebhook(ctx context.Context, w WebhookRecord, emit func(outbox.TxnBuffer) error) error
+	ListLedgerEntries(ctx context.Context, q LedgerQuery) ([]LedgerEntryRecord, error)
+	SummarizeLedgerEntries(ctx context.Context, q SettlementAuthorityQuery) ([]SettlementAuthorityRow, error)
 }
 
 // SessionRecord is the persisted checkout-session aggregate.
@@ -68,6 +71,7 @@ type PaymentAttemptRecord struct {
 type ChargebackRecord struct {
 	ChargebackID string
 	OrderID      string
+	SupplierID   string
 	RetailerID   string
 	Gateway      string
 	AmountMinor  int64
@@ -77,9 +81,13 @@ type ChargebackRecord struct {
 
 // ReversalRecord tracks a chargeback-reversal mutation request.
 type ReversalRecord struct {
-	ReversalID string
-	SessionID  string
-	CreatedAt  time.Time
+	ReversalID  string
+	SessionID   string
+	SupplierID  string
+	Gateway     string
+	AmountMinor int64
+	Currency    string
+	CreatedAt   time.Time
 }
 
 // WebhookRecord tracks one accepted gateway webhook.
@@ -89,11 +97,105 @@ type WebhookRecord struct {
 	TransactionID  string
 	SessionID      string
 	OrderID        string
+	SupplierID     string
+	RetailerID     string
 	Status         string
 	AmountMinor    int64
 	Currency       string
 	ReceivedAt     time.Time
 	SignatureValid bool
+}
+
+// LedgerQuery defines a bounded payment-ledger read query.
+type LedgerQuery struct {
+	SupplierID   string
+	OrderID      string
+	SessionID    string
+	Gateway      string
+	EntryType    string
+	OccurredFrom *time.Time
+	OccurredTo   *time.Time
+	Limit        int
+}
+
+// SettlementAuthorityQuery defines filter criteria for immutable payment
+// settlement authority summaries derived from PaymentLedgerEntries.
+type SettlementAuthorityQuery struct {
+	SupplierID   string
+	Gateway      string
+	EntryType    string
+	OccurredFrom *time.Time
+	OccurredTo   *time.Time
+	GroupLimit   int
+}
+
+// ReconciliationMismatchQuery defines filter criteria for grouped mismatch
+// detection over immutable payment ledger summaries.
+type ReconciliationMismatchQuery struct {
+	SupplierID             string
+	Gateway                string
+	OccurredFrom           *time.Time
+	OccurredTo             *time.Time
+	GroupLimit             int
+	MismatchThresholdMinor int64
+}
+
+// LedgerEntryRecord represents one immutable payment-ledger row.
+type LedgerEntryRecord struct {
+	LedgerEntryID string    `json:"ledger_entry_id"`
+	SessionID     string    `json:"session_id,omitempty"`
+	OrderID       string    `json:"order_id,omitempty"`
+	SupplierID    string    `json:"supplier_id,omitempty"`
+	RetailerID    string    `json:"retailer_id,omitempty"`
+	Gateway       string    `json:"gateway"`
+	EntryType     string    `json:"entry_type"`
+	AmountMinor   int64     `json:"amount_minor"`
+	Currency      string    `json:"currency"`
+	ReferenceID   string    `json:"reference_id,omitempty"`
+	Source        string    `json:"source"`
+	OccurredAt    time.Time `json:"occurred_at"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
+// SettlementAuthorityRow is one grouped settlement authority summary row.
+type SettlementAuthorityRow struct {
+	Gateway          string    `json:"gateway"`
+	EntryType        string    `json:"entry_type"`
+	Currency         string    `json:"currency"`
+	EntryCount       int64     `json:"entry_count"`
+	AmountMinorTotal int64     `json:"amount_minor_total"`
+	FirstOccurredAt  time.Time `json:"first_occurred_at"`
+	LastOccurredAt   time.Time `json:"last_occurred_at"`
+}
+
+// SettlementCurrencyTotal reports rolled-up totals per currency.
+type SettlementCurrencyTotal struct {
+	Currency         string `json:"currency"`
+	EntryCount       int64  `json:"entry_count"`
+	AmountMinorTotal int64  `json:"amount_minor_total"`
+}
+
+// ReconciliationEntryTypeTotal exposes one grouped entry-type contribution
+// used to classify mismatch net values.
+type ReconciliationEntryTypeTotal struct {
+	EntryType              string `json:"entry_type"`
+	EntryCount             int64  `json:"entry_count"`
+	AmountMinorTotal       int64  `json:"amount_minor_total"`
+	SignedAmountMinorTotal int64  `json:"signed_amount_minor_total"`
+}
+
+// ReconciliationMismatchRow reports one gateway-currency mismatch aggregate.
+type ReconciliationMismatchRow struct {
+	Gateway         string                         `json:"gateway"`
+	Currency        string                         `json:"currency"`
+	EntryCountTotal int64                          `json:"entry_count_total"`
+	GroupCount      int64                          `json:"group_count"`
+	CreditAmount    int64                          `json:"credit_amount_minor_total"`
+	DebitAmount     int64                          `json:"debit_amount_minor_total"`
+	NetAmount       int64                          `json:"net_amount_minor"`
+	FirstOccurredAt time.Time                      `json:"first_occurred_at"`
+	LastOccurredAt  time.Time                      `json:"last_occurred_at"`
+	EntryTypeTotals []ReconciliationEntryTypeTotal `json:"entry_type_totals"`
 }
 
 // Service wires repository + cache + idempotency + secrets.
@@ -104,6 +206,9 @@ type Service struct {
 	supplierID string
 	currency   string
 	execution  *ProviderExecutionRouter
+
+	cartCheckout CartCheckoutHandler
+	orderReader  OrderCheckoutReader
 
 	globalPayWebhookSecret string
 	adyenWebhookSecret     string
@@ -214,9 +319,19 @@ type adyenWebhookEnvelope struct {
 	NotificationItems []adyenNotificationItemWrapper `json:"notificationItems"`
 }
 
+type adyenRawWebhookEnvelope struct {
+	NotificationItems []adyenRawNotificationItemWrapper `json:"notificationItems"`
+}
+
+type adyenRawNotificationItemWrapper struct {
+	Item json.RawMessage `json:"NotificationRequestItem"`
+}
+
 type adyenNotificationItemWrapper struct {
 	Item adyenNotificationItem `json:"NotificationRequestItem"`
 }
+
+type adyenSignedNotificationItem adyenNotificationItem
 
 type adyenNotificationItem struct {
 	PspReference        string            `json:"pspReference"`
@@ -306,8 +421,29 @@ func (s *Service) HandleB2BCheckout(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleUnifiedCheckout serves POST /v1/checkout/unified.
+// Cart payloads (items[]) route to the bound order handler; order_id payloads
+// keep the legacy payment-session checkout path.
 func (s *Service) HandleUnifiedCheckout(w http.ResponseWriter, r *http.Request) {
-	s.handleCheckout("UNIFIED", w, r)
+	if r.Method != http.MethodPost {
+		writeJSONError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method Not Allowed", "/v1/checkout/unified", false, "")
+		return
+	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, 64*1024))
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "read_body_failed", "Unable to read request body", "/v1/checkout/unified", false, "")
+		return
+	}
+	defer r.Body.Close()
+
+	if isCartUnifiedCheckoutBody(body) {
+		if s.cartCheckout == nil {
+			writeJSONError(w, http.StatusServiceUnavailable, "cart_checkout_unavailable", "cart checkout handler not configured", "/v1/checkout/unified", false, "")
+			return
+		}
+		s.cartCheckout.HandleUnifiedCheckout(w, requestWithBody(r, body))
+		return
+	}
+	s.handleCheckoutWithBody("UNIFIED", w, requestWithBody(r, body), body)
 }
 
 // HandleChargeback serves POST /v1/payment/chargeback.
@@ -359,6 +495,7 @@ func (s *Service) HandleChargeback(w http.ResponseWriter, r *http.Request) {
 	rec := ChargebackRecord{
 		ChargebackID: s.newID("chargeback"),
 		OrderID:      strings.TrimSpace(req.OrderID),
+		SupplierID:   s.supplierID,
 		RetailerID:   strings.TrimSpace(req.RetailerID),
 		Gateway:      executionResult.ResolvedGateway,
 		AmountMinor:  amount,
@@ -366,9 +503,10 @@ func (s *Service) HandleChargeback(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:    now,
 	}
 	if err := s.repo.SaveChargeback(r.Context(), rec, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateSession, rec.ChargebackID, events.TopicMain, paymentEvent{
+		if err := outbox.EmitJSON(r.Context(), txn, events.AggregateSession, rec.ChargebackID, events.TopicMain, paymentEvent{
 			Type:            events.EventPaymentRequired,
 			OrderID:         rec.OrderID,
+			SupplierID:      rec.SupplierID,
 			RetailerID:      rec.RetailerID,
 			Gateway:         rec.Gateway,
 			Status:          "CHARGEBACK_RECORDED",
@@ -379,6 +517,17 @@ func (s *Service) HandleChargeback(w http.ResponseWriter, r *http.Request) {
 			Currency:        rec.Currency,
 			Source:          "payment.chargeback",
 			Timestamp:       now.Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateOrder, rec.OrderID, events.TopicMain, map[string]any{
+			"type":        events.EventDeliveryDisputed,
+			"order_id":    rec.OrderID,
+			"supplier_id": rec.SupplierID,
+			"retailer_id": rec.RetailerID,
+			"reason":      "chargeback_recorded",
+			"disputed_by": "payment.chargeback",
+			"timestamp":   now.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "chargeback_record_failed", err.Error(), "/v1/payment/chargeback", false, "")
@@ -432,14 +581,19 @@ func (s *Service) HandleChargebackReversal(w http.ResponseWriter, r *http.Reques
 	}
 	now := s.now()
 	rev := ReversalRecord{
-		ReversalID: s.newID("reversal"),
-		SessionID:  strings.TrimSpace(req.SessionID),
-		CreatedAt:  now,
+		ReversalID:  s.newID("reversal"),
+		SessionID:   strings.TrimSpace(req.SessionID),
+		SupplierID:  s.supplierID,
+		Gateway:     executionResult.ResolvedGateway,
+		AmountMinor: 0,
+		Currency:    s.currency,
+		CreatedAt:   now,
 	}
 	if err := s.repo.SaveReversal(r.Context(), rev, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateSession, rev.SessionID, events.TopicMain, paymentEvent{
 			Type:            events.EventPaymentCleared,
 			SessionID:       rev.SessionID,
+			SupplierID:      rev.SupplierID,
 			Status:          "CHARGEBACK_REVERSAL_RECORDED",
 			Gateway:         executionResult.ResolvedGateway,
 			ExecutionAction: string(ExecutionActionChargebackReversal),
@@ -461,6 +615,335 @@ func (s *Service) HandleChargebackReversal(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(respBytes)
+}
+
+// HandleLedger serves GET /v1/payment/ledger.
+func (s *Service) HandleLedger(w http.ResponseWriter, r *http.Request) {
+	const endpoint = "/v1/payment/ledger"
+	if r.Method != http.MethodGet {
+		writeJSONError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method Not Allowed", endpoint, false, "")
+		return
+	}
+	if s.repo == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "ledger_repository_unavailable", "Ledger repository is unavailable", endpoint, false, "")
+		return
+	}
+
+	supplierID, ok := resolvePaymentSupplierScope(w, r, s.supplierID, endpoint)
+	if !ok {
+		return
+	}
+
+	limit, err := parseBoundedIntQuery(strings.TrimSpace(r.URL.Query().Get("limit")), 100, 1, 500)
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid_limit", "limit must be between 1 and 500", endpoint, false, "")
+		return
+	}
+
+	occurredFrom, err := parseRFC3339QueryTime(strings.TrimSpace(r.URL.Query().Get("occurred_from")))
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid_occurred_from", "occurred_from must be RFC3339", endpoint, false, "")
+		return
+	}
+	occurredTo, err := parseRFC3339QueryTime(strings.TrimSpace(r.URL.Query().Get("occurred_to")))
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid_occurred_to", "occurred_to must be RFC3339", endpoint, false, "")
+		return
+	}
+	if occurredFrom != nil && occurredTo != nil && occurredFrom.After(*occurredTo) {
+		writeJSONError(w, http.StatusBadRequest, "invalid_occurred_range", "occurred_from must be before or equal to occurred_to", endpoint, false, "")
+		return
+	}
+
+	items, err := s.repo.ListLedgerEntries(r.Context(), LedgerQuery{
+		SupplierID:   supplierID,
+		OrderID:      strings.TrimSpace(r.URL.Query().Get("order_id")),
+		SessionID:    strings.TrimSpace(r.URL.Query().Get("session_id")),
+		Gateway:      strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("gateway"))),
+		EntryType:    strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("entry_type"))),
+		OccurredFrom: occurredFrom,
+		OccurredTo:   occurredTo,
+		Limit:        limit,
+	})
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "ledger_query_failed", err.Error(), endpoint, false, "")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"items":       items,
+		"count":       len(items),
+		"limit":       limit,
+		"supplier_id": supplierID,
+		"filters": map[string]any{
+			"order_id":      strings.TrimSpace(r.URL.Query().Get("order_id")),
+			"session_id":    strings.TrimSpace(r.URL.Query().Get("session_id")),
+			"gateway":       strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("gateway"))),
+			"entry_type":    strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("entry_type"))),
+			"occurred_from": formatOptionalTime(occurredFrom),
+			"occurred_to":   formatOptionalTime(occurredTo),
+		},
+	})
+}
+
+// HandleSettlementAuthority serves GET /v1/payment/settlement/authority.
+func (s *Service) HandleSettlementAuthority(w http.ResponseWriter, r *http.Request) {
+	const endpoint = "/v1/payment/settlement/authority"
+	if r.Method != http.MethodGet {
+		writeJSONError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method Not Allowed", endpoint, false, "")
+		return
+	}
+	if s.repo == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "settlement_repository_unavailable", "Settlement repository is unavailable", endpoint, false, "")
+		return
+	}
+
+	supplierID, ok := resolvePaymentSupplierScope(w, r, s.supplierID, endpoint)
+	if !ok {
+		return
+	}
+
+	groupLimit, err := parseBoundedIntQuery(strings.TrimSpace(r.URL.Query().Get("group_limit")), 200, 1, 1000)
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid_group_limit", "group_limit must be between 1 and 1000", endpoint, false, "")
+		return
+	}
+
+	occurredFrom, err := parseRFC3339QueryTime(strings.TrimSpace(r.URL.Query().Get("occurred_from")))
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid_occurred_from", "occurred_from must be RFC3339", endpoint, false, "")
+		return
+	}
+	occurredTo, err := parseRFC3339QueryTime(strings.TrimSpace(r.URL.Query().Get("occurred_to")))
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid_occurred_to", "occurred_to must be RFC3339", endpoint, false, "")
+		return
+	}
+	if occurredFrom != nil && occurredTo != nil && occurredFrom.After(*occurredTo) {
+		writeJSONError(w, http.StatusBadRequest, "invalid_occurred_range", "occurred_from must be before or equal to occurred_to", endpoint, false, "")
+		return
+	}
+
+	gateway := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("gateway")))
+	entryType := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("entry_type")))
+
+	rows, err := s.repo.SummarizeLedgerEntries(r.Context(), SettlementAuthorityQuery{
+		SupplierID:   supplierID,
+		Gateway:      gateway,
+		EntryType:    entryType,
+		OccurredFrom: occurredFrom,
+		OccurredTo:   occurredTo,
+		GroupLimit:   groupLimit,
+	})
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "settlement_summary_failed", err.Error(), endpoint, false, "")
+		return
+	}
+
+	totalsByCurrency := make(map[string]SettlementCurrencyTotal)
+	var entryCountTotal int64
+	for _, row := range rows {
+		entryCountTotal += row.EntryCount
+		totals := totalsByCurrency[row.Currency]
+		totals.Currency = row.Currency
+		totals.EntryCount += row.EntryCount
+		totals.AmountMinorTotal += row.AmountMinorTotal
+		totalsByCurrency[row.Currency] = totals
+	}
+
+	currencyTotals := make([]SettlementCurrencyTotal, 0, len(totalsByCurrency))
+	for _, totals := range totalsByCurrency {
+		currencyTotals = append(currencyTotals, totals)
+	}
+	sort.Slice(currencyTotals, func(i, j int) bool {
+		return currencyTotals[i].Currency < currencyTotals[j].Currency
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"items":              rows,
+		"count":              len(rows),
+		"group_limit":        groupLimit,
+		"supplier_id":        supplierID,
+		"entry_count_total":  entryCountTotal,
+		"totals_by_currency": currencyTotals,
+		"filters": map[string]any{
+			"gateway":       gateway,
+			"entry_type":    entryType,
+			"occurred_from": formatOptionalTime(occurredFrom),
+			"occurred_to":   formatOptionalTime(occurredTo),
+		},
+	})
+}
+
+// HandleReconciliationMismatches serves GET /v1/payment/reconciliation/mismatches.
+func (s *Service) HandleReconciliationMismatches(w http.ResponseWriter, r *http.Request) {
+	const endpoint = "/v1/payment/reconciliation/mismatches"
+	if r.Method != http.MethodGet {
+		writeJSONError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method Not Allowed", endpoint, false, "")
+		return
+	}
+	if s.repo == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "reconciliation_repository_unavailable", "Reconciliation repository is unavailable", endpoint, false, "")
+		return
+	}
+
+	supplierID, ok := resolvePaymentSupplierScope(w, r, s.supplierID, endpoint)
+	if !ok {
+		return
+	}
+
+	groupLimit, err := parseBoundedIntQuery(strings.TrimSpace(r.URL.Query().Get("group_limit")), 200, 1, 1000)
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid_group_limit", "group_limit must be between 1 and 1000", endpoint, false, "")
+		return
+	}
+
+	mismatchThresholdMinor, err := parseNonNegativeInt64Query(strings.TrimSpace(r.URL.Query().Get("mismatch_threshold_minor")), 0)
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid_mismatch_threshold_minor", "mismatch_threshold_minor must be a non-negative integer", endpoint, false, "")
+		return
+	}
+
+	occurredFrom, err := parseRFC3339QueryTime(strings.TrimSpace(r.URL.Query().Get("occurred_from")))
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid_occurred_from", "occurred_from must be RFC3339", endpoint, false, "")
+		return
+	}
+	occurredTo, err := parseRFC3339QueryTime(strings.TrimSpace(r.URL.Query().Get("occurred_to")))
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid_occurred_to", "occurred_to must be RFC3339", endpoint, false, "")
+		return
+	}
+	if occurredFrom != nil && occurredTo != nil && occurredFrom.After(*occurredTo) {
+		writeJSONError(w, http.StatusBadRequest, "invalid_occurred_range", "occurred_from must be before or equal to occurred_to", endpoint, false, "")
+		return
+	}
+
+	gateway := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("gateway")))
+	rows, err := s.repo.SummarizeLedgerEntries(r.Context(), SettlementAuthorityQuery{
+		SupplierID:   supplierID,
+		Gateway:      gateway,
+		OccurredFrom: occurredFrom,
+		OccurredTo:   occurredTo,
+		GroupLimit:   groupLimit,
+	})
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "reconciliation_summary_failed", err.Error(), endpoint, false, "")
+		return
+	}
+
+	type gatewayCurrencyAggregate struct {
+		Gateway         string
+		Currency        string
+		EntryCountTotal int64
+		GroupCount      int64
+		CreditAmount    int64
+		DebitAmount     int64
+		NetAmount       int64
+		FirstOccurredAt time.Time
+		LastOccurredAt  time.Time
+		EntryTypeTotals []ReconciliationEntryTypeTotal
+	}
+
+	aggByKey := make(map[string]*gatewayCurrencyAggregate)
+	for _, row := range rows {
+		key := strings.Join([]string{row.Gateway, row.Currency}, "|")
+		agg, exists := aggByKey[key]
+		if !exists {
+			agg = &gatewayCurrencyAggregate{
+				Gateway:         row.Gateway,
+				Currency:        row.Currency,
+				FirstOccurredAt: row.FirstOccurredAt,
+				LastOccurredAt:  row.LastOccurredAt,
+			}
+			aggByKey[key] = agg
+		}
+
+		sign := reconciliationEntrySign(row.EntryType)
+		signedAmount := row.AmountMinorTotal * sign
+		if signedAmount > 0 {
+			agg.CreditAmount += signedAmount
+		} else if signedAmount < 0 {
+			agg.DebitAmount += -signedAmount
+		}
+
+		agg.EntryCountTotal += row.EntryCount
+		agg.GroupCount++
+		agg.NetAmount += signedAmount
+		if row.FirstOccurredAt.Before(agg.FirstOccurredAt) {
+			agg.FirstOccurredAt = row.FirstOccurredAt
+		}
+		if row.LastOccurredAt.After(agg.LastOccurredAt) {
+			agg.LastOccurredAt = row.LastOccurredAt
+		}
+		agg.EntryTypeTotals = append(agg.EntryTypeTotals, ReconciliationEntryTypeTotal{
+			EntryType:              row.EntryType,
+			EntryCount:             row.EntryCount,
+			AmountMinorTotal:       row.AmountMinorTotal,
+			SignedAmountMinorTotal: signedAmount,
+		})
+	}
+
+	mismatches := make([]ReconciliationMismatchRow, 0, len(aggByKey))
+	for _, agg := range aggByKey {
+		if absInt64(agg.NetAmount) <= mismatchThresholdMinor {
+			continue
+		}
+
+		sort.Slice(agg.EntryTypeTotals, func(i, j int) bool {
+			left := absInt64(agg.EntryTypeTotals[i].SignedAmountMinorTotal)
+			right := absInt64(agg.EntryTypeTotals[j].SignedAmountMinorTotal)
+			if left == right {
+				return agg.EntryTypeTotals[i].EntryType < agg.EntryTypeTotals[j].EntryType
+			}
+			return left > right
+		})
+
+		mismatches = append(mismatches, ReconciliationMismatchRow{
+			Gateway:         agg.Gateway,
+			Currency:        agg.Currency,
+			EntryCountTotal: agg.EntryCountTotal,
+			GroupCount:      agg.GroupCount,
+			CreditAmount:    agg.CreditAmount,
+			DebitAmount:     agg.DebitAmount,
+			NetAmount:       agg.NetAmount,
+			FirstOccurredAt: agg.FirstOccurredAt,
+			LastOccurredAt:  agg.LastOccurredAt,
+			EntryTypeTotals: agg.EntryTypeTotals,
+		})
+	}
+
+	sort.Slice(mismatches, func(i, j int) bool {
+		left := absInt64(mismatches[i].NetAmount)
+		right := absInt64(mismatches[j].NetAmount)
+		if left == right {
+			if mismatches[i].Gateway == mismatches[j].Gateway {
+				return mismatches[i].Currency < mismatches[j].Currency
+			}
+			return mismatches[i].Gateway < mismatches[j].Gateway
+		}
+		return left > right
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"items":                    mismatches,
+		"count":                    len(mismatches),
+		"analyzed_group_count":     len(rows),
+		"group_limit":              groupLimit,
+		"mismatch_threshold_minor": mismatchThresholdMinor,
+		"supplier_id":              supplierID,
+		"filters": map[string]any{
+			"gateway":       gateway,
+			"occurred_from": formatOptionalTime(occurredFrom),
+			"occurred_to":   formatOptionalTime(occurredTo),
+		},
+	})
 }
 
 // HandleDeprecatedGlobalPayInitiate serves POST /v1/payment/global_pay/initiate.
@@ -524,6 +1007,7 @@ func (s *Service) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.Request)
 		TransactionID:  req.TransactionID,
 		SessionID:      req.SessionID,
 		OrderID:        strings.TrimSpace(req.OrderID),
+		SupplierID:     s.supplierID,
 		Status:         req.Status,
 		AmountMinor:    amount,
 		Currency:       currency,
@@ -562,13 +1046,18 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	var envelope adyenWebhookEnvelope
-	if err := json.Unmarshal(body, &envelope); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid_json_payload", "Invalid JSON payload", endpoint, false, "")
-		return
-	}
-	if len(envelope.NotificationItems) == 0 {
-		writeJSONError(w, http.StatusUnprocessableEntity, "invalid_request", "notificationItems is required", endpoint, false, "")
+	envelope, err := parseVerifiedAdyenWebhookEnvelope(body, s.adyenWebhookSecret)
+	if err != nil {
+		switch {
+		case errors.Is(err, errAdyenInvalidJSONPayload):
+			writeJSONError(w, http.StatusBadRequest, "invalid_json_payload", "Invalid JSON payload", endpoint, false, "")
+		case errors.Is(err, errAdyenMissingNotificationItems):
+			writeJSONError(w, http.StatusUnprocessableEntity, "invalid_request", "notificationItems is required", endpoint, false, "")
+		case errors.Is(err, errAdyenInvalidSignature):
+			writeJSONError(w, http.StatusUnauthorized, "invalid_signature", "Invalid webhook signature", endpoint, false, "")
+		default:
+			writeJSONError(w, http.StatusBadRequest, "invalid_json_payload", "Invalid JSON payload", endpoint, false, "")
+		}
 		return
 	}
 
@@ -576,10 +1065,6 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 		item := envelope.NotificationItems[i].Item
 		if err := validateAdyenNotificationItem(item); err != nil {
 			writeJSONError(w, http.StatusUnprocessableEntity, "invalid_request", err.Error(), endpoint, false, "")
-			return
-		}
-		if !verifyAdyenNotificationSignature(item, s.adyenWebhookSecret) {
-			writeJSONError(w, http.StatusUnauthorized, "invalid_signature", "Invalid webhook signature", endpoint, false, "")
 			return
 		}
 	}
@@ -592,7 +1077,15 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 		transactionID := strings.TrimSpace(item.PspReference)
 		webhookKey := "webhook:adyen:" + transactionID + ":" + strings.ToUpper(strings.TrimSpace(item.EventCode))
 		bodyHash := sha256Hex([]byte(adyenSigningData(item)))
-		if replayed := s.writeWebhookReplayIfExists(w, r, endpoint, webhookKey, bodyHash); replayed {
+		replayed, err := s.isWebhookReplay(r.Context(), webhookKey, bodyHash)
+		if err != nil {
+			if errors.Is(err, idempotency.ErrConflict) {
+				writeJSONError(w, http.StatusConflict, "idempotency_key_payload_mismatch", "idempotency key payload mismatch", endpoint, false, "")
+				return
+			}
+			s.log.Warn("webhook idempotency guard failed", "key", webhookKey, "err", err)
+		}
+		if replayed {
 			continue
 		}
 
@@ -606,6 +1099,7 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 			TransactionID:  transactionID,
 			SessionID:      strings.TrimSpace(item.AdditionalData["session_id"]),
 			OrderID:        strings.TrimSpace(item.MerchantReference),
+			SupplierID:     s.supplierID,
 			Status:         status,
 			AmountMinor:    item.Amount.Value,
 			Currency:       currency,
@@ -634,6 +1128,51 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 		"gateway":         "adyen",
 		"processed_items": processed,
 	})
+}
+
+var (
+	errAdyenInvalidJSONPayload       = errors.New("adyen webhook invalid json payload")
+	errAdyenMissingNotificationItems = errors.New("adyen webhook missing notification items")
+	errAdyenInvalidSignature         = errors.New("adyen webhook invalid signature")
+)
+
+func parseVerifiedAdyenWebhookEnvelope(body []byte, secret string) (adyenWebhookEnvelope, error) {
+	var rawEnvelope adyenRawWebhookEnvelope
+	if err := json.Unmarshal(body, &rawEnvelope); err != nil {
+		return adyenWebhookEnvelope{}, errAdyenInvalidJSONPayload
+	}
+	if len(rawEnvelope.NotificationItems) == 0 {
+		return adyenWebhookEnvelope{}, errAdyenMissingNotificationItems
+	}
+	envelope := adyenWebhookEnvelope{
+		NotificationItems: make([]adyenNotificationItemWrapper, 0, len(rawEnvelope.NotificationItems)),
+	}
+	for _, wrapper := range rawEnvelope.NotificationItems {
+		if len(wrapper.Item) == 0 {
+			return adyenWebhookEnvelope{}, errAdyenInvalidJSONPayload
+		}
+		var signedItem adyenSignedNotificationItem
+		if err := json.Unmarshal(wrapper.Item, &signedItem); err != nil {
+			return adyenWebhookEnvelope{}, errAdyenInvalidJSONPayload
+		}
+		item := adyenNotificationItem(signedItem)
+		if !verifyAdyenNotificationSignature(item, secret) {
+			return adyenWebhookEnvelope{}, errAdyenInvalidSignature
+		}
+		envelope.NotificationItems = append(envelope.NotificationItems, adyenNotificationItemWrapper{Item: item})
+	}
+	return envelope, nil
+}
+
+func (s *Service) isWebhookReplay(ctx context.Context, webhookKey, bodyHash string) (bool, error) {
+	if s.idem == nil {
+		return false, nil
+	}
+	_, hit, err := idempotency.Guard(ctx, s.idem, webhookKey, bodyHash)
+	if err != nil {
+		return false, err
+	}
+	return hit, nil
 }
 
 // HandleStripeWebhook serves POST /v1/webhooks/stripe.
@@ -671,6 +1210,7 @@ func (s *Service) HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	now := s.now()
 	row.WebhookID = s.newID("webhook")
 	row.Gateway = "STRIPE"
+	row.SupplierID = s.supplierID
 	row.ReceivedAt = now
 	row.SignatureValid = true
 
@@ -690,6 +1230,7 @@ func (s *Service) HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 		if intent.Metadata != nil {
 			row.SessionID = strings.TrimSpace(intent.Metadata["session_id"])
 			row.OrderID = strings.TrimSpace(intent.Metadata["order_id"])
+			row.RetailerID = strings.TrimSpace(intent.Metadata["retailer_id"])
 		}
 		if row.OrderID == "" {
 			row.OrderID = strings.TrimSpace(intent.Metadata["merchant_reference"])
@@ -716,6 +1257,7 @@ func (s *Service) HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 		if charge.Metadata != nil {
 			row.SessionID = strings.TrimSpace(charge.Metadata["session_id"])
 			row.OrderID = strings.TrimSpace(charge.Metadata["order_id"])
+			row.RetailerID = strings.TrimSpace(charge.Metadata["retailer_id"])
 		}
 		row.Status = "REFUNDED"
 		row.AmountMinor = charge.AmountRefunded
@@ -773,7 +1315,10 @@ func (s *Service) handleCheckout(mode string, w http.ResponseWriter, r *http.Req
 		return
 	}
 	defer r.Body.Close()
+	s.handleCheckoutWithBody(mode, w, r, body)
+}
 
+func (s *Service) handleCheckoutWithBody(mode string, w http.ResponseWriter, r *http.Request, body []byte) {
 	if rec, ok := s.handleIdempotentHit(w, r, body); ok {
 		_ = rec
 		return
@@ -797,72 +1342,13 @@ func (s *Service) handleCheckout(mode string, w http.ResponseWriter, r *http.Req
 		writeJSONError(w, http.StatusUnprocessableEntity, "retailer_scope_missing", "retailer context is required", "/v1/checkout", false, "")
 		return
 	}
+	req.RetailerID = retailerID
 
-	resolvedCurrency := strings.ToUpper(strings.TrimSpace(req.Currency))
-	if resolvedCurrency == "" {
-		resolvedCurrency = s.currency
-	}
-	executionResult, err := s.execution.Execute(r.Context(), ExecutionRequest{
-		Gateway:     req.Gateway,
-		Action:      ExecutionActionCheckoutInit,
-		OrderID:     req.OrderID,
-		AmountMinor: req.AmountMinor,
-		Currency:    resolvedCurrency,
-	})
+	session, attempt, executionResult, err := s.initCheckoutSession(r.Context(), mode, req)
 	if err != nil {
 		s.writeExecutionError(w, "/v1/checkout", err)
 		return
 	}
-	now := s.now()
-	session := SessionRecord{
-		SessionID:   s.newID("psess"),
-		OrderID:     req.OrderID,
-		SupplierID:  s.supplierID,
-		RetailerID:  retailerID,
-		Gateway:     executionResult.ResolvedGateway,
-		Currency:    resolvedCurrency,
-		AmountMinor: req.AmountMinor,
-		Mode:        mode,
-		Status:      "PAYMENT_REQUIRED",
-		CreatedAt:   now,
-		UpdatedAt:   now,
-	}
-	attempt := PaymentAttemptRecord{
-		AttemptID:         s.newID("pattempt"),
-		SessionID:         session.SessionID,
-		Gateway:           session.Gateway,
-		ExecutionAction:   string(ExecutionActionCheckoutInit),
-		ExecutionMode:     string(executionResult.Mode),
-		ProviderReference: executionResult.ProviderRef,
-		Status:            "INITIATED",
-		CreatedAt:         now,
-		UpdatedAt:         now,
-	}
-	if err := s.repo.CreateSessionWithAttempt(r.Context(), session, attempt, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateSession, session.SessionID, events.TopicMain, paymentEvent{
-			Type:              events.EventPaymentRequired,
-			SessionID:         session.SessionID,
-			AttemptID:         attempt.AttemptID,
-			OrderID:           session.OrderID,
-			SupplierID:        session.SupplierID,
-			RetailerID:        session.RetailerID,
-			Gateway:           session.Gateway,
-			Status:            session.Status,
-			ExecutionAction:   string(ExecutionActionCheckoutInit),
-			ExecutionMode:     string(executionResult.Mode),
-			PolicySource:      executionResult.PolicySource,
-			ProviderReference: executionResult.ProviderRef,
-			AmountMinor:       session.AmountMinor,
-			Currency:          session.Currency,
-			Source:            "payment.checkout",
-			Timestamp:         now.Format(time.RFC3339Nano),
-		})
-	}); err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "checkout_session_attempt_create_failed", err.Error(), "/v1/checkout", false, "")
-		return
-	}
-
-	s.cache.Invalidate(r.Context(), paymentOrderKey(session.OrderID), paymentRetailerKey(session.RetailerID), paymentSessionKey(session.SessionID))
 
 	resp := CheckoutResponse{
 		SessionID:         session.SessionID,
@@ -898,7 +1384,8 @@ func (s *Service) persistWebhookWithOutbox(ctx context.Context, row WebhookRecor
 			Type:          eventType,
 			SessionID:     row.SessionID,
 			OrderID:       row.OrderID,
-			SupplierID:    s.supplierID,
+			SupplierID:    row.SupplierID,
+			RetailerID:    row.RetailerID,
 			Gateway:       row.Gateway,
 			Status:        row.Status,
 			AmountMinor:   row.AmountMinor,
@@ -991,6 +1478,105 @@ func (s *Service) persistIdempotencyRecord(ctx context.Context, key, bodyHash st
 	}, ttl); err != nil {
 		s.log.Warn("idempotency save failed", "key", key, "err", err)
 	}
+}
+
+func resolvePaymentSupplierScope(w http.ResponseWriter, r *http.Request, fallbackSupplierID string, endpoint string) (string, bool) {
+	supplierID := strings.TrimSpace(fallbackSupplierID)
+	if scopedSupplierID, ok := auth.ResolveSupplierID(r.Context()); ok {
+		scopedSupplierID = strings.TrimSpace(scopedSupplierID)
+		if scopedSupplierID != "" {
+			supplierID = scopedSupplierID
+		}
+	}
+
+	requestedSupplierID := strings.TrimSpace(r.URL.Query().Get("supplier_id"))
+	if requestedSupplierID != "" {
+		if supplierID != "" && requestedSupplierID != supplierID {
+			writeJSONError(w, http.StatusForbidden, "forbidden", "supplier scope mismatch", endpoint, false, "")
+			return "", false
+		}
+		supplierID = requestedSupplierID
+	}
+
+	return supplierID, true
+}
+
+func parseBoundedIntQuery(raw string, defaultValue int, minValue int, maxValue int) (int, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return defaultValue, nil
+	}
+	parsed, err := strconv.Atoi(raw)
+	if err != nil || parsed < minValue || parsed > maxValue {
+		return 0, fmt.Errorf("out of range")
+	}
+	return parsed, nil
+}
+
+func parseNonNegativeInt64Query(raw string, defaultValue int64) (int64, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return defaultValue, nil
+	}
+	parsed, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || parsed < 0 {
+		return 0, fmt.Errorf("out of range")
+	}
+	return parsed, nil
+}
+
+func parseRFC3339QueryTime(raw string) (*time.Time, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	parsed, err := time.Parse(time.RFC3339Nano, raw)
+	if err != nil {
+		return nil, err
+	}
+	parsed = parsed.UTC()
+	return &parsed, nil
+}
+
+func formatOptionalTime(v *time.Time) any {
+	if v == nil {
+		return nil
+	}
+	return v.UTC().Format(time.RFC3339Nano)
+}
+
+func absInt64(v int64) int64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+// SignedSettlementEntryAmount applies the canonical reconciliation sign rules
+// to a grouped settlement authority amount so adjacent read models can stay in
+// lockstep with finance mismatch math.
+func SignedSettlementEntryAmount(entryType string, amountMinor int64) int64 {
+	return amountMinor * reconciliationEntrySign(entryType)
+}
+
+func reconciliationEntrySign(entryType string) int64 {
+	t := strings.ToUpper(strings.TrimSpace(entryType))
+	if t == "" {
+		return 0
+	}
+	if strings.Contains(t, "FAILED") || strings.Contains(t, "CANCEL") || strings.Contains(t, "VOID") || strings.Contains(t, "PENDING") || strings.Contains(t, "REQUIRED") || strings.Contains(t, "UNKNOWN") {
+		return 0
+	}
+	if strings.Contains(t, "REVERSAL") {
+		return 1
+	}
+	if strings.Contains(t, "CHARGEBACK") || strings.Contains(t, "REFUND") {
+		return -1
+	}
+	if strings.Contains(t, "PAID") || strings.Contains(t, "CAPTURED") || strings.Contains(t, "CLEARED") || strings.Contains(t, "SETTLED") || strings.Contains(t, "SUCCESS") || strings.Contains(t, "SUCCEEDED") || strings.Contains(t, "COMPLETED") || strings.Contains(t, "AUTHORIZED") {
+		return 1
+	}
+	return 0
 }
 
 func parseGlobalPayWebhookRequest(body []byte, r *http.Request) (globalPayWebhookRequest, error) {

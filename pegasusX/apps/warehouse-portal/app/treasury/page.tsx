@@ -1,0 +1,171 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import { apiFetch } from '@/lib/auth';
+import { warehouseApi } from '@/lib/warehouse-api';
+import Icon from '@/components/Icon';
+import PageTransition from '@/components/PageTransition';
+import { PageChrome } from '@/components/PageChrome';
+
+interface TreasuryOverview {
+  total_invoiced: number;
+  total_paid: number;
+  total_outstanding: number;
+}
+
+interface Invoice {
+  invoice_id: string;
+  retailer_name: string;
+  amount?: number;
+  amount_uzs?: number;
+  currency?: string;
+  status: string;
+  fee_amount?: number;
+  net_payout_amount?: number;
+  payout_owner_type?: string;
+  payout_owner_id?: string;
+  fee_policy_version?: string;
+  settlement_target?: string;
+  due_date: string;
+  created_at: string;
+}
+
+export default function TreasuryPage() {
+  const [overview, setOverview] = useState<TreasuryOverview | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<'overview' | 'invoices'>('overview');
+
+  const load = useCallback(async () => {
+    try {
+      const [ovRes, invRes, financials] = await Promise.all([
+        apiFetch('/v1/warehouse/ops/treasury?view=overview'),
+        apiFetch('/v1/warehouse/ops/treasury?view=invoices'),
+        warehouseApi.getWarehouseOpsFinancials().catch(() => null),
+      ]);
+      if (ovRes.ok) {
+        setOverview(await ovRes.json());
+      } else if (financials) {
+        setOverview({
+          total_invoiced: financials.total_revenue,
+          total_paid: financials.net_payout,
+          total_outstanding: financials.cash_pending,
+        });
+      }
+      if (invRes.ok) {
+        const data = await invRes.json();
+        setInvoices(data.invoices || []);
+      }
+    } catch { /* handled */ }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const fmt = (n: number) => new Intl.NumberFormat('uz-UZ').format(n);
+  const resolveAmount = (inv: Invoice) => {
+    if (typeof inv.amount === 'number' && Number.isFinite(inv.amount)) return inv.amount;
+    if (typeof inv.amount_uzs === 'number' && Number.isFinite(inv.amount_uzs)) return inv.amount_uzs;
+    return 0;
+  };
+  const resolveCurrency = (inv: Invoice) => (inv.currency || 'UZS').toUpperCase();
+  const formatPayoutOwner = (inv: Invoice) => {
+    const ownerType = (inv.payout_owner_type || '').trim();
+    const ownerID = (inv.payout_owner_id || '').trim();
+    if (!ownerType && !ownerID) return 'Supplier';
+    if (!ownerID) return ownerType;
+    return `${ownerType}:${ownerID.slice(0, 8)}`;
+  };
+
+  const ov = overview || { total_invoiced: 0, total_paid: 0, total_outstanding: 0 };
+
+  return (
+    <PageTransition>
+      <PageChrome
+        title="Treasury"
+        description="Invoiced revenue, payouts, and outstanding liabilities for this warehouse."
+        loading={loading}
+        actions={
+          <div className="flex gap-2">
+            {(['overview', 'invoices'] as const).map(v => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize ${v === view ? 'button--primary' : 'button--secondary'}`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+        }
+      >
+      <div className="space-y-6">
+      {/* Overview KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
+          <div className="text-xs text-[var(--muted)] mb-1">Total Invoiced</div>
+          <div className="text-2xl font-bold">{fmt(ov.total_invoiced)} UZS</div>
+        </div>
+        <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
+          <div className="text-xs text-[var(--muted)] mb-1">Paid</div>
+          <div className="text-2xl font-bold text-[var(--success)]">{fmt(ov.total_paid)} UZS</div>
+        </div>
+        <div className="rounded-xl border border-[var(--border)] p-4" style={{ background: 'var(--background)' }}>
+          <div className="text-xs text-[var(--muted)] mb-1">Outstanding</div>
+          <div className="text-2xl font-bold" style={{ color: ov.total_outstanding > 0 ? 'var(--danger)' : 'var(--foreground)' }}>
+            {fmt(ov.total_outstanding)} UZS
+          </div>
+        </div>
+      </div>
+
+      {/* Invoices Table */}
+      {!loading && view === 'invoices' && (
+        invoices.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-[var(--muted)]">
+            <Icon name="treasury" size={48} className="mb-3 opacity-40" />
+            <p className="text-sm">No invoices found</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="desk-table w-full text-sm">
+              <thead>
+                <tr className="border-b border-[var(--border)]">
+                  <th className="text-left py-2 px-3 font-medium">Invoice</th>
+                  <th className="text-left py-2 px-3 font-medium">Retailer</th>
+                  <th className="text-right py-2 px-3 font-medium">Amount</th>
+                  <th className="text-left py-2 px-3 font-medium">Status</th>
+                  <th className="text-right py-2 px-3 font-medium">Due</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map(inv => (
+                  <tr key={inv.invoice_id} className="border-b border-[var(--border)] hover:bg-[var(--surface)] transition-colors">
+                    <td className="py-2.5 px-3 font-mono text-xs">{inv.invoice_id.slice(0, 8)}...</td>
+                    <td className="py-2.5 px-3">{inv.retailer_name || '—'}</td>
+                    <td className="py-2.5 px-3 text-right font-mono">{fmt(resolveAmount(inv))} {resolveCurrency(inv)}</td>
+                    <td className="py-2.5 px-3">
+                      <span className={`status-chip ${inv.status === 'PAID' ? 'status-chip--stable' : inv.status === 'OVERDUE' ? 'status-chip--critical' : 'status-chip--draft'}`}>
+                        {inv.status}
+                      </span>
+                      <div className="text-[11px] mt-1 text-[var(--muted)]">
+                        Owner {formatPayoutOwner(inv)}
+                        {typeof inv.fee_amount === 'number' ? ` · Fee ${fmt(inv.fee_amount)}` : ''}
+                        {typeof inv.net_payout_amount === 'number' ? ` · Net ${fmt(inv.net_payout_amount)}` : ''}
+                      </div>
+                    </td>
+                    <td className="py-2.5 px-3 text-right text-[var(--muted)]">
+                      {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
+      </div>
+      </PageChrome>
+    </PageTransition>
+  );
+}

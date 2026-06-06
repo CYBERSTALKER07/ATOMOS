@@ -1,0 +1,1180 @@
+{
+  "app": {
+    "language": {
+      "en": "Английский",
+      "ru": "Русский",
+      "uz": "Узбекский"
+    }
+  },
+  "common": {
+    "action": {
+      "back": "Назад",
+      "cancel": "Отмена",
+      "close": "Закрыть",
+      "hide_password": "Скрыть пароль",
+      "selected": "Выбрано",
+      "sign_out": "Выйти",
+      "retry": "Повторить",
+      "save": "Сохранить",
+      "show_password": "Показать пароль",
+      "sign_in": "Войти",
+      "skip_for_now": "Пропустить пока",
+      "switch_to_dark_mode": "Переключить на темную тему",
+      "switch_to_light_mode": "Переключить на светлую тему"
+    },
+    "error": {
+      "unknown": "Неизвестная ошибка"
+    },
+    "field": {
+      "phone": "Телефон",
+      "pin": "PIN-код"
+    },
+    "status": {
+      "restoring_session": "Восстановление сессии...",
+      "saving": "Сохранение..."
+    }
+  },
+  "auth": {
+    "error": {
+      "login_failed": "Ошибка входа",
+      "no_auth_token": "Токен авторизации не найден. Выполните вход.",
+      "session_expired": "Сессия истекла"
+    },
+    "login": {
+      "authenticating": "Выполняется вход...",
+      "driver_terminal": "Терминал водителя",
+      "payloader_login": "Вход загрузчика",
+      "payload_terminal": "Терминал загрузки",
+      "phone_placeholder": "+998 XX XXX XX XX",
+      "pin_label": "6-значный PIN-код",
+      "submit": "Войти",
+      "title": "Pegasus"
+    }
+  },
+  "error": {
+    "bad_request": "Некорректный запрос",
+    "conflict": "Конфликт",
+    "forbidden": "Недостаточно прав",
+    "internal": "Внутренняя ошибка сервера",
+    "method_not_allowed": "Метод не поддерживается",
+    "not_found": "Ресурс не найден",
+    "rate_limited": "Слишком много запросов",
+    "service_unavailable": "Сервис временно недоступен",
+    "unauthorized": "Требуется аутентификация"
+  },
+  "order": {
+    "error": {
+      "already_processed": "Заказ уже обработан",
+      "cancel_denied": "Заказ нельзя отменить",
+      "not_found": "Заказ не найден",
+      "state_conflict": "Конфликт состояния заказа"
+    }
+  },
+  "payment": {
+    "error": {
+      "3ds_failed": "Ошибка 3DS-аутентификации",
+      "3ds_required": "Требуется 3DS-аутентификация",
+      "card_declined": "Карта отклонена",
+      "card_expired": "Срок действия карты истек",
+      "card_invalid": "Данные карты неверны",
+      "gateway_unavailable": "Платежный шлюз недоступен",
+      "generic": "Платеж не выполнен",
+      "insufficient_funds": "Недостаточно средств",
+      "otp_expired": "Срок действия OTP истек",
+      "otp_mismatch": "Код OTP не совпадает",
+      "timeout": "Время ожидания платежа истекло"
+    },
+    "status": {
+      "auth_pending": "Ожидается авторизация",
+      "auth_success": "Авторизация успешна",
+      "settlement_delayed": "Зачисление задерживается",
+      "settlement_ok": "Зачисление завершено"
+    }
+  },
+  "payload": {
+    "alert": {
+      "cache_stale_body": "Кэш манифеста старше 15 минут. Нельзя продолжить офлайн.",
+      "cache_stale_title": "Кэш устарел",
+      "exception_failed": "Не удалось обработать исключение",
+      "inject_failed": "Не удалось добавить заказ",
+      "manifest_fetch_failed": "Ошибка загрузки манифеста",
+      "manifest_sealed_title": "Манифест опечатан",
+      "offline_cached_manifest_body": "Загружен кэшированный манифест.",
+      "offline_cached_manifest_title": "Офлайн-режим",
+      "order_injected_title": "Заказ добавлен",
+      "queued_offline_body": "Добавление заказа поставлено в очередь и синхронизируется после восстановления соединения.",
+      "queued_offline_title": "Поставлено в офлайн-очередь",
+      "reassign_failed": "Не удалось переназначить",
+      "recommendation_failed": "Не удалось получить рекомендации",
+      "seal_failed": "Не удалось опечатать",
+      "start_loading_failed": "Не удалось начать загрузку",
+      "sync_complete_title": "Синхронизация завершена"
+    },
+    "vehicle": {
+      "none_available": "Нет доступных автомобилей",
+      "select_target": "Выберите целевой автомобиль"
+    }
+  },
+  "supplier_portal": {
+    "auth": {
+      "login": {
+        "brand_title": "Pegasus Hub",
+        "brand_subtitle": "Портал операций поставщика",
+        "heading": "Вход",
+        "subheading": "Введите свои учетные данные для доступа к порталу",
+        "email_label": "Электронная почта",
+        "email_placeholder": "admin@void.pegasus.uz",
+        "password_label": "Пароль",
+        "password_placeholder": "Введите пароль",
+        "no_account": "Нет аккаунта?",
+        "create_account": "Создать аккаунт",
+        "http_error": "HTTP {status}",
+        "network_error": "Сетевая ошибка - запущен ли backend?"
+      },
+      "register": {
+        "brand_title": "Pegasus Hub",
+        "brand_subtitle": "Регистрация поставщика",
+        "already_registered": "Уже зарегистрированы?",
+        "creating_account": "Создание аккаунта...",
+        "submit": "Создать аккаунт поставщика",
+        "continue_to": "Продолжить к: {step}",
+        "steps": {
+          "account": "Аккаунт",
+          "location": "Локация",
+          "business": "Бизнес",
+          "categories": "Категории"
+        },
+        "header": {
+          "account_title": "Создайте аккаунт поставщика",
+          "account_description": "Выберите страну и введите основную информацию о компании",
+          "location_title": "Где вы находитесь?",
+          "location_description": "Локация склада будет использоваться для планирования маршрутов и логистики доставки",
+          "business_title": "Данные бизнеса",
+          "business_description": "Налоговые данные и конфигурация логистики автопарка",
+          "categories_title": "Категории товаров",
+          "categories_description": "Выберите все категории товаров, которые вы поставляете - ритейлеры будут фильтровать по ним"
+        },
+        "error": {
+          "password_mismatch": "Пароли не совпадают.",
+          "registration_failed": "Регистрация не удалась",
+          "http_error": "Ошибка {status}",
+          "network": "Сетевая ошибка - запущен ли backend?"
+        },
+        "step1": {
+          "country_label": "Страна *",
+          "country_placeholder": "Выберите страну",
+          "search_countries": "Поиск стран...",
+          "no_countries": "По вашему запросу страны не найдены",
+          "company_name_label": "Название компании *",
+          "company_name_placeholder": "Pegasus Beverages Ltd.",
+          "contact_person_label": "Контактное лицо *",
+          "contact_person_placeholder": "Азиз Каримов",
+          "email_label": "Электронная почта *",
+          "email_placeholder": "info@company.uz",
+          "phone_label": "Номер телефона *",
+          "phone_placeholder": "901234567",
+          "password_label": "Пароль *",
+          "password_placeholder": "Минимум 8 символов",
+          "confirm_password_label": "Подтвердите пароль *",
+          "confirm_password_placeholder": "Повторите пароль"
+        },
+        "step2": {
+          "map_loading": "Загрузка карты...",
+          "warehouse_location_label": "Расположение склада / хранилища *",
+          "billing_address_label": "Платежный адрес",
+          "billing_address_placeholder": "Совпадает со складом или адресом головного офиса"
+        },
+        "step3": {
+          "tax_id_label": "ИНН / STIR *",
+          "tax_id_placeholder": "STIR-12345678",
+          "company_reg_number_label": "Регистрационный номер компании",
+          "company_reg_number_placeholder": "MYF-001-UZ",
+          "fleet_profile_title": "Профиль автопарка и логистики",
+          "cold_chain_title": "Автопарк с холодовой цепью",
+          "cold_chain_description": "Рефрижераторный транспорт для температурно-чувствительных товаров",
+          "palletization_label": "Стандарт паллетизации",
+          "palletization": {
+            "not_specified": "Не указано",
+            "loose_cartons": "Россыпью в коробах",
+            "euro_pallets": "Европаллеты (120x80 см)",
+            "mixed": "Смешанный"
+          }
+        },
+        "step4": {
+          "label": "Категории товаров *",
+          "selected_suffix": "выбрано",
+          "search_placeholder": "Поиск категорий...",
+          "required_error": "Выберите хотя бы одну категорию, чтобы продолжить.",
+          "categories": {
+            "cat-water": "Вода",
+            "cat-sparkling-water": "Газированная и ароматизированная вода",
+            "cat-soft-drinks": "Безалкогольные напитки и газировка",
+            "cat-juice": "Соки и нектары",
+            "cat-tea-coffee": "Чай и кофе",
+            "cat-energy-sports": "Энергетические и спортивные напитки",
+            "cat-powdered-drinks": "Порошковые смеси для напитков",
+            "cat-kombucha": "Комбуча и пробиотические напитки",
+            "cat-plant-milk": "Растительное молоко",
+            "cat-milk": "Молоко и сливки",
+            "cat-yogurt": "Йогурты и кефир",
+            "cat-cheese": "Сыр",
+            "cat-butter-margarine": "Масло и маргарин",
+            "cat-eggs": "Яйца",
+            "cat-deli-meats": "Деликатесы и мясная нарезка",
+            "cat-hummus-dips": "Хумус, дипы и намазки",
+            "cat-tofu-tempeh": "Тофу, темпе и альтернативы мясу",
+            "cat-fresh-pasta-sauces": "Свежая паста и соусы",
+            "cat-bread": "Хлеб и булочки",
+            "cat-tortillas-wraps": "Тортильи и роллы",
+            "cat-bagels-english-muffins": "Бейглы и английские маффины",
+            "cat-cakes-pastries": "Торты и выпечка",
+            "cat-cookies-brownies": "Печенье и брауни",
+            "cat-pita-naan": "Пита, наан и лепешки",
+            "cat-baking-mixes": "Смеси для выпечки",
+            "cat-cereal": "Сухие завтраки",
+            "cat-oatmeal-porridge": "Овсянка и каши",
+            "cat-granola-bars": "Гранола и злаковые батончики",
+            "cat-pancake-waffle": "Смеси для блинов и вафель",
+            "cat-syrup-honey": "Сироп, мед и джем",
+            "cat-rice": "Рис",
+            "cat-pasta-noodles": "Паста и лапша",
+            "cat-flour-baking": "Мука и ингредиенты для выпечки",
+            "cat-sugar-sweeteners": "Сахар и подсластители",
+            "cat-cooking-oils": "Масла для готовки",
+            "cat-vinegar": "Уксус",
+            "cat-canned-vegetables": "Консервированные овощи",
+            "cat-canned-fruit": "Консервированные фрукты",
+            "cat-canned-beans-legumes": "Консервированные бобы и бобовые",
+            "cat-canned-meat-fish": "Консервированное мясо и рыба",
+            "cat-canned-soup": "Консервированные супы и бульоны",
+            "cat-tomato-products": "Томатный соус и паста",
+            "cat-condiments": "Приправы и кетчуп",
+            "cat-mayonnaise-dressings": "Майонез и заправки",
+            "cat-mustard-hot-sauce": "Горчица и острые соусы",
+            "cat-soy-asian-sauces": "Соевый и азиатские соусы",
+            "cat-bbq-marinades": "Соусы барбекю и маринады",
+            "cat-spices-herbs": "Специи и сушеные травы",
+            "cat-salt-pepper": "Соль и перец",
+            "cat-dried-beans-lentils": "Сушеные бобы и чечевица",
+            "cat-grains-couscous": "Крупы, киноа и кускус",
+            "cat-chips-crisps": "Чипсы и снеки",
+            "cat-popcorn": "Попкорн",
+            "cat-pretzels-crackers": "Претцели и крекеры",
+            "cat-nuts-seeds": "Орехи и семечки",
+            "cat-dried-fruit": "Сухофрукты и трейл-микс",
+            "cat-jerky-meat-snacks": "Джерки и мясные снеки",
+            "cat-protein-bars": "Протеиновые и питательные батончики",
+            "cat-rice-cakes": "Рисовые хлебцы и воздушные снеки",
+            "cat-chocolate": "Шоколад",
+            "cat-gummy-candy": "Жевательные и мармеладные конфеты",
+            "cat-hard-candy-mints": "Леденцы и мятные конфеты",
+            "cat-chewing-gum": "Жевательная резинка",
+            "cat-biscuits-cookies": "Бисквиты и печенье",
+            "cat-ice-cream-toppings": "Топпинги и рожки для мороженого",
+            "cat-fresh-fruit": "Свежие фрукты",
+            "cat-fresh-vegetables": "Свежие овощи",
+            "cat-herbs-salads": "Свежая зелень и салаты",
+            "cat-organic-produce": "Органические овощи и фрукты",
+            "cat-mushrooms": "Грибы",
+            "cat-potatoes-onions": "Картофель, лук и корнеплоды",
+            "cat-beef": "Говядина",
+            "cat-chicken-turkey": "Курица и индейка",
+            "cat-pork": "Свинина",
+            "cat-lamb": "Баранина",
+            "cat-ground-meat": "Фарш",
+            "cat-sausages-hotdogs": "Колбасы и хот-доги",
+            "cat-fresh-fish": "Свежая рыба",
+            "cat-shrimp-shellfish": "Креветки и моллюски",
+            "cat-smoked-fish": "Копченая и вяленая рыба",
+            "cat-frozen-meals": "Замороженные готовые блюда",
+            "cat-frozen-pizza": "Замороженная пицца",
+            "cat-frozen-vegetables": "Замороженные овощи",
+            "cat-frozen-fruit": "Замороженные фрукты",
+            "cat-frozen-meat-seafood": "Замороженное мясо и морепродукты",
+            "cat-frozen-snacks": "Замороженные закуски и снеки",
+            "cat-frozen-breakfast": "Замороженные завтраки",
+            "cat-ice-cream": "Мороженое и замороженные десерты",
+            "cat-frozen-fries-potatoes": "Замороженный картофель и фри",
+            "cat-mexican-food": "Мексиканские и латиноамериканские продукты",
+            "cat-asian-food": "Азиатские продукты",
+            "cat-indian-food": "Индийские продукты",
+            "cat-middle-eastern-food": "Ближневосточные продукты",
+            "cat-italian-food": "Итальянские деликатесы",
+            "cat-kosher": "Кошерные продукты",
+            "cat-halal": "Халяль",
+            "cat-gluten-free": "Без глютена",
+            "cat-vegan-plant-based": "Веганские и растительные продукты",
+            "cat-organic-natural": "Органические и натуральные продукты",
+            "cat-baby-formula": "Детские смеси",
+            "cat-baby-food": "Детское питание и снеки",
+            "cat-diapers": "Подгузники и салфетки",
+            "cat-baby-bath-skin": "Детское купание и уход за кожей",
+            "cat-baby-feeding": "Бутылочки и кормление малыша",
+            "cat-medicine-otc": "Безрецептурные лекарства и обезболивающие",
+            "cat-cold-flu": "Средства от простуды, гриппа и аллергии",
+            "cat-digestive-health": "Пищеварение и здоровье ЖКТ",
+            "cat-first-aid": "Первая помощь и бинты",
+            "cat-vitamins": "Витамины и добавки",
+            "cat-protein-powder": "Протеиновые порошки и коктейли",
+            "cat-eye-ear-care": "Уход за глазами и ушами",
+            "cat-diabetes-care": "Средства для диабета",
+            "cat-mobility-aids": "Средства мобильности и повседневной помощи",
+            "cat-shampoo-conditioner": "Шампуни и кондиционеры",
+            "cat-hair-styling": "Укладка и уход за волосами",
+            "cat-hair-color": "Краска и окрашивание волос",
+            "cat-body-wash-soap": "Гели для душа и мыло",
+            "cat-deodorant": "Дезодоранты и антиперспиранты",
+            "cat-lotion-moisturizer": "Лосьоны и увлажнение",
+            "cat-sunscreen": "Солнцезащита и уход после солнца",
+            "cat-face-care": "Уход за лицом и очищение",
+            "cat-lip-care": "Уход за губами и бальзамы",
+            "cat-oral-care": "Зубная паста и уход за полостью рта",
+            "cat-mouthwash": "Ополаскиватели и зубная нить",
+            "cat-shaving": "Бритье и бритвы",
+            "cat-mens-grooming": "Мужской уход",
+            "cat-feminine-care": "Женская гигиена",
+            "cat-cotton-pads": "Вата, палочки и диски",
+            "cat-cosmetics-face": "Макияж для лица и тональные средства",
+            "cat-cosmetics-eyes": "Макияж для глаз и тушь",
+            "cat-cosmetics-lips": "Помада и блеск для губ",
+            "cat-nail-care": "Лаки и уход за ногтями",
+            "cat-fragrance": "Парфюм и ароматы",
+            "cat-hair-tools": "Фены, утюжки и инструменты",
+            "cat-all-purpose-cleaners": "Универсальные чистящие средства",
+            "cat-bathroom-cleaners": "Чистящие средства для ванной",
+            "cat-kitchen-cleaners": "Чистящие средства для кухни и духовки",
+            "cat-glass-cleaners": "Средства для стекол и окон",
+            "cat-floor-care": "Уход за полом и мытье",
+            "cat-disinfectants": "Дезинфицирующие средства и санитайзеры",
+            "cat-laundry-detergent": "Средства для стирки",
+            "cat-fabric-softener": "Кондиционеры для белья и салфетки для сушки",
+            "cat-stain-removers": "Пятновыводители",
+            "cat-dishwashing": "Средства для мытья посуды и капсулы",
+            "cat-trash-bags": "Мусорные пакеты",
+            "cat-sponges-cloths": "Губки, тряпки и щетки",
+            "cat-air-fresheners": "Освежители воздуха и свечи",
+            "cat-pest-control": "Средства от вредителей и репелленты",
+            "cat-toilet-paper": "Туалетная бумага",
+            "cat-paper-towels": "Бумажные полотенца",
+            "cat-facial-tissue": "Бумажные салфетки",
+            "cat-napkins": "Серветки",
+            "cat-plates-cups-disposable": "Одноразовые тарелки, стаканы и приборы",
+            "cat-food-wrap-bags": "Пищевая пленка, фольга и зип-пакеты",
+            "cat-cookware": "Посуда и кастрюли",
+            "cat-bakeware": "Формы для выпечки",
+            "cat-kitchen-utensils": "Кухонные принадлежности и гаджеты",
+            "cat-knives-cutting": "Ножи и разделочные доски",
+            "cat-food-storage": "Хранение еды и контейнеры",
+            "cat-water-bottles": "Бутылки для воды и термостаканы",
+            "cat-dinnerware": "Столовая посуда и стекло",
+            "cat-small-appliances": "Мелкая кухонная техника",
+            "cat-bedding": "Постельное белье и простыни",
+            "cat-pillows-blankets": "Подушки и одеяла",
+            "cat-towels": "Полотенца и коврики для ванной",
+            "cat-curtains-blinds": "Шторы и жалюзи",
+            "cat-home-decor": "Домашний декор и рамки",
+            "cat-candles-home-fragrance": "Свечи и ароматы для дома",
+            "cat-storage-organization": "Хранение и организация",
+            "cat-hangers-laundry-supplies": "Вешалки и принадлежности для стирки",
+            "cat-light-bulbs": "Лампочки",
+            "cat-batteries": "Батарейки",
+            "cat-extension-cords": "Удлинители и сетевые фильтры",
+            "cat-plants-seeds": "Растения и семена",
+            "cat-soil-fertilizer": "Грунт и удобрения",
+            "cat-garden-tools": "Садовые инструменты",
+            "cat-outdoor-furniture": "Уличная мебель",
+            "cat-grills-charcoal": "Грили и уголь",
+            "cat-dog-food": "Корм для собак",
+            "cat-cat-food": "Корм для кошек",
+            "cat-pet-treats": "Лакомства для питомцев",
+            "cat-pet-toys": "Игрушки для питомцев",
+            "cat-pet-grooming": "Уход и здоровье питомцев",
+            "cat-litter-waste": "Наполнители для кошек и пакеты для уборки",
+            "cat-pet-beds-carriers": "Лежанки и переноски для питомцев",
+            "cat-pens-pencils": "Ручки, карандаши и маркеры",
+            "cat-notebooks-paper": "Тетради и бумага",
+            "cat-binders-folders": "Папки, файлы и хранение документов",
+            "cat-tape-glue-scissors": "Скотч, клей и ножницы",
+            "cat-printer-ink": "Чернила и тонер для принтера",
+            "cat-backpacks-bags": "Рюкзаки и школьные сумки",
+            "cat-action-figures": "Фигурки и куклы",
+            "cat-building-sets": "Конструкторы и блоки",
+            "cat-board-games-puzzles": "Настольные игры и пазлы",
+            "cat-outdoor-play": "Игрушки для улицы и спорта",
+            "cat-arts-crafts": "Творчество и рукоделие",
+            "cat-stuffed-animals": "Мягкие игрушки и плюш",
+            "cat-phone-accessories": "Чехлы и аксессуары для телефона",
+            "cat-chargers-cables": "Зарядные устройства и кабели",
+            "cat-headphones-earbuds": "Наушники и вкладыши",
+            "cat-memory-cards-usb": "Карты памяти и USB-накопители",
+            "cat-smart-home": "Устройства умного дома",
+            "cat-motor-oil": "Моторное масло и жидкости",
+            "cat-car-cleaning": "Средства для мойки и ухода за авто",
+            "cat-car-fresheners": "Автомобильные ароматизаторы",
+            "cat-car-accessories": "Автомобильные аксессуары",
+            "cat-party-supplies": "Товары для вечеринок и шары",
+            "cat-gift-wrap": "Подарочная упаковка и пакеты",
+            "cat-greeting-cards": "Открытки",
+            "cat-seasonal": "Сезонные и праздничные товары",
+            "cat-tobacco": "Табачные изделия",
+            "cat-lighters-matches": "Зажигалки и спички",
+            "cat-other": "Другое"
+          }
+        }
+      }
+    },
+    "admin": {
+      "audit_log": {
+        "title": "Журнал аудита",
+        "subtitle": "Неизменяемая хронология изменений безопасности и операционных действий.",
+        "filter": {
+          "resource_type": "Тип ресурса",
+          "action": "Действие"
+        },
+        "action": {
+          "apply": "Применить",
+          "previous": "Назад",
+          "next": "Вперед"
+        },
+        "state": {
+          "loading": "Загрузка..."
+        },
+        "table": {
+          "time": "Время",
+          "actor": "Актор",
+          "action": "Действие",
+          "resource": "Ресурс",
+          "resource_id": "ID ресурса",
+          "metadata": "Метаданные"
+        },
+        "pagination": {
+          "offset": "Смещение: {offset}"
+        },
+        "error": {
+          "load_failed": "Не удалось загрузить журнал аудита"
+        }
+      },
+      "control_center": {
+        "title": "Центр управления",
+        "subtitle": "Операторские действия поставщика: bypass платежа, рассылка, ручная сверка и запуск пополнения.",
+        "field": {
+          "order_id": "ID заказа",
+          "reason": "Причина",
+          "session_id": "ID сессии",
+          "title": "Заголовок",
+          "body": "Текст"
+        },
+        "action": {
+          "issue_token": "Выдать токен",
+          "issuing": "Выдача...",
+          "run_reconcile": "Запустить сверку",
+          "reconciling": "Сверка...",
+          "send_broadcast": "Отправить рассылку",
+          "broadcasting": "Рассылка...",
+          "trigger_cycle": "Запустить цикл",
+          "running": "Выполнение..."
+        },
+        "role": {
+          "all": "ALL",
+          "retailer": "RETAILER",
+          "driver": "DRIVER"
+        },
+        "bypass": {
+          "title": "Выдать bypass платежа",
+          "description": "Генерирует 6-значный bypass-токен для заказа в статусе AWAITING_PAYMENT.",
+          "token": "Токен: {token}"
+        },
+        "reconcile": {
+          "title": "Ручная сверка сессии",
+          "description": "Запускает явную сверку для зависшей платежной сессии."
+        },
+        "broadcast": {
+          "title": "Системная рассылка",
+          "description": "Отправляет push и записи уведомлений всем пользователям целевой роли.",
+          "summary": "Получатели: {recipients} | Отправлено: {sent} | Ошибок: {failed}"
+        },
+        "replenishment": {
+          "title": "Ручной цикл пополнения",
+          "description": "Запускает немедленную проверку дефицита складов и логику создания трансферов."
+        },
+        "toast": {
+          "bypass_issued": "Bypass выдан для заказа {order_id}",
+          "reconcile_completed": "Сверка завершена для сессии {session_id}",
+          "broadcast_completed": "Рассылка завершена",
+          "replenishment_triggered": "Цикл пополнения запущен"
+        },
+        "error": {
+          "bypass_failed": "Не удалось выдать bypass",
+          "reconcile_failed": "Сверка не удалась",
+          "broadcast_failed": "Рассылка не удалась",
+          "replenishment_failed": "Не удалось запустить пополнение",
+          "broadcast_data_must_be_object": "Поле data должно быть JSON-объектом"
+        }
+      },
+      "empathy": {
+        "title": "Empathy Engine",
+        "subtitle": "Интеллект автозаказа — принятие в сети и состояние конвейера",
+        "state": {
+          "online": "Движок онлайн",
+          "offline": "Движок офлайн"
+        },
+        "section": {
+          "pipeline": "Конвейер прогнозов",
+          "hierarchy": "Иерархия разрешения"
+        },
+        "kpi": {
+          "adoption_rate": "Уровень принятия",
+          "adoption_sub": "{enabled} из {total} ритейлеров",
+          "supplier_overrides": "Переопределения поставщика",
+          "supplier_overrides_sub": "Активные переключатели уровня поставщика",
+          "product_overrides": "Переопределения товара",
+          "product_overrides_sub": "Активные переключатели уровня товара",
+          "variant_overrides": "Переопределения варианта",
+          "variant_overrides_sub": "Активные переключатели уровня SKU"
+        },
+        "pipeline": {
+          "dormant": "Неактивно",
+          "waiting": "Ожидает",
+          "fired": "Сработало",
+          "rejected": "Отклонено"
+        },
+        "hierarchy": {
+          "description": "Empathy Engine определяет право на автозаказ через 4-уровневый каскад переопределений. Побеждает самый специфичный уровень.",
+          "active_count": "{count} активных",
+          "variant": {
+            "level": "Вариант (SKU)",
+            "description": "Переключатель варианта переопределяет все уровни ниже"
+          },
+          "product": {
+            "level": "Товар",
+            "description": "Переключатель товара переопределяет поставщика и глобальный уровень"
+          },
+          "supplier": {
+            "level": "Поставщик",
+            "description": "Переключатель поставщика переопределяет глобальный уровень"
+          },
+          "global": {
+            "level": "Глобальный",
+            "description": "Мастер-переключатель автозаказа ритейлера"
+          }
+        },
+        "error": {
+          "telemetry_disconnected": "Телеметрия empathy недоступна"
+        }
+      }
+    },
+    "analytics": {
+      "advanced": {
+        "title": "Расширенная аналитика",
+        "action": {
+          "refresh": "Обновить"
+        },
+        "total_revenue": "Общая выручка",
+        "sla_rate": "Уровень SLA",
+        "factory": {
+          "title": "Аналитика фабрики",
+          "summary_title": "Сводка фабрики",
+          "total_transfers": "Всего трансферов",
+          "avg_lead_time": "Среднее время выполнения",
+          "minutes_value": "{value} мин"
+        },
+        "error": {
+          "fault": "Сбой аналитики: {detail}"
+        }
+      }
+    },
+    "configuration": {
+      "countries": {
+        "title": "Настройка стран",
+        "subtitle": "Операционные параметры по странам (геозона, шлюзы, провайдеры).",
+        "list_title": "Страны",
+        "state": {
+          "loading": "Загрузка...",
+          "select_country": "Выберите страну для редактирования."
+        },
+        "field": {
+          "country_code": "Код страны",
+          "country_name": "Название страны",
+          "timezone": "Часовой пояс",
+          "currency_code": "Код валюты",
+          "breach_radius_meters": "Радиус нарушения (м)",
+          "sms_provider": "SMS-провайдер",
+          "payment_gateways": "Платежные шлюзы (через запятую)"
+        },
+        "action": {
+          "save": "Сохранить конфиг страны"
+        },
+        "toast": {
+          "saved": "Сохранено: {country_code}"
+        },
+        "error": {
+          "load_failed": "Не удалось загрузить настройки стран",
+          "save_failed": "Сохранение не удалось"
+        }
+      },
+      "system": {
+        "title": "Системная конфигурация",
+        "subtitle": "Параметры логистической физики и платежных шлюзов",
+        "physics": {
+          "title": "Логистическая физика",
+          "geofence_radius_label": "Радиус геоблокировки (метры)",
+          "geofence_help": "Минимальная близость для подтверждения завершения доставки.",
+          "delivery_fee_label": "Базовая стоимость доставки (сумма)",
+          "delivery_fee_help": "Применяется к каждому доставленному заказу в счете ритейлера.",
+          "update_action": "Обновить физику"
+        },
+        "platform_fee": {
+          "label": "Процент комиссии платформы (0-50)",
+          "update_action": "Обновить комиссию платформы"
+        },
+        "gateway": {
+          "title": "Финансовые шлюзы",
+          "click_up_merchant_id": "Merchant ID Click Up",
+          "payme_secret_key": "Секретный ключ Payme",
+          "configured_via_secret_manager": "Настраивается через Secret Manager",
+          "keys_help": "Ключи платежных шлюзов управляются через инфраструктурные секреты."
+        },
+        "action": {
+          "open_country_configuration": "Открыть настройки стран"
+        },
+        "toast": {
+          "config_saved": "Конфигурация сохранена.",
+          "platform_fee_updated": "Комиссия платформы обновлена."
+        },
+        "error": {
+          "network_failure": "Сетевая ошибка",
+          "failed_with_reason": "Ошибка: {detail}",
+          "generic_with_reason": "Ошибка: {detail}"
+        }
+      }
+    },
+    "billing_setup": {
+      "title": "Настройка биллинга",
+      "subtitle": "Настройте, как ритейлеры будут платить вам",
+      "submit": "Сохранить и перейти в дашборд",
+      "error": {
+        "http_error": "Ошибка {status}",
+        "network": "Сетевая ошибка - запущен ли backend?",
+        "setup_failed": "Не удалось выполнить настройку"
+      },
+      "bank_details": {
+        "title": "Банковские реквизиты",
+        "description": "Введите банковские данные для получения платежей по выполненным заказам.",
+        "bank_name": "Название банка",
+        "account_number": "Номер счета",
+        "card_number": "Номер карты"
+      },
+      "gateway": {
+        "title": "Шлюз GlobalPaynt *",
+        "description": "Выберите, как ритейлеры будут оплачивать выполненные заказы. Позже это можно изменить в настройках.",
+        "global_pay": {
+          "label": "Global Pay",
+          "description": "Процесс оплаты через Global Pay"
+        },
+        "cash": {
+          "label": "Оплата наличными",
+          "description": "Принимать физические наличные выплаты"
+        },
+        "card": {
+          "label": "Перевод на карту",
+          "description": "Прямой перевод на банковскую карту"
+        },
+        "bank": {
+          "label": "Банковский перевод",
+          "description": "Корпоративный банковский перевод"
+        }
+      }
+    }
+  },
+  "notification": {
+    "ai_order_confirmed": {
+      "title": "AI-заказ подтвержден",
+      "body": "Ритейлер подтвердил предложенный ИИ заказ {order_id}."
+    },
+    "ai_order_rejected": {
+      "title": "AI-заказ отклонен",
+      "body": "Ритейлер отклонил предложенный ИИ заказ {order_id}."
+    },
+    "cancel_approved": {
+      "title": "Заказ отменен",
+      "body": "Ваш запрос на отмену заказа {order_id} был одобрен."
+    },
+    "cancel_requested": {
+      "title": "Запрос на отмену",
+      "body": "Ритейлер запросил отмену заказа {order_id}. Проверьте и подтвердите или отклоните."
+    },
+    "cash_collection_required": {
+      "title": "Требуется сбор наличных",
+      "body": "По заказу {order_id} ожидается сбор наличных на сумму {amount_minor}."
+    },
+    "early_complete_approved": {
+      "title": "Досрочное завершение одобрено",
+      "body": "Поставщик одобрил досрочное завершение для {remaining_count} оставшихся заказов. Вернитесь на свой домашний узел."
+    },
+    "early_complete_requested": {
+      "title": "Запрос на досрочное завершение маршрута",
+      "body": "Водитель запросил досрочное завершение маршрута. Причина: {reason}. Осталось заказов: {remaining_count}."
+    },
+    "fulfillment_paid": {
+      "title": "Исполнение оплачено",
+      "body": "Заказ {order_id} отмечен как оплаченный: {amount_minor}."
+    },
+    "fulfillment_payment_completed": {
+      "driver": {
+        "title": "Оплата ритейлера подтверждена",
+        "body": "Оплата заказа {order_id} подтверждена. Продолжайте выполнение маршрута."
+      },
+      "retailer": {
+        "title": "Оплата завершена",
+        "body": "Оплата заказа {order_id} успешно завершена."
+      },
+      "supplier": {
+        "title": "Оплата исполнения завершена",
+        "body": "Оплата заказа {order_id} завершена на сумму {amount_minor}."
+      }
+    },
+    "negotiation_proposed": {
+      "retailer": {
+        "title": "Предложена корректировка поставки",
+        "body": "Для вашего заказа {order_id} предложено изменение количества."
+      },
+      "supplier": {
+        "title": "Переговоры по количеству",
+        "body": "Водитель предложил изменить количество по заказу {order_id}. Проверьте и подтвердите или отклоните."
+      }
+    },
+    "negotiation_resolved": {
+      "title": "Переговоры завершены",
+      "body": "Поставщик {action} ваш запрос на изменение количества по заказу {order_id}."
+    },
+    "offload_confirmed": {
+      "title": "Выгрузка подтверждена",
+      "body": "Выгрузка по заказу {order_id} подтверждена. Платежный процесс теперь активен."
+    },
+    "order_assigned": {
+      "title": "Заказ назначен",
+      "body": "Заказ {order_id} назначен на маршрут {route_id}."
+    },
+    "order_cancelled": {
+      "retailer": {
+        "title": "Заказ отменен",
+        "body": "Заказ {order_id} был отменен."
+      },
+      "supplier": {
+        "title": "Заказ отменен",
+        "body": "Заказ {order_id} был отменен и удален из активного потока."
+      }
+    },
+    "order_completed": {
+      "title": "Доставка завершена",
+      "body": "Ваш заказ {order_id} успешно доставлен."
+    },
+    "order_created": {
+      "retailer": {
+        "title": "Заказ оформлен",
+        "body": "Заказ {order_id} успешно оформлен."
+      },
+      "supplier": {
+        "title": "Создан новый заказ",
+        "body": "Заказ {order_id} создан на сумму {total_minor} {currency}."
+      }
+    },
+    "out_of_stock": {
+      "retailer": {
+        "title": "Товары отсутствуют",
+        "body": "Оформление заказа было заблокировано, потому что все запрошенные товары отсутствуют на складе {warehouse_id}."
+      },
+      "supplier": {
+        "title": "Предупреждение об отсутствии товара",
+        "body": "Оформление заказа ритейлера было заблокировано, потому что все запрошенные товары отсутствуют на складе {warehouse_id}."
+      }
+    },
+    "payment_bypass_completed": {
+      "retailer": {
+        "title": "Оплата завершена",
+        "body": "Оплата заказа {order_id} завершена с использованием bypass-подтверждения."
+      },
+      "supplier": {
+        "title": "Bypass-оплата завершена",
+        "body": "Заказ {order_id} был завершен с подтверждением bypass-оплаты."
+      }
+    },
+    "payment_bypass_issued": {
+      "title": "Выдан bypass для оплаты",
+      "body": "Поставщик выдал bypass-токен для оплаты заказа {order_id}."
+    },
+    "payment_failed": {
+      "title": "Оплата не выполнена",
+      "body": "Оплата заказа {order_id} через {gateway} завершилась ошибкой: {reason}. Попробуйте еще раз."
+    },
+    "payment_settled": {
+      "title": "Оплата получена",
+      "body": "Получена оплата {amount_minor} по заказу {order_id} через {gateway}.",
+      "driver": {
+        "title": "Оплата получена",
+        "body": "Оплата по вашей доставке подтверждена. Можно завершать заказ."
+      }
+    },
+    "preorder_auto_accepted": {
+      "title": "Предзаказ принят автоматически",
+      "body": "Ваш запланированный заказ {order_id} принят и готовится к доставке на {delivery_date}."
+    },
+    "preorder_confirmed": {
+      "title": "Предзаказ подтвержден",
+      "body": "Вы подтвердили запланированный заказ {order_id}. Он будет автоматически принят по мере приближения даты доставки."
+    },
+    "preorder_edited": {
+      "title": "Предзаказ обновлен",
+      "body": "Ваш запланированный заказ {order_id} был обновлен."
+    },
+    "retailer_registered": {
+      "title": "Добро пожаловать в Pegasus",
+      "body": "Аккаунт {shop_name} зарегистрирован. Теперь вы можете оформлять заказы."
+    },
+    "route_created": {
+      "driver": {
+        "title": "Назначен новый маршрут",
+        "body": "Маршрут {route_id} готов, запланировано остановок: {stop_count}."
+      },
+      "supplier": {
+        "title": "Маршрут создан",
+        "body": "Маршрут {route_id} создан, остановок: {stop_count}."
+      }
+    },
+    "route_finalized": {
+      "title": "Маршрут зафиксирован",
+      "body": "Маршрут манифеста {manifest_id} зафиксирован, остановок: {stop_count}."
+    },
+    "shop_closed_reported": {
+      "title": "Сообщено о закрытом магазине",
+      "body": "Водитель сообщил, что магазин закрыт по заказу {order_id}. Попытка {attempt_id} требует дальнейших действий."
+    },
+    "shop_closed_resolved": {
+      "driver": {
+        "title": "Случай с закрытым магазином решен",
+        "body": "Случай с закрытым магазином по заказу {order_id} был решен как {resolution}."
+      },
+      "retailer": {
+        "title": "Случай с закрытым магазином решен",
+        "body": "Случай с закрытым магазином по заказу {order_id} был решен как {resolution}."
+      }
+    },
+    "shop_closed_response": {
+      "title": "Ритейлер ответил",
+      "body": "Ответ ритейлера по заказу {order_id}: {response}."
+    },
+    "sms_quick_complete": {
+      "retailer": {
+        "title": "Доставка завершена",
+        "body": "Заказ {order_id} был завершен через резервное SMS-подтверждение."
+      },
+      "supplier": {
+        "title": "Завершение через SMS",
+        "body": "Водитель завершил заказ {order_id}, используя резервное быстрое завершение по SMS."
+      }
+    },
+    "stock_backordered": {
+      "retailer": {
+        "title": "Создан backorder",
+        "body": "Backorder {backorder_id} создан на сумму {total_minor} {currency}."
+      },
+      "supplier": {
+        "title": "Добавлен backorder",
+        "body": "Backorder {backorder_id} был создан из-за обработки нехватки товара."
+      }
+    },
+    "credit_delivery_marked": {
+      "title": "Доставка в кредит",
+      "body": "Заказ {order_id} был доставлен в кредит и ожидает проверки поставщика."
+    },
+    "credit_delivery_resolved": {
+      "driver": {
+        "title": "Кредитная доставка решена",
+        "body": "Кредитная доставка по заказу {order_id} была {action} поставщиком."
+      },
+      "retailer": {
+        "title": "Обновление по кредитной доставке",
+        "body": "Кредитная доставка по заказу {order_id} была {action} поставщиком."
+      }
+    },
+    "dispatch_lock_acquired": {
+      "title": "Блокировка диспетчеризации включена",
+      "body": "Блокировка {lock_type} активирована пользователем {locked_by}. Новые заказы ставятся в очередь до снятия блокировки."
+    },
+    "dispatch_lock_released": {
+      "title": "Блокировка диспетчеризации снята",
+      "body": "Блокировка {lock_type} снята пользователем {locked_by}. Заказы из очереди снова доступны для диспетчеризации."
+    },
+    "driver_arrived": {
+      "title": "Водитель прибыл",
+      "body": "Водитель прибыл по заказу {order_id}. Подготовьтесь к доставке."
+    },
+    "driver_created": {
+      "title": "Водитель зарегистрирован",
+      "body": "Водитель {driver_name} ({phone}) добавлен в ваш автопарк."
+    },
+    "driver_dispatched": {
+      "title": "Назначено новое задание",
+      "body": "Вам назначен маршрут {route_id} с {order_count} заказами. Проверьте детали маршрута."
+    },
+    "driver_offline": {
+      "title": "Водитель ушел офлайн",
+      "body": "Водитель {driver_name} ушел офлайн. Причина: {reason}."
+    },
+    "driver_online": {
+      "title": "Водитель снова онлайн",
+      "body": "Водитель {driver_name} снова онлайн и доступен для диспетчеризации."
+    },
+    "factory_created": {
+      "title": "Фабрика создана",
+      "body": "Фабрика {factory_name} теперь активна (связанных складов: {warehouses_linked})."
+    },
+    "factory_manifest_created": {
+      "title": "Фабричный манифест создан",
+      "body": "Фабричный манифест {route_id} создан, остановок в конвое: {stop_count}."
+    },
+    "factory_sla_breach": {
+      "title": "Нарушение SLA фабрики",
+      "body": "Трансфер {transfer_id} нарушил SLA на уровне {escalation_level}."
+    },
+    "fleet_dispatched": {
+      "title": "Флот отправлен",
+      "body": "Маршрут {route_id} зафиксирован с {order_count} заказами."
+    },
+    "force_seal_alert": {
+      "title": "Порог FORCE-SEAL",
+      "body": "Квота override достигла {count_24h} из {quota} за 24 часа по манифесту {manifest_id}. Проверьте зону загрузки."
+    },
+    "freeze_lock_acquired": {
+      "title": "AI freeze-lock включен",
+      "body": "AI-воркер поставлен на паузу для области {scope} во время ручной диспетчеризации."
+    },
+    "freeze_lock_released": {
+      "title": "AI freeze-lock снят",
+      "body": "AI-воркер возобновил работу для области {scope}. Автоматизация диспетчеризации снова активна."
+    },
+    "inbound_freight_unannounced": {
+      "title": "Получен незаявленный груз",
+      "body": "Склад принудительно принял трансфер {transfer_id} с {items_count} позициями."
+    },
+    "insight_transfer_created": {
+      "title": "Создан трансфер по инсайту",
+      "body": "Инсайт {insight_id} создал трансфер {transfer_id} для склада {warehouse_id}."
+    },
+    "manifest_cancelled": {
+      "title": "Манифест отменен",
+      "body": "Манифест {manifest_id} был отменен ({reason}). Освобождено заказов: {released_count}."
+    },
+    "manifest_completed": {
+      "title": "Манифест завершен",
+      "body": "Манифест {manifest_id} закрыт: все {stop_count} остановок доставлены."
+    },
+    "manifest_dispatched": {
+      "title": "Манифест отправлен",
+      "body": "Манифест {manifest_id} покинул ворота, остановок: {stop_count}."
+    },
+    "manifest_dlq_escalation": {
+      "title": "Эскалация DLQ манифеста",
+      "body": "Заказ {order_id} в манифесте {manifest_id} превысил порог повторных попыток и требует вмешательства."
+    },
+    "manifest_draft_created": {
+      "title": "Черновик манифеста создан",
+      "body": "Черновик манифеста {manifest_id} создан, запланированных остановок: {stop_count}."
+    },
+    "manifest_force_sealed": {
+      "title": "Манифест принудительно опечатан",
+      "body": "Манифест {manifest_id} был принудительно опечатан пользователем {sealed_by} ({reason})."
+    },
+    "manifest_loading_started": {
+      "title": "Загрузка манифеста началась",
+      "body": "Началась загрузка манифеста {manifest_id}."
+    },
+    "manifest_order_exception": {
+      "title": "Исключение в манифесте",
+      "body": "Исключение {reason} произошло по заказу {order_id} в манифесте {manifest_id}."
+    },
+    "manifest_order_injected": {
+      "title": "Заказ добавлен в манифест",
+      "body": "Заказ {order_id} был добавлен в манифест {manifest_id}."
+    },
+    "manifest_rebalanced": {
+      "title": "Манифест перебалансирован",
+      "body": "Манифест {manifest_id} перебалансирован: перемещено трансферов {transfer_count}."
+    },
+    "manifest_sealed": {
+      "title": "Манифест опечатан",
+      "body": "Манифест {manifest_id} опечатан на {volume_vu} из {max_volume_vu} VU."
+    },
+    "missing_items_report": {
+      "title": "Сообщение о недостающих товарах",
+      "body": "Водитель сообщил о недостающих товарах ({item_count}) в заказе {order_id} после опечатывания."
+    },
+    "payload_ready_to_seal": {
+      "title": "Заказы готовы к опечатыванию",
+      "body": "Маршрут {route_id} содержит {order_count} заказов, готовых к опечатыванию payload. Перейдите в зону загрузки."
+    },
+    "payload_sealed": {
+      "title": "Payload опечатан",
+      "body": "Заказ {order_id} был опечатан терминалом {terminal_id} и готов к отправке."
+    },
+    "transfer_approved": {
+      "title": "Трансфер одобрен",
+      "body": "Трансфер {transfer_id} одобрен на {volume_vu} VU."
+    },
+    "transfer_received": {
+      "title": "Трансфер получен",
+      "body": "Трансфер {transfer_id} получен, сверено позиций: {items_count}."
+    },
+    "transfer_state_changed": {
+      "title": "Статус трансфера обновлен",
+      "body": "Трансфер {transfer_id} перешел из состояния {from_state} в {to_state}."
+    },
+    "transfer_unassigned": {
+      "title": "Трансфер снят с назначения",
+      "body": "Трансфер {transfer_id} был снят с манифеста {manifest_id}."
+    },
+    "warehouse_created": {
+      "title": "Склад создан",
+      "body": "Склад {warehouse_name} теперь активен для операций поставщика."
+    },
+    "warehouse_spatial_updated": {
+      "title": "Покрытие склада обновлено",
+      "body": "Покрытие склада {warehouse_id} обновлено: H3 с {old_h3_count} до {new_h3_count}."
+    },
+    "warehouse_status_changed": {
+      "disabled": {
+        "title": "Склад отключен",
+        "body": "Склад {warehouse_id} был отключен. Заказы могут быть перенаправлены."
+      },
+      "enabled": {
+        "title": "Склад включен",
+        "body": "Склад {warehouse_id} снова онлайн."
+      },
+      "off_shift": {
+        "title": "Склад вне смены",
+        "body": "Склад {warehouse_id} сейчас вне смены."
+      },
+      "on_shift": {
+        "title": "Склад на смене",
+        "body": "Склад {warehouse_id} сейчас на смене."
+      }
+    },
+    "manifest_order_reassigned": {
+      "title": "Заказ переназначен",
+      "body": "Заказ {order_id} был перенесен в новый манифест. ETA может измениться."
+    },
+    "manifest_settled": {
+      "title": "Выплата проведена",
+      "body": "Манифест {manifest_id} закрыт по расчетам. Выплата поставщику: {supplier_payout_minor} {currency}."
+    },
+    "network_mode_changed": {
+      "title": "Режим сети изменен",
+      "body": "Режим оптимизации изменен с {old_mode} на {new_mode}."
+    },
+    "order_amended": {
+      "title": "Заказ изменен",
+      "refund_body": "Заказ {order_id} был изменен. Возврат за возвращенные позиции: {refunded_minor}.",
+      "no_refund_body": "Заказ {order_id} был изменен. Возврат не требуется."
+    },
+    "order_cancelled_by_origin": {
+      "title": "Заказ отменен",
+      "body": "Заказ {order_id} был отменен источником: {reason}. Ожидающий платеж аннулирован."
+    },
+    "order_delayed": {
+      "title": "Заказ задержан",
+      "body": "Заказ {order_id} задержан: {reason}."
+    },
+    "order_dispatched": {
+      "title": "Заказ отправлен",
+      "body": "Ваш заказ отправлен по маршруту {route_id}. В пути {order_count} заказов."
+    },
+    "order_reassigned_added": {
+      "title": "Новый заказ добавлен в маршрут",
+      "body": "Заказ {order_id} был переназначен на ваш маршрут. Проверьте обновления маршрута."
+    },
+    "order_reassigned_removed": {
+      "title": "Заказ удален из маршрута",
+      "body": "Заказ {order_id} был переназначен другому водителю и удален из вашего маршрута."
+    },
+    "order_status_changed": {
+      "title": "Статус заказа обновлен",
+      "body": "Статус заказа {order_id} изменился с {old_state} на {new_state}."
+    },
+    "payload_overflow": {
+      "title": "Переполнение payload",
+      "body": "Заказ {order_id} был удален из манифеста {manifest_id} из-за переполнения payload и поставлен в очередь на перераспределение."
+    },
+    "power_outage_reported": {
+      "title": "Сообщено об отключении электричества",
+      "body": "Водитель сообщил о вероятном отключении электричества у ритейлера по заказу {order_id}."
+    },
+    "pull_matrix_completed": {
+      "title": "Pull matrix завершена",
+      "body": "Прогон {run_id} сгенерировал {transfers_generated} трансферов по {skus_processed} SKU."
+    },
+    "replenishment_transfer_created": {
+      "title": "Создан трансфер пополнения",
+      "body": "Трансфер {transfer_id} создан для склада {warehouse_id} ({source})."
+    },
+    "retailer_price_override": {
+      "created": {
+        "title": "Применена индивидуальная цена",
+        "body": "Для товара {sku_id} установлена индивидуальная цена."
+      },
+      "removed": {
+        "title": "Индивидуальная цена удалена",
+        "body": "Индивидуальная цена для товара {sku_id} удалена. Действует стандартная цена."
+      }
+    },
+    "shop_closed": {
+      "title": "Водитель ожидает - магазин, вероятно, закрыт",
+      "body": "Водитель сообщил, что магазин закрыт по заказу {order_id}. Попытка {attempt_id} требует дальнейших действий."
+    },
+    "shop_closed_escalated": {
+      "title": "Эскалация закрытого магазина",
+      "body": "Заказ {order_id} был эскалирован для немедленных действий поставщика."
+    },
+    "shop_closed_escalation": {
+      "title": "Эскалация закрытого магазина",
+      "body": "Заказ {order_id} был эскалирован для немедленных действий поставщика."
+    },
+    "shop_closed_resolved": {
+      "title": "Случай с закрытым магазином решен",
+      "body": "Случай с закрытым магазином по заказу {order_id} был решен администратором: {action}.",
+      "driver": {
+        "title": "Случай с закрытым магазином решен",
+        "body": "Случай с закрытым магазином по заказу {order_id} был решен как {resolution}."
+      },
+      "retailer": {
+        "title": "Случай с закрытым магазином решен",
+        "body": "Случай с закрытым магазином по заказу {order_id} был решен как {resolution}."
+      }
+    },
+    "split_payment_created": {
+      "retailer": {
+        "title": "Создан разделенный платеж",
+        "body": "Для заказа {order_id} создан разделенный платеж: первая часть {first_amount_minor}, вторая {second_amount_minor}."
+      },
+      "supplier": {
+        "title": "Создан разделенный платеж",
+        "body": "Для заказа {order_id} создан разделенный платеж: первая часть {first_amount_minor}, вторая {second_amount_minor}."
+      }
+    },
+    "supply_lane_updated": {
+      "title": "Supply lane обновлена",
+      "body": "Оценка транзита для линии {lane_id} обновлена до {new_dampened_hours} ч."
+    },
+    "supply_request_submitted": {
+      "title": "Запрос поставки отправлен",
+      "body": "Запрос поставки {request_id} перешел в состояние {state} с приоритетом {priority}."
+    },
+    "vehicle_created": {
+      "title": "Транспорт зарегистрирован",
+      "body": "Транспорт {vehicle_label} ({license_plate}) добавлен в ваш автопарк."
+    },
+    "unified_checkout_completed": {
+      "title": "Оформление завершено",
+      "body": "Оформление завершено: заказов {order_count}, общая сумма {total_minor} {currency}."
+    }
+  }
+}

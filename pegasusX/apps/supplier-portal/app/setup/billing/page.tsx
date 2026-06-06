@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { supplierFetch } from "@/lib/auth";
 
 // /setup/billing — bank + payment-gateway configuration.
 // Decoupled from the 4-step registration wizard to reduce friction.
@@ -65,10 +66,9 @@ export default function BillingSetupPage() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await fetch("/api/supplier/billing/setup", {
+      const res = await supplierFetch("/v1/supplier/billing/setup", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           "Idempotency-Key": cryptoRandomId(),
         },
         body: JSON.stringify(state),
@@ -92,15 +92,24 @@ export default function BillingSetupPage() {
   }
 
   return (
-    <main className="min-h-screen p-6 md:p-12 max-w-3xl mx-auto">
-      <header className="mb-8">
-        <h1 className="md-typescale-headline-large">Billing &amp; payment gateways</h1>
-        <p className="md-typescale-body-medium mt-2" style={{ color: "var(--color-md-outline)" }}>
-          Configure the bank account that receives payouts and the gateways that accept retailer payments.
-        </p>
+    <>
+      <header className="setup-header">
+        <div className="setup-header-icon" aria-hidden>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z" />
+          </svg>
+        </div>
+        <div>
+          <h1 className="md-typescale-title-large" style={{ margin: 0 }}>
+            Billing &amp; payment gateways
+          </h1>
+          <p className="desk-page-subtitle">
+            Configure payouts and the gateways retailers use at checkout.
+          </p>
+        </div>
       </header>
 
-      <section className="md-card p-6 md-shape-md grid gap-4">
+      <section className="auth-card grid gap-4">
         <h2 className="md-typescale-title-large">Bank account</h2>
         <Field id="bankName" label="Bank name" error={errors.bankName}>
           <input id="bankName" className="md-input-outlined" value={state.bankName}
@@ -156,7 +165,7 @@ export default function BillingSetupPage() {
           {submitting ? "Saving…" : "Save billing"}
         </button>
       </footer>
-    </main>
+    </>
   );
 }
 

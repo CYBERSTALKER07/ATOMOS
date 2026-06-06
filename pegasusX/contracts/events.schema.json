@@ -35,6 +35,8 @@
         "ORDER_ASSIGNED",
         "ORDER_REASSIGNED",
         "ORDER_FINALIZED",
+        "AI_RECOMMENDATION_CREATED",
+        "AI_RECOMMENDATION_DECIDED",
         "ROUTE_CREATED",
         "MANIFEST_DRAFT_CREATED",
         "MANIFEST_LOADING_STARTED",
@@ -52,6 +54,7 @@
         "DELIVERY_SESSION_UPDATED",
         "DELIVERY_DISPUTED",
         "DRIVER_AVAILABILITY_CHANGED",
+        "DRIVER_LOCATION_UPDATED",
         "SHOP_CLOSED",
         "SHOP_CLOSED_RESPONSE",
         "CART_SYNC_UPDATED",
@@ -63,6 +66,53 @@
       ]
     },
 
+    "AIRecommendationCreated": {
+      "allOf": [
+        { "$ref": "#/definitions/Envelope" },
+        {
+          "type": "object",
+          "required": ["recommendation_id", "supplier_id", "aggregate_id", "aggregate_type", "action", "status", "score", "confidence", "explanation", "reason_codes"],
+          "properties": {
+            "type": { "const": "AI_RECOMMENDATION_CREATED" },
+            "recommendation_id": { "type": "string" },
+            "supplier_id": { "type": "string", "format": "uuid" },
+            "aggregate_id": { "type": "string" },
+            "aggregate_type": { "type": "string" },
+            "action": { "type": "string" },
+            "status": { "type": "string" },
+            "score": { "type": "number" },
+            "confidence": { "type": "number" },
+            "explanation": { "type": "string" },
+            "reason_codes": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+
+    "AIRecommendationDecided": {
+      "allOf": [
+        { "$ref": "#/definitions/Envelope" },
+        {
+          "type": "object",
+          "required": ["recommendation_id", "supplier_id", "aggregate_id", "aggregate_type", "decision", "status", "decided_by", "decided_at"],
+          "properties": {
+            "type": { "const": "AI_RECOMMENDATION_DECIDED" },
+            "recommendation_id": { "type": "string" },
+            "supplier_id": { "type": "string", "format": "uuid" },
+            "aggregate_id": { "type": "string" },
+            "aggregate_type": { "type": "string" },
+            "decision": { "type": "string", "enum": ["ACKNOWLEDGED", "OVERRIDDEN", "DISMISSED", "REOPENED"] },
+            "status": { "type": "string" },
+            "decided_by": { "type": "string" },
+            "decided_at": { "type": "string", "format": "date-time" },
+            "note": { "type": "string" }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+
     "Money": {
       "type": "object",
       "required": ["amount", "currency"],
@@ -71,6 +121,28 @@
         "amount": { "type": "integer" },
         "currency": { "type": "string", "minLength": 3, "maxLength": 3 }
       }
+    },
+
+    "OrderSource": {
+      "type": "string",
+      "enum": ["MANUAL", "MANUAL_PREORDER", "AI_PREORDER"]
+    },
+
+    "OrderConfirmationStatus": {
+      "type": "string",
+      "enum": ["CONFIRMED", "DRAFT", "PENDING", "REJECTED", "AUTO_CONFIRMED"]
+    },
+
+    "OrderLineItem": {
+      "type": "object",
+      "required": ["sku", "quantity", "unit_price_minor"],
+      "properties": {
+        "sku": { "type": "string" },
+        "name": { "type": "string" },
+        "quantity": { "type": "integer", "minimum": 1 },
+        "unit_price_minor": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
     },
 
     "HomeNode": {
@@ -180,7 +252,13 @@
             "warehouse_id": { "type": "string", "format": "uuid" },
             "request_id": { "type": "string" },
             "status": { "type": "string" },
+            "state": { "type": "string" },
             "requested_by": { "type": "string" },
+            "coverage_start_date": { "type": "string" },
+            "coverage_days": { "type": "integer", "minimum": 1 },
+            "projected_units": { "type": "integer", "minimum": 0 },
+            "committed_units": { "type": "integer", "minimum": 0 },
+            "pending_confirmation_units": { "type": "integer", "minimum": 0 },
             "timestamp": { "type": "string", "format": "date-time" }
           }
         }
@@ -230,13 +308,25 @@
         { "$ref": "#/definitions/Envelope" },
         {
           "type": "object",
-          "required": ["order_id", "retailer_id", "supplier_id", "total"],
+          "required": ["order_id", "retailer_id", "supplier_id", "status", "total_minor", "currency", "h3_cell", "lat", "lng"],
           "properties": {
+            "type": { "const": "ORDER_CREATED" },
             "order_id": { "type": "string", "format": "uuid" },
             "retailer_id": { "type": "string", "format": "uuid" },
             "supplier_id": { "type": "string", "format": "uuid" },
             "warehouse_id": { "type": "string", "format": "uuid" },
-            "total": { "$ref": "#/definitions/Money" }
+            "status": { "type": "string", "enum": ["PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION", "COMPLETED", "CANCELLED"] },
+            "order_source": { "$ref": "#/definitions/OrderSource" },
+            "confirmation_status": { "$ref": "#/definitions/OrderConfirmationStatus" },
+            "requested_delivery_date": { "type": "string", "format": "date-time" },
+            "line_items": { "type": "array", "items": { "$ref": "#/definitions/OrderLineItem" } },
+            "total_minor": { "type": "integer" },
+            "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+            "h3_cell": { "type": "string", "minLength": 15, "maxLength": 15 },
+            "lat": { "type": "number" },
+            "lng": { "type": "number" },
+            "receiving_window_open": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
+            "receiving_window_close": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" }
           }
         }
       ]
@@ -249,14 +339,18 @@
           "type": "object",
           "required": ["order_id", "supplier_id", "retailer_id", "previous_status", "status"],
           "properties": {
+            "type": { "const": "ORDER_STATUS_CHANGED" },
             "order_id": { "type": "string", "format": "uuid" },
             "supplier_id": { "type": "string", "format": "uuid" },
             "retailer_id": { "type": "string", "format": "uuid" },
-            "previous_status": { "type": "string", "enum": ["PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "COMPLETED", "CANCELLED"] },
-            "status": { "type": "string", "enum": ["PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "COMPLETED", "CANCELLED"] },
+            "previous_status": { "type": "string", "enum": ["PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION", "COMPLETED", "CANCELLED"] },
+            "status": { "type": "string", "enum": ["PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION", "COMPLETED", "CANCELLED"] },
             "reason": { "type": "string" },
             "actor_role": { "type": "string" },
             "actor_id": { "type": "string" },
+            "order_source": { "$ref": "#/definitions/OrderSource" },
+            "confirmation_status": { "$ref": "#/definitions/OrderConfirmationStatus" },
+            "requested_delivery_date": { "type": "string", "format": "date-time" },
             "version": { "type": "integer", "minimum": 1 },
             "total_minor": { "type": "integer" },
             "currency": { "type": "string", "minLength": 3, "maxLength": 3 }
@@ -288,7 +382,12 @@
           "properties": {
             "order_id": { "type": "string", "format": "uuid" },
             "driver_id": { "type": "string", "format": "uuid" },
-            "route_id": { "type": "string", "format": "uuid" }
+            "route_id": { "type": "string", "format": "uuid" },
+            "supplier_id": { "type": "string", "format": "uuid" },
+            "retailer_id": { "type": "string", "format": "uuid" },
+            "warehouse_id": { "type": "string", "format": "uuid" },
+            "vehicle_id": { "type": "string", "format": "uuid" },
+            "manifest_id": { "type": "string", "format": "uuid" }
           }
         }
       ]
@@ -305,7 +404,12 @@
             "from_driver_id": { "type": "string", "format": "uuid" },
             "to_driver_id": { "type": "string", "format": "uuid" },
             "supplier_id": { "type": "string", "format": "uuid" },
-            "retailer_id": { "type": "string", "format": "uuid" }
+            "retailer_id": { "type": "string", "format": "uuid" },
+            "warehouse_id": { "type": "string", "format": "uuid" },
+            "from_route_id": { "type": "string", "format": "uuid" },
+            "to_route_id": { "type": "string", "format": "uuid" },
+            "vehicle_id": { "type": "string", "format": "uuid" },
+            "manifest_id": { "type": "string", "format": "uuid" }
           }
         }
       ]
@@ -319,9 +423,34 @@
           "required": ["order_id", "total"],
           "properties": {
             "order_id": { "type": "string", "format": "uuid" },
+            "supplier_id": { "type": "string", "format": "uuid" },
+            "retailer_id": { "type": "string", "format": "uuid" },
             "total": { "$ref": "#/definitions/Money" },
+            "amount_minor": { "type": "integer" },
+            "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+            "status": { "type": "string" },
             "fee_amount": { "type": "integer" },
             "net_payout_amount": { "type": "integer" }
+          }
+        }
+      ]
+    },
+
+    "PaymentRequired": {
+      "allOf": [
+        { "$ref": "#/definitions/Envelope" },
+        {
+          "type": "object",
+          "required": ["order_id", "amount"],
+          "properties": {
+            "order_id": { "type": "string", "format": "uuid" },
+            "supplier_id": { "type": "string", "format": "uuid" },
+            "retailer_id": { "type": "string", "format": "uuid" },
+            "amount": { "$ref": "#/definitions/Money" },
+            "amount_minor": { "type": "integer" },
+            "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+            "payment_method": { "type": "string" },
+            "status": { "type": "string" }
           }
         }
       ]
@@ -335,8 +464,14 @@
           "required": ["order_id", "amount"],
           "properties": {
             "order_id": { "type": "string", "format": "uuid" },
+            "supplier_id": { "type": "string", "format": "uuid" },
+            "retailer_id": { "type": "string", "format": "uuid" },
             "amount": { "$ref": "#/definitions/Money" },
+            "amount_minor": { "type": "integer" },
+            "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
             "gateway": { "type": "string", "enum": ["GLOBAL_PAY", "ADYEN", "AIRWALLEX", "CASH"] },
+            "payment_method": { "type": "string" },
+            "status": { "type": "string" },
             "provider_reference": { "type": "string" }
           }
         }
@@ -348,11 +483,17 @@
         { "$ref": "#/definitions/Envelope" },
         {
           "type": "object",
-          "required": ["order_id", "session_id", "amount"],
+          "required": ["order_id", "amount"],
           "properties": {
             "order_id": { "type": "string", "format": "uuid" },
+            "supplier_id": { "type": "string", "format": "uuid" },
+            "retailer_id": { "type": "string", "format": "uuid" },
             "session_id": { "type": "string", "format": "uuid" },
-            "amount": { "$ref": "#/definitions/Money" }
+            "amount": { "$ref": "#/definitions/Money" },
+            "amount_minor": { "type": "integer" },
+            "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+            "payment_method": { "type": "string" },
+            "status": { "type": "string" }
           }
         }
       ]
@@ -385,7 +526,40 @@
           "properties": {
             "driver_id": { "type": "string", "format": "uuid" },
             "available": { "type": "boolean" },
+            "on_shift": { "type": "boolean" },
+            "supplier_id": { "type": "string", "format": "uuid" },
+            "home_node_type": { "type": "string", "enum": ["WAREHOUSE", "FACTORY"] },
+            "home_node_id": { "type": "string", "format": "uuid" },
             "reason": { "type": "string" }
+          }
+        }
+      ]
+    },
+
+    "DriverLocationUpdated": {
+      "allOf": [
+        { "$ref": "#/definitions/Envelope" },
+        {
+          "type": "object",
+          "required": ["data"],
+          "properties": {
+            "data": {
+              "type": "object",
+              "required": ["driver_id", "supplier_id", "lat", "lng", "latitude", "longitude", "reported_at", "received_at", "stale_after_seconds"],
+              "properties": {
+                "driver_id": { "type": "string" },
+                "supplier_id": { "type": "string" },
+                "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+                "lng": { "type": "number", "minimum": -180, "maximum": 180 },
+                "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+                "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+                "velocity": { "type": "number" },
+                "heading": { "type": "number" },
+                "reported_at": { "type": "string", "format": "date-time" },
+                "received_at": { "type": "string", "format": "date-time" },
+                "stale_after_seconds": { "type": "integer", "minimum": 1 }
+              }
+            }
           }
         }
       ]

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -34,6 +36,32 @@ func (c *testConnection) Send(_ context.Context, payload []byte) error {
 	c.sent <- copyPayload
 	return nil
 }
+
+type benchmarkConnection struct {
+	id string
+}
+
+func (c *benchmarkConnection) ID() string { return c.id }
+
+func (c *benchmarkConnection) Identity() auth.Claims { return auth.Claims{} }
+
+func (c *benchmarkConnection) Send(_ context.Context, _ []byte) error { return nil }
+
+type countingConnection struct {
+	id    string
+	count atomic.Int64
+}
+
+func (c *countingConnection) ID() string { return c.id }
+
+func (c *countingConnection) Identity() auth.Claims { return auth.Claims{} }
+
+func (c *countingConnection) Send(_ context.Context, _ []byte) error {
+	c.count.Add(1)
+	return nil
+}
+
+func (c *countingConnection) Delivered() int64 { return c.count.Load() }
 
 type publishFailBackend struct{}
 
@@ -134,5 +162,89 @@ func TestStartRelaySubscriberFansOutPeerEventsAndSuppressesSelf(t *testing.T) {
 	case got := <-conn.sent:
 		t.Fatalf("expected self-source suppression, got payload %q", string(got))
 	case <-time.After(200 * time.Millisecond):
+	}
+}
+
+func TestStartRelaySubscriberDeliversBurstIntegrity(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	backend := cache.NewInMemoryBackend()
+	publisherHub := NewHub("telemetry", backend, nil)
+	receiverHub := NewHub("telemetry", backend, nil)
+	room := "telemetry:supplier:sup-1"
+	conn := &countingConnection{id: "counting"}
+	receiverHub.Subscribe(room, conn)
+
+	go receiverHub.StartRelaySubscriber(ctx)
+	time.Sleep(20 * time.Millisecond)
+
+	const burst = 32
+	for i := 0; i < burst; i++ {
+		payload := []byte(fmt.Sprintf("relay-burst-%d", i))
+		publisherHub.Broadcast(ctx, room, payload)
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if conn.Delivered() == burst {
+			return
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	t.Fatalf("delivered=%d want=%d", conn.Delivered(), burst)
+}
+
+func BenchmarkHubBroadcastTelemetryFanout(b *testing.B) {
+	payload := []byte(`{"type":"DRIVER_LOCATION_UPDATED","trace_id":"bench-trace","data":{"driver_id":"drv-1","supplier_id":"sup-1","lat":41.3,"lng":69.2}}`)
+
+	for _, subscribers := range []int{1, 10, 100, 500} {
+		b.Run(fmt.Sprintf("subscribers_%d", subscribers), func(b *testing.B) {
+			hub := NewHub("telemetry", nil, nil)
+			room := "telemetry:supplier:sup-1"
+			for i := 0; i < subscribers; i++ {
+				hub.Subscribe(room, &benchmarkConnection{id: fmt.Sprintf("c-%d", i)})
+			}
+
+			ctx := context.Background()
+			b.ReportAllocs()
+			b.SetBytes(int64(len(payload)))
+			b.ResetTimer()
+
+			for i := 0; i < b.N; i++ {
+				hub.Broadcast(ctx, room, payload)
+			}
+		})
+	}
+}
+
+func BenchmarkHubBroadcastTelemetryFanoutRelay(b *testing.B) {
+	payload := []byte(`{"type":"DRIVER_LOCATION_UPDATED","trace_id":"bench-trace","data":{"driver_id":"drv-1","supplier_id":"sup-1","lat":41.3,"lng":69.2}}`)
+
+	for _, subscribers := range []int{1, 10, 100, 500} {
+		b.Run(fmt.Sprintf("relay_subscribers_%d", subscribers), func(b *testing.B) {
+			backend := cache.NewInMemoryBackend()
+			publisherHub := NewHub("telemetry", backend, nil)
+			receiverHub := NewHub("telemetry", backend, nil)
+			room := "telemetry:supplier:sup-1"
+			for i := 0; i < subscribers; i++ {
+				receiverHub.Subscribe(room, &benchmarkConnection{id: fmt.Sprintf("relay-c-%d", i)})
+			}
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			go receiverHub.StartRelaySubscriber(ctx)
+			time.Sleep(10 * time.Millisecond)
+
+			b.ReportAllocs()
+			b.SetBytes(int64(len(payload)))
+			b.ResetTimer()
+
+			for i := 0; i < b.N; i++ {
+				publisherHub.Broadcast(ctx, room, payload)
+			}
+		})
 	}
 }

@@ -1,0 +1,320 @@
+package com.pegasusx.warehouse.ui.screens.orders
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.pegasusx.warehouse.data.model.Order
+import com.pegasusx.warehouse.data.remote.WarehouseApi
+import com.pegasusx.warehouse.data.remote.WarehouseOperationsRepository
+import com.pegasusx.warehouse.ui.theme.PegasusSpacing
+import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.util.Locale
+
+private enum class OrderMutationAction {
+    Delay,
+    Reject,
+    Overflow,
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OrderDetailScreen(
+    api: WarehouseApi,
+    opsRepository: WarehouseOperationsRepository,
+    orderId: String,
+    onBack: () -> Unit,
+) {
+    var order by remember { mutableStateOf<Order?>(null) }
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var mutating by remember { mutableStateOf(false) }
+    var pendingAction by remember { mutableStateOf<OrderMutationAction?>(null) }
+    var reasonInput by remember { mutableStateOf("") }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val fmt = remember { NumberFormat.getInstance(Locale("uz", "UZ")) }
+
+    fun load() {
+        loading = true
+        error = null
+        scope.launch {
+            try {
+                val resp = api.getOrder(orderId)
+                if (resp.isSuccessful && resp.body() != null) {
+                    order = resp.body()!!
+                } else {
+                    error = "Failed (${resp.code()})"
+                }
+            } catch (e: Exception) {
+                error = e.message ?: "Network error"
+            } finally {
+                loading = false
+            }
+        }
+    }
+
+    fun runMutation(action: OrderMutationAction, reason: String?) {
+        mutating = true
+        scope.launch {
+            try {
+                val resp = when (action) {
+                    OrderMutationAction.Delay -> opsRepository.delayOrder(orderId, reason)
+                    OrderMutationAction.Reject -> opsRepository.rejectOrder(orderId, reason.orEmpty())
+                    OrderMutationAction.Overflow -> opsRepository.overflowOrder(orderId, reason)
+                }
+                if (resp.isSuccessful && resp.body() != null) {
+                    snackbarHostState.showSnackbar("Order updated · ${resp.body()!!.status}")
+                    load()
+                } else {
+                    snackbarHostState.showSnackbar("Action failed (${resp.code()})")
+                }
+            } catch (e: Exception) {
+                snackbarHostState.showSnackbar(e.message ?: "Network error")
+            } finally {
+                mutating = false
+                pendingAction = null
+                reasonInput = ""
+            }
+        }
+    }
+
+    LaunchedEffect(orderId) { load() }
+
+    pendingAction?.let { action ->
+        val requiresReason = action == OrderMutationAction.Reject
+        val title = when (action) {
+            OrderMutationAction.Delay -> "Mark order delayed?"
+            OrderMutationAction.Reject -> "Reject order?"
+            OrderMutationAction.Overflow -> "Return to dispatch pool?"
+        }
+        val confirmLabel = when (action) {
+            OrderMutationAction.Delay -> "Delay"
+            OrderMutationAction.Reject -> "Reject"
+            OrderMutationAction.Overflow -> "Overflow"
+        }
+        AlertDialog(
+            onDismissRequest = {
+                if (!mutating) {
+                    pendingAction = null
+                    reasonInput = ""
+                }
+            },
+            title = { Text(title) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(PegasusSpacing.sm)) {
+                    Text(
+                        "Order $orderId",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    OutlinedTextField(
+                        value = reasonInput,
+                        onValueChange = { reasonInput = it },
+                        label = {
+                            Text(if (requiresReason) "Reason (required)" else "Reason (optional)")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !mutating,
+                        singleLine = false,
+                        minLines = 2,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val trimmed = reasonInput.trim()
+                        if (requiresReason && trimmed.isEmpty()) {
+                            scope.launch { snackbarHostState.showSnackbar("Reason is required") }
+                            return@TextButton
+                        }
+                        runMutation(action, trimmed.ifBlank { null })
+                    },
+                    enabled = !mutating && (!requiresReason || reasonInput.trim().isNotEmpty()),
+                ) {
+                    if (mutating) {
+                        CircularProgressIndicator(modifier = Modifier.height(16.dp))
+                    } else {
+                        Text(confirmLabel)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        pendingAction = null
+                        reasonInput = ""
+                    },
+                    enabled = !mutating,
+                ) { Text("Cancel") }
+            },
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Order Detail") },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                actions = { IconButton(onClick = { load() }) { Icon(Icons.Default.Refresh, "Refresh") } },
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+    ) { innerPadding ->
+        when {
+            loading -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+            error != null -> Box(Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(error!!, color = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.height(PegasusSpacing.lg))
+                    Button(onClick = { load() }) { Text("Retry") }
+                }
+            }
+            order != null -> {
+                val current = order!!
+                val state = current.state.uppercase(Locale.US)
+                val canDelay = state in setOf("PENDING", "LOADED")
+                val canReject = state in setOf("PENDING", "LOADED", "IN_TRANSIT")
+                val canOverflow = state in setOf("LOADED", "IN_TRANSIT")
+                val showOps = canDelay || canReject || canOverflow
+
+                LazyColumn(
+                    contentPadding = PaddingValues(PegasusSpacing.lg),
+                    verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                    modifier = Modifier.fillMaxSize().padding(innerPadding),
+                ) {
+                    item {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            SummaryCard("State", current.state, Modifier.weight(1f))
+                            SummaryCard("Total", "${fmt.format(current.totalUzs)} UZS", Modifier.weight(1f))
+                        }
+                    }
+                    item {
+                        Text(
+                            text = "Retailer: ${current.retailerName.ifBlank { "—" }}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (showOps) {
+                        item {
+                            HorizontalDivider()
+                            Spacer(Modifier.height(PegasusSpacing.xs))
+                            Text("Warehouse actions", style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.height(PegasusSpacing.xs))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(PegasusSpacing.sm),
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                if (canDelay) {
+                                    OutlinedButton(
+                                        onClick = { pendingAction = OrderMutationAction.Delay },
+                                        enabled = !mutating,
+                                        modifier = Modifier.weight(1f),
+                                    ) { Text("Delay") }
+                                }
+                                if (canOverflow) {
+                                    OutlinedButton(
+                                        onClick = { pendingAction = OrderMutationAction.Overflow },
+                                        enabled = !mutating,
+                                        modifier = Modifier.weight(1f),
+                                    ) { Text("Overflow") }
+                                }
+                                if (canReject) {
+                                    OutlinedButton(
+                                        onClick = { pendingAction = OrderMutationAction.Reject },
+                                        enabled = !mutating,
+                                        modifier = Modifier.weight(1f),
+                                    ) { Text("Reject") }
+                                }
+                            }
+                        }
+                    }
+                    item {
+                        HorizontalDivider()
+                        Spacer(Modifier.height(PegasusSpacing.sm))
+                        Text("Line Items", style = MaterialTheme.typography.titleMedium)
+                    }
+                    items(current.lineItems) { item ->
+                        ElevatedCard(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier.padding(PegasusSpacing.lg),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(item.productName.ifBlank { "Product" }, style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        "Qty: ${item.quantity}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                Text(
+                                    "${fmt.format(item.unitPrice)} UZS",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SummaryCard(label: String, value: String, modifier: Modifier = Modifier) {
+    ElevatedCard(modifier = modifier) {
+        Column(modifier = Modifier.padding(PegasusSpacing.md)) {
+            Text(value, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(2.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}

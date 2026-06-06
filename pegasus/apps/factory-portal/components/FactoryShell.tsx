@@ -146,6 +146,7 @@ const DrawerContent = memo(function DrawerContent({
                   >
                     <Link
                       href={item.href}
+                      prefetch={false}
                       className={`desk-sidebar-item ${active ? 'desk-sidebar-item--accent' : ''}`}
                       title={isRail ? item.label : undefined}
                       aria-label={item.label}

@@ -9,6 +9,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	segmentkafka "github.com/segmentio/kafka-go"
 )
 
 type fakeRedisAdapter struct {
@@ -64,6 +65,19 @@ func (f *fakeKafkaPublisher) Close() error {
 	return nil
 }
 
+type fakeKafkaDLQWriter struct {
+	closed bool
+}
+
+func (f *fakeKafkaDLQWriter) WriteMessages(_ context.Context, _ ...segmentkafka.Message) error {
+	return nil
+}
+
+func (f *fakeKafkaDLQWriter) Close() error {
+	f.closed = true
+	return nil
+}
+
 func testConfig() *Config {
 	return &Config{
 		HTTPPort:               "8080",
@@ -74,6 +88,7 @@ func testConfig() *Config {
 		RedisAddr:              "localhost:6379",
 		KafkaBrokers:           "localhost:9092",
 		KafkaTopicMain:         "pegasusx-main",
+		KafkaTopicMainDLQ:      "pegasusx-main-dlq",
 		JWTSecret:              "test-secret",
 		JWTIssuer:              "pegasusx-test",
 		GlobalPayWebhookSecret: "gp-test",
@@ -89,11 +104,13 @@ func stubRuntimeConstructors(t *testing.T) {
 	t.Helper()
 	originalRedis := newRedisRuntimeAdapter
 	originalKafka := newKafkaRuntimePublisher
+	originalKafkaDLQ := newKafkaRuntimeDLQWriter
 	originalSpannerClient := newSpannerRuntimeClient
 	originalSpannerStore := newSpannerRuntimeStore
 	t.Cleanup(func() {
 		newRedisRuntimeAdapter = originalRedis
 		newKafkaRuntimePublisher = originalKafka
+		newKafkaRuntimeDLQWriter = originalKafkaDLQ
 		newSpannerRuntimeClient = originalSpannerClient
 		newSpannerRuntimeStore = originalSpannerStore
 	})
@@ -107,6 +124,9 @@ func TestNewApp_StrictModeFailsWhenRedisUnavailable(t *testing.T) {
 	}
 	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
 		return &fakeKafkaPublisher{}, nil
+	}
+	newKafkaRuntimeDLQWriter = func(_ string, _ string) (kafkaRuntimeDLQWriter, error) {
+		return &fakeKafkaDLQWriter{}, nil
 	}
 	newSpannerRuntimeClient = func(_ context.Context, _ string) (*spanner.Client, error) {
 		return nil, errors.New("skip spanner in strict-mode test")
@@ -137,6 +157,9 @@ func TestNewApp_StrictModeFailsWhenKafkaUnavailable(t *testing.T) {
 	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
 		return nil, errors.New("kafka unavailable")
 	}
+	newKafkaRuntimeDLQWriter = func(_ string, _ string) (kafkaRuntimeDLQWriter, error) {
+		return &fakeKafkaDLQWriter{}, nil
+	}
 	newSpannerRuntimeClient = func(_ context.Context, _ string) (*spanner.Client, error) {
 		return nil, errors.New("skip spanner in strict-mode test")
 	}
@@ -164,12 +187,16 @@ func TestNewApp_StrictModePassesWhenAdaptersHealthy(t *testing.T) {
 
 	redis := &fakeRedisAdapter{}
 	kafka := &fakeKafkaPublisher{}
+	dlq := &fakeKafkaDLQWriter{}
 
 	newRedisRuntimeAdapter = func(_ string) (redisRuntimeAdapter, error) {
 		return redis, nil
 	}
 	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
 		return kafka, nil
+	}
+	newKafkaRuntimeDLQWriter = func(_ string, _ string) (kafkaRuntimeDLQWriter, error) {
+		return dlq, nil
 	}
 	newSpannerRuntimeClient = func(_ context.Context, _ string) (*spanner.Client, error) {
 		return nil, errors.New("skip spanner in strict-mode test")
@@ -199,5 +226,40 @@ func TestNewApp_StrictModePassesWhenAdaptersHealthy(t *testing.T) {
 	}
 	if !kafka.closed {
 		t.Fatalf("expected kafka publisher to be closed")
+	}
+	if !dlq.closed {
+		t.Fatalf("expected kafka dlq writer to be closed")
+	}
+}
+
+func TestNewApp_StrictModeFailsWhenNotificationDLQUnavailable(t *testing.T) {
+	stubRuntimeConstructors(t)
+
+	redis := &fakeRedisAdapter{}
+	newRedisRuntimeAdapter = func(_ string) (redisRuntimeAdapter, error) {
+		return redis, nil
+	}
+	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
+		return &fakeKafkaPublisher{}, nil
+	}
+	newKafkaRuntimeDLQWriter = func(_ string, _ string) (kafkaRuntimeDLQWriter, error) {
+		return nil, errors.New("dlq unavailable")
+	}
+	newSpannerRuntimeClient = func(_ context.Context, _ string) (*spanner.Client, error) {
+		return nil, errors.New("skip spanner in strict-mode test")
+	}
+
+	cfg := testConfig()
+	cfg.RequireInfraAdapters = true
+
+	app, err := NewApp(context.Background(), cfg)
+	if err == nil {
+		if app != nil {
+			app.Close()
+		}
+		t.Fatalf("expected strict startup error when notification dlq is unavailable")
+	}
+	if !strings.Contains(err.Error(), "dlq unavailable") {
+		t.Fatalf("expected dlq strict-mode error, got: %v", err)
 	}
 }

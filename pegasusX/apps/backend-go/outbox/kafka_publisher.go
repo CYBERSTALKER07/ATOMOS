@@ -2,6 +2,7 @@ package outbox
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -64,12 +65,26 @@ func (p *KafkaPublisher) Publish(ctx context.Context, topic string, key []byte, 
 	if strings.TrimSpace(topic) == "" {
 		return fmt.Errorf("kafka publisher: topic required")
 	}
-	return p.writer.WriteMessages(ctx, kafka.Message{
+	msg := kafka.Message{
 		Topic: topic,
 		Key:   key,
 		Value: value,
 		Time:  time.Now().UTC(),
-	})
+	}
+	if traceID := traceIDFromPayload(value); traceID != "" {
+		msg.Headers = []kafka.Header{{Key: "trace_id", Value: []byte(traceID)}}
+	}
+	return p.writer.WriteMessages(ctx, msg)
+}
+
+func traceIDFromPayload(value []byte) string {
+	var envelope struct {
+		TraceID string `json:"trace_id"`
+	}
+	if err := json.Unmarshal(value, &envelope); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(envelope.TraceID)
 }
 
 // Close releases writer resources.

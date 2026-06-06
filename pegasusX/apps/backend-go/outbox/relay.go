@@ -10,11 +10,13 @@ import (
 // RelayConfig tunes the relay loop. Defaults match the doctrine: 250ms tick,
 // batch 100, bounded retry per event with exponential backoff + jitter.
 type RelayConfig struct {
-	TickInterval    time.Duration
-	BatchSize       int
-	MaxPublishTries int
-	BaseBackoff     time.Duration
-	MaxBackoff      time.Duration
+	TickInterval     time.Duration
+	BatchSize        int
+	MaxPublishTries  int
+	BaseBackoff      time.Duration
+	MaxBackoff       time.Duration
+	WatchdogInterval time.Duration
+	StuckThreshold   time.Duration
 }
 
 func (c *RelayConfig) applyDefaults() {
@@ -32,6 +34,12 @@ func (c *RelayConfig) applyDefaults() {
 	}
 	if c.MaxBackoff <= 0 {
 		c.MaxBackoff = 5 * time.Second
+	}
+	if c.WatchdogInterval <= 0 {
+		c.WatchdogInterval = 30 * time.Second
+	}
+	if c.StuckThreshold <= 0 {
+		c.StuckThreshold = 60 * time.Second
 	}
 }
 
@@ -57,17 +65,51 @@ func NewRelay(store Store, publisher Publisher, cfg RelayConfig, log *slog.Logge
 // process; do not start multiple instances against the same OutboxEvents
 // partition without coordination.
 func (r *Relay) Start(ctx context.Context) {
-	ticker := time.NewTicker(r.cfg.TickInterval)
-	defer ticker.Stop()
+	drainTicker := time.NewTicker(r.cfg.TickInterval)
+	defer drainTicker.Stop()
+	watchdogTicker := time.NewTicker(r.cfg.WatchdogInterval)
+	defer watchdogTicker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			r.log.Info("outbox relay stopping", "reason", ctx.Err())
 			return
-		case <-ticker.C:
+		case <-drainTicker.C:
 			r.drainOnce(ctx)
+		case <-watchdogTicker.C:
+			r.watchdogOnce(ctx)
 		}
 	}
+}
+
+func (r *Relay) watchdogOnce(ctx context.Context) {
+	events, err := r.store.Fetch(ctx, r.cfg.BatchSize)
+	if err != nil {
+		r.log.Error("outbox watchdog fetch failed", "err", err)
+		return
+	}
+	now := time.Now().UTC()
+	var stuck int
+	var oldestID string
+	var oldestAt time.Time
+	for _, e := range events {
+		if now.Sub(e.CreatedAt) <= r.cfg.StuckThreshold {
+			continue
+		}
+		stuck++
+		if oldestID == "" || e.CreatedAt.Before(oldestAt) {
+			oldestID = e.EventID
+			oldestAt = e.CreatedAt
+		}
+	}
+	if stuck == 0 {
+		return
+	}
+	r.log.Error("outbox stuck events detected",
+		"count", stuck,
+		"oldest_event_id", oldestID,
+		"oldest_created_at", oldestAt.UTC().Format(time.RFC3339Nano),
+	)
 }
 
 func (r *Relay) drainOnce(ctx context.Context) {

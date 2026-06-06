@@ -21,6 +21,7 @@ val mapsApiKey: String = localProps.getProperty("MAPS_API_KEY", "")
 val prodApiBaseUrl: String = localProps.getProperty("prod.api.base.url", "https://api.pegasus.uz")
 val prodWsBaseUrl: String = localProps.getProperty("prod.ws.base.url", "wss://api.pegasus.uz")
 val quicktypeBinary: String = localProps.getProperty("quicktype.path", "quicktype")
+val goBinary: String = localProps.getProperty("go.path", "go")
 
 val contractsSchemaFile = rootProject.file("../../contracts/events.schema.json")
 val backendGoDir = rootProject.file("../../apps/backend-go")
@@ -28,12 +29,12 @@ val generatedWsModelFile = rootProject.file(
     "app/src/main/java/com/pegasus/retailer/generated/contracts/PegasusWSEventEnvelope.kt"
 )
 
-fun assertCommandAvailable(command: String) {
+fun assertCommandAvailable(command: String, propName: String) {
     val process = ProcessBuilder("sh", "-c", "command -v \"$command\" >/dev/null 2>&1").start()
     val exitCode = process.waitFor()
     if (exitCode != 0) {
         throw GradleException(
-            "quicktype not found (binary: $command). Install quicktype or set quicktype.path in local.properties",
+            "Binary '$command' not found. Install it or set '$propName' in local.properties",
         )
     }
 }
@@ -42,8 +43,13 @@ val generateEventSchema by tasks.registering(Exec::class) {
     group = "codegen"
     description = "Generate websocket JSON schema from backend Go contracts"
     workingDir = backendGoDir
+
+    doFirst {
+        assertCommandAvailable(goBinary, "go.path")
+    }
+
     commandLine(
-        "go",
+        goBinary,
         "run",
         "./cmd/gen-contracts",
         "-source",
@@ -67,7 +73,7 @@ val generateWsEventModels by tasks.registering(Exec::class) {
 
     doFirst {
         generatedWsModelFile.parentFile.mkdirs()
-        assertCommandAvailable(quicktypeBinary)
+        assertCommandAvailable(quicktypeBinary, "quicktype.path")
     }
 
     commandLine(
@@ -84,7 +90,6 @@ val generateWsEventModels by tasks.registering(Exec::class) {
         "kotlinx",
         "--top-level",
         "PegasusWSEventEnvelope",
-        "--just-types",
         "--out",
         generatedWsModelFile.absolutePath,
     )

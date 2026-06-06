@@ -3,10 +3,12 @@ package payment
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"google.golang.org/api/iterator"
 )
 
 // SpannerRepository persists payment aggregates and emitted outbox events
@@ -22,10 +24,16 @@ func NewSpannerRepository(client *spanner.Client) *SpannerRepository {
 
 type spannerTxnBuffer struct {
 	events []outbox.Event
+	audits []outbox.AuditEntry
 }
 
 func (b *spannerTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error {
 	b.events = append(b.events, e)
+	return nil
+}
+
+func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) error {
+	b.audits = append(b.audits, e)
 	return nil
 }
 
@@ -49,7 +57,7 @@ func (r *SpannerRepository) CreateSession(ctx context.Context, s SessionRecord, 
 		"UpdatedAt":   s.UpdatedAt.UTC(),
 	})
 
-	return r.writeWithOutbox(ctx, emit, base)
+	return r.writeWithOutbox(ctx, emit, base, ledgerMutation(buildSessionLedgerEntry(s)))
 }
 
 // CreateSessionWithAttempt persists one payment session and first attempt in a
@@ -85,7 +93,7 @@ func (r *SpannerRepository) CreateSessionWithAttempt(ctx context.Context, s Sess
 		"UpdatedAt":         a.UpdatedAt.UTC(),
 	})
 
-	return r.writeWithOutbox(ctx, emit, sessionMutation, attemptMutation)
+	return r.writeWithOutbox(ctx, emit, sessionMutation, attemptMutation, ledgerMutation(buildSessionLedgerEntry(s)))
 }
 
 // SaveAttempt persists one payment attempt and any outbox events atomically.
@@ -125,7 +133,7 @@ func (r *SpannerRepository) SaveChargeback(ctx context.Context, c ChargebackReco
 		"CreatedAt":    c.CreatedAt.UTC(),
 	})
 
-	return r.writeWithOutbox(ctx, emit, base)
+	return r.writeWithOutbox(ctx, emit, base, ledgerMutation(buildChargebackLedgerEntry(c)))
 }
 
 // SaveReversal persists one chargeback reversal and optional outbox events.
@@ -140,7 +148,7 @@ func (r *SpannerRepository) SaveReversal(ctx context.Context, rev ReversalRecord
 		"CreatedAt":  rev.CreatedAt.UTC(),
 	})
 
-	return r.writeWithOutbox(ctx, emit, base)
+	return r.writeWithOutbox(ctx, emit, base, ledgerMutation(buildReversalLedgerEntry(rev)))
 }
 
 // SaveWebhook persists one validated webhook and optional outbox events.
@@ -162,7 +170,191 @@ func (r *SpannerRepository) SaveWebhook(ctx context.Context, w WebhookRecord, em
 		"ReceivedAt":     w.ReceivedAt.UTC(),
 	})
 
-	return r.writeWithOutbox(ctx, emit, base)
+	return r.writeWithOutbox(ctx, emit, base, ledgerMutation(buildWebhookLedgerEntry(w)))
+}
+
+// ListLedgerEntries reads bounded payment ledger entries using index-backed
+// filters and stale reads for low-contention operational access.
+func (r *SpannerRepository) ListLedgerEntries(ctx context.Context, q LedgerQuery) ([]LedgerEntryRecord, error) {
+	if r == nil || r.client == nil {
+		return nil, fmt.Errorf("spanner payment repository: nil client")
+	}
+
+	limit := q.Limit
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+
+	where := make([]string, 0, 3)
+	params := map[string]any{"limit": int64(limit)}
+	if supplierID := strings.TrimSpace(q.SupplierID); supplierID != "" {
+		where = append(where, "SupplierId = @supplier_id")
+		params["supplier_id"] = supplierID
+	}
+	if orderID := strings.TrimSpace(q.OrderID); orderID != "" {
+		where = append(where, "OrderId = @order_id")
+		params["order_id"] = orderID
+	}
+	if sessionID := strings.TrimSpace(q.SessionID); sessionID != "" {
+		where = append(where, "SessionId = @session_id")
+		params["session_id"] = sessionID
+	}
+	if gateway := strings.TrimSpace(q.Gateway); gateway != "" {
+		where = append(where, "Gateway = @gateway")
+		params["gateway"] = strings.ToUpper(gateway)
+	}
+	if entryType := strings.TrimSpace(q.EntryType); entryType != "" {
+		where = append(where, "EntryType = @entry_type")
+		params["entry_type"] = strings.ToUpper(entryType)
+	}
+	if q.OccurredFrom != nil {
+		where = append(where, "OccurredAt >= @occurred_from")
+		params["occurred_from"] = q.OccurredFrom.UTC()
+	}
+	if q.OccurredTo != nil {
+		where = append(where, "OccurredAt <= @occurred_to")
+		params["occurred_to"] = q.OccurredTo.UTC()
+	}
+
+	sql := `SELECT LedgerEntryId, SessionId, OrderId, SupplierId, RetailerId, Gateway, EntryType, AmountMinor, Currency, ReferenceId, Source, OccurredAt, CreatedAt FROM PaymentLedgerEntries`
+	if len(where) > 0 {
+		sql += " WHERE " + strings.Join(where, " AND ")
+	}
+	sql += " ORDER BY OccurredAt DESC LIMIT @limit"
+
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
+		SQL:    sql,
+		Params: params,
+	})
+	defer iter.Stop()
+
+	items := make([]LedgerEntryRecord, 0, limit)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("payment ledger query: %w", err)
+		}
+
+		var item LedgerEntryRecord
+		var sessionID spanner.NullString
+		var orderID spanner.NullString
+		var supplierID spanner.NullString
+		var retailerID spanner.NullString
+		var referenceID spanner.NullString
+		if err := row.Columns(
+			&item.LedgerEntryID,
+			&sessionID,
+			&orderID,
+			&supplierID,
+			&retailerID,
+			&item.Gateway,
+			&item.EntryType,
+			&item.AmountMinor,
+			&item.Currency,
+			&referenceID,
+			&item.Source,
+			&item.OccurredAt,
+			&item.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("payment ledger scan: %w", err)
+		}
+		if sessionID.Valid {
+			item.SessionID = sessionID.StringVal
+		}
+		if orderID.Valid {
+			item.OrderID = orderID.StringVal
+		}
+		if supplierID.Valid {
+			item.SupplierID = supplierID.StringVal
+		}
+		if retailerID.Valid {
+			item.RetailerID = retailerID.StringVal
+		}
+		if referenceID.Valid {
+			item.ReferenceID = referenceID.StringVal
+		}
+		items = append(items, item)
+	}
+
+	return items, nil
+}
+
+// SummarizeLedgerEntries reads grouped settlement authority rows from
+// immutable PaymentLedgerEntries using bounded stale reads.
+func (r *SpannerRepository) SummarizeLedgerEntries(ctx context.Context, q SettlementAuthorityQuery) ([]SettlementAuthorityRow, error) {
+	if r == nil || r.client == nil {
+		return nil, fmt.Errorf("spanner payment repository: nil client")
+	}
+
+	groupLimit := q.GroupLimit
+	if groupLimit <= 0 || groupLimit > 1000 {
+		groupLimit = 200
+	}
+
+	where := make([]string, 0, 5)
+	params := map[string]any{"group_limit": int64(groupLimit)}
+	if supplierID := strings.TrimSpace(q.SupplierID); supplierID != "" {
+		where = append(where, "SupplierId = @supplier_id")
+		params["supplier_id"] = supplierID
+	}
+	if gateway := strings.TrimSpace(q.Gateway); gateway != "" {
+		where = append(where, "Gateway = @gateway")
+		params["gateway"] = strings.ToUpper(gateway)
+	}
+	if entryType := strings.TrimSpace(q.EntryType); entryType != "" {
+		where = append(where, "EntryType = @entry_type")
+		params["entry_type"] = strings.ToUpper(entryType)
+	}
+	if q.OccurredFrom != nil {
+		where = append(where, "OccurredAt >= @occurred_from")
+		params["occurred_from"] = q.OccurredFrom.UTC()
+	}
+	if q.OccurredTo != nil {
+		where = append(where, "OccurredAt <= @occurred_to")
+		params["occurred_to"] = q.OccurredTo.UTC()
+	}
+
+	sql := `SELECT Gateway, EntryType, Currency, COUNT(1) AS EntryCount, SUM(AmountMinor) AS AmountMinorTotal, MIN(OccurredAt) AS FirstOccurredAt, MAX(OccurredAt) AS LastOccurredAt FROM PaymentLedgerEntries`
+	if len(where) > 0 {
+		sql += " WHERE " + strings.Join(where, " AND ")
+	}
+	sql += " GROUP BY Gateway, EntryType, Currency ORDER BY Gateway ASC, EntryType ASC, Currency ASC LIMIT @group_limit"
+
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, spanner.Statement{
+		SQL:    sql,
+		Params: params,
+	})
+	defer iter.Stop()
+
+	items := make([]SettlementAuthorityRow, 0)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("payment settlement summary query: %w", err)
+		}
+
+		var item SettlementAuthorityRow
+		if err := row.Columns(
+			&item.Gateway,
+			&item.EntryType,
+			&item.Currency,
+			&item.EntryCount,
+			&item.AmountMinorTotal,
+			&item.FirstOccurredAt,
+			&item.LastOccurredAt,
+		); err != nil {
+			return nil, fmt.Errorf("payment settlement summary scan: %w", err)
+		}
+		items = append(items, item)
+	}
+
+	return items, nil
 }
 
 func (r *SpannerRepository) writeWithOutbox(ctx context.Context, emit func(outbox.TxnBuffer) error, bases ...*spanner.Mutation) error {
@@ -196,6 +388,9 @@ func (r *SpannerRepository) writeWithOutbox(ctx context.Context, emit func(outbo
 			}
 			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
 		}
+		for _, a := range buf.audits {
+			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
+		}
 
 		return txn.BufferWrite(mutations)
 	})
@@ -208,6 +403,133 @@ func (r *SpannerRepository) writeWithOutbox(ctx context.Context, emit func(outbo
 func nullIfEmpty(v string) any {
 	if v == "" {
 		return nil
+	}
+	return v
+}
+
+func buildSessionLedgerEntry(s SessionRecord) LedgerEntryRecord {
+	occurredAt := s.UpdatedAt
+	if occurredAt.IsZero() {
+		occurredAt = s.CreatedAt
+	}
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+
+	return LedgerEntryRecord{
+		LedgerEntryID: "pledger_session_" + s.SessionID,
+		SessionID:     s.SessionID,
+		OrderID:       s.OrderID,
+		SupplierID:    s.SupplierID,
+		RetailerID:    s.RetailerID,
+		Gateway:       normalizedUpper(s.Gateway, "UNKNOWN"),
+		EntryType:     "SESSION_" + normalizedUpper(s.Status, "UNKNOWN"),
+		AmountMinor:   s.AmountMinor,
+		Currency:      normalizedUpper(s.Currency, "UZS"),
+		ReferenceID:   s.SessionID,
+		Source:        "payment.session",
+		OccurredAt:    occurredAt,
+		CreatedAt:     occurredAt,
+	}
+}
+
+func buildChargebackLedgerEntry(c ChargebackRecord) LedgerEntryRecord {
+	occurredAt := c.CreatedAt
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+
+	return LedgerEntryRecord{
+		LedgerEntryID: "pledger_chargeback_" + c.ChargebackID,
+		OrderID:       c.OrderID,
+		SupplierID:    c.SupplierID,
+		RetailerID:    c.RetailerID,
+		Gateway:       normalizedUpper(c.Gateway, "UNKNOWN"),
+		EntryType:     "CHARGEBACK_RECORDED",
+		AmountMinor:   c.AmountMinor,
+		Currency:      normalizedUpper(c.Currency, "UZS"),
+		ReferenceID:   c.ChargebackID,
+		Source:        "payment.chargeback",
+		OccurredAt:    occurredAt,
+		CreatedAt:     occurredAt,
+	}
+}
+
+func buildReversalLedgerEntry(rev ReversalRecord) LedgerEntryRecord {
+	occurredAt := rev.CreatedAt
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+
+	return LedgerEntryRecord{
+		LedgerEntryID: "pledger_reversal_" + rev.ReversalID,
+		SessionID:     rev.SessionID,
+		SupplierID:    rev.SupplierID,
+		Gateway:       normalizedUpper(rev.Gateway, "UNKNOWN"),
+		EntryType:     "CHARGEBACK_REVERSAL_RECORDED",
+		AmountMinor:   rev.AmountMinor,
+		Currency:      normalizedUpper(rev.Currency, "UZS"),
+		ReferenceID:   rev.ReversalID,
+		Source:        "payment.chargeback_reversal",
+		OccurredAt:    occurredAt,
+		CreatedAt:     occurredAt,
+	}
+}
+
+func buildWebhookLedgerEntry(w WebhookRecord) LedgerEntryRecord {
+	occurredAt := w.ReceivedAt
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+
+	return LedgerEntryRecord{
+		LedgerEntryID: "pledger_webhook_" + w.WebhookID,
+		SessionID:     w.SessionID,
+		OrderID:       w.OrderID,
+		SupplierID:    w.SupplierID,
+		RetailerID:    w.RetailerID,
+		Gateway:       normalizedUpper(w.Gateway, "UNKNOWN"),
+		EntryType:     "WEBHOOK_" + normalizedUpper(w.Status, "UNKNOWN"),
+		AmountMinor:   w.AmountMinor,
+		Currency:      normalizedUpper(w.Currency, "UZS"),
+		ReferenceID:   w.TransactionID,
+		Source:        "payment.webhook",
+		OccurredAt:    occurredAt,
+		CreatedAt:     occurredAt,
+	}
+}
+
+func ledgerMutation(entry LedgerEntryRecord) *spanner.Mutation {
+	occurredAt := entry.OccurredAt
+	if occurredAt.IsZero() {
+		occurredAt = time.Now().UTC()
+	}
+	createdAt := entry.CreatedAt
+	if createdAt.IsZero() {
+		createdAt = occurredAt
+	}
+
+	return spanner.InsertOrUpdateMap("PaymentLedgerEntries", map[string]any{
+		"LedgerEntryId": entry.LedgerEntryID,
+		"SessionId":     nullIfEmpty(entry.SessionID),
+		"OrderId":       nullIfEmpty(entry.OrderID),
+		"SupplierId":    nullIfEmpty(entry.SupplierID),
+		"RetailerId":    nullIfEmpty(entry.RetailerID),
+		"Gateway":       normalizedUpper(entry.Gateway, "UNKNOWN"),
+		"EntryType":     normalizedUpper(entry.EntryType, "UNKNOWN"),
+		"AmountMinor":   entry.AmountMinor,
+		"Currency":      normalizedUpper(entry.Currency, "UZS"),
+		"ReferenceId":   nullIfEmpty(entry.ReferenceID),
+		"Source":        strings.TrimSpace(entry.Source),
+		"OccurredAt":    occurredAt.UTC(),
+		"CreatedAt":     createdAt.UTC(),
+	})
+}
+
+func normalizedUpper(v string, fallback string) string {
+	v = strings.ToUpper(strings.TrimSpace(v))
+	if v == "" {
+		return fallback
 	}
 	return v
 }

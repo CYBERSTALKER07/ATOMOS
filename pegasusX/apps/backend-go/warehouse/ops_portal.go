@@ -1,0 +1,898 @@
+package warehouse
+
+import (
+	"encoding/json"
+	"net/http"
+	"strings"
+
+	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
+	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
+)
+
+// PortalDriver is the warehouse ops driver read model.
+type PortalDriver struct {
+	DriverID                 string `json:"driver_id"`
+	Name                     string `json:"name"`
+	Phone                    string `json:"phone"`
+	TruckStatus              string `json:"truck_status"`
+	IsActive                 bool   `json:"is_active"`
+	VehicleID                string `json:"vehicle_id,omitempty"`
+	VehicleClass             string  `json:"vehicle_class,omitempty"`
+	MaxVolumeVU              float64 `json:"max_volume_vu,omitempty"`
+	VehicleIsActive          bool    `json:"vehicle_is_active,omitempty"`
+	VehicleUnavailableReason string  `json:"vehicle_unavailable_reason,omitempty"`
+}
+
+// PortalVehicle is the warehouse ops vehicle read model.
+type PortalVehicle struct {
+	VehicleID           string `json:"vehicle_id"`
+	Label               string `json:"label"`
+	LicensePlate        string `json:"license_plate"`
+	VehicleClass        string  `json:"vehicle_class"`
+	MaxVolumeVU         float64 `json:"max_volume_vu,omitempty"`
+	IsActive            bool    `json:"is_active"`
+	UnavailableReason   string `json:"unavailable_reason,omitempty"`
+	AssignedDriverID    string `json:"assigned_driver_id,omitempty"`
+	AssignedDriverName  string `json:"assigned_driver_name,omitempty"`
+}
+
+type portalStaff struct {
+	StaffID string `json:"staff_id"`
+	Name    string `json:"name"`
+	Phone   string `json:"phone"`
+	Role    string `json:"role"`
+}
+
+type portalProduct struct {
+	ProductID string `json:"product_id"`
+	Name      string `json:"name"`
+	SKU       string `json:"sku_id"`
+	Category  string `json:"category"`
+	PriceUZS  int    `json:"price_uzs"`
+	IsActive  bool   `json:"is_active"`
+}
+
+type portalManifest struct {
+	ManifestID   string `json:"manifest_id"`
+	DriverName   string `json:"driver_name"`
+	VehicleLabel string `json:"vehicle_label"`
+	StopCount    int    `json:"stop_count"`
+	CreatedAt    string `json:"created_at"`
+}
+
+type portalRetailer struct {
+	RetailerID   string `json:"retailer_id"`
+	BusinessName string `json:"business_name"`
+	OrderCount   int64  `json:"order_count"`
+	RevenueUZS   int64  `json:"revenue_uzs"`
+	LastOrderAt  string `json:"last_order_at,omitempty"`
+}
+
+type portalReturn struct {
+	ReturnID    string `json:"return_id"`
+	OrderID     string `json:"order_id"`
+	ProductName string `json:"product_name"`
+	Quantity    int    `json:"quantity"`
+	Status      string `json:"status"`
+}
+
+type portalOrder struct {
+	OrderID      string `json:"order_id"`
+	RetailerName string `json:"retailer_name"`
+	State        string `json:"state"`
+	TotalUZS     int    `json:"total_uzs"`
+}
+
+func (s *Service) ensurePortalSeed() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.portalSeeded {
+		return
+	}
+	now := s.now().Format("2006-01-02T15:04:05Z")
+	s.inventory["prod-1"] = InventoryRow{SKU: "SKU-1001", ProductName: "Mineral Water 1.5L", Quantity: 240, UpdatedAt: now}
+	s.inventory["prod-2"] = InventoryRow{SKU: "SKU-2002", ProductName: "Sunflower Oil 1L", Quantity: 12, UpdatedAt: now}
+	s.orders = []OrderRow{
+		{OrderID: "ord-wh-1", RetailerID: "ret-1", Status: "PENDING", TotalMinor: 12500000, Currency: s.currency, UpdatedAt: now},
+		{OrderID: "ord-wh-2", RetailerID: "ret-2", Status: "IN_TRANSIT", TotalMinor: 8900000, Currency: s.currency, UpdatedAt: now},
+	}
+	s.drivers = []PortalDriver{
+		{DriverID: "drv-1", Name: "Jamshid R.", Phone: "+998901111001", TruckStatus: "AVAILABLE", IsActive: true, VehicleID: "veh-1", VehicleClass: "CLASS_A", MaxVolumeVU: 50, VehicleIsActive: true},
+		{DriverID: "drv-2", Name: "Dilnoza K.", Phone: "+998901111002", TruckStatus: "IN_TRANSIT", IsActive: true, VehicleID: "veh-2", VehicleClass: "CLASS_C", MaxVolumeVU: 400, VehicleIsActive: true},
+	}
+	s.vehicles = []PortalVehicle{
+		{VehicleID: "veh-1", Label: "Van 12", LicensePlate: "01A111AA", VehicleClass: "CLASS_A", MaxVolumeVU: 50, IsActive: true, AssignedDriverID: "drv-1", AssignedDriverName: "Jamshid R."},
+		{VehicleID: "veh-2", Label: "Truck 08", LicensePlate: "01B222BB", VehicleClass: "CLASS_C", MaxVolumeVU: 400, IsActive: true, AssignedDriverID: "drv-2", AssignedDriverName: "Dilnoza K."},
+	}
+	s.staff = []portalStaff{{StaffID: "stf-1", Name: "Ops Lead", Phone: "+998901000088", Role: "WAREHOUSE_ADMIN"}}
+	s.products = []portalProduct{
+		{ProductID: "prod-1", Name: "Mineral Water 1.5L", SKU: "SKU-1001", Category: "Beverages", PriceUZS: 12000, IsActive: true},
+		{ProductID: "prod-2", Name: "Sunflower Oil 1L", SKU: "SKU-2002", Category: "Grocery", PriceUZS: 28000, IsActive: true},
+	}
+	s.manifests = []portalManifest{{ManifestID: "mf-1", DriverName: "Jamshid R.", VehicleLabel: "Van 12", StopCount: 6, CreatedAt: now}}
+	s.retailers = []portalRetailer{
+		{RetailerID: "ret-1", BusinessName: "Corner Shop 12", OrderCount: 42, RevenueUZS: 128000000, LastOrderAt: now},
+		{RetailerID: "ret-2", BusinessName: "Family Market", OrderCount: 18, RevenueUZS: 56000000, LastOrderAt: now},
+	}
+	s.returns = []portalReturn{{ReturnID: "retn-1", OrderID: "ord-wh-1", ProductName: "Mineral Water 1.5L", Quantity: 2, Status: "PENDING"}}
+	s.portalSeeded = true
+}
+
+func (s *Service) handleOpsDashboard(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	whID := warehouseIDFromRequest(r)
+
+	var active, pending, onRoute, idle, totalDrivers, totalVehicles int64
+	var lowStock int64
+
+	if s.opsOrders != nil {
+		orders, err := s.opsOrders(r.Context(), whID, 200)
+		if err == nil {
+			for _, o := range orders {
+				switch strings.ToUpper(o.Status) {
+				case "PENDING", "LOADED":
+					pending++
+					active++
+				case "IN_TRANSIT", "ARRIVED":
+					active++
+				}
+			}
+		}
+	} else {
+		s.ensurePortalSeed()
+		s.mu.RLock()
+		for _, o := range s.orders {
+			switch strings.ToUpper(o.Status) {
+			case "PENDING", "LOADED":
+				pending++
+				active++
+			case "IN_TRANSIT", "ARRIVED":
+				active++
+			}
+		}
+		s.mu.RUnlock()
+	}
+
+	if s.opsDrivers != nil {
+		drivers, err := s.opsDrivers(r.Context(), whID)
+		if err == nil {
+			totalDrivers = int64(len(drivers))
+			for _, d := range drivers {
+				if !d.IsActive {
+					continue
+				}
+				if strings.EqualFold(d.TruckStatus, "IN_TRANSIT") {
+					onRoute++
+				} else {
+					idle++
+				}
+			}
+		}
+	} else {
+		s.mu.RLock()
+		totalDrivers = int64(len(s.drivers))
+		for _, d := range s.drivers {
+			if !d.IsActive {
+				continue
+			}
+			if strings.EqualFold(d.TruckStatus, "IN_TRANSIT") {
+				onRoute++
+			} else {
+				idle++
+			}
+		}
+		s.mu.RUnlock()
+	}
+
+	if s.opsVehicles != nil {
+		vehicles, err := s.opsVehicles(r.Context(), whID)
+		if err == nil {
+			totalVehicles = int64(len(vehicles))
+		}
+	} else {
+		s.mu.RLock()
+		totalVehicles = int64(len(s.vehicles))
+		s.mu.RUnlock()
+	}
+
+	s.mu.RLock()
+	for _, row := range s.inventory {
+		if row.Quantity < 20 {
+			lowStock++
+		}
+	}
+	staffCount := int64(len(s.staff))
+	s.mu.RUnlock()
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"warehouse_id":     whID,
+		"active_orders":    active,
+		"completed_today":  int64(0),
+		"pending_dispatch": pending,
+		"drivers_on_route": onRoute,
+		"drivers_idle":     idle,
+		"total_drivers":    totalDrivers,
+		"total_vehicles":   totalVehicles,
+		"today_revenue":    int64(0),
+		"low_stock_count":  lowStock,
+		"total_staff":      staffCount,
+		"fleet_status": []map[string]any{
+			{"status": "AVAILABLE", "count": idle},
+			{"status": "IN_TRANSIT", "count": onRoute},
+		},
+	})
+}
+
+func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
+	s.ensurePortalSeed()
+	switch r.Method {
+	case http.MethodGet:
+		lowOnly := strings.EqualFold(r.URL.Query().Get("low_stock"), "true")
+		s.mu.RLock()
+		items := make([]map[string]any, 0, len(s.inventory))
+		for sku, row := range s.inventory {
+			qty := row.Quantity
+			isLow := qty < 20
+			if lowOnly && !isLow {
+				continue
+			}
+			items = append(items, map[string]any{
+				"product_id":       sku,
+				"sku_id":           row.SKU,
+				"product_name":     row.ProductName,
+				"quantity":         qty,
+				"is_low_stock":     isLow,
+				"last_updated":     row.UpdatedAt,
+			})
+		}
+		s.mu.RUnlock()
+		writeJSON(w, http.StatusOK, map[string]any{"inventory": items, "items": items})
+	case http.MethodPatch:
+		var body struct {
+			ProductID string `json:"product_id"`
+			Quantity  int64  `json:"quantity"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+		defer r.Body.Close()
+		s.mu.Lock()
+		key := body.ProductID
+		if row, ok := s.inventory[key]; ok {
+			row.Quantity = body.Quantity
+			row.UpdatedAt = s.now().Format("2006-01-02T15:04:05Z")
+			s.inventory[key] = row
+		}
+		s.mu.Unlock()
+		writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+	}
+}
+
+func (s *Service) handleOpsOrders(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/v1/warehouse/ops/orders")
+	path = strings.Trim(path, "/")
+	if path != "" {
+		s.handleOpsOrderDetail(w, r, path)
+		return
+	}
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	stateFilter := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("state")))
+	whID := warehouseIDFromRequest(r)
+
+	if s.opsOrders != nil {
+		rows, err := s.opsOrders(r.Context(), whID, 200)
+		if err == nil {
+			orders := make([]portalOrder, 0, len(rows))
+			for _, row := range rows {
+				state := strings.ToUpper(row.Status)
+				if stateFilter != "" && state != stateFilter {
+					continue
+				}
+				orders = append(orders, portalOrder{
+					OrderID:      row.OrderID,
+					RetailerName: "Retailer " + row.RetailerID,
+					State:        state,
+					TotalUZS:     int(row.TotalMinor / 100),
+				})
+			}
+			writeJSON(w, http.StatusOK, map[string]any{"orders": orders})
+			return
+		}
+		s.log.WarnContext(r.Context(), "ops orders query failed, falling back", "err", err)
+	}
+
+	s.ensurePortalSeed()
+	s.mu.RLock()
+	orders := make([]portalOrder, 0, len(s.orders))
+	for _, row := range s.orders {
+		state := strings.ToUpper(row.Status)
+		if stateFilter != "" && state != stateFilter {
+			continue
+		}
+		orders = append(orders, portalOrder{
+			OrderID:      row.OrderID,
+			RetailerName: "Retailer " + row.RetailerID,
+			State:        state,
+			TotalUZS:     int(row.TotalMinor / 100),
+		})
+	}
+	s.mu.RUnlock()
+	writeJSON(w, http.StatusOK, map[string]any{"orders": orders})
+}
+
+func (s *Service) handleOpsOrderDetail(w http.ResponseWriter, r *http.Request, orderID string) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, row := range s.orders {
+		if row.OrderID != orderID {
+			continue
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"order_id":      row.OrderID,
+			"retailer_name": "Retailer " + row.RetailerID,
+			"state":         strings.ToUpper(row.Status),
+			"total_uzs":     int(row.TotalMinor / 100),
+			"line_items": []map[string]any{
+				{"product_id": "prod-1", "product_name": "Mineral Water 1.5L", "quantity": 10, "unit_price": 12000},
+			},
+		})
+		return
+	}
+	writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
+}
+
+func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	whID := warehouseIDFromRequest(r)
+
+	undispatched := make([]map[string]any, 0)
+	windowConstrained := 0
+	dispatchRows := make([]dispatch.DispatchableOrder, 0)
+	if s.spannerClient != nil && strings.TrimSpace(s.supplierID) != "" {
+		repo := dispatch.NewRepository(s.spannerClient)
+		rows, err := repo.FetchDispatchable(r.Context(), dispatch.FetchParams{
+			SupplierID:  s.supplierID,
+			WarehouseID: whID,
+		})
+		if err == nil {
+			dispatchRows = rows
+			preview := dispatch.BuildPreview(rows)
+			undispatched = make([]map[string]any, 0, len(preview.UndispatchedOrders))
+			for _, row := range preview.UndispatchedOrders {
+				totalMinor, _ := row["total_minor"].(int64)
+				undispatched = append(undispatched, map[string]any{
+					"order_id":               row["order_id"],
+					"retailer_id":            row["retailer_id"],
+					"retailer_name":          row["retailer_name"],
+					"total_uzs":              int(totalMinor / 100),
+					"total_minor":            totalMinor,
+					"currency":               row["currency"],
+					"receiving_window_open":  row["receiving_window_open"],
+					"receiving_window_close": row["receiving_window_close"],
+					"has_receiving_window":   row["has_receiving_window"],
+					"volume_vu":              row["volume_vu"],
+				})
+			}
+			windowConstrained = preview.WindowConstrained
+		}
+	} else if s.opsOrders != nil {
+		rows, err := s.opsOrders(r.Context(), whID, 200)
+		if err == nil {
+			for _, o := range rows {
+				if strings.EqualFold(o.Status, "PENDING") || strings.EqualFold(o.Status, "LOADED") {
+					undispatched = append(undispatched, map[string]any{
+						"order_id":      o.OrderID,
+						"retailer_name": "Retailer " + o.RetailerID,
+						"total_uzs":     int(o.TotalMinor / 100),
+						"item_count":    3,
+					})
+				}
+			}
+		}
+	} else {
+		s.ensurePortalSeed()
+		s.mu.RLock()
+		for _, o := range s.orders {
+			if strings.EqualFold(o.Status, "PENDING") {
+				undispatched = append(undispatched, map[string]any{
+					"order_id":      o.OrderID,
+					"retailer_name": "Retailer " + o.RetailerID,
+					"total_uzs":     int(o.TotalMinor / 100),
+					"item_count":    3,
+				})
+			}
+		}
+		s.mu.RUnlock()
+	}
+
+	available := make([]map[string]any, 0)
+	unavailable := make([]map[string]any, 0)
+	var solveDrivers []PortalDriver
+	if s.opsDrivers != nil {
+		drivers, err := s.opsDrivers(r.Context(), whID)
+		if err == nil {
+			solveDrivers = drivers
+			for _, d := range drivers {
+				entry := map[string]any{
+					"driver_id":      d.DriverID,
+					"name":           d.Name,
+					"truck_status":   d.TruckStatus,
+					"vehicle_id":     d.VehicleID,
+					"vehicle_class":  d.VehicleClass,
+					"max_volume_vu":  d.MaxVolumeVU,
+				}
+				if strings.EqualFold(d.TruckStatus, "AVAILABLE") {
+					available = append(available, entry)
+				} else {
+					entry["unavailable_reason"] = d.TruckStatus
+					unavailable = append(unavailable, entry)
+				}
+			}
+		}
+	} else {
+		s.ensurePortalSeed()
+		s.mu.RLock()
+		solveDrivers = append([]PortalDriver(nil), s.drivers...)
+		for _, d := range s.drivers {
+			entry := map[string]any{
+				"driver_id":     d.DriverID,
+				"name":          d.Name,
+				"truck_status":  d.TruckStatus,
+				"vehicle_id":    d.VehicleID,
+				"vehicle_class": d.VehicleClass,
+				"max_volume_vu": d.MaxVolumeVU,
+			}
+			if strings.EqualFold(d.TruckStatus, "AVAILABLE") {
+				available = append(available, entry)
+			} else {
+				entry["unavailable_reason"] = d.TruckStatus
+				unavailable = append(unavailable, entry)
+			}
+		}
+		s.mu.RUnlock()
+	}
+
+	response := map[string]any{
+		"preview_ready":            true,
+		"undispatched_orders":      undispatched,
+		"available_drivers":        available,
+		"unavailable_drivers":      unavailable,
+		"window_constrained_count": windowConstrained,
+	}
+	if len(dispatchRows) > 0 && len(solveDrivers) > 0 {
+		driverInputs := make([]dispatch.FleetDriverInput, 0, len(solveDrivers))
+		for _, driver := range solveDrivers {
+			if !strings.EqualFold(driver.TruckStatus, "AVAILABLE") {
+				continue
+			}
+			driverInputs = append(driverInputs, dispatch.FleetDriverInput{
+				DriverID:     driver.DriverID,
+				DriverName:   driver.Name,
+				VehicleID:    driver.VehicleID,
+				VehicleClass: driver.VehicleClass,
+				MaxVolumeVU:  driver.MaxVolumeVU,
+				IsActive:     driver.IsActive,
+				TruckStatus:  driver.TruckStatus,
+				HomeNodeID:   whID,
+			})
+		}
+		fleet := dispatch.BuildAvailableFleet(driverInputs, nil)
+		depot := dispatch.ResolveDepot(r.Context(), s.spannerClient, whID, dispatch.DepotCoords{
+			Lat: s.fallbackDepotLat,
+			Lng: s.fallbackDepotLng,
+		})
+		job := plan.BuildSolveJob(r.Context(), s.supplierID, whID, depot, dispatchRows, fleet)
+		solve := plan.RunSolvePreview(r.Context(), s.optimizerClient, s.planCounters, job)
+		if len(solve.ProposedRoutes) > 0 {
+			response["proposed_routes"] = solve.ProposedRoutes
+		}
+		if solve.OptimizerSource != "" {
+			response["optimizer_source"] = solve.OptimizerSource
+		}
+		if len(solve.OptimizerWarnings) > 0 {
+			response["optimizer_warnings"] = solve.OptimizerWarnings
+		}
+	}
+	writeJSON(w, http.StatusOK, response)
+}
+
+func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/v1/warehouse/ops/drivers")
+	path = strings.Trim(path, "/")
+	if parts := strings.Split(path, "/"); len(parts) == 2 && parts[1] == "assign-vehicle" {
+		s.handleAssignVehicle(w, r, parts[0])
+		return
+	}
+	if path != "" {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		whID := warehouseIDFromRequest(r)
+		if s.opsDrivers != nil {
+			drivers, err := s.opsDrivers(r.Context(), whID)
+			if err == nil {
+				writeJSON(w, http.StatusOK, map[string]any{"drivers": drivers})
+				return
+			}
+			s.log.WarnContext(r.Context(), "ops drivers query failed, falling back", "err", err)
+		}
+		s.ensurePortalSeed()
+		s.mu.RLock()
+		drivers := append([]PortalDriver(nil), s.drivers...)
+		s.mu.RUnlock()
+		writeJSON(w, http.StatusOK, map[string]any{"drivers": drivers})
+	case http.MethodPost:
+		var req struct {
+			Name  string `json:"name"`
+			Phone string `json:"phone"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+		defer r.Body.Close()
+		driver := PortalDriver{
+			DriverID:    "drv-" + uuid.NewString()[:8],
+			Name:        strings.TrimSpace(req.Name),
+			Phone:       strings.TrimSpace(req.Phone),
+			TruckStatus: "AVAILABLE",
+			IsActive:    true,
+		}
+		s.mu.Lock()
+		s.drivers = append(s.drivers, driver)
+		s.mu.Unlock()
+		writeJSON(w, http.StatusCreated, map[string]any{
+			"driver_id": driver.DriverID,
+			"pin":       "4321",
+		})
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+	}
+}
+
+func (s *Service) handleAssignVehicle(w http.ResponseWriter, r *http.Request, driverID string) {
+	if r.Method != http.MethodPatch {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	var req struct {
+		VehicleID string `json:"vehicle_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	defer r.Body.Close()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.drivers {
+		if s.drivers[i].DriverID != driverID {
+			continue
+		}
+		s.drivers[i].VehicleID = strings.TrimSpace(req.VehicleID)
+		writeJSON(w, http.StatusOK, map[string]string{"status": "assigned", "driver_id": driverID})
+		return
+	}
+	writeJSON(w, http.StatusNotFound, map[string]string{"error": "driver_not_found"})
+}
+
+func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/v1/warehouse/ops/vehicles")
+	path = strings.Trim(path, "/")
+	if path != "" {
+		s.handleOpsVehiclePatch(w, r, path)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		whID := warehouseIDFromRequest(r)
+		if s.opsVehicles != nil {
+			vehicles, err := s.opsVehicles(r.Context(), whID)
+			if err == nil {
+				writeJSON(w, http.StatusOK, map[string]any{"vehicles": vehicles})
+				return
+			}
+			s.log.WarnContext(r.Context(), "ops vehicles query failed, falling back", "err", err)
+		}
+		s.ensurePortalSeed()
+		s.mu.RLock()
+		vehicles := append([]PortalVehicle(nil), s.vehicles...)
+		s.mu.RUnlock()
+		writeJSON(w, http.StatusOK, map[string]any{"vehicles": vehicles})
+	case http.MethodPost:
+		var req struct {
+			Label        string `json:"label"`
+			LicensePlate string `json:"license_plate"`
+			VehicleClass string `json:"vehicle_class"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+		defer r.Body.Close()
+		vehicle := PortalVehicle{
+			VehicleID:    "veh-" + uuid.NewString()[:8],
+			Label:        req.Label,
+			LicensePlate: req.LicensePlate,
+			VehicleClass: req.VehicleClass,
+			IsActive:     true,
+		}
+		s.mu.Lock()
+		s.vehicles = append(s.vehicles, vehicle)
+		s.mu.Unlock()
+		writeJSON(w, http.StatusCreated, vehicle)
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+	}
+}
+
+func (s *Service) handleOpsVehiclePatch(w http.ResponseWriter, r *http.Request, vehicleID string) {
+	if r.Method != http.MethodPatch {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	var req struct {
+		IsActive            bool   `json:"is_active"`
+		UnavailableReason   string `json:"unavailable_reason"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	defer r.Body.Close()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.vehicles {
+		if s.vehicles[i].VehicleID != vehicleID {
+			continue
+		}
+		s.vehicles[i].IsActive = req.IsActive
+		s.vehicles[i].UnavailableReason = strings.TrimSpace(req.UnavailableReason)
+		writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "vehicle_id": vehicleID})
+		return
+	}
+	writeJSON(w, http.StatusNotFound, map[string]string{"error": "vehicle_not_found"})
+}
+
+func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
+	s.ensurePortalSeed()
+	if r.Method == http.MethodGet {
+		s.mu.RLock()
+		staff := append([]portalStaff(nil), s.staff...)
+		s.mu.RUnlock()
+		writeJSON(w, http.StatusOK, map[string]any{"staff": staff})
+		return
+	}
+	if r.Method == http.MethodPost {
+		var req struct {
+			Name  string `json:"name"`
+			Phone string `json:"phone"`
+			Role  string `json:"role"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+		defer r.Body.Close()
+		row := portalStaff{StaffID: "stf-" + uuid.NewString()[:8], Name: req.Name, Phone: req.Phone, Role: req.Role}
+		s.mu.Lock()
+		s.staff = append(s.staff, row)
+		s.mu.Unlock()
+		writeJSON(w, http.StatusCreated, map[string]any{"staff_id": row.StaffID, "pin": "5678"})
+		return
+	}
+	writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+}
+
+func (s *Service) HandleOpsProducts(w http.ResponseWriter, r *http.Request) {
+	s.ensurePortalSeed()
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	s.mu.RLock()
+	products := append([]portalProduct(nil), s.products...)
+	s.mu.RUnlock()
+	writeJSON(w, http.StatusOK, map[string]any{"products": products})
+}
+
+func (s *Service) HandleOpsManifests(w http.ResponseWriter, r *http.Request) {
+	s.ensurePortalSeed()
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	s.mu.RLock()
+	manifests := append([]portalManifest(nil), s.manifests...)
+	s.mu.RUnlock()
+	writeJSON(w, http.StatusOK, map[string]any{"manifests": manifests})
+}
+
+func (s *Service) HandleOpsCRM(w http.ResponseWriter, r *http.Request) {
+	s.ensurePortalSeed()
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	s.mu.RLock()
+	retailers := append([]portalRetailer(nil), s.retailers...)
+	s.mu.RUnlock()
+	writeJSON(w, http.StatusOK, map[string]any{"retailers": retailers})
+}
+
+func (s *Service) HandleOpsReturns(w http.ResponseWriter, r *http.Request) {
+	s.ensurePortalSeed()
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	s.mu.RLock()
+	returns := append([]portalReturn(nil), s.returns...)
+	s.mu.RUnlock()
+	writeJSON(w, http.StatusOK, map[string]any{"returns": returns})
+}
+
+func (s *Service) HandleOpsAnalytics(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	whID := warehouseIDFromRequest(r)
+	period := strings.TrimSpace(r.URL.Query().Get("period"))
+	if period == "" {
+		period = "7d"
+	}
+
+	var totalOrders, completedOrders, cancelledOrders int64
+	var totalRevenue int64
+	if s.analyticsQuery != nil {
+		counts, err := s.analyticsQuery(r.Context(), whID)
+		if err == nil {
+			totalOrders = counts.TotalOrders
+			completedOrders = counts.CompletedOrders
+			cancelledOrders = counts.CancelledOrders
+			totalRevenue = counts.TotalRevenue
+		} else {
+			s.log.WarnContext(r.Context(), "warehouse analytics query failed", "err", err, "warehouse_id", whID)
+		}
+	}
+
+	var avgOrderValue float64
+	if totalOrders > 0 {
+		avgOrderValue = float64(totalRevenue) / float64(totalOrders)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"warehouse_id":       whID,
+		"period":             period,
+		"total_orders":       totalOrders,
+		"total_revenue":      totalRevenue,
+		"completed_orders":   completedOrders,
+		"cancelled_orders":   cancelledOrders,
+		"avg_order_value":    avgOrderValue,
+		"top_products":       []any{},
+		"daily_breakdown":    []any{},
+		"fleet_utilization":  map[string]any{"utilization_pct": 0},
+		"import_freshness":   map[string]any{"applied_rows_30d": 0, "applied_skus_30d": 0, "quantity_delta_30d": 0},
+		"import_anomaly_queue": map[string]any{"open_rows_30d": 0},
+	})
+}
+
+func (s *Service) HandleOpsTreasury(w http.ResponseWriter, r *http.Request) {
+	s.ensurePortalSeed()
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	view := strings.TrimSpace(r.URL.Query().Get("view"))
+	if view == "invoices" {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"invoices": []map[string]any{
+				{"invoice_id": "inv-1", "status": "PAID", "amount_uzs": 45000000, "payout_uzs": 42750000},
+			},
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"invoiced_uzs":    120000000,
+		"paid_uzs":        98000000,
+		"outstanding_uzs": 22000000,
+	})
+}
+
+func (s *Service) HandleOpsPaymentConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"gateways": []map[string]any{
+			{"provider": "GLOBAL_PAY", "mode": "SANDBOX", "is_active": true},
+			{"provider": "CASH", "mode": "LIVE", "is_active": true},
+		},
+	})
+}
+
+func (s *Service) HandleSupplyRequestByID(w http.ResponseWriter, r *http.Request) {
+	warehouseID := warehouseIDFromRequest(r)
+	id := strings.TrimPrefix(r.URL.Path, "/v1/warehouse/supply-requests/")
+	id = strings.Trim(id, "/")
+	if id == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "request_id_required"})
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		if s.repo == nil {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "request_not_found"})
+			return
+		}
+		rows, err := s.repo.ListSupplyRequests(r.Context(), warehouseID, 200)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supply_requests_failed"})
+			return
+		}
+		for _, req := range rows {
+			if req.RequestID == id {
+				writeJSON(w, http.StatusOK, supplyRequestIOSPayload(req))
+				return
+			}
+		}
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "request_not_found"})
+	case http.MethodPatch:
+		var body struct {
+			Action string `json:"action"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+		defer r.Body.Close()
+		if !strings.EqualFold(body.Action, "CANCEL") {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": "unsupported_action"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"request_id": id, "state": "CANCELLED"})
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+	}
+}
+
+func supplyRequestIOSPayload(req SupplyRequest) map[string]any {
+	state := strings.TrimSpace(req.State)
+	if state == "" {
+		state = strings.TrimSpace(req.Status)
+	}
+	return map[string]any{
+		"request_id":              req.RequestID,
+		"warehouse_id":            req.WarehouseID,
+		"factory_id":              "fc-demo-1",
+		"supplier_id":             req.SupplierID,
+		"state":                   state,
+		"priority":                "NORMAL",
+		"total_volume_vu":         0,
+		"notes":                   "",
+		"created_by":              req.RequestedBy,
+		"created_at":              req.CreatedAt,
+		"updated_at":              req.UpdatedAt,
+	}
+}

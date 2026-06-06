@@ -1,15 +1,19 @@
 package supplier
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 )
 
 // InventoryItem is the wire/storage shape for supplier inventory rows.
@@ -41,17 +45,51 @@ type InventoryAuditEntry struct {
 	Timestamp   string `json:"timestamp"`
 }
 
+// SupplierOrderLocation is the supplier-safe driver last-location projection.
+type SupplierOrderLocation struct {
+	DriverID          string   `json:"driver_id"`
+	SupplierID        string   `json:"supplier_id"`
+	Lat               float64  `json:"lat"`
+	Lng               float64  `json:"lng"`
+	Latitude          float64  `json:"latitude"`
+	Longitude         float64  `json:"longitude"`
+	Velocity          *float64 `json:"velocity,omitempty"`
+	Heading           *float64 `json:"heading,omitempty"`
+	ReportedAt        string   `json:"reported_at"`
+	ReceivedAt        string   `json:"received_at"`
+	StaleAfterSeconds int      `json:"stale_after_seconds"`
+}
+
 // SupplierOrder is the lightweight supplier vetting/order queue shape.
 type SupplierOrder struct {
-	OrderID    string `json:"order_id"`
-	RetailerID string `json:"retailer_id"`
-	Status     string `json:"status"`
-	Decision   string `json:"decision,omitempty"`
-	Note       string `json:"note,omitempty"`
-	TotalMinor int64  `json:"total_minor"`
-	Currency   string `json:"currency"`
-	CreatedAt  string `json:"created_at"`
-	UpdatedAt  string `json:"updated_at"`
+	OrderID               string                 `json:"order_id"`
+	SupplierID            string                 `json:"supplier_id,omitempty"`
+	RetailerID            string                 `json:"retailer_id"`
+	WarehouseID           string                 `json:"warehouse_id,omitempty"`
+	DriverID              string                 `json:"driver_id,omitempty"`
+	VehicleID             string                 `json:"vehicle_id,omitempty"`
+	RouteID               string                 `json:"route_id,omitempty"`
+	ManifestID            string                 `json:"manifest_id,omitempty"`
+	Status                string                 `json:"status"`
+	TrackingStatus        string                 `json:"tracking_status,omitempty"`
+	Decision              string                 `json:"decision,omitempty"`
+	Note                  string                 `json:"note,omitempty"`
+	TotalMinor            int64                  `json:"total_minor"`
+	Currency              string                 `json:"currency"`
+	LiveLocationAvailable bool                   `json:"live_location_available"`
+	DriverLocation        *SupplierOrderLocation `json:"driver_location,omitempty"`
+	CreatedAt             string                 `json:"created_at"`
+	UpdatedAt             string                 `json:"updated_at"`
+}
+
+type supplierOrderReader interface {
+	ListOrders(ctx context.Context, supplierID string, limit, offset int) ([]SupplierOrder, error)
+	CountOrders(ctx context.Context, supplierID string) (int, error)
+}
+
+type supplierOrderLocationLookup struct {
+	location telemetry.DriverLocation
+	found    bool
 }
 
 type configureRequest struct {
@@ -89,11 +127,31 @@ type supplierDashboardResponse struct {
 	UpdatedAt     string `json:"updated_at"`
 }
 
-type supplierEarningsResponse struct {
-	Currency   string `json:"currency"`
-	TodayMinor int64  `json:"today_minor"`
-	WeekMinor  int64  `json:"week_minor"`
-	MonthMinor int64  `json:"month_minor"`
+type SupplierEarningsResponse struct {
+	Currency        string `json:"currency"`
+	TodayMinor      int64  `json:"today_minor"`
+	WeekMinor       int64  `json:"week_minor"`
+	MonthMinor      int64  `json:"month_minor"`
+	AuthoritySource string `json:"authority_source,omitempty"`
+	Authoritative   bool   `json:"authoritative"`
+	UpdatedAt       string `json:"updated_at,omitempty"`
+}
+
+type supplierPricingRuleResponse struct {
+	SupplierID          string `json:"supplier_id"`
+	BaseMarkupBps       int64  `json:"base_markup_bps"`
+	RetailerDiscountBps int64  `json:"retailer_discount_bps"`
+	MinMarginBps        int64  `json:"min_margin_bps"`
+	Currency            string `json:"currency"`
+	RuleVersion         int64  `json:"rule_version"`
+	UpdatedAt           string `json:"updated_at"`
+}
+
+type supplierPricingRuleUpdateRequest struct {
+	BaseMarkupBps       *int64 `json:"base_markup_bps,omitempty"`
+	RetailerDiscountBps *int64 `json:"retailer_discount_bps,omitempty"`
+	MinMarginBps        *int64 `json:"min_margin_bps,omitempty"`
+	Currency            string `json:"currency,omitempty"`
 }
 
 type topologyWarehouseInput struct {
@@ -128,6 +186,8 @@ type vetOrderRequest struct {
 	Currency   string `json:"currency,omitempty"`
 }
 
+const maxPricingBps = 10000
+
 // HandleConfigure marks onboarding as configured/registered and supports the
 // supplier portal completion handoff.
 func (s *Service) HandleConfigure(w http.ResponseWriter, r *http.Request) {
@@ -135,18 +195,19 @@ func (s *Service) HandleConfigure(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	sid := s.scopedSupplierID(r)
 
 	var req configureRequest
 	_ = json.NewDecoder(r.Body).Decode(&req)
 	defer r.Body.Close()
 
-	current, found, err := s.repo.GetProfile(r.Context(), s.supplierID)
+	current, found, err := s.repo.GetProfile(r.Context(), sid)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_failed"})
 		return
 	}
 	if !found {
-		current = Profile{SupplierID: s.supplierID, Country: s.country, Currency: s.currency}
+		current = Profile{SupplierID: sid, Country: s.country, Currency: s.currency}
 	}
 	now := s.now()
 	if strings.TrimSpace(req.LegalName) != "" {
@@ -155,9 +216,9 @@ func (s *Service) HandleConfigure(w http.ResponseWriter, r *http.Request) {
 	current.IsRegistered = true
 	current.UpdatedAt = now
 	if err := s.repo.UpdateProfile(r.Context(), current, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, s.supplierID, events.TopicMain, supplierUpdatedEvent{
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, sid, events.TopicMain, supplierUpdatedEvent{
 			Type:         events.EventSupplierUpdated,
-			SupplierID:   s.supplierID,
+			SupplierID:   sid,
 			LegalName:    current.LegalName,
 			ContactName:  current.ContactName,
 			Email:        current.Email,
@@ -174,10 +235,10 @@ func (s *Service) HandleConfigure(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.cache != nil {
-		s.cache.Invalidate(r.Context(), supplierCacheKey(s.supplierID))
+		s.cache.Invalidate(r.Context(), supplierCacheKey(s.scopedSupplierID(r)))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"supplier_id":   s.supplierID,
+		"supplier_id":   sid,
 		"is_registered": current.IsRegistered,
 		"is_configured": current.IsConfigured,
 		"completed_at":  now.Format(time.RFC3339Nano),
@@ -197,13 +258,14 @@ func (s *Service) HandleProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
-	current, found, err := s.repo.GetProfile(r.Context(), s.supplierID)
+	sid := s.scopedSupplierID(r)
+	current, found, err := s.repo.GetProfile(r.Context(), sid)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_failed"})
 		return
 	}
 	if !found {
-		current = Profile{SupplierID: s.supplierID, Country: s.country, Currency: s.currency}
+		current = Profile{SupplierID: sid, Country: s.country, Currency: s.currency}
 	}
 	updated := ""
 	if !current.UpdatedAt.IsZero() {
@@ -226,6 +288,7 @@ func (s *Service) handleGetProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
+	sid := s.scopedSupplierID(r)
 	var req supplierProfileUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -233,13 +296,13 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	current, found, err := s.repo.GetProfile(r.Context(), s.supplierID)
+	current, found, err := s.repo.GetProfile(r.Context(), sid)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_failed"})
 		return
 	}
 	if !found {
-		current = Profile{SupplierID: s.supplierID, Country: s.country, Currency: s.currency}
+		current = Profile{SupplierID: sid, Country: s.country, Currency: s.currency}
 	}
 	if strings.TrimSpace(req.LegalName) != "" {
 		current.LegalName = strings.TrimSpace(req.LegalName)
@@ -259,9 +322,9 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 	now := s.now()
 	current.UpdatedAt = now
 	if err := s.repo.UpdateProfile(r.Context(), current, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, s.supplierID, events.TopicMain, supplierUpdatedEvent{
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, sid, events.TopicMain, supplierUpdatedEvent{
 			Type:         events.EventSupplierUpdated,
-			SupplierID:   s.supplierID,
+			SupplierID:   sid,
 			LegalName:    current.LegalName,
 			ContactName:  current.ContactName,
 			Email:        current.Email,
@@ -278,7 +341,7 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.cache != nil {
-		s.cache.Invalidate(r.Context(), supplierCacheKey(s.supplierID))
+		s.cache.Invalidate(r.Context(), supplierCacheKey(s.scopedSupplierID(r)))
 	}
 	s.handleGetProfile(w, r)
 }
@@ -296,14 +359,15 @@ func (s *Service) HandleTopology(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleTopologyGet(w http.ResponseWriter, r *http.Request) {
-	topology, err := s.repo.GetTopology(r.Context(), s.supplierID)
+	sid := s.scopedSupplierID(r)
+	topology, err := s.repo.GetTopology(r.Context(), sid)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_topology_failed"})
 		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"supplier_id": s.supplierID,
+		"supplier_id": sid,
 		"warehouses":  topology.Warehouses,
 		"factories":   topology.Factories,
 		"updated_at":  s.now().Format(time.RFC3339Nano),
@@ -311,6 +375,7 @@ func (s *Service) handleTopologyGet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
+	sid := s.scopedSupplierID(r)
 	var req topologyUpdateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -396,20 +461,20 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	current, found, err := s.repo.GetProfile(r.Context(), s.supplierID)
+	current, found, err := s.repo.GetProfile(r.Context(), sid)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_failed"})
 		return
 	}
 	if !found {
-		current = Profile{SupplierID: s.supplierID, Country: s.country, Currency: s.currency, IsRegistered: true}
+		current = Profile{SupplierID: sid, Country: s.country, Currency: s.currency, IsRegistered: true}
 	}
 
 	now := s.now()
-	if err := s.repo.ReplaceTopology(r.Context(), s.supplierID, topology, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, s.supplierID, events.TopicMain, supplierUpdatedEvent{
+	if err := s.repo.ReplaceTopology(r.Context(), sid, topology, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, sid, events.TopicMain, supplierUpdatedEvent{
 			Type:         events.EventSupplierUpdated,
-			SupplierID:   s.supplierID,
+			SupplierID:   sid,
 			LegalName:    current.LegalName,
 			ContactName:  current.ContactName,
 			Email:        current.Email,
@@ -427,10 +492,179 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if s.cache != nil {
-		s.cache.Invalidate(r.Context(), supplierCacheKey(s.supplierID))
+		s.cache.Invalidate(r.Context(), supplierCacheKey(s.scopedSupplierID(r)))
 	}
 
 	s.handleTopologyGet(w, r)
+}
+
+// HandlePricingRules supports GET/PATCH /v1/supplier/pricing/rules.
+func (s *Service) HandlePricingRules(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		s.handlePricingRuleGet(w, r)
+	case http.MethodPatch:
+		s.handlePricingRulePatch(w, r)
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+	}
+}
+
+func (s *Service) handlePricingRuleGet(w http.ResponseWriter, r *http.Request) {
+	sid := s.scopedSupplierID(r)
+	rule, found, err := s.repo.GetPricingRule(r.Context(), sid)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_pricing_failed"})
+		return
+	}
+
+	if !found {
+		currency := s.currency
+		if current, profileFound, profileErr := s.repo.GetProfile(r.Context(), sid); profileErr == nil && profileFound {
+			if strings.TrimSpace(current.Currency) != "" {
+				currency = current.Currency
+			}
+		}
+		writeJSON(w, http.StatusOK, supplierPricingRuleResponse{
+			SupplierID:          sid,
+			BaseMarkupBps:       0,
+			RetailerDiscountBps: 0,
+			MinMarginBps:        0,
+			Currency:            currency,
+			RuleVersion:         0,
+			UpdatedAt:           "",
+		})
+		return
+	}
+
+	updatedAt := ""
+	if !rule.UpdatedAt.IsZero() {
+		updatedAt = rule.UpdatedAt.Format(time.RFC3339Nano)
+	}
+	writeJSON(w, http.StatusOK, supplierPricingRuleResponse{
+		SupplierID:          rule.SupplierID,
+		BaseMarkupBps:       rule.BaseMarkupBps,
+		RetailerDiscountBps: rule.RetailerDiscountBps,
+		MinMarginBps:        rule.MinMarginBps,
+		Currency:            rule.Currency,
+		RuleVersion:         rule.RuleVersion,
+		UpdatedAt:           updatedAt,
+	})
+}
+
+func (s *Service) handlePricingRulePatch(w http.ResponseWriter, r *http.Request) {
+	sid := s.scopedSupplierID(r)
+	var req supplierPricingRuleUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	defer r.Body.Close()
+
+	if req.BaseMarkupBps == nil && req.RetailerDiscountBps == nil && req.MinMarginBps == nil && strings.TrimSpace(req.Currency) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no_pricing_fields_provided"})
+		return
+	}
+
+	currentProfile, profileFound, err := s.repo.GetProfile(r.Context(), sid)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_failed"})
+		return
+	}
+	if !profileFound {
+		currentProfile = Profile{SupplierID: sid, Country: s.country, Currency: s.currency}
+	}
+
+	rule, found, err := s.repo.GetPricingRule(r.Context(), sid)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_pricing_failed"})
+		return
+	}
+	if !found {
+		rule = SupplierPricingRule{
+			SupplierID: sid,
+			Currency:   currentProfile.Currency,
+		}
+		if strings.TrimSpace(rule.Currency) == "" {
+			rule.Currency = s.currency
+		}
+	}
+
+	if req.BaseMarkupBps != nil {
+		rule.BaseMarkupBps = *req.BaseMarkupBps
+	}
+	if req.RetailerDiscountBps != nil {
+		rule.RetailerDiscountBps = *req.RetailerDiscountBps
+	}
+	if req.MinMarginBps != nil {
+		rule.MinMarginBps = *req.MinMarginBps
+	}
+	if strings.TrimSpace(req.Currency) != "" {
+		rule.Currency = strings.ToUpper(strings.TrimSpace(req.Currency))
+	}
+
+	if rule.BaseMarkupBps < 0 || rule.BaseMarkupBps > maxPricingBps {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "base_markup_bps_out_of_range"})
+		return
+	}
+	if rule.RetailerDiscountBps < 0 || rule.RetailerDiscountBps > maxPricingBps {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "retailer_discount_bps_out_of_range"})
+		return
+	}
+	if rule.RetailerDiscountBps > rule.BaseMarkupBps {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "retailer_discount_exceeds_base_markup"})
+		return
+	}
+	if rule.MinMarginBps < 0 || rule.MinMarginBps > maxPricingBps {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "min_margin_bps_out_of_range"})
+		return
+	}
+	if rule.MinMarginBps > rule.BaseMarkupBps {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "min_margin_exceeds_base_markup"})
+		return
+	}
+	if len(strings.TrimSpace(rule.Currency)) != 3 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "currency_must_be_iso4217"})
+		return
+	}
+
+	updatedBy := "supplier_portal"
+	if claims, ok := auth.FromContext(r.Context()); ok && strings.TrimSpace(claims.Subject) != "" {
+		updatedBy = strings.TrimSpace(claims.Subject)
+	}
+	if strings.TrimSpace(updatedBy) == "" {
+		updatedBy = "supplier_portal"
+	}
+
+	rule.SupplierID = sid
+	rule.UpdatedBy = updatedBy
+	rule.UpdatedAt = s.now()
+
+	if err := s.repo.UpsertPricingRule(r.Context(), rule, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, sid, events.TopicMain, supplierUpdatedEvent{
+			Type:         events.EventSupplierUpdated,
+			SupplierID:   sid,
+			LegalName:    currentProfile.LegalName,
+			ContactName:  currentProfile.ContactName,
+			Email:        currentProfile.Email,
+			Phone:        currentProfile.Phone,
+			Country:      currentProfile.Country,
+			Categories:   currentProfile.Categories,
+			IsRegistered: currentProfile.IsRegistered,
+			IsConfigured: currentProfile.IsConfigured,
+			Action:       "PRICING_RULES_UPDATED",
+			Timestamp:    rule.UpdatedAt.Format(time.RFC3339Nano),
+		})
+	}); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_supplier_pricing_failed"})
+		return
+	}
+
+	if s.cache != nil {
+		s.cache.Invalidate(r.Context(), supplierCacheKey(s.scopedSupplierID(r)))
+	}
+
+	s.handlePricingRuleGet(w, r)
 }
 
 // HandleDashboard returns supplier-facing operational counters.
@@ -439,26 +673,51 @@ func (s *Service) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	current, found, _ := s.repo.GetProfile(r.Context(), s.supplierID)
+	sid := s.scopedSupplierID(r)
+	current, found, _ := s.repo.GetProfile(r.Context(), sid)
 	if !found {
-		current = Profile{SupplierID: s.supplierID, Country: s.country, Currency: s.currency}
+		current = Profile{SupplierID: sid, Country: s.country, Currency: s.currency}
 	}
-	s.mu.RLock()
-	invCount := len(s.inventory)
-	pending := 0
-	for _, o := range s.orders {
-		if strings.EqualFold(o.Status, "PENDING") || strings.EqualFold(o.Status, "AWAITING_REVIEW") {
-			pending++
+	invCount := 0
+	if s.inventorySvc != nil {
+		if levels, err := s.inventorySvc.ListBySupplier(r.Context(), sid); err == nil {
+			invCount = len(levels)
 		}
 	}
-	s.mu.RUnlock()
-	writeJSON(w, http.StatusOK, supplierDashboardResponse{
-		SupplierID:    s.supplierID,
+
+	pending := 0
+	if s.dashboardQuery != nil {
+		counts, err := s.dashboardQuery(r.Context(), sid)
+		if err == nil {
+			pending = counts.PendingOrders
+		} else {
+			s.log.WarnContext(r.Context(), "dashboard count query failed, falling back", "err", err)
+		}
+	}
+	if pending == 0 && s.dashboardQuery == nil {
+		s.mu.RLock()
+		for _, o := range s.orders {
+			if strings.EqualFold(o.Status, "PENDING") || strings.EqualFold(o.Status, "AWAITING_REVIEW") {
+				pending++
+			}
+		}
+		s.mu.RUnlock()
+	}
+
+	base := supplierDashboardResponse{
+		SupplierID:    sid,
 		IsConfigured:  current.IsConfigured,
 		InventorySKUs: invCount,
 		PendingOrders: pending,
 		UpdatedAt:     s.now().Format(time.RFC3339Nano),
-	})
+	}
+	detail, err := s.buildSupplierDashboardDetail(r.Context(), sid, base)
+	if err != nil {
+		s.log.WarnContext(r.Context(), "supplier dashboard detail failed", "supplier_id", sid, "err", err)
+		writeJSON(w, http.StatusOK, base)
+		return
+	}
+	writeJSON(w, http.StatusOK, detail)
 }
 
 // HandleEarnings returns scaffold supplier earnings summaries.
@@ -467,7 +726,22 @@ func (s *Service) HandleEarnings(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	sid := s.scopedSupplierID(r)
 	now := s.now()
+	if s.earningsLookup != nil {
+		resp, err := s.earningsLookup(r.Context(), sid, s.currency, now)
+		if err == nil {
+			if strings.TrimSpace(resp.Currency) == "" {
+				resp.Currency = s.currency
+			}
+			if strings.TrimSpace(resp.UpdatedAt) == "" {
+				resp.UpdatedAt = now.Format(time.RFC3339Nano)
+			}
+			writeJSON(w, http.StatusOK, resp)
+			return
+		}
+		s.log.Warn("supplier earnings authority lookup failed", "err", err, "supplier_id", sid)
+	}
 	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	weekStart := dayStart.AddDate(0, 0, -int(dayStart.Weekday()))
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
@@ -494,11 +768,14 @@ func (s *Service) HandleEarnings(w http.ResponseWriter, r *http.Request) {
 	}
 	s.mu.RUnlock()
 
-	writeJSON(w, http.StatusOK, supplierEarningsResponse{
-		Currency:   s.currency,
-		TodayMinor: today,
-		WeekMinor:  week,
-		MonthMinor: month,
+	writeJSON(w, http.StatusOK, SupplierEarningsResponse{
+		Currency:        s.currency,
+		TodayMinor:      today,
+		WeekMinor:       week,
+		MonthMinor:      month,
+		AuthoritySource: "scaffold_orders",
+		Authoritative:   false,
+		UpdatedAt:       now.Format(time.RFC3339Nano),
 	})
 }
 
@@ -514,15 +791,19 @@ func (s *Service) HandleInventory(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Service) handleInventoryList(w http.ResponseWriter, _ *http.Request) {
-	s.mu.RLock()
-	items := make([]InventoryItem, 0, len(s.inventory))
-	for _, it := range s.inventory {
-		items = append(items, it)
+func (s *Service) handleInventoryList(w http.ResponseWriter, r *http.Request) {
+	supplierID := s.scopedSupplierID(r)
+	if s.inventorySvc == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"items": []any{}})
+		return
 	}
-	s.mu.RUnlock()
-	sort.Slice(items, func(i, j int) bool { return items[i].SKU < items[j].SKU })
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	levels, err := s.inventorySvc.ListBySupplier(r.Context(), supplierID)
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "list inventory failed", "err", err, "supplier_id", supplierID)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": levels})
 }
 
 func (s *Service) handleInventoryPatch(w http.ResponseWriter, r *http.Request) {
@@ -533,73 +814,45 @@ func (s *Service) handleInventoryPatch(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	sku := strings.TrimSpace(req.SKUID)
-	if sku == "" {
-		sku = strings.TrimSpace(req.SKU)
+	invID := strings.TrimSpace(req.SKUID)
+	if invID == "" {
+		invID = strings.TrimSpace(req.SKU)
 	}
-	if sku == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "sku_id_or_sku_required"})
+	if invID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "inventory_id_required"})
 		return
 	}
-	if req.Quantity == nil && req.QuantityDelta == nil {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "quantity_or_quantity_delta_required"})
+	if req.QuantityDelta == nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "quantity_delta_required"})
 		return
 	}
-
-	now := s.now()
-	s.mu.Lock()
-	item := s.inventory[sku]
-	if item.SKU == "" {
-		item.SKU = sku
-		if strings.TrimSpace(req.ProductName) != "" {
-			item.ProductName = strings.TrimSpace(req.ProductName)
-		} else {
-			item.ProductName = sku
-		}
+	if s.inventorySvc == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "inventory_unavailable"})
+		return
 	}
-	if strings.TrimSpace(req.ProductName) != "" {
-		item.ProductName = strings.TrimSpace(req.ProductName)
-	}
-	before := item.Quantity
+	version := int64(0)
 	if req.Quantity != nil {
-		item.Quantity = *req.Quantity
-	} else {
-		item.Quantity += *req.QuantityDelta
-		if item.Quantity < 0 {
-			item.Quantity = 0
-		}
+		version = *req.Quantity
 	}
-	item.UpdatedAt = now.Format(time.RFC3339Nano)
-	s.inventory[sku] = item
-	delta := item.Quantity - before
-	entry := InventoryAuditEntry{
-		SKU:         item.SKU,
-		ProductName: item.ProductName,
-		Before:      before,
-		After:       item.Quantity,
-		Delta:       delta,
-		Reason:      strings.TrimSpace(req.Reason),
-		Timestamp:   now.Format(time.RFC3339Nano),
+	if err := s.inventorySvc.AdjustStock(r.Context(), invID, *req.QuantityDelta, version); err != nil {
+		s.log.ErrorContext(r.Context(), "adjust stock failed", "err", err, "inventory_id", invID)
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "version_conflict_or_internal"})
+		return
 	}
-	s.inventoryAudit = append(s.inventoryAudit, entry)
-	s.mu.Unlock()
-
 	if s.cache != nil {
-		s.cache.Invalidate(r.Context(), "supplier:inventory:"+s.supplierID)
+		s.cache.Invalidate(r.Context(), "supplier:inventory:"+s.scopedSupplierID(r))
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"item": item, "audit": entry})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// HandleInventoryAudit returns additive inventory mutation history.
+// HandleInventoryAudit returns inventory levels (audit trail replaced by
+// Spanner version history).
 func (s *Service) HandleInventoryAudit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	s.mu.RLock()
-	audit := append([]InventoryAuditEntry(nil), s.inventoryAudit...)
-	s.mu.RUnlock()
-	writeJSON(w, http.StatusOK, map[string]any{"entries": audit})
+	writeJSON(w, http.StatusOK, map[string]any{"entries": []any{}})
 }
 
 // HandleOrders returns supplier queue entries for vetting/review.
@@ -608,18 +861,182 @@ func (s *Service) HandleOrders(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
+	sid := s.scopedSupplierID(r)
 	statusFilter := strings.TrimSpace(r.URL.Query().Get("status"))
-	s.mu.RLock()
+	groupFilter := strings.TrimSpace(r.URL.Query().Get("filter"))
+	limit, offset := parseListPagination(r, 25, 100)
+	orders, total, err := s.listSupplierOrdersPage(r.Context(), sid, statusFilter, groupFilter, limit, offset)
+	if err != nil {
+		s.log.Warn("supplier orders load failed", "supplier_id", sid, "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_supplier_orders_failed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"orders": orders,
+		"total":  total,
+		"limit":  limit,
+		"offset": offset,
+	})
+}
+
+func parseListPagination(r *http.Request, defaultLimit, maxLimit int) (limit, offset int) {
+	limit = defaultLimit
+	offset = 0
+	if v := strings.TrimSpace(r.URL.Query().Get("limit")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	if v := strings.TrimSpace(r.URL.Query().Get("offset")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+	return limit, offset
+}
+
+func orderMatchesListFilter(order SupplierOrder, statusFilter, groupFilter string) bool {
+	if statusFilter != "" {
+		return strings.EqualFold(order.Status, statusFilter)
+	}
+	switch strings.ToUpper(groupFilter) {
+	case "ACTIVE":
+		st := strings.ToUpper(strings.TrimSpace(order.Status))
+		return st != "COMPLETED" && st != "CANCELLED" && st != "REJECTED"
+	case "COMPLETED":
+		return strings.EqualFold(order.Status, "COMPLETED")
+	case "CANCELLED":
+		st := strings.ToUpper(strings.TrimSpace(order.Status))
+		return st == "CANCELLED" || st == "REJECTED"
+	case "RETURNS":
+		st := strings.ToUpper(strings.TrimSpace(order.Status))
+		dec := strings.ToUpper(strings.TrimSpace(order.Decision))
+		return st == "CANCELLED" || st == "REJECTED" || dec == "REJECTED"
+	default:
+		return true
+	}
+}
+
+func (s *Service) listSupplierOrdersPage(ctx context.Context, supplierID, statusFilter, groupFilter string, limit, offset int) ([]SupplierOrder, int, error) {
+	all, err := s.listSupplierOrders(ctx, supplierID, statusFilter, groupFilter)
+	if err != nil {
+		return nil, 0, err
+	}
+	total := len(all)
+	if offset >= total {
+		return []SupplierOrder{}, total, nil
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	return all[offset:end], total, nil
+}
+
+func (s *Service) listSupplierOrders(ctx context.Context, supplierID, statusFilter, groupFilter string) ([]SupplierOrder, error) {
 	orders := make([]SupplierOrder, 0, len(s.orders))
-	for _, o := range s.orders {
-		if statusFilter != "" && !strings.EqualFold(o.Status, statusFilter) {
+	if reader, ok := s.repo.(supplierOrderReader); ok {
+		durable, err := reader.ListOrders(ctx, supplierID, 300, 0)
+		if err != nil {
+			return nil, err
+		}
+		orders = append(orders, durable...)
+	}
+
+	byOrderID := make(map[string]int, len(orders))
+	for i := range orders {
+		if strings.TrimSpace(orders[i].SupplierID) == "" {
+			orders[i].SupplierID = supplierID
+		}
+		byOrderID[orders[i].OrderID] = i
+	}
+
+	s.mu.RLock()
+	for _, scaffold := range s.orders {
+		scaffoldOrder := scaffold
+		if strings.TrimSpace(scaffoldOrder.SupplierID) == "" {
+			scaffoldOrder.SupplierID = supplierID
+		}
+		if idx, ok := byOrderID[scaffoldOrder.OrderID]; ok {
+			if strings.TrimSpace(scaffoldOrder.Decision) != "" {
+				orders[idx].Decision = scaffoldOrder.Decision
+			}
+			if strings.TrimSpace(scaffoldOrder.Note) != "" {
+				orders[idx].Note = scaffoldOrder.Note
+			}
 			continue
 		}
-		orders = append(orders, o)
+		orders = append(orders, scaffoldOrder)
 	}
 	s.mu.RUnlock()
-	sort.Slice(orders, func(i, j int) bool { return orders[i].UpdatedAt > orders[j].UpdatedAt })
-	writeJSON(w, http.StatusOK, map[string]any{"orders": orders})
+
+	filtered := make([]SupplierOrder, 0, len(orders))
+	for _, order := range orders {
+		if !orderMatchesListFilter(order, statusFilter, groupFilter) {
+			continue
+		}
+		filtered = append(filtered, order)
+	}
+	sort.Slice(filtered, func(i, j int) bool { return filtered[i].UpdatedAt > filtered[j].UpdatedAt })
+	return s.attachOrderLocations(ctx, supplierID, filtered), nil
+}
+
+func (s *Service) attachOrderLocations(ctx context.Context, supplierID string, orders []SupplierOrder) []SupplierOrder {
+	if s.locations == nil || len(orders) == 0 {
+		return orders
+	}
+	now := s.now()
+	lookups := make(map[string]supplierOrderLocationLookup, len(orders))
+	for i := range orders {
+		orders[i].LiveLocationAvailable = false
+		orders[i].DriverLocation = nil
+		driverID := strings.TrimSpace(orders[i].DriverID)
+		if driverID == "" {
+			continue
+		}
+		lookup, ok := lookups[driverID]
+		if !ok {
+			location, found, err := s.locations.GetDriverLocation(ctx, driverID)
+			if err != nil {
+				s.log.Warn("supplier orders location read failed", "driver_id", driverID, "err", err)
+				continue
+			}
+			lookup = supplierOrderLocationLookup{location: location, found: found}
+			lookups[driverID] = lookup
+		}
+		if !lookup.found || !lookup.location.IsLive(now) {
+			continue
+		}
+		orderSupplierID := strings.TrimSpace(orders[i].SupplierID)
+		if orderSupplierID == "" {
+			orderSupplierID = supplierID
+		}
+		if strings.TrimSpace(lookup.location.SupplierID) != orderSupplierID {
+			continue
+		}
+		orders[i].LiveLocationAvailable = true
+		orders[i].DriverLocation = supplierOrderLocationFromTelemetry(lookup.location)
+	}
+	return orders
+}
+
+func supplierOrderLocationFromTelemetry(location telemetry.DriverLocation) *SupplierOrderLocation {
+	return &SupplierOrderLocation{
+		DriverID:          location.DriverID,
+		SupplierID:        location.SupplierID,
+		Lat:               location.Lat,
+		Lng:               location.Lng,
+		Latitude:          location.Latitude,
+		Longitude:         location.Longitude,
+		Velocity:          location.Velocity,
+		Heading:           location.Heading,
+		ReportedAt:        location.ReportedAt.UTC().Format(time.RFC3339Nano),
+		ReceivedAt:        location.ReceivedAt.UTC().Format(time.RFC3339Nano),
+		StaleAfterSeconds: location.StaleAfterSeconds,
+	}
 }
 
 // HandleVetOrder applies APPROVED/REJECTED decisions for supplier queue items.

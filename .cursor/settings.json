@@ -1,0 +1,13 @@
+{
+  "plugins": {
+    "firebase": {
+      "enabled": true
+    },
+    "redis-development": {
+      "enabled": true
+    },
+    "stripe": {
+      "enabled": true
+    }
+  }
+}

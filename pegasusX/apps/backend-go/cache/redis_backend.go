@@ -46,6 +46,14 @@ func (r *RedisBackend) Ping(ctx context.Context) error {
 	return r.client.Ping(ctx).Err()
 }
 
+// Client exposes the underlying Redis client for shared infrastructure (rate limits, idempotency).
+func (r *RedisBackend) Client() *redis.Client {
+	if r == nil {
+		return nil
+	}
+	return r.client
+}
+
 // Close closes underlying client resources.
 func (r *RedisBackend) Close() error {
 	if r == nil || r.client == nil {

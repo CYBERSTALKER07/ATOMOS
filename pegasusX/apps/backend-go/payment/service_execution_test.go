@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
@@ -126,6 +127,74 @@ func TestHandleChargeback_UnknownGatewayPolicyViolation(t *testing.T) {
 	}
 }
 
+func TestHandleChargeback_EmitsSupplierScopedEvent(t *testing.T) {
+	t.Parallel()
+
+	repo := &paymentRepoStub{}
+	svc := newPaymentServiceForExecutionTest(repo)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payment/chargeback", strings.NewReader(`{"order_id":"o-3","retailer_id":"r-3","gateway":"ADYEN","amount":700}`))
+	res := httptest.NewRecorder()
+
+	svc.HandleChargeback(res, req)
+	if res.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", res.Code, http.StatusOK)
+	}
+	if len(repo.lastOutboxEvents) != 2 {
+		t.Fatalf("outbox events = %d, want 2", len(repo.lastOutboxEvents))
+	}
+
+	var payload paymentEvent
+	if err := json.Unmarshal(repo.lastOutboxEvents[0].Payload, &payload); err != nil {
+		t.Fatalf("decode outbox payload: %v", err)
+	}
+	if payload.SupplierID != "supplier-1" {
+		t.Fatalf("supplier_id = %q, want supplier-1", payload.SupplierID)
+	}
+	if payload.Status != "CHARGEBACK_RECORDED" {
+		t.Fatalf("status = %q, want CHARGEBACK_RECORDED", payload.Status)
+	}
+
+	var disputed struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(repo.lastOutboxEvents[1].Payload, &disputed); err != nil {
+		t.Fatalf("decode dispute payload: %v", err)
+	}
+	if disputed.Type != events.EventDeliveryDisputed {
+		t.Fatalf("event type = %q, want %s", disputed.Type, events.EventDeliveryDisputed)
+	}
+}
+
+func TestHandleChargebackReversal_EmitsSupplierScopedEvent(t *testing.T) {
+	t.Parallel()
+
+	repo := &paymentRepoStub{}
+	svc := newPaymentServiceForExecutionTest(repo)
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/payment/chargeback/reversal", strings.NewReader(`{"session_id":"sess-1"}`))
+	res := httptest.NewRecorder()
+
+	svc.HandleChargebackReversal(res, req)
+	if res.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", res.Code, http.StatusOK)
+	}
+	if len(repo.lastOutboxEvents) != 1 {
+		t.Fatalf("outbox events = %d, want 1", len(repo.lastOutboxEvents))
+	}
+
+	var payload paymentEvent
+	if err := json.Unmarshal(repo.lastOutboxEvents[0].Payload, &payload); err != nil {
+		t.Fatalf("decode outbox payload: %v", err)
+	}
+	if payload.SupplierID != "supplier-1" {
+		t.Fatalf("supplier_id = %q, want supplier-1", payload.SupplierID)
+	}
+	if payload.Status != "CHARGEBACK_REVERSAL_RECORDED" {
+		t.Fatalf("status = %q, want CHARGEBACK_REVERSAL_RECORDED", payload.Status)
+	}
+}
+
 func newPaymentServiceForExecutionTest(repo *paymentRepoStub) *Service {
 	cacheClient := cache.New(cache.NewInMemoryBackend(), slog.Default())
 	return NewService(ServiceConfig{
@@ -150,6 +219,11 @@ type paymentRepoStub struct {
 	chargebackCalls        int
 	reversalCalls          int
 	webhookCalls           int
+	ledgerItems            []LedgerEntryRecord
+	lastLedgerQuery        LedgerQuery
+	settlementRows         []SettlementAuthorityRow
+	lastSettlementQuery    SettlementAuthorityQuery
+	lastOutboxEvents       []outbox.Event
 }
 
 func (r *paymentRepoStub) CreateSession(ctx context.Context, s SessionRecord, emit func(outbox.TxnBuffer) error) error {
@@ -160,6 +234,7 @@ func (r *paymentRepoStub) CreateSession(ctx context.Context, s SessionRecord, em
 		if err := emit(txn); err != nil {
 			return err
 		}
+		r.lastOutboxEvents = append([]outbox.Event(nil), txn.events...)
 	}
 	_ = ctx
 	return nil
@@ -176,6 +251,7 @@ func (r *paymentRepoStub) CreateSessionWithAttempt(ctx context.Context, s Sessio
 		if err := emit(txn); err != nil {
 			return err
 		}
+		r.lastOutboxEvents = append([]outbox.Event(nil), txn.events...)
 	}
 	_ = ctx
 	return nil
@@ -189,6 +265,7 @@ func (r *paymentRepoStub) SaveAttempt(ctx context.Context, a PaymentAttemptRecor
 		if err := emit(txn); err != nil {
 			return err
 		}
+		r.lastOutboxEvents = append([]outbox.Event(nil), txn.events...)
 	}
 	_ = ctx
 	return nil
@@ -201,6 +278,7 @@ func (r *paymentRepoStub) SaveChargeback(ctx context.Context, c ChargebackRecord
 		if err := emit(txn); err != nil {
 			return err
 		}
+		r.lastOutboxEvents = append([]outbox.Event(nil), txn.events...)
 	}
 	_ = c
 	_ = ctx
@@ -214,6 +292,7 @@ func (r *paymentRepoStub) SaveReversal(ctx context.Context, rev ReversalRecord, 
 		if err := emit(txn); err != nil {
 			return err
 		}
+		r.lastOutboxEvents = append([]outbox.Event(nil), txn.events...)
 	}
 	_ = rev
 	_ = ctx
@@ -231,6 +310,20 @@ func (r *paymentRepoStub) SaveWebhook(ctx context.Context, w WebhookRecord, emit
 	_ = w
 	_ = ctx
 	return nil
+}
+
+func (r *paymentRepoStub) ListLedgerEntries(_ context.Context, q LedgerQuery) ([]LedgerEntryRecord, error) {
+	r.lastLedgerQuery = q
+	items := make([]LedgerEntryRecord, len(r.ledgerItems))
+	copy(items, r.ledgerItems)
+	return items, nil
+}
+
+func (r *paymentRepoStub) SummarizeLedgerEntries(_ context.Context, q SettlementAuthorityQuery) ([]SettlementAuthorityRow, error) {
+	r.lastSettlementQuery = q
+	rows := make([]SettlementAuthorityRow, len(r.settlementRows))
+	copy(rows, r.settlementRows)
+	return rows, nil
 }
 
 type paymentTxnBufferStub struct {

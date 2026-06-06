@@ -1,0 +1,86 @@
+package com.pegasusx.supplier.ui.screens.earnings
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import com.pegasusx.supplier.data.model.SupplierEarnings
+import com.pegasusx.supplier.data.remote.SupplierApi
+import com.pegasusx.supplier.data.remote.SupplierOperationsRepository
+import com.pegasusx.supplier.ui.components.SupplierLoadingState
+import com.pegasusx.supplier.ui.components.SupplierStateKind
+import com.pegasusx.supplier.ui.components.SupplierStatePane
+import com.pegasusx.supplier.ui.theme.PegasusSpacing
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EarningsScreen(api: SupplierApi, ops: SupplierOperationsRepository) {
+    var loading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var earnings by remember { mutableStateOf<SupplierEarnings?>(null) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        scope.launch {
+            try {
+                val resp = api.getEarnings()
+                if (resp.isSuccessful && resp.body() != null) {
+                    earnings = resp.body()
+                } else {
+                    val ledger = ops.getPaymentLedger()
+                    if (ledger.isSuccessful && ledger.body() != null) {
+                        val items = ledger.body()!!.items
+                        val total = items.sumOf { it.amountMinor }
+                        val currency = items.firstOrNull()?.currency ?: "UZS"
+                        earnings = SupplierEarnings(
+                            currency = currency,
+                            todayMinor = 0,
+                            weekMinor = total,
+                            monthMinor = total,
+                            authoritative = false,
+                        )
+                    } else {
+                        error = "Failed (${resp.code()})"
+                    }
+                }
+            } catch (e: Exception) {
+                error = e.message
+            } finally {
+                loading = false
+            }
+        }
+    }
+
+    Scaffold(topBar = { TopAppBar(title = { Text("Earnings") }) }) { padding ->
+        Box(Modifier.padding(padding)) {
+            when {
+                loading -> SupplierLoadingState("Loading earnings…", "Treasury summary")
+                error != null -> SupplierStatePane(
+                    kind = SupplierStateKind.Error,
+                    headline = "Earnings unavailable",
+                    body = error!!,
+                )
+                earnings == null -> SupplierStatePane(
+                    kind = SupplierStateKind.Empty,
+                    headline = "No data",
+                    body = "Earnings not available.",
+                )
+                else -> {
+                    val e = earnings!!
+                    Column(
+                        Modifier.padding(PegasusSpacing.lg),
+                        verticalArrangement = Arrangement.spacedBy(PegasusSpacing.md),
+                    ) {
+                        Text("Today: ${e.currency} ${e.todayMinor}", style = MaterialTheme.typography.titleLarge)
+                        Text("Week: ${e.currency} ${e.weekMinor}")
+                        Text("Month: ${e.currency} ${e.monthMinor}")
+                        if (!e.authoritative) {
+                            Text("Indicative only", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

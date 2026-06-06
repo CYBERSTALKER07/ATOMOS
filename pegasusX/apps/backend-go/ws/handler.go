@@ -1,22 +1,38 @@
 package ws
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
+)
+
+const (
+	websocketPongWait     = 30 * time.Second
+	websocketPingInterval = 15 * time.Second
+	websocketWriteWait    = 5 * time.Second
 )
 
 // RegisterRoutes mounts the WebSocket upgrade handler for the provided hubs.
 // Note: Authentication is enforced upstream by standard middleware. The Upgrade
 // handler extracts auth.Claims from context to determine identity and rooms.
-func RegisterRoutes(r chi.Router, log *slog.Logger, firebaseAuthEnabled bool, verifier auth.FirebaseVerifier,
+func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string, firebaseAuthEnabled bool, verifier auth.FirebaseVerifier,
+	platformSvc *platform.Service,
 	retailerHub, supplierHub, driverHub, payloadHub, warehouseHub, factoryHub, telemetryHub *Hub) {
+	if log == nil {
+		log = slog.Default()
+	}
+	hubs := roleHubs{retailerHub, supplierHub, driverHub, payloadHub, warehouseHub, factoryHub, telemetryHub}
 
 	wsHandler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		ident, ok := auth.FromContext(req.Context())
+		ident, ok := claimsFromRequest(req, jwtSecret)
 		if !ok {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
@@ -34,67 +50,14 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, firebaseAuthEnabled bool, ve
 			conn:  conn,
 		}
 
-		var unsubscribeFuncs []func()
-
-		// Assign rooms based on role
-		switch ident.Role {
-		case auth.RoleRetailer:
-			if retailerHub != nil && ident.Subject != "" {
-				unsubscribeFuncs = append(unsubscribeFuncs, retailerHub.Subscribe("retailer:"+ident.Subject, gConn))
-			}
-		case auth.RoleAdmin:
-			if supplierHub != nil && ident.SupplierID != "" {
-				unsubscribeFuncs = append(unsubscribeFuncs, supplierHub.Subscribe("supplier:"+ident.SupplierID, gConn))
-			}
-			if warehouseHub != nil && ident.SupplierRole == auth.RoleWarehouseAdmin && ident.HomeNodeID != "" {
-				unsubscribeFuncs = append(unsubscribeFuncs, warehouseHub.Subscribe("warehouse:"+ident.HomeNodeID, gConn))
-			}
-			if factoryHub != nil && ident.SupplierRole == auth.RoleFactoryAdmin && ident.HomeNodeID != "" {
-				unsubscribeFuncs = append(unsubscribeFuncs, factoryHub.Subscribe("factory:"+ident.HomeNodeID, gConn))
-			}
-		case auth.RoleDriver:
-			if driverHub != nil && ident.Subject != "" {
-				unsubscribeFuncs = append(unsubscribeFuncs, driverHub.Subscribe("driver:"+ident.Subject, gConn))
-			}
-		case auth.RolePayload:
-			if payloadHub != nil && ident.Subject != "" {
-				unsubscribeFuncs = append(unsubscribeFuncs, payloadHub.Subscribe("payload:"+ident.Subject, gConn))
-			}
-		case auth.RoleWarehouseAdmin:
-			if warehouseHub != nil && ident.HomeNodeID != "" {
-				unsubscribeFuncs = append(unsubscribeFuncs, warehouseHub.Subscribe("warehouse:"+ident.HomeNodeID, gConn))
-			}
-			if supplierHub != nil && ident.SupplierID != "" {
-				unsubscribeFuncs = append(unsubscribeFuncs, supplierHub.Subscribe("supplier:"+ident.SupplierID, gConn))
-			}
-		case auth.RoleFactoryAdmin:
-			if factoryHub != nil && ident.HomeNodeID != "" {
-				unsubscribeFuncs = append(unsubscribeFuncs, factoryHub.Subscribe("factory:"+ident.HomeNodeID, gConn))
-			}
-			if supplierHub != nil && ident.SupplierID != "" {
-				unsubscribeFuncs = append(unsubscribeFuncs, supplierHub.Subscribe("supplier:"+ident.SupplierID, gConn))
-			}
-		default:
+		unsubscribeFuncs, ok := subscribeIdentityRooms(ident, gConn, hubs)
+		if !ok {
 			log.Warn("ws upgrade: unrecognized role", "role", ident.Role)
-			conn.Close()
+			gConn.close()
 			return
 		}
 
-		// Keep connection alive, listen for close/pings
-		go func() {
-			defer func() {
-				for _, unsub := range unsubscribeFuncs {
-					unsub()
-				}
-				conn.Close()
-			}()
-			for {
-				_, _, err := conn.ReadMessage()
-				if err != nil {
-					break
-				}
-			}
-		}()
+		go runConnectionLoop(req, gConn, unsubscribeFuncs, platformSvc, log)
 	})
 
 	if firebaseAuthEnabled && verifier != nil {
@@ -102,4 +65,211 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, firebaseAuthEnabled bool, ve
 	} else {
 		r.Get("/v1/ws", wsHandler)
 	}
+}
+
+func claimsFromRequest(req *http.Request, jwtSecret string) (auth.Claims, bool) {
+	if ident, ok := auth.FromContext(req.Context()); ok {
+		return ident, true
+	}
+	token := strings.TrimSpace(req.URL.Query().Get("token"))
+	if token == "" || strings.TrimSpace(jwtSecret) == "" {
+		return auth.Claims{}, false
+	}
+	ident, err := auth.Parse(token, jwtSecret)
+	if err != nil {
+		return auth.Claims{}, false
+	}
+	return ident, true
+}
+
+type roleHubs struct {
+	retailer  *Hub
+	supplier  *Hub
+	driver    *Hub
+	payload   *Hub
+	warehouse *Hub
+	factory   *Hub
+	telemetry *Hub
+}
+
+func subscribeIdentityRooms(ident auth.Claims, conn Connection, hubs roleHubs) ([]func(), bool) {
+	var unsubscribes []func()
+	switch ident.Role {
+	case auth.RoleRetailer:
+		return subscribeRetailerRooms(ident, conn, hubs, unsubscribes), true
+	case auth.RoleAdmin:
+		return subscribeSupplierRooms(ident, conn, hubs, unsubscribes), true
+	case auth.RoleDriver:
+		return subscribeDriverRooms(ident, conn, hubs, unsubscribes), true
+	case auth.RolePayload:
+		return subscribePayloadRooms(ident, conn, hubs, unsubscribes), true
+	case auth.RoleWarehouseAdmin, auth.RoleWarehouse:
+		return subscribeWarehouseAdminRooms(ident, conn, hubs, unsubscribes), true
+	case auth.RoleFactoryAdmin, auth.RoleFactory:
+		return subscribeFactoryAdminRooms(ident, conn, hubs, unsubscribes), true
+	default:
+		return nil, false
+	}
+}
+
+func subscribeRetailerRooms(ident auth.Claims, conn Connection, hubs roleHubs, unsubscribes []func()) []func() {
+	if hubs.retailer != nil && ident.Subject != "" {
+		unsubscribes = append(unsubscribes, hubs.retailer.Subscribe("retailer:"+ident.Subject, conn))
+	}
+	return unsubscribes
+}
+
+func subscribeSupplierRooms(ident auth.Claims, conn Connection, hubs roleHubs, unsubscribes []func()) []func() {
+	if hubs.supplier != nil && ident.SupplierID != "" {
+		unsubscribes = append(unsubscribes, hubs.supplier.Subscribe("supplier:"+ident.SupplierID, conn))
+	}
+	if hubs.warehouse != nil && ident.SupplierRole == auth.RoleWarehouseAdmin && ident.HomeNodeID != "" {
+		unsubscribes = append(unsubscribes, hubs.warehouse.Subscribe("warehouse:"+ident.HomeNodeID, conn))
+	}
+	if hubs.factory != nil && ident.SupplierRole == auth.RoleFactoryAdmin && ident.HomeNodeID != "" {
+		unsubscribes = append(unsubscribes, hubs.factory.Subscribe("factory:"+ident.HomeNodeID, conn))
+	}
+	return subscribeSupplierTelemetry(ident, conn, hubs, unsubscribes)
+}
+
+func subscribeDriverRooms(ident auth.Claims, conn Connection, hubs roleHubs, unsubscribes []func()) []func() {
+	if hubs.driver != nil && ident.Subject != "" {
+		unsubscribes = append(unsubscribes, hubs.driver.Subscribe("driver:"+ident.Subject, conn))
+	}
+	if hubs.telemetry != nil && ident.Subject != "" {
+		unsubscribes = append(unsubscribes, hubs.telemetry.Subscribe("telemetry:driver:"+ident.Subject, conn))
+	}
+	return unsubscribes
+}
+
+func subscribePayloadRooms(ident auth.Claims, conn Connection, hubs roleHubs, unsubscribes []func()) []func() {
+	if hubs.payload == nil {
+		return unsubscribes
+	}
+	seen := make(map[string]struct{}, 2)
+	for _, roomID := range []string{ident.Subject, ident.SupplierID} {
+		roomID = strings.TrimSpace(roomID)
+		if roomID == "" {
+			continue
+		}
+		if _, ok := seen[roomID]; ok {
+			continue
+		}
+		seen[roomID] = struct{}{}
+		unsubscribes = append(unsubscribes, hubs.payload.Subscribe("payload:"+roomID, conn))
+	}
+	return unsubscribes
+}
+
+func subscribeWarehouseAdminRooms(ident auth.Claims, conn Connection, hubs roleHubs, unsubscribes []func()) []func() {
+	if hubs.warehouse != nil && ident.HomeNodeID != "" {
+		unsubscribes = append(unsubscribes, hubs.warehouse.Subscribe("warehouse:"+ident.HomeNodeID, conn))
+	}
+	if hubs.supplier != nil && ident.SupplierID != "" {
+		unsubscribes = append(unsubscribes, hubs.supplier.Subscribe("supplier:"+ident.SupplierID, conn))
+	}
+	return subscribeSupplierTelemetry(ident, conn, hubs, unsubscribes)
+}
+
+func subscribeFactoryAdminRooms(ident auth.Claims, conn Connection, hubs roleHubs, unsubscribes []func()) []func() {
+	if hubs.factory != nil {
+		seen := make(map[string]struct{}, 2)
+		for _, roomID := range []string{ident.HomeNodeID, ident.SupplierID} {
+			roomID = strings.TrimSpace(roomID)
+			if roomID == "" {
+				continue
+			}
+			if _, ok := seen[roomID]; ok {
+				continue
+			}
+			seen[roomID] = struct{}{}
+			unsubscribes = append(unsubscribes, hubs.factory.Subscribe("factory:"+roomID, conn))
+		}
+	}
+	if hubs.supplier != nil && ident.SupplierID != "" {
+		unsubscribes = append(unsubscribes, hubs.supplier.Subscribe("supplier:"+ident.SupplierID, conn))
+	}
+	return subscribeSupplierTelemetry(ident, conn, hubs, unsubscribes)
+}
+
+func subscribeSupplierTelemetry(ident auth.Claims, conn Connection, hubs roleHubs, unsubscribes []func()) []func() {
+	if hubs.telemetry != nil && ident.SupplierID != "" {
+		unsubscribes = append(unsubscribes, hubs.telemetry.Subscribe("telemetry:supplier:"+ident.SupplierID, conn))
+	}
+	return unsubscribes
+}
+
+func runConnectionLoop(req *http.Request, conn *gorillaConn, unsubscribes []func(), platformSvc *platform.Service, log *slog.Logger) {
+	maybeSendOutdated(req, conn, platformSvc, log)
+	done := make(chan struct{})
+	startPingLoop(conn, done, log)
+	defer func() {
+		close(done)
+		for _, unsubscribe := range unsubscribes {
+			unsubscribe()
+		}
+		conn.close()
+	}()
+	conn.conn.SetReadLimit(1024)
+	_ = conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
+	conn.conn.SetPongHandler(func(string) error {
+		return conn.conn.SetReadDeadline(time.Now().Add(websocketPongWait))
+	})
+	for {
+		if _, _, err := conn.conn.ReadMessage(); err != nil {
+			return
+		}
+	}
+}
+
+func maybeSendOutdated(req *http.Request, conn *gorillaConn, platformSvc *platform.Service, log *slog.Logger) {
+	if platformSvc == nil {
+		return
+	}
+	version := strings.TrimSpace(req.URL.Query().Get("version"))
+	if version == "" {
+		version = strings.TrimSpace(req.Header.Get("X-App-Version"))
+	}
+	platformName := strings.TrimSpace(req.URL.Query().Get("platform"))
+	channel := strings.TrimSpace(req.URL.Query().Get("channel"))
+	ident := conn.ident
+	traceID := outbox.TraceIDFromContext(req.Context())
+	payload, send, err := platformSvc.OutdatedWSPayload(
+		req.Context(),
+		platform.ClaimsRoleForPolicy(ident),
+		platformName,
+		channel,
+		version,
+		platform.ClaimsActorID(ident),
+		traceID,
+	)
+	if err != nil {
+		log.WarnContext(req.Context(), "outdated ws check failed", "err", err)
+		return
+	}
+	if !send {
+		return
+	}
+	if err := conn.Send(context.Background(), payload); err != nil {
+		log.WarnContext(req.Context(), "outdated ws send failed", "err", err)
+	}
+}
+
+func startPingLoop(conn *gorillaConn, done <-chan struct{}, log *slog.Logger) {
+	ticker := time.NewTicker(websocketPingInterval)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				if err := conn.ping(websocketWriteWait); err != nil {
+					log.Debug("websocket ping failed", "conn_id", conn.ID(), "err", err)
+					conn.close()
+					return
+				}
+			}
+		}
+	}()
 }

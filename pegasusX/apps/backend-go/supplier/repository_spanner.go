@@ -28,10 +28,16 @@ func NewSpannerRepository(client *spanner.Client) *SpannerRepository {
 
 type spannerTxnBuffer struct {
 	events []outbox.Event
+	audits []outbox.AuditEntry
 }
 
 func (b *spannerTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error {
 	b.events = append(b.events, e)
+	return nil
+}
+
+func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) error {
+	b.audits = append(b.audits, e)
 	return nil
 }
 
@@ -181,6 +187,123 @@ func (r *SpannerRepository) GetProfile(ctx context.Context, supplierID string) (
 	return p, true, nil
 }
 
+// CountOrders returns the number of orders for a supplier.
+func (r *SpannerRepository) CountOrders(ctx context.Context, supplierID string) (int, error) {
+	if r == nil || r.client == nil {
+		return 0, fmt.Errorf("spanner supplier repository: nil client")
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	if supplierID == "" {
+		return 0, nil
+	}
+	stmt := spanner.Statement{
+		SQL:    `SELECT COUNT(*) FROM Orders WHERE SupplierId = @supplierId`,
+		Params: map[string]any{"supplierId": supplierID},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		return 0, fmt.Errorf("count supplier orders: %w", err)
+	}
+	var count int64
+	if err := row.Columns(&count); err != nil {
+		return 0, fmt.Errorf("scan supplier order count: %w", err)
+	}
+	return int(count), nil
+}
+
+// ListOrders returns recent supplier-scoped orders with durable assignment fields.
+func (r *SpannerRepository) ListOrders(ctx context.Context, supplierID string, limit, offset int) ([]SupplierOrder, error) {
+	if r == nil || r.client == nil {
+		return nil, fmt.Errorf("spanner supplier repository: nil client")
+	}
+	supplierID = strings.TrimSpace(supplierID)
+	if supplierID == "" {
+		return []SupplierOrder{}, nil
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	stmt := spanner.Statement{
+		SQL: `SELECT OrderId, SupplierId, RetailerId,
+		             COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''),
+		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), Status,
+		             TotalMinor, Currency, CreatedAt, UpdatedAt
+		      FROM Orders
+		      WHERE SupplierId = @supplierId
+		      ORDER BY UpdatedAt DESC
+		      LIMIT @limit
+		      OFFSET @offset`,
+		Params: map[string]any{
+			"supplierId": supplierID,
+			"limit":      int64(limit),
+			"offset":     int64(offset),
+		},
+	}
+
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	orders := make([]SupplierOrder, 0, 8)
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			return orders, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("query supplier orders: %w", err)
+		}
+
+		current, err := decodeSupplierOrder(row)
+		if err != nil {
+			return nil, err
+		}
+		orders = append(orders, current)
+	}
+}
+
+func decodeSupplierOrder(row *spanner.Row) (SupplierOrder, error) {
+	var (
+		order     SupplierOrder
+		createdAt time.Time
+		updatedAt time.Time
+	)
+	if err := row.Columns(
+		&order.OrderID,
+		&order.SupplierID,
+		&order.RetailerID,
+		&order.WarehouseID,
+		&order.DriverID,
+		&order.VehicleID,
+		&order.RouteID,
+		&order.ManifestID,
+		&order.Status,
+		&order.TotalMinor,
+		&order.Currency,
+		&createdAt,
+		&updatedAt,
+	); err != nil {
+		return SupplierOrder{}, fmt.Errorf("scan supplier order: %w", err)
+	}
+
+	order.CreatedAt = createdAt.UTC().Format(time.RFC3339Nano)
+	order.UpdatedAt = updatedAt.UTC().Format(time.RFC3339Nano)
+	order.TrackingStatus = "unassigned"
+	if strings.TrimSpace(order.DriverID) != "" && strings.TrimSpace(order.RouteID) != "" {
+		order.TrackingStatus = "assigned"
+	}
+	order.LiveLocationAvailable = false
+	return order, nil
+}
+
 // GetTopology returns supplier warehouse and factory nodes.
 func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) (SupplierTopology, error) {
 	if r == nil || r.client == nil {
@@ -277,6 +400,145 @@ func (r *SpannerRepository) GetTopology(ctx context.Context, supplierID string) 
 	return result, nil
 }
 
+// GetPricingRule fetches one supplier pricing authority row.
+func (r *SpannerRepository) GetPricingRule(ctx context.Context, supplierID string) (SupplierPricingRule, bool, error) {
+	if r == nil || r.client == nil {
+		return SupplierPricingRule{}, false, fmt.Errorf("spanner supplier repository: nil client")
+	}
+
+	row, err := r.client.Single().ReadRow(ctx, "SupplierPricingRules", spanner.Key{supplierID}, []string{
+		"SupplierId",
+		"BaseMarkupBps",
+		"RetailerDiscountBps",
+		"MinMarginBps",
+		"Currency",
+		"RuleVersion",
+		"UpdatedBy",
+		"UpdatedAt",
+	})
+	if err != nil {
+		if errors.Is(err, spanner.ErrRowNotFound) {
+			return SupplierPricingRule{}, false, nil
+		}
+		return SupplierPricingRule{}, false, fmt.Errorf("read supplier pricing rule %s: %w", supplierID, err)
+	}
+
+	var (
+		rule      SupplierPricingRule
+		updatedBy spanner.NullString
+	)
+	if err := row.Columns(
+		&rule.SupplierID,
+		&rule.BaseMarkupBps,
+		&rule.RetailerDiscountBps,
+		&rule.MinMarginBps,
+		&rule.Currency,
+		&rule.RuleVersion,
+		&updatedBy,
+		&rule.UpdatedAt,
+	); err != nil {
+		return SupplierPricingRule{}, false, fmt.Errorf("scan supplier pricing rule %s: %w", supplierID, err)
+	}
+	if updatedBy.Valid {
+		rule.UpdatedBy = updatedBy.StringVal
+	}
+
+	return rule, true, nil
+}
+
+// UpsertPricingRule updates supplier pricing authority and emitted outbox
+// events atomically in one RW transaction.
+func (r *SpannerRepository) UpsertPricingRule(ctx context.Context, rule SupplierPricingRule, emit func(outbox.TxnBuffer) error) error {
+	if r == nil || r.client == nil {
+		return fmt.Errorf("spanner supplier repository: nil client")
+	}
+	if strings.TrimSpace(rule.SupplierID) == "" {
+		return fmt.Errorf("supplier_id required")
+	}
+	if len(strings.TrimSpace(rule.Currency)) != 3 {
+		return fmt.Errorf("currency must be ISO-4217")
+	}
+
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		currentVersion := int64(0)
+		versionRow, err := txn.ReadRow(ctx, "SupplierPricingRules", spanner.Key{rule.SupplierID}, []string{"RuleVersion"})
+		if err != nil {
+			if !errors.Is(err, spanner.ErrRowNotFound) {
+				return fmt.Errorf("read pricing rule version %s: %w", rule.SupplierID, err)
+			}
+		} else {
+			if err := versionRow.Columns(&currentVersion); err != nil {
+				return fmt.Errorf("scan pricing rule version %s: %w", rule.SupplierID, err)
+			}
+		}
+
+		nextVersion := currentVersion + 1
+		if nextVersion <= 0 {
+			nextVersion = 1
+		}
+		if rule.RuleVersion > currentVersion {
+			nextVersion = rule.RuleVersion
+		}
+
+		updatedAt := rule.UpdatedAt.UTC()
+		if updatedAt.IsZero() {
+			updatedAt = time.Now().UTC()
+		}
+
+		buf := &spannerTxnBuffer{}
+		if emit != nil {
+			if err := emit(buf); err != nil {
+				return err
+			}
+		}
+
+		mutations := []*spanner.Mutation{
+			spanner.InsertOrUpdateMap("SupplierPricingRules", map[string]any{
+				"SupplierId":          rule.SupplierID,
+				"BaseMarkupBps":       rule.BaseMarkupBps,
+				"RetailerDiscountBps": rule.RetailerDiscountBps,
+				"MinMarginBps":        rule.MinMarginBps,
+				"Currency":            strings.ToUpper(strings.TrimSpace(rule.Currency)),
+				"RuleVersion":         nextVersion,
+				"UpdatedBy":           strings.TrimSpace(rule.UpdatedBy),
+				"UpdatedAt":           updatedAt,
+			}),
+		}
+
+		for _, e := range buf.events {
+			createdAt := e.CreatedAt.UTC()
+			if createdAt.IsZero() {
+				createdAt = time.Now().UTC()
+			}
+
+			row := map[string]any{
+				"EventId":       e.EventID,
+				"AggregateType": e.AggregateType,
+				"AggregateId":   e.AggregateID,
+				"TopicName":     e.TopicName,
+				"Payload":       e.Payload,
+				"CreatedAt":     createdAt,
+				"PublishedAt":   nil,
+			}
+			if e.PublishedAt != nil {
+				row["PublishedAt"] = e.PublishedAt.UTC()
+			}
+
+			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		}
+		for _, a := range buf.audits {
+			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
+		}
+
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		return fmt.Errorf("upsert supplier pricing rule transaction: %w", err)
+	}
+
+	return nil
+}
+
 // GetAuthByPhone fetches one active supplier-user credential by phone.
 func (r *SpannerRepository) GetAuthByPhone(ctx context.Context, phone string) (SupplierAuthRecord, bool, error) {
 	if r == nil || r.client == nil {
@@ -290,7 +552,7 @@ func (r *SpannerRepository) GetAuthByPhone(ctx context.Context, phone string) (S
 		SQL: `SELECT su.UserId, su.SupplierId, su.Phone, su.PasswordHash, COALESCE(s.IsConfigured, false)
               FROM SupplierUsers@{FORCE_INDEX=Idx_SupplierUsers_ByPhone} su
               LEFT JOIN Suppliers s ON su.SupplierId = s.SupplierId
-              WHERE su.Phone = @phone AND su.IsActive = true
+		WHERE su.Phone = @phone AND su.IsActive = true AND su.SupplierRole = 'ADMIN'
               LIMIT 1`,
 		Params: map[string]any{"phone": trimmedPhone},
 	}
@@ -480,6 +742,9 @@ func (r *SpannerRepository) UpdateProfile(ctx context.Context, p Profile, emit f
 
 			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
 		}
+		for _, a := range buf.audits {
+			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
+		}
 
 		return txn.BufferWrite(mutations)
 	})
@@ -520,43 +785,25 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 		now := time.Now().UTC()
 		mutations := make([]*spanner.Mutation, 0, len(topology.Warehouses)+len(topology.Factories)+len(buf.events))
 
-		for i, wh := range topology.Warehouses {
-			id := strings.TrimSpace(wh.WarehouseID)
-			if id == "" {
-				id = stableTopologyID("warehouse", supplierID, wh.Name, i+1)
-			}
-			name := strings.TrimSpace(wh.Name)
-			if name == "" {
-				name = fmt.Sprintf("Warehouse %d", i+1)
-			}
-			coverage := wh.CoverageRadiusKm
-			if coverage <= 0 {
-				coverage = defaultCoverageRadiusKm
-			}
-			createdAt := wh.CreatedAt.UTC()
-			if createdAt.IsZero() {
-				createdAt = now
-			}
-
-			mutations = append(mutations, spanner.InsertOrUpdateMap("Warehouses", map[string]any{
-				"WarehouseId":      id,
-				"SupplierId":       supplierID,
-				"Name":             name,
-				"Lat":              nullableFloat(wh.Lat),
-				"Lng":              nullableFloat(wh.Lng),
-				"CoverageRadiusKm": coverage,
-				"IsActive":         wh.IsActive,
-				"IsOnShift":        wh.IsOnShift,
-				"CreatedAt":        createdAt,
-				"UpdatedAt":        now,
-			}))
-		}
-
+		factoryIDs := make([]string, 0, len(topology.Factories))
 		for i, fc := range topology.Factories {
 			id := strings.TrimSpace(fc.FactoryID)
 			if id == "" {
-				id = stableTopologyID("factory", supplierID, fc.Name, i+1)
+				name := strings.TrimSpace(fc.Name)
+				if name == "" {
+					name = fmt.Sprintf("Factory %d", i+1)
+				}
+				id = stableTopologyID("factory", supplierID, name, i+1)
 			}
+			factoryIDs = append(factoryIDs, id)
+		}
+		primaryFactoryID := ""
+		if len(factoryIDs) == 1 {
+			primaryFactoryID = factoryIDs[0]
+		}
+
+		for i, fc := range topology.Factories {
+			id := factoryIDs[i]
 			name := strings.TrimSpace(fc.Name)
 			if name == "" {
 				name = fmt.Sprintf("Factory %d", i+1)
@@ -578,6 +825,42 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 			}))
 		}
 
+		for i, wh := range topology.Warehouses {
+			id := strings.TrimSpace(wh.WarehouseID)
+			if id == "" {
+				id = stableTopologyID("warehouse", supplierID, wh.Name, i+1)
+			}
+			name := strings.TrimSpace(wh.Name)
+			if name == "" {
+				name = fmt.Sprintf("Warehouse %d", i+1)
+			}
+			coverage := wh.CoverageRadiusKm
+			if coverage <= 0 {
+				coverage = defaultCoverageRadiusKm
+			}
+			createdAt := wh.CreatedAt.UTC()
+			if createdAt.IsZero() {
+				createdAt = now
+			}
+
+			row := map[string]any{
+				"WarehouseId":      id,
+				"SupplierId":       supplierID,
+				"Name":             name,
+				"Lat":              nullableFloat(wh.Lat),
+				"Lng":              nullableFloat(wh.Lng),
+				"CoverageRadiusKm": coverage,
+				"IsActive":         wh.IsActive,
+				"IsOnShift":        wh.IsOnShift,
+				"CreatedAt":        createdAt,
+				"UpdatedAt":        now,
+			}
+			if primaryFactoryID != "" {
+				row["PrimaryFactoryId"] = primaryFactoryID
+			}
+			mutations = append(mutations, spanner.InsertOrUpdateMap("Warehouses", row))
+		}
+
 		for _, e := range buf.events {
 			createdAt := e.CreatedAt.UTC()
 			if createdAt.IsZero() {
@@ -596,6 +879,9 @@ func (r *SpannerRepository) ReplaceTopology(ctx context.Context, supplierID stri
 				row["PublishedAt"] = e.PublishedAt.UTC()
 			}
 			mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+		}
+		for _, a := range buf.audits {
+			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
 		}
 
 		if len(mutations) == 0 {
@@ -661,6 +947,25 @@ func stableTopologyID(kind string, supplierID string, name string, index int) st
 		binary.BigEndian.Uint16(b[8:10]),
 		uint64(b[10])<<40|uint64(b[11])<<32|uint64(b[12])<<24|uint64(b[13])<<16|uint64(b[14])<<8|uint64(b[15]),
 	)
+}
+
+// CountSuppliers returns the number of supplier tenant rows.
+func (r *SpannerRepository) CountSuppliers(ctx context.Context) (int64, error) {
+	if r == nil || r.client == nil {
+		return 0, fmt.Errorf("spanner supplier repository: nil client")
+	}
+	stmt := spanner.Statement{SQL: `SELECT COUNT(*) FROM Suppliers`}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+	row, err := iter.Next()
+	if err != nil {
+		return 0, fmt.Errorf("count suppliers: %w", err)
+	}
+	var count int64
+	if err := row.Columns(&count); err != nil {
+		return 0, fmt.Errorf("scan supplier count: %w", err)
+	}
+	return count, nil
 }
 
 func nullableFloat(value float64) any {

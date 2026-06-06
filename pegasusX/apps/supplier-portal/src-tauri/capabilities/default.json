@@ -1,0 +1,9 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for PegasusX Supplier Portal",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open"
+  ]
+}

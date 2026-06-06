@@ -1,0 +1,26 @@
+[package]
+name = "pegasusx-supplier-portal"
+version = "0.1.0"
+description = "PegasusX Supplier Portal shell"
+authors = ["PegasusX"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+keyring = { version = "3", features = ["apple-native", "windows-native"] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

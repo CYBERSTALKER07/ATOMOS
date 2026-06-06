@@ -1,0 +1,5 @@
+# Copy to local.properties.
+# dev.host resolves to BuildConfig.API_BASE_URL in debug builds.
+#   Android emulator (AVD):       dev.host=10.0.2.2
+#   Physical device over Wi-Fi:   dev.host=192.168.1.42
+dev.host=10.0.2.2

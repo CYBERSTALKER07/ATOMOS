@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pegasusx
+  labels:
+    app.kubernetes.io/part-of: pegasusx
+    app.kubernetes.io/managed-by: pegasusx-deploy

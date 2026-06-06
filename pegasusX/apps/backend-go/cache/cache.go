@@ -14,6 +14,8 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 // Backend is the contract pegasusX uses to talk to Redis (or any equivalent).
@@ -36,6 +38,7 @@ const InvalidationChannel = "cache:invalidate"
 type Cache struct {
 	backend Backend
 	log     *slog.Logger
+	group   singleflight.Group
 }
 
 // New wires a Cache. Pass slog.Default() if you have no scoped logger.
@@ -53,6 +56,34 @@ func (c *Cache) Get(ctx context.Context, key string) ([]byte, bool, error) {
 		return nil, false, nil
 	}
 	return c.backend.Get(ctx, key)
+}
+
+// GetOrLoad returns cached data or calls loader on miss. Concurrent misses for
+// the same key coalesce through singleflight.
+func (c *Cache) GetOrLoad(ctx context.Context, key string, ttl time.Duration, loader func(ctx context.Context) ([]byte, error)) ([]byte, error) {
+	if c == nil || c.backend == nil {
+		return loader(ctx)
+	}
+	if data, found, err := c.backend.Get(ctx, key); err == nil && found {
+		return data, nil
+	}
+	val, err, _ := c.group.Do(key, func() (any, error) {
+		if data, found, err := c.backend.Get(ctx, key); err == nil && found {
+			return data, nil
+		}
+		data, err := loader(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if setErr := c.backend.Set(ctx, key, data, ttl); setErr != nil {
+			c.log.Warn("cache set after load failed", "key", key, "err", setErr)
+		}
+		return data, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return val.([]byte), nil
 }
 
 // Set writes a key with TTL. Failures are non-fatal at call sites that treat

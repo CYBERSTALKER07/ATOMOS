@@ -32,7 +32,7 @@ const (
 
 // Repository is the mutation seam for factory write paths.
 type Repository interface {
-	Apply(ctx context.Context, mutate func() error, emit func(outbox.TxnBuffer) error) error
+	Apply(ctx context.Context, mutate func() error, snapshot func() *PersistenceSnapshot, emit func(outbox.TxnBuffer) error) error
 }
 
 // inMemoryRepository is the scaffold repository implementation.
@@ -48,7 +48,7 @@ func (b *inMemoryTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) erro
 	return nil
 }
 
-func (r *inMemoryRepository) Apply(ctx context.Context, mutate func() error, emit func(outbox.TxnBuffer) error) error {
+func (r *inMemoryRepository) Apply(ctx context.Context, mutate func() error, _ func() *PersistenceSnapshot, emit func(outbox.TxnBuffer) error) error {
 	if mutate != nil {
 		if err := mutate(); err != nil {
 			return err
@@ -77,11 +77,15 @@ type Service struct {
 	factoryHub  *ws.Hub
 	log         *slog.Logger
 
-	supplierID string
-	currency   string
-	now        func() time.Time
+	supplierID    string
+	factoryNodeID string
+	currency      string
+	jwtSecret     string
+	jwtIssuer     string
+	now           func() time.Time
 
 	mu                    sync.RWMutex
+	spannerLoaded         bool
 	transfers             []TransferRow
 	manifests             []ManifestRow
 	manifestTransfers     map[string][]TransferRow
@@ -103,9 +107,12 @@ type ServiceConfig struct {
 	FactoryHub  *ws.Hub
 	Log         *slog.Logger
 
-	SupplierID string
-	Currency   string
-	Now        func() time.Time
+	SupplierID    string
+	FactoryNodeID string
+	Currency      string
+	JWTSecret     string
+	JWTIssuer     string
+	Now           func() time.Time
 }
 
 // TransferRow represents one factory transfer record.
@@ -167,6 +174,19 @@ type ManifestReassignment struct {
 	Recommendation  string `json:"recommendation,omitempty"`
 	AppliedBy       string `json:"applied_by,omitempty"`
 	CorrelationHint string `json:"correlation_hint,omitempty"`
+}
+
+// ManifestDetailSnapshot is the read-model payload shared by driver and
+// factory manifest detail surfaces.
+type ManifestDetailSnapshot struct {
+	Manifest      ManifestRow            `json:"manifest"`
+	Transfers     []TransferRow          `json:"transfers"`
+	Transitions   []ManifestTransition   `json:"transitions"`
+	Reassignments []ManifestReassignment `json:"reassignments"`
+	Exceptions    []ManifestException    `json:"exceptions"`
+	RouteID       string                 `json:"route_id,omitempty"`
+	StopCount     int                    `json:"stop_count"`
+	OrderCount    int                    `json:"order_count"`
 }
 
 func routeIDForManifest(m ManifestRow) string {
@@ -233,6 +253,10 @@ func NewService(c ServiceConfig) *Service {
 	if c.Currency == "" {
 		c.Currency = "UZS"
 	}
+	factoryNodeID := strings.TrimSpace(c.FactoryNodeID)
+	if factoryNodeID == "" {
+		factoryNodeID = c.SupplierID
+	}
 	return &Service{
 		repo:                  c.Repo,
 		cache:                 c.Cache,
@@ -240,7 +264,10 @@ func NewService(c ServiceConfig) *Service {
 		factoryHub:            c.FactoryHub,
 		log:                   c.Log,
 		supplierID:            c.SupplierID,
+		factoryNodeID:         factoryNodeID,
 		currency:              c.Currency,
+		jwtSecret:             c.JWTSecret,
+		jwtIssuer:             c.JWTIssuer,
 		now:                   c.Now,
 		manifestTransfers:     make(map[string][]TransferRow),
 		manifestTransitions:   make(map[string][]ManifestTransition),
@@ -274,6 +301,10 @@ type manifestRebalanceRequest struct {
 	ToVehicle  string `json:"to_vehicle_id"`
 	Reason     string `json:"reason"`
 	AppliedBy  string `json:"applied_by"`
+
+	SourceManifestID string   `json:"source_manifest_id"`
+	TargetManifestID string   `json:"target_manifest_id"`
+	TransferIDs      []string `json:"transfer_ids"`
 }
 
 type manifestCancelTransferRequest struct {
@@ -294,6 +325,13 @@ func (s *Service) nextIDLocked(prefix string) string {
 }
 
 func (s *Service) ensureDemoDataLocked() {
+	if !s.spannerLoaded {
+		if r, ok := s.repo.(*SpannerRepository); ok {
+			if err := r.hydrateWhileLocked(context.Background(), s); err != nil {
+				s.log.WarnContext(context.Background(), "factory spanner hydrate failed", "err", err)
+			}
+		}
+	}
 	if len(s.fleetDrivers) == 0 {
 		s.fleetDrivers = []FleetDriver{
 			{DriverID: "drv_factory_1", Name: "Factory Driver 1", OnShift: true},
@@ -315,7 +353,7 @@ func (s *Service) ensureDemoDataLocked() {
 	if len(s.supplyRequests) == 0 {
 		now := s.now().Format(time.RFC3339Nano)
 		s.supplyRequests = []SupplyRequest{
-			{RequestID: "srq_factory_1", Status: "OPEN", WarehouseID: "wh_demo_1", CreatedAt: now, UpdatedAt: now},
+			{RequestID: "srq_factory_1", Status: "SUBMITTED", WarehouseID: "wh_demo_1", CreatedAt: now, UpdatedAt: now},
 		}
 	}
 	if len(s.transfers) == 0 {
@@ -360,6 +398,49 @@ func (s *Service) ensureDemoDataLocked() {
 			}
 		}
 	}
+	s.ensureDemoManifestExceptionsLocked()
+	s.ensureLoadingBayDemoTransfersLocked()
+	if r, ok := s.repo.(*SpannerRepository); ok && !s.spannerLoaded {
+		snap := s.buildPersistenceSnapshotLocked()
+		if err := r.SeedDemoManifests(context.Background(), snap); err == nil {
+			s.spannerLoaded = true
+		}
+	}
+}
+
+func (s *Service) ensureDemoManifestExceptionsLocked() {
+	if len(s.manifestExceptions) > 0 || len(s.manifests) == 0 {
+		return
+	}
+	now := s.now().Format(time.RFC3339Nano)
+	s.manifestExceptions = []ManifestException{{
+		ExceptionID:  "mex_factory_demo_1",
+		ManifestID:   s.manifests[0].ManifestID,
+		TransferID:   "tr_factory_1",
+		Reason:       "OVERFLOW",
+		AttemptCount: 1,
+		Escalated:    false,
+		CreatedAt:    now,
+	}}
+}
+
+func (s *Service) ensureLoadingBayDemoTransfersLocked() {
+	hasBay := false
+	for i := range s.transfers {
+		id := s.transfers[i].TransferID
+		if id == "tr_bay_1" || id == "tr_bay_2" {
+			hasBay = true
+			break
+		}
+	}
+	if hasBay {
+		return
+	}
+	now := s.now().Format(time.RFC3339Nano)
+	s.transfers = append(s.transfers,
+		TransferRow{TransferID: "tr_bay_1", OrderID: "ord_bay_1", State: "APPROVED", TotalVU: 28, CreatedAt: now, UpdatedAt: now},
+		TransferRow{TransferID: "tr_bay_2", OrderID: "ord_bay_2", State: "LOADING", TotalVU: 31, CreatedAt: now, UpdatedAt: now},
+	)
 }
 
 func (s *Service) findManifestIndexLocked(manifestID string) int {
@@ -371,9 +452,148 @@ func (s *Service) findManifestIndexLocked(manifestID string) int {
 	return -1
 }
 
+// ManifestGateSnapshot returns the current manifest state needed for driver gate checks.
+func (s *Service) ManifestGateSnapshot(manifestID string) (state string, stopCount int, totalVolumeVU int64, found bool) {
+	if s == nil {
+		return "", 0, 0, false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.ensureDemoDataLocked()
+	idx := s.findManifestIndexLocked(manifestID)
+	if idx < 0 {
+		return "", 0, 0, false
+	}
+	manifest := s.manifests[idx]
+	return manifest.State, manifest.TransferCnt, manifest.TotalVolumeVU, true
+}
+
+// ManifestDetailSnapshotForDriver returns the manifest detail visible to a
+// driver-scoped manifest read, optionally narrowed by manifest id and date.
+func (s *Service) ManifestDetailSnapshotForDriver(driverID, manifestID, date string) (ManifestDetailSnapshot, bool) {
+	if s == nil {
+		return ManifestDetailSnapshot{}, false
+	}
+	driverID = strings.TrimSpace(driverID)
+	manifestID = strings.TrimSpace(manifestID)
+	date = strings.TrimSpace(date)
+	if driverID == "" {
+		return ManifestDetailSnapshot{}, false
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.ensureDemoDataLocked()
+
+	idx := s.findDriverManifestIndexLocked(driverID, manifestID, date)
+	if idx < 0 {
+		return ManifestDetailSnapshot{}, false
+	}
+	return s.manifestDetailSnapshotLocked(s.manifests[idx]), true
+}
+
+func (s *Service) manifestDetailSnapshotLocked(manifest ManifestRow) ManifestDetailSnapshot {
+	manifestID := manifest.ManifestID
+	transfers := append([]TransferRow(nil), s.manifestTransfers[manifestID]...)
+	transitions := append([]ManifestTransition(nil), s.manifestTransitions[manifestID]...)
+	reassignments := append([]ManifestReassignment(nil), s.manifestReassignments[manifestID]...)
+	exceptions := make([]ManifestException, 0)
+	for i := range s.manifestExceptions {
+		if s.manifestExceptions[i].ManifestID == manifestID {
+			exceptions = append(exceptions, s.manifestExceptions[i])
+		}
+	}
+	stopCount := manifest.TransferCnt
+	if stopCount == 0 {
+		stopCount = len(transfers)
+	}
+	return ManifestDetailSnapshot{
+		Manifest:      manifest,
+		Transfers:     transfers,
+		Transitions:   transitions,
+		Reassignments: reassignments,
+		Exceptions:    exceptions,
+		RouteID:       routeIDForManifest(manifest),
+		StopCount:     stopCount,
+		OrderCount:    len(transfers),
+	}
+}
+
+func (s *Service) findDriverManifestIndexLocked(driverID, manifestID, date string) int {
+	if manifestID != "" {
+		idx := s.findManifestIndexLocked(manifestID)
+		if idx < 0 {
+			return -1
+		}
+		manifest := s.manifests[idx]
+		if strings.TrimSpace(manifest.DriverID) != driverID {
+			return -1
+		}
+		if !manifestMatchesDate(manifest, date) {
+			return -1
+		}
+		return idx
+	}
+
+	bestIdx := -1
+	bestRank := -1
+	bestUpdatedAt := ""
+	for i := range s.manifests {
+		manifest := s.manifests[i]
+		if strings.TrimSpace(manifest.DriverID) != driverID {
+			continue
+		}
+		if !manifestMatchesDate(manifest, date) {
+			continue
+		}
+		rank := manifestSelectionRank(manifest.State)
+		if bestIdx < 0 || rank > bestRank || (rank == bestRank && manifest.UpdatedAt > bestUpdatedAt) {
+			bestIdx = i
+			bestRank = rank
+			bestUpdatedAt = manifest.UpdatedAt
+		}
+	}
+	return bestIdx
+}
+
+func manifestMatchesDate(manifest ManifestRow, date string) bool {
+	if date == "" {
+		return true
+	}
+	return strings.HasPrefix(manifest.CreatedAt, date) || strings.HasPrefix(manifest.UpdatedAt, date)
+}
+
+func manifestSelectionRank(state string) int {
+	switch strings.TrimSpace(state) {
+	case manifestStateDispatched:
+		return 6
+	case manifestStateSealed:
+		return 5
+	case manifestStateLoading:
+		return 4
+	case manifestStateDraft:
+		return 3
+	case manifestStateCompleted:
+		return 2
+	case manifestStateCancelled:
+		return 1
+	default:
+		return 0
+	}
+}
+
 func (s *Service) findTransferIndexLocked(transfers []TransferRow, transferID string) int {
 	for i := range transfers {
 		if transfers[i].TransferID == transferID {
+			return i
+		}
+	}
+	return -1
+}
+
+func (s *Service) findGlobalTransferIndexLocked(transferID string) int {
+	for i := range s.transfers {
+		if s.transfers[i].TransferID == transferID {
 			return i
 		}
 	}
@@ -464,7 +684,22 @@ func (s *Service) broadcastFactoryEvent(ctx context.Context, eventType string, d
 		s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, payload)
 	}
 	if s.factoryHub != nil {
-		s.factoryHub.Broadcast(ctx, "factory:"+s.supplierID, payload)
+		s.factoryHub.Broadcast(ctx, "factory:"+s.factoryNodeID, payload)
+	}
+}
+
+func (s *Service) manifestOutboxFields(manifest ManifestRow, eventType string) map[string]any {
+	return map[string]any{
+		"type":        eventType,
+		"manifest_id": manifest.ManifestID,
+		"supplier_id": s.supplierID,
+		"factory_id":  s.factoryNodeID,
+		"state":       manifest.State,
+		"driver_id":   manifest.DriverID,
+		"vehicle_id":  manifest.VehicleID,
+		"order_count": manifest.TransferCnt,
+		"route_id":    routeIDForManifest(manifest),
+		"timestamp":   s.now().Format(time.RFC3339Nano),
 	}
 }
 
@@ -497,8 +732,7 @@ func (s *Service) HandleAnalyticsOverview(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	s.mu.Lock()
-	s.ensureDemoDataLocked()
+	s.mu.RLock()
 	transfers := len(s.transfers)
 	manifests := len(s.manifests)
 	escalatedExceptions := 0
@@ -507,7 +741,7 @@ func (s *Service) HandleAnalyticsOverview(w http.ResponseWriter, r *http.Request
 			escalatedExceptions++
 		}
 	}
-	s.mu.Unlock()
+	s.mu.RUnlock()
 	writeJSON(w, http.StatusOK, map[string]any{
 		"daily_activity":     []any{},
 		"transfers_total":    transfers,
@@ -525,16 +759,7 @@ func (s *Service) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	s.mu.Lock()
 	s.ensureDemoDataLocked()
-	resp := map[string]any{
-		"supplier_id":     s.supplierID,
-		"transfers_open":  len(s.transfers),
-		"manifests_open":  len(s.manifests),
-		"fleet_drivers":   len(s.fleetDrivers),
-		"fleet_vehicles":  len(s.fleetVehicles),
-		"staff_count":     len(s.staff),
-		"exception_queue": len(s.manifestExceptions),
-		"updated_at":      s.now().Format(time.RFC3339Nano),
-	}
+	resp := s.iosDashboardLocked()
 	s.mu.Unlock()
 	writeJSON(w, http.StatusOK, resp)
 }
@@ -546,10 +771,11 @@ func (s *Service) HandleProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"factory_id":  strings.TrimSpace(r.URL.Query().Get("factory_id")),
-		"supplier_id": s.supplierID,
-		"currency":    s.currency,
-		"updated_at":  s.now().Format(time.RFC3339Nano),
+		"factory_id":   s.factoryNodeID,
+		"factory_name": "PegasusX Demo Factory",
+		"supplier_id":  s.supplierID,
+		"currency":     s.currency,
+		"updated_at":   s.now().Format(time.RFC3339Nano),
 	})
 }
 
@@ -557,12 +783,30 @@ func (s *Service) HandleProfile(w http.ResponseWriter, r *http.Request) {
 func (s *Service) HandleTransfers(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
+		stateFilters := parseTransferStateFilters(r)
+		limit := parseTransferLimit(r.URL.Query().Get("limit"))
+		offset := parseTransferOffset(r.URL.Query().Get("offset"))
+
 		s.mu.Lock()
 		s.ensureDemoDataLocked()
-		rows := append([]TransferRow(nil), s.transfers...)
+		rows := filterTransferRows(append([]TransferRow(nil), s.transfers...), stateFilters)
 		s.mu.Unlock()
+
 		sort.Slice(rows, func(i, j int) bool { return rows[i].UpdatedAt > rows[j].UpdatedAt })
-		writeJSON(w, http.StatusOK, map[string]any{"transfers": rows})
+		total := len(rows)
+		if offset >= len(rows) {
+			rows = nil
+		} else {
+			rows = rows[offset:]
+		}
+		if len(rows) > limit {
+			rows = rows[:limit]
+		}
+		mapped := make([]map[string]any, len(rows))
+		for i := range rows {
+			mapped[i] = s.iosTransferPayload(rows[i])
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"transfers": mapped, "total": total})
 	case http.MethodPost:
 		var req transferCreateRequest
 		if r.Body != nil {
@@ -573,7 +817,7 @@ func (s *Service) HandleTransfers(w http.ResponseWriter, r *http.Request) {
 		}
 		var row TransferRow
 		now := ""
-		err := s.repo.Apply(r.Context(), func() error {
+		err := s.apply(r.Context(), func() error {
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			s.ensureDemoDataLocked()
@@ -648,24 +892,18 @@ func (s *Service) HandleManifestDetail(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "manifest_not_found"})
 		return
 	}
-	manifest := s.manifests[idx]
-	transfers := append([]TransferRow(nil), s.manifestTransfers[manifestID]...)
-	transitions := append([]ManifestTransition(nil), s.manifestTransitions[manifestID]...)
-	reassignments := append([]ManifestReassignment(nil), s.manifestReassignments[manifestID]...)
-	exceptions := make([]ManifestException, 0)
-	for i := range s.manifestExceptions {
-		if s.manifestExceptions[i].ManifestID == manifestID {
-			exceptions = append(exceptions, s.manifestExceptions[i])
-		}
-	}
+	snapshot := s.manifestDetailSnapshotLocked(s.manifests[idx])
 	s.mu.Unlock()
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"manifest":      manifest,
-		"transfers":     transfers,
-		"transitions":   transitions,
-		"reassignments": reassignments,
-		"exceptions":    exceptions,
+		"manifest":      snapshot.Manifest,
+		"transfers":     snapshot.Transfers,
+		"transitions":   snapshot.Transitions,
+		"reassignments": snapshot.Reassignments,
+		"exceptions":    snapshot.Exceptions,
+		"route_id":      snapshot.RouteID,
+		"stop_count":    snapshot.StopCount,
+		"order_count":   snapshot.OrderCount,
 	})
 }
 
@@ -718,7 +956,7 @@ func (s *Service) handleManifestTransition(w http.ResponseWriter, r *http.Reques
 	}
 
 	var manifest ManifestRow
-	err := s.repo.Apply(r.Context(), func() error {
+	err := s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -732,19 +970,10 @@ func (s *Service) handleManifestTransition(w http.ResponseWriter, r *http.Reques
 		if eventType == "" {
 			return nil
 		}
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifest.ManifestID, events.TopicMain, map[string]any{
-			"type":        eventType,
-			"manifest_id": manifest.ManifestID,
-			"supplier_id": s.supplierID,
-			"state":       manifest.State,
-			"reason":      strings.TrimSpace(req.Reason),
-			"action":      action,
-			"route_id":    routeIDForManifest(manifest),
-			"driver_id":   manifest.DriverID,
-			"vehicle_id":  manifest.VehicleID,
-			"order_count": manifest.TransferCnt,
-			"timestamp":   s.now().Format(time.RFC3339Nano),
-		})
+		payload := s.manifestOutboxFields(manifest, eventType)
+		payload["reason"] = strings.TrimSpace(req.Reason)
+		payload["action"] = action
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifest.ManifestID, events.TopicMain, payload)
 	})
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "invalid_state:") {
@@ -817,8 +1046,12 @@ func (s *Service) HandleStaff(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	s.ensureDemoDataLocked()
 	rows := append([]StaffRow(nil), s.staff...)
+	mapped := make([]map[string]any, len(rows))
+	for i := range rows {
+		mapped[i] = iosStaffMemberPayload(rows[i])
+	}
 	s.mu.Unlock()
-	writeJSON(w, http.StatusOK, map[string]any{"staff": rows})
+	writeJSON(w, http.StatusOK, map[string]any{"staff": mapped})
 }
 
 // HandleDispatch serves POST /v1/factory/dispatch.
@@ -834,7 +1067,7 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 	var manifest ManifestRow
 	selectedCount := 0
 	now := ""
-	err := s.repo.Apply(r.Context(), func() error {
+	err := s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -876,11 +1109,14 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 				if id == "" {
 					continue
 				}
-				for i := range available {
-					if available[i].TransferID == id {
-						selected = append(selected, available[i])
-						break
+				for i := range s.transfers {
+					if s.transfers[i].TransferID != id {
+						continue
 					}
+					if dispatchableTransferState(s.transfers[i].State) && strings.TrimSpace(s.transfers[i].ManifestID) == "" {
+						selected = append(selected, s.transfers[i])
+					}
+					break
 				}
 			}
 		}
@@ -935,6 +1171,7 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 			"type":            events.EventManifestDraftCreated,
 			"manifest_id":     manifest.ManifestID,
 			"supplier_id":     s.supplierID,
+			"factory_id":      s.factoryNodeID,
 			"route_id":        routeIDForManifest(manifest),
 			"transfer_count":  manifest.TransferCnt,
 			"total_volume_vu": manifest.TotalVolumeVU,
@@ -963,6 +1200,7 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status":                 "dispatch_planned",
 		"created_manifest_count": 1,
+		"manifests_created":      1,
 		"manifest_id":            manifest.ManifestID,
 		"transfer_count":         selectedCount,
 		"updated_at":             now,
@@ -984,6 +1222,18 @@ func (s *Service) HandleManifestRebalance(w http.ResponseWriter, r *http.Request
 	req.TransferID = strings.TrimSpace(req.TransferID)
 	req.ToDriverID = strings.TrimSpace(req.ToDriverID)
 	req.ToVehicle = strings.TrimSpace(req.ToVehicle)
+	req.SourceManifestID = strings.TrimSpace(req.SourceManifestID)
+	req.TargetManifestID = strings.TrimSpace(req.TargetManifestID)
+	if req.SourceManifestID == "" {
+		req.SourceManifestID = req.ManifestID
+	}
+	if len(req.TransferIDs) == 0 && req.TransferID != "" {
+		req.TransferIDs = []string{req.TransferID}
+	}
+	if req.TargetManifestID != "" && req.TargetManifestID != req.SourceManifestID {
+		s.handleCrossManifestRebalance(w, r, req)
+		return
+	}
 	if req.ManifestID == "" || req.TransferID == "" || (req.ToDriverID == "" && req.ToVehicle == "") {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "manifest_id_transfer_id_and_target_required"})
 		return
@@ -991,7 +1241,7 @@ func (s *Service) HandleManifestRebalance(w http.ResponseWriter, r *http.Request
 
 	var manifest ManifestRow
 	var reassign ManifestReassignment
-	err := s.repo.Apply(r.Context(), func() error {
+	err := s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1009,30 +1259,57 @@ func (s *Service) HandleManifestRebalance(w http.ResponseWriter, r *http.Request
 		if tIdx < 0 {
 			return fmt.Errorf("transfer_not_found")
 		}
+		if transfers[tIdx].State != "ASSIGNED" && transfers[tIdx].State != "REASSIGNED" {
+			return fmt.Errorf("transfer_not_mutable")
+		}
+		globalTransferIdx := s.findGlobalTransferIndexLocked(req.TransferID)
+		if globalTransferIdx < 0 {
+			return fmt.Errorf("transfer_not_found")
+		}
+		globalTransfer := s.transfers[globalTransferIdx]
+		if globalTransfer.ManifestID != "" && globalTransfer.ManifestID != req.ManifestID {
+			return fmt.Errorf("transfer_manifest_mismatch")
+		}
+		if globalTransfer.OrderID != transfers[tIdx].OrderID || globalTransfer.State != transfers[tIdx].State {
+			return fmt.Errorf("transfer_ledger_mismatch")
+		}
+		if globalTransfer.DriverID != "" && transfers[tIdx].DriverID != "" && globalTransfer.DriverID != transfers[tIdx].DriverID {
+			return fmt.Errorf("transfer_ledger_mismatch")
+		}
+		if globalTransfer.VehicleID != "" && transfers[tIdx].VehicleID != "" && globalTransfer.VehicleID != transfers[tIdx].VehicleID {
+			return fmt.Errorf("transfer_ledger_mismatch")
+		}
+		if manifest.VehicleID != "" && transfers[tIdx].VehicleID != "" && transfers[tIdx].VehicleID != manifest.VehicleID {
+			return fmt.Errorf("transfer_route_mismatch")
+		}
 
 		fromDriver := transfers[tIdx].DriverID
 		fromVehicle := transfers[tIdx].VehicleID
+		if (req.ToDriverID == "" || req.ToDriverID == fromDriver) && (req.ToVehicle == "" || req.ToVehicle == fromVehicle) {
+			return fmt.Errorf("transfer_already_assigned")
+		}
 		if req.ToDriverID != "" {
 			transfers[tIdx].DriverID = req.ToDriverID
 		}
 		if req.ToVehicle != "" {
+			if manifest.VehicleID != "" && req.ToVehicle != manifest.VehicleID {
+				return fmt.Errorf("transfer_route_mismatch")
+			}
 			transfers[tIdx].VehicleID = req.ToVehicle
+		}
+		if manifest.VehicleID != "" && transfers[tIdx].VehicleID != "" && transfers[tIdx].VehicleID != manifest.VehicleID {
+			return fmt.Errorf("transfer_route_mismatch")
 		}
 		transfers[tIdx].State = "REASSIGNED"
 		transfers[tIdx].ReassignDepth++
 		transfers[tIdx].UpdatedAt = s.now().Format(time.RFC3339Nano)
 		s.manifestTransfers[req.ManifestID] = transfers
 
-		for i := range s.transfers {
-			if s.transfers[i].TransferID == req.TransferID {
-				s.transfers[i].DriverID = transfers[tIdx].DriverID
-				s.transfers[i].VehicleID = transfers[tIdx].VehicleID
-				s.transfers[i].ReassignDepth = transfers[tIdx].ReassignDepth
-				s.transfers[i].State = transfers[tIdx].State
-				s.transfers[i].UpdatedAt = transfers[tIdx].UpdatedAt
-				break
-			}
-		}
+		s.transfers[globalTransferIdx].DriverID = transfers[tIdx].DriverID
+		s.transfers[globalTransferIdx].VehicleID = transfers[tIdx].VehicleID
+		s.transfers[globalTransferIdx].ReassignDepth = transfers[tIdx].ReassignDepth
+		s.transfers[globalTransferIdx].State = transfers[tIdx].State
+		s.transfers[globalTransferIdx].UpdatedAt = transfers[tIdx].UpdatedAt
 
 		manifest.ReassignmentDepth++
 		manifest.UpdatedAt = s.now().Format(time.RFC3339Nano)
@@ -1060,6 +1337,7 @@ func (s *Service) HandleManifestRebalance(w http.ResponseWriter, r *http.Request
 			"manifest_id":     req.ManifestID,
 			"transfer_id":     req.TransferID,
 			"supplier_id":     s.supplierID,
+			"factory_id":      s.factoryNodeID,
 			"from_driver_id":  reassign.FromDriverID,
 			"to_driver_id":    reassign.ToDriverID,
 			"from_vehicle_id": reassign.FromVehicleID,
@@ -1079,6 +1357,21 @@ func (s *Service) HandleManifestRebalance(w http.ResponseWriter, r *http.Request
 			return
 		case "transfer_not_found":
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "transfer_not_found"})
+			return
+		case "transfer_manifest_mismatch":
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "transfer_manifest_mismatch"})
+			return
+		case "transfer_ledger_mismatch":
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "transfer_ledger_mismatch"})
+			return
+		case "transfer_route_mismatch":
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "transfer_route_mismatch"})
+			return
+		case "transfer_not_mutable":
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "transfer_not_mutable"})
+			return
+		case "transfer_already_assigned":
+			writeJSON(w, http.StatusOK, map[string]any{"status": "already_assigned", "manifest_id": req.ManifestID, "transfer_id": req.TransferID})
 			return
 		default:
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "manifest_rebalance_failed"})
@@ -1130,7 +1423,7 @@ func (s *Service) HandleManifestCancelTransfer(w http.ResponseWriter, r *http.Re
 	}
 
 	var exception ManifestException
-	err := s.repo.Apply(r.Context(), func() error {
+	err := s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1147,6 +1440,9 @@ func (s *Service) HandleManifestCancelTransfer(w http.ResponseWriter, r *http.Re
 		tIdx := s.findTransferIndexLocked(transfers, req.TransferID)
 		if tIdx < 0 {
 			return fmt.Errorf("transfer_not_found")
+		}
+		if transfers[tIdx].State == "CANCELLED" {
+			return fmt.Errorf("transfer_already_cancelled")
 		}
 
 		transfers[tIdx].State = "CANCELLED"
@@ -1193,6 +1489,7 @@ func (s *Service) HandleManifestCancelTransfer(w http.ResponseWriter, r *http.Re
 			"manifest_id":   req.ManifestID,
 			"transfer_id":   req.TransferID,
 			"supplier_id":   s.supplierID,
+			"factory_id":    s.factoryNodeID,
 			"reason":        exception.Reason,
 			"attempt_count": exception.AttemptCount,
 			"escalated":     exception.Escalated,
@@ -1206,6 +1503,7 @@ func (s *Service) HandleManifestCancelTransfer(w http.ResponseWriter, r *http.Re
 				"manifest_id":   req.ManifestID,
 				"transfer_id":   req.TransferID,
 				"supplier_id":   s.supplierID,
+				"factory_id":    s.factoryNodeID,
 				"reason":        exception.Reason,
 				"attempt_count": exception.AttemptCount,
 				"timestamp":     exception.CreatedAt,
@@ -1223,6 +1521,9 @@ func (s *Service) HandleManifestCancelTransfer(w http.ResponseWriter, r *http.Re
 			return
 		case "transfer_not_found":
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "transfer_not_found"})
+			return
+		case "transfer_already_cancelled":
+			writeJSON(w, http.StatusOK, map[string]any{"status": "already_cancelled", "manifest_id": req.ManifestID, "transfer_id": req.TransferID})
 			return
 		default:
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "cancel_transfer_failed"})
@@ -1278,7 +1579,7 @@ func (s *Service) HandleManifestCancel(w http.ResponseWriter, r *http.Request) {
 
 	var manifest ManifestRow
 	var now string
-	err := s.repo.Apply(r.Context(), func() error {
+	err := s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1322,6 +1623,7 @@ func (s *Service) HandleManifestCancel(w http.ResponseWriter, r *http.Request) {
 			"type":        events.EventManifestCancelled,
 			"manifest_id": req.ManifestID,
 			"supplier_id": s.supplierID,
+			"factory_id":  s.factoryNodeID,
 			"reason":      strings.TrimSpace(req.Reason),
 			"timestamp":   now,
 		})
@@ -1394,8 +1696,26 @@ func (s *Service) HandleSupplyRequests(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	s.ensureDemoDataLocked()
 	rows := append([]SupplyRequest(nil), s.supplyRequests...)
+	mapped := make([]map[string]any, len(rows))
+	for i := range rows {
+		row := rows[i]
+		mapped[i] = map[string]any{
+			"request_id":              row.RequestID,
+			"warehouse_id":            row.WarehouseID,
+			"factory_id":              s.factoryNodeID,
+			"supplier_id":             s.supplierID,
+			"state":                   row.Status,
+			"priority":                "NORMAL",
+			"total_volume_vu":         0.0,
+			"notes":                   "",
+			"transfer_order_id":       "",
+			"created_by":              "",
+			"created_at":              row.CreatedAt,
+			"updated_at":              row.UpdatedAt,
+		}
+	}
 	s.mu.Unlock()
-	writeJSON(w, http.StatusOK, map[string]any{"requests": rows})
+	writeJSON(w, http.StatusOK, map[string]any{"requests": mapped})
 }
 
 func coalesceReason(reason, fallback string) string {

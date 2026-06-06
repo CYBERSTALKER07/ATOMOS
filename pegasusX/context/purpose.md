@@ -4,7 +4,7 @@
 Operate a single-supplier logistics ecosystem at high reliability for thousands of retailers, while preserving full architectural compatibility with the Pegasus multi-supplier reference.
 
 ## Role Alignment
-- **SUPPLIER (`role=ADMIN`)** — operates the supplier portal. There is exactly one supplier tenant at runtime.
+- **SUPPLIER (`role=ADMIN`)** — operates the supplier portal. Default deploy uses one seeded supplier; up to `MAX_SUPPLIERS` (default 10) via registration cap.
 - **RETAILER (`role=RETAILER`)** — self-registered ordering customer.
 - **DRIVER (`role=DRIVER`)** — route execution, geofenced actions, delivery verification. Scoped to a Home Node (Warehouse OR Factory).
 - **PAYLOAD (`role=PAYLOADER`)** — loading, offloading, manifest confirmation.

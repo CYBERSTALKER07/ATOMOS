@@ -70,7 +70,7 @@ cleanup() {
 		"${COMPOSE[@]}" ps >&2 || true
 		"${COMPOSE[@]}" logs --tail 40 spanner-emulator redis zookeeper kafka kafka-init backend-setup backend-go ai-worker >&2 || true
 	fi
-	"${COMPOSE[@]}" down --remove-orphans >/dev/null 2>&1 || true
+	"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
 	exit "$exit_code"
 }
 
@@ -150,6 +150,9 @@ assert_redis() {
 	return 0
 }
 
+log_step "Tearing down any prior SSMR stack (including Kafka/Zookeeper volumes)"
+"${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+
 log_step "Starting isolated SSMR compose stack"
 "${COMPOSE[@]}" up -d
 
@@ -157,7 +160,24 @@ log_step "Waiting for Spanner emulator, Redis, Zookeeper, and Kafka"
 wait_for_tcp "Spanner emulator" "$SPANNER_HOST" "$SPANNER_PORT" 60 2
 wait_for_tcp "Redis" "$REDIS_HOST" "$REDIS_PORT" 30 2
 wait_for_tcp "Zookeeper" "localhost" "22181" 30 2
-wait_for_tcp "Kafka" "$KAFKA_HOST" "$KAFKA_PORT" 60 2
+
+log_step "Waiting for Kafka healthcheck (broker registration in Zookeeper)"
+kafka_attempt=0
+while (( kafka_attempt < 40 )); do
+	kafka_attempt=$((kafka_attempt + 1))
+	if "${COMPOSE[@]}" ps --status running --format json kafka 2>/dev/null | grep -q '"Health":"healthy"'; then
+		break
+	fi
+	if tcp_ready "$KAFKA_HOST" "$KAFKA_PORT" && \
+		"${COMPOSE[@]}" exec -T kafka kafka-topics --bootstrap-server localhost:9094 --list >/dev/null 2>&1; then
+		break
+	fi
+	if (( kafka_attempt >= 40 )); then
+		echo "Timed out waiting for Kafka to become healthy" >&2
+		exit 1
+	fi
+	sleep 3
+done
 
 log_step "Creating isolated Kafka topics"
 "${COMPOSE[@]}" run --rm kafka-init
@@ -176,6 +196,8 @@ log_step "Ensuring backend and ai-worker are running"
 
 log_step "Waiting for backend health"
 wait_for_http "backend health" "$HEALTH_URL" 90 2
+# Warm up go run backend after volume-mount compile before e2e traffic.
+wait_for_http "backend health (warmup)" "$HEALTH_URL" 10 3
 
 log_step "Asserting Redis-backed delivery perimeter key and positive membership path"
 run_go_smokecheck spatial
@@ -183,4 +205,8 @@ run_go_smokecheck spatial
 log_step "Asserting isolated Kafka topics and round-trip message flow"
 run_go_smokecheck kafka
 
+log_step "Running end-to-end supplier→retailer→order→tracking flow"
+run_go_smokecheck e2e
+
 log_step "SSMR smoke-check completed successfully"
+echo "__SSMR_OK__"

@@ -1,0 +1,184 @@
+/* Auth split-panel layout — pegasus reference parity for pegasusX portals */
+
+.auth-shell {
+    display: flex;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    background: var(--desk-canvas);
+    color: var(--desk-text-primary);
+}
+
+.auth-brand-panel {
+    display: none;
+    flex: 1;
+    position: relative;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: var(--space-8);
+    background: var(--desk-ink);
+    color: var(--desk-on-ink);
+    overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+    .auth-brand-panel {
+        display: flex;
+    }
+}
+
+.auth-brand-content {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+}
+
+.auth-brand-mark {
+    width: 120px;
+    height: 120px;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: 700 56px/1 var(--desktop-font-sans);
+    background: var(--desk-accent);
+    color: var(--desk-accent-on);
+}
+
+.auth-brand-heading {
+    margin: var(--space-6) 0 0;
+    font: var(--type-display-lg);
+    letter-spacing: -0.03em;
+}
+
+.auth-brand-sub {
+    margin: var(--space-2) 0 0;
+    font: var(--type-body-lg);
+    color: rgba(255, 255, 255, 0.72);
+    max-width: 28rem;
+}
+
+.auth-brand-footer {
+    font: var(--type-caption-sm);
+    color: rgba(255, 255, 255, 0.56);
+}
+
+.auth-form-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--desk-surface);
+}
+
+.auth-form-inner {
+    width: 100%;
+    max-width: 32rem;
+}
+
+.auth-theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--desk-border);
+    background: var(--desk-surface);
+    color: var(--desk-text-primary);
+    cursor: pointer;
+}
+
+.auth-step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
+}
+
+.auth-step-dot {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-pill);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--desk-border);
+    background: var(--desk-surface);
+    color: var(--desk-text-secondary);
+    font: 600 14px/1 var(--desktop-font-sans);
+}
+
+.auth-step-dot--active {
+    background: var(--desk-accent);
+    border-color: var(--desk-accent);
+    color: var(--desk-accent-on);
+}
+
+.auth-step-dot--done {
+    background: var(--desk-accent-soft);
+    border-color: var(--desk-accent);
+    color: var(--desk-accent-strong);
+}
+
+.auth-step-connector {
+    width: 32px;
+    height: 1px;
+    background: var(--desk-border);
+}
+
+.auth-card {
+    background: var(--desk-surface);
+    border: 1px solid var(--desk-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8);
+}
+
+.auth-mobile-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
+}
+
+@media (min-width: 1024px) {
+    .auth-mobile-brand {
+        display: none;
+    }
+}
+
+/* Post-registration billing gate — compact centered (pegasus setup/billing parity) */
+.setup-shell {
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-6);
+    background: var(--desk-canvas);
+}
+
+.setup-inner {
+    width: 100%;
+    max-width: 32rem;
+}
+
+.setup-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-8);
+}
+
+.setup-header-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--desk-accent);
+    color: var(--desk-accent-on);
+    flex-shrink: 0;
+}

@@ -1,0 +1,39 @@
+import SwiftUI
+
+struct RootView: View {
+    @Environment(TokenStore.self) private var tokenStore
+    @Environment(SupplierRealtimeHub.self) private var realtimeHub
+    @State private var realtime = SupplierRealtimeClient()
+
+    var body: some View {
+        Group {
+            if !tokenStore.isAuthenticated {
+                LoginView()
+            } else if tokenStore.needsBillingGate {
+                BillingGateView()
+            } else {
+                SupplierAdaptiveShell()
+            }
+        }
+        .animation(SupplierAnim.smooth, value: tokenStore.isAuthenticated)
+        .animation(SupplierAnim.smooth, value: tokenStore.needsBillingGate)
+        .onChange(of: tokenStore.isAuthenticated) { _, authenticated in
+            if authenticated, let token = tokenStore.token {
+                realtime.connect(token: token) { event in
+                    guard !event.type.hasPrefix("SYSTEM") else { return }
+                    realtimeHub.bump()
+                }
+            } else {
+                realtime.disconnect()
+            }
+        }
+        .onAppear {
+            if tokenStore.isAuthenticated, let token = tokenStore.token {
+                realtime.connect(token: token) { event in
+                    guard !event.type.hasPrefix("SYSTEM") else { return }
+                    realtimeHub.bump()
+                }
+            }
+        }
+    }
+}

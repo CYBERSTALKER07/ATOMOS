@@ -26,13 +26,13 @@ Maps each pegasusX surface to the Pegasus reference and tracks intentional diver
 ## Client Surfaces
 | pegasusX | Pegasus reference | Divergence |
 |---|---|---|
-| `apps/supplier-portal` | `pegasus/apps/admin-portal` | Renamed for clarity; same role (SUPPLIER). |
+| `apps/supplier-portal` | `pegasus/apps/admin-portal` | Renamed for clarity; same role (SUPPLIER). **UI layout parity (2026-06):** `SupplierShell`, split auth, Bento dashboard, `PageChrome`/`desk-page` list surfaces — flat pegasusX URLs preserved; API wiring unchanged. |
 | `apps/retailer-app-android` | `pegasus/apps/retailer-app-android` | Same role row. |
 | `apps/retailer-app-ios` | `pegasus/apps/retailer-app-ios` | Same. |
 | `apps/retailer-app-desktop` | `pegasus/apps/retailer-app-desktop` | Same. |
 | `apps/driver-app-android` | `pegasus/apps/driver-app-android` | Same. |
 | `apps/driver-app-ios` | `pegasus/apps/driverappios` | Folder renamed to `driver-app-ios` for consistency. |
-| `apps/warehouse-portal` | `pegasus/apps/warehouse-portal` | Same. |
+| `apps/warehouse-portal` | `pegasus/apps/warehouse-portal` | Same role (WAREHOUSE_ADMIN). **UI layout parity (2026-06):** `WarehouseShell`, split auth, KPI dashboard grid, `PageChrome`/`desk-page` list surfaces — pegasusX-only `/transfers` + `/orders/[id]` wrapped in same chrome; `warehouseApi` wiring unchanged. |
 | `apps/warehouse-app-android` | `pegasus/apps/warehouse-app-android` | Same. |
 | `apps/warehouse-app-ios` | `pegasus/apps/warehouse-app-ios` | Same. |
 | `apps/factory-portal` | `pegasus/apps/factory-portal` | Same. |
@@ -50,8 +50,35 @@ Maps each pegasusX surface to the Pegasus reference and tracks intentional diver
 | Employment / staffing questions | Inferred via `/supplier/org` | Out of scope (intentionally removed) |
 | Billing gate | `/setup/billing` | `/setup/billing` (identical) |
 
+## Supplier portal UI layout parity (2026-06)
+
+| pegasusX route | Layout tier | Notes |
+|---|---|---|
+| `/auth/*`, `/setup/billing` | Parity | Split auth + circle stepper + centered billing |
+| `/dashboard` | Parity | `BentoGrid` cells + per-cell skeletons |
+| `/orders`, `/dispatch`, `/manifests`, `/fleet` | Parity | `PageChrome` + dense ops tables/kanban |
+| Inventory/catalog/pricing/treasury/network/exceptions | Parity | `PortalSurface` / `desk-page` chrome |
+| `/org-fleet`, `/payments`, `/earnings`, `/ai/recommendations` | Parity | Shell-wrapped `desk-page` headers |
+
+Intentional divergence: flat URLs (no `/supplier/*` prefix); pegasusX-only topology step and multi-gateway billing content unchanged.
+
+## Warehouse portal UI layout parity (2026-06)
+
+| pegasusX route | Layout tier | Notes |
+|---|---|---|
+| `/auth/login` | Parity | Split auth panel + `auth-card` (phone + PIN unchanged) |
+| `/` (dashboard) | Parity | KPI card grid + `desk-page-header` (not Bento — pegasus warehouse pattern) |
+| `/orders`, `/dispatch`, `/manifests`, `/dispatch-locks`, `/supply-requests` | Parity | `PageChrome` + dense ops tables |
+| `/orders/[id]` | pegasusX-only | `PageChrome` + mutation panel (delay/reject/overflow) |
+| `/transfers` | pegasusX-only | `PageChrome` + transfer action panel; nav under Operations |
+| Inventory/products/demand-forecast, fleet (drivers/vehicles/staff), CRM/returns/analytics/treasury/payment-config | Parity | `PageChrome` + `desk-table` where applicable |
+
+Intentional divergence: pegasusX-only transfer controls and order mutation surface; HeroUI + framer-motion retained per pegasus reference.
+
 ## Divergence Log
 _Add an entry whenever pegasusX intentionally drifts from Pegasus behavior._
+- 2026-06-06: Warehouse portal UI layout graft landed in pegasusX (`PageChrome`, split auth, KPI dashboard header, `/transfers` shell nav). Visual parity with pegasus warehouse-portal chrome; pegasusX `warehouseApi` / `warehouse-ops` wiring unchanged.
+- 2026-06-06: Supplier portal UI layout graft landed in pegasusX (`SupplierShell`, `BentoGrid`, auth split, `PageChrome`). Visual parity with pegasus admin-portal supplier surfaces; pegasusX API client and single-tenant routes unchanged.
 - 2026-05-21: Checkout payment session + first attempt persistence now runs atomically in pegasusX through repository `CreateSessionWithAttempt`, closing the prior split-write gap where checkout called `CreateSession` then `SaveAttempt` in separate operations.
 - 2026-05-21: Phase-1.2 payment durability is now additive in pegasusX: `schema/spanner.ddl` now includes durable payment write tables (`PaymentSessions`, `PaymentAttempts`, `PaymentChargebacks`, `PaymentReversals`, `PaymentWebhooks`) and `payment/repository_spanner.go` persists these aggregates with outbox events atomically in Spanner transactions. Bootstrap now prefers the Spanner payment repository when available with explicit in-memory fallback retained for degraded/local runtime paths.
 - 2026-05-21: Phase-1 backend durability implementation started additively in pegasusX: Orders are now schema-backed in Spanner and `order/repository_spanner.go` persists order rows + outbox events atomically; bootstrap selects this path when Spanner is available but intentionally preserves in-memory fallback for degraded/local runs until broader repository migration lands.

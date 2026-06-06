@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-go
+  labels:
+    app: backend-go
+    app.kubernetes.io/name: backend-go
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: backend-go
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: backend-go
+        app.kubernetes.io/name: backend-go
+        app.kubernetes.io/part-of: pegasusx
+    spec:
+      serviceAccountName: backend-go
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: backend-go
+          image: pegasusx-backend:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: backend-go-config
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: jwt-secret
+            - name: GLOBAL_PAY_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: global-pay-webhook-secret
+            - name: ADYEN_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: adyen-webhook-secret
+            - name: STRIPE_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: stripe-webhook-secret
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1000m"
+              memory: 512Mi

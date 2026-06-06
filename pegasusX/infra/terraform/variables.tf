@@ -105,3 +105,61 @@ variable "firebase_auth_enabled" {
   type        = bool
   default     = false
 }
+
+variable "enable_observability_resources" {
+  description = "Whether launch-readiness observability resources (dashboard, alerts, optional uptime checks) are provisioned."
+  type        = bool
+  default     = false
+}
+
+variable "alert_notification_channels" {
+  description = "Notification channel ids used by alert policies when observability resources are enabled."
+  type        = list(string)
+  default     = []
+}
+
+variable "ai_worker_monitoring_host" {
+  description = "Resolvable host for ai-worker monitoring uptime checks (for example an ingress hostname or load balancer IP). Leave empty to skip uptime checks."
+  type        = string
+  default     = ""
+}
+
+variable "ai_worker_monitoring_port" {
+  description = "TCP port used for ai-worker health and readiness monitoring."
+  type        = number
+  default     = 8081
+}
+
+variable "ai_worker_monitoring_use_ssl" {
+  description = "Whether the ai-worker monitoring host is exposed over HTTPS."
+  type        = bool
+  default     = false
+}
+
+variable "jwt_secret" {
+  description = "JWT signing secret for backend-go (stored in Secret Manager)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "global_pay_webhook_secret" {
+  description = "GlobalPay webhook HMAC secret (stored in Secret Manager)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "adyen_webhook_secret" {
+  description = "Adyen webhook secret (stored in Secret Manager)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "stripe_webhook_secret" {
+  description = "Stripe webhook secret (stored in Secret Manager)."
+  type        = string
+  default     = ""
+  sensitive   = true
+}

@@ -10,6 +10,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const PUBLIC_PATHS = new Set<string>([
   "/",
   "/auth/register",
+  "/auth/login",
   "/setup/billing",
   "/favicon.ico",
 ]);
@@ -23,11 +24,14 @@ export function middleware(req: NextRequest) {
   if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
   const session = req.cookies.get("supplier_jwt")?.value;
-  if (!session) {
-    // Unauthenticated → registration.
+  if (!session || isTokenExpired(session)) {
     const url = req.nextUrl.clone();
-    url.pathname = "/auth/register";
-    return NextResponse.redirect(url);
+    url.pathname = session ? "/auth/login" : "/auth/register";
+    const res = NextResponse.redirect(url);
+    if (session) {
+      res.cookies.delete("supplier_jwt");
+    }
+    return res;
   }
 
   const isConfigured = readIsConfigured(session);
@@ -44,6 +48,19 @@ export function middleware(req: NextRequest) {
 // happens on the backend; the gate only needs to read the is_configured
 // claim to decide where to redirect. Anything malformed → treat as
 // unconfigured (safest default — pushes the supplier toward setup).
+function isTokenExpired(jwt: string): boolean {
+  const parts = jwt.split(".");
+  if (parts.length !== 3) return true;
+  try {
+    const json = atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"));
+    const claims = JSON.parse(json) as { exp?: number };
+    if (typeof claims.exp !== "number") return true;
+    return claims.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
 function readIsConfigured(jwt: string): boolean {
   const parts = jwt.split(".");
   if (parts.length !== 3) return false;

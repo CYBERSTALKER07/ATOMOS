@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-go-config
+  labels:
+    app: backend-go
+    app.kubernetes.io/part-of: pegasusx
+data:
+  PORT: "8080"
+  PEGASUSX_ENV: "production"
+  REDIS_ADDR: "redis.pegasusx.svc.cluster.local:6379"
+  KAFKA_BROKERS: "kafka.pegasusx.svc.cluster.local:9092"
+  KAFKA_TOPIC_MAIN: "pegasusx-main"
+  SPANNER_PROJECT: "pegasusx-prod"
+  SPANNER_INSTANCE: "pegasusx-instance"
+  SPANNER_DATABASE: "pegasusx-db"
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  REQUIRE_INFRA_ADAPTERS: "true"
+  RELIABILITY_MIDDLEWARE_ENABLED: "true"
+  FIREBASE_AUTH_ENABLED: "false"
+  # DDL runs via infra/k8s/backend-go/migrate-job.yaml — never on pod boot.

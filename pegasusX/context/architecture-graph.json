@@ -4,6 +4,210 @@
   "generatedAt": null,
   "runtimeNotes": [
     {
+      "date": "2026-06-02",
+      "summary": "PX4-A1 warehouse role-row clients are now real polling-first consumers of warehouseroutes: packages/{types,api-client} expose warehouse ops contracts, apps/warehouse-portal packages a direct-backend Tauri dashboard over the warehouse HTTP slice, apps/warehouse-app-ios adds an XcodeGen SwiftUI shell with a direct URLSession polling client, and apps/warehouse-app-android adds a Gradle/Compose shell with a direct HTTP polling client. Desktop export, Tauri debug bundle, and iOS xcodebuild passed; Android has clean diagnostics but CLI assemble remains blocked because pegasusX has no Gradle wrapper and no system gradle on PATH."
+    },
+    {
+      "date": "2026-05-31",
+      "summary": "PX2-A4/PX4-A1/PX6-A2 converged on order-owned retailer AI preorder truth: order/service.go plus order/repository_spanner.go now persist additive order lifecycle metadata (OrderSource, ConfirmationStatus, RequestedDeliveryDate, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId), retailer/core_handlers.go delegates confirm/reject AI and preorder edit/confirm flows plus GET /v1/retailer/ai/predictions to that aggregate, warehouse/service.go now derives GET /v1/warehouse/demand/forecast from the same preorder planner, and ai-worker/main.go now materializes replay-safe derived AI_PREORDER rows plus a periodic auto-confirm sweep instead of leaving retailer AI as supplier-only advisory output."
+    },
+    {
+      "date": "2026-05-25",
+      "summary": "PX6-A2/PX6-A3 landed as supplier AI recommendation review and human authority: apps/ai-worker/main.go now writes explainable AIPredictions and emits AI_RECOMMENDATION_CREATED, schema/spanner.ddl adds supplier/status recommendation indexes, supplier/ai_recommendations.go plus supplier/repository_spanner_ai.go expose bounded GET|POST /v1/supplier/ai/recommendations with idempotent decisions persisted into decision_history and AI_RECOMMENDATION_DECIDED outbox emission, and apps/supplier-portal/app/ai/recommendations/page.tsx consumes the typed packages/{types,api-client} contracts with loading, empty, restricted, offline, stale, error, and ready states."
+    },
+    {
+      "date": "2026-05-25",
+      "summary": "PX0-A5/PX7-A3 launch readiness guard landed additively: scripts/validate_launch_readiness.py now verifies the support runbook bundle, SSMR smoke gate, ai-worker Kubernetes validation, Terraform observability evidence, Makefile/package entrypoints, and context synchronization before launch approval; docs/LAUNCH_READINESS_RUNBOOK.md now defines release ownership, preflight sequence, rollback, and hypercare for the currently implemented pegasusX engine."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX3-A3 landed as supplier finance/dispute operations authority: supplier/service.go now exposes GET /v1/supplier/ws-session for short-lived websocket tokens, ws/handler.go accepts signed ?token= fallback auth, kafka/notification_dispatcher.go now fans out supplier-scoped PAYMENT_REQUIRED/PAYMENT_CLEARED/SETTLEMENT_REQUIRED/DELIVERY_DISPUTED envelopes, packages/{types,api-client} now expose typed chargeback/reversal mutations, supplier-portal /payments now live-refreshes authority from the supplier finance stream, /earnings is now a real treasury/dispute operations surface, and legacy GET /v1/supplier/earnings now reads through a ledger-backed compatibility bridge with explicit authority metadata."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX1-A4 landed as supplier org-and-fleet onboarding authority: supplier/onboarding_handlers.go plus supplier/repository_spanner_onboarding.go now expose and persist supplier-scoped org members, drivers, and vehicles through topology-validated Spanner writes on GET|POST /v1/supplier/org/members and /v1/supplier/fleet/{drivers,vehicles}; supplier/repository_spanner.go narrows auth lookup to SupplierRole='ADMIN' with Idx_SupplierUsers_BySupplierUpdated for roster reads, and apps/supplier-portal/app/org-fleet/page.tsx now consumes the surface through the same-origin proxy with shared packages/types and packages/api-client contracts."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "Realtime hardening landed additively in backend-go: ws/connection.go now enforces WS_ALLOWED_ORIGINS for browser origins while preserving empty-origin native clients and localhost development exceptions, bootstrap/bootstrap.go provisions a dedicated notification-consumer DLQ writer on KAFKA_TOPIC_MAIN_DLQ (default <main-topic>-dlq) and either fails strict-mode startup or disables the consumer when DLQ init fails, kafka/consumer.go now adds jittered retry backoff plus original topic/partition/offset headers and refuses offset commits when DLQ routing fails, and payment/service.go now verifies raw Adyen signed notification items before business validation or persistence. Focused validation passed via go test ./ws ./kafka ./bootstrap ./payment."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "Ai-worker monitoring landed additively in apps/ai-worker/main.go: the worker now exposes /healthz, /ready, and /metrics, publishes void_ai_worker_up, void_ai_worker_ready, and void_kafka_consumer_lag_seconds, derives its bind port from AI_WORKER_HTTP_PORT with HEALTH_PORT fallback, and the isolated SSMR compose stack now exposes that surface on host 8181 mapped to container port 8081. Focused validation passed via go test ./apps/ai-worker."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "Ai-worker Kubernetes packaging landed additively in pegasusX: infra/k8s/ai-worker now carries a configmap, rollout-safe Deployment, and ClusterIP service with /healthz and /ready probes on port 8081. This narrows PX7-A3 deployment drift without yet introducing Pegasus-sidecar or alert-policy complexity."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "Ai-worker manifest gating landed additively in pegasusX: scripts/validate_ai_worker_k8s.sh now parses the worker manifests and asserts config map wiring, image placeholder presence, probe paths, and service port contract, with local entrypoints in Makefile and package.json."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "Ai-worker observability automation landed additively in pegasusX: infra/terraform/observability.tf now provisions a launch dashboard, alert policies for worker-up, readiness, and Kafka lag, plus optional uptime checks on /healthz and /ready when a monitoring host is supplied."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX5-A3 Tranche 7 landed as the closure slice for retailer receipt authority: schema/spanner.ddl now defines immutable OrderDeliveryProofs, order/service.go plus order/repository_spanner.go now persist QR handoff and geofence proof artifacts atomically with driver delivery transitions, and retailer/service.go plus retailer/repository_spanner.go now widen recent_receipts.receipt_dossier with delivery_proofs, chargebacks, and reversals while driving proof_status.delivery_proof_available from persisted artifacts. Shared packages/types plus retailer desktop/iOS/Android consumers now render those proof and dispute-history sections. Focused validation passed via order and retailer backend tests, retailer desktop CI=1 build, retailer iOS xcodegen+xcodebuild, and clean Android diagnostics; full Android CLI assemble remains environment-blocked because pegasusX has no Gradle wrapper and no system gradle on PATH."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX5-A3 Tranche 6 landed as a dispute-support receipt dossier on the retailer receipt seam: retailer/service.go now defines additive receipt_dossier types, retailer/repository_spanner.go merges bounded order/session PaymentLedgerEntries timeline rows plus order-scoped PaymentWebhooks into recent_receipts, payment_evidence is now derived from the dossier head for backward compatibility, and retailer desktop/iOS/Android consumers now render the additive dossier while proof_status remains explicit that delivery handoff proof is not durably persisted. Focused validation passed via go test ./apps/backend-go/retailer plus clean diagnostics for the touched shared/client files."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX5-A3 Tranche 5 landed as a session-scoped reversal overlay on the retailer receipt seam: retailer/repository_spanner.go now keeps the order-scoped PaymentLedgerEntries read for recent_receipts, recovers payment session ids from those same immutable ledger rows, and performs a second bounded stale read for CHARGEBACK_REVERSAL_RECORDED session entries so payment_evidence promotes later reversal truth when it belongs to the same payment session; focused helper coverage now proves session-id dedupe plus newer-reversal override behavior without changing retailer tracking DTO shape."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX5-A3 Tranche 4 landed as additive immutable receipt payment evidence: retailer/service.go now defines TrackingPaymentEvidence, retailer/repository_spanner.go batches order-scoped PaymentLedgerEntries reads to attach latest payment_evidence on recent_receipts for GET /v1/retailer/tracking, and retailer desktop plus retailer iOS plus retailer Android consumers now render the latest ledger-backed payment evidence on receipt cards without claiming full dispute-grade proof history or session-only reversal completeness."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX5-A3 Tranche 3 landed as additive recent retailer receipt visibility: retailer/repository_spanner.go now reads bounded recent COMPLETED Orders rows ordered by updated_at, retailer/core_handlers.go now serves those snapshots as recent_receipts on GET /v1/retailer/tracking while keeping status tied to active tracking rows, derived timeline coverage now includes those completed snapshots, and retailer desktop plus retailer iOS plus retailer Android consumers now render recent completed receipt snapshots from durable row truth without claiming immutable proof history."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX5-A2 Tranche 16 landed as truthful driver breadcrumb overlays: both driver mobile apps now retain a bounded recent history of authenticated DRIVER_LOCATION_UPDATED websocket points and render that history as a live polyline on the existing native maps, with state retention in apps/driver-app-ios/Sources/ViewModels/DriverLiveOpsViewModel.swift plus apps/driver-app-android/app/src/main/kotlin/com/pegasusx/driver/ui/DriverLiveOpsViewModel.kt and drawing in the corresponding DriverLiveLocationMap views. This remains an actual traveled-path overlay only because GET /v1/driver/manifest still exposes counts, IDs, and state but no stop coordinates or planned route geometry. Focused validation passed through clean Android diagnostics and xcodegen generate plus xcodebuild for DriverAppIOS."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX5-A2 Tranche 15 landed as native driver map parity: apps/driver-app-ios now renders the authenticated websocket live-location stream through MapKit in DriverLiveLocationMapView.swift, apps/driver-app-android now renders the same location authority through Google Maps Compose in DriverLiveLocationMap.kt with API key plumbing in app/build.gradle.kts plus AndroidManifest.xml, and the driver dashboards now expose real native maps instead of metadata-only coordinate panels. Focused validation passed through clean Android diagnostics for the touched Gradle, manifest, and Compose files plus xcodegen generate && xcodebuild -project DriverAppIOS.xcodeproj -target DriverAppIOS -sdk iphonesimulator26.5 CODE_SIGNING_ALLOWED=NO build."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX5-A2 Tranche 14 landed as driver-role realtime parity closure without inventing a fake map substrate: apps/driver-app-android now consumes authenticated /v1/ws updates through DriverLiveSocketClient and surfaces live connection state plus last location, apps/driver-app-ios now carries an XcodeGen-backed SwiftUI shell with direct URLSession live-ops reads plus authenticated /v1/ws live-state consumption, and driver/service.go now emits DRIVER_AVAILABILITY_CHANGED with standard envelope metadata plus additive available/on_shift/supplier/home-node fields synced through contracts/events.schema.json and packages/types."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX5-A2 Tranche 13 landed as the first driver-facing mobile consumer on the role row: apps/driver-app-android now carries Gradle Android app metadata, a direct live-ops client for GET /v1/driver/profile, GET|PATCH /v1/driver/availability, GET /v1/driver/manifest-gate, GET /v1/driver/manifest, and gated POST /v1/telemetry/location, local Kotlin DTO mirrors of the driver live-ops contract, and a Compose Material 3 dashboard that renders loading, restricted, error, refreshing, stale, manifest, and telemetry states while keeping driver_id fallback explicit for local reads and bearer-token gating explicit for telemetry uploads."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX5-A2 Tranche 12 landed as the retailer Android role-row companion: apps/retailer-app-android now carries Gradle Android app metadata, a direct client for GET /v1/retailer/tracking, local Kotlin DTO mirrors of the existing tracking contract, and a Compose Material 3 dashboard that renders loading, empty, restricted, error, refreshing, stale, assignment, location, and derived timeline states from the existing PX5-A2/PX5-A3 backend projections."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX5-A2 Tranche 11 landed as the first retailer-facing mobile consumer on the role row: apps/retailer-app-ios now carries an XcodeGen-backed SwiftUI shell, a direct URLSession client for GET /v1/retailer/tracking, local Codable mirrors of the existing retailer tracking DTO, and a dashboard that renders loading, empty, restricted, error, refreshing, stale, assignment, location, and derived timeline states from the existing PX5-A2/PX5-A3 backend projections."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX5-A2 Tranche 10 landed as the first retailer-facing desktop consumer outside the supplier portal: apps/retailer-app-desktop/app/page.tsx now consumes GET /v1/retailer/tracking through a same-origin proxy at apps/retailer-app-desktop/app/api/[...path]/route.ts, rendering assignment identity, live-vs-stale driver location state, and derived order timeline snapshots through shared packages/types and packages/api-client contracts."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX5-A2 Tranche 9 landed as the first supplier-facing live-order consumer: supplier/repository_spanner.go now reads recent supplier-scoped Orders rows with durable assignment identity, supplier/portal_handlers.go GET /v1/supplier/orders hydrates fresh driver last-location snapshots from the same telemetry cache authority used by retailer tracking while preserving scaffold-only review entries for fallback, bootstrap wires DriverLocations into supplier service, and apps/supplier-portal/app/orders/page.tsx now consumes the route through the same-origin proxy with shared packages/types plus packages/api-client contracts."
+    },
+    {
+      "date": "2026-05-23",
+      "summary": "PX5-A3 Tranche 2 landed as a derived retailer tracking-event timeline: retailer/core_handlers.go no longer returns events=[] for GET /v1/retailer/tracking and instead derives additive ORDER_CREATED and ORDER_STATUS_SNAPSHOT items from durable order created_at, updated_at, and status fields, sorts them newest-first, marks them derived=true/source=ORDER_ROW, and syncs shared typing through packages/types while dispute-specific history remains deferred."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "PX5-A3 Tranche 1 landed as the retailer fulfillment and pending-payment bridge: retailer/core_handlers.go now serves GET /v1/retailer/active-fulfillment and GET /v1/retailer/pending-payments from the existing ListTrackingOrders projection instead of empty arrays, reuses scoped live-location enrichment, returns retailer-visible delivery and payment state directly from durable order statuses, and syncs shared contract parity through packages/types plus packages/api-client."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "B06 PX5-A1 Tranche 6 landed as the driver manifest detail bridge: driver/service.go now serves GET /v1/driver/manifest and legacy GET /v1/fleet/manifest through a bootstrap-wired read-only lookup backed by factory.Service.ManifestDetailSnapshotForDriver instead of returning a fake demo hash list; responses now project manifest, transfers, transitions, reassignments, exceptions, route_id, stop_count, and order_count for the authenticated driver while keeping compatibility explicit with hashes=[] and legacy_hashes_available=false, and focused coverage lives in driver/service_test.go plus factory/service_test.go."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "B06 PX5-A2 Tranche 3 landed as a scoped last-location bridge: telemetry/location_store.go stores latest authenticated driver points in Redis-compatible cache with bounded TTL, bootstrap wires DriverLocations into telemetryroutes and retailer service, telemetryroutes saves claims-derived locations fail-open after validation, and retailer tracking enriches only authenticated retailer-owned active assigned orders when the cached point is fresh and supplier-matching; packages/types mirrors the additive RetailerTrackingLocation DTO."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "B06 PX5-A2 Tranche 2 landed as durable assignment and truthful retailer tracking projection: schema/spanner.ddl adds nullable Orders.DriverId, VehicleId, RouteId, and ManifestId plus driver/route/manifest indexes; order service and Spanner repository now persist assignments through POST /v1/orders/{orderID}/assign, emit ORDER_ASSIGNED/ORDER_REASSIGNED, invalidate supplier/retailer order caches, fan out supplier/retailer/driver websocket envelopes, and enforce assigned-driver ownership for delivery transitions; retailer tracking now reads active Orders with assignment metadata."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "B06 PX5-A2 Tranche 1 landed as authenticated telemetry ingress and scoped live fanout: telemetryroutes now rejects unauthenticated/non-driver location posts, derives driver_id from DRIVER claims, validates coordinate/timestamp input, emits typed DRIVER_LOCATION_UPDATED websocket envelopes with trace_id, and broadcasts through telemetry:driver:{driver_id} plus telemetry:supplier:{supplier_id}; ws handler now subscribes driver/supplier-side sockets to those rooms and wraps gorilla writes with a per-connection mutex plus ping/pong deadlines."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "B06 PX5-A1 Tranche 5 landed as delivery-state durability: orderroutes now mounts DRIVER-auth compatibility endpoints for /v1/delivery/arrive and /v1/order/{deliver,confirm-offload,complete,collect-cash}; order/service.go performs driver role-checked transitions, transactional outbox emission for ORDER_STATUS_CHANGED, SETTLEMENT_REQUIRED, PAYMENT_REQUIRED, PAYMENT_CLEARED, and ORDER_FINALIZED, post-commit supplier/retailer cache invalidation, websocket fanout, cash geofence validation, and replay no-op suppression. contracts/events.schema.json and packages/types now carry additive delivery statuses plus payment/finalization payload shapes, and assigned orders require the authenticated driver to match Orders.DriverId."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "B06 PX5-A1 Tranche 4 landed as a read-only earnings bridge: driver/service.go now serves GET /v1/driver/earnings through an optional EarningsLookup seam, returns the Pegasus mobile earnings contract (total_deliveries, total_volume, total_routes, last_30_days), adds currency/minor-unit aliases, and avoids outbox/cache/ws side effects until delivery-state durability provides an authoritative completed-delivery source."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "B06 PX5-A1 Tranche 3 landed as a compatibility bridge: driver/service.go now serves GET /v1/driver/pending-collections through an optional PendingCollectionsLookup seam, normalizes legacy scaffold rows into Pegasus-style pending_collections items with count metadata while preserving legacy aliases, and keeps the route read-only with no outbox/cache/ws side effects until delivery-state durability provides an authoritative source."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "B06 PX5-A1 Tranche 2 landed additively: driver/service.go now enforces Ghost Stop Prevention on GET /v1/driver/manifest-gate by requiring manifest_id and resolving gate state through a bootstrap-wired factory manifest lookup; SEALED/DISPATCHED/COMPLETED manifests clear the gate with stop_count and volume_vu metadata, unknown manifests return manifest_not_found, and pre-seal states return AWAITING_PAYLOAD_SEAL."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "B06 PX5-A1 Tranche 1 landed additively: driver/service.go now routes PATCH /v1/driver/availability through repo.Apply with transactional outbox emit of DRIVER_AVAILABILITY_CHANGED, post-commit cache invalidation of driver:availability:{id}, and dual websocket fanout to driver:{id} plus supplier:{supplier_id}; unchanged requests return deterministic no_change=true without extra side effects, and bootstrap now injects cache, hubs, slog, and seeded supplier identity into driver.NewService with focused seam coverage in driver/service_test.go."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "B05 node operations durability batch is now closed (context/plan.md status `implemented`) after warehouse, factory, and payload anchors converged on runtime handler guards plus negative-path event-contract assertion coverage. B06 driver and live-delivery batch is now `in progress` with non-technical kickoff additive in docs/DRIVER_SUPPORT_PLAYBOOK.md, docs/LIVE_TRACKING_EXPECTATIONS.md, and docs/DELIVERY_ESCALATION_POLICY.md; docs/README.md now indexes these B06 support references, PX5-A1 plus PX5-A2 are implemented, and PX5-A3 remains the open technical anchor in this batch."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "B05 negative-path event-contract assertion pass landed additively (test-only): warehouse missing-lock release now validates conflict-after-success with unchanged outbox/cache/ws envelope sequences, factory transfer_not_mutable conflict plus rebalance replay already_assigned, transfer_route_mismatch-after-success, and already_cancelled branches now assert unchanged outbox/ws event-type sequences, and payload replay no-op plus source_manifest_order_missing-after-success and target_route_mismatch-after-success branches now assert unchanged outbox/ws envelope sequences with websocket payload field checks."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "PX4-A2/PX4-A3 cross-entity ownership consistency extension landed additively: factory rebalance now fails closed with transfer_ledger_mismatch when manifest-local and global transfer rows diverge on order/state or assignment identity before mutation, payload reassignment now validates source ownership before mutation (source_manifest_not_found/source_route_manifest_mismatch/source_manifest_order_missing), and replay-after-success tests now assert single emitted outbox payload consistency for rebalance/reassignment success paths."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "PX4-A2/PX4-A3 replay-consistency extension landed additively: factory rebalance now rejects inconsistent transfer linkage and transfer vehicle divergence from manifest route before mutation, payload reassignment now rejects target-driver/manifest divergence, and replaying successful rebalance/reassign requests returns deterministic already_assigned responses with no extra outbox/cache/ws side effects."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "PX4-A2/PX4-A3 consistency extension landed additively: factory rebalance now requires transfer presence in both manifest-local and global transfer ledgers before mutation (transfer_not_found on global-ledger drift), and payload reassignment now allows explicit same-route requests to select alternate draft/loading manifests when source manifests are non-mutable while preserving mutable-source same-route no-op semantics."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "Follow-on PX4-A2/PX4-A3 durability extension landed additively: factory rebalance now rejects any non-mutable transfer state (not only cancelled transfers), and payload reassignment now treats explicit same-route requests as deterministic already_assigned no-ops while preserving fail-closed conflict responses for unavailable or mismatched targets."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "Follow-on PX4-A2/PX4-A3 durability extension landed additively: factory rebalance now rejects cancelled transfers (transfer_not_mutable) alongside already_assigned no-op handling, and payload reassignment now preserves same-manifest mutable-source requests as deterministic already_assigned no-ops while keeping fail-closed conflicts for unavailable or mismatched targets."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "Follow-on PX4-A2/PX4-A3 durability landed additively: factory rebalance now treats unchanged target assignment as idempotent (already_assigned) to avoid no-op mutation/event side effects, and payload reassignment now fails closed with deterministic already_assigned/reassign_target_unavailable/target_route_mismatch semantics instead of fallback-route drift when valid targets are unavailable."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "Continued B05 with PX4-A2/PX4-A3 hardening: factory cancel-transfer now treats repeat cancellation as idempotent without duplicate state/event side effects, and payload reassignment now enforces target-manifest capacity using reassigned volume with conflict responses to prevent order-manifest drift."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "Started PX4-A1 warehouse durability hardening additively: warehouse service now returns deterministic dispatch_lock_not_found (404) for release requests on missing lock IDs so release outbox/cache/ws fanout side effects only execute for real lock transitions, and focused seam tests now cover supply-request plus dispatch-lock mutation parity."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "Extended PX3-A2 authority additively with mismatch handling: payment service now exposes supplier-scoped GET /v1/payment/reconciliation/mismatches with bounded gateway/time-window/group_limit/mismatch_threshold_minor filters and deterministic signed net aggregation over immutable settlement summary rows, paymentroutes mounts the endpoint, and supplier-portal /payments consumes typed mismatch data via shared api-client/types contracts."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "Completed PX3-A2 settlement/reconciliation authority additively: payment service now exposes GET /v1/payment/settlement/authority with bounded filter windows and grouped immutable-ledger summaries from payment/repository_spanner.go, paymentroutes now mounts that authority endpoint, bootstrap in-memory repo keeps summary-query parity, and supplier-portal /payments consumes settlement authority with ledger fallback via shared api-client/types contracts."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "Started PX3-A2 settlement and ledger groundwork additively: schema/spanner.ddl now defines PaymentLedgerEntries, payment/repository_spanner.go now persists immutable ledger rows atomically with payment session/chargeback/reversal/webhook writes and supports bounded stale-read ledger queries, and payment/service.go + paymentroutes/routes.go now expose supplier-scoped GET /v1/payment/ledger with focused handler tests."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "B04 webhook replay hardening landed additively: payment/service.go now performs non-writing idempotency replay checks for Adyen per-item notifications to avoid concatenated multi-write responses, and payment/service_webhook_handlers_test.go now covers replay dedupe, conflict, and signature rejection paths."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "Completed PX2-A3 retailer pricing display bridge: retailer handlers now surface additive pricing snapshots on /v1/retailer/suppliers and dedicated /v1/retailer/pricing/rules reads, retailer Spanner repository now projects SupplierPricingRules into retailer-facing contracts, and shared packages now expose retailer pricing DTOs and API client methods."
+    },
+    {
+      "date": "2026-05-22",
+      "summary": "Completed B03 tranche sequence: retailer handlers now enforce claims-authoritative retailer identity with explicit 401/403 scope errors and profile supplier_id backfill, order create now fail-closes for unavailable perimeter authority or uncovered zones, and supplier pricing authority now exposes GET|PATCH /v1/supplier/pricing/rules backed by durable SupplierPricingRules storage and shared types/api-client bridge updates."
+    },
+    {
       "date": "2026-05-22",
       "summary": "Completed shared supplier contract bridge: packages/types now includes supplier register/login/configure/billing/profile/topology DTOs and packages/api-client now exposes typed supplier methods for auth + core supplier endpoints with Idempotency-Key support and structured API error handling."
     },
@@ -107,22 +311,70 @@
     { "id": "ssmr-smoke-harness", "kind": "tooling", "language": "bash", "path": "scripts/smoke_ssmr.sh" },
     { "id": "backend-go", "kind": "service", "language": "go", "path": "apps/backend-go" },
     { "id": "order-spanner-repo", "kind": "component", "language": "go", "path": "apps/backend-go/order/repository_spanner.go" },
+    { "id": "order-delivery-proof-store", "kind": "data", "language": "ddl", "path": "apps/backend-go/schema/spanner.ddl" },
+    { "id": "payment-service", "kind": "component", "language": "go", "path": "apps/backend-go/payment/service.go" },
+    { "id": "bootstrap-runtime", "kind": "component", "language": "go", "path": "apps/backend-go/bootstrap/bootstrap.go" },
+    { "id": "kafka-consumer", "kind": "component", "language": "go", "path": "apps/backend-go/kafka/consumer.go" },
+    { "id": "kafka-dlq-writer", "kind": "component", "language": "go", "path": "apps/backend-go/kafka/dlq_writer.go" },
+    { "id": "payment-routes", "kind": "component", "language": "go", "path": "apps/backend-go/paymentroutes/routes.go" },
     { "id": "payment-spanner-repo", "kind": "component", "language": "go", "path": "apps/backend-go/payment/repository_spanner.go" },
     { "id": "supplier-spanner-repo", "kind": "component", "language": "go", "path": "apps/backend-go/supplier/repository_spanner.go" },
+    { "id": "retailer-spanner-repo", "kind": "component", "language": "go", "path": "apps/backend-go/retailer/repository_spanner.go" },
+    { "id": "retailer-core-handlers", "kind": "component", "language": "go", "path": "apps/backend-go/retailer/core_handlers.go" },
+    { "id": "order-service", "kind": "component", "language": "go", "path": "apps/backend-go/order/service.go" },
+    { "id": "order-routes", "kind": "component", "language": "go", "path": "apps/backend-go/orderroutes/routes.go" },
+    { "id": "telemetry-routes", "kind": "component", "language": "go", "path": "apps/backend-go/telemetryroutes/routes.go" },
+    { "id": "telemetry-location-store", "kind": "component", "language": "go", "path": "apps/backend-go/telemetry/location_store.go" },
+    { "id": "ws-handler", "kind": "component", "language": "go", "path": "apps/backend-go/ws/handler.go" },
+    { "id": "ws-connection", "kind": "component", "language": "go", "path": "apps/backend-go/ws/connection.go" },
+    { "id": "factory-service", "kind": "component", "language": "go", "path": "apps/backend-go/factory/service.go" },
+    { "id": "payload-service", "kind": "component", "language": "go", "path": "apps/backend-go/payload/service.go" },
+    { "id": "warehouse-service", "kind": "component", "language": "go", "path": "apps/backend-go/warehouse/service.go" },
+    { "id": "order-warehouse-resolver-spanner", "kind": "component", "language": "go", "path": "apps/backend-go/order/warehouse_resolver_spanner.go" },
+    { "id": "supplier-pricing-handlers", "kind": "component", "language": "go", "path": "apps/backend-go/supplier/portal_handlers.go" },
     { "id": "backend-setup", "kind": "tooling", "language": "go", "path": "apps/backend-go/cmd/setup" },
     { "id": "ssmr-smokecheck", "kind": "tooling", "language": "go", "path": "apps/backend-go/cmd/ssmr-smokecheck" },
     { "id": "retailer-proximity", "kind": "component", "language": "go", "path": "apps/backend-go/retailer/proximity_service.go" },
     { "id": "ai-worker", "kind": "service", "language": "go", "path": "apps/ai-worker" },
+    { "id": "ai-worker-monitoring", "kind": "component", "language": "go", "path": "apps/ai-worker/main.go" },
+    { "id": "ai-worker-k8s-configmap", "kind": "infra", "language": "yaml", "path": "infra/k8s/ai-worker/configmap.yaml" },
+    { "id": "ai-worker-k8s-deployment", "kind": "infra", "language": "yaml", "path": "infra/k8s/ai-worker/deployment.yaml" },
+    { "id": "ai-worker-k8s-service", "kind": "infra", "language": "yaml", "path": "infra/k8s/ai-worker/service.yaml" },
+    { "id": "ai-worker-k8s-gate", "kind": "tooling", "language": "bash", "path": "scripts/validate_ai_worker_k8s.sh" },
+    { "id": "terraform-observability", "kind": "infra", "language": "hcl", "path": "infra/terraform/observability.tf" },
     { "id": "supplier-portal", "kind": "web", "language": "ts", "path": "apps/supplier-portal" },
     { "id": "supplier-portal-api-proxy", "kind": "component", "language": "ts", "path": "apps/supplier-portal/app/api/[...path]/route.ts" },
+    { "id": "supplier-onboarding-handlers", "kind": "component", "language": "go", "path": "apps/backend-go/supplier/onboarding_handlers.go" },
+    { "id": "supplier-orders-page", "kind": "component", "language": "ts", "path": "apps/supplier-portal/app/orders/page.tsx" },
+    { "id": "supplier-org-fleet-page", "kind": "component", "language": "ts", "path": "apps/supplier-portal/app/org-fleet/page.tsx" },
+    { "id": "supplier-payments-page", "kind": "component", "language": "ts", "path": "apps/supplier-portal/app/payments/page.tsx" },
     { "id": "retailer-app-android", "kind": "mobile", "language": "kotlin", "path": "apps/retailer-app-android" },
+    { "id": "retailer-android-build-files", "kind": "component", "language": "kotlin", "path": "apps/retailer-app-android/app/build.gradle.kts" },
+    { "id": "retailer-android-api-client", "kind": "component", "language": "kotlin", "path": "apps/retailer-app-android/app/src/main/kotlin/com/pegasusx/retailerappandroid/network/RetailerTrackingApiClient.kt" },
+    { "id": "retailer-android-tracking-screen", "kind": "component", "language": "kotlin", "path": "apps/retailer-app-android/app/src/main/kotlin/com/pegasusx/retailerappandroid/ui/TrackingDashboardScreen.kt" },
     { "id": "retailer-app-ios", "kind": "mobile", "language": "swift", "path": "apps/retailer-app-ios" },
+    { "id": "retailer-ios-project-spec", "kind": "component", "language": "yaml", "path": "apps/retailer-app-ios/project.yml" },
+    { "id": "retailer-ios-api-client", "kind": "component", "language": "swift", "path": "apps/retailer-app-ios/Sources/Networking/RetailerAPIClient.swift" },
+    { "id": "retailer-ios-tracking-view", "kind": "component", "language": "swift", "path": "apps/retailer-app-ios/Sources/Views/TrackingDashboardView.swift" },
     { "id": "retailer-app-desktop", "kind": "desktop", "language": "ts", "path": "apps/retailer-app-desktop" },
+    { "id": "retailer-desktop-api-proxy", "kind": "component", "language": "ts", "path": "apps/retailer-app-desktop/app/api/[...path]/route.ts" },
+    { "id": "retailer-desktop-tracking-page", "kind": "component", "language": "ts", "path": "apps/retailer-app-desktop/app/page.tsx" },
     { "id": "driver-app-android", "kind": "mobile", "language": "kotlin", "path": "apps/driver-app-android" },
-    { "id": "driver-app-ios", "kind": "mobile", "language": "swift", "path": "apps/driver-app-ios" },
+    { "id": "driver-android-build-files", "kind": "component", "language": "kotlin", "path": "apps/driver-app-android/app/build.gradle.kts" },
+    { "id": "driver-android-api-client", "kind": "component", "language": "kotlin", "path": "apps/driver-app-android/app/src/main/kotlin/com/pegasusx/driver/network/DriverApiClient.kt" },
+    { "id": "driver-android-live-ops-screen", "kind": "component", "language": "kotlin", "path": "apps/driver-app-android/app/src/main/kotlin/com/pegasusx/driver/ui/DriverLiveOpsScreen.kt" },
+    { "id": "driverappios", "kind": "mobile", "language": "swift", "path": "apps/driverappios" },
     { "id": "warehouse-portal", "kind": "web", "language": "ts", "path": "apps/warehouse-portal" },
+    { "id": "warehouse-desktop-dashboard-page", "kind": "component", "language": "ts", "path": "apps/warehouse-portal/app/page.tsx" },
+    { "id": "warehouse-desktop-tauri-config", "kind": "component", "language": "json", "path": "apps/warehouse-portal/src-tauri/tauri.conf.json" },
     { "id": "warehouse-app-android", "kind": "mobile", "language": "kotlin", "path": "apps/warehouse-app-android" },
+    { "id": "warehouse-android-build-files", "kind": "component", "language": "kotlin", "path": "apps/warehouse-app-android/app/build.gradle.kts" },
+    { "id": "warehouse-android-api-client", "kind": "component", "language": "kotlin", "path": "apps/warehouse-app-android/app/src/main/kotlin/com/pegasusx/warehouseappandroid/network/WarehouseApiClient.kt" },
+    { "id": "warehouse-android-dashboard-screen", "kind": "component", "language": "kotlin", "path": "apps/warehouse-app-android/app/src/main/kotlin/com/pegasusx/warehouseappandroid/ui/WarehouseDashboardScreen.kt" },
     { "id": "warehouse-app-ios", "kind": "mobile", "language": "swift", "path": "apps/warehouse-app-ios" },
+    { "id": "warehouse-ios-project-spec", "kind": "component", "language": "yaml", "path": "apps/warehouse-app-ios/project.yml" },
+    { "id": "warehouse-ios-api-client", "kind": "component", "language": "swift", "path": "apps/warehouse-app-ios/Sources/Networking/WarehouseAPIClient.swift" },
+    { "id": "warehouse-ios-dashboard-view", "kind": "component", "language": "swift", "path": "apps/warehouse-app-ios/Sources/Views/WarehouseDashboardView.swift" },
     { "id": "factory-portal", "kind": "web", "language": "ts", "path": "apps/factory-portal" },
     { "id": "factory-app-android", "kind": "mobile", "language": "kotlin", "path": "apps/factory-app-android" },
     { "id": "factory-app-ios", "kind": "mobile", "language": "swift", "path": "apps/factory-app-ios" },
@@ -153,29 +405,123 @@
     { "from": "docker-compose-ssmr", "to": "backend-setup", "kind": "local-bootstrap" },
     { "from": "docker-compose-ssmr", "to": "backend-go", "kind": "local-runtime" },
     { "from": "docker-compose-ssmr", "to": "ai-worker", "kind": "local-runtime" },
+    { "from": "docker-compose-ssmr", "to": "ai-worker-monitoring", "kind": "monitoring-port" },
+    { "from": "ai-worker-k8s-configmap", "to": "ai-worker-k8s-deployment", "kind": "env-source" },
+    { "from": "ai-worker-k8s-deployment", "to": "ai-worker-k8s-service", "kind": "service-selector" },
+    { "from": "ai-worker-k8s-deployment", "to": "ai-worker", "kind": "deploys" },
+    { "from": "ai-worker-k8s-gate", "to": "ai-worker-k8s-configmap", "kind": "validates" },
+    { "from": "ai-worker-k8s-gate", "to": "ai-worker-k8s-deployment", "kind": "validates" },
+    { "from": "ai-worker-k8s-gate", "to": "ai-worker-k8s-service", "kind": "validates" },
+    { "from": "terraform", "to": "terraform-observability", "kind": "module-file" },
+    { "from": "terraform-observability", "to": "ai-worker-monitoring", "kind": "alert+uptime" },
     { "from": "backend-setup", "to": "spanner", "kind": "schema-bootstrap" },
     { "from": "ssmr-smokecheck", "to": "spanner", "kind": "read-assert" },
     { "from": "ssmr-smokecheck", "to": "redis", "kind": "spatial-read-assert" },
     { "from": "ssmr-smokecheck", "to": "kafka", "kind": "topic-roundtrip-assert" },
     { "from": "backend-go", "to": "order-spanner-repo", "kind": "domain-component" },
     { "from": "order-spanner-repo", "to": "spanner", "kind": "order-persistence" },
+    { "from": "order-spanner-repo", "to": "order-delivery-proof-store", "kind": "delivery-proof-write" },
+    { "from": "retailer-spanner-repo", "to": "order-delivery-proof-store", "kind": "receipt-proof-read" },
+    { "from": "order-delivery-proof-store", "to": "spanner", "kind": "spanner-table" },
+    { "from": "backend-go", "to": "payment-service", "kind": "domain-component" },
+    { "from": "backend-go", "to": "bootstrap-runtime", "kind": "composition-root" },
+    { "from": "backend-go", "to": "kafka-consumer", "kind": "domain-component" },
+    { "from": "backend-go", "to": "ws-connection", "kind": "domain-component" },
+    { "from": "backend-go", "to": "payment-routes", "kind": "domain-component" },
+    { "from": "payment-routes", "to": "payment-service", "kind": "route-mount" },
+    { "from": "payment-service", "to": "payment-spanner-repo", "kind": "repository-call" },
     { "from": "backend-go", "to": "payment-spanner-repo", "kind": "domain-component" },
     { "from": "payment-spanner-repo", "to": "spanner", "kind": "payment-persistence" },
+    { "from": "bootstrap-runtime", "to": "ws-connection", "kind": "websocket-origin-policy-config" },
+    { "from": "bootstrap-runtime", "to": "kafka-dlq-writer", "kind": "notification-dlq-wiring" },
+    { "from": "kafka-consumer", "to": "kafka-dlq-writer", "kind": "dlq-routing" },
+    { "from": "kafka-dlq-writer", "to": "kafka", "kind": "dead-letter-topic-write" },
     { "from": "backend-go", "to": "supplier-spanner-repo", "kind": "domain-component" },
+    { "from": "backend-go", "to": "supplier-onboarding-handlers", "kind": "domain-component" },
     { "from": "supplier-spanner-repo", "to": "spanner", "kind": "supplier-persistence" },
+    { "from": "supplier-onboarding-handlers", "to": "supplier-spanner-repo", "kind": "repository-call" },
+    { "from": "backend-go", "to": "retailer-spanner-repo", "kind": "domain-component" },
+    { "from": "retailer-spanner-repo", "to": "spanner", "kind": "retailer-and-pricing-read" },
+    { "from": "backend-go", "to": "retailer-core-handlers", "kind": "domain-component" },
+    { "from": "retailer-core-handlers", "to": "retailer-spanner-repo", "kind": "repository-call" },
+    { "from": "backend-go", "to": "order-service", "kind": "domain-component" },
+    { "from": "backend-go", "to": "order-routes", "kind": "route-component" },
+    { "from": "order-routes", "to": "order-service", "kind": "route-mount" },
+    { "from": "order-service", "to": "contracts-events", "kind": "assignment-event-contract" },
+    { "from": "order-service", "to": "ws-handler", "kind": "assignment-ws-fanout" },
+    { "from": "backend-go", "to": "telemetry-routes", "kind": "route-component" },
+    { "from": "backend-go", "to": "telemetry-location-store", "kind": "domain-component" },
+    { "from": "ws-handler", "to": "ws-connection", "kind": "upgrade-origin-check" },
+    { "from": "telemetry-routes", "to": "ws-handler", "kind": "scoped-telemetry-fanout" },
+    { "from": "telemetry-routes", "to": "telemetry-location-store", "kind": "claims-derived-location-cache-write" },
+    { "from": "telemetry-location-store", "to": "redis", "kind": "bounded-ttl-live-location-cache" },
+    { "from": "retailer-core-handlers", "to": "telemetry-location-store", "kind": "scoped-live-location-read" },
+    { "from": "telemetry-routes", "to": "contracts-events", "kind": "driver-location-event-contract" },
+    { "from": "backend-go", "to": "factory-service", "kind": "domain-component" },
+    { "from": "backend-go", "to": "payload-service", "kind": "domain-component" },
+    { "from": "backend-go", "to": "warehouse-service", "kind": "domain-component" },
+    { "from": "order-service", "to": "order-warehouse-resolver-spanner", "kind": "serviceability-resolution" },
+    { "from": "order-warehouse-resolver-spanner", "to": "spanner", "kind": "serviceability-coverage-read" },
+    { "from": "backend-go", "to": "supplier-pricing-handlers", "kind": "domain-component" },
+    { "from": "supplier-pricing-handlers", "to": "supplier-spanner-repo", "kind": "repository-call" },
+    { "from": "supplier-pricing-handlers", "to": "telemetry-location-store", "kind": "scoped-live-location-read" },
     { "from": "backend-go", "to": "retailer-proximity", "kind": "domain-component" },
     { "from": "retailer-proximity", "to": "redis", "kind": "spatial-membership" },
     { "from": "supplier-portal", "to": "backend-go", "kind": "http" },
     { "from": "supplier-portal", "to": "supplier-portal-api-proxy", "kind": "same-origin-api" },
+    { "from": "supplier-portal", "to": "supplier-orders-page", "kind": "route-surface" },
+    { "from": "supplier-portal", "to": "supplier-org-fleet-page", "kind": "route-surface" },
+    { "from": "supplier-portal", "to": "supplier-payments-page", "kind": "route-surface" },
+    { "from": "supplier-orders-page", "to": "supplier-portal-api-proxy", "kind": "same-origin-api" },
+    { "from": "supplier-orders-page", "to": "pkg-api-client", "kind": "package-consumer" },
+    { "from": "supplier-orders-page", "to": "pkg-types", "kind": "package-consumer" },
+    { "from": "supplier-org-fleet-page", "to": "supplier-portal-api-proxy", "kind": "same-origin-api" },
+    { "from": "supplier-org-fleet-page", "to": "pkg-api-client", "kind": "package-consumer" },
+    { "from": "supplier-org-fleet-page", "to": "pkg-types", "kind": "package-consumer" },
+    { "from": "supplier-payments-page", "to": "supplier-portal-api-proxy", "kind": "same-origin-api" },
+    { "from": "supplier-payments-page", "to": "pkg-api-client", "kind": "package-consumer" },
     { "from": "supplier-portal-api-proxy", "to": "backend-go", "kind": "http-proxy" },
+    { "from": "retailer-app-android", "to": "retailer-android-build-files", "kind": "project-spec" },
+    { "from": "retailer-app-android", "to": "retailer-android-tracking-screen", "kind": "route-surface" },
+    { "from": "retailer-android-tracking-screen", "to": "retailer-android-api-client", "kind": "app-client" },
+    { "from": "retailer-android-api-client", "to": "backend-go", "kind": "http-client" },
+    { "from": "retailer-app-ios", "to": "retailer-ios-project-spec", "kind": "project-spec" },
+    { "from": "retailer-app-ios", "to": "retailer-ios-tracking-view", "kind": "route-surface" },
+    { "from": "retailer-ios-tracking-view", "to": "retailer-ios-api-client", "kind": "app-client" },
+    { "from": "retailer-ios-api-client", "to": "backend-go", "kind": "http-client" },
+    { "from": "retailer-app-desktop", "to": "retailer-desktop-tracking-page", "kind": "route-surface" },
+    { "from": "retailer-desktop-tracking-page", "to": "retailer-desktop-api-proxy", "kind": "same-origin-api" },
+    { "from": "retailer-desktop-tracking-page", "to": "pkg-api-client", "kind": "package-consumer" },
+    { "from": "retailer-desktop-tracking-page", "to": "pkg-types", "kind": "package-consumer" },
+    { "from": "retailer-desktop-api-proxy", "to": "backend-go", "kind": "http-proxy" },
     { "from": "retailer-app-android", "to": "backend-go", "kind": "http+ws" },
     { "from": "retailer-app-ios", "to": "backend-go", "kind": "http+ws" },
     { "from": "retailer-app-desktop", "to": "backend-go", "kind": "http+ws" },
+    { "from": "driver-app-android", "to": "driver-android-build-files", "kind": "project-spec" },
+    { "from": "driver-app-android", "to": "driver-android-live-ops-screen", "kind": "route-surface" },
+    { "from": "driver-android-live-ops-screen", "to": "driver-android-api-client", "kind": "app-client" },
+    { "from": "driver-android-api-client", "to": "backend-go", "kind": "http-client" },
     { "from": "driver-app-android", "to": "backend-go", "kind": "http+ws" },
-    { "from": "driver-app-ios", "to": "backend-go", "kind": "http+ws" },
-    { "from": "warehouse-portal", "to": "backend-go", "kind": "http+ws" },
-    { "from": "warehouse-app-android", "to": "backend-go", "kind": "http+ws" },
-    { "from": "warehouse-app-ios", "to": "backend-go", "kind": "http+ws" },
+    { "from": "driverappios", "to": "backend-go", "kind": "http+ws" },
+    { "from": "driver-app-android", "to": "order-routes", "kind": "driver-delivery-http" },
+    { "from": "driverappios", "to": "order-routes", "kind": "driver-delivery-http" },
+    { "from": "warehouse-portal", "to": "warehouse-desktop-dashboard-page", "kind": "route-surface" },
+    { "from": "warehouse-portal", "to": "warehouse-desktop-tauri-config", "kind": "project-spec" },
+    { "from": "warehouse-desktop-tauri-config", "to": "warehouse-desktop-dashboard-page", "kind": "bundles-static-export" },
+    { "from": "warehouse-desktop-dashboard-page", "to": "pkg-api-client", "kind": "package-consumer" },
+    { "from": "warehouse-desktop-dashboard-page", "to": "pkg-types", "kind": "package-consumer" },
+    { "from": "warehouse-desktop-dashboard-page", "to": "backend-go", "kind": "http-client" },
+    { "from": "warehouse-portal", "to": "backend-go", "kind": "http" },
+    { "from": "warehouse-app-android", "to": "warehouse-android-build-files", "kind": "project-spec" },
+    { "from": "warehouse-app-android", "to": "warehouse-android-dashboard-screen", "kind": "route-surface" },
+    { "from": "warehouse-android-dashboard-screen", "to": "warehouse-android-api-client", "kind": "app-client" },
+    { "from": "warehouse-android-api-client", "to": "backend-go", "kind": "http-client" },
+    { "from": "warehouse-app-android", "to": "backend-go", "kind": "http" },
+    { "from": "warehouse-app-ios", "to": "warehouse-ios-project-spec", "kind": "project-spec" },
+    { "from": "warehouse-app-ios", "to": "warehouse-ios-dashboard-view", "kind": "route-surface" },
+    { "from": "warehouse-ios-dashboard-view", "to": "warehouse-ios-api-client", "kind": "app-client" },
+    { "from": "warehouse-ios-api-client", "to": "backend-go", "kind": "http-client" },
+    { "from": "warehouse-app-ios", "to": "backend-go", "kind": "http" },
     { "from": "factory-portal", "to": "backend-go", "kind": "http+ws" },
     { "from": "factory-app-android", "to": "backend-go", "kind": "http+ws" },
     { "from": "factory-app-ios", "to": "backend-go", "kind": "http+ws" },
@@ -190,7 +536,10 @@
     { "from": "docker-compose-ssmr", "to": "redis", "kind": "local-emulator" },
     { "from": "docker-compose-ssmr", "to": "kafka", "kind": "local-emulator" },
     { "from": "backend-go", "to": "firebase-auth", "kind": "id-token-verify" },
+    { "from": "ai-worker", "to": "ai-worker-monitoring", "kind": "health+metrics" },
+    { "from": "ai-worker-k8s-deployment", "to": "ai-worker-monitoring", "kind": "probe-target" },
     { "from": "ai-worker", "to": "kafka", "kind": "consume" },
+    { "from": "ai-worker-monitoring", "to": "kafka", "kind": "lag-metrics" },
     { "from": "ai-worker", "to": "spanner", "kind": "rw-txn" },
     { "from": "terraform", "to": "spanner", "kind": "provision" },
     { "from": "terraform", "to": "redis", "kind": "provision" },
@@ -199,7 +548,7 @@
     { "from": "retailer-app-android", "to": "contracts-events", "kind": "codegen" },
     { "from": "retailer-app-ios", "to": "contracts-events", "kind": "codegen" },
     { "from": "driver-app-android", "to": "contracts-events", "kind": "codegen" },
-    { "from": "driver-app-ios", "to": "contracts-events", "kind": "codegen" },
+    { "from": "driverappios", "to": "contracts-events", "kind": "codegen" },
     { "from": "warehouse-app-android", "to": "contracts-events", "kind": "codegen" },
     { "from": "warehouse-app-ios", "to": "contracts-events", "kind": "codegen" },
     { "from": "factory-app-android", "to": "contracts-events", "kind": "codegen" },

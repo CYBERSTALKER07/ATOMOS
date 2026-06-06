@@ -16,6 +16,30 @@
 | iOS (driver/retailer/warehouse/factory/payload) | SwiftUI | Native Apple HIG + SF Symbols |
 | payload-terminal | Expo / RN | M3 discipline via RN styling |
 
+## Layout graft rule (supplier-portal)
+
+When adding or changing supplier-portal pages, **graft pegasus admin-portal chrome** without copying pegasus source into git:
+
+1. **Shell** — authenticated routes render inside `components/SupplierShell` (collapsible rail, topbar, breadcrumbs, ⌘K nav search).
+2. **Page chrome** — use `components/PageChrome` (`desk-page`, `desk-page-header`, `desk-toolbar`) or the `PortalSurface` re-export; do not add ad-hoc `p-6 max-w-7xl` page wrappers.
+3. **Dashboard** — Bento protocol only: `BentoGrid` + `BentoCard`/`BentoSkeleton` with semantic `size` props.
+4. **Auth** — `app/auth/layout.tsx` split panel + `auth-card` forms; billing gate uses `app/setup/layout.tsx` centered shell.
+5. **Data layer frozen** — keep `@pegasusx/api-client` hooks and field names; layout-only diffs unless Boss requests contract changes.
+
+Reference measurement files (read-only): `pegasus/apps/admin-portal/components/AdminShell.tsx`, `BentoGrid.tsx`, `app/auth/layout.tsx`.
+
+## Layout graft rule (warehouse-portal)
+
+When adding or changing warehouse-portal pages, **graft pegasus warehouse-portal chrome** without copying pegasus source into git:
+
+1. **Shell** — authenticated routes render inside `components/WarehouseShell` (collapsible rail, topbar, breadcrumbs, ⌘K nav search). pegasusX-only `/transfers` lives under Operations.
+2. **Page chrome** — use `components/PageChrome` (`desk-page`, `desk-page-header`, `desk-toolbar`); do not add ad-hoc `p-6` page wrappers.
+3. **Dashboard** — KPI card grid + motion stagger (pegasus warehouse pattern), **not** supplier BentoGrid.
+4. **Auth** — `app/auth/layout.tsx` split panel + `auth-card` login (phone + PIN to `/v1/auth/warehouse/login`).
+5. **Data layer frozen** — keep `lib/warehouse-api.ts` and `lib/warehouse-ops.ts`; layout-only diffs unless Boss requests contract changes.
+
+Reference measurement files (read-only): `pegasus/apps/warehouse-portal/components/WarehouseShell.tsx`, `app/page.tsx`, `app/auth/login/page.tsx`.
+
 ## Onboarding Bootstrap Flow (supplier-portal)
 4 steps + separate billing gate. Same shape as Pegasus, repurposed for single-tenant company bootstrap.
 1. **Account** — company, contact, email, phone (country prefix), password.

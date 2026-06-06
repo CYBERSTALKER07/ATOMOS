@@ -1,0 +1,147 @@
+import {
+  LayoutDashboard,
+  BookOpen,
+  CheckCircle,
+  Landmark,
+  Truck,
+  ShieldCheck,
+  TrendingUp,
+  DollarSign,
+  Package,
+  BarChart3,
+  ClipboardList,
+  ClipboardCheck,
+  RotateCcw,
+  Users,
+  Settings,
+  Warehouse,
+  Globe,
+  XCircle,
+  Heart,
+  LogOut,
+  Menu,
+  ChevronRight,
+  MapPin,
+  Search,
+  Bell,
+  X,
+  Phone,
+  Mail,
+  ArrowLeft,
+  AlertTriangle,
+  Sun,
+  Moon,
+  Monitor,
+  CreditCard,
+  Calendar,
+  ChevronLeft,
+  BadgeCheck,
+  Pencil,
+  AlertCircle,
+  RefreshCw,
+  Building2,
+  Factory,
+  Plus,
+  Hexagon,
+  PanelLeftClose,
+  PanelLeft,
+  Image,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  User,
+  UserPlus,
+  Sparkles,
+  Network,
+  type LucideIcon,
+} from "lucide-react";
+
+const iconMap: Record<string, LucideIcon> = {
+  overview: LayoutDashboard,
+  ledger: BookOpen,
+  reconcile: CheckCircle,
+  treasury: Landmark,
+  fleet: Truck,
+  kyc: ShieldCheck,
+  analytics: TrendingUp,
+  pricing: DollarSign,
+  catalog: Package,
+  inventory: BarChart3,
+  orders: ClipboardList,
+  manifests: ClipboardCheck,
+  returns: RotateCcw,
+  crm: Users,
+  config: Settings,
+  warehouse: Warehouse,
+  global: Globe,
+  dlq: XCircle,
+  empathy: Heart,
+  logout: LogOut,
+  menu: Menu,
+  chevronR: ChevronRight,
+  pin: MapPin,
+  search: Search,
+  notifications: Bell,
+  close: X,
+  phone: Phone,
+  email: Mail,
+  arrowBack: ArrowLeft,
+  warning: AlertTriangle,
+  lightMode: Sun,
+  darkMode: Moon,
+  autoMode: Monitor,
+  payment: CreditCard,
+  dispatch: Truck,
+  supplier: Building2,
+  refresh: RefreshCw,
+  calendar: Calendar,
+  left: ChevronLeft,
+  right: ChevronRight,
+  verified: BadgeCheck,
+  edit: Pencil,
+  error: AlertCircle,
+  factory: Factory,
+  plus: Plus,
+  hexagon: Hexagon,
+  "sidebar-close": PanelLeftClose,
+  "sidebar-open": PanelLeft,
+  image: Image,
+  arrow_forward: ArrowRight,
+  visibility: Eye,
+  visibility_off: EyeOff,
+  person: User,
+  "person-add": UserPlus,
+  ai: Sparkles,
+  topology: Network,
+  operations: AlertTriangle,
+};
+
+export default function Icon({
+  name,
+  size = 24,
+  className = "",
+  style,
+}: {
+  name: string;
+  size?: number;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const LucideComponent = iconMap[name];
+  if (!LucideComponent) return null;
+
+  const parsedSize = typeof size === "number" ? size : Number(size);
+  const safeSize =
+    Number.isFinite(parsedSize) && parsedSize > 0 ? parsedSize : 24;
+
+  return (
+    <LucideComponent
+      size={safeSize}
+      strokeWidth={1.75}
+      className={className}
+      style={style}
+    />
+  );
+}
+
+export { iconMap };

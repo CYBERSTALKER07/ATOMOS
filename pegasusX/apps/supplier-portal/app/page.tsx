@@ -8,6 +8,9 @@ export default function HomePage() {
       <div className="mt-8 flex gap-4">
         <a className="md-btn md-btn-filled" href="/auth/register">Set up supplier</a>
         <a className="md-btn md-btn-outlined" href="/setup/billing">Billing</a>
+        <a className="md-btn md-btn-outlined" href="/org-fleet">Org &amp; Fleet</a>
+        <a className="md-btn md-btn-outlined" href="/payments">Payments</a>
+        <a className="md-btn md-btn-outlined" href="/ai/recommendations">AI Review</a>
       </div>
     </main>
   );

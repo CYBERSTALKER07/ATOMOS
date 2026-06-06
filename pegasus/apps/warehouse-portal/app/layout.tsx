@@ -8,7 +8,6 @@ import LocaleBootstrap from "../components/LocaleBootstrap";
 import { PageSkeleton } from "../components/Skeleton";
 import { ToastProvider } from "../components/Toast";
 import { ThemeProvider } from "../components/ThemeProvider";
-import PageTransition from "../components/PageTransition";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,9 +51,7 @@ export default function RootLayout({
             <WarehouseShell>
               <ToastProvider>
                 <Suspense fallback={<PageSkeleton />}>
-                  <PageTransition>
-                    {children}
-                  </PageTransition>
+                  {children}
                 </Suspense>
               </ToastProvider>
             </WarehouseShell>

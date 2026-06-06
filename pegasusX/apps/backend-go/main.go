@@ -18,12 +18,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
+	"github.com/pegasusx/pegasusx/apps/backend-go/catalogroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driverroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factoryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/orderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payloaderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/platformroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailerroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
@@ -75,6 +77,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(bootstrap.TraceMiddleware)
+	r.Use(auth.SessionAuth(cfg.JWTSecret))
 	if app.Reliability != nil {
 		r.Use(app.Reliability.Middleware)
 	}
@@ -90,20 +93,31 @@ func main() {
 		}
 	}
 
-	infraroutes.RegisterRoutes(r, infraroutes.Deps{})
+	infraroutes.RegisterRoutes(r, app.InfraHealth)
+	platformroutes.RegisterRoutes(r, platformroutes.Deps{
+		Handler:   app.PlatformHandler,
+		JWTSecret: cfg.JWTSecret,
+		JWTIssuer: cfg.JWTIssuer,
+	})
 	retailerroutes.RegisterRoutes(r, retailerroutes.Deps{
 		Service:             app.RetailerService,
+		PaymentService:      app.PaymentService,
+		OrderService:        app.OrderService,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
+		AllowAuthBypass:     cfg.AllowAuthBypass,
 	})
 	driverroutes.RegisterRoutes(r, driverroutes.Deps{
 		Service:             app.DriverService,
+		OrderService:        app.OrderService,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
+		AllowAuthBypass:     cfg.AllowAuthBypass,
 	})
 	factoryroutes.RegisterRoutes(r, factoryroutes.Deps{
 		Service:             app.FactoryService,
 		JWTSecret:           cfg.JWTSecret,
+		Spanner:             app.Spanner,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 	})
@@ -115,30 +129,43 @@ func main() {
 	})
 	warehouseroutes.RegisterRoutes(r, warehouseroutes.Deps{
 		Service:             app.WarehouseService,
+		OrderService:        app.OrderService,
 		JWTSecret:           cfg.JWTSecret,
+		Spanner:             app.Spanner,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 	})
-	supplierroutes.RegisterRoutes(r, supplierroutes.Deps{Service: app.SupplierService, JWTSecret: cfg.JWTSecret})
+	supplierroutes.RegisterRoutes(r, supplierroutes.Deps{
+		Service:      app.SupplierService,
+		OrderService: app.OrderService,
+		JWTSecret:    cfg.JWTSecret,
+		Spanner:      app.Spanner,
+	})
 	paymentroutes.RegisterRoutes(r, paymentroutes.Deps{
 		Service:             app.PaymentService,
 		JWTSecret:           cfg.JWTSecret,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
+		AllowAuthBypass:     cfg.AllowAuthBypass,
 	})
 	webhookroutes.RegisterRoutes(r, webhookroutes.Deps{Service: app.PaymentService})
 	orderroutes.RegisterRoutes(r, orderroutes.Deps{
 		Service:             app.OrderService,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
+		AllowAuthBypass:     cfg.AllowAuthBypass,
 	})
 	telemetryroutes.RegisterRoutes(r, telemetryroutes.Deps{
 		TelemetryHub:        app.TelemetryHub,
+		LastLocations:       app.DriverLocations,
+		SupplierID:          app.Supplier.SupplierID,
+		Log:                 slog.Default(),
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
 	})
-	// TODO: register additional domain *routes packages here.
-	ws.RegisterRoutes(r, slog.Default(), cfg.FirebaseAuthEnabled, firebaseVerifier,
+	catalogroutes.RegisterRoutes(r, catalogroutes.Deps{Service: app.CatalogService})
+	ws.RegisterRoutes(r, slog.Default(), cfg.JWTSecret, cfg.FirebaseAuthEnabled, firebaseVerifier,
+		app.PlatformService,
 		app.RetailerHub, app.SupplierHub, app.DriverHub, app.PayloadHub, app.WarehouseHub, app.FactoryHub, app.TelemetryHub)
 
 	srv := &http.Server{

@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backend-go-migrate
+  namespace: pegasusx
+  labels:
+    app: backend-go
+    app.kubernetes.io/component: migrate
+    app.kubernetes.io/part-of: pegasusx
+spec:
+  ttlSecondsAfterFinished: 86400
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        app: backend-go
+        app.kubernetes.io/component: migrate
+    spec:
+      serviceAccountName: backend-go
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: pegasusx-backend:local
+          imagePullPolicy: IfNotPresent
+          workingDir: /runtime
+          command: ["/usr/local/bin/pegasusx-setup"]
+          envFrom:
+            - configMapRef:
+                name: backend-go-config
+          env:
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: backend-go-secrets
+                  key: jwt-secret

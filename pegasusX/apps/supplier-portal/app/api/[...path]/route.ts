@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 
-const DEFAULT_BACKEND_BASE_URL = "http://localhost:8080";
+const DEFAULT_BACKEND_BASE_URL = "http://localhost:8180";
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
   "keep-alive",
@@ -23,13 +23,10 @@ function targetURL(pathname: string, search: string) {
 }
 
 type RouteParams = { path: string[] };
+type RouteContext = { params: Promise<RouteParams> };
 
-async function resolveParams(params: RouteParams | Promise<RouteParams>) {
-  return Promise.resolve(params);
-}
-
-async function proxy(req: NextRequest, params: RouteParams | Promise<RouteParams>) {
-  const resolved = await resolveParams(params);
+async function proxy(req: NextRequest, context: RouteContext) {
+  const resolved = await context.params;
   const pathname = resolved.path.join("/");
   const url = targetURL(pathname, req.nextUrl.search);
 
@@ -75,22 +72,22 @@ async function proxy(req: NextRequest, params: RouteParams | Promise<RouteParams
   }
 }
 
-export async function GET(req: NextRequest, context: { params: RouteParams | Promise<RouteParams> }) {
-  return proxy(req, context.params);
+export async function GET(req: NextRequest, context: RouteContext) {
+  return proxy(req, context);
 }
 
-export async function POST(req: NextRequest, context: { params: RouteParams | Promise<RouteParams> }) {
-  return proxy(req, context.params);
+export async function POST(req: NextRequest, context: RouteContext) {
+  return proxy(req, context);
 }
 
-export async function PUT(req: NextRequest, context: { params: RouteParams | Promise<RouteParams> }) {
-  return proxy(req, context.params);
+export async function PUT(req: NextRequest, context: RouteContext) {
+  return proxy(req, context);
 }
 
-export async function PATCH(req: NextRequest, context: { params: RouteParams | Promise<RouteParams> }) {
-  return proxy(req, context.params);
+export async function PATCH(req: NextRequest, context: RouteContext) {
+  return proxy(req, context);
 }
 
-export async function DELETE(req: NextRequest, context: { params: RouteParams | Promise<RouteParams> }) {
-  return proxy(req, context.params);
+export async function DELETE(req: NextRequest, context: RouteContext) {
+  return proxy(req, context);
 }

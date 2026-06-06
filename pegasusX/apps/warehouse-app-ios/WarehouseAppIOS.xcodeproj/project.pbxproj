@@ -1,0 +1,619 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		06145AB262C686E3FBFEE91B /* CRMView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C562B270DA26FA42E315270 /* CRMView.swift */; };
+		1A6575E659D3664446DA9B06 /* AnalyticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 790134486F9A09163C61766D /* AnalyticsView.swift */; };
+		2A89FD664216DF1DDF9F3F46 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 57C9CF70E5113B4CF702D63C /* Assets.xcassets */; };
+		2BF513A7728E6DAF51173E9D /* StaffView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1963212DE00FAF5E10168BED /* StaffView.swift */; };
+		2F18755FAD1B248506FBA879 /* DemandForecastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ADD58C02F3BDE948D50E45C /* DemandForecastView.swift */; };
+		2FF9DD4213CF98C9D3DC4A97 /* WarehouseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEDF5DC0D1406795DE0A4736 /* WarehouseService.swift */; };
+		341E7B32E90F94338A169FE0 /* TransferActionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 337112D659DB9E6E5D560871 /* TransferActionsView.swift */; };
+		37A98DE5E6B0372968D90168 /* WarehouseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42346A5EC575B103624DA7B5 /* WarehouseModels.swift */; };
+		555C0B7D96C65CD45AC026F4 /* OrdersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A324E35BD16F7C3A99A737 /* OrdersView.swift */; };
+		586A5E35B5E72386A388AC4F /* WarehouseOperationsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F9D6324029B6317393A54C7 /* WarehouseOperationsService.swift */; };
+		58C6C45C18E83F6A76AA0FBF /* WarehouseOpsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9261B8CE72327788E0CAA5CD /* WarehouseOpsModels.swift */; };
+		62C461820F4BD5D36335A0B3 /* DriversView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07A64AD811E451A8DAFB8448 /* DriversView.swift */; };
+		790DE066913716D49FAA7265 /* VehiclesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 099B6981BACDB5CF1D58C323 /* VehiclesView.swift */; };
+		7E3729E8A79AAA17A1BE891A /* PaymentConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E3B52F0F1B78C73381C657 /* PaymentConfigView.swift */; };
+		87CDE0C61906C3696F97D7A2 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1526416176EC1A52A2487036 /* RootView.swift */; };
+		8E3A118BB4A8F5B1A3C9A769 /* MoreHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D90AF375E01641360D57C5F /* MoreHubView.swift */; };
+		955FE466ADA6AD692A4D21B2 /* PegasusTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C824961AAD7954F52915E79C /* PegasusTheme.swift */; };
+		96D2B6C29AF7A94F934A06D9 /* WarehouseRealtimeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0B20495C6FC5D2DB422FEC5 /* WarehouseRealtimeClient.swift */; };
+		97114EF8951F117C3E6A8697 /* TreasuryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83C7BC079C62FBFF2EF89681 /* TreasuryView.swift */; };
+		99DF1165810884CD8CA2C2E2 /* SupplyRequestsHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF79D6633E9BB22639AEE6C /* SupplyRequestsHubView.swift */; };
+		B0ABC1B6F48E708BE85B0101 /* PegasusWarehouseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86CB8FE602CF48790811D3AF /* PegasusWarehouseApp.swift */; };
+		B5BA0CF78AABAB4895BF4DDB /* InventoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40384D8041929DBF46242CFF /* InventoryView.swift */; };
+		BF7FAA4EBDCE2CF0ABDE1E33 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 974F874BDE408A8DFE081AF5 /* MainTabView.swift */; };
+		C693D3BCC084A0EF533F1059 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1323C12B453CA1132BCAB5BB /* LoginView.swift */; };
+		D03E70A76CBFEA79900DCDB1 /* ProductsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6B4415599F87770EB09AE1 /* ProductsView.swift */; };
+		D47F70983FC7C12DAAEEB6D3 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0955B28E6A4EB5B8B03E64F9 /* DashboardView.swift */; };
+		D9CCF999EB8CD7669510CF03 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADC341C9AAD3EFE7ED873269 /* TokenStore.swift */; };
+		DC25E444D5E978B169F6199A /* OrderDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF76B09B9B959D532D9B4D2 /* OrderDetailView.swift */; };
+		E669C875AC849610CE44BD49 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD5278073B1CAAE9E0F8BAA /* APIClient.swift */; };
+		ECB59F1746A20962159EC100 /* DispatchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE62C51E893BF7E92C741E56 /* DispatchView.swift */; };
+		F1EC5465A24D24427C9F2D1D /* ManifestsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84659B955E24FFFE335C582C /* ManifestsView.swift */; };
+		FB94B7668476D4B203F4C716 /* ReturnsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BC14978EB4C787C361EE07F /* ReturnsView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		05E3B52F0F1B78C73381C657 /* PaymentConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentConfigView.swift; sourceTree = "<group>"; };
+		07A64AD811E451A8DAFB8448 /* DriversView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriversView.swift; sourceTree = "<group>"; };
+		0955B28E6A4EB5B8B03E64F9 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		099B6981BACDB5CF1D58C323 /* VehiclesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VehiclesView.swift; sourceTree = "<group>"; };
+		1323C12B453CA1132BCAB5BB /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		1526416176EC1A52A2487036 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		1963212DE00FAF5E10168BED /* StaffView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaffView.swift; sourceTree = "<group>"; };
+		1F9D6324029B6317393A54C7 /* WarehouseOperationsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseOperationsService.swift; sourceTree = "<group>"; };
+		337112D659DB9E6E5D560871 /* TransferActionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferActionsView.swift; sourceTree = "<group>"; };
+		3C562B270DA26FA42E315270 /* CRMView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CRMView.swift; sourceTree = "<group>"; };
+		40384D8041929DBF46242CFF /* InventoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InventoryView.swift; sourceTree = "<group>"; };
+		42346A5EC575B103624DA7B5 /* WarehouseModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseModels.swift; sourceTree = "<group>"; };
+		4D90AF375E01641360D57C5F /* MoreHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreHubView.swift; sourceTree = "<group>"; };
+		57C9CF70E5113B4CF702D63C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		790134486F9A09163C61766D /* AnalyticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsView.swift; sourceTree = "<group>"; };
+		83C7BC079C62FBFF2EF89681 /* TreasuryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TreasuryView.swift; sourceTree = "<group>"; };
+		84659B955E24FFFE335C582C /* ManifestsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestsView.swift; sourceTree = "<group>"; };
+		86CB8FE602CF48790811D3AF /* PegasusWarehouseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusWarehouseApp.swift; sourceTree = "<group>"; };
+		8ADD58C02F3BDE948D50E45C /* DemandForecastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemandForecastView.swift; sourceTree = "<group>"; };
+		8BC14978EB4C787C361EE07F /* ReturnsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReturnsView.swift; sourceTree = "<group>"; };
+		9261B8CE72327788E0CAA5CD /* WarehouseOpsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseOpsModels.swift; sourceTree = "<group>"; };
+		948CD89DFC2A4D9363817EAF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		974F874BDE408A8DFE081AF5 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		9E6B4415599F87770EB09AE1 /* ProductsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductsView.swift; sourceTree = "<group>"; };
+		ADC341C9AAD3EFE7ED873269 /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
+		B6EFFBD7777A74779592DBCD /* WarehouseAppIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = WarehouseAppIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BEDF5DC0D1406795DE0A4736 /* WarehouseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseService.swift; sourceTree = "<group>"; };
+		C824961AAD7954F52915E79C /* PegasusTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PegasusTheme.swift; sourceTree = "<group>"; };
+		DCF79D6633E9BB22639AEE6C /* SupplyRequestsHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupplyRequestsHubView.swift; sourceTree = "<group>"; };
+		DE62C51E893BF7E92C741E56 /* DispatchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DispatchView.swift; sourceTree = "<group>"; };
+		F0B20495C6FC5D2DB422FEC5 /* WarehouseRealtimeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarehouseRealtimeClient.swift; sourceTree = "<group>"; };
+		F1A324E35BD16F7C3A99A737 /* OrdersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrdersView.swift; sourceTree = "<group>"; };
+		FBD5278073B1CAAE9E0F8BAA /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		FBF76B09B9B959D532D9B4D2 /* OrderDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrderDetailView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		01701D67DAF4A91546B22DAC /* Dispatch */ = {
+			isa = PBXGroup;
+			children = (
+				DE62C51E893BF7E92C741E56 /* DispatchView.swift */,
+			);
+			path = Dispatch;
+			sourceTree = "<group>";
+		};
+		01C6B6B383F62436C71153AC /* Vehicles */ = {
+			isa = PBXGroup;
+			children = (
+				099B6981BACDB5CF1D58C323 /* VehiclesView.swift */,
+			);
+			path = Vehicles;
+			sourceTree = "<group>";
+		};
+		0553A3F7A9577159F61C9E79 /* Manifests */ = {
+			isa = PBXGroup;
+			children = (
+				84659B955E24FFFE335C582C /* ManifestsView.swift */,
+			);
+			path = Manifests;
+			sourceTree = "<group>";
+		};
+		08E96696049812D1F7D5458B /* More */ = {
+			isa = PBXGroup;
+			children = (
+				4D90AF375E01641360D57C5F /* MoreHubView.swift */,
+			);
+			path = More;
+			sourceTree = "<group>";
+		};
+		0C91539FD516260C995BCC14 /* Returns */ = {
+			isa = PBXGroup;
+			children = (
+				8BC14978EB4C787C361EE07F /* ReturnsView.swift */,
+			);
+			path = Returns;
+			sourceTree = "<group>";
+		};
+		114EABD6CB0C2D1FD62264F5 /* Dashboard */ = {
+			isa = PBXGroup;
+			children = (
+				0955B28E6A4EB5B8B03E64F9 /* DashboardView.swift */,
+			);
+			path = Dashboard;
+			sourceTree = "<group>";
+		};
+		31BC527FB6855B99D5F3240E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B6EFFBD7777A74779592DBCD /* WarehouseAppIOS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		38524BE299B36E8E7C0FE192 /* Analytics */ = {
+			isa = PBXGroup;
+			children = (
+				790134486F9A09163C61766D /* AnalyticsView.swift */,
+			);
+			path = Analytics;
+			sourceTree = "<group>";
+		};
+		420412FE46599C30C20E49F9 /* Orders */ = {
+			isa = PBXGroup;
+			children = (
+				FBF76B09B9B959D532D9B4D2 /* OrderDetailView.swift */,
+				F1A324E35BD16F7C3A99A737 /* OrdersView.swift */,
+			);
+			path = Orders;
+			sourceTree = "<group>";
+		};
+		4AA1D6C0469249791529FFFF /* Transfers */ = {
+			isa = PBXGroup;
+			children = (
+				337112D659DB9E6E5D560871 /* TransferActionsView.swift */,
+			);
+			path = Transfers;
+			sourceTree = "<group>";
+		};
+		5CED3C6A4785745B82567CD4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				9E6B4415599F87770EB09AE1 /* ProductsView.swift */,
+			);
+			path = Products;
+			sourceTree = "<group>";
+		};
+		652D2A00995F91527FF52B9C /* Treasury */ = {
+			isa = PBXGroup;
+			children = (
+				83C7BC079C62FBFF2EF89681 /* TreasuryView.swift */,
+			);
+			path = Treasury;
+			sourceTree = "<group>";
+		};
+		7493F37ACA58FB00B04832F4 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				1323C12B453CA1132BCAB5BB /* LoginView.swift */,
+				974F874BDE408A8DFE081AF5 /* MainTabView.swift */,
+				38524BE299B36E8E7C0FE192 /* Analytics */,
+				8E8EFF231D1F8A20CA54E9BA /* CRM */,
+				114EABD6CB0C2D1FD62264F5 /* Dashboard */,
+				CDA96F89B28B355AF34B2481 /* DemandForecast */,
+				01701D67DAF4A91546B22DAC /* Dispatch */,
+				FD3CFAC3835FAE1B5EDCCFE1 /* Drivers */,
+				EC45326FB724EB26FB82A93B /* Inventory */,
+				0553A3F7A9577159F61C9E79 /* Manifests */,
+				08E96696049812D1F7D5458B /* More */,
+				420412FE46599C30C20E49F9 /* Orders */,
+				AFF85A15CC7B254482613B5C /* PaymentConfig */,
+				5CED3C6A4785745B82567CD4 /* Products */,
+				0C91539FD516260C995BCC14 /* Returns */,
+				DB7595C654FAED9888BC1765 /* Staff */,
+				A00D294B45766A38CAF80A1D /* SupplyRequests */,
+				4AA1D6C0469249791529FFFF /* Transfers */,
+				652D2A00995F91527FF52B9C /* Treasury */,
+				01C6B6B383F62436C71153AC /* Vehicles */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		8E8EFF231D1F8A20CA54E9BA /* CRM */ = {
+			isa = PBXGroup;
+			children = (
+				3C562B270DA26FA42E315270 /* CRMView.swift */,
+			);
+			path = CRM;
+			sourceTree = "<group>";
+		};
+		986BD938D95D54CC793F3EC9 /* WarehouseApp */ = {
+			isa = PBXGroup;
+			children = (
+				57C9CF70E5113B4CF702D63C /* Assets.xcassets */,
+				948CD89DFC2A4D9363817EAF /* Info.plist */,
+				86CB8FE602CF48790811D3AF /* PegasusWarehouseApp.swift */,
+				1526416176EC1A52A2487036 /* RootView.swift */,
+				F7801573766CFA82B05718DE /* Models */,
+				F5B07F89A901FB321C233EB5 /* Services */,
+				CED0DD6B60441C57330C3B3B /* Theme */,
+				7493F37ACA58FB00B04832F4 /* Views */,
+			);
+			path = WarehouseApp;
+			sourceTree = "<group>";
+		};
+		A00D294B45766A38CAF80A1D /* SupplyRequests */ = {
+			isa = PBXGroup;
+			children = (
+				DCF79D6633E9BB22639AEE6C /* SupplyRequestsHubView.swift */,
+			);
+			path = SupplyRequests;
+			sourceTree = "<group>";
+		};
+		AFF85A15CC7B254482613B5C /* PaymentConfig */ = {
+			isa = PBXGroup;
+			children = (
+				05E3B52F0F1B78C73381C657 /* PaymentConfigView.swift */,
+			);
+			path = PaymentConfig;
+			sourceTree = "<group>";
+		};
+		BB39D4D8A7EEBB4808CF9CBF = {
+			isa = PBXGroup;
+			children = (
+				986BD938D95D54CC793F3EC9 /* WarehouseApp */,
+				31BC527FB6855B99D5F3240E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		CDA96F89B28B355AF34B2481 /* DemandForecast */ = {
+			isa = PBXGroup;
+			children = (
+				8ADD58C02F3BDE948D50E45C /* DemandForecastView.swift */,
+			);
+			path = DemandForecast;
+			sourceTree = "<group>";
+		};
+		CED0DD6B60441C57330C3B3B /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				C824961AAD7954F52915E79C /* PegasusTheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		DB7595C654FAED9888BC1765 /* Staff */ = {
+			isa = PBXGroup;
+			children = (
+				1963212DE00FAF5E10168BED /* StaffView.swift */,
+			);
+			path = Staff;
+			sourceTree = "<group>";
+		};
+		EC45326FB724EB26FB82A93B /* Inventory */ = {
+			isa = PBXGroup;
+			children = (
+				40384D8041929DBF46242CFF /* InventoryView.swift */,
+			);
+			path = Inventory;
+			sourceTree = "<group>";
+		};
+		F5B07F89A901FB321C233EB5 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				FBD5278073B1CAAE9E0F8BAA /* APIClient.swift */,
+				ADC341C9AAD3EFE7ED873269 /* TokenStore.swift */,
+				1F9D6324029B6317393A54C7 /* WarehouseOperationsService.swift */,
+				F0B20495C6FC5D2DB422FEC5 /* WarehouseRealtimeClient.swift */,
+				BEDF5DC0D1406795DE0A4736 /* WarehouseService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		F7801573766CFA82B05718DE /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				42346A5EC575B103624DA7B5 /* WarehouseModels.swift */,
+				9261B8CE72327788E0CAA5CD /* WarehouseOpsModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		FD3CFAC3835FAE1B5EDCCFE1 /* Drivers */ = {
+			isa = PBXGroup;
+			children = (
+				07A64AD811E451A8DAFB8448 /* DriversView.swift */,
+			);
+			path = Drivers;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		56F76FFA4D558B8861179144 /* WarehouseAppIOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3F419EE142BBF9DF9E5825B6 /* Build configuration list for PBXNativeTarget "WarehouseAppIOS" */;
+			buildPhases = (
+				79D06D401A6B664D78F1234E /* Sources */,
+				6D9311D27820868B36ADCD0E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WarehouseAppIOS;
+			packageProductDependencies = (
+			);
+			productName = WarehouseAppIOS;
+			productReference = B6EFFBD7777A74779592DBCD /* WarehouseAppIOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		212D6DBADA8C7330DCF6FF1C /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					56F76FFA4D558B8861179144 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = F026F464F6932B2DD9E46AF8 /* Build configuration list for PBXProject "WarehouseAppIOS" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = BB39D4D8A7EEBB4808CF9CBF;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 31BC527FB6855B99D5F3240E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				56F76FFA4D558B8861179144 /* WarehouseAppIOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		6D9311D27820868B36ADCD0E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2A89FD664216DF1DDF9F3F46 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		79D06D401A6B664D78F1234E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E669C875AC849610CE44BD49 /* APIClient.swift in Sources */,
+				1A6575E659D3664446DA9B06 /* AnalyticsView.swift in Sources */,
+				06145AB262C686E3FBFEE91B /* CRMView.swift in Sources */,
+				D47F70983FC7C12DAAEEB6D3 /* DashboardView.swift in Sources */,
+				2F18755FAD1B248506FBA879 /* DemandForecastView.swift in Sources */,
+				ECB59F1746A20962159EC100 /* DispatchView.swift in Sources */,
+				62C461820F4BD5D36335A0B3 /* DriversView.swift in Sources */,
+				B5BA0CF78AABAB4895BF4DDB /* InventoryView.swift in Sources */,
+				C693D3BCC084A0EF533F1059 /* LoginView.swift in Sources */,
+				BF7FAA4EBDCE2CF0ABDE1E33 /* MainTabView.swift in Sources */,
+				F1EC5465A24D24427C9F2D1D /* ManifestsView.swift in Sources */,
+				8E3A118BB4A8F5B1A3C9A769 /* MoreHubView.swift in Sources */,
+				DC25E444D5E978B169F6199A /* OrderDetailView.swift in Sources */,
+				555C0B7D96C65CD45AC026F4 /* OrdersView.swift in Sources */,
+				7E3729E8A79AAA17A1BE891A /* PaymentConfigView.swift in Sources */,
+				955FE466ADA6AD692A4D21B2 /* PegasusTheme.swift in Sources */,
+				B0ABC1B6F48E708BE85B0101 /* PegasusWarehouseApp.swift in Sources */,
+				D03E70A76CBFEA79900DCDB1 /* ProductsView.swift in Sources */,
+				FB94B7668476D4B203F4C716 /* ReturnsView.swift in Sources */,
+				87CDE0C61906C3696F97D7A2 /* RootView.swift in Sources */,
+				2BF513A7728E6DAF51173E9D /* StaffView.swift in Sources */,
+				99DF1165810884CD8CA2C2E2 /* SupplyRequestsHubView.swift in Sources */,
+				D9CCF999EB8CD7669510CF03 /* TokenStore.swift in Sources */,
+				341E7B32E90F94338A169FE0 /* TransferActionsView.swift in Sources */,
+				97114EF8951F117C3E6A8697 /* TreasuryView.swift in Sources */,
+				790DE066913716D49FAA7265 /* VehiclesView.swift in Sources */,
+				37A98DE5E6B0372968D90168 /* WarehouseModels.swift in Sources */,
+				586A5E35B5E72386A388AC4F /* WarehouseOperationsService.swift in Sources */,
+				58C6C45C18E83F6A76AA0FBF /* WarehouseOpsModels.swift in Sources */,
+				96D2B6C29AF7A94F934A06D9 /* WarehouseRealtimeClient.swift in Sources */,
+				2FF9DD4213CF98C9D3DC4A97 /* WarehouseService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		0AFE368DCE1376292544CA37 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Receive warehouse operations alerts";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.10;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9B30A7ED7C555FC7D300502D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = WarehouseApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pegasusx.warehouse;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		9DD040BE99D6606B14B800B9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Receive warehouse operations alerts";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.10;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		BE3FF0E459391B4DF786AB10 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = WarehouseApp/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.pegasusx.warehouse;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3F419EE142BBF9DF9E5825B6 /* Build configuration list for PBXNativeTarget "WarehouseAppIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9B30A7ED7C555FC7D300502D /* Debug */,
+				BE3FF0E459391B4DF786AB10 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F026F464F6932B2DD9E46AF8 /* Build configuration list for PBXProject "WarehouseAppIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0AFE368DCE1376292544CA37 /* Debug */,
+				9DD040BE99D6606B14B800B9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 212D6DBADA8C7330DCF6FF1C /* Project object */;
+}

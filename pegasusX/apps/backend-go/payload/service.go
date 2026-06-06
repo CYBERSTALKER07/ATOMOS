@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
@@ -30,7 +30,7 @@ const (
 
 // Repository is the mutation seam for payload write paths.
 type Repository interface {
-	Apply(ctx context.Context, mutate func() error, emit func(outbox.TxnBuffer) error) error
+	Apply(ctx context.Context, mutate func() error, snapshot func() *PersistenceSnapshot, emit func(outbox.TxnBuffer) error) error
 }
 
 // inMemoryRepository is the scaffold repository implementation.
@@ -46,7 +46,7 @@ func (b *inMemoryTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) erro
 	return nil
 }
 
-func (r *inMemoryRepository) Apply(ctx context.Context, mutate func() error, emit func(outbox.TxnBuffer) error) error {
+func (r *inMemoryRepository) Apply(ctx context.Context, mutate func() error, _ func() *PersistenceSnapshot, emit func(outbox.TxnBuffer) error) error {
 	if mutate != nil {
 		if err := mutate(); err != nil {
 			return err
@@ -73,13 +73,17 @@ type Service struct {
 	cache       *cache.Cache
 	supplierHub *ws.Hub
 	payloadHub  *ws.Hub
+	notifSvc    *notifications.Service
 	log         *slog.Logger
 
 	supplierID string
 	currency   string
+	jwtSecret  string
+	jwtIssuer  string
 	now        func() time.Time
 
 	mu             sync.RWMutex
+	spannerLoaded  bool
 	trucks         []TruckRow
 	orders         []OrderRow
 	manifests      []ManifestRow
@@ -88,6 +92,8 @@ type Service struct {
 	exceptions     []ManifestException
 	reassignments  []Reassignment
 	seq            int64
+
+	portalLister PortalManifestLister
 }
 
 // ServiceConfig is the constructor input.
@@ -96,11 +102,31 @@ type ServiceConfig struct {
 	Cache       *cache.Cache
 	SupplierHub *ws.Hub
 	PayloadHub  *ws.Hub
+	NotifSvc    *notifications.Service
 	Log         *slog.Logger
 
 	SupplierID string
 	Currency   string
+	JWTSecret  string
+	JWTIssuer  string
 	Now        func() time.Time
+}
+
+type payloaderTruckWire struct {
+	ID           string `json:"id"`
+	Label        string `json:"label"`
+	LicensePlate string `json:"license_plate"`
+	VehicleClass string `json:"vehicle_class"`
+}
+
+type liveOrderWire struct {
+	OrderID        string `json:"order_id"`
+	RetailerID     string `json:"retailer_id,omitempty"`
+	Amount         int64  `json:"amount,omitempty"`
+	PaymentGateway string `json:"payment_gateway,omitempty"`
+	State          string `json:"state"`
+	RouteID        string `json:"route_id,omitempty"`
+	WarehouseID    string `json:"warehouse_id,omitempty"`
 }
 
 // TruckRow represents one payloader-visible truck row.
@@ -204,9 +230,12 @@ func NewService(c ServiceConfig) *Service {
 		cache:          c.Cache,
 		supplierHub:    c.SupplierHub,
 		payloadHub:     c.PayloadHub,
+		notifSvc:       c.NotifSvc,
 		log:            c.Log,
 		supplierID:     c.SupplierID,
 		currency:       c.Currency,
+		jwtSecret:      c.JWTSecret,
+		jwtIssuer:      c.JWTIssuer,
 		now:            c.Now,
 		manifestOrders: make(map[string][]ManifestOrder),
 		overflowCount:  make(map[string]int64),
@@ -255,6 +284,14 @@ func routeIDForManifest(m ManifestRow) string {
 }
 
 func (s *Service) ensureDemoDataLocked() {
+	if !s.spannerLoaded {
+		if r, ok := s.repo.(*SpannerRepository); ok {
+			if err := r.hydrateWhileLocked(context.Background(), s.supplierID, s); err == nil && len(s.manifests) > 0 {
+				s.spannerLoaded = true
+				return
+			}
+		}
+	}
 	if len(s.trucks) == 0 {
 		s.trucks = []TruckRow{
 			{VehicleID: "veh_payload_1", PlateNo: "01P111AA", State: "READY"},
@@ -295,6 +332,31 @@ func (s *Service) ensureDemoDataLocked() {
 				s.orders[i].RouteID = routeIDForManifest(manifest)
 				s.orders[i].UpdatedAt = now
 			}
+		}
+	}
+	if s.findManifestIndexLocked("mf_payload_2") < 0 {
+		now := s.now().Format(time.RFC3339Nano)
+		sibling := ManifestRow{
+			ManifestID:    "mf_payload_2",
+			VehicleID:     "veh_payload_2",
+			DriverID:      "drv_payload_2",
+			State:         payloadManifestStateDraft,
+			TotalVolumeVU: 0,
+			MaxVolumeVU:   140,
+			StopCount:     0,
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		}
+		s.manifests = append(s.manifests, sibling)
+		if s.manifestOrders == nil {
+			s.manifestOrders = make(map[string][]ManifestOrder)
+		}
+		s.manifestOrders[sibling.ManifestID] = []ManifestOrder{}
+	}
+	if r, ok := s.repo.(*SpannerRepository); ok && !s.spannerLoaded {
+		snap := s.buildPersistenceSnapshotLocked()
+		if err := r.SeedDemoManifests(context.Background(), s.supplierID, snap); err == nil {
+			s.spannerLoaded = true
 		}
 	}
 }
@@ -371,21 +433,46 @@ type wsEnvelope struct {
 }
 
 func (s *Service) broadcastPayloadEvent(ctx context.Context, eventType string, data map[string]any) {
-	envelope := wsEnvelope{
-		Type:      eventType,
-		Timestamp: s.now().Format(time.RFC3339Nano),
-		Data:      data,
-	}
-	payload, err := json.Marshal(envelope)
+	ts := s.now().Format(time.RFC3339Nano)
+	manifestID, _ := data["manifest_id"].(string)
+	syncFrame, err := json.Marshal(map[string]any{
+		"type":        "PAYLOAD_SYNC",
+		"channel":     "SYNC",
+		"manifest_id": manifestID,
+		"timestamp":   ts,
+	})
 	if err != nil {
-		s.log.Warn("payload ws marshal failed", "event_type", eventType, "err", err)
+		s.log.Warn("payload ws sync marshal failed", "event_type", eventType, "err", err)
 		return
 	}
-	if s.supplierHub != nil {
-		s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, payload)
+	title := strings.ReplaceAll(eventType, "_", " ")
+	notifyFrame, notifyErr := json.Marshal(map[string]any{
+		"type":        eventType,
+		"title":       title,
+		"body":        title,
+		"channel":     "PUSH",
+		"timestamp":   ts,
+		"manifest_id": manifestID,
+	})
+	legacyEnvelope, legacyErr := json.Marshal(map[string]any{
+		"type":      eventType,
+		"timestamp": ts,
+		"data":      data,
+	})
+	if s.payloadHub != nil && s.supplierID != "" {
+		s.payloadHub.Broadcast(ctx, "payload:"+s.supplierID, syncFrame)
+		if notifyErr == nil {
+			s.payloadHub.Broadcast(ctx, "payload:"+s.supplierID, notifyFrame)
+		}
 	}
-	if s.payloadHub != nil {
-		s.payloadHub.Broadcast(ctx, "payload:"+s.supplierID, payload)
+	if s.supplierHub != nil && s.supplierID != "" {
+		s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, syncFrame)
+		if notifyErr == nil {
+			s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, notifyFrame)
+		}
+		if legacyErr == nil {
+			s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, legacyEnvelope)
+		}
 	}
 }
 
@@ -422,7 +509,16 @@ func (s *Service) HandleTrucks(w http.ResponseWriter, r *http.Request) {
 	s.ensureDemoDataLocked()
 	rows := append([]TruckRow(nil), s.trucks...)
 	s.mu.Unlock()
-	writeJSON(w, http.StatusOK, map[string]any{"trucks": rows})
+	wire := make([]payloaderTruckWire, len(rows))
+	for i := range rows {
+		wire[i] = payloaderTruckWire{
+			ID:           rows[i].VehicleID,
+			Label:        rows[i].PlateNo,
+			LicensePlate: rows[i].PlateNo,
+			VehicleClass: "TRUCK",
+		}
+	}
+	writeJSON(w, http.StatusOK, wire)
 }
 
 // HandleOrders serves GET /v1/payloader/orders.
@@ -433,13 +529,14 @@ func (s *Service) HandleOrders(w http.ResponseWriter, r *http.Request) {
 	}
 	stateFilter := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("state")))
 	manifestFilter := strings.TrimSpace(r.URL.Query().Get("manifest_id"))
+	vehicleFilter := strings.TrimSpace(r.URL.Query().Get("vehicle_id"))
 
 	s.mu.Lock()
 	s.ensureDemoDataLocked()
 	rows := append([]OrderRow(nil), s.orders...)
 	s.mu.Unlock()
 
-	if stateFilter != "" || manifestFilter != "" {
+	if stateFilter != "" || manifestFilter != "" || vehicleFilter != "" {
 		filtered := make([]OrderRow, 0, len(rows))
 		for i := range rows {
 			if stateFilter != "" && strings.ToUpper(rows[i].Status) != stateFilter {
@@ -448,71 +545,24 @@ func (s *Service) HandleOrders(w http.ResponseWriter, r *http.Request) {
 			if manifestFilter != "" && rows[i].ManifestID != manifestFilter {
 				continue
 			}
-			filtered = append(filtered, rows[i])
-		}
-		rows = filtered
-	}
-	sort.Slice(rows, func(i, j int) bool { return rows[i].UpdatedAt > rows[j].UpdatedAt })
-	writeJSON(w, http.StatusOK, map[string]any{"orders": rows})
-}
-
-// HandleManifests serves GET /v1/payloader/manifests.
-func (s *Service) HandleManifests(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
-	}
-	stateFilter := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("state")))
-	truckFilter := strings.TrimSpace(r.URL.Query().Get("truck_id"))
-
-	s.mu.Lock()
-	s.ensureDemoDataLocked()
-	rows := append([]ManifestRow(nil), s.manifests...)
-	s.mu.Unlock()
-
-	if stateFilter != "" || truckFilter != "" {
-		filtered := make([]ManifestRow, 0, len(rows))
-		for i := range rows {
-			if stateFilter != "" && rows[i].State != stateFilter {
-				continue
-			}
-			if truckFilter != "" && rows[i].VehicleID != truckFilter {
+			if vehicleFilter != "" && rows[i].VehicleID != vehicleFilter {
 				continue
 			}
 			filtered = append(filtered, rows[i])
 		}
 		rows = filtered
 	}
-
 	sort.Slice(rows, func(i, j int) bool { return rows[i].UpdatedAt > rows[j].UpdatedAt })
-	writeJSON(w, http.StatusOK, map[string]any{"manifests": rows})
-}
-
-// HandleManifestDetail serves GET /v1/payloader/manifests/{manifestID}.
-func (s *Service) HandleManifestDetail(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
-		return
+	wire := make([]liveOrderWire, len(rows))
+	for i := range rows {
+		wire[i] = liveOrderWire{
+			OrderID: rows[i].OrderID,
+			Amount:  rows[i].TotalMinor,
+			State:   rows[i].Status,
+			RouteID: rows[i].RouteID,
+		}
 	}
-	manifestID := strings.TrimSpace(chi.URLParam(r, "manifestID"))
-	if manifestID == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "manifest_id_required"})
-		return
-	}
-
-	s.mu.Lock()
-	s.ensureDemoDataLocked()
-	idx := s.findManifestIndexLocked(manifestID)
-	if idx < 0 {
-		s.mu.Unlock()
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "manifest_not_found"})
-		return
-	}
-	manifest := s.manifests[idx]
-	orders := append([]ManifestOrder(nil), s.manifestOrders[manifestID]...)
-	s.mu.Unlock()
-
-	writeJSON(w, http.StatusOK, map[string]any{"manifest": manifest, "orders": orders})
+	writeJSON(w, http.StatusOK, wire)
 }
 
 // HandleStartLoading serves POST /v1/payloader/manifests/{manifestID}/start-loading.
@@ -521,7 +571,7 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	manifestID := strings.TrimSpace(chi.URLParam(r, "manifestID"))
+	manifestID := manifestIDParam(r)
 	if manifestID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "manifest_id_required"})
 		return
@@ -529,7 +579,7 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 
 	var manifest ManifestRow
 	now := ""
-	err := s.repo.Apply(r.Context(), func() error {
+	err := s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -608,7 +658,7 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	manifestID := strings.TrimSpace(chi.URLParam(r, "manifestID"))
+	manifestID := manifestIDParam(r)
 	if manifestID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "manifest_id_required"})
 		return
@@ -630,7 +680,7 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 
 	var manifest ManifestRow
 	now := ""
-	err := s.repo.Apply(r.Context(), func() error {
+	err := s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -753,7 +803,7 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 	}
 
 	var exception ManifestException
-	err := s.repo.Apply(r.Context(), func() error {
+	err := s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -980,13 +1030,22 @@ func (s *Service) HandleRecommendReassign(w http.ResponseWriter, r *http.Request
 			Reason:     "lower_route_load",
 		})
 	}
+	truckRecs := buildTruckRecommendationsLocked(s, order, recommendations)
+	retailerName := "Retailer"
+	orderVolume := float64(10)
+	if oIdx >= 0 {
+		orderVolume = float64(order.TotalMinor) / 100.0
+	}
+	currentDriver := order.RouteID
 	s.mu.Unlock()
 
-	sort.Slice(recommendations, func(i, j int) bool { return recommendations[i].Score > recommendations[j].Score })
+	sort.Slice(truckRecs, func(i, j int) bool { return truckRecs[i].Score > truckRecs[j].Score })
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status":          "ready",
-		"order_id":        req.OrderID,
-		"recommendations": recommendations,
+		"order_id":         req.OrderID,
+		"retailer_name":    retailerName,
+		"order_volume_vu":  orderVolume,
+		"current_driver":   currentDriver,
+		"recommendations":  truckRecs,
 	})
 }
 
@@ -1011,7 +1070,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var reassignment Reassignment
-	err := s.repo.Apply(r.Context(), func() error {
+	err := s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1022,9 +1081,23 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 		order := s.orders[oIdx]
 		fromRoute := order.RouteID
 		fromManifestID := order.ManifestID
+		targetManifestID := req.ToManifestID
+		targetRouteID := req.ToRouteID
+		targetDriverID := req.ToDriverID
+		reassignedVolume := int64(10)
+		if fromManifestID != "" {
+			fromManifestOrders := s.manifestOrders[fromManifestID]
+			fromManifestOrderIdx := s.findManifestOrderIndexLocked(fromManifestID, order.OrderID)
+			if fromManifestOrderIdx >= 0 && fromManifestOrders[fromManifestOrderIdx].VolumeVU > 0 {
+				reassignedVolume = fromManifestOrders[fromManifestOrderIdx].VolumeVU
+			}
+		}
 
-		if req.ToManifestID != "" {
-			targetManifestIdx := s.findManifestIndexLocked(req.ToManifestID)
+		if targetManifestID != "" {
+			if targetManifestID == order.ManifestID && (targetRouteID == "" || targetRouteID == order.RouteID) {
+				return fmt.Errorf("order_already_assigned")
+			}
+			targetManifestIdx := s.findManifestIndexLocked(targetManifestID)
 			if targetManifestIdx < 0 {
 				return fmt.Errorf("target_manifest_not_found")
 			}
@@ -1032,79 +1105,149 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 			if targetManifest.State != payloadManifestStateDraft && targetManifest.State != payloadManifestStateLoading {
 				return fmt.Errorf("target_manifest_not_mutable")
 			}
-			if req.ToRouteID == "" {
-				req.ToRouteID = routeIDForManifest(targetManifest)
+			resolvedTargetRoute := routeIDForManifest(targetManifest)
+			if targetRouteID != "" && targetRouteID != resolvedTargetRoute {
+				return fmt.Errorf("target_route_mismatch")
 			}
-			if req.ToDriverID == "" {
-				req.ToDriverID = targetManifest.DriverID
+			targetRouteID = resolvedTargetRoute
+			if targetManifest.MaxVolumeVU > 0 && targetManifest.TotalVolumeVU+reassignedVolume > targetManifest.MaxVolumeVU {
+				return fmt.Errorf("target_manifest_capacity_exceeded")
 			}
-		}
-
-		if req.ToRouteID == "" {
-			for i := range s.manifests {
-				candidate := routeIDForManifest(s.manifests[i])
-				if candidate != order.RouteID {
-					req.ToRouteID = candidate
-					req.ToManifestID = s.manifests[i].ManifestID
-					if req.ToDriverID == "" {
-						req.ToDriverID = s.manifests[i].DriverID
+			if targetDriverID != "" && targetManifest.DriverID != targetDriverID {
+				return fmt.Errorf("target_driver_manifest_mismatch")
+			}
+			if targetDriverID == "" {
+				targetDriverID = targetManifest.DriverID
+			}
+		} else {
+			sourceManifestMutable := false
+			sourceManifestDriverID := ""
+			if order.ManifestID != "" {
+				sourceManifestIdx := s.findManifestIndexLocked(order.ManifestID)
+				if sourceManifestIdx >= 0 {
+					sourceManifest := s.manifests[sourceManifestIdx]
+					sourceManifestDriverID = sourceManifest.DriverID
+					if sourceManifest.State == payloadManifestStateDraft || sourceManifest.State == payloadManifestStateLoading {
+						sourceManifestMutable = true
 					}
-					break
 				}
 			}
+			if targetRouteID != "" && targetRouteID == order.RouteID && sourceManifestMutable {
+				if targetDriverID != "" && targetDriverID != sourceManifestDriverID {
+					return fmt.Errorf("target_driver_manifest_mismatch")
+				}
+				return fmt.Errorf("order_already_assigned")
+			}
+			driverMismatchOnTargetRoute := false
+			for i := range s.manifests {
+				candidateManifest := s.manifests[i]
+				if candidateManifest.State != payloadManifestStateDraft && candidateManifest.State != payloadManifestStateLoading {
+					continue
+				}
+				if candidateManifest.ManifestID == order.ManifestID {
+					continue
+				}
+				candidate := routeIDForManifest(candidateManifest)
+				if candidate == order.RouteID {
+					if targetRouteID == "" || sourceManifestMutable {
+						continue
+					}
+				}
+				if targetRouteID != "" && candidate != targetRouteID {
+					continue
+				}
+				if targetDriverID != "" && candidateManifest.DriverID != targetDriverID {
+					if targetRouteID != "" && candidate == targetRouteID {
+						driverMismatchOnTargetRoute = true
+					}
+					continue
+				}
+				if candidateManifest.MaxVolumeVU > 0 && candidateManifest.TotalVolumeVU+reassignedVolume > candidateManifest.MaxVolumeVU {
+					continue
+				}
+				targetRouteID = candidate
+				targetManifestID = candidateManifest.ManifestID
+				if targetDriverID == "" {
+					targetDriverID = candidateManifest.DriverID
+				}
+				break
+			}
+			if targetManifestID == "" {
+				if targetRouteID != "" {
+					if targetDriverID != "" && driverMismatchOnTargetRoute {
+						return fmt.Errorf("target_driver_manifest_mismatch")
+					}
+					return fmt.Errorf("target_manifest_not_found")
+				}
+				if sourceManifestMutable {
+					return fmt.Errorf("order_already_assigned")
+				}
+				return fmt.Errorf("reassign_target_unavailable")
+			}
 		}
-		if req.ToRouteID == "" {
-			req.ToRouteID = "route_fallback"
+		if targetManifestID == order.ManifestID {
+			return fmt.Errorf("order_already_assigned")
+		}
+
+		sourceManifestIdx := -1
+		if order.ManifestID != "" {
+			sourceManifestIdx = s.findManifestIndexLocked(order.ManifestID)
+			if sourceManifestIdx < 0 {
+				return fmt.Errorf("source_manifest_not_found")
+			}
+			sourceRouteID := routeIDForManifest(s.manifests[sourceManifestIdx])
+			if order.RouteID != "" && order.RouteID != sourceRouteID {
+				return fmt.Errorf("source_route_manifest_mismatch")
+			}
+			if s.findManifestOrderIndexLocked(order.ManifestID, order.OrderID) < 0 {
+				return fmt.Errorf("source_manifest_order_missing")
+			}
 		}
 
 		now := s.now().Format(time.RFC3339Nano)
-		if order.ManifestID != "" {
+		if sourceManifestIdx >= 0 {
 			fromManifestOrders := s.manifestOrders[order.ManifestID]
 			moIdx := s.findManifestOrderIndexLocked(order.ManifestID, order.OrderID)
-			if moIdx >= 0 {
-				removedVol := fromManifestOrders[moIdx].VolumeVU
-				fromManifestOrders[moIdx].State = "REMOVED_REASSIGNED"
-				fromManifestOrders[moIdx].Reason = "REASSIGNED"
-				fromManifestOrders[moIdx].UpdatedAt = now
-				s.manifestOrders[order.ManifestID] = fromManifestOrders
-				fromManifestIdx := s.findManifestIndexLocked(order.ManifestID)
-				if fromManifestIdx >= 0 {
-					if s.manifests[fromManifestIdx].StopCount > 0 {
-						s.manifests[fromManifestIdx].StopCount--
-					}
-					if s.manifests[fromManifestIdx].TotalVolumeVU >= removedVol {
-						s.manifests[fromManifestIdx].TotalVolumeVU -= removedVol
-					}
-					s.manifests[fromManifestIdx].UpdatedAt = now
-				}
+			removedVol := fromManifestOrders[moIdx].VolumeVU
+			fromManifestOrders[moIdx].State = "REMOVED_REASSIGNED"
+			fromManifestOrders[moIdx].Reason = "REASSIGNED"
+			fromManifestOrders[moIdx].UpdatedAt = now
+			s.manifestOrders[order.ManifestID] = fromManifestOrders
+			if s.manifests[sourceManifestIdx].StopCount > 0 {
+				s.manifests[sourceManifestIdx].StopCount--
 			}
+			if s.manifests[sourceManifestIdx].TotalVolumeVU >= removedVol {
+				s.manifests[sourceManifestIdx].TotalVolumeVU -= removedVol
+			}
+			s.manifests[sourceManifestIdx].UpdatedAt = now
 		}
 
-		if req.ToManifestID != "" {
-			targetManifestIdx := s.findManifestIndexLocked(req.ToManifestID)
-			if targetManifestIdx >= 0 {
-				targetManifest := s.manifests[targetManifestIdx]
-				vol := int64(10)
-				if targetManifest.TotalVolumeVU+vol <= targetManifest.MaxVolumeVU {
-					targetManifestOrders := s.manifestOrders[req.ToManifestID]
-					targetManifestOrders = append(targetManifestOrders, ManifestOrder{
-						ManifestID: req.ToManifestID,
-						OrderID:    order.OrderID,
-						State:      "ASSIGNED",
-						VolumeVU:   vol,
-						UpdatedAt:  now,
-					})
-					s.manifestOrders[req.ToManifestID] = targetManifestOrders
-					targetManifest.StopCount++
-					targetManifest.TotalVolumeVU += vol
-					targetManifest.UpdatedAt = now
-					s.manifests[targetManifestIdx] = targetManifest
-				}
+		if targetManifestID != "" {
+			targetManifestIdx := s.findManifestIndexLocked(targetManifestID)
+			if targetManifestIdx < 0 {
+				return fmt.Errorf("target_manifest_not_found")
 			}
+			targetManifest := s.manifests[targetManifestIdx]
+			if targetManifest.MaxVolumeVU > 0 && targetManifest.TotalVolumeVU+reassignedVolume > targetManifest.MaxVolumeVU {
+				return fmt.Errorf("target_manifest_capacity_exceeded")
+			}
+			targetManifestOrders := s.manifestOrders[targetManifestID]
+			targetManifestOrders = append(targetManifestOrders, ManifestOrder{
+				ManifestID: targetManifestID,
+				OrderID:    order.OrderID,
+				State:      "ASSIGNED",
+				VolumeVU:   reassignedVolume,
+				UpdatedAt:  now,
+			})
+			s.manifestOrders[targetManifestID] = targetManifestOrders
+			targetManifest.StopCount++
+			targetManifest.TotalVolumeVU += reassignedVolume
+			targetManifest.UpdatedAt = now
+			s.manifests[targetManifestIdx] = targetManifest
 		}
 
-		s.orders[oIdx].RouteID = req.ToRouteID
-		s.orders[oIdx].ManifestID = req.ToManifestID
+		s.orders[oIdx].RouteID = targetRouteID
+		s.orders[oIdx].ManifestID = targetManifestID
 		s.orders[oIdx].Status = "LOADED"
 		s.orders[oIdx].ReassignDepth++
 		s.orders[oIdx].UpdatedAt = now
@@ -1112,10 +1255,10 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 		reassignment = Reassignment{
 			OrderID:        order.OrderID,
 			FromRouteID:    fromRoute,
-			ToRouteID:      req.ToRouteID,
+			ToRouteID:      targetRouteID,
 			FromManifestID: fromManifestID,
-			ManifestID:     req.ToManifestID,
-			ToDriverID:     req.ToDriverID,
+			ManifestID:     targetManifestID,
+			ToDriverID:     targetDriverID,
 			Reason:         strings.TrimSpace(req.Reason),
 			Depth:          s.orders[oIdx].ReassignDepth,
 			AppliedAt:      now,
@@ -1123,7 +1266,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 		s.reassignments = append(s.reassignments, reassignment)
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
-		aggregateID := coalesceString(req.ToManifestID, reassignment.FromManifestID, "payload-reassign")
+		aggregateID := coalesceString(reassignment.ManifestID, reassignment.FromManifestID, "payload-reassign")
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, aggregateID, events.TopicMain, map[string]any{
 			"type":             events.EventManifestRebalanced,
 			"manifest_id":      aggregateID,
@@ -1150,6 +1293,30 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 		case "target_manifest_not_mutable":
 			writeJSON(w, http.StatusConflict, map[string]string{"error": "target_manifest_not_mutable"})
 			return
+		case "source_manifest_not_found":
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "source_manifest_not_found"})
+			return
+		case "source_route_manifest_mismatch":
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "source_route_manifest_mismatch"})
+			return
+		case "source_manifest_order_missing":
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "source_manifest_order_missing"})
+			return
+		case "target_route_mismatch":
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "target_route_mismatch"})
+			return
+		case "target_driver_manifest_mismatch":
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "target_driver_manifest_mismatch"})
+			return
+		case "target_manifest_capacity_exceeded":
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "target_manifest_capacity_exceeded"})
+			return
+		case "reassign_target_unavailable":
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "reassign_target_unavailable"})
+			return
+		case "order_already_assigned":
+			writeJSON(w, http.StatusOK, map[string]any{"status": "already_assigned", "order_id": req.OrderID})
+			return
 		default:
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "reassign_failed"})
 			return
@@ -1170,6 +1337,7 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 		"to_route_id":      reassignment.ToRouteID,
 		"from_manifest_id": reassignment.FromManifestID,
 		"to_manifest_id":   reassignment.ManifestID,
+		"manifest_id":      reassignment.ManifestID,
 		"to_driver_id":     reassignment.ToDriverID,
 		"reassign_depth":   reassignment.Depth,
 		"applied_at":       reassignment.AppliedAt,
@@ -1192,14 +1360,14 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	manifestID := strings.TrimSpace(chi.URLParam(r, "manifestID"))
+	manifestID := manifestIDParam(r)
 	if manifestID == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "manifest_id_required"})
 		return
 	}
 
 	var manifest ManifestRow
-	err := s.repo.Apply(r.Context(), func() error {
+	err := s.apply(r.Context(), func() error {
 		s.mu.Lock()
 		defer s.mu.Unlock()
 		s.ensureDemoDataLocked()
@@ -1248,6 +1416,9 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		"manifest_id": manifest.ManifestID,
 		"state":       manifest.State,
 		"sealed_at":   manifest.SealedAt,
+		"stop_count":  manifest.StopCount,
+		"volume_vu":   float64(manifest.TotalVolumeVU),
+		"max_vu":      float64(manifest.MaxVolumeVU),
 	})
 }
 
@@ -1279,7 +1450,7 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 
 	if req.ManifestID != "" {
 		var manifest ManifestRow
-		err := s.repo.Apply(r.Context(), func() error {
+		err := s.apply(r.Context(), func() error {
 			var sealErr error
 			manifest, sealErr = s.sealManifestLocked(req.ManifestID)
 			return sealErr
@@ -1355,10 +1526,13 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.mu.Unlock()
+	s.invalidatePayloadKeys(r.Context(), payloadOrderListKey(s.supplierID))
+	s.broadcastPayloadEvent(r.Context(), "ORDER_DISPATCHED", map[string]any{"order_id": req.OrderID})
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status":    "PAYLOAD_SEALED_AND_DISPATCHED",
-		"order_id":  req.OrderID,
-		"sealed_at": now,
+		"status":        "PAYLOAD_SEALED_AND_DISPATCHED",
+		"order_id":      req.OrderID,
+		"sealed_at":     now,
+		"dispatch_code": dispatchCodeForOrder(req.OrderID),
 	})
 }
 

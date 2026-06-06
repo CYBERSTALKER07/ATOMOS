@@ -1,0 +1,20 @@
+{
+  "priority": 8,
+  "request": {
+    "method": "ANY",
+    "urlPathPattern": ".*/payment/(status|servicetoken|[0-9a-fA-F-]+).*",
+    "bodyPatterns": [
+      { "contains": "CHAOS_PENDING" }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "paymentId": "MOCK_PAY_PENDING",
+      "paymentStatus": "PENDING",
+      "paid": false,
+      "isSuccessful": true
+    }
+  }
+}

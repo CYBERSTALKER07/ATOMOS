@@ -1,0 +1,21 @@
+<svg width="640" height="420" viewBox="0 0 640 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="420" rx="28" fill="#F3F4F6"/>
+  <rect x="128" y="92" width="384" height="236" rx="28" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="2"/>
+  <rect x="168" y="126" width="304" height="24" rx="12" fill="#E5E7EB"/>
+  <rect x="168" y="164" width="148" height="14" rx="7" fill="#CBD5E1"/>
+  <rect x="168" y="188" width="102" height="14" rx="7" fill="#E5E7EB"/>
+  <g>
+    <circle cx="424" cy="224" r="52" fill="#FEF3C7"/>
+    <path d="M386 240C407 220 441 220 462 240" stroke="#D97706" stroke-width="10" stroke-linecap="round"/>
+    <path d="M398 220C412 208 436 208 450 220" stroke="#D97706" stroke-width="10" stroke-linecap="round">
+      <animate attributeName="opacity" values="0.2;1;0.2" dur="2.2s" repeatCount="indefinite"/>
+    </path>
+    <path d="M412 202C420 196 428 196 436 202" stroke="#D97706" stroke-width="10" stroke-linecap="round">
+      <animate attributeName="opacity" values="0.2;1;0.2" dur="2.2s" begin="0.35s" repeatCount="indefinite"/>
+    </path>
+    <line x1="390" y1="190" x2="462" y2="262" stroke="#D97706" stroke-width="10" stroke-linecap="round">
+      <animate attributeName="y1" values="190;184;190" dur="3.2s" repeatCount="indefinite"/>
+      <animate attributeName="y2" values="262;256;262" dur="3.2s" repeatCount="indefinite"/>
+    </line>
+  </g>
+</svg>

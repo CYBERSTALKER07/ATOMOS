@@ -2,6 +2,7 @@ package factoryroutes
 
 import (
 	"github.com/go-chi/chi/v5"
+	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 )
@@ -10,6 +11,7 @@ import (
 type Deps struct {
 	Service             *factory.Service
 	JWTSecret           string
+	Spanner             *spanner.Client
 	FirebaseAuthEnabled bool
 	FirebaseVerifier    auth.FirebaseVerifier
 }
@@ -20,12 +22,18 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		return
 	}
 
+	r.Post("/v1/auth/factory/login", d.Service.HandleFactoryLogin)
+	r.Post("/v1/auth/factory/refresh", d.Service.HandleFactoryRefresh)
+
 	mountProtected := func(rr chi.Router) {
 		rr.Get("/v1/factory/analytics/overview", d.Service.HandleAnalyticsOverview)
 		rr.Get("/v1/factory/dashboard", d.Service.HandleDashboard)
 		rr.Get("/v1/factory/profile", d.Service.HandleProfile)
 		rr.Get("/v1/factory/transfers", d.Service.HandleTransfers)
 		rr.Post("/v1/factory/transfers/create", d.Service.HandleTransfers)
+		rr.Get("/v1/factory/transfers/{transferID}", d.Service.HandleTransferByID)
+		rr.Post("/v1/factory/transfers/{transferID}/transition", d.Service.HandleTransferTransition)
+		rr.Get("/v1/factory/fleet", d.Service.HandleFleet)
 		rr.Get("/v1/factory/manifests", d.Service.HandleManifests)
 		rr.Get("/v1/factory/manifests/{manifestID}", d.Service.HandleManifestDetail)
 		rr.Post("/v1/factory/manifests/{manifestID}/start-loading", d.Service.HandleManifestStartLoading)
@@ -39,23 +47,31 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/factory/fleet/drivers", d.Service.HandleFleetDrivers)
 		rr.Get("/v1/factory/fleet/vehicles", d.Service.HandleFleetVehicles)
 		rr.Get("/v1/factory/staff", d.Service.HandleStaff)
+		rr.Get("/v1/factory/staff/{staffID}", d.Service.HandleStaffDetail)
 		rr.Post("/v1/factory/dispatch", d.Service.HandleDispatch)
 		rr.Get("/v1/factory/supply-requests", d.Service.HandleSupplyRequests)
+		rr.Patch("/v1/factory/supply-requests/{id}", d.Service.HandleSupplyRequestTransition)
+	}
+
+	allowed := []auth.Role{auth.RoleFactory, auth.RoleFactoryAdmin, auth.RoleAdmin}
+
+	mountFactoryScoped := func(rr chi.Router) {
+		rr.Use(auth.RequireFactoryScope)
+		mountProtected(rr)
+	}
+
+	register := func(gr chi.Router) {
+		gr.Use(auth.RequireRole(allowed...))
+		gr.Group(mountFactoryScoped)
 	}
 
 	if d.FirebaseAuthEnabled && d.FirebaseVerifier != nil {
 		r.Group(func(gr chi.Router) {
 			gr.Use(auth.FirebaseAuth(d.FirebaseVerifier))
-			gr.Use(auth.RequireRole(auth.RoleFactoryAdmin, auth.RoleAdmin))
-			mountProtected(gr)
+			register(gr)
 		})
 		return
 	}
 
-	// Local scaffold fallback uses supplier-portal cookie auth.
-	r.Group(func(gr chi.Router) {
-		gr.Use(auth.CookieAuth(d.JWTSecret))
-		gr.Use(auth.RequireRole(auth.RoleAdmin))
-		mountProtected(gr)
-	})
+	r.Group(register)
 }

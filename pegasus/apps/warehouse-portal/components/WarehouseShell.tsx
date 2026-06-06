@@ -162,6 +162,7 @@ const DrawerContent = memo(function DrawerContent({
                   >
                     <Link
                       href={item.href}
+                      prefetch={false}
                       className={`desk-sidebar-item ${active ? 'desk-sidebar-item--accent' : ''}`}
                       title={isRail ? item.label : undefined}
                       aria-label={item.label}
@@ -267,7 +268,7 @@ export default function WarehouseShell({ children }: { children: React.ReactNode
                   {i === breadcrumbs.length - 1 ? (
                     <span className="desk-breadcrumb-current truncate">{crumb.label}</span>
                   ) : (
-                    <Link href={crumb.href} className="truncate">{crumb.label}</Link>
+                    <Link href={crumb.href} prefetch={false} className="truncate">{crumb.label}</Link>
                   )}
                 </span>
               ))}

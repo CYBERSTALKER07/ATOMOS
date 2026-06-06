@@ -131,15 +131,35 @@ func SetSessionCookie(w http.ResponseWriter, token string, ttl time.Duration, se
 func CookieAuth(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			c, err := r.Cookie(CookieName)
-			if err == nil && c.Value != "" {
-				if claims, err := Parse(c.Value, secret); err == nil {
-					r = r.WithContext(WithClaims(r.Context(), claims))
-				}
-			}
+			r = attachSessionClaims(r, secret)
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// SessionAuth attaches Claims from the supplier session cookie or a Bearer JWT.
+// Used for local SSMR smoke and native clients that send Authorization headers.
+func SessionAuth(secret string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r = attachSessionClaims(r, secret)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func attachSessionClaims(r *http.Request, secret string) *http.Request {
+	if c, err := r.Cookie(CookieName); err == nil && c.Value != "" {
+		if claims, err := Parse(c.Value, secret); err == nil {
+			return r.WithContext(WithClaims(r.Context(), claims))
+		}
+	}
+	if token := BearerToken(r); token != "" {
+		if claims, err := Parse(token, secret); err == nil {
+			return r.WithContext(WithClaims(r.Context(), claims))
+		}
+	}
+	return r
 }
 
 func b64(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }
