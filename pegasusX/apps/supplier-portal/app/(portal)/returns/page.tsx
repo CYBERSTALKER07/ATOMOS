@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierOrder } from "@pegasusx/types";
+import StatusBadge from "@/components/StatusBadge";
 import { PortalSurface } from "../_components/PortalSurface";
 
 const api = createSupplierApi();
@@ -34,9 +35,11 @@ export default function ReturnsPage() {
         {orders.map((order) => (
           <li key={order.order_id} className="p-4 md-typescale-body-medium">
             <div className="font-mono text-[var(--color-md-primary)]">{order.order_id}</div>
-            <div className="text-[var(--color-md-outline)] mt-1">
-              {order.status}
-              {order.decision ? ` · ${order.decision}` : ""}
+            <div className="flex items-center gap-2 mt-1">
+              <StatusBadge state={order.status} />
+              {order.decision ? (
+                <span className="text-[var(--color-md-outline)]">{order.decision}</span>
+              ) : null}
             </div>
             {order.note ? <p className="mt-2">{order.note}</p> : null}
           </li>

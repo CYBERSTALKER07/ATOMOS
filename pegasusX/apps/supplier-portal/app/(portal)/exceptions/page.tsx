@@ -5,6 +5,7 @@ import type { Route } from "next";
 import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierExceptionRow } from "@pegasusx/types";
+import StatusBadge from "@/components/StatusBadge";
 import { PortalSurface } from "../_components/PortalSurface";
 
 const api = createSupplierApi();
@@ -37,7 +38,7 @@ export default function ExceptionsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="md-chip h-6 text-xs">{row.kind}</span>
               <span className="font-mono text-[var(--color-md-primary)]">{row.order_id}</span>
-              <span className="text-[var(--color-md-outline)]">{row.status}</span>
+              <StatusBadge state={row.status} />
             </div>
             {row.note ? <p className="mt-2 text-[var(--color-md-outline)]">{row.note}</p> : null}
             <p className="mt-1 text-sm text-[var(--color-md-outline)]">

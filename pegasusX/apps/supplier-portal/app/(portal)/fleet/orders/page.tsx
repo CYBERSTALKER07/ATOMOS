@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createSupplierApi } from "@/lib/api";
 import type { SupplierFleetOrderRow } from "@pegasusx/types";
+import StatusBadge from "@/components/StatusBadge";
 import { PortalSurface } from "../../_components/PortalSurface";
 
 const api = createSupplierApi();
@@ -40,7 +41,7 @@ export default function SupplierFleetOrdersPage() {
           <li key={row.order_id} className="p-4 md-typescale-body-medium">
             <div className="flex flex-wrap gap-2 items-center">
               <span className="font-mono text-[var(--color-md-primary)]">{row.order_id}</span>
-              <span className="md-chip h-6 text-xs">{row.status}</span>
+              <StatusBadge state={row.status} />
             </div>
             <p className="mt-1 text-[var(--color-md-outline)]">
               Driver {row.driver_id || "—"} · Retailer {row.retailer_id || "—"}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { BentoCard, BentoGrid, BentoSkeleton } from "@/components/BentoGrid";
+import StatusBadge from "@/components/StatusBadge";
 import { useDashboardData } from "./use-dashboard-data";
 
 export default function DashboardPage() {
@@ -171,7 +172,7 @@ export default function DashboardPage() {
                         {manifest.id.substring(0, 12)}
                       </td>
                       <td>
-                        <span className="md-chip text-xs h-6 px-2">{manifest.status}</span>
+                        <StatusBadge state={manifest.status} />
                       </td>
                       <td className="text-right">{manifest.ordersCount}</td>
                       <td className="truncate">{manifest.driverName}</td>

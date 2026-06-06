@@ -77,6 +77,7 @@ Intentional divergence: pegasusX-only transfer controls and order mutation surfa
 
 ## Divergence Log
 _Add an entry whenever pegasusX intentionally drifts from Pegasus behavior._
+- 2026-06-06: Supplier portal status-pill graft — ported pegasus admin-portal `StatusChip`/`StatusBadge` (self-contained, `--desk-*` tokens) into `supplier-portal/components` and applied to the six list surfaces that previously rendered raw status text (`orders`, `manifests`, `returns`, `exceptions`, `fleet/orders`, dashboard recent-manifests). Look-only; API client, DTOs, and routes unchanged. `ai/recommendations` intentionally left on `md-chip` (its status vocabulary is outside the canonical `STATUS_MAP`). `tsc --noEmit` clean.
 - 2026-06-06: Warehouse portal UI layout graft landed in pegasusX (`PageChrome`, split auth, KPI dashboard header, `/transfers` shell nav). Visual parity with pegasus warehouse-portal chrome; pegasusX `warehouseApi` / `warehouse-ops` wiring unchanged.
 - 2026-06-06: Supplier portal UI layout graft landed in pegasusX (`SupplierShell`, `BentoGrid`, auth split, `PageChrome`). Visual parity with pegasus admin-portal supplier surfaces; pegasusX API client and single-tenant routes unchanged.
 - 2026-05-21: Checkout payment session + first attempt persistence now runs atomically in pegasusX through repository `CreateSessionWithAttempt`, closing the prior split-write gap where checkout called `CreateSession` then `SaveAttempt` in separate operations.
