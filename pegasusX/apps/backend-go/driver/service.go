@@ -3,6 +3,8 @@ package driver
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -517,6 +519,7 @@ func (s *Service) HandleManifestGate(w http.ResponseWriter, r *http.Request) {
 			"reason":      "ok",
 			"stop_count":  gate.StopCount,
 			"volume_vu":   gate.VolumeVU,
+			"offline_nonce": s.GenerateOfflineNonce(gate.ManifestID, driverID),
 		})
 		return
 	}
@@ -577,7 +580,17 @@ func (s *Service) HandleManifest(w http.ResponseWriter, r *http.Request) {
 		"exceptions":              detail.Exceptions,
 		"hashes":                  []string{},
 		"legacy_hashes_available": false,
+		"offline_nonce":           s.GenerateOfflineNonce(detail.Manifest.ManifestID, driverID),
 	})
+}
+
+// GenerateOfflineNonce deterministically derives an offline signing secret.
+func (s *Service) GenerateOfflineNonce(manifestID, driverID string) string {
+	h := sha256.New()
+	h.Write([]byte(manifestID))
+	h.Write([]byte(driverID))
+	h.Write([]byte(s.jwtSecret))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 func driverIDFromRequest(r *http.Request) string {

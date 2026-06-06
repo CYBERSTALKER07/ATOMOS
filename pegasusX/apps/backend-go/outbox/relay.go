@@ -2,6 +2,7 @@ package outbox
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"math/rand"
 	"time"
@@ -151,7 +152,7 @@ func (r *Relay) publishWithRetry(ctx context.Context, e Event) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		err := r.publisher.Publish(ctx, e.TopicName, []byte(e.AggregateID), e.Payload)
+		err := r.publisher.Publish(ctx, e.TopicName, granularRoutingKey(e), e.Payload)
 		if err == nil {
 			return nil
 		}
@@ -182,4 +183,38 @@ func backoffWithJitter(base, maxBackoff time.Duration, attempt int) time.Duratio
 	}
 	// Full jitter: random in [0, d).
 	return time.Duration(rand.Int63n(int64(d) + 1))
+}
+
+func granularRoutingKey(e Event) []byte {
+	key := []byte(e.AggregateID)
+	
+	// Fast path: if the payload isn't JSON or doesn't have common sub-entities, just return AggregateID.
+	if len(e.Payload) == 0 || e.Payload[0] != '{' {
+		return key
+	}
+
+	var envelope struct {
+		OrderID    string `json:"order_id"`
+		ManifestID string `json:"manifest_id"`
+		RouteID    string `json:"route_id"`
+		DriverID   string `json:"driver_id"`
+	}
+	
+	// Ignore unmarshal errors, fallback to default key
+	if err := json.Unmarshal(e.Payload, &envelope); err == nil {
+		if envelope.OrderID != "" {
+			return append(key, []byte(":"+envelope.OrderID)...)
+		}
+		if envelope.ManifestID != "" {
+			return append(key, []byte(":"+envelope.ManifestID)...)
+		}
+		if envelope.RouteID != "" {
+			return append(key, []byte(":"+envelope.RouteID)...)
+		}
+		if envelope.DriverID != "" {
+			return append(key, []byte(":"+envelope.DriverID)...)
+		}
+	}
+	
+	return key
 }

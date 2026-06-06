@@ -14,6 +14,8 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
+	"cloud.google.com/go/spanner"
 )
 
 // DispatchExecuteResult is the supplier-portal response for a committed dispatch.

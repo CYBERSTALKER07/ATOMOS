@@ -449,6 +449,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		SpannerClient:   spannerClient,
 		ShopClosedGrace: shopClosedGraceDuration(),
 		Log:             log,
+		JWTSecret:       cfg.JWTSecret,
 	})
 	var optimizerCli *optimizerclient.Client
 	if strings.TrimSpace(cfg.OptimizerBaseURL) != "" && strings.TrimSpace(cfg.InternalAPIKey) != "" {

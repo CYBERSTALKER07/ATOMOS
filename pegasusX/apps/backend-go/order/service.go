@@ -45,6 +45,7 @@ const (
 	StatusDeliveredOnCredit     Status = "DELIVERED_ON_CREDIT"
 	StatusCompleted             Status = "COMPLETED"
 	StatusCancelled             Status = "CANCELLED"
+	StatusReconciliationRequired Status = "RECONCILIATION_REQUIRED"
 	StatusDelayed               Status = "DELAYED"
 
 	deliveryGeofenceMeters = 500.0
@@ -181,6 +182,7 @@ type Service struct {
 	log             *slog.Logger
 	now             func() time.Time
 	newID           func() string
+	jwtSecret       string
 }
 
 // ServiceConfig is the constructor input.
@@ -199,6 +201,7 @@ type ServiceConfig struct {
 	Log           *slog.Logger
 	Now           func() time.Time
 	NewID         func() string
+	JWTSecret     string
 }
 
 // NewService constructs a Service with default Now/NewID.
@@ -227,10 +230,11 @@ func NewService(c ServiceConfig) *Service {
 		supplierHub:   c.SupplierHub,
 		driverHub:     c.DriverHub,
 		spannerClient: c.SpannerClient,
-		shopGrace:     grace,
+		shopGrace:     c.ShopClosedGrace,
 		log:           c.Log,
 		now:           c.Now,
 		newID:         c.NewID,
+		jwtSecret:     c.JWTSecret,
 	}
 }
 
@@ -453,6 +457,7 @@ type driverTransitionRequest struct {
 	NextStatus  Status
 	Reason      string
 	Precheck    func(Order) error
+	TransformNextStatus func(Order, Status) Status
 	BuildProofs func(Order) []DeliveryProofArtifact
 	EmitExtra   func(outbox.TxnBuffer, Order, Status) error
 }
@@ -1316,7 +1321,19 @@ func (s *Service) SubmitDelivery(ctx context.Context, claims auth.Claims, req De
 		OrderID:    req.OrderID,
 		NextStatus: StatusCompleted,
 		Reason:     "driver_delivery_submit",
+		TransformNextStatus: func(orderRecord Order, next Status) Status {
+			if orderRecord.Status == StatusCancelled && next == StatusCompleted {
+				return StatusReconciliationRequired
+			}
+			return next
+		},
 		Precheck: func(orderRecord Order) error {
+			if req.token() != "" && s.jwtSecret != "" && orderRecord.ManifestID != "" {
+				if err := s.validateOfflineQR(orderRecord.ManifestID, claims.Subject, orderRecord.OrderID, req.token()); err != nil {
+					return err
+				}
+			}
+
 			computedDistance, err := validateOptionalGeofence(req.Latitude, req.Longitude, orderRecord)
 			if err == nil {
 				distanceM = computedDistance
@@ -1490,6 +1507,10 @@ func (s *Service) transitionDriverOrder(ctx context.Context, claims auth.Claims,
 	current, err := s.loadDriverTransitionOrder(ctx, claims, req.OrderID)
 	if err != nil {
 		return driverTransitionResult{}, err
+	}
+
+	if req.TransformNextStatus != nil {
+		req.NextStatus = req.TransformNextStatus(current, req.NextStatus)
 	}
 
 	if current.Status == req.NextStatus {
@@ -2244,6 +2265,24 @@ func (r DeliverySubmitRequest) token() string {
 	return r.ScannedToken
 }
 
+func (s *Service) validateOfflineQR(manifestID, driverID, orderID, token string) error {
+	h := sha256.New()
+	h.Write([]byte(manifestID))
+	h.Write([]byte(driverID))
+	h.Write([]byte(s.jwtSecret))
+	offlineNonce := hex.EncodeToString(h.Sum(nil))
+
+	expected := sha256.New()
+	expected.Write([]byte(offlineNonce))
+	expected.Write([]byte(orderID))
+	expectedHash := hex.EncodeToString(expected.Sum(nil))
+
+	if token != expectedHash && token != offlineNonce {
+		return errors.New("invalid offline qr token")
+	}
+	return nil
+}
+
 func buildDeliveryProofArtifacts(proofID string, orderRecord Order, driverID string, proofType DeliveryProofType, qrToken string, scannedToken string, latitude *float64, longitude *float64, distanceM *float64) []DeliveryProofArtifact {
 	resolvedDriverID := strings.TrimSpace(driverID)
 	if resolvedDriverID == "" {
@@ -2373,8 +2412,12 @@ func validateStatusTransition(current Status, next Status) error {
 		allowed = next == StatusCompleted
 	case StatusAwaitingPayment, StatusPendingCashCollection:
 		allowed = next == StatusCompleted
-	case StatusCompleted, StatusCancelled:
+	case StatusCompleted:
 		allowed = false
+	case StatusCancelled:
+		allowed = next == StatusReconciliationRequired
+	case StatusReconciliationRequired:
+		allowed = next == StatusCompleted || next == StatusCancelled
 	default:
 		allowed = false
 	}

@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
@@ -52,7 +53,9 @@ func OptimizeAndValidate(ctx context.Context, client *optimizerclient.Client, jo
 			Orders:     geoOrdersFromDispatchable(job.Orders),
 			Fleet:      job.Fleet,
 		}
-		res, err := client.Solve(ctx, in)
+		solveCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		res, err := client.Solve(solveCtx, in)
 		if err == nil {
 			if rejected := validateAssignment(res, job.Fleet); rejected != "" {
 				out := runFallback(job)
