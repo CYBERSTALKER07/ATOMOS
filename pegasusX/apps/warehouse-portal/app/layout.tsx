@@ -1,27 +1,23 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { Suspense } from "react";
+import { Inter, EB_Garamond } from "next/font/google";
+import Image from "next/image";
+import Providers from "@/components/Providers";
 import "./globals.css";
-import WarehouseShell from "../components/WarehouseShell";
-import AuthGuard from "../components/AuthGuard";
-import LocaleBootstrap from "../components/LocaleBootstrap";
-import { PageSkeleton } from "../components/Skeleton";
-import { ToastProvider } from "../components/Toast";
-import { ThemeProvider } from "../components/ThemeProvider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const fontInter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const fontGaramond = EB_Garamond({
+  variable: "--font-garamond",
   subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: "PegasusX Warehouse Desktop",
-  description: "Warehouse supply requests, demand forecasting, and dispatch operations.",
+  title: "Warehouse Portal - pegasusX",
+  description: "Single-tenant logistics control plane.",
 };
 
 export default function RootLayout({
@@ -30,33 +26,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${fontInter.variable} ${fontGaramond.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: `
-          (function(){try{var m=localStorage.getItem('pegasus-warehouse-theme-mode');
+          (function(){try{var m=localStorage.getItem('pegasus-theme-mode');
           var d=m==='dark'||(m!=='light'&&matchMedia('(prefers-color-scheme:dark)').matches);
           var r=document.documentElement;r.classList.toggle('dark',d);r.style.colorScheme=d?'dark':'light';}catch(e){}})();
         `}} />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans flex h-screen overflow-hidden bg-background text-foreground`}
+        className={`${fontInter.variable} ${fontGaramond.variable} font-sans flex h-screen overflow-hidden bg-background text-foreground`}
       >
-        <LocaleBootstrap />
         <div id="app-splash" aria-hidden="true">
-          <img src="/logo-solid-square.png" alt="" width="80" height="80" />
+          <Image src="/logo-solid-square.png" alt="" width={80} height={80} priority />
         </div>
 
-        <ThemeProvider>
-          <AuthGuard>
-            <WarehouseShell>
-              <ToastProvider>
-                <Suspense fallback={<PageSkeleton />}>
-                  {children}
-                </Suspense>
-              </ToastProvider>
-            </WarehouseShell>
-          </AuthGuard>
-        </ThemeProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

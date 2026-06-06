@@ -1,24 +1,27 @@
-"use client";
+'use client';
 
-import { useCallback } from "react";
-import { useTheme } from "@/components/ThemeProvider";
+import Image from 'next/image';
+import { useCallback, useEffect, useState } from 'react';
+import { useTheme } from '@/components/ThemeProvider';
 
+// ─── Theme toggle icon (sun/moon) ──────────────────────────────────────────
 function ThemeToggle({
   isDark,
   onToggle,
+  ariaLabel,
 }: {
   isDark: boolean;
   onToggle: () => void;
+  ariaLabel: string;
 }) {
   return (
     <button
-      type="button"
       onClick={onToggle}
       className="auth-theme-toggle"
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      aria-label={ariaLabel}
     >
       {isDark ? (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="5" />
           <line x1="12" y1="1" x2="12" y2="3" />
           <line x1="12" y1="21" x2="12" y2="23" />
@@ -30,7 +33,7 @@ function ThemeToggle({
           <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
         </svg>
       ) : (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
         </svg>
       )}
@@ -40,40 +43,84 @@ function ThemeToggle({
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const { resolved, setMode } = useTheme();
-  const isDark = resolved === "dark";
+  const [mounted, setMounted] = useState(false);
+  const isDark = resolved === 'dark';
+  const [splashDone, setSplashDone] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('auth-splash-shown') === '1';
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    setMounted(true);
+    if (!splashDone) {
+      const timer = setTimeout(() => {
+        setSplashDone(true);
+        sessionStorage.setItem('auth-splash-shown', '1');
+      }, 240);
+      return () => clearTimeout(timer);
+    }
+  }, [splashDone]);
 
   const toggleTheme = useCallback(() => {
-    setMode(isDark ? "light" : "dark");
+    setMode(isDark ? 'light' : 'dark');
   }, [isDark, setMode]);
 
   return (
-    <div className="auth-shell">
+    <div className={`auth-shell ${isDark ? 'auth-dark' : 'auth-light'}`}>
+      {/* ── Splash Screen ── */}
+      {!splashDone && (
+        <div className={`auth-splash ${mounted ? 'auth-splash-exit' : ''}`}>
+          <Image
+            className="auth-splash-logo"
+            src={isDark ? '/logo-dark-square.png' : '/logo-light-square.png'}
+            alt=""
+            width={96}
+            height={96}
+            priority
+          />
+        </div>
+      )}
+
+      {/* ── Left: Branding Panel ── */}
       <div className="auth-brand-panel">
-        <div className="auth-brand-content">
-          <div className="text-center">
-            <div className="auth-brand-mark">W</div>
-            <h1 className="auth-brand-heading">pegasusX Warehouse</h1>
-            <p className="auth-brand-sub">
-              Node-scoped dispatch, inventory, and supply operations for warehouse administrators.
-            </p>
+        <div className={`auth-brand-content relative z-10 ${mounted ? 'auth-brand-enter' : ''}`}>
+          <div className="auth-brand-logo">
+            <Image
+              src={isDark ? '/logo-light-square.png' : '/logo-dark-square.png'}
+              alt="pegasusX Warehouse"
+              width={500}
+              height={500}
+              priority
+              className="auth-brand-logo-img"
+            />
           </div>
         </div>
-        <p className="auth-brand-footer">pegasusX © 2026</p>
+
+        <p className="auth-brand-footer relative z-10">
+          pegasusX &copy; 2026
+        </p>
       </div>
 
+      {/* ── Right: Form Panel ── */}
       <div className="auth-form-panel">
-        <div className="flex items-center justify-end pt-4 pr-6 px-6 shrink-0">
-          <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
+        <div className="flex items-center justify-end pt-4 pr-6 px-6 shrink-0 relative z-10">
+          <ThemeToggle
+            isDark={isDark}
+            onToggle={toggleTheme}
+            ariaLabel={
+              isDark
+                ? 'Switch to light mode'
+                : 'Switch to dark mode'
+            }
+          />
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
-          <div className="flex flex-col items-center py-8 px-6">
-            <div className="auth-mobile-brand">
-              <div className="auth-brand-mark" style={{ width: 72, height: 72, fontSize: 32 }}>
-                W
-              </div>
-              <h1 className="md-typescale-title-large">pegasusX Warehouse</h1>
+          <div className="flex flex-col items-center py-8 px-6 relative z-10">
+            <div className={`auth-form-inner w-full ${mounted ? 'auth-form-enter' : ''}`}>
+              {children}
             </div>
-            <div className="auth-form-inner">{children}</div>
           </div>
         </div>
       </div>
