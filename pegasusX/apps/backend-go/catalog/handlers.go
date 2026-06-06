@@ -7,7 +7,24 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 )
+
+// scopedSupplierID resolves the caller's supplier scope from JWT claims and
+// rejects any body-supplied supplier_id that disagrees. Returns ("", false)
+// when the response has already been written.
+func scopedSupplierID(w http.ResponseWriter, r *http.Request, bodySupplierID string) (string, bool) {
+	supplierID, ok := auth.ResolveSupplierID(r.Context())
+	if !ok || supplierID == "" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_required"})
+		return "", false
+	}
+	if body := strings.TrimSpace(bodySupplierID); body != "" && body != supplierID {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "supplier_scope_violation"})
+		return "", false
+	}
+	return supplierID, true
+}
 
 // HandleListCategories serves GET /v1/catalog/categories.
 func (s *Service) HandleListCategories(w http.ResponseWriter, r *http.Request) {
@@ -75,7 +92,11 @@ func (s *Service) HandleCreateProduct(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	if req.SupplierID == "" || req.CategoryID == "" || req.Name == "" || req.Currency == "" {
+	supplierID, ok := scopedSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
+	if req.CategoryID == "" || req.Name == "" || req.Currency == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing required fields"})
 		return
 	}
@@ -85,7 +106,7 @@ func (s *Service) HandleCreateProduct(w http.ResponseWriter, r *http.Request) {
 	}
 	p := Product{
 		ProductID:     uuid.NewString(),
-		SupplierID:    req.SupplierID,
+		SupplierID:    supplierID,
 		CategoryID:    req.CategoryID,
 		Name:          req.Name,
 		Description:   req.Description,
@@ -129,6 +150,9 @@ func (s *Service) HandleUpdateProduct(w http.ResponseWriter, r *http.Request) {
 	existing, err := s.GetProduct(r.Context(), productID)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_found"})
+		return
+	}
+	if _, ok := scopedSupplierID(w, r, existing.SupplierID); !ok {
 		return
 	}
 	if req.Name != "" {
@@ -218,13 +242,17 @@ func (s *Service) HandleCreateCategory(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	if req.SupplierID == "" || req.Name == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "supplier_id and name required"})
+	supplierID, ok := scopedSupplierID(w, r, req.SupplierID)
+	if !ok {
+		return
+	}
+	if req.Name == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name required"})
 		return
 	}
 	cat := Category{
 		CategoryID:       uuid.NewString(),
-		SupplierID:       req.SupplierID,
+		SupplierID:       supplierID,
 		Name:             req.Name,
 		ParentCategoryID: req.ParentCategoryID,
 		IconKey:          req.IconKey,
