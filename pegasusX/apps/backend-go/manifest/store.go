@@ -143,24 +143,34 @@ func (s *Store) CommitSupplier(
 	}
 
 	_, err := s.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		buf := &txnBuffer{}
-		if emit != nil {
-			if err := emit(buf); err != nil {
-				return err
-			}
-		}
-
-		mutations, err := supplierMutations(batch)
-		if err != nil {
-			return err
-		}
-		mutations = append(mutations, outboxMutations(buf)...)
-		return txn.BufferWrite(mutations)
+		return s.CommitSupplierTxn(ctx, txn, batch, emit)
 	})
 	if err != nil {
 		return fmt.Errorf("supplier manifest transaction: %w", err)
 	}
 	return nil
+}
+
+// CommitSupplierTxn applies mutations using an existing transaction.
+func (s *Store) CommitSupplierTxn(
+	ctx context.Context,
+	txn *spanner.ReadWriteTransaction,
+	batch *SupplierWriteBatch,
+	emit func(outbox.TxnBuffer) error,
+) error {
+	buf := &txnBuffer{}
+	if emit != nil {
+		if err := emit(buf); err != nil {
+			return err
+		}
+	}
+
+	mutations, err := supplierMutations(batch)
+	if err != nil {
+		return err
+	}
+	mutations = append(mutations, outboxMutations(buf)...)
+	return txn.BufferWrite(mutations)
 }
 
 // CommitFactory applies factory manifest mutations and outbox events atomically.
