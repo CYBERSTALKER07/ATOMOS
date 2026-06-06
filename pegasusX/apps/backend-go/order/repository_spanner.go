@@ -269,7 +269,7 @@ func (r *SpannerRepository) GetOrder(ctx context.Context, orderID string) (Order
 		return Order{}, false, fmt.Errorf("read order %s: %w", orderID, err)
 	}
 
-	o, err := scanOrderRow(row)
+	o, err := scanOrderRowRow(row)
 	if err != nil {
 		return Order{}, false, fmt.Errorf("scan order %s: %w", orderID, err)
 	}
@@ -358,7 +358,7 @@ func (r *SpannerRepository) ListDueAutoConfirmOrders(ctx context.Context, before
 func collectOrders(iter *spanner.RowIterator) ([]Order, error) {
 	orders := make([]Order, 0)
 	err := iter.Do(func(row *spanner.Row) error {
-		orderRecord, err := scanOrderRow(row)
+		orderRecord, err := scanOrderRowRow(row)
 		if err != nil {
 			return err
 		}
@@ -371,7 +371,7 @@ func collectOrders(iter *spanner.RowIterator) ([]Order, error) {
 	return orders, nil
 }
 
-func scanOrderRow(row *spanner.Row) (Order, error) {
+func scanOrderRowRow(row *spanner.Row) (Order, error) {
 	var (
 		statusRaw             string
 		sourceRaw             string
@@ -469,4 +469,25 @@ func nullableFloat64(value *float64) interface{} {
 		return nil
 	}
 	return *value
+}
+
+// ListManifestOrders returns all orders linked to the specified manifest.
+func (r *SpannerRepository) ListManifestOrders(ctx context.Context, manifestID string) ([]Order, error) {
+	stmt := spanner.Statement{
+		SQL:    "SELECT " + orderSelectColumns + " FROM Orders WHERE ManifestId = @mid ORDER BY CreatedAt ASC",
+		Params: map[string]any{"mid": manifestID},
+	}
+	var res []Order
+	err := r.client.Single().Query(ctx, stmt).Do(func(row *spanner.Row) error {
+		o, err := scanOrderRowRow(row)
+		if err != nil {
+			return err
+		}
+		res = append(res, o)
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list manifest orders %s: %w", manifestID, err)
+	}
+	return res, nil
 }

@@ -17,7 +17,16 @@ import (
 type Repository interface {
 	ListSupplyRequests(ctx context.Context, warehouseID string, limit int) ([]SupplyRequest, error)
 	CreateSupplyRequest(ctx context.Context, req SupplyRequest, emit func(outbox.TxnBuffer) error) error
+	UpdateSupplyRequestStatus(ctx context.Context, requestID, status string, emit func(outbox.TxnBuffer) error) error
 	Apply(ctx context.Context, mutate func() error, emit func(outbox.TxnBuffer) error) error
+
+	GetInventoryList(ctx context.Context, warehouseID string) (map[string]InventoryRow, error)
+	UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error
+	GetLocks(ctx context.Context, warehouseID string) (map[string]DispatchLock, error)
+	UpsertLock(ctx context.Context, warehouseID string, lock DispatchLock, emit func(outbox.TxnBuffer) error) error
+	DeleteLock(ctx context.Context, warehouseID, lockID string, emit func(outbox.TxnBuffer) error) error
+	CreateTransfer(ctx context.Context, transferID, factoryID, supplierID string, totalVolumeVU float64, emit func(outbox.TxnBuffer) error) error
+	UpdateTransferState(ctx context.Context, transferID, supplierID, newState string, emit func(outbox.TxnBuffer) error) error
 }
 
 // SpannerRepository persists warehouse entities and events through Spanner.
@@ -189,6 +198,37 @@ func (r *SpannerRepository) CreateSupplyRequest(ctx context.Context, req SupplyR
 	return nil
 }
 
+func (r *SpannerRepository) UpdateSupplyRequestStatus(ctx context.Context, requestID, status string, emit func(outbox.TxnBuffer) error) error {
+	if r == nil || r.client == nil {
+		return fmt.Errorf("spanner warehouse repository: nil client")
+	}
+
+	buf := &spannerTxnBuffer{}
+	if emit != nil {
+		if err := emit(buf); err != nil {
+			return err
+		}
+	}
+
+	_, err := r.client.ReadWriteTransaction(ctx, func(_ context.Context, txn *spanner.ReadWriteTransaction) error {
+		mutations := []*spanner.Mutation{spanner.UpdateMap("WarehouseSupplyRequests", map[string]any{
+			"RequestId": requestID,
+			"State":     status,
+			"UpdatedAt": time.Now().UTC(),
+		})}
+		mutations = append(mutations, outboxMutations(buf.events)...)
+		for _, a := range buf.audits {
+			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
+		}
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		return fmt.Errorf("warehouse update supply request status: %w", err)
+	}
+
+	return nil
+}
+
 // Apply executes the in-memory mutation and durably persists any emitted outbox events.
 func (r *SpannerRepository) Apply(ctx context.Context, mutate func() error, emit func(outbox.TxnBuffer) error) error {
 	if r == nil || r.client == nil {
@@ -317,6 +357,27 @@ func (r *inMemoryRepository) CreateSupplyRequest(_ context.Context, req SupplyRe
 	return nil
 }
 
+func (r *inMemoryRepository) UpdateSupplyRequestStatus(_ context.Context, requestID, status string, emit func(outbox.TxnBuffer) error) error {
+	r.mu.Lock()
+	for i := range r.requests {
+		if r.requests[i].RequestID == requestID {
+			r.requests[i].Status = status
+			r.requests[i].State = status
+			r.requests[i].UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+			break
+		}
+	}
+	r.mu.Unlock()
+
+	buf := &inMemoryTxnBuffer{}
+	if emit != nil {
+		if err := emit(buf); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *inMemoryRepository) Apply(ctx context.Context, mutate func() error, emit func(outbox.TxnBuffer) error) error {
 	if mutate != nil {
 		if err := mutate(); err != nil {
@@ -328,4 +389,209 @@ func (r *inMemoryRepository) Apply(ctx context.Context, mutate func() error, emi
 		_ = emit(buf)
 	}
 	return nil
+}
+
+func (m *inMemoryRepository) GetInventoryList(ctx context.Context, warehouseID string) (map[string]InventoryRow, error) {
+	return nil, nil
+}
+func (m *inMemoryRepository) UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error {
+	return nil
+}
+func (m *inMemoryRepository) GetLocks(ctx context.Context, warehouseID string) (map[string]DispatchLock, error) {
+	return nil, nil
+}
+func (m *inMemoryRepository) UpsertLock(ctx context.Context, warehouseID string, lock DispatchLock, emit func(outbox.TxnBuffer) error) error {
+	return nil
+}
+func (m *inMemoryRepository) DeleteLock(ctx context.Context, warehouseID, lockID string, emit func(outbox.TxnBuffer) error) error {
+	return nil
+}
+func (m *inMemoryRepository) CreateTransfer(ctx context.Context, transferID, factoryID, supplierID string, totalVolumeVU float64, emit func(outbox.TxnBuffer) error) error {
+	return nil
+}
+func (m *inMemoryRepository) UpdateTransferState(ctx context.Context, transferID, supplierID, newState string, emit func(outbox.TxnBuffer) error) error {
+	return nil
+}
+
+func (r *SpannerRepository) GetInventoryList(ctx context.Context, warehouseID string) (map[string]InventoryRow, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT ProductId, QuantityOnHand, UpdatedAt
+			  FROM InventoryLevels
+			  WHERE WarehouseId = @wid`,
+		Params: map[string]any{"wid": warehouseID},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	out := make(map[string]InventoryRow)
+	for {
+		row, err := iter.Next()
+		if err != nil {
+			break
+		}
+		var pid string
+		var qty int64
+		var updated time.Time
+		if err := row.Columns(&pid, &qty, &updated); err == nil {
+			out[pid] = InventoryRow{
+				SKU:         pid,
+				ProductName: pid,
+				Quantity:    qty,
+				UpdatedAt:   updated.Format(time.RFC3339),
+			}
+		}
+	}
+	return out, nil
+}
+
+func (r *SpannerRepository) UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		muts := []*spanner.Mutation{
+			spanner.InsertOrUpdateMap("InventoryLevels", map[string]any{
+				"WarehouseId":    warehouseID,
+				"ProductId":      productID,
+				"QuantityOnHand": quantity,
+				"UpdatedAt":      spanner.CommitTimestamp,
+			}),
+		}
+		if emit != nil {
+			buf := &spannerTxnBuffer{}
+			if err := emit(buf); err != nil {
+				return err
+			}
+			muts = append(muts, outboxMutations(buf.events)...)
+		}
+		return txn.BufferWrite(muts)
+	})
+	return err
+}
+
+func (r *SpannerRepository) GetLocks(ctx context.Context, warehouseID string) (map[string]DispatchLock, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT LockId, EntityType, EntityId, Reason, CreatedAt
+			  FROM WarehouseDispatchLocks
+			  WHERE WarehouseId = @wid`,
+		Params: map[string]any{"wid": warehouseID},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	out := make(map[string]DispatchLock)
+	for {
+		row, err := iter.Next()
+		if err != nil {
+			break
+		}
+		var lockID, eType, eID, reason string
+		var created time.Time
+		if err := row.Columns(&lockID, &eType, &eID, &reason, &created); err == nil {
+			out[lockID] = DispatchLock{
+				LockID:     lockID,
+				EntityType: eType,
+				EntityID:   eID,
+				Reason:     reason,
+				CreatedAt:  created.Format(time.RFC3339),
+			}
+		}
+	}
+	return out, nil
+}
+
+func (r *SpannerRepository) UpsertLock(ctx context.Context, warehouseID string, lock DispatchLock, emit func(outbox.TxnBuffer) error) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		muts := []*spanner.Mutation{
+			spanner.InsertOrUpdateMap("WarehouseDispatchLocks", map[string]any{
+				"WarehouseId": warehouseID,
+				"LockId":      lock.LockID,
+				"EntityType":  lock.EntityType,
+				"EntityId":    lock.EntityID,
+				"Reason":      lock.Reason,
+				"CreatedAt":   spanner.CommitTimestamp,
+				"UpdatedAt":   spanner.CommitTimestamp,
+			}),
+		}
+		if emit != nil {
+			buf := &spannerTxnBuffer{}
+			if err := emit(buf); err != nil {
+				return err
+			}
+			muts = append(muts, outboxMutations(buf.events)...)
+		}
+		return txn.BufferWrite(muts)
+	})
+	return err
+}
+
+func (r *SpannerRepository) DeleteLock(ctx context.Context, warehouseID, lockID string, emit func(outbox.TxnBuffer) error) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		muts := []*spanner.Mutation{
+			spanner.Delete("WarehouseDispatchLocks", spanner.Key{warehouseID, lockID}),
+		}
+		if emit != nil {
+			buf := &spannerTxnBuffer{}
+			if err := emit(buf); err != nil {
+				return err
+			}
+			muts = append(muts, outboxMutations(buf.events)...)
+		}
+		return txn.BufferWrite(muts)
+	})
+	return err
+}
+
+func (r *SpannerRepository) CreateTransfer(ctx context.Context, transferID, factoryID, supplierID string, totalVolumeVU float64, emit func(outbox.TxnBuffer) error) error {
+	row := map[string]any{
+		"TransferId":    transferID,
+		"FactoryId":     factoryID,
+		"SupplierId":    supplierID,
+		"State":         "APPROVED",
+		"TotalVolumeVU": totalVolumeVU,
+		"CreatedAt":     spanner.CommitTimestamp,
+		"UpdatedAt":     spanner.CommitTimestamp,
+	}
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		muts := []*spanner.Mutation{spanner.InsertOrUpdateMap("FactoryInternalTransfers", row)}
+		if emit != nil {
+			buf := &spannerTxnBuffer{}
+			if err := emit(buf); err != nil {
+				return err
+			}
+			muts = append(muts, outboxMutations(buf.events)...)
+		}
+		return txn.BufferWrite(muts)
+	})
+	return err
+}
+
+func (r *SpannerRepository) UpdateTransferState(ctx context.Context, transferID, supplierID, newState string, emit func(outbox.TxnBuffer) error) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		row, err := txn.ReadRow(ctx, "FactoryInternalTransfers", spanner.Key{transferID}, []string{"TransferId", "SupplierId", "State"})
+		if err != nil {
+			return err
+		}
+		var id, supID, state string
+		if err := row.Columns(&id, &supID, &state); err != nil {
+			return err
+		}
+		if supplierID != "" && supID != supplierID {
+			return fmt.Errorf("transfer_forbidden")
+		}
+		
+		muts := []*spanner.Mutation{
+			spanner.UpdateMap("FactoryInternalTransfers", map[string]any{
+				"TransferId": transferID,
+				"State":      newState,
+				"UpdatedAt":  spanner.CommitTimestamp,
+			}),
+		}
+		if emit != nil {
+			buf := &spannerTxnBuffer{}
+			if err := emit(buf); err != nil {
+				return err
+			}
+			muts = append(muts, outboxMutations(buf.events)...)
+		}
+		return txn.BufferWrite(muts)
+	})
+	return err
 }

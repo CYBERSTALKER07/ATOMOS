@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -14,7 +13,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
-	"google.golang.org/grpc/codes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 var (
@@ -24,11 +24,11 @@ var (
 )
 
 var receiveableTransferStates = map[string]struct{}{
-	"IN_TRANSIT":            {},
+	"IN_TRANSIT":              {},
 	"IN_TRANSIT_TO_WAREHOUSE": {},
-	"DISPATCHED":            {},
-	"ARRIVED":               {},
-	"ASSIGNED":              {},
+	"DISPATCHED":              {},
+	"ARRIVED":                 {},
+	"ASSIGNED":                {},
 }
 
 // HandleEmergencyTransfer serves POST /v1/warehouse/transfers/emergency.
@@ -74,18 +74,16 @@ func (s *Service) HandleEmergencyTransfer(w http.ResponseWriter, r *http.Request
 	}
 
 	transferID := uuid.NewString()
-	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{
-			spanner.InsertOrUpdateMap("FactoryInternalTransfers", map[string]any{
-				"TransferId":    transferID,
-				"FactoryId":     factoryID,
-				"SupplierId":    supplierID,
-				"State":         "APPROVED",
-				"TotalVolumeVU": req.TotalVolumeVU,
-				"CreatedAt":     spanner.CommitTimestamp,
-				"UpdatedAt":     spanner.CommitTimestamp,
-			}),
-		})
+	err = s.repo.CreateTransfer(ctx, transferID, factoryID, supplierID, req.TotalVolumeVU, func(txn outbox.TxnBuffer) error {
+		payload := map[string]any{
+			"type":            events.EventWarehouseTransferCreated,
+			"transfer_id":     transferID,
+			"factory_id":      factoryID,
+			"supplier_id":     supplierID,
+			"total_volume_vu": req.TotalVolumeVU,
+			"timestamp":       time.Now().UTC().Format(time.RFC3339),
+		}
+		return outbox.EmitJSON(ctx, txn, events.AggregateWarehouse, whID, events.TopicMain, payload)
 	})
 	if err != nil {
 		slog.ErrorContext(ctx, "emergency transfer create failed", "warehouse_id", whID, "err", err)
@@ -177,19 +175,20 @@ func (s *Service) HandleForceReceive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transferID := uuid.NewString()
-	_, err = s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		return txn.BufferWrite([]*spanner.Mutation{
-			spanner.InsertOrUpdateMap("FactoryInternalTransfers", map[string]any{
-				"TransferId":    transferID,
-				"FactoryId":     factoryID,
-				"SupplierId":    supplierID,
-				"State":         "RECEIVED",
-				"TotalVolumeVU": req.TotalVolumeVU,
-				"CreatedAt":     spanner.CommitTimestamp,
-				"UpdatedAt":     spanner.CommitTimestamp,
-			}),
+	err = s.repo.CreateTransfer(ctx, transferID, factoryID, supplierID, req.TotalVolumeVU, nil)
+	if err == nil {
+		err = s.repo.UpdateTransferState(ctx, transferID, supplierID, "RECEIVED", func(txn outbox.TxnBuffer) error {
+			payload := map[string]any{
+				"type":            events.EventWarehouseTransferReceived,
+				"transfer_id":     transferID,
+				"factory_id":      factoryID,
+				"supplier_id":     supplierID,
+				"total_volume_vu": req.TotalVolumeVU,
+				"timestamp":       time.Now().UTC().Format(time.RFC3339),
+			}
+			return outbox.EmitJSON(ctx, txn, events.AggregateWarehouse, whID, events.TopicMain, payload)
 		})
-	})
+	}
 	if err != nil {
 		slog.ErrorContext(ctx, "force receive failed", "warehouse_id", whID, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
@@ -209,32 +208,15 @@ func (s *Service) receiveTransfer(ctx context.Context, ops *auth.WarehouseOps, t
 		s.mu.Unlock()
 		return s.memoryReceiveTransfer(ops, transferID)
 	}
-	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
-		row, err := txn.ReadRow(ctx, "FactoryInternalTransfers", spanner.Key{transferID},
-			[]string{"TransferId", "SupplierId", "State"})
-		if err != nil {
-			if spanner.ErrCode(err) == codes.NotFound {
-				return errTransferNotFound
-			}
-			return fmt.Errorf("read transfer: %w", err)
+	err := s.repo.UpdateTransferState(ctx, transferID, ops.SupplierID, "RECEIVED", func(txn outbox.TxnBuffer) error {
+		payload := map[string]any{
+			"type":        events.EventWarehouseTransferReceived,
+			"transfer_id": transferID,
+			"supplier_id": ops.SupplierID,
+			"timestamp":   time.Now().UTC().Format(time.RFC3339),
 		}
-		var id, supplierID, state string
-		if err := row.Columns(&id, &supplierID, &state); err != nil {
-			return fmt.Errorf("decode transfer: %w", err)
-		}
-		if ops.SupplierID != "" && supplierID != ops.SupplierID {
-			return errTransferForbidden
-		}
-		if _, ok := receiveableTransferStates[strings.ToUpper(state)]; !ok {
-			return fmt.Errorf("%w: %s", errInvalidTransfer, state)
-		}
-		return txn.BufferWrite([]*spanner.Mutation{
-			spanner.UpdateMap("FactoryInternalTransfers", map[string]any{
-				"TransferId": transferID,
-				"State":      "RECEIVED",
-				"UpdatedAt":  spanner.CommitTimestamp,
-			}),
-		})
+		// assuming ops is warehouse scope, we might not have warehouse_id here, but we can emit for aggregate
+		return outbox.EmitJSON(ctx, txn, events.AggregateWarehouse, transferID, events.TopicMain, payload)
 	})
 	return err
 }

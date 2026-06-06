@@ -156,6 +156,7 @@ type Repository interface {
 	ListRetailerOrders(ctx context.Context, retailerID string, limit int) ([]Order, error)
 	ListWarehouseOrdersByDeliveryWindow(ctx context.Context, warehouseID string, from, to time.Time, limit int) ([]Order, error)
 	ListDueAutoConfirmOrders(ctx context.Context, before time.Time, limit int) ([]Order, error)
+	ListManifestOrders(ctx context.Context, manifestID string) ([]Order, error)
 }
 
 // WarehouseResolver resolves the best supplier warehouse for retailer
@@ -2312,19 +2313,13 @@ func deliveryProofDistance(distanceM float64, latitude, longitude *float64) *flo
 }
 
 func validatePointerGeofence(latitude, longitude *float64, orderRecord Order) (float64, error) {
-	if latitude == nil && longitude == nil {
-		return 0, nil
-	}
 	if latitude == nil || longitude == nil {
-		return 0, errors.New("latitude and longitude required together")
+		return 0, errors.New("latitude and longitude required")
 	}
 	return validateRequiredGeofence(*latitude, *longitude, orderRecord)
 }
 
 func validateOptionalGeofence(latitude, longitude float64, orderRecord Order) (float64, error) {
-	if latitude == 0 && longitude == 0 {
-		return 0, nil
-	}
 	return validateRequiredGeofence(latitude, longitude, orderRecord)
 }
 

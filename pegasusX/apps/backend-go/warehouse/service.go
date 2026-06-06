@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"google.golang.org/api/iterator"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
@@ -24,6 +23,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
+	"google.golang.org/api/iterator"
 )
 
 var errDispatchLockNotFound = errors.New("dispatch_lock_not_found")
@@ -82,10 +82,8 @@ type Service struct {
 	currency   string
 	now        func() time.Time
 
-	mu        sync.RWMutex
-	inventory map[string]InventoryRow
-	orders    []OrderRow
-	locks     map[string]DispatchLock
+	mu     sync.RWMutex
+	orders []OrderRow
 
 	jwtSecret        string
 	jwtIssuer        string
@@ -94,16 +92,16 @@ type Service struct {
 	fallbackDepotLat float64
 	fallbackDepotLng float64
 
-	portalSeeded bool
-	drivers      []PortalDriver
-	vehicles     []PortalVehicle
-	staff        []portalStaff
-	products     []portalProduct
-	manifests    []portalManifest
-	retailers    []portalRetailer
-	returns            []portalReturn
-	insights           []replenishmentInsight
-	internalTransfers  map[string]memoryTransferRow
+	portalSeeded      bool
+	drivers           []PortalDriver
+	vehicles          []PortalVehicle
+	staff             []portalStaff
+	products          []portalProduct
+	manifests         []portalManifest
+	retailers         []portalRetailer
+	returns           []portalReturn
+	insights          []replenishmentInsight
+	internalTransfers map[string]memoryTransferRow
 }
 
 // ServiceConfig is the constructor input.
@@ -178,28 +176,26 @@ func NewService(c ServiceConfig) *Service {
 		c.Currency = "UZS"
 	}
 	return &Service{
-		repo:           c.Repo,
-		planner:        c.Planner,
-		analyticsQuery: c.AnalyticsQuery,
-		opsOrders:      c.OpsOrders,
-		opsDrivers:     c.OpsDrivers,
-		opsVehicles:    c.OpsVehicles,
-		cache:          c.Cache,
-		spannerClient:  c.Spanner,
-		supplierHub:    c.SupplierHub,
-		warehouseHub:   c.WarehouseHub,
-		log:            c.Log,
-		supplierID:     c.SupplierID,
-		currency:       c.Currency,
-		now:            c.Now,
+		repo:             c.Repo,
+		planner:          c.Planner,
+		analyticsQuery:   c.AnalyticsQuery,
+		opsOrders:        c.OpsOrders,
+		opsDrivers:       c.OpsDrivers,
+		opsVehicles:      c.OpsVehicles,
+		cache:            c.Cache,
+		spannerClient:    c.Spanner,
+		supplierHub:      c.SupplierHub,
+		warehouseHub:     c.WarehouseHub,
+		log:              c.Log,
+		supplierID:       c.SupplierID,
+		currency:         c.Currency,
+		now:              c.Now,
 		jwtSecret:        c.JWTSecret,
 		jwtIssuer:        c.JWTIssuer,
 		optimizerClient:  c.OptimizerClient,
 		planCounters:     c.PlanCounters,
 		fallbackDepotLat: c.FallbackDepotLat,
 		fallbackDepotLng: c.FallbackDepotLng,
-		inventory:        make(map[string]InventoryRow),
-		locks:          make(map[string]DispatchLock),
 	}
 }
 
@@ -277,11 +273,11 @@ func (s *Service) HandleDemandForecast(w http.ResponseWriter, r *http.Request) {
 	}
 	products := s.productDemandForecast(r.Context(), warehouseID, days)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"warehouse_id":   warehouseID,
-		"forecast_days":  days,
-		"generated_at":   s.now().UTC().Format(time.RFC3339Nano),
-		"series":         series,
-		"products":       products,
+		"warehouse_id":  warehouseID,
+		"forecast_days": days,
+		"generated_at":  s.now().UTC().Format(time.RFC3339Nano),
+		"series":        series,
+		"products":      products,
 	})
 }
 
@@ -404,6 +400,74 @@ func (s *Service) handleCreateSupplyRequest(w http.ResponseWriter, r *http.Reque
 	writeJSON(w, http.StatusCreated, req)
 }
 
+// HandleSupplyRequestAccepted is called by the async event consumer when a factory accepts the supply request.
+func (s *Service) HandleSupplyRequestAccepted(ctx context.Context, payloadBytes []byte) error {
+	var payload map[string]any
+	if err := json.Unmarshal(payloadBytes, &payload); err != nil {
+		s.log.Warn("failed to parse supply request accepted payload", "err", err)
+		return err
+	}
+
+	requestID, _ := payload["request_id"].(string)
+	if requestID == "" {
+		s.log.Warn("missing request_id in supply request accepted payload")
+		return nil
+	}
+
+	warehouseID, _ := payload["warehouse_id"].(string)
+	if warehouseID == "" {
+		warehouseID = "wh-1"
+	}
+
+	status := "ACCEPTED"
+	// Proximity Threshold Engine
+	// If the distance is close (e.g., threshold check), we can auto-ship the stock to SHIPPED status.
+	// We use the service's fallbackDepot coordinates and compare against a mock factory coordinate.
+	distanceKm := mockFactoryDistanceKm(s.fallbackDepotLat, s.fallbackDepotLng)
+	if distanceKm < 50.0 {
+		status = "SHIPPED"
+		s.log.Info("proximity threshold met: auto-shipping supply request", "request_id", requestID, "distance_km", distanceKm)
+	}
+
+	err := s.repo.UpdateSupplyRequestStatus(ctx, requestID, status, func(txn outbox.TxnBuffer) error {
+		// Emit WAREHOUSE_SUPPLY_SHIPPED if shipped
+		if status == "SHIPPED" {
+			evtPayload, _ := json.Marshal(map[string]any{
+				"request_id":   requestID,
+				"warehouse_id": warehouseID,
+				"status":       status,
+				"shipped_at":   time.Now().UTC().Format(time.RFC3339Nano),
+			})
+			return txn.BufferOutbox(ctx, outbox.Event{
+				EventID:       fmt.Sprintf("evt_shipped_%s_%d", requestID, time.Now().UnixNano()),
+				AggregateType: events.AggregateWarehouse,
+				AggregateID:   requestID,
+				TopicName:     "WAREHOUSE_SUPPLY_SHIPPED",
+				Payload:       evtPayload,
+				CreatedAt:     time.Now().UTC(),
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		s.log.Error("failed to update supply request status", "request_id", requestID, "err", err)
+		return err
+	}
+
+	if s.cache != nil {
+		s.cache.Invalidate(ctx, warehouseSupplyRequestsKey(s.supplierID, warehouseID))
+	}
+	s.broadcastWarehouseEvent(ctx, warehouseID, payload)
+	return nil
+}
+
+func mockFactoryDistanceKm(lat, lng float64) float64 {
+	// Simple mock returning a static distance for testing proximity engine.
+	// In production, Haversine between factory and warehouse lat/lng would be used.
+	return 25.0 // Will trigger auto-ship
+}
+
+
 // HandleDispatchLocks serves GET /v1/warehouse/dispatch-locks.
 func (s *Service) HandleDispatchLocks(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -412,8 +476,13 @@ func (s *Service) HandleDispatchLocks(w http.ResponseWriter, r *http.Request) {
 	}
 	warehouseID := warehouseIDFromRequest(r)
 	s.mu.RLock()
-	locks := make([]map[string]any, 0, len(s.locks))
-	for _, v := range s.locks {
+	lockMap, err := s.repo.GetLocks(r.Context(), "wh-1")
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_fetch_locks"})
+		return
+	}
+	locks := make([]map[string]any, 0, len(lockMap))
+	for _, v := range lockMap {
 		locks = append(locks, map[string]any{
 			"lock_id":      v.LockID,
 			"supplier_id":  s.supplierID,
@@ -481,12 +550,7 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 			"timestamp":    lock.CreatedAt,
 		}
 
-		if err := s.repo.Apply(r.Context(), func() error {
-			s.mu.Lock()
-			defer s.mu.Unlock()
-			s.locks[lock.LockID] = lock
-			return nil
-		}, func(txn outbox.TxnBuffer) error {
+		if err := s.repo.UpsertLock(r.Context(), warehouseID, lock, func(txn outbox.TxnBuffer) error {
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateWarehouse, lock.LockID, events.TopicMain, eventPayload)
 		}); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_dispatch_lock_failed"})
@@ -522,17 +586,15 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 		}
 
 		var released DispatchLock
-		if err := s.repo.Apply(r.Context(), func() error {
-			s.mu.Lock()
-			defer s.mu.Unlock()
-			releasedLock, exists := s.locks[lockID]
-			if !exists {
-				return errDispatchLockNotFound
-			}
-			released = releasedLock
-			delete(s.locks, lockID)
-			return nil
-		}, func(txn outbox.TxnBuffer) error {
+		// fetch to check exists
+		lockMap, err := s.repo.GetLocks(r.Context(), warehouseID)
+		releasedLock, exists := lockMap[lockID]
+		if !exists || err != nil {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "lock_not_found"})
+			return
+		}
+		released = releasedLock
+		if err := s.repo.DeleteLock(r.Context(), warehouseID, lockID, func(txn outbox.TxnBuffer) error {
 			eventPayload := map[string]any{
 				"type":         events.EventWarehouseDispatchLockChanged,
 				"supplier_id":  s.supplierID,
@@ -663,7 +725,7 @@ func (s *Service) defaultWarehouseIDForSupplier(ctx context.Context, supplierID 
 		Params: map[string]any{"supplier_id": supplierID},
 	}
 	iter := s.spannerClient.Single().
-		WithTimestampBound(spanner.MaxStaleness(15 * time.Second)).
+		WithTimestampBound(spanner.MaxStaleness(15*time.Second)).
 		Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()

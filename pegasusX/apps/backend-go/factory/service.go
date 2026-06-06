@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -33,6 +34,7 @@ const (
 // Repository is the mutation seam for factory write paths.
 type Repository interface {
 	Apply(ctx context.Context, mutate func() error, snapshot func() *PersistenceSnapshot, emit func(outbox.TxnBuffer) error) error
+	UpdateSupplyRequestState(ctx context.Context, requestID, state string, emit func(outbox.TxnBuffer) error) error
 }
 
 // inMemoryRepository is the scaffold repository implementation.
@@ -61,6 +63,16 @@ func (r *inMemoryRepository) Apply(ctx context.Context, mutate func() error, _ f
 		}
 	}
 	_ = ctx
+	return nil
+}
+
+func (r *inMemoryRepository) UpdateSupplyRequestState(ctx context.Context, requestID, state string, emit func(outbox.TxnBuffer) error) error {
+	if emit != nil {
+		txn := &inMemoryTxnBuffer{}
+		if err := emit(txn); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -1716,6 +1728,86 @@ func (s *Service) HandleSupplyRequests(w http.ResponseWriter, r *http.Request) {
 	}
 	s.mu.Unlock()
 	writeJSON(w, http.StatusOK, map[string]any{"requests": mapped})
+}
+
+type acceptSupplyRequest struct {
+	Reason string `json:"reason"`
+}
+
+// HandleAcceptSupplyRequest serves POST /v1/factory/supply-requests/{requestID}/accept.
+func (s *Service) HandleAcceptSupplyRequest(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	requestID := chi.URLParam(r, "requestID")
+	if requestID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing_request_id"})
+		return
+	}
+
+	var reqBody acceptSupplyRequest
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil && err != io.EOF {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+
+	s.mu.Lock()
+	s.ensureDemoDataLocked()
+
+	var req *SupplyRequest
+	for i := range s.supplyRequests {
+		if s.supplyRequests[i].RequestID == requestID {
+			req = &s.supplyRequests[i]
+			break
+		}
+	}
+	if req == nil {
+		s.mu.Unlock()
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "request_not_found"})
+		return
+	}
+
+	if req.Status != "SUBMITTED" {
+		s.mu.Unlock()
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_state_transition"})
+		return
+	}
+
+	req.Status = "ACCEPTED"
+	req.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+
+	payloadBytes, _ := json.Marshal(map[string]any{
+		"request_id":   requestID,
+		"warehouse_id": req.WarehouseID,
+		"factory_id":   s.factoryNodeID,
+		"supplier_id":  s.supplierID,
+		"reason":       reqBody.Reason,
+		"accepted_at":  req.UpdatedAt,
+	})
+
+	// Create Outbox Event
+	evt := outbox.Event{
+		EventID:       fmt.Sprintf("evt_%s_%d", requestID, time.Now().UnixNano()),
+		AggregateType: "SupplyRequest",
+		AggregateID:   requestID,
+		TopicName:     "SUPPLY_REQUEST_ACCEPTED",
+		Payload:       payloadBytes,
+		CreatedAt:     time.Now().UTC(),
+	}
+
+	s.mu.Unlock()
+
+	// Use durable transaction if Spanner is available, otherwise buffer
+	err := s.repo.UpdateSupplyRequestState(r.Context(), requestID, "ACCEPTED", func(txn outbox.TxnBuffer) error {
+		return txn.BufferOutbox(r.Context(), evt)
+	})
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error", "detail": err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"state": "ACCEPTED", "updated_at": req.UpdatedAt})
 }
 
 func coalesceReason(reason, fallback string) string {

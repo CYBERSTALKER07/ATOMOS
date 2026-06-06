@@ -65,6 +65,10 @@ func main() {
 		go app.NotificationConsumer.Start(ctx)
 		slog.Info("notification consumer started")
 	}
+	if app.OrderEventConsumer != nil {
+		go app.OrderEventConsumer.Start(ctx)
+		slog.Info("order event consumer started")
+	}
 	startHubRelaySubscribers(ctx, []*ws.Hub{
 		app.RetailerHub,
 		app.SupplierHub,

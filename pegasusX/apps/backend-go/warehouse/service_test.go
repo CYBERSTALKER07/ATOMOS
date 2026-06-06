@@ -278,8 +278,8 @@ func TestHandleDispatchLock_ReleaseMissingReturnsNotFound(t *testing.T) {
 	if rr.Code != http.StatusNotFound {
 		t.Fatalf("expected status 404, got %d body=%s", rr.Code, rr.Body.String())
 	}
-	if repo.applyCalls != 2 {
-		t.Fatalf("expected two repo apply calls (acquire + missing release), got %d", repo.applyCalls)
+	if repo.applyCalls != 1 {
+		t.Fatalf("expected one repo apply call (acquire only, release aborted), got %d", repo.applyCalls)
 	}
 	if got := warehouseOutboxEventTypes(repo.events); len(got) != len(outboxTypesAfterAcquire) {
 		t.Fatalf("expected no extra outbox events on missing lock release, got %#v", got)
@@ -330,7 +330,7 @@ func TestHandleDemandForecastUsesOrderPlanner(t *testing.T) {
 		Now:        func() time.Time { return time.Date(2026, 5, 19, 9, 0, 0, 0, time.UTC) },
 	})
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/warehouse/demand/forecast?days=3", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v1/warehouse/demand/forecast?warehouse_id=wh-1&days=3", nil)
 	req = withWarehouseClaims(req, auth.Claims{Subject: "ops-1", HomeNodeID: "wh-1"})
 	rr := httptest.NewRecorder()
 
@@ -472,6 +472,7 @@ type warehouseRepoSpy struct {
 	createdRequests []SupplyRequest
 	applyCalls      int
 	events          []outbox.Event
+	locks           map[string]DispatchLock
 }
 
 func (r *warehouseRepoSpy) ListSupplyRequests(_ context.Context, warehouseID string, _ int) ([]SupplyRequest, error) {
@@ -494,6 +495,17 @@ func (r *warehouseRepoSpy) CreateSupplyRequest(ctx context.Context, req SupplyRe
 	return nil
 }
 
+func (r *warehouseRepoSpy) UpdateSupplyRequestStatus(ctx context.Context, requestID, status string, emit func(outbox.TxnBuffer) error) error {
+	if emit != nil {
+		buf := &warehouseTxnBufferSpy{}
+		if err := emit(buf); err != nil {
+			return err
+		}
+		r.events = append(r.events, buf.events...)
+	}
+	return nil
+}
+
 func (r *warehouseRepoSpy) Apply(ctx context.Context, mutate func() error, emit func(outbox.TxnBuffer) error) error {
 	r.applyCalls++
 	if mutate != nil {
@@ -509,6 +521,54 @@ func (r *warehouseRepoSpy) Apply(ctx context.Context, mutate func() error, emit 
 		r.events = append(r.events, buf.events...)
 	}
 	_ = ctx
+	return nil
+}
+
+func (r *warehouseRepoSpy) GetInventoryList(ctx context.Context, warehouseID string) (map[string]InventoryRow, error) {
+	return nil, nil
+}
+func (r *warehouseRepoSpy) UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error {
+	return nil
+}
+func (r *warehouseRepoSpy) GetLocks(ctx context.Context, warehouseID string) (map[string]DispatchLock, error) {
+	if r.locks == nil {
+		r.locks = make(map[string]DispatchLock)
+	}
+	return r.locks, nil
+}
+func (r *warehouseRepoSpy) UpsertLock(ctx context.Context, warehouseID string, lock DispatchLock, emit func(outbox.TxnBuffer) error) error {
+	r.applyCalls++
+	if r.locks == nil {
+		r.locks = make(map[string]DispatchLock)
+	}
+	r.locks[lock.LockID] = lock
+	if emit != nil {
+		buf := &warehouseTxnBufferSpy{}
+		if err := emit(buf); err != nil {
+			return err
+		}
+		r.events = append(r.events, buf.events...)
+	}
+	return nil
+}
+func (r *warehouseRepoSpy) DeleteLock(ctx context.Context, warehouseID, lockID string, emit func(outbox.TxnBuffer) error) error {
+	r.applyCalls++
+	if r.locks != nil {
+		delete(r.locks, lockID)
+	}
+	if emit != nil {
+		buf := &warehouseTxnBufferSpy{}
+		if err := emit(buf); err != nil {
+			return err
+		}
+		r.events = append(r.events, buf.events...)
+	}
+	return nil
+}
+func (r *warehouseRepoSpy) CreateTransfer(ctx context.Context, transferID, factoryID, supplierID string, totalVolumeVU float64, emit func(outbox.TxnBuffer) error) error {
+	return nil
+}
+func (r *warehouseRepoSpy) UpdateTransferState(ctx context.Context, transferID, supplierID, newState string, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
 

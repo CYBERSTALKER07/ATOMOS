@@ -127,7 +127,8 @@ func (s *Service) productDemandFromScaffold(warehouseID string, forecastDays int
 		})
 	}
 
-	for sku, row := range s.inventory {
+	inventoryList, _ := s.repo.GetInventoryList(context.Background(), warehouseID)
+	for sku, row := range inventoryList {
 		appendRow(sku, row.ProductName, int64(row.Quantity))
 	}
 	for _, product := range s.products {
@@ -135,11 +136,12 @@ func (s *Service) productDemandFromScaffold(warehouseID string, forecastDays int
 			continue
 		}
 		stock := int64(0)
-		if inv, ok := s.inventory[product.ProductID]; ok {
+		if inv, ok := inventoryList[product.ProductID]; ok {
 			stock = int64(inv.Quantity)
 		}
 		appendRow(product.ProductID, product.Name, stock)
 	}
+
 	for _, insight := range s.insights {
 		if warehouseID != "" && insight.WarehouseID != warehouseID {
 			continue

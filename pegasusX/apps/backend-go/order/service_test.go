@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -746,23 +747,17 @@ func TestServiceCollectCashFinalizesWithPaymentEvents(t *testing.T) {
 	}
 }
 
-func TestServiceCompleteOrderFinalizesWithoutCoordinates(t *testing.T) {
+func TestServiceCompleteOrderFinalizesWithoutCoordinatesFails(t *testing.T) {
 	now := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
 	repo := &testRepo{found: true, order: deliveryTestOrder(StatusAwaitingPayment)}
 	svc := newTestService(repo, now)
 
-	resp, err := svc.CompleteOrder(context.Background(), driverClaims(), CompleteOrderRequest{OrderID: "ord-1"})
-	if err != nil {
-		t.Fatalf("unexpected complete order error: %v", err)
+	_, err := svc.CompleteOrder(context.Background(), driverClaims(), CompleteOrderRequest{OrderID: "ord-1"})
+	if err == nil {
+		t.Fatal("expected complete order error due to missing coordinates")
 	}
-	if resp.State != StatusCompleted || resp.Status != string(StatusCompleted) {
-		t.Fatalf("state/status = %s/%s, want COMPLETED/COMPLETED", resp.State, resp.Status)
-	}
-	if repo.bufferedEvents != 2 {
-		t.Fatalf("buffered events = %d, want 2", repo.bufferedEvents)
-	}
-	if len(repo.lastProofs) != 0 {
-		t.Fatalf("len(lastProofs)=%d want 0", len(repo.lastProofs))
+	if !strings.Contains(err.Error(), "latitude and longitude required") {
+		t.Fatalf("expected missing coordinates error, got: %v", err)
 	}
 }
 
@@ -862,4 +857,8 @@ func deliveryTestOrder(status Status) Order {
 		CreatedAt:   time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC),
 		UpdatedAt:   time.Date(2026, 1, 1, 11, 0, 0, 0, time.UTC),
 	}
+}
+
+func (r *testRepo) ListManifestOrders(_ context.Context, manifestID string) ([]Order, error) {
+	return nil, nil
 }

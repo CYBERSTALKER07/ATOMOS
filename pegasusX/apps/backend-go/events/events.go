@@ -33,6 +33,10 @@ const (
 	EventWarehouseCreated             = "WAREHOUSE_CREATED"
 	EventWarehouseSupplyRequestOpened = "WAREHOUSE_SUPPLY_REQUEST_OPENED"
 	EventWarehouseDispatchLockChanged = "WAREHOUSE_DISPATCH_LOCK_CHANGED"
+
+	EventWarehouseTransferCreated     = "WAREHOUSE_TRANSFER_CREATED"
+	EventWarehouseTransferReceived    = "WAREHOUSE_TRANSFER_RECEIVED"
+
 	EventFactoryCreated               = "FACTORY_CREATED"
 	EventOrderCreated                 = "ORDER_CREATED"
 	EventOrderStatusChanged           = "ORDER_STATUS_CHANGED"

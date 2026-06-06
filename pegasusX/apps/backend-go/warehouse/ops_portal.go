@@ -16,12 +16,12 @@ import (
 
 // PortalDriver is the warehouse ops driver read model.
 type PortalDriver struct {
-	DriverID                 string `json:"driver_id"`
-	Name                     string `json:"name"`
-	Phone                    string `json:"phone"`
-	TruckStatus              string `json:"truck_status"`
-	IsActive                 bool   `json:"is_active"`
-	VehicleID                string `json:"vehicle_id,omitempty"`
+	DriverID                 string  `json:"driver_id"`
+	Name                     string  `json:"name"`
+	Phone                    string  `json:"phone"`
+	TruckStatus              string  `json:"truck_status"`
+	IsActive                 bool    `json:"is_active"`
+	VehicleID                string  `json:"vehicle_id,omitempty"`
 	VehicleClass             string  `json:"vehicle_class,omitempty"`
 	MaxVolumeVU              float64 `json:"max_volume_vu,omitempty"`
 	VehicleIsActive          bool    `json:"vehicle_is_active,omitempty"`
@@ -30,15 +30,15 @@ type PortalDriver struct {
 
 // PortalVehicle is the warehouse ops vehicle read model.
 type PortalVehicle struct {
-	VehicleID           string `json:"vehicle_id"`
-	Label               string `json:"label"`
-	LicensePlate        string `json:"license_plate"`
-	VehicleClass        string  `json:"vehicle_class"`
-	MaxVolumeVU         float64 `json:"max_volume_vu,omitempty"`
-	IsActive            bool    `json:"is_active"`
-	UnavailableReason   string `json:"unavailable_reason,omitempty"`
-	AssignedDriverID    string `json:"assigned_driver_id,omitempty"`
-	AssignedDriverName  string `json:"assigned_driver_name,omitempty"`
+	VehicleID          string  `json:"vehicle_id"`
+	Label              string  `json:"label"`
+	LicensePlate       string  `json:"license_plate"`
+	VehicleClass       string  `json:"vehicle_class"`
+	MaxVolumeVU        float64 `json:"max_volume_vu,omitempty"`
+	IsActive           bool    `json:"is_active"`
+	UnavailableReason  string  `json:"unavailable_reason,omitempty"`
+	AssignedDriverID   string  `json:"assigned_driver_id,omitempty"`
+	AssignedDriverName string  `json:"assigned_driver_name,omitempty"`
 }
 
 type portalStaff struct {
@@ -95,8 +95,6 @@ func (s *Service) ensurePortalSeed() {
 		return
 	}
 	now := s.now().Format("2006-01-02T15:04:05Z")
-	s.inventory["prod-1"] = InventoryRow{SKU: "SKU-1001", ProductName: "Mineral Water 1.5L", Quantity: 240, UpdatedAt: now}
-	s.inventory["prod-2"] = InventoryRow{SKU: "SKU-2002", ProductName: "Sunflower Oil 1L", Quantity: 12, UpdatedAt: now}
 	s.orders = []OrderRow{
 		{OrderID: "ord-wh-1", RetailerID: "ret-1", Status: "PENDING", TotalMinor: 12500000, Currency: s.currency, UpdatedAt: now},
 		{OrderID: "ord-wh-2", RetailerID: "ret-2", Status: "IN_TRANSIT", TotalMinor: 8900000, Currency: s.currency, UpdatedAt: now},
@@ -203,12 +201,13 @@ func (s *Service) handleOpsDashboard(w http.ResponseWriter, r *http.Request) {
 		s.mu.RUnlock()
 	}
 
-	s.mu.RLock()
-	for _, row := range s.inventory {
+	inventoryList, _ := s.repo.GetInventoryList(r.Context(), "wh-1")
+	for _, row := range inventoryList {
 		if row.Quantity < 20 {
 			lowStock++
 		}
 	}
+	s.mu.RLock()
 	staffCount := int64(len(s.staff))
 	s.mu.RUnlock()
 
@@ -236,24 +235,27 @@ func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		lowOnly := strings.EqualFold(r.URL.Query().Get("low_stock"), "true")
-		s.mu.RLock()
-		items := make([]map[string]any, 0, len(s.inventory))
-		for sku, row := range s.inventory {
+		inventoryList, err := s.repo.GetInventoryList(r.Context(), "wh-1")
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_fetch_inventory"})
+			return
+		}
+		items := make([]map[string]any, 0, len(inventoryList))
+		for sku, row := range inventoryList {
 			qty := row.Quantity
 			isLow := qty < 20
 			if lowOnly && !isLow {
 				continue
 			}
 			items = append(items, map[string]any{
-				"product_id":       sku,
-				"sku_id":           row.SKU,
-				"product_name":     row.ProductName,
-				"quantity":         qty,
-				"is_low_stock":     isLow,
-				"last_updated":     row.UpdatedAt,
+				"product_id":   sku,
+				"sku_id":       row.SKU,
+				"product_name": row.ProductName,
+				"quantity":     qty,
+				"is_low_stock": isLow,
+				"last_updated": row.UpdatedAt,
 			})
 		}
-		s.mu.RUnlock()
 		writeJSON(w, http.StatusOK, map[string]any{"inventory": items, "items": items})
 	case http.MethodPatch:
 		var body struct {
@@ -265,14 +267,14 @@ func (s *Service) handleOpsInventory(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer r.Body.Close()
-		s.mu.Lock()
-		key := body.ProductID
-		if row, ok := s.inventory[key]; ok {
-			row.Quantity = body.Quantity
-			row.UpdatedAt = s.now().Format("2006-01-02T15:04:05Z")
-			s.inventory[key] = row
+		err := s.repo.UpdateInventoryQuantity(r.Context(), "wh-1", body.ProductID, body.Quantity, func(buf outbox.TxnBuffer) error {
+			// omit event emission for simple patch if none is required
+			return nil
+		})
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_update_inventory"})
+			return
 		}
-		s.mu.Unlock()
 		writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
@@ -435,12 +437,12 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 			solveDrivers = drivers
 			for _, d := range drivers {
 				entry := map[string]any{
-					"driver_id":      d.DriverID,
-					"name":           d.Name,
-					"truck_status":   d.TruckStatus,
-					"vehicle_id":     d.VehicleID,
-					"vehicle_class":  d.VehicleClass,
-					"max_volume_vu":  d.MaxVolumeVU,
+					"driver_id":     d.DriverID,
+					"name":          d.Name,
+					"truck_status":  d.TruckStatus,
+					"vehicle_id":    d.VehicleID,
+					"vehicle_class": d.VehicleClass,
+					"max_volume_vu": d.MaxVolumeVU,
 				}
 				if strings.EqualFold(d.TruckStatus, "AVAILABLE") {
 					available = append(available, entry)
@@ -516,6 +518,7 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 	}
 	writeJSON(w, http.StatusOK, response)
 }
+
 type DispatchExecuteResult struct {
 	Status           string                 `json:"status"`
 	SupplierID       string                 `json:"supplier_id"`
@@ -931,8 +934,8 @@ func (s *Service) handleOpsVehiclePatch(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 	var req struct {
-		IsActive            bool   `json:"is_active"`
-		UnavailableReason   string `json:"unavailable_reason"`
+		IsActive          bool   `json:"is_active"`
+		UnavailableReason string `json:"unavailable_reason"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
@@ -1062,17 +1065,17 @@ func (s *Service) HandleOpsAnalytics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"warehouse_id":       whID,
-		"period":             period,
-		"total_orders":       totalOrders,
-		"total_revenue":      totalRevenue,
-		"completed_orders":   completedOrders,
-		"cancelled_orders":   cancelledOrders,
-		"avg_order_value":    avgOrderValue,
-		"top_products":       []any{},
-		"daily_breakdown":    []any{},
-		"fleet_utilization":  map[string]any{"utilization_pct": 0},
-		"import_freshness":   map[string]any{"applied_rows_30d": 0, "applied_skus_30d": 0, "quantity_delta_30d": 0},
+		"warehouse_id":         whID,
+		"period":               period,
+		"total_orders":         totalOrders,
+		"total_revenue":        totalRevenue,
+		"completed_orders":     completedOrders,
+		"cancelled_orders":     cancelledOrders,
+		"avg_order_value":      avgOrderValue,
+		"top_products":         []any{},
+		"daily_breakdown":      []any{},
+		"fleet_utilization":    map[string]any{"utilization_pct": 0},
+		"import_freshness":     map[string]any{"applied_rows_30d": 0, "applied_skus_30d": 0, "quantity_delta_30d": 0},
 		"import_anomaly_queue": map[string]any{"open_rows_30d": 0},
 	})
 }
@@ -1163,16 +1166,16 @@ func supplyRequestIOSPayload(req SupplyRequest) map[string]any {
 		state = strings.TrimSpace(req.Status)
 	}
 	return map[string]any{
-		"request_id":              req.RequestID,
-		"warehouse_id":            req.WarehouseID,
-		"factory_id":              "fc-demo-1",
-		"supplier_id":             req.SupplierID,
-		"state":                   state,
-		"priority":                "NORMAL",
-		"total_volume_vu":         0,
-		"notes":                   "",
-		"created_by":              req.RequestedBy,
-		"created_at":              req.CreatedAt,
-		"updated_at":              req.UpdatedAt,
+		"request_id":      req.RequestID,
+		"warehouse_id":    req.WarehouseID,
+		"factory_id":      "fc-demo-1",
+		"supplier_id":     req.SupplierID,
+		"state":           state,
+		"priority":        "NORMAL",
+		"total_volume_vu": 0,
+		"notes":           "",
+		"created_by":      req.RequestedBy,
+		"created_at":      req.CreatedAt,
+		"updated_at":      req.UpdatedAt,
 	}
 }

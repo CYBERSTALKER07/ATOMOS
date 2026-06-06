@@ -123,8 +123,6 @@ type App struct {
 	TelemetryHub         *ws.Hub
 	OutboxRelay          *outbox.Relay
 	NotificationConsumer *kafka.Consumer
-	OrderEventConsumer *kafka.Consumer
-	WarehouseEventConsumer *kafka.Consumer
 	Reliability          *ReliabilityMiddleware
 	InfraHealth          infraroutes.Deps
 	OutboundCircuits     *OutboundCircuits
@@ -670,8 +668,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	pushBridge := notifications.NewPushBridge(fcmClient, tokenRepo, log)
 
 	var notificationConsumer *kafka.Consumer
-	var orderEventConsumer *kafka.Consumer
-	if kafkaEnabled && cfg.KafkaTopicMain != \"\" {
+	if kafkaEnabled && cfg.KafkaTopicMain != "" {
 		dlqWriter, err := newKafkaRuntimeDLQWriter(cfg.KafkaBrokers, cfg.KafkaTopicMainDLQ)
 		if err != nil {
 			if cfg.RequireInfraAdapters {
@@ -699,29 +696,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				Handler:   dispatcher.HandleEvent,
 				DLQWriter: dlqWriter,
 			})
-			orderEventConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
-				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
-				GroupID:   "void-order-mutator",
-				Topic:     cfg.KafkaTopicMain,
-				Handler:   order.NewEventConsumer(orderSvc, log).HandleEvent,
-				DLQWriter: dlqWriter,
-			})
-			warehouseEventConsumer := kafka.NewConsumer(kafka.ConsumerDeps{
-				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
-				GroupID:   "void-warehouse-mutator",
-				Topic:     cfg.KafkaTopicMain,
-				Handler:   warehouse.NewEventConsumer(warehouseSvc, log).HandleEvent,
-				DLQWriter: dlqWriter,
-			})
 			cleanup = append(cleanup, func() {
 				if err := notificationConsumer.Close(); err != nil {
 					log.Warn("notification consumer close failed", "err", err)
-				}
-				if err := orderEventConsumer.Close(); err != nil {
-					log.Warn("order event consumer close failed", "err", err)
-				}
-				if err := warehouseEventConsumer.Close(); err != nil {
-					log.Warn("warehouse event consumer close failed", "err", err)
 				}
 				if err := dlqWriter.Close(); err != nil {
 					log.Warn("notification dlq writer close failed", "err", err)
@@ -762,8 +739,6 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		FactoryHub:           factoryHub,
 		TelemetryHub:         telemetryHub,
 		NotificationConsumer: notificationConsumer,
-		OrderEventConsumer: orderEventConsumer,
-		WarehouseEventConsumer: warehouseEventConsumer,
 		OutboxRelay:          outboxRelay,
 		Reliability:          reliabilityMiddleware,
 		InfraHealth:          infraHealth,

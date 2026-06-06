@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
@@ -121,4 +122,74 @@ func (r *SpannerRepository) SeedDemoManifests(ctx context.Context, snap *Persist
 		return err
 	}
 	return r.store.EnsureFactoryDemoTransfers(ctx, batch.Transfers)
+}
+
+type spannerTxnBuffer struct {
+	events []outbox.Event
+	audits []outbox.AuditEntry
+}
+
+func (b *spannerTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error {
+	b.events = append(b.events, e)
+	return nil
+}
+
+func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) error {
+	b.audits = append(b.audits, e)
+	return nil
+}
+
+func outboxMutations(eventsList []outbox.Event) []*spanner.Mutation {
+	mutations := make([]*spanner.Mutation, 0, len(eventsList))
+	for _, e := range eventsList {
+		createdAt := e.CreatedAt.UTC()
+		if createdAt.IsZero() {
+			createdAt = time.Now().UTC()
+		}
+		row := map[string]any{
+			"EventId":       e.EventID,
+			"AggregateType": e.AggregateType,
+			"AggregateId":   e.AggregateID,
+			"TopicName":     e.TopicName,
+			"Payload":       e.Payload,
+			"CreatedAt":     createdAt,
+			"PublishedAt":   nil,
+		}
+		if e.PublishedAt != nil {
+			row["PublishedAt"] = e.PublishedAt.UTC()
+		}
+		mutations = append(mutations, spanner.InsertOrUpdateMap("OutboxEvents", row))
+	}
+	return mutations
+}
+
+func (r *SpannerRepository) UpdateSupplyRequestState(ctx context.Context, requestID, state string, emit func(outbox.TxnBuffer) error) error {
+	if r == nil || r.client == nil {
+		return fmt.Errorf("spanner factory repository: nil client")
+	}
+
+	buf := &spannerTxnBuffer{}
+	if emit != nil {
+		if err := emit(buf); err != nil {
+			return err
+		}
+	}
+
+	_, err := r.client.ReadWriteTransaction(ctx, func(_ context.Context, txn *spanner.ReadWriteTransaction) error {
+		mutations := []*spanner.Mutation{spanner.UpdateMap("WarehouseSupplyRequests", map[string]any{
+			"RequestId": requestID,
+			"State":     state,
+			"UpdatedAt": time.Now().UTC(),
+		})}
+		mutations = append(mutations, outboxMutations(buf.events)...)
+		for _, a := range buf.audits {
+			mutations = append(mutations, spanner.InsertMap("AuditLog", a.AuditRowMap()))
+		}
+		return txn.BufferWrite(mutations)
+	})
+	if err != nil {
+		return fmt.Errorf("factory update supply request state: %w", err)
+	}
+
+	return nil
 }

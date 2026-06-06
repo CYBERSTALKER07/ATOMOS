@@ -624,3 +624,15 @@ CREATE INDEX Idx_DeviceTokens_ByActor ON DeviceTokens(ActorId, ActorRole);
 -- ── Vehicles capacity migration (existing clusters) ─────────────────────────
 -- ALTER TABLE Vehicles ADD COLUMN VehicleClass STRING(10) NOT NULL DEFAULT ('CLASS_B');
 -- ALTER TABLE Vehicles ADD COLUMN MaxVolumeVU FLOAT64 NOT NULL DEFAULT (150.0);
+
+CREATE TABLE WarehouseDispatchLocks (
+  LockId        STRING(36)    NOT NULL,
+  WarehouseId   STRING(36)    NOT NULL,
+  EntityType    STRING(64)    NOT NULL,
+  EntityId      STRING(36)    NOT NULL,
+  Reason        STRING(255)   NOT NULL,
+  CreatedAt     TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt     TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (LockId);
+
+CREATE INDEX Idx_WarehouseDispatchLocks_ByWarehouse ON WarehouseDispatchLocks(WarehouseId, EntityType, EntityId);

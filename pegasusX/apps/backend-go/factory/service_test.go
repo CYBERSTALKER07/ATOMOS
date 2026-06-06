@@ -1063,6 +1063,16 @@ func (b *factoryTxnBufferSpy) BufferOutbox(_ context.Context, e outbox.Event) er
 	return nil
 }
 
+func (r *factoryRepoSpy) UpdateSupplyRequestState(ctx context.Context, requestID, state string, emit func(outbox.TxnBuffer) error) error {
+	r.applyCalls++
+	if emit != nil {
+		buf := &factoryTxnBufferSpy{}
+		_ = emit(buf)
+		r.events = append(r.events, buf.events...)
+	}
+	return nil
+}
+
 type factoryCacheBackendSpy struct {
 	deletedKeys [][]string
 }
