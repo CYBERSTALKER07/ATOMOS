@@ -164,10 +164,10 @@ export function useNotifications() {
       if (disposedRef.current) return;
       try {
         const msg = JSON.parse(event.data) as RealtimeNotificationFrame;
-        
+
         // Dispatch hybrid sync event globally
         if (msg.type && typeof window !== "undefined") {
-           window.dispatchEvent(new CustomEvent("sync-invalidate", { detail: msg.type }));
+          window.dispatchEvent(new CustomEvent("sync-invalidate", { detail: msg.type }));
 
           const payload = parseRealtimePayload(msg.payload);
           window.dispatchEvent(new CustomEvent("supplier-live-event", {
