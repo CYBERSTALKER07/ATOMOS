@@ -7,6 +7,7 @@ import type { SupplierManifestRow } from "@pegasusx/types";
 import { downloadCsv } from "@/lib/csv";
 import { usePagination } from "@/lib/use-pagination";
 import { ListToolbar } from "@/components/ListToolbar";
+import StatusBadge from "@/components/StatusBadge";
 import { PortalSurface } from "../_components/PortalSurface";
 
 const api = createSupplierApi();
@@ -72,7 +73,7 @@ export default function ManifestsPage() {
                 className="border-b border-[var(--color-md-outline-variant)] last:border-0"
               >
                 <td className="p-4 md-typescale-body-medium font-mono">{manifest.manifest_id}</td>
-                <td className="p-4 md-typescale-body-medium">{manifest.status}</td>
+                <td className="p-4 md-typescale-body-medium"><StatusBadge state={manifest.status} /></td>
                 <td className="p-4 md-typescale-body-medium text-right">{manifest.orders_count}</td>
                 <td className="p-4 md-typescale-body-medium">{manifest.driver_name}</td>
               </tr>

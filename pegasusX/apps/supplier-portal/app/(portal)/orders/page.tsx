@@ -7,6 +7,7 @@ import { createSupplierApi } from '@/lib/api';
 import { downloadCsv } from '@/lib/csv';
 import { ListToolbar } from '@/components/ListToolbar';
 import { useToast } from '@/components/Toast';
+import StatusBadge from '@/components/StatusBadge';
 import { PortalSurface } from '../_components/PortalSurface';
 import type { SupplierOrder } from '@pegasusx/types';
 
@@ -190,9 +191,9 @@ export default function OrdersPage() {
                   <td className="p-4 text-[var(--color-md-outline)]">{formatTimestamp(order.updated_at)}</td>
                   <td className="p-4 text-[var(--color-md-outline)]">{order.retailer_id}</td>
                   <td className="p-4">
-                    <div>{order.status}</div>
+                    <StatusBadge state={order.status} />
                     {order.decision ? (
-                      <div className="text-xs text-[var(--color-md-outline)]">Decision: {order.decision}</div>
+                      <div className="text-xs text-[var(--color-md-outline)] mt-1">Decision: {order.decision}</div>
                     ) : null}
                   </td>
                   <td className="p-4 text-[var(--color-md-outline)]">
