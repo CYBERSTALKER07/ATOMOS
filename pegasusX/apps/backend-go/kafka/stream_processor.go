@@ -93,7 +93,12 @@ func (s *AnalyticsStreamProcessor) processMessage(ctx context.Context, payload [
 	case events.EventOrderCreated:
 		s.orderCount++
 	case events.EventOrderStatusChanged:
-		s.cancelCount++ // Assume this handles cancels or state changes in this generic example
+		var orderEvt events.OrderEvent
+		if err := json.Unmarshal(payload, &orderEvt); err == nil {
+			if orderEvt.Status == "CANCELLED" {
+				s.cancelCount++
+			}
+		}
 	case events.EventPaymentCleared:
 		var fin events.FinanceEvent
 		if err := json.Unmarshal(payload, &fin); err == nil {

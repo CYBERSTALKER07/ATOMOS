@@ -138,8 +138,15 @@ func (c *Consumer) dispatch(ctx context.Context, m kafka.Message) error {
 	return nil
 }
 
-func (c *Consumer) processWithRetries(ctx context.Context, m kafka.Message) error {
-	var err error
+func (c *Consumer) processWithRetries(ctx context.Context, m kafka.Message) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic in kafka handler: %v", r)
+			slog.ErrorContext(ctx, "panic recovered in kafka consumer", "err", err, "trace_id", TraceIDFromMessage(m))
+			consumerErrors.WithLabelValues(c.deps.Topic, fmt.Sprintf("%d", m.Partition)).Inc()
+		}
+	}()
+
 	for attempt := 1; attempt <= c.deps.MaxAttempts; attempt++ {
 		err = c.deps.Handler(ctx, m)
 		if err == nil {

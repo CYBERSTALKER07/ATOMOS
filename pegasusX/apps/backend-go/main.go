@@ -103,9 +103,7 @@ func main() {
 	// Phase 1/2 Integration: Auth0 Identity Middleware
 	if os.Getenv("AUTH0_DOMAIN") != "" {
 		auth0Middleware := enterprise.SetupAuth0Middleware()
-		r.Use(func(next http.Handler) http.Handler {
-			return auth0Middleware.CheckJWT(next)
-		})
+		r.Use(auth0Middleware)
 		slog.Info("Auth0 Enterprise Middleware attached to router")
 	}
 
