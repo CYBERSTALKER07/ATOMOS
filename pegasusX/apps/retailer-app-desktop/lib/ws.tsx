@@ -1,15 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
-import type { WSEventMessage, WSEventPayloadMap, WSEventTypeValue } from '@pegasusx/types';
+import type { WsEvent } from '@pegasusx/types';
 import { readToken } from './auth';
 
-export type WsEventType = WSEventTypeValue;
+export type WsEventType = WsEvent["type"];
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type WsMessage = (Record<string, any> & { type?: string });
 
 type WsEventPayload<T extends string> = T extends WsEventType
-  ? WSEventMessage<T>
+  ? Extract<WsEvent, { type: T }>
   : WsMessage;
 
 type WsEventHandler<T extends string = string> = (msg: WsEventPayload<T>) => void;
@@ -34,8 +34,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const subscribe = useCallback(<T extends string>(type: T, handler: WsEventHandler<T>) => {
     let set = listenersRef.current.get(type);
     if (!set) { set = new Set(); listenersRef.current.set(type, set); }
-    set.add(handler as WsEventHandler);
-    return () => { set!.delete(handler as WsEventHandler); };
+    set.add(handler as unknown as WsEventHandler);
+    return () => { set!.delete(handler as unknown as WsEventHandler); };
   }, []);
 
   useEffect(() => {
@@ -130,12 +130,4 @@ export function useWsEvent<T extends string>(type: T, handler: WsEventHandler<T>
   useEffect(() => subscribe(type, handler), [type, handler, subscribe]);
 }
 
-/** Strictly typed helper for generated Pegasus event contracts. */
-export function usePegasusEvent<T extends keyof WSEventPayloadMap>(
-  type: T,
-  callback: (payload: WSEventPayloadMap[T]) => void,
-) {
-  useWsEvent(type, useCallback((msg: WsEventPayload<T>) => {
-    callback(msg as WSEventPayloadMap[T]);
-  }, [callback]));
-}
+

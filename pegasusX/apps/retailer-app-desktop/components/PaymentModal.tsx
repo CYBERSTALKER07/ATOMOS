@@ -27,6 +27,7 @@ type PaymentEvent = Omit<PaymentRequired, "available_card_gateways" | "amount"> 
   session_id?: string;
   invoice_id?: string | null;
   message?: string;
+  gateway?: string;
 };
 
 type PaymentState = "idle" | "choosing" | "processing" | "success" | "error";
@@ -52,7 +53,7 @@ function sessionToPaymentEvent(session: PendingPaymentSession): PaymentEvent {
     amount: session.locked_amount,
     original_amount: session.locked_amount,
     payment_method: gateway === "CASH" ? "CASH" : "CARD",
-    gateway: gateway as PaymentRequired["gateway"],
+    gateway: gateway,
     currency: session.currency || "UZS",
     available_card_gateways: gateway === "CASH" ? [] : [gateway],
     message: "Pending payment requires completion.",
@@ -76,7 +77,7 @@ function wsMessageToPaymentEvent(msg: WsMessage): PaymentEvent {
     amount,
     original_amount: originalAmount,
     payment_method: (msg.payment_method as string) || "CARD",
-    gateway: ((msg.gateway as string) || "GLOBAL_PAY") as PaymentRequired["gateway"],
+    gateway: ((msg.gateway as string) || "GLOBAL_PAY"),
     currency: (msg.currency as string) || "UZS",
     available_card_gateways: gateways,
     message: (msg.message as string | undefined) ?? "",
