@@ -15,7 +15,7 @@ export default function SupplierLoginPage() {
   const [countryCode, setCountryCode] = useState("UZ");
   const [phoneLocal, setPhoneLocal] = useState("");
   const [otpCode, setOtpCode] = useState("");
-  
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -42,7 +42,7 @@ export default function SupplierLoginPage() {
       setError("Enter the 6-digit code");
       return;
     }
-    
+
     setLoading(true);
     try {
       const phone = `${dialCode}${phoneLocal}`;

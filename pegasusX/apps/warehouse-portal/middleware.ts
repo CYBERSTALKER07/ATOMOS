@@ -23,8 +23,24 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('pegasus_warehouse_jwt')?.value;
   const hasValidToken = !!token && !isTokenExpired(token);
 
+  const payload = hasValidToken ? decodeJwtPayload(token) : null;
+  const isConfigured = payload?.is_configured === true;
+
   if (pathname.startsWith('/auth/')) {
     if (hasValidToken) {
+      if (!isConfigured) {
+        return NextResponse.redirect(new URL('/setup/location', request.url));
+      }
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith('/setup')) {
+    if (!hasValidToken) {
+      return NextResponse.redirect(new URL('/auth/login', request.url));
+    }
+    if (isConfigured) {
       return NextResponse.redirect(new URL('/', request.url));
     }
     return NextResponse.next();
@@ -36,6 +52,10 @@ export function middleware(request: NextRequest) {
       res.cookies.delete('pegasus_warehouse_jwt');
     }
     return res;
+  }
+
+  if (!isConfigured) {
+    return NextResponse.redirect(new URL('/setup/location', request.url));
   }
   return NextResponse.next();
 }
@@ -60,5 +80,6 @@ export const config = {
     '/treasury/:path*',
     '/dispatch/:path*',
     '/payment-config/:path*',
+    '/setup/:path*',
   ],
 };

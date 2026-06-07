@@ -29,19 +29,50 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname === '/' || pathname.startsWith('/api/')) {
-    if (hasValidToken && pathname === '/') {
+  // Allow API routes
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
+  const payload = hasValidToken ? decodeJwtPayload(token) : null;
+  const isConfigured = payload?.is_configured === true;
+
+  // Redirect root and auth pages based on token
+  if (pathname === '/' || pathname.startsWith('/auth')) {
+    if (hasValidToken) {
+      if (!isConfigured) {
+        return NextResponse.redirect(new URL('/setup', request.url));
+      }
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+    if (pathname === '/') {
+      return NextResponse.redirect(new URL('/auth/login', request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Allow setup path if valid token but not configured
+  if (pathname.startsWith('/setup')) {
+    if (!hasValidToken) {
+      return NextResponse.redirect(new URL('/auth/login', request.url));
+    }
+    if (isConfigured) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
     return NextResponse.next();
   }
 
   if (!hasValidToken) {
-    const res = NextResponse.redirect(new URL('/', request.url));
+    const res = NextResponse.redirect(new URL('/auth/login', request.url));
     if (token && isTokenExpired(token)) {
       res.cookies.delete(RETAILER_JWT_COOKIE);
     }
     return res;
+  }
+
+  // Enforce configuration
+  if (!isConfigured) {
+    return NextResponse.redirect(new URL('/setup', request.url));
   }
 
   return NextResponse.next();
@@ -50,6 +81,7 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/',
+    '/auth/:path*',
     '/dashboard/:path*',
     '/catalog/:path*',
     '/orders/:path*',
@@ -59,5 +91,6 @@ export const config = {
     '/insights/:path*',
     '/settings/:path*',
     '/dock/:path*',
+    '/setup/:path*',
   ],
 };

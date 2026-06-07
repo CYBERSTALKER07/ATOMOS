@@ -12,6 +12,7 @@ const PUBLIC_PATHS = new Set<string>([
   "/auth/register",
   "/auth/login",
   "/setup/billing",
+  "/setup/business",
   "/favicon.ico",
 ]);
 
@@ -37,7 +38,7 @@ export function middleware(req: NextRequest) {
   const isConfigured = readIsConfigured(session);
   if (!isConfigured) {
     const url = req.nextUrl.clone();
-    url.pathname = "/setup/billing";
+    url.pathname = "/setup/business";
     return NextResponse.redirect(url);
   }
 

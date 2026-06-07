@@ -23,9 +23,26 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('pegasus_factory_jwt')?.value;
   const hasValidToken = !!token && !isTokenExpired(token);
 
+  const payload = hasValidToken ? decodeJwtPayload(token) : null;
+  const isConfigured = payload?.is_configured === true;
+
   // Auth pages: redirect to dashboard if already authenticated
   if (pathname.startsWith('/auth/')) {
     if (hasValidToken) {
+      if (!isConfigured) {
+        return NextResponse.redirect(new URL('/setup/factory', request.url));
+      }
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Setup pages
+  if (pathname.startsWith('/setup')) {
+    if (!hasValidToken) {
+      return NextResponse.redirect(new URL('/auth/login', request.url));
+    }
+    if (isConfigured) {
       return NextResponse.redirect(new URL('/', request.url));
     }
     return NextResponse.next();
@@ -38,6 +55,10 @@ export function middleware(request: NextRequest) {
       res.cookies.delete('pegasus_factory_jwt');
     }
     return res;
+  }
+
+  if (!isConfigured) {
+    return NextResponse.redirect(new URL('/setup/factory', request.url));
   }
   return NextResponse.next();
 }
@@ -54,5 +75,6 @@ export const config = {
     '/dispatch/:path*',
     '/supply-requests/:path*',
     '/payload-override/:path*',
+    '/setup/:path*',
   ],
 };
