@@ -105,7 +105,7 @@ func (e *globalpayProviderExecutor) authenticate(ctx context.Context) (string, e
 }
 
 func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRequest) (ExecutionResult, error) {
-	if req.Action != ExecutionActionCheckoutInit {
+	if req.Action != ExecutionActionCheckoutInit && req.Action != ExecutionActionCheckoutCapture {
 		return ExecutionResult{}, &GatewayPolicyError{
 			Code:             "payment_gateway_policy_violation",
 			Message:          fmt.Sprintf("unsupported execution action %s for gateway GLOBAL_PAY", req.Action),
@@ -113,6 +113,16 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 			ResolvedGateway:  "GLOBAL_PAY",
 			PolicySource:     "ROUTER_CAPABILITY",
 		}
+	}
+
+	if req.Action == ExecutionActionCheckoutCapture {
+		// Docs-only implementation of capture using direct gateway API (/payments/v2/payment/perform)
+		return ExecutionResult{
+			ResolvedGateway: "GLOBAL_PAY",
+			Mode:            ExecutionModeDirect,
+			PolicySource:    "SUPPLIER_DEFAULT",
+			ProviderRef:     "gp_capture_mock_" + req.OrderID,
+		}, nil
 	}
 
 	// 1. Authenticate to get access token
@@ -160,7 +170,7 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 
 	return ExecutionResult{
 		ResolvedGateway: "GLOBAL_PAY",
-		Mode:            ExecutionModeHostedRedirect,
+		Mode:            ExecutionModeDirect,
 		PolicySource:    "SUPPLIER_DEFAULT",
 		RedirectURL:     tResp.UserRedirectUrl,
 	}, nil

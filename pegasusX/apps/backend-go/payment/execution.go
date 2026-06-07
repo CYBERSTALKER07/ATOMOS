@@ -14,6 +14,7 @@ type ExecutionAction string
 
 const (
 	ExecutionActionCheckoutInit       ExecutionAction = "CHECKOUT_INIT"
+	ExecutionActionCheckoutCapture    ExecutionAction = "CHECKOUT_CAPTURE"
 	ExecutionActionChargebackRecord   ExecutionAction = "CHARGEBACK_RECORD"
 	ExecutionActionChargebackReversal ExecutionAction = "CHARGEBACK_REVERSAL"
 )
