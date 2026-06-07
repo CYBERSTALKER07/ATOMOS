@@ -42,15 +42,14 @@ func (s *Service) handleCrossManifestRebalance(w http.ResponseWriter, r *http.Re
 			if transferID == "" {
 				continue
 			}
-			if err := outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.TargetManifestID, events.TopicMain, map[string]any{
-				"type":                events.EventManifestOrderInjected,
-				"manifest_id":         req.TargetManifestID,
-				"source_manifest_id":  req.SourceManifestID,
-				"transfer_id":         transferID,
-				"supplier_id":         s.supplierID,
-				"factory_id":          s.factoryNodeID,
-				"reason":              strings.TrimSpace(req.Reason),
-				"timestamp":           s.now().Format(time.RFC3339Nano),
+			if err := outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.TargetManifestID, events.TopicMain, events.ManifestEvent{
+				BaseEvent:  events.BaseEvent{Type: events.EventManifestOrderInjected},
+				ManifestID: req.TargetManifestID,
+				// "source_manifest_id":  req.SourceManifestID,
+				TransferID: req.TransferID,
+				SupplierID: s.supplierID,
+				FactoryID:  s.factoryNodeID,
+				Reason:     strings.TrimSpace(req.Reason),
 			}); err != nil {
 				return err
 			}

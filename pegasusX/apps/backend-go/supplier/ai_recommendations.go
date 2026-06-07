@@ -86,18 +86,6 @@ type aiRecommendationDecisionResponse struct {
 	Recommendation AIRecommendation `json:"recommendation"`
 }
 
-type aiRecommendationDecidedEvent struct {
-	Type             string `json:"type"`
-	SupplierID       string `json:"supplier_id"`
-	RecommendationID string `json:"recommendation_id"`
-	AggregateID      string `json:"aggregate_id"`
-	AggregateType    string `json:"aggregate_type"`
-	Decision         string `json:"decision"`
-	Status           string `json:"status"`
-	DecidedBy        string `json:"decided_by"`
-	Note             string `json:"note,omitempty"`
-	Timestamp        string `json:"timestamp"`
-}
 
 // HandleAIRecommendations supports supplier review and override authority for advisory outputs.
 func (s *Service) HandleAIRecommendations(w http.ResponseWriter, r *http.Request) {
@@ -176,8 +164,8 @@ func (s *Service) handleAIRecommendationsPost(w http.ResponseWriter, r *http.Req
 	}
 
 	recommendation, err := repo.RecordAIRecommendationDecision(r.Context(), s.supplierID, decision, func(txn outbox.TxnBuffer, recommendation AIRecommendation) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateAIRecommendation, decision.RecommendationID, events.TopicMain, aiRecommendationDecidedEvent{
-			Type:             events.EventAIRecommendationDecided,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateAIRecommendation, decision.RecommendationID, events.TopicMain, events.AIRecommendationEvent{
+			BaseEvent:        events.BaseEvent{Type: events.EventAIRecommendationDecided, Timestamp: decision.DecidedAt.Format(time.RFC3339Nano)},
 			SupplierID:       s.supplierID,
 			RecommendationID: decision.RecommendationID,
 			AggregateID:      recommendation.AggregateID,
@@ -186,7 +174,6 @@ func (s *Service) handleAIRecommendationsPost(w http.ResponseWriter, r *http.Req
 			Status:           recommendation.Status,
 			DecidedBy:        decision.DecidedBy,
 			Note:             decision.Note,
-			Timestamp:        decision.DecidedAt.Format(time.RFC3339Nano),
 		})
 	})
 	if err != nil {

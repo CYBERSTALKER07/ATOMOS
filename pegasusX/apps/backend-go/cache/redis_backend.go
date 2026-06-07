@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"sort"
 	"strings"
@@ -16,26 +17,36 @@ type RedisBackend struct {
 	client *redis.Client
 }
 
-// NewRedisBackend constructs a Redis-backed cache backend from either a raw
-// host:port address or redis:// URL.
-func NewRedisBackend(addr string) (*RedisBackend, error) {
-	trimmed := strings.TrimSpace(addr)
+// NewRedisBackend constructs a Redis-backed cache backend using RedisConfig.
+func NewRedisBackend(cfg RedisConfig) (*RedisBackend, error) {
+	trimmed := strings.TrimSpace(cfg.Addr)
 	if trimmed == "" {
 		return nil, fmt.Errorf("redis backend: addr required")
 	}
-	var (
-		opts *redis.Options
-		err  error
-	)
-	if strings.HasPrefix(trimmed, "redis://") || strings.HasPrefix(trimmed, "rediss://") {
-		opts, err = redis.ParseURL(trimmed)
-		if err != nil {
-			return nil, fmt.Errorf("redis backend: parse url: %w", err)
-		}
-	} else {
-		opts = &redis.Options{Addr: trimmed}
+
+	opts := &redis.Options{
+		Addr:            trimmed,
+		Password:        cfg.Password,
+		DB:              cfg.DB,
+		PoolSize:        cfg.PoolSize,
+		MinIdleConns:    cfg.MinIdleConns,
+		ConnMaxIdleTime: cfg.MaxIdleTime,
+		DialTimeout:     cfg.DialTimeout,
+		ReadTimeout:     cfg.ReadTimeout,
+		WriteTimeout:    cfg.WriteTimeout,
+		MaxRetries:      cfg.MaxRetries,
+		MinRetryBackoff: cfg.MinRetryBackoff,
+		MaxRetryBackoff: cfg.MaxRetryBackoff,
 	}
-	return &RedisBackend{client: redis.NewClient(opts)}, nil
+
+	if cfg.TLSEnabled {
+		opts.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+	}
+
+	client := redis.NewClient(opts)
+	return &RedisBackend{client: client}, nil
 }
 
 // Ping verifies connectivity.
@@ -181,4 +192,11 @@ func (r *RedisBackend) Subscribe(ctx context.Context, channel string) (<-chan []
 		}
 	}()
 	return out, cancel, nil
+}
+
+
+
+// PoolStats returns the underlying Redis connection pool statistics.
+func (r *RedisBackend) PoolStats() *redis.PoolStats {
+	return r.client.PoolStats()
 }

@@ -284,8 +284,8 @@ func (s *Service) initCheckoutSession(ctx context.Context, mode string, req Chec
 		UpdatedAt:         now,
 	}
 	if err := s.repo.CreateSessionWithAttempt(ctx, session, attempt, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateSession, session.SessionID, events.TopicMain, paymentEvent{
-			Type:              events.EventPaymentRequired,
+		return outbox.EmitJSON(ctx, txn, events.AggregateSession, session.SessionID, events.TopicMain, events.FinanceEvent{
+			BaseEvent:         events.BaseEvent{Type: events.EventPaymentRequired, Timestamp: now.Format(time.RFC3339Nano)},
 			SessionID:         session.SessionID,
 			AttemptID:         attempt.AttemptID,
 			OrderID:           session.OrderID,
@@ -300,7 +300,6 @@ func (s *Service) initCheckoutSession(ctx context.Context, mode string, req Chec
 			AmountMinor:       session.AmountMinor,
 			Currency:          session.Currency,
 			Source:            "payment.checkout",
-			Timestamp:         now.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		return SessionRecord{}, PaymentAttemptRecord{}, ExecutionResult{}, err

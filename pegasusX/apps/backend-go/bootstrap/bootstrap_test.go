@@ -8,7 +8,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
+	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/redis/go-redis/v9"
 	segmentkafka "github.com/segmentio/kafka-go"
 )
 
@@ -25,6 +27,10 @@ func (f *fakeRedisAdapter) Ping(_ context.Context) error {
 
 func (f *fakeRedisAdapter) Close() error {
 	f.closed = true
+	return nil
+}
+
+func (f *fakeRedisAdapter) Client() *redis.Client {
 	return nil
 }
 
@@ -94,6 +100,7 @@ func testConfig() *Config {
 		GlobalPayWebhookSecret: "gp-test",
 		AdyenWebhookSecret:     "ad-test",
 		StripeWebhookSecret:    "st-test",
+		TestingMode:            true,
 		SeedSupplierName:       "pegasusX Supplier",
 		SeedSupplierCountry:    "UZ",
 		SeedSupplierCurrency:   "UZS",
@@ -119,7 +126,7 @@ func stubRuntimeConstructors(t *testing.T) {
 func TestNewApp_StrictModeFailsWhenRedisUnavailable(t *testing.T) {
 	stubRuntimeConstructors(t)
 
-	newRedisRuntimeAdapter = func(_ string) (redisRuntimeAdapter, error) {
+	newRedisRuntimeAdapter = func(_ cache.RedisConfig) (redisRuntimeAdapter, error) {
 		return nil, errors.New("redis unavailable")
 	}
 	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
@@ -151,7 +158,7 @@ func TestNewApp_StrictModeFailsWhenKafkaUnavailable(t *testing.T) {
 	stubRuntimeConstructors(t)
 
 	redis := &fakeRedisAdapter{}
-	newRedisRuntimeAdapter = func(_ string) (redisRuntimeAdapter, error) {
+	newRedisRuntimeAdapter = func(_ cache.RedisConfig) (redisRuntimeAdapter, error) {
 		return redis, nil
 	}
 	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
@@ -189,7 +196,7 @@ func TestNewApp_StrictModePassesWhenAdaptersHealthy(t *testing.T) {
 	kafka := &fakeKafkaPublisher{}
 	dlq := &fakeKafkaDLQWriter{}
 
-	newRedisRuntimeAdapter = func(_ string) (redisRuntimeAdapter, error) {
+	newRedisRuntimeAdapter = func(_ cache.RedisConfig) (redisRuntimeAdapter, error) {
 		return redis, nil
 	}
 	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
@@ -236,7 +243,7 @@ func TestNewApp_StrictModeFailsWhenNotificationDLQUnavailable(t *testing.T) {
 	stubRuntimeConstructors(t)
 
 	redis := &fakeRedisAdapter{}
-	newRedisRuntimeAdapter = func(_ string) (redisRuntimeAdapter, error) {
+	newRedisRuntimeAdapter = func(_ cache.RedisConfig) (redisRuntimeAdapter, error) {
 		return redis, nil
 	}
 	newKafkaRuntimePublisher = func(_ string, _ outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {

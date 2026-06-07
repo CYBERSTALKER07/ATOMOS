@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
@@ -643,7 +642,7 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	type pendingEvent struct {
 		aggregateType string
 		aggregateID   string
-		payload       map[string]any
+		payload       any
 	}
 	queued := make([]pendingEvent, 0, len(rows)+len(assignment.Routes))
 
@@ -699,19 +698,17 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 			queued = append(queued, pendingEvent{
 				aggregateType: events.AggregateOrder,
 				aggregateID:   orderID,
-				payload: map[string]any{
-					"type":         events.EventOrderAssigned,
-					"trace_id":     outbox.TraceIDFromContext(r.Context()),
-					"order_id":     orderID,
-					"supplier_id":  sid,
-					"retailer_id":  stop.RetailerID,
-					"warehouse_id": whID,
-					"driver_id":    driverID,
-					"vehicle_id":   vehicleID,
-					"route_id":     routeID,
-					"manifest_id":  manifestID,
-					"status":       "LOADED",
-					"timestamp":    now.Format(time.RFC3339Nano),
+				payload: events.OrderEvent{
+					BaseEvent:   events.BaseEvent{Type: events.EventOrderAssigned},
+					OrderID:     orderID,
+					SupplierID:  sid,
+					RetailerID:  stop.RetailerID,
+					WarehouseID: whID,
+					DriverID:    driverID,
+					VehicleID:   vehicleID,
+					RouteID:     routeID,
+					ManifestID:  manifestID,
+					Status:      "LOADED",
 				},
 			})
 			orderIDs = append(orderIDs, orderID)
@@ -721,33 +718,28 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 			pendingEvent{
 				aggregateType: events.AggregateRoute,
 				aggregateID:   routeID,
-				payload: map[string]any{
-					"type":         events.EventRouteCreated,
-					"trace_id":     outbox.TraceIDFromContext(r.Context()),
-					"route_id":     routeID,
-					"manifest_id":  manifestID,
-					"supplier_id":  sid,
-					"warehouse_id": whID,
-					"driver_id":    driverID,
-					"vehicle_id":   vehicleID,
-					"order_ids":    orderIDs,
-					"order_count":  len(orderIDs),
-					"timestamp":    now.Format(time.RFC3339Nano),
+				payload: events.RouteEvent{
+					BaseEvent:   events.BaseEvent{Type: events.EventRouteCreated},
+					RouteID:     routeID,
+					ManifestID:  manifestID,
+					SupplierID:  sid,
+					WarehouseID: whID,
+					DriverID:    driverID,
+					VehicleID:   vehicleID,
+					OrderIDs:    orderIDs,
 				},
 			},
 			pendingEvent{
 				aggregateType: events.AggregateManifest,
 				aggregateID:   manifestID,
-				payload: map[string]any{
-					"type":         events.EventManifestSealed,
-					"trace_id":     outbox.TraceIDFromContext(r.Context()),
-					"manifest_id":  manifestID,
-					"route_id":     routeID,
-					"supplier_id":  sid,
-					"warehouse_id": whID,
-					"driver_id":    driverID,
-					"order_count":  len(orderIDs),
-					"timestamp":    now.Format(time.RFC3339Nano),
+				payload: events.ManifestEvent{
+					BaseEvent:   events.BaseEvent{Type: events.EventManifestSealed},
+					ManifestID:  manifestID,
+					RouteID:     routeID,
+					SupplierID:  sid,
+					WarehouseID: whID,
+					DriverID:    driverID,
+					StopCount:   int64(len(orderIDs)),
 				},
 			},
 		)

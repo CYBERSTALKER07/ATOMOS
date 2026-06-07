@@ -34,20 +34,7 @@ type shopClosedResolveRequest struct {
 	Action    string `json:"action"`
 }
 
-type shopClosedEventPayload struct {
-	Type       string  `json:"type"`
-	OrderID    string  `json:"order_id"`
-	DriverID   string  `json:"driver_id,omitempty"`
-	RetailerID string  `json:"retailer_id,omitempty"`
-	SupplierID string  `json:"supplier_id,omitempty"`
-	AttemptID  string  `json:"attempt_id,omitempty"`
-	Response   string  `json:"response,omitempty"`
-	Resolution  string `json:"resolution,omitempty"`
-	EscalatedTo string `json:"escalated_to,omitempty"`
-	GPSLat      float64 `json:"gps_lat,omitempty"`
-	GPSLng     float64 `json:"gps_lng,omitempty"`
-	Timestamp  string  `json:"timestamp"`
-}
+
 
 // HandleReportShopClosed is POST /v1/delivery/shop-closed.
 func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request) {
@@ -116,8 +103,8 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 		}
 
 		buf := &spannerTxnBuffer{}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, req.OrderID, events.TopicMain, shopClosedEventPayload{
-			Type:       events.EventShopClosed,
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, req.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventShopClosed, Timestamp: now.Format(time.RFC3339Nano)},
 			OrderID:    req.OrderID,
 			DriverID:   driverID,
 			RetailerID: retailerID,
@@ -125,7 +112,6 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 			AttemptID:  attemptID,
 			GPSLat:     gpsLat,
 			GPSLng:     gpsLng,
-			Timestamp:  now.Format(time.RFC3339Nano),
 		}); err != nil {
 			return err
 		}
@@ -158,14 +144,13 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	s.broadcastShopClosed(ctx, supplierID, retailerID, driverID, shopClosedEventPayload{
-		Type:       events.EventShopClosed,
+	s.broadcastShopClosed(ctx, supplierID, retailerID, driverID, events.OrderEvent{
+		BaseEvent:  events.BaseEvent{Type: events.EventShopClosed, Timestamp: now.Format(time.RFC3339Nano)},
 		OrderID:    req.OrderID,
 		DriverID:   driverID,
 		RetailerID: retailerID,
 		SupplierID: supplierID,
 		AttemptID:  attemptID,
-		Timestamp:  now.Format(time.RFC3339Nano),
 	})
 	s.invalidateOrderCache(ctx, req.OrderID)
 	go s.scheduleShopClosedEscalation(context.WithoutCancel(ctx), attemptID, req.OrderID, retailerID, supplierID, driverID)
@@ -272,15 +257,14 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 		}
 
 		buf := &spannerTxnBuffer{}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, req.OrderID, events.TopicMain, shopClosedEventPayload{
-			Type:       events.EventShopClosedResponse,
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, req.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventShopClosedResponse, Timestamp: now.Format(time.RFC3339Nano)},
 			OrderID:    req.OrderID,
 			RetailerID: retailerID,
 			DriverID:   driverID,
 			SupplierID: supplierID,
 			AttemptID:  attemptID,
 			Response:   req.Response,
-			Timestamp:  now.Format(time.RFC3339Nano),
 		}); err != nil {
 			return err
 		}
@@ -294,13 +278,12 @@ func (s *Service) HandleShopClosedResponse(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	s.broadcastShopClosed(ctx, supplierID, retailerID, driverID, shopClosedEventPayload{
-		Type:       events.EventShopClosedResponse,
+	s.broadcastShopClosed(ctx, supplierID, retailerID, driverID, events.OrderEvent{
+		BaseEvent:  events.BaseEvent{Type: events.EventShopClosedResponse, Timestamp: now.Format(time.RFC3339Nano)},
 		OrderID:    req.OrderID,
 		RetailerID: retailerID,
 		AttemptID:  attemptID,
 		Response:   req.Response,
-		Timestamp:  now.Format(time.RFC3339Nano),
 	})
 	s.invalidateOrderCache(ctx, req.OrderID)
 	writeJSON(w, http.StatusOK, map[string]string{"status": newStatus})
@@ -411,13 +394,12 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 		}
 
 		buf := &spannerTxnBuffer{}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, shopClosedEventPayload{
-			Type:       events.EventShopClosedResolved,
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventShopClosedResolved, Timestamp: now.Format(time.RFC3339Nano)},
 			OrderID:    orderID,
 			AttemptID:  req.AttemptID,
 			SupplierID: supplierID,
 			Resolution: resolution,
-			Timestamp:  now.Format(time.RFC3339Nano),
 		}); err != nil {
 			return err
 		}
@@ -435,13 +417,12 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	payload := shopClosedEventPayload{
-		Type:       events.EventShopClosedResolved,
+	payload := events.OrderEvent{
+		BaseEvent:  events.BaseEvent{Type: events.EventShopClosedResolved, Timestamp: now.Format(time.RFC3339Nano)},
 		OrderID:    orderID,
 		AttemptID:  req.AttemptID,
 		SupplierID: supplierID,
 		Resolution: resolution,
-		Timestamp:  now.Format(time.RFC3339Nano),
 	}
 	s.broadcastShopClosed(ctx, supplierID, retailerID, driverID, payload)
 	s.invalidateOrderCache(ctx, orderID)
@@ -492,13 +473,12 @@ func (s *Service) scheduleShopClosedEscalation(ctx context.Context, attemptID, o
 		}
 
 		buf := &spannerTxnBuffer{}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, shopClosedEventPayload{
-			Type:        events.EventShopClosedEscalated,
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventShopClosedEscalated, Timestamp: now.Format(time.RFC3339Nano)},
 			OrderID:     orderID,
 			AttemptID:   attemptID,
 			SupplierID:  supplierID,
 			EscalatedTo: escalatedTo,
-			Timestamp:   now.Format(time.RFC3339Nano),
 		}); err != nil {
 			return err
 		}
@@ -519,16 +499,15 @@ func (s *Service) scheduleShopClosedEscalation(ctx context.Context, attemptID, o
 		return
 	}
 
-	s.broadcastShopClosed(ctx, supplierID, retailerID, driverID, shopClosedEventPayload{
-		Type:       events.EventShopClosedEscalated,
+	s.broadcastShopClosed(ctx, supplierID, retailerID, driverID, events.OrderEvent{
+		BaseEvent:  events.BaseEvent{Type: events.EventShopClosedEscalated, Timestamp: now.Format(time.RFC3339Nano)},
 		OrderID:    orderID,
 		AttemptID:  attemptID,
 		SupplierID: supplierID,
-		Timestamp:  now.Format(time.RFC3339Nano),
 	})
 }
 
-func (s *Service) broadcastShopClosed(ctx context.Context, supplierID, retailerID, driverID string, payload shopClosedEventPayload) {
+func (s *Service) broadcastShopClosed(ctx context.Context, supplierID, retailerID, driverID string, payload events.OrderEvent) {
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return

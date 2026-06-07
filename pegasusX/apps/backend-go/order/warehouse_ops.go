@@ -129,18 +129,20 @@ func (s *Service) warehouseTransition(
 	}
 
 	err = s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, orderStatusChangedEvent{
-			Type:           events.EventOrderStatusChanged,
-			OrderID:        current.OrderID,
-			SupplierID:     current.SupplierID,
-			RetailerID:     current.RetailerID,
-			DriverID:       current.DriverID,
-			PreviousStatus: string(prevStatus),
-			Status:         string(current.Status),
-			Reason:         strings.TrimSpace(reason),
-			ActorRole:      string(auth.RoleWarehouse),
-			ActorID:        actorID,
-			Timestamp:      current.UpdatedAt.UTC().Format(time.RFC3339Nano),
+		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:             events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: current.UpdatedAt.UTC().Format(time.RFC3339Nano)},
+			OrderID:               current.OrderID,
+			SupplierID:            current.SupplierID,
+			RetailerID:            current.RetailerID,
+			DriverID:              current.DriverID,
+			PreviousStatus:        string(prevStatus),
+			Status:                string(current.Status),
+			Reason:                strings.TrimSpace(reason),
+			ActorRole:             string(auth.RoleWarehouse),
+			ActorID:               actorID,
+			OrderSource:           string(current.Source),
+			ConfirmationStatus:    string(current.ConfirmationStatus),
+			RequestedDeliveryDate: formatOptionalRFC3339(current.RequestedDeliveryDate),
 		})
 	})
 	if err != nil {

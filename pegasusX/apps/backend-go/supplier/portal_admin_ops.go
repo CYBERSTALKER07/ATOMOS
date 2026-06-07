@@ -200,17 +200,16 @@ func (s *Service) HandleReplenishmentTrigger(w http.ResponseWriter, r *http.Requ
 	requestID := uuid.NewString()
 	start := now.Format("2006-01-02")
 
-	eventPayload := map[string]any{
-		"type":                events.EventWarehouseSupplyRequestOpened,
-		"supplier_id":         sid,
-		"warehouse_id":        warehouseID,
-		"request_id":          requestID,
-		"status":              "OPEN",
-		"state":               "OPEN",
-		"requested_by":        requestedBy,
-		"coverage_start_date": start,
-		"coverage_days":       int64(7),
-		"timestamp":           now.Format(time.RFC3339Nano),
+	eventPayload := events.WarehouseEvent{
+		BaseEvent:         events.BaseEvent{Type: events.EventWarehouseSupplyRequestOpened},
+		SupplierID:        sid,
+		WarehouseID:       warehouseID,
+		RequestID:         requestID,
+		Status:            "OPEN",
+		State:             "OPEN",
+		RequestedBy:       requestedBy,
+		CoverageStartDate: start,
+		CoverageDays:      int64(7),
 	}
 
 	_, err = s.portalSpanner.ReadWriteTransaction(ctx, func(txnCtx context.Context, txn *spanner.ReadWriteTransaction) error {

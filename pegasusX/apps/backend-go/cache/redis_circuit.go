@@ -1,0 +1,144 @@
+package cache
+
+import (
+	"context"
+	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/circuit"
+	"github.com/redis/go-redis/v9"
+)
+
+// CircuitBreakerBackend wraps a primary backend (Redis) and falls back
+// to an in-memory backend when the circuit opens due to failures.
+type CircuitBreakerBackend struct {
+	primary  Backend
+	fallback Backend
+	breaker  *circuit.Breaker
+}
+
+// NewCircuitBreakerBackend constructs a circuit breaker backend.
+func NewCircuitBreakerBackend(primary, fallback Backend) *CircuitBreakerBackend {
+	cfg := circuit.Config{
+		FailureThreshold: 5,
+		FailureWindow:    10 * time.Second,
+		OpenDuration:     30 * time.Second,
+	}
+	return &CircuitBreakerBackend{
+		primary:  primary,
+		fallback: fallback,
+		breaker:  circuit.New("redis-cache", cfg),
+	}
+}
+
+// Client exposes the underlying Redis client if available.
+func (c *CircuitBreakerBackend) Client() *redis.Client {
+	if adapter, ok := c.primary.(interface{ Client() *redis.Client }); ok {
+		return adapter.Client()
+	}
+	return nil
+}
+
+// PoolStats exposes the underlying Redis pool stats if available.
+func (c *CircuitBreakerBackend) PoolStats() *redis.PoolStats {
+	if adapter, ok := c.primary.(interface{ PoolStats() *redis.PoolStats }); ok {
+		return adapter.PoolStats()
+	}
+	return nil
+}
+
+// Ping checks the primary.
+func (c *CircuitBreakerBackend) Ping(ctx context.Context) error {
+	var err error
+	circuitErr := c.breaker.Do(ctx, func(ctx context.Context) error {
+		if pinger, ok := c.primary.(interface{ Ping(context.Context) error }); ok {
+			err = pinger.Ping(ctx)
+			return err
+		}
+		return nil
+	})
+	if circuitErr == circuit.ErrUpstreamUnavailable {
+		return circuitErr
+	}
+	return err
+}
+
+// Get implements Backend.
+func (c *CircuitBreakerBackend) Get(ctx context.Context, key string) ([]byte, bool, error) {
+	var val []byte
+	var ok bool
+	var getErr error
+
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		val, ok, getErr = c.primary.Get(ctx, key)
+		return getErr
+	})
+
+	if err == circuit.ErrUpstreamUnavailable {
+		return c.fallback.Get(ctx, key)
+	}
+	return val, ok, err
+}
+
+// Set implements Backend.
+func (c *CircuitBreakerBackend) Set(ctx context.Context, key string, value []byte, ttl time.Duration) error {
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		return c.primary.Set(ctx, key, value, ttl)
+	})
+
+	if err == circuit.ErrUpstreamUnavailable {
+		return c.fallback.Set(ctx, key, value, ttl)
+	}
+	return err
+}
+
+// Delete implements Backend.
+func (c *CircuitBreakerBackend) Delete(ctx context.Context, keys ...string) error {
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		return c.primary.Delete(ctx, keys...)
+	})
+
+	if err == circuit.ErrUpstreamUnavailable {
+		return c.fallback.Delete(ctx, keys...)
+	}
+	return err
+}
+
+// Publish implements Backend.
+func (c *CircuitBreakerBackend) Publish(ctx context.Context, channel string, message []byte) error {
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		return c.primary.Publish(ctx, channel, message)
+	})
+
+	if err == circuit.ErrUpstreamUnavailable {
+		return c.fallback.Publish(ctx, channel, message)
+	}
+	return err
+}
+
+// Subscribe implements Backend.
+func (c *CircuitBreakerBackend) Subscribe(ctx context.Context, channel string) (<-chan []byte, func(), error) {
+	var out <-chan []byte
+	var cancel func()
+	var subErr error
+
+	err := c.breaker.Do(ctx, func(ctx context.Context) error {
+		out, cancel, subErr = c.primary.Subscribe(ctx, channel)
+		return subErr
+	})
+
+	if err == circuit.ErrUpstreamUnavailable {
+		return c.fallback.Subscribe(ctx, channel)
+	}
+	return out, cancel, err
+}
+
+// Close implements Backend.
+func (c *CircuitBreakerBackend) Close() error {
+	if closer, ok := c.primary.(interface{ Close() error }); ok {
+		_ = closer.Close()
+	}
+	if closer, ok := c.fallback.(interface{ Close() error }); ok {
+		_ = closer.Close()
+	}
+	return nil
+}

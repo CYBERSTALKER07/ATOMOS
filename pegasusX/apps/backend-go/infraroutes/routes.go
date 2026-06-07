@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/redis/go-redis/v9"
 )
 
 // HealthChecker verifies an infrastructure component is reachable.
@@ -25,7 +26,8 @@ func (f HealthCheckFunc) HealthCheck(ctx context.Context) error {
 
 // Deps supplies component probes for the readiness endpoint.
 type Deps struct {
-	Checks map[string]HealthChecker
+	Checks         map[string]HealthChecker
+	RedisPoolStats func() *redis.PoolStats
 }
 
 // RegisterRoutes mounts /healthz, /ready, /metrics, and legacy /v1/health.
@@ -34,6 +36,21 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Get("/ready", handleReady(d))
 	r.Get("/metrics", handleMetricsStub)
 	r.Get("/v1/health", handleHealthz)
+	if d.RedisPoolStats != nil {
+		r.Get("/debug/infra/redis", handleRedisStats(d.RedisPoolStats))
+	}
+}
+
+func handleRedisStats(getStats func() *redis.PoolStats) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		stats := getStats()
+		if stats == nil {
+			http.Error(w, "redis stats unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(stats)
+	}
 }
 
 func handleHealthz(w http.ResponseWriter, _ *http.Request) {

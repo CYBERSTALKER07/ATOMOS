@@ -75,13 +75,12 @@ func (s *Service) HandleEmergencyTransfer(w http.ResponseWriter, r *http.Request
 
 	transferID := uuid.NewString()
 	err = s.repo.CreateTransfer(ctx, transferID, factoryID, supplierID, req.TotalVolumeVU, func(txn outbox.TxnBuffer) error {
-		payload := map[string]any{
-			"type":            events.EventWarehouseTransferCreated,
-			"transfer_id":     transferID,
-			"factory_id":      factoryID,
-			"supplier_id":     supplierID,
-			"total_volume_vu": req.TotalVolumeVU,
-			"timestamp":       time.Now().UTC().Format(time.RFC3339),
+		payload := events.WarehouseEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventWarehouseTransferCreated},
+			TransferID:  transferID,
+			WarehouseID: whID, // maps factory_id locally in context
+			SupplierID:  supplierID,
+			Units:       int64(req.TotalVolumeVU),
 		}
 		return outbox.EmitJSON(ctx, txn, events.AggregateWarehouse, whID, events.TopicMain, payload)
 	})
@@ -178,13 +177,12 @@ func (s *Service) HandleForceReceive(w http.ResponseWriter, r *http.Request) {
 	err = s.repo.CreateTransfer(ctx, transferID, factoryID, supplierID, req.TotalVolumeVU, nil)
 	if err == nil {
 		err = s.repo.UpdateTransferState(ctx, transferID, supplierID, "RECEIVED", func(txn outbox.TxnBuffer) error {
-			payload := map[string]any{
-				"type":            events.EventWarehouseTransferReceived,
-				"transfer_id":     transferID,
-				"factory_id":      factoryID,
-				"supplier_id":     supplierID,
-				"total_volume_vu": req.TotalVolumeVU,
-				"timestamp":       time.Now().UTC().Format(time.RFC3339),
+			payload := events.WarehouseEvent{
+				BaseEvent:   events.BaseEvent{Type: events.EventWarehouseTransferReceived},
+				TransferID:  transferID,
+				WarehouseID: whID, // replacing factory_id for standardization 
+				SupplierID:  supplierID,
+				Units:       int64(req.TotalVolumeVU),
 			}
 			return outbox.EmitJSON(ctx, txn, events.AggregateWarehouse, whID, events.TopicMain, payload)
 		})
@@ -209,11 +207,10 @@ func (s *Service) receiveTransfer(ctx context.Context, ops *auth.WarehouseOps, t
 		return s.memoryReceiveTransfer(ops, transferID)
 	}
 	err := s.repo.UpdateTransferState(ctx, transferID, ops.SupplierID, "RECEIVED", func(txn outbox.TxnBuffer) error {
-		payload := map[string]any{
-			"type":        events.EventWarehouseTransferReceived,
-			"transfer_id": transferID,
-			"supplier_id": ops.SupplierID,
-			"timestamp":   time.Now().UTC().Format(time.RFC3339),
+		payload := events.WarehouseEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventWarehouseTransferReceived},
+			TransferID: transferID,
+			SupplierID: ops.SupplierID,
 		}
 		// assuming ops is warehouse scope, we might not have warehouse_id here, but we can emit for aggregate
 		return outbox.EmitJSON(ctx, txn, events.AggregateWarehouse, transferID, events.TopicMain, payload)

@@ -142,7 +142,7 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 	type pendingEvent struct {
 		aggregateType string
 		aggregateID   string
-		payload       map[string]any
+		payload       any
 	}
 
 	chunkSize := 50 // 50 routes per chunk
@@ -203,19 +203,17 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 				chunkQueued = append(chunkQueued, pendingEvent{
 					aggregateType: events.AggregateOrder,
 					aggregateID:   orderID,
-					payload: map[string]any{
-						"type":         events.EventOrderAssigned,
-						"trace_id":     outbox.TraceIDFromContext(ctx),
-						"order_id":     orderID,
-						"supplier_id":  supplierID,
-						"retailer_id":  stop.RetailerID,
-						"warehouse_id": warehouseID,
-						"driver_id":    driverID,
-						"vehicle_id":   vehicleID,
-						"route_id":     routeID,
-						"manifest_id":  manifestID,
-						"status":       "LOADED",
-						"timestamp":    now.Format(time.RFC3339Nano),
+					payload: events.OrderEvent{
+						BaseEvent:   events.BaseEvent{Type: events.EventOrderAssigned},
+						OrderID:     orderID,
+						SupplierID:  supplierID,
+						RetailerID:  stop.RetailerID,
+						WarehouseID: warehouseID,
+						DriverID:    driverID,
+						VehicleID:   vehicleID,
+						RouteID:     routeID,
+						ManifestID:  manifestID,
+						Status:      "LOADED",
 					},
 				})
 				orderIDs = append(orderIDs, orderID)
@@ -225,33 +223,29 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 				pendingEvent{
 					aggregateType: events.AggregateRoute,
 					aggregateID:   routeID,
-					payload: map[string]any{
-						"type":         events.EventRouteCreated,
-						"trace_id":     outbox.TraceIDFromContext(ctx),
-						"route_id":     routeID,
-						"manifest_id":  manifestID,
-						"supplier_id":  supplierID,
-						"warehouse_id": warehouseID,
-						"driver_id":    driverID,
-						"vehicle_id":   vehicleID,
-						"order_ids":    orderIDs,
-						"order_count":  len(orderIDs),
-						"timestamp":    now.Format(time.RFC3339Nano),
+					payload: events.RouteEvent{
+						BaseEvent:   events.BaseEvent{Type: events.EventRouteCreated},
+						RouteID:     routeID,
+						ManifestID:  manifestID,
+						SupplierID:  supplierID,
+						WarehouseID: warehouseID,
+						DriverID:    driverID,
+						VehicleID:   vehicleID,
+						OrderIDs:    orderIDs,
+						OrderCount:  len(orderIDs),
 					},
 				},
 				pendingEvent{
 					aggregateType: events.AggregateManifest,
 					aggregateID:   manifestID,
-					payload: map[string]any{
-						"type":         events.EventManifestSealed,
-						"trace_id":     outbox.TraceIDFromContext(ctx),
-						"manifest_id":  manifestID,
-						"route_id":     routeID,
-						"supplier_id":  supplierID,
-						"warehouse_id": warehouseID,
-						"driver_id":    driverID,
-						"order_count":  len(orderIDs),
-						"timestamp":    now.Format(time.RFC3339Nano),
+					payload: events.ManifestEvent{
+						BaseEvent:   events.BaseEvent{Type: events.EventManifestSealed},
+						ManifestID:  manifestID,
+						RouteID:     routeID,
+						SupplierID:  supplierID,
+						WarehouseID: warehouseID,
+						DriverID:    driverID,
+						StopCount:   int64(len(orderIDs)),
 					},
 				},
 			)

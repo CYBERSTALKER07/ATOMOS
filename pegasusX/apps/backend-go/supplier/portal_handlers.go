@@ -216,8 +216,8 @@ func (s *Service) HandleConfigure(w http.ResponseWriter, r *http.Request) {
 	current.IsRegistered = true
 	current.UpdatedAt = now
 	if err := s.repo.UpdateProfile(r.Context(), current, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, sid, events.TopicMain, supplierUpdatedEvent{
-			Type:         events.EventSupplierUpdated,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, sid, events.TopicMain, events.SupplierEvent{
+			BaseEvent:    events.BaseEvent{Type: events.EventSupplierProfileUpdated, Timestamp: now.Format(time.RFC3339Nano)},
 			SupplierID:   sid,
 			LegalName:    current.LegalName,
 			ContactName:  current.ContactName,
@@ -228,7 +228,6 @@ func (s *Service) HandleConfigure(w http.ResponseWriter, r *http.Request) {
 			IsRegistered: current.IsRegistered,
 			IsConfigured: current.IsConfigured,
 			Action:       "CONFIGURE",
-			Timestamp:    now.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_supplier_failed"})
@@ -322,8 +321,8 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 	now := s.now()
 	current.UpdatedAt = now
 	if err := s.repo.UpdateProfile(r.Context(), current, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, sid, events.TopicMain, supplierUpdatedEvent{
-			Type:         events.EventSupplierUpdated,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, sid, events.TopicMain, events.SupplierEvent{
+			BaseEvent:    events.BaseEvent{Type: events.EventSupplierProfileUpdated, Timestamp: now.Format(time.RFC3339Nano)},
 			SupplierID:   sid,
 			LegalName:    current.LegalName,
 			ContactName:  current.ContactName,
@@ -334,7 +333,6 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request) {
 			IsRegistered: current.IsRegistered,
 			IsConfigured: current.IsConfigured,
 			Action:       "PROFILE_UPDATED",
-			Timestamp:    now.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_supplier_failed"})
@@ -472,8 +470,8 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 
 	now := s.now()
 	if err := s.repo.ReplaceTopology(r.Context(), sid, topology, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, sid, events.TopicMain, supplierUpdatedEvent{
-			Type:         events.EventSupplierUpdated,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, sid, events.TopicMain, events.SupplierEvent{
+			BaseEvent:    events.BaseEvent{Type: events.EventSupplierProfileUpdated, Timestamp: now.Format(time.RFC3339Nano)},
 			SupplierID:   sid,
 			LegalName:    current.LegalName,
 			ContactName:  current.ContactName,
@@ -484,7 +482,6 @@ func (s *Service) handleTopologyPut(w http.ResponseWriter, r *http.Request) {
 			IsRegistered: current.IsRegistered,
 			IsConfigured: current.IsConfigured,
 			Action:       "TOPOLOGY_UPDATED",
-			Timestamp:    now.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_supplier_topology_failed"})
@@ -641,8 +638,8 @@ func (s *Service) handlePricingRulePatch(w http.ResponseWriter, r *http.Request)
 	rule.UpdatedAt = s.now()
 
 	if err := s.repo.UpsertPricingRule(r.Context(), rule, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, sid, events.TopicMain, supplierUpdatedEvent{
-			Type:         events.EventSupplierUpdated,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, sid, events.TopicMain, events.SupplierEvent{
+			BaseEvent:    events.BaseEvent{Type: events.EventSupplierProfileUpdated, Timestamp: rule.UpdatedAt.Format(time.RFC3339Nano)},
 			SupplierID:   sid,
 			LegalName:    currentProfile.LegalName,
 			ContactName:  currentProfile.ContactName,
@@ -653,7 +650,6 @@ func (s *Service) handlePricingRulePatch(w http.ResponseWriter, r *http.Request)
 			IsRegistered: currentProfile.IsRegistered,
 			IsConfigured: currentProfile.IsConfigured,
 			Action:       "PRICING_RULES_UPDATED",
-			Timestamp:    rule.UpdatedAt.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_supplier_pricing_failed"})

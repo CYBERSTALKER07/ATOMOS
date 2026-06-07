@@ -120,12 +120,7 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 }
 
 func (d *NotificationDispatcher) handleDriverCreated(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		SupplierID   string `json:"supplier_id"`
-		HomeNodeID   string `json:"home_node_id"`
-		HomeNodeType string `json:"home_node_type"`
-		DriverID     string `json:"driver_id"`
-	}
+	var e events.DriverEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode driver created event: %w", err)
 	}
@@ -141,12 +136,7 @@ func (d *NotificationDispatcher) handleDriverCreated(ctx context.Context, payloa
 }
 
 func (d *NotificationDispatcher) handleVehicleCreated(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		SupplierID   string `json:"supplier_id"`
-		HomeNodeID   string `json:"home_node_id"`
-		HomeNodeType string `json:"home_node_type"`
-		VehicleID    string `json:"vehicle_id"`
-	}
+	var e events.VehicleEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode vehicle created event: %w", err)
 	}
@@ -161,10 +151,7 @@ func (d *NotificationDispatcher) handleVehicleCreated(ctx context.Context, paylo
 }
 
 func (d *NotificationDispatcher) handleWarehouseCreated(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		SupplierID  string `json:"supplier_id"`
-		WarehouseID string `json:"warehouse_id"`
-	}
+	var e events.WarehouseEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode warehouse event: %w", err)
 	}
@@ -177,13 +164,7 @@ func (d *NotificationDispatcher) handleWarehouseCreated(ctx context.Context, pay
 }
 
 func (d *NotificationDispatcher) handleOrderEvent(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		Type       string `json:"type"`
-		OrderID    string `json:"order_id"`
-		SupplierID string `json:"supplier_id"`
-		RetailerID string `json:"retailer_id"`
-		DriverID   string `json:"driver_id"`
-	}
+	var e events.OrderEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode order event: %w", err)
 	}
@@ -196,16 +177,7 @@ func (d *NotificationDispatcher) handleOrderEvent(ctx context.Context, payload [
 }
 
 func (d *NotificationDispatcher) handleOrderAssignmentEvent(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		Type         string `json:"type"`
-		OrderID      string `json:"order_id"`
-		SupplierID   string `json:"supplier_id"`
-		RetailerID   string `json:"retailer_id"`
-		WarehouseID  string `json:"warehouse_id"`
-		DriverID     string `json:"driver_id"`
-		ToDriverID   string `json:"to_driver_id"`
-		FromDriverID string `json:"from_driver_id"`
-	}
+	var e events.OrderEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode order assignment event: %w", err)
 	}
@@ -226,10 +198,7 @@ func (d *NotificationDispatcher) handleOrderAssignmentEvent(ctx context.Context,
 }
 
 func (d *NotificationDispatcher) handleRetailerRegistered(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		SupplierID string `json:"supplier_id"`
-		RetailerID string `json:"retailer_id"`
-	}
+	var e events.RetailerEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode retailer registered event: %w", err)
 	}
@@ -242,9 +211,7 @@ func (d *NotificationDispatcher) handleRetailerRegistered(ctx context.Context, p
 }
 
 func (d *NotificationDispatcher) handleSupplierUpdated(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		SupplierID string `json:"supplier_id"`
-	}
+	var e events.SupplierEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode supplier updated event: %w", err)
 	}
@@ -256,11 +223,7 @@ func (d *NotificationDispatcher) handleSupplierUpdated(ctx context.Context, payl
 }
 
 func (d *NotificationDispatcher) handleWarehouseOperationalEvent(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		Type        string `json:"type"`
-		SupplierID  string `json:"supplier_id"`
-		WarehouseID string `json:"warehouse_id"`
-	}
+	var e events.WarehouseEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode warehouse operational event: %w", err)
 	}
@@ -274,13 +237,7 @@ func (d *NotificationDispatcher) handleWarehouseOperationalEvent(ctx context.Con
 }
 
 func (d *NotificationDispatcher) handleNegotiationEvent(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		Type       string `json:"type"`
-		OrderID    string `json:"order_id"`
-		SupplierID string `json:"supplier_id"`
-		RetailerID string `json:"retailer_id"`
-		DriverID   string `json:"driver_id"`
-	}
+	var e events.OrderEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode negotiation event: %w", err)
 	}
@@ -293,13 +250,7 @@ func (d *NotificationDispatcher) handleNegotiationEvent(ctx context.Context, pay
 }
 
 func (d *NotificationDispatcher) handleShopClosedEvent(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		Type       string `json:"type"`
-		OrderID    string `json:"order_id"`
-		SupplierID string `json:"supplier_id"`
-		RetailerID string `json:"retailer_id"`
-		DriverID   string `json:"driver_id"`
-	}
+	var e events.OrderEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode shop closed event: %w", err)
 	}
@@ -312,12 +263,7 @@ func (d *NotificationDispatcher) handleShopClosedEvent(ctx context.Context, payl
 }
 
 func (d *NotificationDispatcher) handleSupplierFinanceEvent(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		Type       string `json:"type"`
-		SupplierID string `json:"supplier_id"`
-		RetailerID string `json:"retailer_id"`
-		OrderID    string `json:"order_id"`
-	}
+	var e events.FinanceEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode supplier finance event: %w", err)
 	}
@@ -331,14 +277,7 @@ func (d *NotificationDispatcher) handleSupplierFinanceEvent(ctx context.Context,
 }
 
 func (d *NotificationDispatcher) handleManifestEvent(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		Type        string `json:"type"`
-		SupplierID  string `json:"supplier_id"`
-		FactoryID   string `json:"factory_id"`
-		WarehouseID string `json:"warehouse_id"`
-		DriverID    string `json:"driver_id"`
-		ManifestID  string `json:"manifest_id"`
-	}
+	var e events.ManifestEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode manifest event: %w", err)
 	}
@@ -363,13 +302,7 @@ func (d *NotificationDispatcher) handleManifestEvent(ctx context.Context, payloa
 }
 
 func (d *NotificationDispatcher) handleRouteEvent(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		Type       string `json:"type"`
-		RouteID    string `json:"route_id"`
-		SupplierID string `json:"supplier_id"`
-		DriverID   string `json:"driver_id"`
-		WarehouseID string `json:"warehouse_id"`
-	}
+	var e events.RouteEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode route event: %w", err)
 	}
@@ -387,13 +320,7 @@ func (d *NotificationDispatcher) handleRouteEvent(ctx context.Context, payload [
 }
 
 func (d *NotificationDispatcher) handleDriverEdgeEvent(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		Type       string `json:"type"`
-		OrderID    string `json:"order_id"`
-		SupplierID string `json:"supplier_id"`
-		RetailerID string `json:"retailer_id"`
-		DriverID   string `json:"driver_id"`
-	}
+	var e events.OrderEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode driver edge event: %w", err)
 	}
@@ -405,13 +332,7 @@ func (d *NotificationDispatcher) handleDriverEdgeEvent(ctx context.Context, payl
 }
 
 func (d *NotificationDispatcher) handleDriverAvailabilityChanged(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		Type         string `json:"type"`
-		SupplierID   string `json:"supplier_id"`
-		DriverID     string `json:"driver_id"`
-		HomeNodeType string `json:"home_node_type"`
-		HomeNodeID   string `json:"home_node_id"`
-	}
+	var e events.DriverEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode driver availability event: %w", err)
 	}
@@ -430,11 +351,7 @@ func (d *NotificationDispatcher) handleDriverAvailabilityChanged(ctx context.Con
 }
 
 func (d *NotificationDispatcher) handleAIRecommendationEvent(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		Type             string `json:"type"`
-		SupplierID       string `json:"supplier_id"`
-		RecommendationID string `json:"recommendation_id"`
-	}
+	var e events.AIRecommendationEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode ai recommendation event: %w", err)
 	}
@@ -450,13 +367,7 @@ func (d *NotificationDispatcher) handleAIRecommendationEvent(ctx context.Context
 }
 
 func (d *NotificationDispatcher) handleDeliverySessionEvent(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		Type       string `json:"type"`
-		OrderID    string `json:"order_id"`
-		SupplierID string `json:"supplier_id"`
-		RetailerID string `json:"retailer_id"`
-		DriverID   string `json:"driver_id"`
-	}
+	var e events.OrderEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode delivery session event: %w", err)
 	}
@@ -468,10 +379,7 @@ func (d *NotificationDispatcher) handleDeliverySessionEvent(ctx context.Context,
 }
 
 func (d *NotificationDispatcher) handleFactoryCreated(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		SupplierID string `json:"supplier_id"`
-		FactoryID  string `json:"factory_id"`
-	}
+	var e events.FactoryEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode factory created event: %w", err)
 	}
@@ -484,9 +392,7 @@ func (d *NotificationDispatcher) handleFactoryCreated(ctx context.Context, paylo
 }
 
 func (d *NotificationDispatcher) handleSupplierCreated(ctx context.Context, payload []byte, traceID string) error {
-	var e struct {
-		SupplierID string `json:"supplier_id"`
-	}
+	var e events.SupplierEvent
 	if err := json.Unmarshal(payload, &e); err != nil {
 		return fmt.Errorf("decode supplier created event: %w", err)
 	}

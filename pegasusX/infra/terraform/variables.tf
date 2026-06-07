@@ -63,6 +63,18 @@ variable "redis_memory_size_gb" {
   default     = 1
 }
 
+variable "redis_auth_enabled" {
+  description = "Enable AUTH on Memorystore Redis."
+  type        = bool
+  default     = true
+}
+
+variable "redis_transit_encryption_mode" {
+  description = "Enable TLS on Memorystore Redis."
+  type        = string
+  default     = "SERVER_AUTHENTICATION"
+}
+
 variable "kafka_bootstrap_servers" {
   description = "Kafka bootstrap servers for app env (stored in Secret Manager)."
   type        = string

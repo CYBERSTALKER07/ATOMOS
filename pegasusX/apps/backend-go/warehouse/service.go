@@ -360,20 +360,15 @@ func (s *Service) handleCreateSupplyRequest(w http.ResponseWriter, r *http.Reque
 		UpdatedAt:                nowTS,
 	}
 
-	eventPayload := map[string]any{
-		"type":                       events.EventWarehouseSupplyRequestOpened,
-		"supplier_id":                s.supplierID,
-		"warehouse_id":               warehouseID,
-		"request_id":                 req.RequestID,
-		"status":                     req.Status,
-		"state":                      req.State,
-		"requested_by":               req.RequestedBy,
-		"coverage_start_date":        req.CoverageStartDate,
-		"coverage_days":              req.CoverageDays,
-		"projected_units":            req.ProjectedUnits,
-		"committed_units":            req.CommittedUnits,
-		"pending_confirmation_units": req.PendingConfirmationUnits,
-		"timestamp":                  nowTS,
+	eventPayload := events.WarehouseEvent{
+		BaseEvent:   events.BaseEvent{Type: events.EventWarehouseSupplyRequestOpened},
+		RequestID:   req.RequestID,
+		SupplierID:  s.supplierID,
+		WarehouseID: req.WarehouseID,
+		Status:      req.Status,
+		Projected:   req.ProjectedUnits,
+		Committed:   req.CommittedUnits,
+		Pending:     req.PendingConfirmationUnits,
 	}
 
 	if err := s.repo.CreateSupplyRequest(r.Context(), req, func(txn outbox.TxnBuffer) error {
@@ -402,19 +397,19 @@ func (s *Service) handleCreateSupplyRequest(w http.ResponseWriter, r *http.Reque
 
 // HandleSupplyRequestAccepted is called by the async event consumer when a factory accepts the supply request.
 func (s *Service) HandleSupplyRequestAccepted(ctx context.Context, payloadBytes []byte) error {
-	var payload map[string]any
+	var payload events.WarehouseEvent
 	if err := json.Unmarshal(payloadBytes, &payload); err != nil {
 		s.log.Warn("failed to parse supply request accepted payload", "err", err)
 		return err
 	}
 
-	requestID, _ := payload["request_id"].(string)
+	requestID := payload.RequestID
 	if requestID == "" {
 		s.log.Warn("missing request_id in supply request accepted payload")
 		return nil
 	}
 
-	warehouseID, _ := payload["warehouse_id"].(string)
+	warehouseID := payload.WarehouseID
 	if warehouseID == "" {
 		warehouseID = "wh-1"
 	}
@@ -538,16 +533,12 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 			CreatedAt:  nowTS,
 		}
 
-		eventPayload := map[string]any{
-			"type":         events.EventWarehouseDispatchLockChanged,
-			"supplier_id":  s.supplierID,
-			"warehouse_id": warehouseID,
-			"lock_id":      lock.LockID,
-			"entity_type":  lock.EntityType,
-			"entity_id":    lock.EntityID,
-			"reason":       lock.Reason,
-			"action":       "ACQUIRED",
-			"timestamp":    lock.CreatedAt,
+		eventPayload := events.WarehouseEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventWarehouseDispatchLockChanged},
+			LockID:      lock.LockID,
+			WarehouseID: warehouseID,
+			SupplierID:  s.supplierID,
+			Status:      "ACQUIRED",
 		}
 
 		if err := s.repo.UpsertLock(r.Context(), warehouseID, lock, func(txn outbox.TxnBuffer) error {
@@ -595,16 +586,13 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 		}
 		released = releasedLock
 		if err := s.repo.DeleteLock(r.Context(), warehouseID, lockID, func(txn outbox.TxnBuffer) error {
-			eventPayload := map[string]any{
-				"type":         events.EventWarehouseDispatchLockChanged,
-				"supplier_id":  s.supplierID,
-				"warehouse_id": warehouseID,
-				"lock_id":      lockID,
-				"entity_type":  released.EntityType,
-				"entity_id":    released.EntityID,
-				"reason":       released.Reason,
-				"action":       "RELEASED",
-				"timestamp":    s.now().Format(time.RFC3339Nano),
+			eventPayload := events.WarehouseEvent{
+				BaseEvent:   events.BaseEvent{Type: events.EventWarehouseDispatchLockChanged},
+				LockID:      lockID,
+				WarehouseID: warehouseID,
+				SupplierID:  s.supplierID,
+				Status:      "RELEASED",
+				RequestID:   released.EntityID, // map entity_id to request_id for convenience in tracking
 			}
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateWarehouse, lockID, events.TopicMain, eventPayload)
 		}); err != nil {
@@ -638,7 +626,7 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Service) broadcastWarehouseEvent(ctx context.Context, warehouseID string, payload map[string]any) {
+func (s *Service) broadcastWarehouseEvent(ctx context.Context, warehouseID string, payload any) {
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return

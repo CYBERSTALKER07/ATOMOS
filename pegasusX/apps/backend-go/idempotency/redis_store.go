@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -17,25 +16,9 @@ type RedisStore struct {
 	client *redis.Client
 }
 
-// NewRedisStoreFromAddr connects to Redis and returns a Store implementation.
-func NewRedisStoreFromAddr(addr string) (*RedisStore, error) {
-	trimmed := strings.TrimSpace(addr)
-	if trimmed == "" {
-		return nil, fmt.Errorf("idempotency redis store: addr required")
-	}
-	var (
-		opts *redis.Options
-		err  error
-	)
-	if strings.HasPrefix(trimmed, "redis://") || strings.HasPrefix(trimmed, "rediss://") {
-		opts, err = redis.ParseURL(trimmed)
-		if err != nil {
-			return nil, fmt.Errorf("idempotency redis store: parse url: %w", err)
-		}
-	} else {
-		opts = &redis.Options{Addr: trimmed}
-	}
-	return &RedisStore{client: redis.NewClient(opts)}, nil
+// NewRedisStore returns a Store implementation using the provided Redis client.
+func NewRedisStore(client *redis.Client) *RedisStore {
+	return &RedisStore{client: client}
 }
 
 // Load implements Store.

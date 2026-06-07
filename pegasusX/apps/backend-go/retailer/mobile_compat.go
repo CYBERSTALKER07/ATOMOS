@@ -254,18 +254,19 @@ func mobileTrackingOrder(order TrackingOrder) map[string]any {
 		state = strings.TrimSpace(order.TrackingStatus)
 	}
 	return map[string]any{
-		"order_id":         order.OrderID,
-		"supplier_id":      order.SupplierID,
-		"supplier_name":    "pegasusX Supplier",
-		"warehouse_id":     order.WarehouseID,
-		"warehouse_name":   "Demo Warehouse",
-		"driver_id":        order.DriverID,
-		"state":            state,
-		"total_amount":     order.TotalMinor,
-		"created_at":       order.CreatedAt,
-		"driver_latitude":  driverLat(order),
-		"driver_longitude": driverLng(order),
-		"items":            order.Items,
+		"order_id":                order.OrderID,
+		"supplier_id":             order.SupplierID,
+		"supplier_name":           "pegasusX Supplier",
+		"warehouse_id":            order.WarehouseID,
+		"warehouse_name":          "Demo Warehouse",
+		"driver_id":               order.DriverID,
+		"state":                   state,
+		"total_amount":            order.TotalMinor,
+		"created_at":              order.CreatedAt,
+		"driver_latitude":         driverLat(order),
+		"driver_longitude":        driverLng(order),
+		"items":                   order.Items,
+		"live_location_available": order.LiveLocationAvailable,
 	}
 }
 

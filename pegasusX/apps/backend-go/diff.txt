@@ -1,0 +1,79 @@
+diff --git a/pegasusX/apps/backend-go/bootstrap/bootstrap.go b/pegasusX/apps/backend-go/bootstrap/bootstrap.go
+index 34d652bf..044bf1ed 100644
+--- a/pegasusX/apps/backend-go/bootstrap/bootstrap.go
++++ b/pegasusX/apps/backend-go/bootstrap/bootstrap.go
+@@ -55,7 +55,11 @@ type Config struct {
+ 	SpannerInstance     string
+ 	SpannerDatabase     string
+ 
+-	RedisAddr string
++	RedisAddr       string
++	RedisPassword   string
++	RedisPoolSize   int
++	RedisMaxRetries int
++	RedisTLSEnabled bool
+ 
+ 	KafkaBrokers            string
+ 	KafkaTopicMain          string
+@@ -150,6 +154,10 @@ func LoadConfig() (*Config, error) {
+ 		SpannerInstance:                 envOr("SPANNER_INSTANCE", "pegasusx-instance"),
+ 		SpannerDatabase:                 envOr("SPANNER_DATABASE", "pegasusx-db"),
+ 		RedisAddr:                       envOr("REDIS_ADDR", "localhost:6379"),
++		RedisPassword:                   envOr("REDIS_PASSWORD", ""),
++		RedisPoolSize:                   envInt("REDIS_POOL_SIZE", 50),
++		RedisMaxRetries:                 envInt("REDIS_MAX_RETRIES", 3),
++		RedisTLSEnabled:                 envBool("REDIS_TLS_ENABLED", false),
+ 		KafkaBrokers:                    envOr("KAFKA_BROKERS", "localhost:9092"),
+ 		KafkaTopicMain:                  envOr("KAFKA_TOPIC_MAIN", "pegasusx-main"),
+ 		KafkaTopicMainDLQ:               envOr("KAFKA_TOPIC_MAIN_DLQ", ""),
+@@ -207,7 +215,21 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
+ 
+ 	cacheBackend := cache.Backend(cache.NewInMemoryBackend())
+ 	redisEnabled := false
+-	if redisBackend, err := newRedisRuntimeAdapter(cfg.RedisAddr); err != nil {
++	redisCfg := cache.RedisConfig{
++		Addr:            cfg.RedisAddr,
++		Password:        cfg.RedisPassword,
++		PoolSize:        cfg.RedisPoolSize,
++		MaxRetries:      cfg.RedisMaxRetries,
++		TLSEnabled:      cfg.RedisTLSEnabled,
++		MinIdleConns:    10,
++		MaxIdleTime:     5 * time.Minute,
++		DialTimeout:     5 * time.Second,
++		ReadTimeout:     3 * time.Second,
++		WriteTimeout:    3 * time.Second,
++		MinRetryBackoff: 8 * time.Millisecond,
++		MaxRetryBackoff: 512 * time.Millisecond,
++	}
++	if redisBackend, err := newRedisRuntimeAdapter(redisCfg); err != nil {
+ 		log.Warn("redis backend init failed; using in-memory cache",
+ 			"addr", cfg.RedisAddr,
+ 			"err", err,
+@@ -219,9 +241,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
+ 		)
+ 		_ = redisBackend.Close()
+ 	} else {
+-		cacheBackend = redisBackend
++		cbBackend := cache.NewCircuitBreakerBackend(redisBackend, cacheBackend)
++		cacheBackend = cbBackend
+ 		redisEnabled = true
+-		log.Info("redis cache backend enabled", "addr", cfg.RedisAddr)
++		log.Info("redis cache backend enabled", "addr", cfg.RedisAddr, "pool_size", cfg.RedisPoolSize, "tls", cfg.RedisTLSEnabled)
+ 	}
+ 	if cfg.RequireInfraAdapters && !redisEnabled {
+ 		return nil, fmt.Errorf("require infra adapters: redis unavailable")
+@@ -230,10 +253,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
+ 	driverLocations := telemetry.NewCacheLastLocationStore(cacheClient, telemetry.DefaultLastLocationTTL)
+ 	var idemStore idempotency.Store = idempotency.NewInMemoryStore()
+ 	if redisEnabled {
+-		if rs, err := idempotency.NewRedisStoreFromAddr(cfg.RedisAddr); err != nil {
+-			log.Warn("idempotency redis store init failed; using in-memory", "err", err)
++		adapter, ok := cacheBackend.(redisRuntimeAdapter)
++		if !ok {
++			log.Warn("cacheBackend is not a redisRuntimeAdapter, cannot use for idempotency store")
+ 		} else {
+-			idemStore = rs
++			idemStore = idempotency.NewRedisStore(adapter.Client())
+ 			log.Info("idempotency redis store enabled", "addr", cfg.RedisAddr)
+ 		}
+ 	}

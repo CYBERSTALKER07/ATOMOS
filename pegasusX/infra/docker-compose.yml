@@ -8,8 +8,19 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --tcp-keepalive 60
+      --timeout 300
+      --hz 10
     ports:
       - "6379:6379"
+    volumes:
+      - redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -59,3 +70,6 @@ services:
     ports:
       - "8081:8080"
     restart: unless-stopped
+
+volumes:
+  redis-data:

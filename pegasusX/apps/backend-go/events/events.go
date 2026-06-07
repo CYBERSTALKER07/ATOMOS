@@ -26,7 +26,10 @@ var (
 const (
 	EventSupplierCreated              = "SUPPLIER_CREATED"
 	EventSupplierUpdated              = "SUPPLIER_UPDATED"
+	EventSupplierProfileUpdated       = "SUPPLIER_PROFILE_UPDATED"
+	EventSupplierBillingUpdated       = "SUPPLIER_BILLING_UPDATED"
 	EventSupplierBillingConfigured    = "SUPPLIER_BILLING_CONFIGURED"
+	EventSupplierMemberAdded          = "SUPPLIER_MEMBER_ADDED"
 	EventRetailerRegistered           = "RETAILER_REGISTERED"
 	EventDriverCreated                = "DRIVER_CREATED"
 	EventVehicleCreated               = "VEHICLE_CREATED"

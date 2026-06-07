@@ -440,8 +440,8 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	}
 
 	err = s.repo.CreateRetailer(ctx, r, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateRetailer, r.RetailerID, events.TopicMain, retailerRegisteredEvent{
-			Type:        events.EventRetailerRegistered,
+		return outbox.EmitJSON(ctx, txn, events.AggregateRetailer, r.RetailerID, events.TopicMain, events.RetailerEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventRetailerRegistered, Timestamp: r.CreatedAt.Format(time.RFC3339Nano)},
 			RetailerID:  r.RetailerID,
 			Phone:       r.Phone,
 			Name:        r.Name,
@@ -450,7 +450,6 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 			Lng:         r.Lng,
 			H3Cell:      r.H3Cell,
 			CountryCode: r.CountryCode,
-			Timestamp:   r.CreatedAt.Format(time.RFC3339Nano),
 		})
 	})
 	if err != nil {
@@ -474,18 +473,6 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	}, nil
 }
 
-type retailerRegisteredEvent struct {
-	Type        string  `json:"type"`
-	RetailerID  string  `json:"retailer_id"`
-	Phone       string  `json:"phone"`
-	Name        string  `json:"name,omitempty"`
-	SupplierID  string  `json:"supplier_id"`
-	Lat         float64 `json:"lat"`
-	Lng         float64 `json:"lng"`
-	H3Cell      string  `json:"h3_cell"`
-	CountryCode string  `json:"country_code"`
-	Timestamp   string  `json:"timestamp"`
-}
 
 func retailerByPhoneKey(phone string) string {
 	return "retailer:phone:" + phone

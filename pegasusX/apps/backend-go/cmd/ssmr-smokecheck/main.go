@@ -188,7 +188,20 @@ func runKafkaCheck(ctx context.Context, cfg *bootstrap.Config) error {
 }
 
 func runSpatialCheck(ctx context.Context, cfg *bootstrap.Config) error {
-	redisBackend, err := cache.NewRedisBackend(cfg.RedisAddr)
+	redisBackend, err := cache.NewRedisBackend(cache.RedisConfig{
+		Addr:            cfg.RedisAddr,
+		Password:        cfg.RedisPassword,
+		PoolSize:        cfg.RedisPoolSize,
+		MaxRetries:      cfg.RedisMaxRetries,
+		TLSEnabled:      cfg.RedisTLSEnabled,
+		MinIdleConns:    2,
+		MaxIdleTime:     time.Minute,
+		DialTimeout:     time.Second,
+		ReadTimeout:     time.Second,
+		WriteTimeout:    time.Second,
+		MinRetryBackoff: time.Millisecond * 8,
+		MaxRetryBackoff: time.Millisecond * 512,
+	})
 	if err != nil {
 		return fmt.Errorf("new redis backend: %w", err)
 	}

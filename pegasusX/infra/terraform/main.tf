@@ -44,13 +44,19 @@ resource "google_compute_network" "pegasusx_vpc" {
 }
 
 resource "google_redis_instance" "cache" {
-  name               = local.redis_instance_name
-  tier               = "STANDARD_HA"
-  memory_size_gb     = var.redis_memory_size_gb
-  region             = var.region
-  redis_version      = "REDIS_7_0"
-  authorized_network = google_compute_network.pegasusx_vpc.id
-  labels             = local.labels
+  name                    = local.redis_instance_name
+  tier                    = "STANDARD_HA"
+  memory_size_gb          = var.redis_memory_size_gb
+  region                  = var.region
+  redis_version           = "REDIS_7_0"
+  authorized_network      = google_compute_network.pegasusx_vpc.id
+  auth_enabled            = var.redis_auth_enabled
+  transit_encryption_mode = var.redis_transit_encryption_mode
+  redis_configs = {
+    maxmemory-policy       = "allkeys-lru"
+    notify-keyspace-events = ""
+  }
+  labels                  = local.labels
 }
 
 resource "google_spanner_instance" "ledger" {

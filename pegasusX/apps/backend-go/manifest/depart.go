@@ -85,34 +85,28 @@ func (s *Store) DepartDriver(ctx context.Context, driverID string, now time.Time
 				"Status":    "IN_TRANSIT",
 				"UpdatedAt": spanner.CommitTimestamp,
 			}))
-			if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, o.OrderID, events.TopicMain, map[string]any{
-				"type":            events.EventOrderStatusChanged,
-				"trace_id":        outbox.TraceIDFromContext(ctx),
-				"order_id":        o.OrderID,
-				"supplier_id":     o.SupplierID,
-				"retailer_id":     o.RetailerID,
-				"driver_id":       driverID,
-				"manifest_id":     manifestRow.ManifestID,
-				"previous_status": "LOADED",
-				"status":          "IN_TRANSIT",
-				"timestamp":       now.UTC().Format(time.RFC3339Nano),
+			if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, o.OrderID, events.TopicMain, events.OrderEvent{
+				BaseEvent:      events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: now.UTC().Format(time.RFC3339Nano)},
+				OrderID:        o.OrderID,
+				SupplierID:     o.SupplierID,
+				RetailerID:     o.RetailerID,
+				DriverID:       driverID,
+				ManifestID:     manifestRow.ManifestID,
+				PreviousStatus: "LOADED",
+				Status:         "IN_TRANSIT",
 			}); err != nil {
 				return err
 			}
 			transitioned = append(transitioned, o.OrderID)
 		}
 
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateManifest, manifestRow.ManifestID, events.TopicMain, map[string]any{
-			"type":         events.EventManifestDispatched,
-			"trace_id":     outbox.TraceIDFromContext(ctx),
-			"manifest_id":  manifestRow.ManifestID,
-			"supplier_id":  manifestRow.SupplierID,
-			"warehouse_id": manifestRow.WarehouseID,
-			"route_id":     manifestRow.RouteID,
-			"driver_id":    driverID,
-			"order_ids":    transitioned,
-			"order_count":  len(transitioned),
-			"timestamp":    now.UTC().Format(time.RFC3339Nano),
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateManifest, manifestRow.ManifestID, events.TopicMain, events.ManifestEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventManifestDispatched, Timestamp: now.UTC().Format(time.RFC3339Nano)},
+			ManifestID:  manifestRow.ManifestID,
+			SupplierID:  manifestRow.SupplierID,
+			WarehouseID: manifestRow.WarehouseID,
+			RouteID:     manifestRow.RouteID,
+			DriverID:    driverID,
 		}); err != nil {
 			return err
 		}

@@ -163,26 +163,7 @@ type supplierFleetVehiclesResponse struct {
 	UpdatedAt  string                 `json:"updated_at"`
 }
 
-type supplierOrgMemberEvent struct {
-	Type                string `json:"type"`
-	SupplierID          string `json:"supplier_id"`
-	UserID              string `json:"user_id"`
-	SupplierRole        string `json:"supplier_role"`
-	AssignedWarehouseID string `json:"assigned_warehouse_id,omitempty"`
-	AssignedFactoryID   string `json:"assigned_factory_id,omitempty"`
-	Action              string `json:"action"`
-	Timestamp           string `json:"timestamp"`
-}
 
-type supplierFleetCreatedEvent struct {
-	Type         string `json:"type"`
-	SupplierID   string `json:"supplier_id"`
-	DriverID     string `json:"driver_id,omitempty"`
-	VehicleID    string `json:"vehicle_id,omitempty"`
-	HomeNodeType string `json:"home_node_type"`
-	HomeNodeID   string `json:"home_node_id"`
-	Timestamp    string `json:"timestamp"`
-}
 
 type topologyLookup struct {
 	warehouses map[string]struct{}
@@ -266,15 +247,14 @@ func (s *Service) handleOrgMembersPost(w http.ResponseWriter, r *http.Request) {
 	params.PasswordHash = string(hash)
 
 	if err := s.repo.CreateOrgMember(r.Context(), params, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, sid, events.TopicMain, supplierOrgMemberEvent{
-			Type:                events.EventSupplierUpdated,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateSupplier, sid, events.TopicMain, events.SupplierEvent{
+			BaseEvent:           events.BaseEvent{Type: events.EventSupplierMemberAdded, Timestamp: params.UpdatedAt.Format(time.RFC3339Nano)},
 			SupplierID:          sid,
 			UserID:              params.UserID,
 			SupplierRole:        string(params.SupplierRole),
 			AssignedWarehouseID: params.AssignedWarehouseID,
 			AssignedFactoryID:   params.AssignedFactoryID,
 			Action:              "ORG_MEMBER_CREATED",
-			Timestamp:           params.UpdatedAt.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		switch {
@@ -344,13 +324,12 @@ func (s *Service) handleFleetDriversPost(w http.ResponseWriter, r *http.Request)
 	params.PinHash = string(hash)
 
 	if err := s.repo.CreateFleetDriver(r.Context(), params, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateDriver, params.DriverID, events.TopicMain, supplierFleetCreatedEvent{
-			Type:         events.EventDriverCreated,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateDriver, params.DriverID, events.TopicMain, events.DriverEvent{
+			BaseEvent:    events.BaseEvent{Type: events.EventDriverCreated, Timestamp: params.UpdatedAt.Format(time.RFC3339Nano)},
 			SupplierID:   sid,
 			DriverID:     params.DriverID,
 			HomeNodeType: string(params.HomeNodeType),
 			HomeNodeID:   params.HomeNodeID,
-			Timestamp:    params.UpdatedAt.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		switch {
@@ -416,13 +395,12 @@ func (s *Service) handleFleetVehiclesPost(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := s.repo.CreateFleetVehicle(r.Context(), params, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateVehicle, params.VehicleID, events.TopicMain, supplierFleetCreatedEvent{
-			Type:         events.EventVehicleCreated,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateVehicle, params.VehicleID, events.TopicMain, events.VehicleEvent{
+			BaseEvent:    events.BaseEvent{Type: events.EventVehicleCreated, Timestamp: params.UpdatedAt.Format(time.RFC3339Nano)},
 			SupplierID:   sid,
 			VehicleID:    params.VehicleID,
 			HomeNodeType: string(params.HomeNodeType),
 			HomeNodeID:   params.HomeNodeID,
-			Timestamp:    params.UpdatedAt.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		switch {

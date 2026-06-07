@@ -10,10 +10,12 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	backendkafka "github.com/pegasusx/pegasusx/apps/backend-go/kafka"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/redis/go-redis/v9"
 )
 
 type redisRuntimeAdapter interface {
 	cache.Backend
+	Client() *redis.Client
 	Ping(ctx context.Context) error
 	Close() error
 }
@@ -28,8 +30,8 @@ type kafkaRuntimeDLQWriter interface {
 }
 
 var (
-	newRedisRuntimeAdapter = func(addr string) (redisRuntimeAdapter, error) {
-		return cache.NewRedisBackend(addr)
+	newRedisRuntimeAdapter = func(cfg cache.RedisConfig) (redisRuntimeAdapter, error) {
+		return cache.NewRedisBackend(cfg)
 	}
 	newKafkaRuntimePublisher = func(brokersCSV string, cfg outbox.KafkaPublisherConfig) (kafkaRuntimePublisher, error) {
 		return outbox.NewKafkaPublisherFromCSV(brokersCSV, cfg)

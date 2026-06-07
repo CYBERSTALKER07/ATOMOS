@@ -485,8 +485,8 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 	current.UpdatedAt = now
 
 	err = s.repo.UpdateProfile(ctx, current, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, targetSupplierID, events.TopicMain, supplierUpdatedEvent{
-			Type:         events.EventSupplierUpdated,
+		return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, targetSupplierID, events.TopicMain, events.SupplierEvent{
+			BaseEvent:    events.BaseEvent{Type: events.EventSupplierProfileUpdated, Timestamp: now.Format(time.RFC3339Nano)},
 			SupplierID:   targetSupplierID,
 			LegalName:    current.LegalName,
 			ContactName:  current.ContactName,
@@ -497,7 +497,6 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 			IsRegistered: current.IsRegistered,
 			IsConfigured: current.IsConfigured,
 			Action:       "REGISTERED",
-			Timestamp:    now.Format(time.RFC3339Nano),
 		})
 	})
 	if err != nil {
@@ -624,13 +623,12 @@ func (s *Service) ConfigureBilling(ctx context.Context, req BillingSetupRequest)
 	current.UpdatedAt = now
 
 	err = s.repo.UpdateProfile(ctx, current, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, s.supplierID, events.TopicMain, supplierBillingEvent{
-			Type:             events.EventSupplierBillingConfigured,
+		return outbox.EmitJSON(ctx, txn, events.AggregateSupplier, s.supplierID, events.TopicMain, events.SupplierEvent{
+			BaseEvent:        events.BaseEvent{Type: events.EventSupplierBillingUpdated, Timestamp: now.Format(time.RFC3339Nano)},
 			SupplierID:       s.supplierID,
 			BankName:         current.BankName,
 			AccountHolder:    current.AccountHolder,
 			SelectedGateways: current.SelectedGateways,
-			Timestamp:        now.Format(time.RFC3339Nano),
 		})
 	})
 	if err != nil {
@@ -881,29 +879,7 @@ func (s *Service) HandleWebSocketSession(w http.ResponseWriter, r *http.Request)
 
 // ── Outbox payloads + helpers ──────────────────────────────────────────────
 
-type supplierUpdatedEvent struct {
-	Type         string   `json:"type"`
-	SupplierID   string   `json:"supplier_id"`
-	LegalName    string   `json:"legal_name"`
-	ContactName  string   `json:"contact_name"`
-	Email        string   `json:"email"`
-	Phone        string   `json:"phone"`
-	Country      string   `json:"country"`
-	Categories   []string `json:"categories"`
-	IsRegistered bool     `json:"is_registered"`
-	IsConfigured bool     `json:"is_configured"`
-	Action       string   `json:"action"`
-	Timestamp    string   `json:"timestamp"`
-}
 
-type supplierBillingEvent struct {
-	Type             string   `json:"type"`
-	SupplierID       string   `json:"supplier_id"`
-	BankName         string   `json:"bank_name"`
-	AccountHolder    string   `json:"account_holder"`
-	SelectedGateways []string `json:"selected_gateways"`
-	Timestamp        string   `json:"timestamp"`
-}
 
 func supplierCacheKey(id string) string { return "supplier:" + id }
 

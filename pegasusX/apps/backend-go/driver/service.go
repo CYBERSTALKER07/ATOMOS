@@ -375,18 +375,14 @@ func (s *Service) HandleAvailability(w http.ResponseWriter, r *http.Request) {
 
 		nowTS := s.now().Format(time.RFC3339Nano)
 		claims, _ := auth.FromContext(r.Context())
-		eventPayload := map[string]any{
-			"type":           events.EventDriverAvailabilityChanged,
-			"trace_id":       outbox.TraceIDFromContext(r.Context()),
-			"timestamp":      nowTS,
-			"v":              1,
-			"schema_version": 1,
-			"driver_id":      driverID,
-			"available":      req.OnShift,
-			"on_shift":       req.OnShift,
-			"supplier_id":    s.supplierID,
-			"home_node_type": strings.TrimSpace(string(claims.HomeNodeType)),
-			"home_node_id":   strings.TrimSpace(claims.HomeNodeID),
+		eventPayload := events.DriverEvent{
+			BaseEvent:    events.BaseEvent{Type: events.EventDriverAvailabilityChanged, Timestamp: nowTS},
+			DriverID:     driverID,
+			Available:    req.OnShift,
+			OnShift:      req.OnShift,
+			SupplierID:   s.supplierID,
+			HomeNodeType: strings.TrimSpace(string(claims.HomeNodeType)),
+			HomeNodeID:   strings.TrimSpace(claims.HomeNodeID),
 		}
 
 		if err := s.repo.Apply(r.Context(), func() error {
@@ -621,7 +617,7 @@ func manifestGateCleared(state string) bool {
 	return trimmed == "SEALED" || trimmed == "DISPATCHED" || trimmed == "COMPLETED"
 }
 
-func (s *Service) broadcastDriverEvent(ctx context.Context, driverID string, payload map[string]any) {
+func (s *Service) broadcastDriverEvent(ctx context.Context, driverID string, payload any) {
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return

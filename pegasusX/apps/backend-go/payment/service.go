@@ -503,8 +503,8 @@ func (s *Service) HandleChargeback(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:    now,
 	}
 	if err := s.repo.SaveChargeback(r.Context(), rec, func(txn outbox.TxnBuffer) error {
-		if err := outbox.EmitJSON(r.Context(), txn, events.AggregateSession, rec.ChargebackID, events.TopicMain, paymentEvent{
-			Type:            events.EventPaymentRequired,
+		if err := outbox.EmitJSON(r.Context(), txn, events.AggregateSession, rec.ChargebackID, events.TopicMain, events.FinanceEvent{
+			BaseEvent:       events.BaseEvent{Type: events.EventPaymentRequired, Timestamp: now.Format(time.RFC3339Nano)},
 			OrderID:         rec.OrderID,
 			SupplierID:      rec.SupplierID,
 			RetailerID:      rec.RetailerID,
@@ -516,18 +516,16 @@ func (s *Service) HandleChargeback(w http.ResponseWriter, r *http.Request) {
 			AmountMinor:     rec.AmountMinor,
 			Currency:        rec.Currency,
 			Source:          "payment.chargeback",
-			Timestamp:       now.Format(time.RFC3339Nano),
 		}); err != nil {
 			return err
 		}
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateOrder, rec.OrderID, events.TopicMain, map[string]any{
-			"type":        events.EventDeliveryDisputed,
-			"order_id":    rec.OrderID,
-			"supplier_id": rec.SupplierID,
-			"retailer_id": rec.RetailerID,
-			"reason":      "chargeback_recorded",
-			"disputed_by": "payment.chargeback",
-			"timestamp":   now.Format(time.RFC3339Nano),
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateOrder, rec.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventDeliveryDisputed, Timestamp: now.Format(time.RFC3339Nano)},
+			OrderID:    rec.OrderID,
+			SupplierID: rec.SupplierID,
+			RetailerID: rec.RetailerID,
+			Reason:     "chargeback_recorded",
+			Action:     "payment.chargeback",
 		})
 	}); err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "chargeback_record_failed", err.Error(), "/v1/payment/chargeback", false, "")
@@ -590,8 +588,8 @@ func (s *Service) HandleChargebackReversal(w http.ResponseWriter, r *http.Reques
 		CreatedAt:   now,
 	}
 	if err := s.repo.SaveReversal(r.Context(), rev, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateSession, rev.SessionID, events.TopicMain, paymentEvent{
-			Type:            events.EventPaymentCleared,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateSession, rev.SessionID, events.TopicMain, events.FinanceEvent{
+			BaseEvent:       events.BaseEvent{Type: events.EventPaymentCleared, Timestamp: now.Format(time.RFC3339Nano)},
 			SessionID:       rev.SessionID,
 			SupplierID:      rev.SupplierID,
 			Status:          "CHARGEBACK_REVERSAL_RECORDED",
@@ -600,7 +598,6 @@ func (s *Service) HandleChargebackReversal(w http.ResponseWriter, r *http.Reques
 			ExecutionMode:   string(executionResult.Mode),
 			PolicySource:    executionResult.PolicySource,
 			Source:          "payment.chargeback_reversal",
-			Timestamp:       now.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "reversal_record_failed", err.Error(), "/v1/payment/chargeback/reversal", false, "")
@@ -1380,8 +1377,8 @@ func (s *Service) persistWebhookWithOutbox(ctx context.Context, row WebhookRecor
 		eventType = events.EventPaymentCleared
 	}
 	if err := s.repo.SaveWebhook(ctx, row, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateSession, row.WebhookID, events.TopicMain, paymentEvent{
-			Type:          eventType,
+		return outbox.EmitJSON(ctx, txn, events.AggregateSession, row.WebhookID, events.TopicMain, events.FinanceEvent{
+			BaseEvent:     events.BaseEvent{Type: eventType, Timestamp: now.Format(time.RFC3339Nano)},
 			SessionID:     row.SessionID,
 			OrderID:       row.OrderID,
 			SupplierID:    row.SupplierID,
@@ -1392,7 +1389,6 @@ func (s *Service) persistWebhookWithOutbox(ctx context.Context, row WebhookRecor
 			Currency:      row.Currency,
 			TransactionID: row.TransactionID,
 			Source:        source,
-			Timestamp:     now.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		return err

@@ -615,12 +615,11 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 		s.manifestOrders[manifestID] = manifestRows
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, map[string]any{
-			"type":        events.EventManifestLoadingStarted,
-			"manifest_id": manifestID,
-			"supplier_id": s.supplierID,
-			"state":       payloadManifestStateLoading,
-			"timestamp":   now,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventManifestLoadingStarted, Timestamp: now},
+			ManifestID:  manifestID,
+			SupplierID:  s.supplierID,
+			State:       payloadManifestStateLoading,
 		})
 	})
 	if err != nil {
@@ -731,14 +730,13 @@ func (s *Service) HandleInjectOrder(w http.ResponseWriter, r *http.Request) {
 		s.manifests[mIdx] = manifest
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, map[string]any{
-			"type":            events.EventManifestOrderInjected,
-			"manifest_id":     manifestID,
-			"order_id":        req.OrderID,
-			"supplier_id":     s.supplierID,
-			"total_volume_vu": manifest.TotalVolumeVU,
-			"stop_count":      manifest.StopCount,
-			"timestamp":       now,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
+			BaseEvent:     events.BaseEvent{Type: events.EventManifestOrderInjected, Timestamp: now},
+			ManifestID:    manifestID,
+			OrderID:       req.OrderID,
+			SupplierID:    s.supplierID,
+			TotalVolumeVU: manifest.TotalVolumeVU,
+			StopCount:     int64(manifest.StopCount),
 		})
 	})
 	if err != nil {
@@ -868,27 +866,25 @@ func (s *Service) HandleManifestException(w http.ResponseWriter, r *http.Request
 		s.exceptions = append(s.exceptions, exception)
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
-		if err := outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, map[string]any{
-			"type":          events.EventManifestOrderException,
-			"manifest_id":   req.ManifestID,
-			"order_id":      req.OrderID,
-			"supplier_id":   s.supplierID,
-			"reason":        req.Reason,
-			"attempt_count": exception.AttemptCount,
-			"escalated":     exception.Escalated,
-			"timestamp":     exception.CreatedAt,
+		if err := outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
+			BaseEvent:    events.BaseEvent{Type: events.EventManifestOrderException, Timestamp: exception.CreatedAt},
+			ManifestID:   req.ManifestID,
+			OrderID:      req.OrderID,
+			SupplierID:   s.supplierID,
+			Reason:       req.Reason,
+			AttemptCount: exception.AttemptCount,
+			Escalated:    exception.Escalated,
 		}); err != nil {
 			return err
 		}
 		if exception.Escalated {
-			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, map[string]any{
-				"type":          events.EventManifestDLQEscalation,
-				"manifest_id":   req.ManifestID,
-				"order_id":      req.OrderID,
-				"supplier_id":   s.supplierID,
-				"reason":        req.Reason,
-				"attempt_count": exception.AttemptCount,
-				"timestamp":     exception.CreatedAt,
+			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
+				BaseEvent:    events.BaseEvent{Type: events.EventManifestDLQEscalation, Timestamp: exception.CreatedAt},
+				ManifestID:   req.ManifestID,
+				OrderID:      req.OrderID,
+				SupplierID:   s.supplierID,
+				Reason:       req.Reason,
+				AttemptCount: exception.AttemptCount,
 			})
 		}
 		return nil
@@ -1267,19 +1263,18 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
 		aggregateID := coalesceString(reassignment.ManifestID, reassignment.FromManifestID, "payload-reassign")
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, aggregateID, events.TopicMain, map[string]any{
-			"type":             events.EventManifestRebalanced,
-			"manifest_id":      aggregateID,
-			"from_manifest_id": reassignment.FromManifestID,
-			"to_manifest_id":   reassignment.ManifestID,
-			"order_id":         req.OrderID,
-			"supplier_id":      s.supplierID,
-			"from_route_id":    reassignment.FromRouteID,
-			"to_route_id":      reassignment.ToRouteID,
-			"to_driver_id":     reassignment.ToDriverID,
-			"depth":            reassignment.Depth,
-			"reason":           reassignment.Reason,
-			"timestamp":        reassignment.AppliedAt,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, aggregateID, events.TopicMain, events.ManifestEvent{
+			BaseEvent:      events.BaseEvent{Type: events.EventManifestRebalanced, Timestamp: reassignment.AppliedAt},
+			ManifestID:     aggregateID,
+			FromManifestID: reassignment.FromManifestID,
+			ToManifestID:   reassignment.ManifestID,
+			OrderID:        req.OrderID,
+			SupplierID:     s.supplierID,
+			FromRouteID:    reassignment.FromRouteID,
+			ToRouteID:      reassignment.ToRouteID,
+			ToDriverID:     reassignment.ToDriverID,
+			Depth:          reassignment.Depth,
+			Reason:         reassignment.Reason,
 		})
 	})
 	if err != nil {
@@ -1375,16 +1370,15 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		manifest, sealErr = s.sealManifestLocked(manifestID)
 		return sealErr
 	}, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, map[string]any{
-			"type":        events.EventManifestSealed,
-			"manifest_id": manifestID,
-			"supplier_id": s.supplierID,
-			"state":       payloadManifestStateSealed,
-			"route_id":    routeIDForManifest(manifest),
-			"driver_id":   manifest.DriverID,
-			"vehicle_id":  manifest.VehicleID,
-			"order_count": manifest.StopCount,
-			"timestamp":   manifest.UpdatedAt,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
+			ManifestID:  manifestID,
+			SupplierID:  s.supplierID,
+			State:       payloadManifestStateSealed,
+			RouteID:     routeIDForManifest(manifest),
+			DriverID:    manifest.DriverID,
+			VehicleID:   manifest.VehicleID,
+			OrderCount:  manifest.StopCount,
 		})
 	})
 	if err == http.ErrMissingFile {
@@ -1455,16 +1449,15 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 			manifest, sealErr = s.sealManifestLocked(req.ManifestID)
 			return sealErr
 		}, func(txn outbox.TxnBuffer) error {
-			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, map[string]any{
-				"type":        events.EventManifestSealed,
-				"manifest_id": req.ManifestID,
-				"supplier_id": s.supplierID,
-				"state":       payloadManifestStateSealed,
-				"route_id":    routeIDForManifest(manifest),
-				"driver_id":   manifest.DriverID,
-				"vehicle_id":  manifest.VehicleID,
-				"order_count": manifest.StopCount,
-				"timestamp":   manifest.UpdatedAt,
+			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
+				BaseEvent:   events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
+				ManifestID:  req.ManifestID,
+				SupplierID:  s.supplierID,
+				State:       payloadManifestStateSealed,
+				RouteID:     routeIDForManifest(manifest),
+				DriverID:    manifest.DriverID,
+				VehicleID:   manifest.VehicleID,
+				OrderCount:  manifest.StopCount,
 			})
 		})
 		s.mu.Unlock()

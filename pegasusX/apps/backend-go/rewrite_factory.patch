@@ -1,0 +1,30 @@
+--- a/factory/service.go
++++ b/factory/service.go
+@@ -685,7 +685,7 @@
+ }
+ 
+-func (s *Service) manifestOutboxFields(manifest ManifestRow, eventType string) map[string]any {
+-	return map[string]any{
+-		"type":        eventType,
+-		"manifest_id": manifest.ManifestID,
+-		"supplier_id": s.supplierID,
+-		"factory_id":  s.factoryNodeID,
+-		"state":       manifest.State,
+-		"driver_id":   manifest.DriverID,
+-		"vehicle_id":  manifest.VehicleID,
+-		"order_count": manifest.TransferCnt,
+-		"route_id":    routeIDForManifest(manifest),
+-		"timestamp":   s.now().Format(time.RFC3339Nano),
++func (s *Service) manifestOutboxFields(manifest ManifestRow, eventType string) events.ManifestEvent {
++	return events.ManifestEvent{
++		BaseEvent:     events.BaseEvent{Type: eventType},
++		ManifestID:    manifest.ManifestID,
++		SupplierID:    s.supplierID,
++		FactoryID:     s.factoryNodeID,
++		State:         manifest.State,
++		DriverID:      manifest.DriverID,
++		VehicleID:     manifest.VehicleID,
++		TransferCount: manifest.TransferCnt,
++		RouteID:       routeIDForManifest(manifest),
+ 	}
+ }

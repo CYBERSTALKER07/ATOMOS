@@ -700,18 +700,17 @@ func (s *Service) broadcastFactoryEvent(ctx context.Context, eventType string, d
 	}
 }
 
-func (s *Service) manifestOutboxFields(manifest ManifestRow, eventType string) map[string]any {
-	return map[string]any{
-		"type":        eventType,
-		"manifest_id": manifest.ManifestID,
-		"supplier_id": s.supplierID,
-		"factory_id":  s.factoryNodeID,
-		"state":       manifest.State,
-		"driver_id":   manifest.DriverID,
-		"vehicle_id":  manifest.VehicleID,
-		"order_count": manifest.TransferCnt,
-		"route_id":    routeIDForManifest(manifest),
-		"timestamp":   s.now().Format(time.RFC3339Nano),
+func (s *Service) manifestOutboxFields(manifest ManifestRow, eventType string) events.ManifestEvent {
+	return events.ManifestEvent{
+		BaseEvent:     events.BaseEvent{Type: eventType},
+		ManifestID:    manifest.ManifestID,
+		SupplierID:    s.supplierID,
+		FactoryID:     s.factoryNodeID,
+		State:         manifest.State,
+		DriverID:      manifest.DriverID,
+		VehicleID:     manifest.VehicleID,
+		TransferCount: manifest.TransferCnt,
+		RouteID:       routeIDForManifest(manifest),
 	}
 }
 
@@ -983,8 +982,8 @@ func (s *Service) handleManifestTransition(w http.ResponseWriter, r *http.Reques
 			return nil
 		}
 		payload := s.manifestOutboxFields(manifest, eventType)
-		payload["reason"] = strings.TrimSpace(req.Reason)
-		payload["action"] = action
+		payload.Reason = strings.TrimSpace(req.Reason)
+		payload.Action = action
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifest.ManifestID, events.TopicMain, payload)
 	})
 	if err != nil {
@@ -1179,17 +1178,16 @@ func (s *Service) HandleDispatch(w http.ResponseWriter, r *http.Request) {
 		selectedCount = len(selected)
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifest.ManifestID, events.TopicMain, map[string]any{
-			"type":            events.EventManifestDraftCreated,
-			"manifest_id":     manifest.ManifestID,
-			"supplier_id":     s.supplierID,
-			"factory_id":      s.factoryNodeID,
-			"route_id":        routeIDForManifest(manifest),
-			"transfer_count":  manifest.TransferCnt,
-			"total_volume_vu": manifest.TotalVolumeVU,
-			"driver_id":       manifest.DriverID,
-			"vehicle_id":      manifest.VehicleID,
-			"timestamp":       now,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifest.ManifestID, events.TopicMain, events.ManifestEvent{
+			BaseEvent:     events.BaseEvent{Type: events.EventManifestDraftCreated},
+			ManifestID:    manifest.ManifestID,
+			SupplierID:    s.supplierID,
+			FactoryID:     s.factoryNodeID,
+			RouteID:       routeIDForManifest(manifest),
+			TransferCount: manifest.TransferCnt,
+			TotalVolumeVU: manifest.TotalVolumeVU,
+			DriverID:      manifest.DriverID,
+			VehicleID:     manifest.VehicleID,
 		})
 	})
 	if err != nil {
@@ -1344,19 +1342,18 @@ func (s *Service) HandleManifestRebalance(w http.ResponseWriter, r *http.Request
 		s.manifestReassignments[req.ManifestID] = append(s.manifestReassignments[req.ManifestID], reassign)
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, map[string]any{
-			"type":            events.EventManifestRebalanced,
-			"manifest_id":     req.ManifestID,
-			"transfer_id":     req.TransferID,
-			"supplier_id":     s.supplierID,
-			"factory_id":      s.factoryNodeID,
-			"from_driver_id":  reassign.FromDriverID,
-			"to_driver_id":    reassign.ToDriverID,
-			"from_vehicle_id": reassign.FromVehicleID,
-			"to_vehicle_id":   reassign.ToVehicleID,
-			"depth":           reassign.Depth,
-			"reason":          reassign.Reason,
-			"timestamp":       reassign.ReassignedAt,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
+			BaseEvent:     events.BaseEvent{Type: events.EventManifestRebalanced},
+			ManifestID:    req.ManifestID,
+			TransferID:    req.TransferID,
+			SupplierID:    s.supplierID,
+			FactoryID:     s.factoryNodeID,
+			FromDriverID:  reassign.FromDriverID,
+			ToDriverID:    reassign.ToDriverID,
+			FromVehicleID: reassign.FromVehicleID,
+			ToVehicleID:   reassign.ToVehicleID,
+			Depth:         reassign.Depth,
+			Reason:        reassign.Reason,
 		})
 	})
 	if err != nil {
@@ -1496,29 +1493,27 @@ func (s *Service) HandleManifestCancelTransfer(w http.ResponseWriter, r *http.Re
 		s.manifestExceptions = append(s.manifestExceptions, exception)
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
-		if err := outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, map[string]any{
-			"type":          events.EventManifestOrderException,
-			"manifest_id":   req.ManifestID,
-			"transfer_id":   req.TransferID,
-			"supplier_id":   s.supplierID,
-			"factory_id":    s.factoryNodeID,
-			"reason":        exception.Reason,
-			"attempt_count": exception.AttemptCount,
-			"escalated":     exception.Escalated,
-			"timestamp":     exception.CreatedAt,
+		if err := outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
+			BaseEvent:    events.BaseEvent{Type: events.EventManifestOrderException},
+			ManifestID:   req.ManifestID,
+			TransferID:   req.TransferID,
+			SupplierID:   s.supplierID,
+			FactoryID:    s.factoryNodeID,
+			Reason:       exception.Reason,
+			AttemptCount: exception.AttemptCount,
+			Escalated:    exception.Escalated,
 		}); err != nil {
 			return err
 		}
 		if exception.Escalated {
-			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, map[string]any{
-				"type":          events.EventManifestDLQEscalation,
-				"manifest_id":   req.ManifestID,
-				"transfer_id":   req.TransferID,
-				"supplier_id":   s.supplierID,
-				"factory_id":    s.factoryNodeID,
-				"reason":        exception.Reason,
-				"attempt_count": exception.AttemptCount,
-				"timestamp":     exception.CreatedAt,
+			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
+				BaseEvent:    events.BaseEvent{Type: events.EventManifestDLQEscalation},
+				ManifestID:   req.ManifestID,
+				TransferID:   req.TransferID,
+				SupplierID:   s.supplierID,
+				FactoryID:    s.factoryNodeID,
+				Reason:       exception.Reason,
+				AttemptCount: exception.AttemptCount,
 			})
 		}
 		return nil
@@ -1631,13 +1626,12 @@ func (s *Service) HandleManifestCancel(w http.ResponseWriter, r *http.Request) {
 		s.appendTransitionLocked(req.ManifestID, "CANCEL", fromState, manifestStateCancelled, req.Reason)
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, map[string]any{
-			"type":        events.EventManifestCancelled,
-			"manifest_id": req.ManifestID,
-			"supplier_id": s.supplierID,
-			"factory_id":  s.factoryNodeID,
-			"reason":      strings.TrimSpace(req.Reason),
-			"timestamp":   now,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventManifestCancelled},
+			ManifestID: req.ManifestID,
+			SupplierID: s.supplierID,
+			FactoryID:  s.factoryNodeID,
+			Reason:     strings.TrimSpace(req.Reason),
 		})
 	})
 	if err != nil {

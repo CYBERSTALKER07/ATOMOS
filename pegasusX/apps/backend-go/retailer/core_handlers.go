@@ -184,8 +184,8 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 	}
 	ret.UpdatedAt = s.now()
 	if err := s.repo.UpdateRetailer(r.Context(), ret, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(r.Context(), txn, events.AggregateRetailer, ret.RetailerID, events.TopicMain, retailerRegisteredEvent{
-			Type:        events.EventRetailerRegistered,
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateRetailer, ret.RetailerID, events.TopicMain, events.RetailerEvent{
+			BaseEvent:   events.BaseEvent{Type: events.EventRetailerRegistered, Timestamp: ret.UpdatedAt.Format(time.RFC3339Nano)},
 			RetailerID:  ret.RetailerID,
 			Phone:       ret.Phone,
 			Name:        ret.Name,
@@ -194,7 +194,6 @@ func (s *Service) handleUpdateProfile(w http.ResponseWriter, r *http.Request, re
 			Lng:         ret.Lng,
 			H3Cell:      ret.H3Cell,
 			CountryCode: ret.CountryCode,
-			Timestamp:   ret.UpdatedAt.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "persist_retailer_failed"})

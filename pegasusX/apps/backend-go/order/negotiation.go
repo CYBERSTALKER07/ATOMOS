@@ -22,17 +22,6 @@ type ProposedNegotiationItem struct {
 	ProposedQty int64  `json:"proposed_qty"`
 }
 
-type negotiationEventPayload struct {
-	Type       string `json:"type"`
-	ProposalID string `json:"proposal_id,omitempty"`
-	OrderID    string `json:"order_id"`
-	DriverID   string `json:"driver_id,omitempty"`
-	SupplierID string `json:"supplier_id,omitempty"`
-	RetailerID string `json:"retailer_id,omitempty"`
-	Action     string `json:"action,omitempty"`
-	Resolution string `json:"resolution,omitempty"`
-	Timestamp  string `json:"timestamp"`
-}
 
 // HandleProposeNegotiation is POST /v1/delivery/negotiate (DRIVER).
 func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Request) {
@@ -113,14 +102,13 @@ func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Reques
 		}
 
 		buf := &spannerTxnBuffer{}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, req.OrderID, events.TopicMain, negotiationEventPayload{
-			Type:       events.EventNegotiationProposed,
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, req.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventNegotiationProposed, Timestamp: now.Format(time.RFC3339Nano)},
 			ProposalID: proposalID,
 			OrderID:    req.OrderID,
 			DriverID:   driverID,
 			SupplierID: supplierID,
 			RetailerID: retailerID,
-			Timestamp:  now.Format(time.RFC3339Nano),
 		}); err != nil {
 			return err
 		}
@@ -149,14 +137,13 @@ func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	s.broadcastNegotiation(ctx, supplierID, retailerID, driverID, negotiationEventPayload{
-		Type:       events.EventNegotiationProposed,
+	s.broadcastNegotiation(ctx, supplierID, retailerID, driverID, events.OrderEvent{
+		BaseEvent:  events.BaseEvent{Type: events.EventNegotiationProposed, Timestamp: now.Format(time.RFC3339Nano)},
 		ProposalID: proposalID,
 		OrderID:    req.OrderID,
 		DriverID:   driverID,
 		SupplierID: supplierID,
 		RetailerID: retailerID,
-		Timestamp:  now.Format(time.RFC3339Nano),
 	})
 
 	writeJSON(w, http.StatusOK, map[string]string{
@@ -287,8 +274,8 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 		}
 
 		buf := &spannerTxnBuffer{}
-		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, negotiationEventPayload{
-			Type:       events.EventNegotiationResolved,
+		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, orderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:  events.BaseEvent{Type: events.EventNegotiationResolved, Timestamp: now.Format(time.RFC3339Nano)},
 			ProposalID: req.ProposalID,
 			OrderID:    orderID,
 			SupplierID: supplierID,
@@ -296,7 +283,6 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 			DriverID:   driverID,
 			Action:     req.Action,
 			Resolution: req.Resolution,
-			Timestamp:  now.Format(time.RFC3339Nano),
 		}); err != nil {
 			return err
 		}
@@ -314,8 +300,8 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	s.broadcastNegotiation(ctx, supplierID, retailerID, driverID, negotiationEventPayload{
-		Type:       events.EventNegotiationResolved,
+	s.broadcastNegotiation(ctx, supplierID, retailerID, driverID, events.OrderEvent{
+		BaseEvent:  events.BaseEvent{Type: events.EventNegotiationResolved, Timestamp: now.Format(time.RFC3339Nano)},
 		ProposalID: req.ProposalID,
 		OrderID:    orderID,
 		DriverID:   driverID,
@@ -323,7 +309,6 @@ func (s *Service) HandleResolveNegotiation(w http.ResponseWriter, r *http.Reques
 		RetailerID: retailerID,
 		Action:     req.Action,
 		Resolution: req.Resolution,
-		Timestamp:  now.Format(time.RFC3339Nano),
 	})
 	s.invalidateOrderCache(ctx, orderID)
 
@@ -370,7 +355,7 @@ func applyNegotiatedLineItems(existing []LineItem, proposed []ProposedNegotiatio
 	return updated, total, nil
 }
 
-func (s *Service) broadcastNegotiation(ctx context.Context, supplierID, retailerID, driverID string, payload negotiationEventPayload) {
+func (s *Service) broadcastNegotiation(ctx context.Context, supplierID, retailerID, driverID string, payload events.OrderEvent) {
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return

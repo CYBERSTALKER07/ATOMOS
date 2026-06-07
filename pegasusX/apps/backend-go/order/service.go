@@ -683,8 +683,8 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 	}
 
 	err = s.repo.CreateOrder(ctx, &o, func(txn outbox.TxnBuffer) error {
-		if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, o.OrderID, events.TopicMain, orderCreatedEvent{
-			Type:                  events.EventOrderCreated,
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, o.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:             events.BaseEvent{Type: events.EventOrderCreated, Timestamp: o.CreatedAt.Format(time.RFC3339Nano)},
 			OrderID:               o.OrderID,
 			SupplierID:            o.SupplierID,
 			RetailerID:            o.RetailerID,
@@ -700,8 +700,7 @@ func (s *Service) Create(ctx context.Context, retailerID string, req CreateReque
 			RequestedDeliveryDate: formatOptionalRFC3339(o.RequestedDeliveryDate),
 			ReceivingWindowOpen:   o.ReceivingWindowOpen,
 			ReceivingWindowClose:  o.ReceivingWindowClose,
-			LineItems:             append([]LineItem(nil), o.LineItems...),
-			Timestamp:             o.CreatedAt.Format(time.RFC3339Nano),
+			LineItems:             o.LineItems,
 		}); err != nil {
 			return err
 		}
@@ -807,8 +806,8 @@ func (s *Service) ConfirmAIOrder(ctx context.Context, retailerID string, req Con
 	current.DecisionBy = strings.TrimSpace(retailerID)
 	current.UpdatedAt = decisionAt
 	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, orderStatusChangedEvent{
-			Type:                  events.EventOrderStatusChanged,
+		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:             events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: current.UpdatedAt.Format(time.RFC3339Nano)},
 			OrderID:               current.OrderID,
 			SupplierID:            current.SupplierID,
 			RetailerID:            current.RetailerID,
@@ -820,7 +819,6 @@ func (s *Service) ConfirmAIOrder(ctx context.Context, retailerID string, req Con
 			OrderSource:           string(current.Source),
 			ConfirmationStatus:    string(current.ConfirmationStatus),
 			RequestedDeliveryDate: formatOptionalRFC3339(current.RequestedDeliveryDate),
-			Timestamp:             current.UpdatedAt.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("confirm ai order %s: %w", orderID, err)
@@ -857,8 +855,8 @@ func (s *Service) RejectAIOrder(ctx context.Context, retailerID string, req Reje
 	current.AutoConfirmAt = nil
 	current.UpdatedAt = decisionAt
 	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, orderStatusChangedEvent{
-			Type:                  events.EventOrderStatusChanged,
+		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:             events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: current.UpdatedAt.Format(time.RFC3339Nano)},
 			OrderID:               current.OrderID,
 			SupplierID:            current.SupplierID,
 			RetailerID:            current.RetailerID,
@@ -870,7 +868,6 @@ func (s *Service) RejectAIOrder(ctx context.Context, retailerID string, req Reje
 			OrderSource:           string(current.Source),
 			ConfirmationStatus:    string(current.ConfirmationStatus),
 			RequestedDeliveryDate: formatOptionalRFC3339(current.RequestedDeliveryDate),
-			Timestamp:             current.UpdatedAt.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("reject ai order %s: %w", orderID, err)
@@ -915,8 +912,8 @@ func (s *Service) EditPreorder(ctx context.Context, retailerID string, req EditP
 	current.RequestedDeliveryDate = requestedDeliveryDate
 	current.UpdatedAt = s.now()
 	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, orderStatusChangedEvent{
-			Type:                  events.EventOrderStatusChanged,
+		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:             events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: current.UpdatedAt.Format(time.RFC3339Nano)},
 			OrderID:               current.OrderID,
 			SupplierID:            current.SupplierID,
 			RetailerID:            current.RetailerID,
@@ -928,7 +925,6 @@ func (s *Service) EditPreorder(ctx context.Context, retailerID string, req EditP
 			OrderSource:           string(current.Source),
 			ConfirmationStatus:    string(current.ConfirmationStatus),
 			RequestedDeliveryDate: formatOptionalRFC3339(current.RequestedDeliveryDate),
-			Timestamp:             current.UpdatedAt.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("edit preorder %s: %w", orderID, err)
@@ -963,8 +959,8 @@ func (s *Service) ConfirmPreorder(ctx context.Context, retailerID string, req Co
 	current.DecisionBy = strings.TrimSpace(retailerID)
 	current.UpdatedAt = decisionAt
 	if err := s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
-		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, orderStatusChangedEvent{
-			Type:                  events.EventOrderStatusChanged,
+		return outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:             events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: current.UpdatedAt.Format(time.RFC3339Nano)},
 			OrderID:               current.OrderID,
 			SupplierID:            current.SupplierID,
 			RetailerID:            current.RetailerID,
@@ -976,7 +972,6 @@ func (s *Service) ConfirmPreorder(ctx context.Context, retailerID string, req Co
 			OrderSource:           string(current.Source),
 			ConfirmationStatus:    string(current.ConfirmationStatus),
 			RequestedDeliveryDate: formatOptionalRFC3339(current.RequestedDeliveryDate),
-			Timestamp:             current.UpdatedAt.Format(time.RFC3339Nano),
 		})
 	}); err != nil {
 		return RetailerOrderLifecycleResponse{}, fmt.Errorf("confirm preorder %s: %w", orderID, err)
@@ -1075,8 +1070,8 @@ func (s *Service) AutoConfirmDueOrders(ctx context.Context, limit int) error {
 		updated.AutoConfirmAt = nil
 		updated.UpdatedAt = decisionAt
 		if updateErr := s.repo.UpdateOrder(ctx, updated, nil, func(txn outbox.TxnBuffer) error {
-			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, updated.OrderID, events.TopicMain, orderStatusChangedEvent{
-				Type:                  events.EventOrderStatusChanged,
+			return outbox.EmitJSON(ctx, txn, events.AggregateOrder, updated.OrderID, events.TopicMain, events.OrderEvent{
+				BaseEvent:             events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: updated.UpdatedAt.Format(time.RFC3339Nano)},
 				OrderID:               updated.OrderID,
 				SupplierID:            updated.SupplierID,
 				RetailerID:            updated.RetailerID,
@@ -1088,7 +1083,6 @@ func (s *Service) AutoConfirmDueOrders(ctx context.Context, limit int) error {
 				OrderSource:           string(updated.Source),
 				ConfirmationStatus:    string(updated.ConfirmationStatus),
 				RequestedDeliveryDate: formatOptionalRFC3339(updated.RequestedDeliveryDate),
-				Timestamp:             updated.UpdatedAt.Format(time.RFC3339Nano),
 			})
 		}); updateErr != nil {
 			s.log.Warn("auto confirm preorder failed", "order_id", updated.OrderID, "err", updateErr)
@@ -1155,8 +1149,8 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 	}
 
 	err = s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
-		if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, orderStatusChangedEvent{
-			Type:           events.EventOrderStatusChanged,
+		if err := outbox.EmitJSON(ctx, txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent:      events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: current.UpdatedAt.Format(time.RFC3339Nano)},
 			OrderID:        current.OrderID,
 			SupplierID:     current.SupplierID,
 			RetailerID:     current.RetailerID,
@@ -1166,7 +1160,6 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 			Reason:         strings.TrimSpace(req.Reason),
 			ActorRole:      string(claims.Role),
 			ActorID:        actorID,
-			Timestamp:      current.UpdatedAt.Format(time.RFC3339Nano),
 		}); err != nil {
 			return err
 		}
@@ -1618,18 +1611,20 @@ func (s *Service) persistDriverTransition(ctx context.Context, claims auth.Claim
 }
 
 func emitOrderStatusChanged(ctx context.Context, txn outbox.TxnBuffer, params orderStatusEmitParams) error {
-	return outbox.EmitJSON(ctx, txn, events.AggregateOrder, params.Order.OrderID, events.TopicMain, orderStatusChangedEvent{
-		Type:           events.EventOrderStatusChanged,
-		OrderID:        params.Order.OrderID,
-		SupplierID:     params.Order.SupplierID,
-		RetailerID:     params.Order.RetailerID,
-		DriverID:       params.Order.DriverID,
-		PreviousStatus: string(params.PreviousStatus),
-		Status:         string(params.Order.Status),
-		Reason:         params.Reason,
-		ActorRole:      string(params.Claims.Role),
-		ActorID:        params.ActorID,
-		Timestamp:      params.Order.UpdatedAt.Format(time.RFC3339Nano),
+	return outbox.EmitJSON(ctx, txn, events.AggregateOrder, params.Order.OrderID, events.TopicMain, events.OrderEvent{
+		BaseEvent:             events.BaseEvent{Type: events.EventOrderStatusChanged, Timestamp: params.Order.UpdatedAt.Format(time.RFC3339Nano)},
+		OrderID:               params.Order.OrderID,
+		SupplierID:            params.Order.SupplierID,
+		RetailerID:            params.Order.RetailerID,
+		DriverID:              params.Order.DriverID,
+		PreviousStatus:        string(params.PreviousStatus),
+		Status:                string(params.Order.Status),
+		Reason:                params.Reason,
+		ActorRole:             string(params.Claims.Role),
+		ActorID:               params.ActorID,
+		OrderSource:           string(params.Order.Source),
+		ConfirmationStatus:    string(params.Order.ConfirmationStatus),
+		RequestedDeliveryDate: formatOptionalRFC3339(params.Order.RequestedDeliveryDate),
 	})
 }
 
@@ -1926,43 +1921,7 @@ func (s *Service) writeOrderMutationError(w http.ResponseWriter, operation strin
 
 // ── wire shapes ────────────────────────────────────────────────────────────
 
-type orderCreatedEvent struct {
-	Type                  string     `json:"type"`
-	OrderID               string     `json:"order_id"`
-	SupplierID            string     `json:"supplier_id"`
-	RetailerID            string     `json:"retailer_id"`
-	WarehouseID           string     `json:"warehouse_id,omitempty"`
-	Status                string     `json:"status"`
-	OrderSource           string     `json:"order_source,omitempty"`
-	ConfirmationStatus    string     `json:"confirmation_status,omitempty"`
-	TotalMinor            int64      `json:"total_minor"`
-	Currency              string     `json:"currency"`
-	H3Cell                string     `json:"h3_cell"`
-	Lat                   float64    `json:"lat"`
-	Lng                   float64    `json:"lng"`
-	RequestedDeliveryDate string     `json:"requested_delivery_date,omitempty"`
-	ReceivingWindowOpen   string     `json:"receiving_window_open,omitempty"`
-	ReceivingWindowClose  string     `json:"receiving_window_close,omitempty"`
-	LineItems             []LineItem `json:"line_items,omitempty"`
-	Timestamp             string     `json:"timestamp"`
-}
 
-type orderStatusChangedEvent struct {
-	Type                  string `json:"type"`
-	OrderID               string `json:"order_id"`
-	SupplierID            string `json:"supplier_id"`
-	RetailerID            string `json:"retailer_id"`
-	DriverID              string `json:"driver_id,omitempty"`
-	PreviousStatus        string `json:"previous_status"`
-	Status                string `json:"status"`
-	Reason                string `json:"reason,omitempty"`
-	ActorRole             string `json:"actor_role"`
-	ActorID               string `json:"actor_id,omitempty"`
-	OrderSource           string `json:"order_source,omitempty"`
-	ConfirmationStatus    string `json:"confirmation_status,omitempty"`
-	RequestedDeliveryDate string `json:"requested_delivery_date,omitempty"`
-	Timestamp             string `json:"timestamp"`
-}
 
 type wsEnvelope struct {
 	Type      string `json:"type"`
