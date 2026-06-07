@@ -458,7 +458,7 @@ function QuickAction({
   label,
 }: {
   href: string;
-  icon: any;
+  icon: React.ElementType;
   label: string;
 }) {
   return (
@@ -487,7 +487,7 @@ function KpiCard({
   label: string;
   value: number;
   sub: string;
-  icon: any;
+  icon: React.ReactNode;
 }) {
   return (
     <BentoCard interactive={false}>

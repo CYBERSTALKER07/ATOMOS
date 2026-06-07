@@ -112,6 +112,10 @@ export default function RetailerLoginPage() {
       });
 
       if (!res.ok) {
+        if (res.status === 404) {
+          router.push(`/auth/register?phone=${encodeURIComponent(normalizedPhone)}`);
+          return;
+        }
         if (res.status === 401 || res.status === 403) {
           throw new Error("Authentication failed. Check credentials.");
         }

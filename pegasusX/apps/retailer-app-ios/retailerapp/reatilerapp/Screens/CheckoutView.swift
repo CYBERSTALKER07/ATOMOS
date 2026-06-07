@@ -17,9 +17,8 @@ struct CheckoutView: View {
 
     @State private var selectedPaymentId = "GlobalPay"
     @State private var paymentOptions: [CheckoutPaymentOption] = [
-        CheckoutPaymentOption(id: "GlobalPay", label: "GlobalPay", isToken: false),
-        CheckoutPaymentOption(id: "Adyen", label: "Adyen", isToken: false),
-        CheckoutPaymentOption(id: "Cash", label: "Cash on Delivery", isToken: false)
+        CheckoutPaymentOption(id: "Cash", label: "Cash on Delivery", isToken: false),
+        CheckoutPaymentOption(id: "GlobalPay", label: "GlobalPay", isToken: false)
     ]
     @State private var showPaymentPicker = false
     @State private var isSubmitting = false
@@ -302,9 +301,8 @@ struct CheckoutView: View {
                 )
             }
             paymentOptions = tokenOptions + [
-                CheckoutPaymentOption(id: "GlobalPay", label: "GlobalPay", isToken: false),
-                CheckoutPaymentOption(id: "Adyen", label: "Adyen", isToken: false),
-                CheckoutPaymentOption(id: "Cash", label: "Cash on Delivery", isToken: false)
+                CheckoutPaymentOption(id: "Cash", label: "Cash on Delivery", isToken: false),
+                CheckoutPaymentOption(id: "GlobalPay", label: "GlobalPay", isToken: false)
             ]
         } catch {
             print("Failed to fetch cards")

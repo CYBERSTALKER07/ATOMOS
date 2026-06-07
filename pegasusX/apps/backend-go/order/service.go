@@ -166,11 +166,18 @@ type WarehouseResolver interface {
 	ResolveNearestWarehouseID(ctx context.Context, supplierID string, retailerLat, retailerLng float64) (string, error)
 }
 
+// PaymentCapturer allows the order service to trigger synchronous card captures.
+type PaymentCapturer interface {
+	CaptureCardPayment(ctx context.Context, orderID string, amountMinor int64, currency string) error
+}
+
 // Service wires repository + cache + ws hubs + supplier scope.
 type Service struct {
-	repo          Repository
-	cache         *cache.Cache
-	warehouse     WarehouseResolver
+	repo            Repository
+	cache           *cache.Cache
+	warehouse       WarehouseResolver
+	paymentCapturer PaymentCapturer
+
 	supplierID    string
 	supplierName  string
 	currency      string
@@ -220,22 +227,27 @@ func NewService(c ServiceConfig) *Service {
 		grace = 5 * time.Minute
 	}
 	return &Service{
-		repo:          c.Repo,
-		cache:         c.Cache,
-		warehouse:     c.Warehouse,
-		supplierID:    c.SupplierID,
-		supplierName:  strings.TrimSpace(c.SupplierName),
-		currency:      c.Currency,
-		retailerHub:   c.RetailerHub,
-		supplierHub:   c.SupplierHub,
-		driverHub:     c.DriverHub,
-		spannerClient: c.SpannerClient,
-		shopGrace:     c.ShopClosedGrace,
-		log:           c.Log,
-		now:           c.Now,
-		newID:         c.NewID,
-		jwtSecret:     c.JWTSecret,
+		repo:            c.Repo,
+		cache:           c.Cache,
+		warehouse:       c.Warehouse,
+		supplierID:      c.SupplierID,
+		supplierName:    strings.TrimSpace(c.SupplierName),
+		currency:        c.Currency,
+		retailerHub:     c.RetailerHub,
+		supplierHub:     c.SupplierHub,
+		driverHub:       c.DriverHub,
+		spannerClient:   c.SpannerClient,
+		shopGrace:       c.ShopClosedGrace,
+		log:             c.Log,
+		now:             c.Now,
+		newID:           c.NewID,
+		jwtSecret:       c.JWTSecret,
 	}
+}
+
+// SetPaymentCapturer sets the capturer after construction.
+func (s *Service) SetPaymentCapturer(pc PaymentCapturer) {
+	s.paymentCapturer = pc
 }
 
 // CreateRequest is the wire shape for POST /v1/order/create.
@@ -1434,6 +1446,20 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 	}
 	if !result.NoChange {
 		s.broadcastOrderFinalized(ctx, result.Order)
+
+		// Trigger card payment capture if a capturer is configured and the order is non-zero.
+		// CompleteOrder is only called for non-cash completions.
+		if s.paymentCapturer != nil && result.Order.TotalMinor > 0 {
+			go func() {
+				// Fire-and-forget capture in a background context so the driver app is not blocked.
+				captureCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				err := s.paymentCapturer.CaptureCardPayment(captureCtx, result.Order.OrderID, result.Order.TotalMinor, result.Order.Currency)
+				if err != nil {
+					s.log.Error("failed to capture card payment", "order_id", result.Order.OrderID, "error", err)
+				}
+			}()
+		}
 	}
 
 	return driverOrderResponse(result.Order, "Delivery finalized."), nil

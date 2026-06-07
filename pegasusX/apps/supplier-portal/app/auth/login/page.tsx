@@ -53,7 +53,11 @@ export default function SupplierLoginPage() {
         persistSession(resp.token, resp.refresh_token);
       }
       router.replace(resp.is_configured ? "/dashboard" : "/setup/billing");
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.status === 404) {
+        router.push(`/auth/register?phone=${encodeURIComponent(dialCode + phoneLocal)}`);
+        return;
+      }
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);

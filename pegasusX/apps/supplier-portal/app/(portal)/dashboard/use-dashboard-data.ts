@@ -98,13 +98,18 @@ function mapDashboard(resp: SupplierDashboardResponse): DashboardData {
 
 export function useDashboardData() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const resp = await api.getSupplierDashboard();
-      setData(mapDashboard(resp));
+      const [dashResp, profResp] = await Promise.all([
+        api.getSupplierDashboard(),
+        api.getSupplierProfile()
+      ]);
+      setData(mapDashboard(dashResp));
+      setProfile(profResp);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "load_dashboard_failed");
@@ -138,8 +143,11 @@ export function useDashboardData() {
     recentEvents: [],
   };
 
+  const isPaymentConfigured = profile?.selected_gateways && profile.selected_gateways.length > 0;
+
   return {
     ...(data ?? empty),
+    isPaymentConfigured,
     loading: loading && !data,
     error,
   };

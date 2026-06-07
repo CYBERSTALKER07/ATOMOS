@@ -532,7 +532,6 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Currency:      cfg.SeedSupplierCurrency,
 		JWTSecret:     cfg.JWTSecret,
 		JWTIssuer:     cfg.JWTIssuer,
-		FirebaseVerifier: firebaseVerifier,
 	})
 	payloadSvc := payload.NewService(payload.ServiceConfig{
 		Repo:        payloadRepo,
@@ -545,7 +544,6 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Currency:    cfg.SeedSupplierCurrency,
 		JWTSecret:   cfg.JWTSecret,
 		JWTIssuer:   cfg.JWTIssuer,
-		FirebaseVerifier: firebaseVerifier,
 	})
 	payloadSvc.SetPortalManifestLister(&supplier.ManifestLister{Service: supplierSvc})
 	payloadSvc.WarmManifestCache(ctx)
@@ -628,6 +626,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	})
 	paymentSvc.BindCartCheckout(orderSvc)
 	paymentSvc.BindOrderCheckoutReader(orderSvc)
+	orderSvc.SetPaymentCapturer(paymentSvc)
 	var warehouseRepo warehouse.Repository
 	if spannerClient != nil {
 		warehouseRepo = warehouse.NewSpannerRepository(spannerClient)

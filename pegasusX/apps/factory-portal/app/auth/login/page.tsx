@@ -53,8 +53,12 @@ export default function FactoryLoginPage() {
       });
 
       if (!res.ok) {
+        if (res.status === 404) {
+          router.push(`/auth/register?phone=${encodeURIComponent(phone)}`);
+          return;
+        }
         const errorData = await res.json().catch(() => null);
-        throw new Error(errorData?.message || "Login failed");
+        throw new Error(errorData?.message || errorData?.error || "Login failed");
       }
       
       const data = await res.json();

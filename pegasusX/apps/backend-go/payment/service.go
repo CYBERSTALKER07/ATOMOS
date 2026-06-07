@@ -629,6 +629,18 @@ func (s *Service) HandleChargebackReversal(w http.ResponseWriter, r *http.Reques
 	_, _ = w.Write(respBytes)
 }
 
+// CaptureCardPayment synchronously executes the capture action for a completed card-based order.
+func (s *Service) CaptureCardPayment(ctx context.Context, orderID string, amountMinor int64, currency string) error {
+	_, err := s.execution.Execute(ctx, ExecutionRequest{
+		Gateway:     "GLOBALPAY",
+		Action:      ExecutionActionCheckoutCapture,
+		OrderID:     orderID,
+		AmountMinor: amountMinor,
+		Currency:    currency,
+	})
+	return err
+}
+
 // HandleLedger serves GET /v1/payment/ledger.
 func (s *Service) HandleLedger(w http.ResponseWriter, r *http.Request) {
 	const endpoint = "/v1/payment/ledger"

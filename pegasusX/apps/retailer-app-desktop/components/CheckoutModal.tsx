@@ -47,13 +47,42 @@ export default function CheckoutModal({
   total,
 }: CheckoutModalProps) {
   const { items, clearCart } = useCart();
-  const [method, setMethod] = useState<"global_pay" | "adyen" | "airwallex" | "cash">("global_pay");
+  const [method, setMethod] = useState<"global_pay" | "cash">("cash");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [degradedBanner, setDegradedBanner] = useState<{ gateway: string; reason: string } | null>(null);
   const [oosItems, setOosItems] = useState<string[]>([]);
+  const [hasCardConfigured, setHasCardConfigured] = useState(false);
+  const [addingCard, setAddingCard] = useState(false);
   const router = useRouter();
   const { subscribe } = useWebSocket();
+
+  useEffect(() => {
+    if (isOpen) {
+      apiFetch("/v1/retailer/cards")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.cards && data.cards.length > 0) {
+            setHasCardConfigured(true);
+          } else {
+            setHasCardConfigured(false);
+          }
+        })
+        .catch(() => setHasCardConfigured(false));
+    }
+  }, [isOpen]);
+
+  const handleSetupCard = async () => {
+    setAddingCard(true);
+    try {
+      await apiFetch("/v1/retailer/cards", { method: "POST" });
+      setHasCardConfigured(true);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAddingCard(false);
+    }
+  };
 
   useEffect(() => {
     const unsub = subscribe("PAYMENT_GATEWAY_DEGRADED", (msg) => {
@@ -252,96 +281,6 @@ export default function CheckoutModal({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <button
-                    disabled={isCardDisabled}
-                    onClick={() => setMethod("global_pay")}
-                    className={`relative p-5 rounded-2xl border text-left transition-all ${isCardDisabled ? "opacity-40 cursor-not-allowed grayscale" : ""} ${
-                      method === "global_pay"
-                        ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5 ring-1 ring-[var(--desk-accent)]"
-                        : "border-[var(--desk-border)] bg-[var(--desk-canvas)] hover:border-[var(--desk-text-tertiary)]"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <CreditCard
-                        size={20}
-                        className={
-                          method === "global_pay"
-                            ? "text-[var(--desk-accent)]"
-                            : "text-[var(--desk-text-tertiary)]"
-                        }
-                      />
-                      {method === "global_pay" && (
-                        <div className="w-2 h-2 rounded-full bg-[var(--desk-accent)] shadow-[0_0_8px_var(--desk-accent)]" />
-                      )}
-                    </div>
-                    <span className="block md-typescale-body-large font-bold text-[var(--desk-text-primary)]">
-                      Global Pay
-                    </span>
-                    <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
-                      Local UZ Cards
-                    </span>
-                  </button>
-
-                  <button
-                    disabled={isCardDisabled}
-                    onClick={() => setMethod("adyen")}
-                    className={`relative p-5 rounded-2xl border text-left transition-all ${isCardDisabled ? "opacity-40 cursor-not-allowed grayscale" : ""} ${
-                      method === "adyen"
-                        ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5 ring-1 ring-[var(--desk-accent)]"
-                        : "border-[var(--desk-border)] bg-[var(--desk-canvas)] hover:border-[var(--desk-text-tertiary)]"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <CreditCard
-                        size={20}
-                        className={
-                          method === "adyen"
-                            ? "text-[var(--desk-accent)]"
-                            : "text-[var(--desk-text-tertiary)]"
-                        }
-                      />
-                      {method === "adyen" && (
-                        <div className="w-2 h-2 rounded-full bg-[var(--desk-accent)] shadow-[0_0_8px_var(--desk-accent)]" />
-                      )}
-                    </div>
-                    <span className="block md-typescale-body-large font-bold text-[var(--desk-text-primary)]">
-                      Adyen
-                    </span>
-                    <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
-                      International Auth
-                    </span>
-                  </button>
-
-                  <button
-                    disabled={isCardDisabled}
-                    onClick={() => setMethod("airwallex")}
-                    className={`relative p-5 rounded-2xl border text-left transition-all ${isCardDisabled ? "opacity-40 cursor-not-allowed grayscale" : ""} ${
-                      method === "airwallex"
-                        ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5 ring-1 ring-[var(--desk-accent)]"
-                        : "border-[var(--desk-border)] bg-[var(--desk-canvas)] hover:border-[var(--desk-text-tertiary)]"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <CreditCard
-                        size={20}
-                        className={
-                          method === "airwallex"
-                            ? "text-[var(--desk-accent)]"
-                            : "text-[var(--desk-text-tertiary)]"
-                        }
-                      />
-                      {method === "airwallex" && (
-                        <div className="w-2 h-2 rounded-full bg-[var(--desk-accent)] shadow-[0_0_8px_var(--desk-accent)]" />
-                      )}
-                    </div>
-                    <span className="block md-typescale-body-large font-bold text-[var(--desk-text-primary)]">
-                      Airwallex
-                    </span>
-                    <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
-                      Cross-border B2B
-                    </span>
-                  </button>
-
-                  <button
                     onClick={() => setMethod("cash")}
                     className={`relative p-5 rounded-2xl border text-left transition-all ${
                       method === "cash"
@@ -369,8 +308,63 @@ export default function CheckoutModal({
                       Physical tender
                     </span>
                   </button>
+
+                  <button
+                    disabled={isCardDisabled}
+                    onClick={() => setMethod("global_pay")}
+                    className={`relative p-5 rounded-2xl border text-left transition-all ${isCardDisabled ? "opacity-40 cursor-not-allowed grayscale" : ""} ${
+                      method === "global_pay"
+                        ? "border-[var(--desk-accent)] bg-[var(--desk-accent)]/5 ring-1 ring-[var(--desk-accent)]"
+                        : "border-[var(--desk-border)] bg-[var(--desk-canvas)] hover:border-[var(--desk-text-tertiary)]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <CreditCard
+                        size={20}
+                        className={
+                          method === "global_pay"
+                            ? "text-[var(--desk-accent)]"
+                            : "text-[var(--desk-text-tertiary)]"
+                        }
+                      />
+                      {method === "global_pay" && (
+                        <div className="w-2 h-2 rounded-full bg-[var(--desk-accent)] shadow-[0_0_8px_var(--desk-accent)]" />
+                      )}
+                    </div>
+                    <span className="block md-typescale-body-large font-bold text-[var(--desk-text-primary)]">
+                      Card (Global Pay)
+                    </span>
+                    <span className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest mt-1 block">
+                      Secure digital payment
+                    </span>
+                  </button>
                 </div>
               </div>
+
+              {method === "global_pay" && !hasCardConfigured && (
+                <div className="p-5 border border-[var(--desk-border)] rounded-2xl bg-[var(--desk-surface-subtle)] space-y-4">
+                  <div>
+                    <h3 className="md-typescale-body-large font-bold text-[var(--desk-text-primary)]">Setup Payment Card</h3>
+                    <p className="md-typescale-body-small text-[var(--desk-text-secondary)] mt-1">
+                      Add a card to your account to enable fast and secure digital payments.
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <input type="text" placeholder="Card Number" className="w-full px-4 py-3 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface)] text-sm" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <input type="text" placeholder="MM/YY" className="w-full px-4 py-3 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface)] text-sm" />
+                      <input type="text" placeholder="CVC" className="w-full px-4 py-3 rounded-xl border border-[var(--desk-border)] bg-[var(--desk-surface)] text-sm" />
+                    </div>
+                    <Button
+                      onPress={handleSetupCard}
+                      isDisabled={addingCard}
+                      className="w-full h-11 bg-[var(--desk-accent)] text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2"
+                    >
+                      {addingCard ? <Loader2 size={18} className="animate-spin" /> : "Save Card"}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {error && (
                 <div className="p-4 bg-red-50 border border-red-100 text-red-600 text-xs font-bold rounded-xl flex items-center gap-3">
@@ -403,9 +397,10 @@ export default function CheckoutModal({
               </div>
               <Button
                 onPress={handleCheckout}
-                isDisabled={loading || items.length === 0}
-                className="h-12 px-8 bg-[var(--desk-text-primary)] text-[var(--desk-surface)] font-bold rounded-xl shadow-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+                isDisabled={loading || items.length === 0 || (method === "global_pay" && !hasCardConfigured)}
+                className="h-12 px-8 bg-[var(--desk-text-primary)] text-[var(--desk-surface)] font-bold rounded-xl shadow-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
+
                 {loading ? (
                   <Loader2 size={18} className="animate-spin" />
                 ) : (

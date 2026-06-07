@@ -49,7 +49,7 @@ func (s *Service) HandleWarehouseLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		if claims.PhoneNumber != expectPhone {
 			// Unregistered phone numbers are BLOCKED pending admin approval.
-			writeJSON(w, http.StatusForbidden, map[string]string{"error": "unregistered_phone_number_awaiting_admin_approval"})
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
 			return
 		}
 	} else {
@@ -68,7 +68,11 @@ func (s *Service) HandleWarehouseLogin(w http.ResponseWriter, r *http.Request) {
 		if expectPIN == "" {
 			expectPIN = "1234"
 		}
-		if phone != expectPhone || pin != expectPIN {
+		if phone != expectPhone {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "user_not_found"})
+			return
+		}
+		if pin != expectPIN {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
 			return
 		}

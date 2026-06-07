@@ -6,7 +6,7 @@ import StatusBadge from "@/components/StatusBadge";
 import { useDashboardData } from "./use-dashboard-data";
 
 export default function DashboardPage() {
-  const { metrics, recentManifests, recentEvents, loading, error } = useDashboardData();
+  const { metrics, recentManifests, recentEvents, isPaymentConfigured, loading, error } = useDashboardData();
 
   const formatCurrency = (minor: number) =>
     new Intl.NumberFormat("en-US", {
@@ -49,8 +49,22 @@ export default function DashboardPage() {
   const vuPct = metrics.fleetVuTotal > 0 ? (metrics.fleetVuUsed / metrics.fleetVuTotal) * 100 : 0;
 
   return (
-    <div className="desk-page">
-      <div className="desk-page-header">
+    <div className="desk-page flex flex-col gap-6">
+      {isPaymentConfigured === false && (
+        <div className="p-4 rounded-xl bg-[var(--desk-danger)]/10 border border-[var(--desk-danger)]/20 flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <h3 className="md-typescale-title-medium text-[var(--desk-danger)] font-medium">Payment Gateway Required</h3>
+            <p className="md-typescale-body-medium text-[var(--desk-danger)]/80">
+              You must set up your payment gateways to receive payments from retailers.
+            </p>
+          </div>
+          <Link href="/settings/billing" className="px-4 py-2 bg-[var(--desk-danger)] text-white rounded-lg text-sm font-medium hover:bg-[var(--desk-danger)]/90 transition-colors">
+            Configure Now
+          </Link>
+        </div>
+      )}
+
+      <div className="desk-page-header !mb-0">
         <div>
           <h1 className="desk-page-title">Overview</h1>
           <p className="desk-page-subtitle">Live operational command center.</p>
