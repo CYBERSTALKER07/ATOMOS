@@ -10,13 +10,13 @@ import (
 
 // AutoOrderSettings is the retailer auto-order configuration DTO.
 type AutoOrderSettings struct {
-	GlobalEnabled       bool               `json:"global_enabled"`
-	AnalyticsStartDate  *string            `json:"analytics_start_date,omitempty"`
-	HasAnyHistory       bool               `json:"has_any_history"`
-	SupplierOverrides   []SupplierOverride   `json:"supplier_overrides"`
-	CategoryOverrides   []CategoryOverride   `json:"category_overrides"`
-	ProductOverrides    []ProductOverride    `json:"product_overrides"`
-	VariantOverrides    []VariantOverride    `json:"variant_overrides"`
+	GlobalEnabled      bool               `json:"global_enabled"`
+	AnalyticsStartDate *string            `json:"analytics_start_date,omitempty"`
+	HasAnyHistory      bool               `json:"has_any_history"`
+	SupplierOverrides  []SupplierOverride `json:"supplier_overrides"`
+	CategoryOverrides  []CategoryOverride `json:"category_overrides"`
+	ProductOverrides   []ProductOverride  `json:"product_overrides"`
+	VariantOverrides   []VariantOverride  `json:"variant_overrides"`
 }
 
 // SupplierOverride toggles auto-order for one supplier.

@@ -54,8 +54,8 @@ func (f *FCMClient) SendDataMessage(ctx context.Context, deviceToken string, dat
 		return fmt.Errorf("fcm no-op or empty token")
 	}
 	message := &messaging.Message{
-		Data:  data,
-		Token: deviceToken,
+		Data:    data,
+		Token:   deviceToken,
 		Android: &messaging.AndroidConfig{Priority: "high"},
 		APNS: &messaging.APNSConfig{
 			Payload: &messaging.APNSPayload{

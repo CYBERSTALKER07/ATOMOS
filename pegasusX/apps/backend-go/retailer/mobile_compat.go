@@ -57,9 +57,9 @@ func (s *Service) HandleCardCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusConflict, map[string]any{
-		"error":            "use_checkout_unified",
-		"message":          "Use POST /v1/checkout/unified for card checkout",
-		"checkout_path":    "/v1/checkout/unified",
+		"error":         "use_checkout_unified",
+		"message":       "Use POST /v1/checkout/unified for card checkout",
+		"checkout_path": "/v1/checkout/unified",
 	})
 }
 
@@ -313,10 +313,10 @@ func demoTrackingOrdersForRetailer(retailerID, supplierID string) []TrackingOrde
 				{ProductID: "prod-milk-1l", ProductName: "Whole Milk 1L", Quantity: 2, UnitPrice: 12000, LineTotal: 24000},
 			},
 			DriverLocation: &TrackingLocation{
-				DriverID: supplierID,
-				Lat:      41.312,
-				Lng:      69.241,
-				Latitude: 41.312,
+				DriverID:  supplierID,
+				Lat:       41.312,
+				Lng:       69.241,
+				Latitude:  41.312,
 				Longitude: 69.241,
 			},
 		},

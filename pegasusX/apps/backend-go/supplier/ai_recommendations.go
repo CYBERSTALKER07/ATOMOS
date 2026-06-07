@@ -86,7 +86,6 @@ type aiRecommendationDecisionResponse struct {
 	Recommendation AIRecommendation `json:"recommendation"`
 }
 
-
 // HandleAIRecommendations supports supplier review and override authority for advisory outputs.
 func (s *Service) HandleAIRecommendations(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {

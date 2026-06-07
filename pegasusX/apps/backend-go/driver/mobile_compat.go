@@ -17,7 +17,7 @@ func demoFleetOrders(driverID string) []map[string]any {
 			"id": "ord_factory_1", "retailer_id": "ret_demo", "retailer_name": "Demo Retailer",
 			"state": "IN_TRANSIT", "total_amount": int64(24000),
 			"delivery_address": "Tashkent, Chilonzor",
-			"latitude": 41.285, "longitude": 69.203,
+			"latitude":         41.285, "longitude": 69.203,
 			"qr_token": "demo-token-ord-1", "payment_gateway": "CASH",
 			"created_at": now, "updated_at": now,
 			"route_id": "route_veh_factory_1", "sequence_index": 1,
@@ -29,7 +29,7 @@ func demoFleetOrders(driverID string) []map[string]any {
 			"id": "ord_factory_2", "retailer_id": "ret_demo", "retailer_name": "Demo Retailer 2",
 			"state": "DISPATCHED", "total_amount": int64(18000),
 			"delivery_address": "Tashkent, Yunusabad",
-			"latitude": 41.335, "longitude": 69.288,
+			"latitude":         41.335, "longitude": 69.288,
 			"qr_token": "demo-token-ord-2", "payment_gateway": "CASH",
 			"created_at": now, "updated_at": now,
 			"route_id": "route_veh_factory_1", "sequence_index": 2,
@@ -376,9 +376,9 @@ func iosRouteManifest(driverID, date string) map[string]any {
 		date = time.Now().UTC().Format("2006-01-02")
 	}
 	return map[string]any{
-		"driver_id":   driverID,
-		"date":        date,
-		"expires_at":  time.Now().UTC().Add(24 * time.Hour).Unix(),
+		"driver_id":  driverID,
+		"date":       date,
+		"expires_at": time.Now().UTC().Add(24 * time.Hour).Unix(),
 		"hashes": map[string]string{
 			"ord_factory_1": "demo-token-ord-1",
 			"ord_factory_2": "demo-token-ord-2",

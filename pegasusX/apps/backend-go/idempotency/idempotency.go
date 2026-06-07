@@ -16,10 +16,10 @@ var ErrConflict = errors.New("idempotency: key reused with different payload")
 
 // Record is what we store per key.
 type Record struct {
-	BodyHash    string
-	StatusCode  int
-	Response    []byte
-	StoredAt    time.Time
+	BodyHash   string
+	StatusCode int
+	Response   []byte
+	StoredAt   time.Time
 }
 
 // Store is the persistence seam. The scaffold ships an in-memory impl; bind

@@ -13,9 +13,9 @@ import (
 
 // Deps is the narrow dependency contract for this routes package.
 type Deps struct {
-	Service             *retailer.Service
-	PaymentService      *payment.Service
-	OrderService        interface {
+	Service        *retailer.Service
+	PaymentService *payment.Service
+	OrderService   interface {
 		HandleShopClosedResponse(http.ResponseWriter, *http.Request)
 	}
 	FirebaseAuthEnabled bool

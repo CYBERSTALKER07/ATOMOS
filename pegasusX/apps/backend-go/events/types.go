@@ -4,8 +4,8 @@ package events
 // These structs enforce consistency across the backend and satisfy the
 // enterprise kafka-event-contracts rules.
 
-// BaseEvent holds fields universal to almost all events, though Type is omitted from 
-// some since it's injected by EmitJSON or the relay header. However, providing it 
+// BaseEvent holds fields universal to almost all events, though Type is omitted from
+// some since it's injected by EmitJSON or the relay header. However, providing it
 // here allows consumers to parse it from the body for convenience if it's there.
 type BaseEvent struct {
 	Type      string `json:"type,omitempty"`
@@ -39,10 +39,10 @@ type SupplierEvent struct {
 type RetailerEvent struct {
 	BaseEvent
 	RetailerID string `json:"retailer_id"`
-	Phone               string   `json:"phone,omitempty"`
-	Name                string   `json:"name,omitempty"`
+	Phone      string `json:"phone,omitempty"`
+	Name       string `json:"name,omitempty"`
 
-	SupplierID string `json:"supplier_id"`
+	SupplierID          string   `json:"supplier_id"`
 	LegalName           string   `json:"legal_name,omitempty"`
 	ContactName         string   `json:"contact_name,omitempty"`
 	Email               string   `json:"email,omitempty"`
@@ -61,8 +61,8 @@ type RetailerEvent struct {
 // FactoryEvent handles factory creation.
 type FactoryEvent struct {
 	BaseEvent
-	FactoryID  string `json:"factory_id"`
-	SupplierID string `json:"supplier_id"`
+	FactoryID           string   `json:"factory_id"`
+	SupplierID          string   `json:"supplier_id"`
 	LegalName           string   `json:"legal_name,omitempty"`
 	ContactName         string   `json:"contact_name,omitempty"`
 	Email               string   `json:"email,omitempty"`
@@ -72,22 +72,21 @@ type FactoryEvent struct {
 	UserID              string   `json:"user_id,omitempty"`
 	SupplierRole        string   `json:"supplier_role,omitempty"`
 	AssignedWarehouseID string   `json:"assigned_warehouse_id,omitempty"`
-
 }
 
 // WarehouseEvent handles warehouse creation and operational events.
 type WarehouseEvent struct {
 	BaseEvent
-	WarehouseID string `json:"warehouse_id"`
-	SupplierID  string `json:"supplier_id"`
-	TransferID  string `json:"transfer_id,omitempty"`
-	LockID      string `json:"lock_id,omitempty"`
-	RequestID  string `json:"request_id,omitempty"`
-	Status     string `json:"status,omitempty"`
-	Units      int64  `json:"requested_units,omitempty"`
-	Projected  int64  `json:"projected_units,omitempty"`
-	Committed  int64  `json:"committed_units,omitempty"`
-	Pending    int64  `json:"pending_confirmation_units,omitempty"`
+	WarehouseID       string `json:"warehouse_id"`
+	SupplierID        string `json:"supplier_id"`
+	TransferID        string `json:"transfer_id,omitempty"`
+	LockID            string `json:"lock_id,omitempty"`
+	RequestID         string `json:"request_id,omitempty"`
+	Status            string `json:"status,omitempty"`
+	Units             int64  `json:"requested_units,omitempty"`
+	Projected         int64  `json:"projected_units,omitempty"`
+	Committed         int64  `json:"committed_units,omitempty"`
+	Pending           int64  `json:"pending_confirmation_units,omitempty"`
 	State             string `json:"state,omitempty"`
 	RequestedBy       string `json:"requested_by,omitempty"`
 	CoverageStartDate string `json:"coverage_start_date,omitempty"`
@@ -162,27 +161,27 @@ type OrderEvent struct {
 // ManifestEvent handles manifest lifecycle events.
 type ManifestEvent struct {
 	BaseEvent
-	ManifestID    string `json:"manifest_id"`
-	SupplierID    string `json:"supplier_id"`
-	FactoryID     string `json:"factory_id,omitempty"`
-	WarehouseID   string `json:"warehouse_id,omitempty"`
-	DriverID      string `json:"driver_id,omitempty"`
-	OrderID       string `json:"order_id,omitempty"`
-	State         string `json:"state,omitempty"`
-	VehicleID     string `json:"vehicle_id,omitempty"`
-	TransferCount int    `json:"transfer_count,omitempty"`
-	TotalVolumeVU int64  `json:"total_volume_vu,omitempty"`
-	RouteID       string `json:"route_id,omitempty"`
-	Reason        string `json:"reason,omitempty"`
-	Action        string `json:"action,omitempty"`
-	TransferID    string `json:"transfer_id,omitempty"`
-	FromDriverID  string `json:"from_driver_id,omitempty"`
-	ToDriverID    string `json:"to_driver_id,omitempty"`
-	FromVehicleID string `json:"from_vehicle_id,omitempty"`
-	ToVehicleID   string `json:"to_vehicle_id,omitempty"`
-	Depth         int    `json:"depth,omitempty"`
-	AttemptCount  int64  `json:"attempt_count,omitempty"`
-	Escalated     bool   `json:"escalated,omitempty"`
+	ManifestID     string `json:"manifest_id"`
+	SupplierID     string `json:"supplier_id"`
+	FactoryID      string `json:"factory_id,omitempty"`
+	WarehouseID    string `json:"warehouse_id,omitempty"`
+	DriverID       string `json:"driver_id,omitempty"`
+	OrderID        string `json:"order_id,omitempty"`
+	State          string `json:"state,omitempty"`
+	VehicleID      string `json:"vehicle_id,omitempty"`
+	TransferCount  int    `json:"transfer_count,omitempty"`
+	TotalVolumeVU  int64  `json:"total_volume_vu,omitempty"`
+	RouteID        string `json:"route_id,omitempty"`
+	Reason         string `json:"reason,omitempty"`
+	Action         string `json:"action,omitempty"`
+	TransferID     string `json:"transfer_id,omitempty"`
+	FromDriverID   string `json:"from_driver_id,omitempty"`
+	ToDriverID     string `json:"to_driver_id,omitempty"`
+	FromVehicleID  string `json:"from_vehicle_id,omitempty"`
+	ToVehicleID    string `json:"to_vehicle_id,omitempty"`
+	Depth          int    `json:"depth,omitempty"`
+	AttemptCount   int64  `json:"attempt_count,omitempty"`
+	Escalated      bool   `json:"escalated,omitempty"`
 	StopCount      int64  `json:"stop_count,omitempty"`
 	FromManifestID string `json:"from_manifest_id,omitempty"`
 	ToManifestID   string `json:"to_manifest_id,omitempty"`
@@ -207,9 +206,9 @@ type RouteEvent struct {
 // FinanceEvent handles payment/settlement events.
 type FinanceEvent struct {
 	BaseEvent
-	SessionID  string `json:"session_id,omitempty"`
-	OrderID    string `json:"order_id"`
-	SupplierID string `json:"supplier_id"`
+	SessionID           string   `json:"session_id,omitempty"`
+	OrderID             string   `json:"order_id"`
+	SupplierID          string   `json:"supplier_id"`
 	LegalName           string   `json:"legal_name,omitempty"`
 	ContactName         string   `json:"contact_name,omitempty"`
 	Email               string   `json:"email,omitempty"`
@@ -250,7 +249,7 @@ type AIRecommendationEvent struct {
 // SyncEvent handles catalog and inventory syncing.
 type SyncEvent struct {
 	BaseEvent
-	SupplierID string `json:"supplier_id"`
+	SupplierID          string   `json:"supplier_id"`
 	LegalName           string   `json:"legal_name,omitempty"`
 	ContactName         string   `json:"contact_name,omitempty"`
 	Email               string   `json:"email,omitempty"`
@@ -267,8 +266,8 @@ type SyncEvent struct {
 // CommandEvent handles distributed commands.
 type CommandEvent struct {
 	BaseEvent
-	CommandID  string `json:"command_id"`
-	SupplierID string `json:"supplier_id"`
+	CommandID           string   `json:"command_id"`
+	SupplierID          string   `json:"supplier_id"`
 	LegalName           string   `json:"legal_name,omitempty"`
 	ContactName         string   `json:"contact_name,omitempty"`
 	Email               string   `json:"email,omitempty"`
@@ -278,7 +277,6 @@ type CommandEvent struct {
 	UserID              string   `json:"user_id,omitempty"`
 	SupplierRole        string   `json:"supplier_role,omitempty"`
 	AssignedWarehouseID string   `json:"assigned_warehouse_id,omitempty"`
-
 }
 
 // PlatformEvent handles system-wide events.

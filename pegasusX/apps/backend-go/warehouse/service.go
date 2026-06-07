@@ -462,7 +462,6 @@ func mockFactoryDistanceKm(lat, lng float64) float64 {
 	return 25.0 // Will trigger auto-ship
 }
 
-
 // HandleDispatchLocks serves GET /v1/warehouse/dispatch-locks.
 func (s *Service) HandleDispatchLocks(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {

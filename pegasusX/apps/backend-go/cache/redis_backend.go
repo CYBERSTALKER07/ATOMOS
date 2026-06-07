@@ -194,8 +194,6 @@ func (r *RedisBackend) Subscribe(ctx context.Context, channel string) (<-chan []
 	return out, cancel, nil
 }
 
-
-
 // PoolStats returns the underlying Redis connection pool statistics.
 func (r *RedisBackend) PoolStats() *redis.PoolStats {
 	return r.client.PoolStats()

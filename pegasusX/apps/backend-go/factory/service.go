@@ -1706,18 +1706,18 @@ func (s *Service) HandleSupplyRequests(w http.ResponseWriter, r *http.Request) {
 	for i := range rows {
 		row := rows[i]
 		mapped[i] = map[string]any{
-			"request_id":              row.RequestID,
-			"warehouse_id":            row.WarehouseID,
-			"factory_id":              s.factoryNodeID,
-			"supplier_id":             s.supplierID,
-			"state":                   row.Status,
-			"priority":                "NORMAL",
-			"total_volume_vu":         0.0,
-			"notes":                   "",
-			"transfer_order_id":       "",
-			"created_by":              "",
-			"created_at":              row.CreatedAt,
-			"updated_at":              row.UpdatedAt,
+			"request_id":        row.RequestID,
+			"warehouse_id":      row.WarehouseID,
+			"factory_id":        s.factoryNodeID,
+			"supplier_id":       s.supplierID,
+			"state":             row.Status,
+			"priority":          "NORMAL",
+			"total_volume_vu":   0.0,
+			"notes":             "",
+			"transfer_order_id": "",
+			"created_by":        "",
+			"created_at":        row.CreatedAt,
+			"updated_at":        row.UpdatedAt,
 		}
 	}
 	s.mu.Unlock()

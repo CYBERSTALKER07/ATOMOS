@@ -78,7 +78,7 @@ func (r *Repository) FetchDispatchable(ctx context.Context, params FetchParams) 
 		iter = r.client.Single().Query(ctx, stmt)
 	} else {
 		iter = r.client.Single().
-			WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).
+			WithTimestampBound(spanner.ExactStaleness(15*time.Second)).
 			Query(ctx, stmt)
 	}
 	defer iter.Stop()

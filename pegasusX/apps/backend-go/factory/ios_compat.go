@@ -266,18 +266,18 @@ func (s *Service) HandleReplenishmentInsights(w http.ResponseWriter, r *http.Req
 	now := s.now().Format(time.RFC3339Nano)
 	insights := []map[string]any{
 		{
-			"id":                    "ins_factory_1",
-			"warehouse_id":          "wh_demo_1",
-			"warehouse_name":        "Demo Warehouse",
-			"product_id":            "prod_demo_1",
-			"product_name":          "Demo SKU",
-			"urgency":               "HIGH",
-			"current_stock":         12,
-			"avg_daily_velocity":    4.5,
-			"days_until_stockout":   3,
-			"reorder_quantity":      48,
-			"status":                "OPEN",
-			"created_at":            now,
+			"id":                  "ins_factory_1",
+			"warehouse_id":        "wh_demo_1",
+			"warehouse_name":      "Demo Warehouse",
+			"product_id":          "prod_demo_1",
+			"product_name":        "Demo SKU",
+			"urgency":             "HIGH",
+			"current_stock":       12,
+			"avg_daily_velocity":  4.5,
+			"days_until_stockout": 3,
+			"reorder_quantity":    48,
+			"status":              "OPEN",
+			"created_at":          now,
 		},
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"insights": insights})

@@ -11,11 +11,11 @@ import (
 
 // Handler exposes platform HTTP endpoints.
 type Handler struct {
-	svc         *Service
-	tokens      DeviceTokenRepository
-	log         *slog.Logger
-	writeJSON   func(http.ResponseWriter, int, any)
-	writeError  func(http.ResponseWriter, int, string)
+	svc        *Service
+	tokens     DeviceTokenRepository
+	log        *slog.Logger
+	writeJSON  func(http.ResponseWriter, int, any)
+	writeError func(http.ResponseWriter, int, string)
 }
 
 // HandlerConfig wires handler dependencies.

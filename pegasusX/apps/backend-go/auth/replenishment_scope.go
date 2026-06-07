@@ -10,10 +10,10 @@ import (
 )
 
 var (
-	errFactoryScopeMissing   = errors.New("factory scope missing from token")
-	errNoLinkedWarehouses    = errors.New("no linked warehouses for factory")
+	errFactoryScopeMissing     = errors.New("factory scope missing from token")
+	errNoLinkedWarehouses      = errors.New("no linked warehouses for factory")
 	errWarehouseScopeViolation = errors.New("warehouse scope violation")
-	errWarehouseIDRequired   = errors.New("warehouse_id required for this factory scope")
+	errWarehouseIDRequired     = errors.New("warehouse_id required for this factory scope")
 )
 
 // RequireReplenishmentInsightsScope gates the shared replenishment insights path for

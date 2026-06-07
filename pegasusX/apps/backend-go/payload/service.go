@@ -616,10 +616,10 @@ func (s *Service) HandleStartLoading(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
-			BaseEvent:   events.BaseEvent{Type: events.EventManifestLoadingStarted, Timestamp: now},
-			ManifestID:  manifestID,
-			SupplierID:  s.supplierID,
-			State:       payloadManifestStateLoading,
+			BaseEvent:  events.BaseEvent{Type: events.EventManifestLoadingStarted, Timestamp: now},
+			ManifestID: manifestID,
+			SupplierID: s.supplierID,
+			State:      payloadManifestStateLoading,
 		})
 	})
 	if err != nil {
@@ -1037,11 +1037,11 @@ func (s *Service) HandleRecommendReassign(w http.ResponseWriter, r *http.Request
 
 	sort.Slice(truckRecs, func(i, j int) bool { return truckRecs[i].Score > truckRecs[j].Score })
 	writeJSON(w, http.StatusOK, map[string]any{
-		"order_id":         req.OrderID,
-		"retailer_name":    retailerName,
-		"order_volume_vu":  orderVolume,
-		"current_driver":   currentDriver,
-		"recommendations":  truckRecs,
+		"order_id":        req.OrderID,
+		"retailer_name":   retailerName,
+		"order_volume_vu": orderVolume,
+		"current_driver":  currentDriver,
+		"recommendations": truckRecs,
 	})
 }
 
@@ -1371,14 +1371,14 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		return sealErr
 	}, func(txn outbox.TxnBuffer) error {
 		return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, manifestID, events.TopicMain, events.ManifestEvent{
-			BaseEvent:   events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
-			ManifestID:  manifestID,
-			SupplierID:  s.supplierID,
-			State:       payloadManifestStateSealed,
-			RouteID:     routeIDForManifest(manifest),
-			DriverID:    manifest.DriverID,
-			VehicleID:   manifest.VehicleID,
-			OrderCount:  manifest.StopCount,
+			BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
+			ManifestID: manifestID,
+			SupplierID: s.supplierID,
+			State:      payloadManifestStateSealed,
+			RouteID:    routeIDForManifest(manifest),
+			DriverID:   manifest.DriverID,
+			VehicleID:  manifest.VehicleID,
+			OrderCount: manifest.StopCount,
 		})
 	})
 	if err == http.ErrMissingFile {
@@ -1450,14 +1450,14 @@ func (s *Service) HandleSeal(w http.ResponseWriter, r *http.Request) {
 			return sealErr
 		}, func(txn outbox.TxnBuffer) error {
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateManifest, req.ManifestID, events.TopicMain, events.ManifestEvent{
-				BaseEvent:   events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
-				ManifestID:  req.ManifestID,
-				SupplierID:  s.supplierID,
-				State:       payloadManifestStateSealed,
-				RouteID:     routeIDForManifest(manifest),
-				DriverID:    manifest.DriverID,
-				VehicleID:   manifest.VehicleID,
-				OrderCount:  manifest.StopCount,
+				BaseEvent:  events.BaseEvent{Type: events.EventManifestSealed, Timestamp: manifest.UpdatedAt},
+				ManifestID: req.ManifestID,
+				SupplierID: s.supplierID,
+				State:      payloadManifestStateSealed,
+				RouteID:    routeIDForManifest(manifest),
+				DriverID:   manifest.DriverID,
+				VehicleID:  manifest.VehicleID,
+				OrderCount: manifest.StopCount,
 			})
 		})
 		s.mu.Unlock()

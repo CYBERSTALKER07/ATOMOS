@@ -41,7 +41,7 @@ func (s *AnalyticsStreamProcessor) Start(ctx context.Context, eventStream <-chan
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		
+
 		// Emit windowed analytics every minute
 		ticker := time.NewTicker(1 * time.Minute)
 		defer ticker.Stop()
@@ -51,7 +51,7 @@ func (s *AnalyticsStreamProcessor) Start(ctx context.Context, eventStream <-chan
 			case <-ctx.Done():
 				slog.InfoContext(ctx, "AnalyticsStreamProcessor stopping")
 				return
-			
+
 			case <-ticker.C:
 				s.flushMetrics(ctx)
 
@@ -113,7 +113,7 @@ func (s *AnalyticsStreamProcessor) flushMetrics(ctx context.Context) {
 	orders := s.orderCount
 	revenue := s.revenueMinor
 	cancels := s.cancelCount
-	
+
 	// Reset the tumbling window
 	s.orderCount = 0
 	s.revenueMinor = 0

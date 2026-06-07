@@ -42,7 +42,7 @@ func (s *Service) SettleExternalPayment(ctx context.Context, orderID string, gat
 	if err != nil {
 		return err
 	}
-	
+
 	s.afterOrderMutation(ctx, orderRecord)
 	s.broadcastOrderStatusChanged(ctx, orderRecord, previousStatus, "external_payment_cleared", orderRecord.Version)
 	s.broadcastPaymentCleared(ctx, orderRecord)

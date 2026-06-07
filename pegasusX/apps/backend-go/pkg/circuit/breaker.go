@@ -15,7 +15,7 @@ var ErrUpstreamUnavailable = errors.New("circuit: upstream unavailable")
 type State int
 
 const (
-	StateClosed   State = iota
+	StateClosed State = iota
 	StateOpen
 	StateHalfOpen
 )

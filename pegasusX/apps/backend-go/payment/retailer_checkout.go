@@ -26,29 +26,29 @@ func (s *Service) BindOrderCheckoutReader(reader OrderCheckoutReader) {
 }
 
 type retailerCardCheckoutRequest struct {
-	OrderID    string `json:"order_id"`
-	Gateway    string `json:"gateway"`
-	Amount     int64  `json:"amount"`
-	AmountMinor int64 `json:"amount_minor"`
-	ReturnURL  string `json:"return_url"`
-	InvoiceID  string `json:"invoice_id"`
+	OrderID     string `json:"order_id"`
+	Gateway     string `json:"gateway"`
+	Amount      int64  `json:"amount"`
+	AmountMinor int64  `json:"amount_minor"`
+	ReturnURL   string `json:"return_url"`
+	InvoiceID   string `json:"invoice_id"`
 }
 
 type retailerCardCheckoutResponse struct {
-	OrderID          string   `json:"order_id"`
-	State            string   `json:"state"`
-	Amount           int64    `json:"amount"`
-	Gateway          string   `json:"gateway"`
-	ResolvedGateway  string   `json:"resolved_gateway,omitempty"`
-	PolicySource     string   `json:"policy_source,omitempty"`
-	AllowedGateways  []string `json:"allowed_gateways,omitempty"`
-	PolicyReason     string   `json:"policy_reason,omitempty"`
-	PaymentURL       string   `json:"payment_url"`
-	InvoiceID        string   `json:"invoice_id"`
-	SessionID        string   `json:"session_id,omitempty"`
-	AttemptID        string   `json:"attempt_id,omitempty"`
-	RetailerID       string   `json:"retailer_id"`
-	Message          string   `json:"message"`
+	OrderID         string   `json:"order_id"`
+	State           string   `json:"state"`
+	Amount          int64    `json:"amount"`
+	Gateway         string   `json:"gateway"`
+	ResolvedGateway string   `json:"resolved_gateway,omitempty"`
+	PolicySource    string   `json:"policy_source,omitempty"`
+	AllowedGateways []string `json:"allowed_gateways,omitempty"`
+	PolicyReason    string   `json:"policy_reason,omitempty"`
+	PaymentURL      string   `json:"payment_url"`
+	InvoiceID       string   `json:"invoice_id"`
+	SessionID       string   `json:"session_id,omitempty"`
+	AttemptID       string   `json:"attempt_id,omitempty"`
+	RetailerID      string   `json:"retailer_id"`
+	Message         string   `json:"message"`
 }
 
 type retailerCashCheckoutRequest struct {

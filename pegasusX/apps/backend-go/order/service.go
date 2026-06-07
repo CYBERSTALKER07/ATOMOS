@@ -35,18 +35,18 @@ import (
 type Status string
 
 const (
-	StatusPending               Status = "PENDING"
-	StatusLoaded                Status = "LOADED"
-	StatusInTransit             Status = "IN_TRANSIT"
-	StatusArrived               Status = "ARRIVED"
-	StatusArrivedShopClosed     Status = "ARRIVED_SHOP_CLOSED"
-	StatusAwaitingPayment       Status = "AWAITING_PAYMENT"
-	StatusPendingCashCollection Status = "PENDING_CASH_COLLECTION"
-	StatusDeliveredOnCredit     Status = "DELIVERED_ON_CREDIT"
-	StatusCompleted             Status = "COMPLETED"
-	StatusCancelled             Status = "CANCELLED"
+	StatusPending                Status = "PENDING"
+	StatusLoaded                 Status = "LOADED"
+	StatusInTransit              Status = "IN_TRANSIT"
+	StatusArrived                Status = "ARRIVED"
+	StatusArrivedShopClosed      Status = "ARRIVED_SHOP_CLOSED"
+	StatusAwaitingPayment        Status = "AWAITING_PAYMENT"
+	StatusPendingCashCollection  Status = "PENDING_CASH_COLLECTION"
+	StatusDeliveredOnCredit      Status = "DELIVERED_ON_CREDIT"
+	StatusCompleted              Status = "COMPLETED"
+	StatusCancelled              Status = "CANCELLED"
 	StatusReconciliationRequired Status = "RECONCILIATION_REQUIRED"
-	StatusDelayed               Status = "DELAYED"
+	StatusDelayed                Status = "DELAYED"
 
 	deliveryGeofenceMeters = 500.0
 )
@@ -174,34 +174,34 @@ type Service struct {
 	supplierID    string
 	supplierName  string
 	currency      string
-	retailerHub *ws.Hub
-	supplierHub *ws.Hub
-	driverHub   *ws.Hub
+	retailerHub   *ws.Hub
+	supplierHub   *ws.Hub
+	driverHub     *ws.Hub
 	spannerClient *spanner.Client
-	shopGrace       time.Duration
-	log             *slog.Logger
-	now             func() time.Time
-	newID           func() string
-	jwtSecret       string
+	shopGrace     time.Duration
+	log           *slog.Logger
+	now           func() time.Time
+	newID         func() string
+	jwtSecret     string
 }
 
 // ServiceConfig is the constructor input.
 type ServiceConfig struct {
-	Repo          Repository
-	Cache         *cache.Cache
-	Warehouse     WarehouseResolver
-	SupplierID    string
-	SupplierName  string
-	Currency      string
-	RetailerHub   *ws.Hub
-	SupplierHub   *ws.Hub
-	DriverHub     *ws.Hub
-	SpannerClient *spanner.Client
+	Repo            Repository
+	Cache           *cache.Cache
+	Warehouse       WarehouseResolver
+	SupplierID      string
+	SupplierName    string
+	Currency        string
+	RetailerHub     *ws.Hub
+	SupplierHub     *ws.Hub
+	DriverHub       *ws.Hub
+	SpannerClient   *spanner.Client
 	ShopClosedGrace time.Duration
-	Log           *slog.Logger
-	Now           func() time.Time
-	NewID         func() string
-	JWTSecret     string
+	Log             *slog.Logger
+	Now             func() time.Time
+	NewID           func() string
+	JWTSecret       string
 }
 
 // NewService constructs a Service with default Now/NewID.
@@ -453,13 +453,13 @@ type DriverOrderResponse struct {
 }
 
 type driverTransitionRequest struct {
-	OrderID     string
-	NextStatus  Status
-	Reason      string
-	Precheck    func(Order) error
+	OrderID             string
+	NextStatus          Status
+	Reason              string
+	Precheck            func(Order) error
 	TransformNextStatus func(Order, Status) Status
-	BuildProofs func(Order) []DeliveryProofArtifact
-	EmitExtra   func(outbox.TxnBuffer, Order, Status) error
+	BuildProofs         func(Order) []DeliveryProofArtifact
+	EmitExtra           func(outbox.TxnBuffer, Order, Status) error
 }
 
 type driverTransitionResult struct {
@@ -1920,8 +1920,6 @@ func (s *Service) writeOrderMutationError(w http.ResponseWriter, operation strin
 }
 
 // ── wire shapes ────────────────────────────────────────────────────────────
-
-
 
 type wsEnvelope struct {
 	Type      string `json:"type"`

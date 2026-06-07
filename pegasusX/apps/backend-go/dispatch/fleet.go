@@ -38,7 +38,7 @@ func FetchWarehouseDepot(ctx context.Context, client *spanner.Client, warehouseI
 		      FROM Warehouses WHERE WarehouseId = @wid`,
 		Params: map[string]any{"wid": warehouseID},
 	}
-	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	row, err := iter.Next()
 	if err == iterator.Done {

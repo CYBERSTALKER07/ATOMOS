@@ -12,30 +12,30 @@ import (
 
 // Product mirrors the Products Spanner row.
 type Product struct {
-	ProductID     string `json:"product_id" spanner:"ProductId"`
-	SupplierID    string `json:"supplier_id" spanner:"SupplierId"`
-	CategoryID    string `json:"category_id" spanner:"CategoryId"`
-	Name          string `json:"name" spanner:"Name"`
-	Description   string `json:"description" spanner:"Description"`
-	ImageURL      string `json:"image_url" spanner:"ImageURL"`
-	PriceMinor    int64  `json:"price_minor" spanner:"PriceMinor"`
-	Currency      string `json:"currency" spanner:"Currency"`
-	StockQuantity int64  `json:"stock_quantity" spanner:"StockQuantity"`
-	Unit          string `json:"unit" spanner:"Unit"`
-	IsActive      bool   `json:"is_active" spanner:"IsActive"`
-	Version       int64  `json:"version" spanner:"Version"`
+	ProductID     string    `json:"product_id" spanner:"ProductId"`
+	SupplierID    string    `json:"supplier_id" spanner:"SupplierId"`
+	CategoryID    string    `json:"category_id" spanner:"CategoryId"`
+	Name          string    `json:"name" spanner:"Name"`
+	Description   string    `json:"description" spanner:"Description"`
+	ImageURL      string    `json:"image_url" spanner:"ImageURL"`
+	PriceMinor    int64     `json:"price_minor" spanner:"PriceMinor"`
+	Currency      string    `json:"currency" spanner:"Currency"`
+	StockQuantity int64     `json:"stock_quantity" spanner:"StockQuantity"`
+	Unit          string    `json:"unit" spanner:"Unit"`
+	IsActive      bool      `json:"is_active" spanner:"IsActive"`
+	Version       int64     `json:"version" spanner:"Version"`
 	CreatedAt     time.Time `json:"created_at" spanner:"CreatedAt"`
 	UpdatedAt     time.Time `json:"updated_at" spanner:"UpdatedAt"`
 }
 
 // Category mirrors the ProductCategories Spanner row.
 type Category struct {
-	CategoryID       string `json:"category_id" spanner:"CategoryId"`
-	SupplierID       string `json:"supplier_id" spanner:"SupplierId"`
-	Name             string `json:"name" spanner:"Name"`
-	ParentCategoryID string `json:"parent_category_id" spanner:"ParentCategoryId"`
-	IconKey          string `json:"icon_key" spanner:"IconKey"`
-	SortOrder        int64  `json:"sort_order" spanner:"SortOrder"`
+	CategoryID       string    `json:"category_id" spanner:"CategoryId"`
+	SupplierID       string    `json:"supplier_id" spanner:"SupplierId"`
+	Name             string    `json:"name" spanner:"Name"`
+	ParentCategoryID string    `json:"parent_category_id" spanner:"ParentCategoryId"`
+	IconKey          string    `json:"icon_key" spanner:"IconKey"`
+	SortOrder        int64     `json:"sort_order" spanner:"SortOrder"`
 	CreatedAt        time.Time `json:"created_at" spanner:"CreatedAt"`
 	UpdatedAt        time.Time `json:"updated_at" spanner:"UpdatedAt"`
 }
@@ -273,7 +273,7 @@ func (r *SpannerRepository) ListCategorySuppliers(ctx context.Context, categoryI
 		      ORDER BY s.Name ASC`,
 		Params: map[string]any{"cid": categoryID},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var out []CategorySupplier
@@ -309,7 +309,7 @@ func (r *SpannerRepository) SearchSuppliers(ctx context.Context, query string, l
 		      LIMIT @limit`,
 		Params: map[string]any{"pattern": pattern, "limit": int64(limit)},
 	}
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 
 	var out []CategorySupplier

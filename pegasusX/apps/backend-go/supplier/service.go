@@ -172,10 +172,10 @@ type EarningsLookup func(ctx context.Context, supplierID, currency string, now t
 
 // DashboardCounts holds Spanner-backed aggregate counts for the dashboard.
 type DashboardCounts struct {
-	PendingOrders   int
-	ActiveDrivers   int
-	TotalRetailers  int
-	TodayRevenue    int64
+	PendingOrders  int
+	ActiveDrivers  int
+	TotalRetailers int
+	TodayRevenue   int64
 }
 
 // DashboardCountQuery returns aggregate counts from Spanner for the supplier dashboard.
@@ -201,7 +201,7 @@ type Service struct {
 	log            *slog.Logger
 	now            func() time.Time
 
-	inventorySvc   InventoryServicer
+	inventorySvc InventoryServicer
 
 	portalSpanner     *spanner.Client
 	portalSupplierHub *ws.Hub
@@ -225,17 +225,17 @@ type ServiceConfig struct {
 	DashboardQuery   DashboardCountQuery
 	Locations        telemetry.LastLocationReader
 	InventoryService InventoryServicer
-	SupplierID     string
-	SeedSupplierID string
-	MaxSuppliers   int
-	Country        string
-	Currency       string
-	JWTSecret      string
-	JWTIssuer      string
-	JWTTTL         time.Duration
-	CookieSecure   bool
-	Log            *slog.Logger
-	Now            func() time.Time
+	SupplierID       string
+	SeedSupplierID   string
+	MaxSuppliers     int
+	Country          string
+	Currency         string
+	JWTSecret        string
+	JWTIssuer        string
+	JWTTTL           time.Duration
+	CookieSecure     bool
+	Log              *slog.Logger
+	Now              func() time.Time
 }
 
 // NewService returns a configured Service.
@@ -273,10 +273,10 @@ func NewService(c ServiceConfig) *Service {
 		jwtIssuer:      c.JWTIssuer,
 		jwtTTL:         c.JWTTTL,
 		cookieSecure:   c.CookieSecure,
-		log:          c.Log,
-		now:          c.Now,
-		inventorySvc: c.InventoryService,
-		orders:       make(map[string]SupplierOrder),
+		log:            c.Log,
+		now:            c.Now,
+		inventorySvc:   c.InventoryService,
+		orders:         make(map[string]SupplierOrder),
 	}
 }
 
@@ -348,11 +348,11 @@ type LoginRequest struct {
 
 // LoginResponse is the login confirmation payload.
 type LoginResponse struct {
-	SupplierID    string `json:"supplier_id"`
-	IsConfigured  bool   `json:"is_configured"`
-	NextStep      string `json:"next_step"`
-	Token         string `json:"token,omitempty"`
-	RefreshToken  string `json:"refresh_token,omitempty"`
+	SupplierID   string `json:"supplier_id"`
+	IsConfigured bool   `json:"is_configured"`
+	NextStep     string `json:"next_step"`
+	Token        string `json:"token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 }
 
 // Validate enforces wizard invariants.
@@ -878,8 +878,6 @@ func (s *Service) HandleWebSocketSession(w http.ResponseWriter, r *http.Request)
 }
 
 // ── Outbox payloads + helpers ──────────────────────────────────────────────
-
-
 
 func supplierCacheKey(id string) string { return "supplier:" + id }
 

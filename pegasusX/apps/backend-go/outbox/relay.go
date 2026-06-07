@@ -187,7 +187,7 @@ func backoffWithJitter(base, maxBackoff time.Duration, attempt int) time.Duratio
 
 func granularRoutingKey(e Event) []byte {
 	key := []byte(e.AggregateID)
-	
+
 	// Fast path: if the payload isn't JSON or doesn't have common sub-entities, just return AggregateID.
 	if len(e.Payload) == 0 || e.Payload[0] != '{' {
 		return key
@@ -199,7 +199,7 @@ func granularRoutingKey(e Event) []byte {
 		RouteID    string `json:"route_id"`
 		DriverID   string `json:"driver_id"`
 	}
-	
+
 	// Ignore unmarshal errors, fallback to default key
 	if err := json.Unmarshal(e.Payload, &envelope); err == nil {
 		if envelope.OrderID != "" {
@@ -215,6 +215,6 @@ func granularRoutingKey(e Event) []byte {
 			return append(key, []byte(":"+envelope.DriverID)...)
 		}
 	}
-	
+
 	return key
 }

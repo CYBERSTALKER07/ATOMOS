@@ -22,7 +22,6 @@ type ProposedNegotiationItem struct {
 	ProposedQty int64  `json:"proposed_qty"`
 }
 
-
 // HandleProposeNegotiation is POST /v1/delivery/negotiate (DRIVER).
 func (s *Service) HandleProposeNegotiation(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

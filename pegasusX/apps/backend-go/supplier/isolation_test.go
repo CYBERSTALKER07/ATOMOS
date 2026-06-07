@@ -15,7 +15,9 @@ type dualSupplierRepo struct {
 	profiles map[string]Profile
 }
 
-func (r *dualSupplierRepo) CountSuppliers(context.Context) (int64, error) { return int64(len(r.profiles)), nil }
+func (r *dualSupplierRepo) CountSuppliers(context.Context) (int64, error) {
+	return int64(len(r.profiles)), nil
+}
 func (r *dualSupplierRepo) GetProfile(_ context.Context, id string) (Profile, bool, error) {
 	p, ok := r.profiles[id]
 	return p, ok, nil

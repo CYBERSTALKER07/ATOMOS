@@ -507,14 +507,14 @@ func (s *Service) HandleManifestGate(w http.ResponseWriter, r *http.Request) {
 	}
 	if manifestGateCleared(gate.State) {
 		writeJSON(w, http.StatusOK, map[string]any{
-			"driver_id":   driverID,
-			"manifest_id": gate.ManifestID,
-			"state":       gate.State,
-			"allowed":     true,
-			"cleared":     true,
-			"reason":      "ok",
-			"stop_count":  gate.StopCount,
-			"volume_vu":   gate.VolumeVU,
+			"driver_id":     driverID,
+			"manifest_id":   gate.ManifestID,
+			"state":         gate.State,
+			"allowed":       true,
+			"cleared":       true,
+			"reason":        "ok",
+			"stop_count":    gate.StopCount,
+			"volume_vu":     gate.VolumeVU,
 			"offline_nonce": s.GenerateOfflineNonce(gate.ManifestID, driverID),
 		})
 		return

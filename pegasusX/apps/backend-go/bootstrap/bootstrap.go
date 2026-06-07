@@ -19,21 +19,20 @@ import (
 	"time"
 
 	"cloud.google.com/go/spanner"
-	"google.golang.org/api/iterator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/catalog"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/optimizerclient"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
-	"github.com/pegasusx/pegasusx/apps/backend-go/catalog"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driver"
-	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/inventory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
-	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
+	"github.com/pegasusx/pegasusx/apps/backend-go/order"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
@@ -44,6 +43,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
+	"google.golang.org/api/iterator"
 )
 
 // Config carries the runtime parameters. Loaded from environment by LoadConfig.
@@ -73,6 +73,10 @@ type Config struct {
 	FirebaseProjectID               string
 	FirebaseCertsURL                string
 	FirebaseCredentialsPath         string
+	GlobalPayEnv                    string
+	GlobalPayServiceID              string
+	GlobalPayUsername               string
+	GlobalPayPassword               string
 	GlobalPayWebhookSecret          string
 	AdyenWebhookSecret              string
 	StripeWebhookSecret             string
@@ -103,44 +107,44 @@ type Config struct {
 // App holds every long-lived singleton. Wire new app-wide dependencies here,
 // never as package-level globals.
 type App struct {
-	Config               *Config
-	Cache                *cache.Cache
-	Idempotency          idempotency.Store
-	Supplier             seed.Supplier
-	CatalogService       *catalog.Service
-	InventoryService     *inventory.Service
-	NotificationService  *notifications.Service
-	SupplierService      *supplier.Service
-	RetailerService      *retailer.Service
-	RetailerProximity    *retailer.RetailerProximityService
-	DriverService        *driver.Service
-	FactoryService       *factory.Service
-	PayloadService       *payload.Service
-	PaymentService       *payment.Service
-	WarehouseService     *warehouse.Service
-	OrderService         *order.Service
-	DriverLocations      telemetry.LastLocationStore
-	RetailerHub          *ws.Hub
-	SupplierHub          *ws.Hub
-	DriverHub            *ws.Hub
-	PayloadHub           *ws.Hub
-	WarehouseHub         *ws.Hub
-	FactoryHub           *ws.Hub
-	TelemetryHub         *ws.Hub
-	OutboxRelay          *outbox.Relay
-	NotificationConsumer *kafka.Consumer
-	OrderEventConsumer *kafka.Consumer
+	Config                 *Config
+	Cache                  *cache.Cache
+	Idempotency            idempotency.Store
+	Supplier               seed.Supplier
+	CatalogService         *catalog.Service
+	InventoryService       *inventory.Service
+	NotificationService    *notifications.Service
+	SupplierService        *supplier.Service
+	RetailerService        *retailer.Service
+	RetailerProximity      *retailer.RetailerProximityService
+	DriverService          *driver.Service
+	FactoryService         *factory.Service
+	PayloadService         *payload.Service
+	PaymentService         *payment.Service
+	WarehouseService       *warehouse.Service
+	OrderService           *order.Service
+	DriverLocations        telemetry.LastLocationStore
+	RetailerHub            *ws.Hub
+	SupplierHub            *ws.Hub
+	DriverHub              *ws.Hub
+	PayloadHub             *ws.Hub
+	WarehouseHub           *ws.Hub
+	FactoryHub             *ws.Hub
+	TelemetryHub           *ws.Hub
+	OutboxRelay            *outbox.Relay
+	NotificationConsumer   *kafka.Consumer
+	OrderEventConsumer     *kafka.Consumer
 	WarehouseEventConsumer *kafka.Consumer
-	Reliability          *ReliabilityMiddleware
-	InfraHealth          infraroutes.Deps
-	OutboundCircuits     *OutboundCircuits
-	PlatformService      *platform.Service
-	PlatformHandler      *platform.Handler
-	PushBridge           *notifications.PushBridge
-	Spanner              *spanner.Client
-	OptimizerClient      *optimizerclient.Client
-	DispatchPlanCounters *plan.SourceCounters
-	cleanup              []func()
+	Reliability            *ReliabilityMiddleware
+	InfraHealth            infraroutes.Deps
+	OutboundCircuits       *OutboundCircuits
+	PlatformService        *platform.Service
+	PlatformHandler        *platform.Handler
+	PushBridge             *notifications.PushBridge
+	Spanner                *spanner.Client
+	OptimizerClient        *optimizerclient.Client
+	DispatchPlanCounters   *plan.SourceCounters
+	cleanup                []func()
 	// Spanner *spanner.Client (added when the Spanner client lands)
 	// Kafka   *kafka.SyncWriter
 	// Outbox  *outbox.Relay
@@ -170,6 +174,10 @@ func LoadConfig() (*Config, error) {
 		FirebaseProjectID:               envOr("FIREBASE_PROJECT_ID", ""),
 		FirebaseCertsURL:                envOr("FIREBASE_CERTS_URL", "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"),
 		FirebaseCredentialsPath:         envOr("FIREBASE_CREDENTIALS_PATH", ""),
+		GlobalPayEnv:                    envOr("GLOBAL_PAY_ENV", "dev"),
+		GlobalPayServiceID:              envOr("GLOBAL_PAY_SERVICE_ID", "doc-supplier-service"),
+		GlobalPayUsername:               envOr("GLOBAL_PAY_USERNAME", "doc-username"),
+		GlobalPayPassword:               envOr("GLOBAL_PAY_PASSWORD", "doc-password"),
 		GlobalPayWebhookSecret:          envOr("GLOBAL_PAY_WEBHOOK_SECRET", "dev-global-pay-secret"),
 		AdyenWebhookSecret:              envOr("ADYEN_WEBHOOK_SECRET", "dev-adyen-secret"),
 		StripeWebhookSecret:             envOr("STRIPE_WEBHOOK_SECRET", "dev-stripe-secret"),
@@ -606,6 +614,10 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Idem:                            idemStore,
 		SupplierID:                      supplierSeed.SupplierID,
 		Currency:                        cfg.SeedSupplierCurrency,
+		GlobalPayEnv:                    cfg.GlobalPayEnv,
+		GlobalPayServiceID:              cfg.GlobalPayServiceID,
+		GlobalPayUsername:               cfg.GlobalPayUsername,
+		GlobalPayPassword:               cfg.GlobalPayPassword,
 		GlobalPayWebhookSecret:          cfg.GlobalPayWebhookSecret,
 		AdyenWebhookSecret:              cfg.AdyenWebhookSecret,
 		StripeWebhookSecret:             cfg.StripeWebhookSecret,
@@ -766,43 +778,43 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 
 	return &App{
-		Config:               cfg,
-		Cache:                cacheClient,
-		Idempotency:          idemStore,
-		Supplier:             supplierSeed,
-		CatalogService:       catalogSvc,
-		InventoryService:     inventorySvc,
-		NotificationService:  notifSvc,
-		SupplierService:      supplierSvc,
-		RetailerService:      retailerSvc,
-		DriverService:        driverSvc,
-		FactoryService:       factorySvc,
-		PayloadService:       payloadSvc,
-		PaymentService:       paymentSvc,
-		WarehouseService:     warehouseSvc,
-		OrderService:         orderSvc,
-		DriverLocations:      driverLocations,
-		RetailerHub:          retailerHub,
-		SupplierHub:          supplierHub,
-		DriverHub:            driverHub,
-		PayloadHub:           payloadHub,
-		WarehouseHub:         warehouseHub,
-		FactoryHub:           factoryHub,
-		TelemetryHub:         telemetryHub,
-		NotificationConsumer: notificationConsumer,
-		OrderEventConsumer: orderEventConsumer,
+		Config:                 cfg,
+		Cache:                  cacheClient,
+		Idempotency:            idemStore,
+		Supplier:               supplierSeed,
+		CatalogService:         catalogSvc,
+		InventoryService:       inventorySvc,
+		NotificationService:    notifSvc,
+		SupplierService:        supplierSvc,
+		RetailerService:        retailerSvc,
+		DriverService:          driverSvc,
+		FactoryService:         factorySvc,
+		PayloadService:         payloadSvc,
+		PaymentService:         paymentSvc,
+		WarehouseService:       warehouseSvc,
+		OrderService:           orderSvc,
+		DriverLocations:        driverLocations,
+		RetailerHub:            retailerHub,
+		SupplierHub:            supplierHub,
+		DriverHub:              driverHub,
+		PayloadHub:             payloadHub,
+		WarehouseHub:           warehouseHub,
+		FactoryHub:             factoryHub,
+		TelemetryHub:           telemetryHub,
+		NotificationConsumer:   notificationConsumer,
+		OrderEventConsumer:     orderEventConsumer,
 		WarehouseEventConsumer: warehouseEventConsumer,
-		OutboxRelay:          outboxRelay,
-		Reliability:          reliabilityMiddleware,
-		InfraHealth:          infraHealth,
-		OutboundCircuits:     outboundCircuits,
-		PlatformService:      platformSvc,
-		PlatformHandler:      platformHandler,
-		PushBridge:           pushBridge,
-		Spanner:              spannerClient,
-		OptimizerClient:      optimizerCli,
-		DispatchPlanCounters: dispatchCounters,
-		cleanup:              cleanup,
+		OutboxRelay:            outboxRelay,
+		Reliability:            reliabilityMiddleware,
+		InfraHealth:            infraHealth,
+		OutboundCircuits:       outboundCircuits,
+		PlatformService:        platformSvc,
+		PlatformHandler:        platformHandler,
+		PushBridge:             pushBridge,
+		Spanner:                spannerClient,
+		OptimizerClient:        optimizerCli,
+		DispatchPlanCounters:   dispatchCounters,
+		cleanup:                cleanup,
 	}, nil
 }
 

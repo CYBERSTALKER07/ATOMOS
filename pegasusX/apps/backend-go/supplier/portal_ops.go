@@ -16,32 +16,32 @@ import (
 
 // SupplierManifestRow is a supplier-scoped manifest queue projection.
 type SupplierManifestRow struct {
-	ManifestID   string `json:"manifest_id"`
-	Status       string `json:"status"`
-	State        string `json:"state"`
-	OrdersCount  int    `json:"orders_count"`
-	DriverID     string `json:"driver_id,omitempty"`
-	DriverName   string `json:"driver_name"`
-	VehicleID    string `json:"vehicle_id,omitempty"`
-	VehiclePlate string `json:"vehicle_plate,omitempty"`
-	TruckID      string `json:"truck_id,omitempty"`
-	TotalVu      int64  `json:"total_vu"`
+	ManifestID    string  `json:"manifest_id"`
+	Status        string  `json:"status"`
+	State         string  `json:"state"`
+	OrdersCount   int     `json:"orders_count"`
+	DriverID      string  `json:"driver_id,omitempty"`
+	DriverName    string  `json:"driver_name"`
+	VehicleID     string  `json:"vehicle_id,omitempty"`
+	VehiclePlate  string  `json:"vehicle_plate,omitempty"`
+	TruckID       string  `json:"truck_id,omitempty"`
+	TotalVu       int64   `json:"total_vu"`
 	TotalVolumeVU float64 `json:"total_volume_vu"`
-	MaxVolumeVU  float64 `json:"max_volume_vu"`
-	StopCount    int    `json:"stop_count"`
-	UpdatedAt    string `json:"updated_at"`
+	MaxVolumeVU   float64 `json:"max_volume_vu"`
+	StopCount     int     `json:"stop_count"`
+	UpdatedAt     string  `json:"updated_at"`
 }
 
 // SupplierSupplyLaneRow is a warehouse-centric lane summary for the supplier portal.
 type SupplierSupplyLaneRow struct {
-	LaneID       string  `json:"lane_id"`
-	Name         string  `json:"name"`
-	WarehouseID  string  `json:"warehouse_id"`
-	H3Cells      int     `json:"h3_cells"`
-	Drivers      int     `json:"drivers"`
-	OrdersToday  int     `json:"orders_today"`
-	Capacity     int     `json:"capacity"`
-	Utilization  float64 `json:"utilization_pct"`
+	LaneID      string  `json:"lane_id"`
+	Name        string  `json:"name"`
+	WarehouseID string  `json:"warehouse_id"`
+	H3Cells     int     `json:"h3_cells"`
+	Drivers     int     `json:"drivers"`
+	OrdersToday int     `json:"orders_today"`
+	Capacity    int     `json:"capacity"`
+	Utilization float64 `json:"utilization_pct"`
 }
 
 // SupplierActivityEvent is a supplier-portal activity feed row derived from order transitions.
@@ -56,40 +56,40 @@ type SupplierActivityEvent struct {
 
 // SupplierDispatchPreview is the supplier-scoped dispatch planning snapshot.
 type SupplierDispatchPreview struct {
-	UndispatchedOrders      []map[string]any `json:"undispatched_orders"`
-	AvailableDrivers        []map[string]any `json:"available_drivers"`
-	UnavailableDrivers      []map[string]any `json:"unavailable_drivers"`
-	PendingCount            int              `json:"pending_count"`
-	AvailableCount          int              `json:"available_driver_count"`
-	WindowConstrainedCount  int              `json:"window_constrained_count"`
-	ProposedRoutes          []map[string]any `json:"proposed_routes,omitempty"`
-	OptimizerSource         string           `json:"optimizer_source,omitempty"`
-	OptimizerWarnings       []string         `json:"optimizer_warnings,omitempty"`
+	UndispatchedOrders     []map[string]any `json:"undispatched_orders"`
+	AvailableDrivers       []map[string]any `json:"available_drivers"`
+	UnavailableDrivers     []map[string]any `json:"unavailable_drivers"`
+	PendingCount           int              `json:"pending_count"`
+	AvailableCount         int              `json:"available_driver_count"`
+	WindowConstrainedCount int              `json:"window_constrained_count"`
+	ProposedRoutes         []map[string]any `json:"proposed_routes,omitempty"`
+	OptimizerSource        string           `json:"optimizer_source,omitempty"`
+	OptimizerWarnings      []string         `json:"optimizer_warnings,omitempty"`
 }
 
 // SupplierExceptionRow is an operational exception surfaced to the supplier queue.
 type SupplierExceptionRow struct {
-	OrderID     string `json:"order_id"`
-	Kind        string `json:"kind"`
-	Status      string `json:"status"`
-	RetailerID  string `json:"retailer_id,omitempty"`
-	Note        string `json:"note,omitempty"`
-	ManifestID  string `json:"manifest_id,omitempty"`
-	UpdatedAt   string `json:"updated_at"`
+	OrderID    string `json:"order_id"`
+	Kind       string `json:"kind"`
+	Status     string `json:"status"`
+	RetailerID string `json:"retailer_id,omitempty"`
+	Note       string `json:"note,omitempty"`
+	ManifestID string `json:"manifest_id,omitempty"`
+	UpdatedAt  string `json:"updated_at"`
 }
 
 type supplierDashboardDetail struct {
 	supplierDashboardResponse
-	OrdersByStatus         map[string]int `json:"orders_by_status"`
-	TodayRevenueMinor      int64          `json:"today_revenue_minor"`
-	Currency               string         `json:"currency"`
-	ActiveDrivers          int            `json:"active_drivers"`
-	TotalDrivers           int            `json:"total_drivers"`
-	RetailersOrderedToday  int            `json:"retailers_ordered_today"`
-	TotalRetailers         int            `json:"total_retailers"`
-	DeliveryCompletionRate float64        `json:"delivery_completion_rate_pct"`
-	FleetVuUsed            int64          `json:"fleet_vu_used"`
-	FleetVuTotal           int64          `json:"fleet_vu_total"`
+	OrdersByStatus         map[string]int          `json:"orders_by_status"`
+	TodayRevenueMinor      int64                   `json:"today_revenue_minor"`
+	Currency               string                  `json:"currency"`
+	ActiveDrivers          int                     `json:"active_drivers"`
+	TotalDrivers           int                     `json:"total_drivers"`
+	RetailersOrderedToday  int                     `json:"retailers_ordered_today"`
+	TotalRetailers         int                     `json:"total_retailers"`
+	DeliveryCompletionRate float64                 `json:"delivery_completion_rate_pct"`
+	FleetVuUsed            int64                   `json:"fleet_vu_used"`
+	FleetVuTotal           int64                   `json:"fleet_vu_total"`
 	RecentManifests        []SupplierManifestRow   `json:"recent_manifests"`
 	ActivityEvents         []SupplierActivityEvent `json:"activity_events"`
 }
@@ -373,13 +373,13 @@ func (s *Service) listSupplierExceptions(ctx context.Context, supplierID string)
 }
 
 type orderMetricsAggregate struct {
-	ordersByStatus   map[string]int
+	ordersByStatus    map[string]int
 	todayRevenueMinor int64
-	activeDrivers    int
-	retailersToday   int
-	totalRetailers   int
-	completionRate   float64
-	fleetVuUsed      int64
+	activeDrivers     int
+	retailersToday    int
+	totalRetailers    int
+	completionRate    float64
+	fleetVuUsed       int64
 }
 
 func aggregateOrderMetrics(orders []SupplierOrder, now time.Time) orderMetricsAggregate {

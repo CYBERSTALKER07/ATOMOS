@@ -191,10 +191,10 @@ func (s *Service) HandleConfirmPaymentBypass(w http.ResponseWriter, r *http.Requ
 
 		buf := &spannerTxnBuffer{}
 		if err := outbox.EmitJSON(ctx, buf, events.AggregateOrder, req.OrderID, events.TopicMain, map[string]any{
-			"type":       "PAYMENT_BYPASS_CONFIRMED",
-			"order_id":   req.OrderID,
-			"driver_id":  driverID,
-			"timestamp":  now.Format(time.RFC3339Nano),
+			"type":      "PAYMENT_BYPASS_CONFIRMED",
+			"order_id":  req.OrderID,
+			"driver_id": driverID,
+			"timestamp": now.Format(time.RFC3339Nano),
 		}); err != nil {
 			return err
 		}

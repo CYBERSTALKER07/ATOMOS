@@ -24,16 +24,16 @@ func (b *testTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error {
 }
 
 type testRepo struct {
-	order          Order
-	found          bool
-	getErr         error
-	createErr      error
-	updateErr      error
-	createCalls    int
-	updateCalls    int
-	created        Order
-	captured       Order
-	bufferedEvents int
+	order               Order
+	found               bool
+	getErr              error
+	createErr           error
+	updateErr           error
+	createCalls         int
+	updateCalls         int
+	created             Order
+	captured            Order
+	bufferedEvents      int
 	lastEvents          []outbox.Event
 	lastProofs          []DeliveryProofArtifact
 	retailerWindowOpen  string

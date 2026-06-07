@@ -90,9 +90,9 @@ type FactoryTruckRow struct {
 
 // SupplierWriteBatch is the mutation set for one supplier manifest commit.
 type SupplierWriteBatch struct {
-	Manifests   []SupplierTruckRow
-	Orders      []SupplierManifestOrderRow
-	Exceptions  []SupplierExceptionRow
+	Manifests    []SupplierTruckRow
+	Orders       []SupplierManifestOrderRow
+	Exceptions   []SupplierExceptionRow
 	OrderPatches []OrderPatch
 }
 
@@ -631,13 +631,13 @@ func commitOrTime(t time.Time) any {
 
 func scanSupplierManifest(row *spanner.Row) (SupplierTruckRow, error) {
 	var (
-		m               SupplierTruckRow
-		warehouseID     spanner.NullString
-		routeID         spanner.NullString
-		loadingStarted  spanner.NullTime
-		sealedAt        spanner.NullTime
-		dispatchedAt    spanner.NullTime
-		completedAt     spanner.NullTime
+		m              SupplierTruckRow
+		warehouseID    spanner.NullString
+		routeID        spanner.NullString
+		loadingStarted spanner.NullTime
+		sealedAt       spanner.NullTime
+		dispatchedAt   spanner.NullTime
+		completedAt    spanner.NullTime
 	)
 	if err := row.Columns(
 		&m.ManifestID, &m.SupplierID, &warehouseID, &routeID, &m.TruckID, &m.DriverID, &m.State,
@@ -722,11 +722,11 @@ func scanFactoryManifest(row *spanner.Row) (FactoryTruckRow, error) {
 
 func scanFactoryTransfer(row *spanner.Row) (FactoryTransferRow, error) {
 	var (
-		t           FactoryTransferRow
-		orderID     spanner.NullString
-		manifestID  spanner.NullString
-		driverID    spanner.NullString
-		vehicleID   spanner.NullString
+		t          FactoryTransferRow
+		orderID    spanner.NullString
+		manifestID spanner.NullString
+		driverID   spanner.NullString
+		vehicleID  spanner.NullString
 	)
 	if err := row.Columns(
 		&t.TransferID, &t.FactoryID, &t.SupplierID, &orderID, &manifestID, &t.State,

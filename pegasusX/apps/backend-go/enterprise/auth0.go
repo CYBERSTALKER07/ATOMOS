@@ -1,10 +1,9 @@
 // Phase 2 Enterprise Integration: Auth0 Identity & Access Management
 // This file is currently commented out for Phase 1 (Trial).
-// Uncomment this block and run `go get github.com/auth0/go-jwt-middleware/v2` 
+// Uncomment this block and run `go get github.com/auth0/go-jwt-middleware/v2`
 // when the enterprise contract is secured.
 
 package enterprise
-
 
 import (
 	"context"
@@ -81,7 +80,7 @@ func SetupAuth0Middleware() func(http.Handler) http.Handler {
 	)
 
 	log.Println("Auth0 Enterprise Middleware configured successfully")
-	
+
 	// Return a wrapper that runs Auth0 check, then maps claims to auth.Claims
 	return func(next http.Handler) http.Handler {
 		return middleware.CheckJWT(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -102,4 +101,3 @@ func SetupAuth0Middleware() func(http.Handler) http.Handler {
 		}))
 	}
 }
-

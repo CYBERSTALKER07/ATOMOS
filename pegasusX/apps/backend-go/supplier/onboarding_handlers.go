@@ -163,8 +163,6 @@ type supplierFleetVehiclesResponse struct {
 	UpdatedAt  string                 `json:"updated_at"`
 }
 
-
-
 type topologyLookup struct {
 	warehouses map[string]struct{}
 	factories  map[string]struct{}

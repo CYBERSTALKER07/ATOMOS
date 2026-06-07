@@ -245,7 +245,7 @@ func (r *SpannerRepository) ReleaseReservation(ctx context.Context, inventoryID 
 }
 
 func (r *SpannerRepository) queryLevels(ctx context.Context, stmt spanner.Statement, scope string) ([]Level, error) {
-	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()
 	var levels []Level
 	for {

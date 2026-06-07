@@ -3,10 +3,10 @@ package warehouse
 import (
 	"context"
 	"fmt"
-	"os"
-	"strings"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"os"
+	"strings"
 )
 
 type memoryTransferRow struct {

@@ -281,10 +281,10 @@ type Service struct {
 	now         func() time.Time
 	newID       func() string
 
-	mu                sync.RWMutex
-	autoOrderMu       sync.RWMutex
-	favoriteSuppliers map[string]map[string]bool
-	familyByRetailer  map[string][]FamilyMember
+	mu                  sync.RWMutex
+	autoOrderMu         sync.RWMutex
+	favoriteSuppliers   map[string]map[string]bool
+	familyByRetailer    map[string][]FamilyMember
 	autoOrderByRetailer map[string]*AutoOrderSettings
 }
 
@@ -319,21 +319,21 @@ func NewService(c ServiceConfig) *Service {
 		c.NewID = defaultRetailerID
 	}
 	return &Service{
-		repo:              c.Repo,
-		cartRepo:          c.CartRepo,
-		notifSvc:          c.NotifSvc,
-		orders:            c.Orders,
-		cache:             c.Cache,
-		idem:              c.Idem,
-		proximity:         c.Proximity,
-		locations:         c.Locations,
-		supplierID:        c.SupplierID,
-		countryCode:       c.CountryCode,
-		jwtSecret:         c.JWTSecret,
-		jwtIssuer:         c.JWTIssuer,
-		log:               c.Log,
-		now:               c.Now,
-		newID:             c.NewID,
+		repo:                c.Repo,
+		cartRepo:            c.CartRepo,
+		notifSvc:            c.NotifSvc,
+		orders:              c.Orders,
+		cache:               c.Cache,
+		idem:                c.Idem,
+		proximity:           c.Proximity,
+		locations:           c.Locations,
+		supplierID:          c.SupplierID,
+		countryCode:         c.CountryCode,
+		jwtSecret:           c.JWTSecret,
+		jwtIssuer:           c.JWTIssuer,
+		log:                 c.Log,
+		now:                 c.Now,
+		newID:               c.NewID,
 		favoriteSuppliers:   make(map[string]map[string]bool),
 		familyByRetailer:    make(map[string][]FamilyMember),
 		autoOrderByRetailer: make(map[string]*AutoOrderSettings),
@@ -472,7 +472,6 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (RegisterRe
 		CreatedAt:  r.CreatedAt.Format(time.RFC3339Nano),
 	}, nil
 }
-
 
 func retailerByPhoneKey(phone string) string {
 	return "retailer:phone:" + phone

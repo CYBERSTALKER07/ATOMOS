@@ -2,6 +2,7 @@
 package payment
 
 import (
+	"bytes"
 	"context"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -210,6 +211,9 @@ type Service struct {
 	cartCheckout CartCheckoutHandler
 	orderReader  OrderCheckoutReader
 
+	globalPayEnv           string
+	globalPayUsername      string
+	globalPayPassword      string
 	globalPayWebhookSecret string
 	adyenWebhookSecret     string
 	stripeWebhookSecret    string
@@ -229,6 +233,10 @@ type ServiceConfig struct {
 	Execution                       *ProviderExecutionRouter
 	AirwallexDirectExecutionEnabled bool
 
+	GlobalPayEnv           string
+	GlobalPayServiceID     string
+	GlobalPayUsername      string
+	GlobalPayPassword      string
 	GlobalPayWebhookSecret string
 	AdyenWebhookSecret     string
 	StripeWebhookSecret    string
@@ -397,6 +405,10 @@ func NewService(c ServiceConfig) *Service {
 	if c.Execution == nil {
 		c.Execution = NewProviderExecutionRouter(ProviderExecutionRouterConfig{
 			AirwallexDirectExecutionEnabled: c.AirwallexDirectExecutionEnabled,
+			GlobalPayEnv:                    c.GlobalPayEnv,
+			GlobalPayServiceID:              c.GlobalPayServiceID,
+			GlobalPayUsername:               c.GlobalPayUsername,
+			GlobalPayPassword:               c.GlobalPayPassword,
 		})
 	}
 	return &Service{
@@ -406,6 +418,9 @@ func NewService(c ServiceConfig) *Service {
 		supplierID:             c.SupplierID,
 		currency:               c.Currency,
 		execution:              c.Execution,
+		globalPayEnv:           c.GlobalPayEnv,
+		globalPayUsername:      c.GlobalPayUsername,
+		globalPayPassword:      c.GlobalPayPassword,
 		globalPayWebhookSecret: c.GlobalPayWebhookSecret,
 		adyenWebhookSecret:     c.AdyenWebhookSecret,
 		stripeWebhookSecret:    c.StripeWebhookSecret,
@@ -989,6 +1004,19 @@ func (s *Service) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Docs-only integration requirement: Authoritative status verification
+	if req.Status == "SUCCESS" || req.Status == "SETTLED" {
+		verifiedStatus, err := s.verifyGlobalPayPaymentStatus(r.Context(), req.TransactionID)
+		if err != nil {
+			writeJSONError(w, http.StatusBadGateway, "verification_failed", fmt.Sprintf("failed to verify payment status: %v", err), endpoint, false, "")
+			return
+		}
+		if verifiedStatus != req.Status {
+			writeJSONError(w, http.StatusConflict, "status_mismatch", "webhook status does not match authoritative status", endpoint, false, "")
+			return
+		}
+	}
+
 	amount := req.AmountMinor
 	if amount <= 0 {
 		amount = req.Amount
@@ -1027,6 +1055,86 @@ func (s *Service) HandleGlobalPayWebhook(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(respBytes)
+}
+
+func (s *Service) verifyGlobalPayPaymentStatus(ctx context.Context, transactionID string) (string, error) {
+	if s.globalPayUsername == "" || s.globalPayPassword == "" {
+		return "", fmt.Errorf("globalpay credentials missing (username or password)")
+	}
+
+	env := strings.ToLower(s.globalPayEnv)
+	var baseURL string
+	switch env {
+	case "production":
+		baseURL = "https://checkout-api.globalpay.uz/checkout"
+	case "staging":
+		baseURL = "https://checkout-api-staging.globalpay.uz/checkout"
+	default:
+		baseURL = "https://checkout-api-dev.globalpay.uz/checkout"
+	}
+
+	// 1. Authenticate to get access token
+	authURL := fmt.Sprintf("%s/v1/merchant/auth", baseURL)
+	reqBody, _ := json.Marshal(map[string]string{
+		"username": s.globalPayUsername,
+		"password": s.globalPayPassword,
+	})
+
+	authReq, err := http.NewRequestWithContext(ctx, http.MethodPost, authURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return "", err
+	}
+	authReq.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	authResp, err := client.Do(authReq)
+	if err != nil {
+		return "", fmt.Errorf("auth request failed: %w", err)
+	}
+	defer authResp.Body.Close()
+
+	if authResp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(authResp.Body)
+		return "", fmt.Errorf("auth failed with status %d: %s", authResp.StatusCode, string(b))
+	}
+
+	var authData struct {
+		AccessToken string `json:"access_token"`
+	}
+	if err := json.NewDecoder(authResp.Body).Decode(&authData); err != nil {
+		return "", fmt.Errorf("auth decode failed: %w", err)
+	}
+	if authData.AccessToken == "" {
+		return "", fmt.Errorf("empty access token")
+	}
+
+	// 2. Get payment status
+	statusURL := fmt.Sprintf("%s/v1/payment/%s", baseURL, transactionID)
+	statusReq, err := http.NewRequestWithContext(ctx, http.MethodGet, statusURL, nil)
+	if err != nil {
+		return "", err
+	}
+	statusReq.Header.Set("Authorization", "Bearer "+authData.AccessToken)
+
+	statusResp, err := client.Do(statusReq)
+	if err != nil {
+		return "", fmt.Errorf("status request failed: %w", err)
+	}
+	defer statusResp.Body.Close()
+
+	if statusResp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(statusResp.Body)
+		return "", fmt.Errorf("status query failed with status %d: %s", statusResp.StatusCode, string(b))
+	}
+
+	var statusData struct {
+		Status string `json:"status"`
+	}
+	if err := json.NewDecoder(statusResp.Body).Decode(&statusData); err != nil {
+		return "", fmt.Errorf("status decode failed: %w", err)
+	}
+
+	return strings.ToUpper(strings.TrimSpace(statusData.Status)), nil
 }
 
 // HandleAdyenWebhook serves POST /v1/webhooks/adyen.

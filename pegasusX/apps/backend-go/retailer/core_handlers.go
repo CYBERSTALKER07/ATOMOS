@@ -28,10 +28,10 @@ type FamilyMember struct {
 }
 
 type retailerProfileUpdateRequest struct {
-	Name                 string `json:"name,omitempty"`
-	Phone                string `json:"phone,omitempty"`
-	Company              string `json:"company,omitempty"`
-	CountryCode          string `json:"country_code,omitempty"`
+	Name                 string  `json:"name,omitempty"`
+	Phone                string  `json:"phone,omitempty"`
+	Company              string  `json:"company,omitempty"`
+	CountryCode          string  `json:"country_code,omitempty"`
 	ReceivingWindowOpen  *string `json:"receiving_window_open"`
 	ReceivingWindowClose *string `json:"receiving_window_close"`
 }
@@ -800,15 +800,15 @@ func (s *Service) HandlePendingPayments(w http.ResponseWriter, r *http.Request) 
 	sessions := make([]map[string]any, 0, len(pending))
 	for i := range pending {
 		sessions = append(sessions, map[string]any{
-			"session_id":  "sess_" + pending[i].OrderID,
-			"order_id":    pending[i].OrderID,
-			"retailer_id": retailerID,
-			"supplier_id": pending[i].SupplierID,
-			"gateway":     "payme",
+			"session_id":    "sess_" + pending[i].OrderID,
+			"order_id":      pending[i].OrderID,
+			"retailer_id":   retailerID,
+			"supplier_id":   pending[i].SupplierID,
+			"gateway":       "payme",
 			"locked_amount": pending[i].TotalMinor,
-			"currency":    pending[i].Currency,
-			"status":      pending[i].Status,
-			"created_at":  pending[i].CreatedAt,
+			"currency":      pending[i].Currency,
+			"status":        pending[i].Status,
+			"created_at":    pending[i].CreatedAt,
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{

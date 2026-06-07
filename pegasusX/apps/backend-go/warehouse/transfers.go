@@ -180,7 +180,7 @@ func (s *Service) HandleForceReceive(w http.ResponseWriter, r *http.Request) {
 			payload := events.WarehouseEvent{
 				BaseEvent:   events.BaseEvent{Type: events.EventWarehouseTransferReceived},
 				TransferID:  transferID,
-				WarehouseID: whID, // replacing factory_id for standardization 
+				WarehouseID: whID, // replacing factory_id for standardization
 				SupplierID:  supplierID,
 				Units:       int64(req.TotalVolumeVU),
 			}

@@ -8,26 +8,26 @@ import "strings"
 // Portal clients read status/orders_count/driver_name; tablet clients read
 // state/truck_id/total_volume_vu/orders. Both field sets are always present.
 type Wire struct {
-	ManifestID    string           `json:"manifest_id"`
-	Status        string           `json:"status"`
-	State         string           `json:"state"`
-	OrdersCount   int              `json:"orders_count"`
-	DriverID      string           `json:"driver_id,omitempty"`
-	DriverName    string           `json:"driver_name"`
-	VehiclePlate  string           `json:"vehicle_plate,omitempty"`
-	TruckID       string           `json:"truck_id"`
-	VehicleID     string           `json:"vehicle_id,omitempty"`
-	TotalVu       int64            `json:"total_vu"`
-	TotalVolumeVU float64          `json:"total_volume_vu"`
-	MaxVolumeVU   float64          `json:"max_volume_vu"`
-	StopCount     int              `json:"stop_count"`
-	RegionCode    string           `json:"region_code,omitempty"`
-	SealedAt      string           `json:"sealed_at,omitempty"`
-	DispatchedAt  string           `json:"dispatched_at,omitempty"`
-	CreatedAt     string           `json:"created_at,omitempty"`
-	UpdatedAt     string           `json:"updated_at,omitempty"`
-	Orders        []OrderWire      `json:"orders,omitempty"`
-	OverflowCount int              `json:"overflow_count"`
+	ManifestID    string      `json:"manifest_id"`
+	Status        string      `json:"status"`
+	State         string      `json:"state"`
+	OrdersCount   int         `json:"orders_count"`
+	DriverID      string      `json:"driver_id,omitempty"`
+	DriverName    string      `json:"driver_name"`
+	VehiclePlate  string      `json:"vehicle_plate,omitempty"`
+	TruckID       string      `json:"truck_id"`
+	VehicleID     string      `json:"vehicle_id,omitempty"`
+	TotalVu       int64       `json:"total_vu"`
+	TotalVolumeVU float64     `json:"total_volume_vu"`
+	MaxVolumeVU   float64     `json:"max_volume_vu"`
+	StopCount     int         `json:"stop_count"`
+	RegionCode    string      `json:"region_code,omitempty"`
+	SealedAt      string      `json:"sealed_at,omitempty"`
+	DispatchedAt  string      `json:"dispatched_at,omitempty"`
+	CreatedAt     string      `json:"created_at,omitempty"`
+	UpdatedAt     string      `json:"updated_at,omitempty"`
+	Orders        []OrderWire `json:"orders,omitempty"`
+	OverflowCount int         `json:"overflow_count"`
 }
 
 // OrderWire is the per-stop order shape embedded in manifest detail responses.
@@ -68,37 +68,37 @@ type PortalRow struct {
 
 // PayloadRow is the payloader operational manifest input.
 type PayloadRow struct {
-	ManifestID       string
-	VehicleID        string
-	DriverID         string
-	State            string
-	TotalVolumeVU    int64
-	MaxVolumeVU      int64
-	StopCount        int
-	RegionCode       string
-	SealedAt         string
-	DispatchedAt     string
-	CreatedAt        string
-	UpdatedAt        string
-	OverflowCount    int
-	Orders           []PayloadOrderRow
-	DriverName       string
-	VehiclePlate     string
+	ManifestID    string
+	VehicleID     string
+	DriverID      string
+	State         string
+	TotalVolumeVU int64
+	MaxVolumeVU   int64
+	StopCount     int
+	RegionCode    string
+	SealedAt      string
+	DispatchedAt  string
+	CreatedAt     string
+	UpdatedAt     string
+	OverflowCount int
+	Orders        []PayloadOrderRow
+	DriverName    string
+	VehiclePlate  string
 }
 
 // PayloadOrderRow is one manifest-order join row for detail hydration.
 type PayloadOrderRow struct {
-	OrderID      string
-	State        string
-	Amount       int64
-	RouteID      string
-	WarehouseID  string
-	RetailerID   string
-	LineItemID   string
-	SkuID        string
-	SkuName      string
-	Quantity     int
-	UnitPrice    int64
+	OrderID     string
+	State       string
+	Amount      int64
+	RouteID     string
+	WarehouseID string
+	RetailerID  string
+	LineItemID  string
+	SkuID       string
+	SkuName     string
+	Quantity    int
+	UnitPrice   int64
 }
 
 // FromPortalRow maps a supplier portal projection into the unified wire shape.
@@ -166,12 +166,12 @@ func FromPayloadRow(row PayloadRow) Wire {
 func orderFromPayload(row PayloadOrderRow) OrderWire {
 	state := normalizeStatus(row.State)
 	return OrderWire{
-		OrderID: row.OrderID,
-		RetailerID: row.RetailerID,
-		Amount:  row.Amount,
-		State:   state,
-		Status:  state,
-		RouteID: row.RouteID,
+		OrderID:     row.OrderID,
+		RetailerID:  row.RetailerID,
+		Amount:      row.Amount,
+		State:       state,
+		Status:      state,
+		RouteID:     row.RouteID,
 		WarehouseID: row.WarehouseID,
 		Items: []OrderItemWire{{
 			LineItemID: coalesce(row.LineItemID, row.OrderID+"-line-1"),

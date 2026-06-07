@@ -1,10 +1,9 @@
 // Phase 2 Enterprise Integration: Datadog Observability
 // This file is currently commented out for Phase 1 (Trial).
-// Uncomment this block and run `go get gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer` 
+// Uncomment this block and run `go get gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer`
 // when the enterprise contract is secured.
 
 package enterprise
-
 
 import (
 	"log"
@@ -55,4 +54,3 @@ func StopDatadog() {
 	tracer.Stop()
 	log.Println("Datadog stopped and traces flushed.")
 }
-

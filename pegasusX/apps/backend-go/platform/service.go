@@ -101,13 +101,13 @@ func (s *Service) OutdatedWSPayload(ctx context.Context, role, platform, channel
 		return nil, false, nil
 	}
 	body := map[string]any{
-		"type":             events.EventSystemAppOutdated,
-		"trace_id":         traceID,
-		"timestamp":        time.Now().UTC().Format(time.RFC3339Nano),
-		"minimum_version":  eval.MinimumVersion,
-		"client_version":   eval.ClientVersion,
+		"type":                events.EventSystemAppOutdated,
+		"trace_id":            traceID,
+		"timestamp":           time.Now().UTC().Format(time.RFC3339Nano),
+		"minimum_version":     eval.MinimumVersion,
+		"client_version":      eval.ClientVersion,
 		"recommended_version": eval.RecommendedVersion,
-		"update_url":       eval.UpdateURL,
+		"update_url":          eval.UpdateURL,
 	}
 	raw, err := json.Marshal(body)
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 
 // Deps is the narrow dependency contract for driver routes.
 type Deps struct {
-	Service             *driver.Service
+	Service      *driver.Service
 	OrderService interface {
 		HandleReportShopClosed(http.ResponseWriter, *http.Request)
 		HandleConfirmPaymentBypass(http.ResponseWriter, *http.Request)

@@ -8,32 +8,32 @@ import (
 
 func TestSnapshotReceivingWindowsOnOrder(t *testing.T) {
 	tests := []struct {
-		name         string
-		retailerOpen string
+		name          string
+		retailerOpen  string
 		retailerClose string
-		wantOpen     string
-		wantClose    string
-		wantErr      bool
+		wantOpen      string
+		wantClose     string
+		wantErr       bool
 	}{
 		{
-			name:         "canonicalizes padded windows",
-			retailerOpen: "9:00",
+			name:          "canonicalizes padded windows",
+			retailerOpen:  "9:00",
 			retailerClose: "18:30",
-			wantOpen:     "09:00",
-			wantClose:    "18:30",
+			wantOpen:      "09:00",
+			wantClose:     "18:30",
 		},
 		{
-			name:         "empty retailer windows",
-			retailerOpen: "",
+			name:          "empty retailer windows",
+			retailerOpen:  "",
 			retailerClose: "",
-			wantOpen:     "",
-			wantClose:    "",
+			wantOpen:      "",
+			wantClose:     "",
 		},
 		{
-			name:         "rejects invalid open",
-			retailerOpen: "25:00",
+			name:          "rejects invalid open",
+			retailerOpen:  "25:00",
 			retailerClose: "18:00",
-			wantErr:      true,
+			wantErr:       true,
 		},
 	}
 

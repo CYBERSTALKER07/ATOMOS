@@ -58,6 +58,11 @@ type ProviderExecutionRouterConfig struct {
 	BaseBackoff                     time.Duration
 	MaxBackoff                      time.Duration
 	AirwallexDirectExecutionEnabled bool
+
+	GlobalPayEnv       string
+	GlobalPayServiceID string
+	GlobalPayUsername  string
+	GlobalPayPassword  string
 }
 
 // ProviderExecutionRouter routes payment actions to provider adapters with
@@ -125,11 +130,12 @@ func NewProviderExecutionRouter(cfg ProviderExecutionRouterConfig) *ProviderExec
 	cfg = normalizeExecutionRouterConfig(cfg)
 	router := &ProviderExecutionRouter{
 		executors: map[string]ProviderExecutor{
-			"GLOBAL_PAY": &staticProviderExecutor{
-				gateway:      "GLOBAL_PAY",
-				checkoutMode: ExecutionModeHostedRedirect,
-				urlPrefix:    "/v1/payment/redirect/global-pay/",
-			},
+			"GLOBAL_PAY": newGlobalPayProviderExecutor(
+				cfg.GlobalPayEnv,
+				cfg.GlobalPayServiceID,
+				cfg.GlobalPayUsername,
+				cfg.GlobalPayPassword,
+			),
 			"ADYEN": &staticProviderExecutor{
 				gateway:      "ADYEN",
 				checkoutMode: ExecutionModeHostedRedirect,

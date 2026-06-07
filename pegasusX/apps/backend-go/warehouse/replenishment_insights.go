@@ -9,18 +9,18 @@ import (
 )
 
 type replenishmentInsight struct {
-	ID                 string `json:"id"`
-	WarehouseID        string `json:"warehouse_id"`
-	WarehouseName      string `json:"warehouse_name"`
-	ProductID          string `json:"product_id"`
-	ProductName        string `json:"product_name"`
-	Urgency            string `json:"urgency"`
-	CurrentStock       int64  `json:"current_stock"`
-	AvgDailyVelocity   float64 `json:"avg_daily_velocity"`
-	DaysUntilStockout  int    `json:"days_until_stockout"`
-	ReorderQuantity    int64  `json:"reorder_quantity"`
-	Status             string `json:"status"`
-	CreatedAt          string `json:"created_at"`
+	ID                string  `json:"id"`
+	WarehouseID       string  `json:"warehouse_id"`
+	WarehouseName     string  `json:"warehouse_name"`
+	ProductID         string  `json:"product_id"`
+	ProductName       string  `json:"product_name"`
+	Urgency           string  `json:"urgency"`
+	CurrentStock      int64   `json:"current_stock"`
+	AvgDailyVelocity  float64 `json:"avg_daily_velocity"`
+	DaysUntilStockout int     `json:"days_until_stockout"`
+	ReorderQuantity   int64   `json:"reorder_quantity"`
+	Status            string  `json:"status"`
+	CreatedAt         string  `json:"created_at"`
 }
 
 func (s *Service) ensureReplenishmentInsightsLocked(warehouseID string) {

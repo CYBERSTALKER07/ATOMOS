@@ -34,8 +34,6 @@ type shopClosedResolveRequest struct {
 	Action    string `json:"action"`
 }
 
-
-
 // HandleReportShopClosed is POST /v1/delivery/shop-closed.
 func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -118,9 +116,9 @@ func (s *Service) HandleReportShopClosed(w http.ResponseWriter, r *http.Request)
 
 		mutations := []*spanner.Mutation{
 			spanner.UpdateMap("Orders", map[string]any{
-				"OrderId": req.OrderID,
-				"Status":  string(StatusArrivedShopClosed),
-				"Version": version + 1,
+				"OrderId":   req.OrderID,
+				"Status":    string(StatusArrivedShopClosed),
+				"Version":   version + 1,
 				"UpdatedAt": now.UTC(),
 			}),
 			spanner.InsertMap("ShopClosedAttempts", map[string]any{
@@ -362,11 +360,11 @@ func (s *Service) HandleResolveShopClosed(w http.ResponseWriter, r *http.Request
 			resolution = "BYPASS_ISSUED"
 			bypassToken = generateShopClosedBypassToken()
 			mutations = append(mutations, spanner.UpdateMap("ShopClosedAttempts", map[string]any{
-				"AttemptId":  req.AttemptID,
-				"Resolution": resolution,
+				"AttemptId":   req.AttemptID,
+				"Resolution":  resolution,
 				"BypassToken": bypassToken,
-				"ResolvedAt": now.UTC(),
-				"ResolvedBy": adminID,
+				"ResolvedAt":  now.UTC(),
+				"ResolvedBy":  adminID,
 			}))
 		case "RETURN_TO_DEPOT":
 			resolution = "RETURN_TO_DEPOT"
@@ -454,7 +452,7 @@ func (s *Service) scheduleShopClosedEscalation(ctx context.Context, attemptID, o
 
 	_, err := s.spannerClient.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
 		stmt := spanner.Statement{
-			SQL: `SELECT Resolution, RetailerRespondedAt FROM ShopClosedAttempts WHERE AttemptId = @aid`,
+			SQL:    `SELECT Resolution, RetailerRespondedAt FROM ShopClosedAttempts WHERE AttemptId = @aid`,
 			Params: map[string]any{"aid": attemptID},
 		}
 		iter := txn.Query(ctx, stmt)

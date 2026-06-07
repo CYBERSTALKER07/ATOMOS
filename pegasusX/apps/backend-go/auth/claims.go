@@ -16,14 +16,14 @@ import (
 type Role string
 
 const (
-	RoleAdmin           Role = "ADMIN" // Supplier portal session (single-tenant)
-	RoleRetailer        Role = "RETAILER"
-	RoleDriver          Role = "DRIVER"
-	RolePayload         Role = "PAYLOAD"
-	RoleFactory         Role = "FACTORY" // Native factory staff JWT (iOS / portal login)
-	RoleFactoryAdmin    Role = "FACTORY_ADMIN"
-	RoleWarehouseAdmin  Role = "WAREHOUSE_ADMIN"
-	RoleWarehouse       Role = "WAREHOUSE" // Native warehouse staff JWT (iOS / portal login)
+	RoleAdmin          Role = "ADMIN" // Supplier portal session (single-tenant)
+	RoleRetailer       Role = "RETAILER"
+	RoleDriver         Role = "DRIVER"
+	RolePayload        Role = "PAYLOAD"
+	RoleFactory        Role = "FACTORY" // Native factory staff JWT (iOS / portal login)
+	RoleFactoryAdmin   Role = "FACTORY_ADMIN"
+	RoleWarehouseAdmin Role = "WAREHOUSE_ADMIN"
+	RoleWarehouse      Role = "WAREHOUSE" // Native warehouse staff JWT (iOS / portal login)
 )
 
 // HomeNodeType is the discriminator for Driver / Vehicle scope.
@@ -44,7 +44,7 @@ type Claims struct {
 	SupplierRole Role         // FACTORY_ADMIN | WAREHOUSE_ADMIN when Role==ADMIN derivative
 	HomeNodeType HomeNodeType // WAREHOUSE | FACTORY when applicable
 	HomeNodeID   string
-	IsConfigured bool         // supplier completed billing setup
+	IsConfigured bool // supplier completed billing setup
 	TraceID      string
 }
 

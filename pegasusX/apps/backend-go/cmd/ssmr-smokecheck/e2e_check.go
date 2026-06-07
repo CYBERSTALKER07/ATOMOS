@@ -889,9 +889,9 @@ func runFactoryOps(ctx context.Context, client *http.Client, base, cookie string
 	fmt.Println("PX_E2E_FACTORY_MANIFEST_EXCEPTIONS_OK")
 
 	createBody, _ := json.Marshal(map[string]any{
-		"total_vu":  int64(32),
-		"order_id":  "ssmr-factory-transfer",
-		"driver_id": "drv_factory_1",
+		"total_vu":   int64(32),
+		"order_id":   "ssmr-factory-transfer",
+		"driver_id":  "drv_factory_1",
 		"vehicle_id": "veh_factory_1",
 	})
 	status, respBody, _, err = clientPost(ctx, client, base+"/v1/factory/transfers/create", createBody, cookie, "ssmr-factory-transfer-create")

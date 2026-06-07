@@ -576,7 +576,7 @@ func (r *SpannerRepository) UpdateTransferState(ctx context.Context, transferID,
 		if supplierID != "" && supID != supplierID {
 			return fmt.Errorf("transfer_forbidden")
 		}
-		
+
 		muts := []*spanner.Mutation{
 			spanner.UpdateMap("FactoryInternalTransfers", map[string]any{
 				"TransferId": transferID,

@@ -226,4 +226,3 @@ func BinPack(orders []DispatchableOrder, fleet []AvailableDriver, cellLookup fun
 
 	return result
 }
-

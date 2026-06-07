@@ -1,10 +1,9 @@
 // Phase 2 Enterprise Integration: HashiCorp HCP Vault Secrets Management
 // This file is currently commented out for Phase 1 (Trial).
-// Uncomment this block and run `go get github.com/hashicorp/vault/api` 
+// Uncomment this block and run `go get github.com/hashicorp/vault/api`
 // when the enterprise contract is secured.
 
 package enterprise
-
 
 import (
 	"context"
@@ -65,4 +64,3 @@ func GetDatabaseCredentials(ctx context.Context, mountPath, roleName string) (st
 
 	return username, password, nil
 }
-
