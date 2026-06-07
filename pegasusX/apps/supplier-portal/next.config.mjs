@@ -9,8 +9,8 @@ const workspaceRoot = path.resolve(appRoot, "../..");
 const nextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: workspaceRoot,
+  typedRoutes: true,
   experimental: {
-    typedRoutes: true,
   },
   ...(isTauriBuild
     ? { output: "export", images: { unoptimized: true } }

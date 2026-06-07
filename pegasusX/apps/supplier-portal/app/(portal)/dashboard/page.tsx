@@ -58,7 +58,7 @@ export default function DashboardPage() {
               You must set up your payment gateways to receive payments from retailers.
             </p>
           </div>
-          <Link href="/settings/billing" className="px-4 py-2 bg-[var(--desk-danger)] text-white rounded-lg text-sm font-medium hover:bg-[var(--desk-danger)]/90 transition-colors">
+          <Link href={"/settings/billing" as any} className="px-4 py-2 bg-[var(--desk-danger)] text-white rounded-lg text-sm font-medium hover:bg-[var(--desk-danger)]/90 transition-colors">
             Configure Now
           </Link>
         </div>
