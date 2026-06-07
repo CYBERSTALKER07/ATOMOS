@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { isTauri, getStoredToken, storeToken, clearStoredToken } from './bridge';
 import { getFirebaseIdToken, firebaseSignOut } from './firebase';
 
-const API = (
+export const factoryApiBaseUrl = (
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_FACTORY_BACKEND_BASE_URL ||
   process.env.NEXT_PUBLIC_BACKEND_BASE_URL ||
   'http://localhost:8180'
 ).replace(/\/$/, '');
+const API = factoryApiBaseUrl;
 
 const FACTORY_JWT_COOKIE = 'pegasus_factory_jwt';
 const FACTORY_REFRESH_COOKIE = 'pegasus_factory_refresh';

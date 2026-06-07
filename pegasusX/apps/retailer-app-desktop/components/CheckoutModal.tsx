@@ -23,7 +23,7 @@ import type {
   UnifiedCheckoutResponse,
   RetailerProfile,
 } from "../lib/types";
-import type { PaymentGatewayDegradedPayload } from "@pegasusx/types/ws-events";
+import type { PaymentGatewayDegradedPayload } from "@pegasusx/types";
 
 function getProfile(): RetailerProfile | null {
   if (typeof localStorage === "undefined") return null;

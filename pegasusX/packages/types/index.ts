@@ -25,6 +25,11 @@ export function isProblemDetail(obj: any): obj is ProblemDetail {
   );
 }
 
+export interface PaymentGatewayDegradedPayload {
+  gateway: string;
+  reason: string;
+}
+
 // ── Role + scalar primitives ────────────────────────────────────────────────
 export type Role =
   | "ADMIN"

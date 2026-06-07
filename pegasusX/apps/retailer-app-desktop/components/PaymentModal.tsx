@@ -12,14 +12,14 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { PaymentRequiredEvent } from "@pegasusx/types";
+import type { PaymentRequired } from "@pegasusx/types";
 import { useWsEvent, type WsMessage } from "../lib/ws";
 import { apiFetch } from "../lib/auth";
 import type { CardCheckoutResponse, PendingPaymentSession, PendingPaymentsResponse } from "../lib/types";
 
 /* ── Types ── */
 
-type PaymentEvent = Omit<PaymentRequiredEvent, "available_card_gateways"> & {
+type PaymentEvent = Omit<PaymentRequired, "available_card_gateways"> & {
   available_card_gateways?: string[];
 };
 
@@ -46,7 +46,7 @@ function sessionToPaymentEvent(session: PendingPaymentSession): PaymentEvent {
     amount: session.locked_amount,
     original_amount: session.locked_amount,
     payment_method: gateway === "CASH" ? "CASH" : "CARD",
-    gateway: gateway as PaymentRequiredEvent["gateway"],
+    gateway: gateway as PaymentRequired["gateway"],
     currency: session.currency || "UZS",
     available_card_gateways: gateway === "CASH" ? [] : [gateway],
     message: "Pending payment requires completion.",
@@ -70,7 +70,7 @@ function wsMessageToPaymentEvent(msg: WsMessage): PaymentEvent {
     amount,
     original_amount: originalAmount,
     payment_method: (msg.payment_method as string) || "CARD",
-    gateway: ((msg.gateway as string) || "GLOBAL_PAY") as PaymentRequiredEvent["gateway"],
+    gateway: ((msg.gateway as string) || "GLOBAL_PAY") as PaymentRequired["gateway"],
     currency: (msg.currency as string) || "UZS",
     available_card_gateways: gateways,
     message: (msg.message as string | undefined) ?? "",
