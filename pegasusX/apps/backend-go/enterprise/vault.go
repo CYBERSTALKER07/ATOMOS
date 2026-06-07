@@ -5,7 +5,7 @@
 
 package enterprise
 
-/*
+
 import (
 	"context"
 	"fmt"
@@ -65,4 +65,4 @@ func GetDatabaseCredentials(ctx context.Context, mountPath, roleName string) (st
 
 	return username, password, nil
 }
-*/
+

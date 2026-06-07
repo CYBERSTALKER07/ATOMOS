@@ -5,7 +5,7 @@
 
 package enterprise
 
-/*
+
 import (
 	"context"
 	"log"
@@ -71,4 +71,4 @@ func SetupAuth0Middleware() *jwtmiddleware.JWTMiddleware {
 	log.Println("Auth0 Enterprise Middleware configured successfully")
 	return middleware
 }
-*/
+

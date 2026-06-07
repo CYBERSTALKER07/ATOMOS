@@ -5,7 +5,7 @@
 
 package enterprise
 
-/*
+
 import (
 	"log"
 	"os"
@@ -55,4 +55,4 @@ func StopDatadog() {
 	tracer.Stop()
 	log.Println("Datadog stopped and traces flushed.")
 }
-*/
+

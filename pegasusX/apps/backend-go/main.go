@@ -20,8 +20,10 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 	"github.com/pegasusx/pegasusx/apps/backend-go/catalogroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/driverroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/enterprise"
 	"github.com/pegasusx/pegasusx/apps/backend-go/factoryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/infraroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/kafka"
 	"github.com/pegasusx/pegasusx/apps/backend-go/orderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payloaderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
@@ -37,6 +39,15 @@ import (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	slog.SetDefault(logger)
+
+	// Phase 1/2 Integration: Initialize Datadog APM and Profiler
+	enterprise.InitDatadog("pegasusX-backend", "1.0.0")
+	defer enterprise.StopDatadog()
+
+	// Phase 1/2 Integration: Initialize HashiCorp HCP Vault Secrets
+	if err := enterprise.InitVault(); err != nil {
+		slog.Warn("HashiCorp Vault init failed (expected if not configured or running local trial)", "err", err)
+	}
 
 	cfg, err := bootstrap.LoadConfig()
 	if err != nil {
@@ -69,6 +80,12 @@ func main() {
 		go app.OrderEventConsumer.Start(ctx)
 		slog.Info("order event consumer started")
 	}
+
+	// Phase 1/2 Integration: Kafka Analytics Stream Processor
+	streamProcessor := kafka.NewAnalyticsStreamProcessor()
+	dummyStream := make(chan []byte) // In a fully wired production environment, this receives from a dedicated Kafka topic
+	go streamProcessor.Start(ctx, dummyStream)
+	slog.Info("kafka stream processor started")
 	startHubRelaySubscribers(ctx, []*ws.Hub{
 		app.RetailerHub,
 		app.SupplierHub,
@@ -82,6 +99,16 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(bootstrap.TraceMiddleware)
 	r.Use(auth.SessionAuth(cfg.JWTSecret))
+
+	// Phase 1/2 Integration: Auth0 Identity Middleware
+	if os.Getenv("AUTH0_DOMAIN") != "" {
+		auth0Middleware := enterprise.SetupAuth0Middleware()
+		r.Use(func(next http.Handler) http.Handler {
+			return auth0Middleware.CheckJWT(next)
+		})
+		slog.Info("Auth0 Enterprise Middleware attached to router")
+	}
+
 	if app.Reliability != nil {
 		r.Use(app.Reliability.Middleware)
 	}
