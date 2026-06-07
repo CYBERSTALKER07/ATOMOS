@@ -25,33 +25,65 @@ func (s *Service) HandleRetailerLogin(w http.ResponseWriter, r *http.Request) {
 		Phone       string `json:"phone"`
 		Password    string `json:"password"`
 		PIN         string `json:"pin"`
+		IDToken     string `json:"id_token"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	phone := strings.TrimSpace(req.PhoneNumber)
-	if phone == "" {
-		phone = strings.TrimSpace(req.Phone)
-	}
-	secret := strings.TrimSpace(req.Password)
-	if secret == "" {
-		secret = strings.TrimSpace(req.PIN)
-	}
-	if phone == "" || secret == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "phone_and_password_required"})
-		return
+	idToken := strings.TrimSpace(req.IDToken)
+
+	var ret Retailer
+	var ok bool
+
+	if idToken != "" && s.firebaseVerifier != nil {
+		claims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)
+		if err != nil {
+			s.log.Warn("firebase token verification failed", "err", err)
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_id_token"})
+			return
+		}
+		if claims.PhoneNumber == "" {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "phone_number_missing_in_token"})
+			return
+		}
+		ret, ok, err = s.resolveFirebaseLogin(r.Context(), claims.PhoneNumber)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
+			return
+		}
+		if !ok {
+			// Unregistered phone numbers are BLOCKED pending admin approval.
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "unregistered_phone_number_awaiting_admin_approval"})
+			return
+		}
+	} else {
+		// Fallback to demo login if IDToken is not provided.
+		phone := strings.TrimSpace(req.PhoneNumber)
+		if phone == "" {
+			phone = strings.TrimSpace(req.Phone)
+		}
+		secret := strings.TrimSpace(req.Password)
+		if secret == "" {
+			secret = strings.TrimSpace(req.PIN)
+		}
+		if phone == "" || secret == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "phone_and_password_required"})
+			return
+		}
+
+		var err error
+		ret, ok, err = s.resolveRetailerLogin(r.Context(), phone, secret)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
+			return
+		}
+		if !ok {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
+			return
+		}
 	}
 
-	ret, ok, err := s.resolveRetailerLogin(r.Context(), phone, secret)
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "login_failed"})
-		return
-	}
-	if !ok {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
-		return
-	}
 	if s.jwtSecret == "" {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "jwt_not_configured"})
 		return
@@ -146,6 +178,15 @@ func (s *Service) resolveRetailerLogin(ctx context.Context, phone, secret string
 	if ret, found, err := s.repo.FindByPhone(ctx, phone); err != nil {
 		return Retailer{}, false, err
 	} else if found && secret == expectSecret {
+		return ret, true, nil
+	}
+	return Retailer{}, false, nil
+}
+
+func (s *Service) resolveFirebaseLogin(ctx context.Context, phone string) (Retailer, bool, error) {
+	if ret, found, err := s.repo.FindByPhone(ctx, phone); err != nil {
+		return Retailer{}, false, err
+	} else if found {
 		return ret, true, nil
 	}
 	return Retailer{}, false, nil

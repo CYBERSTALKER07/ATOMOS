@@ -181,6 +181,7 @@ func (v *FirebaseTokenVerifier) VerifyIDToken(ctx context.Context, token string)
 		HomeNodeType: HomeNodeType(strings.ToUpper(stringClaim(custom, "home_node_type"))),
 		HomeNodeID:   stringClaim(custom, "home_node_id"),
 		IsConfigured: boolClaim(custom, "is_configured"),
+		PhoneNumber:  stringClaim(custom, "phone_number"),
 	}
 	return claims, nil
 }

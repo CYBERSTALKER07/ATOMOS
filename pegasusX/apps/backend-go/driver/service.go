@@ -76,8 +76,8 @@ type Service struct {
 	availability       map[string]bool
 	history            map[string][]HistoryRow
 	earningsMinor      map[string]int64
-	pendingCollections map[string][]PendingCollection
 	now                func() time.Time
+	firebaseVerifier   auth.FirebaseVerifier
 }
 
 // ServiceConfig is the constructor input.
@@ -100,6 +100,7 @@ type ServiceConfig struct {
 	JWTSecret    string
 	JWTIssuer    string
 	Now          func() time.Time
+	FirebaseVerifier auth.FirebaseVerifier
 }
 
 // ManifestGateResult is the read-model response for driver ghost-stop checks.
@@ -211,6 +212,7 @@ func NewService(c ServiceConfig) *Service {
 		jwtSecret:          strings.TrimSpace(c.JWTSecret),
 		jwtIssuer:          strings.TrimSpace(c.JWTIssuer),
 		now:                c.Now,
+		firebaseVerifier:   c.FirebaseVerifier,
 	}
 }
 

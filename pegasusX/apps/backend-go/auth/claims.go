@@ -45,6 +45,7 @@ type Claims struct {
 	HomeNodeType HomeNodeType // WAREHOUSE | FACTORY when applicable
 	HomeNodeID   string
 	IsConfigured bool // supplier completed billing setup
+	PhoneNumber  string
 	TraceID      string
 }
 

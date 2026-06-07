@@ -286,6 +286,8 @@ type Service struct {
 	favoriteSuppliers   map[string]map[string]bool
 	familyByRetailer    map[string][]FamilyMember
 	autoOrderByRetailer map[string]*AutoOrderSettings
+
+	firebaseVerifier auth.FirebaseVerifier
 }
 
 // ServiceConfig is the constructor input.
@@ -305,6 +307,7 @@ type ServiceConfig struct {
 	Log         *slog.Logger
 	Now         func() time.Time
 	NewID       func() string
+	FirebaseVerifier auth.FirebaseVerifier
 }
 
 // NewService constructs a Service with sensible defaults for Now/NewID.
@@ -337,6 +340,7 @@ func NewService(c ServiceConfig) *Service {
 		favoriteSuppliers:   make(map[string]map[string]bool),
 		familyByRetailer:    make(map[string][]FamilyMember),
 		autoOrderByRetailer: make(map[string]*AutoOrderSettings),
+		firebaseVerifier:    c.FirebaseVerifier,
 	}
 }
 
