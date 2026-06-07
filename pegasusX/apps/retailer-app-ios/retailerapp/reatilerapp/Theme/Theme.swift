@@ -13,6 +13,8 @@ enum AppTheme {
     static let accentDark = Color(UIColor.label)                          // Same as accent
     static let destructive = Color(UIColor.systemRed)
     static let destructiveSoft = Color(UIColor.systemRed).opacity(0.1)
+    // Alias kept for semantic clarity in some views (e.g. AccountProfileView uses `AppTheme.error`).
+    static let error = destructive
     static let success = Color(UIColor.systemGreen)
     static let successSoft = Color(UIColor.systemGreen).opacity(0.1)
     static let warning = Color(UIColor.systemOrange)

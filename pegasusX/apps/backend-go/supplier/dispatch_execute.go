@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
@@ -15,7 +16,6 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
-	"cloud.google.com/go/spanner"
 )
 
 // DispatchExecuteResult is the supplier-portal response for a committed dispatch.
@@ -138,21 +138,19 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 	}
 
 	now := s.now().UTC()
-	batch := &manifest.SupplierWriteBatch{}
 	committed := make([]DispatchExecuteRoute, 0, len(assignment.Routes))
 	type pendingEvent struct {
 		aggregateType string
 		aggregateID   string
 		payload       map[string]any
 	}
-	queued := make([]pendingEvent, 0, len(rows)+len(assignment.Routes))
 
 	chunkSize := 50 // 50 routes per chunk
-	
-	err = spannerutils.RunChunkedTransaction(ctx, s.portalSpanner, assignment.Routes, chunkSize, func(ctx context.Context, txn *spanner.ReadWriteTransaction, routes []plan.AssignedRoute) error {
+
+	err = spannerutils.RunChunkedTransaction(ctx, s.portalSpanner, assignment.Routes, chunkSize, func(ctx context.Context, txn *spanner.ReadWriteTransaction, routes []dispatch.DispatchRoute) error {
 		batch := &manifest.SupplierWriteBatch{}
 		var chunkQueued []pendingEvent
-		
+
 		for _, route := range routes {
 			driverID := strings.TrimSpace(route.DriverID)
 			if driverID == "" || len(route.Orders) == 0 {
@@ -288,7 +286,7 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 
 		return nil
 	})
-	
+
 	if err != nil {
 		return DispatchExecuteResult{}, err
 	}
@@ -338,11 +336,11 @@ func (s *Service) broadcastDispatchCommitted(ctx context.Context, supplierID str
 		return
 	}
 	payload, err := json.Marshal(map[string]any{
-		"type":             "DISPATCH_COMMITTED",
-		"supplier_id":      supplierID,
+		"type":              "DISPATCH_COMMITTED",
+		"supplier_id":       supplierID,
 		"manifests_created": result.ManifestsCreated,
-		"orders_assigned":  result.OrdersAssigned,
-		"timestamp":        s.now().UTC().Format(time.RFC3339Nano),
+		"orders_assigned":   result.OrdersAssigned,
+		"timestamp":         s.now().UTC().Format(time.RFC3339Nano),
 	})
 	if err != nil {
 		return

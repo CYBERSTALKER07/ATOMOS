@@ -672,7 +672,8 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 
 	var notificationConsumer *kafka.Consumer
 	var orderEventConsumer *kafka.Consumer
-	if kafkaEnabled && cfg.KafkaTopicMain != \"\" {
+	var warehouseEventConsumer *kafka.Consumer
+	if kafkaEnabled && cfg.KafkaTopicMain != "" {
 		dlqWriter, err := newKafkaRuntimeDLQWriter(cfg.KafkaBrokers, cfg.KafkaTopicMainDLQ)
 		if err != nil {
 			if cfg.RequireInfraAdapters {
@@ -2307,6 +2308,18 @@ func existingSeedSupplierCreatedAt(ctx context.Context, txn *spanner.ReadWriteTr
 		return time.Time{}, fmt.Errorf("decode seed supplier %s created_at: %w", supplierID, err)
 	}
 	return createdAt, nil
+}
+
+func (r *inMemoryOrderRepo) ListManifestOrders(_ context.Context, manifestID string) ([]order.Order, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var out []order.Order
+	for _, o := range r.byID {
+		if o.ManifestID == manifestID {
+			out = append(out, o)
+		}
+	}
+	return out, nil
 }
 
 func (r *inMemoryOrderRepo) UpdateOrder(ctx context.Context, o order.Order, _ []order.DeliveryProofArtifact, emit func(outbox.TxnBuffer) error) error {
