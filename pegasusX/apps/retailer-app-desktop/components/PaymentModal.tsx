@@ -19,8 +19,14 @@ import type { CardCheckoutResponse, PendingPaymentSession, PendingPaymentsRespon
 
 /* ── Types ── */
 
-type PaymentEvent = Omit<PaymentRequired, "available_card_gateways"> & {
+type PaymentEvent = Omit<PaymentRequired, "available_card_gateways" | "amount"> & {
   available_card_gateways?: string[];
+  amount: number;
+  original_amount?: number;
+  type: string;
+  session_id?: string;
+  invoice_id?: string | null;
+  message?: string;
 };
 
 type PaymentState = "idle" | "choosing" | "processing" | "success" | "error";
