@@ -12,22 +12,28 @@ import (
 )
 
 type globalpayProviderExecutor struct {
-	env        string // "dev", "staging", "production"
-	serviceID  string
-	username   string
-	password   string
+	env             string // "local", "dev", "staging", "production"
+	serviceID       string
+	username        string
+	password        string
+	simulatorBase   string // overrides base URL for local/dev simulation
 	httpClient *http.Client
 }
 
 func newGlobalPayProviderExecutor(env, serviceID, username, password string) *globalpayProviderExecutor {
+	return newGlobalPayProviderExecutorWithSimulator(env, serviceID, username, password, "")
+}
+
+func newGlobalPayProviderExecutorWithSimulator(env, serviceID, username, password, simulatorBase string) *globalpayProviderExecutor {
 	if env == "" {
 		env = "dev"
 	}
 	return &globalpayProviderExecutor{
-		env:       strings.ToLower(env),
-		serviceID: serviceID,
-		username:  username,
-		password:  password,
+		env:           strings.ToLower(env),
+		serviceID:     serviceID,
+		username:      username,
+		password:      password,
+		simulatorBase: simulatorBase,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -35,13 +41,18 @@ func newGlobalPayProviderExecutor(env, serviceID, username, password string) *gl
 }
 
 func (e *globalpayProviderExecutor) getCheckoutBaseURL() string {
+	// If a simulator override is configured (local/dev), always use it.
+	if e.simulatorBase != "" {
+		return strings.TrimRight(e.simulatorBase, "/") + "/sim/globalpay"
+	}
 	switch e.env {
 	case "production":
 		return "https://checkout-api.globalpay.uz/checkout"
 	case "staging":
 		return "https://checkout-api-staging.globalpay.uz/checkout"
 	default:
-		return "https://checkout-api-dev.globalpay.uz/checkout"
+		// "dev" or "local": use the in-process simulator
+		return "http://localhost:8080/sim/globalpay"
 	}
 }
 
@@ -67,13 +78,21 @@ type gpTokenResponse struct {
 }
 
 func (e *globalpayProviderExecutor) authenticate(ctx context.Context) (string, error) {
-	if e.username == "" || e.password == "" {
+	username := e.username
+	password := e.password
+	// In local/dev simulation mode, accept stub credentials so the in-process
+	// simulator can be exercised without real GlobalPay credentials.
+	if username == "" && (e.env == "dev" || e.env == "local" || e.simulatorBase != "") {
+		username = "sim-user"
+		password = "sim-pass"
+	}
+	if username == "" || password == "" {
 		return "", fmt.Errorf("globalpay credentials missing (username or password)")
 	}
 	url := fmt.Sprintf("%s/v1/merchant/auth", e.getCheckoutBaseURL())
 	reqBody, _ := json.Marshal(gpAuthRequest{
-		Username: e.username,
-		Password: e.password,
+		Username: username,
+		Password: password,
 	})
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(reqBody))
@@ -105,7 +124,18 @@ func (e *globalpayProviderExecutor) authenticate(ctx context.Context) (string, e
 }
 
 func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRequest) (ExecutionResult, error) {
-	if req.Action != ExecutionActionCheckoutInit && req.Action != ExecutionActionCheckoutCapture {
+	switch req.Action {
+	case ExecutionActionChargebackRecord, ExecutionActionChargebackReversal:
+		// Chargeback/reversal actions are administrative records only; no live
+		// API call to the gateway is needed in the current implementation.
+		return ExecutionResult{
+			ResolvedGateway: "GLOBAL_PAY",
+			Mode:            ExecutionModeDirect,
+			PolicySource:    "SUPPLIER_DEFAULT",
+		}, nil
+	case ExecutionActionCheckoutInit, ExecutionActionCheckoutCapture:
+		// handled below
+	default:
 		return ExecutionResult{}, &GatewayPolicyError{
 			Code:             "payment_gateway_policy_violation",
 			Message:          fmt.Sprintf("unsupported execution action %s for gateway GLOBAL_PAY", req.Action),
@@ -170,7 +200,7 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 
 	return ExecutionResult{
 		ResolvedGateway: "GLOBAL_PAY",
-		Mode:            ExecutionModeDirect,
+		Mode:            ExecutionModeHostedRedirect,
 		PolicySource:    "SUPPLIER_DEFAULT",
 		RedirectURL:     tResp.UserRedirectUrl,
 	}, nil

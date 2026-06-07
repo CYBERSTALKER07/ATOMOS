@@ -48,7 +48,7 @@ export default function SupplierLoginPage() {
       const phone = `${dialCode}${phoneLocal}`;
       // Here otpCode is mimicking the firebase ID token for scaffold purposes
       const api = createSupplierApi();
-      const resp = await api.loginSupplier({ phone, id_token: otpCode });
+      const resp = await api.loginSupplier({ phone, password: otpCode });
       if (resp.token) {
         persistSession(resp.token, resp.refresh_token);
       }

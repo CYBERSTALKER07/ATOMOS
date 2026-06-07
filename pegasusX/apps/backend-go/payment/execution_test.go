@@ -3,6 +3,8 @@ package payment
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
@@ -10,10 +12,31 @@ import (
 func TestProviderExecutionRouter_DefaultGateway(t *testing.T) {
 	t.Parallel()
 
+	// Start a lightweight httptest server that mimics the Global Pay simulator
+	// endpoints so the executor can complete CheckoutInit without a real server.
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/sim/globalpay/v1/merchant/auth":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"access_token":"test-token"}`))
+		case "/sim/globalpay/v1/user-service-tokens":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"token":"tok","userRedirectUrl":"http://localhost/pay"}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer ts.Close()
+
+	exec := newGlobalPayProviderExecutorWithSimulator("dev", "svc", "", "", ts.URL)
 	router := NewProviderExecutionRouter(ProviderExecutionRouterConfig{})
+	router.SetExecutor("GLOBAL_PAY", exec)
+
 	result, err := router.Execute(context.Background(), ExecutionRequest{
-		Action:  ExecutionActionCheckoutInit,
-		OrderID: "order-1",
+		Action:      ExecutionActionCheckoutInit,
+		OrderID:     "order-1",
+		AmountMinor: 10000,
+		Currency:    "UZS",
 	})
 	if err != nil {
 		t.Fatalf("execute: %v", err)

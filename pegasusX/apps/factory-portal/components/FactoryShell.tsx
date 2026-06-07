@@ -3,11 +3,11 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { memo, useEffect, useMemo, useState, useCallback } from 'react';
-import { PanelLeft, PanelLeftClose, Search, Bell } from 'lucide-react';
+import { PanelLeft, PanelLeftClose } from 'lucide-react';
 import Icon from './Icon';
 import { useTheme, type ThemeMode } from './ThemeProvider';
 import { apiFetch } from '@/lib/auth';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 type NavEntry = { href: string; icon: string; label: string };
 type NavSection = { label?: string; items: NavEntry[] };
@@ -41,19 +41,6 @@ const NAV: NavSection[] = [
 
 const ALL_NAV_ITEMS = NAV.flatMap((section) => section.items);
 const BARE_ROUTES = ['/auth/'];
-const PAGE_SUMMARIES: Record<string, string> = {
-  '/': 'Monitor transfer readiness, staffing, fleet coverage, and dispatch pressure.',
-  '/loading-bay': 'Keep approved payloads moving through loading.',
-  '/transfers': 'Review active factory-to-warehouse movements and manifest health.',
-  '/fleet': 'Inspect vehicle availability and operational readiness.',
-  '/staff': 'Track shifts, assigned operators, and coverage gaps.',
-  '/insights': 'Review alerts and operational drift before it becomes a delay.',
-  '/supply-requests': 'Review inbound warehouse demand and plan outbound work.',
-  '/payload-override': 'Handle controlled manual overrides for payload automation.',
-  '/manifest-exceptions': 'Review transfers removed from manifests during loading and DLQ escalations.',
-  '/transfers/create': 'Stage a new factory-to-warehouse transfer with volume and optional fleet assignment.',
-  '/manifests': 'Advance manifests through the LEO loading gate lifecycle.',
-};
 
 function isActiveRoute(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/';

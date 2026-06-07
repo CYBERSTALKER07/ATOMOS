@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailerroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetryroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouseroutes"
@@ -201,6 +203,21 @@ func main() {
 	ws.RegisterRoutes(r, slog.Default(), cfg.JWTSecret, cfg.FirebaseAuthEnabled, firebaseVerifier,
 		app.PlatformService,
 		app.RetailerHub, app.SupplierHub, app.DriverHub, app.PayloadHub, app.WarehouseHub, app.FactoryHub, app.TelemetryHub)
+
+	// Global Pay local simulator — only mounted when GLOBAL_PAY_ENV != "production".
+	// Provides a browser UI for end-to-end payment testing without hitting the real gateway.
+	gpEnv := strings.ToLower(strings.TrimSpace(cfg.GlobalPayEnv))
+	if gpEnv != "production" && gpEnv != "staging" {
+		simHandler := simulator.NewHandler(
+			cfg.GlobalPayWebhookSecret,
+			"http://localhost:"+cfg.HTTPPort,
+			slog.Default(),
+		)
+		r.Route("/sim/globalpay", func(sr chi.Router) {
+			simulator.RegisterRoutes(sr, simHandler)
+		})
+		slog.Info("[simulator] Global Pay simulator mounted", "prefix", "/sim/globalpay", "env", gpEnv)
+	}
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,

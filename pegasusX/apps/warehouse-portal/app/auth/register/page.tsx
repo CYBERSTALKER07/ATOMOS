@@ -8,16 +8,13 @@ import {
   INITIAL_STATE,
   STEP_LABELS,
   STEP_ORDER,
-  type StepId,
   type WizardState,
   validateIdentity,
   validateVerification,
   validateProfile,
 } from "./wizard-state";
 
-function composeAddress(parts: Array<string>): string {
-  return parts.map((part) => part.trim()).filter(Boolean).join(", ");
-}
+
 
 // 3-step Warehouse onboarding wizard.
 // HARD PRODUCT INVARIANT: never move business/location/payment setup back into this form. 
@@ -282,15 +279,3 @@ function Field({ id, label, error, hint, children }: { id: string; label: string
   );
 }
 
-function parseIntOrZero(v: string): number {
-  const n = parseInt(v, 10);
-  return Number.isFinite(n) && n >= 0 ? n : 0;
-}
-
-function cryptoRandomId(): string {
-  // Browser-safe random key for the Idempotency-Key header.
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
