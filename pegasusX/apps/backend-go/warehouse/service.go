@@ -102,6 +102,7 @@ type Service struct {
 	returns           []portalReturn
 	insights          []replenishmentInsight
 	internalTransfers map[string]memoryTransferRow
+	firebaseVerifier  auth.FirebaseVerifier
 }
 
 // ServiceConfig is the constructor input.
@@ -128,6 +129,7 @@ type ServiceConfig struct {
 	PlanCounters     *plan.SourceCounters
 	FallbackDepotLat float64
 	FallbackDepotLng float64
+	FirebaseVerifier auth.FirebaseVerifier
 }
 
 // InventoryRow represents one stock row.
@@ -196,6 +198,7 @@ func NewService(c ServiceConfig) *Service {
 		planCounters:     c.PlanCounters,
 		fallbackDepotLat: c.FallbackDepotLat,
 		fallbackDepotLng: c.FallbackDepotLng,
+		firebaseVerifier: c.FirebaseVerifier,
 	}
 }
 

@@ -20,35 +20,63 @@ func (s *Service) HandleDriverLogin(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var req struct {
-		Phone string `json:"phone"`
-		PIN   string `json:"pin"`
+		Phone   string `json:"phone"`
+		PIN     string `json:"pin"`
+		IDToken string `json:"id_token"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	phone := strings.TrimSpace(req.Phone)
-	pin := strings.TrimSpace(req.PIN)
-	if phone == "" || pin == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "phone_and_pin_required"})
-		return
+	idToken := strings.TrimSpace(req.IDToken)
+
+	if idToken != "" && s.firebaseVerifier != nil {
+		claims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)
+		if err != nil {
+			s.log.Warn("firebase token verification failed", "err", err)
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_id_token"})
+			return
+		}
+		if claims.PhoneNumber == "" {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "phone_number_missing_in_token"})
+			return
+		}
+		// In a real DB, check if driver with claims.PhoneNumber exists
+		// For scaffold, we check against the demo phone
+		expectPhone := strings.TrimSpace(os.Getenv("DRIVER_DEMO_PHONE"))
+		if expectPhone == "" {
+			expectPhone = "+998901000066"
+		}
+		if claims.PhoneNumber != expectPhone {
+			// Unregistered phone numbers are BLOCKED pending admin approval.
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "unregistered_phone_number_awaiting_admin_approval"})
+			return
+		}
+	} else {
+		phone := strings.TrimSpace(req.Phone)
+		pin := strings.TrimSpace(req.PIN)
+		if phone == "" || pin == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "phone_and_pin_required"})
+			return
+		}
+
+		expectPhone := strings.TrimSpace(os.Getenv("DRIVER_DEMO_PHONE"))
+		if expectPhone == "" {
+			expectPhone = "+998901000066"
+		}
+		expectPIN := strings.TrimSpace(os.Getenv("DRIVER_DEMO_PIN"))
+		if expectPIN == "" {
+			expectPIN = strings.TrimSpace(os.Getenv("DRIVER_DEMO_PASSWORD"))
+		}
+		if expectPIN == "" {
+			expectPIN = "1234"
+		}
+		if phone != expectPhone || pin != expectPIN {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
+			return
+		}
 	}
 
-	expectPhone := strings.TrimSpace(os.Getenv("DRIVER_DEMO_PHONE"))
-	if expectPhone == "" {
-		expectPhone = "+998901000066"
-	}
-	expectPIN := strings.TrimSpace(os.Getenv("DRIVER_DEMO_PIN"))
-	if expectPIN == "" {
-		expectPIN = strings.TrimSpace(os.Getenv("DRIVER_DEMO_PASSWORD"))
-	}
-	if expectPIN == "" {
-		expectPIN = "1234"
-	}
-	if phone != expectPhone || pin != expectPIN {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
-		return
-	}
 	if s.jwtSecret == "" {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "jwt_not_configured"})
 		return

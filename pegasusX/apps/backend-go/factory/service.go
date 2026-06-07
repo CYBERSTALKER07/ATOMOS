@@ -95,6 +95,7 @@ type Service struct {
 	jwtSecret     string
 	jwtIssuer     string
 	now           func() time.Time
+	firebaseVerifier auth.FirebaseVerifier
 
 	mu                    sync.RWMutex
 	spannerLoaded         bool
@@ -125,6 +126,7 @@ type ServiceConfig struct {
 	JWTSecret     string
 	JWTIssuer     string
 	Now           func() time.Time
+	FirebaseVerifier auth.FirebaseVerifier
 }
 
 // TransferRow represents one factory transfer record.
@@ -281,6 +283,7 @@ func NewService(c ServiceConfig) *Service {
 		jwtSecret:             c.JWTSecret,
 		jwtIssuer:             c.JWTIssuer,
 		now:                   c.Now,
+		firebaseVerifier:      c.FirebaseVerifier,
 		manifestTransfers:     make(map[string][]TransferRow),
 		manifestTransitions:   make(map[string][]ManifestTransition),
 		manifestReassignments: make(map[string][]ManifestReassignment),

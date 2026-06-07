@@ -20,31 +20,58 @@ func (s *Service) HandleWarehouseLogin(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	var req struct {
-		Phone string `json:"phone"`
-		PIN   string `json:"pin"`
+		Phone   string `json:"phone"`
+		PIN     string `json:"pin"`
+		IDToken string `json:"id_token"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	phone := strings.TrimSpace(req.Phone)
-	pin := strings.TrimSpace(req.PIN)
-	if phone == "" || pin == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "phone_and_pin_required"})
-		return
-	}
+	idToken := strings.TrimSpace(req.IDToken)
 
-	expectPhone := strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_PHONE"))
-	if expectPhone == "" {
-		expectPhone = "+998901000088"
-	}
-	expectPIN := strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_PIN"))
-	if expectPIN == "" {
-		expectPIN = "1234"
-	}
-	if phone != expectPhone || pin != expectPIN {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
-		return
+	if idToken != "" && s.firebaseVerifier != nil {
+		claims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)
+		if err != nil {
+			s.log.Warn("firebase token verification failed", "err", err)
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_id_token"})
+			return
+		}
+		if claims.PhoneNumber == "" {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "phone_number_missing_in_token"})
+			return
+		}
+		// In a real DB, check if warehouse staff with claims.PhoneNumber exists
+		// For scaffold, we check against the demo phone
+		expectPhone := strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_PHONE"))
+		if expectPhone == "" {
+			expectPhone = "+998901000088"
+		}
+		if claims.PhoneNumber != expectPhone {
+			// Unregistered phone numbers are BLOCKED pending admin approval.
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "unregistered_phone_number_awaiting_admin_approval"})
+			return
+		}
+	} else {
+		phone := strings.TrimSpace(req.Phone)
+		pin := strings.TrimSpace(req.PIN)
+		if phone == "" || pin == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "phone_and_pin_required"})
+			return
+		}
+
+		expectPhone := strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_PHONE"))
+		if expectPhone == "" {
+			expectPhone = "+998901000088"
+		}
+		expectPIN := strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_PIN"))
+		if expectPIN == "" {
+			expectPIN = "1234"
+		}
+		if phone != expectPhone || pin != expectPIN {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
+			return
+		}
 	}
 
 	warehouseID := strings.TrimSpace(os.Getenv("WAREHOUSE_DEMO_ID"))

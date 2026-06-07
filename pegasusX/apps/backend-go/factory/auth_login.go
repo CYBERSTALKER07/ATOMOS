@@ -23,35 +23,62 @@ func (s *Service) HandleFactoryLogin(w http.ResponseWriter, r *http.Request) {
 		Phone    string `json:"phone"`
 		PIN      string `json:"pin"`
 		Password string `json:"password"`
+		IDToken  string `json:"id_token"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
 		return
 	}
-	phone := strings.TrimSpace(req.Phone)
-	secret := strings.TrimSpace(req.PIN)
-	if secret == "" {
-		secret = strings.TrimSpace(req.Password)
-	}
-	if phone == "" || secret == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "phone_and_pin_required"})
-		return
-	}
+	idToken := strings.TrimSpace(req.IDToken)
 
-	expectPhone := strings.TrimSpace(os.Getenv("FACTORY_DEMO_PHONE"))
-	if expectPhone == "" {
-		expectPhone = "+998901000099"
-	}
-	expectSecret := strings.TrimSpace(os.Getenv("FACTORY_DEMO_PIN"))
-	if expectSecret == "" {
-		expectSecret = strings.TrimSpace(os.Getenv("FACTORY_DEMO_PASSWORD"))
-	}
-	if expectSecret == "" {
-		expectSecret = "1234"
-	}
-	if phone != expectPhone || secret != expectSecret {
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
-		return
+	if idToken != "" && s.firebaseVerifier != nil {
+		claims, err := s.firebaseVerifier.VerifyIDToken(r.Context(), idToken)
+		if err != nil {
+			s.log.Warn("firebase token verification failed", "err", err)
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_id_token"})
+			return
+		}
+		if claims.PhoneNumber == "" {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "phone_number_missing_in_token"})
+			return
+		}
+		// In a real DB, check if factory staff with claims.PhoneNumber exists
+		// For scaffold, we check against the demo phone
+		expectPhone := strings.TrimSpace(os.Getenv("FACTORY_DEMO_PHONE"))
+		if expectPhone == "" {
+			expectPhone = "+998901000099"
+		}
+		if claims.PhoneNumber != expectPhone {
+			// Unregistered phone numbers are BLOCKED pending admin approval.
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "unregistered_phone_number_awaiting_admin_approval"})
+			return
+		}
+	} else {
+		phone := strings.TrimSpace(req.Phone)
+		secret := strings.TrimSpace(req.PIN)
+		if secret == "" {
+			secret = strings.TrimSpace(req.Password)
+		}
+		if phone == "" || secret == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "phone_and_pin_required"})
+			return
+		}
+
+		expectPhone := strings.TrimSpace(os.Getenv("FACTORY_DEMO_PHONE"))
+		if expectPhone == "" {
+			expectPhone = "+998901000099"
+		}
+		expectSecret := strings.TrimSpace(os.Getenv("FACTORY_DEMO_PIN"))
+		if expectSecret == "" {
+			expectSecret = strings.TrimSpace(os.Getenv("FACTORY_DEMO_PASSWORD"))
+		}
+		if expectSecret == "" {
+			expectSecret = "1234"
+		}
+		if phone != expectPhone || secret != expectSecret {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid_credentials"})
+			return
+		}
 	}
 
 	factoryID := strings.TrimSpace(os.Getenv("FACTORY_DEMO_ID"))

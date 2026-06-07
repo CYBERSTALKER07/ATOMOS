@@ -3,27 +3,24 @@
 import { useMemo, useState } from "react";
 import { persistSession, supplierFetch } from "@/lib/auth";
 import {
-  CATEGORY_OPTIONS,
   COUNTRIES,
   INITIAL_STATE,
   STEP_LABELS,
   STEP_ORDER,
   type StepId,
   type WizardState,
-  validateAccount,
-  validateBusiness,
-  validateCategories,
-  validateLocation,
+  validateIdentity,
+  validateVerification,
+  validateProfile,
 } from "./wizard-state";
 
 function composeAddress(parts: Array<string>): string {
   return parts.map((part) => part.trim()).filter(Boolean).join(", ");
 }
 
-// 4-step Supplier onboarding wizard.
-// HARD PRODUCT INVARIANT: never collapse below 4 steps; never move
-// banking / payment-gateway setup back into this form. Banking lives at
-// /setup/billing post-registration.
+// 3-step Supplier onboarding wizard.
+// HARD PRODUCT INVARIANT: never move business/location/payment setup back into this form. 
+// That complex setup lives at /setup/billing post-registration.
 
 export default function RegisterPage() {
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
@@ -33,16 +30,15 @@ export default function RegisterPage() {
 
   const stepIndex = STEP_ORDER.indexOf(state.step);
   const dialCode = useMemo(
-    () => COUNTRIES.find((c) => c.code === state.account.countryCode)?.dialCode ?? "",
-    [state.account.countryCode],
+    () => COUNTRIES.find((c) => c.code === state.identity.countryCode)?.dialCode ?? "",
+    [state.identity.countryCode],
   );
 
   function validateCurrent(): Record<string, string> {
     switch (state.step) {
-      case "account":    return validateAccount(state.account);
-      case "location":   return validateLocation(state.location);
-      case "business":   return validateBusiness(state.business);
-      case "categories": return validateCategories(state.categories);
+      case "identity":    return validateIdentity(state.identity);
+      case "verification":return validateVerification(state.verification);
+      case "profile":     return validateProfile(state.profile);
     }
   }
 
@@ -66,53 +62,16 @@ export default function RegisterPage() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const phone = `${dialCode}${state.account.phoneLocal}`;
-      const warehouseAddress = composeAddress([
-        state.location.warehouseLine1,
-        state.location.warehouseCity,
-        state.location.warehouseRegion,
-        state.location.warehousePostalCode,
-      ]);
-      const billingAddress = state.location.billingSameAsWarehouse
-        ? warehouseAddress
-        : composeAddress([
-          state.location.billingLine1,
-          state.location.billingCity,
-          state.location.billingRegion,
-          state.location.billingPostalCode,
-        ]);
-
-      const warehouseLat = Number(state.location.warehouseLat);
-      const warehouseLng = Number(state.location.warehouseLng);
-      const billingLat = state.location.billingSameAsWarehouse ? warehouseLat : 0;
-      const billingLng = state.location.billingSameAsWarehouse ? warehouseLng : 0;
-
+      const phone = `${dialCode}${state.identity.phoneLocal}`;
       const payload = {
         account: {
-          legalName: state.account.legalName,
-          contactName: state.account.contactName,
-          email: state.account.email,
-          country: state.account.countryCode,
+          legalName: state.profile.legalName,
+          contactName: state.profile.contactName,
+          email: state.profile.email,
+          country: state.identity.countryCode,
           phone,
-          password: state.account.password,
         },
-        location: {
-          warehouse: {
-            name: state.location.warehouseName,
-            address: warehouseAddress,
-            lat: warehouseLat,
-            lng: warehouseLng,
-          },
-          sameAsWarehouse: state.location.billingSameAsWarehouse,
-          billing: {
-            address: billingAddress,
-            lat: billingLat,
-            lng: billingLng,
-          },
-        },
-        business: state.business,
-        categories: state.categories.selectedCategoryIds,
-        phone,
+        id_token: state.verification.otpCode, // Usually we pass the firebase token here. Passing OTP as fallback for scaffold.
       };
       const res = await supplierFetch("/v1/auth/supplier/register", {
         method: "POST",
@@ -150,10 +109,9 @@ export default function RegisterPage() {
       </header>
 
       <section className="md-card p-6">
-        {state.step === "account"    && <AccountStepView state={state} setState={setState} errors={errors} dialCode={dialCode} />}
-        {state.step === "location"   && <LocationStepView state={state} setState={setState} errors={errors} />}
-        {state.step === "business"   && <BusinessStepView state={state} setState={setState} errors={errors} />}
-        {state.step === "categories" && <CategoriesStepView state={state} setState={setState} errors={errors} />}
+        {state.step === "identity"     && <IdentityStepView state={state} setState={setState} errors={errors} dialCode={dialCode} />}
+        {state.step === "verification" && <VerificationStepView state={state} setState={setState} errors={errors} />}
+        {state.step === "profile"      && <ProfileStepView state={state} setState={setState} errors={errors} />}
       </section>
 
       {submitError && (
@@ -166,13 +124,13 @@ export default function RegisterPage() {
         <button type="button" className="md-btn md-btn-text" onClick={back} disabled={stepIndex === 0 || submitting}>
           Back
         </button>
-        {state.step !== "categories" ? (
+        {state.step !== "profile" ? (
           <button type="button" className="md-btn md-btn-filled" onClick={next} disabled={submitting}>
             Continue
           </button>
         ) : (
           <button type="button" className="md-btn md-btn-filled" onClick={submit} disabled={submitting}>
-            {submitting ? "Submitting…" : "Create supplier"}
+            {submitting ? "Creating..." : "Create supplier"}
           </button>
         )}
       </footer>
@@ -211,52 +169,23 @@ type ViewProps = {
   errors: Record<string, string>;
 };
 
-function AccountStepView({ state, setState, errors, dialCode }: ViewProps & { dialCode: string }) {
+function IdentityStepView({ state, setState, errors, dialCode }: ViewProps & { dialCode: string }) {
   return (
     <div className="grid gap-4">
-      <Field id="legalName" label="Legal company name" error={errors.legalName}>
-        <input
-          id="legalName"
-          className="md-input-outlined"
-          value={state.account.legalName}
-          aria-invalid={!!errors.legalName}
-          onChange={(e) => setState((s) => ({ ...s, account: { ...s.account, legalName: e.target.value } }))}
-        />
-      </Field>
-      <Field id="contactName" label="Primary contact name" error={errors.contactName}>
-        <input
-          id="contactName"
-          className="md-input-outlined"
-          value={state.account.contactName}
-          aria-invalid={!!errors.contactName}
-          onChange={(e) => setState((s) => ({ ...s, account: { ...s.account, contactName: e.target.value } }))}
-        />
-      </Field>
-      <Field id="email" label="Work email" error={errors.email}>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          className="md-input-outlined"
-          value={state.account.email}
-          aria-invalid={!!errors.email}
-          onChange={(e) => setState((s) => ({ ...s, account: { ...s.account, email: e.target.value } }))}
-        />
-      </Field>
       <div className="grid grid-cols-[160px,1fr] gap-3">
         <Field id="countryCode" label="Country" error={errors.countryCode}>
           <select
             id="countryCode"
             className="md-input-outlined"
-            value={state.account.countryCode}
-            onChange={(e) => setState((s) => ({ ...s, account: { ...s.account, countryCode: e.target.value } }))}
+            value={state.identity.countryCode}
+            onChange={(e) => setState((s) => ({ ...s, identity: { ...s.identity, countryCode: e.target.value } }))}
           >
             {COUNTRIES.map((c) => (
               <option key={c.code} value={c.code}>{c.name}</option>
             ))}
           </select>
         </Field>
-        <Field id="phoneLocal" label="Phone" error={errors.phoneLocal} hint={`Will be sent as ${dialCode}${state.account.phoneLocal || "…"}`}>
+        <Field id="phoneLocal" label="Phone" error={errors.phoneLocal} hint={`Will be sent as ${dialCode}${state.identity.phoneLocal || "…"}`}>
           <div className="flex">
             <span
               className="inline-flex items-center px-3 border border-r-0 rounded-l text-sm"
@@ -272,162 +201,68 @@ function AccountStepView({ state, setState, errors, dialCode }: ViewProps & { di
               inputMode="numeric"
               className="md-input-outlined"
               style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
-              value={state.account.phoneLocal}
+              value={state.identity.phoneLocal}
               aria-invalid={!!errors.phoneLocal}
-              onChange={(e) => setState((s) => ({ ...s, account: { ...s.account, phoneLocal: e.target.value.replace(/\D/g, "") } }))}
+              onChange={(e) => setState((s) => ({ ...s, identity: { ...s.identity, phoneLocal: e.target.value.replace(/\D/g, "") } }))}
             />
           </div>
         </Field>
       </div>
-      <Field id="password" label="Password" error={errors.password} hint="At least 10 characters.">
+      <div id="recaptcha-container"></div>
+    </div>
+  );
+}
+
+function VerificationStepView({ state, setState, errors }: ViewProps) {
+  return (
+    <div className="grid gap-4">
+      <Field id="otpCode" label="Verification Code" error={errors.otpCode} hint="Enter the 6-digit code sent via SMS.">
         <input
-          id="password"
-          type="password"
-          autoComplete="new-password"
+          id="otpCode"
+          inputMode="numeric"
+          className="md-input-outlined tracking-widest text-lg font-mono text-center"
+          value={state.verification.otpCode}
+          maxLength={6}
+          aria-invalid={!!errors.otpCode}
+          onChange={(e) => setState((s) => ({ ...s, verification: { ...s.verification, otpCode: e.target.value.replace(/\D/g, "") } }))}
+        />
+      </Field>
+    </div>
+  );
+}
+
+function ProfileStepView({ state, setState, errors }: ViewProps) {
+  return (
+    <div className="grid gap-4">
+      <Field id="legalName" label="Legal company name" error={errors.legalName}>
+        <input
+          id="legalName"
           className="md-input-outlined"
-          value={state.account.password}
-          aria-invalid={!!errors.password}
-          onChange={(e) => setState((s) => ({ ...s, account: { ...s.account, password: e.target.value } }))}
+          value={state.profile.legalName}
+          aria-invalid={!!errors.legalName}
+          onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, legalName: e.target.value } }))}
         />
       </Field>
-    </div>
-  );
-}
-
-function LocationStepView({ state, setState, errors }: ViewProps) {
-  return (
-    <div className="grid gap-4">
-      <h2 className="md-typescale-title-large">Primary warehouse</h2>
-      <Field id="warehouseName" label="Warehouse name" error={errors.warehouseName}>
-        <input id="warehouseName" className="md-input-outlined" value={state.location.warehouseName}
-          onChange={(e) => setState((s) => ({ ...s, location: { ...s.location, warehouseName: e.target.value } }))} />
-      </Field>
-      <Field id="warehouseLine1" label="Street address" error={errors.warehouseLine1}>
-        <input id="warehouseLine1" className="md-input-outlined" value={state.location.warehouseLine1}
-          onChange={(e) => setState((s) => ({ ...s, location: { ...s.location, warehouseLine1: e.target.value } }))} />
-      </Field>
-      <div className="grid grid-cols-3 gap-3">
-        <Field id="warehouseCity" label="City" error={errors.warehouseCity}>
-          <input id="warehouseCity" className="md-input-outlined" value={state.location.warehouseCity}
-            onChange={(e) => setState((s) => ({ ...s, location: { ...s.location, warehouseCity: e.target.value } }))} />
-        </Field>
-        <Field id="warehouseRegion" label="Region" error={errors.warehouseRegion}>
-          <input id="warehouseRegion" className="md-input-outlined" value={state.location.warehouseRegion}
-            onChange={(e) => setState((s) => ({ ...s, location: { ...s.location, warehouseRegion: e.target.value } }))} />
-        </Field>
-        <Field id="warehousePostalCode" label="Postal code" error={errors.warehousePostalCode}>
-          <input id="warehousePostalCode" className="md-input-outlined" value={state.location.warehousePostalCode}
-            onChange={(e) => setState((s) => ({ ...s, location: { ...s.location, warehousePostalCode: e.target.value } }))} />
-        </Field>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field id="warehouseLat" label="Latitude" error={errors.warehouseLat}>
-          <input id="warehouseLat" inputMode="decimal" className="md-input-outlined" value={state.location.warehouseLat}
-            onChange={(e) => setState((s) => ({ ...s, location: { ...s.location, warehouseLat: e.target.value } }))} />
-        </Field>
-        <Field id="warehouseLng" label="Longitude" error={errors.warehouseLng}>
-          <input id="warehouseLng" inputMode="decimal" className="md-input-outlined" value={state.location.warehouseLng}
-            onChange={(e) => setState((s) => ({ ...s, location: { ...s.location, warehouseLng: e.target.value } }))} />
-        </Field>
-      </div>
-
-      <h2 className="md-typescale-title-large mt-4">Billing address</h2>
-      <label className="inline-flex items-center gap-2">
+      <Field id="contactName" label="Primary contact name" error={errors.contactName}>
         <input
-          type="checkbox"
-          checked={state.location.billingSameAsWarehouse}
-          onChange={(e) => setState((s) => ({ ...s, location: { ...s.location, billingSameAsWarehouse: e.target.checked } }))}
+          id="contactName"
+          className="md-input-outlined"
+          value={state.profile.contactName}
+          aria-invalid={!!errors.contactName}
+          onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, contactName: e.target.value } }))}
         />
-        <span className="md-typescale-body-medium">Billing address is the same as the warehouse</span>
-      </label>
-      {!state.location.billingSameAsWarehouse && (
-        <>
-          <Field id="billingLine1" label="Billing street address" error={errors.billingLine1}>
-            <input id="billingLine1" className="md-input-outlined" value={state.location.billingLine1}
-              onChange={(e) => setState((s) => ({ ...s, location: { ...s.location, billingLine1: e.target.value } }))} />
-          </Field>
-          <div className="grid grid-cols-3 gap-3">
-            <Field id="billingCity" label="City" error={errors.billingCity}>
-              <input id="billingCity" className="md-input-outlined" value={state.location.billingCity}
-                onChange={(e) => setState((s) => ({ ...s, location: { ...s.location, billingCity: e.target.value } }))} />
-            </Field>
-            <Field id="billingRegion" label="Region" error={errors.billingRegion}>
-              <input id="billingRegion" className="md-input-outlined" value={state.location.billingRegion}
-                onChange={(e) => setState((s) => ({ ...s, location: { ...s.location, billingRegion: e.target.value } }))} />
-            </Field>
-            <Field id="billingPostalCode" label="Postal code" error={errors.billingPostalCode}>
-              <input id="billingPostalCode" className="md-input-outlined" value={state.location.billingPostalCode}
-                onChange={(e) => setState((s) => ({ ...s, location: { ...s.location, billingPostalCode: e.target.value } }))} />
-            </Field>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function BusinessStepView({ state, setState, errors }: ViewProps) {
-  return (
-    <div className="grid gap-4">
-      <Field id="taxId" label="Tax ID" error={errors.taxId}>
-        <input id="taxId" className="md-input-outlined" value={state.business.taxId}
-          onChange={(e) => setState((s) => ({ ...s, business: { ...s.business, taxId: e.target.value } }))} />
       </Field>
-      <Field id="companyRegNumber" label="Company registration number" error={errors.companyRegNumber}>
-        <input id="companyRegNumber" className="md-input-outlined" value={state.business.companyRegNumber}
-          onChange={(e) => setState((s) => ({ ...s, business: { ...s.business, companyRegNumber: e.target.value } }))} />
+      <Field id="email" label="Work email" error={errors.email}>
+        <input
+          id="email"
+          type="email"
+          autoComplete="email"
+          className="md-input-outlined"
+          value={state.profile.email}
+          aria-invalid={!!errors.email}
+          onChange={(e) => setState((s) => ({ ...s, profile: { ...s.profile, email: e.target.value } }))}
+        />
       </Field>
-      <div className="grid grid-cols-3 gap-3">
-        <Field id="fleetVehicleCount" label="Fleet vehicles" error={errors.fleetVehicleCount}>
-          <input id="fleetVehicleCount" type="number" min={0} className="md-input-outlined" value={state.business.fleetVehicleCount}
-            onChange={(e) => setState((s) => ({ ...s, business: { ...s.business, fleetVehicleCount: parseIntOrZero(e.target.value) } }))} />
-        </Field>
-        <Field id="fleetMaxVU" label="Total fleet VU" error={errors.fleetMaxVU} hint="Total Volumetric Units across the fleet.">
-          <input id="fleetMaxVU" type="number" min={0} className="md-input-outlined" value={state.business.fleetMaxVU}
-            onChange={(e) => setState((s) => ({ ...s, business: { ...s.business, fleetMaxVU: parseIntOrZero(e.target.value) } }))} />
-        </Field>
-        <Field id="factoryCount" label="Factories" error={errors.factoryCount}>
-          <input id="factoryCount" type="number" min={0} className="md-input-outlined" value={state.business.factoryCount}
-            onChange={(e) => setState((s) => ({ ...s, business: { ...s.business, factoryCount: parseIntOrZero(e.target.value) } }))} />
-        </Field>
-      </div>
-    </div>
-  );
-}
-
-function CategoriesStepView({ state, setState, errors }: ViewProps) {
-  const selected = new Set(state.categories.selectedCategoryIds);
-  function toggle(id: string) {
-    setState((s) => {
-      const set = new Set(s.categories.selectedCategoryIds);
-      if (set.has(id)) set.delete(id); else set.add(id);
-      return { ...s, categories: { selectedCategoryIds: Array.from(set) } };
-    });
-  }
-  return (
-    <div className="grid gap-3">
-      <p className="md-typescale-body-medium" style={{ color: "var(--color-md-outline)" }}>
-        Choose every category you serve. You can adjust this later from settings.
-      </p>
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Categories">
-        {CATEGORY_OPTIONS.map((c) => {
-          const pressed = selected.has(c.id);
-          return (
-            <button
-              key={c.id}
-              type="button"
-              className="md-chip"
-              aria-pressed={pressed}
-              onClick={() => toggle(c.id)}
-            >
-              {c.label}
-            </button>
-          );
-        })}
-      </div>
-      {errors.selectedCategoryIds && (
-        <p className="md-helper" data-error="true">{errors.selectedCategoryIds}</p>
-      )}
     </div>
   );
 }

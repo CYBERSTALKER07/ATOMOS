@@ -81,6 +81,7 @@ type Service struct {
 	jwtSecret  string
 	jwtIssuer  string
 	now        func() time.Time
+	firebaseVerifier auth.FirebaseVerifier
 
 	mu             sync.RWMutex
 	spannerLoaded  bool
@@ -110,6 +111,7 @@ type ServiceConfig struct {
 	JWTSecret  string
 	JWTIssuer  string
 	Now        func() time.Time
+	FirebaseVerifier auth.FirebaseVerifier
 }
 
 type payloaderTruckWire struct {
@@ -237,6 +239,7 @@ func NewService(c ServiceConfig) *Service {
 		jwtSecret:      c.JWTSecret,
 		jwtIssuer:      c.JWTIssuer,
 		now:            c.Now,
+		firebaseVerifier: c.FirebaseVerifier,
 		manifestOrders: make(map[string][]ManifestOrder),
 		overflowCount:  make(map[string]int64),
 	}
