@@ -12,13 +12,42 @@ func (s *Service) apply(
 	mutate func() error,
 	emit func(outbox.TxnBuffer) error,
 ) error {
-	var snapshotFn func() *PersistenceSnapshot
-	if _, ok := s.repo.(*SpannerRepository); ok {
-		snapshotFn = func() *PersistenceSnapshot {
-			s.mu.RLock()
-			defer s.mu.RUnlock()
-			return s.buildPersistenceSnapshotLocked()
+	return s.repo.RunTx(ctx, func(ctx context.Context, tx FactoryTx) error {
+		var err error
+		var manifests []ManifestRow
+		var transfers []TransferRow
+		
+		manifests, err = tx.ListManifests(ctx)
+		if err != nil {
+			return err
 		}
-	}
-	return s.repo.Apply(ctx, mutate, snapshotFn, emit)
+		transfers, err = tx.ListTransfers(ctx)
+		if err != nil {
+			return err
+		}
+		
+		s.mu.Lock()
+		s.manifests = manifests
+		s.transfers = transfers
+		s.rebuildManifestTransfersLocked()
+		s.mu.Unlock()
+
+		if err := mutate(); err != nil {
+			return err
+		}
+
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+		for _, m := range s.manifests {
+			if err := tx.SaveManifest(ctx, m); err != nil {
+				return err
+			}
+		}
+		for _, t := range s.transfers {
+			if err := tx.SaveTransfer(ctx, t); err != nil {
+				return err
+			}
+		}
+		return nil
+	}, emit)
 }

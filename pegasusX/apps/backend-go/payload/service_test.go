@@ -23,6 +23,7 @@ func TestHandleManifestException_EscalationSeamParity(t *testing.T) {
 	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
 
 	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
@@ -70,6 +71,7 @@ func TestHandleApplyReassign_SeamParity(t *testing.T) {
 	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
 
 	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
@@ -136,6 +138,7 @@ func TestHandleApplyReassign_TargetManifestCapacityExceeded(t *testing.T) {
 	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
 
 	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
@@ -213,6 +216,7 @@ func TestHandleApplyReassign_OrderAlreadyAssignedNoop(t *testing.T) {
 	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
 
 	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
@@ -285,6 +289,7 @@ func TestHandleApplyReassign_TargetUnavailableConflict(t *testing.T) {
 	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
 
 	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
@@ -356,6 +361,7 @@ func TestHandleApplyReassign_SameManifestCandidateNoop(t *testing.T) {
 	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
 
 	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
@@ -432,6 +438,7 @@ func TestHandleApplyReassign_ExplicitSameRouteNoop(t *testing.T) {
 	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
 
 	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
@@ -504,6 +511,7 @@ func TestHandleApplyReassign_ExplicitSameRouteSelectsAlternateManifestWhenSource
 	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
 
 	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
@@ -606,6 +614,7 @@ func TestHandleApplyReassign_TargetDriverManifestMismatch(t *testing.T) {
 	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
 
 	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
@@ -692,6 +701,7 @@ func TestHandleApplyReassign_SourceManifestOrderMissingConflict(t *testing.T) {
 	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
 
 	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
@@ -779,6 +789,7 @@ func TestHandleApplyReassign_SourceRouteManifestMismatchConflict(t *testing.T) {
 	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
 
 	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
@@ -862,6 +873,7 @@ func TestHandleApplyReassign_TargetRouteMismatchAfterSuccess_NoExtraFanout(t *te
 	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
 
 	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
@@ -952,6 +964,7 @@ func TestHandleApplyReassign_SourceManifestOrderMissingAfterSuccess_NoExtraFanou
 	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
 
 	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
@@ -1060,6 +1073,7 @@ func TestHandleApplyReassign_ReplayAfterSuccessIdempotent(t *testing.T) {
 	payloadConn := &payloadWSConnSpy{id: "payload-conn"}
 
 	svc := newPayloadTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.payloadHub.Subscribe("payload:supplier-test", payloadConn)
 
@@ -1336,14 +1350,15 @@ func assertPayloadWSMessageContainsType(t *testing.T, messages [][]byte, wantTyp
 }
 
 type payloadRepoSpy struct {
+	svc *Service
 	applyCalls int
 	events     []outbox.Event
 }
 
-func (r *payloadRepoSpy) Apply(ctx context.Context, mutate func() error, _ func() *PersistenceSnapshot, emit func(outbox.TxnBuffer) error) error {
+func (r *payloadRepoSpy) RunTx(ctx context.Context, fn func(ctx context.Context, tx PayloadTx) error, emit func(outbox.TxnBuffer) error) error {
 	r.applyCalls++
-	if mutate != nil {
-		if err := mutate(); err != nil {
+	if fn != nil {
+		if err := fn(ctx, &dummyPayloadTx{svc: r.svc}); err != nil {
 			return err
 		}
 	}
@@ -1413,3 +1428,15 @@ func (c *payloadWSConnSpy) Send(_ context.Context, payload []byte) error {
 	c.messages = append(c.messages, copyPayload)
 	return nil
 }
+
+func (r *payloadRepoSpy) Hydrate(ctx context.Context, supplierID string, s *Service) error {
+	return nil
+}
+
+type dummyPayloadTx struct{ svc *Service }
+func (d *dummyPayloadTx) ListManifests(ctx context.Context) ([]ManifestRow, error) { return append([]ManifestRow(nil), d.svc.manifests...), nil }
+func (d *dummyPayloadTx) SaveManifest(ctx context.Context, m ManifestRow) error { return nil }
+func (d *dummyPayloadTx) ListManifestOrders(ctx context.Context, mid string) ([]ManifestOrder, error) { return d.svc.manifestOrders[mid], nil }
+func (d *dummyPayloadTx) SaveManifestOrder(ctx context.Context, mo ManifestOrder, seq int64) error { return nil }
+func (d *dummyPayloadTx) ListExceptions(ctx context.Context) ([]ManifestException, error) { return append([]ManifestException(nil), d.svc.exceptions...), nil }
+func (d *dummyPayloadTx) SaveException(ctx context.Context, e ManifestException) error { return nil }

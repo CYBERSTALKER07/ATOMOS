@@ -29,45 +29,6 @@ const (
 	payloadExceptionEscalationThreshold = 3
 )
 
-// Repository is the mutation seam for payload write paths.
-type Repository interface {
-	Apply(ctx context.Context, mutate func() error, snapshot func() *PersistenceSnapshot, emit func(outbox.TxnBuffer) error) error
-}
-
-// inMemoryRepository is the scaffold repository implementation.
-type inMemoryRepository struct{}
-
-// inMemoryTxnBuffer is the scaffold outbox buffer.
-type inMemoryTxnBuffer struct {
-	events []outbox.Event
-}
-
-func (b *inMemoryTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error {
-	b.events = append(b.events, e)
-	return nil
-}
-
-func (r *inMemoryRepository) Apply(ctx context.Context, mutate func() error, _ func() *PersistenceSnapshot, emit func(outbox.TxnBuffer) error) error {
-	if mutate != nil {
-		if err := mutate(); err != nil {
-			return err
-		}
-	}
-	if emit != nil {
-		txn := &inMemoryTxnBuffer{}
-		if err := emit(txn); err != nil {
-			return err
-		}
-	}
-	_ = ctx
-	return nil
-}
-
-// NewInMemoryRepository returns the default in-memory repository seam.
-func NewInMemoryRepository() Repository {
-	return &inMemoryRepository{}
-}
-
 // Service stores additive in-memory payload operations state.
 type Service struct {
 	repo        Repository
@@ -225,7 +186,7 @@ func NewService(c ServiceConfig) *Service {
 		c.Log = slog.Default()
 	}
 	if c.Repo == nil {
-		c.Repo = NewInMemoryRepository()
+		panic("repo is required")
 	}
 	if c.Currency == "" {
 		c.Currency = "UZS"
@@ -291,14 +252,6 @@ func routeIDForManifest(m ManifestRow) string {
 }
 
 func (s *Service) ensureDemoDataLocked() {
-	if !s.spannerLoaded {
-		if r, ok := s.repo.(*SpannerRepository); ok {
-			if err := r.hydrateWhileLocked(context.Background(), s.supplierID, s); err == nil && len(s.manifests) > 0 {
-				s.spannerLoaded = true
-				return
-			}
-		}
-	}
 	if len(s.trucks) == 0 {
 		s.trucks = []TruckRow{
 			{VehicleID: "veh_payload_1", PlateNo: "01P111AA", State: "READY"},
@@ -359,12 +312,6 @@ func (s *Service) ensureDemoDataLocked() {
 			s.manifestOrders = make(map[string][]ManifestOrder)
 		}
 		s.manifestOrders[sibling.ManifestID] = []ManifestOrder{}
-	}
-	if r, ok := s.repo.(*SpannerRepository); ok && !s.spannerLoaded {
-		snap := s.buildPersistenceSnapshotLocked()
-		if err := r.SeedDemoManifests(context.Background(), s.supplierID, snap); err == nil {
-			s.spannerLoaded = true
-		}
 	}
 }
 

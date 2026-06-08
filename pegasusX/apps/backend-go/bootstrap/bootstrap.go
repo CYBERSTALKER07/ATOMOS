@@ -510,17 +510,15 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var driverRepo driver.Repository
 	var factoryRepo factory.Repository
 	var payloadRepo payload.Repository
-	if spannerClient != nil {
-		driverRepo = driver.NewSpannerRepository(spannerClient)
-		factoryRepo = factory.NewSpannerRepository(spannerClient, supplierSeed.SupplierID, factoryNodeID)
-		payloadRepo = payload.NewSpannerRepository(spannerClient, supplierSeed.SupplierID)
-		log.Info("factory and payload repositories enabled", "backend", "spanner")
-	} else {
-		driverRepo = driver.NewInMemoryRepository()
-		factoryRepo = factory.NewInMemoryRepository()
-		payloadRepo = payload.NewInMemoryRepository()
-		log.Warn("factory and payload repository fallback enabled", "backend", "in-memory")
+	if spannerClient == nil {
+		log.Error("spanner client required but not configured", "backend", "spanner")
+		panic("spanner client required but not configured")
 	}
+	driverRepo = driver.NewSpannerRepository(spannerClient)
+	factoryRepo = factory.NewSpannerRepository(spannerClient, supplierSeed.SupplierID, factoryNodeID)
+	payloadRepo = payload.NewSpannerRepository(spannerClient, supplierSeed.SupplierID)
+	log.Info("factory and payload repositories enabled", "backend", "spanner")
+
 	factorySvc := factory.NewService(factory.ServiceConfig{
 		Repo:          factoryRepo,
 		Cache:         cacheClient,

@@ -32,56 +32,6 @@ const (
 	manifestExceptionEscalationThreshold = 3
 )
 
-// Repository is the mutation seam for factory write paths.
-type Repository interface {
-	Apply(ctx context.Context, mutate func() error, snapshot func() *PersistenceSnapshot, emit func(outbox.TxnBuffer) error) error
-	UpdateSupplyRequestState(ctx context.Context, requestID, state string, emit func(outbox.TxnBuffer) error) error
-}
-
-// inMemoryRepository is the scaffold repository implementation.
-type inMemoryRepository struct{}
-
-// inMemoryTxnBuffer is the scaffold outbox buffer.
-type inMemoryTxnBuffer struct {
-	events []outbox.Event
-}
-
-func (b *inMemoryTxnBuffer) BufferOutbox(_ context.Context, e outbox.Event) error {
-	b.events = append(b.events, e)
-	return nil
-}
-
-func (r *inMemoryRepository) Apply(ctx context.Context, mutate func() error, _ func() *PersistenceSnapshot, emit func(outbox.TxnBuffer) error) error {
-	if mutate != nil {
-		if err := mutate(); err != nil {
-			return err
-		}
-	}
-	if emit != nil {
-		txn := &inMemoryTxnBuffer{}
-		if err := emit(txn); err != nil {
-			return err
-		}
-	}
-	_ = ctx
-	return nil
-}
-
-func (r *inMemoryRepository) UpdateSupplyRequestState(ctx context.Context, requestID, state string, emit func(outbox.TxnBuffer) error) error {
-	if emit != nil {
-		txn := &inMemoryTxnBuffer{}
-		if err := emit(txn); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// NewInMemoryRepository returns the default in-memory repository seam.
-func NewInMemoryRepository() Repository {
-	return &inMemoryRepository{}
-}
-
 // Service stores additive in-memory data for factory operational surfaces.
 type Service struct {
 	repo        Repository
@@ -343,7 +293,7 @@ func (s *Service) nextIDLocked(prefix string) string {
 func (s *Service) ensureDemoDataLocked() {
 	if !s.spannerLoaded {
 		if r, ok := s.repo.(*SpannerRepository); ok {
-			if err := r.hydrateWhileLocked(context.Background(), s); err != nil {
+			if err := r.Hydrate(context.Background(), s.factoryNodeID, s); err != nil {
 				s.log.WarnContext(context.Background(), "factory spanner hydrate failed", "err", err)
 			}
 		}
@@ -416,11 +366,8 @@ func (s *Service) ensureDemoDataLocked() {
 	}
 	s.ensureDemoManifestExceptionsLocked()
 	s.ensureLoadingBayDemoTransfersLocked()
-	if r, ok := s.repo.(*SpannerRepository); ok && !s.spannerLoaded {
-		snap := s.buildPersistenceSnapshotLocked()
-		if err := r.SeedDemoManifests(context.Background(), snap); err == nil {
-			s.spannerLoaded = true
-		}
+	if _, ok := s.repo.(*SpannerRepository); ok && !s.spannerLoaded {
+		s.spannerLoaded = true
 	}
 }
 

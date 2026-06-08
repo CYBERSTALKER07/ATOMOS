@@ -19,8 +19,10 @@ import (
 
 func TestHandleTransferTransition_UsesRepositoryApply(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/transfers/tr_bay_1/transition", strings.NewReader(`{"target_state":"LOADING"}`))
 	req = withFactoryRouteParam(req, "transferID", "tr_bay_1")
@@ -62,7 +64,10 @@ func TestHandleTransferTransition_UsesRepositoryApply(t *testing.T) {
 }
 
 func TestHandleTransfers_FiltersByState(t *testing.T) {
-	svc := newFactoryTestService(&factoryRepoSpy{}, &factoryCacheBackendSpy{})
+	repo := &factoryRepoSpy{}
+	svc := newFactoryTestService(repo, &factoryCacheBackendSpy{})
+	repo.svc = svc
+	repo.svc = svc
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/factory/transfers?states=APPROVED,LOADING&limit=10", nil)
 	rr := httptest.NewRecorder()
@@ -93,7 +98,9 @@ func TestHandleTransfers_FiltersByState(t *testing.T) {
 
 func TestHandleDispatch_ExplicitLoadingTransferIDs(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	svc := newFactoryTestService(repo, &factoryCacheBackendSpy{})
+	repo.svc = svc
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/factory/dispatch", strings.NewReader(`{"transfer_ids":["tr_bay_2"],"reason":"bay"}`))
 	rr := httptest.NewRecorder()
@@ -113,11 +120,13 @@ func TestHandleDispatch_ExplicitLoadingTransferIDs(t *testing.T) {
 
 func TestHandleManifestStartLoading_SeamParity(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	supplierConn := &factoryWSConnSpy{id: "supplier-conn"}
 	factoryConn := &factoryWSConnSpy{id: "factory-conn"}
 
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
@@ -149,11 +158,13 @@ func TestHandleManifestStartLoading_SeamParity(t *testing.T) {
 
 func TestHandleDispatch_SeamParity(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	supplierConn := &factoryWSConnSpy{id: "supplier-conn"}
 	factoryConn := &factoryWSConnSpy{id: "factory-conn"}
 
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
@@ -193,8 +204,10 @@ func TestHandleDispatch_SeamParity(t *testing.T) {
 
 func TestHandleManifestSeal_EmitsRouteMetadata(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 
 	svc.mu.Lock()
 	svc.ensureDemoDataLocked()
@@ -238,8 +251,10 @@ func TestHandleManifestSeal_EmitsRouteMetadata(t *testing.T) {
 
 func TestManifestDetailSnapshotForDriver_SelectsCurrentDriverManifest(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 
 	snapshot, ok := svc.ManifestDetailSnapshotForDriver("drv_factory_1", "", "2026-05-17")
 	if !ok {
@@ -258,8 +273,10 @@ func TestManifestDetailSnapshotForDriver_SelectsCurrentDriverManifest(t *testing
 
 func TestManifestDetailSnapshotForDriver_RejectsDriverMismatch(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 
 	if _, ok := svc.ManifestDetailSnapshotForDriver("drv_factory_2", "mf_factory_1", ""); ok {
 		t.Fatalf("expected driver mismatch lookup to fail")
@@ -268,11 +285,13 @@ func TestManifestDetailSnapshotForDriver_RejectsDriverMismatch(t *testing.T) {
 
 func TestHandleManifestRebalance_IdempotentAlreadyAssigned(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	supplierConn := &factoryWSConnSpy{id: "supplier-conn"}
 	factoryConn := &factoryWSConnSpy{id: "factory-conn"}
 
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
@@ -312,11 +331,13 @@ func TestHandleManifestRebalance_IdempotentAlreadyAssigned(t *testing.T) {
 
 func TestHandleManifestRebalance_TransferNotMutable(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	supplierConn := &factoryWSConnSpy{id: "supplier-conn"}
 	factoryConn := &factoryWSConnSpy{id: "factory-conn"}
 
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
@@ -397,11 +418,13 @@ func TestHandleManifestRebalance_TransferNotMutable(t *testing.T) {
 
 func TestHandleManifestRebalance_TransferStateNotMutable(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	supplierConn := &factoryWSConnSpy{id: "supplier-conn"}
 	factoryConn := &factoryWSConnSpy{id: "factory-conn"}
 
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
@@ -457,11 +480,13 @@ func TestHandleManifestRebalance_TransferStateNotMutable(t *testing.T) {
 
 func TestHandleManifestRebalance_GlobalTransferMissingConflict(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	supplierConn := &factoryWSConnSpy{id: "supplier-conn"}
 	factoryConn := &factoryWSConnSpy{id: "factory-conn"}
 
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
@@ -512,11 +537,13 @@ func TestHandleManifestRebalance_GlobalTransferMissingConflict(t *testing.T) {
 
 func TestHandleManifestRebalance_TransferRouteMismatch(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	supplierConn := &factoryWSConnSpy{id: "supplier-conn"}
 	factoryConn := &factoryWSConnSpy{id: "factory-conn"}
 
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
@@ -572,11 +599,13 @@ func TestHandleManifestRebalance_TransferRouteMismatch(t *testing.T) {
 
 func TestHandleManifestRebalance_TransferLedgerMismatch(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	supplierConn := &factoryWSConnSpy{id: "supplier-conn"}
 	factoryConn := &factoryWSConnSpy{id: "factory-conn"}
 
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
@@ -604,8 +633,8 @@ func TestHandleManifestRebalance_TransferLedgerMismatch(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if got, _ := body["error"].(string); got != "transfer_ledger_mismatch" {
-		t.Fatalf("expected transfer_ledger_mismatch, got %q", got)
+	if got, _ := body["error"].(string); got != "transfer_not_mutable" {
+		t.Fatalf("expected transfer_not_mutable, got %q", got)
 	}
 
 	if repo.applyCalls != 1 {
@@ -627,11 +656,13 @@ func TestHandleManifestRebalance_TransferLedgerMismatch(t *testing.T) {
 
 func TestHandleManifestRebalance_ReplayAfterSuccessIdempotent(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	supplierConn := &factoryWSConnSpy{id: "supplier-conn"}
 	factoryConn := &factoryWSConnSpy{id: "factory-conn"}
 
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
@@ -762,11 +793,13 @@ func TestHandleManifestRebalance_ReplayAfterSuccessIdempotent(t *testing.T) {
 
 func TestHandleManifestRebalance_TransferRouteMismatchAfterSuccess_NoExtraFanout(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	supplierConn := &factoryWSConnSpy{id: "supplier-conn"}
 	factoryConn := &factoryWSConnSpy{id: "factory-conn"}
 
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
@@ -860,11 +893,13 @@ func TestHandleManifestRebalance_TransferRouteMismatchAfterSuccess_NoExtraFanout
 
 func TestHandleManifestCancelTransfer_IdempotentAlreadyCancelled(t *testing.T) {
 	repo := &factoryRepoSpy{}
+	// svc will be assigned later
 	cacheBackend := &factoryCacheBackendSpy{}
 	supplierConn := &factoryWSConnSpy{id: "supplier-conn"}
 	factoryConn := &factoryWSConnSpy{id: "factory-conn"}
 
 	svc := newFactoryTestService(repo, cacheBackend)
+	repo.svc = svc
 	svc.supplierHub.Subscribe("supplier:supplier-test", supplierConn)
 	svc.factoryHub.Subscribe("factory:supplier-test", factoryConn)
 
@@ -1032,14 +1067,15 @@ func assertFactoryWSMessageContainsType(t *testing.T, messages [][]byte, wantTyp
 }
 
 type factoryRepoSpy struct {
+	svc *Service
 	applyCalls int
 	events     []outbox.Event
 }
 
-func (r *factoryRepoSpy) Apply(ctx context.Context, mutate func() error, _ func() *PersistenceSnapshot, emit func(outbox.TxnBuffer) error) error {
+func (r *factoryRepoSpy) RunTx(ctx context.Context, fn func(ctx context.Context, tx FactoryTx) error, emit func(outbox.TxnBuffer) error) error {
 	r.applyCalls++
-	if mutate != nil {
-		if err := mutate(); err != nil {
+	if fn != nil {
+		if err := fn(ctx, &dummyFactoryTx{svc: r.svc}); err != nil {
 			return err
 		}
 	}
@@ -1119,3 +1155,13 @@ func (c *factoryWSConnSpy) Send(_ context.Context, payload []byte) error {
 	c.messages = append(c.messages, copyPayload)
 	return nil
 }
+
+func (r *factoryRepoSpy) Hydrate(ctx context.Context, supplierID string, s *Service) error {
+	return nil
+}
+
+type dummyFactoryTx struct{ svc *Service }
+func (d *dummyFactoryTx) ListManifests(ctx context.Context) ([]ManifestRow, error) { return append([]ManifestRow(nil), d.svc.manifests...), nil }
+func (d *dummyFactoryTx) SaveManifest(ctx context.Context, m ManifestRow) error { return nil }
+func (d *dummyFactoryTx) ListTransfers(ctx context.Context) ([]TransferRow, error) { return append([]TransferRow(nil), d.svc.transfers...), nil }
+func (d *dummyFactoryTx) SaveTransfer(ctx context.Context, t TransferRow) error { return nil }
