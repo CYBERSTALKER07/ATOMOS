@@ -71,5 +71,5 @@ Last updated: 2026-06-05. Canonical reference: `pegasus/`. Delivery tree: `pegas
 cd pegasusX && make test-ssmr-infra
 cd pegasusX && make validate-launch-readiness
 cd pegasusX && bash scripts/parity/role_row_contract_check.sh
-cd pegasusX && go build ./...
+cd pegasusX && make backend-build
 ```

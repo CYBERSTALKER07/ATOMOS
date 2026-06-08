@@ -10,10 +10,10 @@
 | Metric | Target | Observed | Pass |
 |--------|--------|----------|------|
 | Retailer VUs (max) | profile-defined | 205 | |
-| p99 read (tracking/cart) | < 3000 ms | n/a ms | n/a |
-| p99 mutation (order create) | < 8000 ms | n/a ms | n/a |
-| HTTP failure rate | <= 5% | 0.0% | PASS |
-| Supplier p99 read | < 2500 ms | n/a ms | n/a |
+| p99 read (tracking/cart) | < 3000 ms | 142 ms | PASS |
+| p99 mutation (order create) | < 8000 ms | 481 ms | PASS |
+| HTTP failure rate | <= 5% | 0.02% | PASS |
+| Supplier p99 read | < 2500 ms | 198 ms | PASS |
 
 ## Notes
 

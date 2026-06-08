@@ -63,6 +63,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		gr.Use(auth.CookieAuth(d.JWTSecret))
 		gr.Use(auth.RequireRole(auth.RoleAdmin))
 		gr.Post("/v1/supplier/configure", d.Service.HandleConfigure)
+		gr.Post("/v1/supplier/business/setup", d.Service.HandleSupplierBusinessSetup)
 		gr.Post("/v1/supplier/billing/setup", d.Service.HandleConfigureBilling)
 		gr.Get("/v1/supplier/profile", d.Service.HandleProfile)
 		gr.Put("/v1/supplier/profile", d.Service.HandleProfile)

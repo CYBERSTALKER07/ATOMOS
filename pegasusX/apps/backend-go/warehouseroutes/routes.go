@@ -26,7 +26,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	}
 
 	r.Post("/v1/auth/warehouse/login", d.Service.HandleWarehouseLogin)
+	r.Post("/v1/auth/warehouse/register", d.Service.HandleWarehouseRegister)
 	r.Post("/v1/auth/warehouse/refresh", d.Service.HandleWarehouseRefresh)
+	r.Post("/v1/warehouse/setup", d.Service.HandleWarehouseSetup)
 
 	mountReplenishmentInsights := func(rr chi.Router) {
 		rr.Get("/v1/warehouse/replenishment/insights", d.Service.HandleReplenishmentInsights)

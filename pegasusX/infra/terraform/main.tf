@@ -63,7 +63,7 @@ resource "google_spanner_instance" "ledger" {
   name         = local.spanner_instance_name
   config       = "regional-${var.region}"
   display_name = local.spanner_display_name
-  num_nodes    = 1
+  processing_units = 100
   labels       = local.labels
   depends_on   = [google_project_service.required_apis]
 }

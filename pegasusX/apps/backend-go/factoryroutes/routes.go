@@ -23,7 +23,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	}
 
 	r.Post("/v1/auth/factory/login", d.Service.HandleFactoryLogin)
+	r.Post("/v1/auth/factory/register", d.Service.HandleFactoryRegister)
 	r.Post("/v1/auth/factory/refresh", d.Service.HandleFactoryRefresh)
+	r.Post("/v1/factory/setup", d.Service.HandleFactorySetup)
 
 	mountProtected := func(rr chi.Router) {
 		rr.Get("/v1/factory/analytics/overview", d.Service.HandleAnalyticsOverview)

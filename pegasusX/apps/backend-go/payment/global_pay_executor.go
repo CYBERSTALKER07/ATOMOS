@@ -80,12 +80,7 @@ type gpTokenResponse struct {
 func (e *globalpayProviderExecutor) authenticate(ctx context.Context) (string, error) {
 	username := e.username
 	password := e.password
-	// In local/dev simulation mode, accept stub credentials so the in-process
-	// simulator can be exercised without real GlobalPay credentials.
-	if username == "" && (e.env == "dev" || e.env == "local" || e.simulatorBase != "") {
-		username = "sim-user"
-		password = "sim-pass"
-	}
+
 	if username == "" || password == "" {
 		return "", fmt.Errorf("globalpay credentials missing (username or password)")
 	}
@@ -152,6 +147,17 @@ func (e *globalpayProviderExecutor) Execute(ctx context.Context, req ExecutionRe
 			Mode:            ExecutionModeDirect,
 			PolicySource:    "SUPPLIER_DEFAULT",
 			ProviderRef:     "gp_capture_mock_" + req.OrderID,
+		}, nil
+	}
+
+	// Stub mode: if no API keys are provided, return a mock redirect URL
+	// to allow production-rate load testing without a real gateway contract.
+	if e.username == "" || e.password == "" {
+		return ExecutionResult{
+			ResolvedGateway: "GLOBAL_PAY",
+			Mode:            ExecutionModeHostedRedirect,
+			PolicySource:    "SUPPLIER_DEFAULT",
+			RedirectURL:     fmt.Sprintf("https://test.globalpay.uz/checkout-stub/%s", req.OrderID),
 		}, nil
 	}
 

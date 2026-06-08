@@ -131,7 +131,6 @@ services:
       KAFKA_BROKERS: kafka:29092
       OPTIMIZER_BASE_URL: http://ai-worker:8081
       INTERNAL_API_KEY: dev-internal-key
-      GLOBAL_PAY_BASE_URL: http://globalpay-mock:8080
     command:
       - /bin/sh
       - -lc
@@ -168,13 +167,6 @@ services:
       - /usr/local/go/bin/go run ./apps/ai-worker
     restart: unless-stopped
 
-  globalpay-mock:
-    image: wiremock/wiremock:latest
-    ports:
-      - "8185:8080"
-    volumes:
-      - ../mocks/globalpay:/home/wiremock
-    restart: unless-stopped
 
   # Phase 2 hook: add an optimizer-sidecar-rust service here when pegasusX
   # carries a concrete OR-Tools sidecar implementation.

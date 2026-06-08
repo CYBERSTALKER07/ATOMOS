@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import subprocess
 from pathlib import Path
 
 
@@ -178,11 +179,22 @@ def require_context_sync() -> None:
         fail("context/architecture-graph.json missing launch readiness runtime note")
 
 
+def run_make_target(target: str) -> None:
+    print(f"Running make {target}...", file=sys.stderr)
+    result = subprocess.run(["make", target], cwd=ROOT)
+    if result.returncode != 0:
+        fail(f"make {target} failed")
+
 def main() -> None:
     require_docs()
     require_release_gates()
     require_platform_evidence()
     require_context_sync()
+    
+    run_make_target("parity-contract-full")
+    run_make_target("validate-ai-worker-k8s")
+    run_make_target("validate-backend-k8s")
+
     print("launch-readiness-ok")
 
 

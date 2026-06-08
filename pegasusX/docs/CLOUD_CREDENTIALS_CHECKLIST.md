@@ -4,7 +4,7 @@
 
 - Spanner, Redis, Kafka cloud endpoints
 - Google Maps keys (maps show placeholder without keys)
-- Live payment gateway keys (WireMock + dev webhook secrets in `.env.ssmr.example`)
+- Live payment gateway keys (GlobalPay.uz production test credentials + dev webhook secrets in `.env.ssmr.example`)
 - Terraform apply
 
 ## Required for staging / production (GCP)
@@ -32,10 +32,10 @@
 - `DRIVER_ANDROID_MAPS_API_KEY` or `MAPS_API_KEY` per `apps/driver-app-android/README.md`
 - iOS MapKit: Apple Developer Program only
 
-### Payments (when leaving WireMock)
+### Payments (GlobalPay.uz Setup)
 
-- Secret Manager: `GLOBAL_PAY_WEBHOOK_SECRET`, `ADYEN_WEBHOOK_SECRET`, `STRIPE_WEBHOOK_SECRET`
-- Provider API keys: Payme, Click, Stripe, Adyen, Airwallex as enabled
+- Secret Manager: `GLOBAL_PAY_WEBHOOK_SECRET`
+- Provider API keys: GlobalPay.uz keys (Note: stubbed out in `globalpay.go` until contract signed)
 - Webhook URLs: `https://<api-host>/v1/webhooks/...`
 - `AIRWALLEX_DIRECT_EXECUTION_ENABLED=true` only if Airwallex is live
 

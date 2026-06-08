@@ -99,7 +99,7 @@ backend-run:
 	cd apps/backend-go && go run ./...
 
 backend-build:
-	go build ./...
+	for dir in apps/ai-worker apps/backend-go packages/config packages/optimizer-contract; do (cd $$dir && go build ./...); done
 
 supplier-portal-dev:
 	cd apps/supplier-portal && pnpm dev

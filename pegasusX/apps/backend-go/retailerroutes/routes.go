@@ -32,6 +32,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	r.Post("/v1/auth/retailer/login", d.Service.HandleRetailerLogin)
 	r.Post("/v1/auth/retailer/refresh", d.Service.HandleRetailerRefresh)
 	r.Post("/v1/auth/retailer/register", d.Service.HandleMobileRegister)
+	r.Post("/v1/retailer/setup", d.Service.HandleRetailerSetup)
 
 	mountProtected := func(rr chi.Router) {
 		rr.Get("/v1/retailer/profile", d.Service.HandleProfile)

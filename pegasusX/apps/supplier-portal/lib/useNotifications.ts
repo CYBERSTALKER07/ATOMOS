@@ -86,7 +86,7 @@ export function useNotifications() {
   // ── Fetch inbox ──
   const fetchInbox = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await supplierFetch('/v1/system/notifications?limit=50', { signal });
+      const res = await supplierFetch('/v1/user/notifications?limit=50', { signal });
       if (!res.ok) return;
       const data = await res.json();
       if (disposedRef.current) return;
@@ -107,7 +107,7 @@ export function useNotifications() {
   // ── Mark single notification read ──
   const markRead = useCallback(async (notificationId: string) => {
     try {
-      const res = await supplierFetch('/v1/system/notifications/read', {
+      const res = await supplierFetch('/v1/user/notifications/read', {
         method: 'POST',
         body: JSON.stringify({ notification_ids: [notificationId] }),
       });
@@ -126,7 +126,7 @@ export function useNotifications() {
   // ── Mark all read ──
   const markAllRead = useCallback(async () => {
     try {
-      const res = await supplierFetch('/v1/system/notifications/read', {
+      const res = await supplierFetch('/v1/user/notifications/read', {
         method: 'POST',
         body: JSON.stringify({ mark_all: true }),
       });
