@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
 func demoFleetOrders(driverID string) []map[string]any {
@@ -195,6 +197,14 @@ func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Requ
 		"orders_returned": result.Count,
 		"timestamp":       s.now().UTC().Format(time.RFC3339Nano),
 	})
+	// Broadcast availability change so tracking surfaces remove the driver from shift
+	s.broadcastDriverEvent(r.Context(), driverID, events.DriverEvent{
+		BaseEvent:  events.BaseEvent{Type: events.EventDriverAvailabilityChanged, Timestamp: s.now().UTC().Format(time.RFC3339Nano), Version: 1},
+		DriverID:   driverID,
+		Available:  false,
+		OnShift:    false,
+		SupplierID: s.supplierID,
+	})
 	s.log.InfoContext(r.Context(), "driver returned to depot",
 		"driver_id", driverID,
 		"manifest_id", result.ManifestID,
@@ -330,7 +340,45 @@ func (s *Service) HandleOrderAmend(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "amended"})
+	var req struct {
+		OrderID     string `json:"order_id"`
+		Items       any    `json:"items"`
+		DriverNotes string `json:"driver_notes"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	defer r.Body.Close()
+
+	driverID := driverIDFromRequest(r)
+	if driverID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	eventPayload := events.OrderEvent{
+		BaseEvent: events.BaseEvent{Type: "ORDER_AMENDED", Timestamp: s.now().UTC().Format(time.RFC3339Nano), Version: 1},
+		OrderID:   req.OrderID,
+		DriverID:  driverID,
+		Action:    "amend",
+		Reason:    req.DriverNotes,
+		LineItems: req.Items,
+	}
+
+	if err := s.repo.Apply(r.Context(), nil, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateOrder, req.OrderID, events.TopicMain, eventPayload)
+	}); err != nil {
+		s.log.ErrorContext(r.Context(), "driver order amend failed", "err", err, "order_id", req.OrderID)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "amend_failed"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":        true,
+		"message":        "amended",
+		"adjusted_total": nil,
+	})
 }
 
 // HandleOrderGet serves GET /v1/orders/{orderID}.
