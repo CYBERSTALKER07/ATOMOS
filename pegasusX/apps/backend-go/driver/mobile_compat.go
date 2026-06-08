@@ -139,12 +139,73 @@ func (s *Service) HandleDriverDepart(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleDriverReturnComplete serves POST /v1/fleet/driver/return-complete.
+// It flips the driver's DISPATCHED manifest to COMPLETED and marks the driver
+// as off-shift. Without ReturnCompleteFn wired, it degrades gracefully to the
+// prior no-op stub so mobile clients never receive a hard error.
 func (s *Service) HandleDriverReturnComplete(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "returned"})
+	driverID := driverIDFromRequest(r)
+	if driverID == "" {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	if s.returnComplete == nil {
+		// Graceful degradation — update availability in-memory and return OK.
+		s.mu.Lock()
+		s.availability[driverID] = false
+		s.mu.Unlock()
+		writeJSON(w, http.StatusOK, map[string]string{"status": "returned"})
+		return
+	}
+
+	result, ok, err := s.returnComplete(r.Context(), driverID)
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "driver return-complete failed", "err", err, "driver_id", driverID)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "return_complete_failed"})
+		return
+	}
+	if !ok {
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"status": "no_dispatched_manifest",
+			"error":  "no_dispatched_manifest",
+		})
+		return
+	}
+
+	// Mark driver off-shift locally.
+	s.mu.Lock()
+	s.availability[driverID] = false
+	s.mu.Unlock()
+
+	if s.cache != nil {
+		s.cache.Invalidate(r.Context(), driverManifestKey(driverID))
+		s.cache.Invalidate(r.Context(), driverAvailabilityKey(driverID))
+	}
+
+	// Broadcast MANIFEST_COMPLETED to supplier + driver hubs so live tracking surfaces update.
+	s.broadcastDriverEvent(r.Context(), driverID, map[string]any{
+		"type":            "MANIFEST_COMPLETED",
+		"driver_id":       driverID,
+		"manifest_id":     result.ManifestID,
+		"order_ids":       result.OrderIDs,
+		"orders_returned": result.Count,
+		"timestamp":       s.now().UTC().Format(time.RFC3339Nano),
+	})
+	s.log.InfoContext(r.Context(), "driver returned to depot",
+		"driver_id", driverID,
+		"manifest_id", result.ManifestID,
+		"orders_returned", result.Count,
+	)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":          "returned",
+		"manifest_id":     result.ManifestID,
+		"orders_returned": result.Count,
+		"order_ids":       result.OrderIDs,
+	})
 }
 
 // HandleOrderDeliver serves POST /v1/order/deliver.

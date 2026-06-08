@@ -47,8 +47,8 @@ func TestHandleAvailability_PatchEmitsOutboxCacheWSOnce(t *testing.T) {
 	if got, _ := payload["type"].(string); got != events.EventDriverAvailabilityChanged {
 		t.Fatalf("expected event type %q, got %q", events.EventDriverAvailabilityChanged, got)
 	}
-	if got, _ := payload["v"].(float64); got != 1 {
-		t.Fatalf("expected v=1, got %v", payload["v"])
+	if got, _ := payload["version"].(float64); got != 1 {
+		t.Fatalf("expected version=1, got %v", payload["version"])
 	}
 	if got, _ := payload["driver_id"].(string); got != "drv-1" {
 		t.Fatalf("expected driver_id drv-1, got %q", got)

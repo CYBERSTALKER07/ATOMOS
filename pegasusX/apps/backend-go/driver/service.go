@@ -65,7 +65,8 @@ type Service struct {
 	manifest     ManifestLookup
 	pendingQuery PendingCollectionsLookup
 	earnings     EarningsLookup
-	depart       DepartFn
+	depart         DepartFn
+	returnComplete ReturnCompleteFn
 
 	supplierID string
 	currency   string
@@ -95,7 +96,8 @@ type ServiceConfig struct {
 	Manifest     ManifestLookup
 	PendingQuery PendingCollectionsLookup
 	Earnings     EarningsLookup
-	Depart       DepartFn
+	Depart          DepartFn
+	ReturnComplete  ReturnCompleteFn
 	SupplierID   string
 	Currency     string
 	JWTSecret    string
@@ -135,6 +137,18 @@ type DepartResult struct {
 // orders to IN_TRANSIT atomically. ok=false means the driver had no sealed
 // manifest (idempotent no-op).
 type DepartFn func(ctx context.Context, driverID string) (DepartResult, bool, error)
+
+// ReturnCompleteResult summarizes the manifest closed when a driver returns to depot.
+type ReturnCompleteResult struct {
+	ManifestID string   `json:"manifest_id"`
+	OrderIDs   []string `json:"order_ids"`
+	Count      int      `json:"orders_returned"`
+}
+
+// ReturnCompleteFn flips a driver's DISPATCHED manifest to COMPLETED and marks
+// the driver as off-shift atomically. ok=false means no DISPATCHED manifest
+// found (idempotent no-op for double-tap return).
+type ReturnCompleteFn func(ctx context.Context, driverID string) (ReturnCompleteResult, bool, error)
 
 // DailyEarning is one day of driver delivery volume.
 type DailyEarning struct {
@@ -207,7 +221,8 @@ func NewService(c ServiceConfig) *Service {
 		manifest:           c.Manifest,
 		pendingQuery:       c.PendingQuery,
 		earnings:           c.Earnings,
-		depart:             c.Depart,
+		depart:          c.Depart,
+		returnComplete:  c.ReturnComplete,
 		supplierID:         c.SupplierID,
 		currency:           strings.ToUpper(strings.TrimSpace(c.Currency)),
 		jwtSecret:          strings.TrimSpace(c.JWTSecret),
@@ -379,7 +394,7 @@ func (s *Service) HandleAvailability(w http.ResponseWriter, r *http.Request) {
 		nowTS := s.now().Format(time.RFC3339Nano)
 		claims, _ := auth.FromContext(r.Context())
 		eventPayload := events.DriverEvent{
-			BaseEvent:    events.BaseEvent{Type: events.EventDriverAvailabilityChanged, Timestamp: nowTS},
+			BaseEvent:    events.BaseEvent{Type: events.EventDriverAvailabilityChanged, Timestamp: nowTS, Version: 1},
 			DriverID:     driverID,
 			Available:    req.OnShift,
 			OnShift:      req.OnShift,

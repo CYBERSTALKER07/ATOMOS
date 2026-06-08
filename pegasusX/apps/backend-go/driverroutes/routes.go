@@ -51,54 +51,28 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Get("/v1/fleet/orders", d.Service.HandleFleetOrders)
 		rr.Post("/v1/fleet/driver/depart", d.Service.HandleDriverDepart)
 		rr.Post("/v1/fleet/driver/return-complete", d.Service.HandleDriverReturnComplete)
+
+		// Order & Delivery lifecycle proxies (if OrderService is wired)
 		if d.OrderService != nil {
 			rr.Post("/v1/fleet/route/reorder", d.OrderService.HandleFleetRouteReorder)
-		} else {
-			rr.Post("/v1/fleet/route/reorder", d.Service.HandleFleetRouteReorder)
-		}
-		if d.OrderService != nil {
 			rr.Post("/v1/fleet/route/request-early-complete", d.OrderService.HandleRequestEarlyComplete)
-		} else {
-			rr.Post("/v1/fleet/route/request-early-complete", d.Service.HandleFleetEarlyComplete)
-		}
-
-		rr.Get("/v1/orders/{orderID}", d.Service.HandleOrderGet)
-		rr.Patch("/v1/orders/{orderID}/state", d.Service.HandleOrderStatePatch)
-		rr.Post("/v1/order/validate-qr", d.Service.HandleOrderValidateQR)
-		rr.Post("/v1/order/amend", d.Service.HandleOrderAmend)
-		if d.OrderService != nil {
+			rr.Get("/v1/orders/{orderID}", d.Service.HandleOrderGet)
+			rr.Patch("/v1/orders/{orderID}/state", d.Service.HandleOrderStatePatch)
+			rr.Post("/v1/order/validate-qr", d.Service.HandleOrderValidateQR)
+			rr.Post("/v1/order/amend", d.Service.HandleOrderAmend)
 			rr.Post("/v1/delivery/shop-closed", d.OrderService.HandleReportShopClosed)
-		} else {
-			rr.Post("/v1/delivery/shop-closed", d.Service.HandleDeliveryShopClosed)
-		}
-		if d.OrderService != nil {
 			rr.Post("/v1/delivery/bypass-offload", d.OrderService.HandleBypassOffload)
-		} else {
-			rr.Post("/v1/delivery/bypass-offload", d.Service.HandleDeliveryBypass)
-		}
-		if d.OrderService != nil {
-			rr.Post("/v1/delivery/confirm-payment-bypass", d.OrderService.HandleConfirmPaymentBypass)
-		} else {
-			rr.Post("/v1/delivery/confirm-payment-bypass", d.Service.HandleDeliveryBypass)
-		}
-
-		rr.Post("/v1/ws/ack", d.Service.HandleWSAck)
-
-		rr.Get("/v1/user/notifications", d.Service.HandleUserNotifications)
-		rr.Post("/v1/user/notifications/read", d.Service.HandleMarkNotificationsRead)
-		if d.OrderService != nil {
+			rr.Post("/v1/ws/ack", d.Service.HandleWSAck)
+			rr.Get("/v1/user/notifications", d.Service.HandleUserNotifications)
+			rr.Post("/v1/user/notifications/read", d.Service.HandleMarkNotificationsRead)
 			rr.Post("/v1/delivery/negotiate", d.OrderService.HandleProposeNegotiation)
-		} else {
-			rr.Post("/v1/delivery/negotiate", d.Service.HandleDeliveryCompatOK)
-		}
-		if d.OrderService != nil {
 			rr.Post("/v1/delivery/credit-delivery", d.OrderService.HandleCreditDelivery)
 			rr.Post("/v1/delivery/missing-items", d.OrderService.HandleMissingItems)
 			rr.Post("/v1/delivery/split-payment", d.OrderService.HandleSplitPayment)
 		} else {
-			rr.Post("/v1/delivery/credit-delivery", d.Service.HandleDeliveryCompatOK)
-			rr.Post("/v1/delivery/missing-items", d.Service.HandleDeliveryCompatOK)
-			rr.Post("/v1/delivery/split-payment", d.Service.HandleDeliveryCompatOK)
+			// In production, OrderService MUST be wired to support these edges.
+			// Firing a panic here guarantees tests and staging don't silently degraded to stubs.
+			panic("driverroutes: OrderService is nil. Must be wired for delivery mutations")
 		}
 	}
 

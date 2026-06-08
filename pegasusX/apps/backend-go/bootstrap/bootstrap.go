@@ -551,6 +551,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	var driverOrderList driver.DriverOrderQuery
 	var driverOrderGet driver.DriverOrderGetQuery
 	var driverDepart driver.DepartFn
+	var driverReturnComplete driver.ReturnCompleteFn
 	if spannerClient != nil {
 		driverOrderList = driverOrderListQuery(spannerClient)
 		driverOrderGet = driverOrderGetQuery(spannerClient)
@@ -566,14 +567,26 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				Count:      len(departed.OrderIDs),
 			}, true, nil
 		}
+		driverReturnComplete = func(ctx context.Context, driverID string) (driver.ReturnCompleteResult, bool, error) {
+			returned, ok, err := manifestStore.ReturnDriver(ctx, driverID, time.Now().UTC())
+			if err != nil || !ok {
+				return driver.ReturnCompleteResult{}, ok, err
+			}
+			return driver.ReturnCompleteResult{
+				ManifestID: returned.ManifestID,
+				OrderIDs:   returned.OrderIDs,
+				Count:      len(returned.OrderIDs),
+			}, true, nil
+		}
 	}
 	driverSvc := driver.NewService(driver.ServiceConfig{
-		Repo:        driverRepo,
-		Cache:       cacheClient,
-		NotifSvc:    notifAdapter,
-		OrderList:   driverOrderList,
-		OrderGet:    driverOrderGet,
-		Depart:      driverDepart,
+		Repo:           driverRepo,
+		Cache:          cacheClient,
+		NotifSvc:       notifAdapter,
+		OrderList:      driverOrderList,
+		OrderGet:       driverOrderGet,
+		Depart:         driverDepart,
+		ReturnComplete: driverReturnComplete,
 		SupplierHub: supplierHub,
 		DriverHub:   driverHub,
 		Log:         log,
