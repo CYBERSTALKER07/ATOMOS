@@ -265,7 +265,7 @@ final class APIClient {
     
     func removeFamilyMember(memberId: String) async throws {
         // DELETE requires custom wrapper or generic empty request. Reusing existing request helper:
-        var components = URLComponents(string: baseURL + "/v1/retailer/family-members/\(memberId)")!
+        let components = URLComponents(string: baseURL + "/v1/retailer/family-members/\(memberId)")!
         var request = URLRequest(url: components.url!)
         request.httpMethod = "DELETE"
         if let token = UserDefaults.standard.string(forKey: "auth_token") {

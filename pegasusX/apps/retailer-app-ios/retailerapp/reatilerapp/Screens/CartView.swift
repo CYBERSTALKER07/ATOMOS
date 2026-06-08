@@ -141,7 +141,7 @@ struct CartView: View {
         }
         .padding(AppTheme.spacingMD)
         .background(AppTheme.cardBackground)
-        .clipShape(.rect(cornerRadius: AppTheme.radiusCard))
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.radiusCard))
         .shadow(color: AppTheme.shadowColor, radius: 4, x: 0, y: 2)
         .padding(.horizontal, AppTheme.spacingLG)
     }
@@ -212,15 +212,11 @@ struct CartView: View {
             .padding(AppTheme.spacingLG)
             .background(.ultraThinMaterial)
         }
-        .onChange(of: cart.items.count) { _ in
-            Task {
-                await cart.sync()
-            }
+        .onChange(of: cart.items.count) {
+            Task { await cart.sync() }
         }
-        .onChange(of: cart.totalItems) { _ in
-            Task {
-                await cart.sync()
-            }
+        .onChange(of: cart.totalItems) {
+            Task { await cart.sync() }
         }
     }
 

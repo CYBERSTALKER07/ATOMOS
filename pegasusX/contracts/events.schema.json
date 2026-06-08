@@ -1,768 +1,1202 @@
 {
+  "$defs": {
+    "UnknownEventPayload": {
+      "additionalProperties": true,
+      "title": "UnknownEventPayload",
+      "type": "object"
+    }
+  },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://pegasusx.local/contracts/events.schema.json",
-  "title": "pegasusX Canonical Event Schemas",
-  "description": "Source of truth for cross-stack event payloads. Consumed by Quicktype codegen for Android (Kotlin @Serializable) and iOS (Swift Codable), and by packages/types for TypeScript. All envelopes share the Envelope base shape; the discriminator is `type`.",
-  "type": "object",
-  "definitions": {
-    "Envelope": {
-      "type": "object",
-      "required": ["type", "trace_id", "timestamp", "v"],
-      "properties": {
-        "type": { "type": "string" },
-        "trace_id": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "v": { "type": "integer", "minimum": 1 },
-        "schema_version": { "type": "integer", "minimum": 1 }
-      },
-      "additionalProperties": true
+  "oneOf": [
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AI_RECOMMENDATION_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "AiRecommendationCreatedEnvelope"
     },
-
-    "EventType": {
-      "type": "string",
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "AI_RECOMMENDATION_DECIDED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "AiRecommendationDecidedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "CART_SYNC_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CartSyncUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "COMMAND_DISPATCHED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CommandDispatchedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "COMMAND_RECEIVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CommandReceivedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "COMMAND_SETTLED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "CommandSettledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DELIVERY_DISPUTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DeliveryDisputedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DELIVERY_SESSION_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DeliverySessionUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DRIVER_AVAILABILITY_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DriverAvailabilityChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DRIVER_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DriverCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "DRIVER_LOCATION_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "DriverLocationUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "FACTORY_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "FactoryCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "INVENTORY_SYNC_COMPLETE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "InventorySyncCompleteEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_CANCELLED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestCancelledEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_COMPLETED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestCompletedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_DISPATCHED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestDispatchedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_DLQ_ESCALATION"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestDlqEscalationEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_DRAFT_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestDraftCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_LOADING_STARTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestLoadingStartedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_ORDER_EXCEPTION"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestOrderExceptionEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_ORDER_INJECTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestOrderInjectedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_REBALANCED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestRebalancedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MANIFEST_SEALED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ManifestSealedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "MISSING_ITEMS_REPORTED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "MissingItemsReportedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "NEGOTIATION_PROPOSED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "NegotiationProposedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "NEGOTIATION_RESOLVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "NegotiationResolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_ASSIGNED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderAssignedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_FINALIZED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderFinalizedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_REASSIGNED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderReassignedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_STATUS_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderStatusChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ORDER_VALIDATION_FAILED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "OrderValidationFailedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYMENT_CLEARED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PaymentClearedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "PAYMENT_REQUIRED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PaymentRequiredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "RETAILER_REGISTERED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RetailerRegisteredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ROUTE_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RouteCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "ROUTE_REORDERED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "RouteReorderedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SETTLEMENT_REQUIRED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SettlementRequiredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SHOP_CLOSED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ShopClosedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SHOP_CLOSED_ESCALATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ShopClosedEscalatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SHOP_CLOSED_RESOLVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ShopClosedResolvedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SHOP_CLOSED_RESPONSE"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "ShopClosedResponseEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SPLIT_PAYMENT_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SplitPaymentCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_BILLING_CONFIGURED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierBillingConfiguredEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_BILLING_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierBillingUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_MEMBER_ADDED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierMemberAddedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_PROFILE_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierProfileUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SUPPLIER_UPDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SupplierUpdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "SYSTEM_APP_OUTDATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "SystemAppOutdatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "VEHICLE_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "VehicleCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "WAREHOUSE_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "WarehouseCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "WAREHOUSE_DISPATCH_LOCK_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "WarehouseDispatchLockChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "WAREHOUSE_SUPPLY_REQUEST_OPENED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "WarehouseSupplyRequestOpenedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "WAREHOUSE_TRANSFER_CREATED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "WarehouseTransferCreatedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "WAREHOUSE_TRANSFER_RECEIVED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "WarehouseTransferReceivedEnvelope"
+    }
+  ],
+  "properties": {
+    "type": {
       "enum": [
-        "SUPPLIER_CREATED",
-        "RETAILER_REGISTERED",
-        "DRIVER_CREATED",
-        "VEHICLE_CREATED",
-        "WAREHOUSE_CREATED",
-        "WAREHOUSE_SUPPLY_REQUEST_OPENED",
-        "WAREHOUSE_DISPATCH_LOCK_CHANGED",
-        "FACTORY_CREATED",
-        "ORDER_CREATED",
-        "ORDER_STATUS_CHANGED",
-        "ORDER_VALIDATION_FAILED",
-        "ORDER_ASSIGNED",
-        "ORDER_REASSIGNED",
-        "ORDER_FINALIZED",
         "AI_RECOMMENDATION_CREATED",
         "AI_RECOMMENDATION_DECIDED",
-        "ROUTE_CREATED",
-        "MANIFEST_DRAFT_CREATED",
-        "MANIFEST_LOADING_STARTED",
-        "MANIFEST_ORDER_INJECTED",
-        "MANIFEST_ORDER_EXCEPTION",
-        "MANIFEST_DLQ_ESCALATION",
-        "MANIFEST_REBALANCED",
-        "MANIFEST_CANCELLED",
-        "MANIFEST_SEALED",
-        "MANIFEST_DISPATCHED",
-        "MANIFEST_COMPLETED",
-        "PAYMENT_CLEARED",
-        "PAYMENT_REQUIRED",
-        "SETTLEMENT_REQUIRED",
-        "DELIVERY_SESSION_UPDATED",
-        "DELIVERY_DISPUTED",
-        "DRIVER_AVAILABILITY_CHANGED",
-        "DRIVER_LOCATION_UPDATED",
-        "SHOP_CLOSED",
-        "SHOP_CLOSED_RESPONSE",
         "CART_SYNC_UPDATED",
-        "INVENTORY_SYNC_COMPLETE",
         "COMMAND_DISPATCHED",
         "COMMAND_RECEIVED",
         "COMMAND_SETTLED",
-        "SYSTEM_APP_OUTDATED"
-      ]
-    },
-
-    "AIRecommendationCreated": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["recommendation_id", "supplier_id", "aggregate_id", "aggregate_type", "action", "status", "score", "confidence", "explanation", "reason_codes"],
-          "properties": {
-            "type": { "const": "AI_RECOMMENDATION_CREATED" },
-            "recommendation_id": { "type": "string" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "aggregate_id": { "type": "string" },
-            "aggregate_type": { "type": "string" },
-            "action": { "type": "string" },
-            "status": { "type": "string" },
-            "score": { "type": "number" },
-            "confidence": { "type": "number" },
-            "explanation": { "type": "string" },
-            "reason_codes": { "type": "array", "items": { "type": "string" } }
-          },
-          "additionalProperties": true
-        }
-      ]
-    },
-
-    "AIRecommendationDecided": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["recommendation_id", "supplier_id", "aggregate_id", "aggregate_type", "decision", "status", "decided_by", "decided_at"],
-          "properties": {
-            "type": { "const": "AI_RECOMMENDATION_DECIDED" },
-            "recommendation_id": { "type": "string" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "aggregate_id": { "type": "string" },
-            "aggregate_type": { "type": "string" },
-            "decision": { "type": "string", "enum": ["ACKNOWLEDGED", "OVERRIDDEN", "DISMISSED", "REOPENED"] },
-            "status": { "type": "string" },
-            "decided_by": { "type": "string" },
-            "decided_at": { "type": "string", "format": "date-time" },
-            "note": { "type": "string" }
-          },
-          "additionalProperties": true
-        }
-      ]
-    },
-
-    "Money": {
-      "type": "object",
-      "required": ["amount", "currency"],
-      "description": "int64 minor units + ISO-4217 currency. Never float.",
-      "properties": {
-        "amount": { "type": "integer" },
-        "currency": { "type": "string", "minLength": 3, "maxLength": 3 }
-      }
-    },
-
-    "OrderSource": {
-      "type": "string",
-      "enum": ["MANUAL", "MANUAL_PREORDER", "AI_PREORDER"]
-    },
-
-    "OrderConfirmationStatus": {
-      "type": "string",
-      "enum": ["CONFIRMED", "DRAFT", "PENDING", "REJECTED", "AUTO_CONFIRMED"]
-    },
-
-    "OrderLineItem": {
-      "type": "object",
-      "required": ["sku", "quantity", "unit_price_minor"],
-      "properties": {
-        "sku": { "type": "string" },
-        "name": { "type": "string" },
-        "quantity": { "type": "integer", "minimum": 1 },
-        "unit_price_minor": { "type": "integer", "minimum": 0 }
-      },
-      "additionalProperties": false
-    },
-
-    "HomeNode": {
-      "type": "object",
-      "required": ["home_node_type", "home_node_id"],
-      "properties": {
-        "home_node_type": { "type": "string", "enum": ["WAREHOUSE", "FACTORY"] },
-        "home_node_id": { "type": "string", "format": "uuid" }
-      }
-    },
-
-    "SupplierCreated": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["supplier_id", "name", "country", "currency"],
-          "properties": {
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "name": { "type": "string" },
-            "country": { "type": "string", "minLength": 2, "maxLength": 2 },
-            "currency": { "type": "string", "minLength": 3, "maxLength": 3 }
-          }
-        }
-      ]
-    },
-
-    "RetailerRegistered": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["retailer_id", "phone", "h3_cell", "lat", "lng"],
-          "properties": {
-            "retailer_id": { "type": "string", "format": "uuid" },
-            "phone": { "type": "string" },
-            "name": { "type": "string" },
-            "h3_cell": { "type": "string", "minLength": 15, "maxLength": 15 },
-            "lat": { "type": "number" },
-            "lng": { "type": "number" }
-          }
-        }
-      ]
-    },
-
-    "DriverCreated": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        { "$ref": "#/definitions/HomeNode" },
-        {
-          "type": "object",
-          "required": ["driver_id", "supplier_id", "phone"],
-          "properties": {
-            "driver_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "phone": { "type": "string" },
-            "name": { "type": "string" }
-          }
-        }
-      ]
-    },
-
-    "VehicleCreated": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        { "$ref": "#/definitions/HomeNode" },
-        {
-          "type": "object",
-          "required": ["vehicle_id", "supplier_id", "plate"],
-          "properties": {
-            "vehicle_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "plate": { "type": "string" },
-            "max_vu": { "type": "integer", "minimum": 1 }
-          }
-        }
-      ]
-    },
-
-    "WarehouseCreated": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["warehouse_id", "supplier_id", "h3_cell", "lat", "lng"],
-          "properties": {
-            "warehouse_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "name": { "type": "string" },
-            "h3_cell": { "type": "string", "minLength": 15, "maxLength": 15 },
-            "lat": { "type": "number" },
-            "lng": { "type": "number" },
-            "max_vu": { "type": "integer", "minimum": 1 }
-          }
-        }
-      ]
-    },
-
-    "WarehouseSupplyRequestOpened": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["supplier_id", "request_id", "status", "timestamp"],
-          "properties": {
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "warehouse_id": { "type": "string", "format": "uuid" },
-            "request_id": { "type": "string" },
-            "status": { "type": "string" },
-            "state": { "type": "string" },
-            "requested_by": { "type": "string" },
-            "coverage_start_date": { "type": "string" },
-            "coverage_days": { "type": "integer", "minimum": 1 },
-            "projected_units": { "type": "integer", "minimum": 0 },
-            "committed_units": { "type": "integer", "minimum": 0 },
-            "pending_confirmation_units": { "type": "integer", "minimum": 0 },
-            "timestamp": { "type": "string", "format": "date-time" }
-          }
-        }
-      ]
-    },
-
-    "WarehouseDispatchLockChanged": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["supplier_id", "lock_id", "action", "timestamp"],
-          "properties": {
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "warehouse_id": { "type": "string", "format": "uuid" },
-            "lock_id": { "type": "string" },
-            "entity_type": { "type": "string" },
-            "entity_id": { "type": "string" },
-            "reason": { "type": "string" },
-            "action": { "type": "string", "enum": ["ACQUIRED", "RELEASED"] },
-            "timestamp": { "type": "string", "format": "date-time" }
-          }
-        }
-      ]
-    },
-
-    "FactoryCreated": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["factory_id", "supplier_id", "h3_cell", "lat", "lng"],
-          "properties": {
-            "factory_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "name": { "type": "string" },
-            "h3_cell": { "type": "string", "minLength": 15, "maxLength": 15 },
-            "lat": { "type": "number" },
-            "lng": { "type": "number" }
-          }
-        }
-      ]
-    },
-
-    "OrderCreated": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["order_id", "retailer_id", "supplier_id", "status", "total_minor", "currency", "h3_cell", "lat", "lng"],
-          "properties": {
-            "type": { "const": "ORDER_CREATED" },
-            "order_id": { "type": "string", "format": "uuid" },
-            "retailer_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "warehouse_id": { "type": "string", "format": "uuid" },
-            "status": { "type": "string", "enum": ["PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION", "COMPLETED", "CANCELLED"] },
-            "order_source": { "$ref": "#/definitions/OrderSource" },
-            "confirmation_status": { "$ref": "#/definitions/OrderConfirmationStatus" },
-            "requested_delivery_date": { "type": "string", "format": "date-time" },
-            "line_items": { "type": "array", "items": { "$ref": "#/definitions/OrderLineItem" } },
-            "total_minor": { "type": "integer" },
-            "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
-            "h3_cell": { "type": "string", "minLength": 15, "maxLength": 15 },
-            "lat": { "type": "number" },
-            "lng": { "type": "number" },
-            "receiving_window_open": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
-            "receiving_window_close": { "type": "string", "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" }
-          }
-        }
-      ]
-    },
-
-    "OrderStatusChanged": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["order_id", "supplier_id", "retailer_id", "previous_status", "status"],
-          "properties": {
-            "type": { "const": "ORDER_STATUS_CHANGED" },
-            "order_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "retailer_id": { "type": "string", "format": "uuid" },
-            "previous_status": { "type": "string", "enum": ["PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION", "COMPLETED", "CANCELLED"] },
-            "status": { "type": "string", "enum": ["PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION", "COMPLETED", "CANCELLED"] },
-            "reason": { "type": "string" },
-            "actor_role": { "type": "string" },
-            "actor_id": { "type": "string" },
-            "order_source": { "$ref": "#/definitions/OrderSource" },
-            "confirmation_status": { "$ref": "#/definitions/OrderConfirmationStatus" },
-            "requested_delivery_date": { "type": "string", "format": "date-time" },
-            "version": { "type": "integer", "minimum": 1 },
-            "total_minor": { "type": "integer" },
-            "currency": { "type": "string", "minLength": 3, "maxLength": 3 }
-          }
-        }
-      ]
-    },
-
-    "OrderValidationFailed": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["order_id", "reason"],
-          "properties": {
-            "order_id": { "type": "string", "format": "uuid" },
-            "reason": { "type": "string" }
-          }
-        }
-      ]
-    },
-
-    "OrderAssigned": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["order_id", "driver_id", "route_id"],
-          "properties": {
-            "order_id": { "type": "string", "format": "uuid" },
-            "driver_id": { "type": "string", "format": "uuid" },
-            "route_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "retailer_id": { "type": "string", "format": "uuid" },
-            "warehouse_id": { "type": "string", "format": "uuid" },
-            "vehicle_id": { "type": "string", "format": "uuid" },
-            "manifest_id": { "type": "string", "format": "uuid" }
-          }
-        }
-      ]
-    },
-
-    "OrderReassigned": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["order_id", "from_driver_id", "to_driver_id"],
-          "properties": {
-            "order_id": { "type": "string", "format": "uuid" },
-            "from_driver_id": { "type": "string", "format": "uuid" },
-            "to_driver_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "retailer_id": { "type": "string", "format": "uuid" },
-            "warehouse_id": { "type": "string", "format": "uuid" },
-            "from_route_id": { "type": "string", "format": "uuid" },
-            "to_route_id": { "type": "string", "format": "uuid" },
-            "vehicle_id": { "type": "string", "format": "uuid" },
-            "manifest_id": { "type": "string", "format": "uuid" }
-          }
-        }
-      ]
-    },
-
-    "OrderFinalized": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["order_id", "total"],
-          "properties": {
-            "order_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "retailer_id": { "type": "string", "format": "uuid" },
-            "total": { "$ref": "#/definitions/Money" },
-            "amount_minor": { "type": "integer" },
-            "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
-            "status": { "type": "string" },
-            "fee_amount": { "type": "integer" },
-            "net_payout_amount": { "type": "integer" }
-          }
-        }
-      ]
-    },
-
-    "PaymentRequired": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["order_id", "amount"],
-          "properties": {
-            "order_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "retailer_id": { "type": "string", "format": "uuid" },
-            "amount": { "$ref": "#/definitions/Money" },
-            "amount_minor": { "type": "integer" },
-            "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
-            "payment_method": { "type": "string" },
-            "status": { "type": "string" }
-          }
-        }
-      ]
-    },
-
-    "PaymentCleared": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["order_id", "amount"],
-          "properties": {
-            "order_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "retailer_id": { "type": "string", "format": "uuid" },
-            "amount": { "$ref": "#/definitions/Money" },
-            "amount_minor": { "type": "integer" },
-            "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
-            "gateway": { "type": "string", "enum": ["GLOBAL_PAY", "ADYEN", "AIRWALLEX", "CASH"] },
-            "payment_method": { "type": "string" },
-            "status": { "type": "string" },
-            "provider_reference": { "type": "string" }
-          }
-        }
-      ]
-    },
-
-    "SettlementRequired": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["order_id", "amount"],
-          "properties": {
-            "order_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "retailer_id": { "type": "string", "format": "uuid" },
-            "session_id": { "type": "string", "format": "uuid" },
-            "amount": { "$ref": "#/definitions/Money" },
-            "amount_minor": { "type": "integer" },
-            "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
-            "payment_method": { "type": "string" },
-            "status": { "type": "string" }
-          }
-        }
-      ]
-    },
-
-    "DeliverySessionUpdated": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["session_id", "order_id"],
-          "properties": {
-            "session_id": { "type": "string", "format": "uuid" },
-            "order_id": { "type": "string", "format": "uuid" },
-            "amount": { "type": "integer" },
-            "original_amount": { "type": "integer" },
-            "adjusted_amount": { "type": "integer" },
-            "currency": { "type": "string", "minLength": 3, "maxLength": 3 }
-          }
-        }
-      ]
-    },
-
-    "DriverAvailabilityChanged": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["driver_id", "available"],
-          "properties": {
-            "driver_id": { "type": "string", "format": "uuid" },
-            "available": { "type": "boolean" },
-            "on_shift": { "type": "boolean" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "home_node_type": { "type": "string", "enum": ["WAREHOUSE", "FACTORY"] },
-            "home_node_id": { "type": "string", "format": "uuid" },
-            "reason": { "type": "string" }
-          }
-        }
-      ]
-    },
-
-    "DriverLocationUpdated": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["data"],
-          "properties": {
-            "data": {
-              "type": "object",
-              "required": ["driver_id", "supplier_id", "lat", "lng", "latitude", "longitude", "reported_at", "received_at", "stale_after_seconds"],
-              "properties": {
-                "driver_id": { "type": "string" },
-                "supplier_id": { "type": "string" },
-                "lat": { "type": "number", "minimum": -90, "maximum": 90 },
-                "lng": { "type": "number", "minimum": -180, "maximum": 180 },
-                "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
-                "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
-                "velocity": { "type": "number" },
-                "heading": { "type": "number" },
-                "reported_at": { "type": "string", "format": "date-time" },
-                "received_at": { "type": "string", "format": "date-time" },
-                "stale_after_seconds": { "type": "integer", "minimum": 1 }
-              }
-            }
-          }
-        }
-      ]
-    },
-
-    "ManifestDraftCreated": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["manifest_id"],
-          "properties": {
-            "manifest_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "route_id": { "type": "string" },
-            "transfer_count": { "type": "integer", "minimum": 0 },
-            "total_volume_vu": { "type": "integer", "minimum": 0 },
-            "driver_id": { "type": "string" },
-            "vehicle_id": { "type": "string" }
-          }
-        }
-      ]
-    },
-
-    "ManifestLoadingStarted": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["manifest_id", "state"],
-          "properties": {
-            "manifest_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "state": { "type": "string" },
-            "route_id": { "type": "string" },
-            "driver_id": { "type": "string" },
-            "vehicle_id": { "type": "string" },
-            "order_count": { "type": "integer", "minimum": 0 }
-          }
-        }
-      ]
-    },
-
-    "ManifestOrderInjected": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["manifest_id", "order_id"],
-          "properties": {
-            "manifest_id": { "type": "string", "format": "uuid" },
-            "order_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "total_volume_vu": { "type": "integer", "minimum": 0 },
-            "stop_count": { "type": "integer", "minimum": 0 }
-          }
-        }
-      ]
-    },
-
-    "ManifestOrderException": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["manifest_id", "reason"],
-          "properties": {
-            "manifest_id": { "type": "string", "format": "uuid" },
-            "order_id": { "type": "string", "format": "uuid" },
-            "transfer_id": { "type": "string" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "reason": { "type": "string" },
-            "metadata": { "type": "string" },
-            "attempt_count": { "type": "integer", "minimum": 0 },
-            "escalated": { "type": "boolean" },
-            "exception_id": { "type": "string" }
-          },
-          "anyOf": [
-            { "required": ["order_id"] },
-            { "required": ["transfer_id"] }
-          ]
-        }
-      ]
-    },
-
-    "ManifestRebalanced": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["manifest_id"],
-          "properties": {
-            "manifest_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "transfer_id": { "type": "string" },
-            "order_id": { "type": "string", "format": "uuid" },
-            "from_driver_id": { "type": "string" },
-            "to_driver_id": { "type": "string" },
-            "from_vehicle_id": { "type": "string" },
-            "to_vehicle_id": { "type": "string" },
-            "from_route_id": { "type": "string" },
-            "to_route_id": { "type": "string" },
-            "from_manifest_id": { "type": "string" },
-            "to_manifest_id": { "type": "string" },
-            "depth": { "type": "integer", "minimum": 0 },
-            "reason": { "type": "string" }
-          },
-          "anyOf": [
-            { "required": ["transfer_id"] },
-            { "required": ["order_id"] }
-          ]
-        }
-      ]
-    },
-
-    "ManifestCancelled": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["manifest_id"],
-          "properties": {
-            "manifest_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "reason": { "type": "string" }
-          }
-        }
-      ]
-    },
-
-    "ManifestDispatched": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["manifest_id", "state"],
-          "properties": {
-            "manifest_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "state": { "type": "string" },
-            "route_id": { "type": "string" },
-            "driver_id": { "type": "string" },
-            "vehicle_id": { "type": "string" },
-            "order_count": { "type": "integer", "minimum": 0 },
-            "action": { "type": "string" },
-            "reason": { "type": "string" }
-          }
-        }
-      ]
-    },
-
-    "ManifestCompleted": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["manifest_id", "state"],
-          "properties": {
-            "manifest_id": { "type": "string", "format": "uuid" },
-            "supplier_id": { "type": "string", "format": "uuid" },
-            "state": { "type": "string" },
-            "route_id": { "type": "string" },
-            "driver_id": { "type": "string" },
-            "vehicle_id": { "type": "string" },
-            "order_count": { "type": "integer", "minimum": 0 },
-            "action": { "type": "string" },
-            "reason": { "type": "string" }
-          }
-        }
-      ]
-    },
-
-    "ManifestSealed": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["manifest_id", "route_id", "driver_id"],
-          "properties": {
-            "manifest_id": { "type": "string", "format": "uuid" },
-            "route_id": { "type": "string", "format": "uuid" },
-            "driver_id": { "type": "string", "format": "uuid" },
-            "vehicle_id": { "type": "string", "format": "uuid" },
-            "order_count": { "type": "integer", "minimum": 0 }
-          }
-        }
-      ]
-    },
-
-    "CommandLifecycle": {
-      "allOf": [
-        { "$ref": "#/definitions/Envelope" },
-        {
-          "type": "object",
-          "required": ["command_id", "command_state"],
-          "properties": {
-            "command_id": { "type": "string", "format": "uuid" },
-            "command_state": { "type": "string", "enum": ["INITIATED", "DISPATCHED", "RECEIVED", "SETTLED"] },
-            "target_role": { "type": "string" },
-            "target_id": { "type": "string" }
-          }
-        }
-      ]
+        "DELIVERY_DISPUTED",
+        "DELIVERY_SESSION_UPDATED",
+        "DRIVER_AVAILABILITY_CHANGED",
+        "DRIVER_CREATED",
+        "DRIVER_LOCATION_UPDATED",
+        "FACTORY_CREATED",
+        "INVENTORY_SYNC_COMPLETE",
+        "MANIFEST_CANCELLED",
+        "MANIFEST_COMPLETED",
+        "MANIFEST_DISPATCHED",
+        "MANIFEST_DLQ_ESCALATION",
+        "MANIFEST_DRAFT_CREATED",
+        "MANIFEST_LOADING_STARTED",
+        "MANIFEST_ORDER_EXCEPTION",
+        "MANIFEST_ORDER_INJECTED",
+        "MANIFEST_REBALANCED",
+        "MANIFEST_SEALED",
+        "MISSING_ITEMS_REPORTED",
+        "NEGOTIATION_PROPOSED",
+        "NEGOTIATION_RESOLVED",
+        "ORDER_ASSIGNED",
+        "ORDER_CREATED",
+        "ORDER_FINALIZED",
+        "ORDER_REASSIGNED",
+        "ORDER_STATUS_CHANGED",
+        "ORDER_VALIDATION_FAILED",
+        "PAYMENT_CLEARED",
+        "PAYMENT_REQUIRED",
+        "RETAILER_REGISTERED",
+        "ROUTE_CREATED",
+        "ROUTE_REORDERED",
+        "SETTLEMENT_REQUIRED",
+        "SHOP_CLOSED",
+        "SHOP_CLOSED_ESCALATED",
+        "SHOP_CLOSED_RESOLVED",
+        "SHOP_CLOSED_RESPONSE",
+        "SPLIT_PAYMENT_CREATED",
+        "SUPPLIER_BILLING_CONFIGURED",
+        "SUPPLIER_BILLING_UPDATED",
+        "SUPPLIER_CREATED",
+        "SUPPLIER_MEMBER_ADDED",
+        "SUPPLIER_PROFILE_UPDATED",
+        "SUPPLIER_UPDATED",
+        "SYSTEM_APP_OUTDATED",
+        "VEHICLE_CREATED",
+        "WAREHOUSE_CREATED",
+        "WAREHOUSE_DISPATCH_LOCK_CHANGED",
+        "WAREHOUSE_SUPPLY_REQUEST_OPENED",
+        "WAREHOUSE_TRANSFER_CREATED",
+        "WAREHOUSE_TRANSFER_RECEIVED"
+      ],
+      "type": "string"
     }
+  },
+  "required": [
+    "type"
+  ],
+  "title": "PegasusWSEventEnvelope",
+  "type": "object",
+  "x-event-payload-map": {
+    "AI_RECOMMENDATION_CREATED": "UnknownEventPayload",
+    "AI_RECOMMENDATION_DECIDED": "UnknownEventPayload",
+    "CART_SYNC_UPDATED": "UnknownEventPayload",
+    "COMMAND_DISPATCHED": "UnknownEventPayload",
+    "COMMAND_RECEIVED": "UnknownEventPayload",
+    "COMMAND_SETTLED": "UnknownEventPayload",
+    "DELIVERY_DISPUTED": "UnknownEventPayload",
+    "DELIVERY_SESSION_UPDATED": "UnknownEventPayload",
+    "DRIVER_AVAILABILITY_CHANGED": "UnknownEventPayload",
+    "DRIVER_CREATED": "UnknownEventPayload",
+    "DRIVER_LOCATION_UPDATED": "UnknownEventPayload",
+    "FACTORY_CREATED": "UnknownEventPayload",
+    "INVENTORY_SYNC_COMPLETE": "UnknownEventPayload",
+    "MANIFEST_CANCELLED": "UnknownEventPayload",
+    "MANIFEST_COMPLETED": "UnknownEventPayload",
+    "MANIFEST_DISPATCHED": "UnknownEventPayload",
+    "MANIFEST_DLQ_ESCALATION": "UnknownEventPayload",
+    "MANIFEST_DRAFT_CREATED": "UnknownEventPayload",
+    "MANIFEST_LOADING_STARTED": "UnknownEventPayload",
+    "MANIFEST_ORDER_EXCEPTION": "UnknownEventPayload",
+    "MANIFEST_ORDER_INJECTED": "UnknownEventPayload",
+    "MANIFEST_REBALANCED": "UnknownEventPayload",
+    "MANIFEST_SEALED": "UnknownEventPayload",
+    "MISSING_ITEMS_REPORTED": "UnknownEventPayload",
+    "NEGOTIATION_PROPOSED": "UnknownEventPayload",
+    "NEGOTIATION_RESOLVED": "UnknownEventPayload",
+    "ORDER_ASSIGNED": "UnknownEventPayload",
+    "ORDER_CREATED": "UnknownEventPayload",
+    "ORDER_FINALIZED": "UnknownEventPayload",
+    "ORDER_REASSIGNED": "UnknownEventPayload",
+    "ORDER_STATUS_CHANGED": "UnknownEventPayload",
+    "ORDER_VALIDATION_FAILED": "UnknownEventPayload",
+    "PAYMENT_CLEARED": "UnknownEventPayload",
+    "PAYMENT_REQUIRED": "UnknownEventPayload",
+    "RETAILER_REGISTERED": "UnknownEventPayload",
+    "ROUTE_CREATED": "UnknownEventPayload",
+    "ROUTE_REORDERED": "UnknownEventPayload",
+    "SETTLEMENT_REQUIRED": "UnknownEventPayload",
+    "SHOP_CLOSED": "UnknownEventPayload",
+    "SHOP_CLOSED_ESCALATED": "UnknownEventPayload",
+    "SHOP_CLOSED_RESOLVED": "UnknownEventPayload",
+    "SHOP_CLOSED_RESPONSE": "UnknownEventPayload",
+    "SPLIT_PAYMENT_CREATED": "UnknownEventPayload",
+    "SUPPLIER_BILLING_CONFIGURED": "UnknownEventPayload",
+    "SUPPLIER_BILLING_UPDATED": "UnknownEventPayload",
+    "SUPPLIER_CREATED": "UnknownEventPayload",
+    "SUPPLIER_MEMBER_ADDED": "UnknownEventPayload",
+    "SUPPLIER_PROFILE_UPDATED": "UnknownEventPayload",
+    "SUPPLIER_UPDATED": "UnknownEventPayload",
+    "SYSTEM_APP_OUTDATED": "UnknownEventPayload",
+    "VEHICLE_CREATED": "UnknownEventPayload",
+    "WAREHOUSE_CREATED": "UnknownEventPayload",
+    "WAREHOUSE_DISPATCH_LOCK_CHANGED": "UnknownEventPayload",
+    "WAREHOUSE_SUPPLY_REQUEST_OPENED": "UnknownEventPayload",
+    "WAREHOUSE_TRANSFER_CREATED": "UnknownEventPayload",
+    "WAREHOUSE_TRANSFER_RECEIVED": "UnknownEventPayload"
   }
 }

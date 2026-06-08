@@ -85,8 +85,8 @@ struct MainTabView: View {
                 .sensoryFeedback(.selection, trigger: selectedTab)
             }
         }
-        .onChange(of: scenePhase) { phase in
-            if phase == .active {
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
                 refreshEpoch += 1
             }
         }

@@ -70,8 +70,8 @@ struct MainTabView: View {
                 .tabItem { Label(AppTab.insights.rawValue, systemImage: AppTab.insights.icon) }
                 .tag(AppTab.insights)
         }
-        .onChange(of: scenePhase) { phase in
-            if phase == .active {
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
                 refreshEpoch += 1
             }
         }

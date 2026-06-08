@@ -275,7 +275,8 @@ extension CartManager {
 
     // MARK: - Server Sync
     func sync() async {
-        guard let retailerId = AuthManager.shared.currentUser?.id else { return }
+        // only proceed if a user is signed in — we don't actually need the id value here
+        guard AuthManager.shared.currentUser?.id != nil else { return }
 
         let currentSignature = signature(for: items)
         if currentSignature == lastSyncedSignature {
