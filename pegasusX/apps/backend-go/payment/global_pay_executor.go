@@ -12,12 +12,12 @@ import (
 )
 
 type globalpayProviderExecutor struct {
-	env             string // "local", "dev", "staging", "production"
-	serviceID       string
-	username        string
-	password        string
-	simulatorBase   string // overrides base URL for local/dev simulation
-	httpClient *http.Client
+	env           string // "local", "dev", "staging", "production"
+	serviceID     string
+	username      string
+	password      string
+	simulatorBase string // overrides base URL for local/dev simulation
+	httpClient    *http.Client
 }
 
 func newGlobalPayProviderExecutor(env, serviceID, username, password string) *globalpayProviderExecutor {

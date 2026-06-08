@@ -4,7 +4,6 @@ package payment
 import (
 	"bytes"
 	"context"
-	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
@@ -25,6 +24,11 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/idempotency"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+
+	adyenhmac "github.com/adyen/adyen-go-api-library/v21/src/hmacvalidator"
+	adyenwebhook "github.com/adyen/adyen-go-api-library/v21/src/webhook"
+	"github.com/stripe/stripe-go/v76"
+	stripewebhook "github.com/stripe/stripe-go/v76/webhook"
 )
 
 // Repository is the storage seam. Production binds this to Spanner-backed
@@ -297,65 +301,9 @@ type globalPayWebhookRequest struct {
 	Currency      string `json:"currency,omitempty"`
 }
 
-type stripeWebhookEnvelope struct {
-	ID   string          `json:"id"`
-	Type string          `json:"type"`
-	Data stripeEventData `json:"data"`
-}
+// Stripe types removed in favor of SDK
 
-type stripeEventData struct {
-	Object json.RawMessage `json:"object"`
-}
-
-type stripePaymentIntent struct {
-	ID       string            `json:"id"`
-	Status   string            `json:"status"`
-	Amount   int64             `json:"amount"`
-	Currency string            `json:"currency"`
-	Metadata map[string]string `json:"metadata"`
-}
-
-type stripeCharge struct {
-	ID             string            `json:"id"`
-	Amount         int64             `json:"amount"`
-	AmountRefunded int64             `json:"amount_refunded"`
-	Currency       string            `json:"currency"`
-	Metadata       map[string]string `json:"metadata"`
-}
-
-type adyenWebhookEnvelope struct {
-	NotificationItems []adyenNotificationItemWrapper `json:"notificationItems"`
-}
-
-type adyenRawWebhookEnvelope struct {
-	NotificationItems []adyenRawNotificationItemWrapper `json:"notificationItems"`
-}
-
-type adyenRawNotificationItemWrapper struct {
-	Item json.RawMessage `json:"NotificationRequestItem"`
-}
-
-type adyenNotificationItemWrapper struct {
-	Item adyenNotificationItem `json:"NotificationRequestItem"`
-}
-
-type adyenSignedNotificationItem adyenNotificationItem
-
-type adyenNotificationItem struct {
-	PspReference        string            `json:"pspReference"`
-	OriginalReference   string            `json:"originalReference,omitempty"`
-	MerchantReference   string            `json:"merchantReference"`
-	MerchantAccountCode string            `json:"merchantAccountCode"`
-	EventCode           string            `json:"eventCode"`
-	Success             string            `json:"success"`
-	Amount              adyenAmount       `json:"amount"`
-	AdditionalData      map[string]string `json:"additionalData"`
-}
-
-type adyenAmount struct {
-	Currency string `json:"currency"`
-	Value    int64  `json:"value"`
-}
+// Adyen types removed in favor of SDK
 
 type paymentEvent struct {
 	Type              string `json:"type"`
@@ -1163,37 +1111,58 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	envelope, err := parseVerifiedAdyenWebhookEnvelope(body, s.adyenWebhookSecret)
+	adyenWebhook, err := adyenwebhook.HandleRequest(string(body))
 	if err != nil {
-		switch {
-		case errors.Is(err, errAdyenInvalidJSONPayload):
-			writeJSONError(w, http.StatusBadRequest, "invalid_json_payload", "Invalid JSON payload", endpoint, false, "")
-		case errors.Is(err, errAdyenMissingNotificationItems):
-			writeJSONError(w, http.StatusUnprocessableEntity, "invalid_request", "notificationItems is required", endpoint, false, "")
-		case errors.Is(err, errAdyenInvalidSignature):
-			writeJSONError(w, http.StatusUnauthorized, "invalid_signature", "Invalid webhook signature", endpoint, false, "")
-		default:
-			writeJSONError(w, http.StatusBadRequest, "invalid_json_payload", "Invalid JSON payload", endpoint, false, "")
-		}
+		writeJSONError(w, http.StatusBadRequest, "invalid_json_payload", "Invalid JSON payload", endpoint, false, "")
 		return
 	}
 
-	for i := range envelope.NotificationItems {
-		item := envelope.NotificationItems[i].Item
-		if err := validateAdyenNotificationItem(item); err != nil {
-			writeJSONError(w, http.StatusUnprocessableEntity, "invalid_request", err.Error(), endpoint, false, "")
+	if len(*adyenWebhook.NotificationItems) == 0 {
+		writeJSONError(w, http.StatusUnprocessableEntity, "invalid_request", "notificationItems is required", endpoint, false, "")
+		return
+	}
+
+	for _, itemWrapper := range *adyenWebhook.NotificationItems {
+		item := itemWrapper.NotificationRequestItem
+		if !adyenhmac.ValidateHmac(item, s.adyenWebhookSecret) {
+			writeJSONError(w, http.StatusUnauthorized, "invalid_signature", "Invalid webhook signature", endpoint, false, "")
 			return
 		}
 	}
 
 	processed := 0
 	now := s.now()
-	for i := range envelope.NotificationItems {
-		item := envelope.NotificationItems[i].Item
-		status := normalizeAdyenStatus(item)
+	for _, itemWrapper := range *adyenWebhook.NotificationItems {
+		item := itemWrapper.NotificationRequestItem
+
+		eventCode := strings.ToUpper(strings.TrimSpace(item.EventCode))
+		success := strings.EqualFold(strings.TrimSpace(item.Success), "true")
+		var status string
+		switch eventCode {
+		case "REFUND", "REFUNDED_REVERSED":
+			if success {
+				status = "REFUNDED"
+			} else {
+				status = "FAILED"
+			}
+		case "CANCELLATION", "CANCEL_OR_REFUND", "VOID_PENDING_REFUND", "CANCELLED":
+			if success {
+				status = "CANCELLED"
+			} else {
+				status = "FAILED"
+			}
+		default:
+			if success {
+				status = "PAID"
+			} else {
+				status = "FAILED"
+			}
+		}
+
 		transactionID := strings.TrimSpace(item.PspReference)
-		webhookKey := "webhook:adyen:" + transactionID + ":" + strings.ToUpper(strings.TrimSpace(item.EventCode))
-		bodyHash := sha256Hex([]byte(adyenSigningData(item)))
+		webhookKey := "webhook:adyen:" + transactionID + ":" + eventCode
+
+		bodyHash := sha256Hex([]byte(adyenhmac.GetDataToSign(item)))
 		replayed, err := s.isWebhookReplay(r.Context(), webhookKey, bodyHash)
 		if err != nil {
 			if errors.Is(err, idempotency.ErrConflict) {
@@ -1210,11 +1179,19 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 		if currency == "" {
 			currency = s.currency
 		}
+
+		var sessionID string
+		if item.AdditionalData != nil {
+			if val, ok := (*item.AdditionalData)["session_id"].(string); ok {
+				sessionID = strings.TrimSpace(val)
+			}
+		}
+
 		row := WebhookRecord{
 			WebhookID:      s.newID("webhook"),
 			Gateway:        "ADYEN",
 			TransactionID:  transactionID,
-			SessionID:      strings.TrimSpace(item.AdditionalData["session_id"]),
+			SessionID:      sessionID,
 			OrderID:        strings.TrimSpace(item.MerchantReference),
 			SupplierID:     s.supplierID,
 			Status:         status,
@@ -1247,40 +1224,6 @@ func (s *Service) HandleAdyenWebhook(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-var (
-	errAdyenInvalidJSONPayload       = errors.New("adyen webhook invalid json payload")
-	errAdyenMissingNotificationItems = errors.New("adyen webhook missing notification items")
-	errAdyenInvalidSignature         = errors.New("adyen webhook invalid signature")
-)
-
-func parseVerifiedAdyenWebhookEnvelope(body []byte, secret string) (adyenWebhookEnvelope, error) {
-	var rawEnvelope adyenRawWebhookEnvelope
-	if err := json.Unmarshal(body, &rawEnvelope); err != nil {
-		return adyenWebhookEnvelope{}, errAdyenInvalidJSONPayload
-	}
-	if len(rawEnvelope.NotificationItems) == 0 {
-		return adyenWebhookEnvelope{}, errAdyenMissingNotificationItems
-	}
-	envelope := adyenWebhookEnvelope{
-		NotificationItems: make([]adyenNotificationItemWrapper, 0, len(rawEnvelope.NotificationItems)),
-	}
-	for _, wrapper := range rawEnvelope.NotificationItems {
-		if len(wrapper.Item) == 0 {
-			return adyenWebhookEnvelope{}, errAdyenInvalidJSONPayload
-		}
-		var signedItem adyenSignedNotificationItem
-		if err := json.Unmarshal(wrapper.Item, &signedItem); err != nil {
-			return adyenWebhookEnvelope{}, errAdyenInvalidJSONPayload
-		}
-		item := adyenNotificationItem(signedItem)
-		if !verifyAdyenNotificationSignature(item, secret) {
-			return adyenWebhookEnvelope{}, errAdyenInvalidSignature
-		}
-		envelope.NotificationItems = append(envelope.NotificationItems, adyenNotificationItemWrapper{Item: item})
-	}
-	return envelope, nil
-}
-
 func (s *Service) isWebhookReplay(ctx context.Context, webhookKey, bodyHash string) (bool, error) {
 	if s.idem == nil {
 		return false, nil
@@ -1306,19 +1249,15 @@ func (s *Service) HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	if !verifyStripeSignatureHeader(body, r.Header.Get("Stripe-Signature"), s.stripeWebhookSecret, s.now()) {
+	event, err := stripewebhook.ConstructEvent(body, r.Header.Get("Stripe-Signature"), s.stripeWebhookSecret)
+	if err != nil {
 		writeJSONError(w, http.StatusUnauthorized, "invalid_signature", "Invalid webhook signature", endpoint, false, "")
 		return
 	}
 
-	var envelope stripeWebhookEnvelope
-	if err := json.Unmarshal(body, &envelope); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid_json_payload", "Invalid JSON payload", endpoint, false, "")
-		return
-	}
-	envelope.ID = strings.TrimSpace(envelope.ID)
-	envelope.Type = strings.TrimSpace(envelope.Type)
-	if envelope.ID == "" || envelope.Type == "" || len(envelope.Data.Object) == 0 {
+	eventID := strings.TrimSpace(event.ID)
+	eventType := strings.TrimSpace(string(event.Type))
+	if eventID == "" || eventType == "" || len(event.Data.Raw) == 0 {
 		writeJSONError(w, http.StatusUnprocessableEntity, "invalid_request", "id, type, and data.object are required", endpoint, false, "")
 		return
 	}
@@ -1331,46 +1270,46 @@ func (s *Service) HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	row.ReceivedAt = now
 	row.SignatureValid = true
 
-	switch envelope.Type {
+	switch eventType {
 	case "payment_intent.succeeded", "payment_intent.payment_failed":
-		var intent stripePaymentIntent
-		if err := json.Unmarshal(envelope.Data.Object, &intent); err != nil {
+		var intent stripe.PaymentIntent
+		if err := json.Unmarshal(event.Data.Raw, &intent); err != nil {
 			writeJSONError(w, http.StatusUnprocessableEntity, "invalid_request", "invalid payment_intent payload", endpoint, false, "")
 			return
 		}
-		intent.ID = strings.TrimSpace(intent.ID)
-		if intent.ID == "" {
+		intentID := strings.TrimSpace(intent.ID)
+		if intentID == "" {
 			writeJSONError(w, http.StatusUnprocessableEntity, "invalid_request", "payment_intent.id is required", endpoint, false, "")
 			return
 		}
-		row.TransactionID = intent.ID
+		row.TransactionID = intentID
 		if intent.Metadata != nil {
 			row.SessionID = strings.TrimSpace(intent.Metadata["session_id"])
 			row.OrderID = strings.TrimSpace(intent.Metadata["order_id"])
 			row.RetailerID = strings.TrimSpace(intent.Metadata["retailer_id"])
 		}
-		if row.OrderID == "" {
+		if row.OrderID == "" && intent.Metadata != nil {
 			row.OrderID = strings.TrimSpace(intent.Metadata["merchant_reference"])
 		}
-		if envelope.Type == "payment_intent.succeeded" {
+		if eventType == "payment_intent.succeeded" {
 			row.Status = "PAID"
 		} else {
 			row.Status = "FAILED"
 		}
 		row.AmountMinor = intent.Amount
-		row.Currency = strings.ToUpper(strings.TrimSpace(intent.Currency))
+		row.Currency = strings.ToUpper(strings.TrimSpace(string(intent.Currency)))
 	case "charge.refunded":
-		var charge stripeCharge
-		if err := json.Unmarshal(envelope.Data.Object, &charge); err != nil {
+		var charge stripe.Charge
+		if err := json.Unmarshal(event.Data.Raw, &charge); err != nil {
 			writeJSONError(w, http.StatusUnprocessableEntity, "invalid_request", "invalid charge payload", endpoint, false, "")
 			return
 		}
-		charge.ID = strings.TrimSpace(charge.ID)
-		if charge.ID == "" {
+		chargeID := strings.TrimSpace(charge.ID)
+		if chargeID == "" {
 			writeJSONError(w, http.StatusUnprocessableEntity, "invalid_request", "charge.id is required", endpoint, false, "")
 			return
 		}
-		row.TransactionID = charge.ID
+		row.TransactionID = chargeID
 		if charge.Metadata != nil {
 			row.SessionID = strings.TrimSpace(charge.Metadata["session_id"])
 			row.OrderID = strings.TrimSpace(charge.Metadata["order_id"])
@@ -1381,14 +1320,14 @@ func (s *Service) HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 		if row.AmountMinor <= 0 {
 			row.AmountMinor = charge.Amount
 		}
-		row.Currency = strings.ToUpper(strings.TrimSpace(charge.Currency))
+		row.Currency = strings.ToUpper(strings.TrimSpace(string(charge.Currency)))
 	default:
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"status":     "ignored",
 			"gateway":    "stripe",
-			"event_type": envelope.Type,
+			"event_type": eventType,
 		})
 		return
 	}
@@ -1398,7 +1337,7 @@ func (s *Service) HandleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	bodyHash := sha256Hex(body)
-	webhookKey := "webhook:stripe:" + envelope.ID
+	webhookKey := "webhook:stripe:" + eventID
 	if replayed := s.writeWebhookReplayIfExists(w, r, endpoint, webhookKey, bodyHash); replayed {
 		return
 	}
@@ -1757,138 +1696,6 @@ func verifyGlobalPayBasicAuth(rawHeader, secret string) bool {
 		return false
 	}
 	return subtle.ConstantTimeCompare(decoded, expected) == 1
-}
-
-func verifyStripeSignatureHeader(body []byte, rawHeader, secret string, now time.Time) bool {
-	secret = strings.TrimSpace(secret)
-	if secret == "" {
-		return false
-	}
-	parts := strings.Split(strings.TrimSpace(rawHeader), ",")
-	if len(parts) == 0 {
-		return false
-	}
-
-	var timestamp string
-	var v1 string
-	for _, part := range parts {
-		kv := strings.SplitN(strings.TrimSpace(part), "=", 2)
-		if len(kv) != 2 {
-			continue
-		}
-		key := strings.TrimSpace(kv[0])
-		value := strings.TrimSpace(kv[1])
-		switch key {
-		case "t":
-			timestamp = value
-		case "v1":
-			v1 = value
-		}
-	}
-	if timestamp == "" || v1 == "" {
-		return false
-	}
-
-	ts, err := strconv.ParseInt(timestamp, 10, 64)
-	if err != nil {
-		return false
-	}
-	if now.Sub(time.Unix(ts, 0)).Abs() > 5*time.Minute {
-		return false
-	}
-
-	signedPayload := timestamp + "." + string(body)
-	mac := hmac.New(sha256.New, []byte(secret))
-	_, _ = mac.Write([]byte(signedPayload))
-	expected := hex.EncodeToString(mac.Sum(nil))
-	return hmac.Equal([]byte(strings.ToLower(expected)), []byte(strings.ToLower(v1)))
-}
-
-func validateAdyenNotificationItem(item adyenNotificationItem) error {
-	if strings.TrimSpace(item.PspReference) == "" {
-		return fmt.Errorf("pspReference is required")
-	}
-	if strings.TrimSpace(item.EventCode) == "" {
-		return fmt.Errorf("eventCode is required")
-	}
-	if strings.TrimSpace(item.MerchantReference) == "" {
-		return fmt.Errorf("merchantReference is required")
-	}
-	if strings.TrimSpace(item.MerchantAccountCode) == "" {
-		return fmt.Errorf("merchantAccountCode is required")
-	}
-	if strings.TrimSpace(item.Success) == "" {
-		return fmt.Errorf("success is required")
-	}
-	if strings.TrimSpace(item.Amount.Currency) == "" {
-		return fmt.Errorf("amount.currency is required")
-	}
-	return nil
-}
-
-func verifyAdyenNotificationSignature(item adyenNotificationItem, secret string) bool {
-	secret = strings.TrimSpace(secret)
-	if secret == "" {
-		return false
-	}
-	if item.AdditionalData == nil {
-		return false
-	}
-	provided := strings.TrimSpace(item.AdditionalData["hmacSignature"])
-	if provided == "" {
-		return false
-	}
-	providedBytes, err := base64.StdEncoding.DecodeString(provided)
-	if err != nil {
-		return false
-	}
-
-	mac := hmac.New(sha256.New, []byte(secret))
-	_, _ = mac.Write([]byte(adyenSigningData(item)))
-	expected := mac.Sum(nil)
-	return hmac.Equal(expected, providedBytes)
-}
-
-func adyenSigningData(item adyenNotificationItem) string {
-	parts := []string{
-		escapeAdyenSignatureValue(item.PspReference),
-		escapeAdyenSignatureValue(item.OriginalReference),
-		escapeAdyenSignatureValue(item.MerchantAccountCode),
-		escapeAdyenSignatureValue(item.MerchantReference),
-		strconv.FormatInt(item.Amount.Value, 10),
-		escapeAdyenSignatureValue(strings.ToUpper(strings.TrimSpace(item.Amount.Currency))),
-		escapeAdyenSignatureValue(strings.ToUpper(strings.TrimSpace(item.EventCode))),
-		escapeAdyenSignatureValue(strings.ToLower(strings.TrimSpace(item.Success))),
-	}
-	return strings.Join(parts, ":")
-}
-
-func escapeAdyenSignatureValue(value string) string {
-	value = strings.ReplaceAll(value, `\\`, `\\\\`)
-	value = strings.ReplaceAll(value, `:`, `\\:`)
-	return value
-}
-
-func normalizeAdyenStatus(item adyenNotificationItem) string {
-	eventCode := strings.ToUpper(strings.TrimSpace(item.EventCode))
-	success := strings.EqualFold(strings.TrimSpace(item.Success), "true")
-	switch eventCode {
-	case "REFUND", "REFUNDED_REVERSED":
-		if success {
-			return "REFUNDED"
-		}
-		return "FAILED"
-	case "CANCELLATION", "CANCEL_OR_REFUND", "VOID_PENDING_REFUND", "CANCELLED":
-		if success {
-			return "CANCELLED"
-		}
-		return "FAILED"
-	default:
-		if success {
-			return "PAID"
-		}
-		return "FAILED"
-	}
 }
 
 func coalesceString(values ...string) string {
