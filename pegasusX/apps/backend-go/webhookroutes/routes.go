@@ -3,6 +3,7 @@ package webhookroutes
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 )
 
@@ -16,7 +17,11 @@ func RegisterRoutes(r chi.Router, d Deps) {
 	if d.Service == nil {
 		return
 	}
-	r.Post("/v1/webhooks/global-pay", d.Service.HandleGlobalPayWebhook)
-	r.Post("/v1/webhooks/adyen", d.Service.HandleAdyenWebhook)
-	r.Post("/v1/webhooks/stripe", d.Service.HandleStripeWebhook)
+	r.Group(func(r chi.Router) {
+		// Apply log and any webhook-specific middlewares
+		r.Use(middleware.Logger)
+		r.Post("/v1/webhooks/global-pay", d.Service.HandleGlobalPayWebhook)
+		r.Post("/v1/webhooks/adyen", d.Service.HandleAdyenWebhook)
+		r.Post("/v1/webhooks/stripe", d.Service.HandleStripeWebhook)
+	})
 }

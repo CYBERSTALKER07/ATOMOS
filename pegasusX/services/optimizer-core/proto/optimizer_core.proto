@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package optimizer_core;
+
+option go_package = "github.com/pegasusx/pegasusx/services/optimizer-core/adapters/go/internal/optimizerpb";
+
+// SolverStatus matches OptimizationSolverStatus
+enum SolverStatus {
+    STATUS_UNSPECIFIED = 0;
+    OPTIMAL = 1;
+    FEASIBLE = 2;
+    INFEASIBLE = 3;
+    MODEL_INVALID = 4;
+}
+
+// ----------------------------------------------------------------------------
+// VRP Definitions
+// ----------------------------------------------------------------------------
+
+message OptimizeVRPRequest {
+    string job_id = 1;
+    string depot_node_uuid = 2;
+    repeated string drop_off_node_uuids = 3;
+    
+    // Flattened distance matrix. Size = N * N where N is number of nodes.
+    // Row-major order: matrix[i][j] = distance_matrix_km[i * N + j]
+    repeated double distance_matrix_km = 4;
+    int32 matrix_size = 5;
+
+    repeated VRPVehicle vehicles = 6;
+    repeated VRPNodeDemand node_demands = 7;
+    repeated VRPNodeTimeWindow node_time_windows = 8;
+    int64 solver_time_limit_ms = 9;
+}
+
+message VRPVehicle {
+    string vehicle_uuid = 1;
+    string driver_uuid = 2;
+    double capacity_vu = 3;
+    double start_window_hours = 4;
+    double end_window_hours = 5;
+}
+
+message VRPNodeDemand {
+    string node_uuid = 1;
+    double demand_vu = 2;
+}
+
+message VRPNodeTimeWindow {
+    string node_uuid = 1;
+    double start_window_hours = 2;
+    double end_window_hours = 3;
+}
+
+message OptimizeVRPResponse {
+    SolverStatus status = 1;
+    bool timed_out = 2;
+    int32 matrix_size = 3;
+    int64 objective_cost_scaled = 4;
+    repeated VehicleRoute routes = 5;
+    repeated string unassigned_node_uuids = 6;
+    repeated string warnings = 7;
+}
+
+message VehicleRoute {
+    string vehicle_uuid = 1;
+    string driver_uuid = 2;
+    repeated string ordered_node_uuids = 3;
+    int64 load_scaled = 4;
+    int64 route_cost_scaled = 5;
+}
+
+// ----------------------------------------------------------------------------
+// CP-SAT Definitions
+// ----------------------------------------------------------------------------
+
+message OptimizeCPSATRequest {
+    string job_id = 1;
+    repeated CPSATFactorySlot factory_slots = 2;
+    repeated CPSATManifestRequirement manifest_requirements = 3;
+    int64 solver_time_limit_ms = 4;
+    int32 num_search_workers = 5;
+}
+
+message CPSATFactorySlot {
+    string factory_node_uuid = 1;
+    double slot_capacity = 2;
+}
+
+message CPSATManifestRequirement {
+    string manifest_id = 1;
+    double required_capacity = 2;
+    double priority_score = 3;
+    repeated string eligible_factory_node_uuids = 4;
+}
+
+message OptimizeCPSATResponse {
+    SolverStatus status = 1;
+    bool timed_out = 2;
+    int32 matrix_size = 3;
+    int64 objective_score_scaled = 4;
+    repeated Assignment assignments = 5;
+    repeated string unassigned_manifest_ids = 6;
+    repeated string warnings = 7;
+}
+
+message Assignment {
+    string manifest_id = 1;
+    string factory_node_uuid = 2;
+    bool assigned = 3;
+}
+
+// ----------------------------------------------------------------------------
+// Service
+// ----------------------------------------------------------------------------
+
+service OptimizerCore {
+    rpc OptimizeVRP(OptimizeVRPRequest) returns (OptimizeVRPResponse);
+    rpc OptimizeCPSAT(OptimizeCPSATRequest) returns (OptimizeCPSATResponse);
+}

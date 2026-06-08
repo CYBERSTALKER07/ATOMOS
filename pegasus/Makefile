@@ -23,6 +23,7 @@ ADMIN_DIR     := apps/admin-portal
 DDL_FILE      := $(BACKEND_DIR)/schema/spanner.ddl
 ENV_FILE      := $(BACKEND_DIR)/.env
 DEFAULT_SPRINT1_BASE_SHA := $(shell /usr/bin/git merge-base HEAD origin/main 2>/dev/null || /usr/bin/git merge-base HEAD main 2>/dev/null || true)
+DOCKER_COMPOSE := $(shell /bin/bash -lc 'if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then printf "%s" "docker compose"; elif command -v docker-compose >/dev/null 2>&1; then printf "%s" "docker-compose"; else printf "%s" "docker compose"; fi')
 
 # ── Secret Preflight ────────────────────────────────────────────────────────
 # Every target that boots Go code depends on `require-env`, which refuses to
@@ -87,33 +88,33 @@ dev-devices: ## Show per-client setup for physical-device dev
 ## ── env-up: Start all emulators (Kafka KRaft, Redis, Spanner) ─────────────
 env-up: ## Start docker-compose infrastructure
 	@echo "═══ IGNITION: Starting emulator fleet ═══"
-	docker compose up -d
+	$(DOCKER_COMPOSE) up -d
 	@echo "Waiting for healthchecks..."
 	@sleep 3
-	@docker compose ps
+	@$(DOCKER_COMPOSE) ps
 	@echo "═══ Emulators online ═══"
 
 ## ── env-down: Stop and destroy all emulator volumes ───────────────────────
 env-down: ## Stop infrastructure and purge volumes
 	@echo "═══ SHUTDOWN: Tearing down emulators ═══"
-	docker compose down -v
+	$(DOCKER_COMPOSE) down -v
 	@echo "═══ Clean shutdown complete ═══"
 
 ## ── env-status: Show running container status ─────────────────────────────
 env-status: ## Show container health
-	docker compose ps
+	$(DOCKER_COMPOSE) ps
 
 ## ── optimizer-sim-up: Start OR-Tools local simulation profile ─────────────
 optimizer-sim-up: ## Start optimizer sidecar + adapter worker on local emulators
 	@echo "═══ OPTIMIZER SIM: Starting local Docker profile (no cloud API keys) ═══"
-	docker compose --profile optimizer-sim up -d
+	$(DOCKER_COMPOSE) --profile optimizer-sim up -d
 	@echo "═══ Optimizer simulation profile started ═══"
 	@echo "Tip: if this is the first run, initialize schema with 'make spanner-init'"
 
 ## ── optimizer-sim-down: Stop OR-Tools local simulation profile ────────────
 optimizer-sim-down: ## Stop optimizer sidecar + adapter worker profile
 	@echo "═══ OPTIMIZER SIM: Stopping profile services ═══"
-	docker compose --profile optimizer-sim stop optimizer-core-rust optimizer-adapter-worker
+	$(DOCKER_COMPOSE) --profile optimizer-sim stop optimizer-core-rust optimizer-adapter-worker
 	@echo "═══ Optimizer simulation profile stopped ═══"
 
 ## ── optimizer-sim-bootstrap: Bring up profile + initialize Spanner ────────

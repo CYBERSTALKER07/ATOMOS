@@ -180,8 +180,8 @@
         "Backend optimizer gRPC transport in apps/backend-go/internal/rpc/optimizergrpc/client.go now prefers OPTIMIZER_SIDE_ENDPOINT with bounded block-on-dial timeout and local circuit-breaker fast failover",
         "Phase-7 canary hard gates are now codified in infra/k8s/monitoring/prometheusrule.yaml and infra/terraform/observability.tf for void_optimizer_solver_duration_seconds, void_optimizer_error_rate, and void_optimizer_circuit_breaker_state",
         "infra/k8s/ai-worker/deployment.yaml now additively co-locates optimizer-core-rust sidecar and loopback endpoint wiring (127.0.0.1:50055)",
-        "docker-compose.yml now provisions no-cloud optimizer simulation through kafka-init topic bootstrap for pegasus-optimizer-jobs and profile optimizer-sim services (optimizer-core-rust and optimizer-adapter-worker) with local emulator dependencies, REDIS_ADDRESS=redis:6379 parity wiring, K8s-aligned resource limits, and host metrics port 8082",
-        "Makefile now exposes optimizer-sim-up, optimizer-sim-down, and optimizer-sim-bootstrap orchestration targets for repeatable local bring-up",
+        "docker-compose.yml now provisions no-cloud optimizer simulation through kafka-init topic bootstrap for pegasus-optimizer-jobs and profile optimizer-sim services (optimizer-core-rust and optimizer-adapter-worker) with local emulator dependencies, REDIS_ADDRESS=redis:6379 parity wiring, healthy Redis startup dependency for worker cleanup parity, K8s-aligned resource limits, and host metrics port 8082",
+        "Makefile now exposes optimizer-sim-up, optimizer-sim-down, and optimizer-sim-bootstrap orchestration targets for repeatable local bring-up while auto-detecting docker compose vs legacy docker-compose",
         "services/optimizer-core/Dockerfile.rust now pins rust:1.85-bookworm and installs protobuf-compiler so transitive edition2024 dependency parsing and protoc-dependent codegen succeed in local docker simulation builds"
       ],
       "consumers": [
