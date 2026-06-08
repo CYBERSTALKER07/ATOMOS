@@ -99,10 +99,10 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2E6B77942F689E6100F2D3D7 /* Build configuration list for PBXNativeTarget "reatilerapp" */;
 			buildPhases = (
+				9A8C7E6D5B4A392817160001 /* Generate Native Event Contracts */,
 				2E6B776A2F689E6000F2D3D7 /* Sources */,
 				2E6B776B2F689E6000F2D3D7 /* Frameworks */,
 				2E6B776C2F689E6000F2D3D7 /* Resources */,
-				9A8C7E6D5B4A392817160001 /* Generate Native Event Contracts */,
 			);
 			buildRules = (
 			);
@@ -275,7 +275,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -euo pipefail\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:$PATH\"\nREPO_ROOT=\"$SRCROOT/../../..\"\nBACKEND_DIR=\"$REPO_ROOT/apps/backend-go\"\nSCHEMA_PATH=\"$REPO_ROOT/contracts/events.schema.json\"\nOUTPUT_PATH=\"$SRCROOT/reatilerapp/Generated/PegasusWSEventEnvelope.swift\"\n\nif ! command -v quicktype >/dev/null 2>&1; then\n  echo \"error: quicktype not found. Install quicktype and ensure it is on PATH.\" >&2\n  exit 1\nfi\n\nmkdir -p \"$SRCROOT/reatilerapp/Generated\"\ncd \"$BACKEND_DIR\"\ngo run ./cmd/gen-contracts -source kafka/events.go -mode json-schema -schema-out \"$SCHEMA_PATH\" -pretty=true\nquicktype --lang swift --src-lang schema --src \"$SCHEMA_PATH\" --top-level PegasusWSEventEnvelope --just-types --out \"$OUTPUT_PATH\"\n";
+			shellScript = "set -euo pipefail\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:/usr/local/go/bin:$PATH\"\nREPO_ROOT=\"$SRCROOT/../../..\"\nBACKEND_DIR=\"$REPO_ROOT/apps/backend-go\"\nSCHEMA_PATH=\"$REPO_ROOT/contracts/events.schema.json\"\nOUTPUT_PATH=\"$SRCROOT/reatilerapp/Generated/PegasusWSEventEnvelope.swift\"\n\nif ! command -v quicktype >/dev/null 2>&1; then\n  echo \"error: quicktype not found. Install quicktype and ensure it is on PATH.\" >&2\n  exit 1\nfi\n\nmkdir -p \"$SRCROOT/reatilerapp/Generated\"\ncd \"$BACKEND_DIR\"\ngo run ./cmd/gen-contracts -source events/events.go -mode json-schema -schema-out \"$SCHEMA_PATH\" -pretty=true\nquicktype --lang swift --src-lang schema --src \"$SCHEMA_PATH\" --top-level PegasusWSEventEnvelope --just-types --out \"$OUTPUT_PATH\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

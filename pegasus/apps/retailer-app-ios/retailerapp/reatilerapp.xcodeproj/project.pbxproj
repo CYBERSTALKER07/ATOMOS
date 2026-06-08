@@ -99,6 +99,7 @@
             isa = PBXNativeTarget;
             buildConfigurationList = 2E6B77942F689E6100F2D3D7 /* Build configuration list for PBXNativeTarget "reatilerapp" */;
             buildPhases = (
+                9A8C7E6D5B4A392817160001 /* Generate Native Event Contracts */,
                 2E6B776A2F689E6000F2D3D7 /* Sources */,
                 2E6B776B2F689E6000F2D3D7 /* Frameworks */,
                 2E6B776C2F689E6000F2D3D7 /* Resources */,

@@ -538,6 +538,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Cache:       cacheClient,
 		SupplierHub: supplierHub,
 		PayloadHub:  payloadHub,
+		DriverHub:   driverHub,
 		NotifSvc:    notifSvc,
 		Log:         log,
 		SupplierID:  supplierSeed.SupplierID,

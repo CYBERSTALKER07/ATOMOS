@@ -552,6 +552,15 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	whID := warehouseIDFromRequest(r)
 	sid := s.supplierID
 
+	var req struct {
+		Mode   string                 `json:"mode"`
+		Routes []DispatchExecuteRoute `json:"routes"`
+	}
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		r.Body.Close()
+	}
+
 	out := DispatchExecuteResult{
 		Status:      "no_op",
 		SupplierID:  sid,
@@ -606,23 +615,57 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 		vehicleByDriver[strings.TrimSpace(driver.DriverID)] = strings.TrimSpace(driver.VehicleID)
 	}
 
-	fleet := dispatch.BuildAvailableFleet(driverInputs, nil)
-	if len(fleet) == 0 {
-		out.Warnings = append(out.Warnings, "no_available_drivers")
-		writeJSON(w, http.StatusOK, out)
-		return
-	}
+	var assignment *dispatch.AssignmentResult
+	var source string
 
-	depot := dispatch.ResolveDepot(r.Context(), s.spannerClient, whID, dispatch.DepotCoords{
-		Lat: s.fallbackDepotLat,
-		Lng: s.fallbackDepotLng,
-	})
-	job := plan.BuildSolveJob(r.Context(), sid, whID, depot, rows, fleet)
-	assignment, source, err := plan.OptimizeAndValidate(r.Context(), s.optimizerClient, job)
-	if err != nil {
-		s.log.ErrorContext(r.Context(), "dispatch execute optimize failed", "warehouse_id", whID, "err", err)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dispatch_execute_failed"})
-		return
+	if strings.ToUpper(req.Mode) == "MANUAL" {
+		source = "manual"
+		assignment = &dispatch.AssignmentResult{}
+		
+		orderMap := make(map[string]dispatch.DispatchableOrder)
+		for _, row := range rows {
+			orderMap[row.OrderID] = row
+		}
+
+		for _, mr := range req.Routes {
+			route := dispatch.DispatchRoute{
+				DriverID: mr.DriverID,
+			}
+			for _, d := range solveDrivers {
+				if d.DriverID == mr.DriverID {
+					route.MaxVolume = d.MaxVolumeVU
+					break
+				}
+			}
+			for _, oid := range mr.OrderIDs {
+				if o, ok := orderMap[oid]; ok {
+					route.Orders = append(route.Orders, o.ToGeo())
+					route.LoadedVolume += o.VolumeVU
+				}
+			}
+			if len(route.Orders) > 0 {
+				assignment.Routes = append(assignment.Routes, route)
+			}
+		}
+	} else {
+		fleet := dispatch.BuildAvailableFleet(driverInputs, nil)
+		if len(fleet) == 0 {
+			out.Warnings = append(out.Warnings, "no_available_drivers")
+			writeJSON(w, http.StatusOK, out)
+			return
+		}
+
+		depot := dispatch.ResolveDepot(r.Context(), s.spannerClient, whID, dispatch.DepotCoords{
+			Lat: s.fallbackDepotLat,
+			Lng: s.fallbackDepotLng,
+		})
+		job := plan.BuildSolveJob(r.Context(), sid, whID, depot, rows, fleet)
+		assignment, source, err = plan.OptimizeAndValidate(r.Context(), s.optimizerClient, job)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "dispatch execute optimize failed", "warehouse_id", whID, "err", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dispatch_execute_failed"})
+			return
+		}
 	}
 	out.OptimizerSource = source
 	if assignment != nil {

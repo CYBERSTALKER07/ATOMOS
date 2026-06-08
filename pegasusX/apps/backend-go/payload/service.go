@@ -74,6 +74,7 @@ type Service struct {
 	cache       *cache.Cache
 	supplierHub *ws.Hub
 	payloadHub  *ws.Hub
+	driverHub   *ws.Hub
 	notifSvc    *notifications.Service
 	log         *slog.Logger
 
@@ -104,6 +105,7 @@ type ServiceConfig struct {
 	Cache       *cache.Cache
 	SupplierHub *ws.Hub
 	PayloadHub  *ws.Hub
+	DriverHub   *ws.Hub
 	NotifSvc    *notifications.Service
 	Log         *slog.Logger
 
@@ -233,6 +235,7 @@ func NewService(c ServiceConfig) *Service {
 		cache:          c.Cache,
 		supplierHub:    c.SupplierHub,
 		payloadHub:     c.PayloadHub,
+		driverHub:      c.DriverHub,
 		notifSvc:       c.NotifSvc,
 		log:            c.Log,
 		supplierID:     c.SupplierID,
@@ -478,6 +481,22 @@ func (s *Service) broadcastPayloadEvent(ctx context.Context, eventType string, d
 			s.supplierHub.Broadcast(ctx, "supplier:"+s.supplierID, legacyEnvelope)
 		}
 	}
+}
+
+func (s *Service) broadcastDriverEvent(ctx context.Context, driverID string, data map[string]any) {
+	if s.driverHub == nil {
+		return
+	}
+	payload, err := json.Marshal(map[string]any{
+		"type":      data["type"],
+		"timestamp": s.now().UTC().Format(time.RFC3339Nano),
+		"data":      data,
+	})
+	if err != nil {
+		s.log.Warn("driver ws marshal failed", "err", err)
+		return
+	}
+	s.driverHub.Broadcast(ctx, "driver:"+driverID, payload)
 }
 
 func (s *Service) invalidatePayloadKeys(ctx context.Context, keys ...string) {
@@ -1342,6 +1361,15 @@ func (s *Service) HandleApplyReassign(w http.ResponseWriter, r *http.Request) {
 		"applied_at":       reassignment.AppliedAt,
 	})
 
+	if reassignment.ToDriverID != "" {
+		s.broadcastDriverEvent(r.Context(), reassignment.ToDriverID, map[string]any{
+			"type":        "MANIFEST_AMENDED",
+			"driver_id":   reassignment.ToDriverID,
+			"manifest_id": reassignment.ManifestID,
+			"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
+		})
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status":         "order_reassigned",
 		"order_id":       reassignment.OrderID,
@@ -1408,6 +1436,15 @@ func (s *Service) HandleSealManifest(w http.ResponseWriter, r *http.Request) {
 		"order_count": manifest.StopCount,
 		"updated_at":  manifest.UpdatedAt,
 	})
+	
+	if manifest.DriverID != "" {
+		s.broadcastDriverEvent(r.Context(), manifest.DriverID, map[string]any{
+			"type":        "MANIFEST_DISPATCHED",
+			"driver_id":   manifest.DriverID,
+			"manifest_id": manifestID,
+			"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
+		})
+	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status":      "PAYLOAD_MANIFEST_SEALED",

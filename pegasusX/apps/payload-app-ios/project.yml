@@ -28,7 +28,8 @@ targets:
       - name: Generate Native Event Contracts
         script: |
           set -euo pipefail
-          REPO_ROOT="$SRCROOT/../../.."
+          export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/local/go/bin:$PATH"
+          REPO_ROOT="$SRCROOT/../.."
           BACKEND_DIR="$REPO_ROOT/apps/backend-go"
           SCHEMA_PATH="$REPO_ROOT/contracts/events.schema.json"
           OUTPUT_PATH="$SRCROOT/payload-app-ios/Generated/PegasusWSEventEnvelope.swift"
@@ -40,7 +41,7 @@ targets:
 
           mkdir -p "$SRCROOT/payload-app-ios/Generated"
           cd "$BACKEND_DIR"
-          go run ./cmd/gen-contracts -source kafka/events.go -mode json-schema -schema-out "$SCHEMA_PATH" -pretty=true
+          go run ./cmd/gen-contracts -source events/events.go -mode json-schema -schema-out "$SCHEMA_PATH" -pretty=true
           quicktype --lang swift --src-lang schema --src "$SCHEMA_PATH" --top-level PegasusWSEventEnvelope --just-types --out "$OUTPUT_PATH"
         outputFiles:
           - "$(SRCROOT)/payload-app-ios/Generated/PegasusWSEventEnvelope.swift"
