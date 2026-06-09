@@ -359,7 +359,7 @@ private fun OrderInfoCard(order: TrackingOrder) {
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = order.state.replace("_", " "),
+                text = order.state.replace("_", " ") + if (order.liveLocationAvailable) " • Live GPS" else "",
                 style = MaterialTheme.typography.labelSmall,
                 color = if (order.isApproaching) Color(0xFF34C759) else MaterialTheme.colorScheme.onSurfaceVariant,
             )

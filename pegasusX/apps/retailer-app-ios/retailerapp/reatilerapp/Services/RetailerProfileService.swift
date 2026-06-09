@@ -8,6 +8,7 @@ enum RetailerProfileService {
         company: String?,
         phone: String?,
         location: String? = nil,
+        regionId: String? = nil,
         receivingWindowOpen: String? = nil,
         receivingWindowClose: String? = nil
     ) async throws -> RetailerProfileResponse {
@@ -16,6 +17,7 @@ enum RetailerProfileService {
             company: company,
             phone: phone,
             location: location,
+            regionId: regionId,
             receivingWindowOpen: receivingWindowOpen,
             receivingWindowClose: receivingWindowClose
         )

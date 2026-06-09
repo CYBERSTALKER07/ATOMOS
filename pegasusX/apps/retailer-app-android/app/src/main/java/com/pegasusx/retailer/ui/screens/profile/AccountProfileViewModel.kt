@@ -17,6 +17,7 @@ data class AccountProfileUiState(
     val name: String = "",
     val company: String = "",
     val phone: String = "",
+    val regionId: String = "",
     val receivingWindowOpen: String = "",
     val receivingWindowClose: String = "",
     val isLoading: Boolean = false,
@@ -49,6 +50,7 @@ class AccountProfileViewModel @Inject constructor(
                         name = profile["name"].orEmpty(),
                         company = profile["company"].orEmpty(),
                         phone = profile["phone"].orEmpty(),
+                        regionId = profile["region_id"].orEmpty(),
                         receivingWindowOpen = profile["receiving_window_open"].orEmpty(),
                         receivingWindowClose = profile["receiving_window_close"].orEmpty(),
                         isLoading = false,
@@ -72,6 +74,10 @@ class AccountProfileViewModel @Inject constructor(
 
     fun onCompanyChanged(value: String) {
         _uiState.update { it.copy(company = value) }
+    }
+
+    fun onRegionIdChanged(value: String) {
+        _uiState.update { it.copy(regionId = value) }
     }
 
     fun onReceivingWindowOpenChanged(value: String) {
@@ -107,10 +113,12 @@ class AccountProfileViewModel @Inject constructor(
                 val payload = buildMap {
                     val trimmedName = state.name.trim()
                     val trimmedCompany = state.company.trim()
+                    val trimmedRegionId = state.regionId.trim()
                     val open = ReceivingWindowValidator.normalize(state.receivingWindowOpen)
                     val close = ReceivingWindowValidator.normalize(state.receivingWindowClose)
                     if (trimmedName.isNotEmpty()) put("name", trimmedName)
                     if (trimmedCompany.isNotEmpty()) put("company", trimmedCompany)
+                    if (trimmedRegionId.isNotEmpty()) put("region_id", trimmedRegionId)
                     put("receiving_window_open", open)
                     put("receiving_window_close", close)
                 }

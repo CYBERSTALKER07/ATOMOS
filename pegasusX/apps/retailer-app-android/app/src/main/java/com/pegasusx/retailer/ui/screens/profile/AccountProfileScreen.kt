@@ -104,6 +104,14 @@ fun AccountProfileScreen(
                 readOnly = true,
                 enabled = false,
             )
+            OutlinedTextField(
+                value = uiState.regionId,
+                onValueChange = viewModel::onRegionIdChanged,
+                label = { Text("Region ID") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                enabled = !uiState.isLoading && !uiState.isSaving,
+            )
 
             Text(
                 text = "Receiving window",

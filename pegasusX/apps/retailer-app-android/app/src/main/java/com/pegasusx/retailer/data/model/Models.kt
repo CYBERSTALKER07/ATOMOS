@@ -713,6 +713,7 @@ data class TrackingOrder(
     @SerialName("driver_latitude") val driverLatitude: Double? = null,
     @SerialName("driver_longitude") val driverLongitude: Double? = null,
     @SerialName("is_approaching") val isApproaching: Boolean = false,
+    @SerialName("live_location_available") val liveLocationAvailable: Boolean = false,
     @SerialName("delivery_token") val deliveryToken: String = "",
     @SerialName("created_at") val createdAt: String = "",
     val items: List<TrackingOrderItem> = emptyList(),
@@ -731,6 +732,7 @@ data class ActiveFulfillmentItem(
     val state: String,
     @SerialName("adjusted_amount") val adjustedAmount: Long,
     @SerialName("item_count") val itemCount: Int,
+    @SerialName("live_location_available") val liveLocationAvailable: Boolean = false,
 )
 
 @Serializable

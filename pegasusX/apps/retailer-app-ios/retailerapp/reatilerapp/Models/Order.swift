@@ -341,6 +341,7 @@ struct TrackingOrder: Codable, Identifiable, Hashable {
     let orderSource: String
     let driverLatitude: Double?
     let driverLongitude: Double?
+    let liveLocationAvailable: Bool
     let isApproaching: Bool
     let deliveryToken: String
     let createdAt: String
@@ -358,6 +359,7 @@ struct TrackingOrder: Codable, Identifiable, Hashable {
         case orderSource = "order_source"
         case driverLatitude = "driver_latitude"
         case driverLongitude = "driver_longitude"
+        case liveLocationAvailable = "live_location_available"
         case isApproaching = "is_approaching"
         case deliveryToken = "delivery_token"
         case createdAt = "created_at"
@@ -373,7 +375,7 @@ struct TrackingOrder: Codable, Identifiable, Hashable {
     }
 
     var hasDriverLocation: Bool {
-        driverLatitude != nil && driverLongitude != nil
+        liveLocationAvailable && driverLatitude != nil && driverLongitude != nil
     }
 }
 
@@ -389,6 +391,7 @@ struct ActiveFulfillmentItem: Codable, Identifiable, Hashable {
     let state: String
     let adjustedAmount: Int
     let itemCount: Int
+    let liveLocationAvailable: Bool?
 
     enum CodingKeys: String, CodingKey {
         case orderId = "order_id"
@@ -397,6 +400,7 @@ struct ActiveFulfillmentItem: Codable, Identifiable, Hashable {
         case state
         case adjustedAmount = "adjusted_amount"
         case itemCount = "item_count"
+        case liveLocationAvailable = "live_location_available"
     }
 }
 

@@ -113,11 +113,13 @@ struct RetailerProfileRequest: Encodable {
     let company: String?
     let phone: String?
     let location: String?
+    let regionId: String?
     let receivingWindowOpen: String?
     let receivingWindowClose: String?
     
     enum CodingKeys: String, CodingKey {
         case name, company, phone, location
+        case regionId = "region_id"
         case receivingWindowOpen = "receiving_window_open"
         case receivingWindowClose = "receiving_window_close"
     }
@@ -129,6 +131,7 @@ struct RetailerProfileResponse: Decodable, Identifiable {
     let phone: String
     let company: String
     let location: String?
+    let regionId: String?
     let taxId: String?
     let status: String
     let receivingWindowOpen: String?
@@ -138,6 +141,7 @@ struct RetailerProfileResponse: Decodable, Identifiable {
         case id
         case retailerId = "retailer_id"
         case name, phone, company, location, status
+        case regionId = "region_id"
         case taxId = "tax_id"
         case receivingWindowOpen = "receiving_window_open"
         case receivingWindowClose = "receiving_window_close"
@@ -152,6 +156,7 @@ struct RetailerProfileResponse: Decodable, Identifiable {
         phone = try container.decodeIfPresent(String.self, forKey: .phone) ?? ""
         company = try container.decodeIfPresent(String.self, forKey: .company) ?? name
         location = try container.decodeIfPresent(String.self, forKey: .location)
+        regionId = try container.decodeIfPresent(String.self, forKey: .regionId)
         taxId = try container.decodeIfPresent(String.self, forKey: .taxId)
         status = try container.decodeIfPresent(String.self, forKey: .status) ?? "ACTIVE"
         receivingWindowOpen = try container.decodeIfPresent(String.self, forKey: .receivingWindowOpen)
