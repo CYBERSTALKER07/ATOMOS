@@ -14,6 +14,7 @@ CREATE TABLE Suppliers (
   CountryCode      STRING(2)     NOT NULL,
   Currency         STRING(3)     NOT NULL,
   IsConfigured     BOOL          NOT NULL DEFAULT (FALSE),
+  RegionId         STRING(36),
   CreatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (SupplierId);
@@ -74,6 +75,7 @@ CREATE TABLE Retailers (
   H3Cell                  STRING(15),
   ReceivingWindowOpen     STRING(10),
   ReceivingWindowClose    STRING(10),
+  RegionId                STRING(36),
   CreatedAt               TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (RetailerId);
 
@@ -189,6 +191,8 @@ CREATE TABLE Warehouses (
   SecondaryFactoryId STRING(36),
   IsActive           BOOL          NOT NULL,
   IsOnShift          BOOL          NOT NULL,
+  RegionId           STRING(36),
+  PaymentConfigId    STRING(36),
   CreatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (WarehouseId);
@@ -636,3 +640,116 @@ CREATE TABLE WarehouseDispatchLocks (
 ) PRIMARY KEY (LockId);
 
 CREATE INDEX Idx_WarehouseDispatchLocks_ByWarehouse ON WarehouseDispatchLocks(WarehouseId, EntityType, EntityId);
+
+-- ───────────────────────────────────────────────────────────────────────────────
+-- Phase 2+ Enterprise Features (Regions, Billing, Optimizer, Delivery, InventoryV2)
+-- ───────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE Regions (
+  RegionId         STRING(36)    NOT NULL,
+  Name             STRING(255)   NOT NULL,
+  CountryCode      STRING(2)     NOT NULL,
+  IsActive         BOOL          NOT NULL DEFAULT (TRUE),
+  CreatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RegionId);
+
+CREATE TABLE RegionalConfigs (
+  RegionId         STRING(36)    NOT NULL,
+  ConfigKey        STRING(128)   NOT NULL,
+  ConfigValue      STRING(MAX),
+  UpdatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (RegionId, ConfigKey),
+  INTERLEAVE IN PARENT Regions ON DELETE CASCADE;
+
+CREATE TABLE BillingMeterEvents (
+  EventId          STRING(36)    NOT NULL,
+  SupplierId       STRING(36)    NOT NULL,
+  OrderId          STRING(36)    NOT NULL,
+  MeterType        STRING(64)    NOT NULL,
+  Amount           FLOAT64       NOT NULL,
+  ProcessedAt      TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (EventId);
+
+CREATE INDEX Idx_BillingMeterEvents_BySupplier ON BillingMeterEvents(SupplierId, ProcessedAt DESC);
+
+CREATE TABLE BillingSupplierMeters (
+  SupplierId       STRING(36)    NOT NULL,
+  ShardId          INT64         NOT NULL,
+  CurrentValue     FLOAT64       NOT NULL DEFAULT (0),
+  UpdatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SupplierId, ShardId);
+
+CREATE TABLE BillingGlobalMeters (
+  MeterId          STRING(64)    NOT NULL,
+  ShardId          INT64         NOT NULL,
+  CurrentValue     FLOAT64       NOT NULL DEFAULT (0),
+  UpdatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (MeterId, ShardId);
+
+CREATE TABLE DeliverySessions (
+  SessionId           STRING(36)    NOT NULL,
+  OrderId             STRING(36)    NOT NULL,
+  SupplierId          STRING(36)    NOT NULL,
+  RetailerId          STRING(36)    NOT NULL,
+  DriverId            STRING(36)    NOT NULL,
+  Status              STRING(32)    NOT NULL,
+  OriginalAmountMinor INT64         NOT NULL,
+  AdjustedAmountMinor INT64         NOT NULL,
+  Currency            STRING(3)     NOT NULL,
+  PaymentClearedAt    TIMESTAMP,
+  CreatedAt           TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt           TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SessionId);
+
+CREATE INDEX Idx_DeliverySessions_ByOrder ON DeliverySessions(OrderId);
+CREATE INDEX Idx_DeliverySessions_BySupplierStatus ON DeliverySessions(SupplierId, Status);
+
+CREATE TABLE DeliverySessionAdjustments (
+  AdjustmentId        STRING(36)    NOT NULL,
+  SessionId           STRING(36)    NOT NULL,
+  AmountDeltaMinor    INT64         NOT NULL,
+  Reason              STRING(255)   NOT NULL,
+  AppliedAt           TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (AdjustmentId);
+
+CREATE TABLE SupplierInventoryV2 (
+  SupplierId       STRING(36)    NOT NULL,
+  WarehouseId      STRING(36)    NOT NULL,
+  ProductId        STRING(36)    NOT NULL,
+  H3Cell           STRING(15),
+  QuantityOnHand   INT64         NOT NULL DEFAULT (0),
+  QuantityReserved INT64         NOT NULL DEFAULT (0),
+  UpdatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (SupplierId, WarehouseId, ProductId);
+
+CREATE INDEX Idx_SupplierInventoryV2_ByH3Cell ON SupplierInventoryV2(H3Cell);
+
+CREATE TABLE MasterInvoices (
+  InvoiceId           STRING(36)    NOT NULL,
+  OrderId             STRING(36)    NOT NULL,
+  SupplierId          STRING(36)    NOT NULL,
+  RetailerId          STRING(36)    NOT NULL,
+  Status              STRING(32)    NOT NULL,
+  SettlementTarget    STRING(32)    NOT NULL,
+  TotalMinor          INT64         NOT NULL,
+  Currency            STRING(3)     NOT NULL,
+  CreatedAt           TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt           TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (InvoiceId);
+
+CREATE INDEX Idx_MasterInvoices_ByOrder ON MasterInvoices(OrderId);
+
+CREATE TABLE OptimizationJobs (
+  JobId            STRING(36)    NOT NULL,
+  SupplierId       STRING(36)    NOT NULL,
+  Status           STRING(32)    NOT NULL,
+  RequestType      STRING(32)    NOT NULL,
+  PayloadJson      BYTES(MAX)    NOT NULL,
+  IdempotencyKey   STRING(128),
+  CreatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt        TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (JobId);
+
+CREATE INDEX Idx_OptimizationJobs_BySupplierStatus ON OptimizationJobs(SupplierId, Status, CreatedAt DESC);
+CREATE NULL_FILTERED INDEX UQ_OptimizationJobs_Idempotency ON OptimizationJobs(SupplierId, IdempotencyKey);

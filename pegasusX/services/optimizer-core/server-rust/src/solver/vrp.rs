@@ -36,6 +36,7 @@ pub fn solve(req: OptimizeVrpRequest) -> OptimizeVrpResponse {
         let mut current_load = 0.0;
         let mut ordered_nodes = Vec::new();
         let mut route_cost_scaled = 0;
+        let mut best_cost_f64 = 0.0;
 
         loop {
             if start_time.elapsed() >= time_limit {
@@ -82,8 +83,7 @@ pub fn solve(req: OptimizeVrpRequest) -> OptimizeVrpResponse {
                 
                 ordered_nodes.push(node_uuid);
                 current_load += demand;
-                route_cost_scaled += scaling::to_solver_int(best_cost);
-                total_cost += scaling::to_solver_int(best_cost);
+                best_cost_f64 += best_cost;
                 
                 let travel_time = best_cost / 50.0;
                 current_time += travel_time;
@@ -93,12 +93,77 @@ pub fn solve(req: OptimizeVrpRequest) -> OptimizeVrpResponse {
             }
         }
 
-        // Return to depot
+        // Return to depot for initial cost calc
         if current_node_idx != 0 {
             let return_cost = req.distance_matrix_km[current_node_idx * matrix_size + 0];
-            route_cost_scaled += scaling::to_solver_int(return_cost);
-            total_cost += scaling::to_solver_int(return_cost);
+            best_cost_f64 += return_cost;
+            route_cost_scaled = scaling::to_solver_int(best_cost_f64);
         }
+
+        // Local Search (2-opt) to improve the route
+        let mut improved = true;
+        while improved && start_time.elapsed() < time_limit && ordered_nodes.len() > 2 {
+            improved = false;
+            let n = ordered_nodes.len();
+
+            for i in 0..n - 1 {
+                if start_time.elapsed() >= time_limit { break; }
+                for k in i + 1..n {
+                    // Try reversing the segment from i to k
+                    let mut new_route = ordered_nodes.clone();
+                    new_route[i..=k].reverse();
+
+                    // Evaluate feasibility and cost of new_route
+                    let mut valid = true;
+                    let mut eval_time = vehicle.start_window_hours;
+                    let mut eval_cost = 0.0;
+                    let mut eval_curr_idx = 0; // Depot
+
+                    for node_uuid in &new_route {
+                        let node_idx = req.drop_off_node_uuids.iter().position(|u| u == node_uuid).unwrap() + 1;
+                        let dist = req.distance_matrix_km[eval_curr_idx * matrix_size + node_idx];
+                        eval_cost += dist;
+
+                        let travel_time = dist / 50.0;
+                        eval_time += travel_time;
+
+                        let default_tw = (0.0, 24.0);
+                        let (start_tw, end_tw) = req.node_time_windows.iter()
+                            .find(|tw| tw.node_uuid == *node_uuid)
+                            .map_or(default_tw, |tw| (tw.start_window_hours, tw.end_window_hours));
+
+                        eval_time = eval_time.max(start_tw);
+
+                        if eval_time > end_tw || eval_time > vehicle.end_window_hours {
+                            valid = false;
+                            break;
+                        }
+                        eval_curr_idx = node_idx;
+                    }
+
+                    if valid {
+                        // Return to depot
+                        let return_cost = req.distance_matrix_km[eval_curr_idx * matrix_size + 0];
+                        eval_cost += return_cost;
+
+                        // Original cost of this route
+                        let original_cost_scaled = route_cost_scaled; // This includes return to depot
+
+                        if eval_cost < best_cost_f64 {
+                            // It's strictly better!
+                            ordered_nodes = new_route;
+                            best_cost_f64 = eval_cost;
+                            improved = true;
+                            break;
+                        }
+                    }
+                }
+                if improved { break; }
+            }
+        }
+
+        route_cost_scaled = scaling::to_solver_int(best_cost_f64);
+        total_cost += route_cost_scaled;
 
         if !ordered_nodes.is_empty() {
             routes.push(VehicleRoute {
