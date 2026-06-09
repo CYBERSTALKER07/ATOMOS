@@ -13,6 +13,10 @@ interface WarehouseApi {
     @POST("v1/auth/warehouse/refresh")
     suspend fun refreshToken(@Body body: RefreshTokenRequest): Response<AuthResponse>
 
+    @POST("v1/warehouse/setup")
+    suspend fun setupWarehouse(@Body body: com.google.gson.JsonElement): Response<com.google.gson.JsonElement>
+
+
     // ── Dashboard ──
     @GET("v1/warehouse/ops/dashboard")
     suspend fun getDashboard(): Response<DashboardData>
@@ -104,6 +108,12 @@ interface WarehouseApi {
     @GET("v1/warehouse/ops/dispatch/preview")
     suspend fun getDispatchPreview(): Response<DispatchPreview>
 
+    @POST("v1/warehouse/ops/dispatch/preview")
+    suspend fun createDispatchPreview(@Body body: com.google.gson.JsonElement): Response<DispatchPreview>
+
+    @POST("v1/warehouse/ops/dispatch/execute")
+    suspend fun executeDispatch(@Body body: com.google.gson.JsonElement): Response<com.google.gson.JsonElement>
+
     @GET("v1/warehouse/demand/forecast")
     suspend fun getDemandForecast(
         @Query("days") days: Int = 7,
@@ -113,6 +123,9 @@ interface WarehouseApi {
     suspend fun getSupplyRequests(
         @Query("state") state: String? = null,
     ): Response<SupplyRequestListResponse>
+
+    @GET("v1/warehouse/supply-requests/{id}")
+    suspend fun getSupplyRequest(@Path("id") id: String): Response<com.google.gson.JsonElement>
 
     @POST("v1/warehouse/supply-requests")
     suspend fun createSupplyRequest(

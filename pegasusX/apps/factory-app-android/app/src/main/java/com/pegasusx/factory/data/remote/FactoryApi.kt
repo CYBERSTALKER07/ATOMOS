@@ -11,8 +11,14 @@ interface FactoryApi {
     @POST("v1/auth/factory/login")
     suspend fun login(@Body body: LoginRequest): Response<AuthResponse>
 
+    @POST("v1/auth/factory/register")
+    suspend fun register(@Body body: JsonElement): Response<AuthResponse>
+
     @POST("v1/auth/factory/refresh")
     suspend fun refreshToken(): Response<AuthResponse>
+
+    @POST("v1/factory/setup")
+    suspend fun setupFactory(@Body body: JsonElement): Response<JsonElement>
 
     // ── Dashboard ──
     @GET("v1/factory/dashboard")
@@ -63,6 +69,12 @@ interface FactoryApi {
     suspend fun getSupplyRequests(
         @Query("state") state: String? = null,
     ): Response<SupplyRequestListResponse>
+
+    @POST("v1/factory/supply-requests/{id}/accept")
+    suspend fun acceptSupplyRequest(
+        @Path("id") id: String,
+        @Body body: JsonElement = kotlinx.serialization.json.JsonObject(emptyMap()),
+    ): Response<JsonElement>
 
     @PATCH("v1/factory/supply-requests/{id}")
     suspend fun transitionSupplyRequest(

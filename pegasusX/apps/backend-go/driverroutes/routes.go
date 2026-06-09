@@ -69,6 +69,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 			rr.Post("/v1/delivery/credit-delivery", d.OrderService.HandleCreditDelivery)
 			rr.Post("/v1/delivery/missing-items", d.OrderService.HandleMissingItems)
 			rr.Post("/v1/delivery/split-payment", d.OrderService.HandleSplitPayment)
+			rr.Post("/v1/delivery/confirm-payment-bypass", d.OrderService.HandleConfirmPaymentBypass)
 		} else {
 			// In production, OrderService MUST be wired to support these edges.
 			// Firing a panic here guarantees tests and staging don't silently degraded to stubs.

@@ -43,6 +43,14 @@ enum SupplierOperationsService {
         return try await APIClient.shared.get("v1/supplier/dispatch/preview", query: query)
     }
 
+    static func createDispatchPreview(body: [String: String]) async throws -> SupplierDispatchPreview {
+        try await APIClient.shared.post("v1/supplier/dispatch/preview", body: body)
+    }
+
+    static func executeDispatch(body: [String: String]) async throws {
+        try await APIClient.shared.postVoid("v1/supplier/dispatch/execute", body: body)
+    }
+
     static func pricingRules() async throws -> SupplierPricingRule {
         try await APIClient.shared.get("v1/supplier/pricing/rules")
     }
@@ -103,5 +111,41 @@ enum SupplierOperationsService {
 
     static func updateProfile(_ request: SupplierProfileUpdateRequest) async throws -> SupplierProfile {
         try await APIClient.shared.put("v1/supplier/profile", body: request)
+    }
+
+    static func updateInventory(body: [String: String]) async throws {
+        try await APIClient.shared.patchVoid("v1/supplier/inventory", body: body)
+    }
+
+    static func inventoryAudit() async throws -> [String: String] { // placeholder
+        try await APIClient.shared.get("v1/supplier/inventory/audit")
+    }
+
+    static func vetOrder(body: [String: String]) async throws {
+        try await APIClient.shared.postVoid("v1/supplier/orders/vet", body: body)
+    }
+
+    static func aiRecommendations() async throws -> [String: String] { // placeholder
+        try await APIClient.shared.get("v1/supplier/ai/recommendations")
+    }
+
+    static func recordAiRecommendationDecision(body: [String: String]) async throws {
+        try await APIClient.shared.postVoid("v1/supplier/ai/recommendations", body: body)
+    }
+
+    static func issuePaymentBypass(body: [String: String]) async throws {
+        try await APIClient.shared.postVoid("v1/supplier/orders/payment-bypass", body: body)
+    }
+
+    static func approveEarlyComplete(body: [String: String]) async throws {
+        try await APIClient.shared.postVoid("v1/supplier/route/approve-early-complete", body: body)
+    }
+
+    static func empathyAdoption() async throws -> [String: String] { // placeholder
+        try await APIClient.shared.get("v1/supplier/empathy/adoption")
+    }
+
+    static func broadcast(body: [String: String]) async throws {
+        try await APIClient.shared.postVoid("v1/supplier/broadcast", body: body)
     }
 }

@@ -8,6 +8,10 @@ enum WarehouseService {
         try await api.post("v1/auth/warehouse/login", body: LoginRequest(phone: phone, pin: pin))
     }
 
+    static func setup(body: [String: String]) async throws {
+        try await api.postVoid("v1/warehouse/setup", body: body)
+    }
+
     // MARK: - Dashboard
     static func dashboard() async throws -> DashboardData {
         try await api.get("v1/warehouse/ops/dashboard")
@@ -106,11 +110,23 @@ enum WarehouseService {
         try await api.get("v1/warehouse/ops/dispatch/preview")
     }
 
+    static func createDispatchPreview(body: [String: String]) async throws -> DispatchPreview {
+        try await api.post("v1/warehouse/ops/dispatch/preview", body: body)
+    }
+
+    static func executeDispatch(body: [String: String]) async throws {
+        try await api.postVoid("v1/warehouse/ops/dispatch/execute", body: body)
+    }
+
     static func supplyRequests(state: String? = nil) async throws -> [WarehouseSupplyRequest] {
         var query: [String: String] = [:]
         if let state { query["state"] = state }
         let response: SupplyRequestListResponse = try await api.get("v1/warehouse/supply-requests", query: query)
         return response.requests
+    }
+
+    static func supplyRequest(id: String) async throws -> WarehouseSupplyRequest {
+        try await api.get("v1/warehouse/supply-requests/\(id)")
     }
 
     static func demandForecast(days: Int = 7) async throws -> DemandForecastResponse {
@@ -164,5 +180,44 @@ enum WarehouseService {
     // MARK: - Payment Config
     static func paymentConfig() async throws -> PaymentConfigResponse {
         try await api.get("v1/warehouse/ops/payment-config")
+    }
+
+    // MARK: - P1-03 ops depth
+    static func replenishmentInsights() async throws -> ReplenishmentInsightsResponse {
+        try await api.get("v1/warehouse/replenishment/insights")
+    }
+
+    static func replenishmentInsightAction(insightId: String, action: String) async throws -> ReplenishmentInsightActionResponse {
+        try await api.postEmpty("v1/warehouse/replenishment/insights/\(insightId)/\(action)")
+    }
+
+    static func emergencyTransfer(body: EmergencyTransferRequest) async throws -> TransferMutationResponse {
+        try await api.post("v1/warehouse/transfers/emergency", body: body)
+    }
+
+    static func forceReceive(body: ForceReceiveRequest) async throws -> TransferMutationResponse {
+        try await api.post("v1/warehouse/transfers/force-receive", body: body)
+    }
+
+    static func receiveTransfer(transferId: String) async throws -> TransferMutationResponse {
+        try await api.postEmpty("v1/warehouse/transfers/\(transferId)/receive")
+    }
+
+    static func opsFinancials(period: String? = nil) async throws -> OpsFinancialsResponse {
+        var query: [String: String] = [:]
+        if let period { query["period"] = period }
+        return try await api.get("v1/warehouse/ops/financials", query: query)
+    }
+
+    static func delayOrder(orderId: String, body: WarehouseOrderMutationRequest) async throws -> WarehouseOrderMutationResponse {
+        try await api.post("v1/warehouse/ops/orders/\(orderId)/delay", body: body)
+    }
+
+    static func rejectOrder(orderId: String, body: WarehouseOrderMutationRequest) async throws -> WarehouseOrderMutationResponse {
+        try await api.post("v1/warehouse/ops/orders/\(orderId)/reject", body: body)
+    }
+
+    static func overflowOrder(orderId: String, body: WarehouseOrderMutationRequest) async throws -> WarehouseOrderMutationResponse {
+        try await api.post("v1/warehouse/ops/orders/\(orderId)/overflow", body: body)
     }
 }

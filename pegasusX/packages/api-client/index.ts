@@ -143,6 +143,14 @@ export class ApiClient {
     });
   }
 
+  async setupSupplierBusiness(
+    request: Record<string, unknown>,
+  ): Promise<void> {
+    return this.request<void>("/v1/supplier/business/setup", "POST", {
+      body: request,
+    });
+  }
+
   async getSupplierProfile(): Promise<SupplierProfile> {
     return this.request<SupplierProfile>("/v1/supplier/profile", "GET");
   }
@@ -216,11 +224,35 @@ export class ApiClient {
     return this.request<SupplierOrdersResponse>(appendQuery("/v1/supplier/orders", query as Record<string, unknown>), "GET");
   }
 
+  async vetSupplierOrder(
+    request: Record<string, unknown>,
+  ): Promise<void> {
+    return this.request<void>("/v1/supplier/orders/vet", "POST", {
+      body: request,
+    });
+  }
+
   async getSupplierDispatchPreview(query: { warehouse_id?: string } = {}): Promise<SupplierDispatchPreview> {
     return this.request<SupplierDispatchPreview>(
       appendQuery("/v1/supplier/dispatch/preview", query as Record<string, unknown>),
       "GET",
     );
+  }
+
+  async createSupplierDispatchPreview(
+    request: Record<string, unknown>,
+  ): Promise<SupplierDispatchPreview> {
+    return this.request<SupplierDispatchPreview>("/v1/supplier/dispatch/preview", "POST", {
+      body: request,
+    });
+  }
+
+  async executeSupplierDispatch(
+    request: Record<string, unknown>,
+  ): Promise<void> {
+    return this.request<void>("/v1/supplier/dispatch/execute", "POST", {
+      body: request,
+    });
   }
 
   async getSupplierActivity(query: { limit?: number } = {}): Promise<SupplierActivityResponse> {
@@ -232,6 +264,18 @@ export class ApiClient {
 
   async getSupplierDashboard(): Promise<SupplierDashboardResponse> {
     return this.request<SupplierDashboardResponse>("/v1/supplier/dashboard", "GET");
+  }
+
+  async updateSupplierInventory(
+    request: Record<string, unknown>,
+  ): Promise<void> {
+    return this.request<void>("/v1/supplier/inventory", "PATCH", {
+      body: request,
+    });
+  }
+
+  async getSupplierInventoryAudit(): Promise<unknown> {
+    return this.request<unknown>("/v1/supplier/inventory/audit", "GET");
   }
 
   async getSupplierManifests(): Promise<SupplierManifestsResponse> {
@@ -262,6 +306,14 @@ export class ApiClient {
 
   async getSupplierNegotiationsPending(): Promise<NegotiationPendingResponse> {
     return this.request<NegotiationPendingResponse>("/v1/supplier/negotiations/pending", "GET");
+  }
+
+  async approveSupplierEarlyComplete(
+    request: Record<string, unknown>,
+  ): Promise<void> {
+    return this.request<void>("/v1/supplier/route/approve-early-complete", "POST", {
+      body: request,
+    });
   }
 
   async resolveSupplierNegotiation(
@@ -409,8 +461,33 @@ export class ApiClient {
     return this.request<WarehouseDispatchPreview>(appendQuery("/v1/warehouse/ops/dispatch/preview", query as Record<string, unknown>), "POST");
   }
 
+  async executeWarehouseDispatch(
+    request: Record<string, unknown>,
+    query: { warehouse_id?: string } = {},
+  ): Promise<void> {
+    return this.request<void>(appendQuery("/v1/warehouse/ops/dispatch/execute", query as Record<string, unknown>), "POST", {
+      body: request,
+    });
+  }
+
+  async setupWarehouse(
+    request: Record<string, unknown>,
+    query: { warehouse_id?: string } = {},
+  ): Promise<void> {
+    return this.request<void>(appendQuery("/v1/warehouse/setup", query as Record<string, unknown>), "POST", {
+      body: request,
+    });
+  }
+
   async getWarehouseSupplyRequests(query: { warehouse_id?: string } = {}): Promise<WarehouseSupplyRequestsResponse> {
     return this.request<WarehouseSupplyRequestsResponse>(appendQuery("/v1/warehouse/supply-requests", query as Record<string, unknown>), "GET");
+  }
+
+  async getWarehouseSupplyRequest(
+    id: string,
+    query: { warehouse_id?: string } = {},
+  ): Promise<WarehouseSupplyRequest> {
+    return this.request<WarehouseSupplyRequest>(appendQuery(`/v1/warehouse/supply-requests/${id}`, query as Record<string, unknown>), "GET");
   }
 
   async openWarehouseSupplyRequest(

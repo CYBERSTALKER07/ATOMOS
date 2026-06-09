@@ -9,6 +9,18 @@ enum SupplierService {
         )
     }
 
+    static func register(body: [String: String]) async throws {
+        try await APIClient.shared.postVoid("v1/auth/supplier/register", body: body)
+    }
+
+    static func configure(body: [String: String]) async throws {
+        try await APIClient.shared.postVoid("v1/supplier/configure", body: body)
+    }
+
+    static func setupBusiness(body: [String: String]) async throws {
+        try await APIClient.shared.postVoid("v1/supplier/business/setup", body: body)
+    }
+
     static func dashboard() async throws -> SupplierDashboard {
         try await APIClient.shared.get("v1/supplier/dashboard")
     }
@@ -66,5 +78,21 @@ enum SupplierService {
 
     static func configureBilling(_ request: BillingSetupRequest) async throws -> BillingSetupResponse {
         try await APIClient.shared.post("v1/supplier/billing/setup", body: request)
+    }
+
+    static func updatePricingRules(body: [String: String]) async throws -> SupplierPricingRule {
+        try await APIClient.shared.patch("v1/supplier/pricing/rules", body: body)
+    }
+
+    static func updateTopology(body: [String: String]) async throws -> SupplierTopologyResponse {
+        try await APIClient.shared.put("v1/supplier/topology", body: body)
+    }
+
+    static func orgMembers() async throws -> [String: String] { // placeholder return type
+        try await APIClient.shared.get("v1/supplier/org/members")
+    }
+
+    static func createOrgMember(body: [String: String]) async throws {
+        try await APIClient.shared.postVoid("v1/supplier/org/members", body: body)
     }
 }

@@ -253,6 +253,10 @@ final class APIClient: @unchecked Sendable {
         return try await get("v1/driver/manifest-gate?manifest_id=\(manifestId)")
     }
 
+    func getFleetManifest() async throws -> [String: AnyDecodable] {
+        return try await get("v1/fleet/manifest")
+    }
+
     func returnComplete(truckId: String) async throws -> [String: String] {
         let body = ReturnCompleteRequest(truckId: truckId)
         return try await post("v1/fleet/driver/return-complete", body: body)
@@ -264,6 +268,14 @@ final class APIClient: @unchecked Sendable {
         struct Req: Encodable { let available: Bool; let reason: String?; let note: String? }
         struct Resp: Decodable { let status: String }
         let _: Resp = try await post("v1/driver/availability", body: Req(available: available, reason: reason, note: note))
+    }
+
+    func getAvailability() async throws -> [String: AnyDecodable] {
+        return try await get("v1/driver/availability")
+    }
+
+    func updateAvailability(payload: [String: AnyEncodable]) async throws -> [String: String] {
+        return try await patch("v1/driver/availability", body: payload)
     }
 
     func reorderStops(routeId: String, orderSequence: [String]) async throws -> RouteReorderResponse {
@@ -316,6 +328,10 @@ final class APIClient: @unchecked Sendable {
 
     func getDriverProfile() async throws -> DriverProfileResponse {
         try await get("v1/driver/profile")
+    }
+
+    func getDriverHistory() async throws -> [String: AnyDecodable] {
+        return try await get("v1/driver/history")
     }
 
     // MARK: - Generic HTTP

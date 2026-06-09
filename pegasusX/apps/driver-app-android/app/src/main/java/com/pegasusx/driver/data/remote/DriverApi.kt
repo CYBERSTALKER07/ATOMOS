@@ -134,6 +134,22 @@ interface DriverApi {
     @POST("v1/driver/availability")
     suspend fun setAvailability(@Body request: AvailabilityRequest): Map<String, String>
 
+    // Read current availability
+    @GET("v1/driver/availability")
+    suspend fun getAvailability(): com.google.gson.JsonElement
+
+    // Partial update to availability
+    @PATCH("v1/driver/availability")
+    suspend fun updateAvailability(@Body body: Map<String, @JvmSuppressWildcards Any>): Map<String, String>
+
+    // Fetch driver history
+    @GET("v1/driver/history")
+    suspend fun getHistory(): com.google.gson.JsonElement
+
+    // Fetch fleet manifest
+    @GET("v1/fleet/manifest")
+    suspend fun getFleetManifest(): com.google.gson.JsonElement
+
     // Return complete — RETURNING → AVAILABLE after arriving at warehouse
     @POST("v1/fleet/driver/return-complete")
     suspend fun returnComplete(@Body request: ReturnCompleteRequest): Map<String, String>
@@ -151,6 +167,9 @@ interface DriverApi {
 
     @POST("v1/user/notifications/read")
     suspend fun markNotificationsRead(@Body body: Map<String, @JvmSuppressWildcards Any>): Map<String, String>
+
+    @POST("v1/ws/ack")
+    suspend fun ackWebSocketCommand(@Body body: Map<String, @JvmSuppressWildcards Any>): Map<String, String>
 
     // ── Shop-Closed Protocol ──
 
