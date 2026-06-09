@@ -285,6 +285,49 @@ struct CollectCashResponse: Codable {
 
 // MARK: - v3.1 Edge Request/Response Models
 
+struct VerifyHandshakeRequest: Codable {
+    let orderId: String
+    let token: String
+    let latitude: Double
+    let longitude: Double
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case token
+        case latitude
+        case longitude
+    }
+}
+
+struct VerifyHandshakeResponse: Codable {
+    let success: Bool
+    let message: String
+}
+
+struct UpdateOrderDuringDeliveryRequest: Codable {
+    let orderId: String
+    let items: [AmendItemPayload]
+    let driverNotes: String?
+
+    enum CodingKeys: String, CodingKey {
+        case orderId = "order_id"
+        case items
+        case driverNotes = "driver_notes"
+    }
+}
+
+struct UpdateOrderDuringDeliveryResponse: Codable {
+    let success: Bool
+    let message: String
+    let adjustedTotal: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case success
+        case message
+        case adjustedTotal = "adjusted_total"
+    }
+}
+
 struct MissingItemRequest: Codable {
     let skuId: String
     let missingQty: Int

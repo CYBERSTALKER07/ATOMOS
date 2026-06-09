@@ -160,9 +160,9 @@ class ManifestViewModel @Inject constructor(
             if (manifestId != null && !_state.value.manifestSealed) {
                 try {
                     val gate = api.checkManifestGate(manifestId)
-                    val cleared = gate["cleared"] as? Boolean ?: false
+                    val cleared = gate.cleared
                     if (!cleared) {
-                        val mState = gate["state"] as? String ?: "UNKNOWN"
+                        val mState = gate.state
                         _state.value = _state.value.copy(
                             error = "Cannot depart: manifest is $mState. Wait for Payloader to seal.",
                             awaitingSeal = true,

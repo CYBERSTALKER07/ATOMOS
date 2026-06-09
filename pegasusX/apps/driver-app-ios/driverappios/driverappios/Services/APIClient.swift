@@ -170,6 +170,18 @@ final class APIClient: @unchecked Sendable {
         return try await patch("v1/orders/\(orderId)/state", body: body)
     }
 
+    // MARK: - Dynamic Delivery Handshake
+
+    func verifyHandshake(orderId: String, token: String, latitude: Double, longitude: Double) async throws -> VerifyHandshakeResponse {
+        let body = VerifyHandshakeRequest(orderId: orderId, token: token, latitude: latitude, longitude: longitude)
+        return try await post("v1/delivery/verify-handshake", body: body)
+    }
+
+    func updateOrderDuringDelivery(orderId: String, items: [AmendItemPayload], driverNotes: String?) async throws -> UpdateOrderDuringDeliveryResponse {
+        let body = UpdateOrderDuringDeliveryRequest(orderId: orderId, items: items, driverNotes: driverNotes)
+        return try await post("v1/delivery/update-order-during-delivery", body: body)
+    }
+
     /// Mark arrived — driver enters 100m geofence (IN_TRANSIT → ARRIVED)
     func markArrived(orderId: String) async throws {
         struct Resp: Decodable { let status: String; let orderId: String }

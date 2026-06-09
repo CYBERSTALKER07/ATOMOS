@@ -278,6 +278,116 @@ data class LoginRequest(
     val pin: String
 )
 
+// ── v3.1 Edge Request/Response Models ──
+
+@Serializable
+data class ManifestGateResponse(
+    val cleared: Boolean,
+    val state: String? = null,
+    @SerialName("manifest_id") val manifestId: String? = null
+)
+
+@Serializable
+data class EarlyCompletePayload(
+    val reason: String,
+    val note: String
+)
+
+@Serializable
+data class EarlyCompleteRequestResponse(
+    val status: String,
+    @SerialName("order_count") val orderCount: Int,
+    @SerialName("order_ids") val orderIds: List<String>
+)
+
+@Serializable
+data class NegotiationItemRequest(
+    @SerialName("sku_id") val skuId: String,
+    @SerialName("original_qty") val originalQty: Long,
+    @SerialName("proposed_qty") val proposedQty: Long
+)
+
+@Serializable
+data class NegotiationPayload(
+    @SerialName("order_id") val orderId: String,
+    val items: List<NegotiationItemRequest>
+)
+
+@Serializable
+data class NegotiationProposalResponse(
+    val status: String,
+    @SerialName("proposal_id") val proposalId: String
+)
+
+@Serializable
+data class RouteReorderResponse(
+    val status: String,
+    @SerialName("route_id") val routeId: String,
+    @SerialName("stop_count") val stopCount: Int
+)
+
+@Serializable
+data class MissingItemRequest(
+    @SerialName("sku_id") val skuId: String,
+    @SerialName("missing_qty") val missingQty: Int
+)
+
+@Serializable
+data class MissingItemsPayload(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("missing_items") val missingItems: List<MissingItemRequest>
+)
+
+@Serializable
+data class MissingItemsResponse(
+    val status: String,
+    @SerialName("order_id") val orderId: String,
+    @SerialName("adjusted_total") val adjustedTotal: Long
+)
+
+@Serializable
+data class SplitPaymentPayload(
+    @SerialName("order_id") val orderId: String,
+    @SerialName("first_amount") val firstAmount: Long,
+    @SerialName("second_amount") val secondAmount: Long
+)
+
+@Serializable
+data class SplitPaymentResponse(
+    val status: String,
+    @SerialName("order_id") val orderId: String,
+    @SerialName("first_amount") val firstAmount: Long,
+    @SerialName("second_amount") val secondAmount: Long
+)
+
+@Serializable
+data class VerifyHandshakeRequest(
+    @SerialName("order_id") val orderId: String,
+    val token: String,
+    val latitude: Double,
+    val longitude: Double
+)
+
+@Serializable
+data class VerifyHandshakeResponse(
+    val success: Boolean,
+    val message: String
+)
+
+@Serializable
+data class UpdateOrderDuringDeliveryRequest(
+    @SerialName("order_id") val orderId: String,
+    val items: List<AmendItemPayload>,
+    @SerialName("driver_notes") val driverNotes: String? = null
+)
+
+@Serializable
+data class UpdateOrderDuringDeliveryResponse(
+    val success: Boolean,
+    val message: String,
+    @SerialName("adjusted_total") val adjustedTotal: Long? = null
+)
+
 // ── Driver Earnings (mirror of backend-go/fleet/driver_api.go) ──
 
 @Serializable

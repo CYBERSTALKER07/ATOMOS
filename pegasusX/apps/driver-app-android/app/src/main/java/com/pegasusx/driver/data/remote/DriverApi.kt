@@ -14,14 +14,29 @@ import com.pegasusx.driver.data.model.DeliverySubmitRequest
 import com.pegasusx.driver.data.model.DeliverySubmitResponse
 import com.pegasusx.driver.data.model.DriverEarningsResponse
 import com.pegasusx.driver.data.model.DriverProfileResponse
+import com.pegasusx.driver.data.model.EarlyCompletePayload
+import com.pegasusx.driver.data.model.EarlyCompleteRequestResponse
 import com.pegasusx.driver.data.model.LoginRequest
+import com.pegasusx.driver.data.model.ManifestGateResponse
+import com.pegasusx.driver.data.model.MissingItemsPayload
+import com.pegasusx.driver.data.model.MissingItemsResponse
+import com.pegasusx.driver.data.model.NegotiationPayload
+import com.pegasusx.driver.data.model.NegotiationProposalResponse
 import com.pegasusx.driver.data.model.Order
 import com.pegasusx.driver.data.model.PendingCollection
 import com.pegasusx.driver.data.model.ReorderStopsRequest
 import com.pegasusx.driver.data.model.ReturnCompleteRequest
 import com.pegasusx.driver.data.model.RouteManifest
+import com.pegasusx.driver.data.model.RouteReorderResponse
+import com.pegasusx.driver.data.model.SplitPaymentPayload
+import com.pegasusx.driver.data.model.SplitPaymentResponse
+import com.pegasusx.driver.data.model.UpdateOrderDuringDeliveryRequest
+import com.pegasusx.driver.data.model.UpdateOrderDuringDeliveryResponse
 import com.pegasusx.driver.data.model.ValidateQRRequest
 import com.pegasusx.driver.data.model.ValidateQRResponse
+import com.pegasusx.driver.data.model.VerifyHandshakeRequest
+import com.pegasusx.driver.data.model.VerifyHandshakeResponse
+
 import com.pegasusx.driver.ui.screens.notifications.DriverNotificationsResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -155,11 +170,11 @@ interface DriverApi {
 
     // Edge 27: Request early route completion (fatigue/issue)
     @POST("v1/fleet/route/request-early-complete")
-    suspend fun requestEarlyComplete(@Body body: Map<String, String>): Map<String, @JvmSuppressWildcards Any>
+    suspend fun requestEarlyComplete(@Body body: EarlyCompletePayload): EarlyCompleteRequestResponse
 
     // Edge 28: Propose quantity negotiation to supplier
     @POST("v1/delivery/negotiate")
-    suspend fun proposeNegotiation(@Body body: Map<String, @JvmSuppressWildcards Any>): Map<String, @JvmSuppressWildcards Any>
+    suspend fun proposeNegotiation(@Body body: NegotiationPayload): NegotiationProposalResponse
 
     // Edge 32: Mark order as delivered on credit
     @POST("v1/delivery/credit-delivery")
@@ -167,15 +182,25 @@ interface DriverApi {
 
     // Edge 33: Report missing items after seal
     @POST("v1/delivery/missing-items")
-    suspend fun reportMissingItems(@Body body: Map<String, @JvmSuppressWildcards Any>): Map<String, @JvmSuppressWildcards Any>
+    suspend fun reportMissingItems(@Body body: MissingItemsPayload): MissingItemsResponse
 
     // ── LEO: Ghost Stop Prevention ──
 
     // Check if manifest is sealed before allowing route start
     @GET("v1/driver/manifest-gate")
-    suspend fun checkManifestGate(@Query("manifest_id") manifestId: String): Map<String, @JvmSuppressWildcards Any>
+    suspend fun checkManifestGate(@Query("manifest_id") manifestId: String): ManifestGateResponse
 
     // Edge 35: Create split payment
     @POST("v1/delivery/split-payment")
-    suspend fun splitPayment(@Body body: Map<String, @JvmSuppressWildcards Any>): Map<String, @JvmSuppressWildcards Any>
+    suspend fun splitPayment(@Body body: SplitPaymentPayload): SplitPaymentResponse
+
+    // ── Dynamic Delivery Handshake ──
+
+    // Dynamic Delivery Handshake Verification
+    @POST("v1/delivery/verify-handshake")
+    suspend fun verifyHandshake(@Body body: VerifyHandshakeRequest): VerifyHandshakeResponse
+
+    // Dynamic Delivery Edge Handling (in-delivery updates)
+    @POST("v1/delivery/update-order-during-delivery")
+    suspend fun updateOrderDuringDelivery(@Body body: UpdateOrderDuringDeliveryRequest): UpdateOrderDuringDeliveryResponse
 }
