@@ -87,11 +87,13 @@ final class APIClient: @unchecked Sendable {
         return try await get("v1/payloader/orders\(q)")
     }
     func recommendReassign(orderId: String) async throws -> RecommendReassignResponse {
-        try await post(
-            "v1/payloader/recommend-reassign",
-            body: RecommendReassignRequest(orderId: orderId),
-            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "recommend-reassign", entityId: orderId)]
-        )
+        let payload = ["order_id": orderId]
+        return try await post("v1/payloader/recommend-reassign", body: payload)
+    }
+
+    func reassignOrder(orderId: String, newTerminalId: String) async throws -> StatusResponse {
+        let payload = ["order_id": orderId, "terminal_id": newTerminalId]
+        return try await post("v1/payloader/reassign-order", body: payload)
     }
 
     // MARK: - Manifest lifecycle
@@ -121,11 +123,34 @@ final class APIClient: @unchecked Sendable {
         )
     }
     func injectOrder(manifestId: String, orderId: String) async throws -> StatusResponse {
-        try await post(
-            "v1/payloader/manifests/\(manifestId)/inject-order",
-            body: InjectOrderRequest(orderId: orderId),
-            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "inject-order", entityId: "\(manifestId)-\(orderId)")]
-        )
+        let payload = ["order_id": orderId]
+        let key = deterministicIdempotencyKey(action: "payloader_inject", entityId: "\(manifestId)_\(orderId)")
+        return try await post("v1/payloader/manifests/\(manifestId)/inject-order", body: payload, idempotencyKey: key)
+    }
+
+    // MARK: - Supplier Manifests
+    func supplierManifests(state: String = "DRAFT") async throws -> ManifestsResponse {
+        return try await get("v1/supplier/manifests?state=\(state)")
+    }
+
+    func supplierManifestDetail(_ manifestId: String) async throws -> Manifest {
+        return try await get("v1/supplier/manifests/\(manifestId)")
+    }
+
+    func supplierStartLoading(manifestId: String) async throws -> StatusResponse {
+        let key = deterministicIdempotencyKey(action: "supplier_start_loading", entityId: manifestId)
+        return try await post("v1/supplier/manifests/\(manifestId)/start-loading", body: [String: String](), idempotencyKey: key)
+    }
+
+    func supplierSealManifest(manifestId: String) async throws -> SealManifestResponse {
+        let key = deterministicIdempotencyKey(action: "supplier_seal_manifest", entityId: manifestId)
+        return try await post("v1/supplier/manifests/\(manifestId)/seal", body: [String: String](), idempotencyKey: key)
+    }
+
+    func supplierInjectOrder(manifestId: String, orderId: String) async throws -> StatusResponse {
+        let payload = ["order_id": orderId]
+        let key = deterministicIdempotencyKey(action: "supplier_inject", entityId: "\(manifestId)_\(orderId)")
+        return try await post("v1/supplier/manifests/\(manifestId)/inject-order", body: payload, idempotencyKey: key)
     }
 
     // MARK: - Per-order seal / exception
@@ -139,12 +164,18 @@ final class APIClient: @unchecked Sendable {
         )
     }
     func manifestException(manifestId: String, orderId: String, reason: String, metadata: String = "") async throws -> ManifestExceptionResponse {
-        try await post(
-            "v1/payload/manifest-exception",
-            body: ManifestExceptionRequest(manifestId: manifestId, orderId: orderId, reason: reason, metadata: metadata),
-            headers: ["Idempotency-Key": deterministicIdempotencyKey(action: "manifest-exception", entityId: "\(manifestId)-\(orderId)")]
-        )
+        let payload = ["manifest_id": manifestId, "order_id": orderId, "reason": reason, "metadata": metadata]
+        let key = deterministicIdempotencyKey(action: "manifest_exception", entityId: "\(manifestId)_\(orderId)")
+        return try await post("v1/payload/manifest-exception", body: payload, idempotencyKey: key)
     }
+
+    func manifestExceptionsList(limit: Int = 50, offset: Int = 0) async throws -> Data {
+        // Return raw Data since model might not exist
+        let req = try buildRequest(path: "v1/payloader/manifest-exceptions?limit=\(limit)&offset=\(offset)", method: "GET")
+        let (data, _) = try await dataForRequestWithFallback(req)
+        return data
+    }
+
     func reportMissingItems(orderId: String, items: [MissingItemEntry]) async throws -> StatusResponse {
         try await post(
             "v1/delivery/missing-items",

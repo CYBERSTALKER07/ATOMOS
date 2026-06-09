@@ -57,6 +57,12 @@ interface PayloadApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): RecommendReassignResponse
 
+    @POST("v1/payloader/reassign-order")
+    suspend fun reassignOrder(
+        @Body req: com.google.gson.JsonElement,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): StatusResponse
+
     // ── Manifest lifecycle ───────────────────────────────────────────────────
     @GET("v1/payloader/manifests")
     suspend fun manifests(
@@ -86,6 +92,33 @@ interface PayloadApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): StatusResponse
 
+    @GET("v1/supplier/manifests")
+    suspend fun supplierManifests(
+        @Query("state") state: String = "DRAFT",
+    ): ManifestsResponse
+
+    @GET("v1/supplier/manifests/{id}")
+    suspend fun supplierManifestDetail(@Path("id") manifestId: String): Manifest
+
+    @POST("v1/supplier/manifests/{id}/start-loading")
+    suspend fun supplierStartLoading(
+        @Path("id") manifestId: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): StatusResponse
+
+    @POST("v1/supplier/manifests/{id}/seal")
+    suspend fun supplierSealManifest(
+        @Path("id") manifestId: String,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): SealManifestResponse
+
+    @POST("v1/supplier/manifests/{id}/inject-order")
+    suspend fun supplierInjectOrder(
+        @Path("id") manifestId: String,
+        @Body req: InjectOrderRequest,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): StatusResponse
+
     // ── Per-order seal / exception ───────────────────────────────────────────
     @POST("v1/payload/seal")
     suspend fun sealOrder(
@@ -98,6 +131,12 @@ interface PayloadApi {
         @Body req: ManifestExceptionRequest,
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): ManifestExceptionResponse
+
+    @GET("v1/payloader/manifest-exceptions")
+    suspend fun manifestExceptionsList(
+        @Query("limit") limit: Int = 50,
+        @Query("offset") offset: Int = 0,
+    ): com.google.gson.JsonElement
 
     @POST("v1/delivery/missing-items")
     suspend fun missingItems(

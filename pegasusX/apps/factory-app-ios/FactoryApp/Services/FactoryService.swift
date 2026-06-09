@@ -8,6 +8,18 @@ enum FactoryService {
         try await api.post("v1/auth/factory/login", body: LoginRequest(phone: phone, password: password))
     }
 
+    static func register(body: [String: String]) async throws -> AuthResponse {
+        try await api.post("v1/auth/factory/register", body: body)
+    }
+
+    static func refresh() async throws -> AuthResponse {
+        try await api.postVoid("v1/auth/factory/refresh")
+    }
+
+    static func setup(body: [String: String]) async throws {
+        try await api.postVoid("v1/factory/setup", body: body)
+    }
+
     // MARK: - Dashboard
     static func dashboard() async throws -> DashboardStats {
         try await api.get("v1/factory/dashboard")
@@ -57,6 +69,10 @@ enum FactoryService {
     static func supplyRequests() async throws -> [SupplyRequest] {
         let response: SupplyRequestListResponse = try await api.get("v1/factory/supply-requests")
         return response.requests
+    }
+
+    static func acceptSupplyRequest(id: String, body: [String: String] = [:]) async throws {
+        try await api.postVoid("v1/factory/supply-requests/\(id)/accept", body: body)
     }
 
     static func transitionSupplyRequest(id: String, action: String) async throws -> SupplyRequestTransitionResponse {
