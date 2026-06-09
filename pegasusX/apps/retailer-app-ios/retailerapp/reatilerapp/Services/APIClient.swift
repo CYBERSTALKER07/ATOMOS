@@ -247,6 +247,14 @@ final class APIClient {
     // MARK: - Tracking
     // MARK: - Phase 4: Retailer Ecosystem
     
+    func setupRetailer(payload: [String: AnyEncodable]) async throws {
+        let _: APIResponse<String> = try await post(path: "/v1/retailer/setup", body: payload)
+    }
+
+    func getPricingRules() async throws -> [String: AnyDecodable] {
+        return try await get(path: "/v1/retailer/pricing/rules")
+    }
+
     func getProfile() async throws -> RetailerProfileResponse {
         return try await get(path: "/v1/retailer/profile")
     }

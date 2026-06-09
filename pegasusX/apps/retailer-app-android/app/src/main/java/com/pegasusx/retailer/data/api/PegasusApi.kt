@@ -117,7 +117,16 @@ interface PegasusApi {
         @Header("Idempotency-Key") idempotencyKey: String? = null,
     ): ApiResponse
 
-    // ── Retailer Profile ──
+    // ── Retailer Profile & Setup ──
+    @POST("/v1/retailer/setup")
+    suspend fun setupRetailer(
+        @Body body: Map<String, @JvmSuppressWildcards Any>,
+        @Header("Idempotency-Key") idempotencyKey: String? = null,
+    ): JsonElement
+
+    @GET("/v1/retailer/pricing/rules")
+    suspend fun getPricingRules(): JsonElement
+
     @GET("/v1/retailer/profile")
     suspend fun getRetailerProfile(): Map<String, String>
 
