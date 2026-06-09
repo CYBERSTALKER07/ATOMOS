@@ -21,6 +21,14 @@
     ],
     "security": {
       "csp": null
+    },
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://storage.googleapis.com/pegasusx-ssmr-app-updates/retailer-desktop/{{target}}/{{arch}}/updater.json"
+      ],
+      "dialog": true,
+      "pubkey": "UPDATE_PUBLIC_KEY"
     }
   },
   "bundle": {

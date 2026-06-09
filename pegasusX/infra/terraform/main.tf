@@ -223,3 +223,31 @@ resource "google_secret_manager_secret_version" "stripe_webhook_secret" {
   secret      = google_secret_manager_secret.stripe_webhook_secret.id
   secret_data = var.stripe_webhook_secret
 }
+
+# ------------------------------------------------------------------------------
+# App Updates Storage Bucket (for Tauri OTA / Direct Website Distribution)
+# ------------------------------------------------------------------------------
+
+resource "google_storage_bucket" "app_updates" {
+  name          = "${local.resource_prefix}-app-updates"
+  location      = var.region
+  force_destroy = false
+  
+  uniform_bucket_level_access = true
+
+  cors {
+    origin          = ["*"]
+    method          = ["GET", "HEAD", "OPTIONS"]
+    response_header = ["*"]
+    max_age_seconds = 3600
+  }
+
+  labels = local.labels
+}
+
+# Make the updates bucket publicly readable so apps can download the binaries without auth
+resource "google_storage_bucket_iam_member" "public_updates" {
+  bucket = google_storage_bucket.app_updates.name
+  role   = "roles/storage.objectViewer"
+  member = "allUsers"
+}

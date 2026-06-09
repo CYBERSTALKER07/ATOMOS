@@ -8,6 +8,7 @@ import "./global.css";
 import PayloadStatePanel from './components/PayloadStatePanel';
 import { useT, isIOS } from './theme';
 import { extractProblemMessage, getPayloadTranslator, resolvePayloadLocale } from './localization';
+import * as Updates from 'expo-updates';
 import { buildManifest, type LiveOrder, type ManifestItem } from './utils/manifest';
 import { defaultLocale, type Locale } from '../../packages/i18n/locales';
 
@@ -42,6 +43,32 @@ export default function App() {
   const T = useT();
   const { width, height } = useWindowDimensions();
   const isTabletLayout = Math.min(width, height) >= 768;
+
+  // ─── OTA Updates ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    async function onFetchUpdateAsync() {
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          Alert.alert(
+            'Update Available',
+            'A new version has been downloaded. Restart the app to apply the update?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Restart', onPress: () => Updates.reloadAsync() }
+            ]
+          );
+        }
+      } catch (error) {
+        // Silent fail on OTA check (network error, etc.)
+        console.log(`Error fetching latest Expo update: ${error}`);
+      }
+    }
+    if (!__DEV__) {
+      onFetchUpdateAsync();
+    }
+  }, []);
 
   const toastMotionProfile = useMemo(
     () => isTabletLayout
