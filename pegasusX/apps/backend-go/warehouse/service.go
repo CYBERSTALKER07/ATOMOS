@@ -371,7 +371,10 @@ func (s *Service) handleCreateSupplyRequest(w http.ResponseWriter, r *http.Reque
 		Status:      req.Status,
 		Projected:   req.ProjectedUnits,
 		Committed:   req.CommittedUnits,
-		Pending:     req.PendingConfirmationUnits,
+		Pending:           req.PendingConfirmationUnits,
+		RequestedBy:       req.RequestedBy,
+		CoverageDays:      int64(req.CoverageDays),
+		CoverageStartDate: req.CoverageStartDate,
 	}
 
 	if err := s.repo.CreateSupplyRequest(r.Context(), req, func(txn outbox.TxnBuffer) error {
@@ -540,7 +543,9 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 			LockID:      lock.LockID,
 			WarehouseID: warehouseID,
 			SupplierID:  s.supplierID,
-			Status:      "ACQUIRED",
+			Status:      "ACTIVE",
+			Action:      "ACQUIRED",
+			RequestID:   lock.EntityID,
 		}
 
 		if err := s.repo.UpsertLock(r.Context(), warehouseID, lock, func(txn outbox.TxnBuffer) error {
@@ -594,6 +599,8 @@ func (s *Service) HandleDispatchLock(w http.ResponseWriter, r *http.Request) {
 				WarehouseID: warehouseID,
 				SupplierID:  s.supplierID,
 				Status:      "RELEASED",
+				Action:      "RELEASED",
+				RequestedBy: claims.Subject,
 				RequestID:   released.EntityID, // map entity_id to request_id for convenience in tracking
 			}
 			return outbox.EmitJSON(r.Context(), txn, events.AggregateWarehouse, lockID, events.TopicMain, eventPayload)

@@ -268,8 +268,8 @@ func TestLocationIngressToRetailerTrackingFreshnessUnderReconnectChurn(t *testin
 	if freshFirst["live_location_available"] != true {
 		t.Fatalf("fresh live_location_available=%v want true", freshFirst["live_location_available"])
 	}
-	if _, ok := freshFirst["driver_location"].(map[string]any); !ok {
-		t.Fatalf("fresh driver_location missing: %v", freshFirst)
+	if _, ok := freshFirst["driver_latitude"]; !ok || freshFirst["driver_latitude"] == nil {
+		t.Fatalf("fresh driver_latitude missing: %v", freshFirst)
 	}
 
 	staleService := retailer.NewService(retailer.ServiceConfig{
@@ -296,8 +296,8 @@ func TestLocationIngressToRetailerTrackingFreshnessUnderReconnectChurn(t *testin
 	if staleFirst["live_location_available"] != false {
 		t.Fatalf("stale live_location_available=%v want false", staleFirst["live_location_available"])
 	}
-	if _, ok := staleFirst["driver_location"]; ok {
-		t.Fatalf("stale driver_location leaked: %v", staleFirst["driver_location"])
+	if staleFirst["driver_latitude"] != nil {
+		t.Fatalf("stale driver_latitude leaked: %v", staleFirst["driver_latitude"])
 	}
 }
 

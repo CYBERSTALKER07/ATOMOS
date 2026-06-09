@@ -525,6 +525,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		SupplierHub:   supplierHub,
 		FactoryHub:    factoryHub,
 		Log:           log,
+		Spanner:       spannerClient,
 		SupplierID:    supplierSeed.SupplierID,
 		FactoryNodeID: factoryNodeID,
 		Currency:      cfg.SeedSupplierCurrency,

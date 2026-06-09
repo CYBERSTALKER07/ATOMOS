@@ -139,6 +139,7 @@ func TestStartRelaySubscriberFansOutPeerEventsAndSuppressesSelf(t *testing.T) {
 	hub.Subscribe("room:3", conn)
 
 	go hub.StartRelaySubscriber(ctx)
+	time.Sleep(20 * time.Millisecond) // Wait for subscriber to attach
 
 	peerEnvelope, err := json.Marshal(relayEnvelope{Source: "peer-instance", Room: "room:3", Payload: []byte("peer-event")})
 	if err != nil {

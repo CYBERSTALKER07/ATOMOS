@@ -793,9 +793,6 @@ func (s *Service) HandlePendingPayments(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_pending_payments_failed"})
 		return
 	}
-	if len(orders) == 0 {
-		orders = demoTrackingOrdersForRetailer(retailerID, s.supplierID)
-	}
 	pending := filterTrackingOrders(orders, isPendingPaymentStatus)
 	sessions := make([]map[string]any, 0, len(pending))
 	for i := range pending {
@@ -812,8 +809,9 @@ func (s *Service) HandlePendingPayments(w http.ResponseWriter, r *http.Request) 
 		})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"pending_payments": sessions,
-		"count":            len(sessions),
+		"status":  "pending",
+		"pending": sessions,
+		"count":   len(sessions),
 	})
 }
 
@@ -834,14 +832,12 @@ func (s *Service) HandleActiveFulfillment(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_active_fulfillment_failed"})
 		return
 	}
-	if len(orders) == 0 {
-		orders = demoTrackingOrdersForRetailer(retailerID, s.supplierID)
-	}
 	fulfillments := make([]map[string]any, 0, len(orders))
 	for i := range orders {
 		fulfillments = append(fulfillments, mobileActiveFulfillment(orders[i]))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
+		"status":       "active",
 		"fulfillments": fulfillments,
 		"count":        len(fulfillments),
 	})
@@ -864,14 +860,38 @@ func (s *Service) HandleTracking(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_tracking_failed"})
 		return
 	}
-	if len(orders) == 0 {
-		orders = demoTrackingOrdersForRetailer(retailerID, s.supplierID)
+
+	receipts, err := s.listRetailerRecentReceipts(r.Context(), retailerID)
+	if err != nil {
+		s.log.Warn("retailer recent receipts read failed", "retailer_id", retailerID, "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_receipts_failed"})
+		return
 	}
+
+	merged := mergeTrackingOrders(orders, receipts)
+	events := deriveTrackingEvents(merged)
+
+	status := "idle"
+	if len(orders) > 0 {
+		status = "active"
+	}
+
 	mobileOrders := make([]map[string]any, 0, len(orders))
 	for i := range orders {
 		mobileOrders = append(mobileOrders, mobileTrackingOrder(orders[i]))
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"orders": mobileOrders})
+
+	mobileReceipts := make([]map[string]any, 0, len(receipts))
+	for i := range receipts {
+		mobileReceipts = append(mobileReceipts, mobileTrackingOrder(receipts[i]))
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":          status,
+		"orders":          mobileOrders,
+		"recent_receipts": mobileReceipts,
+		"events":          events,
+	})
 }
 
 func (s *Service) listRetailerTrackingOrders(ctx context.Context, retailerID string) ([]TrackingOrder, error) {

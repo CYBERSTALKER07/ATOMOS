@@ -91,6 +91,7 @@ type WarehouseEvent struct {
 	RequestedBy       string `json:"requested_by,omitempty"`
 	CoverageStartDate string `json:"coverage_start_date,omitempty"`
 	CoverageDays      int64  `json:"coverage_days,omitempty"`
+	Action            string `json:"action,omitempty"`
 }
 
 // DriverEvent handles driver creation and updates.

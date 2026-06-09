@@ -19,6 +19,8 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
+
+	"cloud.google.com/go/spanner"
 )
 
 const (
@@ -39,6 +41,7 @@ type Service struct {
 	supplierHub *ws.Hub
 	factoryHub  *ws.Hub
 	log         *slog.Logger
+	spannerClient *spanner.Client
 
 	supplierID    string
 	factoryNodeID string
@@ -70,6 +73,7 @@ type ServiceConfig struct {
 	SupplierHub *ws.Hub
 	FactoryHub  *ws.Hub
 	Log         *slog.Logger
+	Spanner     *spanner.Client
 
 	SupplierID    string
 	FactoryNodeID string
@@ -235,6 +239,7 @@ func NewService(c ServiceConfig) *Service {
 		jwtIssuer:             c.JWTIssuer,
 		now:                   c.Now,
 		firebaseVerifier:      c.FirebaseVerifier,
+		spannerClient:         c.Spanner,
 		manifestTransfers:     make(map[string][]TransferRow),
 		manifestTransitions:   make(map[string][]ManifestTransition),
 		manifestReassignments: make(map[string][]ManifestReassignment),

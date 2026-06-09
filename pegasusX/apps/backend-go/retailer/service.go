@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
@@ -289,6 +290,7 @@ type Service struct {
 	autoOrderByRetailer map[string]*AutoOrderSettings
 
 	firebaseVerifier auth.FirebaseVerifier
+	spannerClient    *spanner.Client
 }
 
 // ServiceConfig is the constructor input.
@@ -309,6 +311,7 @@ type ServiceConfig struct {
 	Now         func() time.Time
 	NewID       func() string
 	FirebaseVerifier auth.FirebaseVerifier
+	Spanner          *spanner.Client
 }
 
 // NewService constructs a Service with sensible defaults for Now/NewID.
@@ -342,6 +345,7 @@ func NewService(c ServiceConfig) *Service {
 		familyByRetailer:    make(map[string][]FamilyMember),
 		autoOrderByRetailer: make(map[string]*AutoOrderSettings),
 		firebaseVerifier:    c.FirebaseVerifier,
+		spannerClient:       c.Spanner,
 	}
 }
 

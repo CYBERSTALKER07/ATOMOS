@@ -59,6 +59,38 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 			return err
 		}
 
+		// Phase 2 check: Exhaustion check and increment QuantityReserved for warehouse assigned items
+		if len(o.LineItems) > 0 && o.WarehouseID != "" {
+			for _, item := range o.LineItems {
+				row, err := txn.ReadRow(ctx, "SupplierInventoryV2",
+					spanner.Key{o.SupplierID, o.WarehouseID, item.SKU},
+					[]string{"QuantityOnHand", "QuantityReserved"})
+				if err != nil {
+					if spanner.ErrCode(err) == 5 { // NotFound
+						return fmt.Errorf("%w: sku %s not found in warehouse %s", ErrInventoryExhausted, item.SKU, o.WarehouseID)
+					}
+					return fmt.Errorf("read inventory %s: %w", item.SKU, err)
+				}
+				var qoh, qr int64
+				if err := row.Columns(&qoh, &qr); err != nil {
+					return fmt.Errorf("decode inventory columns: %w", err)
+				}
+				if qoh-qr < item.Quantity {
+					return fmt.Errorf("%w: sku %s has %d available, requested %d", ErrInventoryExhausted, item.SKU, qoh-qr, item.Quantity)
+				}
+				mut := spanner.UpdateMap("SupplierInventoryV2", map[string]any{
+					"SupplierId":       o.SupplierID,
+					"WarehouseId":      o.WarehouseID,
+					"ProductId":        item.SKU,
+					"QuantityReserved": qr + item.Quantity,
+					"UpdatedAt":        spanner.CommitTimestamp,
+				})
+				if err := txn.BufferWrite([]*spanner.Mutation{mut}); err != nil {
+					return fmt.Errorf("buffer inventory update: %w", err)
+				}
+			}
+		}
+
 		buf := &spannerTxnBuffer{}
 		if emit != nil {
 			if err := emit(buf); err != nil {

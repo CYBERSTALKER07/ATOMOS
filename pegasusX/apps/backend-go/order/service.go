@@ -80,6 +80,7 @@ var (
 	ErrZoneMiss                  = errors.New("zone_miss")
 	ErrServiceabilityUnavailable = errors.New("delivery_perimeter_unavailable")
 	ErrAssignmentRequired        = errors.New("assignment_required")
+	ErrInventoryExhausted        = errors.New("inventory_exhausted")
 )
 
 // LineItem is one line on an order.
@@ -379,13 +380,13 @@ type AssignOrderResponse struct {
 	NoChange   bool   `json:"no_change,omitempty"`
 }
 
-// DeliverySubmitRequest is the wire shape for POST /v1/order/deliver.
 type DeliverySubmitRequest struct {
-	OrderID      string  `json:"order_id"`
-	QRToken      string  `json:"qr_token"`
-	ScannedToken string  `json:"scanned_token"`
-	Latitude     float64 `json:"latitude"`
-	Longitude    float64 `json:"longitude"`
+	OrderID         string     `json:"order_id"`
+	QRToken         string     `json:"qr_token"`
+	ScannedToken    string     `json:"scanned_token"`
+	Latitude        float64    `json:"latitude"`
+	Longitude       float64    `json:"longitude"`
+	ClientTimestamp *time.Time `json:"client_timestamp,omitempty"`
 }
 
 // DeliverySubmitResponse confirms QR/offline-token delivery submission.
@@ -397,7 +398,8 @@ type DeliverySubmitResponse struct {
 
 // ConfirmOffloadRequest is the wire shape for POST /v1/order/confirm-offload.
 type ConfirmOffloadRequest struct {
-	OrderID string `json:"order_id"`
+	OrderID         string     `json:"order_id"`
+	ClientTimestamp *time.Time `json:"client_timestamp,omitempty"`
 }
 
 // ConfirmOffloadResponse matches the driver mobile offload-review contract.
@@ -414,16 +416,18 @@ type ConfirmOffloadResponse struct {
 
 // CompleteOrderRequest is the wire shape for POST /v1/order/complete.
 type CompleteOrderRequest struct {
-	OrderID   string   `json:"order_id"`
-	Latitude  *float64 `json:"latitude,omitempty"`
-	Longitude *float64 `json:"longitude,omitempty"`
+	OrderID         string     `json:"order_id"`
+	Latitude        *float64   `json:"latitude,omitempty"`
+	Longitude       *float64   `json:"longitude,omitempty"`
+	ClientTimestamp *time.Time `json:"client_timestamp,omitempty"`
 }
 
 // CollectCashRequest is the wire shape for POST /v1/order/collect-cash.
 type CollectCashRequest struct {
-	OrderID   string  `json:"order_id"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
+	OrderID         string     `json:"order_id"`
+	Latitude        float64    `json:"latitude"`
+	Longitude       float64    `json:"longitude"`
+	ClientTimestamp *time.Time `json:"client_timestamp,omitempty"`
 }
 
 // CollectCashResponse matches the driver mobile cash-collection contract.
@@ -468,6 +472,7 @@ type driverTransitionRequest struct {
 	OrderID             string
 	NextStatus          Status
 	Reason              string
+	ClientTimestamp     *time.Time
 	Precheck            func(Order) error
 	TransformNextStatus func(Order, Status) Status
 	BuildProofs         func(Order) []DeliveryProofArtifact
@@ -1323,9 +1328,10 @@ func (s *Service) SubmitDelivery(ctx context.Context, claims auth.Claims, req De
 
 	var distanceM float64
 	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
-		OrderID:    req.OrderID,
-		NextStatus: StatusCompleted,
-		Reason:     "driver_delivery_submit",
+		OrderID:         req.OrderID,
+		NextStatus:      StatusCompleted,
+		Reason:          "driver_delivery_submit",
+		ClientTimestamp: req.ClientTimestamp,
 		TransformNextStatus: func(orderRecord Order, next Status) Status {
 			if orderRecord.Status == StatusCancelled && next == StatusCompleted {
 				return StatusReconciliationRequired
@@ -1380,9 +1386,10 @@ func (s *Service) SubmitDelivery(ctx context.Context, claims auth.Claims, req De
 // ConfirmOffload records the driver handoff and opens retailer payment settlement.
 func (s *Service) ConfirmOffload(ctx context.Context, claims auth.Claims, req ConfirmOffloadRequest) (ConfirmOffloadResponse, error) {
 	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
-		OrderID:    req.OrderID,
-		NextStatus: StatusAwaitingPayment,
-		Reason:     "confirm_offload",
+		OrderID:         req.OrderID,
+		NextStatus:      StatusAwaitingPayment,
+		Reason:          "confirm_offload",
+		ClientTimestamp: req.ClientTimestamp,
 		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, _ Status) error {
 			if err := emitSettlementRequired(ctx, txn, orderRecord); err != nil {
 				return err
@@ -1413,9 +1420,10 @@ func (s *Service) ConfirmOffload(ctx context.Context, claims auth.Claims, req Co
 func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req CompleteOrderRequest) (DriverOrderResponse, error) {
 	var distanceM float64
 	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
-		OrderID:    req.OrderID,
-		NextStatus: StatusCompleted,
-		Reason:     "complete_order",
+		OrderID:         req.OrderID,
+		NextStatus:      StatusCompleted,
+		Reason:          "complete_order",
+		ClientTimestamp: req.ClientTimestamp,
 		Precheck: func(orderRecord Order) error {
 			computedDistance, err := validatePointerGeofence(req.Latitude, req.Longitude, orderRecord)
 			if err == nil {
@@ -1469,9 +1477,10 @@ func (s *Service) CompleteOrder(ctx context.Context, claims auth.Claims, req Com
 func (s *Service) CollectCash(ctx context.Context, claims auth.Claims, req CollectCashRequest) (CollectCashResponse, error) {
 	var distanceM float64
 	result, err := s.transitionDriverOrder(ctx, claims, driverTransitionRequest{
-		OrderID:    req.OrderID,
-		NextStatus: StatusCompleted,
-		Reason:     "collect_cash",
+		OrderID:         req.OrderID,
+		NextStatus:      StatusCompleted,
+		Reason:          "collect_cash",
+		ClientTimestamp: req.ClientTimestamp,
 		Precheck: func(orderRecord Order) error {
 			computedDistance, err := validateRequiredGeofence(req.Latitude, req.Longitude, orderRecord)
 			if err != nil {
@@ -1552,7 +1561,11 @@ func (s *Service) transitionDriverOrder(ctx context.Context, claims auth.Claims,
 
 	previousStatus := current.Status
 	current.Status = req.NextStatus
-	current.UpdatedAt = s.now()
+	if req.ClientTimestamp != nil {
+		current.UpdatedAt = *req.ClientTimestamp
+	} else {
+		current.UpdatedAt = s.now()
+	}
 	if err := s.persistDriverTransition(ctx, claims, req, current, previousStatus); err != nil {
 		return driverTransitionResult{}, err
 	}

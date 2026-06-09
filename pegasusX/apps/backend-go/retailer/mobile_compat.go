@@ -253,21 +253,24 @@ func mobileTrackingOrder(order TrackingOrder) map[string]any {
 	if state == "" {
 		state = strings.TrimSpace(order.TrackingStatus)
 	}
-	return map[string]any{
-		"order_id":                order.OrderID,
-		"supplier_id":             order.SupplierID,
-		"supplier_name":           "pegasusX Supplier",
-		"warehouse_id":            order.WarehouseID,
-		"warehouse_name":          "Demo Warehouse",
-		"driver_id":               order.DriverID,
-		"state":                   state,
-		"total_amount":            order.TotalMinor,
-		"created_at":              order.CreatedAt,
-		"driver_latitude":         driverLat(order),
-		"driver_longitude":        driverLng(order),
-		"items":                   order.Items,
-		"live_location_available": order.LiveLocationAvailable,
+
+	b, _ := json.Marshal(order)
+	var m map[string]any
+	json.Unmarshal(b, &m)
+
+	m["supplier_name"] = "pegasusX Supplier"
+	m["warehouse_name"] = "Demo Warehouse"
+	m["state"] = state
+	m["total_amount"] = order.TotalMinor
+	m["driver_latitude"] = driverLat(order)
+	m["driver_longitude"] = driverLng(order)
+	m["live_location_available"] = order.LiveLocationAvailable
+
+	if order.DriverLocation != nil {
+		m["driver_location"] = order.DriverLocation
 	}
+
+	return m
 }
 
 func driverLat(order TrackingOrder) any {
@@ -286,7 +289,7 @@ func driverLng(order TrackingOrder) any {
 
 func mobileActiveFulfillment(order TrackingOrder) map[string]any {
 	state := strings.TrimSpace(order.Status)
-	return map[string]any{
+	m := map[string]any{
 		"order_id":        order.OrderID,
 		"supplier_id":     order.SupplierID,
 		"supplier_name":   "pegasusX Supplier",
@@ -294,6 +297,12 @@ func mobileActiveFulfillment(order TrackingOrder) map[string]any {
 		"adjusted_amount": order.TotalMinor,
 		"item_count":      len(order.Items),
 	}
+	if order.DriverLocation != nil {
+		m["live_location_available"] = true
+	} else {
+		m["live_location_available"] = false
+	}
+	return m
 }
 
 func demoTrackingOrdersForRetailer(retailerID, supplierID string) []TrackingOrder {

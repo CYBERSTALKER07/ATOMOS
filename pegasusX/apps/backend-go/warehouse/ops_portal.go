@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"cloud.google.com/go/spanner"
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch"
 	"github.com/pegasusx/pegasusx/apps/backend-go/dispatch/plan"
@@ -868,18 +869,34 @@ func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer r.Body.Close()
-		driver := PortalDriver{
-			DriverID:    "drv-" + uuid.NewString()[:8],
-			Name:        strings.TrimSpace(req.Name),
-			Phone:       strings.TrimSpace(req.Phone),
-			TruckStatus: "AVAILABLE",
-			IsActive:    true,
+		driverID := "drv-" + uuid.NewString()[:8]
+		
+		if s.spannerClient != nil {
+			now := s.now().UTC()
+			m := spanner.Insert("Drivers",
+				[]string{"DriverId", "Name", "Phone", "PinHash", "SupplierId", "HomeNodeType", "HomeNodeId", "IsActive", "CreatedAt", "UpdatedAt"},
+				[]any{driverID, strings.TrimSpace(req.Name), strings.TrimSpace(req.Phone), "4321", s.supplierID, "WAREHOUSE", warehouseIDFromRequest(r), true, now, now},
+			)
+			if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+				s.log.ErrorContext(r.Context(), "failed to create driver", "err", err)
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_driver"})
+				return
+			}
+		} else {
+			driver := PortalDriver{
+				DriverID:    driverID,
+				Name:        strings.TrimSpace(req.Name),
+				Phone:       strings.TrimSpace(req.Phone),
+				TruckStatus: "AVAILABLE",
+				IsActive:    true,
+			}
+			s.mu.Lock()
+			s.drivers = append(s.drivers, driver)
+			s.mu.Unlock()
 		}
-		s.mu.Lock()
-		s.drivers = append(s.drivers, driver)
-		s.mu.Unlock()
+		
 		writeJSON(w, http.StatusCreated, map[string]any{
-			"driver_id": driver.DriverID,
+			"driver_id": driverID,
 			"pin":       "4321",
 		})
 	default:
@@ -947,17 +964,39 @@ func (s *Service) HandleOpsVehicles(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer r.Body.Close()
-		vehicle := PortalVehicle{
-			VehicleID:    "veh-" + uuid.NewString()[:8],
-			Label:        req.Label,
-			LicensePlate: req.LicensePlate,
-			VehicleClass: req.VehicleClass,
-			IsActive:     true,
+		vehicleID := "veh-" + uuid.NewString()[:8]
+		
+		if s.spannerClient != nil {
+			now := s.now().UTC()
+			m := spanner.Insert("Vehicles",
+				[]string{"VehicleId", "Label", "LicensePlate", "VehicleClass", "SupplierId", "HomeNodeType", "HomeNodeId", "IsActive", "MaxVolumeVU", "CreatedAt", "UpdatedAt"},
+				[]any{vehicleID, strings.TrimSpace(req.Label), strings.TrimSpace(req.LicensePlate), strings.TrimSpace(req.VehicleClass), s.supplierID, "WAREHOUSE", warehouseIDFromRequest(r), true, 150.0, now, now},
+			)
+			if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+				s.log.ErrorContext(r.Context(), "failed to create vehicle", "err", err)
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_vehicle"})
+				return
+			}
+		} else {
+			vehicle := PortalVehicle{
+				VehicleID:    vehicleID,
+				Label:        req.Label,
+				LicensePlate: req.LicensePlate,
+				VehicleClass: req.VehicleClass,
+				IsActive:     true,
+			}
+			s.mu.Lock()
+			s.vehicles = append(s.vehicles, vehicle)
+			s.mu.Unlock()
 		}
-		s.mu.Lock()
-		s.vehicles = append(s.vehicles, vehicle)
-		s.mu.Unlock()
-		writeJSON(w, http.StatusCreated, vehicle)
+		
+		writeJSON(w, http.StatusCreated, map[string]any{
+			"vehicle_id": vehicleID,
+			"label": req.Label,
+			"license_plate": req.LicensePlate,
+			"vehicle_class": req.VehicleClass,
+			"is_active": true,
+		})
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
 	}
@@ -994,6 +1033,31 @@ func (s *Service) handleOpsVehiclePatch(w http.ResponseWriter, r *http.Request, 
 func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 	s.ensurePortalSeed()
 	if r.Method == http.MethodGet {
+		whID := warehouseIDFromRequest(r)
+		if s.spannerClient != nil && whID != "" {
+			stmt := spanner.Statement{
+				SQL:    `SELECT UserId, Name, Role FROM SupplierUsers WHERE HomeNodeId = @wh_id AND HomeNodeType = "WAREHOUSE"`,
+				Params: map[string]any{"wh_id": whID},
+			}
+			iter := s.spannerClient.Single().Query(r.Context(), stmt)
+			defer iter.Stop()
+			var staff []portalStaff
+			for {
+				row, err := iter.Next()
+				if err != nil {
+					break
+				}
+				var st portalStaff
+				if err := row.Columns(&st.StaffID, &st.Name, &st.Role); err == nil {
+					staff = append(staff, st)
+				}
+			}
+			if len(staff) > 0 {
+				writeJSON(w, http.StatusOK, map[string]any{"staff": staff})
+				return
+			}
+		}
+
 		s.mu.RLock()
 		staff := append([]portalStaff(nil), s.staff...)
 		s.mu.RUnlock()
@@ -1011,11 +1075,27 @@ func (s *Service) HandleOpsStaff(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer r.Body.Close()
-		row := portalStaff{StaffID: "stf-" + uuid.NewString()[:8], Name: req.Name, Phone: req.Phone, Role: req.Role}
-		s.mu.Lock()
-		s.staff = append(s.staff, row)
-		s.mu.Unlock()
-		writeJSON(w, http.StatusCreated, map[string]any{"staff_id": row.StaffID, "pin": "5678"})
+		staffID := "stf-" + uuid.NewString()[:8]
+		
+		if s.spannerClient != nil {
+			now := s.now().UTC()
+			m := spanner.Insert("SupplierUsers",
+				[]string{"UserId", "SupplierId", "Phone", "Name", "PasswordHash", "SupplierRole", "AssignedWarehouseId", "IsActive", "CreatedAt", "UpdatedAt"},
+				[]any{staffID, s.supplierID, strings.TrimSpace(req.Phone), strings.TrimSpace(req.Name), "password_hash", strings.TrimSpace(req.Role), warehouseIDFromRequest(r), true, now, now},
+			)
+			if _, err := s.spannerClient.Apply(r.Context(), []*spanner.Mutation{m}); err != nil {
+				s.log.ErrorContext(r.Context(), "failed to create staff", "err", err)
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed_to_create_staff"})
+				return
+			}
+		} else {
+			row := portalStaff{StaffID: staffID, Name: req.Name, Phone: req.Phone, Role: req.Role}
+			s.mu.Lock()
+			s.staff = append(s.staff, row)
+			s.mu.Unlock()
+		}
+		
+		writeJSON(w, http.StatusCreated, map[string]any{"staff_id": staffID, "pin": "5678"})
 		return
 	}
 	writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})

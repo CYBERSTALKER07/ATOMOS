@@ -251,6 +251,20 @@ func (s *Service) HandleMissingItems(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "event_failed"})
 		return
 	}
+	
+	// Phase 3: Emit Reverse Logistics requirement
+	if err := s.emitDriverEdgeEvent(r.Context(), current, map[string]any{
+		"type":        "REVERSE_LOGISTICS_REQUIRED",
+		"order_id":    req.OrderID,
+		"warehouse_id": current.WarehouseID,
+		"supplier_id": current.SupplierID,
+		"retailer_id": current.RetailerID,
+		"items":       req.Items,
+		"timestamp":   s.now().UTC().Format(time.RFC3339Nano),
+	}); err != nil {
+		s.log.ErrorContext(r.Context(), "reverse logistics event failed", "err", err)
+	}
+
 	writeJSON(w, http.StatusOK, map[string]string{"status": "reported"})
 }
 
