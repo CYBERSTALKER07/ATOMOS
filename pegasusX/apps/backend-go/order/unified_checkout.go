@@ -68,6 +68,9 @@ func (s *Service) CheckoutSnapshot(ctx context.Context, orderID, retailerID stri
 	if o.RetailerID != retailerID {
 		return 0, "", ErrOrderForbidden
 	}
+	if o.Status == StatusCompleted || o.Status == StatusCancelled {
+		return 0, "", fmt.Errorf("order cannot be paid in status: %s", o.Status)
+	}
 	return o.TotalMinor, o.Currency, nil
 }
 

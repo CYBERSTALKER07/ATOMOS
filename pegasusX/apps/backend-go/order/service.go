@@ -110,6 +110,7 @@ type Order struct {
 	H3Cell                string
 	Lat                   float64
 	Lng                   float64
+	QRToken               string
 	RequestedDeliveryDate *time.Time
 	AutoConfirmAt         *time.Time
 	DecisionAt            *time.Time
@@ -1756,8 +1757,118 @@ func (s *Service) HandleUpdateStatus(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// HandleGetQRPayload serves GET /v1/order/{orderID}/qr-payload.
+func (s *Service) HandleGetQRPayload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	orderID := chi.URLParam(r, "orderID")
+	if strings.TrimSpace(orderID) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
+		return
+	}
+	
+	current, found, err := s.repo.GetOrder(r.Context(), orderID)
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "get order for qr payload failed", "err", err, "order_id", orderID)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+		return
+	}
+	if !found {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
+		return
+	}
+	if claims.Role == auth.RoleRetailer && current.RetailerID != claims.Subject {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	
+	qrToken := current.QRToken
+	if qrToken == "" {
+		// Fallback to order ID if not generated
+		qrToken = orderID
+	}
+	
+	writeJSON(w, http.StatusOK, map[string]string{
+		"order_id": orderID,
+		"qr_token": qrToken,
+	})
+}
+
+// HandleDeliveryScanQR serves POST /v1/delivery/scan-qr.
+func (s *Service) HandleDeliveryScanQR(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	
+	var req struct {
+		OrderID         string     `json:"order_id"`
+		QRToken         string     `json:"qr_token"`
+		Latitude        *float64   `json:"latitude"`
+		Longitude       *float64   `json:"longitude"`
+		ClientTimestamp *time.Time `json:"client_timestamp"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	defer r.Body.Close()
+
+	if strings.TrimSpace(req.OrderID) == "" || strings.TrimSpace(req.QRToken) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id and qr_token required"})
+		return
+	}
+
+	result, err := s.transitionDriverOrder(r.Context(), claims, driverTransitionRequest{
+		OrderID:         req.OrderID,
+		NextStatus:      StatusAwaitingPayment,
+		Reason:          "qr_scanned",
+		ClientTimestamp: req.ClientTimestamp,
+		Precheck: func(orderRecord Order) error {
+			if orderRecord.QRToken != "" && orderRecord.QRToken != req.QRToken {
+				return errors.New("invalid qr token")
+			}
+			return nil
+		},
+		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, _ Status) error {
+			if err := emitSettlementRequired(r.Context(), txn, orderRecord); err != nil {
+				return err
+			}
+			return emitPaymentRequired(r.Context(), txn, orderRecord)
+		},
+	})
+	
+	if err != nil {
+		s.log.Warn("delivery scan qr failed", "order_id", req.OrderID, "err", err)
+		writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+		return
+	}
+	
+	if !result.NoChange {
+		s.broadcastSettlementRequired(r.Context(), result.Order)
+		s.broadcastPaymentRequired(r.Context(), result.Order)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"valid":     true,
+		"order_id":  result.Order.OrderID,
+		"state":     result.Order.Status,
+	})
 }
 
 // HandleAssignOrder is POST /v1/orders/{orderID}/assign.
@@ -2423,6 +2534,197 @@ func validateStatusTransition(current Status, next Status) error {
 	}
 
 	return nil
+}
+
+// HandleReportDamage serves POST /v1/delivery/report-damage.
+func (s *Service) HandleReportDamage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	var req struct {
+		OrderID      string `json:"order_id"`
+		DamagedItems []struct {
+			SKU      string `json:"sku"`
+			Quantity int64  `json:"quantity"`
+		} `json:"damaged_items"`
+		Reason string `json:"reason"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	defer r.Body.Close()
+
+	orderID := strings.TrimSpace(req.OrderID)
+	if orderID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
+		return
+	}
+	if len(req.DamagedItems) == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "damaged_items_required"})
+		return
+	}
+
+	current, found, err := s.repo.GetOrder(r.Context(), orderID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+		return
+	}
+	if !found {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
+		return
+	}
+	if current.DriverID != claims.Subject {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+	
+	if current.Status != StatusInTransit && current.Status != StatusArrived {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "invalid_status_for_damage_report"})
+		return
+	}
+
+	damageMap := make(map[string]int64)
+	for _, item := range req.DamagedItems {
+		if item.Quantity > 0 {
+			damageMap[item.SKU] += item.Quantity
+		}
+	}
+
+	var newTotal int64
+	var amended bool
+	for i, item := range current.LineItems {
+		if dmg, ok := damageMap[item.SKU]; ok {
+			if dmg > item.Quantity {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": fmt.Sprintf("damage quantity exceeds item quantity for sku %s", item.SKU)})
+				return
+			}
+			current.LineItems[i].Quantity -= dmg
+			amended = true
+		}
+		newTotal += current.LineItems[i].Quantity * current.LineItems[i].UnitPrice
+	}
+
+	if !amended {
+		writeJSON(w, http.StatusOK, map[string]any{"success": true, "message": "no_changes"})
+		return
+	}
+
+	current.TotalMinor = newTotal
+	current.UpdatedAt = s.now()
+
+	if err := s.repo.UpdateOrder(r.Context(), current, nil, func(txn outbox.TxnBuffer) error {
+		return outbox.EmitJSON(r.Context(), txn, events.AggregateOrder, current.OrderID, events.TopicMain, events.OrderEvent{
+			BaseEvent: events.BaseEvent{Type: "ORDER_DAMAGE_REPORTED", Timestamp: current.UpdatedAt.Format(time.RFC3339Nano), Version: current.Version + 1},
+			OrderID:   current.OrderID,
+			DriverID:  claims.Subject,
+			Action:    "report_damage",
+			Reason:    req.Reason,
+			LineItems: current.LineItems,
+		})
+	}); err != nil {
+		s.log.ErrorContext(r.Context(), "failed to report damage", "order_id", orderID, "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "update_failed"})
+		return
+	}
+	
+	s.afterOrderMutation(r.Context(), current)
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":        true,
+		"message":        "damage_reported",
+		"adjusted_total": current.TotalMinor,
+	})
+}
+
+// HandleRetailerConfirmCash serves POST /v1/delivery/confirm-cash for Retailers.
+func (s *Service) HandleRetailerConfirmCash(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+		return
+	}
+	claims, ok := auth.FromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+
+	var req struct {
+		OrderID string `json:"order_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+		return
+	}
+	defer r.Body.Close()
+
+	orderID := strings.TrimSpace(req.OrderID)
+	if orderID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "order_id_required"})
+		return
+	}
+
+	current, found, err := s.repo.GetOrder(r.Context(), orderID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+		return
+	}
+	if !found {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "order_not_found"})
+		return
+	}
+	if current.RetailerID != claims.Subject {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+		return
+	}
+
+	if current.Status != StatusAwaitingPayment && current.Status != StatusInTransit && current.Status != StatusArrived {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "invalid_status_for_cash_confirmation"})
+		return
+	}
+
+	previousStatus := current.Status
+	current.Status = StatusCompleted
+	current.UpdatedAt = s.now()
+
+	if err := s.repo.UpdateOrder(r.Context(), current, nil, func(txn outbox.TxnBuffer) error {
+		if err := emitPaymentCleared(r.Context(), txn, current, "CASH"); err != nil {
+			return err
+		}
+		if err := emitOrderFinalized(r.Context(), txn, current); err != nil {
+			return err
+		}
+		return emitOrderStatusChanged(r.Context(), txn, orderStatusEmitParams{
+			Claims:         claims,
+			Order:          current,
+			PreviousStatus: previousStatus,
+			Reason:         "retailer_confirmed_cash",
+			ActorID:        claims.Subject,
+		})
+	}); err != nil {
+		s.log.ErrorContext(r.Context(), "failed to confirm cash", "order_id", orderID, "err", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "update_failed"})
+		return
+	}
+	
+	s.afterOrderMutation(r.Context(), current)
+	s.broadcastPaymentCleared(r.Context(), current)
+	s.broadcastOrderFinalized(r.Context(), current)
+	s.broadcastOrderStatusChanged(r.Context(), current, previousStatus, "retailer_confirmed_cash", current.Version+1)
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":  true,
+		"order_id": orderID,
+		"state":    current.Status,
+		"message":  "cash_confirmed",
+	})
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────

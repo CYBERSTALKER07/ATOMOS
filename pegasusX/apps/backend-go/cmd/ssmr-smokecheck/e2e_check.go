@@ -136,6 +136,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runDriverEdgesContractE2E(ctx, client, base, cfg, supplierID); err != nil {
 		return fmt.Errorf("driver edges contract: %w", err)
 	}
+	if err := runDeliveryEdgeCasesE2E(ctx, client, base, cfg, retailerToken, supplierID, cookie); err != nil {
+		return fmt.Errorf("delivery edge cases: %w", err)
+	}
 
 	fmt.Println("PX_E2E_ORDER_OK")
 	fmt.Println("PX_E2E_PAYMENT_OK")
@@ -1758,5 +1761,112 @@ func runClientPolicyE2E(ctx context.Context, client *http.Client, base string) e
 		return fmt.Errorf("client policy missing minimum_version")
 	}
 	fmt.Println("PX_E2E_CLIENT_POLICY_OK")
+	return nil
+}
+
+func runDeliveryEdgeCasesE2E(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, retailerToken, supplierID, cookie string) error {
+	h3Cell := "872120000ffffff"
+	orderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell)
+	if err != nil {
+		return fmt.Errorf("create: %w", err)
+	}
+	sessionID, err := runUnifiedCheckout(ctx, client, base, retailerToken, orderID, cfg)
+	if err != nil {
+		return fmt.Errorf("checkout: %w", err)
+	}
+	if err := replayGlobalPayWebhook(ctx, client, base, cfg, sessionID, orderID); err != nil {
+		return fmt.Errorf("webhook: %w", err)
+	}
+
+	// Dispatch order (assign to driver)
+	if err := runWarehouseDispatchLock(ctx, client, base, cookie, orderID); err != nil {
+		return fmt.Errorf("dispatch: %w", err)
+	}
+
+	time.Sleep(500 * time.Millisecond)
+
+	driverID := envOr("SSMR_SMOKE_DRIVER_ID", "ssmr-driver-1")
+	driverToken, _ := auth.Issue(auth.Claims{
+		Subject:    driverID,
+		Role:       auth.RoleDriver,
+		SupplierID: supplierID,
+	}, auth.IssueOptions{Secret: cfg.JWTSecret, Issuer: cfg.JWTIssuer, TTL: 30 * time.Minute})
+
+	// Driver accepts delivery and moves to transit
+	acceptReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/accept", strings.NewReader(`{"order_id":"`+orderID+`"}`))
+	acceptReq.Header.Set("Authorization", "Bearer "+driverToken)
+	acceptReq.Header.Set("Content-Type", "application/json")
+	if resp, err := client.Do(acceptReq); err == nil {
+		resp.Body.Close()
+	}
+
+	transitReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/transit", strings.NewReader(`{"order_id":"`+orderID+`"}`))
+	transitReq.Header.Set("Authorization", "Bearer "+driverToken)
+	transitReq.Header.Set("Content-Type", "application/json")
+	if resp, err := client.Do(transitReq); err == nil {
+		resp.Body.Close()
+	}
+
+	// QR flow: Retailer gets payload
+	qrReq, _ := http.NewRequestWithContext(ctx, http.MethodGet, base+"/v1/order/"+orderID+"/qr-payload", nil)
+	qrReq.Header.Set("Authorization", "Bearer "+retailerToken)
+	qrResp, err := client.Do(qrReq)
+	if err != nil {
+		return fmt.Errorf("qr payload request: %w", err)
+	}
+	defer qrResp.Body.Close()
+	if qrResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("qr payload status %d", qrResp.StatusCode)
+	}
+	var qrData struct {
+		Payload string `json:"qr_payload"`
+	}
+	json.NewDecoder(qrResp.Body).Decode(&qrData)
+
+	// QR flow: Driver scans QR
+	scanPayload := `{"qr_payload":"` + qrData.Payload + `"}`
+	scanReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/scan-qr", strings.NewReader(scanPayload))
+	scanReq.Header.Set("Authorization", "Bearer "+driverToken)
+	scanReq.Header.Set("Content-Type", "application/json")
+	scanResp, err := client.Do(scanReq)
+	if err != nil {
+		return fmt.Errorf("scan qr request: %w", err)
+	}
+	defer scanResp.Body.Close()
+	if scanResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(scanResp.Body)
+		return fmt.Errorf("scan qr status %d: %s", scanResp.StatusCode, string(body))
+	}
+
+	// Damaged goods report
+	dmgPayload := `{"order_id":"` + orderID + `","damaged_items":[{"sku":"prod-milk-1l","quantity":1}],"reason":"Broken bottle"}`
+	dmgReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/report-damage", strings.NewReader(dmgPayload))
+	dmgReq.Header.Set("Authorization", "Bearer "+driverToken)
+	dmgReq.Header.Set("Content-Type", "application/json")
+	dmgResp, err := client.Do(dmgReq)
+	if err != nil {
+		return fmt.Errorf("report damage request: %w", err)
+	}
+	defer dmgResp.Body.Close()
+	if dmgResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(dmgResp.Body)
+		return fmt.Errorf("report damage status %d: %s", dmgResp.StatusCode, string(body))
+	}
+
+	// Retailer confirms cash
+	cashPayload := `{"order_id":"` + orderID + `"}`
+	cashReq, _ := http.NewRequestWithContext(ctx, http.MethodPost, base+"/v1/delivery/confirm-cash", strings.NewReader(cashPayload))
+	cashReq.Header.Set("Authorization", "Bearer "+retailerToken)
+	cashReq.Header.Set("Content-Type", "application/json")
+	cashResp, err := client.Do(cashReq)
+	if err != nil {
+		return fmt.Errorf("confirm cash request: %w", err)
+	}
+	defer cashResp.Body.Close()
+	if cashResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(cashResp.Body)
+		return fmt.Errorf("confirm cash status %d: %s", cashResp.StatusCode, string(body))
+	}
+
 	return nil
 }

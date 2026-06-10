@@ -832,6 +832,63 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	writeJSON(w, http.StatusOK, out)
 }
 
+func (s *Service) handleOpsDispatchSettings(w http.ResponseWriter, r *http.Request) {
+	whID := warehouseIDFromRequest(r)
+	if whID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "warehouse_id_required"})
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		enabled, err := s.repo.GetAutoDispatch(r.Context(), whID)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "failed to get auto_dispatch_enabled", "err", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "fetch_failed"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"warehouse_id": whID,
+			"auto_dispatch_enabled": enabled,
+		})
+
+	case http.MethodPatch:
+		var payload struct {
+			AutoDispatchEnabled *bool `json:"auto_dispatch_enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid_json"})
+			return
+		}
+		defer r.Body.Close()
+
+		if payload.AutoDispatchEnabled != nil {
+			err := s.repo.UpdateAutoDispatch(r.Context(), whID, *payload.AutoDispatchEnabled, func(buf outbox.TxnBuffer) error {
+				eventPayload := events.WarehouseEvent{
+					BaseEvent: events.BaseEvent{Type: "WAREHOUSE_DISPATCH_SETTINGS_UPDATED"},
+					WarehouseID: whID,
+					SupplierID: s.supplierID,
+				}
+				return outbox.EmitJSON(r.Context(), buf, events.AggregateWarehouse, whID, events.TopicMain, eventPayload)
+			})
+			if err != nil {
+				s.log.ErrorContext(r.Context(), "failed to update auto_dispatch_enabled", "err", err)
+				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "update_failed"})
+				return
+			}
+			s.broadcastWarehouseEvent(r.Context(), whID, map[string]any{
+				"type": "WAREHOUSE_DISPATCH_SETTINGS_UPDATED",
+				"warehouse_id": whID,
+				"auto_dispatch_enabled": *payload.AutoDispatchEnabled,
+			})
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "updated"})
+
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method_not_allowed"})
+	}
+}
+
 func (s *Service) HandleOpsDrivers(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/v1/warehouse/ops/drivers")
 	path = strings.Trim(path, "/")

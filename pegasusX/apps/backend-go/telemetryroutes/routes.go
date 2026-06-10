@@ -14,6 +14,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/proximity"
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
@@ -39,8 +40,12 @@ type LocationUpdate struct {
 	Latitude  *float64 `json:"latitude,omitempty"`
 	Longitude *float64 `json:"longitude,omitempty"`
 	Velocity  *float64 `json:"velocity,omitempty"`
-	Heading   *float64 `json:"heading,omitempty"`
-	Timestamp string   `json:"timestamp,omitempty"`
+	Heading            *float64 `json:"heading,omitempty"`
+	Timestamp          string   `json:"timestamp,omitempty"`
+	NextStopRetailerID string   `json:"next_stop_retailer_id,omitempty"`
+	NextStopOrderID    string   `json:"next_stop_order_id,omitempty"`
+	NextStopLat        *float64 `json:"next_stop_lat,omitempty"`
+	NextStopLng        *float64 `json:"next_stop_lng,omitempty"`
 }
 
 type locationIdentity struct {
@@ -122,6 +127,21 @@ func (d Deps) handleLocation(w http.ResponseWriter, r *http.Request) {
 	for _, room := range telemetryRooms(identity) {
 		d.TelemetryHub.Broadcast(r.Context(), room, raw)
 	}
+	
+	if loc.NextStopRetailerID != "" && loc.NextStopLat != nil && loc.NextStopLng != nil && payload.Data.Lat != 0 && payload.Data.Lng != 0 {
+		dist := proximity.HaversineDistance(payload.Data.Lat, payload.Data.Lng, *loc.NextStopLat, *loc.NextStopLng)
+		if dist < 0.100 { // 100 meters
+			arrivalPayload, _ := json.Marshal(map[string]any{
+				"type": "DELIVERY_ARRIVING",
+				"driver_id": identity.DriverID,
+				"order_id": loc.NextStopOrderID,
+				"retailer_id": loc.NextStopRetailerID,
+				"distance_km": dist,
+			})
+			d.TelemetryHub.Broadcast(r.Context(), "retailer:"+loc.NextStopRetailerID, arrivalPayload)
+		}
+	}
+
 	writeTelemetryJSON(w, http.StatusAccepted, map[string]any{
 		"status":      "accepted",
 		"driver_id":   identity.DriverID,

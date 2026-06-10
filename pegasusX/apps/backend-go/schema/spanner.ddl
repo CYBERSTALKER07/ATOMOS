@@ -193,6 +193,7 @@ CREATE TABLE Warehouses (
   IsOnShift          BOOL          NOT NULL,
   RegionId           STRING(36),
   PaymentConfigId    STRING(36),
+  AutoDispatchEnabled BOOL         NOT NULL DEFAULT (FALSE),
   CreatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
   UpdatedAt          TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
 ) PRIMARY KEY (WarehouseId);

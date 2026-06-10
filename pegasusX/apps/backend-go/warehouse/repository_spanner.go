@@ -22,6 +22,8 @@ type Repository interface {
 
 	GetInventoryList(ctx context.Context, warehouseID string) (map[string]InventoryRow, error)
 	UpdateInventoryQuantity(ctx context.Context, warehouseID, productID string, quantity int64, emit func(outbox.TxnBuffer) error) error
+	GetAutoDispatch(ctx context.Context, warehouseID string) (bool, error)
+	UpdateAutoDispatch(ctx context.Context, warehouseID string, enabled bool, emit func(outbox.TxnBuffer) error) error
 	GetLocks(ctx context.Context, warehouseID string) (map[string]DispatchLock, error)
 	UpsertLock(ctx context.Context, warehouseID string, lock DispatchLock, emit func(outbox.TxnBuffer) error) error
 	DeleteLock(ctx context.Context, warehouseID, lockID string, emit func(outbox.TxnBuffer) error) error
@@ -412,6 +414,12 @@ func (m *inMemoryRepository) CreateTransfer(ctx context.Context, transferID, fac
 func (m *inMemoryRepository) UpdateTransferState(ctx context.Context, transferID, supplierID, newState string, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
+func (m *inMemoryRepository) GetAutoDispatch(ctx context.Context, warehouseID string) (bool, error) {
+	return false, nil
+}
+func (m *inMemoryRepository) UpdateAutoDispatch(ctx context.Context, warehouseID string, enabled bool, emit func(outbox.TxnBuffer) error) error {
+	return nil
+}
 
 func (r *SpannerRepository) GetInventoryList(ctx context.Context, warehouseID string) (map[string]InventoryRow, error) {
 	stmt := spanner.Statement{
@@ -582,6 +590,49 @@ func (r *SpannerRepository) UpdateTransferState(ctx context.Context, transferID,
 				"TransferId": transferID,
 				"State":      newState,
 				"UpdatedAt":  spanner.CommitTimestamp,
+			}),
+		}
+		if emit != nil {
+			buf := &spannerTxnBuffer{}
+			if err := emit(buf); err != nil {
+				return err
+			}
+			muts = append(muts, outboxMutations(buf.events)...)
+		}
+		return txn.BufferWrite(muts)
+	})
+	return err
+}
+
+func (r *SpannerRepository) GetAutoDispatch(ctx context.Context, warehouseID string) (bool, error) {
+	stmt := spanner.Statement{
+		SQL: `SELECT AutoDispatchEnabled FROM Warehouses WHERE WarehouseId = @wid`,
+		Params: map[string]any{"wid": warehouseID},
+	}
+	iter := r.client.Single().Query(ctx, stmt)
+	defer iter.Stop()
+
+	row, err := iter.Next()
+	if err != nil {
+		if err == iterator.Done {
+			return false, nil
+		}
+		return false, err
+	}
+	var enabled bool
+	if err := row.Columns(&enabled); err != nil {
+		return false, err
+	}
+	return enabled, nil
+}
+
+func (r *SpannerRepository) UpdateAutoDispatch(ctx context.Context, warehouseID string, enabled bool, emit func(outbox.TxnBuffer) error) error {
+	_, err := r.client.ReadWriteTransaction(ctx, func(ctx context.Context, txn *spanner.ReadWriteTransaction) error {
+		muts := []*spanner.Mutation{
+			spanner.UpdateMap("Warehouses", map[string]any{
+				"WarehouseId": warehouseID,
+				"AutoDispatchEnabled": enabled,
+				"UpdatedAt": spanner.CommitTimestamp,
 			}),
 		}
 		if emit != nil {
