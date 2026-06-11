@@ -17,6 +17,14 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/bootstrap"
 )
 
+// dispatchManifestHint carries warehouse dispatch execute output into the payloader journey.
+type dispatchManifestHint struct {
+	ManifestID string
+	DriverID   string
+	VehicleID  string
+	OrderIDs   []string
+}
+
 // e2eTimeout bounds the full multi-role SSMR smoke path (supplier through driver edges).
 func e2eTimeout() time.Duration {
 	if raw := strings.TrimSpace(os.Getenv("SSMR_E2E_TIMEOUT_SEC")); raw != "" {
@@ -83,7 +91,11 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseDispatchPreview(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch preview: %w", err)
 	}
-	if err := runWarehouseDispatchExecute(ctx, client, base, cookie); err != nil {
+	if err := ensureWarehouseDispatchFleet(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("warehouse dispatch fleet: %w", err)
+	}
+	dispatchHint, err := runWarehouseDispatchExecute(ctx, client, base, cookie, orderID)
+	if err != nil {
 		return fmt.Errorf("warehouse dispatch execute: %w", err)
 	}
 	if err := runWarehouseDispatchLock(ctx, client, base, cookie, orderID); err != nil {
@@ -118,7 +130,7 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := postDriverTelemetry(ctx, client, base, cfg, supplierID); err != nil {
 		return fmt.Errorf("driver telemetry: %w", err)
 	}
-	if err := runPayloaderE2E(ctx, client, base, cfg, supplierID); err != nil {
+	if err := runPayloaderE2E(ctx, client, base, cfg, supplierID, dispatchHint); err != nil {
 		return fmt.Errorf("payloader e2e: %w", err)
 	}
 	if negotiateOrderID, err := createOrder(ctx, client, base, retailerToken, cfg, h3Cell); err != nil {
@@ -436,7 +448,7 @@ func runShopClosedE2E(ctx context.Context, client *http.Client, base string, cfg
 	return nil
 }
 
-func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID string) error {
+func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID string, dispatch *dispatchManifestHint) error {
 	loginBody, _ := json.Marshal(map[string]string{
 		"phone": envOr("PAYLOAD_DEMO_PHONE", "+998901110022"),
 		"pin":   envOr("PAYLOAD_DEMO_PIN", "33333333"),
@@ -464,25 +476,47 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 	} else if status != http.StatusOK {
 		return fmt.Errorf("payloader trucks status %d", status)
 	}
-	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/payloader/manifests?state=DRAFT&truck_id=veh_payload_1", nil, token, "")
-	if err != nil {
-		return fmt.Errorf("supplier manifests: %w", err)
+
+	var (
+		manifestID string
+		driverID   string
+		vehicleID  string
+		sealOrder  string
+		dispatchJourney bool
+	)
+	if dispatch != nil && strings.TrimSpace(dispatch.ManifestID) != "" {
+		dispatchJourney = true
+		manifestID = dispatch.ManifestID
+		driverID = dispatch.DriverID
+		vehicleID = dispatch.VehicleID
+		if len(dispatch.OrderIDs) > 0 {
+			sealOrder = dispatch.OrderIDs[0]
+		}
+		fmt.Println("PX_E2E_PAYLOAD_DISPATCH_JOURNEY_OK")
+	} else {
+		vehicleID = "veh_payload_1"
+		sealOrder = "ord_payload_1"
+		driverID = envOr("PAYLOAD_DEMO_DRIVER_ID", "drv_payload_1")
+		status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/payloader/manifests?state=DRAFT&truck_id="+vehicleID, nil, token, "")
+		if err != nil {
+			return fmt.Errorf("supplier manifests: %w", err)
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("payloader manifests status %d body %s", status, string(respBody))
+		}
+		var manifests struct {
+			Manifests []struct {
+				ManifestID string `json:"manifest_id"`
+			} `json:"manifests"`
+		}
+		if err := json.Unmarshal(respBody, &manifests); err != nil {
+			return err
+		}
+		if len(manifests.Manifests) == 0 {
+			return fmt.Errorf("payloader manifests empty")
+		}
+		manifestID = manifests.Manifests[0].ManifestID
 	}
-	if status != http.StatusOK {
-		return fmt.Errorf("payloader manifests status %d body %s", status, string(respBody))
-	}
-	var manifests struct {
-		Manifests []struct {
-			ManifestID string `json:"manifest_id"`
-		} `json:"manifests"`
-	}
-	if err := json.Unmarshal(respBody, &manifests); err != nil {
-		return err
-	}
-	if len(manifests.Manifests) == 0 {
-		return fmt.Errorf("payloader manifests empty")
-	}
-	manifestID := manifests.Manifests[0].ManifestID
 
 	status, _, _, err = clientPost(ctx, client, base+"/v1/payloader/manifests/"+manifestID+"/start-loading", nil, token, "ssmr-start-"+manifestID)
 	if err != nil {
@@ -492,34 +526,40 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 		return fmt.Errorf("start-loading status %d", status)
 	}
 
-	if err := assertDriverManifestGate(ctx, client, base, cfg, supplierID, manifestID, false); err != nil {
+	if err := assertDriverManifestGate(ctx, client, base, cfg, supplierID, driverID, manifestID, false); err != nil {
 		return fmt.Errorf("driver manifest-gate pre-seal: %w", err)
 	}
 
-	if err := runPayloaderReassignE2E(ctx, client, base, token); err != nil {
-		return err
-	}
-	fmt.Println("PX_E2E_PAYLOAD_REASSIGN_OK")
-
-	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/payloader/orders?vehicle_id=veh_payload_1&state=LOADED", nil, token, "")
-	if err != nil {
-		return fmt.Errorf("payloader orders: %w", err)
-	}
-	if status != http.StatusOK {
-		return fmt.Errorf("payloader orders status %d body %s", status, string(respBody))
+	if !dispatchJourney {
+		if err := runPayloaderReassignE2E(ctx, client, base, token); err != nil {
+			return err
+		}
+		fmt.Println("PX_E2E_PAYLOAD_REASSIGN_OK")
 	}
 
-	sealBody, _ := json.Marshal(map[string]any{
-		"order_id":         "ord_payload_1",
-		"terminal_id":      "veh_payload_1",
-		"manifest_cleared": true,
-	})
-	status, _, _, err = clientPost(ctx, client, base+"/v1/payload/seal", sealBody, token, "ssmr-seal-ord_payload_1")
-	if err != nil {
-		return fmt.Errorf("payload seal order: %w", err)
+	if vehicleID != "" {
+		status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/payloader/orders?vehicle_id="+vehicleID+"&state=LOADED", nil, token, "")
+		if err != nil {
+			return fmt.Errorf("payloader orders: %w", err)
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("payloader orders status %d body %s", status, string(respBody))
+		}
 	}
-	if status != http.StatusOK {
-		return fmt.Errorf("payload seal order status %d", status)
+
+	if sealOrder != "" {
+		sealBody, _ := json.Marshal(map[string]any{
+			"order_id":         sealOrder,
+			"terminal_id":      vehicleID,
+			"manifest_cleared": true,
+		})
+		status, _, _, err = clientPost(ctx, client, base+"/v1/payload/seal", sealBody, token, "ssmr-seal-"+sealOrder)
+		if err != nil {
+			return fmt.Errorf("payload seal order: %w", err)
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("payload seal order status %d", status)
+		}
 	}
 
 	status, _, _, err = clientPost(ctx, client, base+"/v1/payloader/manifests/"+manifestID+"/seal", nil, token, "ssmr-seal-manifest-"+manifestID)
@@ -531,30 +571,32 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 	}
 	fmt.Println("PX_E2E_PAYLOAD_MANIFEST_LIFECYCLE_OK")
 
-	if err := assertDriverManifestGate(ctx, client, base, cfg, supplierID, manifestID, true); err != nil {
+	if err := assertDriverManifestGate(ctx, client, base, cfg, supplierID, driverID, manifestID, true); err != nil {
 		return fmt.Errorf("driver manifest-gate post-seal: %w", err)
 	}
 	fmt.Println("PX_E2E_PAYLOAD_DRIVER_GATE_OK")
 
-	if err := assertDriverDepart(ctx, client, base, cfg, supplierID); err != nil {
+	if err := assertDriverDepart(ctx, client, base, cfg, supplierID, driverID); err != nil {
 		return fmt.Errorf("driver depart: %w", err)
 	}
 	fmt.Println("PX_E2E_PAYLOAD_DRIVER_DEPART_OK")
 
-	if err := assertDriverManifestDetail(ctx, client, base, cfg, supplierID, manifestID); err != nil {
+	if err := assertDriverManifestDetail(ctx, client, base, cfg, supplierID, driverID, manifestID); err != nil {
 		return fmt.Errorf("driver manifest detail: %w", err)
 	}
 
-	reassignBody, _ := json.Marshal(map[string]any{
-		"order_ids":    []string{"ord_payload_1"},
-		"new_route_id": "drv_payload_2",
-	})
-	status, _, _, err = clientPost(ctx, client, base+"/v1/fleet/reassign", reassignBody, token, "ssmr-fleet-reassign")
-	if err != nil {
-		return fmt.Errorf("fleet reassign: %w", err)
-	}
-	if status != http.StatusOK {
-		return fmt.Errorf("fleet reassign status %d", status)
+	if !dispatchJourney {
+		reassignBody, _ := json.Marshal(map[string]any{
+			"order_ids":    []string{"ord_payload_1"},
+			"new_route_id": "drv_payload_2",
+		})
+		status, _, _, err = clientPost(ctx, client, base+"/v1/fleet/reassign", reassignBody, token, "ssmr-fleet-reassign")
+		if err != nil {
+			return fmt.Errorf("fleet reassign: %w", err)
+		}
+		if status != http.StatusOK {
+			return fmt.Errorf("fleet reassign status %d", status)
+		}
 	}
 
 	status, respBody, _, err = clientDo(ctx, client, http.MethodGet, base+"/v1/user/notifications?limit=10", nil, token, "")
@@ -636,8 +678,10 @@ func runPayloaderReassignE2E(ctx context.Context, client *http.Client, base, tok
 	return nil
 }
 
-func assertDriverManifestGate(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID, manifestID string, wantCleared bool) error {
-	driverID := envOr("PAYLOAD_DEMO_DRIVER_ID", "drv_payload_1")
+func assertDriverManifestGate(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID, driverID, manifestID string, wantCleared bool) error {
+	if strings.TrimSpace(driverID) == "" {
+		driverID = envOr("PAYLOAD_DEMO_DRIVER_ID", "drv_payload_1")
+	}
 	token, err := auth.Issue(auth.Claims{
 		Subject:      driverID,
 		Role:         auth.RoleDriver,
@@ -687,8 +731,10 @@ func assertDriverManifestGate(ctx context.Context, client *http.Client, base str
 	return nil
 }
 
-func assertDriverManifestDetail(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID, manifestID string) error {
-	driverID := envOr("PAYLOAD_DEMO_DRIVER_ID", "drv_payload_1")
+func assertDriverManifestDetail(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID, driverID, manifestID string) error {
+	if strings.TrimSpace(driverID) == "" {
+		driverID = envOr("PAYLOAD_DEMO_DRIVER_ID", "drv_payload_1")
+	}
 	token, err := auth.Issue(auth.Claims{
 		Subject:      driverID,
 		Role:         auth.RoleDriver,
@@ -1443,46 +1489,168 @@ func runWarehouseDispatchPreview(ctx context.Context, client *http.Client, base,
 	return nil
 }
 
-func runWarehouseDispatchExecute(ctx context.Context, client *http.Client, base, supplierCookie string) error {
-	status, respBody, _, err := clientPost(ctx, client, base+"/v1/warehouse/ops/dispatch/execute", []byte(`{}`), supplierCookie, "ssmr-dispatch-execute")
+func runWarehouseDispatchExecute(ctx context.Context, client *http.Client, base, supplierCookie, orderID string) (*dispatchManifestHint, error) {
+	whID := demoWarehouseID()
+	url := base + "/v1/warehouse/ops/dispatch/execute?warehouse_id=" + whID
+	status, respBody, _, err := clientPost(ctx, client, url, []byte(`{}`), supplierCookie, "ssmr-dispatch-execute")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if status != http.StatusOK {
-		return fmt.Errorf("dispatch execute status %d body %s", status, string(respBody))
+		return nil, fmt.Errorf("dispatch execute status %d body %s", status, string(respBody))
 	}
 	var result struct {
 		Status           string `json:"status"`
 		ManifestsCreated int    `json:"manifests_created"`
 		Manifests        []struct {
-			ManifestID string `json:"manifest_id"`
-			State      string `json:"state"`
+			ManifestID string   `json:"manifest_id"`
+			DriverID   string   `json:"driver_id"`
+			VehicleID  string   `json:"vehicle_id"`
+			OrderIDs   []string `json:"order_ids"`
 		} `json:"manifests"`
 	}
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		return fmt.Errorf("decode dispatch execute: %w", err)
+		return nil, fmt.Errorf("decode dispatch execute: %w", err)
 	}
 	switch strings.ToLower(strings.TrimSpace(result.Status)) {
-	case "no_op", "dispatched":
+	case "no_op":
+		fmt.Println("PX_E2E_WAREHOUSE_DISPATCH_EXECUTE_OK")
+		return nil, nil
+	case "dispatched":
 	default:
-		return fmt.Errorf("dispatch execute unexpected status %q body %s", result.Status, string(respBody))
+		return nil, fmt.Errorf("dispatch execute unexpected status %q body %s", result.Status, string(respBody))
 	}
-	if result.Status == "dispatched" {
-		if result.ManifestsCreated <= 0 || len(result.Manifests) == 0 {
-			return fmt.Errorf("dispatch execute missing manifests body %s", string(respBody))
+	if result.ManifestsCreated <= 0 || len(result.Manifests) == 0 {
+		return nil, fmt.Errorf("dispatch execute missing manifests body %s", string(respBody))
+	}
+	var picked *dispatchManifestHint
+	for i := range result.Manifests {
+		m := result.Manifests[i]
+		if strings.TrimSpace(m.ManifestID) == "" {
+			return nil, fmt.Errorf("dispatch execute manifest missing id body %s", string(respBody))
 		}
-		for _, manifest := range result.Manifests {
-			if strings.TrimSpace(manifest.ManifestID) == "" {
-				return fmt.Errorf("dispatch execute manifest missing id body %s", string(respBody))
+		if orderID != "" && sliceContains(m.OrderIDs, orderID) {
+			picked = &dispatchManifestHint{
+				ManifestID: m.ManifestID,
+				DriverID:   m.DriverID,
+				VehicleID:  m.VehicleID,
+				OrderIDs:   append([]string(nil), m.OrderIDs...),
 			}
+			break
+		}
+	}
+	if picked == nil {
+		m := result.Manifests[0]
+		picked = &dispatchManifestHint{
+			ManifestID: m.ManifestID,
+			DriverID:   m.DriverID,
+			VehicleID:  m.VehicleID,
+			OrderIDs:   append([]string(nil), m.OrderIDs...),
 		}
 	}
 	fmt.Println("PX_E2E_WAREHOUSE_DISPATCH_EXECUTE_OK")
+	return picked, nil
+}
+
+func ensureWarehouseDispatchFleet(ctx context.Context, client *http.Client, base, cookie string) error {
+	whID := demoWarehouseID()
+	status, respBody, _, err := clientDo(ctx, client, http.MethodGet, base+"/v1/supplier/fleet/drivers", nil, cookie, "")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("fleet drivers status %d body %s", status, string(respBody))
+	}
+	var drivers struct {
+		Items []struct {
+			DriverID   string `json:"driver_id"`
+			HomeNodeID string `json:"home_node_id"`
+			VehicleID  string `json:"vehicle_id"`
+			IsActive   bool   `json:"is_active"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(respBody, &drivers); err != nil {
+		return fmt.Errorf("decode fleet drivers: %w", err)
+	}
+	for _, driver := range drivers.Items {
+		if driver.IsActive && driver.HomeNodeID == whID && strings.TrimSpace(driver.VehicleID) != "" {
+			return nil
+		}
+	}
+
+	plate := fmt.Sprintf("SSMR%04d", time.Now().Unix()%10000)
+	vehicleBody, _ := json.Marshal(map[string]any{
+		"label":          "SSMR Dispatch Truck",
+		"license_plate":  plate,
+		"home_node_type": "WAREHOUSE",
+		"home_node_id":   whID,
+		"vehicle_class":  "CLASS_B",
+	})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/supplier/fleet/vehicles", vehicleBody, cookie, "ssmr-fleet-vehicle")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusCreated && status != http.StatusOK {
+		return fmt.Errorf("fleet vehicle create status %d body %s", status, string(respBody))
+	}
+	var vehicles struct {
+		Items []struct {
+			VehicleID    string `json:"vehicle_id"`
+			LicensePlate string `json:"license_plate"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(respBody, &vehicles); err != nil {
+		return fmt.Errorf("decode fleet vehicles: %w", err)
+	}
+	vehicleID := ""
+	for _, vehicle := range vehicles.Items {
+		if strings.EqualFold(vehicle.LicensePlate, plate) {
+			vehicleID = vehicle.VehicleID
+			break
+		}
+	}
+	if vehicleID == "" && len(vehicles.Items) > 0 {
+		vehicleID = vehicles.Items[len(vehicles.Items)-1].VehicleID
+	}
+	if vehicleID == "" {
+		return fmt.Errorf("fleet vehicle create missing vehicle_id body %s", string(respBody))
+	}
+
+	driverBody, _ := json.Marshal(map[string]any{
+		"name":           "SSMR Dispatch Driver",
+		"phone":          envOr("SSMR_DISPATCH_DRIVER_PHONE", "+998901009991"),
+		"pin":            "1234",
+		"home_node_type": "WAREHOUSE",
+		"home_node_id":   whID,
+		"vehicle_id":     vehicleID,
+	})
+	status, respBody, _, err = clientPost(ctx, client, base+"/v1/supplier/fleet/drivers", driverBody, cookie, "ssmr-fleet-driver")
+	if err != nil {
+		return err
+	}
+	if status == http.StatusConflict {
+		return nil
+	}
+	if status != http.StatusCreated && status != http.StatusOK {
+		return fmt.Errorf("fleet driver create status %d body %s", status, string(respBody))
+	}
+	fmt.Println("PX_E2E_WAREHOUSE_DISPATCH_FLEET_OK")
 	return nil
 }
 
-func assertDriverDepart(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID string) error {
-	driverID := envOr("PAYLOAD_DEMO_DRIVER_ID", "drv_payload_1")
+func sliceContains(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
+}
+
+func assertDriverDepart(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID, driverID string) error {
+	if strings.TrimSpace(driverID) == "" {
+		driverID = envOr("PAYLOAD_DEMO_DRIVER_ID", "drv_payload_1")
+	}
 	token, err := auth.Issue(auth.Claims{
 		Subject:      driverID,
 		Role:         auth.RoleDriver,
