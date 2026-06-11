@@ -376,7 +376,7 @@ func (s *Service) HandleRequestEarlyComplete(w http.ResponseWriter, r *http.Requ
 	err := s.spannerClient.Single().Query(ctx, spanner.Statement{
 		SQL: `SELECT OrderId FROM Orders
 		      WHERE DriverId = @did AND Status NOT IN ('COMPLETED', 'CANCELLED')
-		      ORDER BY CreatedAt DESC LIMIT 50`,
+		      ORDER BY CreatedAt DESC`,
 		Params: map[string]any{"did": driverID},
 	}).Do(func(row *spanner.Row) error {
 		var oid string

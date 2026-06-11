@@ -84,7 +84,7 @@ func (r *telemetryTrackingRepo) GetSupplierPricingRule(_ context.Context, _ stri
 	return retailer.SupplierPricingRule{}, false, nil
 }
 
-func (r *telemetryTrackingRepo) ListTrackingOrders(_ context.Context, _ string, _ int) ([]retailer.TrackingOrder, error) {
+func (r *telemetryTrackingRepo) ListTrackingOrders(_ context.Context, _ string, _, _ int) ([]retailer.TrackingOrder, error) {
 	return r.orders, nil
 }
 

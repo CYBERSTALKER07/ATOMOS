@@ -761,8 +761,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 				WarehouseHub:      warehouseHub,
 				FactoryHub:        factoryHub,
 				PayloadHub:        payloadHub,
-				Push:              pushBridge,
-				PromotionAudience: promotionAudience,
+				Push: pushBridge,
 			})
 			notificationConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
@@ -894,8 +893,7 @@ func driverOrderListQuery(client *spanner.Client) driver.DriverOrderQuery {
 			      LEFT JOIN Retailers r ON r.RetailerId = o.RetailerId
 			      LEFT JOIN ManifestOrders mo ON mo.ManifestId = o.ManifestId AND mo.OrderId = o.OrderId
 			      WHERE o.DriverId = @did AND o.Status NOT IN ('COMPLETED', 'CANCELLED')
-			      ORDER BY COALESCE(mo.SequenceIndex, 999999) ASC, o.CreatedAt ASC
-			      LIMIT 50`,
+			      ORDER BY COALESCE(mo.SequenceIndex, 999999) ASC, o.CreatedAt ASC`,
 			Params: map[string]interface{}{"did": driverID},
 		}
 		iter := client.Single().WithTimestampBound(spanner.ExactStaleness(15*time.Second)).Query(ctx, stmt)
@@ -1170,11 +1168,11 @@ type notificationReaderAdapter struct {
 	svc *notifications.Service
 }
 
-func (a *notificationReaderAdapter) ListForRecipient(ctx context.Context, recipientID string, limit int) ([]any, error) {
+func (a *notificationReaderAdapter) ListForRecipient(ctx context.Context, recipientID string, limit, offset int) ([]any, error) {
 	if a == nil || a.svc == nil {
 		return []any{}, nil
 	}
-	notifs, err := a.svc.ListForRecipient(ctx, recipientID, limit)
+	notifs, err := a.svc.ListForRecipient(ctx, recipientID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -1905,7 +1903,7 @@ func (r *inMemoryRetailerRepo) GetSupplierPricingRule(_ context.Context, _ strin
 	return retailer.SupplierPricingRule{}, false, nil
 }
 
-func (r *inMemoryRetailerRepo) ListTrackingOrders(_ context.Context, _ string, _ int) ([]retailer.TrackingOrder, error) {
+func (r *inMemoryRetailerRepo) ListTrackingOrders(_ context.Context, _ string, _, _ int) ([]retailer.TrackingOrder, error) {
 	return []retailer.TrackingOrder{}, nil
 }
 

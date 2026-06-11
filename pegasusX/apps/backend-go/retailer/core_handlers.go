@@ -491,7 +491,7 @@ func (s *Service) HandleExpensesAnalytics(w http.ResponseWriter, r *http.Request
 	}
 	var totalSpend int64
 	var openOrders int
-	orders, listErr := s.repo.ListTrackingOrders(r.Context(), rid, 100)
+	orders, listErr := s.listRetailerTrackingOrders(r.Context(), rid)
 	if listErr == nil {
 		for _, o := range orders {
 			totalSpend += o.TotalMinor
@@ -896,11 +896,19 @@ func (s *Service) HandleTracking(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) listRetailerTrackingOrders(ctx context.Context, retailerID string) ([]TrackingOrder, error) {
-	orders, err := s.repo.ListTrackingOrders(ctx, retailerID, 50)
-	if err != nil {
-		return nil, err
+	const pageSize = 500
+	all := make([]TrackingOrder, 0)
+	for offset := 0; ; offset += pageSize {
+		batch, err := s.repo.ListTrackingOrders(ctx, retailerID, pageSize, offset)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, batch...)
+		if len(batch) < pageSize {
+			break
+		}
 	}
-	return normalizeTrackingOrders(s.attachLiveLocations(ctx, orders)), nil
+	return normalizeTrackingOrders(s.attachLiveLocations(ctx, all)), nil
 }
 
 func (s *Service) listRetailerRecentReceipts(ctx context.Context, retailerID string) ([]TrackingOrder, error) {

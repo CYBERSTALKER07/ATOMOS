@@ -213,25 +213,9 @@ func (d *NotificationDispatcher) handlePromotionChanged(ctx context.Context, pay
 		}
 		return nil
 	}
+	// ALL-scope live delivery is room-based (supplier-promo:{id}) so Kafka ACK stays O(1).
+	// Retailers subscribe via cart WS attach or POST /v1/retailer/promotions/watch.
 	d.broadcastRetailerPromoSupplier(ctx, e.SupplierID, payload)
-	if d.deps.PromotionAudience != nil {
-		retailerIDs, err := d.deps.PromotionAudience.EngagedRetailerIDs(ctx, e.SupplierID)
-		if err != nil {
-			return fmt.Errorf("resolve promotion audience for supplier %s: %w", e.SupplierID, err)
-		}
-		seen := make(map[string]struct{}, len(retailerIDs))
-		for _, retailerID := range retailerIDs {
-			retailerID = strings.TrimSpace(retailerID)
-			if retailerID == "" {
-				continue
-			}
-			if _, ok := seen[retailerID]; ok {
-				continue
-			}
-			seen[retailerID] = struct{}{}
-			d.broadcastRetailer(ctx, retailerID, payload)
-		}
-	}
 	return nil
 }
 

@@ -153,7 +153,10 @@ interface PayloadApi {
 
     // ── Notifications ────────────────────────────────────────────────────────
     @GET("v1/user/notifications")
-    suspend fun notifications(@Query("limit") limit: Int = 50): NotificationsResponse
+    suspend fun notifications(
+        @Query("limit") limit: Int = 100,
+        @Query("offset") offset: Int = 0,
+    ): NotificationsResponse
 
     @POST("v1/user/notifications/read")
     suspend fun markRead(@Body req: MarkReadRequest): StatusResponse

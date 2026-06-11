@@ -83,26 +83,45 @@ export function useNotifications() {
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const disposedRef = useRef(false);
 
+  const fetchAllInboxPages = useCallback(async (signal?: AbortSignal) => {
+    const pageSize = 100;
+    let offset = 0;
+    const items: Notification[] = [];
+    let unreadCount = 0;
+    let hasMore = true;
+    while (hasMore && offset < 2500) {
+      const res = await supplierFetch(`/v1/user/notifications?limit=${pageSize}&offset=${offset}`, { signal });
+      if (!res.ok) {
+        return null;
+      }
+      const data = await res.json();
+      const page = Array.isArray(data.notifications)
+        ? data.notifications.map((item: BackendNotification) => normalizeNotification(item))
+        : [];
+      items.push(...page);
+      unreadCount = data.unread_count ?? unreadCount;
+      hasMore = Boolean(data.has_more);
+      offset += pageSize;
+    }
+    return { items, unreadCount };
+  }, []);
+
   // ── Fetch inbox ──
   const fetchInbox = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await supplierFetch('/v1/user/notifications?limit=50', { signal });
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await fetchAllInboxPages(signal);
+      if (!data) return;
       if (disposedRef.current) return;
-      const items = Array.isArray(data.notifications)
-        ? data.notifications.map((item: BackendNotification) => normalizeNotification(item))
-        : [];
       setState({
-        items,
-        unreadCount: data.unread_count ?? 0,
+        items: data.items,
+        unreadCount: data.unreadCount,
         loading: false,
       });
     } catch {
       if (disposedRef.current) return;
       setState(s => ({ ...s, loading: false }));
     }
-  }, []);
+  }, [fetchAllInboxPages]);
 
   // ── Mark single notification read ──
   const markRead = useCallback(async (notificationId: string) => {

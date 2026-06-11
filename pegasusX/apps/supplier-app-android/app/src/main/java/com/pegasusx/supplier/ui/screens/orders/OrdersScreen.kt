@@ -28,7 +28,7 @@ fun OrdersScreen(ops: SupplierOperationsRepository) {
             loading = true
             error = null
             try {
-                val resp = ops.getOrders(limit = 100)
+                val resp = ops.getOrders(limit = 500)
                 orders = if (resp.isSuccessful) resp.body()?.orders.orEmpty() else emptyList()
                 if (!resp.isSuccessful) error = "Failed (${resp.code()})"
             } catch (e: Exception) {

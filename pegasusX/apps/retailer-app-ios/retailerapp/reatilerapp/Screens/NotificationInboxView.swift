@@ -24,16 +24,19 @@ struct NotificationItem: Identifiable, Decodable {
 struct NotificationsResponse: Decodable {
     let notifications: [NotificationItem]
     let unreadCount: Int
+    let hasMore: Bool
 
     enum CodingKeys: String, CodingKey {
         case notifications
         case unreadCount = "unread_count"
+        case hasMore = "has_more"
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         notifications = try c.decodeIfPresent([NotificationItem].self, forKey: .notifications) ?? []
         unreadCount = try c.decodeIfPresent(Int.self, forKey: .unreadCount) ?? 0
+        hasMore = try c.decodeIfPresent(Bool.self, forKey: .hasMore) ?? false
     }
 }
 
@@ -52,9 +55,22 @@ final class NotificationInboxViewModel {
             isLoading = true
         }
         do {
-            let resp: NotificationsResponse = try await api.get(path: "/v1/user/notifications?limit=50")
-            items = resp.notifications
-            unreadCount = resp.unreadCount
+            let pageSize = 100
+            var offset = 0
+            var merged: [NotificationItem] = []
+            var totalUnread = 0
+            var hasMore = true
+            while hasMore && offset < 2500 {
+                let resp: NotificationsResponse = try await api.get(
+                    path: "/v1/user/notifications?limit=\(pageSize)&offset=\(offset)"
+                )
+                merged.append(contentsOf: resp.notifications)
+                totalUnread = resp.unreadCount
+                hasMore = resp.hasMore
+                offset += pageSize
+            }
+            items = merged
+            unreadCount = totalUnread
         } catch {
             // silent — empty state shows
         }

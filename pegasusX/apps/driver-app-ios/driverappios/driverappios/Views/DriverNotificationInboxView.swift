@@ -24,16 +24,19 @@ struct DriverNotification: Identifiable, Decodable {
 struct DriverNotificationsResponse: Decodable {
     let notifications: [DriverNotification]
     let unreadCount: Int
+    let hasMore: Bool
 
     enum CodingKeys: String, CodingKey {
         case notifications
         case unreadCount = "unread_count"
+        case hasMore = "has_more"
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         notifications = try c.decodeIfPresent([DriverNotification].self, forKey: .notifications) ?? []
         unreadCount = try c.decodeIfPresent(Int.self, forKey: .unreadCount) ?? 0
+        hasMore = try c.decodeIfPresent(Bool.self, forKey: .hasMore) ?? false
     }
 }
 
@@ -52,9 +55,22 @@ final class DriverNotificationInboxViewModel {
         isLoading = true
         errorMessage = nil
         do {
-            let resp: DriverNotificationsResponse = try await api.get("/v1/user/notifications?limit=50")
-            items = resp.notifications
-            unreadCount = resp.unreadCount
+            let pageSize = 100
+            var offset = 0
+            var merged: [DriverNotification] = []
+            var totalUnread = 0
+            var hasMore = true
+            while hasMore && offset < 2500 {
+                let resp: DriverNotificationsResponse = try await api.get(
+                    "/v1/user/notifications?limit=\(pageSize)&offset=\(offset)"
+                )
+                merged.append(contentsOf: resp.notifications)
+                totalUnread = resp.unreadCount
+                hasMore = resp.hasMore
+                offset += pageSize
+            }
+            items = merged
+            unreadCount = totalUnread
         } catch {
             errorMessage = Self.message(for: error)
         }

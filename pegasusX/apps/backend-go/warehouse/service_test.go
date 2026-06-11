@@ -568,6 +568,14 @@ func (r *warehouseRepoSpy) DeleteLock(ctx context.Context, warehouseID, lockID s
 func (r *warehouseRepoSpy) CreateTransfer(ctx context.Context, transferID, factoryID, supplierID string, totalVolumeVU float64, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }
+func (r *warehouseRepoSpy) GetAutoDispatch(_ context.Context, _ string) (bool, error) {
+	return false, nil
+}
+
+func (r *warehouseRepoSpy) UpdateAutoDispatch(_ context.Context, _ string, _ bool, _ func(outbox.TxnBuffer) error) error {
+	return nil
+}
+
 func (r *warehouseRepoSpy) UpdateTransferState(ctx context.Context, transferID, supplierID, newState string, emit func(outbox.TxnBuffer) error) error {
 	return nil
 }

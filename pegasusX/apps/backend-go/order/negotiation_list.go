@@ -7,6 +7,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/httppagination"
 	"google.golang.org/api/iterator"
 )
 
@@ -45,6 +46,7 @@ func (s *Service) HandleListPendingNegotiations(w http.ResponseWriter, r *http.R
 	}
 
 	ctx := r.Context()
+	limit, offset := httppagination.ParseLimitOffset(r, 100, 500)
 	stmt := spanner.Statement{
 		SQL: `SELECT n.ProposalId, n.OrderId, n.DriverId, n.ProposedItems, n.CreatedAt
 		      FROM NegotiationProposals n
@@ -52,8 +54,12 @@ func (s *Service) HandleListPendingNegotiations(w http.ResponseWriter, r *http.R
 		      WHERE o.SupplierId = @supplierId
 		        AND n.Status = 'PENDING'
 		      ORDER BY n.CreatedAt DESC
-		      LIMIT 100`,
-		Params: map[string]any{"supplierId": supplierID},
+		      LIMIT @limit OFFSET @offset`,
+		Params: map[string]any{
+			"supplierId": supplierID,
+			"limit":      int64(limit),
+			"offset":     int64(offset),
+		},
 	}
 
 	iter := s.spannerClient.Single().Query(ctx, stmt)
@@ -89,5 +95,11 @@ func (s *Service) HandleListPendingNegotiations(w http.ResponseWriter, r *http.R
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"data": pending})
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"data":     pending,
+		"limit":    limit,
+		"offset":   offset,
+		"count":    len(pending),
+		"has_more": len(pending) == limit,
+	})
 }

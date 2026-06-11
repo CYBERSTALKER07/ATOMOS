@@ -83,6 +83,9 @@ func runE2ECheck(ctx context.Context, cfg *bootstrap.Config) error {
 	if err := runWarehouseDispatchPreview(ctx, client, base, cookie); err != nil {
 		return fmt.Errorf("warehouse dispatch preview: %w", err)
 	}
+	if err := runWarehouseDispatchExecute(ctx, client, base, cookie); err != nil {
+		return fmt.Errorf("warehouse dispatch execute: %w", err)
+	}
 	if err := runWarehouseDispatchLock(ctx, client, base, cookie, orderID); err != nil {
 		return fmt.Errorf("warehouse dispatch lock: %w", err)
 	}
@@ -532,6 +535,11 @@ func runPayloaderE2E(ctx context.Context, client *http.Client, base string, cfg 
 		return fmt.Errorf("driver manifest-gate post-seal: %w", err)
 	}
 	fmt.Println("PX_E2E_PAYLOAD_DRIVER_GATE_OK")
+
+	if err := assertDriverDepart(ctx, client, base, cfg, supplierID); err != nil {
+		return fmt.Errorf("driver depart: %w", err)
+	}
+	fmt.Println("PX_E2E_PAYLOAD_DRIVER_DEPART_OK")
 
 	if err := assertDriverManifestDetail(ctx, client, base, cfg, supplierID, manifestID); err != nil {
 		return fmt.Errorf("driver manifest detail: %w", err)
@@ -1431,6 +1439,79 @@ func runWarehouseDispatchPreview(ctx context.Context, client *http.Client, base,
 	}
 	if !strings.Contains(string(respBody), "preview_ready") {
 		return fmt.Errorf("dispatch preview unexpected body %s", string(respBody))
+	}
+	return nil
+}
+
+func runWarehouseDispatchExecute(ctx context.Context, client *http.Client, base, supplierCookie string) error {
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/warehouse/ops/dispatch/execute", []byte(`{}`), supplierCookie, "ssmr-dispatch-execute")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("dispatch execute status %d body %s", status, string(respBody))
+	}
+	var result struct {
+		Status           string `json:"status"`
+		ManifestsCreated int    `json:"manifests_created"`
+		Manifests        []struct {
+			ManifestID string `json:"manifest_id"`
+			State      string `json:"state"`
+		} `json:"manifests"`
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return fmt.Errorf("decode dispatch execute: %w", err)
+	}
+	switch strings.ToLower(strings.TrimSpace(result.Status)) {
+	case "no_op", "dispatched":
+	default:
+		return fmt.Errorf("dispatch execute unexpected status %q body %s", result.Status, string(respBody))
+	}
+	if result.Status == "dispatched" {
+		if result.ManifestsCreated <= 0 || len(result.Manifests) == 0 {
+			return fmt.Errorf("dispatch execute missing manifests body %s", string(respBody))
+		}
+		for _, manifest := range result.Manifests {
+			if strings.TrimSpace(manifest.ManifestID) == "" {
+				return fmt.Errorf("dispatch execute manifest missing id body %s", string(respBody))
+			}
+		}
+	}
+	fmt.Println("PX_E2E_WAREHOUSE_DISPATCH_EXECUTE_OK")
+	return nil
+}
+
+func assertDriverDepart(ctx context.Context, client *http.Client, base string, cfg *bootstrap.Config, supplierID string) error {
+	driverID := envOr("PAYLOAD_DEMO_DRIVER_ID", "drv_payload_1")
+	token, err := auth.Issue(auth.Claims{
+		Subject:      driverID,
+		Role:         auth.RoleDriver,
+		SupplierID:   supplierID,
+		HomeNodeType: auth.HomeNodeWarehouse,
+		HomeNodeID:   envOr("SSMR_SMOKE_WAREHOUSE_ID", "ssmr-warehouse-1"),
+	}, auth.IssueOptions{
+		Secret: cfg.JWTSecret,
+		Issuer: cfg.JWTIssuer,
+		TTL:    30 * time.Minute,
+	})
+	if err != nil {
+		return fmt.Errorf("issue driver jwt: %w", err)
+	}
+	status, respBody, _, err := clientPost(ctx, client, base+"/v1/fleet/driver/depart", nil, token, "ssmr-driver-depart")
+	if err != nil {
+		return err
+	}
+	if status != http.StatusOK {
+		return fmt.Errorf("driver depart status %d body %s", status, string(respBody))
+	}
+	var depart struct {
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(respBody, &depart); err != nil {
+		return fmt.Errorf("decode driver depart: %w", err)
+	}
+	if strings.TrimSpace(depart.Status) != "departed" {
+		return fmt.Errorf("driver depart unexpected status %q body %s", depart.Status, string(respBody))
 	}
 	return nil
 }

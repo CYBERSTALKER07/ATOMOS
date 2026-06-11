@@ -14,13 +14,17 @@ enum SupplierOperationsService {
         return resp.exceptions
     }
 
-    static func shopClosedActive() async throws -> [ShopClosedAttemptRow] {
-        let resp: ShopClosedActiveResponse = try await APIClient.shared.get("v1/supplier/shop-closed/active")
+    static func shopClosedActive(limit: Int = 500, offset: Int = 0) async throws -> [ShopClosedAttemptRow] {
+        let resp: ShopClosedActiveResponse = try await APIClient.shared.get(
+            "v1/supplier/shop-closed/active?limit=\(limit)&offset=\(offset)"
+        )
         return resp.data
     }
 
-    static func negotiationsPending() async throws -> [NegotiationProposalRow] {
-        let resp: NegotiationPendingResponse = try await APIClient.shared.get("v1/supplier/negotiations/pending")
+    static func negotiationsPending(limit: Int = 500, offset: Int = 0) async throws -> [NegotiationProposalRow] {
+        let resp: NegotiationPendingResponse = try await APIClient.shared.get(
+            "v1/supplier/negotiations/pending?limit=\(limit)&offset=\(offset)"
+        )
         return resp.data
     }
 

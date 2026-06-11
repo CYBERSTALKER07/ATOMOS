@@ -130,8 +130,21 @@ class PayloadRepository @Inject constructor(
 
     // ── Phase 6: notifications ───────────────────────────────────────────────
 
-    suspend fun loadNotifications(limit: Int = 50): NotificationsResponse =
-        api.notifications(limit = limit)
+    suspend fun loadNotifications(limit: Int = 100): NotificationsResponse {
+        val pageSize = limit.coerceIn(1, 100)
+        var offset = 0
+        val items = mutableListOf<NotificationItem>()
+        var unread = 0L
+        var hasMore = true
+        while (hasMore && offset < 2500) {
+            val page = api.notifications(limit = pageSize, offset = offset)
+            items.addAll(page.notifications)
+            unread = page.unreadCount
+            hasMore = page.hasMore
+            offset += pageSize
+        }
+        return NotificationsResponse(items, unread, hasMore = false)
+    }
 
     suspend fun markRead(id: String): StatusResponse =
         api.markRead(MarkReadRequest(notificationIds = listOf(id)))

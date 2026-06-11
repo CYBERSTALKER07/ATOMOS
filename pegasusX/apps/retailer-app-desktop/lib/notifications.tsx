@@ -13,7 +13,28 @@ import {
 type BackendNotificationsResponse = {
   notifications?: BackendNotificationItem[];
   unread_count?: number;
+  has_more?: boolean;
 };
+
+async function fetchAllNotifications(): Promise<BackendNotificationsResponse> {
+  const pageSize = 100;
+  let offset = 0;
+  const notifications: BackendNotificationItem[] = [];
+  let unreadCount = 0;
+  let hasMore = true;
+  while (hasMore && offset < 2500) {
+    const res = await apiFetch(`/v1/user/notifications?limit=${pageSize}&offset=${offset}`);
+    if (!res.ok) {
+      throw new Error(`Notifications fetch failed with ${res.status}`);
+    }
+    const data = (await res.json()) as BackendNotificationsResponse;
+    notifications.push(...(data.notifications ?? []));
+    unreadCount = data.unread_count ?? unreadCount;
+    hasMore = Boolean(data.has_more);
+    offset += pageSize;
+  }
+  return { notifications, unread_count: unreadCount, has_more: false };
+}
 
 type NotificationsContextType = {
   items: RetailerNotificationItem[];
@@ -36,12 +57,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
   const refresh = useCallback(async () => {
     try {
-      const res = await apiFetch('/v1/user/notifications?limit=50');
-      if (!res.ok) {
-        throw new Error(`Notifications fetch failed with ${res.status}`);
-      }
-
-      const data = (await res.json()) as BackendNotificationsResponse;
+      const data = await fetchAllNotifications();
       setItems((data.notifications ?? []).map(normalizeNotification));
       setUnreadCount(data.unread_count ?? 0);
       setError(null);

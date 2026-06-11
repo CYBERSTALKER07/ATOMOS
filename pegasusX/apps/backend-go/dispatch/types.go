@@ -90,6 +90,7 @@ type FetchParams struct {
 	WarehouseID string
 	FilterIDs   []string
 	Limit       int
+	Offset      int
 	StrongRead  bool
 }
 

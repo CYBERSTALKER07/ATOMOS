@@ -31,6 +31,7 @@ data class NotificationItem(
 data class NotificationsResponse(
     @SerialName("notifications") val notifications: List<NotificationItem> = emptyList(),
     @SerialName("unread_count") val unreadCount: Int = 0,
+    @SerialName("has_more") val hasMore: Boolean = false,
 )
 
 enum class NotificationLoadIssue {
@@ -82,7 +83,7 @@ class NotificationInboxViewModel @Inject constructor(
                 )
             }
             try {
-                val resp = api.getNotifications(limit = 50)
+                val resp = fetchAllNotifications()
                 _uiState.update {
                     it.copy(
                         items = resp.notifications,
@@ -105,6 +106,22 @@ class NotificationInboxViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private suspend fun fetchAllNotifications(): NotificationsResponse {
+        val pageSize = 100
+        var offset = 0
+        val items = mutableListOf<NotificationItem>()
+        var unread = 0
+        var hasMore = true
+        while (hasMore && offset < 2500) {
+            val page = api.getNotifications(limit = pageSize, offset = offset)
+            items.addAll(page.notifications)
+            unread = page.unreadCount
+            hasMore = page.hasMore
+            offset += pageSize
+        }
+        return NotificationsResponse(items, unread, hasMore = false)
     }
 
     fun markRead(notificationId: String) {

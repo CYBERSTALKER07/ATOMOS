@@ -7,6 +7,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/httppagination"
 	"google.golang.org/api/iterator"
 )
 
@@ -48,6 +49,7 @@ func (s *Service) HandleListActiveShopClosedAttempts(w http.ResponseWriter, r *h
 	}
 
 	ctx := r.Context()
+	limit, offset := httppagination.ParseLimitOffset(r, 100, 500)
 	stmt := spanner.Statement{
 		SQL: `SELECT s.AttemptId, s.OrderId, IFNULL(o.RouteId, ''), s.DriverId, s.RetailerId,
 		             IFNULL(s.Resolution, ''), s.ReportedAt, s.ResolvedAt
@@ -57,8 +59,12 @@ func (s *Service) HandleListActiveShopClosedAttempts(w http.ResponseWriter, r *h
 		        AND s.ResolvedAt IS NULL
 		        AND (s.EscalatedAt IS NOT NULL OR IFNULL(s.Resolution, '') IN ('WAITING', 'ESCALATED'))
 		      ORDER BY s.ReportedAt DESC
-		      LIMIT 100`,
-		Params: map[string]any{"supplierId": supplierID},
+		      LIMIT @limit OFFSET @offset`,
+		Params: map[string]any{
+			"supplierId": supplierID,
+			"limit":      int64(limit),
+			"offset":     int64(offset),
+		},
 	}
 
 	iter := s.spannerClient.Single().Query(ctx, stmt)
@@ -100,5 +106,11 @@ func (s *Service) HandleListActiveShopClosedAttempts(w http.ResponseWriter, r *h
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"data": active})
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"data":    active,
+		"limit":   limit,
+		"offset":  offset,
+		"count":   len(active),
+		"has_more": len(active) == limit,
+	})
 }

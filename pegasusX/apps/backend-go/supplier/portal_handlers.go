@@ -860,7 +860,7 @@ func (s *Service) HandleOrders(w http.ResponseWriter, r *http.Request) {
 	sid := s.scopedSupplierID(r)
 	statusFilter := strings.TrimSpace(r.URL.Query().Get("status"))
 	groupFilter := strings.TrimSpace(r.URL.Query().Get("filter"))
-	limit, offset := parseListPagination(r, 25, 100)
+	limit, offset := parseListPagination(r, 25, 500)
 	orders, total, err := s.listSupplierOrdersPage(r.Context(), sid, statusFilter, groupFilter, limit, offset)
 	if err != nil {
 		s.log.Warn("supplier orders load failed", "supplier_id", sid, "err", err)

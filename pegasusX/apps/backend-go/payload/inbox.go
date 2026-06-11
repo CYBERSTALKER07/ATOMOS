@@ -3,7 +3,6 @@ package payload
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
@@ -56,20 +55,15 @@ func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-	limit := 50
-	if raw := r.URL.Query().Get("limit"); raw != "" {
-		if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= 200 {
-			limit = n
-		}
-	}
+	limit, offset := notifications.ParseInboxPagination(r)
 	if s.notifSvc == nil {
-		writeJSON(w, http.StatusOK, map[string]any{"notifications": []notificationItemWire{}, "unread_count": 0, "total": 0, "limit": limit})
+		writeJSON(w, http.StatusOK, map[string]any{"notifications": []notificationItemWire{}, "unread_count": 0, "total": 0, "limit": limit, "offset": offset})
 		return
 	}
-	notifs, listErr := s.notifSvc.ListForRecipient(r.Context(), recipientID, limit)
+	notifs, listErr := s.notifSvc.ListForRecipient(r.Context(), recipientID, limit, offset)
 	if listErr != nil {
 		s.log.ErrorContext(r.Context(), "payload list notifications failed", "err", listErr, "recipient_id", recipientID)
-		writeJSON(w, http.StatusOK, map[string]any{"notifications": []notificationItemWire{}, "unread_count": 0, "total": 0, "limit": limit})
+		writeJSON(w, http.StatusOK, map[string]any{"notifications": []notificationItemWire{}, "unread_count": 0, "total": 0, "limit": limit, "offset": offset})
 		return
 	}
 	wire := make([]notificationItemWire, len(notifs))
@@ -82,6 +76,8 @@ func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request
 		"unread_count":  unread,
 		"total":         len(wire),
 		"limit":         limit,
+		"offset":        offset,
+		"has_more":      len(wire) == limit,
 	})
 }
 

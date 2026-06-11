@@ -14,21 +14,15 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-// PromotionAudienceResolver resolves retailer IDs for ALL-scope promotion fanout.
-type PromotionAudienceResolver interface {
-	EngagedRetailerIDs(ctx context.Context, supplierID string) ([]string, error)
-}
-
 // DispatcherDeps provides the dependencies to the NotificationDispatcher.
 type DispatcherDeps struct {
-	SupplierHub       *ws.Hub
-	WarehouseHub      *ws.Hub
-	DriverHub         *ws.Hub
-	RetailerHub       *ws.Hub
-	FactoryHub        *ws.Hub
-	PayloadHub        *ws.Hub
-	Push              *notifications.PushBridge
-	PromotionAudience PromotionAudienceResolver
+	SupplierHub  *ws.Hub
+	WarehouseHub *ws.Hub
+	DriverHub    *ws.Hub
+	RetailerHub  *ws.Hub
+	FactoryHub   *ws.Hub
+	PayloadHub   *ws.Hub
+	Push         *notifications.PushBridge
 }
 
 // NotificationDispatcher consumes generic events from Kafka and routes

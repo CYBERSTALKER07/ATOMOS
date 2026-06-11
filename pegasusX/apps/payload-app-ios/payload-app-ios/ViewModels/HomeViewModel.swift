@@ -409,7 +409,7 @@ final class HomeViewModel {
 
     func loadNotifications() async {
         do {
-            let resp = try await api.notifications(limit: 50)
+            let resp = try await api.notifications(limit: 100, offset: 0)
             notifications = resp.notifications
             unreadCount = resp.unreadCount
         } catch {

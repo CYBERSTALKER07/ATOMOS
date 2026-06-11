@@ -48,7 +48,7 @@ type Repository interface {
 	// used by retailer display/checkout surfaces.
 	GetSupplierPricingRule(ctx context.Context, supplierID string) (SupplierPricingRule, bool, error)
 	// ListTrackingOrders returns active orders for the retailer tracking surface.
-	ListTrackingOrders(ctx context.Context, retailerID string, limit int) ([]TrackingOrder, error)
+	ListTrackingOrders(ctx context.Context, retailerID string, limit, offset int) ([]TrackingOrder, error)
 	// ListRecentReceipts returns recent completed-order snapshots for retailer
 	// receipt visibility on the tracking surface.
 	ListRecentReceipts(ctx context.Context, retailerID string, limit int) ([]TrackingOrder, error)
@@ -265,7 +265,7 @@ type OrderLifecycle interface {
 
 // NotificationReader provides read access to the notification inbox.
 type NotificationReader interface {
-	ListForRecipient(ctx context.Context, recipientID string, limit int) ([]any, error)
+	ListForRecipient(ctx context.Context, recipientID string, limit, offset int) ([]any, error)
 	MarkRead(ctx context.Context, recipientID string, notificationIDs []string) error
 	UnreadCount(ctx context.Context, recipientID string) (int64, error)
 }

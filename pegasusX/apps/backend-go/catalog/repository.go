@@ -54,7 +54,7 @@ type Repository interface {
 	GetCategory(ctx context.Context, categoryID string) (*Category, error)
 	CreateCategory(ctx context.Context, cat Category) error
 	ListProducts(ctx context.Context, supplierID, categoryID string, activeOnly bool) ([]Product, error)
-	ListDiscoverableProducts(ctx context.Context, categoryID string, limit int64) ([]Product, error)
+	ListDiscoverableProducts(ctx context.Context, categoryID string, limit, offset int64) ([]Product, error)
 	GetProduct(ctx context.Context, productID string) (*Product, error)
 	CreateProduct(ctx context.Context, p Product) error
 	UpdateProduct(ctx context.Context, p Product) error
@@ -182,17 +182,23 @@ func (r *SpannerRepository) ListProducts(ctx context.Context, supplierID, catego
 }
 
 // ListDiscoverableProducts returns active products for retailer browse when no supplier is selected.
-func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, categoryID string, limit int64) ([]Product, error) {
-	if limit <= 0 || limit > 1000 {
+func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, categoryID string, limit, offset int64) ([]Product, error) {
+	if limit <= 0 {
 		limit = 500
 	}
+	if limit > 5000 {
+		limit = 5000
+	}
+	if offset < 0 {
+		offset = 0
+	}
 	sql := "SELECT ProductId, SupplierId, CategoryId, Name, Description, ImageURL, PriceMinor, Currency, StockQuantity, Unit, IsActive, Version, CreatedAt, UpdatedAt FROM Products WHERE IsActive = TRUE"
-	params := map[string]any{"lim": limit}
+	params := map[string]any{"lim": limit, "off": offset}
 	if categoryID != "" {
 		sql += " AND CategoryId = @cid"
 		params["cid"] = categoryID
 	}
-	sql += " ORDER BY UpdatedAt DESC LIMIT @lim"
+	sql += " ORDER BY UpdatedAt DESC LIMIT @lim OFFSET @off"
 
 	stmt := spanner.Statement{SQL: sql, Params: params}
 	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
@@ -338,8 +344,11 @@ func (r *SpannerRepository) ListCategorySuppliers(ctx context.Context, categoryI
 
 // SearchSuppliers finds suppliers by name prefix for retailer discovery.
 func (r *SpannerRepository) SearchSuppliers(ctx context.Context, query string, limit int) ([]CategorySupplier, error) {
-	if limit <= 0 || limit > 50 {
-		limit = 20
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
 	}
 	pattern := strings.TrimSpace(query) + "%"
 	stmt := spanner.Statement{

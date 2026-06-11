@@ -41,9 +41,9 @@ func (s *Service) CreateNotification(ctx context.Context, recipientID, recipient
 	return nil
 }
 
-// ListForRecipient returns recent notifications with a configurable limit.
-func (s *Service) ListForRecipient(ctx context.Context, recipientID string, limit int) ([]Notification, error) {
-	notifs, err := s.repo.ListByRecipient(ctx, recipientID, limit)
+// ListForRecipient returns recent notifications with limit and offset pagination.
+func (s *Service) ListForRecipient(ctx context.Context, recipientID string, limit, offset int) ([]Notification, error) {
+	notifs, err := s.repo.ListByRecipient(ctx, recipientID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("list notifications: %w", err)
 	}

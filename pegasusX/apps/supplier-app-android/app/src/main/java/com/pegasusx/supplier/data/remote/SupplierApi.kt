@@ -86,10 +86,16 @@ interface SupplierApi {
     suspend fun getExceptions(): Response<SupplierExceptionsResponse>
 
     @GET("v1/supplier/shop-closed/active")
-    suspend fun getShopClosedActive(): Response<ShopClosedActiveResponse>
+    suspend fun getShopClosedActive(
+        @Query("limit") limit: Int = 500,
+        @Query("offset") offset: Int = 0,
+    ): Response<ShopClosedActiveResponse>
 
     @GET("v1/supplier/negotiations/pending")
-    suspend fun getNegotiationsPending(): Response<NegotiationPendingResponse>
+    suspend fun getNegotiationsPending(
+        @Query("limit") limit: Int = 500,
+        @Query("offset") offset: Int = 0,
+    ): Response<NegotiationPendingResponse>
 
     @POST("v1/supplier/shop-closed/resolve")
     suspend fun resolveShopClosed(@Body body: ShopClosedResolveRequest): Response<NegotiationResolveResponse>

@@ -1,6 +1,7 @@
 package payload
 
 import (
+	"context"
 	"strings"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
@@ -19,9 +20,10 @@ func (s *Service) ManifestDetailSnapshotForDriver(driverID, manifestID, date str
 		return factory.ManifestDetailSnapshot{}, false
 	}
 
+	_ = s.hydrateFromRepo(context.Background())
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.ensureDemoDataLocked()
+	s.ensureManifestStateLocked()
 
 	idx := s.findDriverManifestIndexLocked(driverID, manifestID, date)
 	if idx < 0 {

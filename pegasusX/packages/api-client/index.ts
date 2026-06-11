@@ -320,8 +320,12 @@ export class ApiClient {
     return this.request<SupplierExceptionsResponse>("/v1/supplier/exceptions", "GET");
   }
 
-  async getSupplierShopClosedActive(): Promise<ShopClosedActiveResponse> {
-    return this.request<ShopClosedActiveResponse>("/v1/supplier/shop-closed/active", "GET");
+  async getSupplierShopClosedActive(params?: { limit?: number; offset?: number }): Promise<ShopClosedActiveResponse> {
+    const query = new URLSearchParams();
+    if (params?.limit != null) query.set("limit", String(params.limit));
+    if (params?.offset != null) query.set("offset", String(params.offset));
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return this.request<ShopClosedActiveResponse>(`/v1/supplier/shop-closed/active${suffix}`, "GET");
   }
 
   async resolveSupplierShopClosed(
@@ -334,8 +338,12 @@ export class ApiClient {
     });
   }
 
-  async getSupplierNegotiationsPending(): Promise<NegotiationPendingResponse> {
-    return this.request<NegotiationPendingResponse>("/v1/supplier/negotiations/pending", "GET");
+  async getSupplierNegotiationsPending(params?: { limit?: number; offset?: number }): Promise<NegotiationPendingResponse> {
+    const query = new URLSearchParams();
+    if (params?.limit != null) query.set("limit", String(params.limit));
+    if (params?.offset != null) query.set("offset", String(params.offset));
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return this.request<NegotiationPendingResponse>(`/v1/supplier/negotiations/pending${suffix}`, "GET");
   }
 
   async approveSupplierEarlyComplete(

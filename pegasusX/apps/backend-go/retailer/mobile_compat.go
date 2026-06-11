@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 )
 
 // Catalog handlers (HandleCatalogCategories, HandleCatalogProducts,
@@ -127,14 +129,21 @@ func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusOK, map[string]any{"notifications": []any{}, "unread_count": 0})
 		return
 	}
-	notifs, listErr := s.notifSvc.ListForRecipient(r.Context(), rid, 50)
+	limit, offset := notifications.ParseInboxPagination(r)
+	notifs, listErr := s.notifSvc.ListForRecipient(r.Context(), rid, limit, offset)
 	if listErr != nil {
 		s.log.ErrorContext(r.Context(), "list notifications failed", "err", listErr, "retailer_id", rid)
-		writeJSON(w, http.StatusOK, map[string]any{"notifications": []any{}, "unread_count": 0})
+		writeJSON(w, http.StatusOK, map[string]any{"notifications": []any{}, "unread_count": 0, "limit": limit, "offset": offset})
 		return
 	}
 	unread, _ := s.notifSvc.UnreadCount(r.Context(), rid)
-	writeJSON(w, http.StatusOK, map[string]any{"notifications": notifs, "unread_count": unread})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"notifications": notifs,
+		"unread_count":  unread,
+		"limit":         limit,
+		"offset":        offset,
+		"has_more":      len(notifs) == limit,
+	})
 }
 
 // HandleMarkNotificationsRead serves POST /v1/user/notifications/read.

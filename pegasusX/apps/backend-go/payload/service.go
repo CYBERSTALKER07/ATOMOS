@@ -510,17 +510,9 @@ func (s *Service) HandleOrders(w http.ResponseWriter, r *http.Request) {
 	manifestFilter := strings.TrimSpace(r.URL.Query().Get("manifest_id"))
 	vehicleFilter := strings.TrimSpace(r.URL.Query().Get("vehicle_id"))
 
+	_ = s.hydrateFromRepo(r.Context())
 	s.mu.Lock()
-	if s.repo != nil && !s.spannerLoaded {
-		if hydrator, ok := s.repo.(interface {
-			Hydrate(context.Context, string, *Service) error
-		}); ok {
-			if err := hydrator.Hydrate(r.Context(), s.supplierID, s); err == nil {
-				s.spannerLoaded = true
-			}
-		}
-	}
-	s.ensureDemoDataLocked()
+	s.ensureManifestStateLocked()
 	rows := append([]OrderRow(nil), s.orders...)
 	lineItemsByOrder := s.orderLineItemsLocked()
 	s.mu.Unlock()

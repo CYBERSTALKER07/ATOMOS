@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
+	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
 
@@ -424,14 +425,21 @@ func (s *Service) HandleUserNotifications(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusOK, map[string]any{"notifications": []any{}, "unread_count": 0})
 		return
 	}
-	notifs, listErr := s.notifSvc.ListForRecipient(r.Context(), driverID, 50)
+	limit, offset := notifications.ParseInboxPagination(r)
+	notifs, listErr := s.notifSvc.ListForRecipient(r.Context(), driverID, limit, offset)
 	if listErr != nil {
 		s.log.ErrorContext(r.Context(), "list notifications failed", "err", listErr, "driver_id", driverID)
-		writeJSON(w, http.StatusOK, map[string]any{"notifications": []any{}, "unread_count": 0})
+		writeJSON(w, http.StatusOK, map[string]any{"notifications": []any{}, "unread_count": 0, "limit": limit, "offset": offset})
 		return
 	}
 	unread, _ := s.notifSvc.UnreadCount(r.Context(), driverID)
-	writeJSON(w, http.StatusOK, map[string]any{"notifications": notifs, "unread_count": unread})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"notifications": notifs,
+		"unread_count":  unread,
+		"limit":         limit,
+		"offset":        offset,
+		"has_more":      len(notifs) == limit,
+	})
 }
 
 // HandleMarkNotificationsRead serves POST /v1/user/notifications/read.

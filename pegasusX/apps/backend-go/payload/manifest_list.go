@@ -140,8 +140,9 @@ func (s *Service) HandleManifestsList(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
+		_ = s.hydrateFromRepo(r.Context())
 		s.mu.Lock()
-		s.ensureDemoDataLocked()
+		s.ensureManifestStateLocked()
 		wire = s.listManifestWiresLocked(stateFilter, truckFilter)
 		s.mu.Unlock()
 	}
@@ -161,8 +162,9 @@ func (s *Service) HandleManifestDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = s.hydrateFromRepo(r.Context())
 	s.mu.Lock()
-	s.ensureDemoDataLocked()
+	s.ensureManifestStateLocked()
 	wire, ok := s.manifestDetailWireLocked(manifestID)
 	s.mu.Unlock()
 	if !ok {

@@ -37,13 +37,18 @@ func (r *Repository) FetchDispatchable(ctx context.Context, params FetchParams) 
 	if limit <= 0 {
 		limit = 300
 	}
-	if limit > 500 {
-		limit = 500
+	if limit > 5000 {
+		limit = 5000
+	}
+	offset := params.Offset
+	if offset < 0 {
+		offset = 0
 	}
 
 	queryParams := map[string]any{
 		"supplierId": supplierID,
 		"limit":      int64(limit),
+		"offset":     int64(offset),
 	}
 	sql := `SELECT o.OrderId, o.RetailerId, COALESCE(r.Name, '') AS RetailerName,
 	               COALESCE(o.WarehouseId, '') AS WarehouseId,
@@ -70,7 +75,7 @@ func (r *Repository) FetchDispatchable(ctx context.Context, params FetchParams) 
 		queryParams["orderIds"] = params.FilterIDs
 	}
 	sql += ` ORDER BY o.UpdatedAt DESC
-	         LIMIT @limit`
+	         LIMIT @limit OFFSET @offset`
 
 	stmt := spanner.Statement{SQL: sql, Params: queryParams}
 	var iter *spanner.RowIterator

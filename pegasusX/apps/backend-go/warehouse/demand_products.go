@@ -217,11 +217,37 @@ type catalogProduct struct {
 }
 
 func (s *Service) activeProductsBySupplier(ctx context.Context, supplierID string) ([]catalogProduct, error) {
+	const pageSize = 1000
+	var all []catalogProduct
+	offset := 0
+	for {
+		batch, err := s.activeProductsBySupplierPage(ctx, supplierID, pageSize, offset)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, batch...)
+		if len(batch) < pageSize {
+			break
+		}
+		offset += pageSize
+	}
+	return all, nil
+}
+
+func (s *Service) activeProductsBySupplierPage(ctx context.Context, supplierID string, limit, offset int) ([]catalogProduct, error) {
+	if limit <= 0 {
+		limit = 1000
+	}
 	stmt := spanner.Statement{
-		SQL: `SELECT ProductId, Name FROM Products
+		SQL: `SELECT ProductId, Name FROM Products@{FORCE_INDEX=Idx_Products_BySupplierActive}
 		      WHERE SupplierId = @sid AND IsActive = TRUE
-		      LIMIT 200`,
-		Params: map[string]any{"sid": supplierID},
+		      ORDER BY UpdatedAt DESC
+		      LIMIT @lim OFFSET @off`,
+		Params: map[string]any{
+			"sid": supplierID,
+			"lim": int64(limit),
+			"off": int64(offset),
+		},
 	}
 	iter := s.spannerClient.Single().Query(ctx, stmt)
 	defer iter.Stop()

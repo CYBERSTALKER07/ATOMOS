@@ -25,7 +25,7 @@ type Notification struct {
 // Repository defines the data access contract for notifications.
 type Repository interface {
 	Create(ctx context.Context, n Notification) error
-	ListByRecipient(ctx context.Context, recipientID string, limit int) ([]Notification, error)
+	ListByRecipient(ctx context.Context, recipientID string, limit, offset int) ([]Notification, error)
 	MarkRead(ctx context.Context, notificationIDs []string) error
 	UnreadCount(ctx context.Context, recipientID string) (int64, error)
 }
@@ -80,13 +80,24 @@ func (r *SpannerRepository) Create(ctx context.Context, n Notification) error {
 }
 
 // ListByRecipient returns the most recent notifications for a recipient.
-func (r *SpannerRepository) ListByRecipient(ctx context.Context, recipientID string, limit int) ([]Notification, error) {
+func (r *SpannerRepository) ListByRecipient(ctx context.Context, recipientID string, limit, offset int) ([]Notification, error) {
 	if limit <= 0 {
-		limit = 50
+		limit = DefaultInboxLimit
+	}
+	if offset < 0 {
+		offset = 0
 	}
 	stmt := spanner.Statement{
-		SQL:    "SELECT NotificationId, RecipientId, RecipientRole, EventType, Title, Body, DeepLink, IsRead, CreatedAt FROM Notifications@{FORCE_INDEX=Idx_Notifications_ByRecipientCreated} WHERE RecipientId = @rid ORDER BY CreatedAt DESC LIMIT @lim",
-		Params: map[string]any{"rid": recipientID, "lim": int64(limit)},
+		SQL: `SELECT NotificationId, RecipientId, RecipientRole, EventType, Title, Body, DeepLink, IsRead, CreatedAt
+			FROM Notifications@{FORCE_INDEX=Idx_Notifications_ByRecipientCreated}
+			WHERE RecipientId = @rid
+			ORDER BY CreatedAt DESC
+			LIMIT @lim OFFSET @off`,
+		Params: map[string]any{
+			"rid": recipientID,
+			"lim": int64(limit),
+			"off": int64(offset),
+		},
 	}
 	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(5*time.Second)).Query(ctx, stmt)
 	defer iter.Stop()

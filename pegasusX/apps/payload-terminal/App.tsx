@@ -345,16 +345,27 @@ export default function App() {
   const fetchNotifications = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch(`${API_BASE}/v1/user/notifications?limit=50`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      const items = Array.isArray(data.notifications)
-        ? data.notifications.map((item: BackendNotifItem) => normalizeNotification(item))
-        : [];
+      const pageSize = 100;
+      let offset = 0;
+      const items: ReturnType<typeof normalizeNotification>[] = [];
+      let unreadCount = 0;
+      let hasMore = true;
+      while (hasMore && offset < 2500) {
+        const res = await fetch(`${API_BASE}/v1/user/notifications?limit=${pageSize}&offset=${offset}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const page = Array.isArray(data.notifications)
+          ? data.notifications.map((item: BackendNotifItem) => normalizeNotification(item))
+          : [];
+        items.push(...page);
+        unreadCount = data.unread_count ?? unreadCount;
+        hasMore = Boolean(data.has_more);
+        offset += pageSize;
+      }
       setNotifications(items);
-      setUnreadCount(data.unread_count ?? 0);
+      setUnreadCount(unreadCount);
     } catch {}
   }, [token]);
 

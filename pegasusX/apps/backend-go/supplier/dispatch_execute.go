@@ -18,6 +18,9 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/spannerutils"
 )
 
+// dispatchExecuteManifestState is written on execute; payloader seals before depart.
+const dispatchExecuteManifestState = "DRAFT"
+
 // DispatchExecuteResult is the supplier-portal response for a committed dispatch.
 type DispatchExecuteResult struct {
 	Status           string                 `json:"status"`
@@ -92,7 +95,7 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 	}
 
 	repo := dispatch.NewRepository(s.portalSpanner)
-	rows, err := repo.FetchDispatchable(ctx, dispatch.FetchParams{
+	rows, err := dispatch.FetchAllDispatchable(ctx, repo, dispatch.FetchParams{
 		SupplierID:  supplierID,
 		WarehouseID: warehouseID,
 		StrongRead:  true,
@@ -166,7 +169,7 @@ func (s *Service) executeDispatch(ctx context.Context, supplierID, warehouseID s
 				RouteID:       routeID,
 				TruckID:       vehicleID,
 				DriverID:      driverID,
-				State:         "DRAFT",
+				State:         dispatchExecuteManifestState,
 				TotalVolumeVU: route.LoadedVolume,
 				MaxVolumeVU:   route.MaxVolume,
 				StopCount:     int64(len(route.Orders)),

@@ -357,7 +357,7 @@ func (r *SpannerRepository) ListRetailersBySupplier(ctx context.Context, supplie
 }
 
 // ListTrackingOrders returns active retailer orders with durable assignment fields.
-func (r *SpannerRepository) ListTrackingOrders(ctx context.Context, retailerID string, limit int) ([]TrackingOrder, error) {
+func (r *SpannerRepository) ListTrackingOrders(ctx context.Context, retailerID string, limit, offset int) ([]TrackingOrder, error) {
 	if r == nil || r.client == nil {
 		return nil, fmt.Errorf("spanner retailer repository: nil client")
 	}
@@ -365,8 +365,14 @@ func (r *SpannerRepository) ListTrackingOrders(ctx context.Context, retailerID s
 	if retailerID == "" {
 		return []TrackingOrder{}, nil
 	}
-	if limit <= 0 || limit > 50 {
-		limit = 50
+	if limit <= 0 {
+		limit = 100
+	}
+	if limit > 500 {
+		limit = 500
+	}
+	if offset < 0 {
+		offset = 0
 	}
 
 	stmt := spanner.Statement{
@@ -378,11 +384,13 @@ func (r *SpannerRepository) ListTrackingOrders(ctx context.Context, retailerID s
 		      WHERE RetailerId = @RetailerId
 		        AND Status IN UNNEST(@Statuses)
 		      ORDER BY CreatedAt DESC
-		      LIMIT @Limit`,
+		      LIMIT @Limit
+		      OFFSET @Offset`,
 		Params: map[string]interface{}{
 			"RetailerId": retailerID,
 			"Statuses":   []string{"PENDING", "LOADED", "IN_TRANSIT", "ARRIVED", "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION"},
 			"Limit":      int64(limit),
+			"Offset":     int64(offset),
 		},
 	}
 

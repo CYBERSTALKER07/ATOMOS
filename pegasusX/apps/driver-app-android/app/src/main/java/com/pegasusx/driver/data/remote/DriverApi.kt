@@ -163,7 +163,10 @@ interface DriverApi {
 
     // ── Notifications ──
     @GET("v1/user/notifications")
-    suspend fun getNotifications(@Query("limit") limit: Int = 50): DriverNotificationsResponse
+    suspend fun getNotifications(
+        @Query("limit") limit: Int = 100,
+        @Query("offset") offset: Int = 0,
+    ): DriverNotificationsResponse
 
     @POST("v1/user/notifications/read")
     suspend fun markNotificationsRead(@Body body: Map<String, @JvmSuppressWildcards Any>): Map<String, String>

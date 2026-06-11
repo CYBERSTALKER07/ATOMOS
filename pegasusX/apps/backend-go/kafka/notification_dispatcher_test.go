@@ -460,37 +460,22 @@ func TestNotificationDispatcher_CommandEventFansSupplier(t *testing.T) {
 	}
 }
 
-type stubPromotionAudience struct {
-	ids []string
-	err error
-}
-
-func (s stubPromotionAudience) EngagedRetailerIDs(_ context.Context, _ string) ([]string, error) {
-	if s.err != nil {
-		return nil, s.err
-	}
-	return s.ids, nil
-}
-
-func TestNotificationDispatcher_PromotionChangedAllScopeFansSupplierPromoAndEngagedRetailers(t *testing.T) {
+func TestNotificationDispatcher_PromotionChangedAllScopeFansSupplierPromoRoomOnly(t *testing.T) {
 	t.Parallel()
 
 	supplierConn := &dispatcherConnSpy{id: "supplier"}
 	promoWatcherConn := &dispatcherConnSpy{id: "promo-watcher"}
-	engagedConn := &dispatcherConnSpy{id: "engaged"}
-	otherConn := &dispatcherConnSpy{id: "other"}
+	personalConn := &dispatcherConnSpy{id: "personal"}
 
 	supplierHub := ws.NewHub("supplier", nil, nil)
 	retailerHub := ws.NewHub("retailer", nil, nil)
 	supplierHub.Subscribe("supplier:sup-1", supplierConn)
 	retailerHub.Subscribe(ws.SupplierPromoRoom("sup-1"), promoWatcherConn)
-	retailerHub.Subscribe("retailer:ret-1", engagedConn)
-	retailerHub.Subscribe("retailer:ret-9", otherConn)
+	retailerHub.Subscribe("retailer:ret-1", personalConn)
 
 	dispatcher := NewNotificationDispatcher(DispatcherDeps{
-		SupplierHub:       supplierHub,
-		RetailerHub:       retailerHub,
-		PromotionAudience: stubPromotionAudience{ids: []string{"ret-1", "ret-1", "ret-2"}},
+		SupplierHub: supplierHub,
+		RetailerHub: retailerHub,
 	})
 
 	payload, err := json.Marshal(map[string]any{
@@ -513,11 +498,8 @@ func TestNotificationDispatcher_PromotionChangedAllScopeFansSupplierPromoAndEnga
 	if len(promoWatcherConn.messages) != 1 {
 		t.Fatalf("supplier-promo room messages = %d, want 1", len(promoWatcherConn.messages))
 	}
-	if len(engagedConn.messages) != 1 {
-		t.Fatalf("engaged retailer messages = %d, want 1", len(engagedConn.messages))
-	}
-	if len(otherConn.messages) != 0 {
-		t.Fatalf("unengaged retailer should not receive ALL-scope personal fanout")
+	if len(personalConn.messages) != 0 {
+		t.Fatalf("personal retailer room must not receive ALL-scope sync fanout")
 	}
 }
 
@@ -537,9 +519,8 @@ func TestNotificationDispatcher_PromotionChangedAllowlistFansOnlyListedRetailers
 	retailerHub.Subscribe(ws.SupplierPromoRoom("sup-1"), promoWatcherConn)
 
 	dispatcher := NewNotificationDispatcher(DispatcherDeps{
-		SupplierHub:       supplierHub,
-		RetailerHub:       retailerHub,
-		PromotionAudience: stubPromotionAudience{ids: []string{"ret-9"}},
+		SupplierHub: supplierHub,
+		RetailerHub: retailerHub,
 	})
 
 	payload, _ := json.Marshal(map[string]any{

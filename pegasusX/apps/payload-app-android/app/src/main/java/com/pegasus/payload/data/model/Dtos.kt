@@ -226,6 +226,7 @@ data class NotificationItem(
 data class NotificationsResponse(
     val notifications: List<NotificationItem> = emptyList(),
     @SerialName("unread_count") val unreadCount: Long = 0,
+    @SerialName("has_more") val hasMore: Boolean = false,
     val total: Int = 0,
     val limit: Long = 0,
 )

@@ -3,6 +3,7 @@ package warehouse
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -13,7 +14,11 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/manifest"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/httppagination"
 )
+
+// warehouseDispatchExecuteManifestState is written on execute; payloader seals before depart.
+const warehouseDispatchExecuteManifestState = "DRAFT"
 
 // PortalDriver is the warehouse ops driver read model.
 type PortalDriver struct {
@@ -368,6 +373,7 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	whID := warehouseIDFromRequest(r)
+	limit, offset := httppagination.ParseLimitOffset(r, 300, 5000)
 
 	undispatched := make([]map[string]any, 0)
 	windowConstrained := 0
@@ -377,6 +383,8 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 		rows, err := repo.FetchDispatchable(r.Context(), dispatch.FetchParams{
 			SupplierID:  s.supplierID,
 			WarehouseID: whID,
+			Limit:       limit,
+			Offset:      offset,
 		})
 		if err == nil {
 			dispatchRows = rows
@@ -517,6 +525,9 @@ func (s *Service) handleOpsDispatchPreview(w http.ResponseWriter, r *http.Reques
 			response["optimizer_warnings"] = solve.OptimizerWarnings
 		}
 	}
+	w.Header().Set("X-Page-Limit", strconv.Itoa(limit))
+	w.Header().Set("X-Page-Offset", strconv.Itoa(offset))
+	w.Header().Set("X-Page-Has-More", strconv.FormatBool(len(undispatched) == limit))
 	writeJSON(w, http.StatusOK, response)
 }
 
@@ -571,7 +582,7 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 	}
 
 	repo := dispatch.NewRepository(s.spannerClient)
-	rows, err := repo.FetchDispatchable(r.Context(), dispatch.FetchParams{
+	rows, err := dispatch.FetchAllDispatchable(r.Context(), repo, dispatch.FetchParams{
 		SupplierID:  sid,
 		WarehouseID: whID,
 		StrongRead:  true,
@@ -706,7 +717,7 @@ func (s *Service) handleOpsDispatchExecute(w http.ResponseWriter, r *http.Reques
 			RouteID:       routeID,
 			TruckID:       vehicleID,
 			DriverID:      driverID,
-			State:         "DRAFT",
+			State:         warehouseDispatchExecuteManifestState,
 			TotalVolumeVU: route.LoadedVolume,
 			MaxVolumeVU:   route.MaxVolume,
 			StopCount:     int64(len(route.Orders)),

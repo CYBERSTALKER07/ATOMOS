@@ -101,6 +101,7 @@ func (r *SpannerRepository) Hydrate(ctx context.Context, supplierID string, s *S
 		if err != nil {
 			return err
 		}
+		s.spannerLoaded = true
 		return nil
 	}, nil)
 }

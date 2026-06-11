@@ -22,7 +22,7 @@ export default function ShopClosedExceptionsPage() {
     setLoading(true);
     setError(null);
     api
-      .getSupplierShopClosedActive()
+      .getSupplierShopClosedActive({ limit: 500, offset: 0 })
       .then((resp) => setRows(resp.data ?? []))
       .catch((err) => setError(err instanceof Error ? err.message : "load_failed"))
       .finally(() => setLoading(false));

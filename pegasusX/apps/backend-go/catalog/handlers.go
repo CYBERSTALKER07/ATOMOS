@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/pkg/httppagination"
 )
 
 // scopedSupplierID resolves the caller's supplier scope from JWT claims and
@@ -57,12 +59,16 @@ func (s *Service) HandleListProducts(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "supplier_id required"})
 			return
 		}
-		products, err := s.ListProductsDiscovery(r.Context(), retailerID, categoryID)
+		limit, offset := httppagination.ParseLimitOffset(r, 500, 5000)
+		products, err := s.ListProductsDiscovery(r.Context(), retailerID, categoryID, int64(limit), int64(offset))
 		if err != nil {
 			slog.ErrorContext(r.Context(), "list discovery products failed", "err", err, "retailer_id", retailerID)
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
 			return
 		}
+		w.Header().Set("X-Page-Limit", strconv.Itoa(limit))
+		w.Header().Set("X-Page-Offset", strconv.Itoa(offset))
+		w.Header().Set("X-Page-Has-More", strconv.FormatBool(len(products) == limit))
 		writeJSON(w, http.StatusOK, products)
 		return
 	}

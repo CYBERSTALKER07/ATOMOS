@@ -60,7 +60,7 @@ func (r *testRetailerRepo) GetSupplierPricingRule(_ context.Context, _ string) (
 	return r.pricingRule, true, nil
 }
 
-func (r *testRetailerRepo) ListTrackingOrders(_ context.Context, retailerID string, limit int) ([]TrackingOrder, error) {
+func (r *testRetailerRepo) ListTrackingOrders(_ context.Context, retailerID string, limit, offset int) ([]TrackingOrder, error) {
 	if r.trackingErr != nil {
 		return nil, r.trackingErr
 	}

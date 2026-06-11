@@ -374,6 +374,39 @@ func TestHandleManifestGate_ClearedWhenSealed(t *testing.T) {
 	}
 }
 
+func TestHandleManifestGate_BlockedWhenDraft(t *testing.T) {
+	repo := &driverRepoSpy{}
+	cacheBackend := &driverCacheBackendSpy{}
+	svc := newDriverTestServiceWithManifestGate(repo, cacheBackend, func(manifestID string) (ManifestGateResult, bool) {
+		if manifestID != "mf_draft_1" {
+			return ManifestGateResult{}, false
+		}
+		return ManifestGateResult{
+			ManifestID: manifestID,
+			State:      "DRAFT",
+			StopCount:  1,
+			VolumeVU:   12,
+		}, true
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/driver/manifest-gate?manifest_id=mf_draft_1", nil)
+	req = withDriverClaims(req, auth.Claims{Subject: "drv-1"})
+	rr := httptest.NewRecorder()
+
+	svc.HandleManifestGate(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d body=%s", rr.Code, rr.Body.String())
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if got, _ := body["error"].(string); got != "AWAITING_PAYLOAD_SEAL" {
+		t.Fatalf("expected AWAITING_PAYLOAD_SEAL, got %#v", body)
+	}
+}
+
 func TestHandleManifestGate_BlockedWhenLoading(t *testing.T) {
 	repo := &driverRepoSpy{}
 	cacheBackend := &driverCacheBackendSpy{}

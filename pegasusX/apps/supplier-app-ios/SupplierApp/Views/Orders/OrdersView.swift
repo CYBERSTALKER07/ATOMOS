@@ -96,7 +96,7 @@ struct OrdersView: View {
         do {
             let response = try await SupplierService.orders(
                 status: statusFilter.isEmpty ? nil : statusFilter,
-                limit: 100
+                limit: 500
             )
             orders = response.orders
             if selection == nil { selection = orders.first }

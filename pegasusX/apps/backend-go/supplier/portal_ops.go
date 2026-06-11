@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -105,12 +106,16 @@ func (s *Service) HandleDispatchPreview(w http.ResponseWriter, r *http.Request) 
 	if warehouseFilter == "" {
 		warehouseFilter = strings.TrimSpace(r.URL.Query().Get("warehouse_id"))
 	}
-	preview, err := s.buildSupplierDispatchPreview(r.Context(), sid, warehouseFilter)
+	limit, offset := parseListPagination(r, 300, 5000)
+	preview, err := s.buildSupplierDispatchPreview(r.Context(), sid, warehouseFilter, limit, offset)
 	if err != nil {
 		s.log.WarnContext(r.Context(), "supplier dispatch preview failed", "supplier_id", sid, "err", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "dispatch_preview_failed"})
 		return
 	}
+	w.Header().Set("X-Page-Limit", strconv.Itoa(limit))
+	w.Header().Set("X-Page-Offset", strconv.Itoa(offset))
+	w.Header().Set("X-Page-Has-More", strconv.FormatBool(len(preview.UndispatchedOrders) == limit))
 	writeJSON(w, http.StatusOK, preview)
 }
 
@@ -121,7 +126,7 @@ func (s *Service) HandleActivity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sid := s.scopedSupplierID(r)
-	limit, _ := parseListPagination(r, 20, 50)
+	limit, _ := parseListPagination(r, 20, 200)
 	orders, err := s.listSupplierOrders(r.Context(), sid, "", "")
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load_activity_failed"})
@@ -538,7 +543,7 @@ func manifestStatusFromOrders(statuses map[string]int) string {
 	return "DRAFT"
 }
 
-func (s *Service) buildSupplierDispatchPreview(ctx context.Context, supplierID, warehouseID string) (SupplierDispatchPreview, error) {
+func (s *Service) buildSupplierDispatchPreview(ctx context.Context, supplierID, warehouseID string, limit, offset int) (SupplierDispatchPreview, error) {
 	undispatched := make([]map[string]any, 0)
 	windowConstrained := 0
 	dispatchRows := make([]dispatch.DispatchableOrder, 0)
@@ -547,6 +552,8 @@ func (s *Service) buildSupplierDispatchPreview(ctx context.Context, supplierID, 
 		rows, err := repo.FetchDispatchable(ctx, dispatch.FetchParams{
 			SupplierID:  supplierID,
 			WarehouseID: warehouseID,
+			Limit:       limit,
+			Offset:      offset,
 		})
 		if err != nil {
 			return SupplierDispatchPreview{}, err

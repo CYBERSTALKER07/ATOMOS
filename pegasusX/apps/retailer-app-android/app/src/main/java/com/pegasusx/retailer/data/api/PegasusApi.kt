@@ -84,6 +84,8 @@ interface PegasusApi {
         @Query("category_id") categoryId: String? = null,
         @Query("supplier_id") supplierId: String? = null,
         @Query("retailer_id") retailerId: String? = null,
+        @Query("limit") limit: Int? = null,
+        @Query("offset") offset: Int? = null,
     ): List<Product>
 
     @POST("/v1/retailer/checkout/quote")
@@ -305,7 +307,10 @@ interface PegasusApi {
 
     // ── Notifications ──
     @GET("/v1/user/notifications")
-    suspend fun getNotifications(@Query("limit") limit: Int = 50): NotificationsResponse
+    suspend fun getNotifications(
+        @Query("limit") limit: Int = 100,
+        @Query("offset") offset: Int = 0,
+    ): NotificationsResponse
 
     @POST("/v1/user/notifications/read")
     suspend fun markNotificationsRead(@Body body: Map<String, @JvmSuppressWildcards Any>): ApiResponse
