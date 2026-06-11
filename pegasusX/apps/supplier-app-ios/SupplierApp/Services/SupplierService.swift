@@ -58,6 +58,19 @@ enum SupplierService {
         return resp.items
     }
 
+    static func promotions() async throws -> [SupplierPromotion] {
+        let resp: SupplierPromotionsResponse = try await APIClient.shared.get("v1/supplier/promotions")
+        return resp.promotions
+    }
+
+    static func createPromotion(_ request: SupplierPromotionUpsertRequest) async throws -> SupplierPromotion {
+        try await APIClient.shared.post("v1/supplier/promotions", body: request)
+    }
+
+    static func deactivatePromotion(promotionId: String) async throws {
+        try await APIClient.shared.deleteVoid("v1/supplier/promotions/\(promotionId)")
+    }
+
     static func earnings() async throws -> SupplierEarnings {
         do {
             return try await APIClient.shared.get("v1/supplier/earnings")

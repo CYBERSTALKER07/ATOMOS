@@ -210,6 +210,54 @@ struct SupplierEarnings: Decodable {
     }
 }
 
+// MARK: - Promotions
+
+struct SupplierPromotion: Decodable, Identifiable {
+    let promotionId: String
+    let supplierId: String
+    let name: String
+    let description: String?
+    let discountBps: Int64
+    let scopeType: String
+    let retailerScope: String
+    let isActive: Bool
+    let priority: Int64
+
+    var id: String { promotionId }
+
+    enum CodingKeys: String, CodingKey {
+        case promotionId = "promotion_id"
+        case supplierId = "supplier_id"
+        case name
+        case description
+        case discountBps = "discount_bps"
+        case scopeType = "scope_type"
+        case retailerScope = "retailer_scope"
+        case isActive = "is_active"
+        case priority
+    }
+}
+
+struct SupplierPromotionsResponse: Decodable {
+    let promotions: [SupplierPromotion]
+}
+
+struct SupplierPromotionUpsertRequest: Encodable {
+    let name: String
+    let description: String
+    let discountBps: Int64
+    let scopeType: String
+    let retailerScope: String
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case description
+        case discountBps = "discount_bps"
+        case scopeType = "scope_type"
+        case retailerScope = "retailer_scope"
+    }
+}
+
 // MARK: - Billing
 
 struct BillingSetupRequest: Encodable {

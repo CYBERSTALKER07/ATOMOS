@@ -54,6 +54,7 @@ type Repository interface {
 	GetCategory(ctx context.Context, categoryID string) (*Category, error)
 	CreateCategory(ctx context.Context, cat Category) error
 	ListProducts(ctx context.Context, supplierID, categoryID string, activeOnly bool) ([]Product, error)
+	ListDiscoverableProducts(ctx context.Context, categoryID string, limit int64) ([]Product, error)
 	GetProduct(ctx context.Context, productID string) (*Product, error)
 	CreateProduct(ctx context.Context, p Product) error
 	UpdateProduct(ctx context.Context, p Product) error
@@ -172,6 +173,46 @@ func (r *SpannerRepository) ListProducts(ctx context.Context, supplierID, catego
 			&p.PriceMinor, &p.Currency, &p.StockQuantity, &p.Unit, &p.IsActive, &p.Version,
 			&p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan product row: %w", err)
+		}
+		p.Description = desc.StringVal
+		p.ImageURL = imageURL.StringVal
+		products = append(products, p)
+	}
+	return products, nil
+}
+
+// ListDiscoverableProducts returns active products for retailer browse when no supplier is selected.
+func (r *SpannerRepository) ListDiscoverableProducts(ctx context.Context, categoryID string, limit int64) ([]Product, error) {
+	if limit <= 0 || limit > 1000 {
+		limit = 500
+	}
+	sql := "SELECT ProductId, SupplierId, CategoryId, Name, Description, ImageURL, PriceMinor, Currency, StockQuantity, Unit, IsActive, Version, CreatedAt, UpdatedAt FROM Products WHERE IsActive = TRUE"
+	params := map[string]any{"lim": limit}
+	if categoryID != "" {
+		sql += " AND CategoryId = @cid"
+		params["cid"] = categoryID
+	}
+	sql += " ORDER BY UpdatedAt DESC LIMIT @lim"
+
+	stmt := spanner.Statement{SQL: sql, Params: params}
+	iter := r.client.Single().WithTimestampBound(spanner.ExactStaleness(15 * time.Second)).Query(ctx, stmt)
+	defer iter.Stop()
+
+	var products []Product
+	for {
+		row, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("list discoverable products: %w", err)
+		}
+		var p Product
+		var desc, imageURL spanner.NullString
+		if err := row.Columns(&p.ProductID, &p.SupplierID, &p.CategoryID, &p.Name, &desc, &imageURL,
+			&p.PriceMinor, &p.Currency, &p.StockQuantity, &p.Unit, &p.IsActive, &p.Version,
+			&p.CreatedAt, &p.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("scan discoverable product row: %w", err)
 		}
 		p.Description = desc.StringVal
 		p.ImageURL = imageURL.StringVal

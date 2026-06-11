@@ -44,17 +44,27 @@ func (s *Service) HandleListCategories(w http.ResponseWriter, r *http.Request) {
 
 // HandleListProducts serves GET /v1/catalog/products.
 func (s *Service) HandleListProducts(w http.ResponseWriter, r *http.Request) {
-	supplierID := r.URL.Query().Get("supplier_id")
-	if supplierID == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "supplier_id required"})
-		return
-	}
-	categoryID := r.URL.Query().Get("category_id")
+	supplierID := strings.TrimSpace(r.URL.Query().Get("supplier_id"))
+	categoryID := strings.TrimSpace(r.URL.Query().Get("category_id"))
 	retailerID := strings.TrimSpace(r.URL.Query().Get("retailer_id"))
 	if retailerID == "" {
 		if claims, ok := auth.FromContext(r.Context()); ok {
 			retailerID = strings.TrimSpace(claims.Subject)
 		}
+	}
+	if supplierID == "" {
+		if retailerID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "supplier_id required"})
+			return
+		}
+		products, err := s.ListProductsDiscovery(r.Context(), retailerID, categoryID)
+		if err != nil {
+			slog.ErrorContext(r.Context(), "list discovery products failed", "err", err, "retailer_id", retailerID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+			return
+		}
+		writeJSON(w, http.StatusOK, products)
+		return
 	}
 	if retailerID != "" {
 		products, err := s.ListProductsForRetailer(r.Context(), supplierID, retailerID, categoryID)

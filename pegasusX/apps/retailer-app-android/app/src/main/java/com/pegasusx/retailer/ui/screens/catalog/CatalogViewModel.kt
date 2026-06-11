@@ -3,12 +3,15 @@ package com.pegasusx.retailer.ui.screens.catalog
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
+import com.pegasusx.retailer.data.api.RetailerWebSocket
+import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.Product
 import com.pegasusx.retailer.data.model.ProductCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -33,13 +36,26 @@ data class CatalogUiState(
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
     private val api: PegasusApi,
+    private val tokenManager: TokenManager,
+    private val retailerWebSocket: RetailerWebSocket,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CatalogUiState())
     val uiState: StateFlow<CatalogUiState> = _uiState.asStateFlow()
+    private val retailerId: String get() = tokenManager.getUserId().orEmpty()
 
     init {
         loadCategories()
+        retailerWebSocket.connect()
+        viewModelScope.launch {
+            retailerWebSocket.events
+                .filter { it.type == "PROMOTION_CHANGED" }
+                .collect {
+                    if (_uiState.value.browseMode == CatalogBrowseMode.ALL_PRODUCTS) {
+                        loadAllProducts()
+                    }
+                }
+        }
     }
 
     private fun loadCategories() {
@@ -65,7 +81,7 @@ class CatalogViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingProducts = true) }
             try {
-                val products = api.getCatalogProducts()
+                val products = api.getCatalogProducts(retailerId = retailerId.takeIf { it.isNotBlank() })
                 _uiState.update { it.copy(isLoadingProducts = false, products = products, error = null) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoadingProducts = false, products = emptyList(), error = e.message) }
@@ -89,7 +105,7 @@ class CatalogViewModel @Inject constructor(
                 val products = if (_uiState.value.products.isNotEmpty()) {
                     _uiState.value.products
                 } else {
-                    api.getCatalogProducts()
+                    api.getCatalogProducts(retailerId = retailerId.takeIf { it.isNotBlank() })
                 }
                 val filtered = products.filter { product ->
                     product.name.contains(query, ignoreCase = true) ||

@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -97,6 +98,33 @@ func (h *Hub) unsubscribe(room, connID string) {
 		delete(conns, connID)
 		if len(conns) == 0 {
 			delete(h.rooms, room)
+		}
+	}
+}
+
+// AttachRoomsForRetailer subscribes every live connection in retailer:{retailerID}
+// to additional rooms (for example supplier-promo:{supplier_id}).
+func (h *Hub) AttachRoomsForRetailer(retailerID string, rooms []string) {
+	if h == nil || retailerID == "" || len(rooms) == 0 {
+		return
+	}
+	baseRoom := "retailer:" + retailerID
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	baseConns := h.rooms[baseRoom]
+	if len(baseConns) == 0 {
+		return
+	}
+	for _, room := range rooms {
+		room = strings.TrimSpace(room)
+		if room == "" {
+			continue
+		}
+		if _, ok := h.rooms[room]; !ok {
+			h.rooms[room] = make(map[string]Connection)
+		}
+		for connID, conn := range baseConns {
+			h.rooms[room][connID] = conn
 		}
 	}
 }

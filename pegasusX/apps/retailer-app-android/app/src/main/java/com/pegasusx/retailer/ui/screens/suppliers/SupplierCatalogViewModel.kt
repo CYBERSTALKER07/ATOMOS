@@ -54,7 +54,10 @@ class SupplierCatalogViewModel @Inject constructor(
         retailerWebSocket.connect()
         viewModelScope.launch {
             retailerWebSocket.events
-                .filter { it.type == "PROMOTION_CHANGED" }
+                .filter {
+                    it.type == "PROMOTION_CHANGED" &&
+                        (it.supplierId.isBlank() || it.supplierId == activeSupplierId)
+                }
                 .collect {
                     val supplierId = activeSupplierId
                     if (supplierId.isNotBlank()) {
@@ -72,6 +75,9 @@ class SupplierCatalogViewModel @Inject constructor(
                 // Actually, there's no single supplier GET to check favorite state...
                 // But we can fetch mySuppliers and see if it's there
                 val retailerId = tokenManager.getUserId()
+                runCatching {
+                    api.watchSupplierPromotions(mapOf("supplier_id" to supplierId))
+                }
                 val products = api.getCatalogProducts(
                     supplierId = supplierId,
                     retailerId = retailerId,

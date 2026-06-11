@@ -75,6 +75,37 @@ final class APIClient: Sendable {
         return try await execute(request)
     }
 
+    func patch<B: Encodable, T: Decodable>(_ path: String, body: B, authenticated: Bool = true) async throws -> T {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try encoder.encode(body)
+        if authenticated {
+            await attachToken(&request)
+        }
+        return try await execute(request)
+    }
+
+    func postVoid<B: Encodable>(_ path: String, body: B, authenticated: Bool = true) async throws {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try encoder.encode(body)
+        if authenticated {
+            await attachToken(&request)
+        }
+        _ = try await executeVoid(request)
+    }
+
+    func deleteVoid(_ path: String, authenticated: Bool = true) async throws {
+        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        request.httpMethod = "DELETE"
+        if authenticated {
+            await attachToken(&request)
+        }
+        _ = try await executeVoid(request)
+    }
+
     private func execute<T: Decodable>(_ request: URLRequest) async throws -> T {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -91,6 +122,23 @@ final class APIClient: Sendable {
             throw APIError.httpError(http.statusCode)
         }
         return try decoder.decode(T.self, from: data)
+    }
+
+    private func executeVoid(_ request: URLRequest) async throws {
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        if http.statusCode == 401 {
+            await MainActor.run { TokenStore.shared.clear() }
+            throw APIError.unauthorized
+        }
+        guard (200...299).contains(http.statusCode) else {
+            if let err = try? decoder.decode(APIErrorBody.self, from: data) {
+                throw APIError.server(err.error)
+            }
+            throw APIError.httpError(http.statusCode)
+        }
     }
 
     private func attachToken(_ request: inout URLRequest) async {

@@ -115,6 +115,7 @@ type App struct {
 	Supplier               seed.Supplier
 	CatalogService         *catalog.Service
 	PromotionService       *promotion.Service
+	PromotionAudience      *promotion.AudienceResolver
 	InventoryService       *inventory.Service
 	NotificationService    *notifications.Service
 	SupplierService        *supplier.Service
@@ -373,9 +374,11 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	}
 
 	var promotionSvc *promotion.Service
+	var promotionAudience *promotion.AudienceResolver
 	if spannerClient != nil {
 		promoRepo := promotion.NewSpannerRepository(spannerClient)
 		promotionSvc = promotion.NewService(promoRepo, cacheClient, log)
+		promotionAudience = promotion.NewAudienceResolver(spannerClient)
 		log.Info("promotion service enabled", "backend", "spanner")
 	}
 
@@ -458,6 +461,9 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	warehouseHub := ws.NewHub("warehouse", cacheBackend, log)
 	factoryHub := ws.NewHub("factory", cacheBackend, log)
 	telemetryHub := ws.NewHub("telemetry", cacheBackend, log)
+	if promotionSvc != nil {
+		promotionSvc.BindRetailerHub(retailerHub)
+	}
 
 	var orderRepo order.Repository
 	var orderWarehouseResolver order.WarehouseResolver
@@ -749,13 +755,14 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 			)
 		} else {
 			dispatcher := kafka.NewNotificationDispatcher(kafka.DispatcherDeps{
-				RetailerHub:  retailerHub,
-				SupplierHub:  supplierHub,
-				DriverHub:    driverHub,
-				WarehouseHub: warehouseHub,
-				FactoryHub:   factoryHub,
-				PayloadHub:   payloadHub,
-				Push:         pushBridge,
+				RetailerHub:       retailerHub,
+				SupplierHub:       supplierHub,
+				DriverHub:         driverHub,
+				WarehouseHub:      warehouseHub,
+				FactoryHub:        factoryHub,
+				PayloadHub:        payloadHub,
+				Push:              pushBridge,
+				PromotionAudience: promotionAudience,
 			})
 			notificationConsumer = kafka.NewConsumer(kafka.ConsumerDeps{
 				Brokers:   strings.Split(cfg.KafkaBrokers, ","),
@@ -809,6 +816,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Supplier:               supplierSeed,
 		CatalogService:         catalogSvc,
 		PromotionService:       promotionSvc,
+		PromotionAudience:      promotionAudience,
 		InventoryService:       inventorySvc,
 		NotificationService:    notifSvc,
 		SupplierService:        supplierSvc,

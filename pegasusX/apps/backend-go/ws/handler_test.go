@@ -27,7 +27,7 @@ func TestRegisterRoutesSubscribesSupplierToTelemetryRoom(t *testing.T) {
 		Subject:    "admin-1",
 		SupplierID: "sup-1",
 	}))
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub)
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -49,7 +49,7 @@ func TestRegisterRoutesSubscribesDriverToTelemetryRoom(t *testing.T) {
 		Subject:    "drv-1",
 		SupplierID: "sup-1",
 	}))
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub)
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -71,7 +71,7 @@ func TestRegisterRoutesTelemetryDriverReconnectChurn(t *testing.T) {
 		Subject:    "drv-1",
 		SupplierID: "sup-1",
 	}))
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub)
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -98,7 +98,7 @@ func TestRegisterRoutesTelemetrySupplierReconnectChurn(t *testing.T) {
 		Subject:    "admin-1",
 		SupplierID: "sup-1",
 	}))
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub)
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()
@@ -120,7 +120,7 @@ func TestRegisterRoutesAcceptsSignedQueryToken(t *testing.T) {
 
 	telemetryHub := NewHub("telemetry", nil, nil)
 	router := chi.NewRouter()
-	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub)
+	RegisterRoutes(router, slog.Default(), testWSJWTSecret, false, nil, nil, nil, nil, nil, nil, nil, nil, telemetryHub, RegisterConfig{})
 
 	server := httptest.NewServer(router)
 	defer server.Close()

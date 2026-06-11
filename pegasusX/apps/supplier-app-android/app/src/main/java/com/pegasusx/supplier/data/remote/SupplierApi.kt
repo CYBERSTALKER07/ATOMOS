@@ -147,4 +147,13 @@ interface SupplierApi {
 
     @POST("v1/supplier/replenishment/trigger")
     suspend fun triggerReplenishment(): Response<SupplierReplenishmentTriggerResponse>
+
+    @GET("v1/supplier/promotions")
+    suspend fun getPromotions(): Response<SupplierPromotionsResponse>
+
+    @POST("v1/supplier/promotions")
+    suspend fun createPromotion(@Body body: SupplierPromotionUpsertRequest): Response<SupplierPromotion>
+
+    @DELETE("v1/supplier/promotions/{promotionId}")
+    suspend fun deactivatePromotion(@Path("promotionId") promotionId: String): Response<Map<String, String>>
 }

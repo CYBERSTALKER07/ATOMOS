@@ -3,6 +3,7 @@ package com.pegasusx.retailer.ui.screens.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
+import com.pegasusx.retailer.data.api.RetailerWebSocket
 import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.DemandForecast
 import com.pegasusx.retailer.data.model.Order
@@ -12,6 +13,7 @@ import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -44,6 +46,7 @@ data class DashboardUiState(
 class DashboardViewModel @Inject constructor(
     private val api: PegasusApi,
     private val tokenManager: TokenManager,
+    private val retailerWebSocket: RetailerWebSocket,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -53,6 +56,12 @@ class DashboardViewModel @Inject constructor(
 
     init {
         refresh()
+        retailerWebSocket.connect()
+        viewModelScope.launch {
+            retailerWebSocket.events
+                .filter { it.type == "PROMOTION_CHANGED" }
+                .collect { refresh() }
+        }
     }
 
     fun refresh() {
@@ -84,7 +93,7 @@ class DashboardViewModel @Inject constructor(
             }
 
             try {
-                val products = api.getCatalogProducts()
+                val products = api.getCatalogProducts(retailerId = retailerId.takeIf { it.isNotBlank() })
                 _uiState.update { it.copy(recentProducts = products.take(6)) }
             } catch (e: Exception) {
                 if (nextIssue == null) {

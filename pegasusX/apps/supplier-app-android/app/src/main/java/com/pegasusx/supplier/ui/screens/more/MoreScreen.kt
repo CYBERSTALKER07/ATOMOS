@@ -32,6 +32,7 @@ fun MoreScreen(
     onLedger: () -> Unit,
     onOperations: () -> Unit,
     onInventory: () -> Unit,
+    onPromotions: () -> Unit,
     onEarnings: () -> Unit,
     onProfile: () -> Unit,
     onBilling: () -> Unit,
@@ -54,6 +55,7 @@ fun MoreScreen(
     )
     val account = listOf(
         MoreDestination("Inventory", "SKU levels", Icons.Default.Inventory2, onInventory),
+        MoreDestination("Promotions", "Sales and discounts", Icons.Default.LocalOffer, onPromotions),
         MoreDestination("Earnings", "Revenue summary", Icons.Default.Payments, onEarnings),
         MoreDestination("Profile", "Company profile", Icons.Default.Person, onProfile),
         MoreDestination("Billing setup", "Banking & gateway", Icons.Default.CreditCard, onBilling),

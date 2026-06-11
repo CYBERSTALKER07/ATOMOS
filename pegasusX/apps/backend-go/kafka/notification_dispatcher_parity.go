@@ -213,7 +213,25 @@ func (d *NotificationDispatcher) handlePromotionChanged(ctx context.Context, pay
 		}
 		return nil
 	}
-	// ALL scope: connected retailers refresh when they next open catalog or cart.
+	d.broadcastRetailerPromoSupplier(ctx, e.SupplierID, payload)
+	if d.deps.PromotionAudience != nil {
+		retailerIDs, err := d.deps.PromotionAudience.EngagedRetailerIDs(ctx, e.SupplierID)
+		if err != nil {
+			return fmt.Errorf("resolve promotion audience for supplier %s: %w", e.SupplierID, err)
+		}
+		seen := make(map[string]struct{}, len(retailerIDs))
+		for _, retailerID := range retailerIDs {
+			retailerID = strings.TrimSpace(retailerID)
+			if retailerID == "" {
+				continue
+			}
+			if _, ok := seen[retailerID]; ok {
+				continue
+			}
+			seen[retailerID] = struct{}{}
+			d.broadcastRetailer(ctx, retailerID, payload)
+		}
+	}
 	return nil
 }
 

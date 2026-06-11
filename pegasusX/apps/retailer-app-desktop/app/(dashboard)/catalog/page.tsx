@@ -25,6 +25,7 @@ import CheckoutModal from "../../../components/CheckoutModal";
 import ProductDetailDrawer from "../../../components/ProductDetailDrawer";
 import EmptyState from "../../../components/EmptyState";
 import { useLiveData } from "../../../lib/hooks";
+import { apiFetch } from "../../../lib/auth";
 import { useCart } from "../../../lib/cart";
 import { useWebSocket } from "../../../lib/ws";
 import type { Product, Category, Supplier } from "../../../lib/types";
@@ -86,6 +87,15 @@ export default function CatalogPage() {
       void mutateProducts();
     });
   }, [mutateProducts, subscribe]);
+
+  useEffect(() => {
+    if (!activeSupplier) return;
+    void apiFetch("/v1/retailer/promotions/watch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplier_id: activeSupplier }),
+    });
+  }, [activeSupplier]);
 
   const sparkOrders = useMemo(
     () =>

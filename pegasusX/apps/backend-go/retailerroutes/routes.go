@@ -50,6 +50,7 @@ func RegisterRoutes(r chi.Router, d Deps) {
 		rr.Post("/v1/retailer/cart/sync", d.Service.HandleCartSync)
 		if d.PromotionService != nil {
 			rr.Post("/v1/retailer/checkout/quote", d.PromotionService.HandleCheckoutQuote)
+			rr.Post("/v1/retailer/promotions/watch", d.PromotionService.HandleWatchSupplierPromotions)
 		}
 
 		rr.Get("/v1/retailers/{retailerID}/orders", d.Service.HandleOrders)

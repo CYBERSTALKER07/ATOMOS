@@ -3,6 +3,7 @@ package com.pegasusx.retailer.ui.screens.product
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
+import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.AutoOrderSettings
 import com.pegasusx.retailer.data.model.Product
 import com.pegasusx.retailer.data.model.UpdateSettingsRequest
@@ -43,6 +44,7 @@ data class ProductDetailUiState(
 @HiltViewModel
 class ProductDetailViewModel @Inject constructor(
     private val api: PegasusApi,
+    private val tokenManager: TokenManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProductDetailUiState())
@@ -65,7 +67,8 @@ class ProductDetailViewModel @Inject constructor(
             var nextSettings: AutoOrderSettings? = null
 
             try {
-                val products = api.getCatalogProducts()
+                val retailerId = tokenManager.getUserId()
+                val products = api.getCatalogProducts(retailerId = retailerId)
                 nextProduct = products.firstOrNull { it.id == productId }
                 if (nextProduct == null && _uiState.value.product == null) {
                     nextIssue = ProductDetailLoadIssue.ERROR

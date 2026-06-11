@@ -89,6 +89,9 @@ interface PegasusApi {
     @POST("/v1/retailer/checkout/quote")
     suspend fun checkoutQuote(@Body body: CheckoutQuoteRequest): CheckoutQuoteResponse
 
+    @POST("/v1/retailer/promotions/watch")
+    suspend fun watchSupplierPromotions(@Body body: Map<String, String>)
+
     @GET("/v1/catalog/categories/{id}/suppliers")
     suspend fun getCategorySuppliers(@Path("id") categoryId: String): List<Supplier>
 

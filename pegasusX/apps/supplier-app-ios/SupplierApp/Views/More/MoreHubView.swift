@@ -40,6 +40,9 @@ struct MoreHubView: View {
                 NavigationLink { InventoryView() } label: {
                     Label("Inventory", systemImage: "archivebox")
                 }
+                NavigationLink { PromotionsView() } label: {
+                    Label("Promotions", systemImage: "tag")
+                }
                 NavigationLink { EarningsView() } label: {
                     Label("Earnings", systemImage: "chart.line.uptrend.xyaxis")
                 }

@@ -9,14 +9,16 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
 
 // Service implements promotion business logic.
 type Service struct {
-	repo  Repository
-	cache *cache.Cache
-	log   *slog.Logger
-	now   func() time.Time
+	repo        Repository
+	cache       *cache.Cache
+	log         *slog.Logger
+	now         func() time.Time
+	retailerHub *ws.Hub
 }
 
 // NewService constructs a promotion service.

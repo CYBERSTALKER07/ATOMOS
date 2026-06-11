@@ -460,6 +460,108 @@ func TestNotificationDispatcher_CommandEventFansSupplier(t *testing.T) {
 	}
 }
 
+type stubPromotionAudience struct {
+	ids []string
+	err error
+}
+
+func (s stubPromotionAudience) EngagedRetailerIDs(_ context.Context, _ string) ([]string, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.ids, nil
+}
+
+func TestNotificationDispatcher_PromotionChangedAllScopeFansSupplierPromoAndEngagedRetailers(t *testing.T) {
+	t.Parallel()
+
+	supplierConn := &dispatcherConnSpy{id: "supplier"}
+	promoWatcherConn := &dispatcherConnSpy{id: "promo-watcher"}
+	engagedConn := &dispatcherConnSpy{id: "engaged"}
+	otherConn := &dispatcherConnSpy{id: "other"}
+
+	supplierHub := ws.NewHub("supplier", nil, nil)
+	retailerHub := ws.NewHub("retailer", nil, nil)
+	supplierHub.Subscribe("supplier:sup-1", supplierConn)
+	retailerHub.Subscribe(ws.SupplierPromoRoom("sup-1"), promoWatcherConn)
+	retailerHub.Subscribe("retailer:ret-1", engagedConn)
+	retailerHub.Subscribe("retailer:ret-9", otherConn)
+
+	dispatcher := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub:       supplierHub,
+		RetailerHub:       retailerHub,
+		PromotionAudience: stubPromotionAudience{ids: []string{"ret-1", "ret-1", "ret-2"}},
+	})
+
+	payload, err := json.Marshal(map[string]any{
+		"type":           events.EventPromotionChanged,
+		"trace_id":       "trace-promo-all",
+		"supplier_id":    "sup-1",
+		"promotion_id":   "promo-1",
+		"retailer_scope": "ALL",
+		"action":         "updated",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(supplierConn.messages) != 1 {
+		t.Fatalf("supplier messages = %d, want 1", len(supplierConn.messages))
+	}
+	if len(promoWatcherConn.messages) != 1 {
+		t.Fatalf("supplier-promo room messages = %d, want 1", len(promoWatcherConn.messages))
+	}
+	if len(engagedConn.messages) != 1 {
+		t.Fatalf("engaged retailer messages = %d, want 1", len(engagedConn.messages))
+	}
+	if len(otherConn.messages) != 0 {
+		t.Fatalf("unengaged retailer should not receive ALL-scope personal fanout")
+	}
+}
+
+func TestNotificationDispatcher_PromotionChangedAllowlistFansOnlyListedRetailers(t *testing.T) {
+	t.Parallel()
+
+	supplierConn := &dispatcherConnSpy{id: "supplier"}
+	allowConn := &dispatcherConnSpy{id: "allow"}
+	otherConn := &dispatcherConnSpy{id: "other"}
+	promoWatcherConn := &dispatcherConnSpy{id: "promo-watcher"}
+
+	supplierHub := ws.NewHub("supplier", nil, nil)
+	retailerHub := ws.NewHub("retailer", nil, nil)
+	supplierHub.Subscribe("supplier:sup-1", supplierConn)
+	retailerHub.Subscribe("retailer:ret-1", allowConn)
+	retailerHub.Subscribe("retailer:ret-9", otherConn)
+	retailerHub.Subscribe(ws.SupplierPromoRoom("sup-1"), promoWatcherConn)
+
+	dispatcher := NewNotificationDispatcher(DispatcherDeps{
+		SupplierHub:       supplierHub,
+		RetailerHub:       retailerHub,
+		PromotionAudience: stubPromotionAudience{ids: []string{"ret-9"}},
+	})
+
+	payload, _ := json.Marshal(map[string]any{
+		"type":           events.EventPromotionChanged,
+		"trace_id":       "trace-promo-allow",
+		"supplier_id":    "sup-1",
+		"promotion_id":   "promo-2",
+		"retailer_scope": "ALLOWLIST",
+		"retailer_ids":   []string{"ret-1"},
+		"action":         "created",
+	})
+	if err := dispatcher.HandleEvent(context.Background(), kafka.Message{Value: payload}); err != nil {
+		t.Fatalf("handle event: %v", err)
+	}
+	if len(supplierConn.messages) != 1 || len(allowConn.messages) != 1 {
+		t.Fatalf("supplier=%d allow=%d, want 1 each", len(supplierConn.messages), len(allowConn.messages))
+	}
+	if len(otherConn.messages) != 0 || len(promoWatcherConn.messages) != 0 {
+		t.Fatalf("ALLOWLIST should not fan supplier-promo room or unlisted retailers")
+	}
+}
+
 func TestParseEnvelope_RejectsMalformedJSON(t *testing.T) {
 	t.Parallel()
 	if _, err := ParseEnvelope([]byte("not-json")); err == nil {

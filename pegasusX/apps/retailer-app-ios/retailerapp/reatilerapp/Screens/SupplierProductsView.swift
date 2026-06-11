@@ -419,6 +419,10 @@ struct SupplierProductsView: View {
         isLoading = true
         errorMessage = nil
         do {
+            let _: [String: String] = try await api.post(
+                path: "/v1/retailer/promotions/watch",
+                body: ["supplier_id": supplier.id]
+            )
             let result: [Product] = try await api.get(path: "/v1/catalog/products?supplier_id=\(supplier.id)")
             products = result
         } catch {

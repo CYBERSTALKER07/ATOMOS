@@ -20,12 +20,21 @@ const (
 	websocketWriteWait    = 5 * time.Second
 )
 
+// RegisterConfig carries optional WebSocket subscription hooks.
+type RegisterConfig struct {
+	// RetailerPromoSuppliers returns supplier IDs whose supplier-promo rooms a
+	// retailer connection should join at upgrade (typically cart suppliers).
+	RetailerPromoSuppliers func(ctx context.Context, retailerID string) []string
+}
+
 // RegisterRoutes mounts the WebSocket upgrade handler for the provided hubs.
 // Note: Authentication is enforced upstream by standard middleware. The Upgrade
 // handler extracts auth.Claims from context to determine identity and rooms.
 func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string, firebaseAuthEnabled bool, verifier auth.FirebaseVerifier,
 	platformSvc *platform.Service,
-	retailerHub, supplierHub, driverHub, payloadHub, warehouseHub, factoryHub, telemetryHub *Hub) {
+	retailerHub, supplierHub, driverHub, payloadHub, warehouseHub, factoryHub, telemetryHub *Hub,
+	cfg RegisterConfig,
+) {
 	if log == nil {
 		log = slog.Default()
 	}
@@ -50,7 +59,7 @@ func RegisterRoutes(r chi.Router, log *slog.Logger, jwtSecret string, firebaseAu
 			conn:  conn,
 		}
 
-		unsubscribeFuncs, ok := subscribeIdentityRooms(ident, gConn, hubs)
+		unsubscribeFuncs, ok := subscribeIdentityRooms(ident, gConn, hubs, cfg)
 		if !ok {
 			log.Warn("ws upgrade: unrecognized role", "role", ident.Role)
 			gConn.close()
@@ -92,11 +101,11 @@ type roleHubs struct {
 	telemetry *Hub
 }
 
-func subscribeIdentityRooms(ident auth.Claims, conn Connection, hubs roleHubs) ([]func(), bool) {
+func subscribeIdentityRooms(ident auth.Claims, conn Connection, hubs roleHubs, cfg RegisterConfig) ([]func(), bool) {
 	var unsubscribes []func()
 	switch ident.Role {
 	case auth.RoleRetailer:
-		return subscribeRetailerRooms(ident, conn, hubs, unsubscribes), true
+		return subscribeRetailerRooms(ident, conn, hubs, unsubscribes, cfg), true
 	case auth.RoleAdmin:
 		return subscribeSupplierRooms(ident, conn, hubs, unsubscribes), true
 	case auth.RoleDriver:
@@ -112,9 +121,15 @@ func subscribeIdentityRooms(ident auth.Claims, conn Connection, hubs roleHubs) (
 	}
 }
 
-func subscribeRetailerRooms(ident auth.Claims, conn Connection, hubs roleHubs, unsubscribes []func()) []func() {
+func subscribeRetailerRooms(ident auth.Claims, conn Connection, hubs roleHubs, unsubscribes []func(), cfg RegisterConfig) []func() {
 	if hubs.retailer != nil && ident.Subject != "" {
 		unsubscribes = append(unsubscribes, hubs.retailer.Subscribe("retailer:"+ident.Subject, conn))
+		if cfg.RetailerPromoSuppliers != nil {
+			for _, supplierID := range cfg.RetailerPromoSuppliers(context.Background(), ident.Subject) {
+				room := SupplierPromoRoom(supplierID)
+				unsubscribes = append(unsubscribes, hubs.retailer.Subscribe(room, conn))
+			}
+		}
 	}
 	return unsubscribes
 }

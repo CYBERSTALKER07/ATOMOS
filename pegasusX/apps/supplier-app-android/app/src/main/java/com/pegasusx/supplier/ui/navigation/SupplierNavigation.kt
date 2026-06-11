@@ -37,6 +37,7 @@ import com.pegasusx.supplier.ui.screens.more.MoreScreen
 import com.pegasusx.supplier.ui.screens.operations.OperationsScreen
 import com.pegasusx.supplier.ui.screens.orders.OrdersScreen
 import com.pegasusx.supplier.ui.screens.profile.ProfileScreen
+import com.pegasusx.supplier.ui.screens.promotions.PromotionsScreen
 import com.pegasusx.supplier.ui.screens.treasury.LedgerScreen
 
 object SupplierRoutes {
@@ -47,6 +48,7 @@ object SupplierRoutes {
     const val FLEET = "fleet"
     const val MORE = "more"
     const val INVENTORY = "inventory"
+    const val PROMOTIONS = "promotions"
     const val EARNINGS = "earnings"
     const val PROFILE = "profile"
     const val EXCEPTIONS = "exceptions"
@@ -175,6 +177,7 @@ fun SupplierNavigation(
                     onLedger = { navController.navigate(SupplierRoutes.LEDGER) },
                     onOperations = { navController.navigate(SupplierRoutes.OPERATIONS) },
                     onInventory = { navController.navigate(SupplierRoutes.INVENTORY) },
+                    onPromotions = { navController.navigate(SupplierRoutes.PROMOTIONS) },
                     onEarnings = { navController.navigate(SupplierRoutes.EARNINGS) },
                     onProfile = { navController.navigate(SupplierRoutes.PROFILE) },
                     onBilling = { navController.navigate(SupplierRoutes.BILLING) },
@@ -212,6 +215,7 @@ fun SupplierNavigation(
                 key(refreshEpoch) { OperationsScreen(ops) { navController.popBackStack() } }
             }
             composable(SupplierRoutes.INVENTORY) { key(refreshEpoch) { InventoryScreen(api) } }
+            composable(SupplierRoutes.PROMOTIONS) { key(refreshEpoch) { PromotionsScreen(api) } }
             composable(SupplierRoutes.EARNINGS) { key(refreshEpoch) { EarningsScreen(api = api, ops = ops) } }
             composable(SupplierRoutes.PROFILE) { key(refreshEpoch) { ProfileScreen(api) } }
         }

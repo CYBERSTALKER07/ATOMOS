@@ -122,11 +122,17 @@ struct ProductDetailView: View {
 
                 Spacer()
 
-                if let variant = selectedVariant {
+                if selectedVariant != nil {
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text("\(Int(variant.price).formatted())")
+                        if product.hasSaleOffer, let listPrice = product.displayListPrice {
+                            Text(listPrice)
+                                .font(.system(.caption, design: .rounded, weight: .medium))
+                                .foregroundStyle(AppTheme.textTertiary)
+                                .strikethrough()
+                        }
+                        Text(product.displayPrice)
                             .font(.system(.title3, design: .rounded, weight: .bold))
-                            .foregroundStyle(AppTheme.accent)
+                            .foregroundStyle(product.hasSaleOffer ? AppTheme.success : AppTheme.accent)
                         if variant.packCount > 1 {
                             Text("/ \(variant.pack)")
                                 .font(.system(.caption, design: .rounded))

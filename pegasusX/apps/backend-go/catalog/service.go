@@ -76,6 +76,22 @@ func (s *Service) ListProductsForRetailer(ctx context.Context, supplierID, retai
 	if err != nil {
 		return nil, err
 	}
+	return s.enrichProductsForRetailer(ctx, retailerID, products)
+}
+
+// ListProductsDiscovery returns active catalog rows across suppliers for retailer browse surfaces.
+func (s *Service) ListProductsDiscovery(ctx context.Context, retailerID, categoryID string) ([]RetailerProduct, error) {
+	products, err := s.repo.ListDiscoverableProducts(ctx, categoryID, 500)
+	if err != nil {
+		return nil, fmt.Errorf("list discoverable products: %w", err)
+	}
+	return s.enrichProductsForRetailer(ctx, retailerID, products)
+}
+
+func (s *Service) enrichProductsForRetailer(ctx context.Context, retailerID string, products []Product) ([]RetailerProduct, error) {
+	if len(products) == 0 {
+		return []RetailerProduct{}, nil
+	}
 	if s.promotions == nil || retailerID == "" {
 		out := make([]RetailerProduct, len(products))
 		for i, p := range products {
@@ -83,13 +99,19 @@ func (s *Service) ListProductsForRetailer(ctx context.Context, supplierID, retai
 		}
 		return out, nil
 	}
-	promos, err := s.promotions.ActiveForSupplier(ctx, supplierID)
-	if err != nil {
-		return nil, err
-	}
+	promosBySupplier := make(map[string][]promotion.Promotion)
 	now := s.promotions.Now()
 	out := make([]RetailerProduct, len(products))
 	for i, p := range products {
+		promos, ok := promosBySupplier[p.SupplierID]
+		if !ok {
+			var err error
+			promos, err = s.promotions.ActiveForSupplier(ctx, p.SupplierID)
+			if err != nil {
+				return nil, fmt.Errorf("active promotions for supplier %s: %w", p.SupplierID, err)
+			}
+			promosBySupplier[p.SupplierID] = promos
+		}
 		offer := promotion.CatalogOffer(now, retailerID, p.ProductID, p.CategoryID, p.PriceMinor, promos)
 		out[i] = RetailerProduct{Product: p, Offer: &offer}
 	}

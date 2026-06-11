@@ -125,6 +125,37 @@ data class SupplierEarnings(
 )
 
 @Serializable
+data class SupplierPromotion(
+    @SerialName("promotion_id") val promotionId: String,
+    @SerialName("supplier_id") val supplierId: String = "",
+    val name: String = "",
+    val description: String? = null,
+    @SerialName("discount_bps") val discountBps: Long = 0,
+    @SerialName("scope_type") val scopeType: String = "ALL_PRODUCTS",
+    @SerialName("retailer_scope") val retailerScope: String = "ALL",
+    @SerialName("is_active") val isActive: Boolean = true,
+    val priority: Long = 0,
+)
+
+@Serializable
+data class SupplierPromotionsResponse(
+    val promotions: List<SupplierPromotion> = emptyList(),
+)
+
+@Serializable
+data class SupplierPromotionUpsertRequest(
+    val name: String,
+    val description: String = "",
+    @SerialName("discount_bps") val discountBps: Long,
+    @SerialName("scope_type") val scopeType: String = "ALL_PRODUCTS",
+    @SerialName("retailer_scope") val retailerScope: String = "ALL",
+    @SerialName("retailer_ids") val retailerIds: List<String> = emptyList(),
+    @SerialName("min_line_quantity") val minLineQuantity: Long = 0,
+    @SerialName("min_order_amount_minor") val minOrderAmountMinor: Long = 0,
+    val priority: Long = 0,
+)
+
+@Serializable
 data class BillingSetupRequest(
     @SerialName("bank_name") val bankName: String,
     @SerialName("account_holder") val accountHolder: String,

@@ -216,7 +216,21 @@ func main() {
 	})
 	ws.RegisterRoutes(r, slog.Default(), cfg.JWTSecret, cfg.FirebaseAuthEnabled, firebaseVerifier,
 		app.PlatformService,
-		app.RetailerHub, app.SupplierHub, app.DriverHub, app.PayloadHub, app.WarehouseHub, app.FactoryHub, app.TelemetryHub)
+		app.RetailerHub, app.SupplierHub, app.DriverHub, app.PayloadHub, app.WarehouseHub, app.FactoryHub, app.TelemetryHub,
+		ws.RegisterConfig{
+			RetailerPromoSuppliers: func(ctx context.Context, retailerID string) []string {
+				if app.PromotionAudience == nil {
+					return nil
+				}
+				ids, err := app.PromotionAudience.CartSupplierIDs(ctx, retailerID)
+				if err != nil {
+					slog.WarnContext(ctx, "retailer promo cart suppliers failed", "err", err, "retailer_id", retailerID)
+					return nil
+				}
+				return ids
+			},
+		},
+	)
 
 	// Global Pay local simulator — only mounted when GLOBAL_PAY_ENV != "production".
 	// Provides a browser UI for end-to-end payment testing without hitting the real gateway.

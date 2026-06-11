@@ -37,6 +37,13 @@ struct DashboardView: View {
         .task(id: refreshCenter.refreshToken) {
             await loadData()
         }
+        .task {
+            for await event in RetailerWebSocket.shared.eventStream() {
+                if case .promotionChanged = event {
+                    await loadData()
+                }
+            }
+        }
         .refreshable {
             await loadData()
         }
@@ -377,8 +384,8 @@ struct DashboardView: View {
         }
 
         do {
-            let products: [Product] = try await api.get(path: "/v1/products")
-            reorderProducts = products
+            let products: [Product] = try await api.get(path: "/v1/catalog/products")
+            reorderProducts = Array(products.prefix(6))
         } catch {
             reorderProducts = []
         }
