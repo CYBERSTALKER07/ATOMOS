@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -22,8 +24,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 )
-
-const canonicalSchemaPath = "apps/backend-go/schema/spanner.ddl"
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
@@ -72,7 +72,11 @@ func ensureSpannerSchema(ctx context.Context, cfg *bootstrap.Config) error {
 		return err
 	}
 
-	ddlStatements, err := loadDDLStatements(canonicalSchemaPath)
+	schemaPath, err := resolveSchemaDDLPath()
+	if err != nil {
+		return err
+	}
+	ddlStatements, err := loadDDLStatements(schemaPath)
 	if err != nil {
 		return fmt.Errorf("load ddl statements: %w", err)
 	}
@@ -229,6 +233,24 @@ func existingSupplierCreatedAt(
 	}
 
 	return createdAt, nil
+}
+
+func resolveSchemaDDLPath() (string, error) {
+	candidates := []string{
+		"schema/spanner.ddl",
+		"apps/backend-go/schema/spanner.ddl",
+	}
+	if _, sourceFile, _, ok := runtime.Caller(0); ok {
+		candidates = append([]string{
+			filepath.Clean(filepath.Join(filepath.Dir(sourceFile), "..", "..", "schema", "spanner.ddl")),
+		}, candidates...)
+	}
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("spanner.ddl not found (tried %v); run from pegasusX/ or pegasusX/apps/backend-go", candidates)
 }
 
 func loadDDLStatements(path string) ([]string, error) {

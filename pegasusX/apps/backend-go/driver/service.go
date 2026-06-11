@@ -62,6 +62,9 @@ type DriverOrderQuery func(ctx context.Context, driverID string) ([]DriverOrderV
 // DriverOrderGetQuery retrieves a single order by ID from Spanner.
 type DriverOrderGetQuery func(ctx context.Context, orderID string) (DriverOrderView, bool, error)
 
+// ManifestDeliveryTokenLookup resolves persisted delivery tokens for manifest orders.
+type ManifestDeliveryTokenLookup func(ctx context.Context, orderIDs []string) map[string]string
+
 // Service keeps additive in-memory driver state for scaffold routes.
 type Service struct {
 	repo         Repository
@@ -72,8 +75,9 @@ type Service struct {
 	supplierHub  *ws.Hub
 	driverHub    *ws.Hub
 	log          *slog.Logger
-	manifestGate ManifestGateLookup
-	manifest     ManifestLookup
+	manifestGate     ManifestGateLookup
+	manifest         ManifestLookup
+	manifestTokens   ManifestDeliveryTokenLookup
 	pendingQuery PendingCollectionsLookup
 	earnings     EarningsLookup
 	depart         DepartFn
@@ -103,8 +107,9 @@ type ServiceConfig struct {
 	SupplierHub  *ws.Hub
 	DriverHub    *ws.Hub
 	Log          *slog.Logger
-	ManifestGate ManifestGateLookup
-	Manifest     ManifestLookup
+	ManifestGate       ManifestGateLookup
+	Manifest           ManifestLookup
+	ManifestTokens     ManifestDeliveryTokenLookup
 	PendingQuery PendingCollectionsLookup
 	Earnings     EarningsLookup
 	Depart          DepartFn
@@ -230,6 +235,7 @@ func NewService(c ServiceConfig) *Service {
 		log:                c.Log,
 		manifestGate:       c.ManifestGate,
 		manifest:           c.Manifest,
+		manifestTokens:     c.ManifestTokens,
 		pendingQuery:       c.PendingQuery,
 		earnings:           c.Earnings,
 		depart:          c.Depart,
@@ -591,7 +597,7 @@ func (s *Service) HandleManifest(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	hashes := offlineManifestHashes(detail)
+	hashes := s.offlineManifestHashes(r.Context(), detail)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"driver_id":               driverID,
 		"manifest_id":             detail.Manifest.ManifestID,
@@ -610,9 +616,8 @@ func (s *Service) HandleManifest(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func offlineManifestHashes(detail factory.ManifestDetailSnapshot) map[string]string {
-	demoTokens := demoOrderDeliveryTokens()
-	hashes := make(map[string]string)
+func (s *Service) offlineManifestHashes(ctx context.Context, detail factory.ManifestDetailSnapshot) map[string]string {
+	orderIDs := make([]string, 0, len(detail.Transfers))
 	seen := make(map[string]struct{})
 	for _, transfer := range detail.Transfers {
 		orderID := strings.TrimSpace(transfer.OrderID)
@@ -623,11 +628,22 @@ func offlineManifestHashes(detail factory.ManifestDetailSnapshot) map[string]str
 			continue
 		}
 		seen[orderID] = struct{}{}
-		token := demoTokens[orderID]
-		if token == "" {
-			continue
+		orderIDs = append(orderIDs, orderID)
+	}
+
+	tokens := map[string]string{}
+	if s.manifestTokens != nil && len(orderIDs) > 0 {
+		tokens = s.manifestTokens(ctx, orderIDs)
+	}
+	if len(tokens) == 0 {
+		tokens = demoOrderDeliveryTokens()
+	}
+
+	hashes := make(map[string]string, len(tokens))
+	for orderID, token := range tokens {
+		if hashed := hashDeliveryToken(token); hashed != "" {
+			hashes[orderID] = hashed
 		}
-		hashes[orderID] = hashDeliveryToken(token)
 	}
 	return hashes
 }

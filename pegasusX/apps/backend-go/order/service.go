@@ -27,6 +27,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/packages/handoff"
 	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
@@ -194,6 +195,7 @@ type Service struct {
 	now           func() time.Time
 	newID         func() string
 	jwtSecret     string
+	handoff       *handoff.Engine
 }
 
 // ServiceConfig is the constructor input.
@@ -214,6 +216,7 @@ type ServiceConfig struct {
 	Now             func() time.Time
 	NewID           func() string
 	JWTSecret       string
+	Handoff         *handoff.Engine
 }
 
 // NewService constructs a Service with default Now/NewID.
@@ -231,7 +234,7 @@ func NewService(c ServiceConfig) *Service {
 	if grace <= 0 {
 		grace = 5 * time.Minute
 	}
-	return &Service{
+	svc := &Service{
 		repo:            c.Repo,
 		cache:           c.Cache,
 		warehouse:       c.Warehouse,
@@ -243,12 +246,17 @@ func NewService(c ServiceConfig) *Service {
 		supplierHub:     c.SupplierHub,
 		driverHub:       c.DriverHub,
 		spannerClient:   c.SpannerClient,
-		shopGrace:       c.ShopClosedGrace,
+		shopGrace:       grace,
 		log:             c.Log,
 		now:             c.Now,
 		newID:           c.NewID,
 		jwtSecret:       c.JWTSecret,
+		handoff:         c.Handoff,
 	}
+	if svc.handoff == nil {
+		svc.handoff = handoff.FromEnv()
+	}
+	return svc
 }
 
 // SetPaymentCapturer sets the capturer after construction.
@@ -1177,8 +1185,10 @@ func (s *Service) UpdateStatus(ctx context.Context, claims auth.Claims, orderID 
 	}
 
 	prevStatus := current.Status
+	previousDriverID := strings.TrimSpace(current.DriverID)
 	current.Status = nextStatus
 	current.UpdatedAt = s.now()
+	s.applyHandoffLifecycle(&current, prevStatus, previousDriverID)
 
 	actorID := claims.Subject
 	if actorID == "" {
@@ -1282,11 +1292,13 @@ func (s *Service) AssignOrder(ctx context.Context, claims auth.Claims, orderID s
 		return assignmentResponse(current, assignmentEventType(previousDriverID), current.Version, true), nil
 	}
 
+	previousStatus := current.Status
 	current.DriverID = normalized.DriverID
 	current.VehicleID = normalized.VehicleID
 	current.RouteID = normalized.RouteID
 	current.ManifestID = normalized.ManifestID
 	current.UpdatedAt = s.now()
+	s.applyHandoffLifecycle(&current, previousStatus, previousDriverID)
 	eventType := assignmentEventType(previousDriverID)
 
 	err = s.repo.UpdateOrder(ctx, current, nil, func(txn outbox.TxnBuffer) error {
@@ -1581,12 +1593,14 @@ func (s *Service) transitionDriverOrder(ctx context.Context, claims auth.Claims,
 	}
 
 	previousStatus := current.Status
+	previousDriverID := strings.TrimSpace(current.DriverID)
 	current.Status = req.NextStatus
 	if req.ClientTimestamp != nil {
 		current.UpdatedAt = *req.ClientTimestamp
 	} else {
 		current.UpdatedAt = s.now()
 	}
+	s.applyHandoffLifecycle(&current, previousStatus, previousDriverID)
 	if err := s.persistDriverTransition(ctx, claims, req, current, previousStatus); err != nil {
 		return driverTransitionResult{}, err
 	}
@@ -1798,7 +1812,7 @@ func (s *Service) ValidateQR(ctx context.Context, claims auth.Claims, req Valida
 	if claims.Role == auth.RoleDriver && strings.TrimSpace(orderRecord.DriverID) != strings.TrimSpace(claims.Subject) {
 		return ValidateQRResponse{}, ErrOrderForbidden
 	}
-	if err := validateDeliveryToken(orderRecord, token); err != nil {
+	if err := s.validateDeliveryToken(orderRecord, token); err != nil {
 		return ValidateQRResponse{}, err
 	}
 
@@ -1840,17 +1854,6 @@ func (s *Service) HandleValidateQR(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-func validateDeliveryToken(orderRecord Order, token string) error {
-	expected := strings.TrimSpace(orderRecord.QRToken)
-	if expected == "" {
-		expected = orderRecord.OrderID
-	}
-	if token != expected {
-		return errors.New("invalid qr token")
-	}
-	return nil
-}
-
 // HandleGetQRPayload serves GET /v1/order/{orderID}/qr-payload.
 func (s *Service) HandleGetQRPayload(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -1883,12 +1886,8 @@ func (s *Service) HandleGetQRPayload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
-	qrToken := current.QRToken
-	if qrToken == "" {
-		// Fallback to order ID if not generated
-		qrToken = orderID
-	}
-	
+	qrToken := s.publicDeliveryToken(current)
+
 	writeJSON(w, http.StatusOK, map[string]string{
 		"order_id": orderID,
 		"qr_token": qrToken,
@@ -1931,10 +1930,7 @@ func (s *Service) HandleDeliveryScanQR(w http.ResponseWriter, r *http.Request) {
 		Reason:          "qr_scanned",
 		ClientTimestamp: req.ClientTimestamp,
 		Precheck: func(orderRecord Order) error {
-			if orderRecord.QRToken != "" && orderRecord.QRToken != req.QRToken {
-				return errors.New("invalid qr token")
-			}
-			return nil
+			return s.validateDeliveryToken(orderRecord, req.QRToken)
 		},
 		EmitExtra: func(txn outbox.TxnBuffer, orderRecord Order, _ Status) error {
 			if err := emitSettlementRequired(r.Context(), txn, orderRecord); err != nil {

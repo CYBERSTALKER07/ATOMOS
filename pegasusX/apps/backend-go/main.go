@@ -204,6 +204,7 @@ func main() {
 		TelemetryHub:        app.TelemetryHub,
 		RetailerHub:         app.RetailerHub,
 		LastLocations:       app.DriverLocations,
+		DeliveryTokens:      app.OrderService,
 		SupplierID:          app.Supplier.SupplierID,
 		Log:                 slog.Default(),
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,

@@ -38,7 +38,7 @@ func (b *spannerTxnBuffer) BufferAudit(_ context.Context, e outbox.AuditEntry) e
 	return nil
 }
 
-const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, Version, CreatedAt, UpdatedAt`
+const orderSelectColumns = `OrderId, SupplierId, RetailerId, WarehouseId, DriverId, VehicleId, RouteId, ManifestId, DeliveryToken, Status, OrderSource, ConfirmationStatus, LineItemsJson, TotalMinor, Currency, H3Cell, Lat, Lng, RequestedDeliveryDate, AutoConfirmAt, DecisionAt, DecisionBy, DerivedFromOrderId, ReceivingWindowOpen, ReceivingWindowClose, Version, CreatedAt, UpdatedAt`
 
 // CreateOrder writes the Orders row and any emitted outbox events atomically.
 func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func(outbox.TxnBuffer) error) error {
@@ -108,6 +108,7 @@ func (r *SpannerRepository) CreateOrder(ctx context.Context, o *Order, emit func
 				"VehicleId":             nullableString(o.VehicleID),
 				"RouteId":               nullableString(o.RouteID),
 				"ManifestId":            nullableString(o.ManifestID),
+				"DeliveryToken":         nullableString(o.QRToken),
 				"Status":                string(o.Status),
 				"OrderSource":           string(o.Source),
 				"ConfirmationStatus":    string(o.ConfirmationStatus),
@@ -208,6 +209,7 @@ func (r *SpannerRepository) UpdateOrder(ctx context.Context, o Order, proofs []D
 				"VehicleId":             nullableString(o.VehicleID),
 				"RouteId":               nullableString(o.RouteID),
 				"ManifestId":            nullableString(o.ManifestID),
+				"DeliveryToken":         nullableString(o.QRToken),
 				"Status":                string(o.Status),
 				"OrderSource":           string(o.Source),
 				"ConfirmationStatus":    string(o.ConfirmationStatus),
@@ -413,6 +415,7 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		vehicleID             spanner.NullString
 		routeID               spanner.NullString
 		manifestID            spanner.NullString
+		deliveryToken         spanner.NullString
 		receivingWindowOpen   spanner.NullString
 		receivingWindowClose  spanner.NullString
 		decisionBy            spanner.NullString
@@ -431,6 +434,7 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 		&vehicleID,
 		&routeID,
 		&manifestID,
+		&deliveryToken,
 		&statusRaw,
 		&sourceRaw,
 		&confirmationRaw,
@@ -457,6 +461,7 @@ func scanOrderRowRow(row *spanner.Row) (Order, error) {
 	orderRecord.VehicleID = vehicleID.StringVal
 	orderRecord.RouteID = routeID.StringVal
 	orderRecord.ManifestID = manifestID.StringVal
+	orderRecord.QRToken = deliveryToken.StringVal
 	orderRecord.Status = Status(statusRaw)
 	orderRecord.Source = OrderSource(sourceRaw)
 	orderRecord.ConfirmationStatus = ConfirmationStatus(confirmationRaw)

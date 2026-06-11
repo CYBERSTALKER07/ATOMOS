@@ -45,6 +45,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/telemetry"
 	"github.com/pegasusx/pegasusx/apps/backend-go/warehouse"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
+	"github.com/pegasusx/pegasusx/packages/handoff"
 	"google.golang.org/api/iterator"
 )
 
@@ -127,6 +128,7 @@ type App struct {
 	PaymentService         *payment.Service
 	WarehouseService       *warehouse.Service
 	OrderService           *order.Service
+	HandoffEngine          *handoff.Engine
 	DriverLocations        telemetry.LastLocationStore
 	RetailerHub            *ws.Hub
 	SupplierHub            *ws.Hub
@@ -486,6 +488,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 	supplierSvc.SetEarningsLookup(func(ctx context.Context, supplierID, currency string, now time.Time) (supplier.SupplierEarningsResponse, error) {
 		return loadSupplierEarningsAuthority(ctx, paymentRepo, supplierID, currency, now)
 	})
+	handoffEngine := handoff.FromEnv()
 	orderSvc := order.NewService(order.ServiceConfig{
 		Repo:            orderRepo,
 		Cache:           cacheClient,
@@ -501,6 +504,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		ShopClosedGrace: shopClosedGraceDuration(),
 		Log:             log,
 		JWTSecret:       cfg.JWTSecret,
+		Handoff:         handoffEngine,
 	})
 	var optimizerCli *optimizerclient.Client
 	if strings.TrimSpace(cfg.OptimizerBaseURL) != "" && strings.TrimSpace(cfg.InternalAPIKey) != "" {
@@ -604,6 +608,16 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		OrderGet:       driverOrderGet,
 		Depart:         driverDepart,
 		ReturnComplete: driverReturnComplete,
+		ManifestTokens: func(ctx context.Context, orderIDs []string) map[string]string {
+			tokens := make(map[string]string, len(orderIDs))
+			for _, orderID := range orderIDs {
+				token, err := orderSvc.ResolveDeliveryToken(ctx, orderID)
+				if err == nil && strings.TrimSpace(token) != "" {
+					tokens[orderID] = token
+				}
+			}
+			return tokens
+		},
 		SupplierHub: supplierHub,
 		DriverHub:   driverHub,
 		Log:         log,
@@ -826,6 +840,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		PaymentService:         paymentSvc,
 		WarehouseService:       warehouseSvc,
 		OrderService:           orderSvc,
+		HandoffEngine:          handoffEngine,
 		DriverLocations:        driverLocations,
 		RetailerHub:            retailerHub,
 		SupplierHub:            supplierHub,

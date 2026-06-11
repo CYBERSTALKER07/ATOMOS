@@ -24,10 +24,16 @@ const (
 	locationStaleAfterSec = 30
 )
 
+// DeliveryTokenResolver resolves the active QR handoff token for an order.
+type DeliveryTokenResolver interface {
+	ResolveDeliveryToken(ctx context.Context, orderID string) (string, error)
+}
+
 type Deps struct {
 	TelemetryHub        *ws.Hub
 	RetailerHub         *ws.Hub
 	LastLocations       telemetry.LastLocationWriter
+	DeliveryTokens      DeliveryTokenResolver
 	SupplierID          string
 	Log                 *slog.Logger
 	FirebaseAuthEnabled bool
@@ -143,6 +149,11 @@ func (d Deps) handleLocation(w http.ResponseWriter, r *http.Request) {
 
 			if d.RetailerHub != nil && strings.TrimSpace(loc.NextStopOrderID) != "" {
 				deliveryToken := strings.TrimSpace(loc.NextStopOrderID)
+				if d.DeliveryTokens != nil {
+					if resolved, err := d.DeliveryTokens.ResolveDeliveryToken(r.Context(), loc.NextStopOrderID); err == nil && strings.TrimSpace(resolved) != "" {
+						deliveryToken = strings.TrimSpace(resolved)
+					}
+				}
 				approachPayload, _ := json.Marshal(map[string]any{
 					"type":            "DRIVER_APPROACHING",
 					"order_id":        loc.NextStopOrderID,

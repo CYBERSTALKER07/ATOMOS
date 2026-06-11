@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/spanner"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/packages/handoff"
 	"google.golang.org/api/iterator"
 )
 
@@ -378,7 +379,7 @@ func (r *SpannerRepository) ListTrackingOrders(ctx context.Context, retailerID s
 	stmt := spanner.Statement{
 		SQL: `SELECT OrderId, SupplierId, RetailerId,
 		             COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''),
-		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), Status, LineItemsJson,
+		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), COALESCE(DeliveryToken, ''), Status, LineItemsJson,
 		             TotalMinor, Currency, CreatedAt, UpdatedAt, Lat, Lng
 		      FROM Orders
 		      WHERE RetailerId = @RetailerId
@@ -413,7 +414,7 @@ func (r *SpannerRepository) ListRecentReceipts(ctx context.Context, retailerID s
 	stmt := spanner.Statement{
 		SQL: `SELECT OrderId, SupplierId, RetailerId,
 		             COALESCE(WarehouseId, ''), COALESCE(DriverId, ''), COALESCE(VehicleId, ''),
-		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), Status, LineItemsJson,
+		             COALESCE(RouteId, ''), COALESCE(ManifestId, ''), COALESCE(DeliveryToken, ''), Status, LineItemsJson,
 		             TotalMinor, Currency, CreatedAt, UpdatedAt, Lat, Lng
 		      FROM Orders
 		      WHERE RetailerId = @RetailerId
@@ -1088,12 +1089,13 @@ func (r *SpannerRepository) queryTrackingOrders(ctx context.Context, stmt spanne
 
 func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 	var (
-		order     TrackingOrder
-		lineItems []byte
-		createdAt time.Time
-		updatedAt time.Time
-		lat       spanner.NullFloat64
-		lng       spanner.NullFloat64
+		order               TrackingOrder
+		storedDeliveryToken string
+		lineItems           []byte
+		createdAt           time.Time
+		updatedAt           time.Time
+		lat                 spanner.NullFloat64
+		lng                 spanner.NullFloat64
 	)
 	if err := row.Columns(
 		&order.OrderID,
@@ -1104,6 +1106,7 @@ func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 		&order.VehicleID,
 		&order.RouteID,
 		&order.ManifestID,
+		&storedDeliveryToken,
 		&order.Status,
 		&lineItems,
 		&order.TotalMinor,
@@ -1130,18 +1133,13 @@ func decodeTrackingOrder(row *spanner.Row) (TrackingOrder, error) {
 	if lng.Valid {
 		order.DeliveryLng = lng.Float64
 	}
-	order.DeliveryToken = trackingDeliveryToken(order)
+	order.DeliveryToken = trackingDeliveryToken(order.OrderID, storedDeliveryToken, order.Status)
 	order.PaymentStatus = trackingPaymentStatus(order.Status)
 	return order, nil
 }
 
-func trackingDeliveryToken(order TrackingOrder) string {
-	switch strings.TrimSpace(order.Status) {
-	case "LOADED", "IN_TRANSIT", "ARRIVED", "ARRIVING", "AWAITING_PAYMENT", "PENDING_CASH_COLLECTION":
-		return strings.TrimSpace(order.OrderID)
-	default:
-		return ""
-	}
+func trackingDeliveryToken(orderID, storedToken, status string) string {
+	return handoff.FromEnv().PublicToken(orderID, storedToken, status)
 }
 
 func trackingPaymentStatus(status string) string {

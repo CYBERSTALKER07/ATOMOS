@@ -117,6 +117,7 @@ CREATE TABLE Orders (
   VehicleId        STRING(36),
   RouteId          STRING(36),
   ManifestId       STRING(36),
+  DeliveryToken    STRING(36),
   Status           STRING(20)    NOT NULL,
   OrderSource      STRING(24)    NOT NULL,
   ConfirmationStatus STRING(24)  NOT NULL,

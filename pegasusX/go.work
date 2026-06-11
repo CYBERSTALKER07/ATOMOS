@@ -3,6 +3,8 @@ go 1.25.0
 use (
 	./apps/ai-worker
 	./apps/backend-go
+	./apps/handoff-service
 	./packages/config
+	./packages/handoff
 	./packages/optimizer-contract
 )

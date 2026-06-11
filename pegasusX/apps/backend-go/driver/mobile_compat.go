@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
-	"github.com/pegasusx/pegasusx/apps/backend-go/factory"
 	"github.com/pegasusx/pegasusx/apps/backend-go/notifications"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
 )
@@ -489,12 +488,13 @@ func iosRouteManifest(driverID, date string) map[string]any {
 	if date == "" {
 		date = time.Now().UTC().Format("2006-01-02")
 	}
-	hashes := offlineManifestHashes(factory.ManifestDetailSnapshot{
-		Transfers: []factory.TransferRow{
-			{OrderID: "ord_factory_1"},
-			{OrderID: "ord_factory_2"},
-		},
-	})
+	demoTokens := demoOrderDeliveryTokens()
+	hashes := make(map[string]string)
+	for _, orderID := range []string{"ord_factory_1", "ord_factory_2"} {
+		if token := demoTokens[orderID]; token != "" {
+			hashes[orderID] = hashDeliveryToken(token)
+		}
+	}
 	return map[string]any{
 		"driver_id":  driverID,
 		"date":       date,

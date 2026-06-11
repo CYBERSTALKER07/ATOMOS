@@ -71,5 +71,18 @@ services:
       - "8081:8080"
     restart: unless-stopped
 
+  handoff-service:
+    profiles: ["handoff"]
+    build:
+      context: ..
+      dockerfile: apps/handoff-service/Dockerfile
+    environment:
+      HTTP_PORT: "8082"
+      HANDOFF_LEGACY_ORDER_ID_FALLBACK: "true"
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key}
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
+
 volumes:
   redis-data:
