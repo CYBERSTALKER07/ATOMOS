@@ -198,6 +198,25 @@ func (d *NotificationDispatcher) handleTelemetryLocation(ctx context.Context, pa
 	return nil
 }
 
+func (d *NotificationDispatcher) handlePromotionChanged(ctx context.Context, payload []byte, traceID string) error {
+	var e events.PromotionEvent
+	if err := json.Unmarshal(payload, &e); err != nil {
+		return fmt.Errorf("decode promotion changed event: %w", err)
+	}
+	if d.dropFanout(events.EventPromotionChanged, traceID, e.PromotionID) {
+		return nil
+	}
+	d.broadcastSupplier(ctx, e.SupplierID, payload)
+	if strings.EqualFold(e.RetailerScope, "ALLOWLIST") {
+		for _, retailerID := range e.RetailerIDs {
+			d.broadcastRetailer(ctx, strings.TrimSpace(retailerID), payload)
+		}
+		return nil
+	}
+	// ALL scope: connected retailers refresh when they next open catalog or cart.
+	return nil
+}
+
 func (d *NotificationDispatcher) handleSyncEvent(ctx context.Context, payload []byte, traceID string) error {
 	e, err := decodePartyEnvelope(payload)
 	if err != nil {

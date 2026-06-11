@@ -73,6 +73,25 @@
         {
           "properties": {
             "type": {
+              "const": "PROMOTION_CHANGED"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        }
+      ],
+      "title": "PromotionChangedEnvelope"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/UnknownEventPayload"
+        },
+        {
+          "properties": {
+            "type": {
               "const": "COMMAND_DISPATCHED"
             }
           },
@@ -1110,6 +1129,7 @@
         "ORDER_VALIDATION_FAILED",
         "PAYMENT_CLEARED",
         "PAYMENT_REQUIRED",
+        "PROMOTION_CHANGED",
         "RETAILER_REGISTERED",
         "ROUTE_CREATED",
         "ROUTE_REORDERED",
@@ -1176,6 +1196,7 @@
     "ORDER_VALIDATION_FAILED": "UnknownEventPayload",
     "PAYMENT_CLEARED": "UnknownEventPayload",
     "PAYMENT_REQUIRED": "UnknownEventPayload",
+    "PROMOTION_CHANGED": "UnknownEventPayload",
     "RETAILER_REGISTERED": "UnknownEventPayload",
     "ROUTE_CREATED": "UnknownEventPayload",
     "ROUTE_REORDERED": "UnknownEventPayload",

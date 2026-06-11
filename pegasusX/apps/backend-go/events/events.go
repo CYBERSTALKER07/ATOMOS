@@ -78,6 +78,7 @@ const (
 	EventNegotiationResolved       = "NEGOTIATION_RESOLVED"
 	EventCartSyncUpdated           = "CART_SYNC_UPDATED"
 	EventInventorySyncComplete     = "INVENTORY_SYNC_COMPLETE"
+	EventPromotionChanged          = "PROMOTION_CHANGED"
 	EventCommandDispatched         = "COMMAND_DISPATCHED"
 	EventCommandReceived           = "COMMAND_RECEIVED"
 	EventCommandSettled            = "COMMAND_SETTLED"
@@ -97,6 +98,7 @@ const (
 	AggregateRoute            = "Route"
 	AggregateManifest         = "Manifest"
 	AggregateSession          = "DeliverySession"
+	AggregatePromotion        = "Promotion"
 )
 
 func topicFromEnv(key string, fallback string) string {

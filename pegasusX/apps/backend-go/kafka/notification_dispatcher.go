@@ -103,6 +103,8 @@ func (d *NotificationDispatcher) HandleEvent(ctx context.Context, msg kafka.Mess
 		return d.handleSupplierCreated(ctx, msg.Value, traceID)
 	case events.EventCartSyncUpdated, events.EventInventorySyncComplete:
 		return d.handleSyncEvent(ctx, msg.Value, traceID)
+	case events.EventPromotionChanged:
+		return d.handlePromotionChanged(ctx, msg.Value, traceID)
 	case events.EventCommandDispatched, events.EventCommandReceived, events.EventCommandSettled:
 		return d.handleCommandEvent(ctx, msg.Value, traceID)
 	case events.EventSystemAppOutdated:

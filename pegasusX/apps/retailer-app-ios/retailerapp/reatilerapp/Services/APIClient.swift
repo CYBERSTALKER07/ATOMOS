@@ -290,6 +290,13 @@ final class APIClient {
         return try await post(path: "/v1/retailer/cart/sync", body: request)
     }
 
+    func checkoutQuote(supplierID: String, lines: [CheckoutQuoteLine]) async throws -> CheckoutQuoteResponse {
+        try await post(
+            path: "/v1/retailer/checkout/quote",
+            body: CheckoutQuoteRequest(supplierID: supplierID, lines: lines)
+        )
+    }
+
     func getSuppliers() async throws -> [RetailerSupplierResponse] {
         return try await get(path: "/v1/retailer/suppliers")
     }

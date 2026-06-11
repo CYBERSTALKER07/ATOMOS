@@ -3,12 +3,15 @@ package com.pegasusx.retailer.ui.screens.suppliers
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pegasusx.retailer.data.api.PegasusApi
+import com.pegasusx.retailer.data.api.RetailerWebSocket
+import com.pegasusx.retailer.data.local.TokenManager
 import com.pegasusx.retailer.data.model.Product
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -39,18 +42,40 @@ data class SupplierCatalogUiState(
 @HiltViewModel
 class SupplierCatalogViewModel @Inject constructor(
     private val api: PegasusApi,
+    private val tokenManager: TokenManager,
+    private val retailerWebSocket: RetailerWebSocket,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SupplierCatalogUiState())
     val uiState: StateFlow<SupplierCatalogUiState> = _uiState.asStateFlow()
+    private var activeSupplierId: String = ""
+
+    init {
+        retailerWebSocket.connect()
+        viewModelScope.launch {
+            retailerWebSocket.events
+                .filter { it.type == "PROMOTION_CHANGED" }
+                .collect {
+                    val supplierId = activeSupplierId
+                    if (supplierId.isNotBlank()) {
+                        load(supplierId)
+                    }
+                }
+        }
+    }
 
     fun load(supplierId: String) {
+        activeSupplierId = supplierId
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, loadIssue = null) }
             try {
                 // Actually, there's no single supplier GET to check favorite state...
                 // But we can fetch mySuppliers and see if it's there
-                val products = api.getCatalogProducts(supplierId = supplierId)
+                val retailerId = tokenManager.getUserId()
+                val products = api.getCatalogProducts(
+                    supplierId = supplierId,
+                    retailerId = retailerId,
+                )
                 val mySuppliers = api.getMySuppliers()
                 val isFav = mySuppliers.any { it.id == supplierId }
                 _uiState.update { it.copy(isLoading = false, products = products, isFavorite = isFav, error = null, loadIssue = null) }

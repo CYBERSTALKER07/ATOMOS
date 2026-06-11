@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.pegasusx.retailer.data.model.Order
 import com.pegasusx.retailer.ui.components.ActiveDeliveriesSheet
@@ -378,6 +379,20 @@ fun RetailerNavigation(
                         AccountProfileScreen(onBack = { navController.popBackStack() })
                     }
                 }
+                composable("SAVED_CARDS_DELIVERY_PAYMENT/{orderId}/{sessionId}") {
+                    Box(Modifier.fillMaxSize()) {
+                        SavedCardsScreen(
+                            returnTo = "delivery_payment",
+                            onNavigateBack = { navController.popBackStack() },
+                            onReturnToDeliveryPayment = {
+                                navigationViewModel.loadPendingPayments()
+                                paymentPhase = PaymentPhase.CHOOSE
+                                paymentError = null
+                                navController.popBackStack()
+                            },
+                        )
+                    }
+                }
                 composable(PegasusTab.SUPPLIERS.name) {
                     Box(Modifier.fillMaxSize()) {
                         MySuppliersScreen(
@@ -542,6 +557,9 @@ fun RetailerNavigation(
         // ── Delivery Payment Sheet (WebSocket-driven) ──
         val paymentEvent = navState.paymentEvent
         val context = LocalContext.current
+        val navBackStackEntry by navController.currentBackStackEntryAsState()
+        val hidePaymentForAddCard =
+            navBackStackEntry?.destination?.route?.startsWith("SAVED_CARDS_DELIVERY_PAYMENT") == true
 
         // Auto-transition to SUCCESS when ORDER_COMPLETED arrives via WebSocket
         LaunchedEffect(navState.orderCompleted) {
@@ -559,7 +577,7 @@ fun RetailerNavigation(
             }
         }
 
-        if (paymentEvent != null) {
+        if (paymentEvent != null && !hidePaymentForAddCard) {
             DeliveryPaymentSheet(
                 event = paymentEvent,
                 phase = paymentPhase,
@@ -584,6 +602,12 @@ fun RetailerNavigation(
                 onBackToPaymentChoice = {
                     paymentError = null
                     paymentPhase = PaymentPhase.CHOOSE
+                },
+                onAddCard = {
+                    val sessionToken = paymentEvent.sessionId.orEmpty().ifBlank { "_" }
+                    navController.navigate(
+                        "SAVED_CARDS_DELIVERY_PAYMENT/${Uri.encode(paymentEvent.orderId)}/${Uri.encode(sessionToken)}"
+                    )
                 },
                 onSelectCard = { gateway ->
                     paymentPhase = PaymentPhase.PROCESSING

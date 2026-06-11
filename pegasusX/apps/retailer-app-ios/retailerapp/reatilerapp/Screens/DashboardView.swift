@@ -207,9 +207,17 @@ struct DashboardView: View {
                     .lineLimit(1)
                     .frame(width: 70)
 
-                Text(product.displayPrice)
-                    .font(.system(.caption2, design: .rounded, weight: .bold))
-                    .foregroundStyle(AppTheme.textPrimary)
+                VStack(spacing: 2) {
+                    if product.hasSaleOffer, let listPrice = product.displayListPrice {
+                        Text(listPrice)
+                            .font(.system(.caption2, design: .rounded, weight: .medium))
+                            .foregroundStyle(AppTheme.textTertiary)
+                            .strikethrough()
+                    }
+                    Text(product.displayPrice)
+                        .font(.system(.caption2, design: .rounded, weight: .bold))
+                        .foregroundStyle(product.hasSaleOffer ? AppTheme.success : AppTheme.textPrimary)
+                }
             }
             .padding(AppTheme.spacingSM)
         }

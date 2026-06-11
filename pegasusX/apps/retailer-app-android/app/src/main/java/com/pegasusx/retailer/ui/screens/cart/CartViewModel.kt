@@ -10,6 +10,8 @@ import com.pegasusx.retailer.data.model.CardCheckoutRequest
 import com.pegasusx.retailer.data.model.CartItem
 import com.pegasusx.retailer.data.model.CashCheckoutRequest
 import com.pegasusx.retailer.data.model.CheckoutLineItem
+import com.pegasusx.retailer.data.model.CheckoutQuoteLine
+import com.pegasusx.retailer.data.model.CheckoutQuoteRequest
 import com.pegasusx.retailer.data.model.Product
 import com.pegasusx.retailer.data.model.SupplierOrderResult
 import com.pegasusx.retailer.data.model.UnifiedCheckoutRequest
@@ -57,12 +59,14 @@ data class CartUiState(
     val syncError: String? = null,
     val loadIssue: CartLoadIssue? = null,
     val paymentUrlToOpen: String? = null,
+    val quotedDiscountMinor: Long? = null,
+    val quotedSubtotalMinor: Long? = null,
 ) {
     val isEmpty: Boolean get() = items.isEmpty()
     val totalItems: Int get() = items.sumOf { it.quantity }
-    val subtotal: Double get() = items.sumOf { it.totalPrice }
+    val subtotal: Double get() = quotedSubtotalMinor?.toDouble() ?: items.sumOf { it.totalPrice }
     val shipping: Double get() = if (subtotal > 50_000) 0.0 else 15_000.0
-    val discount: Double get() = if (subtotal > 500_000) subtotal * 0.05 else 0.0
+    val discount: Double get() = quotedDiscountMinor?.toDouble() ?: 0.0
     val total: Double get() = subtotal + shipping - discount
     val displaySubtotal: String get() = "%,.0f".format(subtotal)
     val displayShipping: String get() = if (shipping == 0.0) "Free" else "%,.0f".format(shipping)
@@ -108,6 +112,7 @@ class CartViewModel @Inject constructor(
     private var paymentListenerJob: Job? = null
     private var cartSyncDebounceJob: Job? = null
     private var cartSyncEventsJob: Job? = null
+    private var quoteDebounceJob: Job? = null
     private var lastCartSignature: String = ""
 
 init { 
@@ -223,6 +228,7 @@ init {
                 )
             }
             lastCartSignature = signature
+            scheduleQuoteRefresh()
         } catch (e: Exception) {
             val issue = resolveLoadIssue(e)
             _uiState.update {
@@ -240,9 +246,13 @@ init {
         cartSyncEventsJob?.cancel()
         cartSyncEventsJob = viewModelScope.launch {
             retailerWebSocket.events
-                .filter { it.type == "CART_SYNC_UPDATED" }
+                .filter { it.type == "CART_SYNC_UPDATED" || it.type == "PROMOTION_CHANGED" }
                 .collect {
-                    refreshCartFromServer()
+                    if (it.type == "CART_SYNC_UPDATED") {
+                        refreshCartFromServer()
+                    } else {
+                        scheduleQuoteRefresh()
+                    }
                 }
         }
     }
@@ -371,6 +381,7 @@ init {
             }
         }
         scheduleCartSyncPush()
+        scheduleQuoteRefresh()
     }
 
     fun updateQuantity(itemId: String, quantity: Int) {
@@ -382,6 +393,7 @@ init {
             state.copy(items = state.items.map { if (it.id == itemId) it.copy(quantity = quantity) else it })
         }
         scheduleCartSyncPush()
+        scheduleQuoteRefresh()
     }
 
     fun removeItem(itemId: String) {
@@ -393,6 +405,7 @@ init {
             )
         }
         scheduleCartSyncPush()
+        scheduleQuoteRefresh()
     }
 
     fun clearRemovedItemMessage() {
@@ -400,12 +413,69 @@ init {
     }
 
     fun clearCart() {
-        _uiState.update { it.copy(items = emptyList()) }
+        _uiState.update {
+            it.copy(
+                items = emptyList(),
+                quotedDiscountMinor = null,
+                quotedSubtotalMinor = null,
+            )
+        }
         scheduleCartSyncPush()
+    }
+
+    private fun scheduleQuoteRefresh() {
+        quoteDebounceJob?.cancel()
+        quoteDebounceJob = viewModelScope.launch {
+            delay(300)
+            refreshCheckoutQuote()
+        }
+    }
+
+    private suspend fun refreshCheckoutQuote() {
+        val snapshot = _uiState.value.items
+        if (snapshot.isEmpty()) {
+            _uiState.update { it.copy(quotedDiscountMinor = null, quotedSubtotalMinor = null) }
+            return
+        }
+        val grouped = snapshot.groupBy { it.product.supplierId.orEmpty() }.filterKeys { it.isNotBlank() }
+        if (grouped.isEmpty()) {
+            _uiState.update { it.copy(quotedDiscountMinor = 0L, quotedSubtotalMinor = null) }
+            return
+        }
+        try {
+            var subtotalMinor = 0L
+            var discountMinor = 0L
+            for ((supplierId, lines) in grouped) {
+                val quote = api.checkoutQuote(
+                    CheckoutQuoteRequest(
+                        supplierId = supplierId,
+                        lines = lines.map { item ->
+                            val skuId = if (item.variant.id.isNotBlank()) item.variant.id else item.product.id
+                            CheckoutQuoteLine(
+                                productId = skuId,
+                                quantity = item.quantity.toLong(),
+                                unitPriceMinor = item.variant.price.toLong(),
+                            )
+                        },
+                    ),
+                )
+                subtotalMinor += quote.subtotalMinor
+                discountMinor += quote.discountMinor
+            }
+            _uiState.update {
+                it.copy(
+                    quotedSubtotalMinor = subtotalMinor,
+                    quotedDiscountMinor = discountMinor,
+                )
+            }
+        } catch (_: Exception) {
+            _uiState.update { it.copy(quotedDiscountMinor = null, quotedSubtotalMinor = null) }
+        }
     }
 
     fun showCheckout() {
         _uiState.update { it.copy(showCheckout = true, checkoutPhase = CheckoutPhase.REVIEW) }
+        scheduleQuoteRefresh()
     }
 
     fun setSupplierIsActive(value: Boolean) {
@@ -592,5 +662,6 @@ init {
         paymentListenerJob?.cancel()
         cartSyncDebounceJob?.cancel()
         cartSyncEventsJob?.cancel()
+        quoteDebounceJob?.cancel()
     }
 }

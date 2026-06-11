@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -114,20 +115,31 @@ fun ProductCard(
                     }
                 }
 
-                product.defaultVariant?.let { variant ->
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(12.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = PillShape,
+                        )
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (product.hasSaleOffer && product.displayListPrice != null) {
+                        Text(
+                            text = product.displayListPrice,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
+                            textDecoration = TextDecoration.LineThrough,
+                        )
+                    }
                     Text(
-                        text = String.format(Locale.US, "$%.2f", variant.price),
+                        text = product.displayPrice,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(12.dp)
-                            .background(
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = PillShape,
-                            )
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
 

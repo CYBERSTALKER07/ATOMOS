@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -75,6 +76,7 @@ fun DeliveryPaymentSheet(
     onConfirmCash: () -> Unit,
     onBackToPaymentChoice: () -> Unit,
     onSelectCard: (gateway: String) -> Unit,
+    onAddCard: () -> Unit = {},
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -90,7 +92,10 @@ fun DeliveryPaymentSheet(
             tonalElevation = 0.dp,
             dragHandle = { Spacer(Modifier.height(32.dp)) }
         ) {
-            DeliveryPaymentSheetContent(event, phase, errorMessage, onSelectCash, onConfirmCash, onBackToPaymentChoice, onSelectCard, onRetry, onDismiss)
+            DeliveryPaymentSheetContent(
+                event, phase, errorMessage, onSelectCash, onConfirmCash, onBackToPaymentChoice,
+                onSelectCard, onAddCard, onRetry, onDismiss,
+            )
         }
     } else {
         Dialog(onDismissRequest = {
@@ -102,7 +107,10 @@ fun DeliveryPaymentSheet(
                 tonalElevation = 0.dp
             ) {
                 Column(Modifier.padding(vertical = 32.dp)) {
-                    DeliveryPaymentSheetContent(event, phase, errorMessage, onSelectCash, onConfirmCash, onBackToPaymentChoice, onSelectCard, onRetry, onDismiss)
+                    DeliveryPaymentSheetContent(
+                        event, phase, errorMessage, onSelectCash, onConfirmCash, onBackToPaymentChoice,
+                        onSelectCard, onAddCard, onRetry, onDismiss,
+                    )
                 }
             }
         }
@@ -118,6 +126,7 @@ fun DeliveryPaymentSheetContent(
     onConfirmCash: () -> Unit,
     onBackToPaymentChoice: () -> Unit,
     onSelectCard: (gateway: String) -> Unit,
+    onAddCard: () -> Unit,
     onRetry: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -127,7 +136,7 @@ fun DeliveryPaymentSheetContent(
         label = "payment_phase",
     ) { currentPhase ->
         when (currentPhase) {
-            PaymentPhase.CHOOSE -> ChooseContent(event, onSelectCash, onSelectCard)
+            PaymentPhase.CHOOSE -> ChooseContent(event, onSelectCash, onSelectCard, onAddCard)
             PaymentPhase.CASH_CONFIRM -> CashConfirmContent(event, onConfirmCash, onBackToPaymentChoice)
             PaymentPhase.PROCESSING -> ProcessingContent()
             PaymentPhase.CASH_PENDING -> CashPendingContent(event)
@@ -210,6 +219,7 @@ private fun ChooseContent(
     event: RetailerWSMessage,
     onSelectCash: () -> Unit,
     onSelectCard: (String) -> Unit,
+    onAddCard: () -> Unit,
 ) {
     val cardGatewayOptions = resolveCardGatewayOptions(event)
 
@@ -295,6 +305,15 @@ private fun ChooseContent(
                 label = option.label,
                 description = option.description,
                 onClick = { onSelectCard(option.gateway) },
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+        TextButton(onClick = onAddCard) {
+            Text(
+                "Add payment method",
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                textDecoration = TextDecoration.Underline,
             )
         }
     }

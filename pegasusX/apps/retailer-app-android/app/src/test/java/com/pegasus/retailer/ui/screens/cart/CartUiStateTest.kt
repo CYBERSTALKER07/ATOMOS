@@ -72,15 +72,18 @@ class CartUiStateTest {
     }
 
     @Test
-    fun discount_5percentAbove500k() {
+    fun discount_usesServerQuotedValueWhenPresent() {
         val expensiveVariant = Variant("vx", "Big", "Pack", 1, "10kg", 600_000.0)
         val expensiveProduct = Product(id = "px", name = "Expensive", description = "", variants = listOf(expensiveVariant))
-        val state = cartWith(expensiveProduct to (expensiveVariant to 1))
-        assertEquals(30_000.0, state.discount, 0.01) // 5% of 600k
+        val state = cartWith(expensiveProduct to (expensiveVariant to 1)).copy(
+            quotedDiscountMinor = 30_000L,
+            quotedSubtotalMinor = 600_000L,
+        )
+        assertEquals(30_000.0, state.discount, 0.01)
     }
 
     @Test
-    fun discount_zeroBelow500k() {
+    fun discount_zeroWhenNoServerQuote() {
         val state = cartWith(product1 to (variant1 to 10)) // 100_000
         assertEquals(0.0, state.discount, 0.01)
     }

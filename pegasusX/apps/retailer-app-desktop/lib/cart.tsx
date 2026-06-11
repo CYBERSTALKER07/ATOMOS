@@ -27,6 +27,8 @@ type CartContextType = {
   removeFromCart: (product_id: string) => void;
   updateQuantity: (product_id: string, quantity: number) => void;
   clearCart: () => void;
+  subtotal: number;
+  discount: number;
   total: number;
 };
 
@@ -67,8 +69,70 @@ function toServerCartItems(items: CartItem[]): ServerCartItem[] {
     }));
 }
 
+interface CheckoutQuoteResponse {
+  supplier_id: string;
+  subtotal_minor: number;
+  discount_minor: number;
+  total_minor: number;
+  currency: string;
+}
+
+async function fetchPromotionTotals(cartItems: CartItem[]): Promise<{
+  subtotal: number;
+  discount: number;
+  total: number;
+}> {
+  const lineSubtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  if (!readToken() || cartItems.length === 0) {
+    return { subtotal: lineSubtotal, discount: 0, total: lineSubtotal };
+  }
+
+  const grouped = new Map<string, CartItem[]>();
+  for (const item of cartItems) {
+    if (!item.supplier_id) continue;
+    const bucket = grouped.get(item.supplier_id) ?? [];
+    bucket.push(item);
+    grouped.set(item.supplier_id, bucket);
+  }
+
+  if (grouped.size === 0) {
+    return { subtotal: lineSubtotal, discount: 0, total: lineSubtotal };
+  }
+
+  let subtotalMinor = 0;
+  let discountMinor = 0;
+  for (const [supplierId, supplierItems] of grouped.entries()) {
+    const res = await apiFetch('/v1/retailer/checkout/quote', {
+      method: 'POST',
+      body: JSON.stringify({
+        supplier_id: supplierId,
+        lines: supplierItems.map((item) => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+          unit_price_minor: Math.round(item.price),
+          currency: 'UZS',
+        })),
+      }),
+    });
+    if (!res.ok) {
+      return { subtotal: lineSubtotal, discount: 0, total: lineSubtotal };
+    }
+    const quote = (await res.json()) as CheckoutQuoteResponse;
+    subtotalMinor += quote.subtotal_minor ?? 0;
+    discountMinor += quote.discount_minor ?? 0;
+  }
+
+  const subtotal = subtotalMinor;
+  const discount = discountMinor;
+  return { subtotal, discount, total: Math.max(0, subtotal - discount) };
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [subtotal, setSubtotal] = useState(0);
+  const [discount, setDiscount] = useState(0);
+  const [total, setTotal] = useState(0);
+  const quoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ws = useOptionalWebSocket();
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextSyncRef = useRef(false);
@@ -154,9 +218,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (!ws) {
       return;
     }
-    return ws.subscribe('CART_SYNC_UPDATED', () => {
+    const unsubCart = ws.subscribe('CART_SYNC_UPDATED', () => {
       void hydrateFromServer();
     });
+    const unsubPromo = ws.subscribe('PROMOTION_CHANGED', () => {
+      void hydrateFromServer();
+    });
+    return () => {
+      unsubCart();
+      unsubPromo();
+    };
   }, [hydrateFromServer, ws]);
 
   // Persist local cache and debounce full-cart server sync.
@@ -229,9 +300,45 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const clearCart = () => setItems([]);
+  const clearCart = () => {
+    setItems([]);
+    setSubtotal(0);
+    setDiscount(0);
+    setTotal(0);
+  };
 
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  useEffect(() => {
+    const lineSubtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    setSubtotal(lineSubtotal);
+    setDiscount(0);
+    setTotal(lineSubtotal);
+
+    if (!readToken() || items.length === 0) {
+      return;
+    }
+
+    if (quoteTimerRef.current) {
+      clearTimeout(quoteTimerRef.current);
+    }
+    quoteTimerRef.current = setTimeout(() => {
+      void fetchPromotionTotals(items)
+        .then((quoted) => {
+          setSubtotal(quoted.subtotal);
+          setDiscount(quoted.discount);
+          setTotal(quoted.total);
+        })
+        .catch(() => {
+          setSubtotal(lineSubtotal);
+          setDiscount(0);
+          setTotal(lineSubtotal);
+        });
+    }, 300);
+    return () => {
+      if (quoteTimerRef.current) {
+        clearTimeout(quoteTimerRef.current);
+      }
+    };
+  }, [items]);
 
   return (
     <CartContext.Provider
@@ -241,6 +348,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         removeFromCart,
         updateQuantity,
         clearCart,
+        subtotal,
+        discount,
         total,
       }}
     >

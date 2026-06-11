@@ -14,6 +14,11 @@ import { Button, Chip } from "@heroui/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "../lib/cart";
 import type { Product, Variant } from "../lib/types";
+import {
+  productDisplayPrice,
+  productListPrice,
+  productSalePrice,
+} from "../lib/types";
 
 interface ProductDetailDrawerProps {
   product: Product | null;
@@ -159,10 +164,18 @@ export default function ProductDetailDrawer({
                   <p className="text-[10px] font-bold text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                     Base Node Price
                   </p>
-                  <p className="md-typescale-title-large font-bold text-[var(--desk-text-primary)] tabular-nums">
-                    {product.price.toLocaleString()}{" "}
-                    <small className="text-xs opacity-40 uppercase">UZS</small>
-                  </p>
+                  <div className="flex items-baseline gap-2 tabular-nums">
+                    {productSalePrice(product) != null && (
+                      <p className="md-typescale-body-medium text-[var(--desk-text-tertiary)] line-through">
+                        {productListPrice(product).toLocaleString()}{" "}
+                        <small className="text-xs opacity-40 uppercase">UZS</small>
+                      </p>
+                    )}
+                    <p className="md-typescale-title-large font-bold text-[var(--desk-text-primary)]">
+                      {productDisplayPrice(product).toLocaleString()}{" "}
+                      <small className="text-xs opacity-40 uppercase">UZS</small>
+                    </p>
+                  </div>
                 </div>
                 {product.units_per_block && (
                   <div className="text-right">

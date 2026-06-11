@@ -108,6 +108,16 @@ struct ShopClosedAlertEvent: Decodable {
     }
 }
 
+struct PromotionChangedEvent: Decodable {
+    let type: String
+    let supplierId: String
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case supplierId = "supplier_id"
+    }
+}
+
 struct CartSyncUpdatedEvent: Decodable {
     let type: String
     let retailerId: String
@@ -138,6 +148,7 @@ enum RetailerWSEvent {
     case preOrderConfirmationPush(orderId: String)
     case shopClosedAlert(ShopClosedAlertEvent)
     case cartSyncUpdated(CartSyncUpdatedEvent)
+    case promotionChanged(supplierId: String)
 }
 
 // MARK: - Retailer WebSocket
@@ -322,6 +333,10 @@ final class RetailerWebSocket {
         case "CART_SYNC_UPDATED":
             if let event = try? decoder.decode(CartSyncUpdatedEvent.self, from: data) {
                 emit(.cartSyncUpdated(event))
+            }
+        case "PROMOTION_CHANGED":
+            if let payload = try? decoder.decode(PromotionChangedEvent.self, from: data) {
+                emit(.promotionChanged(supplierId: payload.supplierId))
             }
         default:
             break

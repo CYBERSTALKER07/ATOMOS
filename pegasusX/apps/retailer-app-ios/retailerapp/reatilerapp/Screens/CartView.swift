@@ -218,6 +218,13 @@ struct CartView: View {
         .onChange(of: cart.totalItems) {
             Task { await cart.sync() }
         }
+        .task {
+            for await event in RetailerWebSocket.shared.eventStream() {
+                if case .promotionChanged = event {
+                    await cart.refreshCheckoutQuote()
+                }
+            }
+        }
     }
 
     // MARK: - Empty Cart

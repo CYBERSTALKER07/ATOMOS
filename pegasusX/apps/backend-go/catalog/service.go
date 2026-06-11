@@ -7,19 +7,21 @@ import (
 	"strings"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
+	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 )
 
 // Service implements catalog business logic. Handlers call service; service
 // calls repository.
 type Service struct {
-	repo  Repository
-	cache *cache.Cache
-	log   *slog.Logger
+	repo       Repository
+	cache      *cache.Cache
+	log        *slog.Logger
+	promotions *promotion.Service
 }
 
 // NewService creates a catalog service with the given dependencies.
-func NewService(repo Repository, c *cache.Cache, log *slog.Logger) *Service {
-	return &Service{repo: repo, cache: c, log: log}
+func NewService(repo Repository, c *cache.Cache, log *slog.Logger, promotions *promotion.Service) *Service {
+	return &Service{repo: repo, cache: c, log: log, promotions: promotions}
 }
 
 // ListCategories returns all categories for a supplier.
@@ -50,6 +52,12 @@ func (s *Service) CreateCategory(ctx context.Context, cat Category) error {
 	return nil
 }
 
+// RetailerProduct is a catalog row plus optional promotion metadata.
+type RetailerProduct struct {
+	Product
+	Offer *promotion.ProductOffer `json:"offer,omitempty"`
+}
+
 // ListProducts returns products for a supplier, optionally filtered.
 func (s *Service) ListProducts(ctx context.Context, supplierID, categoryID string, activeOnly bool) ([]Product, error) {
 	products, err := s.repo.ListProducts(ctx, supplierID, categoryID, activeOnly)
@@ -60,6 +68,32 @@ func (s *Service) ListProducts(ctx context.Context, supplierID, categoryID strin
 		products = []Product{}
 	}
 	return products, nil
+}
+
+// ListProductsForRetailer returns catalog rows enriched with promotion offers.
+func (s *Service) ListProductsForRetailer(ctx context.Context, supplierID, retailerID, categoryID string) ([]RetailerProduct, error) {
+	products, err := s.ListProducts(ctx, supplierID, categoryID, true)
+	if err != nil {
+		return nil, err
+	}
+	if s.promotions == nil || retailerID == "" {
+		out := make([]RetailerProduct, len(products))
+		for i, p := range products {
+			out[i] = RetailerProduct{Product: p}
+		}
+		return out, nil
+	}
+	promos, err := s.promotions.ActiveForSupplier(ctx, supplierID)
+	if err != nil {
+		return nil, err
+	}
+	now := s.promotions.Now()
+	out := make([]RetailerProduct, len(products))
+	for i, p := range products {
+		offer := promotion.CatalogOffer(now, retailerID, p.ProductID, p.CategoryID, p.PriceMinor, promos)
+		out[i] = RetailerProduct{Product: p, Offer: &offer}
+	}
+	return out, nil
 }
 
 // GetProduct returns a single product.

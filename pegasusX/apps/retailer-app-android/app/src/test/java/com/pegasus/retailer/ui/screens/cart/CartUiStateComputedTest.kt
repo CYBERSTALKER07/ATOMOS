@@ -39,26 +39,28 @@ class CartUiStateComputedTest {
     }
 
     @Test
-    fun `5 percent discount formula when subtotal over 500000`() {
-        val subtotal = 600_000.0
-        val discount = if (subtotal > 500_000) subtotal * 0.05 else 0.0
-        assertEquals(30_000.0, discount, 0.001)
+    fun `discount uses quoted promotion value from server`() {
+        val state = CartUiState(
+            quotedSubtotalMinor = 600_000L,
+            quotedDiscountMinor = 30_000L,
+        )
+        assertEquals(600_000.0, state.subtotal, 0.001)
+        assertEquals(30_000.0, state.discount, 0.001)
     }
 
     @Test
-    fun `no discount formula when subtotal under 500000`() {
-        val subtotal = 400_000.0
-        val discount = if (subtotal > 500_000) subtotal * 0.05 else 0.0
-        assertEquals(0.0, discount, 0.001)
+    fun `no discount when server quote absent`() {
+        val state = CartUiState()
+        assertEquals(0.0, state.discount, 0.001)
     }
 
     @Test
     fun `total formula is subtotal + shipping - discount`() {
-        val subtotal = 700_000.0
-        val shipping = 0.0 // over 50k → free
-        val discount = 35_000.0 // 5% of 700k
-        val total = subtotal + shipping - discount
-        assertEquals(665_000.0, total, 0.001)
+        val state = CartUiState(
+            quotedSubtotalMinor = 700_000L,
+            quotedDiscountMinor = 35_000L,
+        )
+        assertEquals(665_000.0, state.total, 0.001)
     }
 
     @Test

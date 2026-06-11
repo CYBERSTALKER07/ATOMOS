@@ -8,6 +8,7 @@ struct DeliveryPaymentSheetView: View {
 
     @State private var phase: PaymentPhase = .choose
     @State private var errorMessage: String?
+    @State private var showSavedCards = false
 
     private let api = APIClient.shared
     private let ws = RetailerWebSocket.shared
@@ -58,6 +59,22 @@ struct DeliveryPaymentSheetView: View {
                     }
                 }
             }
+        }
+        .sheet(isPresented: $showSavedCards) {
+            NavigationStack {
+                SavedCardsView(
+                    returnTo: "delivery_payment",
+                    orderId: event.orderId,
+                    sessionId: event.sessionId,
+                    onReturnToPayment: {
+                        showSavedCards = false
+                        phase = .choose
+                        errorMessage = nil
+                    }
+                )
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
         .task { await listenForCompletion() }
     }
@@ -125,6 +142,13 @@ struct DeliveryPaymentSheetView: View {
                         Task { await initiateCardCheckout(gateway: option.gateway) }
                     }
                 }
+
+                Button("Add payment method") {
+                    showSavedCards = true
+                }
+                .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                .foregroundStyle(AppTheme.accent)
+                .padding(.top, AppTheme.spacingSM)
             }
             .padding(.horizontal, AppTheme.spacingLG)
 

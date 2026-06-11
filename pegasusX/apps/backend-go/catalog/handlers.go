@@ -50,6 +50,22 @@ func (s *Service) HandleListProducts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	categoryID := r.URL.Query().Get("category_id")
+	retailerID := strings.TrimSpace(r.URL.Query().Get("retailer_id"))
+	if retailerID == "" {
+		if claims, ok := auth.FromContext(r.Context()); ok {
+			retailerID = strings.TrimSpace(claims.Subject)
+		}
+	}
+	if retailerID != "" {
+		products, err := s.ListProductsForRetailer(r.Context(), supplierID, retailerID, categoryID)
+		if err != nil {
+			slog.ErrorContext(r.Context(), "list retailer products failed", "err", err, "supplier_id", supplierID)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+			return
+		}
+		writeJSON(w, http.StatusOK, products)
+		return
+	}
 	products, err := s.ListProducts(r.Context(), supplierID, categoryID, true)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "list products failed", "err", err, "supplier_id", supplierID)

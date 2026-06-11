@@ -26,7 +26,13 @@ import ProductDetailDrawer from "../../../components/ProductDetailDrawer";
 import EmptyState from "../../../components/EmptyState";
 import { useLiveData } from "../../../lib/hooks";
 import { useCart } from "../../../lib/cart";
+import { useWebSocket } from "../../../lib/ws";
 import type { Product, Category, Supplier } from "../../../lib/types";
+import {
+  productDisplayPrice,
+  productListPrice,
+  productSalePrice,
+} from "../../../lib/types";
 
 const EMPTY_PRODUCTS: Product[] = [];
 const EMPTY_CATEGORIES: Category[] = [];
@@ -53,6 +59,7 @@ export default function CatalogPage() {
     mutate: mutateSuppliers,
   } = useLiveData<Supplier[]>("/v1/retailer/suppliers");
   const { items, addToCart } = useCart();
+  const { subscribe } = useWebSocket();
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
@@ -73,6 +80,12 @@ export default function CatalogPage() {
     void mutateCategories();
     void mutateSuppliers();
   }, [mutateCategories, mutateProducts, mutateSuppliers]);
+
+  useEffect(() => {
+    return subscribe("PROMOTION_CHANGED", () => {
+      void mutateProducts();
+    });
+  }, [mutateProducts, subscribe]);
 
   const sparkOrders = useMemo(
     () =>
@@ -571,12 +584,26 @@ export default function CatalogPage() {
                           <span className="md-typescale-label-small text-[var(--desk-text-tertiary)] uppercase tracking-widest">
                             Price Point
                           </span>
-                          <span className="md-typescale-title-medium font-bold tabular-nums text-[var(--desk-text-primary)]">
-                            {product.price.toLocaleString()}{" "}
-                            <small className="text-[var(--desk-text-tertiary)] ml-0.5">
-                              UZS
-                            </small>
-                          </span>
+                          {productSalePrice(product) != null ? (
+                            <div className="flex items-baseline gap-2">
+                              <span className="md-typescale-label-small tabular-nums text-[var(--desk-text-tertiary)] line-through">
+                                {productListPrice(product).toLocaleString()}
+                              </span>
+                              <span className="md-typescale-title-medium font-bold tabular-nums text-[var(--desk-accent)]">
+                                {productDisplayPrice(product).toLocaleString()}{" "}
+                                <small className="text-[var(--desk-text-tertiary)] ml-0.5">
+                                  UZS
+                                </small>
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="md-typescale-title-medium font-bold tabular-nums text-[var(--desk-text-primary)]">
+                              {productDisplayPrice(product).toLocaleString()}{" "}
+                              <small className="text-[var(--desk-text-tertiary)] ml-0.5">
+                                UZS
+                              </small>
+                            </span>
+                          )}
                         </div>
                         <Button
                           variant="primary"

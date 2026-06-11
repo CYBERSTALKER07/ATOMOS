@@ -25,17 +25,34 @@ import com.pegasusx.retailer.ui.components.PegasusEmptyState
 @Composable
 fun SavedCardsScreen(
     onNavigateBack: () -> Unit,
+    returnTo: String? = null,
+    onReturnToDeliveryPayment: (() -> Unit)? = null,
     viewModel: SavedCardsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.cardJustAdded) {
+        if (uiState.cardJustAdded && returnTo == "delivery_payment") {
+            viewModel.clearCardJustAdded()
+            onReturnToDeliveryPayment?.invoke()
+        }
+    }
+
+    val handleBack: () -> Unit = {
+        if (returnTo == "delivery_payment") {
+            onReturnToDeliveryPayment?.invoke()
+        } else {
+            onNavigateBack()
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Saved Cards") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = handleBack) {
                         Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
@@ -52,6 +69,29 @@ fun SavedCardsScreen(
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (returnTo == "delivery_payment") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f))
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = "Add a card, then return to complete delivery payment.",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    TextButton(onClick = handleBack) {
+                        Text("Return", color = MaterialTheme.colorScheme.onPrimaryContainer)
+                    }
+                }
+            }
+
             val syncMessage = when {
                 uiState.loadIssue != null -> uiState.error ?: uiState.syncMessage.orEmpty()
                 uiState.isLoading && uiState.cards.isNotEmpty() -> "Syncing saved cards..."

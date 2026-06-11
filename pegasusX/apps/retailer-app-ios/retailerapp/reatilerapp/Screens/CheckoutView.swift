@@ -234,7 +234,14 @@ struct CheckoutView: View {
     private var summarySection: some View {
         LabCard {
             VStack(spacing: AppTheme.spacingMD) {
-                summaryRow("Subtotal", value: cart.displayTotal)
+                summaryRow("Subtotal", value: "\(Int(cart.checkoutSubtotal).formatted())")
+                if cart.checkoutDiscount > 0 {
+                    summaryRow(
+                        "Promotion",
+                        value: "-\(Int(cart.checkoutDiscount).formatted())",
+                        valueColor: AppTheme.success
+                    )
+                }
                 summaryRow("Delivery", value: "Free", valueColor: AppTheme.success)
 
                 Rectangle()
@@ -246,7 +253,7 @@ struct CheckoutView: View {
                         .font(.system(.headline, design: .rounded))
                         .foregroundStyle(AppTheme.textPrimary)
                     Spacer()
-                    AnimatedCurrencyText(value: cart.totalPrice, font: .system(.title3, design: .rounded, weight: .bold))
+                    AnimatedCurrencyText(value: cart.checkoutTotal, font: .system(.title3, design: .rounded, weight: .bold))
                 }
             }
             .padding(AppTheme.spacingLG)

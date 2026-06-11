@@ -17,8 +17,26 @@ final class CartManager {
         items.reduce(0) { $0 + $1.totalPrice }
     }
 
+    var quotedSubtotalMinor: Int64?
+    var quotedDiscountMinor: Int64 = 0
+
+    var checkoutSubtotal: Double {
+        if let quotedSubtotalMinor {
+            return Double(quotedSubtotalMinor)
+        }
+        return totalPrice
+    }
+
+    var checkoutDiscount: Double {
+        Double(quotedDiscountMinor)
+    }
+
+    var checkoutTotal: Double {
+        max(0, checkoutSubtotal - checkoutDiscount)
+    }
+
     var displayTotal: String {
-        "\(Int(totalPrice).formatted())"
+        "\(Int(checkoutTotal).formatted())"
     }
 
     var isEmpty: Bool { items.isEmpty }
@@ -38,6 +56,7 @@ final class CartManager {
             )
             items.append(item)
         }
+        Task { await refreshCheckoutQuote() }
     }
 
     // MARK: - Remove from Cart
@@ -55,6 +74,7 @@ final class CartManager {
         } else {
             items[index].quantity = quantity
         }
+        Task { await refreshCheckoutQuote() }
     }
 
     // MARK: - Increment / Decrement
@@ -77,6 +97,45 @@ final class CartManager {
 
     func clear() {
         items.removeAll()
+        quotedSubtotalMinor = nil
+        quotedDiscountMinor = 0
+    }
+
+    func refreshCheckoutQuote() async {
+        guard !items.isEmpty else {
+            quotedSubtotalMinor = nil
+            quotedDiscountMinor = 0
+            return
+        }
+
+        let grouped = Dictionary(grouping: items) { $0.product.supplierID ?? "" }
+            .filter { !$0.key.isEmpty }
+
+        var subtotalMinor: Int64 = 0
+        var discountMinor: Int64 = 0
+
+        do {
+            for (supplierID, supplierItems) in grouped {
+                let lines = supplierItems.map { item in
+                    CheckoutQuoteLine(
+                        productID: item.variant.id.isEmpty ? item.product.id : item.variant.id,
+                        quantity: Int64(item.quantity),
+                        unitPriceMinor: Int64(item.variant.price)
+                    )
+                }
+                let quote = try await APIClient.shared.checkoutQuote(
+                    supplierID: supplierID,
+                    lines: lines
+                )
+                subtotalMinor += quote.subtotalMinor
+                discountMinor += quote.discountMinor
+            }
+            quotedSubtotalMinor = subtotalMinor
+            quotedDiscountMinor = discountMinor
+        } catch {
+            quotedSubtotalMinor = nil
+            quotedDiscountMinor = 0
+        }
     }
 
     // MARK: - Build Order Payload
@@ -99,6 +158,53 @@ final class CartManager {
 }
 
 // MARK: - Unified Checkout Payload
+
+struct CheckoutQuoteLine: Encodable {
+    let productID: String
+    let quantity: Int64
+    let unitPriceMinor: Int64
+    let currency: String
+
+    enum CodingKeys: String, CodingKey {
+        case productID = "product_id"
+        case quantity
+        case unitPriceMinor = "unit_price_minor"
+        case currency
+    }
+
+    init(productID: String, quantity: Int64, unitPriceMinor: Int64, currency: String = "UZS") {
+        self.productID = productID
+        self.quantity = quantity
+        self.unitPriceMinor = unitPriceMinor
+        self.currency = currency
+    }
+}
+
+struct CheckoutQuoteRequest: Encodable {
+    let supplierID: String
+    let lines: [CheckoutQuoteLine]
+
+    enum CodingKeys: String, CodingKey {
+        case supplierID = "supplier_id"
+        case lines
+    }
+}
+
+struct CheckoutQuoteResponse: Decodable {
+    let supplierID: String
+    let subtotalMinor: Int64
+    let discountMinor: Int64
+    let totalMinor: Int64
+    let currency: String
+
+    enum CodingKeys: String, CodingKey {
+        case supplierID = "supplier_id"
+        case subtotalMinor = "subtotal_minor"
+        case discountMinor = "discount_minor"
+        case totalMinor = "total_minor"
+        case currency
+    }
+}
 
 struct UnifiedCheckoutPayload: Codable {
     let retailerId: String
@@ -268,6 +374,7 @@ extension CartManager {
 
             items = mergedItems
             lastSyncedSignature = newSignature
+            await refreshCheckoutQuote()
         } catch {
             print("Failed to hydrate cart from server")
         }
@@ -303,6 +410,7 @@ extension CartManager {
         do {
             let response = try await APIClient.shared.syncCart(request: request)
             lastSyncedSignature = currentSignature
+            await refreshCheckoutQuote()
             print("Cart synced. Items count: \(response.items.count)")
         } catch {
             print("Failed to sync cart")

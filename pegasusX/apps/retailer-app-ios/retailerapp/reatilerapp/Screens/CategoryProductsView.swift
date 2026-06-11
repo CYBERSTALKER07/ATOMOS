@@ -72,6 +72,13 @@ struct CategoryProductsView: View {
         .task { await loadProducts() }
         .task(id: refreshCenter.refreshToken) { await loadProducts() }
         .refreshable { await loadProducts() }
+        .task {
+            for await event in RetailerWebSocket.shared.eventStream() {
+                if case .promotionChanged = event {
+                    await loadProducts()
+                }
+            }
+        }
     }
 
     // MARK: - Product Row with Auto-Order Toggle
@@ -95,9 +102,17 @@ struct CategoryProductsView: View {
                     .foregroundStyle(AppTheme.textPrimary)
                     .lineLimit(1)
 
-                Text(product.displayPrice)
-                    .font(.system(.caption, design: .rounded, weight: .bold))
-                    .foregroundStyle(AppTheme.textSecondary)
+                HStack(spacing: AppTheme.spacingSM) {
+                    if product.hasSaleOffer, let listPrice = product.displayListPrice {
+                        Text(listPrice)
+                            .font(.system(.caption2, design: .rounded, weight: .medium))
+                            .foregroundStyle(AppTheme.textTertiary)
+                            .strikethrough()
+                    }
+                    Text(product.displayPrice)
+                        .font(.system(.caption, design: .rounded, weight: .bold))
+                        .foregroundStyle(product.hasSaleOffer ? AppTheme.success : AppTheme.textSecondary)
+                }
             }
 
             Spacer()

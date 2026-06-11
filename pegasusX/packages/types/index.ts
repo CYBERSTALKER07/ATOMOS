@@ -516,6 +516,98 @@ export interface SupplierPricingRuleUpdateRequest {
   currency?: Iso4217;
 }
 
+export type SupplierPromotionScopeType = "PRODUCT" | "CATEGORY" | "ALL_PRODUCTS";
+export type SupplierPromotionRetailerScope = "ALL" | "ALLOWLIST";
+
+export interface SupplierPromotion {
+  promotion_id: string;
+  supplier_id: SupplierId;
+  name: string;
+  description?: string;
+  discount_bps: number;
+  scope_type: SupplierPromotionScopeType;
+  scope_product_id?: string;
+  scope_category_id?: string;
+  retailer_scope: SupplierPromotionRetailerScope;
+  retailer_ids?: RetailerId[];
+  min_line_quantity?: number;
+  min_order_amount_minor?: number;
+  starts_at?: string;
+  ends_at?: string;
+  is_active: boolean;
+  priority: number;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupplierPromotionUpsertRequest {
+  name: string;
+  description?: string;
+  discount_bps: number;
+  scope_type: SupplierPromotionScopeType;
+  scope_product_id?: string;
+  scope_category_id?: string;
+  retailer_scope?: SupplierPromotionRetailerScope;
+  retailer_ids?: RetailerId[];
+  min_line_quantity?: number;
+  min_order_amount_minor?: number;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  priority?: number;
+}
+
+export interface SupplierPromotionsResponse {
+  promotions: SupplierPromotion[];
+}
+
+export interface ProductOffer {
+  product_id: string;
+  list_price_minor: number;
+  sale_price_minor?: number;
+  discount_bps?: number;
+  promotion_id?: string;
+  promotion_name?: string;
+  promotion_label?: string;
+  promotion_ends_at?: string;
+}
+
+export interface CheckoutQuoteLineInput {
+  product_id: string;
+  category_id?: string;
+  quantity: number;
+  unit_price_minor: number;
+  currency?: Iso4217;
+}
+
+export interface CheckoutQuoteRequest {
+  supplier_id: SupplierId;
+  lines: CheckoutQuoteLineInput[];
+}
+
+export interface CheckoutQuotedLine {
+  product_id: string;
+  quantity: number;
+  list_unit_price_minor: number;
+  unit_price_minor: number;
+  line_total_minor: number;
+  currency: Iso4217;
+  discount_bps?: number;
+  promotion_id?: string;
+  promotion_name?: string;
+  promotion_label?: string;
+}
+
+export interface CheckoutQuoteResponse {
+  supplier_id: SupplierId;
+  retailer_id: RetailerId;
+  lines: CheckoutQuotedLine[];
+  subtotal_minor: number;
+  discount_minor: number;
+  total_minor: number;
+  currency: Iso4217;
+}
+
 export interface SupplierOrderDriverLocation {
   driver_id: DriverId;
   supplier_id: SupplierId;
@@ -873,6 +965,7 @@ export type EventType =
   | "SHOP_CLOSED"
   | "SHOP_CLOSED_RESPONSE"
   | "CART_SYNC_UPDATED"
+  | "PROMOTION_CHANGED"
   | "INVENTORY_SYNC_COMPLETE"
   | "COMMAND_DISPATCHED"
   | "COMMAND_RECEIVED"

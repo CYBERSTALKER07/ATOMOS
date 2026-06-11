@@ -12,6 +12,7 @@ import (
 	h3 "github.com/uber/h3-go/v4"
 
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
+	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 )
 
 const orderH3Resolution = 7
@@ -134,21 +135,9 @@ func (s *Service) UnifiedCheckout(ctx context.Context, retailerID string, req Un
 		return UnifiedCheckoutResponse{}, fmt.Errorf("derive h3 cell: %w", err)
 	}
 
-	lineItems := make([]LineItem, 0, len(req.Items))
-	for i, item := range req.Items {
-		sku := strings.TrimSpace(item.SkuID)
-		if sku == "" || item.Quantity <= 0 {
-			return UnifiedCheckoutResponse{}, fmt.Errorf("items[%d] requires sku_id and positive quantity", i)
-		}
-		if item.UnitPrice < 0 {
-			return UnifiedCheckoutResponse{}, fmt.Errorf("items[%d].unit_price must be >= 0", i)
-		}
-		lineItems = append(lineItems, LineItem{
-			SKU:       sku,
-			Name:      sku,
-			Quantity:  item.Quantity,
-			UnitPrice: item.UnitPrice,
-		})
+	lineItems, err := s.authoritativeCheckoutLines(ctx, retailerID, req.Items)
+	if err != nil {
+		return UnifiedCheckoutResponse{}, err
 	}
 
 	created, err := s.Create(ctx, retailerID, CreateRequest{
@@ -220,4 +209,53 @@ func h3CellFromLatLng(lat, lng float64) (string, error) {
 		return "", errors.New("invalid h3 cell")
 	}
 	return strings.ToLower(cell.String()), nil
+}
+
+func (s *Service) authoritativeCheckoutLines(
+	ctx context.Context,
+	retailerID string,
+	items []UnifiedCheckoutLineItem,
+) ([]LineItem, error) {
+	inputs := make([]promotion.LineInput, 0, len(items))
+	for i, item := range items {
+		sku := strings.TrimSpace(item.SkuID)
+		if sku == "" || item.Quantity <= 0 {
+			return nil, fmt.Errorf("items[%d] requires sku_id and positive quantity", i)
+		}
+		if item.UnitPrice < 0 {
+			return nil, fmt.Errorf("items[%d].unit_price must be >= 0", i)
+		}
+		inputs = append(inputs, promotion.LineInput{
+			ProductID: sku,
+			Quantity:  item.Quantity,
+			UnitPrice: item.UnitPrice,
+			Currency:  s.currency,
+		})
+	}
+	if s.promotions != nil {
+		quote, err := s.promotions.QuoteCheckout(ctx, s.supplierID, retailerID, inputs)
+		if err != nil {
+			return nil, err
+		}
+		lineItems := make([]LineItem, 0, len(quote.Lines))
+		for _, line := range quote.Lines {
+			lineItems = append(lineItems, LineItem{
+				SKU:       line.ProductID,
+				Name:      line.ProductID,
+				Quantity:  line.Quantity,
+				UnitPrice: line.UnitPrice,
+			})
+		}
+		return lineItems, nil
+	}
+	lineItems := make([]LineItem, 0, len(inputs))
+	for _, line := range inputs {
+		lineItems = append(lineItems, LineItem{
+			SKU:       line.ProductID,
+			Name:      line.ProductID,
+			Quantity:  line.Quantity,
+			UnitPrice: line.UnitPrice,
+		})
+	}
+	return lineItems, nil
 }

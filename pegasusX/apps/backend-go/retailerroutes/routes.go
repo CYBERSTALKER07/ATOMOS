@@ -8,13 +8,15 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/pegasusx/pegasusx/apps/backend-go/auth"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
+	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 )
 
 // Deps is the narrow dependency contract for this routes package.
 type Deps struct {
-	Service        *retailer.Service
-	PaymentService *payment.Service
+	Service          *retailer.Service
+	PaymentService   *payment.Service
+	PromotionService *promotion.Service
 	OrderService   interface {
 		HandleShopClosedResponse(http.ResponseWriter, *http.Request)
 	}
@@ -46,6 +48,9 @@ func RegisterRoutes(r chi.Router, d Deps) {
 
 		rr.Get("/v1/retailer/cart/sync", d.Service.HandleCartSync)
 		rr.Post("/v1/retailer/cart/sync", d.Service.HandleCartSync)
+		if d.PromotionService != nil {
+			rr.Post("/v1/retailer/checkout/quote", d.PromotionService.HandleCheckoutQuote)
+		}
 
 		rr.Get("/v1/retailers/{retailerID}/orders", d.Service.HandleOrders)
 		rr.Get("/v1/orders", d.Service.HandleOrdersAlias)

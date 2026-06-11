@@ -30,6 +30,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/payloaderroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/paymentroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platformroutes"
+	"github.com/pegasusx/pegasusx/apps/backend-go/promotionroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailerroutes"
 	"github.com/pegasusx/pegasusx/apps/backend-go/simulator"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplierroutes"
@@ -134,6 +135,7 @@ func main() {
 	retailerroutes.RegisterRoutes(r, retailerroutes.Deps{
 		Service:             app.RetailerService,
 		PaymentService:      app.PaymentService,
+		PromotionService:    app.PromotionService,
 		OrderService:        app.OrderService,
 		FirebaseAuthEnabled: cfg.FirebaseAuthEnabled && firebaseVerifier != nil,
 		FirebaseVerifier:    firebaseVerifier,
@@ -172,6 +174,10 @@ func main() {
 		OrderService: app.OrderService,
 		JWTSecret:    cfg.JWTSecret,
 		Spanner:      app.Spanner,
+	})
+	promotionroutes.RegisterRoutes(r, promotionroutes.Deps{
+		Service:   app.PromotionService,
+		JWTSecret: cfg.JWTSecret,
 	})
 	paymentroutes.RegisterRoutes(r, paymentroutes.Deps{
 		Service:             app.PaymentService,

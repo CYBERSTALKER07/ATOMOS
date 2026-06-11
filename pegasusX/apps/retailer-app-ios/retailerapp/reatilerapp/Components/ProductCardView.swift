@@ -32,15 +32,23 @@ struct ProductCardView: View {
 
                     // Price tag
                     if product.displayPrice != "—" {
-                        Text(product.displayPrice)
-                            .font(.system(.caption, design: .rounded, weight: .heavy))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(AppTheme.accentGradient)
-                            .clipShape(.capsule)
-                            .padding(AppTheme.spacingSM)
-                            .shadow(color: AppTheme.accent.opacity(0.3), radius: 4, y: 2)
+                        VStack(alignment: .trailing, spacing: 2) {
+                            if product.hasSaleOffer, let listPrice = product.displayListPrice {
+                                Text(listPrice)
+                                    .font(.system(.caption2, design: .rounded, weight: .medium))
+                                    .foregroundStyle(.white.opacity(0.85))
+                                    .strikethrough()
+                            }
+                            Text(product.displayPrice)
+                                .font(.system(.caption, design: .rounded, weight: .heavy))
+                                .foregroundStyle(.white)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(AppTheme.accentGradient)
+                        .clipShape(.capsule)
+                        .padding(AppTheme.spacingSM)
+                        .shadow(color: AppTheme.accent.opacity(0.3), radius: 4, y: 2)
                     }
                 }
 

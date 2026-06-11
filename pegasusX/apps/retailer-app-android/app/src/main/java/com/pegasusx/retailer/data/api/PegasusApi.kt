@@ -5,6 +5,8 @@ import com.pegasusx.retailer.data.model.ActiveFulfillmentsResponse
 import com.pegasusx.retailer.data.model.AuthResponse
 import com.pegasusx.retailer.data.model.AutoOrderSettings
 import com.pegasusx.retailer.data.model.CardCheckoutRequest
+import com.pegasusx.retailer.data.model.CheckoutQuoteRequest
+import com.pegasusx.retailer.data.model.CheckoutQuoteResponse
 import com.pegasusx.retailer.data.model.CardCheckoutResponse
 import com.pegasusx.retailer.data.model.ConfirmCashRequest
 import com.pegasusx.retailer.data.model.ConfirmCashResponse
@@ -81,7 +83,11 @@ interface PegasusApi {
     suspend fun getCatalogProducts(
         @Query("category_id") categoryId: String? = null,
         @Query("supplier_id") supplierId: String? = null,
+        @Query("retailer_id") retailerId: String? = null,
     ): List<Product>
+
+    @POST("/v1/retailer/checkout/quote")
+    suspend fun checkoutQuote(@Body body: CheckoutQuoteRequest): CheckoutQuoteResponse
 
     @GET("/v1/catalog/categories/{id}/suppliers")
     suspend fun getCategorySuppliers(@Path("id") categoryId: String): List<Supplier>

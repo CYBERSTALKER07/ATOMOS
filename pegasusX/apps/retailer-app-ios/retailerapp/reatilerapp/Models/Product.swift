@@ -62,6 +62,30 @@ struct Variant: Codable, Identifiable, Hashable {
     }
 }
 
+// MARK: - Product Offer
+
+struct ProductOffer: Codable, Hashable {
+    let productID: String
+    let listPriceMinor: Int64
+    let salePriceMinor: Int64?
+    let discountBps: Int64?
+    let promotionID: String?
+    let promotionName: String?
+    let promotionLabel: String?
+    let promotionEndsAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case productID = "product_id"
+        case listPriceMinor = "list_price_minor"
+        case salePriceMinor = "sale_price_minor"
+        case discountBps = "discount_bps"
+        case promotionID = "promotion_id"
+        case promotionName = "promotion_name"
+        case promotionLabel = "promotion_label"
+        case promotionEndsAt = "promotion_ends_at"
+    }
+}
+
 // MARK: - Product
 
 struct Product: Codable, Identifiable, Hashable {
@@ -80,12 +104,14 @@ struct Product: Codable, Identifiable, Hashable {
     let unitsPerBlock: Int?
     let price: Int?
     let availableStock: Int?
+    let offer: ProductOffer?
 
     var isOutOfStock: Bool { availableStock != nil && availableStock! <= 0 }
     var isLowStock: Bool { availableStock != nil && (1...5).contains(availableStock!) }
 
     enum CodingKeys: String, CodingKey {
-        case id, name, description, nutrition, variants
+        case id, name, description, nutrition, variants, offer
+        case productID = "product_id"
         case imageURL = "image_url"
         case imageURLCamel = "imageURL"
         case supplierID = "supplier_id"
@@ -121,7 +147,8 @@ struct Product: Codable, Identifiable, Hashable {
         sellByBlock: Bool = false,
         unitsPerBlock: Int? = nil,
         price: Int? = nil,
-        availableStock: Int? = nil
+        availableStock: Int? = nil,
+        offer: ProductOffer? = nil
     ) {
         self.id = id
         self.name = name
@@ -138,11 +165,13 @@ struct Product: Codable, Identifiable, Hashable {
         self.unitsPerBlock = unitsPerBlock
         self.price = price
         self.availableStock = availableStock
+        self.offer = offer
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(String.self, forKey: .id)
+        id = try container.decodeIfPresent(String.self, forKey: .id)
+            ?? container.decode(String.self, forKey: .productID)
         name = try container.decode(String.self, forKey: .name)
         description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
         nutrition = try container.decodeIfPresent(String.self, forKey: .nutrition) ?? ""
@@ -166,6 +195,7 @@ struct Product: Codable, Identifiable, Hashable {
         price = try container.decodeIfPresent(Int.self, forKey: .price)
         availableStock = try container.decodeIfPresent(Int.self, forKey: .availableStock)
             ?? container.decodeIfPresent(Int.self, forKey: .availableStockCamel)
+        offer = try container.decodeIfPresent(ProductOffer.self, forKey: .offer)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -188,7 +218,25 @@ struct Product: Codable, Identifiable, Hashable {
     }
 
     var defaultVariant: Variant? { variants.first }
+    var hasSaleOffer: Bool {
+        guard let sale = offer?.salePriceMinor, sale > 0 else { return false }
+        return true
+    }
+
+    var displayListPrice: String? {
+        if let list = offer?.listPriceMinor, list > 0 {
+            return "\(list.formatted())"
+        }
+        if let price {
+            return "\(price.formatted())"
+        }
+        return nil
+    }
+
     var displayPrice: String {
+        if let sale = offer?.salePriceMinor, sale > 0 {
+            return "\(sale.formatted())"
+        }
         if let v = defaultVariant {
             return "\(Int(v.price).formatted())"
         }
@@ -196,6 +244,10 @@ struct Product: Codable, Identifiable, Hashable {
             return "\(price.formatted())"
         }
         return "—"
+    }
+
+    var promotionLabel: String? {
+        offer?.promotionLabel
     }
 
     var merchandisingLabel: String? {

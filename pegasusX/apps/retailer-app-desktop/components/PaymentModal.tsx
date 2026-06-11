@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   CreditCard,
   Banknote,
@@ -94,10 +95,13 @@ function wsMessageToPaymentEvent(msg: WsMessage): PaymentEvent {
 /* ── Component ── */
 
 export default function PaymentModal() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [event, setEvent] = useState<PaymentEvent | null>(null);
   const [state, setState] = useState<PaymentState>("idle");
   const [error, setError] = useState<string | null>(null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const hideForAddCard = pathname?.startsWith("/settings/cards") ?? false;
 
   const openPaymentEvent = useCallback((msg: WsMessage) => {
     const evt = wsMessageToPaymentEvent(msg);
@@ -264,6 +268,18 @@ export default function PaymentModal() {
     setState("confirm-cash");
   }, []);
 
+  const handleAddCard = useCallback(() => {
+    if (!event) return;
+    const params = new URLSearchParams({
+      return_to: "delivery_payment",
+      order_id: event.order_id,
+    });
+    if (event.session_id) {
+      params.set("session_id", event.session_id);
+    }
+    router.push(`/settings/cards?${params.toString()}`);
+  }, [event, router]);
+
   const handleCard = useCallback(
     async (gateway: string) => {
       if (!event) return;
@@ -295,7 +311,7 @@ export default function PaymentModal() {
     [event],
   );
 
-  if (!event || state === "idle") return null;
+  if (!event || state === "idle" || hideForAddCard) return null;
 
   const gateways = event.available_card_gateways ?? [];
   const amended =
@@ -492,6 +508,14 @@ export default function PaymentModal() {
                         </div>
                       </button>
                     ))}
+
+                    <button
+                      type="button"
+                      onClick={handleAddCard}
+                      className="w-full py-3 text-sm font-bold text-[var(--desk-accent)] underline underline-offset-4"
+                    >
+                      Add payment method
+                    </button>
                   </div>
                 )}
               </div>

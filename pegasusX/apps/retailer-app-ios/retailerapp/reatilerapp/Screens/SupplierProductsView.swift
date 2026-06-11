@@ -70,6 +70,13 @@ struct SupplierProductsView: View {
             await loadProducts() 
             await loadAutoOrderState()
         }
+        .task {
+            for await event in RetailerWebSocket.shared.eventStream() {
+                if case .promotionChanged(let supplierId) = event, supplierId == supplier.id {
+                    await loadProducts()
+                }
+            }
+        }
     }
 
     // MARK: - Supplier Header
@@ -360,9 +367,15 @@ struct SupplierProductsView: View {
                     .lineLimit(1)
 
                 HStack(spacing: AppTheme.spacingSM) {
+                    if product.hasSaleOffer, let listPrice = product.displayListPrice {
+                        Text(listPrice)
+                            .font(.system(.caption2, design: .rounded, weight: .medium))
+                            .foregroundStyle(AppTheme.textTertiary)
+                            .strikethrough()
+                    }
                     Text(product.displayPrice)
                         .font(.system(.caption, design: .rounded, weight: .bold))
-                        .foregroundStyle(AppTheme.textPrimary)
+                        .foregroundStyle(product.hasSaleOffer ? AppTheme.success : AppTheme.textPrimary)
 
                     if let v = product.defaultVariant {
                         Text(v.size)

@@ -65,6 +65,32 @@ CREATE TABLE SupplierPricingRules (
 
 CREATE INDEX Idx_SupplierPricingRules_ByUpdatedAt ON SupplierPricingRules(UpdatedAt DESC);
 
+CREATE TABLE SupplierPromotions (
+  PromotionId         STRING(36)    NOT NULL,
+  SupplierId          STRING(36)    NOT NULL,
+  Name                STRING(255)   NOT NULL,
+  Description         STRING(MAX),
+  DiscountBps         INT64         NOT NULL,
+  ScopeType           STRING(32)    NOT NULL,
+  ScopeProductId      STRING(36),
+  ScopeCategoryId     STRING(36),
+  RetailerScope       STRING(32)    NOT NULL,
+  RetailerIdsJson     BYTES(MAX),
+  MinLineQuantity     INT64,
+  MinOrderAmountMinor INT64,
+  StartsAt            TIMESTAMP,
+  EndsAt              TIMESTAMP,
+  IsActive            BOOL          NOT NULL,
+  Priority            INT64         NOT NULL DEFAULT (0),
+  Version             INT64         NOT NULL DEFAULT (1),
+  CreatedAt           TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+  UpdatedAt           TIMESTAMP     NOT NULL OPTIONS (allow_commit_timestamp=true),
+) PRIMARY KEY (PromotionId);
+
+CREATE INDEX Idx_SupplierPromotions_BySupplierActive ON SupplierPromotions(SupplierId, IsActive, UpdatedAt DESC);
+CREATE INDEX Idx_SupplierPromotions_ByProduct ON SupplierPromotions(SupplierId, ScopeProductId, IsActive);
+CREATE INDEX Idx_SupplierPromotions_ByCategory ON SupplierPromotions(SupplierId, ScopeCategoryId, IsActive);
+
 CREATE TABLE Retailers (
   RetailerId              STRING(36)    NOT NULL,
   Phone                   STRING(32)    NOT NULL,

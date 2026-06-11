@@ -1,6 +1,11 @@
 import SwiftUI
 
 struct SavedCardsView: View {
+    var returnTo: String? = nil
+    var orderId: String? = nil
+    var sessionId: String? = nil
+    var onReturnToPayment: (() -> Void)? = nil
+
     private var apiClient = APIClient.shared
     @State private var cards: [RetailerCardToken] = []
     @State private var isLoading = true
@@ -14,6 +19,21 @@ struct SavedCardsView: View {
     
     var body: some View {
         List {
+            if returnTo == "delivery_payment" {
+                Section {
+                    HStack {
+                        Text("Add a card, then return to complete delivery payment.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("Return") {
+                            onReturnToPayment?()
+                        }
+                        .font(.footnote.weight(.semibold))
+                    }
+                }
+            }
+
             if isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -163,6 +183,9 @@ struct SavedCardsView: View {
             pendingCardToken = nil
             optCode = ""
             await loadCards()
+            if returnTo == "delivery_payment" {
+                onReturnToPayment?()
+            }
         } catch {
             errorMessage = RetailerErrorSupport.message(
                 for: error,

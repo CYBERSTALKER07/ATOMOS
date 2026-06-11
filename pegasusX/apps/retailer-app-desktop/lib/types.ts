@@ -52,8 +52,17 @@ export interface Variant {
   price: number;
 }
 
+export interface ProductOffer {
+  product_id?: string;
+  list_price_minor?: number;
+  sale_price_minor?: number;
+  discount_bps?: number;
+  promotion_label?: string;
+}
+
 export interface Product {
   id: string;
+  product_id?: string;
   name: string;
   description: string;
   nutrition?: string;
@@ -68,6 +77,24 @@ export interface Product {
   price: number;
   variants?: Variant[];
   available_stock?: number;
+  offer?: ProductOffer;
+}
+
+export function productSalePrice(product: Product): number | null {
+  const sale = product.offer?.sale_price_minor;
+  return sale != null && sale > 0 ? sale : null;
+}
+
+export function productListPrice(product: Product): number {
+  return (
+    product.offer?.list_price_minor ??
+    product.price ??
+    0
+  );
+}
+
+export function productDisplayPrice(product: Product): number {
+  return productSalePrice(product) ?? productListPrice(product);
 }
 
 export interface Category {

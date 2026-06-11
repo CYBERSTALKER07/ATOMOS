@@ -150,8 +150,20 @@ data class Variant(
 // ── Product (iOS: Product) ──
 
 @Serializable
+data class ProductOffer(
+    @SerialName("product_id") val productId: String = "",
+    @SerialName("list_price_minor") val listPriceMinor: Long = 0,
+    @SerialName("sale_price_minor") val salePriceMinor: Long? = null,
+    @SerialName("discount_bps") val discountBps: Long? = null,
+    @SerialName("promotion_id") val promotionId: String? = null,
+    @SerialName("promotion_name") val promotionName: String? = null,
+    @SerialName("promotion_label") val promotionLabel: String? = null,
+    @SerialName("promotion_ends_at") val promotionEndsAt: String? = null,
+)
+
+@Serializable
 data class Product(
-    @SerialName("id") val id: String,
+    @JsonNames("product_id", "id") val id: String,
     @SerialName("name") val name: String,
     @SerialName("description") val description: String = "",
     @SerialName("nutrition") val nutrition: String = "",
@@ -166,14 +178,35 @@ data class Product(
     @JsonNames("units_per_block", "unitsPerBlock") val unitsPerBlock: Int? = null,
     @JsonNames("price", "price") val price: Int? = null,
     @JsonNames("available_stock", "availableStock") val availableStock: Int? = null,
+    @JsonNames("price_minor") val priceMinor: Long? = null,
+    @SerialName("offer") val offer: ProductOffer? = null,
 ) {
     val isOutOfStock: Boolean get() = availableStock != null && availableStock <= 0
     val isLowStock: Boolean get() = availableStock != null && availableStock in 1..5
     val defaultVariant: Variant? get() = variants.firstOrNull()
+    val hasSaleOffer: Boolean
+        get() = offer?.salePriceMinor?.let { it > 0 } == true
+
+    val displayListPrice: String?
+        get() {
+            val listMinor = offer?.listPriceMinor?.takeIf { it > 0 }
+                ?: priceMinor?.takeIf { it > 0 }
+                ?: defaultVariant?.price?.toLong()?.takeIf { it > 0 }
+                ?: price?.toLong()?.takeIf { it > 0 }
+            return listMinor?.let { "%,d".format(it) }
+        }
+
     val displayPrice: String
-        get() = defaultVariant?.let { "%,.0f".format(it.price) }
-            ?: price?.let { "%,d".format(it) }
-            ?: "—"
+        get() {
+            offer?.salePriceMinor?.takeIf { it > 0 }?.let { return "%,d".format(it) }
+            defaultVariant?.let { return "%,.0f".format(it.price) }
+            price?.let { return "%,d".format(it) }
+            priceMinor?.let { return "%,d".format(it) }
+            return "—"
+        }
+
+    val promotionLabel: String?
+        get() = offer?.promotionLabel
 
     val merchandisingLabel: String?
         get() = categoryName ?: when {
@@ -622,6 +655,29 @@ data class SupplierOrderResult(
     @SerialName("supplier_name") val supplierName: String = "",
     @SerialName("total") val total: Long = 0,
     @SerialName("item_count") val itemCount: Int = 0,
+)
+
+@Serializable
+data class CheckoutQuoteLine(
+    @SerialName("product_id") val productId: String,
+    @SerialName("quantity") val quantity: Long,
+    @SerialName("unit_price_minor") val unitPriceMinor: Long,
+    @SerialName("currency") val currency: String = "UZS",
+)
+
+@Serializable
+data class CheckoutQuoteRequest(
+    @SerialName("supplier_id") val supplierId: String,
+    @SerialName("lines") val lines: List<CheckoutQuoteLine>,
+)
+
+@Serializable
+data class CheckoutQuoteResponse(
+    @SerialName("supplier_id") val supplierId: String,
+    @SerialName("subtotal_minor") val subtotalMinor: Long = 0,
+    @SerialName("discount_minor") val discountMinor: Long = 0,
+    @SerialName("total_minor") val totalMinor: Long = 0,
+    @SerialName("currency") val currency: String = "UZS",
 )
 
 @Serializable

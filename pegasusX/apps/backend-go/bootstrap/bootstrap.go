@@ -38,6 +38,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/payload"
 	"github.com/pegasusx/pegasusx/apps/backend-go/payment"
 	"github.com/pegasusx/pegasusx/apps/backend-go/platform"
+	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/retailer"
 	"github.com/pegasusx/pegasusx/apps/backend-go/seed"
 	"github.com/pegasusx/pegasusx/apps/backend-go/supplier"
@@ -113,6 +114,7 @@ type App struct {
 	Idempotency            idempotency.Store
 	Supplier               seed.Supplier
 	CatalogService         *catalog.Service
+	PromotionService       *promotion.Service
 	InventoryService       *inventory.Service
 	NotificationService    *notifications.Service
 	SupplierService        *supplier.Service
@@ -370,10 +372,17 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		)
 	}
 
+	var promotionSvc *promotion.Service
+	if spannerClient != nil {
+		promoRepo := promotion.NewSpannerRepository(spannerClient)
+		promotionSvc = promotion.NewService(promoRepo, cacheClient, log)
+		log.Info("promotion service enabled", "backend", "spanner")
+	}
+
 	var catalogSvc *catalog.Service
 	if spannerClient != nil {
 		catalogRepo := catalog.NewSpannerRepository(spannerClient)
-		catalogSvc = catalog.NewService(catalogRepo, cacheClient, log)
+		catalogSvc = catalog.NewService(catalogRepo, cacheClient, log, promotionSvc)
 		log.Info("catalog service enabled", "backend", "spanner")
 	}
 
@@ -475,6 +484,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Repo:            orderRepo,
 		Cache:           cacheClient,
 		Warehouse:       orderWarehouseResolver,
+		Promotions:      promotionSvc,
 		SupplierID:      supplierSeed.SupplierID,
 		SupplierName:    cfg.SeedSupplierName,
 		Currency:        cfg.SeedSupplierCurrency,
@@ -798,6 +808,7 @@ func NewApp(ctx context.Context, cfg *Config) (*App, error) {
 		Idempotency:            idemStore,
 		Supplier:               supplierSeed,
 		CatalogService:         catalogSvc,
+		PromotionService:       promotionSvc,
 		InventoryService:       inventorySvc,
 		NotificationService:    notifSvc,
 		SupplierService:        supplierSvc,

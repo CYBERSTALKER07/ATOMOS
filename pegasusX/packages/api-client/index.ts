@@ -59,6 +59,9 @@ import type {
   SupplierProfileUpdateRequest,
   SupplierPricingRule,
   SupplierPricingRuleUpdateRequest,
+  SupplierPromotion,
+  SupplierPromotionUpsertRequest,
+  SupplierPromotionsResponse,
   SupplierRegisterRequest,
   SupplierRegisterResponse,
   SupplierTopologyResponse,
@@ -211,6 +214,33 @@ export class ApiClient {
 
   async getSupplierPricingRule(): Promise<SupplierPricingRule> {
     return this.request<SupplierPricingRule>("/v1/supplier/pricing/rules", "GET");
+  }
+
+  async listSupplierPromotions(): Promise<SupplierPromotionsResponse> {
+    return this.request<SupplierPromotionsResponse>("/v1/supplier/promotions", "GET");
+  }
+
+  async createSupplierPromotion(
+    request: SupplierPromotionUpsertRequest,
+    idempotencyKey: string,
+  ): Promise<SupplierPromotion> {
+    return this.request<SupplierPromotion>("/v1/supplier/promotions", "POST", {
+      body: request,
+      idempotencyKey,
+    });
+  }
+
+  async updateSupplierPromotion(
+    promotionId: string,
+    request: SupplierPromotionUpsertRequest,
+  ): Promise<SupplierPromotion> {
+    return this.request<SupplierPromotion>(`/v1/supplier/promotions/${promotionId}`, "PATCH", {
+      body: request,
+    });
+  }
+
+  async deactivateSupplierPromotion(promotionId: string): Promise<{ status: string }> {
+    return this.request<{ status: string }>(`/v1/supplier/promotions/${promotionId}`, "DELETE");
   }
 
   async getSupplierOrders(

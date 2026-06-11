@@ -27,6 +27,7 @@ import (
 	"github.com/pegasusx/pegasusx/apps/backend-go/cache"
 	"github.com/pegasusx/pegasusx/apps/backend-go/events"
 	"github.com/pegasusx/pegasusx/apps/backend-go/outbox"
+	"github.com/pegasusx/pegasusx/apps/backend-go/promotion"
 	"github.com/pegasusx/pegasusx/apps/backend-go/ws"
 )
 
@@ -179,6 +180,7 @@ type Service struct {
 	cache           *cache.Cache
 	warehouse       WarehouseResolver
 	paymentCapturer PaymentCapturer
+	promotions      *promotion.Service
 
 	supplierID    string
 	supplierName  string
@@ -199,6 +201,7 @@ type ServiceConfig struct {
 	Repo            Repository
 	Cache           *cache.Cache
 	Warehouse       WarehouseResolver
+	Promotions      *promotion.Service
 	SupplierID      string
 	SupplierName    string
 	Currency        string
@@ -232,6 +235,7 @@ func NewService(c ServiceConfig) *Service {
 		repo:            c.Repo,
 		cache:           c.Cache,
 		warehouse:       c.Warehouse,
+		promotions:      c.Promotions,
 		supplierID:      c.SupplierID,
 		supplierName:    strings.TrimSpace(c.SupplierName),
 		currency:        c.Currency,

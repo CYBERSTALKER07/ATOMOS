@@ -247,6 +247,16 @@ type AIRecommendationEvent struct {
 	Note             string `json:"note,omitempty"`
 }
 
+// PromotionEvent signals supplier promotion create, update, or deactivation.
+type PromotionEvent struct {
+	BaseEvent
+	SupplierID    string   `json:"supplier_id"`
+	PromotionID   string   `json:"promotion_id"`
+	RetailerScope string   `json:"retailer_scope"`
+	RetailerIDs   []string `json:"retailer_ids,omitempty"`
+	Action        string   `json:"action"`
+}
+
 // SyncEvent handles catalog and inventory syncing.
 type SyncEvent struct {
 	BaseEvent
